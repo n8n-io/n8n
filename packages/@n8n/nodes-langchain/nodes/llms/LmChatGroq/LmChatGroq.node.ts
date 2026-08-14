@@ -1,6 +1,6 @@
 import { ChatGroq } from '@langchain/groq';
 import {
-	getProxyAgent,
+	getNodeProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -150,7 +150,7 @@ export class LmChatGroq implements INodeType {
 			maxTokens: options.maxTokensToSample,
 			temperature: options.temperature,
 			callbacks: [new N8nLlmTracing(this)],
-			httpAgent: getProxyAgent('https://api.groq.com/openai/v1'),
+			httpAgent: getNodeProxyAgent('https://api.groq.com/openai/v1'),
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 

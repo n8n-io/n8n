@@ -1,11 +1,18 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import type { IEmail } from '@utils/sendAndWait/interfaces';
 
 import * as GenericFunctions from '../../GenericFunctions';
-import { parseRawEmail, prepareQuery, prepareTimestamp } from '../../GenericFunctions';
+import {
+	parseRawEmail,
+	prepareEmailAttachments,
+	prepareEmailBody,
+	prepareEmailsInput,
+	prepareQuery,
+	prepareTimestamp,
+} from '../../GenericFunctions';
 import { addThreadHeadersToEmail } from '../../v2/utils/draft';
 
 const node: INode = {
@@ -133,9 +140,62 @@ describe('parseRawEmail', () => {
 	});
 });
 
+describe('email input preparation', () => {
+	it('should convert recipient input to a string before splitting', () => {
+		const executionFunctions = mock<IExecuteFunctions>();
+
+		const result = prepareEmailsInput.call(
+			executionFunctions,
+			['alice@example.com', 'bob@example.com'] as unknown as string,
+			'To',
+			0,
+		);
+
+		expect(result).toBe('<alice@example.com>, <bob@example.com>, ');
+	});
+
+	it('should convert message body to a string before trimming', () => {
+		const executionFunctions = mock<IExecuteFunctions>({
+			getNodeParameter: ((parameterName: string) => {
+				if (parameterName === 'emailType') return 'text';
+				return 123;
+			}) as IExecuteFunctions['getNodeParameter'],
+		});
+
+		expect(prepareEmailBody.call(executionFunctions, 0)).toEqual({
+			body: '123',
+			htmlBody: '',
+		});
+	});
+
+	it('should convert attachment property names to strings before splitting', async () => {
+		const binaryData = Buffer.from('file contents');
+		const executionFunctions = mock<IExecuteFunctions>({
+			helpers: mock<IExecuteFunctions['helpers']>({
+				assertBinaryData: vi.fn(() => ({
+					data: binaryData.toString('base64'),
+					fileName: 'test.txt',
+					mimeType: 'text/plain',
+				})),
+				getBinaryDataBuffer: vi.fn(async () => binaryData),
+			}),
+		});
+
+		const result = await prepareEmailAttachments.call(
+			executionFunctions,
+			{ attachmentsBinary: [{ property: 123 }] },
+			0,
+		);
+
+		expect(executionFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, '123');
+		expect(executionFunctions.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(0, '123');
+		expect(result).toEqual([{ name: 'test.txt', content: binaryData, type: 'text/plain' }]);
+	});
+});
+
 describe('prepareQuery', () => {
 	const executionFunctions = mock<IExecuteFunctions>({
-		getNode: jest.fn(() => node),
+		getNode: vi.fn(() => node),
 	});
 
 	it('should convert sender filter to q parameter', () => {
@@ -206,7 +266,7 @@ describe('prepareQuery', () => {
 
 describe('addThreadHeadersToEmail', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should set inReplyTo and reference on the email object', async () => {
@@ -219,7 +279,7 @@ describe('addThreadHeadersToEmail', () => {
 			],
 		};
 
-		jest.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
+		vi.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
 			return mockThread;
 		});
 
@@ -240,7 +300,7 @@ describe('addThreadHeadersToEmail', () => {
 			messages: [{ payload: { headers: [{ name: 'Message-ID', value: mockMessageId }] } }],
 		};
 
-		jest.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
+		vi.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
 			return mockThread;
 		});
 
@@ -258,7 +318,7 @@ describe('addThreadHeadersToEmail', () => {
 		const mockThreadId = 'thread123';
 		const mockThread = {};
 
-		jest.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
+		vi.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
 			return mockThread;
 		});
 

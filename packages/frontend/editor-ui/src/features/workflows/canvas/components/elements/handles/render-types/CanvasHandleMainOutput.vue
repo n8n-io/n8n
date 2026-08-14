@@ -2,12 +2,13 @@
 import { useCanvasNodeHandle } from '../../../../composables/useCanvasNodeHandle';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import { computed, ref, useCssModule } from 'vue';
-import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
 import { useI18n } from '@n8n/i18n';
 import CanvasHandleDot from './parts/CanvasHandleDot.vue';
 import CanvasHandlePlus from './parts/CanvasHandlePlus.vue';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
+import { getMaxNodePortsLabelSize } from '../../../../canvas.utils';
+import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 
 const emit = defineEmits<{
 	add: [];
@@ -16,7 +17,9 @@ const emit = defineEmits<{
 const $style = useCssModule();
 
 const i18n = useI18n();
-const { render } = useCanvasNode();
+const { id } = useCanvasNode();
+const renderData = injectCanvasRenderData();
+const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
 const { label, isConnected, isConnecting, isReadOnly, isRequired, runData } = useCanvasNodeHandle();
 const { viewport } = useCanvas();
 const { calculateHandleLightness } = useZoomAdjustedValues(viewport);
@@ -31,8 +34,6 @@ const classes = computed(() => ({
 }));
 
 const isHovered = ref(false);
-
-const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
 const runDataTotal = computed(() => runData.value?.total ?? 0);
 
@@ -49,14 +50,10 @@ const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.valu
 
 const plusType = computed(() => (runDataTotal.value > 0 ? 'success' : 'default'));
 
-const plusLineSize = computed(
-	() =>
-		({
-			small: 46,
-			medium: 66,
-			large: 80,
-		})[(runDataTotal.value > 0 ? 'large' : renderOptions.value.outputs?.labelSize) ?? 'small'],
-);
+const plusLineSize = computed(() => {
+	if (runDataTotal.value > 0) return 80;
+	return { small: 46, medium: 66, large: 80 }[getMaxNodePortsLabelSize(outputs.value)];
+});
 
 const outputLabelClasses = computed(() => ({
 	[$style.label]: true,

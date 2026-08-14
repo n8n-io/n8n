@@ -1,28 +1,36 @@
-import { mockInstance } from '@n8n/backend-test-utils';
 import { LicenseState } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User, WorkflowEntity } from '@n8n/db';
-import { WorkflowRepository, DbConnection, AuthRolesService, BinaryDataRepository } from '@n8n/db';
+import type { User, WorkflowEntity, Project } from '@n8n/db';
+import {
+	WorkflowRepository,
+	DbConnection,
+	AuthRolesService,
+	BinaryDataRepository,
+	DeploymentKeyRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
-
-import { Execute } from '../execute';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
 import { ExternalHooks } from '@/external-hooks';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { WorkflowRunner } from '@/workflow-runner';
+
+import { BaseCommand } from '../base-command';
+import { Execute } from '../execute';
 
 const taskRunnerModule = mockInstance(TaskRunnerModule);
 const workflowRepository = mockInstance(WorkflowRepository);
@@ -33,6 +41,7 @@ const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 const shutdownService = mockInstance(ShutdownService);
 const deprecationService = mockInstance(DeprecationService);
 mockInstance(MessageEventBus);
+mockInstance(ExpressionObservabilityProvider);
 const posthogClient = mockInstance(PostHogClient);
 const telemetryEventRelay = mockInstance(TelemetryEventRelay);
 const externalHooks = mockInstance(ExternalHooks);
@@ -46,6 +55,10 @@ dbConnection.init.mockResolvedValue(undefined);
 dbConnection.migrate.mockResolvedValue(undefined);
 mockInstance(AuthRolesService);
 mockInstance(BinaryDataRepository);
+
+const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
+deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
+deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
 
 test('should start a task runner', async () => {
 	// arrange
@@ -66,6 +79,9 @@ test('should start a task runner', async () => {
 
 	workflowRepository.findOneBy.mockResolvedValue(workflow);
 	ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: '123' }));
+	ownershipService.getWorkflowProjectCached.mockResolvedValue(
+		mock<Project>({ id: 'project-id-1', name: 'Mock Project' }),
+	);
 	workflowRunner.run.mockResolvedValue('123');
 	activeExecutions.getPostExecutePromise.mockResolvedValue(run);
 
@@ -89,4 +105,23 @@ test('should start a task runner', async () => {
 	// assert
 
 	expect(taskRunnerModule.start).toHaveBeenCalledTimes(1);
+});
+
+test('should not seed the instance identity and should tolerate deployment key read errors', async () => {
+	// arrange
+
+	deploymentKeyRepository.insertOrIgnore.mockClear();
+	deploymentKeyRepository.findActiveByType.mockRejectedValueOnce(new Error('permission denied'));
+
+	// minimal command: Execute.init() chains singletons that cannot init twice per process
+	class ReadOnlyCommand extends BaseCommand {}
+	const cmd = new ReadOnlyCommand();
+
+	// act
+
+	await cmd.init();
+
+	// assert
+
+	expect(deploymentKeyRepository.insertOrIgnore).not.toHaveBeenCalled();
 });

@@ -1,0 +1,102 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are the n8n Instance Agent — an AI assistant embedded in an n8n instance\\. Yo[\\s\\S]*\"role\"\\s*:\\s*\"user\"[\\s\\S]{0,15000}\"type\"\\s*:\\s*\"tool_result\"[\\s\\S]{0,100000}\\\\\"success\\\\\"\\s*:\\s*true[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-12f2c6bdb5bf1291f7cbd12b16c21f69-e1126061d8afd299-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "request-id": [
+        "req_011CcfQGBwX6DNax1Mq81ebu"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-07-03T15:59:40Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "17989000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-07-03T15:59:40Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19999"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-07-03T15:59:40Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-07-03T15:59:40Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "14989000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "15000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Fri, 03 Jul 2026 15:59:41 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a1571942bb008e21-HEL"
+      ]
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01CWG2pThGz2L3MV2YrHU3CH\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":533,\"cache_read_input_tokens\":41979,\"cache_creation\":{\"ephemeral_5m_input_tokens\":533,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":9,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}         }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\",\"signature\":\"\"}         }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"The build\"}        }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" succeeded. The output shows:\\n- `postBuildFlow.required: true`\\n- `setupRequirement.status: \\\"required\"}  }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"\\\"` with reason `unresolved-placeholders`\\n- `mockedCredentialTypes\"}   }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\": [\\\"slackApi\\\"]` — the slackApi credential is mocked as expected\"}  }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"\\n\\nPer the user's explicit instructions: \\\"When the build result\"}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" reports that setup is required before verification, open the workflow setup card\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" with workflows(action='setup') and stop editing.\\\"\"}              }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"\\n\\nSo I should open the setup card and stop. Let me do that.\"}              }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"signature_delta\",\"signature\":\"ErQFCmUIDxgCKkBlkEwH/fs1NaV7Ap3wCaxb9ENxxMzwjizoWbR4DguaI8h6n+sumIlCdBj7CtTpb8DaPAlRXe0zgQ+w5jg2L82kMhFjbGF1ZGUtc29ubmV0LTQtNjgAQgh0aGlua2luZxIMEwZxfeJE7pQohf+JGgxsCQKqvHfeDguWFewiMB6X8mfX92GGiZ8pso5UkrjHgNv7D46BjkzYHEUNxc6UBSKU5XAwtGbESuL0/1ouvyr8A5rOP3WN8aQRukCT+DFxHTadmU+TrCD2r7gmuO+8mbMOJQ70DGGDOMi+hEHi63CVEg3eedS+fT4X2JYFfG6CvrG/x1SGnB/zb0NWjP9Nesh8Y4TrY8TvygHPfdkHG7JeI6gdDRBDDfEOPGCE3ctNuvJD+MMCe++HlzXD/aTfNyoHQtpcb2sRzamSu91QIbI93lGFeQROm/NWeU1XD2Ck73xnMmwWsRqRhikRFUIPNqAbGHtwzNvVGJt/k5YjUK8GUwtsKyB/uv3RfUvsagxFGaB0C+jVG05MyZC/mPriHCAff2nrR8j9RUO1Emd3Ibzd2BQOTfc82mQHlad5ynLJHl+aEJEYHEb4jE8DLA8tu+mK9kPKlOnZV0rE/FNiXB4CThSr5/bZ7gZ0MKh8DQ5grIyxDUH2ZCY48MW2BHB21JwvrxFFO3BqmQ+1JWiinT8K5e5owTkELT1H0gZMbBx/L8vJwmGRI42Mej1UHTja4ogrKZfJw3+gKn85FtYLq1GGODZINmBd1xSc3Md6P4YbaL+l45eNe/DiyuctMJM/PgtXSBaVvw59GOCUVlhOkl+67GQH0+AWE+ojmN2qLzKnCCO60M48LKyWYqnLtWBZwIrNNc1vF/VwVfPsYXD93BwYHVX/xC6H7zKYZYkJs9LcldUVbPecW0S8uhQFnZEYAQ==\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0              }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}               }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"The build succeeded with\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\" setup required (unresolved placeholders + mocked `slackApi` credential). Per\"}              }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\" the instructions, I'll open the workflow setup card now and stop.\"}      }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1               }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01XVJMiaXUm2eyJ62opLJkK2\",\"name\":\"workflows\",\"input\":{},\"caller\":{\"type\":\"direct\"}}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"action\\\": \\\"setup\"}              }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\", \\\"workflowId\\\": \\\"is0xEZKNNiU\"}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"9f2Gg\"}     }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"}\"}   }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":2      }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":533,\"cache_read_input_tokens\":41979,\"output_tokens\":261,\"output_tokens_details\":{\"thinking_tokens\":134}}              }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\" }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxQ1dHMnBUaEd6MkwzTVYyWXJIVTNDSCIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6NTMzLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6NDE5NzksImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjUzMywiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjksInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fSAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0YXJ0CmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RhcnQiLCJpbmRleCI6MCwiY29udGVudF9ibG9jayI6eyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6IiIsInNpZ25hdHVyZSI6IiJ9ICAgICAgICAgfQoKZXZlbnQ6IHBpbmcKZGF0YTogeyJ0eXBlIjogInBpbmcifQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGhpbmtpbmdfZGVsdGEiLCJ0aGlua2luZyI6IlRoZSBidWlsZCJ9ICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0aGlua2luZ19kZWx0YSIsInRoaW5raW5nIjoiIHN1Y2NlZWRlZC4gVGhlIG91dHB1dCBzaG93czpcbi0gYHBvc3RCdWlsZEZsb3cucmVxdWlyZWQ6IHRydWVgXG4tIGBzZXR1cFJlcXVpcmVtZW50LnN0YXR1czogXCJyZXF1aXJlZCJ9ICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0aGlua2luZ19kZWx0YSIsInRoaW5raW5nIjoiXCJgIHdpdGggcmVhc29uIGB1bnJlc29sdmVkLXBsYWNlaG9sZGVyc2Bcbi0gYG1vY2tlZENyZWRlbnRpYWxUeXBlcyJ9ICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGhpbmtpbmdfZGVsdGEiLCJ0aGlua2luZyI6IjogW1wic2xhY2tBcGlcIl1gIOKAlCB0aGUgc2xhY2tBcGkgY3JlZGVudGlhbCBpcyBtb2NrZWQgYXMgZXhwZWN0ZWQifSAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoidGhpbmtpbmdfZGVsdGEiLCJ0aGlua2luZyI6IlxuXG5QZXIgdGhlIHVzZXIncyBleHBsaWNpdCBpbnN0cnVjdGlvbnM6IFwiV2hlbiB0aGUgYnVpbGQgcmVzdWx0In0gICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0aGlua2luZ19kZWx0YSIsInRoaW5raW5nIjoiIHJlcG9ydHMgdGhhdCBzZXR1cCBpcyByZXF1aXJlZCBiZWZvcmUgdmVyaWZpY2F0aW9uLCBvcGVuIHRoZSB3b3JrZmxvdyBzZXR1cCBjYXJkIn0gICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0aGlua2luZ19kZWx0YSIsInRoaW5raW5nIjoiIHdpdGggd29ya2Zsb3dzKGFjdGlvbj0nc2V0dXAnKSBhbmQgc3RvcCBlZGl0aW5nLlwiIn0gICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InRoaW5raW5nX2RlbHRhIiwidGhpbmtpbmciOiJcblxuU28gSSBzaG91bGQgb3BlbiB0aGUgc2V0dXAgY2FyZCBhbmQgc3RvcC4gTGV0IG1lIGRvIHRoYXQuIn0gICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6InNpZ25hdHVyZV9kZWx0YSIsInNpZ25hdHVyZSI6IkVyUUZDbVVJRHhnQ0trQmxrRXdIL2ZzMU5hVjdBcDN3Q2F4YjlFTnh4TXp3aml6b1diUjREZ3VhSThoNm4rc3VtSWxDZEJqN0N0VHBiOERhUEFsUlhlMHpnUSt3NWpnMkw4MmtNaEZqYkdGMVpHVXRjMjl1Ym1WMExUUXROamdBUWdoMGFHbHVhMmx1WnhJTUV3WnhmZUpFN3BRb2hmK0pHZ3hzQ1FLcXZIZmVEZ3VXRmV3aU1CNlg4bWZYOTJHR2laOHBzbzVVa3JqSGdOdjdENDZCamt6WUhFVU54YzZVQlNLVTVYQXd0R2JFU3VMMC8xb3V2eXI4QTVyT1AzV044YVFSdWtDVCtERnhIVGFkbVUrVHJDRDJyN2dtdU8rOG1iTU9KUTcwREdHRE9NaStoRUhpNjNDVkVnM2VlZFMrZlQ0WDJKWUZmRzZDdnJHL3gxU0duQi96YjBOV2pQOU5lc2g4WTRUclk4VHZ5Z0hQZmRrSEc3SmVJNmdkRFJCRERmRU9QR0NFM2N0TnV2SkQrTU1DZSsrSGx6WEQvYVRmTnlvSFF0cGNiMnNSemFtU3U5MVFJYkk5M2xHRmVRUk9tL05XZVUxWEQyQ2s3M3huTW13V3NScVJoaWtSRlVJUE5xQWJHSHR3ek52VkdKdC9rNVlqVUs4R1V3dHNLeUIvdXYzUmZVdnNhZ3hGR2FCMEMralZHMDVNeVpDL21QcmlIQ0FmZjJuclI4ajlSVU8xRW1kM0liemQyQlFPVGZjODJtUUhsYWQ1eW5MSkhsK2FFSkVZSEViNGpFOERMQTh0dSttSzlrUEtsT25aVjByRS9GTmlYQjRDVGhTcjUvYlo3Z1owTUtoOERRNWdySXl4RFVIMlpDWTQ4TVcyQkhCMjFKd3ZyeEZGTzNCcW1RKzFKV2lpblQ4SzVlNW93VGtFTFQxSDBnWk1iQngvTDh2SndtR1JJNDJNZWoxVUhUamE0b2dyS1pmSnczK2dLbjg1RnRZTHExR0dPRFpJTm1CZDF4U2MzTWQ2UDRZYmFMK2w0NWVOZS9EaXl1Y3RNSk0vUGd0WFNCYVZ2dzU5R09DVVZsaE9rbCs2N0dRSDArQVdFK29qbU4ycUx6S25DQ082ME00OExLeVdZcW5MdFdCWndJck5OYzF2Ri9Wd1ZmUHNZWEQ5M0J3WUhWWC94QzZIN3pLWVpZa0pzOUxjbGRVVmJQZWNXMFM4dWhRRm5aRVlBUT09In19CgpldmVudDogY29udGVudF9ibG9ja19zdG9wCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RvcCIsImluZGV4IjowICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjEsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRleHQiLCJ0ZXh0IjoiIn0gICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IlRoZSBidWlsZCBzdWNjZWVkZWQgd2l0aCJ9fQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjoxLCJkZWx0YSI6eyJ0eXBlIjoidGV4dF9kZWx0YSIsInRleHQiOiIgc2V0dXAgcmVxdWlyZWQgKHVucmVzb2x2ZWQgcGxhY2Vob2xkZXJzICsgbW9ja2VkIGBzbGFja0FwaWAgY3JlZGVudGlhbCkuIFBlciJ9ICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiB0aGUgaW5zdHJ1Y3Rpb25zLCBJJ2xsIG9wZW4gdGhlIHdvcmtmbG93IHNldHVwIGNhcmQgbm93IGFuZCBzdG9wLiJ9ICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MSAgICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0YXJ0CmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RhcnQiLCJpbmRleCI6MiwiY29udGVudF9ibG9jayI6eyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxWFZKTWlhWFVtMmV5SjYyb3BMSmtLMiIsIm5hbWUiOiJ3b3JrZmxvd3MiLCJpbnB1dCI6e30sImNhbGxlciI6eyJ0eXBlIjoiZGlyZWN0In19ICAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjoyLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IiJ9ICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjoyLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IntcImFjdGlvblwiOiBcInNldHVwIn0gICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MiwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJcIiwgXCJ3b3JrZmxvd0lkXCI6IFwiaXMweEVaS05OaVUifSAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MiwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiI5ZjJHZyJ9ICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjIsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiXCJ9In0gICB9CgpldmVudDogY29udGVudF9ibG9ja19zdG9wCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RvcCIsImluZGV4IjoyICAgICAgfQoKZXZlbnQ6IG1lc3NhZ2VfZGVsdGEKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9kZWx0YSIsImRlbHRhIjp7InN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGx9LCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6NTMzLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6NDE5NzksIm91dHB1dF90b2tlbnMiOjI2MSwib3V0cHV0X3Rva2Vuc19kZXRhaWxzIjp7InRoaW5raW5nX3Rva2VucyI6MTM0fX0gICAgICAgICAgICAgIH0KCmV2ZW50OiBtZXNzYWdlX3N0b3AKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdG9wIiB9Cgo=",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0005-1783094387261-unknown-host-POST-_v1_messages-f808330f.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

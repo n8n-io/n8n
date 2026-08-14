@@ -4,13 +4,8 @@ import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
-import {
-	DATA_TABLE_NODE_TYPES,
-	ensureError,
-	INode,
-	IWorkflowBase,
-	IWorkflowSettings,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { DATA_TABLE_NODE_TYPES, INode, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 
@@ -192,6 +187,14 @@ export class WorkflowIndexService {
 	 * NOTE: this should generally be handled via events, rather than called directly.
 	 * The exception is during workflow imports where it's simpler to call directly.
 	 *
+	 * IMPORTANT: The indexer's input set (`nodes` and `settings`) is mirrored by
+	 * the `workflow_version_increment` DB trigger, which only bumps
+	 * `versionCounter` when one of those columns changes. If you add code that
+	 * indexes any other column on `workflow_entity`, then update the trigger's gate
+	 * condition too. Otherwise the staleness check in `findWorkflowsNeedingIndexing`
+	 * will miss reindex work. See
+	 * `packages/@n8n/db/src/migrations/sqlite/1784000000003-LimitWorkflowVersionTriggerToContent.ts`
+	 * (and the postgres equivalent) for the gate condition to extend.
 	 */
 	private async updateIndexInternal(
 		dependencyUpdates: WorkflowDependencies,
@@ -322,7 +325,7 @@ export class WorkflowIndexService {
 		if (node.type !== 'n8n-nodes-base.webhook') {
 			return;
 		}
-		const webhookPath = node.parameters.path as string;
+		const webhookPath = node.parameters?.path as string;
 		if (webhookPath) {
 			dependencyUpdates.add({
 				dependencyType: 'webhookPath',

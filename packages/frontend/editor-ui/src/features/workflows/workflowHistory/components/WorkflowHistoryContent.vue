@@ -5,7 +5,8 @@ import type {
 	WorkflowVersion,
 	WorkflowHistoryActionTypes,
 } from '@n8n/rest-api-client/api/workflowHistory';
-import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
+import WorkflowPreviewHost from '@/app/components/WorkflowPreviewHost.vue';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
@@ -43,10 +44,20 @@ const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	const workflowWithoutPinData = omit(props.workflow, 'pinData');
 	return {
 		...workflowWithoutPinData,
+		nodeGroups: props.workflowVersion.nodeGroups,
 		nodes: props.workflowVersion.nodes,
 		connections: props.workflowVersion.connections,
 	};
 });
+
+// Synthetic preview document id, distinct from the editor's `{id}@latest` and
+// from the history diff's `{id}@{versionId}` stores.
+const previewDocumentId = computed(() =>
+	createWorkflowDocumentId(
+		props.workflow?.id ?? '',
+		`history-preview-${props.workflowVersion?.versionId ?? ''}`,
+	),
+);
 
 const formattedCreatedAt = computed<string>(() => {
 	if (!props.workflowVersion) {
@@ -125,11 +136,10 @@ watch(
 
 <template>
 	<div :class="$style.content">
-		<WorkflowPreview
-			v-if="props.workflowVersion"
+		<WorkflowPreviewHost
+			v-if="workflowVersionPreview && !props.isListLoading"
+			:document-id="previewDocumentId"
 			:workflow="workflowVersionPreview"
-			:loading="props.isListLoading"
-			loader-type="spinner"
 		/>
 		<div v-if="props.workflowVersion" :class="$style.info">
 			<div :class="$style.card">

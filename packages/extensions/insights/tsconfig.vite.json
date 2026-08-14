@@ -1,7 +1,6 @@
 {
 	"compilerOptions": {
 		"composite": true,
-		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
 		"target": "ES2022",
 		"lib": ["ES2023"],
 		"module": "ESNext",
@@ -13,7 +12,8 @@
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"noFallthroughCasesInSwitch": true,
-		"noUncheckedSideEffectImports": true
+		"noUncheckedSideEffectImports": true,
+		"tsBuildInfoFile": "dist/tsconfig.vite.tsbuildinfo"
 	},
 	"include": ["vite.config.ts", "tsdown.config.ts"]
 }

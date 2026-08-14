@@ -33,11 +33,17 @@ export const inboundTriggerAuthDefaults: BinaryCheck = {
 	name: 'inbound_trigger_auth_defaults',
 	description: 'Inbound trigger nodes keep authentication disabled unless the user asks for it',
 	kind: 'deterministic',
+	dimension: 'security',
 	run(workflow, ctx) {
+		const inboundTriggers = (workflow.nodes ?? []).filter((node) =>
+			INBOUND_TRIGGER_TYPES.has(node.type),
+		);
+		if (inboundTriggers.length === 0) return { pass: true, applicable: false };
+
 		if (explicitlyRequestsInboundAuth(ctx.prompt)) return { pass: true };
 
-		const issues = (workflow.nodes ?? [])
-			.filter((node) => INBOUND_TRIGGER_TYPES.has(node.type) && hasNonDefaultAuthentication(node))
+		const issues = inboundTriggers
+			.filter(hasNonDefaultAuthentication)
 			.map((node) => `"${node.name}" sets authentication to "${getAuthentication(node)}"`);
 
 		return {

@@ -13,6 +13,12 @@ describe('Read/Write Files from Disk', () => {
 			const expectedOutput = '/home/michael/Desktop/test.txt';
 			expect(escapeSpecialCharacters(input)).toBe(expectedOutput);
 		});
+
+		it('should escape square brackets in a string', () => {
+			const input = '/home/michael/Desktop/[release]/test.txt';
+			const expectedOutput = '/home/michael/Desktop/\\[release\\]/test.txt';
+			expect(escapeSpecialCharacters(input)).toBe(expectedOutput);
+		});
 	});
 
 	describe('normalizeFileSelector', () => {
@@ -37,6 +43,20 @@ describe('Read/Write Files from Disk', () => {
 		it('should normalize Windows file selector with /', () => {
 			const input = 'C:/Users/michael/Desktop/test.txt';
 			const expectedOutput = 'C:/Users/michael/Desktop/test.txt';
+			expect(normalizeFileSelector(input)).toBe(expectedOutput);
+		});
+
+		it('should escape square brackets in Windows file selector', () => {
+			const input =
+				'C:\\Users\\Administrator\\Desktop\\Manga\\Complete\\VTuber Legend [J-Novel Club]\\list.txt';
+			const expectedOutput =
+				'C:/Users/Administrator/Desktop/Manga/Complete/VTuber Legend \\[J-Novel Club\\]/list.txt';
+			expect(normalizeFileSelector(input)).toBe(expectedOutput);
+		});
+
+		it('should escape square brackets in UNIX file selector', () => {
+			const input = '/home/user/VTuber Legend [J-Novel Club]/list.txt';
+			const expectedOutput = '/home/user/VTuber Legend \\[J-Novel Club\\]/list.txt';
 			expect(normalizeFileSelector(input)).toBe(expectedOutput);
 		});
 	});

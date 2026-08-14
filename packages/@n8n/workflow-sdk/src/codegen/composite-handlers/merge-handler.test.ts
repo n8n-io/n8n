@@ -1,5 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
-
 import { buildMergeComposite, type BuildContext } from './merge-handler';
 import type { CompositeNode } from '../composite-tree';
 import type { SemanticGraph, SemanticNode, SourceInfo } from '../types';

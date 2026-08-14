@@ -4,6 +4,7 @@ import {
 	UpdateDataTableDto,
 } from '@n8n/api-types';
 import { Container } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -81,9 +82,9 @@ const dataTableHandlers: DataTableHandlers = {
 				const providedFilter = filter ?? {};
 				const { projectId: requestedProjectId, ...restFilter } = providedFilter;
 
-				const isGlobalOwnerOrAdmin = ['global:owner', 'global:admin'].includes(req.user.role.slug);
+				const readGlobally = hasGlobalScope(req.user, ['dataTable:listProject']);
 
-				if (requestedProjectId && !isGlobalOwnerOrAdmin) {
+				if (requestedProjectId && !readGlobally) {
 					const projectWithScope = await Container.get(ProjectService).getProjectWithScope(
 						req.user,
 						requestedProjectId,
@@ -94,7 +95,7 @@ const dataTableHandlers: DataTableHandlers = {
 
 				const finalFilter = await getDataTableListFilter(
 					req.user.id,
-					isGlobalOwnerOrAdmin,
+					readGlobally,
 					requestedProjectId,
 					restFilter,
 				);

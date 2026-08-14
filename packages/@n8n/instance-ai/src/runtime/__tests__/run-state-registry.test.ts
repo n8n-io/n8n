@@ -10,11 +10,12 @@ import type {
 } from '../run-state-registry';
 import { RunStateRegistry } from '../run-state-registry';
 
-jest.mock('nanoid', () => ({
-	nanoid: jest.fn(),
+vi.mock('nanoid', () => ({
+	nanoid: vi.fn(),
 }));
 
-const mockedNanoid = jest.mocked(nanoid);
+const mockedNanoid = vi.mocked(nanoid);
+const day = 24 * 60 * 60_000;
 
 interface TestUser {
 	id: string;
@@ -27,7 +28,7 @@ function createSuspendedRunState(
 	return {
 		runId: 'run_abc',
 		abortController: new AbortController(),
-		mastraRunId: 'mastra-1',
+		agentRunId: 'agent-run-1',
 		agent: {},
 		threadId: 'thread-1',
 		user: { id: 'user-1', name: 'Alice' },
@@ -92,25 +93,6 @@ describe('RunStateRegistry', () => {
 			});
 
 			expect(registry.getThreadUser('thread-1')).toEqual({ id: 'user-1', name: 'Alice' });
-		});
-
-		it('stores research mode when provided', () => {
-			registry.startRun({
-				threadId: 'thread-1',
-				user: { id: 'user-1', name: 'Alice' },
-				researchMode: true,
-			});
-
-			expect(registry.getThreadResearchMode('thread-1')).toBe(true);
-		});
-
-		it('does not store research mode when not provided', () => {
-			registry.startRun({
-				threadId: 'thread-1',
-				user: { id: 'user-1', name: 'Alice' },
-			});
-
-			expect(registry.getThreadResearchMode('thread-1')).toBeUndefined();
 		});
 
 		it('reuses provided messageGroupId instead of generating one', () => {
@@ -305,60 +287,36 @@ describe('RunStateRegistry', () => {
 				expect(registry.getThreadUser('unknown')).toBeUndefined();
 			});
 		});
-
-		describe('getThreadResearchMode', () => {
-			it('returns the research mode value when set', () => {
-				registry.startRun({
-					threadId: 'thread-1',
-					user: { id: 'u1', name: 'A' },
-					researchMode: true,
-				});
-
-				expect(registry.getThreadResearchMode('thread-1')).toBe(true);
-			});
-
-			it('returns false when explicitly set to false', () => {
-				registry.startRun({
-					threadId: 'thread-1',
-					user: { id: 'u1', name: 'A' },
-					researchMode: false,
-				});
-
-				expect(registry.getThreadResearchMode('thread-1')).toBe(false);
-			});
-
-			it('returns undefined when not set', () => {
-				registry.startRun({
-					threadId: 'thread-1',
-					user: { id: 'u1', name: 'A' },
-				});
-
-				expect(registry.getThreadResearchMode('thread-1')).toBeUndefined();
-			});
-		});
 	});
 
 	// ── getThreadStatus ───────────────────────────────────────────────────────
 
 	describe('getThreadStatus', () => {
 		it('reflects active run state', () => {
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
+			const started = registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 
 			const status = registry.getThreadStatus('thread-1', []);
 
 			expect(status.hasActiveRun).toBe(true);
 			expect(status.isSuspended).toBe(false);
+			expect(status.runId).toBe(started.runId);
 			expect(status.backgroundTasks).toEqual([]);
 		});
 
 		it('reflects suspended run state', () => {
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-			registry.suspendRun('thread-1', createSuspendedRunState({ threadId: 'thread-1' }));
+			const suspendedState = createSuspendedRunState({
+				threadId: 'thread-1',
+				runId: 'run-suspended',
+				messageGroupId: 'mg-1',
+			});
+			registry.suspendRun('thread-1', suspendedState);
 
 			const status = registry.getThreadStatus('thread-1', []);
 
 			expect(status.hasActiveRun).toBe(false);
 			expect(status.isSuspended).toBe(true);
+			expect(status.runId).toBe('run-suspended');
 		});
 
 		it('reflects idle state with no runs', () => {
@@ -590,6 +548,39 @@ describe('RunStateRegistry', () => {
 			it('does nothing when no active run exists', () => {
 				expect(() => registry.clearActiveRun('nonexistent')).not.toThrow();
 			});
+
+			it('does not clear an active run owned by a newer executor', () => {
+				const suspendedState = createSuspendedRunState({ threadId: 'thread-1' });
+				const currentExecution = Symbol('current-execution');
+				registry.suspendRun('thread-1', suspendedState);
+				registry.activateSuspendedRun('thread-1', currentExecution);
+
+				registry.clearActiveRun('thread-1', Symbol('stale-execution'));
+
+				expect(registry.getActiveRun('thread-1')?.executionToken).toBe(currentExecution);
+			});
+
+			it('does not let an unowned finalizer clear a newer tokenized executor', () => {
+				const suspendedState = createSuspendedRunState({ threadId: 'thread-1' });
+				const currentExecution = Symbol('current-execution');
+				registry.suspendRun('thread-1', suspendedState);
+				registry.activateSuspendedRun('thread-1', currentExecution);
+
+				registry.clearActiveRun('thread-1');
+
+				expect(registry.getActiveRun('thread-1')?.executionToken).toBe(currentExecution);
+			});
+
+			it('clears the active run owned by the matching executor', () => {
+				const suspendedState = createSuspendedRunState({ threadId: 'thread-1' });
+				const executionToken = Symbol('execution');
+				registry.suspendRun('thread-1', suspendedState);
+				registry.activateSuspendedRun('thread-1', executionToken);
+
+				registry.clearActiveRun('thread-1', executionToken);
+
+				expect(registry.hasActiveRun('thread-1')).toBe(false);
+			});
 		});
 
 		describe('cancelActiveRun', () => {
@@ -621,6 +612,34 @@ describe('RunStateRegistry', () => {
 				expect(registry.hasActiveRun('thread-1')).toBe(false);
 				expect(registry.hasSuspendedRun('thread-1')).toBe(true);
 				expect(registry.getSuspendedRun('thread-1')).toBe(suspendedState);
+			});
+
+			it('rehydrates the message-group indexes when they start empty (restart-resumed orphan)', () => {
+				// Simulate a restart: no prior startRun, so threadMessageGroupId /
+				// runIdsByMessageGroup are empty when the orphan is re-suspended.
+				const suspendedState = createSuspendedRunState({
+					threadId: 'thread-1',
+					runId: 'run_orphan',
+					messageGroupId: 'mg_orphan',
+				});
+
+				registry.suspendRun('thread-1', suspendedState);
+
+				expect(registry.getMessageGroupId('thread-1')).toBe('mg_orphan');
+				expect(registry.getRunIdsForMessageGroup('mg_orphan')).toEqual(['run_orphan']);
+			});
+
+			it('does not duplicate the runId in the group when suspending a run started normally', () => {
+				const started = registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
+				const suspendedState = createSuspendedRunState({
+					threadId: 'thread-1',
+					runId: started.runId,
+					messageGroupId: started.messageGroupId,
+				});
+
+				registry.suspendRun('thread-1', suspendedState);
+
+				expect(registry.getRunIdsForMessageGroup(started.messageGroupId!)).toEqual([started.runId]);
 			});
 		});
 
@@ -666,6 +685,24 @@ describe('RunStateRegistry', () => {
 				const result = registry.activateSuspendedRun('nonexistent');
 
 				expect(result).toBeUndefined();
+			});
+
+			it('rehydrates the message-group indexes on activation when they start empty', () => {
+				// Restart-resume path: orphan re-suspended then reactivated on a main
+				// that never ran startRun for this thread.
+				const suspendedState = createSuspendedRunState({
+					threadId: 'thread-1',
+					runId: 'run_orphan',
+					messageGroupId: 'mg_orphan',
+				});
+				registry.suspendRun('thread-1', suspendedState);
+				// Clear the group indexes to isolate activation's own rehydration.
+				registry.deleteMessageGroup('mg_orphan');
+
+				registry.activateSuspendedRun('thread-1');
+
+				expect(registry.getMessageGroupId('thread-1')).toBe('mg_orphan');
+				expect(registry.getRunIdsForMessageGroup('mg_orphan')).toEqual(['run_orphan']);
 			});
 		});
 
@@ -726,7 +763,7 @@ describe('RunStateRegistry', () => {
 	describe('confirmation flow', () => {
 		describe('registerPendingConfirmation + resolvePendingConfirmation', () => {
 			it('resolves pending confirmation with matching userId', () => {
-				const resolve = jest.fn();
+				const resolve = vi.fn();
 				const pending: PendingConfirmation = {
 					resolve,
 					threadId: 'thread-1',
@@ -744,7 +781,7 @@ describe('RunStateRegistry', () => {
 			});
 
 			it('removes the confirmation after resolving', () => {
-				const resolve = jest.fn();
+				const resolve = vi.fn();
 				const pending: PendingConfirmation = {
 					resolve,
 					threadId: 'thread-1',
@@ -764,7 +801,7 @@ describe('RunStateRegistry', () => {
 		});
 
 		it('returns false when userId does not match', () => {
-			const resolve = jest.fn();
+			const resolve = vi.fn();
 			const pending: PendingConfirmation = {
 				resolve,
 				threadId: 'thread-1',
@@ -792,7 +829,7 @@ describe('RunStateRegistry', () => {
 
 		describe('pending confirmation queries', () => {
 			it('returns pending confirmation metadata without consuming it', () => {
-				const resolve = jest.fn();
+				const resolve = vi.fn();
 				const pending: PendingConfirmation = {
 					resolve,
 					threadId: 'thread-1',
@@ -820,7 +857,7 @@ describe('RunStateRegistry', () => {
 
 		describe('rejectPendingConfirmation', () => {
 			it('auto-rejects with { approved: false }', () => {
-				const resolve = jest.fn();
+				const resolve = vi.fn();
 				const pending: PendingConfirmation = {
 					resolve,
 					threadId: 'thread-1',
@@ -837,7 +874,7 @@ describe('RunStateRegistry', () => {
 			});
 
 			it('removes the confirmation after rejecting', () => {
-				const resolve = jest.fn();
+				const resolve = vi.fn();
 				registry.registerPendingConfirmation('req-1', {
 					resolve,
 					threadId: 'thread-1',
@@ -868,7 +905,7 @@ describe('RunStateRegistry', () => {
 			// Re-add an active run (to test both active and suspended)
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 
-			const resolve = jest.fn();
+			const resolve = vi.fn();
 			registry.registerPendingConfirmation('req-1', {
 				resolve,
 				threadId: 'thread-1',
@@ -884,7 +921,7 @@ describe('RunStateRegistry', () => {
 		});
 
 		it('uses custom cancellation data when provided', () => {
-			const resolve = jest.fn();
+			const resolve = vi.fn();
 			registry.registerPendingConfirmation('req-1', {
 				resolve,
 				threadId: 'thread-1',
@@ -915,8 +952,8 @@ describe('RunStateRegistry', () => {
 		});
 
 		it('only resolves confirmations belonging to the target thread', () => {
-			const resolveThread1 = jest.fn();
-			const resolveThread2 = jest.fn();
+			const resolveThread1 = vi.fn();
+			const resolveThread2 = vi.fn();
 
 			registry.registerPendingConfirmation('req-1', {
 				resolve: resolveThread1,
@@ -945,10 +982,9 @@ describe('RunStateRegistry', () => {
 			registry.startRun({
 				threadId: 'thread-1',
 				user: { id: 'u1', name: 'Alice' },
-				researchMode: true,
 			});
 
-			const resolve = jest.fn();
+			const resolve = vi.fn();
 			registry.registerPendingConfirmation('req-1', {
 				resolve,
 				threadId: 'thread-1',
@@ -965,9 +1001,8 @@ describe('RunStateRegistry', () => {
 			expect(result.active).toBeDefined();
 			expect(registry.hasActiveRun('thread-1')).toBe(false);
 
-			// User and research mode deleted
+			// User deleted
 			expect(registry.getThreadUser('thread-1')).toBeUndefined();
-			expect(registry.getThreadResearchMode('thread-1')).toBeUndefined();
 
 			// Message group mappings deleted
 			expect(registry.getMessageGroupId('thread-1')).toBeUndefined();
@@ -1013,9 +1048,13 @@ describe('RunStateRegistry', () => {
 			expect(result.suspendedRuns[0].runId).toBe('run_suspended');
 		});
 
-		it('resolves all pending confirmations', () => {
-			const resolve1 = jest.fn();
-			const resolve2 = jest.fn();
+		it('leaves pending confirmation resolvers untouched and returns their thread ids', () => {
+			// Auto-resolving inline confirmations on shutdown causes the awaiting
+			// tool to run to completion as "denied" and mutate the snapshot
+			// mid-shutdown; we intentionally let them dangle so the user sees
+			// the original confirmation card on reload.
+			const resolve1 = vi.fn();
+			const resolve2 = vi.fn();
 
 			registry.registerPendingConfirmation('req-1', {
 				resolve: resolve1,
@@ -1030,35 +1069,39 @@ describe('RunStateRegistry', () => {
 				createdAt: Date.now(),
 			});
 
-			registry.shutdown();
+			const result = registry.shutdown();
 
-			expect(resolve1).toHaveBeenCalledWith({ approved: false });
-			expect(resolve2).toHaveBeenCalledWith({ approved: false });
+			expect(resolve1).not.toHaveBeenCalled();
+			expect(resolve2).not.toHaveBeenCalled();
+			expect(result.pendingThreadIds).toEqual(expect.arrayContaining(['thread-1', 'thread-2']));
 		});
 
-		it('uses custom cancellation data when provided', () => {
-			const resolve = jest.fn();
+		it('deduplicates pendingThreadIds when one thread has multiple confirmations', () => {
 			registry.registerPendingConfirmation('req-1', {
-				resolve,
-				threadId: 'thread-1',
+				resolve: vi.fn(),
+				threadId: 'thread-shared',
+				userId: 'user-1',
+				createdAt: Date.now(),
+			});
+			registry.registerPendingConfirmation('req-2', {
+				resolve: vi.fn(),
+				threadId: 'thread-shared',
 				userId: 'user-1',
 				createdAt: Date.now(),
 			});
 
-			const customData: ConfirmationData = { approved: false, userInput: 'shutdown' };
-			registry.shutdown(customData);
+			const result = registry.shutdown();
 
-			expect(resolve).toHaveBeenCalledWith(customData);
+			expect(result.pendingThreadIds).toEqual(['thread-shared']);
 		});
 
 		it('leaves registry fully empty after shutdown', () => {
 			registry.startRun({
 				threadId: 'thread-1',
 				user: { id: 'u1', name: 'A' },
-				researchMode: true,
 			});
 			registry.registerPendingConfirmation('req-1', {
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				threadId: 'thread-1',
 				userId: 'user-1',
 				createdAt: Date.now(),
@@ -1069,7 +1112,6 @@ describe('RunStateRegistry', () => {
 			expect(registry.hasActiveRun('thread-1')).toBe(false);
 			expect(registry.hasSuspendedRun('thread-1')).toBe(false);
 			expect(registry.getThreadUser('thread-1')).toBeUndefined();
-			expect(registry.getThreadResearchMode('thread-1')).toBeUndefined();
 			expect(registry.getMessageGroupId('thread-1')).toBeUndefined();
 			expect(registry.getRunIdsForMessageGroup('mg_id-2')).toEqual([]);
 		});
@@ -1119,14 +1161,14 @@ describe('RunStateRegistry', () => {
 			const now = Date.now();
 
 			registry.registerPendingConfirmation('req-old', {
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				threadId: 'thread-1',
 				userId: 'user-1',
 				createdAt: now - 60_000,
 			});
 
 			registry.registerPendingConfirmation('req-new', {
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				threadId: 'thread-2',
 				userId: 'user-2',
 				createdAt: now - 10_000,
@@ -1139,7 +1181,7 @@ describe('RunStateRegistry', () => {
 
 		it('does not time out an active run while a pending confirmation owns the wait', () => {
 			const confirmationPolicy = new InstanceAiLivenessPolicy({
-				confirmationTimeoutMs: 60_000,
+				confirmationTimeoutMs: day,
 				backgroundTaskIdleTimeoutMs: 0,
 				backgroundTaskMaxLifetimeMs: 0,
 				activeRunIdleTimeoutMs: 10_000,
@@ -1149,7 +1191,7 @@ describe('RunStateRegistry', () => {
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 			registry.touchActiveRun('thread-1', 0);
 			registry.registerPendingConfirmation('req-1', {
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				threadId: 'thread-1',
 				userId: 'user-1',
 				createdAt: 20_000,
@@ -1170,7 +1212,7 @@ describe('RunStateRegistry', () => {
 			);
 
 			registry.registerPendingConfirmation('req-1', {
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				threadId: 'thread-1',
 				userId: 'user-1',
 				createdAt: now - 60_000,

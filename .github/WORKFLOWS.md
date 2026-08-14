@@ -71,8 +71,6 @@ Complete reference for n8n's `.github/` folder.
 │  │ Schedule │───▶│  Nightly/Weekly Jobs             │    ┌────────────┐   │
 │  │  (cron)  │    │  ├─ docker-build-push (nightly)  │───▶│   Images   │   │
 │  └──────────┘    │  ├─ test-benchmark-nightly       │───▶│  Metrics   │   │
-│                  │  ├─ test-workflows-nightly       │    └────────────┘   │
-│                  │  ├─ test-e2e-vm-expressions      │                     │
 │                  │  └─ test-e2e-coverage-weekly     │                     │
 │                  └──────────────────────────────────┘                     │
 │                                                                            │
@@ -175,20 +173,60 @@ These only run if specific files changed:
 |------------------------------------------------------------------------|-----------------------------|------------|
 | `packages/@n8n/task-runner-python/**`                                  | `ci-python.yml`             | any        |
 | `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db.yml`               | any        |
-| `packages/frontend/@n8n/storybook/**`, design-system, chat             | `test-visual-storybook.yml` | master     |
+| `packages/frontend/@n8n/storybook/**`, design-system, chat             | `release-storybook.yml` | master     |
 | `docker/images/n8n-base/Dockerfile`                                    | `build-base-image.yml`      | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
-| `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-sync-api-docs.yml`    | master     |
+| `packages/cli/src/public-api/**/*.yml`, `packages/cli/src/public-api/**/*.yaml`, `packages/cli/src/public-api/**/*.css`, `packages/cli/src/public-api/v1/openapi-gen/**/*.ts`, `packages/cli/scripts/build.mjs`, `packages/cli/package.json` | `util-publish-api-schema.yml` | master   |
+| `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts`, `packages/@n8n/agents/src/**` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
+| `docker/get-n8n.sh`, `docker/get-n8n-compose.yml`, `docker/test-get-n8n.sh` | `test-get-n8n.yml`          | any        |
 
 ### On PR Review
 
-| Event                      | Workflow                    | Condition                    |
-|----------------------------|-----------------------------|------------------------------|
-| Review approved            | `test-visual-chromatic.yml` | + design files changed       |
-| Comment with `@claude`     | `util-claude.yml`           | mention in any comment       |
-| Any review                 | `util-notify-pr-status.yml` | not community-labeled        |
+| Event                      | Workflow                    | Condition                                            |
+|----------------------------|-----------------------------|------------------------------------------------------|
+| Review approved            | `release-chromatic.yml` | + design files changed                               |
+| Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
+
+**Why Instance AI evals fire once per PR state-change, not per push:** the
+workflow eval is the most expensive job in PR CI (LLM-bound builds). Running it
+on every push made cost untenable; firing on every review approval cascaded
+through the dismiss-stale-on-push → re-approve loop, which also blew up.
+The current trigger fires once per `opened` / `reopened` / `ready_for_review`
+on a non-fork PR touching the eval surface, and runs the `pr` test-case dataset
+(a small set of high-reliability, capability-diverse cases) instead of the full
+suite. Test cases are pulled at run time from the LangTracer suite
+`baseline` — the source of truth; CI has no disk fallback (local runs
+keep `--source disk` for authoring). To
+re-run after pushing a fix, dispatch `ci-instance-ai-evals.yml` with the PR
+number (optionally `tier: full` for broader coverage) — results post back to
+the PR. The lighter `test-evals-discovery.yml` still runs on every push as part
+of `ci-pull-requests.yml`.
+
+**`ci-instance-ai-evals.yml` is the PR gate; `test-evals-instance-ai.yml` is
+the lab bench.** The gate deliberately exposes only PR re-runs. Anything that
+isn't PR gating — baselines, model experiments, arbitrary branch runs — goes
+through `test-evals-instance-ai.yml`'s own dispatch form ("Instance AI
+Evals: Experiments"): full knob set (branch, filter, tier, suite,
+iterations, experiment-name, model, model-url, model-key, reasoning-effort, supports-structured-outputs), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
+model-comparison arms), and SHA-keyed docker cache hits on master. Evals never
+run on fork PRs: the event trigger gates on `head.repo.fork`, and the `pr`
+re-run path refuses fork PRs in `resolve` (dispatched runs carry secrets).
+
+**MCP workflow evals (`ci-mcp-evals.yml`) are manual only (`workflow_dispatch`),
+never per-PR or scheduled.** They reuse the Instance AI verifier but build each
+workflow through the instance MCP server by driving the `claude` CLI, which adds
+Anthropic build cost on top of the verifier — too expensive to run
+automatically. The job boots `lanes` n8n containers on one runner and runs a
+single `eval:instance-ai --build-via-mcp` process: each case is built by driving
+its lane's own MCP server with `claude`, then verified on that same lane
+(work-stealing across lanes, capped per-lane). One process → one experiment in
+the isolated `mcp-workflow-evals` LangSmith dataset, so there is no shard/merge
+step. Dispatch from the Actions tab (set `experiment-name=mcp-baseline` to
+refresh the baseline, `filter=<slug>` to run a single case, or `lanes` to widen
+parallelism). See the `--build-via-mcp` section in
+`packages/@n8n/instance-ai/evaluations/README.md`.
 
 ### On PR Close/Merge
 
@@ -209,25 +247,7 @@ These only run if specific files changed:
 
 | Workflow                  | Purpose                                                 |
 |---------------------------|---------------------------------------------------------|
-| `util-claude-task.yml`    | Run Claude Code to complete a task and create a PR      |
 | `util-data-tooling.yml`   | SQLite/PostgreSQL export/import validation (manual)     |
-
-#### Claude Task Runner (`util-claude-task.yml`)
-
-Runs Claude Code to complete a task, then creates a PR with the changes. Use for well-specced tasks or simple fixes. Can be triggered via GitHub UI or API.
-
-Claude reads templates from `.github/claude-templates/` for task-specific guidance. Add new templates as needed for recurring task types.
-
-**Inputs:**
-- `task` - Description of what Claude should do
-- `user_token` - GitHub PAT (PR will be authored by the token owner)
-
-**Token requirements** (fine-grained PAT):
-- Repository: `n8n-io/n8n`
-- Contents: `Read and write`
-- Pull requests: `Read and write`
-
-**Governance:** If you provide your personal PAT, you cannot approve the resulting PR. For automated/bot use cases (e.g., dependabot-style updates via n8n workflows), an app token can be used instead.
 
 ---
 
@@ -255,11 +275,8 @@ release-publish.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
     └──────────────────────────▶  sbom-generation-callable.yml
 
-test-workflows-nightly.yml
+test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
     └──────────────────────────▶  test-workflows-callable.yml
-
-test-e2e-vm-expressions-nightly.yml
-    └──────────────────────────▶  test-e2e-reusable.yml
 
 PR Comment Dispatchers (triggered by /command in PR comments):
 test-workflows-pr-comment.yml
@@ -293,7 +310,7 @@ test-workflows-pr-comment.yml
 │  ───────────────────────                                                   │
 │  ci-pull-requests.yml runs full suite                                      │
 │  ├─ NO ci-check-pr-title.yml (skipped for release branches)                │
-│  └─ NO test-visual-chromatic.yml (skipped)                                 │
+│  └─ NO release-chromatic.yml (skipped)                                 │
 │                          │                                                 │
 │                          ▼ [Merge PR]                                      │
 │  STAGE 3: Publish                                                          │
@@ -353,8 +370,8 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 22.x, 24.14.1, 25.x)
-│   └─ Coverage only on 24.14.1
+├─ unit-test (matrix: Node 22.23.2, 24.18.1)
+│   └─ Coverage only on 24.18.1
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -365,19 +382,48 @@ Push to master/1.x
 
 | Schedule (UTC)            | Workflow                          | Purpose                  |
 |---------------------------|-----------------------------------|--------------------------|
+| Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private, refresh bundle branches |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
-| Daily 00:00               | `test-visual-storybook.yml`       | Storybook deploy         |
-| Daily 00:00               | `test-visual-chromatic.yml`       | Visual regression        |
+| Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
+| Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
-| Daily 02:00               | `test-workflows-nightly.yml`      | Workflow tests           |
-| Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
+| Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
+| Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
+| Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
+
+---
+
+## v3 development (master + 3.x)
+
+During the v3 release window, `master` carries normal feature work (behind opt-in
+flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-master-to-3x.yml`
+syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
+clean sync adds no commit and nothing is squashed. What it pushes is always verified to be
+exactly the tree a merge of `3.x` and `master` produces, and marker-free. Conflicts confined
+to mechanical, tool-generated files (the pnpm lockfile, bot-maintained data files — see
+`MECHANICAL_PATHS` in `sync-master-to-3x.mjs`) are auto-resolved during the replay; the tree
+check then applies to every path except those files. On a real code conflict `3.x` is left
+untouched and a draft PR carrying the conflict markers (labeled `automation:v3-sync`, with
+mechanical files pre-resolved) is opened on `sync/master-to-3x`, requesting the
+breaking-commit authors as reviewers via `sync-conflict-owners.mjs`, posting to
+`#alerts-v3-sync` and pausing further syncs until it is resolved and merged normally.
+`build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
+by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`. On Mondays it also
+retags that run's n8n + runners manifests as a release candidate (by digest on GHCR, so
+the RC is exactly what was built), giving a self-consistent set to trial. Any manual run
+can promote too via the `force_rc` dispatch input, several times a day: each publish
+claims the next free `v3-rc-<date>.N` as its immutable tag and moves the floating `v3-rc`
+and `v3-rc-<date>` onto it. The counter is derived by probing the registry, and the job
+is serialized on a `v3-rc-tagging` concurrency group so two runs can't claim one number.
+
+See **[`DEVELOPING_V3.md`](./DEVELOPING_V3.md)** for the full model.
 
 ---
 
@@ -394,7 +440,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '24.14.1'
+  node-version:        # default: '24.18.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   build-command:       # default: 'pnpm build'
 ```
@@ -420,7 +466,7 @@ Workflows with `workflow_call` trigger:
 | `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
-| `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled` | Docker build          |
+| `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag` | Docker build |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
@@ -447,6 +493,7 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|------------------------|
 | `docker/docker-config.mjs`| Build context   | `docker-build-push.yml`|
 | `docker/docker-tags.mjs`  | Image tags      | `docker-build-push.yml`|
+| `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-push.yml`|
 
 ### Validation Scripts
 
@@ -454,6 +501,16 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|---------------------------|
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
+| `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
+
+### Slack Scripts
+
+See [Slack Notifications](#slack-notifications) for the calling pattern.
+
+| Script                          | Purpose                                                                       |
+|---------------------------------|-------------------------------------------------------------------------------|
+| `slack/notify.mjs`              | CLI + `sendSlackMessage` export. POSTs `chat.postMessage`, fails on `ok:false`. |
+| `slack/build-trivy-blocks.mjs`  | `--blocks trivy` — vulnerability digest                                       |
 
 ---
 
@@ -488,7 +545,7 @@ Team ownership mappings in `CODEOWNERS`:
 | `blacksmith-2vcpu-ubuntu-2204`      | 2    | Standard builds, E2E shards |
 | `blacksmith-4vcpu-ubuntu-2204`      | 4    | Unit tests, typecheck, lint |
 | `blacksmith-8vcpu-ubuntu-2204`      | 8    | Heavy parallel workloads    |
-| `blacksmith-4vcpu-ubuntu-2204-arm`  | 4    | ARM64 Docker builds         |
+| `blacksmith-8vcpu-ubuntu-2204-arm`  | 8    | ARM64 Docker builds         |
 
 ### Selection Guidelines
 
@@ -556,7 +613,7 @@ Supply chain security ensures artifacts haven't been tampered with. We provide t
 
 - **Runs on:** stable/nightly/rc Docker builds
 - **Scans:** n8n image, runners image
-- **Output:** Slack `#notify-security-scan-outputs` (all), `#mission-security` (critical)
+- **Output:** GitHub Actions step summary (`$GITHUB_STEP_SUMMARY`) and run logs
 
 ### SBOM
 
@@ -632,6 +689,65 @@ cosign verify-attestation --type openvex \
 }
 ```
 
+### Public ↔ private sync (bundle branches)
+
+Embargoed security work happens in `n8n-io/n8n-private`. `sec-sync-public-to-private.yml`
+runs hourly there (and on `workflow_dispatch` with `force` for conflict recovery),
+mirroring public `master` and `1.x` into private with `reset --hard` +
+`--force-with-lease` — skipping a branch when private is ahead, ignoring `chore: Bundle`
+commits when judging "ahead". Fixes are never committed to private `master`/`1.x`
+directly: `ci-restrict-private-merges.yml` requires PRs into them to come from the
+long-lived integration branches `bundle/2.x` and `bundle/1.x` (a `bundle/2.x` merge is
+backported to `bundle/1.x` by `util-backport-bundle.yml`). The sync creates those
+branches if missing and then **merges `master` into `bundle/2.x` and `1.x` into
+`bundle/1.x`** so they don't drift; on a conflict it aborts the merge, leaves the branch
+untouched, and emits a warning annotation while **keeping the run green** — the other
+bundle branch still syncs, and a human resolves the conflict by hand. Once a bundle
+branch is merged into private `master`/`1.x` as a `chore: Bundle/*` PR,
+`sec-publish-fix.yml` / `sec-publish-fix-1x.yml` cherry-pick that merge commit onto a
+fresh branch in the public repo and open the PR there.
+
+See **[`../AGENTS.md`](../AGENTS.md)** ("Security Fix Hygiene") for the naming rules that
+keep the vulnerability out of public branch names, commits, and test descriptions.
+
+---
+
+## Slack Notifications
+
+All workflows post via `.github/scripts/slack/notify.mjs` — a direct `fetch` to `chat.postMessage` that exits non-zero on any Slack error. No third-party action; no silent swallowing.
+
+```yaml
+notify-on-failure:
+  runs-on: ubuntu-latest
+  needs: [build]
+  if: ${{ always() && contains(needs.*.result, 'failure') }}
+  steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        sparse-checkout: .github/scripts/slack
+        sparse-checkout-cone-mode: false
+    - name: Notify Slack
+      env:
+        SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+      run: |
+        node .github/scripts/slack/notify.mjs \
+          --channel '#alerts-build' \
+          --text 'Build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+```
+
+If notify is a step inside an existing checked-out job, skip the `checkout` and gate with step-level `if: failure()` instead.
+
+> `if: failure()` at the **step** level of a dedicated notify job is a no-op when a `needs:` dependency fails (the job is skipped before steps evaluate). Always gate the **job** with `if: ${{ always() && contains(needs.*.result, 'failure') }}`.
+
+**Rich payloads (Block Kit):** add `build-<name>-blocks.mjs` whose default export returns a blocks array, then pass `--blocks <name>` plus any workflow-specific args. Builders read repo / run context from `GITHUB_*` runner env vars. Kebab-case flags become camelCase keys for the builder (`--image-ref` → `imageRef`).
+
+| Token                        | Bot            | Channels                                                    |
+|------------------------------|----------------|-------------------------------------------------------------|
+| `QBOT_SLACK_TOKEN`           | QBot           | Default — engineering / build / security                    |
+| `RELEASE_HELPER_SLACK_TOKEN` | Release Helper | `#releases` (C036AELNMV0)                                   |
+
+Adding a new channel requires inviting the bot first; the first run otherwise fails loudly with `not_in_channel`. Private-repo workflows (`sec-publish-fix*.yml`) need `QBOT_SLACK_TOKEN` set in `n8n-io/n8n-private`; the scripts themselves are mirrored by `sec-sync-public-to-private.yml`.
+
 ---
 
 ## Secrets
@@ -641,13 +757,13 @@ cosign verify-attestation --type openvex \
 | Category            | Secrets                                                     |
 |---------------------|-------------------------------------------------------------|
 | Package Publishing  | `NPM_TOKEN`, `DOCKER_USERNAME`, `DOCKER_PASSWORD`           |
-| Notifications       | `SLACK_WEBHOOK_URL`, `QBOT_SLACK_TOKEN`                     |
+| Notifications       | `QBOT_SLACK_TOKEN`, `RELEASE_HELPER_SLACK_TOKEN`            |
 | Code Quality        | `CODECOV_TOKEN`, `CHROMATIC_PROJECT_TOKEN`, `CURRENTS_RECORD_KEY` |
 | Error Tracking      | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_*_PROJECT`       |
 | Cloud/CDN           | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`             |
 | GitHub Automation   | `N8N_ASSISTANT_APP_ID`, `N8N_ASSISTANT_PRIVATE_KEY`         |
 | Benchmarking        | `BENCHMARK_ARM_*`, `N8N_BENCHMARK_LICENSE_CERT`             |
-| AI/Evals            | `ANTHROPIC_API_KEY`, `EVALS_LANGSMITH_*`                    |
+| AI/Evals            | `EVALS_ANTHROPIC_KEY`, `EVALS_OPENAI_KEY`, `EVALS_OPENROUTER_KEY`, `EVALS_XAI_KEY`, `EVALS_BASETEN_KEY`, `EVALS_FIREWORKS_KEY`, `EVALS_TOGETHER_KEY`, `EVALS_DATABRICKS_KEY`, `EVALS_MODAL_KEY`, `EVALS_LYCEUM_KEY`, `EVALS_AZURE_FOUNDRY_KEY`, `EVALS_VERTEX_KEY`, `EVALS_VERTEX_PROJECT_ID`, `EVALS_VERTEX_LOCATION`, `EVALS_LANGSMITH_*` |
 
 ### Scoping
 

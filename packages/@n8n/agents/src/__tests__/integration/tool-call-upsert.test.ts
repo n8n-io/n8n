@@ -1,5 +1,5 @@
 /**
- * Upsert contract: after a HITL suspend/resume cycle backed by SqliteMemory,
+ * Upsert contract: after a HITL suspend/resume cycle backed by in-memory storage,
  * the thread must contain exactly ONE assistant message with the tool-call
  * block (no duplicate rows), and that block must have state: 'resolved'.
  *
@@ -8,21 +8,23 @@
  * the checkpoint. Without upsert-by-id, a second row would be inserted for
  * the same message, breaking the thread ordering contract.
  *
- * Note: messages with state:'pending' are transient and are NOT written to
- * memory during suspension — they only live in the checkpoint. Memory only
- * receives the final settled state after resume completes.
+ * Note: the turn-so-far is persisted eagerly on suspend (input + the assistant
+ * message holding the state:'pending' tool-call), so an abandoned suspension is
+ * not lost from memory. On resume the same assistant message — now with the
+ * tool-call resolved — is written under the same id, upserting in place rather
+ * than inserting a duplicate row.
  */
 import { afterEach, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { describeIf, createSqliteMemory, getModel } from './helpers';
+import { describeIf, createInMemoryAgentMemory, getModel } from './helpers';
 import { Agent, filterLlmMessages, Memory, Tool } from '../../index';
 import type { AgentDbMessage } from '../../index';
 import type { ContentToolCall, Message } from '../../types/sdk/message';
 
 const describe = describeIf('anthropic');
 
-describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
+describe('tool-call upsert via suspend/resume (in-memory storage)', () => {
 	const cleanups: Array<() => void> = [];
 
 	afterEach(() => {
@@ -36,7 +38,9 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 		);
 	}
 
-	function buildInterruptibleAgent(memory: ReturnType<typeof createSqliteMemory>['memory']): Agent {
+	function buildInterruptibleAgent(
+		memory: ReturnType<typeof createInMemoryAgentMemory>['memory'],
+	): Agent {
 		const deleteTool = new Tool('delete_file')
 			.description('Delete a file at the given path')
 			.input(z.object({ path: z.string().describe('File path to delete') }))
@@ -62,7 +66,7 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 	}
 
 	it('after resume, thread has exactly one resolved tool-call block (no duplicate rows)', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-upsert-resolved';
@@ -71,8 +75,8 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 
 		const agent = buildInterruptibleAgent(memory);
 
-		// Turn 1: trigger the suspend — messages with pending tool-call are
-		// stored in the checkpoint only, NOT in SqliteMemory yet.
+		// Turn 1: trigger the suspend — the turn-so-far is persisted on suspend,
+		// including the assistant message whose tool-call block is still pending.
 		const suspendResult = await agent.generate('Please delete /tmp/foo.txt', {
 			persistence,
 		});
@@ -81,13 +85,15 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 		expect(suspendResult.pendingSuspend).toBeDefined();
 		const { runId, toolCallId } = suspendResult.pendingSuspend![0];
 
-		// Before resume: no tool-call blocks in memory (pending stays in checkpoint)
+		// Before resume: the pending tool-call block is already in memory (persisted
+		// on suspend), so an abandoned suspension is not lost.
 		const msgsBefore = await memory.getMessages(threadId);
 		const blocksBefore = extractToolCallBlocks(msgsBefore);
-		expect(blocksBefore).toHaveLength(0);
+		expect(blocksBefore).toHaveLength(1);
+		expect(blocksBefore[0].state).toBe('pending');
 
-		// Turn 2: resume with approval — on completion saveToMemory is called and
-		// the assistant message (now resolved) is written for the first time.
+		// Turn 2: resume with approval — on completion saveToMemory rewrites the same
+		// assistant message (now resolved) under the same id, upserting in place.
 		const resumeResult = await agent.resume(
 			'generate',
 			{ approved: true },
@@ -118,7 +124,7 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 	});
 
 	it('after resume with denial, thread has exactly one resolved tool-call block', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-upsert-denied';
@@ -133,9 +139,11 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 		expect(suspendResult.finishReason).toBe('tool-calls');
 		const { runId, toolCallId } = suspendResult.pendingSuspend![0];
 
-		// Before resume: no messages in memory
+		// Before resume: the pending tool-call block is already persisted on suspend
 		const msgsBefore = await memory.getMessages(threadId);
-		expect(extractToolCallBlocks(msgsBefore)).toHaveLength(0);
+		const blocksBefore = extractToolCallBlocks(msgsBefore);
+		expect(blocksBefore).toHaveLength(1);
+		expect(blocksBefore[0].state).toBe('pending');
 
 		const resumeResult = await agent.resume(
 			'generate',
@@ -164,7 +172,7 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 	});
 
 	it('if same thread is resumed twice (re-suspend then resume again), still no duplicate rows', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-upsert-double';
@@ -199,8 +207,17 @@ describe('tool-call upsert via suspend/resume (SqliteMemory)', () => {
 		expect(r1.finishReason).toBe('tool-calls');
 		const { runId, toolCallId } = r1.pendingSuspend![0];
 
-		// No messages in memory yet
-		expect(await memory.getMessages(threadId)).toHaveLength(0);
+		// The turn-so-far is persisted on suspend: the inbound user message plus the
+		// assistant message holding the still-pending tool-call. So an abandoned
+		// suspension survives, with the tool-call block left pending until resume.
+		const afterSuspend = await memory.getMessages(threadId);
+		const llmAfterSuspend = filterLlmMessages(afterSuspend);
+		expect(llmAfterSuspend).toHaveLength(2);
+		expect(llmAfterSuspend[0].role).toBe('user');
+		expect(llmAfterSuspend[1].role).toBe('assistant');
+		const suspendBlocks = extractToolCallBlocks(afterSuspend);
+		expect(suspendBlocks).toHaveLength(1);
+		expect(suspendBlocks[0].state).toBe('pending');
 
 		// Resume: completes
 		const r2 = await agent.resume('generate', { yes: true }, { runId, toolCallId });

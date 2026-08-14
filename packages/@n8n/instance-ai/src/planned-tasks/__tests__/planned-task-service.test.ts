@@ -1,14 +1,16 @@
+import type { Mocked } from 'vitest';
+
 import type { PlannedTaskStorage } from '../../storage/planned-task-storage';
 import type { PlannedTask, PlannedTaskGraph, PlannedTaskRecord } from '../../types';
 import { PlannedTaskCoordinator } from '../planned-task-service';
 
-function makeStorage(): jest.Mocked<PlannedTaskStorage> {
+function makeStorage(): Mocked<PlannedTaskStorage> {
 	return {
-		get: jest.fn(),
-		save: jest.fn(),
-		update: jest.fn(),
-		clear: jest.fn(),
-	} as unknown as jest.Mocked<PlannedTaskStorage>;
+		get: vi.fn(),
+		save: vi.fn(),
+		update: vi.fn(),
+		clear: vi.fn(),
+	} as unknown as Mocked<PlannedTaskStorage>;
 }
 
 function makeTask(overrides: Partial<PlannedTask> = {}): PlannedTask {
@@ -44,11 +46,11 @@ function makeTaskRecord(overrides: Partial<PlannedTaskRecord> = {}): PlannedTask
 }
 
 describe('PlannedTaskCoordinator', () => {
-	let storage: jest.Mocked<PlannedTaskStorage>;
+	let storage: Mocked<PlannedTaskStorage>;
 	let coordinator: PlannedTaskCoordinator;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		storage = makeStorage();
 		coordinator = new PlannedTaskCoordinator(storage);
 	});
@@ -75,6 +77,15 @@ describe('PlannedTaskCoordinator', () => {
 			expect(result.tasks).toHaveLength(2);
 		});
 
+		it('persists post-build run approval metadata', async () => {
+			const result = await coordinator.createPlan('thread-1', [makeTask()], {
+				planRunId: 'run-1',
+				postBuildRunApprovalRequired: true,
+			});
+
+			expect(result.postBuildRunApprovalRequired).toBe(true);
+		});
+
 		it('throws on duplicate task IDs', async () => {
 			const tasks = [makeTask({ id: 'a' }), makeTask({ id: 'a' })];
 
@@ -99,12 +110,16 @@ describe('PlannedTaskCoordinator', () => {
 			).rejects.toThrow('dependency cycle');
 		});
 
-		it('throws when delegate task has no tools', async () => {
-			const tasks = [makeTask({ id: 'a', kind: 'delegate', tools: [] })];
+		it('throws when a checkpoint task depends only on another checkpoint', async () => {
+			const tasks = [
+				makeTask({ id: 'wf-1' }),
+				makeTask({ id: 'cp-1', kind: 'checkpoint', deps: ['wf-1'] }),
+				makeTask({ id: 'verify-1', kind: 'checkpoint', deps: ['cp-1'] }),
+			];
 
 			await expect(
 				coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' }),
-			).rejects.toThrow('must include at least one tool');
+			).rejects.toThrow('must depend on at least one build-workflow task');
 		});
 
 		it('accepts a checkpoint task that depends on a build-workflow task', async () => {
@@ -120,17 +135,6 @@ describe('PlannedTaskCoordinator', () => {
 
 		it('throws when a checkpoint task has no deps', async () => {
 			const tasks = [makeTask({ id: 'verify-1', kind: 'checkpoint', deps: [] })];
-
-			await expect(
-				coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' }),
-			).rejects.toThrow('must depend on at least one build-workflow task');
-		});
-
-		it('throws when a checkpoint task depends only on non-build-workflow tasks', async () => {
-			const tasks = [
-				makeTask({ id: 'dt-1', kind: 'manage-data-tables' }),
-				makeTask({ id: 'verify-1', kind: 'checkpoint', deps: ['dt-1'] }),
-			];
 
 			await expect(
 				coordinator.createPlan('thread-1', tasks, { planRunId: 'run-1' }),
@@ -612,13 +616,64 @@ describe('PlannedTaskCoordinator', () => {
 	});
 
 	describe('tick', () => {
-		it('dispatches ready tasks with all deps satisfied', async () => {
+		it('orchestrates the first ready build-workflow task when deps are satisfied', async () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {
 				const graph = makeGraph({
 					tasks: [
 						makeTaskRecord({ id: 'a', deps: [], status: 'succeeded' }),
-						makeTaskRecord({ id: 'b', deps: ['a'], status: 'planned' }),
-						makeTaskRecord({ id: 'c', deps: ['a'], status: 'planned' }),
+						makeTaskRecord({
+							id: 'b',
+							kind: 'build-workflow',
+							deps: ['a'],
+							status: 'planned',
+						}),
+						makeTaskRecord({
+							id: 'c',
+							kind: 'build-workflow',
+							deps: ['a'],
+							status: 'planned',
+						}),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const action = await coordinator.tick('thread-1');
+
+			expect(action.type).toBe('orchestrate-build-workflow');
+			if (action.type === 'orchestrate-build-workflow') {
+				expect(action.tasks).toHaveLength(1);
+				expect(['b', 'c']).toContain(action.tasks[0].id);
+			}
+		});
+
+		it('returns orchestrate-build-workflow when a workflow build is ready', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'wf-1', kind: 'build-workflow', status: 'planned' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const action = await coordinator.tick('thread-1');
+
+			expect(action.type).toBe('orchestrate-build-workflow');
+			if (action.type === 'orchestrate-build-workflow') {
+				expect(action.tasks).toHaveLength(1);
+				expect(action.tasks[0].id).toBe('wf-1');
+			}
+		});
+
+		it('returns dispatch for a ready legacy delegate task', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({
+							id: 'legacy-1',
+							kind: 'delegate',
+							spec: 'Do the research',
+							status: 'planned',
+						}),
 					],
 				});
 				return await Promise.resolve(updater(graph));
@@ -628,8 +683,8 @@ describe('PlannedTaskCoordinator', () => {
 
 			expect(action.type).toBe('dispatch');
 			if (action.type === 'dispatch') {
-				expect(action.tasks).toHaveLength(2);
-				expect(action.tasks.map((t) => t.id)).toEqual(['b', 'c']);
+				expect(action.tasks).toHaveLength(1);
+				expect(action.tasks[0]?.kind).toBe('delegate');
 			}
 		});
 
@@ -770,24 +825,60 @@ describe('PlannedTaskCoordinator', () => {
 			}
 		});
 
-		it('respects availableSlots limit', async () => {
+		it('routes pending workflow verification before synthesis without completing the graph', async () => {
+			const task = makeTaskRecord({ id: 'wf-1', kind: 'build-workflow', status: 'succeeded' });
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({ tasks: [task] });
+				return await Promise.resolve(updater(graph));
+			});
+
+			const pendingWorkflowVerification = {
+				task,
+				outcome: {
+					workItemId: 'wi-1',
+					taskId: 'wf-1',
+					workflowId: 'workflow-1',
+					submitted: true,
+					triggerType: 'manual_or_testable' as const,
+					needsUserInput: false,
+					summary: 'Submitted.',
+				},
+				obligation: {
+					workItemId: 'wi-1',
+					threadId: 'thread-1',
+					taskId: 'wf-1',
+					plannedTaskId: 'wf-1',
+					workflowId: 'workflow-1',
+					source: 'planned' as const,
+					policy: 'required' as const,
+					status: 'ready_to_verify' as const,
+					updatedAt: '2026-01-01T00:00:00.000Z',
+				},
+			};
+
+			const action = await coordinator.tick('thread-1', { pendingWorkflowVerification });
+
+			expect(action.type).toBe('orchestrate-workflow-verification');
+			if (action.type === 'orchestrate-workflow-verification') {
+				expect(action.graph.status).toBe('active');
+				expect(action.verification).toBe(pendingWorkflowVerification);
+			}
+		});
+
+		it('returns none when availableSlots is zero even with ready build tasks', async () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {
 				const graph = makeGraph({
 					tasks: [
-						makeTaskRecord({ id: 'a', status: 'planned' }),
-						makeTaskRecord({ id: 'b', status: 'planned' }),
-						makeTaskRecord({ id: 'c', status: 'planned' }),
+						makeTaskRecord({ id: 'a', kind: 'build-workflow', status: 'planned' }),
+						makeTaskRecord({ id: 'b', kind: 'build-workflow', status: 'planned' }),
 					],
 				});
 				return await Promise.resolve(updater(graph));
 			});
 
-			const action = await coordinator.tick('thread-1', { availableSlots: 1 });
+			const action = await coordinator.tick('thread-1', { availableSlots: 0 });
 
-			expect(action.type).toBe('dispatch');
-			if (action.type === 'dispatch') {
-				expect(action.tasks).toHaveLength(1);
-			}
+			expect(action.type).toBe('none');
 		});
 
 		it('returns none when graph is not active', async () => {

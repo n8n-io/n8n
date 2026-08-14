@@ -13,7 +13,11 @@ export class ProjectComposer {
 	async createProject(projectName?: string) {
 		await this.n8n.sideBar.universalAdd();
 		await this.n8n.sideBar.getProjectButtonInUniversalAdd().click();
-		await this.n8n.notifications.waitForNotificationAndClose('saved successfully');
+		// Creation POSTs the project and routes to its settings page before the toast
+		// fires, so this is slower than a plain save.
+		await this.n8n.notifications.waitForNotificationAndClose('saved successfully', {
+			timeout: 15000,
+		});
 		await this.n8n.page.waitForLoadState();
 		const projectNameUnique = projectName ?? `Project ${nanoid(8)}`;
 		await this.n8n.projectSettings.fillProjectName(projectNameUnique);
@@ -48,6 +52,6 @@ export class ProjectComposer {
 	}
 
 	extractProjectIdFromPage(beforeWord: string, afterWord: string): string {
-		return this.extractIdFromUrl(this.n8n.page.url(), beforeWord, afterWord);
+		return this.extractIdFromUrl(this.n8n.navigate.currentUrl(), beforeWord, afterWord);
 	}
 }

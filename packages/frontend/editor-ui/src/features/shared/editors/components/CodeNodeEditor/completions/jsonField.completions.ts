@@ -1,17 +1,18 @@
 import { escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { isAllowedInDotNotation } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import { useI18n } from '@n8n/i18n';
 import type { IRunData, IDataObject } from 'n8n-workflow';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { computed } from 'vue';
 
 function useJsonFieldCompletions() {
 	const i18n = useI18n();
-	const ndvStore = useNDVStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
 	/**
 	 * - Complete `x.first().json.` to `.field`.
@@ -174,7 +175,7 @@ function useJsonFieldCompletions() {
 
 	const getInputNodeName = (): string | null => {
 		try {
-			const activeNode = ndvStore.activeNode;
+			const activeNode = ndvStore.value.activeNode;
 			if (activeNode) {
 				const input = (workflowDocumentStore?.value?.connectionsByDestinationNode ?? {})[
 					activeNode.name
@@ -272,7 +273,7 @@ function useJsonFieldCompletions() {
 			} catch {}
 		}
 
-		const runData: IRunData | null = workflowsStore.getWorkflowRunData;
+		const runData: IRunData | null = workflowExecutionStateStore.value.activeExecutionRunData;
 
 		const nodeRunData = runData?.[nodeName];
 

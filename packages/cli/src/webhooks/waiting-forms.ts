@@ -1,23 +1,18 @@
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
-import { randomBytes } from 'crypto';
-import type { IRunData } from 'n8n-workflow';
 import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
-import {
-	FORM_NODE_TYPE,
-	WAIT_NODE_TYPE,
-	WAITING_FORMS_EXECUTION_STATUS,
-	Workflow,
-} from 'n8n-workflow';
+import type { IRunData } from 'n8n-workflow';
+import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, Workflow } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { applyCors } from '@/utils/cors.util';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
+import { authAllowlistedNodes } from './constants';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
-import { applyCors } from '@/utils/cors.util';
 
 @Service()
 export class WaitingForms extends WaitingWebhooks {
@@ -64,12 +59,23 @@ export class WaitingForms extends WaitingWebhooks {
 
 		this.logReceivedWebhook(req.method, executionId);
 
-		sanitizeWebhookRequest(req);
-
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
 
 		const execution = await this.getExecution(executionId);
+
+		// Sanitize unless the resume node opts in to receiving auth cookies
+		// (FORM_NODE_TYPE is in `authAllowlistedNodes` for n8nUserAuth support).
+		// Note: this runs AFTER `getExecution` (previously ran unconditionally
+		// before it). `getExecution` must remain a pure DB lookup that does not
+		// consume cookies.
+		const resumeNodeName = execution?.data?.resultData?.lastNodeExecuted;
+		const resumeNodeType = resumeNodeName
+			? execution?.workflowData?.nodes?.find((n) => n.name === resumeNodeName)?.type
+			: undefined;
+		if (!resumeNodeType || !authAllowlistedNodes.has(resumeNodeType)) {
+			sanitizeWebhookRequest(req);
+		}
 
 		// Validate token for forms (backwards compat: skip for old executions without resumeToken)
 		let webhookPath: string | undefined;
@@ -112,13 +118,10 @@ export class WaitingForms extends WaitingWebhooks {
 			);
 
 			if (!completionPage) {
-				const nonce = randomBytes(16).toString('base64');
-				res.setHeader(
-					'Content-Security-Policy',
-					getHtmlSandboxCSP(nonce, !isFormHtmlSandboxingDisabled()),
-				);
+				if (!isFormHtmlSandboxingDisabled()) {
+					res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+				}
 				res.render('form-trigger-completion', {
-					nonce,
 					title: 'Form Submitted',
 					message: 'Your response has been recorded',
 					formTitle: 'Form Submitted',
@@ -158,13 +161,8 @@ export class WaitingForms extends WaitingWebhooks {
 		let status: string = execution?.status ?? 'null';
 		const { node } = execution?.data.executionData?.nodeExecutionStack[0] ?? {};
 
-		if (node && status === 'waiting') {
-			if (node.type === FORM_NODE_TYPE) {
-				status = 'form-waiting';
-			}
-			if (node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form') {
-				status = 'form-waiting';
-			}
+		if (node && status === 'waiting' && this.isFormResumeNode(node)) {
+			status = 'form-waiting';
 		}
 
 		applyCors(req, res);

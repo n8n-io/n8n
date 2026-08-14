@@ -290,7 +290,8 @@ export const reportFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'URL to a generated report',
+		description:
+			'Report file path or HTTPS download URL from the SecurityScorecard API (api.securityscorecard.io)',
 		displayOptions: {
 			show: {
 				resource: ['report'],

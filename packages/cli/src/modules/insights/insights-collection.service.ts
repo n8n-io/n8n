@@ -159,6 +159,13 @@ export class InsightsCollectionService {
 			return;
 		}
 
+		// Instance AI verification runs mimic the trigger's execution mode, so a
+		// schedule/form/webhook-triggered workflow would otherwise report them as
+		// production runs. They are test runs on the user's behalf — skip them.
+		if (ctx.source === 'instance_ai') {
+			return;
+		}
+
 		const status = ctx.runData.status === 'success' ? 'success' : 'failure';
 
 		const commonWorkflowData = {
@@ -188,8 +195,8 @@ export class InsightsCollectionService {
 			});
 		}
 
-		// time saved event
-		if (status === 'success') {
+		// time saved event (error workflows are operational, not productive work)
+		if (status === 'success' && ctx.runData.mode !== 'error') {
 			const finalTimeSaved = this.calculateTimeSaved(ctx);
 			if (finalTimeSaved !== undefined) {
 				this.bufferedInsights.add({

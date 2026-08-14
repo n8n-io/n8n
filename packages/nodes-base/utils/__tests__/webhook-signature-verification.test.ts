@@ -1,16 +1,18 @@
 import { timingSafeEqual } from 'crypto';
 
 import { verifySignature } from '../webhook-signature-verification';
+import type { Mock } from 'vitest';
+import type * as _importType0 from 'crypto';
 
-jest.mock('crypto', () => ({
+vi.mock('crypto', async () => ({
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-	...jest.requireActual('crypto'),
-	timingSafeEqual: jest.fn(),
+	...(await vi.importActual<typeof _importType0>('crypto')),
+	timingSafeEqual: vi.fn(),
 }));
 
 describe('webhook-signature-verification', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('verifySignature', () => {
@@ -18,7 +20,7 @@ describe('webhook-signature-verification', () => {
 			const expectedSignature = 'sha256=abc123';
 			const actualSignature = 'sha256=abc123';
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(true);
+			(timingSafeEqual as Mock).mockReturnValue(true);
 
 			const result = verifySignature({
 				getExpectedSignature: () => expectedSignature,
@@ -33,7 +35,7 @@ describe('webhook-signature-verification', () => {
 			const expectedSignature = 'sha256=abc123';
 			const actualSignature = 'sha256=xyz789';
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(false);
+			(timingSafeEqual as Mock).mockReturnValue(false);
 
 			const result = verifySignature({
 				getExpectedSignature: () => expectedSignature,
@@ -48,7 +50,7 @@ describe('webhook-signature-verification', () => {
 			const expectedSignature = 'sha256=abc123';
 			const actualSignature = 'sha256=xyz789';
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(false);
+			(timingSafeEqual as Mock).mockReturnValue(false);
 
 			const result = verifySignature({
 				getExpectedSignature: () => expectedSignature,
@@ -124,7 +126,7 @@ describe('webhook-signature-verification', () => {
 			const currentTimeSec = Math.floor(Date.now() / 1000);
 			const recentTimestamp = currentTimeSec - 60; // 1 minute ago
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(true);
+			(timingSafeEqual as Mock).mockReturnValue(true);
 
 			const result = verifySignature({
 				getExpectedSignature: () => 'sha256=abc123',
@@ -165,7 +167,7 @@ describe('webhook-signature-verification', () => {
 			const currentTimeSec = Math.floor(Date.now() / 1000);
 			const recentTimestamp = String(currentTimeSec - 60);
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(true);
+			(timingSafeEqual as Mock).mockReturnValue(true);
 
 			const result = verifySignature({
 				getExpectedSignature: () => 'sha256=abc123',
@@ -180,7 +182,7 @@ describe('webhook-signature-verification', () => {
 			const currentTimeMs = Date.now();
 			const recentTimestampMs = currentTimeMs - 60 * 1000; // 1 minute ago in ms
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(true);
+			(timingSafeEqual as Mock).mockReturnValue(true);
 
 			const result = verifySignature({
 				getExpectedSignature: () => 'sha256=abc123',
@@ -195,7 +197,7 @@ describe('webhook-signature-verification', () => {
 			const currentTimeSec = Math.floor(Date.now() / 1000);
 			const timestamp = currentTimeSec - 120; // 2 minutes ago
 
-			(timingSafeEqual as jest.Mock).mockReturnValue(true);
+			(timingSafeEqual as Mock).mockReturnValue(true);
 
 			const result = verifySignature({
 				getExpectedSignature: () => 'sha256=abc123',
@@ -208,7 +210,7 @@ describe('webhook-signature-verification', () => {
 		});
 
 		it('should return true when skipIfNoTimestamp is true and timestamp is null', () => {
-			(timingSafeEqual as jest.Mock).mockReturnValue(true);
+			(timingSafeEqual as Mock).mockReturnValue(true);
 
 			const result = verifySignature({
 				getExpectedSignature: () => 'sha256=abc123',
@@ -253,7 +255,7 @@ describe('webhook-signature-verification', () => {
 		});
 
 		it('should handle timingSafeEqual errors gracefully', () => {
-			(timingSafeEqual as jest.Mock).mockImplementation(() => {
+			(timingSafeEqual as Mock).mockImplementation(() => {
 				throw new Error('Buffer length mismatch');
 			});
 

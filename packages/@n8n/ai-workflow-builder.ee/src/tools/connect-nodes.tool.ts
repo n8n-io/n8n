@@ -330,13 +330,14 @@ CONNECTION EXAMPLES:
 
 MULTI-OUTPUT NODES (sourceOutputIndex):
 - IF node: output 0 = true branch, output 1 = false branch
-- Switch node: outputs 0 to N-1 based on configured rules, output N = default/fallback
+- Switch node: outputs 0 to N-1 based on configured rules. Output N exists as the default/fallback branch only when parameters.options.fallbackOutput is set to 'extra'. Without that option, unmatched items are dropped unless fallbackOutput routes them to an existing rule output.
 
 ERROR OUTPUT CONNECTIONS (onError: 'continueErrorOutput'):
 When a node has nodeSettings.onError = 'continueErrorOutput', it gains an ADDITIONAL error output appended as the LAST index:
 - Single-output node (HTTP Request): output 0 = success, output 1 = error
 - IF node (2 outputs) + error handling: output 0 = true, output 1 = false, output 2 = error
-- Switch node (N outputs) + error handling: outputs 0 to N-1 = branches, output N = error
+- Switch node without extra fallback + error handling: outputs 0 to N-1 = branches, output N = error
+- Switch node with extra fallback + error handling: outputs 0 to N-1 = branches, output N = fallback, output N+1 = error
 
 Example: HTTP Request with continueErrorOutput → success at index 0, error at index 1
 Example: IF with continueErrorOutput → true at 0, false at 1, error at 2`,

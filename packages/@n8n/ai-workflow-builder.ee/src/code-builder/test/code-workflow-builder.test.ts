@@ -12,9 +12,9 @@ const createMockLLM = () => {
 	};
 
 	return {
-		invoke: jest.fn().mockResolvedValue(mockResponse),
-		bindTools: jest.fn().mockReturnValue({
-			invoke: jest.fn().mockResolvedValue(mockResponse),
+		invoke: vi.fn().mockResolvedValue(mockResponse),
+		bindTools: vi.fn().mockReturnValue({
+			invoke: vi.fn().mockResolvedValue(mockResponse),
 		}),
 	};
 };
@@ -48,10 +48,10 @@ describe('CodeWorkflowBuilder', () => {
 
 		it('should accept optional logger', () => {
 			const mockLogger = {
-				debug: jest.fn(),
-				warn: jest.fn(),
-				error: jest.fn(),
-				info: jest.fn(),
+				debug: vi.fn(),
+				warn: vi.fn(),
+				error: vi.fn(),
+				info: vi.fn(),
 			};
 
 			const config: CodeWorkflowBuilderConfig = {
@@ -76,7 +76,7 @@ describe('CodeWorkflowBuilder', () => {
 		});
 
 		it('should accept optional onGenerationSuccess callback', () => {
-			const onGenerationSuccess = jest.fn().mockResolvedValue(undefined);
+			const onGenerationSuccess = vi.fn().mockResolvedValue(undefined);
 
 			const config: CodeWorkflowBuilderConfig = {
 				llm: createMockLLM() as unknown as CodeWorkflowBuilderConfig['llm'],
@@ -182,10 +182,10 @@ describe('CodeWorkflowBuilder', () => {
 
 		it('should call logger.debug when logger is provided', async () => {
 			const mockLogger = {
-				debug: jest.fn(),
-				warn: jest.fn(),
-				error: jest.fn(),
-				info: jest.fn(),
+				debug: vi.fn(),
+				warn: vi.fn(),
+				error: vi.fn(),
+				info: vi.fn(),
 			};
 
 			const config: CodeWorkflowBuilderConfig = {
@@ -231,10 +231,10 @@ describe('createCodeWorkflowBuilder', () => {
 	it('should accept optional logger', () => {
 		const mockLLM = createMockLLM();
 		const mockLogger = {
-			debug: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-			info: jest.fn(),
+			debug: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+			info: vi.fn(),
 		};
 
 		const builder = createCodeWorkflowBuilder(

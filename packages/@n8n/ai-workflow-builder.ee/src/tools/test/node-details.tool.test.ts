@@ -1,5 +1,6 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import type { MockedFunction } from 'vitest';
 
 import {
 	nodeTypes,
@@ -21,20 +22,18 @@ import type { WorkflowMetadata } from '../../types/tools';
 import { createNodeDetailsTool } from '../node-details.tool';
 
 // Mock LangGraph dependencies
-jest.mock('@langchain/langgraph', () => ({
-	getCurrentTaskInput: jest.fn(),
-	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
-		content: JSON.stringify(params),
-	})),
+vi.mock('@langchain/langgraph', () => ({
+	getCurrentTaskInput: vi.fn(),
+	Command: vi.fn(function (params: Record<string, unknown>) {
+		return { content: JSON.stringify(params) };
+	}),
 }));
 
-const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
-	typeof getCurrentTaskInput
->;
+const mockGetCurrentTaskInput = getCurrentTaskInput as MockedFunction<typeof getCurrentTaskInput>;
 
 // Mock the templates module to prevent actual API calls
-jest.mock('../web/templates', () => ({
-	fetchWorkflowsFromTemplates: jest.fn().mockResolvedValue({
+vi.mock('../web/templates', () => ({
+	fetchWorkflowsFromTemplates: vi.fn().mockResolvedValue({
 		workflows: [],
 		totalFound: 0,
 		templateIds: [],
@@ -46,7 +45,7 @@ describe('NodeDetailsTool', () => {
 	let nodeDetailsTool: ReturnType<typeof createNodeDetailsTool>['tool'];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		nodeTypesList = [
 			nodeTypes.code,
@@ -63,7 +62,7 @@ describe('NodeDetailsTool', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('invoke', () => {

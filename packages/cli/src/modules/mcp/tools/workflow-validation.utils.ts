@@ -39,6 +39,8 @@ export type FoundWorkflow = NonNullable<
 
 export type GetMcpWorkflowOptions = {
 	includeActiveVersion?: boolean;
+	includeTags?: boolean;
+	includeParentFolder?: boolean;
 };
 
 /**
@@ -54,9 +56,14 @@ export async function getMcpWorkflow(
 	workflowFinderService: WorkflowFinderService,
 	options?: GetMcpWorkflowOptions,
 ): Promise<FoundWorkflow> {
-	const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, scopes, {
-		includeActiveVersion: options?.includeActiveVersion,
-	});
+	// Forwarded whole: hand-copying each flag is what let `includeParentFolder`
+	// go missing here while the finder already supported it.
+	const workflow = await workflowFinderService.findWorkflowForUser(
+		workflowId,
+		user,
+		scopes,
+		options ?? {},
+	);
 
 	if (!workflow) {
 		throw new WorkflowAccessError(
@@ -74,7 +81,7 @@ export async function getMcpWorkflow(
 
 	if (!workflow.settings?.availableInMCP) {
 		throw new WorkflowAccessError(
-			'Workflow is not available in MCP. Enable MCP access in workflow settings.',
+			'Workflow is not available in MCP. Enable MCP access from the workflow card in the workflows list, or from the workflow settings.',
 			'not_available_in_mcp',
 		);
 	}

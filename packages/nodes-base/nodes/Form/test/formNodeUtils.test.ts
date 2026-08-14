@@ -1,6 +1,6 @@
 import { type Response } from 'express';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
 	type FormFieldsParameter,
 	type IWebhookFunctions,
@@ -19,7 +19,7 @@ describe('formNodeUtils', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should sanitize custom html', async () => {
@@ -30,7 +30,7 @@ describe('formNodeUtils', () => {
 			buttonLabel: 'Test Button Label',
 		});
 
-		const mockRender = jest.fn();
+		const mockRender = vi.fn();
 
 		const formFields: FormFieldsParameter = [
 			{
@@ -154,7 +154,7 @@ describe('formNodeUtils', () => {
 				buttonLabel: 'Submit',
 			});
 
-			const mockRender = jest.fn();
+			const mockRender = vi.fn();
 			const res = mock<Response>({ render: mockRender } as any);
 
 			await renderFormNode(webhookFunctions, res, triggerMock, formFields, 'test');
@@ -164,6 +164,103 @@ describe('formNodeUtils', () => {
 				expect.objectContaining({ formDescription: expected }),
 			);
 		}
+	});
+
+	it('should resolve expressions in the form title inherited from the trigger', async () => {
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: '',
+			formDescription: '',
+			buttonLabel: '',
+		});
+
+		const triggerName = 'triggerName';
+		webhookFunctions.evaluateExpression.mockImplementation((expression) => {
+			// The trigger stores the raw, unresolved expression string in its params.
+			if (expression === `{{ $(${JSON.stringify(triggerName)}).params.formTitle }}`) {
+				return "={{ $workflow.name.split('-')[0].trim() }}";
+			}
+			if (expression === "{{ $workflow.name.split('-')[0].trim() }}") {
+				return 'MyForm';
+			}
+			return '';
+		});
+
+		const mockRender = vi.fn();
+		const res = mock<Response>({ render: mockRender } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: triggerName } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
+
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({ formTitle: 'MyForm' }),
+		);
+	});
+
+	it('should resolve expressions in the button label inherited from the trigger', async () => {
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: 'Title',
+			formDescription: '',
+			buttonLabel: '',
+		});
+
+		const triggerName = 'triggerName';
+		webhookFunctions.evaluateExpression.mockImplementation((expression) => {
+			// The trigger stores the raw, unresolved expression string in its params.
+			if (expression === `{{ $(${JSON.stringify(triggerName)}).params.options?.buttonLabel }}`) {
+				return '={{ $workflow.name }}';
+			}
+			if (expression === '{{ $workflow.name }}') {
+				return 'MyForm';
+			}
+			return '';
+		});
+
+		const mockRender = vi.fn();
+		const res = mock<Response>({ render: mockRender } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: triggerName } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
+
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({ buttonLabel: 'MyForm' }),
+		);
+	});
+
+	it('should render display values from node parameters as-is without re-evaluating them', async () => {
+		// `getNodeParameter` already resolves expressions, so the values it
+		// returns must be rendered verbatim. Resolving them a second time would
+		// evaluate expression-like text that is already a final value.
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: '={{ 1 + 1 }}',
+			formDescription: '={{ 1 + 1 }}',
+			buttonLabel: '={{ 1 + 1 }}',
+		});
+		// A second evaluation would turn `{{ 1 + 1 }}` into `2`, so the rendered
+		// values below would change if any of these were resolved again.
+		webhookFunctions.evaluateExpression.mockImplementation((expression) =>
+			expression === '{{ 1 + 1 }}' ? '2' : '',
+		);
+
+		const mockRender = vi.fn();
+		const res = mock<Response>({ render: mockRender } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: 'triggerName' } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, [], 'test');
+
+		expect(webhookFunctions.evaluateExpression).not.toHaveBeenCalledWith('{{ 1 + 1 }}');
+		expect(mockRender).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({
+				formTitle: '={{ 1 + 1 }}',
+				formDescription: '={{ 1 + 1 }}',
+				buttonLabel: '={{ 1 + 1 }}',
+			}),
+		);
 	});
 
 	describe('getFormTriggerNode', () => {
@@ -197,7 +294,7 @@ describe('formNodeUtils', () => {
 			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
 
 			webhookFunctions.evaluateExpression
-				.calledWith(`{{ $('${formTrigger1.name}').first() }}`)
+				.calledWith(`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`)
 				.mockReturnValue('success');
 
 			const result = getFormTriggerNode(webhookFunctions);
@@ -205,7 +302,7 @@ describe('formNodeUtils', () => {
 			expect(result).toBe(formTrigger1);
 			expect(webhookFunctions.getParentNodes).toHaveBeenCalledWith('currentNode');
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger1.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`,
 			);
 		});
 
@@ -227,22 +324,22 @@ describe('formNodeUtils', () => {
 			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
 
 			webhookFunctions.evaluateExpression
-				.calledWith(`{{ $('${formTrigger1.name}').first() }}`)
+				.calledWith(`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`)
 				.mockImplementation(() => {
 					throw new Error('Evaluation failed');
 				});
 			webhookFunctions.evaluateExpression
-				.calledWith(`{{ $('${formTrigger2.name}').first() }}`)
+				.calledWith(`{{ $(${JSON.stringify(formTrigger2.name)}).first() }}`)
 				.mockReturnValue('success');
 
 			const result = getFormTriggerNode(webhookFunctions);
 
 			expect(result).toBe(formTrigger2);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger1.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`,
 			);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger2.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger2.name)}).first() }}`,
 			);
 		});
 
@@ -290,10 +387,10 @@ describe('formNodeUtils', () => {
 			);
 
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger1.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`,
 			);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger2.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger2.name)}).first() }}`,
 			);
 		});
 
@@ -330,7 +427,7 @@ describe('formNodeUtils', () => {
 			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
 
 			webhookFunctions.evaluateExpression
-				.calledWith(`{{ $('${formTrigger.name}').first() }}`)
+				.calledWith(`{{ $(${JSON.stringify(formTrigger.name)}).first() }}`)
 				.mockReturnValue('success');
 
 			const result = getFormTriggerNode(webhookFunctions);
@@ -338,7 +435,7 @@ describe('formNodeUtils', () => {
 			expect(result).toBe(formTrigger);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledTimes(1);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger.name)}).first() }}`,
 			);
 		});
 	});

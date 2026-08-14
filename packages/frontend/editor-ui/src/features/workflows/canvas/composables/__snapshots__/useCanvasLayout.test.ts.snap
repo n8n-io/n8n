@@ -135,7 +135,7 @@ exports[`useCanvasLayout > should layout a workflow with sticky notes 1`] = `
     },
     {
       "id": "sticky",
-      "x": 134,
+      "x": 128,
       "y": -240,
     },
   ],

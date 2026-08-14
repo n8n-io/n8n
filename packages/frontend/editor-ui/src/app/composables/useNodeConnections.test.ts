@@ -1,7 +1,10 @@
 import { ref } from 'vue';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
-import type { CanvasNodeData } from '@/features/workflows/canvas/canvas.types';
+import type {
+	CanvasConnectionPort,
+	CanvasNodeData,
+} from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 
@@ -12,13 +15,13 @@ describe('useNodeConnections', () => {
 	};
 	describe('mainInputs', () => {
 		it('should return main inputs when provided with main inputs', () => {
-			const inputs = ref<CanvasNodeData['inputs']>([
+			const inputs = ref<CanvasConnectionPort[]>([
 				{ type: NodeConnectionTypes.Main, index: 0 },
 				{ type: NodeConnectionTypes.Main, index: 1 },
 				{ type: NodeConnectionTypes.Main, index: 2 },
 				{ type: NodeConnectionTypes.AiAgent, index: 0 },
 			]);
-			const outputs = ref<CanvasNodeData['outputs']>([]);
+			const outputs = ref<CanvasConnectionPort[]>([]);
 
 			const { mainInputs } = useNodeConnections({
 				inputs,
@@ -33,12 +36,12 @@ describe('useNodeConnections', () => {
 
 	describe('nonMainInputs', () => {
 		it('should return non-main inputs when provided with non-main inputs', () => {
-			const inputs = ref<CanvasNodeData['inputs']>([
+			const inputs = ref<CanvasConnectionPort[]>([
 				{ type: NodeConnectionTypes.Main, index: 0 },
 				{ type: NodeConnectionTypes.AiAgent, index: 0 },
 				{ type: NodeConnectionTypes.AiAgent, index: 1 },
 			]);
-			const outputs = ref<CanvasNodeData['outputs']>([]);
+			const outputs = ref<CanvasConnectionPort[]>([]);
 
 			const { nonMainInputs } = useNodeConnections({
 				inputs,
@@ -53,12 +56,12 @@ describe('useNodeConnections', () => {
 
 	describe('requiredNonMainInputs', () => {
 		it('should return required non-main inputs when provided with required non-main inputs', () => {
-			const inputs = ref<CanvasNodeData['inputs']>([
+			const inputs = ref<CanvasConnectionPort[]>([
 				{ type: NodeConnectionTypes.Main, index: 0 },
 				{ type: NodeConnectionTypes.AiAgent, required: true, index: 0 },
 				{ type: NodeConnectionTypes.AiAgent, required: false, index: 1 },
 			]);
-			const outputs = ref<CanvasNodeData['outputs']>([]);
+			const outputs = ref<CanvasConnectionPort[]>([]);
 
 			const { requiredNonMainInputs } = useNodeConnections({
 				inputs,
@@ -73,8 +76,8 @@ describe('useNodeConnections', () => {
 
 	describe('mainInputConnections', () => {
 		it('should return main input connections when provided with main input connections', () => {
-			const inputs = ref<CanvasNodeData['inputs']>([]);
-			const outputs = ref<CanvasNodeData['outputs']>([]);
+			const inputs = ref<CanvasConnectionPort[]>([]);
+			const outputs = ref<CanvasConnectionPort[]>([]);
 			const connections = ref<CanvasNodeData['connections']>({
 				[CanvasConnectionMode.Input]: {
 					[NodeConnectionTypes.Main]: [
@@ -100,8 +103,8 @@ describe('useNodeConnections', () => {
 
 	describe('mainOutputs', () => {
 		it('should return main outputs when provided with main outputs', () => {
-			const inputs = ref<CanvasNodeData['inputs']>([]);
-			const outputs = ref<CanvasNodeData['outputs']>([
+			const inputs = ref<CanvasConnectionPort[]>([]);
+			const outputs = ref<CanvasConnectionPort[]>([
 				{ type: NodeConnectionTypes.Main, index: 0 },
 				{ type: NodeConnectionTypes.Main, index: 1 },
 				{ type: NodeConnectionTypes.Main, index: 2 },
@@ -121,8 +124,8 @@ describe('useNodeConnections', () => {
 
 	describe('nonMainOutputs', () => {
 		it('should return non-main outputs when provided with non-main outputs', () => {
-			const inputs = ref<CanvasNodeData['inputs']>([]);
-			const outputs = ref<CanvasNodeData['outputs']>([
+			const inputs = ref<CanvasConnectionPort[]>([]);
+			const outputs = ref<CanvasConnectionPort[]>([
 				{ type: NodeConnectionTypes.Main, index: 0 },
 				{ type: NodeConnectionTypes.AiAgent, index: 0 },
 				{ type: NodeConnectionTypes.AiAgent, index: 1 },
@@ -141,8 +144,8 @@ describe('useNodeConnections', () => {
 
 	describe('mainOutputConnections', () => {
 		it('should return main output connections when provided with main output connections', () => {
-			const inputs = ref<CanvasNodeData['inputs']>([]);
-			const outputs = ref<CanvasNodeData['outputs']>([]);
+			const inputs = ref<CanvasConnectionPort[]>([]);
+			const outputs = ref<CanvasConnectionPort[]>([]);
 			const connections = ref<CanvasNodeData['connections']>({
 				[CanvasConnectionMode.Input]: {},
 				[CanvasConnectionMode.Output]: {
@@ -167,8 +170,8 @@ describe('useNodeConnections', () => {
 	});
 
 	describe('isValidConnection', () => {
-		const inputs = ref<CanvasNodeData['inputs']>([]);
-		const outputs = ref<CanvasNodeData['outputs']>([]);
+		const inputs = ref<CanvasConnectionPort[]>([]);
+		const outputs = ref<CanvasConnectionPort[]>([]);
 
 		const { isValidConnection } = useNodeConnections({
 			inputs,

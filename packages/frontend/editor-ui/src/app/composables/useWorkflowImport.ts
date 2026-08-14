@@ -5,16 +5,11 @@ import { VIEWS } from '@/app/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
-import {
-	type useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
 export function useWorkflowImport(
-	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>,
-	currentNDVStore: ShallowRef<ReturnType<typeof useNDVStore> | null>,
+	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>,
 ) {
 	const route = useRoute();
 	const { resetWorkspace, initializeWorkspace, fitView } = useCanvasOperations();
@@ -38,12 +33,6 @@ export function useWorkflowImport(
 		} as IWorkflowDb);
 
 		currentWorkflowDocumentStore.value = workflowDocumentStore;
-		currentNDVStore.value = useNDVStore(
-			createWorkflowDocumentId(
-				workflowDocumentStore.workflowId,
-				workflowDocumentStore.workflowVersion,
-			),
-		);
 
 		if (isDemoRoute.value) {
 			// VueFlow drops edges when node handles haven't been created yet

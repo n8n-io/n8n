@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import WorkflowDiffEmptyState from '@/features/workflows/workflowDiff/WorkflowDiffEmptyState.vue';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
@@ -24,7 +24,7 @@ import {
 	N8nCheckbox,
 	N8nHeading,
 	N8nIconButton,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nText,
 } from '@n8n/design-system';
 
@@ -59,10 +59,11 @@ const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
 
-const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
-	computed(() => removeWorkflowExecutionData(props.sourceWorkflow)),
-	computed(() => removeWorkflowExecutionData(props.targetWorkflow)),
-);
+const { source, target, sourceRenderData, targetRenderData, nodesDiff, connectionsDiff } =
+	useWorkflowDiff(
+		computed(() => removeWorkflowExecutionData(props.sourceWorkflow)),
+		computed(() => removeWorkflowExecutionData(props.targetWorkflow)),
+	);
 
 // Use shared composable for UI logic
 const {
@@ -173,7 +174,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 					<template #dropdown>
 						<ElDropdownMenu :hide-on-click="false">
 							<div :class="$style.dropdownContent">
-								<N8nRadioButtons
+								<N8nSegmentControl
 									v-model="activeTab"
 									:options="tabs"
 									:class="$style.tabs"
@@ -183,7 +184,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 										{{ label }}
 										<span v-if="optionData?.count" class="ml-4xs"> ({{ optionData.count }}) </span>
 									</template>
-								</N8nRadioButtons>
+								</N8nSegmentControl>
 								<div>
 									<ul v-if="activeTab === 'nodes'">
 										<template v-if="nodeChanges.length > 0">
@@ -277,8 +278,10 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 		<WorkflowDiffContent
 			:source-nodes="source.nodes"
 			:source-connections="source.connections"
+			:source-render-data="sourceRenderData"
 			:target-nodes="target.nodes"
 			:target-connections="target.connections"
+			:target-render-data="targetRenderData"
 			:source-label="sourceLabel"
 			:target-label="targetLabel"
 			:source-exists="!!sourceWorkflow"
@@ -315,13 +318,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 }
 
 .tabs {
-	display: flex;
-	:global(.n8n-radio-button) {
-		flex: 1;
-	}
-	:global(.n8n-radio-button > div) {
-		justify-content: center;
-	}
+	width: 100%;
 }
 
 .popper {

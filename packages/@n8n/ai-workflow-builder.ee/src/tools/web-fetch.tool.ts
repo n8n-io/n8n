@@ -9,13 +9,9 @@ import { createProgressReporter } from '@/tools/helpers/progress';
 import { createSuccessResponse, createErrorResponse } from '@/tools/helpers/response';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 
+import type { SsrfGuard } from './utils/ssrf-guard';
 import type { WebFetchSecurityManager } from './utils/web-fetch-security';
-import {
-	normalizeHost,
-	isBlockedUrl,
-	fetchUrl,
-	extractReadableContent,
-} from './utils/web-fetch.utils';
+import { normalizeHost, fetchUrl, extractReadableContent } from './utils/web-fetch.utils';
 
 interface WebFetchResumeValue {
 	requestId: string;
@@ -84,7 +80,7 @@ const webFetchSchema = z.object({
 /**
  * Factory function to create the web fetch tool.
  */
-export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager) {
+export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager, ssrf: SsrfGuard) {
 	const dynamicTool = tool(
 		// eslint-disable-next-line complexity
 		async (input: unknown, config) => {
@@ -110,7 +106,7 @@ export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager
 
 				// 1. SSRF check
 				reporter.progress('Checking URL safety...');
-				const blocked = await isBlockedUrl(url);
+				const blocked = !(await ssrf.validateUrl(url)).ok;
 				if (blocked) {
 					const message =
 						'This URL cannot be fetched because it points to a private or internal address.';
@@ -157,7 +153,19 @@ export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager
 
 				// 4. Fetch the URL
 				reporter.progress('Fetching content...');
-				const fetchResult = await fetchUrl(url);
+				const fetchResult = await fetchUrl(url, ssrf);
+
+				// Handle a URL that resolved (or redirected) to a private/internal address
+				if (fetchResult.status === 'blocked') {
+					security.recordFetch();
+					const message =
+						'This URL cannot be fetched because it points to a private or internal address.';
+					reporter.error({ message });
+					return createSuccessResponse(config, message, {
+						...security.getStateUpdates(),
+						fetchedUrlContent: [{ url, status: 'error' as const, title: '', content: message }],
+					});
+				}
 
 				// Handle unsupported content
 				if (fetchResult.status === 'unsupported') {
@@ -183,7 +191,7 @@ export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager
 					}
 
 					// Check SSRF on redirected URL
-					const redirectBlocked = await isBlockedUrl(fetchResult.finalUrl);
+					const redirectBlocked = !(await ssrf.validateUrl(fetchResult.finalUrl)).ok;
 					if (redirectBlocked) {
 						security.recordFetch();
 						const message = `The URL redirected to ${newHost}, which points to a private address. Fetch blocked.`;
@@ -216,7 +224,7 @@ export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager
 					}
 
 					// Re-fetch from final URL (host is approved)
-					const finalResult = await fetchUrl(fetchResult.finalUrl);
+					const finalResult = await fetchUrl(fetchResult.finalUrl, ssrf);
 					if (finalResult.status !== 'success' || !finalResult.body) {
 						security.recordFetch();
 						const message = `Failed to fetch content from the redirected URL (${newHost}).`;

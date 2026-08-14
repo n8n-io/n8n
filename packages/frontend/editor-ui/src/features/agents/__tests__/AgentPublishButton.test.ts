@@ -3,19 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
 import type { AgentResource } from '../types';
-import type { AgentPublishedVersion } from '../agent.types';
+import type { AgentVersion } from '../agent.types';
 
 vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: vi.fn(),
 	unpublishAgent: vi.fn(),
 	revertAgentToPublished: vi.fn(),
-}));
-
-vi.mock('../composables/useAgentTelemetry', () => ({
-	useAgentTelemetry: () => ({
-		trackPublishedAgent: vi.fn(),
-		trackUnpublishedAgent: vi.fn(),
-	}),
 }));
 
 const agentPermissionsMock = {
@@ -30,10 +23,6 @@ vi.mock('../composables/useAgentPermissions', () => ({
 	useAgentPermissions: () => agentPermissionsMock,
 }));
 
-vi.mock('../composables/agentTelemetry.utils', () => ({
-	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({ config_version: 'v-test' }),
-}));
-
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
 }));
@@ -42,7 +31,7 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return { useToast: () => ({ showMessage, showError }) };
@@ -78,16 +67,19 @@ const STUBS = {
 		props: ['items', 'placement', 'activatorIcon'],
 		emits: ['select'],
 	},
+	N8nTooltip: {
+		name: 'N8nTooltip',
+		template:
+			'<span data-testid="stub-tooltip" :data-disabled="disabled" :data-content="content"><slot /></span>',
+		props: ['disabled', 'content'],
+	},
 };
 
-const publishedVersion: AgentPublishedVersion = {
+const activeVersion: AgentVersion = {
+	versionId: 'v1',
 	schema: null,
 	skills: null,
-	publishedFromVersionId: 'v1',
-	model: null,
-	provider: null,
-	credentialId: null,
-	publishedById: null,
+	author: 'Test User',
 };
 
 function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
@@ -95,18 +87,15 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 		resourceType: 'agent',
 		id: 'agent-1',
 		name: 'My Agent',
-		description: null,
 		projectId: 'project-1',
-		credentialId: null,
-		provider: null,
-		model: null,
 		isCompiled: false,
 		createdAt: '2026-01-01T00:00:00Z',
 		updatedAt: '2026-01-01T00:00:00Z',
 		versionId: 'v1',
+		activeVersionId: null,
 		tools: {},
 		skills: {},
-		publishedVersion: null,
+		activeVersion: null,
 		...overrides,
 	};
 }
@@ -116,6 +105,8 @@ interface RenderProps {
 	projectId?: string;
 	agentId?: string;
 	beforeRevertToPublished?: () => Promise<void> | void;
+	configValidationStatus?: 'valid' | 'invalid' | null;
+	beforePublish?: () => Promise<boolean>;
 }
 
 function getModalCallbacks() {
@@ -152,7 +143,7 @@ describe('AgentPublishButton', () => {
 
 	// Button states
 	it('shows "Publish" and is enabled when agent is not published', async () => {
-		const agent = createAgent({ publishedVersion: null });
+		const agent = createAgent({ activeVersionId: null });
 		const wrapper = await renderComponent({ agent });
 		const button = wrapper.find('[data-testid="publish-agent-button"]');
 		expect(button.text()).toContain('agents.publish.button.publish');
@@ -160,7 +151,7 @@ describe('AgentPublishButton', () => {
 	});
 
 	it('shows "Published" and is disabled when latest version is published', async () => {
-		const agent = createAgent({ versionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion });
 		const wrapper = await renderComponent({ agent });
 		const button = wrapper.find('[data-testid="publish-agent-button"]');
 		expect(button.text()).toContain('agents.publish.button.published');
@@ -168,7 +159,7 @@ describe('AgentPublishButton', () => {
 	});
 
 	it('shows "Publish" and is enabled when there are unpublished changes', async () => {
-		const agent = createAgent({ versionId: 'v2', publishedVersion });
+		const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion });
 		const wrapper = await renderComponent({ agent });
 		const button = wrapper.find('[data-testid="publish-agent-button"]');
 		expect(button.text()).toContain('agents.publish.button.publish');
@@ -178,10 +169,10 @@ describe('AgentPublishButton', () => {
 	// Publish button click
 	it('calls publishAgent and emits published when Publish is clicked', async () => {
 		const { publishAgent } = await import('../composables/useAgentApi');
-		const updatedAgent = createAgent({ publishedVersion });
+		const updatedAgent = createAgent({ activeVersionId: 'v1', activeVersion });
 		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
 
-		const agent = createAgent({ publishedVersion: null });
+		const agent = createAgent({ activeVersionId: null });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
 		await flushPromises();
@@ -194,11 +185,12 @@ describe('AgentPublishButton', () => {
 		const { publishAgent } = await import('../composables/useAgentApi');
 		const updatedAgent = createAgent({
 			versionId: 'v2',
-			publishedVersion: { ...publishedVersion, publishedFromVersionId: 'v2' },
+			activeVersionId: 'v2',
+			activeVersion: { ...activeVersion, versionId: 'v2' },
 		});
 		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
 
-		const agent = createAgent({ versionId: 'v2', publishedVersion });
+		const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
 		await flushPromises();
@@ -210,7 +202,7 @@ describe('AgentPublishButton', () => {
 	it('does nothing when the disabled Published button is clicked', async () => {
 		const { publishAgent } = await import('../composables/useAgentApi');
 
-		const agent = createAgent({ versionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
 		await flushPromises();
@@ -218,60 +210,13 @@ describe('AgentPublishButton', () => {
 		expect(publishAgent).not.toHaveBeenCalled();
 	});
 
-	it('computes config_version from the server-returned publishedVersion.schema, not caller context', async () => {
-		const { publishAgent } = await import('../composables/useAgentApi');
-		const { buildAgentConfigFingerprint } = await import('../composables/agentTelemetry.utils');
-
-		// Server returns the just-published config in publishedVersion.schema.
-		const publishedSchema = { name: 'X', instructions: 'pub', model: 'gpt-4' } as unknown as Record<
-			string,
-			unknown
-		>;
-		const updatedAgent = createAgent({
-			publishedVersion: { ...publishedVersion, schema: publishedSchema as never },
-		});
-		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
-
-		// Caller has no live draft available — mirrors the list-card publish path.
-		const agent = createAgent({ publishedVersion: null });
-		const wrapper = await renderComponent({ agent });
-		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
-		await flushPromises();
-
-		// Fingerprint must be derived from the server's response so different
-		// agents never collide on `config_version`.
-		expect(buildAgentConfigFingerprint).toHaveBeenCalledWith(publishedSchema, []);
-	});
-
-	it('treats publish as successful when telemetry fingerprinting throws', async () => {
-		const { publishAgent } = await import('../composables/useAgentApi');
-		const { buildAgentConfigFingerprint } = await import('../composables/agentTelemetry.utils');
-		const { useToast } = await import('@/app/composables/useToast');
-		const updatedAgent = createAgent({ publishedVersion });
-		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
-		vi.mocked(buildAgentConfigFingerprint).mockRejectedValueOnce(
-			new Error('crypto.subtle unavailable'),
-		);
-
-		const agent = createAgent({ publishedVersion: null });
-		const wrapper = await renderComponent({ agent });
-		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
-		await flushPromises();
-
-		// Success path ran all the way through — no error toast, published event emitted.
-		const toast = useToast();
-		expect(toast.showError).not.toHaveBeenCalled();
-		expect(toast.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
-		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
-	});
-
 	// Dropdown — publish action
 	it('calls publishAgent via dropdown Publish action', async () => {
 		const { publishAgent } = await import('../composables/useAgentApi');
-		const updatedAgent = createAgent({ publishedVersion });
+		const updatedAgent = createAgent({ activeVersionId: 'v1', activeVersion });
 		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
 
-		const agent = createAgent({ publishedVersion: null });
+		const agent = createAgent({ activeVersionId: null });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="publish"]').trigger('click');
 		await flushPromises();
@@ -285,11 +230,12 @@ describe('AgentPublishButton', () => {
 		const beforeRevertToPublished = vi.fn();
 		const updatedAgent = createAgent({
 			versionId: 'v1',
-			publishedVersion,
+			activeVersionId: 'v1',
+			activeVersion,
 		});
 		vi.mocked(revertAgentToPublished).mockResolvedValue(updatedAgent);
 
-		const agent = createAgent({ versionId: 'v2', publishedVersion });
+		const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion });
 		const wrapper = await renderComponent({ agent, beforeRevertToPublished });
 		await wrapper.find('[data-action="revert-to-published"]').trigger('click');
 		await getModalCallbacks().onConfirm();
@@ -301,15 +247,30 @@ describe('AgentPublishButton', () => {
 	});
 
 	it('does not show the revert action when the agent is not published', async () => {
-		const wrapper = await renderComponent({ agent: createAgent({ publishedVersion: null }) });
+		const wrapper = await renderComponent({ agent: createAgent({ activeVersionId: null }) });
 
 		expect(wrapper.find('[data-action="revert-to-published"]').exists()).toBe(false);
+	});
+
+	it('disables the revert action when the draft is in sync with the published version', async () => {
+		const { revertAgentToPublished } = await import('../composables/useAgentApi');
+		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion });
+		const wrapper = await renderComponent({ agent });
+
+		expect(
+			wrapper.find('[data-action="revert-to-published"]').attributes('disabled'),
+		).toBeDefined();
+
+		await wrapper.find('[data-action="revert-to-published"]').trigger('click');
+		await flushPromises();
+
+		expect(revertAgentToPublished).not.toHaveBeenCalled();
 	});
 
 	it('does not revert when the confirmation modal is cancelled', async () => {
 		const { revertAgentToPublished } = await import('../composables/useAgentApi');
 
-		const agent = createAgent({ versionId: 'v2', publishedVersion });
+		const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="revert-to-published"]').trigger('click');
 		await getModalCallbacks().onCancel();
@@ -322,10 +283,10 @@ describe('AgentPublishButton', () => {
 	// Dropdown — unpublish action
 	it('calls unpublishAgent and emits unpublished on confirmed unpublish', async () => {
 		const { unpublishAgent } = await import('../composables/useAgentApi');
-		const unpublishedAgent = createAgent({ publishedVersion: null });
+		const unpublishedAgent = createAgent({ activeVersionId: null });
 		vi.mocked(unpublishAgent).mockResolvedValue(unpublishedAgent);
 
-		const agent = createAgent({ versionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="unpublish"]').trigger('click');
 		await getModalCallbacks().onConfirm();
@@ -339,7 +300,7 @@ describe('AgentPublishButton', () => {
 	it('does not unpublish when confirm modal is cancelled', async () => {
 		const { unpublishAgent } = await import('../composables/useAgentApi');
 
-		const agent = createAgent({ versionId: 'v1', publishedVersion });
+		const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion });
 		const wrapper = await renderComponent({ agent });
 		await wrapper.find('[data-action="unpublish"]').trigger('click');
 		await getModalCallbacks().onCancel();
@@ -354,7 +315,7 @@ describe('AgentPublishButton', () => {
 	describe('indicator dot', () => {
 		it('does not render the indicator when the agent is not published', async () => {
 			const wrapper = await renderComponent({
-				agent: createAgent({ publishedVersion: null }),
+				agent: createAgent({ activeVersionId: null }),
 			});
 			const button = wrapper.find('[data-testid="publish-agent-button"]');
 			expect(button.find('span[class*="indicatorDot"]').exists()).toBe(false);
@@ -362,7 +323,7 @@ describe('AgentPublishButton', () => {
 
 		it('renders the published indicator when latest version is published', async () => {
 			const wrapper = await renderComponent({
-				agent: createAgent({ versionId: 'v1', publishedVersion }),
+				agent: createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion }),
 			});
 			const dot = wrapper.find('[data-testid="publish-agent-button"] span[class*="indicatorDot"]');
 			expect(dot.exists()).toBe(true);
@@ -372,12 +333,99 @@ describe('AgentPublishButton', () => {
 
 		it('renders the changes indicator when there are unpublished changes', async () => {
 			const wrapper = await renderComponent({
-				agent: createAgent({ versionId: 'v2', publishedVersion }),
+				agent: createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion }),
 			});
 			const dot = wrapper.find('[data-testid="publish-agent-button"] span[class*="indicatorDot"]');
 			expect(dot.exists()).toBe(true);
 			expect(dot.classes().some((c) => c.includes('indicatorChanges'))).toBe(true);
 			expect(dot.classes().some((c) => c.includes('indicatorPublished'))).toBe(false);
+		});
+	});
+
+	// Configuration validation gating
+	describe('configuration validation gating', () => {
+		it('gates the Publish button on validation status', async () => {
+			const unpublishedAgent = createAgent({ activeVersionId: null });
+
+			const invalidWrapper = await renderComponent({
+				agent: unpublishedAgent,
+				configValidationStatus: 'invalid',
+			});
+			const invalidButton = invalidWrapper.find('[data-testid="publish-agent-button"]');
+			expect(invalidButton.attributes('disabled')).toBeDefined();
+			const invalidTooltip = invalidWrapper.find('[data-testid="stub-tooltip"]');
+			expect(invalidTooltip.attributes('data-disabled')).toBe('false');
+			expect(invalidTooltip.attributes('data-content')).toBe(
+				'agents.publish.button.invalidConfigTooltip',
+			);
+
+			// An unknown (null) validation result is treated as not publishable.
+			const nullWrapper = await renderComponent({
+				agent: unpublishedAgent,
+				configValidationStatus: null,
+			});
+			expect(
+				nullWrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+
+			const validWrapper = await renderComponent({
+				agent: unpublishedAgent,
+				configValidationStatus: 'valid',
+			});
+			expect(
+				validWrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeUndefined();
+
+			// Published with no pending changes — disabled regardless of validation,
+			// and the invalid-config tooltip must not show for this other reason.
+			const publishedAgent = createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion });
+			const publishedWrapper = await renderComponent({
+				agent: publishedAgent,
+				configValidationStatus: 'invalid',
+			});
+			expect(
+				publishedWrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+			expect(
+				publishedWrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled'),
+			).toBe('true');
+		});
+
+		it('aborts the publish request when beforePublish resolves false', async () => {
+			const { publishAgent } = await import('../composables/useAgentApi');
+			const beforePublish = vi.fn().mockResolvedValue(false);
+			const agent = createAgent({ activeVersionId: null });
+			const wrapper = await renderComponent({
+				agent,
+				configValidationStatus: 'valid',
+				beforePublish,
+			});
+
+			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+			await flushPromises();
+
+			expect(beforePublish).toHaveBeenCalled();
+			expect(publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('publishes when beforePublish resolves true', async () => {
+			const { publishAgent } = await import('../composables/useAgentApi');
+			const updatedAgent = createAgent({ activeVersionId: 'v1', activeVersion });
+			vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
+			const beforePublish = vi.fn().mockResolvedValue(true);
+			const agent = createAgent({ activeVersionId: null });
+			const wrapper = await renderComponent({
+				agent,
+				configValidationStatus: 'valid',
+				beforePublish,
+			});
+
+			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+			await flushPromises();
+
+			expect(beforePublish).toHaveBeenCalled();
+			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+			expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 		});
 	});
 
@@ -391,7 +439,7 @@ describe('AgentPublishButton', () => {
 
 		it('disables Publish main button and dropdown item when canPublish is false', async () => {
 			agentPermissionsMock.canPublish.value = false;
-			const wrapper = await renderComponent({ agent: createAgent({ publishedVersion: null }) });
+			const wrapper = await renderComponent({ agent: createAgent({ activeVersionId: null }) });
 
 			expect(
 				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
@@ -402,7 +450,7 @@ describe('AgentPublishButton', () => {
 		it('disables Unpublish dropdown item when canUnpublish is false', async () => {
 			agentPermissionsMock.canUnpublish.value = false;
 			const wrapper = await renderComponent({
-				agent: createAgent({ versionId: 'v1', publishedVersion }),
+				agent: createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion }),
 			});
 
 			expect(wrapper.find('[data-action="unpublish"]').attributes('disabled')).toBeDefined();
@@ -411,7 +459,7 @@ describe('AgentPublishButton', () => {
 		it('disables Revert dropdown item when canUpdate is false', async () => {
 			agentPermissionsMock.canUpdate.value = false;
 			const wrapper = await renderComponent({
-				agent: createAgent({ versionId: 'v2', publishedVersion }),
+				agent: createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion }),
 			});
 
 			expect(
@@ -422,7 +470,7 @@ describe('AgentPublishButton', () => {
 		it('does not call publishAgent when Publish is clicked without canPublish', async () => {
 			const { publishAgent } = await import('../composables/useAgentApi');
 			agentPermissionsMock.canPublish.value = false;
-			const wrapper = await renderComponent({ agent: createAgent({ publishedVersion: null }) });
+			const wrapper = await renderComponent({ agent: createAgent({ activeVersionId: null }) });
 
 			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
 			await flushPromises();
@@ -433,7 +481,7 @@ describe('AgentPublishButton', () => {
 		it('keeps publish independent from unpublish — granting only canPublish enables Publish but disables Unpublish', async () => {
 			agentPermissionsMock.canUnpublish.value = false;
 			const wrapper = await renderComponent({
-				agent: createAgent({ versionId: 'v2', publishedVersion }),
+				agent: createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion }),
 			});
 
 			expect(wrapper.find('[data-action="publish"]').attributes('disabled')).toBeUndefined();

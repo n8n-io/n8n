@@ -1,12 +1,12 @@
 # .github/workflows/ci-codeowners-validation.yml
-name: "CI: Validate CODEOWNERS"
+name: 'CI: Validate CODEOWNERS'
 
 # Only run when CODEOWNERS or packages change
 on:
   pull_request:
     paths:
-      - ".github/CODEOWNERS"
-      - "packages/**"
+      - '.github/CODEOWNERS'
+      - 'packages/**'
 
 jobs:
   validate:
@@ -19,5 +19,5 @@ jobs:
           # Start with safe checks only. Add "owners" and
           # experimental_checks: "notowned" once the file has settled
           # and skip patterns are configured.
-          checks: "files,duppatterns,syntax"
-          github_access_token: "${{ secrets.GITHUB_TOKEN }}"
+          checks: 'files,duppatterns,syntax'
+          github_access_token: '${{ secrets.GITHUB_TOKEN }}'

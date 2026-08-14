@@ -13,9 +13,10 @@ export const agentHasDynamicPrompt: BinaryCheck = {
 	name: 'agent_has_dynamic_prompt',
 	description: 'Agent nodes have an expression in their prompt and a system message',
 	kind: 'deterministic',
+	dimension: 'ai_nodes',
 	run(workflow) {
 		const nodes = (workflow.nodes ?? []).filter((n) => n.type === AGENT_TYPE);
-		if (nodes.length === 0) return { pass: true };
+		if (nodes.length === 0) return { pass: true, applicable: false };
 
 		const issues: string[] = [];
 

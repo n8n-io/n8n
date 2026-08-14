@@ -1,5 +1,6 @@
 put:
   x-eov-operation-id: transferWorkflow
+  x-required-scope: workflow:move
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow

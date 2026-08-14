@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: createFolder
+  x-required-scope: folder:create
   x-eov-operation-handler: v1/handlers/folders/folders.handler
   tags:
     - Folders
@@ -8,7 +9,9 @@ post:
   parameters:
     - name: projectId
       in: path
-      description: The ID of the project.
+      description: >-
+        The ID of the project, or `personal` to create the folder in the
+        calling user's own personal project.
       required: true
       schema:
         type: string
@@ -36,6 +39,7 @@ post:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 get:
   x-eov-operation-id: getFolders
+  x-required-scope: folder:list
   x-eov-operation-handler: v1/handlers/folders/folders.handler
   tags:
     - Folders

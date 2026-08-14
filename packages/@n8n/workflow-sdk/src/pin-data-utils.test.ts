@@ -9,11 +9,11 @@ import {
 } from './pin-data-utils';
 
 // Mock the generate-types module used by discoverOutputSchemaForNode
-const mockDiscoverSchemasForNode = jest.fn();
-const mockFindSchemaForOperation = jest.fn();
-const mockGenerateJsonSchemaFromData = jest.fn();
+const mockDiscoverSchemasForNode = vi.fn();
+const mockFindSchemaForOperation = vi.fn();
+const mockGenerateJsonSchemaFromData = vi.fn();
 
-jest.mock('./generate-types', () => ({
+vi.mock('./generate-types', () => ({
 	discoverSchemasForNode: (...args: unknown[]) => mockDiscoverSchemasForNode(...args) as unknown,
 	findSchemaForOperation: (...args: unknown[]) => mockFindSchemaForOperation(...args) as unknown,
 	generateJsonSchemaFromData: (...args: unknown[]) =>
@@ -84,7 +84,7 @@ describe('needsPinData', () => {
 
 describe('discoverOutputSchemaForNode', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('returns undefined for empty node type', () => {
@@ -148,7 +148,7 @@ describe('discoverOutputSchemaForNode', () => {
 
 describe('inferSchemasFromRunData', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('returns empty object for empty run data', () => {

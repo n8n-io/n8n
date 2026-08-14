@@ -9,12 +9,20 @@
 export { createN8NStack } from './stack';
 export type { N8NConfig, N8NStack } from './stack';
 
+export { consumeStartupFailure } from './startup-diagnostics';
+export type { N8NStartupDiagnostics } from './services/n8n';
+
 // K3s + Helm chart stack - for Kubernetes deployment validation
 export { createHelmStack } from './helm-stack';
 export type { HelmStack, HelmStackConfig, HelmStackMode } from './helm-stack';
 
 // Service-only stack (no n8n containers) - for integration tests
-export { createServiceStack } from './service-stack';
+export {
+	createServiceStack,
+	collectExternalEnv,
+	devEnvFilePath,
+	writeDevEnvFile,
+} from './service-stack';
 
 export type { StackTelemetryRecord } from './telemetry';
 

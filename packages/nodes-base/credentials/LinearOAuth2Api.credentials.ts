@@ -60,7 +60,7 @@ export class LinearOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'={{$self["includeAdminScope"] ? "read write issues:create comments:create admin" : "read write issues:create comments:create"}}',
+				'={{"read write issues:create comments:create" + ($self["includeAdminScope"] ? " admin" : "") + ($self["actor"] === "app" ? " app:mentionable" : "")}}',
 			required: true,
 		},
 		{

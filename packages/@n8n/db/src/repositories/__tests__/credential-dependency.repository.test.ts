@@ -13,7 +13,7 @@ describe('CredentialDependencyRepository', () => {
 	const repository = Container.get(CredentialDependencyRepository);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('findCredentialIdsByDependencyId', () => {
@@ -39,11 +39,11 @@ describe('CredentialDependencyRepository', () => {
 	describe('upsertDependenciesForCredential', () => {
 		it('deduplicates ids and inserts once with orIgnore', async () => {
 			const qb = {
-				insert: jest.fn().mockReturnThis(),
-				into: jest.fn().mockReturnThis(),
-				values: jest.fn().mockReturnThis(),
-				orIgnore: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue(undefined),
+				insert: vi.fn().mockReturnThis(),
+				into: vi.fn().mockReturnThis(),
+				values: vi.fn().mockReturnThis(),
+				orIgnore: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue(undefined),
 			};
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 
@@ -89,7 +89,7 @@ describe('CredentialDependencyRepository', () => {
 				{ dependencyId: 'provider-keep' } as CredentialDependency,
 			]);
 
-			const upsertSpy = jest
+			const upsertSpy = vi
 				.spyOn(repository, 'upsertDependenciesForCredential')
 				.mockResolvedValue(undefined);
 
@@ -158,7 +158,7 @@ describe('CredentialDependencyRepository', () => {
 describe('addCredentialDependencyExistsFilter', () => {
 	it('applies the EXISTS dependency filter using andWhere', () => {
 		const qb = {
-			andWhere: jest.fn().mockReturnThis(),
+			andWhere: vi.fn().mockReturnThis(),
 		};
 		const filter = {
 			dependencyType: 'externalSecretProvider',

@@ -96,10 +96,13 @@ export type ProxyMeta = { kind: 'object'; keys?: string[] } | { kind: 'array'; l
  *
  * Pattern:
  * 1. When property accessed: Call getValueAtPath([path]) to get metadata
- * 2. Metadata indicates type: primitive, object, array, or function
+ * 2. Metadata indicates type: primitive, object, or array
  * 3. For objects/arrays: Create nested proxy (shape-matched) for lazy loading
- * 4. For functions: Create wrapper that calls callFunctionAtPath
- * 5. Cache all fetched values in target to avoid repeated callbacks
+ * 4. Cache all fetched values in target to avoid repeated callbacks
+ *
+ * Callable host bindings (`$('Foo').first()`, `$items()`, etc.) do not flow
+ * through this proxy — they are wired as in-isolate stubs on `target` that
+ * route through the typed-RPC dispatcher (`callHost`).
  *
  * @param basePath - Current path in object tree (e.g., ['$json', 'user'])
  * @param meta - Optional shape descriptor (object/array + known keys/length)
@@ -112,13 +115,12 @@ export function createDeepLazyProxy(
 	callbacks?: {
 		getValueAtPath: any;
 		getArrayElement: any;
-		callFunctionAtPath: any;
 	},
-): any {
+): Record<string | symbol, unknown> {
 	if (!callbacks) {
 		throw new Error('createDeepLazyProxy requires callbacks parameter');
 	}
-	const { getValueAtPath, getArrayElement, callFunctionAtPath } = callbacks;
+	const { getValueAtPath, getArrayElement } = callbacks;
 
 	const isArray = meta?.kind === 'array';
 	const arrayLength = isArray ? meta.length : 0;
@@ -153,19 +155,8 @@ export function createDeepLazyProxy(
 	function materializeChild(basePath: string[], propOrIdx: string, value: unknown): unknown {
 		if (value === undefined || value === null) return value;
 		throwIfErrorSentinel(value);
-		// `path = [...basePath, propOrIdx]` is built only inside the three branches
+		// `path = [...basePath, propOrIdx]` is built only inside the two branches
 		// that actually use it, so non-metadata objects don't pay for the spread.
-		if (value && typeof value === 'object' && (value as { __isFunction?: unknown }).__isFunction) {
-			const path = [...basePath, propOrIdx];
-			return function (...args: any[]) {
-				const result = callFunctionAtPath.applySync(null, [path, ...args], {
-					arguments: { copy: true },
-					result: { copy: true },
-				});
-				throwIfErrorSentinel(result);
-				return result;
-			};
-		}
 		if (isArrayMetadata(value)) {
 			const path = [...basePath, propOrIdx];
 			return createDeepLazyProxy(path, { kind: 'array', length: value.__length }, callbacks);
@@ -326,5 +317,5 @@ export function createDeepLazyProxy(
 	});
 
 	proxyPaths.set(proxy, basePath);
-	return proxy;
+	return proxy as Record<string | symbol, unknown>;
 }

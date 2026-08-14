@@ -139,7 +139,9 @@ export class ImapSimple extends EventEmitter {
 				}
 
 				const data = result.parts[0].body as string;
-				const encoding = part.encoding.toUpperCase();
+				// Some providers (e.g. iCloud) omit a part's encoding; 7BIT is the IMAP
+				// default and leaves the body untransformed.
+				const encoding = (part.encoding || '7BIT').toUpperCase();
 				resolve(PartData.fromData(data, encoding));
 			};
 

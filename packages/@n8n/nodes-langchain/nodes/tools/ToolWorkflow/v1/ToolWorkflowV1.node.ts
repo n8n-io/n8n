@@ -123,6 +123,7 @@ export class ToolWorkflowV1 implements INodeType {
 						executionId: workflowProxy.$execution.id,
 						workflowId: workflowProxy.$workflow.id,
 					},
+					returnLastRunOnly: true, // The tool's answer is the sub-workflow's final-run output, not its internal multi-run computation.
 				});
 				subExecutionId = receivedData.executionId;
 			} catch (error) {

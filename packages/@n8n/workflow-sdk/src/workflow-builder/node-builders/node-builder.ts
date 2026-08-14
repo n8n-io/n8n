@@ -355,6 +355,8 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
+		// Declaring an error route implies the error output port exists.
+		this.config.onError ??= 'continueErrorOutput';
 		if (isInputTarget(handler)) {
 			this._connections.push({
 				target: handler.node,
@@ -557,7 +559,12 @@ class NodeChainImpl<
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
-		this.tail.onError(handler as T);
+		// Bind to the chain node that declares an error output; tail is the fallback.
+		const declaring = this.allNodes.filter(
+			(n) => n !== null && n !== undefined && n.config?.onError === 'continueErrorOutput',
+		);
+		const source = declaring.length === 1 ? declaring[0] : this.tail;
+		source.onError(handler as T);
 		return this;
 	}
 
@@ -1163,10 +1170,15 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 }
 
 /**
- * Create a sticky note for workflow documentation
+ * Create a sticky note for workflow documentation.
+ *
+ * Like any other node, the returned sticky must be passed to
+ * `workflow(...)` (or `.add(...)`) to appear on the canvas. The optional
+ * `nodes` array is **only** used to size and anchor the sticky around the
+ * given nodes — it does **not** add them to the workflow.
  *
  * @param content - Markdown content for the sticky note
- * @param nodesOrConfig - Optional nodes to wrap (auto-positions sticky around them), or config for backward compatibility
+ * @param nodesOrConfig - Optional nodes to wrap (sizes the sticky around them; the nodes themselves still need to be added to the workflow). Pass a config object to skip wrapping.
  * @param config - Optional configuration (color, position, size)
  * @returns A sticky note node instance
  *
@@ -1178,10 +1190,11 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
  *   position: [80, -176]
  * });
  *
- * // Auto-position around nodes
+ * // Anchor a sticky around two nodes (the nodes still need to be added separately):
  * const httpNode = node({ type: 'n8n-nodes-base.httpRequest', ... });
  * const setNode = node({ type: 'n8n-nodes-base.set', ... });
  * const note = sticky('## Data Processing', [httpNode, setNode], { color: 2 });
+ * workflow('id', 'name').add(httpNode.to(setNode)).add(note);
  *
  * // Backward compatible: config as second param (no nodes)
  * const note = sticky('## Note', { color: 4 });

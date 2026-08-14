@@ -5,6 +5,8 @@ import type { INode, IWebhookFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ChatTrigger } from '../ChatTrigger.node';
+import { ChatTriggerAuthorizationError } from '../error';
+import { validateAuth } from '../GenericFunctions';
 import type { LoadPreviousSessionChatOption } from '../types';
 
 vi.mock('../GenericFunctions', () => ({
@@ -295,6 +297,95 @@ describe('ChatTrigger Node', () => {
 				workflowData: expect.any(Array),
 				noWebhookResponse: true,
 			});
+		});
+
+		it('skips auth validation for manual (test) executions', async () => {
+			mockContext.getMode.mockReturnValue('manual');
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'availableInChat') return false;
+					if (paramName === 'authentication') return 'basicAuth';
+					return defaultValue;
+				},
+			);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(validateAuth).not.toHaveBeenCalled();
+			expect(mockResponse.writeHead).not.toHaveBeenCalledWith(401, expect.anything());
+			expect(result).toEqual({
+				webhookResponse: { status: 200 },
+				workflowData: expect.any(Array),
+			});
+		});
+
+		it('still enforces auth validation for production executions', async () => {
+			mockContext.getMode.mockReturnValue('webhook');
+			mockContext.getNode.mockReturnValue({
+				name: 'Chat Trigger',
+				type: 'n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1,
+				webhookId: 'abc123',
+			} as INode);
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'availableInChat') return false;
+					if (paramName === 'authentication') return 'basicAuth';
+					return defaultValue;
+				},
+			);
+			vi.mocked(validateAuth).mockRejectedValueOnce(new ChatTriggerAuthorizationError(401));
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(validateAuth).toHaveBeenCalledWith(mockContext);
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(401, {
+				'www-authenticate': 'Basic realm="Webhook abc123"',
+			});
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('falls back to the plain realm when the node has no webhookId', async () => {
+			mockContext.getMode.mockReturnValue('webhook');
+			mockContext.getNode.mockReturnValue({
+				name: 'Chat Trigger',
+				type: 'n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1,
+			} as INode);
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'availableInChat') return false;
+					if (paramName === 'authentication') return 'basicAuth';
+					return defaultValue;
+				},
+			);
+			vi.mocked(validateAuth).mockRejectedValueOnce(new ChatTriggerAuthorizationError(401));
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(validateAuth).toHaveBeenCalledWith(mockContext);
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(401, {
+				'www-authenticate': 'Basic realm="Webhook"',
+			});
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
 });

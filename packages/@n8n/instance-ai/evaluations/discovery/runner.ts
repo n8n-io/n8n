@@ -8,16 +8,13 @@
 // stubbed services.
 //
 // What's tested: the orchestrator's first dispatch decision. Tools are NOT
-// stubbed — when the orchestrator calls browser-credential-setup, that
-// tool's execute() may error (no real browser MCP, no real services for
-// sub-agent spawning) and that's fine: the tool-call event fires before
-// execution, so the discovery check still sees what the orchestrator
-// reached for. maxSteps caps the loop so an erroring tool can't drive
-// API spend.
+// stubbed — when the orchestrator loads a runtime skill or reaches for a
+// Computer Use browser tool, the tool-call event fires before any downstream
+// failure, so the discovery check still sees the dispatch intent. The wall-clock
+// timeout bounds the loop so an erroring tool can't drive API spend; scenarios
+// or --max-steps can additionally opt into an iteration cap.
 // ---------------------------------------------------------------------------
 
-import type { ToolsInput } from '@mastra/core/agent';
-import { InMemoryStore, type MastraCompositeStore } from '@mastra/core/storage';
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
@@ -28,17 +25,22 @@ import { createInstanceAgent } from '../../src/agent/instance-agent';
 import type { InstanceAiEventBus } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
 import { McpClientManager } from '../../src/mcp/mcp-client-manager';
-import { executeResumableStream } from '../../src/runtime/resumable-stream-executor';
+import {
+	executeResumableStream,
+	normalizeStreamSource,
+} from '../../src/runtime/resumable-stream-executor';
+import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
 import { createAllTools } from '../../src/tools';
 import type {
 	InstanceAiContext,
+	InstanceAiToolRegistry,
 	LocalGatewayStatus,
 	ModelConfig,
 	OrchestrationContext,
 	TaskStorage,
 } from '../../src/types';
 import { asResumable } from '../../src/utils/stream-helpers';
-import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-process-builder';
+import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent, EventOutcome } from '../types';
@@ -74,7 +76,10 @@ export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
 	const started = Date.now();
-	const maxSteps = options.maxSteps ?? 5;
+	// Uncapped by default, matching live behavior: today's orchestrator legitimately
+	// explores past any small fixed cap (data-table-workflow needs >8 iterations), and
+	// the wall-clock timeout below bounds runaway runs. Scenarios/CLI opt in to a cap.
+	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps;
 	const timeoutMs = options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
 
@@ -91,7 +96,6 @@ export async function runDiscoveryScenario(
 		const context = applyInstanceState(services.context, options.scenario);
 
 		const mcpManager = new McpClientManager();
-		const storage = new InMemoryStore({ id: 'discovery-' + nanoid(6) });
 		const threadId = 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
 
@@ -99,8 +103,8 @@ export async function runDiscoveryScenario(
 		// production "user clicks Auto-setup with browser" path for credential setup
 		// suspensions. Without this, `credentials(action="setup")` returns the
 		// "user picked existing credentials" branch and the orchestrator never sees
-		// `needsBrowserSetup=true` — which is what wires it to `browser-credential-setup`
-		// per the system prompt.
+		// `needsBrowserSetup=true` — which is what wires it to the Computer Use
+		// credential setup skill per the system prompt.
 		const pendingConfirmations = new Map<string, { credentialType?: string }>();
 
 		const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
@@ -109,40 +113,40 @@ export async function runDiscoveryScenario(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `browser-credential-setup`, `delegate`, `plan`. Without it, the orchestrator's
-		// only browser-adjacent tools come from the local MCP server directly, which is
-		// a different (and less production-faithful) dispatch path. We provide stubs for
-		// the heavy fields — sub-agent execution paths will fail if reached, but the
-		// orchestrator's first-step tool-call decisions are what we measure, and those
-		// fire before any sub-agent execution.
+		// `create-tasks`, `eval-setup-with-agent`, and runtime skills. We provide stubs
+		// for the heavy fields: discovery scenarios measure first-step tool-call
+		// decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
 			modelId: options.modelId,
-			storage,
 			eventBus,
 			threadId,
 			runId,
 			abortSignal: abortController.signal,
 		});
 
-		const agent = await createInstanceAgent({
+		const { agent } = await createInstanceAgent({
 			modelId: options.modelId,
 			context,
 			orchestrationContext,
 			mcpManager,
-			memoryConfig: { storage },
+			// No memory: discovery measures stateless first-step tool dispatch.
+			memoryConfig: {},
 			// Eager tool loading — discovery measures dispatch given the full toolset,
 			// not whether the orchestrator can find a tool through search.
 			disableDeferredTools: true,
+			thinkingEnabled: false,
 		});
 
-		const streamSource = await agent.stream(options.scenario.userMessage, {
-			maxSteps,
-			abortSignal: abortController.signal,
-			providerOptions: {
-				anthropic: { cacheControl: { type: 'ephemeral' as const } },
-			},
-		});
+		const streamSource = normalizeStreamSource(
+			await agent.stream(options.scenario.userMessage, {
+				maxIterations: maxSteps,
+				abortSignal: abortController.signal,
+				providerOptions: {
+					anthropic: { cacheControl: { type: 'ephemeral' as const } },
+				},
+			}),
+		);
 
 		const result = await executeResumableStream({
 			agent: asResumable(agent),
@@ -160,7 +164,7 @@ export async function runDiscoveryScenario(
 				// Auto-approve every confirmation/HITL suspension so the run drives to
 				// completion. For credentials(action="setup") suspensions, pretend the user
 				// chose "Auto-setup with browser" — that's what unlocks the production
-				// `needsBrowserSetup=true` → `browser-credential-setup` dispatch path.
+				// `needsBrowserSetup=true` → Computer Use credential skill path.
 				// eslint-disable-next-line @typescript-eslint/require-await
 				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> => {
 					const pending = pendingConfirmations.get(requestId);
@@ -240,7 +244,6 @@ function silentLogger(): Logger {
 interface StubOrchestrationContextOptions {
 	context: InstanceAiContext;
 	modelId: ModelConfig;
-	storage: MastraCompositeStore;
 	eventBus: InstanceAiEventBus;
 	threadId: string;
 	runId: string;
@@ -250,17 +253,17 @@ interface StubOrchestrationContextOptions {
 function createStubOrchestrationContext(
 	opts: StubOrchestrationContextOptions,
 ): OrchestrationContext {
-	// Domain tools are passed to spawned sub-agents (delegate, browser-credential-setup).
-	// Discovery scenarios measure the orchestrator's first-step dispatch decision; sub-agent
-	// execution is out of scope. We still populate domainTools faithfully so any sub-agent
-	// that does spawn has a coherent toolset (avoids hitting "no tools" errors that would
-	// confuse the diagnostic comment).
-	const domainTools: ToolsInput = createAllTools(opts.context);
+	// Domain tools are passed to background agents such as eval-setup.
+	// Discovery scenarios measure the orchestrator's first-step dispatch decision;
+	// background execution is out of scope. We still populate domainTools faithfully
+	// so any background agent that does spawn has a coherent toolset (avoids hitting
+	// "no tools" errors that would confuse the diagnostic comment).
+	const domainTools: InstanceAiToolRegistry = createAllTools(opts.context);
 
 	const taskStorage: TaskStorage = {
 		// eslint-disable-next-line @typescript-eslint/require-await
 		get: async (): Promise<TaskList | null> => null,
-		// eslint-disable-next-line @typescript-eslint/require-await
+
 		save: async (): Promise<void> => {},
 	};
 
@@ -270,19 +273,21 @@ function createStubOrchestrationContext(
 		userId: opts.context.userId,
 		orchestratorAgentId: 'n8n-instance-agent',
 		modelId: opts.modelId,
-		storage: opts.storage,
-		subAgentMaxSteps: 10,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
 		domainTools,
+		runtimeSkills: loadInstanceAiRuntimeSkillSource(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
-		// Surface the localMcpServer to orchestration tools so `browser-credential-setup`
-		// is loaded (its presence is gated on `localMcpServer` having browser tools, see
-		// src/tools/index.ts:82-86).
+		// Discovery evals assert first-dispatch intent only. Production starts a
+		// detached background task here; the harness accepts the spawn so the tool
+		// can publish its `agent-spawned` event without executing the background agent.
+		spawnBackgroundTask: ({ taskId, agentId }) => ({ status: 'started', taskId, agentId }),
+		// Surface the localMcpServer so Computer Use browser tools are available to the
+		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
-		// Used for the orchestrator's untrusted-content doctrine and other domain references
-		// inside sub-agent tools. Provide the same context the orchestrator sees.
+		// Used for the orchestrator's untrusted-content doctrine and other domain references.
+		// Provide the same context the orchestrator sees.
 		domainContext: opts.context,
 	};
 }

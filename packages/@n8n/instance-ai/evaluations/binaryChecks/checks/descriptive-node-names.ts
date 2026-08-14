@@ -3,6 +3,7 @@ import { createLlmCheck } from './create-llm-check';
 export const descriptiveNodeNames = createLlmCheck({
 	name: 'descriptive_node_names',
 	description: 'Nodes have meaningful, descriptive names',
+	dimension: 'nodes_craftsmanship',
 	systemPrompt: `You are an evaluator checking whether n8n workflow nodes have meaningful, descriptive names.
 Check:
 - Are node names descriptive of their purpose (e.g., "Send Welcome Email" vs "HTTP Request")?

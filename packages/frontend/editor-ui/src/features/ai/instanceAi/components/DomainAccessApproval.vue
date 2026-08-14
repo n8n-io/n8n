@@ -1,12 +1,10 @@
 <script lang="ts" setup>
-import { N8nButton, N8nText } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useThread } from '../instanceAi.store';
-import ConfirmationFooter from './ConfirmationFooter.vue';
+import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
-import SplitButton from './SplitButton.vue';
 
 type DomainAction = 'allow_once' | 'allow_domain' | 'allow_all';
 
@@ -53,13 +51,35 @@ const persistentLabel = computed(() =>
 			}),
 );
 
-const primaryAction: DomainAction = 'allow_once';
-
-const primaryLabel = computed(() => i18n.baseText('instanceAi.domainAccess.allowOnce'));
-
-const dropdownItems = computed<Array<ActionDropdownItem<DomainAction>>>(() => [
-	{ id: 'allow_domain' as const, label: persistentLabel.value },
-]);
+// Mirrors the floating-approval layout: persistent option first, single-use
+// allow next, deny last. Destructive hides the persistent row by design.
+const options = computed<ApprovalOption[]>(() => {
+	const list: ApprovalOption[] = [];
+	if (!isDestructive.value) {
+		list.push({
+			key: 'allow_domain',
+			icon: 'check',
+			label: persistentLabel.value,
+			suffix: i18n.baseText('instanceAi.confirmation.alwaysAllowSuffix'),
+			testId: 'domain-access-allow-domain',
+		});
+	}
+	list.push({
+		key: 'allow_once',
+		icon: 'check',
+		label: i18n.baseText('instanceAi.domainAccess.allowOnce'),
+		destructive: isDestructive.value,
+		testId: 'domain-access-allow-once',
+	});
+	list.push({
+		key: 'deny',
+		icon: 'ban',
+		label: i18n.baseText('instanceAi.domainAccess.deny'),
+		withArrow: false,
+		testId: 'domain-access-deny',
+	});
+	return list;
+});
 
 function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 	resolved.value = true;
@@ -72,22 +92,14 @@ function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 	);
 }
 
-function onPrimaryClick() {
-	handleAction(true, primaryAction);
-}
-
-const DOMAIN_ACTIONS: readonly DomainAction[] = [
-	'allow_once',
-	'allow_domain',
-	'allow_all',
-] as const;
-
-function isDomainAction(value: string): value is DomainAction {
-	return (DOMAIN_ACTIONS as readonly string[]).includes(value);
-}
-
-function onDropdownSelect(action: string) {
-	if (isDomainAction(action)) handleAction(true, action);
+function onSelect(key: string) {
+	if (key === 'deny') {
+		handleAction(false);
+		return;
+	}
+	if (key === 'allow_once' || key === 'allow_domain' || key === 'allow_all') {
+		handleAction(true, key);
+	}
 }
 </script>
 
@@ -100,25 +112,7 @@ function onDropdownSelect(action: string) {
 			<ConfirmationPreview>{{ previewText }}</ConfirmationPreview>
 		</div>
 
-		<ConfirmationFooter>
-			<N8nButton
-				variant="outline"
-				size="medium"
-				:label="i18n.baseText('instanceAi.domainAccess.deny')"
-				data-test-id="domain-access-deny"
-				@click="handleAction(false)"
-			/>
-			<SplitButton
-				:variant="isDestructive ? 'destructive' : 'solid'"
-				:label="primaryLabel"
-				:items="dropdownItems"
-				data-test-id="domain-access-primary"
-				dropdown-test-id="domain-access-dropdown"
-				caret-aria-label="More approval options"
-				@click="onPrimaryClick"
-				@select="onDropdownSelect"
-			/>
-		</ConfirmationFooter>
+		<ApprovalOptionList :options="options" @select="onSelect" />
 	</div>
 </template>
 

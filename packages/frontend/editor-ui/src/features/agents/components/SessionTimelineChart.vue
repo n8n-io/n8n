@@ -1,14 +1,14 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import { truncate } from '@n8n/utils';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { truncate } from '@n8n/utils/string/truncate';
 import { useI18n } from '@n8n/i18n';
-import { HoverCardContent, HoverCardPortal, HoverCardRoot, HoverCardTrigger } from 'reka-ui';
+import { N8nHoverCard, N8nIconButton } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey, formatDuration, itemFilterKey } from '../session-timeline.utils';
-import { chartBlockStyle } from '../session-timeline.styles';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { formatDuration, isSubAgentTimelineItem, itemFilterKey } from '../session-timeline.utils';
+import { chartBlockStyleForItem } from '../session-timeline.styles';
+import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
 
 const props = defineProps<{
@@ -24,18 +24,28 @@ const SCROLL_PADDING = 48;
 
 const emit = defineEmits<{ select: [index: number] }>();
 
+type Segment =
+	| { kind: 'event'; item: TimelineItem; index: number; duration: number }
+	| { kind: 'idle'; range: IdleRange };
+
+type PopoverTarget = { segment: Segment; reference: HTMLElement };
+
 const i18n = useI18n();
+const carouselRef = ref<HTMLElement | null>(null);
 const chartRef = ref<HTMLElement | null>(null);
-const activePopover = ref<{ segment: Segment; reference: HTMLElement } | null>(null);
+const hasOverflow = ref(false);
+const canScrollLeft = ref(false);
+const canScrollRight = ref(false);
+const activePopover = ref<PopoverTarget | null>(null);
 const popoverOpen = ref(false);
 
 const INSTANT_MS = 100;
 const POPOVER_SHOW_DELAY_MS = 300;
 let showPopoverTimer: ReturnType<typeof setTimeout> | null = null;
+let resizeObserver: ResizeObserver | null = null;
 
-type Segment =
-	| { kind: 'event'; item: TimelineItem; index: number; duration: number }
-	| { kind: 'idle'; range: IdleRange };
+let hoveredPopover: PopoverTarget | null = null;
+let focusedPopover: PopoverTarget | null = null;
 
 const segments = computed<Segment[]>(() => {
 	const out: Segment[] = [];
@@ -69,7 +79,7 @@ function cellStyle(seg: Segment): Record<string, string> {
 }
 
 function eventStyle(item: TimelineItem): CSSProperties {
-	const style: CSSProperties = chartBlockStyle(item.kind);
+	const style: CSSProperties = chartBlockStyleForItem(item);
 	if (isDimmed(item)) {
 		style.opacity = '0.15';
 		style.pointerEvents = 'none';
@@ -77,7 +87,12 @@ function eventStyle(item: TimelineItem): CSSProperties {
 	return style;
 }
 
+function popoverPillKind(item: TimelineItem) {
+	return isSubAgentTimelineItem(item) ? 'subagent' : item.kind;
+}
+
 function popoverLabel(item: TimelineItem): string {
+	if (isSubAgentTimelineItem(item)) return i18n.baseText('agentSessions.timeline.subAgent');
 	switch (item.kind) {
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
@@ -89,8 +104,6 @@ function popoverLabel(item: TimelineItem): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memory');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.suspension');
 		default:
@@ -99,20 +112,20 @@ function popoverLabel(item: TimelineItem): string {
 }
 
 function popoverName(item: TimelineItem): string {
+	if (isSubAgentTimelineItem(item)) {
+		return item.subAgentName ?? formatToolNameForDisplay(item.toolName);
+	}
 	switch (item.kind) {
 		case 'user':
 		case 'agent':
 			return truncate(item.content ?? '', 80);
 		case 'tool': {
-			const key = builtinToolLabelKey(item.toolName, item.toolOutput);
-			return key ? i18n.baseText(key) : formatToolNameForDisplay(item.toolName);
+			return resolveToolNameForDisplay(item.toolName, i18n);
 		}
 		case 'workflow':
 			return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 		case 'node':
 			return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.waitingForUser');
 		default:
@@ -149,10 +162,15 @@ function onClick(index: number, item: TimelineItem): void {
 
 function showPopover(segment: Segment, event: MouseEvent | FocusEvent): void {
 	if (!(event.currentTarget instanceof HTMLElement)) return;
-	const reference = event.currentTarget;
+	const target = { segment, reference: event.currentTarget };
+	if (event.type === 'focus') {
+		focusedPopover = target;
+	} else {
+		hoveredPopover = target;
+	}
 	clearShowPopoverTimer();
 	showPopoverTimer = setTimeout(() => {
-		activePopover.value = { segment, reference };
+		activePopover.value = target;
 		popoverOpen.value = true;
 	}, POPOVER_SHOW_DELAY_MS);
 }
@@ -161,25 +179,6 @@ function clearShowPopoverTimer(): void {
 	if (!showPopoverTimer) return;
 	clearTimeout(showPopoverTimer);
 	showPopoverTimer = null;
-}
-
-function showSelectedPopover(): void {
-	const selectedIndex = props.selectedIndex;
-	if (selectedIndex === null) {
-		popoverOpen.value = false;
-		activePopover.value = null;
-		return;
-	}
-
-	const segment = segments.value.find((seg) => seg.kind === 'event' && seg.index === selectedIndex);
-	const reference = chartRef.value?.querySelector<HTMLElement>(
-		`[data-timeline-index="${selectedIndex}"]`,
-	);
-
-	if (segment && reference) {
-		activePopover.value = { segment, reference };
-		popoverOpen.value = true;
-	}
 }
 
 function scrollSelectedIntoView(): void {
@@ -204,13 +203,46 @@ function scrollSelectedIntoView(): void {
 	}
 }
 
-function hidePopover(segment: Segment): void {
-	clearShowPopoverTimer();
-	if (segment.kind === 'event' && segment.index === props.selectedIndex) {
-		showSelectedPopover();
+function updateScrollState(): void {
+	const chart = chartRef.value;
+	if (!chart) {
+		hasOverflow.value = false;
+		canScrollLeft.value = false;
+		canScrollRight.value = false;
 		return;
 	}
 
+	const availableWidth = carouselRef.value?.clientWidth ?? chart.clientWidth;
+	const maxScrollLeft = Math.max(0, chart.scrollWidth - chart.clientWidth);
+	hasOverflow.value = chart.scrollWidth - availableWidth > 1;
+	canScrollLeft.value = hasOverflow.value && chart.scrollLeft > 1;
+	canScrollRight.value = hasOverflow.value && chart.scrollLeft < maxScrollLeft - 1;
+}
+
+function scrollChart(direction: -1 | 1): void {
+	const chart = chartRef.value;
+	if (!chart) return;
+
+	const distance = Math.max(chart.clientWidth - SCROLL_PADDING, SCROLL_PADDING);
+	const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+		? 'auto'
+		: 'smooth';
+	chart.scrollBy({ left: direction * distance, top: 0, behavior });
+}
+
+function hidePopover(event: MouseEvent | FocusEvent): void {
+	if (event.type === 'blur') {
+		focusedPopover = null;
+	} else {
+		hoveredPopover = null;
+	}
+	clearShowPopoverTimer();
+	const remainingTarget = focusedPopover ?? hoveredPopover;
+	if (remainingTarget) {
+		activePopover.value = remainingTarget;
+		popoverOpen.value = true;
+		return;
+	}
 	popoverOpen.value = false;
 	activePopover.value = null;
 }
@@ -218,30 +250,57 @@ function hidePopover(segment: Segment): void {
 watch(
 	() => props.selectedIndex,
 	() => {
-		clearShowPopoverTimer();
-		void nextTick(() => {
-			scrollSelectedIntoView();
-			showSelectedPopover();
-		});
+		void nextTick(scrollSelectedIntoView);
 	},
 );
 
-onBeforeUnmount(clearShowPopoverTimer);
+watch(segments, () => {
+	void nextTick(updateScrollState);
+});
+
+onMounted(() => {
+	const chart = chartRef.value;
+	if (!chart) return;
+
+	chart.addEventListener('scroll', updateScrollState, { passive: true });
+	resizeObserver = new ResizeObserver(updateScrollState);
+	resizeObserver.observe(chart);
+	if (carouselRef.value) resizeObserver.observe(carouselRef.value);
+	updateScrollState();
+});
+
+onBeforeUnmount(() => {
+	clearShowPopoverTimer();
+	chartRef.value?.removeEventListener('scroll', updateScrollState);
+	resizeObserver?.disconnect();
+});
 </script>
 
 <template>
-	<div ref="chartRef" :class="$style.chart">
-		<HoverCardRoot :open="popoverOpen" :close-delay="0">
-			<!-- One shared HoverCard avoids hundreds of tooltip instances; segment handlers set content and reference. -->
-			<HoverCardTrigger as="span" :class="$style.popoverTrigger" />
-			<HoverCardPortal>
-				<HoverCardContent
-					:reference="activePopover?.reference"
-					side="top"
-					align="center"
-					:side-offset="8"
-					:class="$style.tooltipContent"
-				>
+	<div ref="carouselRef" :class="$style.carousel">
+		<N8nIconButton
+			v-if="hasOverflow"
+			icon="chevron-left"
+			variant="ghost"
+			size="small"
+			:aria-label="i18n.baseText('agentSessions.timeline.scrollBackward')"
+			:disabled="!canScrollLeft"
+			@click="scrollChart(-1)"
+		/>
+		<div ref="chartRef" :class="$style.chart">
+			<N8nHoverCard
+				:open="popoverOpen"
+				hide-trigger
+				:reference="activePopover?.reference"
+				side="top"
+				align="center"
+				:side-offset="8"
+				:close-delay="0"
+				max-width="none"
+				:content-class="$style.hoverCardContent"
+			>
+				<!-- One shared HoverCard avoids hundreds of tooltip instances; segment handlers set content and reference. -->
+				<template #content>
 					<div v-if="activePopover?.segment.kind === 'idle'" :class="$style.popoverInner">
 						<SessionTimelinePill
 							kind="idle"
@@ -252,7 +311,7 @@ onBeforeUnmount(clearShowPopoverTimer);
 					</div>
 					<div v-else-if="activePopover" :class="$style.popoverInner">
 						<SessionTimelinePill
-							:kind="activePopover.segment.item.kind"
+							:kind="popoverPillKind(activePopover.segment.item)"
 							:label="popoverLabel(activePopover.segment.item)"
 							show-label
 						/>
@@ -262,50 +321,68 @@ onBeforeUnmount(clearShowPopoverTimer);
 						</span>
 						<span :class="$style.popoverMeta">{{ popoverTime(activePopover.segment.item) }}</span>
 					</div>
-				</HoverCardContent>
-			</HoverCardPortal>
-		</HoverCardRoot>
-		<div
-			v-for="(seg, segIdx) in segments"
-			:key="segIdx"
-			data-test-id="timeline-cell"
-			:class="$style.cell"
-			:style="cellStyle(seg)"
-		>
+				</template>
+			</N8nHoverCard>
 			<div
-				v-if="seg.kind === 'idle'"
-				data-test-id="timeline-idle"
-				:class="$style.idle"
-				@mouseenter="showPopover(seg, $event)"
-				@mouseleave="hidePopover(seg)"
+				v-for="(seg, segIdx) in segments"
+				:key="segIdx"
+				data-test-id="timeline-cell"
+				:class="$style.cell"
+				:style="cellStyle(seg)"
 			>
-				<span :class="$style.idleFill">{{ i18n.baseText('agentSessions.timeline.idle') }}</span>
+				<div
+					v-if="seg.kind === 'idle'"
+					data-test-id="timeline-idle"
+					:class="$style.idle"
+					@mouseenter="showPopover(seg, $event)"
+					@mouseleave="hidePopover($event)"
+				>
+					<span :class="$style.idleFill">{{ i18n.baseText('agentSessions.timeline.idle') }}</span>
+				</div>
+				<button
+					v-else
+					type="button"
+					data-test-id="timeline-block"
+					:data-timeline-index="seg.index"
+					:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
+					:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
+					:style="eventStyle(seg.item)"
+					@mouseenter="showPopover(seg, $event)"
+					@mouseleave="hidePopover($event)"
+					@focus="showPopover(seg, $event)"
+					@blur="hidePopover($event)"
+					@click="onClick(seg.index, seg.item)"
+				/>
 			</div>
-			<button
-				v-else
-				type="button"
-				data-test-id="timeline-block"
-				:data-timeline-index="seg.index"
-				:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
-				:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
-				:style="eventStyle(seg.item)"
-				@mouseenter="showPopover(seg, $event)"
-				@mouseleave="hidePopover(seg)"
-				@focus="showPopover(seg, $event)"
-				@blur="hidePopover(seg)"
-				@click="onClick(seg.index, seg.item)"
-			/>
 		</div>
+		<N8nIconButton
+			v-if="hasOverflow"
+			icon="chevron-right"
+			variant="ghost"
+			size="small"
+			:aria-label="i18n.baseText('agentSessions.timeline.scrollForward')"
+			:disabled="!canScrollRight"
+			@click="scrollChart(1)"
+		/>
 	</div>
 </template>
 
 <style module lang="scss">
+.carousel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	width: 100%;
+	min-width: 0;
+}
+
 .chart {
 	display: flex;
 	align-items: stretch;
+	flex: 1;
 	gap: 1px;
 	height: 28px;
-	width: 100%;
+	min-width: 0;
 	overflow-x: auto;
 	scrollbar-width: none;
 	scroll-padding-inline: var(--spacing--lg);
@@ -384,30 +461,19 @@ onBeforeUnmount(clearShowPopoverTimer);
 }
 
 /*
- * Override the design-system tooltip's fixed dark background with the page
- * background + a border so the tooltip adapts correctly to light and dark
- * mode. Also remove the 180px max-width so our single-line row layout
+ * Keep the shared hover card compact so the single-line row layout
  * (pill · name · duration · time) doesn't wrap.
  */
-.popoverTrigger {
-	display: none;
-}
-
-.tooltipContent {
+.hoverCardContent {
 	max-width: none;
 	min-height: var(--height--sm);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--md);
-	border-radius: var(--radius--xs);
-	box-shadow: var(--shadow--sm);
 	word-wrap: break-word;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	z-index: 999;
-	background: var(--background--surface);
-	border: var(--border);
 	color: var(--color--text);
 }
 

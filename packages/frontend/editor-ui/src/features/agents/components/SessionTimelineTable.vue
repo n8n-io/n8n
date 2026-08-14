@@ -8,6 +8,7 @@ import { filteredTimelineItemIndexes, formatDuration } from '../session-timeline
 
 const ROW_HEIGHT = 40;
 const SCROLL_PADDING = 24;
+const VIRTUALIZE_AFTER_ROWS = 100;
 
 const props = defineProps<{
 	items: TimelineItem[];
@@ -37,17 +38,12 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memory');
-		case 'working-memory-updated':
-			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.suspended');
 		case 'suspension-waiting':
 			return i18n.baseText('agentSessions.timeline.waitingForUser');
-		case 'agentSessions.timeline.tool.richInteraction':
-		case 'agentSessions.timeline.tool.richInteractionDisplay':
-			return i18n.baseText(key);
+		case 'user-feedback':
+			return i18n.baseText('agentSessions.timeline.userFeedback');
 		default:
 			return key;
 	}
@@ -81,6 +77,17 @@ const rows = computed<Row[]>(() => {
 	return [...events, ...idles].sort((a, b) => a.sortKey - b.sortKey);
 });
 
+const shouldVirtualizeRows = computed(() => rows.value.length > VIRTUALIZE_AFTER_ROWS);
+const tabbableEventIndex = computed(() => {
+	const selectedRow = rows.value.find(
+		(row) => row.kind === 'event' && row.index === props.selectedIndex,
+	);
+	if (selectedRow?.kind === 'event') return selectedRow.index;
+
+	const firstEventRow = rows.value.find((row) => row.kind === 'event');
+	return firstEventRow?.kind === 'event' ? firstEventRow.index : null;
+});
+
 function updateScrollMask() {
 	if (!scrollContainer) {
 		canScrollUp.value = false;
@@ -93,9 +100,9 @@ function updateScrollMask() {
 }
 
 function bindScrollContainer() {
-	const nextScrollContainer = tableRef.value?.querySelector<HTMLElement>(
-		'.recycle-scroller-wrapper',
-	);
+	const nextScrollContainer =
+		tableRef.value?.querySelector<HTMLElement>('[data-timeline-scroll-container]') ??
+		tableRef.value?.querySelector<HTMLElement>('.recycle-scroller-wrapper');
 	if (nextScrollContainer === scrollContainer) return;
 
 	scrollContainer?.removeEventListener('scroll', updateScrollMask);
@@ -108,6 +115,14 @@ function visibleRowElement(rowId: string): HTMLElement | undefined {
 	const visibleRows = tableRef.value?.querySelectorAll<HTMLElement>('[data-timeline-row-id]');
 
 	return Array.from(visibleRows ?? []).find((element) => element.dataset.timelineRowId === rowId);
+}
+
+function focusVisibleRow(rowId: string): boolean {
+	const rowElement = visibleRowElement(rowId);
+	if (!rowElement) return false;
+
+	rowElement.focus();
+	return true;
 }
 
 function scrollVisibleRowIntoView(rowId: string): boolean {
@@ -174,9 +189,18 @@ watch(
 	() => props.selectedIndex,
 	(selectedIndex) => {
 		if (selectedIndex === null) return;
+		const activeElement = document.activeElement;
+		const shouldMoveFocus =
+			activeElement instanceof HTMLElement &&
+			tableRef.value?.contains(activeElement) === true &&
+			activeElement.closest('[data-timeline-row-id]') !== null;
+		const rowId = `event-${selectedIndex}`;
 		void nextTick(() => {
-			scrollRowIntoView(`event-${selectedIndex}`);
+			scrollRowIntoView(rowId);
 			updateScrollMask();
+			if (shouldMoveFocus && !focusVisibleRow(rowId)) {
+				void nextTick(() => focusVisibleRow(rowId));
+			}
 		});
 	},
 );
@@ -190,15 +214,27 @@ watch(
 			canScrollUp && $style.canScrollUp,
 			canScrollDown && $style.canScrollDown,
 		]"
+		role="grid"
+		:aria-label="i18n.baseText('agentSessions.timeline.events')"
 	>
-		<N8nRecycleScroller v-if="rows.length > 0" :items="rows" :item-size="ROW_HEIGHT" item-key="id">
-			<template #default="{ item: row }">
+		<div
+			v-if="rows.length > 0 && !shouldVirtualizeRows"
+			:class="$style.directRows"
+			data-timeline-scroll-container
+			role="rowgroup"
+		>
+			<template v-for="row in rows" :key="row.id">
 				<div
 					v-if="row.kind === 'event'"
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
+					role="row"
+					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
+					:aria-selected="props.selectedIndex === row.index"
 					@click="emit('select', row.index)"
+					@keydown.enter.self.prevent="emit('select', row.index)"
+					@keydown.space.self.prevent="emit('select', row.index)"
 				>
 					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
 				</div>
@@ -207,8 +243,45 @@ watch(
 					data-test-id="timeline-idle-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.idleRow"
+					role="row"
 				>
-					<span :class="$style.idlePill">
+					<span :class="$style.idlePill" role="gridcell">
+						{{ i18n.baseText('agentSessions.timeline.idle') }} ·
+						{{ formatDuration(row.range.end - row.range.start) }}
+					</span>
+				</div>
+			</template>
+		</div>
+		<N8nRecycleScroller
+			v-else-if="rows.length > 0"
+			:items="rows"
+			:item-size="ROW_HEIGHT"
+			item-key="id"
+			role="rowgroup"
+		>
+			<template #default="{ item: row }">
+				<div
+					v-if="row.kind === 'event'"
+					data-test-id="timeline-row"
+					:data-timeline-row-id="row.id"
+					:class="$style.rowWrapper"
+					role="row"
+					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
+					:aria-selected="props.selectedIndex === row.index"
+					@click="emit('select', row.index)"
+					@keydown.enter.self.prevent="emit('select', row.index)"
+					@keydown.space.self.prevent="emit('select', row.index)"
+				>
+					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
+				</div>
+				<div
+					v-else
+					data-test-id="timeline-idle-row"
+					:data-timeline-row-id="row.id"
+					:class="$style.idleRow"
+					role="row"
+				>
+					<span :class="$style.idlePill" role="gridcell">
 						{{ i18n.baseText('agentSessions.timeline.idle') }} ·
 						{{ formatDuration(row.range.end - row.range.start) }}
 					</span>
@@ -250,6 +323,17 @@ watch(
 	}
 }
 
+.directRows {
+	height: 100%;
+	overflow-y: auto;
+	scrollbar-width: none;
+	scroll-padding-block: var(--spacing--lg);
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
 .canScrollDown :global(.recycle-scroller-wrapper) {
 	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
 }
@@ -262,11 +346,24 @@ watch(
 	mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 95%, transparent 100%);
 }
 
+.canScrollDown .directRows {
+	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
+}
+
+.canScrollUp .directRows {
+	mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 100%);
+}
+
+.canScrollUp.canScrollDown .directRows {
+	mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 95%, transparent 100%);
+}
+
 .idleRow {
 	position: relative;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	width: 100%;
 	height: var(--height--xl);
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	font-size: var(--font-size--2xs);

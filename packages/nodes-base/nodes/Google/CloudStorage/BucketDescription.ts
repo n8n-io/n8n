@@ -225,9 +225,7 @@ export const bucketOperations: INodeProperties[] = [
 					request: {
 						method: 'PATCH',
 						url: '={{"/b/" + $parameter["bucketName"]}}',
-						qs: {
-							project: '={{$parameter["projectId"]}}',
-						},
+						qs: {},
 						body: {},
 						returnFullResponse: true,
 					},
@@ -253,9 +251,57 @@ export const bucketFields: INodeProperties[] = [
 			show: {
 				resource: ['bucket'],
 				operation: ['create', 'getAll'],
+				'@version': [1],
 			},
 		},
 		default: '',
+		routing: {
+			request: {
+				qs: {
+					project: '={{$value}}',
+				},
+			},
+		},
+	},
+	{
+		displayName: 'Project',
+		name: 'projectRLC',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['bucket'],
+				operation: ['create', 'getAll'],
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchProjects',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9\\-_]{2,}',
+							errorMessage: 'Not a valid Google Cloud Project ID',
+						},
+					},
+				],
+				url: '=https://console.cloud.google.com/storage/browser?project={{$value}}',
+			},
+		],
 		routing: {
 			request: {
 				qs: {

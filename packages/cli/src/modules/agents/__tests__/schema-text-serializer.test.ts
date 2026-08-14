@@ -1,4 +1,6 @@
+import { McpServerConfigSchema } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
 
@@ -307,6 +309,24 @@ describe('nested objects', () => {
 // ---------------------------------------------------------------------------
 
 describe('union types', () => {
+	it('renders scalar anyOf unions inline instead of a discriminated object block', () => {
+		const output = field('authentication', {
+			anyOf: [
+				{
+					type: 'string',
+					enum: ['none', 'bearerAuth', 'headerAuth', 'multipleHeadersAuth', 'mcpOAuth2Api'],
+				},
+				{ type: 'string', pattern: 'McpOAuth2Api$' },
+			],
+			default: 'none',
+		});
+
+		expect(output).toBe(
+			'  authentication?: "none" | "bearerAuth" | "headerAuth" | "multipleHeadersAuth" | "mcpOAuth2Api" | string [pattern: McpOAuth2Api$] (default: "none")',
+		);
+		expect(output).not.toContain('one of <discriminated');
+	});
+
 	it('detects a discriminator field and labels branches by its const value', () => {
 		const output = field(
 			'action',
@@ -451,6 +471,25 @@ describe('union types', () => {
 	});
 });
 
+describe('mcp server schema regression', () => {
+	it('renders authentication and discriminated unions with descriptions', () => {
+		const schema = zodToJsonSchema(McpServerConfigSchema) as JSONSchema7;
+		const output = jsonSchemaToCompactText(schema);
+
+		expect(output).toContain(
+			'authentication?: "none" | "bearerAuth" | "headerAuth" | "multipleHeadersAuth" | "mcpOAuth2Api" | string [pattern: McpOAuth2Api$] (default: "none")',
+		);
+		expect(output).toContain(
+			'toolFilter?: one of <discriminated by "mode"> — Restricts which tools are surfaced. Tools matched by original un-prefixed name',
+		);
+		expect(output).toContain(
+			'approval?: one of <discriminated by "mode"> — Human-in-the-loop approval. Absent = no approval required',
+		);
+		expect(output).not.toContain('authentication?: one of <discriminated by "type">');
+		expect(output).not.toContain('| ?: {  }');
+	});
+});
+
 // ---------------------------------------------------------------------------
 // Array-union field metadata (required / default)
 // ---------------------------------------------------------------------------
@@ -568,6 +607,45 @@ describe('full schema snapshot', () => {
 		].join('\n');
 
 		expect(jsonSchemaToCompactText(schema as unknown as JSONSchema7)).toBe(expected);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Description annotation
+// ---------------------------------------------------------------------------
+
+describe('description annotation', () => {
+	it('appends description to an optional leaf field', () => {
+		expect(
+			field('maxIterations', {
+				type: 'integer',
+				minimum: 1,
+				maximum: 200,
+				description: 'Max loop iterations',
+			}),
+		).toBe('  maxIterations?: integer [1..200] — Max loop iterations');
+	});
+
+	it('appends description after required suffix', () => {
+		expect(field('count', { type: 'integer', description: 'Total items' }, true)).toBe(
+			'  count: integer (required) — Total items',
+		);
+	});
+
+	it('appends description after default suffix', () => {
+		expect(field('size', { type: 'number', default: 10, description: 'Chunk size' })).toBe(
+			'  size?: number (default: 10) — Chunk size',
+		);
+	});
+
+	it('appends description after both required and default suffixes', () => {
+		expect(
+			field('flag', { type: 'boolean', default: false, description: 'Feature toggle' }, true),
+		).toBe('  flag: boolean (required) (default: false) — Feature toggle');
+	});
+
+	it('omits description suffix when description is absent', () => {
+		expect(field('n', { type: 'integer', minimum: 1 })).toBe('  n?: integer [min 1]');
 	});
 });
 

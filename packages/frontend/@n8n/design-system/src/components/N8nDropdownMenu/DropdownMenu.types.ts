@@ -6,6 +6,14 @@ import type { IconOrEmoji } from '../N8nIconPicker/types';
 export const DropdownMenuPortalTargetKey: InjectionKey<Ref<string | HTMLElement | undefined>> =
 	Symbol('DropdownMenuPortalTarget');
 
+/**
+ * Injection key overriding the max-height cap of nested sub-menu content, per
+ * dropdown. Default (unset) keeps the shared cap — only opted-in dropdowns pass it.
+ */
+export const DropdownMenuSubMaxHeightKey: InjectionKey<Ref<string | undefined>> = Symbol(
+	'DropdownMenuSubMaxHeight',
+);
+
 type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
 
 export type DropdownMenuPlacement =
@@ -42,6 +50,12 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	divided?: boolean;
 	/** Whether to show a checkmark indicator */
 	checked?: boolean;
+	/** Keep the menu open after this item is selected (e.g. toggle rows). */
+	keepOpen?: boolean;
+	/** Render as a non-interactive section header label instead of a selectable item. */
+	header?: boolean;
+	/** Whether to expose the item as a menu item checkbox */
+	checkbox?: boolean;
 	/** Additional CSS classes */
 	class?: VueCssClass;
 	/** Nested menu items (creates a sub-menu) */
@@ -89,6 +103,10 @@ export interface DropdownMenuProps<T = string, D = never> {
 	teleported?: boolean;
 	/** Maximum height of the dropdown menu */
 	maxHeight?: string | number;
+	/** Maximum width of the dropdown menu. */
+	width?: string;
+	/** Overrides the max-height cap of nested sub-menu content (CSS length). */
+	subMenuMaxHeight?: string | number;
 	/** Whether to show loading state */
 	loading?: boolean;
 	/** Number of skeleton items to show when loading */

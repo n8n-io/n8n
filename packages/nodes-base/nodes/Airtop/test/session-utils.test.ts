@@ -5,11 +5,11 @@ import { SESSION_MODE } from '../actions/common/fields';
 import { executeRequestWithSessionManagement } from '../actions/common/session.utils';
 import * as transport from '../transport';
 
-jest.mock('../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../transport');
+vi.mock('../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async () => {
+		apiRequest: vi.fn(async () => {
 			return {
 				success: true,
 			};
@@ -17,29 +17,25 @@ jest.mock('../transport', () => {
 	};
 });
 
-jest.mock('../GenericFunctions', () => ({
-	shouldCreateNewSession: jest.fn(function (this: IExecuteFunctions, index: number) {
+vi.mock('../GenericFunctions', () => ({
+	shouldCreateNewSession: vi.fn(function (this: IExecuteFunctions, index: number) {
 		const sessionMode = this.getNodeParameter('sessionMode', index);
 		return sessionMode === SESSION_MODE.NEW;
 	}),
-	createSessionAndWindow: jest.fn(async () => ({
+	createSessionAndWindow: vi.fn(async () => ({
 		sessionId: 'new-session-123',
 		windowId: 'new-window-123',
 	})),
-	validateSessionAndWindowId: jest.fn(() => ({
+	validateSessionAndWindowId: vi.fn(() => ({
 		sessionId: 'existing-session-123',
 		windowId: 'existing-window-123',
 	})),
-	validateAirtopApiResponse: jest.fn(),
+	validateAirtopApiResponse: vi.fn(),
 }));
 
 describe('executeRequestWithSessionManagement', () => {
-	afterAll(() => {
-		jest.unmock('../transport');
-	});
-
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe("When 'sessionMode' is 'new'", () => {

@@ -4,7 +4,7 @@
  * Serializes workflows to n8n's standard JSON format.
  */
 
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, normalizeGroupDescription, normalizeNodeShape } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { foldLegacyErrorConnections } from '../../../types/base';
@@ -21,6 +21,7 @@ import {
 	normalizeResourceLocators,
 	escapeNewlinesInExpressionStrings,
 	parseVersion,
+	generateDeterministicGroupId,
 } from '../../string-utils';
 import type { SerializerPlugin, SerializerContext } from '../types';
 
@@ -74,16 +75,15 @@ function serializeNode(
 
 	// Serialize parameters - for SDK-created nodes, also normalize resource locators
 	// (add __rl: true if missing) and escape newlines in expression strings.
-	// For fromJSON nodes, preserve parameters as-is.
-	let serializedParams: IDataObject | undefined;
-	if (config.parameters) {
-		const parsed = deepCopy(config.parameters);
-		if (isFromJson) {
-			serializedParams = parsed;
-		} else {
-			const normalized = normalizeResourceLocators(parsed);
-			serializedParams = escapeNewlinesInExpressionStrings(normalized) as IDataObject;
-		}
+	// Missing parameters are serialized as an empty object because n8n requires
+	// each persisted node to have an object-valued parameters field.
+	const parsedParams = deepCopy(config.parameters ?? {});
+	let serializedParams: IDataObject;
+	if (isFromJson) {
+		serializedParams = parsedParams;
+	} else {
+		const normalized = normalizeResourceLocators(parsedParams);
+		serializedParams = escapeNewlinesInExpressionStrings(normalized) as IDataObject;
 	}
 
 	const n8nNode: NodeJSON = {
@@ -143,14 +143,23 @@ function serializeNode(
 	if (config.retryOnFail) {
 		n8nNode.retryOnFail = config.retryOnFail;
 	}
+	if (typeof config.maxTries === 'number') {
+		n8nNode.maxTries = config.maxTries;
+	}
+	if (typeof config.waitBetweenTries === 'number') {
+		n8nNode.waitBetweenTries = config.waitBetweenTries;
+	}
 	if (config.alwaysOutputData) {
 		n8nNode.alwaysOutputData = config.alwaysOutputData;
 	}
 	if (config.onError) {
 		n8nNode.onError = config.onError;
 	}
+	if (config.extendsCredential) {
+		n8nNode.extendsCredential = config.extendsCredential;
+	}
 
-	return n8nNode;
+	return normalizeNodeShape(n8nNode);
 }
 
 /**
@@ -262,6 +271,29 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 
 		if (ctx.meta) {
 			json.meta = ctx.meta;
+		}
+
+		// Members already carry the emitted nodes' IDs; filter out any that aren't present
+		// in the output (defensive — should never happen). Group ID precedence: own ID
+		// (carried through fromJSON for a lossless round-trip), then a name match (preserves
+		// UI-assigned IDs across edits), else a deterministic ID from the name.
+		if (ctx.nodeGroups && ctx.nodeGroups.length > 0) {
+			const emittedIds = new Set(nodes.map((node) => node.id));
+
+			json.nodeGroups = ctx.nodeGroups.map((group) => {
+				const description = normalizeGroupDescription(group.description);
+				const id =
+					group.id ??
+					ctx.existingGroupIdsByName?.get(group.name) ??
+					generateDeterministicGroupId(ctx.workflowId, group.name);
+
+				return {
+					id,
+					name: group.name,
+					nodeIds: group.memberIds.filter((memberId) => emittedIds.has(memberId)),
+					...(description ? { description } : {}),
+				};
+			});
 		}
 
 		return json;

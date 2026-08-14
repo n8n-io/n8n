@@ -1,3 +1,5 @@
+import { Logger } from '@n8n/backend-common';
+import { SharedWorkflowRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { LoadOptionsContext, RoutingNode, LocalLoadOptionsContext, ExecuteContext } from 'n8n-core';
 import type {
@@ -20,16 +22,21 @@ import type {
 	ILocalLoadOptionsFunctions,
 	IExecuteData,
 } from 'n8n-workflow';
-import { Workflow, UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
+import {
+	Workflow,
+	UnexpectedError,
+	createEmptyRunExecutionData,
+	findDisplayedProperty,
+} from 'n8n-workflow';
 
-import { NodeTypes } from '@/node-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NodeTypes } from '@/node-types';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { withExpressionIsolate } from '@/utils';
 
 import { WorkflowLoaderService } from './workflow-loader.service';
-import { SharedWorkflowRepository, User } from '@n8n/db';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { Logger } from '@n8n/backend-common';
 
 type LocalResourceMappingMethod = (
 	this: ILocalLoadOptionsFunctions,
@@ -134,11 +141,48 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('loadOptions', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		return await this.withExpressionIsolate(workflow, async () => {
+		return await withExpressionIsolate(workflow, async () => {
 			// Need to use untyped call since `this` usage is widespread and we don't have `strictBindCallApply`
 			// enabled in `tsconfig.json`
 			return await method.call(thisArgs);
 		});
+	}
+
+	/**
+	 * Resolves the property's loadOptions routing from the node definition via the parameter path
+	 * (not from the request body), then runs it.
+	 */
+	async getOptionsViaLoadOptionsByPath(
+		path: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeTypeAndVersion: INodeTypeNameVersion,
+		currentNodeParameters: INodeParameters,
+		credentials?: INodeCredentials,
+	): Promise<INodePropertyOptions[]> {
+		const nodeType = this.getNodeType(nodeTypeAndVersion);
+		const property = findDisplayedProperty(
+			path,
+			nodeType.description.properties,
+			currentNodeParameters,
+			{ typeVersion: nodeTypeAndVersion.version },
+			nodeType.description,
+		);
+		const routing =
+			property && 'typeOptions' in property
+				? property.typeOptions?.loadOptions?.routing
+				: undefined;
+		if (!routing) {
+			throw new BadRequestError(
+				`Node type "${nodeType.description.name}" has no loadOptions routing for parameter path "${path}"`,
+			);
+		}
+		return await this.getOptionsViaLoadOptions(
+			{ routing },
+			additionalData,
+			nodeTypeAndVersion,
+			currentNodeParameters,
+			credentials,
+		);
 	}
 
 	/** Returns the available options via a loadOptions param */
@@ -151,15 +195,8 @@ export class DynamicNodeParametersService {
 	): Promise<INodePropertyOptions[]> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		if (!nodeType.description.requestDefaults?.baseURL) {
-			// This is in here for now for security reasons.
-			// Background: As the full data for the request to make does get send, and the auth data
-			// will then be applied, would it be possible to retrieve that data like that. By at least
-			// requiring a baseURL to be defined can at least not a random server be called.
-			// In the future this code has to get improved that it does not use the request information from
-			// the request rather resolves it via the parameter-path and nodeType data.
-			throw new UnexpectedError(
-				'Node type does not exist or does not have "requestDefaults.baseURL" defined!',
-				{ tags: { nodeType: nodeType.description.name } },
+			throw new BadRequestError(
+				`Node type "${nodeType.description.name}" does not exist or does not have "requestDefaults.baseURL" defined!`,
 			);
 		}
 
@@ -211,7 +248,7 @@ export class DynamicNodeParametersService {
 			[],
 		);
 		const routingNode = new RoutingNode(executeFunctions, tempNodeType);
-		return await this.withExpressionIsolate(workflow, async () => {
+		return await withExpressionIsolate(workflow, async () => {
 			const optionsData = await routingNode.runNode();
 
 			if (optionsData?.length === 0) {
@@ -240,7 +277,7 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('listSearch', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		return await this.withExpressionIsolate(workflow, async () => {
+		return await withExpressionIsolate(workflow, async () => {
 			return await method.call(thisArgs, filter, paginationToken);
 		});
 	}
@@ -258,7 +295,7 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('resourceMapping', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		return await this.withExpressionIsolate(workflow, async () =>
+		return await withExpressionIsolate(workflow, async () =>
 			this.removeDuplicateResourceMappingFields(await method.call(thisArgs)),
 		);
 	}
@@ -290,22 +327,9 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('actionHandler', handler, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		return await this.withExpressionIsolate(workflow, async () => {
+		return await withExpressionIsolate(workflow, async () => {
 			return await method.call(thisArgs, payload);
 		});
-	}
-
-	/**
-	 * When N8N_EXPRESSION_ENGINE=vm, expressions run in an isolate that must be acquired
-	 * for this workflow before any code resolves {{ }} in parameters or credentials.
-	 */
-	private async withExpressionIsolate<T>(workflow: Workflow, fn: () => Promise<T>): Promise<T> {
-		await workflow.expression.acquireIsolate();
-		try {
-			return await fn();
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
 	}
 
 	private getMethod(
@@ -365,12 +389,8 @@ export class DynamicNodeParametersService {
 					? ` Other method types on this node — ${otherTypesWithMethods.join('; ')}.`
 					: '';
 
-			throw new UnexpectedError(
+			throw new BadRequestError(
 				`Node type "${nodeType.description.name}" has no ${type} method named "${methodName}". Available ${type} methods: ${availableText}.${otherTypesText}`,
-				{
-					tags: { nodeType: nodeType.description.name },
-					extra: { methodName, type, available, otherTypes: otherTypesWithMethods },
-				},
 			);
 		}
 		return method;

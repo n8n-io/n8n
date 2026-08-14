@@ -266,3 +266,9 @@ export function hasConfig(): boolean {
 export function resetConfig(): void {
 	currentConfig = null;
 }
+
+/** Does `text` match any configured allow-pattern for the given rule? */
+export function ruleAllows(ruleId: string, text: string): boolean {
+	const allowPatterns = getConfig().rules?.[ruleId]?.allowPatterns ?? [];
+	return allowPatterns.some((pattern) => pattern.test(text));
+}

@@ -20,6 +20,8 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	credentialId?: string;
 	workflowId?: string;
 	workflowName?: string;
+	projectId?: string;
+	projectName?: string;
 	activeVersionId?: string | null;
 	deactivatedVersionId?: string | null;
 	versionId?: string;

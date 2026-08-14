@@ -18,13 +18,14 @@ import {
 	DEFAULT_OPERATOR_VALUE,
 } from './constants';
 import { useI18n } from '@n8n/i18n';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
 import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import Draggable from 'vuedraggable';
 
 import { N8nButton, N8nInputLabel } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 interface Props {
 	parameter: INodeProperties;
 	value: FilterValue;
@@ -53,6 +54,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const { debounce } = useDebounce();
 
 const debouncedEmitChange = debounce(emitChange, { debounceTime: 1000 });
@@ -96,8 +98,8 @@ const maxConditionsReached = computed(
 );
 
 const issues = computed(() => {
-	if (!ndvStore.activeNode) return {};
-	return ndvStore.activeNode?.issues?.parameters ?? {};
+	if (!ndvStore.value.activeNode) return {};
+	return ndvStore.value.activeNode?.issues?.parameters ?? {};
 });
 
 watchEffect(async () => {
@@ -114,7 +116,10 @@ watchEffect(async () => {
 	try {
 		newOptions = {
 			...DEFAULT_FILTER_OPTIONS,
-			...(await resolveParameter(typeOptions as unknown as NodeParameterValue)),
+			...(await resolveParameter(
+				typeOptions as unknown as NodeParameterValue,
+				workflowDocumentStore.value.documentId,
+			)),
 		};
 	} catch {
 		// Keep default options

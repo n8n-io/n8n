@@ -7,6 +7,7 @@ import '../source-control.ee/source-control.module';
 import '../provisioning.ee/provisioning.module';
 import '../breaking-changes/breaking-changes.module';
 import '../mcp/mcp.module';
+import '../oauth-server/oauth-server.module';
 
 describe('main-only modules', () => {
 	const metadata = Container.get(ModuleMetadata);

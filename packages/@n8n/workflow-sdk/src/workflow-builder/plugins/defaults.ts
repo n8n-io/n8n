@@ -16,6 +16,7 @@ import {
 	disconnectedNodeValidator,
 	expressionPathValidator,
 	expressionPrefixValidator,
+	executeWorkflowValidator,
 	filterNodeValidator,
 	fromAiValidator,
 	httpRequestValidator,
@@ -27,6 +28,7 @@ import {
 	setNodeValidator,
 	subnodeConnectionValidator,
 	toolNodeValidator,
+	unknownConfigKeysValidator,
 } from './validators';
 
 // Note: Core composite handlers are now imported from ./composite-handlers
@@ -53,11 +55,13 @@ const coreValidators: ValidatorPlugin[] = [
 	toolNodeValidator,
 	fromAiValidator,
 	memorySessionKeyValidator,
+	unknownConfigKeysValidator,
 
 	// Node-type validators (medium priority)
 	setNodeValidator,
 	mergeNodeValidator,
 	filterNodeValidator,
+	executeWorkflowValidator,
 
 	// Expression validators (lower priority)
 	expressionPrefixValidator,

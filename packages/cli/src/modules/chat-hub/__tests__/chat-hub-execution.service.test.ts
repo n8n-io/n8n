@@ -1,12 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { IRun, IRunExecutionData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ChatExecutionManager } from '@/chat/chat-execution-manager';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
@@ -23,6 +24,7 @@ describe('ChatHubExecutionService', () => {
 	const executionService = mock<ExecutionService>();
 	const workflowExecutionService = mock<WorkflowExecutionService>();
 	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
 	const executionManager = mock<ChatExecutionManager>();
 	const activeExecutions = mock<ActiveExecutions>();
 	const instanceSettings = mock<InstanceSettings>();
@@ -34,13 +36,14 @@ describe('ChatHubExecutionService', () => {
 	let service: ChatHubExecutionService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		service = new ChatHubExecutionService(
 			logger,
 			executionService,
 			workflowExecutionService,
 			executionRepository,
+			executionPersistence,
 			executionManager,
 			activeExecutions,
 			instanceSettings,

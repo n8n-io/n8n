@@ -312,10 +312,20 @@ function getFileTypeOrThrow(this: IExecuteFunctions, mimeType?: string): 'image'
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
-	const messages = this.getNodeParameter('messages.values', i, []) as Message[];
+	const rawMessages = this.getNodeParameter('messages.values', i, []) as Message[];
 	const addAttachments = this.getNodeParameter('addAttachments', i, false) as boolean;
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const options = this.getNodeParameter('options', i, {}) as MessageOptions;
+
+	const messages = rawMessages.filter(
+		(m) => typeof m.content !== 'string' || m.content.trim() !== '',
+	);
+
+	if (!addAttachments && messages.length === 0) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 
 	const { tools, connectedTools } = await getTools.call(this, options);
 

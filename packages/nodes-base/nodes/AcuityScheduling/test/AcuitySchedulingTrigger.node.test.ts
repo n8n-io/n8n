@@ -3,42 +3,43 @@ import type { IDataObject, IWebhookFunctions } from 'n8n-workflow';
 import { AcuitySchedulingTrigger } from '../AcuitySchedulingTrigger.node';
 import { verifySignature } from '../AcuitySchedulingTriggerHelpers';
 import { acuitySchedulingApiRequest } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
-jest.mock('../AcuitySchedulingTriggerHelpers', () => ({
-	verifySignature: jest.fn(),
+vi.mock('../AcuitySchedulingTriggerHelpers', () => ({
+	verifySignature: vi.fn(),
 }));
 
-jest.mock('../GenericFunctions', () => ({
-	acuitySchedulingApiRequest: jest.fn(),
+vi.mock('../GenericFunctions', () => ({
+	acuitySchedulingApiRequest: vi.fn(),
 }));
 
-const mockedVerifySignature = jest.mocked(verifySignature);
-const mockedAcuitySchedulingApiRequest = jest.mocked(acuitySchedulingApiRequest);
+const mockedVerifySignature = vi.mocked(verifySignature);
+const mockedAcuitySchedulingApiRequest = vi.mocked(acuitySchedulingApiRequest);
 
 describe('AcuitySchedulingTrigger', () => {
 	let trigger: AcuitySchedulingTrigger;
-	let response: { status: jest.Mock; send: jest.Mock; end: jest.Mock };
+	let response: { status: Mock; send: Mock; end: Mock };
 	let ctx: IWebhookFunctions;
 	const requestBody: IDataObject = { action: 'appointment.scheduled', id: 123 };
 
 	const buildContext = (body: IDataObject = requestBody): IWebhookFunctions => {
 		response = {
-			status: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
-			end: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
+			end: vi.fn().mockReturnThis(),
 		};
 		return {
-			getRequestObject: jest.fn().mockReturnValue({ body }),
-			getResponseObject: jest.fn().mockReturnValue(response),
-			getNodeParameter: jest.fn(),
+			getRequestObject: vi.fn().mockReturnValue({ body }),
+			getResponseObject: vi.fn().mockReturnValue(response),
+			getNodeParameter: vi.fn(),
 			helpers: {
-				returnJsonArray: jest.fn().mockImplementation((data: IDataObject) => [data]),
+				returnJsonArray: vi.fn().mockImplementation((data: IDataObject) => [data]),
 			},
 		} as unknown as IWebhookFunctions;
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		trigger = new AcuitySchedulingTrigger();
 		ctx = buildContext();
 		mockedVerifySignature.mockResolvedValue(true);
@@ -46,7 +47,7 @@ describe('AcuitySchedulingTrigger', () => {
 
 	describe('webhook', () => {
 		it('triggers workflow when signature is valid and resolveData is false', async () => {
-			(ctx.getNodeParameter as jest.Mock).mockImplementation((name: string) =>
+			(ctx.getNodeParameter as Mock).mockImplementation((name: string) =>
 				name === 'resolveData' ? false : undefined,
 			);
 
@@ -70,7 +71,7 @@ describe('AcuitySchedulingTrigger', () => {
 
 		it('triggers workflow when no signing secret is configured (backward compat)', async () => {
 			mockedVerifySignature.mockResolvedValue(true);
-			(ctx.getNodeParameter as jest.Mock).mockImplementation((name: string) =>
+			(ctx.getNodeParameter as Mock).mockImplementation((name: string) =>
 				name === 'resolveData' ? false : undefined,
 			);
 
@@ -81,7 +82,7 @@ describe('AcuitySchedulingTrigger', () => {
 
 		it('resolves data via API when resolveData is true', async () => {
 			ctx = buildContext({ id: 123 });
-			(ctx.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
+			(ctx.getNodeParameter as Mock).mockImplementation((name: string) => {
 				if (name === 'resolveData') return true;
 				if (name === 'event') return 'appointment.scheduled';
 				return undefined;

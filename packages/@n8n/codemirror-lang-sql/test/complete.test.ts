@@ -11,7 +11,7 @@ function get(doc: string, conf: SQLConfig & { explicit?: boolean } = {}) {
 	const dialect = conf.dialect || PostgreSQL;
 	doc = doc.slice(0, cur) + doc.slice(cur + 1);
 
-	const state = EditorState.create({
+	const initialState = EditorState.create({
 		doc,
 		selection: { anchor: cur },
 		extensions: [
@@ -21,7 +21,14 @@ function get(doc: string, conf: SQLConfig & { explicit?: boolean } = {}) {
 			}),
 		],
 	});
-	ensureSyntaxTree(state, state.doc.length, 1e9);
+	// `EditorState.create` only parses within a 20ms wall-clock budget, and
+	// `ensureSyntaxTree` advances a separate context tree rather than the one
+	// `languageDataAt` reads. Commit the fully-parsed tree into the language
+	// state field via an empty transaction so the lookup is deterministic
+	// regardless of host load (contended CI runners can otherwise starve that
+	// budget and leave a truncated tree with no language data).
+	ensureSyntaxTree(initialState, initialState.doc.length, 1e9);
+	const state = initialState.update({}).state;
 	const result = state.languageDataAt<CompletionSource>('autocomplete', cur)[0](
 		new CompletionContext(state, cur, !!conf.explicit),
 	);

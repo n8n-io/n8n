@@ -18,7 +18,6 @@ import {
 import { Container } from '@n8n/di';
 
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -204,7 +203,7 @@ describe('PATCH /mcp/settings', () => {
 			.send({ mcpAccessEnabled: true });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ mcpAccessEnabled: true });
+		expect(response.body.data).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: false });
 
 		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
 		expect(stored?.value).toBe('true');
@@ -219,7 +218,7 @@ describe('PATCH /mcp/settings', () => {
 			.send({ mcpAccessEnabled: false });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ mcpAccessEnabled: false });
+		expect(response.body.data).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: false });
 
 		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
 		expect(stored?.value).toBe('false');
@@ -239,6 +238,12 @@ describe('PATCH /mcp/settings', () => {
 			.authAgentFor(owner)
 			.patch('/mcp/settings')
 			.send({ mcpAccessEnabled: 'yes' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('rejects an empty body with 400', async () => {
+		const response = await testServer.authAgentFor(owner).patch('/mcp/settings').send({});
 
 		expect(response.statusCode).toBe(400);
 	});
@@ -357,9 +362,11 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.updatedCount).toBe(2);
+		expect(response.body.data.unchangedCount).toBe(0);
 		expect(response.body.data.updatedIds.sort()).toEqual(
 			[ownedByMember.id, ownedByMember2.id].sort(),
 		);
+		expect(response.body.data.unchangedIds).toEqual([]);
 		expect(response.body.data.skippedCount).toBe(1);
 
 		expect(await readAvailableInMCP(ownedByMember.id)).toBe(true);
@@ -389,6 +396,8 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.updatedIds).toEqual([live.id]);
+		expect(response.body.data.unchangedIds).toEqual([]);
+		expect(response.body.data.unchangedCount).toBe(0);
 		expect(response.body.data.skippedCount).toBe(1);
 		expect(await readAvailableInMCP(archived.id)).toBeUndefined();
 	});
@@ -407,7 +416,12 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			.send({ availableInMCP: true, projectId: project.id });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ updatedCount: 2, skippedCount: 0, failedCount: 0 });
+		expect(response.body.data).toEqual({
+			updatedCount: 2,
+			unchangedCount: 0,
+			skippedCount: 0,
+			failedCount: 0,
+		});
 		expect(await readAvailableInMCP(projectWf1.id)).toBe(true);
 		expect(await readAvailableInMCP(projectWf2.id)).toBe(true);
 		expect(await readAvailableInMCP(unrelatedWf.id)).toBeUndefined();
@@ -437,10 +451,53 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			.send({ availableInMCP: true, folderId: rootFolder.id });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ updatedCount: 2, skippedCount: 0, failedCount: 0 });
+		expect(response.body.data).toEqual({
+			updatedCount: 2,
+			unchangedCount: 0,
+			skippedCount: 0,
+			failedCount: 0,
+		});
 		expect(await readAvailableInMCP(workflowInRoot.id)).toBe(true);
 		expect(await readAvailableInMCP(workflowInChild.id)).toBe(true);
 		expect(await readAvailableInMCP(workflowOutsideFolder.id)).toBeUndefined();
+	});
+
+	test('scopes updates to all accessible workflows when allWorkflows is set', async () => {
+		const memberWf = await createWorkflow({ name: 'member-wf', settings: {} }, toggleMember);
+		const ownerWf = await createWorkflow({ name: 'owner-wf', settings: {} }, toggleOwner);
+
+		// The member lacks global workflow:update scope, so only their own
+		// workflows are reached.
+		const memberResponse = await testServer
+			.authAgentFor(toggleMember)
+			.patch('/mcp/workflows/toggle-access')
+			.send({ availableInMCP: true, allWorkflows: true });
+
+		expect(memberResponse.statusCode).toBe(200);
+		expect(memberResponse.body.data).toEqual({
+			updatedCount: 1,
+			unchangedCount: 0,
+			skippedCount: 0,
+			failedCount: 0,
+		});
+		expect(await readAvailableInMCP(memberWf.id)).toBe(true);
+		expect(await readAvailableInMCP(ownerWf.id)).toBeUndefined();
+
+		// The owner has global workflow:update scope and reaches every workflow,
+		// including the member's already-exposed one (reported as unchanged).
+		const ownerResponse = await testServer
+			.authAgentFor(toggleOwner)
+			.patch('/mcp/workflows/toggle-access')
+			.send({ availableInMCP: true, allWorkflows: true });
+
+		expect(ownerResponse.statusCode).toBe(200);
+		expect(ownerResponse.body.data).toEqual({
+			updatedCount: 1,
+			unchangedCount: 1,
+			skippedCount: 0,
+			failedCount: 0,
+		});
+		expect(await readAvailableInMCP(ownerWf.id)).toBe(true);
 	});
 
 	test('counts a shared workflow exactly once regardless of its sharings', async () => {
@@ -470,9 +527,10 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			.send({ availableInMCP: true, folderId: folder.id });
 
 		expect(response.statusCode).toBe(200);
-		// Folder-scoped — `updatedIds` is omitted from the response.
+		// Folder-scoped — workflow id arrays are omitted from the response.
 		expect(response.body.data).toEqual({
 			updatedCount: 1,
+			unchangedCount: 0,
 			skippedCount: 0,
 			failedCount: 0,
 		});
@@ -492,6 +550,8 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.updatedIds).toEqual([wf.id]);
+		expect(response.body.data.unchangedIds).toEqual([]);
+		expect(response.body.data.unchangedCount).toBe(0);
 		expect(await readAvailableInMCP(wf.id)).toBe(false);
 	});
 
@@ -514,13 +574,13 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			});
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.updatedCount).toBe(2);
-		expect(response.body.data.updatedIds.sort()).toEqual(
-			[alreadyEnabled.id, freshlyChanged.id].sort(),
-		);
+		expect(response.body.data.updatedCount).toBe(1);
+		expect(response.body.data.unchangedCount).toBe(1);
+		expect(response.body.data.updatedIds).toEqual([freshlyChanged.id]);
+		expect(response.body.data.unchangedIds).toEqual([alreadyEnabled.id]);
 		expect(response.body.data.skippedCount).toBe(0);
 
-		// Re-submitting the same request is a no-op but still reports both as updated.
+		// Re-submitting the same request is a no-op and reports both as unchanged.
 		const second = await testServer
 			.authAgentFor(toggleOwner)
 			.patch('/mcp/workflows/toggle-access')
@@ -530,7 +590,12 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			});
 
 		expect(second.statusCode).toBe(200);
-		expect(second.body.data.updatedCount).toBe(2);
+		expect(second.body.data.updatedCount).toBe(0);
+		expect(second.body.data.unchangedCount).toBe(2);
+		expect(second.body.data.updatedIds).toEqual([]);
+		expect(second.body.data.unchangedIds.sort()).toEqual(
+			[alreadyEnabled.id, freshlyChanged.id].sort(),
+		);
 		expect(second.body.data.skippedCount).toBe(0);
 	});
 

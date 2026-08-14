@@ -11,8 +11,9 @@ import type { ParseAndValidateResult } from '../../types';
 import { AutoFinalizeHandler } from '../auto-finalize-handler';
 
 describe('AutoFinalizeHandler', () => {
-	const mockParseAndValidate = jest.fn<Promise<ParseAndValidateResult>, [string, WorkflowJSON?]>();
-	const mockGetErrorContext = jest.fn<string, [string, string]>();
+	const mockParseAndValidate =
+		vi.fn<(...args: [string, WorkflowJSON?]) => Promise<ParseAndValidateResult>>();
+	const mockGetErrorContext = vi.fn<(...args: [string, string]) => string>();
 
 	const createHandler = () =>
 		new AutoFinalizeHandler({
@@ -21,7 +22,7 @@ describe('AutoFinalizeHandler', () => {
 		});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockGetErrorContext.mockReturnValue('Error context here');
 	});
 

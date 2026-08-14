@@ -23,7 +23,9 @@ type NodeIconSourceFile = {
 };
 
 type BaseNodeIconSource = NodeIconSourceIcon | NodeIconSourceFile;
-export type NodeIconSource = BaseNodeIconSource & { badge?: BaseNodeIconSource };
+export type NodeIconSource = BaseNodeIconSource & {
+	badge?: BaseNodeIconSource & { tooltip?: string };
+};
 
 export type NodeIconType = 'file' | 'icon' | 'unknown';
 

@@ -210,7 +210,8 @@ const routeByPriority = switchCase({
           { outputKey: 'urgent', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: expr('{{ $json.priority }}'), operator: { type: 'string', operation: 'equals' }, rightValue: 'urgent' }], combinator: 'and' } },
           { outputKey: 'normal', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: expr('{{ $json.priority }}'), operator: { type: 'string', operation: 'equals' }, rightValue: 'normal' }], combinator: 'and' } },
         ]
-      }
+      },
+      options: { fallbackOutput: 'extra', renameFallbackOutput: 'Fallback' }
     }
   }
 });
@@ -218,9 +219,9 @@ const routeByPriority = switchCase({
 export default workflow('id', 'name')
   .add(startTrigger)
   .to(routeByPriority
-    .onCase('urgent', processUrgent.to(notifyTeam.to(escalate)))
-    .onCase('normal', processNormal)
-    .onDefault(archive));
+    .onCase(0, processUrgent.to(notifyTeam.to(escalate)))
+    .onCase(1, processNormal)
+    .onCase(2, archive));
 \`\`\`
 
 </multi_way_routing>

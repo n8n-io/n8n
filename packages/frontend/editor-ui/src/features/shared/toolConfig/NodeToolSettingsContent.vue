@@ -21,35 +21,41 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { collectParametersByTab, createCommonNodeSettings } from '@/features/ndv/shared/ndv.utils';
+import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
 import { N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import {
-	Workflow,
-	NodeHelpers,
-	deepCopy,
-	type INode,
-	type INodeParameters,
-	type INodeTypes,
-	type INodeType,
-	type IVersionedNodeType,
-	type IDataObject,
-} from 'n8n-workflow';
+import { Workflow, NodeHelpers, deepCopy, type INode, type INodeParameters } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
-import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import {
+	ChatHubToolContextKey,
+	ExpressionLocalResolveContextSymbol,
+	ToolConfigCredentialSelectedKey,
+	WorkflowDocumentStoreKey,
+} from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	createWorkflowDocumentId,
+	disposeWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 const props = defineProps<{
 	initialNode: INode;
 	existingToolNames?: string[];
 	hideAskAssistant?: boolean;
 	projectId?: string;
+	/** Operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
+	hiddenOperations?: readonly string[];
 }>();
 
 const emit = defineEmits<{
 	'update:valid': [isValid: boolean];
 	'update:node-name': [name: string];
+	'update:node': [node: INode];
 }>();
 
 const i18n = useI18n();
@@ -58,18 +64,27 @@ const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const nodeHelpers = useNodeHelpers();
 const environmentsStore = useEnvironmentsStore();
+const settingsStore = useSettingsStore();
 
 const node = shallowRef<INode | null>(props.initialNode);
 const userEditedName = ref(false);
 
 const existingToolNames = computed(() => props.existingToolNames ?? []);
-const credentialProjectId = computed(() => props.projectId ?? projectsStore.personalProject?.id);
+// `props.projectId` can be an empty string when the agent scope id has not
+// resolved yet (see `useAgentScopeProjectId`), so fall back with `||` rather
+// than `??` — otherwise the empty string sticks and the credential fetch below
+// is skipped on first open.
+const credentialProjectId = computed(() => props.projectId || projectsStore.personalProject?.id);
 
 const nodeTypeDescription = computed(() => {
 	if (!props.initialNode) {
 		return null;
 	}
-	return nodeTypesStore.getNodeType(props.initialNode.type);
+	const description = nodeTypesStore.getNodeType(props.initialNode.type);
+	if (!description || !props.hiddenOperations?.length) {
+		return description;
+	}
+	return omitOperationOptions(description, props.hiddenOperations);
 });
 
 type ToolSettingsTab = 'params' | 'settings';
@@ -94,15 +109,18 @@ const tabOptions = computed<Array<ITab<ToolSettingsTab>>>(() => {
 });
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(true, i18n.baseText.bind(i18n)).filter(
-		(s) => s.name !== 'notes' && s.name !== 'notesInFlow',
-	),
+	createCommonNodeSettings(
+		true,
+		i18n.baseText.bind(i18n),
+		settingsStore.isOtelCustomSpanAttributesEnabled,
+	).filter((s) => s.name !== 'notes' && s.name !== 'notesInFlow'),
 );
 
 const settingsNodeValues = computed<INodeParameters>(() => {
 	if (!node.value) return { parameters: {} };
 	return {
 		parameters: deepCopy(node.value.parameters),
+		customTelemetryTags: deepCopy(node.value.customTelemetryTags ?? {}),
 	};
 });
 
@@ -139,54 +157,28 @@ const hasCredentialIssues = computed(() => {
 	return Object.keys(credentialIssues?.credentials ?? {}).length > 0;
 });
 
+const toolWorkflowDocumentId = createWorkflowDocumentId('node-tool-workflow');
+const toolWorkflowStore = useWorkflowDocumentStore(toolWorkflowDocumentId);
+const workflowDocumentStore = computed(() => toolWorkflowStore);
+
+watch(
+	node,
+	(currentNode) => {
+		if (currentNode) {
+			toolWorkflowStore.setNodes([currentNode]);
+		}
+	},
+	{ immediate: true },
+);
+
 const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
 	if (!node.value) return undefined;
-
-	const nodeTypes: INodeTypes = {
-		getByName(nodeType: string): INodeType | IVersionedNodeType {
-			const description = nodeTypesStore.getNodeType(nodeType);
-			if (description === null) {
-				throw new Error(`Node type "${nodeType}" not found`);
-			}
-
-			return {
-				description,
-			} as INodeType;
-		},
-		getByNameAndVersion(nodeType: string, version?: number): INodeType {
-			const description = nodeTypesStore.getNodeType(nodeType, version);
-			if (description === null) {
-				throw new Error(`Node type "${nodeType}" (v${version}) not found`);
-			}
-
-			return {
-				description,
-			} as INodeType;
-		},
-		getKnownTypes(): IDataObject {
-			return {};
-		},
-	};
-
-	// Minimal workflow containing only this node for parameter resolution
-	const workflow = new Workflow({
-		id: 'node-tool-workflow',
-		name: 'Tool Configuration',
-		nodes: [node.value],
-		connections: {},
-		active: false,
-		nodeTypes,
-		settings: {},
-	});
 
 	return {
 		localResolve: true,
 		envVars: environmentsStore.variablesAsObject,
-		workflow,
-		execution: null,
 		nodeName: node.value.name,
 		additionalKeys: {},
-		connections: {},
 		inputNode: undefined,
 	};
 });
@@ -197,6 +189,7 @@ const isValid = computed(() => {
 
 // Provide expression resolve context for dynamic parameter loading
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
+provide(WorkflowDocumentStoreKey, workflowDocumentStore);
 provide(ChatHubToolContextKey, true);
 
 function makeUniqueName(baseName: string, existingNames: string[]): string {
@@ -230,6 +223,15 @@ function handleChangeSettingsValue(updateData: IUpdateInformation) {
 			...node.value,
 			parameters: newParameters,
 		};
+	} else if (updateData.name.includes('.') || updateData.name.includes('[')) {
+		const newNode = deepCopy(node.value);
+		setParameterValue(newNode as unknown as INodeParameters, updateData.name, updateData.value);
+
+		if (newNode.customTelemetryTags?.tag?.length === 0) {
+			newNode.customTelemetryTags = {};
+		}
+
+		node.value = newNode;
 	} else {
 		node.value = { ...node.value, [updateData.name]: updateData.value };
 	}
@@ -243,6 +245,10 @@ function handleChangeCredential(updateData: INodeUpdatePropertiesInformation) {
 		};
 	}
 }
+
+// CredentialsSelect → ParameterInput writes the document store only; this
+// keeps the local draft (isValid / save payload) in sync.
+provide(ToolConfigCredentialSelectedKey, handleChangeCredential);
 
 function handleChangeName(name: string) {
 	if (node.value) {
@@ -334,6 +340,16 @@ watch(isValid, (val) => {
 });
 
 watch(
+	node,
+	(updatedNode) => {
+		if (updatedNode) {
+			emit('update:node', updatedNode);
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
 	() => node.value?.name,
 	(name) => {
 		if (name) {
@@ -352,8 +368,16 @@ onMounted(async () => {
 	// Set project context for dynamic parameter loading and credential creation.
 	if (props.projectId) {
 		await projectsStore.fetchAndSetProject(props.projectId);
-	} else if (projectsStore.personalProject) {
-		projectsStore.setCurrentProject(projectsStore.personalProject);
+	} else {
+		// No usable project scope was provided (the agent scope id can resolve to
+		// '' before project state loads). Ensure the personal project is loaded so
+		// the credential fetch below has a real scope on first open.
+		if (!projectsStore.personalProject) {
+			await projectsStore.getPersonalProject();
+		}
+		if (projectsStore.personalProject) {
+			projectsStore.setCurrentProject(projectsStore.personalProject);
+		}
 	}
 
 	// Ensure credentials are loaded for the credentials selector to work.
@@ -361,7 +385,6 @@ onMounted(async () => {
 	// credentials from another project do not bleed into this tool config.
 	const projectId = credentialProjectId.value;
 	if (projectId) {
-		credentialsStore.setCredentials([]);
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
 			credentialsStore.fetchAllCredentialsForWorkflow({ projectId }),
@@ -372,6 +395,13 @@ onMounted(async () => {
 onBeforeUnmount(() => {
 	// Clear current project to avoid side effects
 	projectsStore.setCurrentProject(null);
+
+	// Dispose the scoped document store and the NDV store its descendants
+	// materialize — Pinia stores are not freed on unmount. The doc id is a
+	// constant and only one tool-config host is mounted at a time.
+	const documentStore = workflowDocumentStore.value;
+	disposeNDVStore(useNDVStore(documentStore.documentId));
+	disposeWorkflowDocumentStore(documentStore);
 });
 
 defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
@@ -406,9 +436,13 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 						:project-id="credentialProjectId"
 						:hide-issues="false"
 						:hide-ask-assistant="props.hideAskAssistant"
+						:skip-credentials-fetch="true"
 						@credential-selected="handleChangeCredential"
 						@value-changed="handleChangeParameter"
 					/>
+					<div v-if="$slots.commonSettings" :class="$style.commonSettings">
+						<slot name="commonSettings" />
+					</div>
 				</ParameterInputList>
 				<div v-if="showNoParametersNotice" :class="$style.noParameters">
 					<N8nText>
@@ -467,6 +501,10 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 }
 
 .noParameters {
+	margin-top: var(--spacing--xs);
+}
+
+.commonSettings {
 	margin-top: var(--spacing--xs);
 }
 </style>

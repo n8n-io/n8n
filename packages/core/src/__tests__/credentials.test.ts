@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { CredentialInformation } from 'n8n-workflow';
 import { AssertionError } from 'node:assert';
+import { mock } from 'vitest-mock-extended';
 
 import { CREDENTIAL_ERRORS } from '@/constants';
 import { CipherAes256CBC } from '@/encryption/aes-256-cbc';

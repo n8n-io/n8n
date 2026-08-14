@@ -5,10 +5,11 @@ import type {
 	ICredentialType,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
+	INodeParameters,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { I18nT } from 'vue-i18n';
+import { resolveSupportedCredentialActivation } from 'n8n-workflow';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
@@ -18,38 +19,45 @@ import {
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
 } from '@/app/utils/nodeTypesUtils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
+import { useEditorContext } from '@/app/composables/useEditorContext';
+import {
+	useInstanceAiEditorCapability,
+	type InstanceAiCredentialHelpHandler,
+} from '@/app/composables/useInstanceAiEditorCapability';
 
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CREDENTIAL_ONLY_NODE_PREFIX, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 import QuickConnectButton from '../quickConnect/components/QuickConnectButton.vue';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { getAutoSelectedCredential } from '../credentials.utils';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
+import { SYSTEM_RESOLVER_ID, type InstanceAiCredentialSetupHint } from '@n8n/api-types';
+import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
+import { useN8nCreditsCredentialSelectionExperiment } from '@/experiments/n8nCreditsCredentialSelection';
 
 import {
-	N8nBadge,
 	N8nButton,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nLink,
-	N8nNotice,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -73,6 +81,23 @@ type Props = {
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
 	 *  Used by surfaces (e.g. agents) where the assistant flow isn't wired up. */
 	hideAskAssistant?: boolean;
+	/** Agent-supplied Templated Custom Auth recipe (Instance AI setup surfaces) —
+	 *  passed to the credential modal so a CREATE opens pre-filled on the guided
+	 *  simple view. */
+	credentialSetupHint?: InstanceAiCredentialSetupHint;
+	/** Replaces the type-derived field label ("Credential for X"). Only
+	 *  meaningful with `overrideCredType` (a single credential row). */
+	credentialsFieldLabel?: string;
+	/** Host-supplied behavior for the credential modal's Instance AI help button,
+	 *  overriding the injected editor capability. Instance AI setup cards use it —
+	 *  the capability chain doesn't reach the chat panel they render in. */
+	instanceAiCredentialHelp?: InstanceAiCredentialHelpHandler;
+	/** Skip the component's own credential fetch on mount. Hosts with a
+	 *  synthetic workflow document (e.g. the tool config modal) own the fetch
+	 *  themselves — the component's own fetch would query the synthetic
+	 *  document's nonexistent workflow id and replace the credential store
+	 *  with the empty result. */
+	skipCredentialsFetch?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -82,11 +107,12 @@ const props = withDefaults(defineProps<Props>(), {
 	hideIssues: false,
 	skipAutoSelect: false,
 	standalone: false,
+	skipCredentialsFetch: false,
 });
 
 const emit = defineEmits<{
 	credentialSelected: [credential: INodeUpdatePropertiesInformation];
-	valueChanged: [value: { name: string; value: string }];
+	valueChanged: [value: { name: string; value: NodeParameterValueType }];
 	blur: [source: string];
 }>();
 
@@ -94,14 +120,28 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
 
+const instanceAiCapability = useInstanceAiEditorCapability();
+const { instanceAi } = useEditorContext();
+const isToolContext = inject(ChatHubToolContextKey, false);
+
+// The host's credential-help behavior, handed to the (teleported) credential
+// modal that can't inject it. An explicit prop wins over the injected capability;
+// undefined when neither exists → the modal shows no Instance AI button.
+function resolveInstanceAiCredentialHelp(): InstanceAiCredentialHelpHandler | undefined {
+	if (props.instanceAiCredentialHelp) return props.instanceAiCredentialHelp;
+	const openCredential = instanceAiCapability.openCredential;
+	if (!instanceAi.value || !openCredential) return undefined;
+	return async (credential) => await openCredential(credential, 'credential_edit');
+}
+
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = injectNDVStore();
+const ndvStore = injectNDVStoreIfProvided();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = props.standalone ? undefined : injectWorkflowDocumentStore();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 
 // Quick connect
 const {
@@ -110,9 +150,13 @@ const {
 	connect,
 	cancelConnect,
 } = useQuickConnect();
-const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields } = useCredentialOAuth();
+const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authorize } =
+	useCredentialOAuth();
 
 const aiGateway = useAiGateway();
+const { isFeatureEnabled: shouldShowOwnCredentialFirst } =
+	useN8nCreditsCredentialSelectionExperiment();
+const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
 
 const canCreateCredentials = computed(
 	() =>
@@ -144,7 +188,7 @@ const {
 } = useNodeCredentialOptions(
 	node,
 	nodeType,
-	computed(() => props.overrideCredType),
+	() => props.overrideCredType,
 	() => props.showAll,
 );
 
@@ -163,35 +207,101 @@ const selected = computed<Record<string, INodeCredentialsDetails>>(
 	() => props.node.credentials ?? {},
 );
 
-const hasWorkflowResolver = computed(() => {
-	return !!workflowDocumentStore?.value?.settings?.credentialResolverId;
-});
-
 function isCredentialResolvable(credentialType: string): boolean {
-	if (!isDynamicCredentialsEnabled.value) return false;
+	if (!isPrivateCredentialsEnabled.value) return false;
 	const credentialId = selected.value[credentialType]?.id;
 	if (!credentialId) return false;
 	const credential = credentialsStore.getCredentialById(credentialId);
 	return credential?.isResolvable === true;
 }
 
-function showResolvableWarning(credentialType: string): boolean {
-	return isCredentialResolvable(credentialType) && !hasWorkflowResolver.value;
+function getSelectedPrivateCredential(credentialType: string): ICredentialsResponse | null {
+	if (!isPrivateCredentialsEnabled.value) return null;
+	const id = selected.value[credentialType]?.id;
+	if (!id) return null;
+	const credential = credentialsStore.getCredentialById(id);
+	return credential?.isResolvable === true ? credential : null;
 }
 
-// TODO: use actual docs link when available
-const dynamicCredentialsDocsUrl = '';
-
-function openWorkflowSettings() {
-	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+function isPrivateConnected(credentialType: string): boolean {
+	return getSelectedPrivateCredential(credentialType)?.connectedByMe === true;
 }
+
+function canEditPrivateCredential(credentialType: string): boolean {
+	const credential = getSelectedPrivateCredential(credentialType);
+	return getResourcePermissions(credential?.scopes).credential.update === true;
+}
+
+function canConnectPrivateCredential(credentialType: string): boolean {
+	const credential = getSelectedPrivateCredential(credentialType);
+	return getResourcePermissions(credential?.scopes).credential.connect === true;
+}
+
+async function onConnectFromRow(credentialType: string): Promise<void> {
+	const credential = getSelectedPrivateCredential(credentialType);
+	if (!credential) return;
+	const success = await authorize(credential);
+	if (success) {
+		credentialsStore.setConnectedByMe(credential.id, true, await fetchMyAccount(credential.id));
+	}
+}
+
+/**
+ * The provider account a fresh connection authenticates as, which only the
+ * server can tell us. Purely a label — a failed lookup must not undo a
+ * successful connection.
+ */
+async function fetchMyAccount(credentialId: string): Promise<string | undefined> {
+	try {
+		const credential = await credentialsStore.getCredentialData({ id: credentialId });
+		return credential?.connectedAccountIdentifier;
+	} catch {
+		return undefined;
+	}
+}
+
+async function onDisconnectFromRow(credentialType: string): Promise<void> {
+	const credential = getSelectedPrivateCredential(credentialType);
+	if (!credential) return;
+
+	try {
+		await credentialsStore.disconnectMyConnection({ id: credential.id });
+		toast.showMessage({
+			title: i18n.baseText('credentials.private.disconnected.success'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('credentials.private.disconnected.error'));
+	}
+}
+
+// The connect / connected callout is only relevant when the workflow uses the
+// default (system) resolver, where resolution maps to the n8n user's own
+// connection. With a custom resolver (e.g. Slack, OAuth) the runtime account is
+// chosen by the resolver, not the n8n user, so their own connection state is
+// irrelevant and we don't surface it.
+const isDefaultResolver = computed(() => {
+	const resolverId = workflowDocumentStore?.value.settings?.credentialResolverId;
+	return !resolverId || resolverId === SYSTEM_RESOLVER_ID;
+});
+
+// Whether the node's current resource/operation is runnable by the AI gateway.
+// Nodes without an operation selected are treated as supported so gateway
+// auto-selection still works for operation-agnostic nodes.
+const isCurrentActionSupported = computed(() => {
+	const params = props.node.parameters;
+	const operation = params.operation as string | undefined;
+	if (!operation) return true;
+	const resource = params.resource as string | undefined;
+	return aiGateway.isActionSupported(node.value.type, resource, operation);
+});
 
 watch(
 	() => props.node.parameters,
 	(newValue, oldValue) => {
 		// When active node parameters change, check if authentication type has been changed
 		// and set `subscribedToCredentialType` to corresponding credential type
-		const isActive = props.node.name === ndvStore.activeNode?.name;
+		const isActive = props.node.name === ndvStore.value?.activeNode?.name;
 		// Only do this for active node and if it's listening for auth change
 		if (isActive && nodeType.value && listeningForAuthChange.value) {
 			if (mainNodeAuthField.value && oldValue && newValue) {
@@ -210,42 +320,75 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+let hasEvaluatedCredentials = false;
+
 // Select most recent credential by default
 watch(
 	credentialTypesNodeDescriptionDisplayed,
 	(types) => {
 		if (props.skipAutoSelect) return;
-		if (types.length === 0 || !isEmpty(selected.value)) return;
+		if (types.length === 0) return;
 
-		const allOptions = types.map((type) => type.options).flat();
+		const isInitialEvaluation = !hasEvaluatedCredentials;
+		hasEvaluatedCredentials = true;
 
-		if (allOptions.length === 0) {
-			// No credentials configured — auto-enable AI Gateway for supported types
-			if (aiGateway.isEnabled.value) {
-				for (const { type } of types) {
-					if (aiGateway.isCredentialTypeSupported(type.name)) {
-						onAiGatewaySelector(type.name, true, false);
-					}
+		if (
+			aiGateway.isEnabled.value &&
+			!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+		) {
+			for (const { type } of types) {
+				if (selected.value[type.name]?.__aiGatewayManaged) {
+					onAiGatewaySelector(type.name, false, false);
 				}
 			}
+		}
+
+		if (!isEmpty(selected.value)) return;
+
+		const autoSelected = getAutoSelectedCredential(node.value, props.overrideCredType);
+		if (autoSelected) {
+			onCredentialSelected(
+				autoSelected.credentialType,
+				autoSelected.credential.id,
+				false, // showAuthOptions
+				false, // isUserAction
+			);
 			return;
 		}
 
-		const mostRecentCredential = allOptions.reduce(
-			(mostRecent, current) =>
-				mostRecent && mostRecent.updatedAt > current.updatedAt ? mostRecent : current,
-			allOptions[0],
-		);
-
-		onCredentialSelected(
-			mostRecentCredential.type,
-			mostRecentCredential.id,
-			false, // showAuthOptions
-			false, // isUserAction
-		);
+		// No credentials available to select — auto-enable AI Gateway for supported
+		// types, but only on the initial setup so a later action change doesn't
+		// redirect the user onto n8n credits. The experiment variant leaves it unselected.
+		if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
+			for (const { type } of types) {
+				// Same rule as showAiGatewaySelector: supported type, or a sibling fallback.
+				const gatewaySupported =
+					aiGateway.isCredentialTypeSupported(type.name) ||
+					resolveGatewayActivation(type.name) !== undefined;
+				if (
+					gatewaySupported &&
+					aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
+					isCurrentActionSupported.value
+				) {
+					onAiGatewaySelector(type.name, true, false);
+				}
+			}
+		}
 	},
 	{ immediate: true },
 );
+
+function getCredentialFetchScope(): { workflowId: string } | { projectId: string } | undefined {
+	const workflowId = workflowDocumentStore?.value.workflowId;
+	if (workflowId && !workflowsStore.isNewWorkflow) {
+		return { workflowId };
+	}
+
+	const projectId =
+		props.projectId ?? projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
+
+	return projectId ? { projectId } : undefined;
+}
 
 onMounted(() => {
 	credentialsStore.$onAction(({ name, after, args }) => {
@@ -315,6 +458,11 @@ onMounted(() => {
 	});
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
+
+	const scope = props.skipCredentialsFetch ? undefined : getCredentialFetchScope();
+	if (scope) {
+		void credentialsStore.fetchAllCredentialsForWorkflow(scope);
+	}
 
 	void aiGateway.fetchConfig();
 
@@ -398,13 +546,19 @@ function createNewCredential(
 		props.suggestedCredentialName,
 		props.node.name,
 		props.node,
-		{ hideAskAssistant: props.hideAskAssistant },
+		{
+			hideAskAssistant: hideAskAssistant.value,
+			closeOnSave: true,
+			...(isToolContext ? { appendToBody: true } : {}),
+			instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
+			credentialSetupHint: props.credentialSetupHint,
+		},
 	);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
 		source: 'node',
 		new_credential: true,
-		workflow_id: props.standalone ? '' : workflowsStore.workflowId,
+		workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
 	});
 }
 
@@ -433,9 +587,23 @@ function onCredentialSelected(
 		credential_type: credentialType,
 		node_type: props.node.type,
 		...(hasProxyAuth(props.node) ? { is_service_specific: true } : {}),
-		workflow_id: props.standalone ? '' : workflowsStore.workflowId,
+		workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
 		credential_id: credentialId,
 	});
+
+	// Attribution funnel: a picked stored credential is always a user's own (BYOK)
+	// credential. Standalone hosts (Instance AI setup card) route the confirmed
+	// selection through the backend, which attributes it as `source: 'instance-ai-*'`
+	// — so only emit here for the manual canvas to avoid double-counting.
+	if (isUserAction && !props.standalone) {
+		telemetry.track('Node credential assigned', {
+			credential_type: credentialType,
+			node_type: props.node.type,
+			workflow_id: workflowDocumentStore?.value.workflowId,
+			credential_kind: 'own',
+			source: 'user',
+		});
+	}
 
 	const selectedCredentials = credentialsStore.getCredentialById(credentialId);
 	const selectedCredentialsType = props.showAll ? selectedCredentials.type : credentialType;
@@ -535,18 +703,80 @@ function isAiGatewayManagedCredentials(credentialType: string): boolean {
 	return aiGateway.isEnabled.value && selected.value[credentialType]?.__aiGatewayManaged === true;
 }
 
+// Credential type + activation parameters n8n credits should use for this row:
+// the shown type if supported, else a supported sibling (whose auth the node
+// switches to). See `resolveSupportedCredentialActivation`.
+//
+// The sibling fallback is limited to hosts consuming the full `credentialSelected`
+// payload and `valueChanged` (NDV, tool config). Setup-flow hosts (setup panel,
+// Instance AI — standalone or `overrideCredType`) key the payload by this row's
+// type, so a sibling switch reads as a deselect and the auth change is lost.
+function resolveGatewayActivation(credentialType: string) {
+	if (!nodeType.value) return undefined;
+	const activation = resolveSupportedCredentialActivation(
+		nodeType.value,
+		props.node,
+		aiGateway.isCredentialTypeSupported,
+		credentialType,
+	);
+	if (!activation) return undefined;
+	const isSetupFlowHost =
+		props.standalone ||
+		(typeof props.overrideCredType === 'string' && props.overrideCredType !== '');
+	if (activation.credentialType !== credentialType && isSetupFlowHost) return undefined;
+	return activation;
+}
+
 function showAiGatewaySelector(credentialType: string): boolean {
 	if (!aiGateway.isEnabled.value) return false;
+	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
 	if (isAiGatewayManagedCredentials(credentialType)) return true;
-	if (!aiGateway.isCredentialTypeSupported(credentialType)) return false;
-	return true;
+	// Shown type supported → toggle directly; otherwise fall back to a sibling.
+	if (aiGateway.isCredentialTypeSupported(credentialType)) return true;
+	return resolveGatewayActivation(credentialType) !== undefined;
+}
+
+// Persist the parameters that activate the chosen credential type (e.g. switch
+// `authentication`): write through the workflow document, and emit so hosts that
+// keep their own parameter copy (NDV, setup panel) stay in sync.
+function applyActivationParameters(parameters: INodeParameters): void {
+	const changed = Object.entries(parameters).filter(
+		([name, value]) => props.node.parameters[name] !== value,
+	);
+	if (changed.length === 0) return;
+
+	if (!props.standalone && workflowDocumentStore?.value) {
+		workflowDocumentStore.value.updateNodeProperties({
+			name: props.node.name,
+			properties: { parameters: { ...props.node.parameters, ...Object.fromEntries(changed) } },
+		});
+	}
+	for (const [name, value] of changed) {
+		emit('valueChanged', { name: `parameters.${name}`, value });
+	}
 }
 
 function onAiGatewaySelector(credentialType: string, enable: boolean, isUserAction = true): void {
 	const credentials = { ...(props.node.credentials ?? {}) };
 
+	// When enabling n8n credits, the managed slot goes on the supported credential
+	// type — the shown one, or a supported sibling whose auth we switch the node to.
+	const activation = enable ? resolveGatewayActivation(credentialType) : undefined;
+	const effectiveType = activation?.credentialType ?? credentialType;
+
+	// Track the credential kind actually assigned, or null when the slot is cleared
+	// (toggle-off with no credential to restore) so no false assignment is recorded.
+	let assignedKind: 'n8n_connect' | 'own' | null = null;
+
 	if (enable) {
-		credentials[credentialType] = { id: null, name: '', __aiGatewayManaged: true };
+		// Moving the managed slot to a sibling: drop a stale managed sentinel from the
+		// shown type. A user credential stays (inactive), as manual auth switches do.
+		if (effectiveType !== credentialType && credentials[credentialType]?.__aiGatewayManaged) {
+			delete credentials[credentialType];
+		}
+		if (activation) applyActivationParameters(activation.parameters);
+		credentials[effectiveType] = { id: null, name: '', __aiGatewayManaged: true };
+		assignedKind = 'n8n_connect';
 	} else {
 		// Toggle OFF: restore the most recent available credential for THIS node only.
 		// Avoid onCredentialSelected which calls replaceInvalidWorkflowCredentials and
@@ -559,6 +789,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 			const mostRecent = typeEntry.options.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b));
 			const restoredCredential = credentialsStore.getCredentialById(mostRecent.id);
 			credentials[credentialType] = { id: restoredCredential.id, name: restoredCredential.name };
+			assignedKind = 'own';
 		} else {
 			delete credentials[credentialType];
 		}
@@ -566,18 +797,29 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 
 	if (isUserAction) {
 		telemetry.track('User toggled n8n connect credential', {
-			credential_type: credentialType,
+			credential_type: effectiveType,
 			node_type: props.node.type,
 			mode: enable ? 'n8n_connect' : 'own',
-			workflow_id: props.standalone ? '' : workflowsStore.workflowId,
+			workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
 		});
+		// Only the manual canvas is attributed to the user here; standalone
+		// (Instance AI) assignments are counted by the backend as `instance-ai-*`.
+		if (!props.standalone && assignedKind) {
+			telemetry.track('Node credential assigned', {
+				credential_type: effectiveType,
+				node_type: props.node.type,
+				workflow_id: workflowDocumentStore?.value.workflowId,
+				credential_kind: assignedKind,
+				source: 'user',
+			});
+		}
 	}
 
 	emit('credentialSelected', {
 		name: props.node.name,
 		properties: { credentials },
 	});
-	void aiGateway.saveAfterToggle();
+	if (!props.standalone) void aiGateway.saveAfterToggle();
 }
 
 function getIssues(credentialTypeName: string): string[] {
@@ -597,18 +839,23 @@ function editCredential(credentialType: string): void {
 	const credential = props.node.credentials?.[credentialType];
 	assert(credential?.id);
 
-	uiStore.openExistingCredential(credential.id, { hideAskAssistant: props.hideAskAssistant });
+	uiStore.openExistingCredential(credential.id, {
+		hideAskAssistant: hideAskAssistant.value,
+		...(isToolContext ? { appendToBody: true } : {}),
+		instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
+	});
 
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
 		source: 'node',
 		new_credential: false,
-		workflow_id: props.standalone ? '' : workflowsStore.workflowId,
+		workflow_id: props.standalone ? '' : workflowDocumentStore?.value.workflowId,
 	});
 	subscribedToCredentialType.value = credentialType;
 }
 
 function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
+	if (props.credentialsFieldLabel) return props.credentialsFieldLabel;
 	if (credentialType.displayName) return credentialType.displayName;
 	const credentialTypeName = credentialTypeNames.value[credentialType.name];
 	const isCredentialOnlyNode = props.node.type.startsWith(CREDENTIAL_ONLY_NODE_PREFIX);
@@ -646,19 +893,36 @@ function getServiceName(credentialTypeName: string): string {
 	return getAppNameFromCredType(displayName);
 }
 
-const quickConnectCredentialType = computed(() => {
-	return credentialTypesNodeDescriptions.value.find(
-		(t) =>
-			!!getQuickConnectOption(t.name, props.node.type) || canOAuthCredentialQuickConnect(t.name),
-	)?.name;
-});
+function getRelatedCredentialTypes(type: INodeCredentialDescription): INodeCredentialDescription[] {
+	const authFieldName = mainNodeAuthField.value?.name;
+	// if not the main auth field, return the type itself
+	if (!authFieldName || !type.displayOptions?.show?.[authFieldName]) {
+		return [type];
+	}
+
+	// otherwise, return all credential types that show the main auth field
+	return credentialTypesNodeDescriptions.value.filter(
+		(credentialType) => credentialType.displayOptions?.show?.[authFieldName],
+	);
+}
+
+function canQuickConnect(credentialType: INodeCredentialDescription): boolean {
+	return (
+		!!getQuickConnectOption(credentialType.name, props.node.type) ||
+		canOAuthCredentialQuickConnect(credentialType.name)
+	);
+}
+
+function getQuickConnectCredentialType(type: INodeCredentialDescription): string | undefined {
+	return getRelatedCredentialTypes(type).find(canQuickConnect)?.name;
+}
 
 function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
-	return !isCredentialExisting(type) && !!quickConnectCredentialType.value;
+	return !isCredentialExisting(type) && !!getQuickConnectCredentialType(type);
 }
 
 function showStandardEmptyState(type: INodeCredentialDescription): boolean {
-	return !isCredentialExisting(type) && !quickConnectCredentialType.value;
+	return !isCredentialExisting(type) && !getQuickConnectCredentialType(type);
 }
 
 function canManuallySetUpCredential(credentialTypeName: string): boolean {
@@ -718,20 +982,41 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					:credential-type="type.name"
 					@toggle="onAiGatewaySelector(type.name, $event)"
 				/>
-				<div v-if="readonly && !isAiGatewayManagedCredentials(type.name)">
+				<div
+					v-if="readonly && !isAiGatewayManagedCredentials(type.name)"
+					:class="[
+						$style.selectContainer,
+						{
+							[$style.inputWithPrivateRow]:
+								getSelectedPrivateCredential(type.name) && isDefaultResolver,
+						},
+					]"
+				>
 					<N8nInput
 						:model-value="getSelectedName(type.name)"
 						disabled
 						size="small"
 						data-test-id="node-credentials-select"
 					/>
+					<div
+						v-if="isCredentialResolvable(type.name)"
+						:class="[$style.dynamicIndicator, $style.dynamicIndicatorReadonly]"
+					>
+						<N8nTooltip placement="top">
+							<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
+							<N8nIcon
+								icon="user-round-key"
+								size="small"
+								data-test-id="node-credential-private-icon"
+							/>
+						</N8nTooltip>
+					</div>
 				</div>
 				<div
 					v-else-if="
-						!standalone &&
 						options.length === 0 &&
 						showQuickConnectEmptyState(type) &&
-						quickConnectCredentialType &&
+						getQuickConnectCredentialType(type) &&
 						!isAiGatewayManagedCredentials(type.name)
 					"
 					:class="[$style.quickConnectContainer]"
@@ -740,9 +1025,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					<QuickConnectButton
 						size="small"
 						:disabled="quickConnectLoading"
-						:credential-type-name="quickConnectCredentialType"
-						:service-name="getServiceName(quickConnectCredentialType)"
-						@click="onQuickConnectSignIn(quickConnectCredentialType)"
+						:credential-type-name="getQuickConnectCredentialType(type) ?? type.name"
+						:service-name="getServiceName(getQuickConnectCredentialType(type) ?? type.name)"
+						@click="onQuickConnectSignIn(getQuickConnectCredentialType(type) ?? type.name)"
 					/>
 					<span v-if="canManuallySetUpCredential(type.name)" :class="$style.setupManuallyContainer">
 						<N8nText size="small" :class="$style.setupManuallyOr">
@@ -767,11 +1052,27 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					data-test-id="node-credentials-empty-state"
 				>
 					<N8nSelect
+						ref="selectRefs"
 						:class="$style.emptySelect"
 						size="small"
-						disabled
+						:disabled="!canCreateCredentials"
 						:placeholder="i18n.baseText('nodeCredentials.emptyState.noCredentials')"
-					/>
+						:popper-class="$style.selectPopper"
+					>
+						<template #empty> </template>
+						<template #footer>
+							<button
+								type="button"
+								data-test-id="node-credentials-select-item-new"
+								:class="[$style.newCredential]"
+								:disabled="!canCreateCredentials"
+								@click="onClickCreateCredential(type)"
+							>
+								<N8nIcon size="xsmall" icon="plus" />
+								{{ NEW_CREDENTIALS_TEXT }}
+							</button>
+						</template>
+					</N8nSelect>
 					<N8nButton
 						v-if="canCreateCredentials"
 						variant="subtle"
@@ -784,7 +1085,19 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 				<div
 					v-else-if="!isAiGatewayManagedCredentials(type.name)"
-					:class="getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input"
+					:class="[
+						getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input,
+						{
+							[$style.inputWithPrivateRowEditable]:
+								getSelectedPrivateCredential(type.name) &&
+								isDefaultResolver &&
+								canEditPrivateCredential(type.name),
+							[$style.inputWithPrivateRow]:
+								getSelectedPrivateCredential(type.name) &&
+								isDefaultResolver &&
+								!canEditPrivateCredential(type.name),
+						},
+					]"
 					data-test-id="node-credentials-select"
 				>
 					<div :class="$style.selectContainer">
@@ -814,17 +1127,16 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									<div :class="$style.credentialOptionName">
 										<N8nText bold>{{ item.name }}</N8nText>
 										<N8nTooltip
-											v-if="isDynamicCredentialsEnabled && item.isResolvable"
+											v-if="isPrivateCredentialsEnabled && item.isResolvable"
 											placement="top"
 										>
 											<template #content>{{
-												i18n.baseText('credentials.dynamic.tooltip')
+												i18n.baseText('credentials.private.tooltip')
 											}}</template>
 											<N8nIcon
-												icon="key-round"
-												size="medium"
-												:class="$style.dynamicIcon"
-												data-test-id="credential-option-dynamic-icon"
+												icon="user-round-key"
+												size="small"
+												data-test-id="credential-option-private-badge"
 											/>
 										</N8nTooltip>
 									</div>
@@ -847,17 +1159,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						</N8nSelect>
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
 							<N8nTooltip placement="top">
-								<template #content>{{ i18n.baseText('credentials.dynamic.tooltip') }}</template>
-								<N8nBadge
-									theme="tertiary"
-									class="pl-3xs pr-3xs"
-									data-test-id="node-credential-dynamic-icon"
-								>
-									<span :class="$style.dynamicBadgeText">
-										<N8nIcon icon="key-round" size="medium" />
-										{{ i18n.baseText('credentials.dynamic.badge') }}
-									</span>
-								</N8nBadge>
+								<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
+								<N8nIcon
+									icon="user-round-key"
+									size="small"
+									data-test-id="node-credential-private-icon"
+								/>
 							</N8nTooltip>
 						</div>
 					</div>
@@ -875,7 +1182,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					</div>
 
 					<div
-						v-if="selected[type.name] && isCredentialExisting(type)"
+						v-if="
+							selected[type.name] &&
+							isCredentialExisting(type) &&
+							(!getSelectedPrivateCredential(type.name) || canEditPrivateCredential(type.name))
+						"
 						:class="$style.edit"
 						data-test-id="credential-edit-button"
 					>
@@ -887,25 +1198,20 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						/>
 					</div>
 				</div>
-				<N8nNotice
-					v-if="showResolvableWarning(type.name)"
-					theme="warning"
-					:class="$style.resolverWarning"
-					data-test-id="node-credential-resolver-warning"
-				>
-					<I18nT keypath="credentials.dynamic.warning.noResolver" tag="span" scope="global">
-						<template #workflowSettings>
-							<N8nLink @click="openWorkflowSettings">
-								{{ i18n.baseText('credentials.dynamic.warning.noResolver.workflowSettings') }}
-							</N8nLink>
-						</template>
-						<template v-if="dynamicCredentialsDocsUrl" #documentation>
-							<N8nLink :href="dynamicCredentialsDocsUrl" new-window>
-								{{ i18n.baseText('credentials.dynamic.warning.noResolver.documentation') }}
-							</N8nLink>
-						</template>
-					</I18nT>
-				</N8nNotice>
+				<CredentialPrivateConnectionRow
+					v-if="getSelectedPrivateCredential(type.name) && isDefaultResolver"
+					:credential-type-name="type.name"
+					:credential-name="getServiceName(type.name)"
+					:is-connected="isPrivateConnected(type.name)"
+					:connected-account-name="
+						getSelectedPrivateCredential(type.name)?.connectedAccountIdentifier
+					"
+					:can-connect="canConnectPrivateCredential(type.name)"
+					data-test-id="node-credential-private-row"
+					@connect="onConnectFromRow(type.name)"
+					@switch-account="onConnectFromRow(type.name)"
+					@disconnect="onDisconnectFromRow(type.name)"
+				/>
 			</N8nInputLabel>
 		</div>
 	</div>
@@ -966,6 +1272,45 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	flex: 1;
 }
 
+/* Merge the select visually with the private connection row below it.
+   The container owns the border (same token as the row) so the merged block
+   reads as one element; the inner input's own border is disabled. Covers both
+   the new N8nInput (--input--radius--*) and the element-plus based select
+   (--input-triple--radius--*) corner variables. */
+.inputWithPrivateRow {
+	--input--radius--bottom-left: 0;
+	--input--radius--bottom-right: 0;
+	--input-triple--radius--bottom-right: 0;
+	--input--border-color: transparent;
+	border: var(--border-width, 1px) solid var(--border-color);
+	border-radius: var(--radius) var(--radius) 0 0;
+
+	/* N8nInput redefines --input--border-color on its own root, so the
+	   ancestor-level override above doesn't reach it */
+	:global(.n8n-input) {
+		--input--border-color: transparent;
+	}
+}
+
+/* Editable variant: select + edit pen wrapped in a shared bordered container
+   whose bottom edge connects to the private connection row */
+.inputWithPrivateRowEditable {
+	--input--border-color: transparent;
+	--input-triple--radius--top-right: 0;
+	--input-triple--radius--bottom-right: 0;
+	border: var(--border-width, 1px) solid var(--border-color);
+	border-radius: var(--radius) var(--radius) 0 0;
+	padding-right: var(--spacing--2xs);
+
+	.selectContainer {
+		border-right: var(--border-width, 1px) solid var(--border-color);
+	}
+
+	.edit {
+		margin-left: var(--spacing--2xs);
+	}
+}
+
 .hasIssues {
 	composes: input;
 	--input--border-color: var(--color--danger);
@@ -1000,16 +1345,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	z-index: 1;
 }
 
-.dynamicBadgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	height: 18px;
-}
-
-.resolverWarning {
-	margin-top: var(--spacing--2xs);
+.dynamicIndicatorReadonly {
+	right: var(--spacing--xs);
 }
 
 .newCredential {

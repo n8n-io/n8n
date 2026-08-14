@@ -1,7 +1,7 @@
-import { FileSystemError } from './abstract/filesystem.error';
+import { UserError } from 'n8n-workflow';
 
-export class DisallowedFilepathError extends FileSystemError {
+export class DisallowedFilepathError extends UserError {
 	constructor(filePath: string) {
-		super('Disallowed path detected', filePath);
+		super('Disallowed path detected', { extra: { filePath } });
 	}
 }

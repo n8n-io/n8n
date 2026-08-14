@@ -1,0 +1,42 @@
+type: object
+properties:
+  id:
+    type: string
+    example: 9f8e7d6c5b4a3210
+  status:
+    type: string
+    enum: ['new', 'running', 'completed', 'error', 'cancelled']
+  runAt:
+    type: string
+    format: date-time
+    nullable: true
+  completedAt:
+    type: string
+    format: date-time
+    nullable: true
+  metrics:
+    type: object
+    nullable: true
+    additionalProperties: true
+    description: Aggregated metrics collected across the run's test cases.
+  errorCode:
+    type: string
+    nullable: true
+  errorDetails:
+    type: object
+    nullable: true
+    additionalProperties: true
+  finalResult:
+    type: string
+    nullable: true
+    enum: ['success', 'error', 'warning']
+    description: Overall result of the run, derived from its test cases once completed.
+  testCaseCount:
+    type: integer
+    example: 42
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time

@@ -5,18 +5,18 @@ import { wordpressApiRequest, wordpressApiRequestAllItems } from '../GenericFunc
 describe('Wordpress > GenericFunctions', () => {
 	const mockFunctions: any = {
 		helpers: {
-			requestWithAuthentication: jest.fn(),
+			requestWithAuthentication: vi.fn(),
 		},
-		getCredentials: jest.fn().mockResolvedValue({
+		getCredentials: vi.fn().mockResolvedValue({
 			url: 'http://example.com',
 			allowUnauthorizedCerts: false,
 		}),
-		getNode: jest.fn(),
-		getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
+		getNode: vi.fn(),
+		getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockFunctions.getNodeParameter.mockReturnValue('basicAuth');
 		mockFunctions.getCredentials.mockResolvedValue({
 			url: 'http://example.com',
@@ -44,6 +44,26 @@ describe('Wordpress > GenericFunctions', () => {
 					rejectUnauthorized: true,
 				}),
 			);
+		});
+
+		it('should set Cache-Control to no-cache for write requests', async () => {
+			mockFunctions.helpers.requestWithAuthentication.mockResolvedValue({ data: 'testData' });
+			await wordpressApiRequest.call(mockFunctions, 'POST', '/posts', {}, {});
+
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'wordpressApi',
+				expect.objectContaining({
+					headers: expect.objectContaining({ 'Cache-Control': 'no-cache' }),
+				}),
+			);
+		});
+
+		it('should not set Cache-Control for GET requests', async () => {
+			mockFunctions.helpers.requestWithAuthentication.mockResolvedValue({ data: 'testData' });
+			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
+
+			const callArgs = mockFunctions.helpers.requestWithAuthentication.mock.calls[0][1];
+			expect(callArgs.headers).not.toHaveProperty('Cache-Control');
 		});
 
 		it('should throw NodeApiError on failure', async () => {

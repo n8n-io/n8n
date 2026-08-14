@@ -34,6 +34,7 @@ export const memorySessionKeyExpression: BinaryCheck = {
 	name: 'memory_session_key_expression',
 	description: 'AI memory custom session keys use explicit source node references',
 	kind: 'deterministic',
+	dimension: 'ai_nodes',
 	run(workflow) {
 		const connectedMemoryNodeNames = collectSourcesByConnectionType(
 			workflow.connections ?? {},
@@ -42,6 +43,8 @@ export const memorySessionKeyExpression: BinaryCheck = {
 		const memoryNodes = (workflow.nodes ?? []).filter(
 			(node) => connectedMemoryNodeNames.has(node.name) && isMemoryNode(node.type),
 		);
+
+		if (memoryNodes.length === 0) return { pass: true, applicable: false };
 
 		const issues = memoryNodes.flatMap((node) =>
 			getUnsafeSessionKeyParameters(node).map(

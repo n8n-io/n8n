@@ -149,6 +149,8 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 		columnName: (name) => queryRunner.connection.driver.escape(name),
 		tableName: (name) => queryRunner.connection.driver.escape(`${tablePrefix}${name}`),
 		indexName: (name) => queryRunner.connection.driver.escape(`IDX_${tablePrefix}${name}`),
+		triggerName: (name) => queryRunner.connection.driver.escape(`${tablePrefix}${name}`),
+		functionName: (name) => queryRunner.connection.driver.escape(`${tablePrefix}${name}`),
 	},
 	runQuery: async <T>(sql: string, namedParameters?: ObjectLiteral) => {
 		if (namedParameters) {

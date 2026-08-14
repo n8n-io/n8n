@@ -82,10 +82,10 @@ test.describe(
 			await expect(n8n.page).toHaveURL(/\/workflow\/.+\?templateId=.+&new=true/);
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
 
-			await expect(n8n.templateCredentialSetup.getCanvasSetupButton()).toBeVisible();
-
-			// Open modal via button click
-			await n8n.templateCredentialSetup.getCanvasSetupButton().click();
+			// In the variant experiment, the setup modal auto-opens on mount of
+			// SetupWorkflowCredentialsButton when arriving on the template import route.
+			// Wait for the auto-opened modal rather than clicking the button — the
+			// click races with the auto-open and can be intercepted by the modal.
 			await expect(n8n.templateCredentialSetup.getCanvasCredentialModal()).toBeVisible();
 
 			const modalSteps = n8n.templateCredentialSetup.getSetupCredentialModalSteps();

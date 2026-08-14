@@ -80,8 +80,9 @@ export class UnsupportedNodeError extends InterpreterError {
 export class SecurityError extends InterpreterError {
 	readonly pattern: string;
 
-	constructor(pattern: string, location?: SourceLocation, sourceCode?: string) {
-		super(`Security violation: '${pattern}' is not allowed`, location, sourceCode);
+	/** Pass `detail` for sentence-style messages to avoid double-wrapping `pattern`. */
+	constructor(pattern: string, location?: SourceLocation, sourceCode?: string, detail?: string) {
+		super(detail ?? `Security violation: '${pattern}' is not allowed`, location, sourceCode);
 		this.name = 'SecurityError';
 		this.pattern = pattern;
 	}

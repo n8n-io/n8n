@@ -2,14 +2,16 @@ import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
 import { ProjectRepository } from '@n8n/db';
-import { RoleRepository, UserRepository } from '@n8n/db';
+import { RoleMappingRuleRepository, RoleRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ALL_ROLES } from '@n8n/permissions';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
+import { ProvisioningRoleDeletionChecker } from '@/modules/provisioning.ee/role-deletion-checker.ee';
 import { ProjectService } from '@/services/project.service.ee';
+import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
 import { RoleService } from '@/services/role.service';
 
 import {
@@ -19,7 +21,7 @@ import {
 	createTestScopes,
 	cleanupRolesAndScopes,
 } from '../shared/db/roles';
-import { createMember } from '../shared/db/users';
+import { createMember, createUser } from '../shared/db/users';
 
 let roleService: RoleService;
 let roleRepository: RoleRepository;
@@ -162,7 +164,7 @@ describe('RoleService', () => {
 				displayName: 'System Test Role',
 			});
 
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 
 			//
 			// ACT
@@ -218,7 +220,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock roleRepository.findAllRoleCounts to return predictable usage counts
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 			mockfindAllRoleCounts.mockResolvedValue({
 				[customRole.slug]: 3,
 				[systemRole.slug]: 1,
@@ -274,7 +276,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock roleRepository.findAllRoleCounts to return 0 for all roles
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 			mockfindAllRoleCounts.mockResolvedValue({ [unusedRole.slug]: 0 });
 
 			//
@@ -309,7 +311,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock different usage counts for each role
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 			mockfindAllRoleCounts.mockResolvedValue({
 				[customRole1.slug]: 5,
 				[customRole2.slug]: 2,
@@ -355,7 +357,7 @@ describe('RoleService', () => {
 			);
 
 			// Mock usage count
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 			mockfindAllRoleCounts.mockResolvedValue({
 				[fullRole.slug]: 7,
 			});
@@ -402,7 +404,7 @@ describe('RoleService', () => {
 			const role1 = await createCustomRoleWithScopes([testScopes.readScope]);
 			const role2 = await createSystemRole();
 
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 			mockfindAllRoleCounts.mockResolvedValue({
 				[role1.slug]: 4,
 				[role2.slug]: 6,
@@ -429,7 +431,7 @@ describe('RoleService', () => {
 			const testScopes = await createTestScopes();
 			await createCustomRoleWithScopes([testScopes.readScope]);
 
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 
 			//
 			// ACT
@@ -490,6 +492,56 @@ describe('RoleService', () => {
 		});
 	});
 
+	describe('getRoleMembers', () => {
+		it('should return members and total for a global role', async () => {
+			//
+			// ARRANGE
+			//
+			const globalRole = await createRole({
+				roleType: 'global',
+				displayName: 'Global Members Role',
+			});
+			const user1 = await createUser({ role: globalRole });
+			const user2 = await createUser({ role: globalRole });
+
+			//
+			// ACT
+			//
+			const result = await roleService.getRoleMembers(globalRole.slug);
+
+			//
+			// ASSERT
+			//
+			expect(result.total).toBe(2);
+			expect(result.members).toEqual(
+				expect.arrayContaining(
+					[user1, user2].map((u) =>
+						expect.objectContaining({ userId: u.id, email: u.email, role: globalRole.slug }),
+					),
+				),
+			);
+		});
+
+		it('should throw NotFoundError when the role does not exist', async () => {
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.getRoleMembers('non-existent-role')).rejects.toThrow(NotFoundError);
+		});
+
+		it('should throw BadRequestError when the role is not a global role', async () => {
+			//
+			// ARRANGE
+			//
+			const projectRole = await createRole({ roleType: 'project' });
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.getRoleMembers(projectRole.slug)).rejects.toThrow(BadRequestError);
+		});
+	});
+
 	describe('getRole with usage counting', () => {
 		it('should return role without usage count when withCount=false', async () => {
 			//
@@ -537,7 +589,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock roleRepository.countUsersWithRole to return predictable count
-			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			const mockCountUsersWithRole = vi.spyOn(roleRepository, 'countUsersWithRole');
 			mockCountUsersWithRole.mockResolvedValue(5);
 
 			//
@@ -593,7 +645,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock higher usage count for system role
-			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			const mockCountUsersWithRole = vi.spyOn(roleRepository, 'countUsersWithRole');
 			mockCountUsersWithRole.mockResolvedValue(12);
 
 			//
@@ -632,7 +684,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock countUsersWithRole to return 0
-			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			const mockCountUsersWithRole = vi.spyOn(roleRepository, 'countUsersWithRole');
 			mockCountUsersWithRole.mockResolvedValue(0);
 
 			//
@@ -671,7 +723,7 @@ describe('RoleService', () => {
 			);
 
 			// Mock usage count
-			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			const mockCountUsersWithRole = vi.spyOn(roleRepository, 'countUsersWithRole');
 			mockCountUsersWithRole.mockResolvedValue(8);
 
 			//
@@ -712,7 +764,7 @@ describe('RoleService', () => {
 			const testScopes = await createTestScopes();
 			const testRole = await createCustomRoleWithScopes([testScopes.readScope]);
 
-			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			const mockCountUsersWithRole = vi.spyOn(roleRepository, 'countUsersWithRole');
 			mockCountUsersWithRole.mockResolvedValue(3);
 
 			//
@@ -749,7 +801,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock different usage counts for different roles
-			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			const mockCountUsersWithRole = vi.spyOn(roleRepository, 'countUsersWithRole');
 			mockCountUsersWithRole.mockImplementation(async (role) => {
 				if (role.slug === role1.slug) return 15;
 				if (role.slug === role2.slug) return 3;
@@ -786,12 +838,11 @@ describe('RoleService', () => {
 			//
 			// ARRANGE
 			//
-			const testScopes = await createTestScopes();
 			const createRoleDto: CreateRoleDto = {
 				displayName: 'Test Custom Role',
 				description: 'A test custom role',
 				roleType: 'project',
-				scopes: [testScopes.readScope.slug, testScopes.writeScope.slug],
+				scopes: ['workflow:read', 'workflow:create'],
 			};
 
 			//
@@ -820,15 +871,52 @@ describe('RoleService', () => {
 			expect(savedRole?.displayName).toBe(createRoleDto.displayName);
 		});
 
+		it('should create a global custom role with valid data', async () => {
+			//
+			// ARRANGE
+			//
+			const createRoleDto: CreateRoleDto = {
+				displayName: 'Test Global Role',
+				description: 'A test global custom role',
+				roleType: 'global',
+				scopes: ['user:read', 'role:read'],
+			};
+
+			//
+			// ACT
+			//
+			const result = await roleService.createCustomRole(createRoleDto);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				displayName: createRoleDto.displayName,
+				description: createRoleDto.description,
+				systemRole: false,
+				roleType: 'global',
+				scopes: expect.arrayContaining(createRoleDto.scopes),
+				licensed: expect.any(Boolean),
+			});
+
+			// Verify slug was generated with the global namespace
+			expect(result.slug).toMatch(/^global:test-global-role-[a-z0-9]{6}$/);
+
+			// Verify role was saved to database
+			const savedRole = await roleRepository.findBySlug(result.slug);
+			expect(savedRole).toBeDefined();
+			expect(savedRole?.roleType).toBe('global');
+			expect(savedRole?.systemRole).toBe(false);
+		});
+
 		it('should create custom role without description', async () => {
 			//
 			// ARRANGE
 			//
-			const testScopes = await createTestScopes();
 			const createRoleDto: CreateRoleDto = {
 				displayName: 'No Description Role',
 				roleType: 'project',
-				scopes: [testScopes.readScope.slug],
+				scopes: ['workflow:read'],
 			};
 
 			//
@@ -889,11 +977,10 @@ describe('RoleService', () => {
 			//
 			// ARRANGE
 			//
-			const testScopes = await createTestScopes();
 			const createRoleDto: CreateRoleDto = {
 				displayName: 'Complex Role Name With Spaces & Special Characters!',
 				roleType: 'project',
-				scopes: [testScopes.readScope.slug],
+				scopes: ['workflow:read'],
 			};
 
 			//
@@ -912,11 +999,10 @@ describe('RoleService', () => {
 		});
 
 		it('should throw BadRequestError when a role with the same display name already exists', async () => {
-			const testScopes = await createTestScopes();
 			const createRoleDto: CreateRoleDto = {
 				displayName: 'Existing Role',
 				roleType: 'project',
-				scopes: [testScopes.readScope.slug],
+				scopes: ['workflow:read'],
 			};
 
 			await roleService.createCustomRole(createRoleDto);
@@ -924,7 +1010,7 @@ describe('RoleService', () => {
 			const duplicateRoleDto: CreateRoleDto = {
 				displayName: 'Existing Role',
 				roleType: 'project',
-				scopes: [testScopes.writeScope.slug],
+				scopes: ['workflow:create'],
 			};
 
 			await expect(roleService.createCustomRole(duplicateRoleDto)).rejects.toThrow(BadRequestError);
@@ -938,6 +1024,7 @@ describe('RoleService', () => {
 			//
 			const testScopes = await createTestScopes();
 			const existingRole = await createCustomRoleWithScopes([testScopes.readScope], {
+				slug: `project:original-role-${Math.random().toString(36).substring(7)}`,
 				displayName: 'Original Role',
 				description: 'Original description',
 			});
@@ -945,7 +1032,7 @@ describe('RoleService', () => {
 			const updateRoleDto: UpdateRoleDto = {
 				displayName: 'Updated Role',
 				description: 'Updated description',
-				scopes: [testScopes.writeScope.slug, testScopes.deleteScope.slug],
+				scopes: ['workflow:update', 'workflow:delete'],
 			};
 
 			//
@@ -967,6 +1054,69 @@ describe('RoleService', () => {
 			const updatedRole = await roleRepository.findBySlug(existingRole.slug);
 			expect(updatedRole?.displayName).toBe(updateRoleDto.displayName);
 			expect(updatedRole?.description).toBe(updateRoleDto.description);
+		});
+
+		it('should update a global custom role with valid data', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const existingRole = await createCustomRoleWithScopes([testScopes.readScope], {
+				slug: `global:original-global-role-${Math.random().toString(36).substring(7)}`,
+				displayName: 'Original Global Role',
+				description: 'Original description',
+				roleType: 'global',
+			});
+
+			const updateRoleDto: UpdateRoleDto = {
+				displayName: 'Updated Global Role',
+				description: 'Updated description',
+				scopes: ['user:read'],
+			};
+
+			//
+			// ACT
+			//
+			const result = await roleService.updateCustomRole(existingRole.slug, updateRoleDto);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				slug: existingRole.slug,
+				displayName: updateRoleDto.displayName,
+				description: updateRoleDto.description,
+				roleType: 'global',
+				scopes: expect.arrayContaining(updateRoleDto.scopes as string[]),
+			});
+
+			const updatedRole = await roleRepository.findBySlug(existingRole.slug);
+			expect(updatedRole?.roleType).toBe('global');
+			expect(updatedRole?.displayName).toBe(updateRoleDto.displayName);
+		});
+
+		it('should throw BadRequestError when trying to update a system role', async () => {
+			//
+			// ARRANGE
+			//
+			const systemRole = await createSystemRole({
+				displayName: 'System Global Role',
+				roleType: 'global',
+			});
+
+			const updateRoleDto: UpdateRoleDto = {
+				displayName: 'Updated System Role',
+			};
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.updateCustomRole(systemRole.slug, updateRoleDto)).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(roleService.updateCustomRole(systemRole.slug, updateRoleDto)).rejects.toThrow(
+				'Cannot update system roles',
+			);
 		});
 
 		it('should update displayName when provided', async () => {
@@ -1102,6 +1252,35 @@ describe('RoleService', () => {
 			expect(deletedRole).toBeNull();
 		});
 
+		it('should remove a global custom role successfully', async () => {
+			//
+			// ARRANGE
+			//
+			const customRole = await createRole({
+				displayName: 'Global Role to Delete',
+				systemRole: false,
+				roleType: 'global',
+			});
+
+			//
+			// ACT
+			//
+			const result = await roleService.removeCustomRole(customRole.slug);
+
+			//
+			// ASSERT
+			//
+			expect(result).toMatchObject({
+				slug: customRole.slug,
+				displayName: customRole.displayName,
+				roleType: 'global',
+				systemRole: false,
+			});
+
+			const deletedRole = await roleRepository.findBySlug(customRole.slug);
+			expect(deletedRole).toBeNull();
+		});
+
 		it('should throw NotFoundError when role does not exist', async () => {
 			//
 			// ARRANGE
@@ -1190,6 +1369,175 @@ describe('RoleService', () => {
 			await expect(roleService.removeCustomRole(roleInUse.slug)).rejects.toThrow(
 				'Cannot delete role assigned to users',
 			);
+		});
+
+		it('should reassign globally assigned users to another role, then delete', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const roleInUse = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Role In Use',
+				roleType: 'global',
+			});
+			const targetRole = await createRole({
+				displayName: 'Target Role',
+				roleType: 'global',
+				systemRole: false,
+			});
+
+			const user = await createMember();
+			user.role = roleInUse;
+			await userRepository.save(user);
+
+			//
+			// ACT
+			//
+			const result = await roleService.removeCustomRole(roleInUse.slug, targetRole.slug);
+
+			//
+			// ASSERT
+			//
+			expect(result.slug).toBe(roleInUse.slug);
+			expect(await roleRepository.findBySlug(roleInUse.slug)).toBeNull();
+
+			const reassignedUser = await userRepository.findOneOrFail({
+				where: { id: user.id },
+				relations: ['role'],
+			});
+			expect(reassignedUser.role.slug).toBe(targetRole.slug);
+		});
+
+		it('should throw when the reassignment role does not exist', async () => {
+			const testScopes = await createTestScopes();
+			const roleInUse = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Role In Use',
+				roleType: 'global',
+			});
+			const user = await createMember();
+			user.role = roleInUse;
+			await userRepository.save(user);
+
+			await expect(
+				roleService.removeCustomRole(roleInUse.slug, 'global:does-not-exist'),
+			).rejects.toThrow('Reassignment role "global:does-not-exist" does not exist');
+
+			// Role is preserved when reassignment fails.
+			expect(await roleRepository.findBySlug(roleInUse.slug)).not.toBeNull();
+		});
+
+		it('should throw when the reassignment role is of a different type', async () => {
+			const testScopes = await createTestScopes();
+			const roleInUse = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Global Role In Use',
+				roleType: 'global',
+			});
+			const projectTarget = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Project Target',
+				roleType: 'project',
+			});
+			const user = await createMember();
+			user.role = roleInUse;
+			await userRepository.save(user);
+
+			await expect(
+				roleService.removeCustomRole(roleInUse.slug, projectTarget.slug),
+			).rejects.toThrow('Reassignment role must be of the same type as the deleted role');
+		});
+
+		it('should throw when reassigning users to the role being deleted', async () => {
+			const testScopes = await createTestScopes();
+			const roleInUse = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Role In Use',
+				roleType: 'global',
+			});
+			const user = await createMember();
+			user.role = roleInUse;
+			await userRepository.save(user);
+
+			await expect(roleService.removeCustomRole(roleInUse.slug, roleInUse.slug)).rejects.toThrow(
+				'Cannot reassign users to the role being deleted',
+			);
+		});
+
+		it('should ignore the reassignment role when no users are assigned', async () => {
+			const targetRole = await createRole({
+				displayName: 'Target Role',
+				roleType: 'global',
+				systemRole: false,
+			});
+			const unusedRole = await createRole({
+				displayName: 'Unused Role',
+				roleType: 'global',
+				systemRole: false,
+			});
+
+			const result = await roleService.removeCustomRole(unusedRole.slug, targetRole.slug);
+
+			expect(result.slug).toBe(unusedRole.slug);
+			expect(await roleRepository.findBySlug(unusedRole.slug)).toBeNull();
+		});
+
+		describe('when referenced by an SSO role mapping rule', () => {
+			let roleMappingRuleRepository: RoleMappingRuleRepository;
+
+			beforeAll(() => {
+				roleMappingRuleRepository = Container.get(RoleMappingRuleRepository);
+				// Mirror how the provisioning module registers its checker on init,
+				// so the core guard can see mapping-rule references.
+				Container.get(RoleDeletionCheckProxy).registerProvider(
+					Container.get(ProvisioningRoleDeletionChecker),
+				);
+			});
+
+			afterEach(async () => {
+				await roleMappingRuleRepository.delete({});
+			});
+
+			it('should block deletion of a role still targeted by a mapping rule', async () => {
+				//
+				// ARRANGE
+				//
+				const role = await createRole({
+					displayName: 'Mapped Role',
+					roleType: 'global',
+					systemRole: false,
+				});
+				await roleMappingRuleRepository.save(
+					roleMappingRuleRepository.create({
+						expression: "{{ $claims.department === 'audit' }}",
+						role,
+						type: 'instance',
+						order: 0,
+					}),
+				);
+
+				//
+				// ACT & ASSERT
+				//
+				await expect(roleService.removeCustomRole(role.slug)).rejects.toThrow(BadRequestError);
+				await expect(roleService.removeCustomRole(role.slug)).rejects.toThrow(
+					'Cannot delete role: referenced by 1 role mapping rule',
+				);
+
+				// Role is preserved, not silently orphaned.
+				const stillExists = await roleRepository.findBySlug(role.slug);
+				expect(stillExists).not.toBeNull();
+			});
+
+			it('should allow deletion once no mapping rule references the role', async () => {
+				const role = await createRole({
+					displayName: 'Unmapped Role',
+					roleType: 'global',
+					systemRole: false,
+				});
+
+				const result = await roleService.removeCustomRole(role.slug);
+
+				expect(result.slug).toEqual(role.slug);
+				const deletedRole = await roleRepository.findBySlug(role.slug);
+				expect(deletedRole).toBeNull();
+			});
 		});
 	});
 
@@ -1282,7 +1630,7 @@ describe('RoleService', () => {
 
 	describe('isRoleLicensed', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it.each([
@@ -1297,7 +1645,7 @@ describe('RoleService', () => {
 				// ARRANGE
 				//
 				const mockLicenseResult = true;
-				jest.spyOn(licenseState, licenseMethod).mockReturnValue(mockLicenseResult);
+				vi.spyOn(licenseState, licenseMethod).mockReturnValue(mockLicenseResult);
 
 				//
 				// ACT
@@ -1324,7 +1672,7 @@ describe('RoleService', () => {
 				// ARRANGE
 				//
 				const mockLicenseResult = false;
-				jest.spyOn(licenseState, licenseMethod).mockReturnValue(mockLicenseResult);
+				vi.spyOn(licenseState, licenseMethod).mockReturnValue(mockLicenseResult);
 
 				//
 				// ACT
@@ -1345,7 +1693,7 @@ describe('RoleService', () => {
 			//
 			const customRoleSlug = 'custom:test-role';
 			const mockLicenseResult = true; // Random boolean
-			jest.spyOn(licenseState, 'isCustomRolesLicensed').mockReturnValue(mockLicenseResult);
+			vi.spyOn(licenseState, 'isCustomRolesLicensed').mockReturnValue(mockLicenseResult);
 
 			//
 			// ACT
@@ -1365,7 +1713,7 @@ describe('RoleService', () => {
 			//
 			const customRoleSlug = 'custom:test-role';
 			const mockLicenseResult = false; // Random boolean
-			jest.spyOn(licenseState, 'isCustomRolesLicensed').mockReturnValue(mockLicenseResult);
+			vi.spyOn(licenseState, 'isCustomRolesLicensed').mockReturnValue(mockLicenseResult);
 
 			//
 			// ACT

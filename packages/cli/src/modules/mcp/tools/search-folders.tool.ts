@@ -1,12 +1,12 @@
 import type { FolderRepository, User } from '@n8n/db';
 import z from 'zod';
 
+import type { ProjectService } from '@/services/project.service.ee';
+import type { Telemetry } from '@/telemetry';
+
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
-
-import type { ProjectService } from '@/services/project.service.ee';
-import type { Telemetry } from '@/telemetry';
 
 const MAX_RESULTS = 100;
 

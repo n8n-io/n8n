@@ -1,10 +1,11 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, IPollFunctions } from 'n8n-workflow';
 
 import { googleApiRequestAllItems } from '../../v1/GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
 
 describe('googleApiRequestAllItems', () => {
-	let mockContext: jest.Mocked<IPollFunctions>;
+	let mockContext: Mocked<IPollFunctions>;
 
 	beforeEach(() => {
 		mockContext = mockDeep<IPollFunctions>();
@@ -12,13 +13,13 @@ describe('googleApiRequestAllItems', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should advance pageToken across pages and terminate when nextPageToken is absent', async () => {
 		const pageTokensReceived: Array<string | undefined> = [];
 
-		(mockContext.helpers.requestOAuth2 as jest.Mock).mockImplementation(
+		(mockContext.helpers.requestOAuth2 as Mock).mockImplementation(
 			async (_cred: string, opts: IDataObject) => {
 				const qs = opts.qs as IDataObject;
 				pageTokensReceived.push(qs.pageToken as string | undefined);
@@ -48,7 +49,7 @@ describe('googleApiRequestAllItems', () => {
 	});
 
 	it('should handle single page (no nextPageToken)', async () => {
-		(mockContext.helpers.requestOAuth2 as jest.Mock).mockResolvedValueOnce({
+		(mockContext.helpers.requestOAuth2 as Mock).mockResolvedValueOnce({
 			files: [{ id: '1' }],
 		});
 

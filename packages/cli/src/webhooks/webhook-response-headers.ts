@@ -1,8 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import { getHtmlSandboxCSP, isWebhookHtmlSandboxingDisabled } from 'n8n-core';
 import { validateHeaderName, validateHeaderValue } from 'node:http';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 /**
  * The headers object that node's `responseHeaders` property can return
@@ -67,4 +68,10 @@ export class WebhookResponseHeaders {
 
 		res.setHeaders(this.headers);
 	}
+}
+
+/** Set the sandbox CSP header on a webhook response, unless explicitly disabled. */
+export function applySandboxCSP(res: Response): void {
+	if (isWebhookHtmlSandboxingDisabled()) return;
+	res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 }

@@ -9,10 +9,12 @@ import type {
 } from '@/Interface';
 import {
 	AI_CATEGORY_MCP_NODES,
+	AI_CATEGORY_OTHER_TOOLS,
 	AI_CATEGORY_ROOT_NODES,
 	AI_CATEGORY_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_CODE_NODE_TYPE,
+	AI_MCP_TOOL_NODE_TYPE,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_SECTION_RECOMMENDED_TOOLS,
@@ -30,6 +32,7 @@ import difference from 'lodash/difference';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
 import {
+	extractAiGatewaySection,
 	finalizeItems,
 	flattenCreateElements,
 	groupItemsInSections,
@@ -37,6 +40,7 @@ import {
 	nodeTypesToCreateElements,
 	mapToolSubcategoryIcon,
 	searchNodes,
+	showsAiGatewaySection,
 	sortNodeCreateElements,
 	subcategorizeItems,
 	transformNodeType,
@@ -50,7 +54,7 @@ import { useKeyboardNavigation } from './useKeyboardNavigation';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_TRANSFORM_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, INodeFilter } from 'n8n-workflow';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 export type CommunityNodeDetails = {
 	key: string;
@@ -90,7 +94,7 @@ export interface ViewStack {
 	baselineItems?: INodeCreateElement[];
 	searchItems?: SimplifiedNodeType[];
 	forceIncludeNodes?: string[];
-	mode?: 'actions' | 'nodes' | 'community-node';
+	mode?: 'actions' | 'nodes' | 'community-node' | 'agents';
 	hideActions?: boolean;
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
@@ -152,6 +156,15 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			stack.activeIndex = groupedNodes.some((node) => node.type === 'section') ? 1 : 0;
 
 			return groupedNodes;
+		}
+
+		// Surface n8n Connect-powered nodes in a dedicated section at the top,
+		// extracted before grouping so they don't also land in the AI sections
+		if (showsAiGatewaySection(stack)) {
+			const extracted = extractAiGatewaySection(stack.baselineItems);
+			if (extracted) {
+				return finalizeItems([extracted.section, ...groupIfAiNodes(extracted.rest, stack, true)]);
+			}
 		}
 		return finalizeItems(groupIfAiNodes(stack.baselineItems, stack, true));
 	});
@@ -274,6 +287,35 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		};
 	});
 
+	const TOOL_SUBCATEGORY_ORDER = [
+		AI_CATEGORY_OTHER_TOOLS,
+		AI_CATEGORY_MCP_NODES,
+		AI_CATEGORY_VECTOR_STORES,
+	];
+	function toolSubcategoryRank(item: SubcategoryCreateElement | SectionCreateElement): number {
+		if (item.type === 'section') return -1;
+		const idx = TOOL_SUBCATEGORY_ORDER.indexOf(item.key);
+		return idx === -1 ? TOOL_SUBCATEGORY_ORDER.length : idx;
+	}
+
+	// Inside the MCP Servers subcategory, surface the manual MCP Client Tool
+	// above the registry-derived servers, with a divider in between.
+	function withMcpClientToolFirst(items: INodeCreateElement[]): INodeCreateElement[] {
+		const clientTool = items.find((item) => item.key === AI_MCP_TOOL_NODE_TYPE);
+		if (!clientTool) return items;
+
+		const rest = items.filter((item) => item.key !== AI_MCP_TOOL_NODE_TYPE);
+		const clientToolSection: SectionCreateElement = {
+			type: 'section',
+			key: AI_MCP_TOOL_NODE_TYPE,
+			title: '',
+			children: [clientTool],
+			showSeparator: true,
+			hideHeader: true,
+		};
+		return [clientToolSection, ...rest];
+	}
+
 	// This function accepts a list of nodes and if they're in the AI category,
 	// it groups them into collapsible sections
 	function groupIfAiNodes(
@@ -346,13 +388,17 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 							};
 						}
 						// other sections are converted to subcategories
+						const subcategoryItems = nodeTypesToCreateElements(section.items, aiSubNodes);
 						return {
 							type: 'subcategory',
 							key: section.key,
 							properties: {
 								title: section.title,
 								icon: mapToolSubcategoryIcon(section.key),
-								items: nodeTypesToCreateElements(section.items, aiSubNodes),
+								items:
+									section.key === AI_CATEGORY_MCP_NODES
+										? withMcpClientToolFirst(subcategoryItems)
+										: subcategoryItems,
 								new: NEW_TOOL_CATEGORIES.includes(section.key),
 								// define filter to remove actions that don't have ai_tool connection type
 								actionsFilter,
@@ -361,16 +407,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 							},
 						};
 					})
-					// make sure sections(recommended tools) are at the top
-					.sort((a, b) => {
-						if (a.type === 'section') {
-							return -1;
-						}
-						if (b.type === 'section') {
-							return 1;
-						}
-						return 0;
-					});
+					// Order: Recommended Tools section, Other Tools, MCP Servers, Vector Stores, rest
+					.sort((a, b) => toolSubcategoryRank(a) - toolSubcategoryRank(b));
 
 				return subcategories;
 			}

@@ -1,8 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { DbLockService } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { TrustedKeySourceEntity } from '../../database/entities/trusted-key-source.entity';
 import { TrustedKeyEntity } from '../../database/entities/trusted-key.entity';
@@ -36,7 +36,7 @@ Npzv5WS/ygt55l8y2X+Vfm5TQFRMNkqEx+/GXaPIU/hDmtnBdCxAUIRM9g==
 // Helpers
 // ──────────────────────────────────────────────────────────────────────
 
-const mockLogger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+const mockLogger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 
 function makeTrustedKeyData(overrides: Partial<TrustedKeyData> = {}): TrustedKeyData {
 	return {
@@ -96,12 +96,12 @@ function createMocks({ isLeader = true }: { isLeader?: boolean } = {}) {
 
 describe('TrustedKeyService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.useFakeTimers();
+		vi.clearAllMocks();
+		vi.useFakeTimers();
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	describe('crypto cache', () => {
@@ -147,7 +147,7 @@ describe('TrustedKeyService', () => {
 	describe('initialize', () => {
 		it('should sync sources, refresh keys, and start refresh poller on the leader', async () => {
 			const { service, dbLockService } = createMocks({ isLeader: true });
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			await service.initialize();
 
@@ -162,7 +162,7 @@ describe('TrustedKeyService', () => {
 
 		it('should sync sources and refresh keys on followers without starting the refresh poller', async () => {
 			const { service, dbLockService } = createMocks({ isLeader: false });
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			await service.initialize();
 
@@ -180,7 +180,7 @@ describe('TrustedKeyService', () => {
 	describe('leader lifecycle', () => {
 		it('should refresh keys and start the poller when a follower is elected leader', async () => {
 			const { service, dbLockService } = createMocks({ isLeader: false });
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			await service.initialize();
 			expect(setIntervalSpy).not.toHaveBeenCalled();
@@ -198,7 +198,7 @@ describe('TrustedKeyService', () => {
 
 		it('should start refresh poll interval on leader takeover', () => {
 			const { service } = createMocks();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			service.startRefresh();
 
@@ -211,7 +211,7 @@ describe('TrustedKeyService', () => {
 
 		it('should not create duplicate interval on repeated startRefresh calls', () => {
 			const { service } = createMocks();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			service.startRefresh();
 			service.startRefresh();
@@ -224,7 +224,7 @@ describe('TrustedKeyService', () => {
 
 		it('should not start refresh if shutting down', () => {
 			const { service } = createMocks();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			service.shutdown();
 			service.startRefresh();
@@ -236,7 +236,7 @@ describe('TrustedKeyService', () => {
 
 		it('should clear interval on leader stepdown', () => {
 			const { service } = createMocks();
-			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
 
 			service.startRefresh();
 			service.stopRefresh();
@@ -251,7 +251,7 @@ describe('TrustedKeyService', () => {
 
 		it('should stop refresh on shutdown', () => {
 			const { service } = createMocks();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			service.startRefresh();
 			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
@@ -282,7 +282,7 @@ describe('TrustedKeyService', () => {
 			sourceRepo.find.mockResolvedValue([recentSource]);
 
 			service.startRefresh();
-			await jest.advanceTimersByTimeAsync(30_000);
+			await vi.advanceTimersByTimeAsync(30_000);
 			service.stopRefresh();
 
 			// Source was recently refreshed — should not trigger a refresh
@@ -304,7 +304,7 @@ describe('TrustedKeyService', () => {
 			sourceRepo.find.mockResolvedValue([staleSource]);
 
 			service.startRefresh();
-			await jest.advanceTimersByTimeAsync(30_000);
+			await vi.advanceTimersByTimeAsync(30_000);
 			service.stopRefresh();
 
 			expect(dbLockService.withLock).toHaveBeenCalled();
@@ -325,7 +325,7 @@ describe('TrustedKeyService', () => {
 			sourceRepo.find.mockResolvedValue([newSource]);
 
 			service.startRefresh();
-			await jest.advanceTimersByTimeAsync(30_000);
+			await vi.advanceTimersByTimeAsync(30_000);
 			service.stopRefresh();
 
 			expect(dbLockService.withLock).toHaveBeenCalled();

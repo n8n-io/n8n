@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { WORKFLOW_DIFF_MODAL_KEY } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
 import type { SourceControlledFileStatus } from '@n8n/api-types';

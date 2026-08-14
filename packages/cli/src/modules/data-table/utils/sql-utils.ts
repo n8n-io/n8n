@@ -17,10 +17,10 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UnexpectedError } from 'n8n-workflow';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import type { DataTableColumn } from '../data-table-column.entity';
 import type { DataTableUserTableName } from '../data-table.types';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -61,7 +61,7 @@ function dataTableColumnTypeToSql(
 			return 'BOOLEAN';
 		case 'date':
 			if (dbType === 'postgres') {
-				return 'TIMESTAMP';
+				return 'TIMESTAMPTZ';
 			}
 			return 'DATETIME';
 		default:
@@ -123,6 +123,15 @@ export function renameColumnQuery(
 	const quotedNewName = quoteIdentifier(newColumnName, dbType);
 
 	return `ALTER TABLE ${quotedTableName} RENAME COLUMN ${quotedOldName} TO ${quotedNewName}`;
+}
+
+export function renameTableQuery(
+	oldTableName: DataTableUserTableName,
+	newTableName: DataTableUserTableName,
+	dbType: DataSourceOptions['type'],
+): string {
+	// `ALTER TABLE ... RENAME TO` is valid on both SQLite and Postgres
+	return `ALTER TABLE ${quoteIdentifier(oldTableName, dbType)} RENAME TO ${quoteIdentifier(newTableName, dbType)}`;
 }
 
 export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
@@ -200,13 +209,33 @@ function normalizeBoolean<T>(value: T): T | boolean {
 	return value;
 }
 
+function dateStringHasExplicitTimezone(dateString: string) {
+	const separatorIndex = dateString.includes('T')
+		? dateString.indexOf('T')
+		: dateString.search(/\s/);
+	if (separatorIndex === -1) return false;
+
+	const timePart = dateString.slice(separatorIndex + 1);
+	if (!timePart.includes(':')) return false;
+
+	return (
+		timePart.endsWith('Z') ||
+		timePart.endsWith('z') ||
+		timePart.includes('+') ||
+		timePart.includes('-')
+	);
+}
+
 // Convert date objects or strings to dates in UTC
 export function normalizeDate(value: unknown): Date | null {
 	if (value instanceof Date) return value;
 
 	if (typeof value === 'string') {
+		const dateString = value.trim();
 		// sqlite returns date strings without timezone information, but we store them as UTC
-		const parsed = new Date(value.endsWith('Z') ? value : value + 'Z');
+		const parsed = new Date(
+			dateStringHasExplicitTimezone(dateString) ? dateString : `${dateString}Z`,
+		);
 		if (!isNaN(parsed.getTime())) return parsed;
 	}
 

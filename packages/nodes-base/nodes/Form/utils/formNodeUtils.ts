@@ -1,6 +1,7 @@
 import { type Response } from 'express';
 import {
 	type NodeTypeAndVersion,
+	type IUser,
 	type IWebhookFunctions,
 	type FormFieldsParameter,
 	type IWebhookResponseData,
@@ -8,7 +9,14 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 
-import { handleNewlines, renderForm, sanitizeHtml } from './utils';
+import {
+	generateFormUserAuthToken,
+	getNodeReference,
+	handleNewlines,
+	renderForm,
+	resolveRawData,
+	sanitizeHtml,
+} from './utils';
 
 export const renderFormNode = async (
 	context: IWebhookFunctions,
@@ -16,6 +24,7 @@ export const renderFormNode = async (
 	trigger: NodeTypeAndVersion,
 	fields: FormFieldsParameter,
 	mode: 'test' | 'production',
+	authedUser?: IUser,
 ): Promise<IWebhookResponseData> => {
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
@@ -23,10 +32,12 @@ export const renderFormNode = async (
 		buttonLabel: string;
 		customCss?: string;
 	};
+	const triggerRef = getNodeReference(trigger.name);
 
 	let title = options.formTitle;
 	if (!title) {
-		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
+		title = context.evaluateExpression(`{{ ${triggerRef}.params.formTitle }}`) as string;
+		title = resolveRawData(context, title);
 	}
 
 	const description = handleNewlines(sanitizeHtml(options.formDescription ?? ''));
@@ -34,14 +45,20 @@ export const renderFormNode = async (
 	let buttonLabel = options.buttonLabel;
 	if (!buttonLabel) {
 		buttonLabel =
-			(context.evaluateExpression(
-				`{{ $('${trigger?.name}').params.options?.buttonLabel }}`,
-			) as string) || 'Submit';
+			(context.evaluateExpression(`{{ ${triggerRef}.params.options?.buttonLabel }}`) as string) ||
+			'Submit';
+		buttonLabel = resolveRawData(context, buttonLabel);
 	}
 
 	const appendAttribution = context.evaluateExpression(
-		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
+		`{{ ${triggerRef}.params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
+
+	// Embed the form auth token so subsequent POSTs can re-authenticate the
+	// user — cookies aren't sent on fetch from a sandboxed form page.
+	const authToken = authedUser
+		? generateFormUserAuthToken(context.getNode(), authedUser)
+		: undefined;
 
 	renderForm({
 		context,
@@ -55,6 +72,7 @@ export const renderFormNode = async (
 		appendAttribution,
 		buttonLabel,
 		customCss: options.customCss,
+		authToken,
 	});
 
 	return {
@@ -86,7 +104,7 @@ export function getFormTriggerNode(context: IWebhookFunctions): NodeTypeAndVersi
 
 	for (const trigger of formTriggers) {
 		try {
-			context.evaluateExpression(`{{ $('${trigger.name}').first() }}`);
+			context.evaluateExpression(`{{ ${getNodeReference(trigger.name)}.first() }}`);
 		} catch (error) {
 			continue;
 		}

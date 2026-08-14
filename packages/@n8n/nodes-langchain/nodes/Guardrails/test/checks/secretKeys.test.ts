@@ -17,4 +17,16 @@ describe('secretKeys guardrail', () => {
 			'7b9fcd0a-9188-4e36-8c65-bc915192b2375',
 		]);
 	});
+
+	it('detects custom regex secret patterns', () => {
+		const config: SecretKeysConfig = {
+			threshold: 'balanced',
+			customRegex: ['custom-secret-[0-9]+'],
+		};
+
+		const result = secretKeysCheck('Token: custom-secret-1234', config);
+
+		expect(result.tripwireTriggered).toBe(true);
+		expect(result.info?.maskEntities?.SECRET).toContain('custom-secret-1234');
+	});
 });

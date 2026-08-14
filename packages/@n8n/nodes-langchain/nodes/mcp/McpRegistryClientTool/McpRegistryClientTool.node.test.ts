@@ -215,20 +215,27 @@ describe('McpRegistryClientTool', () => {
 
 	describe('execute', () => {
 		it('passes a per-item resolveConfig callback to executeMcpTool', async () => {
-			const ctx = createExecuteCtx({
-				serverTransport: 'httpStreamable',
-				endpointUrl: 'https://mcp.notion.com/mcp',
-				'options.timeout': 60000,
-				include: 'all',
-				includeTools: [],
-				excludeTools: [],
-			});
+			const ctx = createExecuteCtx(
+				{
+					serverTransport: 'httpStreamable',
+					endpointUrl: 'https://mcp.notion.com/mcp',
+					'options.timeout': 60000,
+					include: 'all',
+					includeTools: [],
+					excludeTools: [],
+				},
+				{ typeVersion: 1.1 },
+			);
 			executeMcpToolMock.mockResolvedValue([[]]);
 
 			const node = new McpRegistryClientTool();
 			await node.execute.call(ctx);
 
-			expect(executeMcpToolMock).toHaveBeenCalledWith(ctx, expect.any(Function));
+			expect(executeMcpToolMock).toHaveBeenCalledWith(
+				ctx,
+				expect.any(Function),
+				expect.objectContaining({ enableSessionCache: true }),
+			);
 
 			const resolve = executeMcpToolMock.mock.calls[0][1];
 			expect(resolve(0)).toEqual({
@@ -238,6 +245,29 @@ describe('McpRegistryClientTool', () => {
 				timeout: 60000,
 				toolFilter: { mode: 'all', includeTools: [], excludeTools: [] },
 			});
+		});
+
+		it('does not enable the session cache for v1 nodes', async () => {
+			const ctx = createExecuteCtx(
+				{
+					serverTransport: 'httpStreamable',
+					endpointUrl: 'https://mcp.notion.com/mcp',
+					'options.timeout': 60000,
+					include: 'all',
+					includeTools: [],
+					excludeTools: [],
+				},
+				{ typeVersion: 1 },
+			);
+			executeMcpToolMock.mockResolvedValue([[]]);
+
+			await new McpRegistryClientTool().execute.call(ctx);
+
+			expect(executeMcpToolMock).toHaveBeenCalledWith(
+				ctx,
+				expect.any(Function),
+				expect.objectContaining({ enableSessionCache: false }),
+			);
 		});
 
 		it('throws an error when no OAuth2 credentials are defined on the node', async () => {

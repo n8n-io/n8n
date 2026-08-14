@@ -1,5 +1,6 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { IConnections, INode } from 'n8n-workflow';
+import type { MockedFunction } from 'vitest';
 
 import {
 	parseToolResult,
@@ -17,28 +18,25 @@ import type { FetchWorkflowsResult } from '../web/templates';
 import * as templates from '../web/templates';
 
 // Mock LangGraph dependencies
-jest.mock('@langchain/langgraph', () => ({
-	getCurrentTaskInput: jest.fn(),
+vi.mock('@langchain/langgraph', () => ({
+	getCurrentTaskInput: vi.fn(),
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
-		content: JSON.stringify(params),
-	})),
+	Command: vi.fn(function (params: Record<string, unknown>) {
+		return { content: JSON.stringify(params) };
+	}),
 }));
 
 // Mock the templates module
-jest.mock('../web/templates');
+vi.mock('../web/templates');
 
-const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
-	typeof getCurrentTaskInput
+const mockGetCurrentTaskInput = getCurrentTaskInput as MockedFunction<typeof getCurrentTaskInput>;
+const mockFetchWorkflowsFromTemplates = templates.fetchWorkflowsFromTemplates as MockedFunction<
+	typeof templates.fetchWorkflowsFromTemplates
 >;
-const mockFetchWorkflowsFromTemplates =
-	templates.fetchWorkflowsFromTemplates as jest.MockedFunction<
-		typeof templates.fetchWorkflowsFromTemplates
-	>;
 
 describe('GetNodeExamplesTool', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Default: no cached templates
 		mockGetCurrentTaskInput.mockReturnValue({
 			cachedTemplates: [],

@@ -53,6 +53,7 @@ interface TabEntry {
 
 const CDP_COMMAND_TIMEOUT_MS = 30_000;
 const ATTACH_TIMEOUT_MS = 5_000;
+const KEEPALIVE_INTERVAL_MS = 15_000;
 
 // ---------------------------------------------------------------------------
 // RelayConnection
@@ -88,6 +89,7 @@ export class RelayConnection {
 	) => void;
 	private readonly detachListener: (source: chrome.debugger.Debuggee, reason: string) => void;
 	private closed = false;
+	private keepaliveInterval: ReturnType<typeof setInterval> | undefined;
 	private settings: TabManagementSettings = DEFAULT_SETTINGS;
 
 	onclose?: () => void;
@@ -102,6 +104,8 @@ export class RelayConnection {
 		this.detachListener = this.onDebuggerDetach.bind(this);
 		chrome.debugger.onEvent.addListener(this.eventListener);
 		chrome.debugger.onDetach.addListener(this.detachListener);
+
+		this.startKeepalive();
 	}
 
 	// =========================================================================
@@ -218,10 +222,24 @@ export class RelayConnection {
 	// Internal — connection lifecycle
 	// =========================================================================
 
+	private startKeepalive(): void {
+		this.keepaliveInterval = setInterval(() => {
+			this.sendMessage({ method: 'keepalive' });
+		}, KEEPALIVE_INTERVAL_MS);
+	}
+
+	private stopKeepalive(): void {
+		if (this.keepaliveInterval) {
+			clearInterval(this.keepaliveInterval);
+			this.keepaliveInterval = undefined;
+		}
+	}
+
 	private handleClose(): void {
 		if (this.closed) return;
 		this.closed = true;
 
+		this.stopKeepalive();
 		chrome.debugger.onEvent.removeListener(this.eventListener);
 		chrome.debugger.onDetach.removeListener(this.detachListener);
 
@@ -285,9 +303,31 @@ export class RelayConnection {
 			'Target.getTargetInfo',
 		)) as { targetInfo: { targetId: string } };
 
+		await this.applyFocusEmulation(chromeTabId);
+
 		const targetId = result.targetInfo.targetId;
 		log.debug(`attached: chromeTabId=${chromeTabId} → targetId=${targetId}`);
 		return targetId;
+	}
+
+	/**
+	 * Playwright's "stable" actionability check only resolves from a requestAnimationFrame
+	 * callback, and Chrome gives a backgrounded tab no frames — so clicks hang. Re-applied
+	 * on every attach because Playwright's own init-time call is lost on re-attach.
+	 */
+	private async applyFocusEmulation(chromeTabId: number): Promise<void> {
+		try {
+			await chrome.debugger.sendCommand(
+				{ tabId: chromeTabId },
+				'Emulation.setFocusEmulationEnabled',
+				{
+					enabled: true,
+				},
+			);
+			log.debug(`focus emulation enabled (chromeTabId=${chromeTabId})`);
+		} catch (e) {
+			log.warn('Failed to enable focus emulation:', e);
+		}
 	}
 
 	/** Lazily attach debugger to a tab. Deduplicates concurrent calls. */
@@ -317,6 +357,8 @@ export class RelayConnection {
 			]);
 			entry.attached = true;
 			log.debug(`ensureAttached: attached ${id}`);
+
+			await this.applyFocusEmulation(entry.chromeTabId);
 
 			// Reapply cached auto-attach so new tabs report iframes immediately
 			if (this.autoAttachParams) {

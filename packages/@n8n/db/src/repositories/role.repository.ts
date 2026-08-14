@@ -126,6 +126,26 @@ export class RoleRepository extends Repository<Role> {
 			.filter((r) => r !== null);
 	}
 
+	async findUsersWithGlobalRole(roleSlug: string): Promise<
+		Array<{
+			userId: string;
+			firstName: string | null;
+			lastName: string | null;
+			email: string;
+			role: string;
+		}>
+	> {
+		return await this.manager
+			.createQueryBuilder(User, 'user')
+			.select('user.id', 'userId')
+			.addSelect('user.firstName', 'firstName')
+			.addSelect('user.lastName', 'lastName')
+			.addSelect('user.email', 'email')
+			.addSelect('user.roleSlug', 'role')
+			.where('user.roleSlug = :slug', { slug: roleSlug })
+			.getRawMany();
+	}
+
 	async findAllProjectMembers(
 		projectId: string,
 		roleSlug?: string,
@@ -174,6 +194,35 @@ export class RoleRepository extends Repository<Role> {
 		if (result.affected !== 1) {
 			throw new Error(`Failed to delete role "${slug}"`);
 		}
+	}
+
+	/**
+	 * Reassign every user currently holding `role` to `toSlug`, then delete `role`,
+	 * all within a single transaction so users are never left orphaned by a partial failure.
+	 */
+	async reassignUsersAndRemove(role: Role, toSlug: string) {
+		await this.manager.transaction(async (trx) => {
+			if (role.roleType === 'global') {
+				await trx
+					.createQueryBuilder()
+					.update(User)
+					.set({ role: { slug: toSlug } })
+					.where('roleSlug = :fromSlug', { fromSlug: role.slug })
+					.execute();
+			} else if (role.roleType === 'project') {
+				await trx
+					.createQueryBuilder()
+					.update(ProjectRelation)
+					.set({ role: { slug: toSlug } })
+					.where('role = :fromSlug', { fromSlug: role.slug })
+					.execute();
+			}
+
+			const result = await trx.delete(Role, { slug: role.slug });
+			if (result.affected !== 1) {
+				throw new Error(`Failed to delete role "${role.slug}"`);
+			}
+		});
 	}
 
 	private async updateEntityWithManager(

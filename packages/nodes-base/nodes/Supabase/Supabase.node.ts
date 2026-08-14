@@ -266,8 +266,8 @@ export class Supabase implements INodeType {
 						}
 
 						if (matchType === 'allFilters') {
-							const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
-							Object.assign(qs, data);
+							const filters = keys.reduce(buildQuery, new Map<string, string>());
+							qs = Object.fromEntries(filters);
 						}
 						if (matchType === 'anyFilter') {
 							const data = keys.map((key) => buildOrQuery(key));
@@ -318,8 +318,8 @@ export class Supabase implements INodeType {
 
 				for (let i = 0; i < length; i++) {
 					const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
-					const data = keys.reduce((obj, value) => buildGetQuery(obj, value), {});
-					Object.assign(qs, data);
+					const filters = keys.reduce(buildGetQuery, new Map<string, string>());
+					qs = Object.fromEntries(filters);
 					let rows;
 
 					if (!keys.length) {
@@ -382,15 +382,23 @@ export class Supabase implements INodeType {
 						endpoint = `${endpoint}?${encodeURI(filterString)}`;
 					}
 
-					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', 0);
-					}
+					const requestedLimit = !returnAll
+						? (this.getNodeParameter('limit', 0) as number)
+						: undefined;
+
+					const orderBy = this.getNodeParameter('orderBy', i, '') as string;
 
 					let rows: IDataObject[] = [];
 
 					try {
 						let responseLength = 0;
 						do {
+							if (requestedLimit !== undefined) {
+								qs.limit = Math.min(requestedLimit - rows.length, 1000);
+							}
+							if (orderBy) {
+								qs.order = orderBy;
+							}
 							const newRows = await supabaseApiRequest.call(
 								this,
 								'GET',
@@ -403,7 +411,10 @@ export class Supabase implements INodeType {
 							responseLength = newRows.length;
 							rows = rows.concat(newRows);
 							qs.offset = rows.length;
-						} while (responseLength >= 1000);
+						} while (
+							responseLength >= 1000 &&
+							(requestedLimit === undefined || rows.length < requestedLimit)
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(rows),
 							{ itemData: { item: i } },
@@ -443,8 +454,8 @@ export class Supabase implements INodeType {
 						}
 
 						if (matchType === 'allFilters') {
-							const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
-							Object.assign(qs, data);
+							const filters = keys.reduce(buildQuery, new Map<string, string>());
+							qs = Object.fromEntries(filters);
 						}
 						if (matchType === 'anyFilter') {
 							const data = keys.map((key) => buildOrQuery(key));

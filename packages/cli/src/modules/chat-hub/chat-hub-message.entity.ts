@@ -8,9 +8,9 @@ import {
 	type Relation,
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
+import type { IBinaryData } from 'n8n-workflow';
 
 import type { ChatHubSession } from './chat-hub-session.entity';
-import type { IBinaryData } from 'n8n-workflow';
 
 @Entity({ name: 'chat_hub_messages' })
 export class ChatHubMessage extends WithTimestamps {
@@ -126,5 +126,5 @@ export class ChatHubMessage extends WithTimestamps {
 	 * - When using default mode: Base64-encoded data is stored directly in the 'data' field
 	 */
 	@Column({ type: 'json', nullable: true })
-	attachments: Array<IBinaryData> | null;
+	attachments: IBinaryData[] | null;
 }

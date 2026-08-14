@@ -1,11 +1,4 @@
-export type EventKind =
-	| 'user'
-	| 'agent'
-	| 'tool'
-	| 'node'
-	| 'workflow'
-	| 'working-memory'
-	| 'suspension';
+export type EventKind = 'user' | 'agent' | 'tool' | 'node' | 'workflow' | 'suspension';
 
 export interface TimelineItem {
 	kind: EventKind;
@@ -13,6 +6,8 @@ export interface TimelineItem {
 	timestamp: number;
 	endTimestamp?: number;
 	content?: string;
+	/** Files attached to the user turn (only set for `kind: 'user'`). */
+	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
 	toolName?: string;
 	toolCallId?: string;
 	toolInput?: unknown;
@@ -32,7 +27,19 @@ export interface TimelineItem {
 	 * the LLM's runtime input items.
 	 */
 	nodeParameters?: Record<string, unknown>;
+	/**
+	 * Resolved display name for a `delegate_subagent` tool call — the configured
+	 * sub-agent's name, falling back to the humanized task name. Set by the view
+	 * so the row/chart/detail can render "Sub-agent · <name>".
+	 */
+	subAgentName?: string;
 	resumed?: boolean;
+	/**
+	 * True for the tool-call entry a resumed execution records when the user
+	 * answers an interactive suspension: it carries the user's feedback as its
+	 * output and is labelled "User feedback received" instead of a tool call.
+	 */
+	isUserFeedback?: boolean;
 }
 
 export interface IdleRange {

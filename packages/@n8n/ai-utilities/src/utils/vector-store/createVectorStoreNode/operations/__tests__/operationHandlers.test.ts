@@ -1,10 +1,10 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { VectorStoreNodeConstructorArgs } from '../../types';
 import { handleLoadOperation } from '../loadOperation';
@@ -63,9 +63,9 @@ describe('Vector Store Operation Handlers', () => {
 				operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool', 'update'],
 			},
 			sharedFields: [],
-			getVectorStoreClient: jest.fn().mockResolvedValue(mockVectorStore),
-			populateVectorStore: jest.fn().mockResolvedValue(undefined),
-			releaseVectorStoreClient: jest.fn(),
+			getVectorStoreClient: vi.fn().mockResolvedValue(mockVectorStore),
+			populateVectorStore: vi.fn().mockResolvedValue(undefined),
+			releaseVectorStoreClient: vi.fn(),
 		};
 	});
 

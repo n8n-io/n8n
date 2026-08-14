@@ -1,5 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
-
 import {
 	JS_METHODS,
 	filterMethodsFromPath,
@@ -11,6 +9,7 @@ import {
 	escapeNewlinesInStringLiterals,
 	escapeNewlinesInExpressionStrings,
 	generateDeterministicNodeId,
+	generateDeterministicGroupId,
 } from './string-utils';
 
 describe('workflow-builder/string-utils', () => {
@@ -276,6 +275,35 @@ describe('workflow-builder/string-utils', () => {
 			const id1 = generateDeterministicNodeId('wf1', 'type', 'name1');
 			const id2 = generateDeterministicNodeId('wf1', 'type', 'name2');
 			expect(id1).not.toBe(id2);
+		});
+	});
+
+	describe('generateDeterministicGroupId', () => {
+		it('generates UUID format', () => {
+			const id = generateDeterministicGroupId('wf1', 'My Group');
+			expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+		});
+
+		it('is deterministic for same inputs', () => {
+			expect(generateDeterministicGroupId('wf1', 'G')).toBe(
+				generateDeterministicGroupId('wf1', 'G'),
+			);
+		});
+
+		it('produces different IDs for a different workflow or group name', () => {
+			expect(generateDeterministicGroupId('wf1', 'G')).not.toBe(
+				generateDeterministicGroupId('wf2', 'G'),
+			);
+			expect(generateDeterministicGroupId('wf1', 'A')).not.toBe(
+				generateDeterministicGroupId('wf1', 'B'),
+			);
+		});
+
+		it('produces a different id than a node id for the same workflow and name', () => {
+			// The ':group:' seed segment keeps group ids disjoint from node ids.
+			expect(generateDeterministicGroupId('wf1', 'Ingestion')).not.toBe(
+				generateDeterministicNodeId('wf1', 'n8n-nodes-base.set', 'Ingestion'),
+			);
 		});
 	});
 });

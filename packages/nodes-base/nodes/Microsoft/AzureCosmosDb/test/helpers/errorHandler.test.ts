@@ -4,8 +4,8 @@ import { NodeApiError } from 'n8n-workflow';
 import { handleError, ErrorMap } from '../../helpers/errorHandler';
 
 const mockExecuteSingleFunctions = {
-	getNode: jest.fn(() => ({ name: 'MockNode' })),
-	getNodeParameter: jest.fn(),
+	getNode: vi.fn(() => ({ name: 'MockNode' })),
+	getNodeParameter: vi.fn(),
 } as any;
 
 describe('handleError', () => {

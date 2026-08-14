@@ -3,7 +3,10 @@ import { computed, useCssModule } from 'vue';
 
 import type { TextAlign, TextColor, TextSize, TextStep } from '../../types/text';
 
-interface TextProps {
+// Exported so components that render `<N8nText>` can name it: the compiler writes
+// their inferred component type out structurally, and a private name here blocks
+// their declaration emit (TS4023/TS4058).
+export interface TextProps {
 	bold?: boolean;
 	size?: TextSize;
 	step?: TextStep;

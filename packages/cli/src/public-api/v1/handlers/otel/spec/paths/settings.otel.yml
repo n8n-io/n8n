@@ -1,0 +1,57 @@
+get:
+  x-eov-operation-id: getOtelSettings
+  x-required-scope: otel:manage
+  x-eov-operation-handler: v1/handlers/otel/otel.handler
+  tags:
+    - SettingsOtel
+  summary: Retrieve the OpenTelemetry configuration
+  description: >
+    Retrieve the current OpenTelemetry configuration, including every field exposed in the UI.
+    Requires the `otel:manage` scope.
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/otel-settings.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+put:
+  x-eov-operation-id: updateOtelSettings
+  x-required-scope: otel:manage
+  x-eov-operation-handler: v1/handlers/otel/otel.handler
+  tags:
+    - SettingsOtel
+  summary: Set the OpenTelemetry configuration
+  description: >
+    Set the OpenTelemetry configuration. This is a full replacement: every field must be provided,
+    and a partial body is rejected. The update takes effect exactly as it would from the UI, using
+    the same validation, and is applied to the running instance immediately. Fields managed
+    declaratively via environment variables are read-only: attempting to change one is rejected
+    with 409, while re-submitting its current value (as returned by GET) is accepted. Requires the
+    `otel:manage` scope.
+  requestBody:
+    description: The OpenTelemetry configuration to set.
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/otel-settings.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/otel-settings.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'

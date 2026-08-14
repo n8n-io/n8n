@@ -3,6 +3,7 @@ import type { z } from 'zod';
 import type { BrowserConnection } from '../connection';
 import { ConnectionLostError } from '../errors';
 import { createLogger } from '../logger';
+import { redactCallToolResult } from '../redaction/redact';
 import type {
 	AffectedResource,
 	CallToolResult,
@@ -23,6 +24,7 @@ export {
 	elementTargetSchema,
 	modalStateSchema,
 	pageIdField,
+	snapshotField,
 	withSnapshotEnvelope,
 } from './schemas';
 export type { ElementTargetInput } from './schemas';
@@ -31,7 +33,7 @@ export type { ElementTargetInput } from './schemas';
 // Connected tool input constraint — every tool must have at least pageId
 // ---------------------------------------------------------------------------
 
-type ConnectedToolInput = { pageId?: string };
+type ConnectedToolInput = { pageId?: string; snapshot?: 'interactive' | 'non-interactive' };
 
 // ---------------------------------------------------------------------------
 // Connected tool options
@@ -40,6 +42,8 @@ type ConnectedToolInput = { pageId?: string };
 export interface ConnectedToolOptions {
 	/** Append an accessibility snapshot to the response after the action. */
 	autoSnapshot?: boolean;
+	/** Annotate the auto-snapshot with interactive refs. Defaults to the adapter default (true). */
+	snapshotInteractive?: boolean;
 	/** Wrap the action in waitForCompletion (network/navigation settle). */
 	waitForCompletion?: boolean;
 	/** Skip post-action enrichment (snapshot, tab diff, etc.). Use for destructive actions like tab close. */
@@ -74,7 +78,12 @@ export function createConnectedTool<
 	name: string,
 	description: string,
 	inputSchema: TSchema,
-	fn: (state: ConnectionState, input: z.infer<TSchema>, pageId: string) => Promise<CallToolResult>,
+	fn: (
+		state: ConnectionState,
+		input: z.infer<TSchema>,
+		pageId: string,
+		context: ToolContext,
+	) => Promise<CallToolResult>,
 	outputSchema?: z.ZodObject<z.ZodRawShape>,
 	options?: ConnectedToolOptions,
 	getResourceFromArgs?: (args: z.infer<TSchema>) => string,
@@ -84,7 +93,10 @@ export function createConnectedTool<
 		description,
 		inputSchema,
 		outputSchema,
-		async execute(args: z.infer<TSchema>, _context: ToolContext) {
+		async execute(args: z.infer<TSchema>, context: ToolContext) {
+			const effectiveOptions: ConnectedToolOptions = args.snapshot
+				? { ...options, autoSnapshot: true, snapshotInteractive: args.snapshot === 'interactive' }
+				: (options ?? {});
 			try {
 				const { state, pageId } = resolvePageContext(connection, args);
 
@@ -96,13 +108,16 @@ export function createConnectedTool<
 				}
 
 				const result = options?.waitForCompletion
-					? await state.adapter.waitForCompletion(pageId, async () => await fn(state, args, pageId))
-					: await fn(state, args, pageId);
+					? await state.adapter.waitForCompletion(
+							pageId,
+							async () => await fn(state, args, pageId, context),
+						)
+					: await fn(state, args, pageId, context);
 
 				if (!options?.skipEnrichment) {
 					// Re-resolve: tab-creating actions (tab_open) update activePageId
 					const enrichPageId = state.activePageId || pageId;
-					await enrichResponse(result, state, enrichPageId, options ?? {}, tabsBefore);
+					await enrichResponse(result, state, enrichPageId, effectiveOptions, tabsBefore);
 				}
 				// Sync live URL back to state.pages so the cache stays fresh
 				const currentUrl = state.adapter.getPageUrl(pageId);
@@ -111,19 +126,23 @@ export function createConnectedTool<
 					if (pageInfo) pageInfo.url = currentUrl;
 				}
 
-				return result;
+				return redactCallToolResult(result);
 			} catch (error) {
 				// Playwright throws TargetClosedError when browser/page dies mid-operation.
 				// Re-throw as our typed error so the AI gets a clear message + hint.
 				if (error instanceof Error && error.name === 'TargetClosedError') {
-					return await buildErrorResponse(
-						new ConnectionLostError('browser_closed'),
-						connection,
-						args,
-						options ?? {},
+					return redactCallToolResult(
+						await buildErrorResponse(
+							new ConnectionLostError('browser_closed'),
+							connection,
+							args,
+							effectiveOptions,
+						),
 					);
 				}
-				return await buildErrorResponse(error, connection, args, options ?? {});
+				return redactCallToolResult(
+					await buildErrorResponse(error, connection, args, effectiveOptions),
+				);
 			}
 		},
 		getAffectedResources(args: z.infer<TSchema>, _context: ToolContext): AffectedResource[] {

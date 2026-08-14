@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { TestCaseExecutionRecord, TestRunRecord } from '../evaluation.api';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useEvaluationStore } from '../evaluation.store';
@@ -14,10 +14,12 @@ import { getUserDefinedMetricNames } from '../evaluation.utils';
 import MetricSummaryStrip from '../components/RunDetail/MetricSummaryStrip.vue';
 import RunStatusPill from '../components/RunDetail/RunStatusPill.vue';
 import TestCaseCard from '../components/RunDetail/TestCaseCard.vue';
+import { useWorkflowEvaluationState } from '../composables/useWorkflowEvaluationState';
 
 const router = useRouter();
 const toast = useToast();
 const evaluationStore = useEvaluationStore();
+const evaluationState = useWorkflowEvaluationState();
 const locale = useI18n();
 const telemetry = useTelemetry();
 
@@ -72,7 +74,7 @@ const orderedTestCases = computed(() =>
 	),
 );
 
-const metricSources = computed(() => evaluationStore.metricSourceByKey);
+const metricSources = computed(() => evaluationState.metricSourceByKey.value);
 
 const caseValuesByKey = computed(() => {
 	const result: Record<string, Array<number | undefined>> = {};
@@ -92,7 +94,16 @@ const rerunRun = async () => {
 		// `runTest` had inserted the row, in which case the diffing fallback
 		// would pick nothing and the button would land on the edit page
 		// instead of the new run.
-		const { testRunId } = await evaluationStore.startTestRun(workflowId.value);
+		const configId = run.value?.evaluationConfigId;
+		const options = configId
+			? { evaluationConfigId: configId, compileFromConfig: true }
+			: undefined;
+		const { testRunId } = await evaluationStore.startTestRun(workflowId.value, options);
+		telemetry.track('User ran evaluation', {
+			workflow_id: workflowId.value,
+			run_id: testRunId,
+			run_type: configId ? 'config' : 'direct',
+		});
 		await evaluationStore.fetchTestRuns(workflowId.value);
 		await router.push({
 			name: VIEWS.EVALUATION_RUNS_DETAIL,
@@ -205,6 +216,8 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 			:current-metrics="run?.metrics"
 			:previous-metrics="previousRun?.metrics"
 			:metric-sources="metricSources"
+			:metric-scales="run?.metricScales"
+			:previous-metric-scales="previousRun?.metricScales"
 			:case-values-by-key="caseValuesByKey"
 			class="mb-m"
 		/>
@@ -220,6 +233,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 				:test-case="testCase"
 				:index="index + 1"
 				:metric-sources="metricSources"
+				:metric-scales="run?.metricScales"
 				@view="openRelatedExecution"
 				@cancel="cancelPendingCase"
 				@rerun="rerunRun"

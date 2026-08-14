@@ -31,6 +31,9 @@ export class Project extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 512, nullable: true })
 	description: string | null;
 
+	@Column({ type: 'json', nullable: false, default: '[]' })
+	customTelemetryTags: Array<{ key: string; value: string }>;
+
 	@OneToMany('ProjectRelation', 'project')
 	projectRelations: ProjectRelation[];
 

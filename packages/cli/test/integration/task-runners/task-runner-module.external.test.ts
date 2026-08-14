@@ -1,6 +1,6 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import { MissingAuthTokenError } from '@/task-runners/errors/missing-auth-token.error';

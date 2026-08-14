@@ -3,13 +3,23 @@ import type { TupleToUnion } from '@/app/utils/typeHelpers';
 
 export type SshKeyTypes = ['ed25519', 'rsa'];
 
-export type SourceControlPreferences = {
-	connected: boolean;
-	repositoryUrl: string;
-	branchName: string;
-	branches: string[];
+// The endpoint returns a subset of these fields depending on the caller's access:
+// - Any authenticated user: SourceControlPublicPreferences
+// - Project admin (sourceControl:push on a team project): SourceControlProjectPreferences
+// - Global admin (sourceControl:manage): SourceControlPreferences (full)
+export type SourceControlPublicPreferences = {
 	branchReadOnly: boolean;
+};
+
+export type SourceControlProjectPreferences = SourceControlPublicPreferences & {
+	connected: boolean;
+	branchName: string;
 	branchColor: string;
+};
+
+export type SourceControlPreferences = SourceControlProjectPreferences & {
+	repositoryUrl: string;
+	branches: string[];
 	publicKey?: string;
 	keyGeneratorType?: TupleToUnion<SshKeyTypes>;
 	currentBranch?: string;

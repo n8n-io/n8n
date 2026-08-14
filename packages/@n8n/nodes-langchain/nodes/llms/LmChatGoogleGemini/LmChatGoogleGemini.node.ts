@@ -49,7 +49,7 @@ const modelRLC: INodeProperties = {
 						{
 							type: 'filter',
 							properties: {
-								pass: "={{ !$responseItem.name.includes('embedding') }}",
+								pass: "={{ !$responseItem.name.includes('embedding') && !$responseItem.name.includes('imagen') }}",
 							},
 						},
 						{

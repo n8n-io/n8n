@@ -24,7 +24,7 @@ import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
 import {
-	ApplicationError,
+	UnexpectedError,
 	WorkflowActivationError,
 	calculateWorkflowChecksum,
 	type INode,
@@ -110,7 +110,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 describe('router should switch based on flag', () => {
@@ -1538,7 +1538,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						position: [240, 300],
 					},
 					{
-						id: 'uuid-1234',
+						id: 'uuid-5678',
 						parameters: {},
 						name: 'Cron',
 						type: 'n8n-nodes-base.cron',
@@ -2280,7 +2280,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const workflow = await createActiveWorkflow({}, member);
 
-		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
+		activeWorkflowManager.add.mockRejectedValue(new UnexpectedError('Oh no!'));
 
 		//
 		// ACT & ASSERT

@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { sleep } from '@n8n/utils/sleep';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
@@ -10,7 +11,6 @@ import {
 	NodeHelpers,
 	NodeApiError,
 	NodeOperationError,
-	sleep,
 	NodeConnectionTypes,
 	getCredentialAllowedDomains,
 } from 'n8n-workflow';
@@ -227,20 +227,9 @@ export class RoutingNode {
 				itemContext[itemIndex].requestData.options.timeout = 300_000;
 			}
 
-			if (credentials?.allowedHttpRequestDomains === 'none') {
-				throw new NodeOperationError(
-					node,
-					'This credential is configured to prevent use within an HTTP Request node',
-				);
-			}
-
-			const allowedDomains = getCredentialAllowedDomains(credentials);
-			if (credentials?.allowedHttpRequestDomains === 'domains' && !allowedDomains) {
-				throw new NodeOperationError(
-					node,
-					'No allowed domains specified. Configure allowed domains or change restriction setting.',
-				);
-			}
+			const allowedDomains = credentials
+				? getCredentialAllowedDomains({ node, credentialData: credentials })
+				: undefined;
 			if (allowedDomains) {
 				itemContext[itemIndex].requestData.options.allowedDomains = allowedDomains;
 			}

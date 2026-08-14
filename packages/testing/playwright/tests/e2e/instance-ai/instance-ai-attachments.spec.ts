@@ -5,11 +5,10 @@ import path from 'path';
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-
 test.describe(
 	'Instance AI attachments @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		let tmpDir: string;

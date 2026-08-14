@@ -5,7 +5,7 @@ import InlineAskAssistantButton from '../../InlineAskAssistantButton/InlineAskAs
 
 type EventName = 'end-session' | 'session-timeout' | 'session-error';
 
-interface Props {
+export interface Props {
 	message: {
 		role: 'assistant';
 		type: 'event';

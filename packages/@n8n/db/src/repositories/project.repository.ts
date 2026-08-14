@@ -43,6 +43,30 @@ export class ProjectRepository extends Repository<Project> {
 		});
 	}
 
+	async getAccessibleProjectsByExactName(
+		userId: string,
+		name: string,
+		type?: 'personal' | 'team',
+	): Promise<Project[]> {
+		const idsQuery = this.createQueryBuilder('p')
+			.select('p.id', 'id')
+			.innerJoin('p.projectRelations', 'pr')
+			.where('pr.userId = :userId', { userId })
+			.andWhere('LOWER(p.name) = LOWER(:name)', { name });
+
+		if (type) {
+			idsQuery.andWhere('p.type = :type', { type });
+		}
+
+		const query = this.createQueryBuilder('project')
+			.leftJoin('project.creator', 'creator')
+			.where(`project.id IN (${idsQuery.getQuery()})`)
+			.setParameters(idsQuery.getParameters());
+		this.applyActivationOrder(query);
+
+		return await query.getMany();
+	}
+
 	async findAllProjectsAndCount(options: ProjectListOptions): Promise<[Project[], number]> {
 		const query = this.createQueryBuilder('project').leftJoin('project.creator', 'creator');
 

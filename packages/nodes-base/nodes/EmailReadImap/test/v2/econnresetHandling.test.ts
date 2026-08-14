@@ -1,26 +1,28 @@
 import { EventEmitter } from 'events';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode, INodeTypeBaseDescription, ITriggerFunctions, IDataObject } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { type ICredentialsDataImap } from '@credentials/Imap.credentials';
 
 import { EmailReadImapV2 } from '../../v2/EmailReadImapV2.node';
+import type { Mock } from 'vitest';
 
 const mockConnection = Object.assign(new EventEmitter(), {
-	openBox: jest.fn().mockResolvedValue({}),
-	closeBox: jest.fn().mockResolvedValue(undefined),
-	end: jest.fn(),
-	search: jest.fn().mockResolvedValue([]),
-	getPartData: jest.fn(),
-	addFlags: jest.fn().mockResolvedValue(undefined),
+	openBox: vi.fn().mockResolvedValue({}),
+	closeBox: vi.fn().mockResolvedValue(undefined),
+	end: vi.fn(),
+	search: vi.fn().mockResolvedValue([]),
+	getPartData: vi.fn(),
+	addFlags: vi.fn().mockResolvedValue(undefined),
 });
 
-jest.mock('@n8n/imap', () => ({
-	connect: jest.fn().mockImplementation(async () => mockConnection),
+vi.mock('@n8n/imap', () => ({
+	connect: vi.fn().mockImplementation(async () => mockConnection),
 }));
 
-jest.mock('../../v2/utils', () => ({
-	getNewEmails: jest.fn().mockResolvedValue(undefined),
+vi.mock('../../v2/utils', () => ({
+	getNewEmails: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('ECONNRESET error handling', () => {
@@ -28,7 +30,7 @@ describe('ECONNRESET error handling', () => {
 
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers: {
-			createDeferredPromise: jest.fn().mockImplementation(() => {
+			createDeferredPromise: vi.fn().mockImplementation(() => {
 				let resolve: () => void;
 				let reject: (e: Error) => void;
 				const promise = new Promise<void>((res, rej) => {
@@ -72,12 +74,12 @@ describe('ECONNRESET error handling', () => {
 			return values[param];
 		}) as typeof triggerFunctions.getNodeParameter);
 		triggerFunctions.getWorkflowStaticData.calledWith('node').mockReturnValue(staticData);
-		triggerFunctions.logger.debug = jest.fn();
-		triggerFunctions.logger.error = jest.fn();
-		(triggerFunctions as { emitError: jest.Mock }).emitError = jest.fn();
+		triggerFunctions.logger.debug = vi.fn();
+		triggerFunctions.logger.error = vi.fn();
+		(triggerFunctions as { emitError: Mock }).emitError = vi.fn();
 	});
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	it('should call emitError when ECONNRESET error is received', async () => {
 		const node = new EmailReadImapV2(baseDescription);
@@ -98,8 +100,20 @@ describe('ECONNRESET error handling', () => {
 		mockConnection.emit('close', false);
 
 		expect(triggerFunctions.emitError).toHaveBeenCalledWith(
-			expect.objectContaining({ message: 'Imap connection closed unexpectedly' }),
+			expect.objectContaining({ message: 'IMAP connection closed unexpectedly' }),
 		);
+	});
+
+	it('should emit a NodeOperationError with an actionable description on unexpected close', async () => {
+		const node = new EmailReadImapV2(baseDescription);
+		await node.trigger.call(triggerFunctions);
+
+		mockConnection.emit('close', false);
+
+		const emittedError = (triggerFunctions.emitError as Mock).mock
+			.calls[0][0] as NodeOperationError;
+		expect(emittedError).toBeInstanceOf(NodeOperationError);
+		expect(emittedError.description).toContain('Force Reconnect');
 	});
 
 	it('should call emitError only once when ECONNRESET is followed by close', async () => {

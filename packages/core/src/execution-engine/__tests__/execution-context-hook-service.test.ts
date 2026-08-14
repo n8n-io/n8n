@@ -18,10 +18,10 @@ describe('ExecutionContextHookRegistry', () => {
 	beforeAll(() => {
 		// Set up Container dependencies once for all tests
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		} as unknown as Logger;
 
 		hookMetadata = Container.get(ContextEstablishmentHookMetadata);
@@ -29,7 +29,7 @@ describe('ExecutionContextHookRegistry', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Manually clear the metadata's internal Set to remove hooks from previous tests
 		// This prevents hooks from accumulating across tests
@@ -92,7 +92,7 @@ describe('ExecutionContextHookRegistry', () => {
 		});
 
 		it('should call optional init() method on hooks', async () => {
-			const initSpy = jest.fn().mockResolvedValue(undefined);
+			const initSpy = vi.fn().mockResolvedValue(undefined);
 
 			@ContextEstablishmentHook()
 			// @ts-expect-error - Class is used via decorator side-effect
@@ -136,7 +136,7 @@ describe('ExecutionContextHookRegistry', () => {
 			// @ts-expect-error - Class is used via decorator side-effect
 			class FailingHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'failing.hook' };
-				init = jest.fn().mockRejectedValue(initError);
+				init = vi.fn().mockRejectedValue(initError);
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
 					return {};
 				}
@@ -416,6 +416,97 @@ describe('ExecutionContextHookRegistry', () => {
 
 			const hooks = newRegistry.getHookForTriggerType('n8n-nodes-base.formTrigger');
 			expect(hooks).toEqual([]);
+		});
+	});
+
+	describe('global hooks', () => {
+		it('exposes hooks decorated with alwaysExecute: true via getGlobalHooks()', async () => {
+			@ContextEstablishmentHook({ alwaysExecute: true })
+			class GlobalHook implements IContextEstablishmentHook {
+				hookDescription = { name: 'test.global' };
+				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+					return {};
+				}
+				isApplicableToTriggerNode(_nodeType: string): boolean {
+					return false;
+				}
+			}
+
+			await registry.init();
+
+			const globals = registry.getGlobalHooks();
+			expect(globals).toHaveLength(1);
+			expect(globals[0]).toBeInstanceOf(GlobalHook);
+		});
+
+		it('does not expose non-global hooks via getGlobalHooks(), but they remain retrievable by name', async () => {
+			@ContextEstablishmentHook()
+			class PerNodeHook implements IContextEstablishmentHook {
+				hookDescription = { name: 'test.per-node' };
+				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+					return {};
+				}
+				isApplicableToTriggerNode(_nodeType: string): boolean {
+					return true;
+				}
+			}
+
+			await registry.init();
+
+			expect(registry.getGlobalHooks()).toEqual([]);
+			expect(registry.getHookByName('test.per-node')).toBeInstanceOf(PerNodeHook);
+		});
+
+		it('returns an empty array when no hooks are registered at all', async () => {
+			await registry.init();
+
+			expect(registry.getGlobalHooks()).toEqual([]);
+		});
+	});
+
+	describe('sub-execution hooks', () => {
+		it('exposes hooks decorated with runForSubExecution: true via getSubExecutionHooks()', async () => {
+			@ContextEstablishmentHook({ alwaysExecute: true, runForSubExecution: true })
+			class SubExecutionHook implements IContextEstablishmentHook {
+				hookDescription = { name: 'test.sub-execution' };
+				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+					return {};
+				}
+				isApplicableToTriggerNode(_nodeType: string): boolean {
+					return false;
+				}
+			}
+
+			await registry.init();
+
+			const subHooks = registry.getSubExecutionHooks();
+			expect(subHooks).toHaveLength(1);
+			expect(subHooks[0]).toBeInstanceOf(SubExecutionHook);
+		});
+
+		it('does not expose a global hook that did not opt into sub-execution', async () => {
+			@ContextEstablishmentHook({ alwaysExecute: true })
+			// @ts-expect-error - Class is used via decorator side-effect
+			class GlobalOnlyHook implements IContextEstablishmentHook {
+				hookDescription = { name: 'test.global-only' };
+				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+					return {};
+				}
+				isApplicableToTriggerNode(_nodeType: string): boolean {
+					return false;
+				}
+			}
+
+			await registry.init();
+
+			expect(registry.getGlobalHooks()).toHaveLength(1);
+			expect(registry.getSubExecutionHooks()).toEqual([]);
+		});
+
+		it('returns an empty array when no hooks are registered at all', async () => {
+			await registry.init();
+
+			expect(registry.getSubExecutionHooks()).toEqual([]);
 		});
 	});
 });

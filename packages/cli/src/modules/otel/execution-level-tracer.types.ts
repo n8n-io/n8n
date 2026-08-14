@@ -2,6 +2,19 @@ import type { ExecutionStatus, WorkflowExecuteMode, INode } from 'n8n-workflow';
 
 import type { TracingContext } from './tracing-context';
 
+export type CustomAttributes = Record<string, string>;
+type ProjectContext = {
+	id: string;
+	customAttributes?: CustomAttributes;
+};
+type WorkflowContext = {
+	id: string;
+	name: string;
+	versionId?: string;
+	nodeCount: number;
+	customAttributes?: CustomAttributes;
+};
+
 export type StartWorkflowParams = {
 	executionId: string;
 	/** Parent context — incoming webhook traceparent or parent sub-workflow span. */
@@ -11,7 +24,8 @@ export type StartWorkflowParams = {
 	 * workflow is resumed after a pause.
 	 */
 	linkTo?: TracingContext;
-	workflow: { id: string; name: string; versionId?: string; nodeCount: number };
+	workflow: WorkflowContext;
+	project?: ProjectContext;
 };
 
 export type EndWorkflowParams = {
@@ -30,7 +44,13 @@ export type StartNodeParams = {
 	node: NodeTracingParams;
 };
 
-type EndNodeError = { message: string; constructor: { name: string }; stack?: string };
+type EndNodeError = {
+	message: string;
+	constructor: { name: string };
+	stack?: string;
+	name?: string;
+	description?: string | null;
+};
 
 export function isEndNodeError(error: unknown): error is EndNodeError {
 	if (typeof error !== 'object' || error === null) return false;

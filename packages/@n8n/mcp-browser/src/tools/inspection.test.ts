@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { createInspectionTools } from './inspection';
-import { createMockConnection, findTool, structuredOf, TOOL_CONTEXT } from './test-helpers';
+import { createMockConnection, findTool, structuredOf, textOf, TOOL_CONTEXT } from './test-helpers';
 
 describe('createInspectionTools', () => {
 	let mockConnection: ReturnType<typeof createMockConnection>;
@@ -89,6 +89,30 @@ describe('createInspectionTools', () => {
 
 				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined, false);
 			});
+
+			it('redacts DOM-derived snapshot text with the host-side analyzer', async () => {
+				const secret = `sk-ant-api03-${'a'.repeat(93)}AA`;
+				mockConnection.adapter.snapshot.mockResolvedValue({
+					tree: `- text "Your key is ${secret}" [ref=e1]`,
+					refCount: 1,
+				});
+				mockConnection.adapter.probePageHtml.mockResolvedValue({
+					ok: true,
+					root: {
+						kind: 'document',
+						html: `<p>Your key is ${secret}</p>`,
+						path: ['document'],
+						children: [],
+						errors: [],
+					},
+				});
+
+				const result = await getTool().execute({}, TOOL_CONTEXT);
+				const data = structuredOf(result);
+
+				expect(data.snapshot).toBe('- text "Your key is [REDACTED:anthropic_api_key:1]" [ref=e1]');
+				expect(textOf(result)).not.toContain(secret);
+			});
 		});
 	});
 
@@ -136,6 +160,99 @@ describe('createInspectionTools', () => {
 					{ selector: '#chart' },
 					{ fullPage: true },
 				);
+			});
+
+			it('refuses when the live HTML probe is sensitive', async () => {
+				const secret = `sk-ant-api03-${'a'.repeat(93)}AA`;
+				mockConnection.adapter.probePageHtml.mockResolvedValue({
+					ok: true,
+					root: {
+						kind: 'document',
+						html: `<p>${secret}</p>`,
+						path: ['document'],
+						children: [],
+						errors: [],
+					},
+				});
+
+				const result = await getTool().execute({}, TOOL_CONTEXT);
+
+				expect(structuredOf(result)).toMatchObject({ ok: false, reason: 'sensitive_context' });
+				expect(mockConnection.adapter.screenshot).not.toHaveBeenCalled();
+			});
+
+			it('refuses element-targeted screenshots when the page is sensitive', async () => {
+				const secret = `sk-ant-api03-${'a'.repeat(93)}AA`;
+				mockConnection.adapter.probePageHtml.mockResolvedValue({
+					ok: true,
+					root: {
+						kind: 'document',
+						html: `<div role="dialog"><p>${secret}</p></div>`,
+						path: ['document'],
+						children: [],
+						errors: [],
+					},
+				});
+
+				const result = await getTool().execute({ element: { ref: 'e1' } }, TOOL_CONTEXT);
+
+				expect(structuredOf(result)).toMatchObject({ ok: false, reason: 'sensitive_context' });
+				expect(mockConnection.adapter.screenshot).not.toHaveBeenCalled();
+			});
+
+			it('refuses when the live HTML probe fails', async () => {
+				mockConnection.adapter.probePageHtml.mockResolvedValue({ ok: false, error: 'boom' });
+
+				const result = await getTool().execute({}, TOOL_CONTEXT);
+
+				expect(structuredOf(result)).toMatchObject({ ok: false, reason: 'probe_failed' });
+				expect(mockConnection.adapter.screenshot).not.toHaveBeenCalled();
+			});
+
+			it('refuses when sensitivity analysis throws unexpectedly', async () => {
+				mockConnection.adapter.probePageHtml.mockResolvedValue({
+					ok: true,
+					root: {
+						kind: 'document',
+						html: '<html><body></body></html>',
+						path: ['document'],
+						children: [
+							{
+								kind: 'document',
+								html: '<html><body></body></html>',
+								path: ['bad-child'],
+								children: undefined as unknown as [],
+								errors: [],
+							},
+						],
+						errors: [],
+					},
+				});
+
+				const result = await getTool().execute({}, TOOL_CONTEXT);
+
+				expect(structuredOf(result)).toMatchObject({ ok: false, reason: 'probe_failed' });
+				expect(mockConnection.adapter.screenshot).not.toHaveBeenCalled();
+			});
+
+			it('allows screenshots after a previously sensitive dialog is dismissed', async () => {
+				mockConnection.adapter.probePageHtml.mockResolvedValue({
+					ok: true,
+					root: {
+						kind: 'document',
+						html: '<main><p>Dialog dismissed.</p></main>',
+						path: ['document'],
+						children: [],
+						errors: [],
+					},
+				});
+
+				const result = await getTool().execute({}, TOOL_CONTEXT);
+
+				expect(result.content[0].type).toBe('image');
+				expect(mockConnection.adapter.screenshot).toHaveBeenCalledWith('page1', undefined, {
+					fullPage: undefined,
+				});
 			});
 		});
 	});
@@ -238,6 +355,68 @@ describe('createInspectionTools', () => {
 				);
 				expect(data.result).toEqual({ count: 5 });
 			});
+
+			it('allows clean pages and backstop-redacts literal secret return values', async () => {
+				const secret = `sk-ant-api03-${'a'.repeat(93)}AA`;
+				mockConnection.adapter.evaluate.mockResolvedValue(secret);
+
+				const result = await getTool().execute({ script: '"secret"' }, TOOL_CONTEXT);
+				const data = structuredOf(result);
+
+				expect(data.result).toBe('[REDACTED:anthropic_api_key:1]');
+				expect(textOf(result)).not.toContain(secret);
+			});
+
+			it('refuses when the live HTML probe is sensitive', async () => {
+				const secret = `sk-ant-api03-${'a'.repeat(93)}AA`;
+				mockConnection.adapter.probePageHtml.mockResolvedValue({
+					ok: true,
+					root: {
+						kind: 'document',
+						html: `<p>${secret}</p>`,
+						path: ['document'],
+						children: [],
+						errors: [],
+					},
+				});
+
+				const result = await getTool().execute({ script: 'document.title' }, TOOL_CONTEXT);
+
+				expect(structuredOf(result)).toMatchObject({ ok: false, reason: 'sensitive_context' });
+				expect(mockConnection.adapter.evaluate).not.toHaveBeenCalled();
+			});
+
+			it('refuses when DOM-discovered password values are visible', async () => {
+				const secret = 'live-input-secret';
+				mockConnection.adapter.probePageHtml.mockResolvedValue({
+					ok: true,
+					root: {
+						kind: 'document',
+						html: `<input type="password" value="${secret}">`,
+						children: [],
+						errors: [],
+					},
+				});
+
+				const result = await getTool().execute(
+					{ script: 'document.querySelector("input")?.value' },
+					TOOL_CONTEXT,
+				);
+
+				expect(mockConnection.adapter.probePageHtml).toHaveBeenCalledWith('page1');
+				expect(structuredOf(result)).toMatchObject({ ok: false, reason: 'sensitive_context' });
+				expect(mockConnection.adapter.evaluate).not.toHaveBeenCalled();
+				expect(textOf(result)).not.toContain(secret);
+			});
+
+			it('refuses when the live HTML probe fails', async () => {
+				mockConnection.adapter.probePageHtml.mockResolvedValue({ ok: false, error: 'boom' });
+
+				const result = await getTool().execute({ script: 'document.title' }, TOOL_CONTEXT);
+
+				expect(structuredOf(result)).toMatchObject({ ok: false, reason: 'probe_failed' });
+				expect(mockConnection.adapter.evaluate).not.toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -337,6 +516,34 @@ describe('createInspectionTools', () => {
 				});
 				expect(data.pdf).toBe('pdfbase64');
 				expect(data.pages).toBe(3);
+			});
+
+			it('refuses when the live HTML probe is sensitive', async () => {
+				const secret = `sk-ant-api03-${'a'.repeat(93)}AA`;
+				mockConnection.adapter.probePageHtml.mockResolvedValue({
+					ok: true,
+					root: {
+						kind: 'document',
+						html: `<p>${secret}</p>`,
+						path: ['document'],
+						children: [],
+						errors: [],
+					},
+				});
+
+				const result = await getTool().execute({}, TOOL_CONTEXT);
+
+				expect(structuredOf(result)).toMatchObject({ ok: false, reason: 'sensitive_context' });
+				expect(mockConnection.adapter.pdf).not.toHaveBeenCalled();
+			});
+
+			it('refuses when the live HTML probe fails', async () => {
+				mockConnection.adapter.probePageHtml.mockResolvedValue({ ok: false, error: 'boom' });
+
+				const result = await getTool().execute({}, TOOL_CONTEXT);
+
+				expect(structuredOf(result)).toMatchObject({ ok: false, reason: 'probe_failed' });
+				expect(mockConnection.adapter.pdf).not.toHaveBeenCalled();
 			});
 		});
 	});

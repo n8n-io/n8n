@@ -1,3 +1,5 @@
+import { isWorkflowPublishBlockedDetails } from '@n8n/api-types';
+
 import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-classifier';
 
 const GENERIC_PUBLIC_MESSAGE = 'Internal server error';
@@ -15,11 +17,28 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 	body: { message: string };
 } {
 	switch (descriptor.kind) {
-		case HttpErrorKind.responseError:
+		case HttpErrorKind.responseError: {
+			const body: { message: string } & Record<string, unknown> = {
+				message: descriptor.message,
+			};
+			// Blocking-issue errors (package import) expose the structured list so
+			// clients can see every blocker; the rest of `meta` stays internal.
+			if (descriptor.meta?.issues !== undefined) {
+				body.issues = descriptor.meta.issues;
+			}
+			const workflowPublishBlockedDetails = {
+				reason: descriptor.meta?.reason,
+				workflowReviewRequestId: descriptor.meta?.workflowReviewRequestId,
+			};
 			return {
 				status: descriptor.status,
-				body: { message: descriptor.message },
+				body: {
+					...body,
+					...(isWorkflowPublishBlockedDetails(workflowPublishBlockedDetails) &&
+						workflowPublishBlockedDetails),
+				},
 			};
+		}
 		case HttpErrorKind.userError:
 			return {
 				status: 400,

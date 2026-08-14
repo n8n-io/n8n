@@ -10,6 +10,7 @@ import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { getEdgeRenderData } from './utils';
 import { useCanvas } from '../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
+import { resolveCanonicalConnection } from '../../../canvas.utils';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
@@ -96,12 +97,15 @@ const segments = computed(() => renderData.value.segments);
 
 const labelPosition = computed(() => renderData.value.labelPosition);
 
-const connection = computed<Connection>(() => ({
-	source: props.source,
-	target: props.target,
-	sourceHandle: props.sourceHandleId,
-	targetHandle: props.targetHandleId,
-}));
+const connection = computed<Connection>(() =>
+	resolveCanonicalConnection({
+		source: props.source,
+		target: props.target,
+		sourceHandle: props.sourceHandleId,
+		targetHandle: props.targetHandleId,
+		data: props.data,
+	}),
+);
 
 const edgeColor = computed(() => {
 	if (status.value === 'success') {

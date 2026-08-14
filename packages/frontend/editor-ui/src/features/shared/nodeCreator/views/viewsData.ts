@@ -45,6 +45,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	MARKDOWN_NODE_TYPE,
 	MERGE_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	OTHER_TRIGGER_NODES_SUBCATEGORY,
 	REGULAR_NODE_CREATOR_VIEW,
 	REMOVE_DUPLICATES_NODE_TYPE,
@@ -61,7 +62,7 @@ import {
 	XML_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -71,7 +72,7 @@ import { useI18n } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
 import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
-import { getAiTemplatesCallout } from '../nodeCreator.utils';
+import { getAiTemplatesCallout, getSendAndWaitNodes } from '../nodeCreator.utils';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -100,7 +101,8 @@ export interface NodeViewItem {
 		displayName?: string;
 		tag?: {
 			type?: string;
-			text: string;
+			text?: string;
+			preview?: boolean;
 		};
 		forceIncludeNodes?: string[];
 		iconData?: { type: 'file'; fileBuffer: string } | { type: 'icon'; icon: string };
@@ -169,9 +171,23 @@ function getEvaluationNode(
 	];
 }
 
+function getMessageAnAgentNode(
+	nodeTypesStore: ReturnType<typeof useNodeTypesStore>,
+	settingsStore: ReturnType<typeof useSettingsStore>,
+) {
+	if (!settingsStore.isModuleActive('agents')) return [];
+
+	const node = nodeTypesStore.getNodeType(MESSAGE_AN_AGENT_NODE_TYPE);
+	if (!node) return [];
+
+	// The early-preview tag is attached centrally in `applyNodeTags`.
+	return [getNodeView(node)];
+}
+
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
 	const templatesStore = useTemplatesStore();
 	const evaluationStore = useEvaluationStore();
 	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
@@ -180,19 +196,20 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
+	const messageAnAgentNode = getMessageAnAgentNode(nodeTypesStore, settingsStore);
 
-	const websiteCategoryURLParams = templatesStore.websiteTemplateRepositoryParameters;
-	websiteCategoryURLParams.append('utm_user_role', 'AdvancedAI');
+	const websiteCategoryURLParams = new URLSearchParams(
+		templatesStore.websiteTemplateRepositoryParameters,
+	);
+	websiteCategoryURLParams.set('utm_user_role', 'AdvancedAI');
 	const aiTemplatesURL = templatesStore.constructTemplateRepositoryURL(
 		websiteCategoryURLParams,
 		TEMPLATE_CATEGORY_AI,
 	);
 
-	const askAiEnabled = useSettingsStore().isAskAiEnabled;
-	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
-	const transformNode = askAiEnabled && aiTransformNode ? [getNodeView(aiTransformNode)] : [];
-
-	const callouts: NodeViewItem[] = [getAiTemplatesCallout(aiTemplatesURL)];
+	const callouts: NodeViewItem[] = settingsStore.isCanvasOnly
+		? []
+		: [getAiTemplatesCallout(aiTemplatesURL)];
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,
@@ -200,9 +217,11 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		items: [
 			...callouts,
+			// shown only when agents module is active
+			// TODO: revert before GA release
+			...messageAnAgentNode,
 			...agentNodes,
 			...chainNodes,
-			...transformNode,
 			...evaluationNode,
 			{
 				key: AI_OTHERS_NODE_CREATOR_VIEW,
@@ -492,12 +511,6 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		DATETIME_NODE_TYPE,
 		AI_TRANSFORM_NODE_TYPE,
 	];
-
-	const getSendAndWaitNodes = (nodes: SimplifiedNodeType[]) => {
-		return (nodes ?? [])
-			.filter((node) => node.codex?.categories?.includes(HUMAN_IN_THE_LOOP_CATEGORY))
-			.map((node) => node.name);
-	};
 
 	const view: NodeView = {
 		value: REGULAR_NODE_CREATOR_VIEW,

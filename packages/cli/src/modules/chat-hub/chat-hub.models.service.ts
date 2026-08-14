@@ -158,6 +158,10 @@ export class ChatHubModelsService {
 				const rawModels = await this.fetchMistralCloudModels(credentials, additionalData);
 				return { models: this.transformAndFilterModels(rawModels, 'mistralCloud') };
 			}
+			case 'nvidia': {
+				const rawModels = await this.fetchNvidiaModels(credentials, additionalData);
+				return { models: this.transformAndFilterModels(rawModels, 'nvidia') };
+			}
 			case 'n8n':
 				return { models: await this.fetchAgentWorkflowsAsModels(user) };
 			case 'custom-agent':
@@ -403,6 +407,55 @@ export class ChatHubModelsService {
 		]);
 
 		return foundationModels.concat(inferenceProfileModels);
+	}
+
+	private async fetchNvidiaModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<INodePropertyOptions[]> {
+		return await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'filter',
+								properties: {
+									pass: '={{ /nemotron/i.test($responseItem.id) }}',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.nvidia,
+			{},
+			credentials,
+		);
 	}
 
 	private async fetchMistralCloudModels(

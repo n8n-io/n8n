@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import { In, type SelectQueryBuilder } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { SharedCredentials } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -10,10 +11,10 @@ describe('SharedCredentialsRepository', () => {
 	const entityManager = mockEntityManager(SharedCredentials);
 	const sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
 
-	let queryBuilder: jest.Mocked<SelectQueryBuilder<SharedCredentials>>;
+	let queryBuilder: Mocked<SelectQueryBuilder<SharedCredentials>>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		queryBuilder = mock<SelectQueryBuilder<SharedCredentials>>();
 		queryBuilder.where.mockReturnThis();
@@ -21,7 +22,7 @@ describe('SharedCredentialsRepository', () => {
 		queryBuilder.innerJoin.mockReturnThis();
 		queryBuilder.select.mockReturnThis();
 
-		jest.spyOn(sharedCredentialsRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+		vi.spyOn(sharedCredentialsRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 	});
 
 	describe('findByCredentialIds', () => {

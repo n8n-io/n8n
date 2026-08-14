@@ -17,9 +17,7 @@ test.describe(
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
 
 			await n8n.canvas.clickZoomToFitButton();
-			await n8n.canvas.clickExecuteWorkflowButton();
-
-			await n8n.notifications.waitForNotificationAndClose(
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				NOTIFICATIONS.WORKFLOW_EXECUTED_SUCCESSFULLY,
 			);
 
@@ -33,7 +31,7 @@ test.describe(
 
 			await n8n.canvas.openNode('Edit Fields');
 
-			expect(await n8n.ndv.getInputPanel().innerText()).toContain(
+			await expect(n8n.ndv.getInputPanel()).toContainText(
 				'The fields below come from the last successful execution.',
 			);
 
@@ -47,9 +45,7 @@ test.describe(
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
 
 			await n8n.canvas.clickZoomToFitButton();
-			await n8n.canvas.clickExecuteWorkflowButton();
-
-			await n8n.notifications.waitForNotificationAndClose(
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				NOTIFICATIONS.WORKFLOW_EXECUTED_SUCCESSFULLY,
 			);
 

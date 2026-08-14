@@ -1,6 +1,6 @@
 import type { ExecutionsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { BinaryDataStorageRule } from '../binary-data-storage.rule';
 

@@ -1,17 +1,19 @@
 import type { LanguageModel } from 'ai';
 
-import { createModel } from '../model-factory';
+import { createEmbeddingModel, createModel } from '../model/model-factory';
 
 type ProviderOpts = {
 	apiKey?: string;
 	baseURL?: string;
 	fetch?: typeof globalThis.fetch;
 	headers?: Record<string, string>;
+	includeUsage?: boolean;
+	supportsStructuredOutputs?: boolean;
 };
 
-// All providers are mocked via jest.mock so require() inside the registry entries
+// All providers are mocked via vi.mock so require() inside the registry entries
 // returns these stubs instead of the real packages.
-jest.mock('@ai-sdk/anthropic', () => ({
+vi.mock('@ai-sdk/anthropic', () => ({
 	createAnthropic: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'anthropic',
 		modelId: model,
@@ -23,20 +25,42 @@ jest.mock('@ai-sdk/anthropic', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/openai', () => ({
-	createOpenAI: (opts?: ProviderOpts) => (model: string) => ({
-		provider: 'openai',
-		modelId: model,
-		apiKey: opts?.apiKey,
-		baseURL: opts?.baseURL,
-		fetch: opts?.fetch,
-		headers: opts?.headers,
-		specificationVersion: 'v3',
-	}),
+vi.mock('@ai-sdk/openai', () => ({
+	createOpenAI: (opts?: ProviderOpts) =>
+		Object.assign(
+			(model: string) => ({
+				provider: 'openai',
+				modelId: model,
+				apiKey: opts?.apiKey,
+				baseURL: opts?.baseURL,
+				fetch: opts?.fetch,
+				headers: opts?.headers,
+				specificationVersion: 'v3',
+			}),
+			{
+				chat: (model: string) => ({
+					provider: 'openai',
+					modelId: model,
+					api: 'chat-completions',
+					apiKey: opts?.apiKey,
+					baseURL: opts?.baseURL,
+					fetch: opts?.fetch,
+					headers: opts?.headers,
+					specificationVersion: 'v3',
+				}),
+				embeddingModel: (model: string) => ({
+					provider: 'openai',
+					modelId: model,
+					apiKey: opts?.apiKey,
+					baseURL: opts?.baseURL,
+					specificationVersion: 'v2',
+				}),
+			},
+		),
 }));
 
-jest.mock('@ai-sdk/google', () => ({
-	createGoogleGenerativeAI: (opts?: ProviderOpts) => (model: string) => ({
+vi.mock('@ai-sdk/google', () => ({
+	createGoogle: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'google',
 		modelId: model,
 		apiKey: opts?.apiKey,
@@ -45,17 +69,19 @@ jest.mock('@ai-sdk/google', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/xai', () => ({
-	createXai: (opts?: ProviderOpts) => (model: string) => ({
-		provider: 'xai',
-		modelId: model,
-		apiKey: opts?.apiKey,
-		fetch: opts?.fetch,
-		specificationVersion: 'v3',
+vi.mock('@ai-sdk/xai', () => ({
+	createXai: (opts?: ProviderOpts) => ({
+		chat: (model: string) => ({
+			provider: 'xai',
+			modelId: model,
+			apiKey: opts?.apiKey,
+			fetch: opts?.fetch,
+			specificationVersion: 'v3',
+		}),
 	}),
 }));
 
-jest.mock('@ai-sdk/groq', () => ({
+vi.mock('@ai-sdk/groq', () => ({
 	createGroq: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'groq',
 		modelId: model,
@@ -65,7 +91,7 @@ jest.mock('@ai-sdk/groq', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/deepseek', () => ({
+vi.mock('@ai-sdk/deepseek', () => ({
 	createDeepSeek: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'deepseek',
 		modelId: model,
@@ -75,7 +101,7 @@ jest.mock('@ai-sdk/deepseek', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/cohere', () => ({
+vi.mock('@ai-sdk/cohere', () => ({
 	createCohere: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'cohere',
 		modelId: model,
@@ -85,7 +111,7 @@ jest.mock('@ai-sdk/cohere', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/mistral', () => ({
+vi.mock('@ai-sdk/mistral', () => ({
 	createMistral: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'mistral',
 		modelId: model,
@@ -95,7 +121,7 @@ jest.mock('@ai-sdk/mistral', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/gateway', () => ({
+vi.mock('@ai-sdk/gateway', () => ({
 	createGateway: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'vercel',
 		modelId: model,
@@ -106,7 +132,7 @@ jest.mock('@ai-sdk/gateway', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/azure', () => ({
+vi.mock('@ai-sdk/azure', () => ({
 	createAzure:
 		(opts?: { apiKey?: string; resourceName?: string; apiVersion?: string; baseURL?: string }) =>
 		(model: string) => ({
@@ -119,7 +145,7 @@ jest.mock('@ai-sdk/azure', () => ({
 		}),
 }));
 
-jest.mock('@openrouter/ai-sdk-provider', () => ({
+vi.mock('@openrouter/ai-sdk-provider', () => ({
 	createOpenRouter: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'openrouter',
 		modelId: model,
@@ -130,7 +156,21 @@ jest.mock('@openrouter/ai-sdk-provider', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/amazon-bedrock', () => ({
+vi.mock('@ai-sdk/openai-compatible', () => ({
+	createOpenAICompatible: (opts: ProviderOpts & { name: string }) => (model: string) => ({
+		provider: opts.name,
+		modelId: model,
+		apiKey: opts.apiKey,
+		baseURL: opts.baseURL,
+		headers: opts.headers,
+		fetch: opts.fetch,
+		includeUsage: opts.includeUsage,
+		supportsStructuredOutputs: opts.supportsStructuredOutputs,
+		specificationVersion: 'v3',
+	}),
+}));
+
+vi.mock('@ai-sdk/amazon-bedrock', () => ({
 	createAmazonBedrock:
 		(opts?: {
 			region?: string;
@@ -148,8 +188,27 @@ jest.mock('@ai-sdk/amazon-bedrock', () => ({
 		}),
 }));
 
-const mockProxyAgent = jest.fn();
-jest.mock('undici', () => ({
+vi.mock('@ai-sdk/google-vertex/anthropic', () => ({
+	createVertexAnthropic:
+		(opts?: {
+			project?: string;
+			location?: string;
+			googleAuthOptions?: { credentials?: Record<string, unknown> };
+			fetch?: typeof globalThis.fetch;
+		}) =>
+		(model: string) => ({
+			provider: 'google-vertex-anthropic',
+			modelId: model,
+			project: opts?.project,
+			location: opts?.location,
+			googleAuthOptions: opts?.googleAuthOptions,
+			fetch: opts?.fetch,
+			specificationVersion: 'v3',
+		}),
+}));
+
+const { mockProxyAgent } = vi.hoisted(() => ({ mockProxyAgent: vi.fn() }));
+vi.mock('undici', () => ({
 	ProxyAgent: mockProxyAgent,
 }));
 
@@ -168,9 +227,9 @@ describe('createModel', () => {
 	});
 
 	it('should accept a string config', () => {
-		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
+		const model = createModel('anthropic/claude-opus-5') as unknown as Record<string, unknown>;
 		expect(model.provider).toBe('anthropic');
-		expect(model.modelId).toBe('claude-sonnet-4-5');
+		expect(model.modelId).toBe('claude-opus-5');
 	});
 
 	it('should accept an object config with baseURL', () => {
@@ -181,12 +240,59 @@ describe('createModel', () => {
 		}) as unknown as Record<string, unknown>;
 		expect(model.provider).toBe('openai');
 		expect(model.baseURL).toBe('https://custom.endpoint.com/v1');
+		// Custom endpoints are OpenAI-COMPATIBLE servers: they speak
+		// /chat/completions, not OpenAI's Responses API.
+		expect(model.api).toBe('chat-completions');
+	});
+
+	it('uses the Responses API when a baseURL explicitly serves it', () => {
+		// The n8n Connect gateway proxies real OpenAI, so it sets a baseURL but does
+		// serve /responses. /chat/completions rejects reasoning effort once tools
+		// are attached, so the heuristic has to be overridable.
+		const model = createModel({
+			id: 'openai/gpt-5-mini',
+			apiKey: 'gateway-jwt',
+			baseURL: 'https://gw.example/v1/gateway/openai/v1',
+			apiStyle: 'responses',
+		}) as unknown as Record<string, unknown>;
+		expect(model.baseURL).toBe('https://gw.example/v1/gateway/openai/v1');
+		expect(model.api).toBeUndefined();
+	});
+
+	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', () => {
+		const model = createModel({
+			id: 'openai/mock-model',
+			apiKey: 'sk-test',
+			url: 'http://127.0.0.1:1234/v1',
+		}) as unknown as Record<string, unknown>;
+		expect(model.baseURL).toBe('http://127.0.0.1:1234/v1');
+		expect(model.api).toBe('chat-completions');
+	});
+
+	it('treats an empty url as no custom endpoint (api-key-only host config)', () => {
+		// Instance AI emits { id, url: '', apiKey } when only the API key is set;
+		// the provider default endpoint and default model must be preserved.
+		const model = createModel({
+			id: 'anthropic/claude-sonnet-4-6',
+			apiKey: 'sk-ant-test',
+			url: '',
+		}) as unknown as Record<string, unknown>;
+		expect(model.baseURL).toBeUndefined();
+		expect(model.apiKey).toBe('sk-ant-test');
+	});
+
+	it('keeps the default Responses API model for plain OpenAI (no baseURL)', () => {
+		const model = createModel({
+			id: 'openai/gpt-4o',
+			apiKey: 'sk-test',
+		}) as unknown as Record<string, unknown>;
+		expect(model.api).toBeUndefined();
 	});
 
 	it('should pass through a prebuilt LanguageModel', () => {
 		const prebuilt = {
-			doGenerate: jest.fn(),
-			doStream: jest.fn(),
+			doGenerate: vi.fn(),
+			doStream: vi.fn(),
 			specificationVersion: 'v2' as const,
 			modelId: 'custom-model',
 			provider: 'custom',
@@ -276,6 +382,90 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('openai/gpt-4o');
 			expect(model.apiKey).toBe('or-test');
 		});
+
+		it('should create model for nvidia with SDK defaults for usage and structured outputs', () => {
+			const model = createModel({
+				id: 'nvidia/nvidia/llama-3.3-nemotron-super-49b-v1',
+				apiKey: 'nv-test',
+				baseURL: 'https://integrate.api.nvidia.com/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('nvidia');
+			expect(model.modelId).toBe('nvidia/llama-3.3-nemotron-super-49b-v1');
+			expect(model.apiKey).toBe('nv-test');
+			expect(model.baseURL).toBe('https://integrate.api.nvidia.com/v1');
+			expect(model.includeUsage).toBeUndefined();
+			expect(model.supportsStructuredOutputs).toBeUndefined();
+		});
+
+		it('should enable usage and structured outputs for moonshotai', () => {
+			const model = createModel({
+				id: 'moonshotai/kimi-k3',
+				apiKey: 'ms-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('moonshotai');
+			expect(model.modelId).toBe('kimi-k3');
+			expect(model.apiKey).toBe('ms-test');
+			expect(model.baseURL).toBe('https://api.moonshot.ai/v1');
+			expect(model.includeUsage).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(true);
+		});
+
+		it('should have undefined supportsStructuredOutputs for custom when unset', () => {
+			const model = createModel({
+				id: 'custom/Kimi-K3',
+				apiKey: 'key',
+				baseURL: 'https://example.com/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('custom');
+			expect(model.supportsStructuredOutputs).toBe(undefined);
+		});
+
+		it('should forward supportsStructuredOutputs for custom when set', () => {
+			const model = createModel({
+				id: 'custom/Kimi-K3',
+				apiKey: 'key',
+				baseURL: 'https://example.com/v1',
+				supportsStructuredOutputs: true,
+			}) as unknown as Record<string, unknown>;
+			expect(model.supportsStructuredOutputs).toBe(true);
+		});
+	});
+
+	describe('anthropic baseURL normalization', () => {
+		it('appends /v1 to a custom baseURL without a version segment (e.g. Azure AI Foundry)', () => {
+			const model = createModel({
+				id: 'anthropic/claude-sonnet-4-6',
+				apiKey: 'sk-ant',
+				baseURL: 'https://internal.example.services.ai.azure.com/anthropic/',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://internal.example.services.ai.azure.com/anthropic/v1');
+		});
+
+		it('appends /v1 to a bare host baseURL', () => {
+			const model = createModel({
+				id: 'anthropic/claude-sonnet-4-6',
+				apiKey: 'sk-ant',
+				baseURL: 'https://api.anthropic.com',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://api.anthropic.com/v1');
+		});
+
+		it('leaves a baseURL that already ends in /v1 unchanged', () => {
+			const model = createModel({
+				id: 'anthropic/claude-sonnet-4-6',
+				apiKey: 'sk-ant',
+				baseURL: 'https://proxy.example/api-proxy/anthropic/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://proxy.example/api-proxy/anthropic/v1');
+		});
+
+		it('leaves baseURL undefined when none is provided', () => {
+			const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<
+				string,
+				unknown
+			>;
+			expect(model.baseURL).toBeUndefined();
+		});
 	});
 
 	describe('azure-openai', () => {
@@ -335,6 +525,58 @@ describe('createModel', () => {
 		});
 	});
 
+	describe('google-vertex-anthropic', () => {
+		it('should create model with project, location, and service-account JSON', () => {
+			const model = createModel({
+				id: 'google-vertex-anthropic/claude-opus-4-8',
+				project: 'my-project',
+				location: 'global',
+				googleCredentials: JSON.stringify({
+					client_email: 'svc@my-project.iam.gserviceaccount.com',
+					private_key: '-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----\\n',
+				}),
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('google-vertex-anthropic');
+			expect(model.modelId).toBe('claude-opus-4-8');
+			expect(model.project).toBe('my-project');
+			expect(model.location).toBe('global');
+			expect(model.googleAuthOptions).toEqual({
+				credentials: {
+					client_email: 'svc@my-project.iam.gserviceaccount.com',
+					private_key: '-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----\n',
+				},
+			});
+		});
+
+		it('should default location to global when omitted', () => {
+			const model = createModel({
+				id: 'google-vertex-anthropic/claude-opus-4-8',
+				project: 'my-project',
+			}) as unknown as Record<string, unknown>;
+			expect(model.location).toBe('global');
+			expect(model.googleAuthOptions).toBeUndefined();
+		});
+
+		it('should throw if project is missing', () => {
+			expect(() =>
+				createModel({
+					id: 'google-vertex-anthropic/claude-opus-4-8',
+					location: 'global',
+				}),
+			).toThrow(/Invalid credentials for provider "google-vertex-anthropic"/);
+		});
+
+		it('should throw if googleCredentials is not valid JSON', () => {
+			expect(() =>
+				createModel({
+					id: 'google-vertex-anthropic/claude-opus-4-8',
+					project: 'my-project',
+					googleCredentials: 'not-json',
+				}),
+			).toThrow(/googleCredentials must be valid JSON/);
+		});
+	});
+
 	describe('unsupported provider', () => {
 		it('should throw for ollama', () => {
 			expect(() => createModel('ollama/llama3')).toThrow(/Unsupported provider: "ollama"/);
@@ -351,5 +593,30 @@ describe('createModel', () => {
 		it('should throw when model has no slash', () => {
 			expect(() => createModel('anthropic-only')).toThrow(/expected "provider\/model-name"/);
 		});
+	});
+});
+
+describe('createEmbeddingModel', () => {
+	it('should accept a legacy api key string', () => {
+		const model = createEmbeddingModel(
+			'openai/text-embedding-3-small',
+			'sk-test',
+		) as unknown as Record<string, unknown>;
+
+		expect(model.provider).toBe('openai');
+		expect(model.modelId).toBe('text-embedding-3-small');
+		expect(model.apiKey).toBe('sk-test');
+	});
+
+	it('should pass baseURL through to OpenAI-compatible embedding providers', () => {
+		const model = createEmbeddingModel('openai/text-embedding-3-small', {
+			apiKey: 'sk-test',
+			baseURL: 'https://custom.example/v1',
+		}) as unknown as Record<string, unknown>;
+
+		expect(model.provider).toBe('openai');
+		expect(model.modelId).toBe('text-embedding-3-small');
+		expect(model.apiKey).toBe('sk-test');
+		expect(model.baseURL).toBe('https://custom.example/v1');
 	});
 });

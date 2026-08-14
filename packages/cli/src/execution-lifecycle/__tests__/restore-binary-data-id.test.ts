@@ -37,7 +37,7 @@ for (const mode of ['filesystem', 's3'] as const) {
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should restore if binary data ID is missing execution ID', async () => {

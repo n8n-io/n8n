@@ -1,26 +1,31 @@
+import type { Mocked } from 'vitest';
 import type { AuthenticatedRequest, EvaluationConfig, User, WorkflowEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { EvaluationApiError } from '../evaluation-api-error';
 import { EvaluationConfigController } from '../evaluation-config.controller';
 import type { EvaluationConfigService } from '../evaluation-config.service';
+import type { EvaluationDatasetService } from '../evaluation-dataset.service';
 
 describe('EvaluationConfigController', () => {
 	let controller: EvaluationConfigController;
-	let service: jest.Mocked<EvaluationConfigService>;
-	let workflowFinderService: jest.Mocked<WorkflowFinderService>;
+	let service: Mocked<EvaluationConfigService>;
+	let datasetService: Mocked<EvaluationDatasetService>;
+	let workflowFinderService: Mocked<WorkflowFinderService>;
 
 	const user = mock<User>({ id: 'user-1' });
 	const workflow = mock<WorkflowEntity>({ id: 'wf-1' });
 
 	beforeEach(() => {
 		service = mock<EvaluationConfigService>();
+		datasetService = mock<EvaluationDatasetService>();
 		workflowFinderService = mock<WorkflowFinderService>();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
-		controller = new EvaluationConfigController(service, workflowFinderService);
+		controller = new EvaluationConfigController(service, datasetService, workflowFinderService);
 	});
 
 	function makeReq<P extends { workflowId: string }>(
@@ -167,6 +172,78 @@ describe('EvaluationConfigController', () => {
 			const result = await controller.delete(makeReq({ workflowId: 'wf-1', configId: 'cfg-1' }));
 			expect(service.delete).toHaveBeenCalledWith('wf-1', 'cfg-1');
 			expect(result).toEqual({ success: true });
+		});
+	});
+
+	describe('datasetCandidate', () => {
+		function makeReqWithQuery(query: { executionId?: string }) {
+			return {
+				user,
+				params: { workflowId: 'wf-1', configId: 'cfg-1' },
+				query,
+			} as unknown as AuthenticatedRequest<
+				{ workflowId: string; configId: string },
+				{},
+				{},
+				{ executionId?: string }
+			>;
+		}
+
+		it('returns the candidate under workflow:read access', async () => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const candidate = { dataTableId: 'dt-1' } as any;
+			datasetService.getCandidate.mockResolvedValueOnce(candidate);
+
+			const result = await controller.datasetCandidate(makeReqWithQuery({ executionId: 'exec-1' }));
+
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
+				'workflow:read',
+			]);
+			expect(datasetService.getCandidate).toHaveBeenCalledWith(user, 'wf-1', 'cfg-1', 'exec-1');
+			expect(result).toBe(candidate);
+		});
+
+		it('throws BadRequestError when executionId is missing', async () => {
+			await expect(controller.datasetCandidate(makeReqWithQuery({}))).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(datasetService.getCandidate).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('addDatasetRow', () => {
+		const validBody = {
+			executionId: 'exec-1',
+			mapping: { question: { source: 'input', field: 'question' }, answer: null },
+		};
+
+		it('adds a row under workflow:update access', async () => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			datasetService.addRow.mockResolvedValueOnce([{ id: 1 }] as any);
+
+			const result = await controller.addDatasetRow(
+				makeReq({ workflowId: 'wf-1', configId: 'cfg-1' }, validBody),
+			);
+
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
+				'workflow:update',
+			]);
+			expect(datasetService.addRow).toHaveBeenCalledWith(
+				user,
+				'wf-1',
+				'cfg-1',
+				expect.objectContaining({ executionId: 'exec-1' }),
+			);
+			expect(result).toEqual([{ id: 1 }]);
+		});
+
+		it('rejects malformed bodies with a Zod error', async () => {
+			await expect(
+				controller.addDatasetRow(
+					makeReq({ workflowId: 'wf-1', configId: 'cfg-1' }, { mapping: {} }),
+				),
+			).rejects.toThrow();
+			expect(datasetService.addRow).not.toHaveBeenCalled();
 		});
 	});
 });

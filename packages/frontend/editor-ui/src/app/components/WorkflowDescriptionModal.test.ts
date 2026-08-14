@@ -5,14 +5,14 @@ import userEvent from '@testing-library/user-event';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { STORES } from '@n8n/stores';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
 import type { IWorkflowDb } from '@/Interface';
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	return {
 		useToast: () => ({
@@ -21,7 +21,7 @@ vi.mock('@/app/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({
@@ -448,7 +448,11 @@ describe('WorkflowDescriptionModal', () => {
 		it('should show base tooltip when MCP is disabled', async () => {
 			// Ensure MCP is disabled
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(false);
-			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: false, mcpManagedByEnv: false };
+			settingsStore.moduleSettings.mcp = {
+				mcpAccessEnabled: false,
+				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
+			};
 
 			const { getByTestId } = renderModal({
 				props: {
@@ -475,7 +479,11 @@ describe('WorkflowDescriptionModal', () => {
 		it('should show MCP tooltip when MCP is enabled', async () => {
 			// Enable MCP module
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
-			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: true, mcpManagedByEnv: false };
+			settingsStore.moduleSettings.mcp = {
+				mcpAccessEnabled: true,
+				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
+			};
 
 			const { getByTestId } = renderModal({
 				props: {

@@ -1,5 +1,5 @@
 import type { PublishTimelineEvent } from '@n8n/api-types';
-import type { IConnections, INode } from 'n8n-workflow';
+import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
 import { get, patch, post } from '../utils';
@@ -31,6 +31,7 @@ export type WorkflowVersion = WorkflowHistory & {
 	workflowId: string;
 	nodes: INode[];
 	connections: IConnections;
+	nodeGroups?: IWorkflowGroup[];
 };
 
 export type WorkflowHistoryActionTypes = Array<
@@ -42,6 +43,7 @@ export type WorkflowHistoryRequestParams = { take: number; skip?: number };
 export type UpdateWorkflowHistoryVersion = {
 	nodes?: INode[];
 	connections?: IConnections;
+	nodeGroups?: IWorkflowGroup[];
 	authors?: string;
 	name?: string | null;
 	description?: string | null;

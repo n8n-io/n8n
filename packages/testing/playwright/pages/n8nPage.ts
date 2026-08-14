@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { AgentSessionsPage } from './AgentSessionsPage';
 import { AIAssistantPage } from './AIAssistantPage';
 import { CanvasPage } from './CanvasPage';
 import { ChatHubChatPage } from './ChatHubChatPage';
@@ -17,10 +18,12 @@ import { NotificationsPage } from './components/NotificationsPage';
 import { ProjectTabsComponent } from './components/ProjectTabsComponent';
 import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { SecretsProviderConnectionModal } from './components/SecretsProviderConnectionModal';
+import { WorkflowMenu } from './components/WorkflowMenu';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
+import { EvaluationComparePage } from './EvaluationComparePage';
 import { ExecutionsPage } from './ExecutionsPage';
 import { InstanceAiPage } from './InstanceAiPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
@@ -28,8 +31,10 @@ import { MfaLoginPage } from './MfaLoginPage';
 import { MfaSetupModal } from './MfaSetupModal';
 import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
+import { OAuthConsentPage } from './OAuthConsentPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
+import { SecuritySettingsPage } from './SecuritySettingsPage';
 import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
@@ -74,6 +79,7 @@ export class n8nPage {
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
 	readonly aiBuilder: AIBuilderPage;
+	readonly agentSessions: AgentSessionsPage;
 	readonly canvas: CanvasPage;
 	readonly chatHubChat: ChatHubChatPage;
 	readonly chatHubPersonalAgents: ChatHubPersonalAgentsPage;
@@ -87,6 +93,7 @@ export class n8nPage {
 	readonly mfaLogin: MfaLoginPage;
 	readonly ndv: NodeDetailsViewPage;
 	readonly npsSurvey: NpsSurveyPage;
+	readonly oauthConsent: OAuthConsentPage;
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
@@ -98,6 +105,7 @@ export class n8nPage {
 	readonly workflows: WorkflowsPage;
 	readonly notifications: NotificationsPage;
 	readonly credentials: CredentialsPage;
+	readonly evaluationCompare: EvaluationComparePage;
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
 	readonly dataTable: DataTableView;
@@ -110,9 +118,11 @@ export class n8nPage {
 	// Components
 	readonly projectTabs: ProjectTabsComponent;
 	readonly commandBar: CommandBar;
+	readonly workflowMenu: WorkflowMenu;
 
 	readonly settingsEnvironment: SettingsEnvironmentPage;
 	readonly secretsProviderSettings: SecretsProviderSettingsPage;
+	readonly securitySettings: SecuritySettingsPage;
 
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
@@ -154,6 +164,7 @@ export class n8nPage {
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
 		this.aiBuilder = new AIBuilderPage(page);
+		this.agentSessions = new AgentSessionsPage(page);
 		this.canvas = new CanvasPage(page);
 		this.chatHubChat = new ChatHubChatPage(page);
 		this.chatHubPersonalAgents = new ChatHubPersonalAgentsPage(page);
@@ -167,6 +178,7 @@ export class n8nPage {
 		this.mfaLogin = new MfaLoginPage(page);
 		this.ndv = new NodeDetailsViewPage(page);
 		this.npsSurvey = new NpsSurveyPage(page);
+		this.oauthConsent = new OAuthConsentPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
@@ -178,6 +190,7 @@ export class n8nPage {
 		this.workflows = new WorkflowsPage(page);
 		this.notifications = new NotificationsPage(page);
 		this.credentials = new CredentialsPage(page);
+		this.evaluationCompare = new EvaluationComparePage(page);
 		this.executions = new ExecutionsPage(page);
 		this.sideBar = new SidebarPage(page);
 		this.signIn = new SignInPage(page);
@@ -186,6 +199,7 @@ export class n8nPage {
 		this.dataTableDetails = new DataTableDetails(page);
 		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
+		this.securitySettings = new SecuritySettingsPage(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
 		this.settingsSso = new SettingsSsoPage(page);
@@ -193,6 +207,7 @@ export class n8nPage {
 		// Components
 		this.projectTabs = new ProjectTabsComponent(page);
 		this.commandBar = new CommandBar(page);
+		this.workflowMenu = new WorkflowMenu(page);
 
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
@@ -227,7 +242,19 @@ export class n8nPage {
 		this.clipboard = new ClipboardHelper(page);
 	}
 
+	/**
+	 * Navigate to the workflow overview. Goes there directly rather than via `/`,
+	 * because the root route lands users on the AI Assistant when the `instance-ai`
+	 * module is active. Use {@link goToRoot} to exercise that root routing itself.
+	 */
 	async goHome() {
+		await this.page.goto('/home/workflows');
+	}
+
+	/**
+	 * Navigate to the app root and let it decide where the user lands.
+	 */
+	async goToRoot() {
 		await this.page.goto('/');
 	}
 }

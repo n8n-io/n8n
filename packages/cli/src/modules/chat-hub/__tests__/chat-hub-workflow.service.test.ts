@@ -1,9 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import type { Cipher, BinaryDataService } from 'n8n-core';
 import { type IBinaryData, type INode, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { ChatHubAgent } from '../chat-hub-agent.entity';
 import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';
@@ -14,13 +17,10 @@ import { ChatHubSession } from '../chat-hub-session.entity';
 import type { ChatHubToolService } from '../chat-hub-tool.service';
 import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
-import type { ChatHubSettingsService } from '../chat-hub.settings.service';
-import type { ChatHubMessageRepository } from '../chat-message.repository';
-
 import { NODE_NAMES } from '../chat-hub.constants';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 import type { SemanticSearchOptions } from '../chat-hub.types';
-
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { ChatHubMessageRepository } from '../chat-message.repository';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
@@ -47,7 +47,7 @@ describe('ChatHubWorkflowService', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		logger.scoped.mockReturnValue(logger);
 
@@ -72,7 +72,7 @@ describe('ChatHubWorkflowService', () => {
 
 		// Mock repository methods
 		const mockEntityManager = {
-			save: jest.fn().mockImplementation(async (entity) => {
+			save: vi.fn().mockImplementation(async (entity) => {
 				// Return the entity with an ID added
 				return { ...entity, id: 'workflow-123' };
 			}),
@@ -80,12 +80,12 @@ describe('ChatHubWorkflowService', () => {
 
 		Object.defineProperty(workflowRepository, 'manager', {
 			value: {
-				transaction: jest.fn((cb) => cb(mockEntityManager)),
+				transaction: vi.fn((cb) => cb(mockEntityManager)),
 			},
 			writable: true,
 		});
 
-		(sharedWorkflowRepository.create as jest.Mock) = jest.fn().mockReturnValue({});
+		(sharedWorkflowRepository.create as Mock) = vi.fn().mockReturnValue({});
 	});
 
 	describe('createChatWorkflow', () => {
@@ -1232,7 +1232,7 @@ describe('ChatHubWorkflowService', () => {
 			chatHubSettingsService.getSemanticSearchOptions.mockResolvedValue(null);
 			chatHubSettingsService.ensureModelIsAllowed.mockResolvedValue(undefined);
 			chatHubCredentialsService.findPersonalProject.mockResolvedValue({ id: 'project-789' } as any);
-			jest.spyOn(serviceWithRepo, 'getSystemMessageMetadata').mockReturnValue('__metadata__');
+			vi.spyOn(serviceWithRepo, 'getSystemMessageMetadata').mockReturnValue('__metadata__');
 
 			const result = await serviceWithRepo.prepareReplyWorkflow(
 				{ id: 'user-123' } as User,

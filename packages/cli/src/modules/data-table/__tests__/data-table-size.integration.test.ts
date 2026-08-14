@@ -64,7 +64,7 @@ describe('Data Table Size Tests', () => {
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const mockFindDataTablesSize = jest
+			const mockFindDataTablesSize = vi
 				.spyOn(dataTableRepository, 'findDataTablesSize')
 				.mockResolvedValue({ totalBytes: maxSize + 1, dataTables: {} });
 
@@ -90,7 +90,7 @@ describe('Data Table Size Tests', () => {
 			});
 
 			// Now mock the size check to be over limit
-			const mockFindDataTablesSize = jest
+			const mockFindDataTablesSize = vi
 				.spyOn(dataTableRepository, 'findDataTablesSize')
 				.mockResolvedValue({ totalBytes: maxSize + 1, dataTables: {} });
 
@@ -119,7 +119,7 @@ describe('Data Table Size Tests', () => {
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const mockFindDataTablesSize = jest
+			const mockFindDataTablesSize = vi
 				.spyOn(dataTableRepository, 'findDataTablesSize')
 				.mockResolvedValue({ totalBytes: maxSize + 1, dataTables: {} });
 
@@ -318,7 +318,7 @@ describe('Data Table Size Tests', () => {
 
 			await dataTableService.insertRows(dataTable.id, project1.id, [{ data: 'test' }]);
 
-			const mockFindDataTablesSize = jest.spyOn(dataTableRepository, 'findDataTablesSize');
+			const mockFindDataTablesSize = vi.spyOn(dataTableRepository, 'findDataTablesSize');
 
 			// ACT & ASSERT
 			// First call - regular user sees no data tables (filtered from global cache)
@@ -348,8 +348,8 @@ describe('Data Table Size Tests', () => {
 
 			await dataTableService.insertRows(dataTable.id, project1.id, [{ data: 'test' }]);
 
-			const mockGetCachedSizeData = jest.spyOn(dataTableSizeValidator, 'getCachedSizeData');
-			const mockFindDataTablesSize = jest.spyOn(dataTableRepository, 'findDataTablesSize');
+			const mockGetCachedSizeData = vi.spyOn(dataTableSizeValidator, 'getCachedSizeData');
+			const mockFindDataTablesSize = vi.spyOn(dataTableRepository, 'findDataTablesSize');
 
 			// ACT
 			// Fetch data (uses global cache)
@@ -380,8 +380,8 @@ describe('Data Table Size Tests', () => {
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const mockReset = jest.spyOn(dataTableSizeValidator, 'reset');
-			const mockFindDataTablesSize = jest.spyOn(dataTableRepository, 'findDataTablesSize');
+			const mockReset = vi.spyOn(dataTableSizeValidator, 'reset');
+			const mockFindDataTablesSize = vi.spyOn(dataTableRepository, 'findDataTablesSize');
 
 			// ACT & ASSERT
 			const result1 = await dataTableService.getDataTablesSize(owner);

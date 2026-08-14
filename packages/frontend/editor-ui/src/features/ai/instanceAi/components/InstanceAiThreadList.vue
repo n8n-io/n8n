@@ -8,12 +8,13 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { clearPendingThreadHandoff } from '../composables/useInstanceAiHandoff';
 
 const emit = defineEmits<{ collapse: [] }>();
 
@@ -24,6 +25,7 @@ const route = useRoute();
 
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
+const renameInput = ref<HTMLInputElement | null>(null);
 const activeThreadId = computed(() =>
 	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
 );
@@ -60,10 +62,12 @@ const groupedThreads = computed(() => {
 	// chatHub sidebar's `groupConversationsByDate` behaviour.
 	for (const thread of store.threads) {
 		const group = getRelativeDate(now, thread.updatedAt ?? thread.createdAt);
-		if (!groups.has(group)) {
-			groups.set(group, []);
+		let threads = groups.get(group);
+		if (!threads) {
+			threads = [];
+			groups.set(group, threads);
 		}
-		groups.get(group)!.push(thread);
+		threads.push(thread);
 	}
 
 	return groupOrder.flatMap((groupName) => {
@@ -72,15 +76,11 @@ const groupedThreads = computed(() => {
 	});
 });
 
-function handleNewThread() {
-	if (!activeThreadId.value) return;
-	void router.push({ name: INSTANCE_AI_VIEW });
-}
-
 async function handleDeleteThread(threadId: string) {
 	const wasActive = threadId === activeThreadId.value;
 	const deleted = await store.deleteThread(threadId);
 	if (!deleted) return;
+	clearPendingThreadHandoff(threadId);
 
 	if (wasActive) {
 		if (store.threads.length > 0) {
@@ -97,6 +97,10 @@ async function handleDeleteThread(threadId: string) {
 function startRename(threadId: string, currentTitle: string) {
 	editingThreadId.value = threadId;
 	editingTitle.value = currentTitle;
+	void nextTick(() => {
+		renameInput.value?.focus();
+		renameInput.value?.select();
+	});
 }
 
 async function confirmRename(threadId: string) {
@@ -154,15 +158,18 @@ function handleThreadAction(action: string, threadId: string) {
 					placement="bottom"
 					:show-after="TOOLTIP_DELAY_MS"
 				>
-					<N8nIconButton
-						icon="plus"
-						variant="ghost"
-						size="small"
-						icon-size="large"
-						:aria-label="i18n.baseText('instanceAi.thread.new')"
-						data-test-id="instance-ai-new-thread-button"
-						@click="handleNewThread"
-					/>
+					<RouterLink v-slot="{ href, navigate }" :to="{ name: INSTANCE_AI_VIEW }" custom>
+						<N8nIconButton
+							:href="href"
+							icon="plus"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('instanceAi.thread.new')"
+							data-test-id="instance-ai-new-thread-button"
+							@click="navigate"
+						/>
+					</RouterLink>
 				</N8nTooltip>
 			</div>
 		</div>
@@ -183,10 +190,10 @@ function handleThreadAction(action: string, threadId: string) {
 						<!-- Inline rename mode -->
 						<div v-if="editingThreadId === thread.id" :class="$style.renameContainer">
 							<input
+								ref="renameInput"
 								v-model="editingTitle"
 								:class="$style.renameInput"
 								type="text"
-								autofocus
 								@keydown.enter="confirmRename(thread.id)"
 								@keydown.escape="cancelRename"
 								@blur="confirmRename(thread.id)"
@@ -289,10 +296,16 @@ function handleThreadAction(action: string, threadId: string) {
 	border-radius: var(--radius);
 	transition: background-color 0.1s ease;
 
-	&:hover,
 	&:focus-within,
 	&:has([aria-expanded='true']) {
 		background-color: var(--color--background--light-1);
+	}
+
+	// Gate hover to hover-capable devices so touch doesn't need a first tap to clear sticky hover
+	@media (hover: hover) {
+		&:hover {
+			background-color: var(--color--background--light-1);
+		}
 	}
 
 	&.active {

@@ -1,9 +1,9 @@
+import { routeBinaryProperties } from '@utils/binary';
+import { chunk, flatten } from '@utils/utilities';
 import type { IResult } from 'mssql';
 import mssql from 'mssql';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-
-import { chunk, flatten } from '@utils/utilities';
+import { deepCopy, safeRegex } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { ITables, OperationInputData } from './interfaces';
 
@@ -16,7 +16,7 @@ import type { ITables, OperationInputData } from './interfaces';
  */
 export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
-	const newItem: IDataObject = {};
+	const newItem: IDataObject = Object.create(null);
 	for (const property of properties) {
 		if (item.json[property] === undefined) {
 			newItem[property] = null;
@@ -44,12 +44,13 @@ export function createTableStruct(
 		const table = getNodeParam('table', index) as string;
 		const columnString = getNodeParam('columns', index) as string;
 		const columns = columnString.split(',').map((column) => column.trim());
+
 		const itemCopy = copyInputItem(item, columns.concat(additionalProperties));
 		const keyParam = keyName ? (getNodeParam(keyName, index) as string) : undefined;
-		if (tables[table] === undefined) {
-			tables[table] = {};
+		if (!Object.hasOwn(tables, table)) {
+			tables[table] = Object.create(null);
 		}
-		if (tables[table][columnString] === undefined) {
+		if (!Object.hasOwn(tables[table], columnString)) {
 			tables[table][columnString] = [];
 		}
 		if (keyName) {
@@ -57,7 +58,7 @@ export function createTableStruct(
 		}
 		tables[table][columnString].push(itemCopy);
 		return tables;
-	}, {} as ITables);
+	}, Object.create(null) as ITables);
 }
 
 /**
@@ -255,11 +256,29 @@ export async function deleteOperation(tables: ITables, pool: mssql.ConnectionPoo
 	);
 }
 
+// Routes binary (varbinary/image) columns to the item's binary output and deep-serializes
+// the remaining columns so json stays JSON-safe (e.g. Dates become ISO strings)
+async function prepareRowWithBinary(
+	this: IExecuteFunctions,
+	row: IDataObject,
+	itemIndex: number,
+): Promise<INodeExecutionData> {
+	const { json, binary } = await routeBinaryProperties.call(this, row);
+
+	const item: INodeExecutionData = { json, pairedItem: [{ item: itemIndex }] };
+	if (Object.keys(binary).length) {
+		item.binary = binary;
+	}
+	return item;
+}
+
 export async function executeSqlQueryAndPrepareResults(
+	this: IExecuteFunctions,
 	pool: mssql.ConnectionPool,
 	rawQuery: string,
 	itemIndex: number,
 	queryValues: Array<string | number | boolean | IDataObject> = [],
+	nodeVersion?: number,
 ): Promise<INodeExecutionData[]> {
 	const request = pool.request();
 
@@ -268,7 +287,7 @@ export async function executeSqlQueryAndPrepareResults(
 		// Process in reverse order so $10 is replaced before $1
 		for (let i = queryValues.length; i >= 1; i--) {
 			const paramName = `p${i}`;
-			processedQuery = processedQuery.replace(new RegExp(`\\$${i}(?!\\d)`, 'g'), `@${paramName}`);
+			processedQuery = safeRegex.replace(`\\$${i}(?!\\d)`, processedQuery, 'g', `@${paramName}`);
 			request.input(paramName, queryValues[i - 1]);
 		}
 	}
@@ -277,6 +296,12 @@ export async function executeSqlQueryAndPrepareResults(
 	const { recordsets, rowsAffected } = rawResult;
 	if (Array.isArray(recordsets) && recordsets.length > 0) {
 		const result: IDataObject[] = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];
+
+		if (typeof nodeVersion === 'number' && nodeVersion >= 1.2) {
+			return await Promise.all(
+				result.map(async (entry) => await prepareRowWithBinary.call(this, entry, itemIndex)),
+			);
+		}
 
 		return result.map((entry) => ({
 			json: entry,

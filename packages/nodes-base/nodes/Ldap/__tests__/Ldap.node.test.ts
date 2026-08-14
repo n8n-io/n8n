@@ -1,20 +1,22 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { Client } from 'ldapts';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import * as Helpers from '../Helpers';
 import { Ldap } from '../Ldap.node';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../Helpers';
 
-jest.mock('../Helpers', () => ({
-	...jest.requireActual('../Helpers'),
-	createLdapClient: jest.fn(),
+vi.mock('../Helpers', async () => ({
+	...(await vi.importActual<typeof _importType0>('../Helpers')),
+	createLdapClient: vi.fn(),
 }));
 
 describe('Ldap', () => {
 	const executeFunctions = mockDeep<IExecuteFunctions>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		executeFunctions.getNode.mockReturnValue({
@@ -26,14 +28,14 @@ describe('Ldap', () => {
 	});
 
 	describe('search', () => {
-		let mockBind: jest.Mock;
-		let mockSearch: jest.Mock;
-		let mockUnbind: jest.Mock;
+		let mockBind: Mock;
+		let mockSearch: Mock;
+		let mockUnbind: Mock;
 
 		beforeEach(() => {
-			mockBind = jest.fn().mockResolvedValue(undefined);
-			mockSearch = jest.fn().mockResolvedValue({ searchEntries: [] });
-			mockUnbind = jest.fn().mockResolvedValue(undefined);
+			mockBind = vi.fn().mockResolvedValue(undefined);
+			mockSearch = vi.fn().mockResolvedValue({ searchEntries: [] });
+			mockUnbind = vi.fn().mockResolvedValue(undefined);
 
 			const mockClient = {
 				bind: mockBind,
@@ -41,7 +43,7 @@ describe('Ldap', () => {
 				unbind: mockUnbind,
 			};
 
-			jest.spyOn(Helpers, 'createLdapClient').mockResolvedValue(mockClient as unknown as Client);
+			vi.spyOn(Helpers, 'createLdapClient').mockResolvedValue(mockClient as unknown as Client);
 
 			executeFunctions.getCredentials.mockResolvedValue({
 				hostname: 'ldap.example.com',
@@ -234,6 +236,31 @@ describe('Ldap', () => {
 			);
 		});
 
+		it('should return a large result set without exceeding the maximum call stack size', async () => {
+			mockParameters({ searchText: 'johndoe' });
+
+			// A result set large enough to overflow the argument list when spread
+			// into Array.prototype.push via `push.apply` (NODE-5326).
+			const largeResultSet = Array.from({ length: 500_000 }, (_, i) => ({
+				dn: `cn=user${i},dc=example,dc=com`,
+			}));
+			mockSearch.mockResolvedValue({ searchEntries: largeResultSet });
+
+			const result = await new Ldap().execute.call(executeFunctions);
+
+			expect(result[0]).toHaveLength(largeResultSet.length);
+			// Every entry must be wrapped intact (json + pairedItem), not dropped
+			// or emptied while appending the large result set.
+			expect(result[0][0]).toEqual({
+				json: largeResultSet[0],
+				pairedItem: { item: 0 },
+			});
+			expect(result[0][largeResultSet.length - 1]).toEqual({
+				json: largeResultSet[largeResultSet.length - 1],
+				pairedItem: { item: 0 },
+			});
+		});
+
 		it('should escape the attribute parameter regardless of whether searchText contains an expression', async () => {
 			mockParameters({ attribute: 'cn*name', searchText: '={{ $json.query }}' });
 
@@ -250,6 +277,64 @@ describe('Ldap', () => {
 					filter: '(&(objectclass=person)(cn\\2aname=johndoe))',
 				}),
 			);
+		});
+	});
+
+	describe('rename', () => {
+		let mockBind: Mock;
+		let mockModifyDN: Mock;
+		let mockUnbind: Mock;
+
+		beforeEach(() => {
+			mockBind = vi.fn().mockResolvedValue(undefined);
+			mockModifyDN = vi.fn().mockResolvedValue(undefined);
+			mockUnbind = vi.fn().mockResolvedValue(undefined);
+
+			const mockClient = {
+				bind: mockBind,
+				modifyDN: mockModifyDN,
+				unbind: mockUnbind,
+			};
+
+			vi.spyOn(Helpers, 'createLdapClient').mockResolvedValue(mockClient as unknown as Client);
+
+			executeFunctions.getCredentials.mockResolvedValue({
+				hostname: 'ldap.example.com',
+				port: 389,
+				bindDN: 'cn=admin,dc=example,dc=com',
+				bindPassword: 'password',
+				connectionSecurity: 'none',
+			});
+		});
+
+		it('should rename an entry when targetDn is longer than 127 bytes', async () => {
+			const dn = 'cn=source-user,ou=users,dc=example,dc=com';
+			const targetDn = `cn=${'renamed-user-'.repeat(8)},ou=users,dc=example,dc=com`;
+
+			expect(Buffer.byteLength(targetDn, 'utf8')).toBeGreaterThan(127);
+
+			executeFunctions.getNodeParameter.mockImplementation((parameterName, _idx, defaultValue) => {
+				const params: Record<string, unknown> = {
+					nodeDebug: false,
+					operation: 'rename',
+					dn,
+					targetDn,
+				};
+
+				return parameterName in params ? params[parameterName] : defaultValue;
+			});
+
+			const result = await new Ldap().execute.call(executeFunctions);
+
+			expect(mockModifyDN).toHaveBeenCalledWith(dn, targetDn);
+			expect(result).toEqual([
+				[
+					{
+						json: { dn: targetDn, result: 'success' },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
 		});
 	});
 });
