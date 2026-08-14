@@ -140,7 +140,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
-		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
+		const result = await this.checkRelations(workflows, project.id, flags.userId, flags.projectId);
 
 		if (!result.success) {
 			throw new UserError(result.message);
@@ -161,8 +161,13 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		});
 	}
 
-	private async checkRelations(workflows: IWorkflowBase[], projectId?: string, userId?: string) {
-		// The credential is not supposed to be re-owned.
+	private async checkRelations(
+		workflows: IWorkflowBase[],
+		targetProjectId: string,
+		userId?: string,
+		projectId?: string,
+	) {
+		// The workflow is not supposed to be re-owned.
 		if (!userId && !projectId) {
 			return {
 				success: true as const,
@@ -181,7 +186,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 				continue;
 			}
 
-			if (ownerProject.id !== projectId) {
+			if (ownerProject.id !== targetProjectId) {
 				const currentOwner =
 					ownerProject.type === 'personal'
 						? `the user with the ID "${user.id}"`
@@ -194,7 +199,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 				return {
 					success: false as const,
-					message: `The credential with ID "${workflow.id}" is already owned by ${currentOwner}. It can't be re-owned by ${newOwner}.`,
+					message: `The workflow with ID "${workflow.id}" is already owned by ${currentOwner}. It can't be re-owned by ${newOwner}.`,
 				};
 			}
 		}
