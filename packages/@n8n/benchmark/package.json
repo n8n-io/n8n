@@ -22,7 +22,7 @@
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\""
   },
   "engines": {
-    "node": ">=22.22"
+    "node": ">=24.0.0"
   },
   "keywords": [
     "automate",
