@@ -24,6 +24,7 @@ import {
 } from '../stores/canvasNodeGroups.constants';
 import type { ComputedRef, Ref } from 'vue';
 import { computeNodeDisplaySize, type CanvasRenderData } from '../canvas.utils';
+import { titleBarFromNodesRect } from './useCanvasMapping.groups';
 
 export type CanvasLayoutTarget = 'selection' | 'all';
 export type CanvasLayoutSource =
@@ -558,24 +559,40 @@ export function useCanvasLayout(
 		// then remove the chip since its position is derived from the nodes
 		for (const groupNode of collapsedGroups) {
 			const chipBox = boundingBoxByNodeId[groupNode.id];
-			if (!chipBox || !groupNode.data) continue;
+			if (!chipBox || !groupNode.data) {
+				continue;
+			}
 
+			const members = groupNode.data.group.nodeIds
+				.map((memberId) => findNode<CanvasNodeData>(memberId))
+				.filter(isPresent);
+
+			if (members.length === 0) {
+				delete boundingBoxByNodeId[groupNode.id];
+				continue;
+			}
+
+			// groupNode.position can be stale during back-to-back streaming layouts,
+			// so recompute it fresh from the current members instead of trusting it.
+			const memberBoxes = members.map(boundingBoxFromCanvasNode);
+			const chipOrigin = titleBarFromNodesRect(compositeBoundingBox(memberBoxes), true).position;
+
+			// When the group moves, the chip moves with it, and the node members must move by
+			// the same delta to stay in place relative to the chip.
 			const delta = {
-				x: chipBox.x - groupNode.position.x,
-				y: chipBox.y - groupNode.position.y,
+				x: chipBox.x - chipOrigin.x,
+				y: chipBox.y - chipOrigin.y,
 			};
 
-			for (const memberId of groupNode.data.group.nodeIds) {
-				const member = findNode<CanvasNodeData>(memberId);
-				if (!member) continue;
-				const box = boundingBoxFromCanvasNode(member);
-				boundingBoxByNodeId[memberId] = {
+			members.forEach((member, index) => {
+				const box = memberBoxes[index];
+				boundingBoxByNodeId[member.id] = {
 					x: box.x + delta.x,
 					y: box.y + delta.y,
 					width: box.width,
 					height: box.height,
 				};
-			}
+			});
 
 			delete boundingBoxByNodeId[groupNode.id];
 		}

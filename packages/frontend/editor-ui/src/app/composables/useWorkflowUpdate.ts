@@ -318,6 +318,30 @@ export function useWorkflowUpdate() {
 		}
 	}
 
+	function updateNodeGroups(nodeGroups: WorkflowDataUpdate['nodeGroups']): void {
+		// Undefined means "no group data in this update", which must NOT be read
+		// as "the user deleted every group".
+		if (!nodeGroups) {
+			return;
+		}
+
+		const nodeIds = new Set(workflowDocumentStore.value.allNodes.map((node) => node.id));
+		// A group whose nodes haven't all arrived yet would render an incomplete
+		// frame; a later chunk brings it back once its members exist.
+		const applicable = nodeGroups.filter(
+			(group) => group.nodeIds.length > 0 && group.nodeIds.every((id) => nodeIds.has(id)),
+		);
+
+		const keptNames = new Set(applicable.map((group) => group.name));
+		for (const group of workflowDocumentStore.value.allGroups) {
+			if (!keptNames.has(group.name)) {
+				workflowDocumentStore.value.deleteGroup(group.id);
+			}
+		}
+
+		workflowDocumentStore.value.upsertGroups(applicable, { startCollapsed: true });
+	}
+
 	/**
 	 * Tidy up node positions. When nodeIdsFilter is provided, only those nodes
 	 * are laid out. When omitted, all nodes are laid out (full re-layout).
@@ -374,6 +398,9 @@ export function useWorkflowUpdate() {
 			}
 
 			builderStore.setBuilderMadeEdits(true);
+
+			// Must update the node groups before tidying the WF up, or the layout might become messy
+			updateNodeGroups(workflowData.nodeGroups);
 
 			tidyUpNodes();
 

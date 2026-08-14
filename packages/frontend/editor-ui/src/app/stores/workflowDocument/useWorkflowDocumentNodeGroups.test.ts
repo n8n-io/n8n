@@ -69,6 +69,76 @@ describe('useWorkflowDocumentNodeGroups', () => {
 		});
 	});
 
+	describe('upsertGroups', () => {
+		it('creates the incoming groups', () => {
+			const [group] = nodeGroups.upsertGroups([{ id: 'g1', name: 'Ingest', nodeIds: ['a', 'b'] }]);
+
+			expect(group.name).toBe('Ingest');
+			expect(group.nodeIds).toEqual(['a', 'b']);
+			expect(nodeGroups.allGroups.value).toHaveLength(1);
+		});
+
+		it('updates the matching group instead of duplicating it on a repeated call', () => {
+			nodeGroups.upsertGroups([{ id: 'g1', name: 'Ingest', nodeIds: ['a'] }]);
+			const [group] = nodeGroups.upsertGroups([{ id: 'g1', name: 'Ingest', nodeIds: ['a', 'b'] }]);
+
+			expect(nodeGroups.allGroups.value).toHaveLength(1);
+			expect(group.nodeIds).toEqual(['a', 'b']);
+			expect(group.name).toBe('Ingest');
+		});
+
+		it('matches by name so a regenerated id reuses the existing group', () => {
+			const [first] = nodeGroups.upsertGroups([{ id: 'g1', name: 'Ingest', nodeIds: ['a'] }]);
+			const [second] = nodeGroups.upsertGroups([{ id: 'g2', name: 'Ingest', nodeIds: ['a', 'b'] }]);
+
+			expect(nodeGroups.allGroups.value).toHaveLength(1);
+			expect(second.id).toBe(first.id);
+		});
+
+		it('emits UPDATE rather than ADD for a group that already exists', () => {
+			nodeGroups.upsertGroups([{ id: 'g1', name: 'Ingest', nodeIds: ['a'] }]);
+
+			const changeSpy = vi.fn();
+			nodeGroups.onNodeGroupsChange(changeSpy);
+			nodeGroups.upsertGroups([{ id: 'g1', name: 'Ingest', nodeIds: ['a', 'b'] }]);
+
+			expect(changeSpy).toHaveBeenCalledWith(expect.objectContaining({ action: 'update' }));
+		});
+
+		it('carries startCollapsed on the ADD event', () => {
+			const changeSpy = vi.fn();
+			nodeGroups.onNodeGroupsChange(changeSpy);
+
+			const [group] = nodeGroups.upsertGroups([{ id: 'g1', name: 'Ingest', nodeIds: ['a'] }], {
+				startCollapsed: true,
+			});
+
+			expect(changeSpy).toHaveBeenCalledWith({
+				action: 'add',
+				payload: { group, startCollapsed: true },
+			});
+		});
+
+		it('normalizes the description', () => {
+			const [group] = nodeGroups.upsertGroups([
+				{
+					id: 'g1',
+					name: 'Ingest',
+					nodeIds: ['a'],
+					description: 'x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 50),
+				},
+			]);
+
+			expect(group.description).toHaveLength(GROUP_DESCRIPTION_MAX_LENGTH);
+		});
+
+		it('generates an id when the payload omits one', () => {
+			const [group] = nodeGroups.upsertGroups([{ id: '', name: 'Ingest', nodeIds: ['a'] }]);
+
+			expect(group.id).toBeTruthy();
+		});
+	});
+
 	describe('getNextDefaultName', () => {
 		it('starts at 1 for the first group', () => {
 			expect(nodeGroups.getNextDefaultName('Group')).toBe('Group 1');
