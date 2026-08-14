@@ -16,7 +16,7 @@ import type { ProjectSharingData } from '@/features/collaboration/projects/proje
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
-import { isEmpty, isPresent } from '@/app/utils/typesUtils';
+import { isEmpty } from '@/app/utils/typesUtils';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
@@ -145,20 +145,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const getUsableCredentialByType = computed(() => {
 		return (credentialType: string): ICredentialsResponse[] => {
 			return allUsableCredentialsByType.value[credentialType] || [];
-		};
-	});
-
-	const getNodesWithAccess = computed(() => {
-		return (credentialTypeName: string) => {
-			const credentialType = getCredentialTypeByName.value(credentialTypeName);
-			if (!credentialType) {
-				return [];
-			}
-			const nodeTypesStore = useNodeTypesStore();
-
-			return (credentialType.supportedNodes ?? [])
-				.map((nodeType) => nodeTypesStore.getNodeType(nodeType))
-				.filter(isPresent);
 		};
 	});
 
@@ -570,7 +556,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		getCredentialById,
 		getCredentialTypeByName,
 		getCredentialByIdAndType,
-		getNodesWithAccess,
 		isCredentialTypeTestable,
 		getUsableCredentialByType,
 		credentialTypesById,
