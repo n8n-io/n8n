@@ -16,8 +16,8 @@ N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the E2E tests against the r
 ## Develop against running containers (avoid docker rebuilds)
 
 Iterating on a feature that needs postgres/redis/SMTP/an HTTP proxy? You don't
-need `pnpm build:docker` each time. Boot only the services your local `pnpm dev`
-needs, and let dev mode pick them up.
+need `pnpm build:docker` each time. Boot only the services your local dev
+servers need, and let dev mode pick them up.
 
 **Two-terminal workflow:**
 
@@ -27,14 +27,15 @@ needs, and let dev mode pick them up.
 pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy
 
 # Terminal 2 — run n8n locally as usual. It picks up the .env automatically.
-pnpm dev
+# Add `pnpm dev:fe:editor` in a third terminal for frontend hot reload.
+pnpm dev:be
 ```
 
 Scope the `--services` list to what you actually need — booting fewer
 containers makes startup faster.
 
-| Service | What `pnpm dev` gets | Use when… |
-|---------|----------------------|-----------|
+| Service | What dev mode gets | Use when… |
+|---------|--------------------|-----------|
 | `postgres` | `DB_*` vars → PostgreSQL backend | testing migrations or PG-specific queries |
 | `redis` | `QUEUE_*`/`N8N_CACHE_*` → queue mode + cache | testing queue mode or distributed cache |
 | `mailpit` | `N8N_SMTP_*` → captured SMTP at `http://localhost:<mapped-port>` | testing email flows |
