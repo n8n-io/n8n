@@ -269,12 +269,8 @@ describe('Confluence page:get operation', () => {
 			expect((result as IDataObject).id).toBe('77');
 		});
 
-		it('scopes the lookup when a space key is provided, resolving it to a space ID', async () => {
+		it('scopes the lookup to a space picked from the list', async () => {
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
-				if (endpoint === '/wiki/api/v2/spaces') {
-					expect(qs).toEqual({ keys: 'DOCS', limit: 1 });
-					return { results: [{ id: 999, key: 'DOCS' }] };
-				}
 				if (endpoint === '/wiki/api/v2/pages') {
 					expect(qs).toEqual({ title: 'Project plan', limit: 250, 'space-id': '999' });
 					return { results: [{ id: '77' }] };
@@ -284,15 +280,15 @@ describe('Confluence page:get operation', () => {
 			});
 			const ctx = createContext({
 				page: { mode: 'title', value: 'Project plan' },
-				options: { space: 'DOCS' },
+				space: { mode: 'list', value: '999', cachedResultName: 'Docs Space' },
 			});
 
 			await execute.call(ctx, 0);
 
-			expect(apiRequest).toHaveBeenCalledTimes(3);
+			expect(apiRequest).toHaveBeenCalledTimes(2);
 		});
 
-		it('uses a numeric space directly without resolving it', async () => {
+		it('scopes the lookup to a space given by ID', async () => {
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
 				if (endpoint === '/wiki/api/v2/pages') {
 					expect(qs).toEqual({ title: 'Project plan', limit: 250, 'space-id': '42' });
@@ -303,22 +299,12 @@ describe('Confluence page:get operation', () => {
 			});
 			const ctx = createContext({
 				page: { mode: 'title', value: 'Project plan' },
-				options: { space: '42' },
+				space: { mode: 'id', value: '42' },
 			});
 
 			await execute.call(ctx, 0);
 
 			expect(apiRequest).toHaveBeenCalledTimes(2);
-		});
-
-		it('throws when the space key does not exist', async () => {
-			apiRequest.mockResolvedValueOnce({ results: [] });
-			const ctx = createContext({
-				page: { mode: 'title', value: 'Project plan' },
-				options: { space: 'NOPE' },
-			});
-
-			await expect(execute.call(ctx, 0)).rejects.toThrow('No space with key "NOPE" found');
 		});
 
 		it('throws when no page matches the title', async () => {
@@ -334,7 +320,19 @@ describe('Confluence page:get operation', () => {
 			apiRequest.mockResolvedValue({ results: [] });
 			const ctx = createContext({
 				page: { mode: 'title', value: 'Missing page' },
-				options: { space: '42' },
+				space: { mode: 'list', value: '999', cachedResultName: 'Docs Space' },
+			});
+
+			await expect(execute.call(ctx, 0)).rejects.toThrow(
+				'No page titled "Missing page" found in space "Docs Space"',
+			);
+		});
+
+		it('falls back to the space ID in the no-match error without a cached name', async () => {
+			apiRequest.mockResolvedValue({ results: [] });
+			const ctx = createContext({
+				page: { mode: 'title', value: 'Missing page' },
+				space: { mode: 'id', value: '42' },
 			});
 
 			await expect(execute.call(ctx, 0)).rejects.toThrow(

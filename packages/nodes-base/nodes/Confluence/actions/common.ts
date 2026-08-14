@@ -11,9 +11,9 @@ import { confluenceApiRequest } from '../transport';
 export const PAGE_LIMIT = 250;
 
 /**
- * Shared page-selection fields: operations spread `pageRLC`/`bodyFormatOption`
- * (and `spaceOption` into their Options collection), add their own
- * displayOptions, and resolve the selection with `resolvePageId`.
+ * Shared page-selection fields: operations spread `spaceRLC`/`pageRLC`/
+ * `bodyFormatOption`, add their own displayOptions, and resolve the selection
+ * with `resolvePageId`. An empty space leaves page lookups site-wide.
  */
 export const pageRLC: INodeProperties = {
 	displayName: 'Page',
@@ -22,6 +22,9 @@ export const pageRLC: INodeProperties = {
 	default: { mode: 'list', value: '' },
 	required: true,
 	description: 'The page to operate on',
+	typeOptions: {
+		loadOptionsDependsOn: ['space.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',
@@ -41,14 +44,14 @@ export const pageRLC: INodeProperties = {
 				{
 					type: 'regex',
 					properties: {
-						regex: '.*/pages/[0-9]+.*',
+						regex: '.*/pages/(?:edit-v2/)?[0-9]+.*',
 						errorMessage: 'The URL must contain /pages/<numeric page ID>',
 					},
 				},
 			],
 			extractValue: {
 				type: 'regex',
-				regex: '/pages/([0-9]+)',
+				regex: '/pages/(?:edit-v2/)?([0-9]+)',
 			},
 		},
 		{
@@ -99,46 +102,59 @@ export const bodyFormatOption: INodeProperties = {
 	default: 'storage',
 };
 
-export const spaceOption: INodeProperties = {
+export const spaceRLC: INodeProperties = {
 	displayName: 'Space',
 	name: 'space',
-	type: 'string',
-	default: '',
-	placeholder: 'e.g. DOCS',
-	description:
-		'Space key or numeric space ID that scopes a By Title lookup. Without it, a unique site-wide match is required and multiple matches produce an error listing the candidates. Ignored for the other page modes.',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	description: 'The Confluence space',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'searchSpaces',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. 98432',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '^[0-9]+$',
+						errorMessage: 'The space ID must be numeric',
+					},
+				},
+			],
+		},
+	],
 };
 
-async function resolveSpaceId(
-	this: IExecuteFunctions,
-	itemIndex: number,
-	space: string,
-): Promise<string> {
-	if (/^\d+$/.test(space)) return space;
-	const response = await confluenceApiRequest.call(
-		this,
-		'GET',
-		'/wiki/api/v2/spaces',
-		{},
-		{ keys: space, limit: 1 },
-	);
-	const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
-	if (results.length === 0) {
-		throw new NodeOperationError(this.getNode(), `No space with key "${space}" found`, {
-			itemIndex,
-		});
+export function extractNextCursor(response: IDataObject): string | undefined {
+	const next = (response._links as IDataObject | undefined)?.next;
+	if (typeof next !== 'string' || next === '') return undefined;
+	try {
+		return new URL(next, 'https://api.atlassian.com').searchParams.get('cursor') ?? undefined;
+	} catch {
+		return undefined;
 	}
-	return String(results[0].id);
 }
 
 async function resolvePageIdByTitle(
 	this: IExecuteFunctions,
 	itemIndex: number,
 	title: string,
-	space: string,
+	spaceId: string,
+	spaceLabel: string,
 ): Promise<string> {
 	const qs: IDataObject = { title, limit: PAGE_LIMIT };
-	if (space !== '') qs['space-id'] = await resolveSpaceId.call(this, itemIndex, space);
+	if (spaceId !== '') qs['space-id'] = spaceId;
 
 	const response = await confluenceApiRequest.call(this, 'GET', '/wiki/api/v2/pages', {}, qs);
 	const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
@@ -146,7 +162,7 @@ async function resolvePageIdByTitle(
 	if (results.length === 0) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`No page titled "${title}" found${space === '' ? '' : ` in space "${space}"`}`,
+			`No page titled "${title}" found${spaceId === '' ? '' : ` in space "${spaceLabel}"`}`,
 			{ itemIndex },
 		);
 	}
@@ -177,9 +193,17 @@ export async function resolvePageId(this: IExecuteFunctions, itemIndex: number):
 				itemIndex,
 			});
 		}
-		const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
-		const space = typeof options.space === 'string' ? options.space.trim() : '';
-		return await resolvePageIdByTitle.call(this, itemIndex, title, space);
+		const spaceRef = this.getNodeParameter(
+			'space',
+			itemIndex,
+			null,
+		) as INodeParameterResourceLocator | null;
+		const spaceId = spaceRef ? String(spaceRef.value ?? '').trim() : '';
+		const spaceLabel =
+			typeof spaceRef?.cachedResultName === 'string' && spaceRef.cachedResultName !== ''
+				? spaceRef.cachedResultName
+				: spaceId;
+		return await resolvePageIdByTitle.call(this, itemIndex, title, spaceId, spaceLabel);
 	}
 
 	// From List / By ID pass the value through; By URL extracts the ID via the mode's regex

@@ -1,7 +1,7 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { getPages } from '../../methods/listSearch';
+import { getPages, searchSpaces } from '../../methods/listSearch';
 import { confluenceApiRequest } from '../../transport';
 
 vi.mock('../../transport', () => ({
@@ -53,6 +53,32 @@ describe('Confluence listSearch.getPages', () => {
 		});
 	});
 
+	it('scopes the search to the selected space and drops the space label', async () => {
+		vi.mocked(ctx.getCurrentNodeParameter).mockReturnValue('999');
+		apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
+			if (endpoint === '/wiki/api/v2/spaces/999') return { id: 999, key: 'DOCS' };
+			if (endpoint === '/wiki/rest/api/search') {
+				expect((qs as { cql: string }).cql).toBe(
+					'type=page AND space = "DOCS" AND title ~ "plan*" ORDER BY lastmodified DESC',
+				);
+				return {
+					results: [
+						{
+							content: { id: 123, title: 'Project Plan' },
+							resultGlobalContainer: { title: 'Docs Space' },
+						},
+					],
+				};
+			}
+			throw new Error(`unexpected endpoint ${endpoint}`);
+		});
+
+		const result = await getPages.call(ctx, 'plan');
+
+		expect(ctx.getCurrentNodeParameter).toHaveBeenCalledWith('space', { extractValue: true });
+		expect(result.results).toEqual([{ name: 'Project Plan', value: '123', url: undefined }]);
+	});
+
 	it('escapes quotes and backslashes in the CQL title filter', async () => {
 		apiRequest.mockResolvedValueOnce({ results: [] });
 
@@ -83,5 +109,70 @@ describe('Confluence listSearch.getPages', () => {
 			expect.objectContaining({ start: 50 }),
 		);
 		expect(result.paginationToken).toBe('52');
+	});
+});
+
+describe('Confluence listSearch.searchSpaces', () => {
+	let ctx: ILoadOptionsFunctions;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		ctx = mockDeep<ILoadOptionsFunctions>();
+	});
+
+	it('lists current spaces sorted by name, labeled with their key', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [
+				{ id: 1, name: 'Docs', key: 'DOCS' },
+				{ name: 'entry without id is skipped' },
+				{ id: 2, name: 'Engineering' },
+			],
+		});
+
+		const result = await searchSpaces.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/spaces',
+			{},
+			{ limit: 50, sort: 'name', status: 'current' },
+		);
+		expect(result).toEqual({
+			results: [
+				{ name: 'Docs (DOCS)', value: '1' },
+				{ name: 'Engineering', value: '2' },
+			],
+			paginationToken: undefined,
+		});
+	});
+
+	it('filters the typed text client-side, case-insensitively', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [
+				{ id: 1, name: 'Docs', key: 'DOCS' },
+				{ id: 2, name: 'Engineering' },
+			],
+		});
+
+		const result = await searchSpaces.call(ctx, 'doc');
+
+		expect(result.results).toEqual([{ name: 'Docs (DOCS)', value: '1' }]);
+	});
+
+	it('resumes from the pagination cursor and returns the next one', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [{ id: 3, name: 'Sales' }],
+			_links: { next: '/wiki/api/v2/spaces?cursor=xyz%3D%3D' },
+		});
+
+		const result = await searchSpaces.call(ctx, undefined, 'abc==');
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/spaces',
+			{},
+			expect.objectContaining({ cursor: 'abc==' }),
+		);
+		expect(result.paginationToken).toBe('xyz==');
 	});
 });

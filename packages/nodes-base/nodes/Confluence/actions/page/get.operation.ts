@@ -1,12 +1,30 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { confluenceApiRequest } from '../../transport';
-import { PAGE_LIMIT, bodyFormatOption, pageRLC, resolvePageId, spaceOption } from '../common';
+import {
+	PAGE_LIMIT,
+	bodyFormatOption,
+	extractNextCursor,
+	pageRLC,
+	resolvePageId,
+	spaceRLC,
+} from '../common';
 import type { ConfluenceOperation } from '../router';
 
 const MAX_DEPTH = 10;
 
 export const description: INodeProperties[] = [
+	{
+		...spaceRLC,
+		description:
+			'Limits page selection and By Title lookups to one space. Leave empty to search across all spaces.',
+		displayOptions: {
+			show: {
+				resource: ['page'],
+				operation: ['get'],
+			},
+		},
+	},
 	{
 		...pageRLC,
 		description: 'The page to fetch',
@@ -56,31 +74,7 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add option',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['page'],
-				operation: ['get'],
-			},
-		},
-		options: [spaceOption],
-	},
 ];
-
-function extractNextCursor(response: IDataObject): string | undefined {
-	const next = (response._links as IDataObject | undefined)?.next;
-	if (typeof next !== 'string' || next === '') return undefined;
-	try {
-		return new URL(next, 'https://api.atlassian.com').searchParams.get('cursor') ?? undefined;
-	} catch {
-		return undefined;
-	}
-}
 
 // Text extraction, not rendering: concatenate ADF text nodes, newline at block boundaries
 const ADF_BLOCK_TYPES = new Set([
