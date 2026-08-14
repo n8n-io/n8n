@@ -63,7 +63,9 @@ export class WorkflowPublicationOutboxConsumer {
 
 	private isShuttingDown = false;
 
-	private readonly activeWorkers = new Set<Promise<void>>();
+	/** Worker passes in flight. A worker never rejects: it settles with the
+	 * error that ended its pass, or `null` when the pass completed. */
+	private readonly activeWorkers = new Set<Promise<Error | null>>();
 
 	/** Set when a wake-up arrives while the pool is at capacity; a worker
 	 * exiting then starts a follow-up pass, so a record committed after the
@@ -149,11 +151,7 @@ export class WorkflowPublicationOutboxConsumer {
 		if (!this.shouldKeepPolling()) return;
 
 		this.pollTimeout = setTimeout(() => {
-			try {
-				this.topUpWorkers();
-			} catch (error) {
-				this.errorReporter.error(error, { shouldBeLogged: true });
-			}
+			this.topUpWorkers();
 
 			if (this.shouldKeepPolling()) this.schedulePollCycle();
 		}, this.workflowsConfig.publicationOutboxPollIntervalMs);
@@ -168,19 +166,26 @@ export class WorkflowPublicationOutboxConsumer {
 	 * Resolution waits for every active worker, so a worker stuck on a hung
 	 * record delays it (bounded by the abort/abandon deadline) — but not the
 	 * processing of other records, which the remaining slots keep serving.
-	 * Worker errors are reported, never thrown to callers.
+	 * Rejects with the first worker error observed, so awaiting callers (e.g.
+	 * the reconciler's failure telemetry) still see drain failures.
 	 */
 	async drainPending(): Promise<void> {
 		this.topUpWorkers();
-		await this.awaitIdle();
+		const error = await this.awaitIdle();
+		if (error) throw error;
 	}
 
-	private async awaitIdle(): Promise<void> {
+	/** Resolves once the pool is idle, with the first worker error observed. */
+	private async awaitIdle(): Promise<Error | null> {
+		let firstError: Error | null = null;
 		// Loop: a follow-up pass (see `wakeRequested`) can repopulate the pool
 		// after the currently observed workers settle.
 		while (this.activeWorkers.size > 0) {
-			await Promise.allSettled([...this.activeWorkers]);
+			// `Promise.all` is safe here: workers settle with their error, never reject.
+			const outcomes = await Promise.all([...this.activeWorkers]);
+			firstError ??= outcomes.find((outcome) => outcome !== null) ?? null;
 		}
+		return firstError;
 	}
 
 	private topUpWorkers() {
@@ -199,9 +204,17 @@ export class WorkflowPublicationOutboxConsumer {
 
 	private spawnWorker() {
 		const worker = this.runWorkerPass()
-			// A worker failure (e.g. a claim query error) is contained to its own
-			// slot; the poll fallback retries later.
-			.catch((error) => this.errorReporter.error(error, { shouldBeLogged: true }))
+			.then(
+				() => null,
+				(error) => {
+					// A worker failure (e.g. a claim query error) is contained to its own
+					// slot; reported here so fire-and-forget poll passes still surface it,
+					// and settled with so `drainPending` rethrows it to awaiting callers.
+					const failure = ensureError(error);
+					this.errorReporter.error(failure, { shouldBeLogged: true });
+					return failure;
+				},
+			)
 			.finally(() => {
 				this.activeWorkers.delete(worker);
 				if (this.wakeRequested) {
@@ -212,8 +225,17 @@ export class WorkflowPublicationOutboxConsumer {
 		this.activeWorkers.add(worker);
 	}
 
-	/** Claim and process pending records until none remain. */
+	/**
+	 * Claim and process pending records until none remain. An idle pass — the
+	 * first claim finds nothing — starts no tracing span, so an idle leader
+	 * doesn't emit one empty span per worker per poll tick.
+	 */
 	private async runWorkerPass(): Promise<void> {
+		if (!this.shouldKeepPolling()) return;
+
+		const first = await this.outboxRepository.claimNextPendingRecord();
+		if (!first) return;
+
 		await this.tracing.startSpan(
 			{
 				name: 'Publication outbox drain',
@@ -225,11 +247,13 @@ export class WorkflowPublicationOutboxConsumer {
 			},
 			async (span) => {
 				let processed = 0;
-				while (this.shouldKeepPolling()) {
-					const record = await this.outboxRepository.claimNextPendingRecord();
-					if (!record) break;
-
+				let record: WorkflowPublicationOutbox | null = first;
+				while (record) {
 					if (await this.processRecordWithAbort(record)) processed++;
+
+					record = this.shouldKeepPolling()
+						? await this.outboxRepository.claimNextPendingRecord()
+						: null;
 				}
 
 				// Only log if we processed more than 1 since we log each individual record

@@ -332,6 +332,27 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(applier.apply).toHaveBeenCalledWith(r2, expect.anything());
 		});
 
+		test('drainPending rejects when a worker pass fails', async () => {
+			const error = new Error('claim failed');
+			outboxRepository.claimNextPendingRecord.mockRejectedValueOnce(error);
+			consumer.startPolling();
+
+			// Awaiting callers (e.g. the reconciler) must still observe drain
+			// failures, or they would report success for records nobody claimed.
+			await expect(consumer.drainPending()).rejects.toThrow('claim failed');
+			// Reported too, so fire-and-forget poll passes surface the failure.
+			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
+		});
+
+		test('an idle pass starts no tracing span', async () => {
+			consumer.startPolling();
+
+			await consumer.drainPending();
+
+			expect(outboxRepository.claimNextPendingRecord).toHaveBeenCalledTimes(1);
+			expect(tracing.startSpan).not.toHaveBeenCalled();
+		});
+
 		test('the poll fallback keeps running while a worker is stuck on a hung record', async () => {
 			consumer = createConsumer(true, true, 2);
 			const stuck = makeRecord({ id: 1, workflowId: 'wf-stuck' });
