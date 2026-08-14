@@ -9,6 +9,39 @@ import { setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 
+// vuedraggable can't be dragged in jsdom. This stub keeps what the components rely on
+// — the item slot and the change event — and adds a button so a reorder can be
+// triggered from a test.
+vi.mock('vuedraggable', async () => {
+	const { defineComponent, h } = await import('vue');
+	return {
+		default: defineComponent({
+			props: { modelValue: { type: Array, required: true } },
+			emits: ['update:modelValue', 'change'],
+			setup(props, { emit, slots }) {
+				const moveLastToFirst = () => {
+					const oldIndex = props.modelValue.length - 1;
+					const next = [...props.modelValue];
+					next.unshift(...next.splice(oldIndex, 1));
+					emit('update:modelValue', next);
+					emit('change', { moved: { oldIndex, newIndex: 0 } });
+				};
+
+				return () =>
+					h('div', [
+						...props.modelValue.map((element, index) =>
+							h('div', { 'data-draggable': 'true' }, slots.item?.({ element, index })),
+						),
+						h('button', {
+							'data-test-id': 'stub-move-last-to-first',
+							onClick: moveLastToFirst,
+						}),
+					]);
+			},
+		}),
+	};
+});
+
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
 vi.mock('@/app/composables/useWorkflowId', async () => {
@@ -955,6 +988,80 @@ describe('FixedCollectionParameterNew.vue', () => {
 				const parameterItems = container.querySelectorAll('[data-test-id="parameter-item"]');
 				expect(parameterItems.length).toBe(4);
 			});
+		});
+
+		it('keeps revealed optional fields with their own item after a reorder', async () => {
+			// Only the second item has a placeholder set, so only it reveals that attribute.
+			const original = [
+				{ fieldLabel: 'Name', fieldType: 'text' },
+				{ fieldLabel: 'Email', fieldType: 'text', placeholder: 'you@example.com' },
+			];
+			const reordered = [original[1], original[0]];
+
+			const propsFor = (values: typeof original): Props => ({
+				...hideOptionalFieldsProps,
+				nodeValues: { parameters: { formFields: { values } } },
+				values: { values },
+			});
+
+			const { container, getByTestId, rerender } = renderHideOptionalFields({
+				props: propsFor(original),
+			});
+			await flushPromises();
+
+			// Per form element, the values of the parameter inputs it renders.
+			const renderedItems = () =>
+				Array.from(container.querySelectorAll('[data-item-key]')).map((item) =>
+					Array.from(
+						item.querySelectorAll<HTMLInputElement>('input[data-test-id="parameter-input-field"]'),
+					).map((input) => input.value),
+				);
+
+			expect(renderedItems()).toEqual([['Name'], ['Email', 'you@example.com']]);
+
+			// Drag "Email" to the top, then let the parent feed the new order back.
+			await userEvent.click(getByTestId('stub-move-last-to-first'));
+			await flushPromises();
+			await rerender(propsFor(reordered));
+			await flushPromises();
+
+			expect(renderedItems()).toEqual([['Email', 'you@example.com'], ['Name']]);
+		});
+
+		it('keeps revealed optional fields with their own item after an earlier item is deleted', async () => {
+			const original = [
+				{ fieldLabel: 'Name', fieldType: 'text' },
+				{ fieldLabel: 'Email', fieldType: 'text', placeholder: 'you@example.com' },
+			];
+
+			const propsFor = (values: typeof original): Props => ({
+				...hideOptionalFieldsProps,
+				nodeValues: { parameters: { formFields: { values } } },
+				values: { values },
+			});
+
+			const { container, rerender } = renderHideOptionalFields({ props: propsFor(original) });
+			await flushPromises();
+
+			const renderedItems = () =>
+				Array.from(container.querySelectorAll('[data-item-key]')).map((item) =>
+					Array.from(
+						item.querySelectorAll<HTMLInputElement>('input[data-test-id="parameter-input-field"]'),
+					).map((input) => input.value),
+				);
+
+			expect(renderedItems()).toEqual([['Name'], ['Email', 'you@example.com']]);
+
+			// Deleting "Name" shifts "Email" down to index 0.
+			const deleteButtons = container.querySelectorAll<HTMLElement>(
+				'[data-test-id="fixed-collection-item-delete"]',
+			);
+			await userEvent.click(deleteButtons[0]);
+			await flushPromises();
+			await rerender(propsFor([original[1]]));
+			await flushPromises();
+
+			expect(renderedItems()).toEqual([['Email', 'you@example.com']]);
 		});
 	});
 });
