@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { isBrowserUseSupportedForBrowser } from '@/experiments/instanceAiBrowserUse';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
 import BrowserUseConnectStep from './BrowserUseConnectStep.vue';
@@ -17,15 +18,19 @@ const props = withDefaults(
 	},
 );
 
+const emit = defineEmits<{ close: [] }>();
+
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
 
+const isBrowserSupported = isBrowserUseSupportedForBrowser();
 const isConnected = computed(() => store.browserConnected);
 const statusChecked = ref(false);
 
 onMounted(async () => {
-	telemetry.trackModalOpened();
+	telemetry.trackModalOpened(isBrowserSupported);
+	if (!isBrowserSupported) return;
 	await store.fetchBrowserStatus();
 	statusChecked.value = true;
 });
@@ -39,7 +44,22 @@ onMounted(async () => {
 			</N8nHeading>
 		</div>
 
-		<template v-if="isConnected">
+		<template v-if="!isBrowserSupported">
+			<N8nCallout theme="warning" data-test-id="browser-use-unsupported-browser">
+				{{ i18n.baseText('instanceAi.browserUse.unsupportedBrowser') }}
+			</N8nCallout>
+			<div v-if="!props.embedded" :class="$style.footer">
+				<N8nButton
+					:label="i18n.baseText('generic.close')"
+					variant="outline"
+					size="medium"
+					data-test-id="browser-use-unsupported-close"
+					@click="emit('close')"
+				/>
+			</div>
+		</template>
+
+		<template v-else-if="isConnected">
 			<div :class="$style.statusRow">
 				<span :class="[$style.statusDot, $style.statusDotConnected]" />
 				<N8nText size="small" :bold="true">
@@ -124,6 +144,11 @@ onMounted(async () => {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	background: var(--color--background--light-2);
 	border-radius: var(--radius);
+}
+
+.footer {
+	display: flex;
+	justify-content: flex-end;
 }
 
 .statusRow {

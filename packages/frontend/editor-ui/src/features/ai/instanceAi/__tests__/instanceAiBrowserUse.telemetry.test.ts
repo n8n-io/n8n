@@ -13,12 +13,17 @@ describe('instance ai browser use telemetry', () => {
 		track.mockClear();
 	});
 
-	test('tracks the connect modal opening', () => {
-		useInstanceAiBrowserUseTelemetry().trackModalOpened();
+	test.each([true, false])(
+		'tracks the connect modal opening with browser_supported %s',
+		(browserSupported) => {
+			useInstanceAiBrowserUseTelemetry().trackModalOpened(browserSupported);
 
-		expect(track).toHaveBeenCalledTimes(1);
-		expect(track).toHaveBeenCalledWith('Instance AI Connect Browser Use modal opened');
-	});
+			expect(track).toHaveBeenCalledTimes(1);
+			expect(track).toHaveBeenCalledWith('Instance AI Connect Browser Use modal opened', {
+				browser_supported: browserSupported,
+			});
+		},
+	);
 
 	test('tracks the install extension button click', () => {
 		useInstanceAiBrowserUseTelemetry().trackInstallExtensionClicked();

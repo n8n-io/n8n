@@ -28,8 +28,9 @@ const customModelDefaultEntrySchema = z
 type CustomModelDefaultEntry = z.infer<typeof customModelDefaultEntrySchema>;
 
 /**
- * Known custom/* model experiment defaults. First case-insensitive substring
- * match wins. Add entries here when a new custom model needs stable knobs.
+ * Known model experiment defaults (reasoning effort, structured output, etc.).
+ * First case-insensitive substring match wins — broader than proxy routing, which
+ * uses exact `isMoonshotaiKimiK3ModelId` for the Kimi trial cohort only.
  */
 const CUSTOM_MODEL_DEFAULTS = [
 	{
