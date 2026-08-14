@@ -282,7 +282,7 @@ describe('AgentModelSelector', () => {
 
 		expect(getProviderItem(wrapper, 'anthropic')?.data?.actionPill).toEqual({
 			text: 'n8n credits',
-			type: 'default',
+			type: 'info',
 		});
 	});
 

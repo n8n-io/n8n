@@ -388,7 +388,10 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 			actionPill: isAiGatewayManagedAvailable
 				? {
 						text: i18n.baseText(aiGateway.creditsLabelKey.value),
-						type: 'default' as const,
+						type:
+							aiGateway.creditsLabelKey.value === 'generic.freeCredits'
+								? ('default' as const)
+								: ('info' as const),
 					}
 				: undefined,
 		},
