@@ -67,9 +67,8 @@ async function onSubmit() {
 .composer {
 	display: block;
 	flex-shrink: 0;
-	/* The panel around this clips overflow, and the input draws its focus ring outside its own
-	   box, so without clearance on these three sides the ring is cut off. */
-	padding: var(--spacing--sm) var(--spacing--3xs) var(--spacing--3xs);
+	/* Prevent focus-ring clipping and vertically align with feed comments */
+	padding: var(--spacing--sm) var(--spacing--2xs) var(--spacing--5xs) var(--spacing--5xs);
 }
 
 .srOnly {

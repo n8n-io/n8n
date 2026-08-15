@@ -176,7 +176,9 @@ onMounted(() => {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-	padding-block: var(--spacing--2xs) var(--spacing--sm);
+	padding-block: var(--spacing--4xs) var(--spacing--sm);
+	/* Keeps the cards off the scrollbar that appears here when feed overflows */
+	padding-inline-end: var(--spacing--2xs);
 }
 
 /* The detail body stacks and takes over scrolling here, so the feed must bound itself or its
