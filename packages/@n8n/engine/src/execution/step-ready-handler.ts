@@ -1,16 +1,16 @@
-import { UnexpectedError, UnimplementedError } from '../common';
+import { UnexpectedError, UnimplementedError, type JsonValue } from '../common';
 import type { ExternalDependencies, IStepExecutor } from '../dependencies';
 import type { GraphEdge, GraphNode } from '../graph';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import type { StepSlots } from './execution.types';
+import { isSettledStatus, type StepSlots } from './execution.types';
 import type { StepError, StepRecord, StepStore } from './step-store';
 import { validateStepContext } from './validate-step-context';
 
 /**
  * Handles the `step:ready` step event: claims the step (`queued → running`),
  * runs it through the executor for its step type, records the outcome, and
- * reports back to the orchestration worker with `step:completed`.
+ * reports back to the orchestration worker with `step:settled`.
  *
  * A step that cannot run — no executor, an input shape we don't support yet —
  * makes the handler throw, leaving the step `running` for reconciliation
@@ -74,7 +74,7 @@ export class StepReadyHandler {
 		if (!recorded) return;
 
 		await this.orchestrationQueue.publish({
-			type: 'step:completed',
+			type: 'step:settled',
 			executionId: event.executionId,
 			stepId: event.stepId,
 		});
@@ -87,6 +87,8 @@ export class StepReadyHandler {
 		inputs: StepSlots,
 		executor: IStepExecutor,
 	): Promise<StepSlots> {
+		// Outputs are stored without inspection. Which slots fired (including
+		// none) is the settlement handler's concern when it plans successors.
 		const { outputs } = await executor.execute({
 			node,
 			inputs,
@@ -97,36 +99,7 @@ export class StepReadyHandler {
 				mode: execution.mode,
 			},
 		});
-
-		// TODO(CAT-2874): support multi-slot outputs.
-		if (outputs.length > 1) {
-			throw new UnimplementedError(
-				`step ${step.id} runs node ${step.nodeId}, which produced ${outputs.length} output slots; only output slot 0 is supported yet`,
-			);
-		}
-		// TODO(CAT-2874): support stopping on empty outputs.
-		this.assertOutputFiredForSuccessors(step, execution, outputs);
-
 		return outputs;
-	}
-
-	/**
-	 * We don't support stopping the execution on null outputs yet: planning is
-	 * status-based, so successors run even when this step fired nothing — on an
-	 * empty input slot, instead of not at all. Fail loudly until then.
-	 */
-	private assertOutputFiredForSuccessors(
-		step: StepRecord,
-		execution: ExecutionRecord,
-		outputs: StepSlots,
-	): void {
-		// NOTE: we check hasSuccessors because we DO support empty outputs for the last node.
-		const hasSuccessors = execution.graph.edges.some((edge) => edge.from === step.nodeId);
-		if (hasSuccessors && (outputs.length === 0 || outputs[0] === null)) {
-			throw new UnimplementedError(
-				`step ${step.id} runs node ${step.nodeId}, which did not fire output slot 0 despite having successors; branch selection is not supported yet`,
-			);
-		}
 	}
 
 	/** Inputs for `node`, each slot taken from its predecessor's output. */
@@ -134,7 +107,7 @@ export class StepReadyHandler {
 		// These are all the edges that feed into the node this step runs.
 		const incomingEdges = execution.graph.edges.filter((edge) => edge.to === step.nodeId);
 		if (incomingEdges.length === 0) {
-			// Steps are planned only for a completed step's successors, so a step
+			// Steps are planned only for a settled step's successors, so a step
 			// without a predecessor means the graph and the step rows disagree.
 			throw new UnexpectedError(
 				`step ${step.id} runs node ${step.nodeId}, which has no predecessor in the execution graph`,
@@ -143,7 +116,11 @@ export class StepReadyHandler {
 
 		validateIncomingEdges(incomingEdges, step);
 
-		const incomingOutputsByNodeId = await this.loadIncomingOutputs(execution.id, incomingEdges);
+		const predecessorNodeIds = [...new Set(incomingEdges.map((edge) => edge.from))];
+		const predecessorSteps = await this.stepStore.loadStepsByNodeIds(
+			execution.id,
+			predecessorNodeIds,
+		);
 
 		// Array of length equal to the highest input slot plus one.
 		// The entries are `null` placeholders filled by the loop immediately below.
@@ -153,7 +130,7 @@ export class StepReadyHandler {
 		);
 
 		for (const edge of incomingEdges) {
-			populateInputFromPredecessor(edge, step, incomingOutputsByNodeId, inputs);
+			inputs[edge.inputIndex] = readEdgeValue(edge, predecessorSteps, step);
 		}
 
 		return inputs;
@@ -176,37 +153,16 @@ export class StepReadyHandler {
 
 		throw new UnimplementedError(`step ${step.id}: no executor for step type ${node.type}`);
 	}
-
-	/**
-	 * Loads the outputs of all the source steps of `incomingEdges`, keyed by the source node ID.
-	 * The source steps must have completed.
-	 * @param executionId to gather the predecessor outputs
-	 * @param incomingEdges to know which predecessor nodes to gather outputs from
-	 * @returns
-	 */
-	private async loadIncomingOutputs(
-		executionId: string,
-		incomingEdges: GraphEdge[],
-	): Promise<Record<string, StepSlots | null>> {
-		const predecessorNodeIds = [...new Set(incomingEdges.map((edge) => edge.from))];
-		return await this.stepStore.loadStepOutputs(executionId, predecessorNodeIds);
-	}
 }
 
-// Validate that the incoming edge meets our constraints. filledSlots tracks the filled
+// Validate that the incoming edges meet our constraints. filledSlots tracks the filled
 // input slots so we can detect multiple edges into the same slot.
 function validateIncomingEdges(incomingEdges: GraphEdge[], step: StepRecord): void {
 	const filledSlots: Set<number> = new Set();
 	for (const edge of incomingEdges) {
-		// TODO(CAT-2874): route from non-zero output slots. We should have
-		// rejected this graph at validation time.
-		if (edge.outputIndex !== 0) {
-			throw new UnexpectedError(
-				`step ${step.id} runs node ${step.nodeId}, fed from output slot ${edge.outputIndex} of node ${edge.from}; validated graphs only use output slot 0`,
-			);
-		}
 		if (filledSlots.has(edge.inputIndex)) {
-			// We should have rejected this graph at validation time.
+			// TODO(CAT-3982): same-slot convergence gets a defined meaning. We
+			// should have rejected this graph at validation time.
 			throw new UnexpectedError(
 				`step ${step.id} runs node ${step.nodeId}, which has more than one edge into input slot ${edge.inputIndex}; validated graphs have at most one edge per input slot`,
 			);
@@ -215,21 +171,26 @@ function validateIncomingEdges(incomingEdges: GraphEdge[], step: StepRecord): vo
 	}
 }
 
-function populateInputFromPredecessor(
+/**
+ * The value an edge delivers: the source's output slot for a completed
+ * predecessor, `null` for a dead edge (predecessor settled without completing,
+ * or left the slot unfilled).
+ */
+function readEdgeValue(
 	edge: GraphEdge,
+	predecessorSteps: Record<string, StepRecord>,
 	step: StepRecord,
-	incomingOutputsByNodeId: Record<string, StepSlots | null>,
-	inputs: StepSlots,
-): void {
-	const predecessorOutputs = incomingOutputsByNodeId[edge.from];
-	if (!predecessorOutputs) {
-		// A step is planned only once every predecessor completed, so running on
+): JsonValue {
+	const row = predecessorSteps[edge.from];
+	if (!row || !isSettledStatus(row.status)) {
+		// A step is planned only once every predecessor settled, so running on
 		// a fabricated empty input would mask a planner/store inconsistency.
 		throw new UnexpectedError(
-			`step ${step.id} reads node ${edge.from}, whose step has not completed`,
+			`step ${step.id} reads node ${edge.from}, whose step has not settled`,
 		);
 	}
-	inputs[edge.inputIndex] = predecessorOutputs[edge.outputIndex] ?? null;
+	if (row.status !== 'completed') return null;
+	return row.outputs?.[edge.outputIndex] ?? null;
 }
 
 function toStepError(error: unknown): StepError {

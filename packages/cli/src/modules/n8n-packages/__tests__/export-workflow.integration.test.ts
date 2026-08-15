@@ -9,6 +9,7 @@ import {
 import type { User } from '@n8n/db';
 import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { jsonParse, type INode } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -19,11 +20,15 @@ import { PackageExportBlockedError } from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
+import type { UnpackedEntry } from './utils/tar-support';
 import {
+	buildVersionedWorkflow,
 	buildWorkflowCallingSubWorkflow,
 	buildWorkflowReferencingCredential,
 	buildWorkflowUsingErrorWorkflow,
+	credentialNode,
 	executeWorkflowNode,
+	noOpNode,
 } from './utils/test-builders';
 
 beforeAll(async () => {
@@ -36,8 +41,24 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'ProjectRelation', 'Project']);
+	// WorkflowEntity first: its activeVersionId points at WorkflowHistory.
+	await testDb.truncate([
+		'WorkflowEntity',
+		'WorkflowHistory',
+		'SharedWorkflow',
+		'ProjectRelation',
+		'Project',
+	]);
 });
+
+function workflowJson(entries: UnpackedEntry[], target: string) {
+	const file = entries.find((entry) => entry.name === `${target}/workflow.json`);
+	if (!file) throw new Error(`missing ${target}/workflow.json`);
+	return jsonParse<Record<string, unknown>>(file.content.toString());
+}
+
+const nodeNames = (workflow: Record<string, unknown>) =>
+	(workflow.nodes as INode[]).map((node) => node.name);
 
 describe('workflow package export', () => {
 	let service: N8nPackagesService;
@@ -812,6 +833,210 @@ describe('workflow package export', () => {
 			]);
 			expect(manifest.requirements?.workflows).toEqual([
 				{ id: errorHandler.id, name: errorHandler.name, usedByWorkflows: [parent.id] },
+			]);
+		});
+	});
+
+	describe('workflow version policy', () => {
+		it.each(['latest', 'published-strict'] as const)(
+			'exports a single-version workflow under %s',
+			async (workflowVersionPolicy) => {
+				const owner = await createOwner();
+				const project = await createTeamProject('Project A', owner);
+				const { workflow } = await buildVersionedWorkflow({
+					name: 'Single version',
+					project,
+					versions: [[noOpNode('v1')]],
+					publishedVersion: 0,
+				});
+
+				const { stream } = await service.exportPackage({
+					user: owner,
+					workflowIds: [workflow.id],
+					workflowVersionPolicy,
+				});
+				const { manifest, entries } = await readExport(stream);
+
+				expect(manifest.workflows).toHaveLength(1);
+				expect(nodeNames(workflowJson(entries, manifest.workflows![0].target))).toEqual(['v1']);
+			},
+		);
+
+		it('exports the latest version by default even when an older version is published', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const { workflow, versionIds } = await buildVersionedWorkflow({
+				name: 'Published but edited',
+				project,
+				versions: [[noOpNode('v1')], [noOpNode('v2')], [noOpNode('v3')]],
+				publishedVersion: 1,
+			});
+
+			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+			const { manifest, entries } = await readExport(stream);
+
+			const exported = workflowJson(entries, manifest.workflows![0].target);
+			expect(nodeNames(exported)).toEqual(['v3']);
+			expect(exported.versionId).toBe(versionIds[2]);
+			expect(exported.isPublished).toBe(false);
+		});
+
+		it('exports the published version rather than the draft', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const { workflow, versionIds } = await buildVersionedWorkflow({
+				name: 'Published but edited',
+				project,
+				versions: [[noOpNode('v1')], [noOpNode('v2')], [noOpNode('v3')]],
+				publishedVersion: 0,
+				settings: { executionOrder: 'v1', timezone: 'Europe/Berlin' },
+			});
+
+			const { stream } = await service.exportPackage({
+				user: owner,
+				workflowIds: [workflow.id],
+				workflowVersionPolicy: 'published-strict',
+			});
+			const { manifest, entries } = await readExport(stream);
+
+			const exported = workflowJson(entries, manifest.workflows![0].target);
+			expect(nodeNames(exported)).toEqual(['v1']);
+			expect(exported.versionId).toBe(versionIds[0]);
+			expect(exported.isPublished).toBe(true);
+			// Workflow history carries no settings, so they always come from the draft.
+			expect(exported.settings).toEqual({ executionOrder: 'v1', timezone: 'Europe/Berlin' });
+		});
+
+		it('aborts under published-strict when a workflow has no published version', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const { workflow } = await buildVersionedWorkflow({
+				name: 'Never published',
+				project,
+				versions: [[noOpNode('v1')], [noOpNode('v2')]],
+			});
+
+			await expect(
+				service.exportPackage({
+					user: owner,
+					workflowIds: [workflow.id],
+					workflowVersionPolicy: 'published-strict',
+				}),
+			).rejects.toThrow('1 workflow(s) have no published version. Export aborted.');
+		});
+
+		it('falls back to the draft for unpublished workflows under prefer-published', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const { workflow: published } = await buildVersionedWorkflow({
+				name: 'Published',
+				project,
+				versions: [[noOpNode('published-v1')], [noOpNode('published-v2')]],
+				publishedVersion: 0,
+			});
+			const { workflow: unpublished } = await buildVersionedWorkflow({
+				name: 'Never published',
+				project,
+				versions: [[noOpNode('draft-v1')], [noOpNode('draft-v2')]],
+			});
+
+			const { stream } = await service.exportPackage({
+				user: owner,
+				workflowIds: [published.id, unpublished.id],
+				workflowVersionPolicy: 'prefer-published',
+			});
+			const { manifest, entries } = await readExport(stream);
+
+			expect(manifest.workflows).toHaveLength(2);
+			expect(
+				manifest.workflows!.map(({ target }) => nodeNames(workflowJson(entries, target))),
+			).toEqual([['published-v1'], ['draft-v2']]);
+		});
+
+		it('leaves unpublished workflows out of the package under ignore-unpublished', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const { workflow: published } = await buildVersionedWorkflow({
+				name: 'Published',
+				project,
+				versions: [[noOpNode('published-v1')], [noOpNode('published-v2')]],
+				publishedVersion: 0,
+			});
+			const { workflow: unpublished } = await buildVersionedWorkflow({
+				name: 'Never published',
+				project,
+				versions: [[noOpNode('draft-v1')]],
+			});
+
+			const { stream } = await service.exportPackage({
+				user: owner,
+				workflowIds: [published.id, unpublished.id],
+				workflowVersionPolicy: 'ignore-unpublished',
+			});
+			const { manifest, entries } = await readExport(stream);
+
+			expect(manifest.workflows!.map(({ id }) => id)).toEqual([published.id]);
+			expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(1);
+		});
+
+		it('names the unpublished sub-workflow when auto-include meets ignore-unpublished', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const { workflow: child } = await buildVersionedWorkflow({
+				name: 'Unpublished helper',
+				project,
+				versions: [[noOpNode('child-v1')]],
+			});
+			const { workflow: parent } = await buildVersionedWorkflow({
+				name: 'Published caller',
+				project,
+				versions: [[executeWorkflowNode(child.id)]],
+				publishedVersion: 0,
+			});
+
+			await expect(
+				service.exportPackage({
+					user: owner,
+					workflowIds: [parent.id],
+					workflowVersionPolicy: 'ignore-unpublished',
+					missingWorkflowDependencyPolicy: 'include-in-package',
+				}),
+			).rejects.toThrow('1 sub-workflow dependency has no published version. Export aborted.');
+		});
+
+		it('bundles the credentials the exported version references, not the draft ones', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const publishedCredential = await saveCredential(
+				{ name: 'Published cred', type: 'httpHeaderAuth', data: { name: 'X', value: 'y' } },
+				{ project, role: 'credential:owner' },
+			);
+			const draftCredential = await saveCredential(
+				{ name: 'Draft cred', type: 'httpHeaderAuth', data: { name: 'X', value: 'y' } },
+				{ project, role: 'credential:owner' },
+			);
+			const { workflow } = await buildVersionedWorkflow({
+				name: 'Swapped credential',
+				project,
+				versions: [[credentialNode(publishedCredential)], [credentialNode(draftCredential)]],
+				publishedVersion: 0,
+			});
+
+			const { stream } = await service.exportPackage({
+				user: owner,
+				workflowIds: [workflow.id],
+				workflowVersionPolicy: 'published-strict',
+			});
+			const { manifest } = await readExport(stream);
+
+			expect(manifest.credentials!.map(({ id }) => id)).toEqual([publishedCredential.id]);
+			expect(manifest.requirements?.credentials).toEqual([
+				{
+					id: publishedCredential.id,
+					name: publishedCredential.name,
+					type: 'httpHeaderAuth',
+					usedByWorkflows: [workflow.id],
+				},
 			]);
 		});
 	});

@@ -8,6 +8,9 @@
 		"GET /roles": {
 			"status": "gap"
 		},
+		"GET /roles/{slug}": {
+			"status": "gap"
+		},
 		"POST /roles": {
 			"status": "gap"
 		},
