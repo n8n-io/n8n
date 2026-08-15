@@ -21,17 +21,19 @@ import {
 } from '../descriptions';
 
 /**
- * Rewrites the auth portion of any `mongodb://` or `mongodb+srv://`
- * URI substring in `message` to `mongodb(+srv)://[REDACTED]@`. Used to
- * normalise driver error messages before they are surfaced via
- * NodeOperationError; some driver errors (notably URL-parse failures)
- * include the input URI verbatim.
+ * Rewrites the auth portion of any `mongodb://` or `mongodb+srv://` URI
+ * substring in `message` to `mongodb(+srv)://[REDACTED]@`. Used to normalise
+ * driver error messages before they are surfaced via NodeOperationError; some
+ * driver errors (notably URL-parse failures) include the input URI verbatim.
+ *
+ * The auth portion is matched loosely rather than as `user:pass`, so malformed
+ * credentials are redacted too: a URI that failed to parse is the likeliest one
+ * to be echoed back in an error message. Excluding `/` and `@` from the class
+ * keeps the match from running past the host and swallowing an unrelated `@`
+ * later in the message.
  */
 export function sanitizeMongoUriInMessage(message: string): string {
-	return message.replace(
-		/mongodb(\+srv)?:\/\/[^:\s/?#]+:[^@\s/?#]+@/gi,
-		'mongodb$1://[REDACTED]@',
-	);
+	return message.replace(/mongodb(\+srv)?:\/\/[^\s/@]*@/gi, 'mongodb$1://[REDACTED]@');
 }
 
 export class MemoryMongoDbChat implements INodeType {
@@ -179,8 +181,11 @@ export class MemoryMongoDbChat implements INodeType {
 			};
 		} catch (error) {
 			void client.close();
-			const sanitized = sanitizeMongoUriInMessage(error?.message ?? '');
-			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${sanitized}`);
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			throw new NodeOperationError(
+				this.getNode(),
+				`MongoDB connection error: ${sanitizeMongoUriInMessage(errorMessage)}`,
+			);
 		}
 	}
 }

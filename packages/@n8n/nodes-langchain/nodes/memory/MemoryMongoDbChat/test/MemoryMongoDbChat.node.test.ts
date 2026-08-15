@@ -1,50 +1,59 @@
 import { sanitizeMongoUriInMessage } from '../MemoryMongoDbChat.node';
 
 describe('sanitizeMongoUriInMessage', () => {
-	it('rewrites auth in mongodb URIs to [REDACTED]', () => {
-		const input = 'Invalid URL: mongodb://leaky_user:supersecret@:27017/?appname=n8n';
-		const out = sanitizeMongoUriInMessage(input);
-		expect(out).not.toContain('leaky_user');
-		expect(out).not.toContain('supersecret');
-		expect(out).toContain('mongodb://[REDACTED]@');
-	});
-
-	it('rewrites auth in mongodb+srv URIs to [REDACTED]', () => {
-		const input = 'connect failed: mongodb+srv://u:p@cluster.example.net/db';
-		const out = sanitizeMongoUriInMessage(input);
-		expect(out).not.toContain(':p@');
-		expect(out).toContain('mongodb+srv://[REDACTED]@');
-	});
-
-	it('handles URI-encoded characters in the auth section', () => {
+	it.each([
+		[
+			'Invalid URL: mongodb://leaky_user:supersecret@:27017/?appname=n8n',
+			'Invalid URL: mongodb://[REDACTED]@:27017/?appname=n8n',
+		],
+		[
+			'connect failed: mongodb+srv://user:xxxxxxxx@cluster.example.net/db',
+			'connect failed: mongodb+srv://[REDACTED]@cluster.example.net/db',
+		],
 		// Synthetic encoded bytes only; %41%42%43 = "ABC", %44%45%46 = "DEF".
-		const input = 'fail: mongodb://%41%42%43:%44%45%46@host:27017/db';
-		const out = sanitizeMongoUriInMessage(input);
-		expect(out).not.toContain('%41');
-		expect(out).not.toContain('%44');
-		expect(out).toContain('mongodb://[REDACTED]@');
+		[
+			'Invalid URL: mongodb://%41%42%43:%44%45%46@:27017/db',
+			'Invalid URL: mongodb://[REDACTED]@:27017/db',
+		],
+		[
+			'Invalid URL: mongodb://justsecret@host:27017/db',
+			'Invalid URL: mongodb://[REDACTED]@host:27017/db',
+		],
+		[
+			'Invalid URL: mongodb://user:part:xxxxxxxx@host:27017/db',
+			'Invalid URL: mongodb://[REDACTED]@host:27017/db',
+		],
+		['Invalid URL: mongodb://@host:27017/db', 'Invalid URL: mongodb://[REDACTED]@host:27017/db'],
+		[
+			'Invalid URL: MongoDB://User:Secret@host:27017/db',
+			'Invalid URL: mongodb://[REDACTED]@host:27017/db',
+		],
+	])('redacts the auth section of %s', (input, expected) => {
+		expect(sanitizeMongoUriInMessage(input)).toBe(expected);
 	});
 
-	it('rewrites multiple URIs in the same message', () => {
-		const input =
-			'tried mongodb://a:b@host1, then mongodb+srv://c:d@cluster, both failed';
-		const out = sanitizeMongoUriInMessage(input);
-		expect(out).not.toContain(':b@');
-		expect(out).not.toContain(':d@');
-		expect((out.match(/\[REDACTED\]/g) ?? []).length).toBe(2);
+	it('redacts every URI when a message holds more than one', () => {
+		const input = 'tried mongodb://a:b@host1, then mongodb+srv://c:d@cluster, both failed';
+
+		expect(sanitizeMongoUriInMessage(input)).toBe(
+			'tried mongodb://[REDACTED]@host1, then mongodb+srv://[REDACTED]@cluster, both failed',
+		);
 	});
 
-	it('passes through messages without a URI', () => {
-		const input = 'connect ECONNREFUSED 127.0.0.1:27017';
+	it.each([
+		'connect ECONNREFUSED 127.0.0.1:27017',
+		'connect failed: mongodb://host:27017/db',
+		'mongodb://host:27017/db failed, contact admin@example.com',
+		'',
+	])('leaves %p unchanged because it holds no URI credentials', (input) => {
 		expect(sanitizeMongoUriInMessage(input)).toBe(input);
 	});
 
-	it('does not rewrite URIs without an auth section', () => {
-		const input = 'connect failed: mongodb://host:27017/db';
-		expect(sanitizeMongoUriInMessage(input)).toBe(input);
-	});
+	it('leaves an already redacted message alone on a second pass', () => {
+		const sanitized = sanitizeMongoUriInMessage(
+			'Invalid URL: mongodb://user:xxxxxxxx@host:27017/db',
+		);
 
-	it('handles an empty string', () => {
-		expect(sanitizeMongoUriInMessage('')).toBe('');
+		expect(sanitizeMongoUriInMessage(sanitized)).toBe(sanitized);
 	});
 });
