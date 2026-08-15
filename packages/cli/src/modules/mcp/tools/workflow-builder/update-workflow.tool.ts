@@ -60,8 +60,6 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-
-
 const MAX_OPERATIONS_PER_CALL = 100;
 const baseOperationTypes = [
 	'updateNodeParameters',
@@ -95,6 +93,23 @@ const gatedGroupOperationTypes = [
 const GATED_GROUP_OP_TYPES: ReadonlySet<PartialUpdateOperation['type']> = new Set(
 	gatedGroupOperationTypes,
 );
+const GRAPH_OPERATION_TYPES: ReadonlySet<PartialUpdateOperation['type']> = new Set([
+	'addNode',
+	'removeNode',
+	'renameNode',
+	'updateNodeParameters',
+	'setNodeParameter',
+	'addConnection',
+	'removeConnection',
+	'setNodeCredential',
+	'setNodePosition',
+	'setNodeDisabled',
+	'setNodeGroups',
+	'addNodeGroup',
+	'removeNodeGroup',
+	'updateNodeGroup',
+	'setNodeSettings',
+]);
 const buildOperationTypeSchema = (canvasGroupsEnabled: boolean) =>
 	canvasGroupsEnabled
 		? z.enum([...baseOperationTypes, ...gatedGroupOperationTypes])
@@ -690,6 +705,17 @@ function dedupeNamesPreservingCase(names: string[]): string[] {
 	return result;
 }
 
+function haveSameTagNames(
+	actualTags: Array<{ name: string }> | undefined,
+	expectedTagNames: string[] | undefined,
+): boolean {
+	if (!actualTags || !expectedTagNames) {
+		return false;
+	}
+
+	return isEqual(actualTags.map((tag) => tag.name).sort(), [...expectedTagNames].sort());
+}
+
 // Renames are followed so the key matches the node's name in the post-apply
 // workflow.
 function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, number> {
@@ -1175,31 +1201,21 @@ export const createUpdateWorkflowTool = (
 
 			let updateAttempted = false;
 			let hasGraphOps = false;
-			let expectedWorkflow: { nodes: unknown; connections: unknown; nodeGroups?: unknown } | null = null;
-			let existingWorkflow: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
+			let hasTagOperations = false;
+			let expectedWorkflow: { nodes: unknown; connections: unknown; nodeGroups?: unknown } | null =
 				null;
+			let expectedSettings: IWorkflowSettings | undefined;
+			let expectedTagNames: string[] | undefined;
+			let existingWorkflow: Awaited<
+				ReturnType<WorkflowFinderService['findWorkflowForUser']>
+			> | null = null;
 
 			try {
 				const strictOperations = parseStrictOperations(operations);
-				const hasTagOperations = strictOperations.some(isTagOperation);
+				hasTagOperations = strictOperations.some(isTagOperation);
 				const hasNonTagOperations = strictOperations.some((op) => !isTagOperation(op));
 				const hasSettingsOperations = strictOperations.some(isSettingsOperation);
-				hasGraphOps = strictOperations.some((op) =>
-					[
-						'addNode',
-						'removeNode',
-						'updateNodeParameters',
-						'setNodeParameter',
-						'addConnection',
-						'removeConnection',
-						'setNodeCredential',
-						'setNodeGroups',
-						'addNodeGroup',
-						'updateNodeGroup',
-						'removeNodeGroup',
-						'setNodeSettings',
-					].includes(op.type),
-				);
+				hasGraphOps = strictOperations.some((op) => GRAPH_OPERATION_TYPES.has(op.type));
 
 				assertOperationsSupported(strictOperations, {
 					canvasGroupsEnabled,
@@ -1333,6 +1349,8 @@ export const createUpdateWorkflowTool = (
 						? { nodeGroups: workflowUpdateData.nodeGroups }
 						: {}),
 				};
+				expectedSettings = hasSettingsOperations ? workflowUpdateData.settings : undefined;
+				expectedTagNames = result.tagNames;
 				updateAttempted = true;
 				const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 					aiBuilderAssisted: hasNonTagOperations,
@@ -1414,9 +1432,12 @@ export const createUpdateWorkflowTool = (
 					let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
 						null;
 					try {
-						persisted = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-							'workflow:read',
-						]);
+						persisted = await workflowFinderService.findWorkflowForUser(
+							workflowId,
+							user,
+							['workflow:read'],
+							{ includeTags: hasTagOperations },
+						);
 					} catch (lookupError) {
 						logger.warn('Post-update verification lookup failed', {
 							workflowId,
@@ -1432,14 +1453,27 @@ export const createUpdateWorkflowTool = (
 						(expectedWorkflow.nodeGroups === undefined ||
 							isEqual(persisted.nodeGroups, expectedWorkflow.nodeGroups));
 
-					const wasTouched = Boolean(
-						existingWorkflow.updatedAt &&
-							persisted?.updatedAt &&
-							new Date(persisted.updatedAt).getTime() >
-								new Date(existingWorkflow.updatedAt).getTime(),
-					);
+					const existingUpdatedAt = existingWorkflow.updatedAt
+						? new Date(existingWorkflow.updatedAt).getTime()
+						: undefined;
+					const persistedUpdatedAt = persisted?.updatedAt
+						? new Date(persisted.updatedAt).getTime()
+						: undefined;
+					const hasNewerTimestamp =
+						existingUpdatedAt !== undefined &&
+						persistedUpdatedAt !== undefined &&
+						persistedUpdatedAt > existingUpdatedAt;
+					const hasPersistedExpectedSettings =
+						expectedSettings !== undefined &&
+						persisted &&
+						isEqual(persisted.settings, expectedSettings) &&
+						!isEqual(existingWorkflow.settings, expectedSettings);
+					const wasTouched = Boolean(hasNewerTimestamp || hasPersistedExpectedSettings);
+					const tagsMatchExpected =
+						!hasTagOperations || haveSameTagNames(persisted?.tags, expectedTagNames);
 
-					const recovered = hasGraphOps ? (matchesExpected ?? wasTouched) : wasTouched;
+					const recovered =
+						tagsMatchExpected && (hasGraphOps ? Boolean(matchesExpected) : wasTouched);
 					if (persisted && recovered) {
 						const baseUrl = urlService.getInstanceBaseUrl();
 						const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
@@ -1469,6 +1503,8 @@ export const createUpdateWorkflowTool = (
 							url: workflowUrl,
 							note: `Workflow was updated successfully, but a post-save operation failed: ${errorMessage}`,
 						};
+
+						postSaveMetrics.incrementPostSaveFailure('update', error);
 
 						return {
 							content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

@@ -14,6 +14,7 @@ describe('McpPostSaveMetricsService', () => {
 
 	beforeEach(() => {
 		config = mockInstance(PrometheusMetricsConfig, {
+			enable: true,
 			prefix: 'n8n_',
 		});
 		service = new McpPostSaveMetricsService(config);
@@ -27,6 +28,15 @@ describe('McpPostSaveMetricsService', () => {
 
 	it('should not construct Counter on service instantiation', () => {
 		expect(Counter).not.toHaveBeenCalled();
+	});
+
+	it('should not construct or increment Counter when metrics are disabled', () => {
+		config.enable = false;
+
+		service.incrementPostSaveFailure('create', new Error('Test error'));
+
+		expect(Counter).not.toHaveBeenCalled();
+		expect(mockCounterInc).not.toHaveBeenCalled();
 	});
 
 	it('should lazily initialize Counter on first incrementPostSaveFailure call', () => {
@@ -97,13 +107,10 @@ describe('McpPostSaveMetricsService', () => {
 			);
 		});
 
-		it('should use raw string when error is a string', () => {
+		it('should fallback to "Unknown" when error is a string', () => {
 			service.incrementPostSaveFailure('update', 'Hook execution timed out');
 
-			expect(mockCounterInc).toHaveBeenCalledWith(
-				{ tool: 'update', error_type: 'Hook execution timed out' },
-				1,
-			);
+			expect(mockCounterInc).toHaveBeenCalledWith({ tool: 'update', error_type: 'Unknown' }, 1);
 		});
 
 		it.each([

@@ -27,18 +27,15 @@ export class McpPostSaveMetricsService {
 	 * for non-Error throws so the label cardinality stays bounded.
 	 */
 	incrementPostSaveFailure(tool: 'create' | 'update', error: unknown): void {
+		if (!this.config.enable) return;
+
 		this.postSaveFailuresTotal ??= new Counter({
 			name: `${this.config.prefix}mcp_post_save_failures_total`,
 			help: 'MCP workflow-builder tool failures that occurred after a successful database write (hooks, telemetry, auto-assign). The client still receives success — these are observability-only.',
 			labelNames: ['tool', 'error_type'],
 		});
 
-		const errorType =
-			error instanceof Error
-				? error.constructor.name
-				: typeof error === 'string'
-					? error
-					: 'Unknown';
+		const errorType = error instanceof Error ? error.constructor.name : 'Unknown';
 		this.postSaveFailuresTotal.inc({ tool, error_type: errorType }, 1);
 	}
 }
