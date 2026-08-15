@@ -62,6 +62,44 @@ describe('Test Webhook Node', () => {
 		});
 	});
 
+	describe('bot rejection (ignoreBots)', () => {
+		const node = new Webhook();
+
+		const buildContext = (userAgent: string) => {
+			const context = mock<IWebhookFunctions>({ nodeHelpers: mock() });
+			context.getNode.calledWith().mockReturnValue({
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1.1,
+			} as any);
+			context.getNodeParameter.mockImplementation((parameterName: string) => {
+				if (parameterName === 'responseMode') return 'onReceived';
+				if (parameterName === 'options') return { ignoreBots: true };
+				if (parameterName === 'authentication') return 'none';
+				return undefined;
+			});
+			const req = mock<Request>();
+			req.headers = { 'user-agent': userAgent };
+			(req as any).ips = [];
+			(req as any).ip = '127.0.0.1';
+			context.getRequestObject.mockReturnValue(req);
+			const resp = mock<Response>();
+			context.getResponseObject.mockReturnValue(resp);
+			return { context, resp };
+		};
+
+		it('should reject bot user agents with a message that names the Ignore Bots option', async () => {
+			const { context, resp } = buildContext('curl/8.5.0');
+
+			const result = await node.webhook(context);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(resp.writeHead).toHaveBeenCalledWith(403, expect.anything());
+			expect(resp.end).toHaveBeenCalledWith(
+				'Request rejected: the user agent was detected as a bot and the "Ignore Bots" option is enabled on this webhook',
+			);
+		});
+	});
+
 	describe('handleFormData', () => {
 		const node = new Webhook();
 		const context = mock<IWebhookFunctions>({
