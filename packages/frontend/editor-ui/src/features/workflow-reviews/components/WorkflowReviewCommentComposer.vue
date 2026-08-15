@@ -68,7 +68,7 @@ async function onSubmit() {
 	display: block;
 	flex-shrink: 0;
 	/* Prevent focus-ring clipping and vertically align with feed comments */
-	padding: var(--spacing--sm) var(--spacing--2xs) var(--spacing--5xs) var(--spacing--5xs);
+	padding: var(--spacing--lg) var(--spacing--2xs) var(--spacing--5xs) var(--spacing--5xs);
 }
 
 .srOnly {

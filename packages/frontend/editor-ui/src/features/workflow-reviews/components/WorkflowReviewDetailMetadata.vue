@@ -146,6 +146,7 @@ const statusSummary = computed(() => {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	min-width: 14rem;
+	padding-top: var(--spacing--5xs);
 }
 
 .card {
