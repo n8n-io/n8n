@@ -306,12 +306,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							[skillId]: sanitizedSkill,
 						},
 					};
-					const nextSkills = [...(localConfig.value?.skills ?? [])];
-					const skillRefIndex = nextSkills.findIndex((skillRef) => skillRef.id === id);
-					if (skillRefIndex !== -1) {
-						nextSkills[skillRefIndex] = { type: 'skill', id: skillId };
-						scheduleConfigUpdate({ skills: nextSkills });
-					}
 					scheduleSkillSave({ skillId, skill: sanitizedSkill });
 				},
 			},
@@ -337,6 +331,15 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					icon: 'globe',
 				});
 			}
+		}
+
+		for (const server of localConfig.value?.mcpServers ?? []) {
+			if (!server.name) continue;
+			tools.push({
+				name: server.name,
+				label: formatToolNameForDisplay(server.name) || server.name,
+				icon: 'mcp',
+			});
 		}
 
 		return tools;

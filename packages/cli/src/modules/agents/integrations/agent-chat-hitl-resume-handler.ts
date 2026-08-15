@@ -4,9 +4,10 @@ import type { ActionEvent, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type {
-	ApprovalDecisionMessageFormatter,
+	ActionDecisionMessageFormatter,
 	BridgeResumeExecutionContext,
 	PlatformAgentContext,
+	SettleActionMessage,
 } from './agent-chat-integration';
 import { onceStatusHandle } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
@@ -33,7 +34,8 @@ interface AgentChatHitlResumeHandlerOptions {
 	logger: Logger;
 	callbackStore?: CallbackStore;
 	deleteActionMessageBeforeResume: boolean;
-	formatApprovalDecisionMessage?: ApprovalDecisionMessageFormatter;
+	formatActionDecisionMessage?: ActionDecisionMessageFormatter;
+	settleActionMessage?: SettleActionMessage;
 	resolvePlatformThreadId: (thread: Thread<unknown, unknown>) => string;
 	toAgentThreadId: (platformThreadId: string) => InternalThread;
 	getPlatformAgentContext: () => PlatformAgentContext;
@@ -85,7 +87,7 @@ export class AgentChatHitlResumeHandler {
 			replyExpectation: 'required',
 		});
 
-		await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData.kind);
+		await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
 		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData);
 	}
 
@@ -133,7 +135,12 @@ export class AgentChatHitlResumeHandler {
 		actionId: string,
 		value: string | undefined,
 		thread: Thread<unknown, unknown>,
-	): Promise<{ actionId: string; value: string | undefined; kind?: 'approval' } | null> {
+	): Promise<{
+		actionId: string;
+		value: string | undefined;
+		kind?: 'approval';
+		label?: string;
+	} | null> {
 		if (!this.options.callbackStore) return { actionId, value };
 
 		const resolved = await this.options.callbackStore.resolve(actionId);
@@ -144,14 +151,19 @@ export class AgentChatHitlResumeHandler {
 			);
 			return null;
 		}
-		return { actionId: resolved.actionId, value: resolved.value, kind: resolved.kind };
+		return {
+			actionId: resolved.actionId,
+			value: resolved.value,
+			kind: resolved.kind,
+			label: resolved.label,
+		};
 	}
 
 	/** Clean up the action message according to integration policy before resuming. */
 	private async cleanUpBeforeResume(
 		event: ActionEvent,
 		resumeData: unknown,
-		callbackKind?: 'approval',
+		callbackData: { kind?: 'approval'; label?: string },
 	): Promise<void> {
 		if (this.options.deleteActionMessageBeforeResume) {
 			try {
@@ -164,21 +176,30 @@ export class AgentChatHitlResumeHandler {
 			return;
 		}
 
-		if (callbackKind !== 'approval') return;
-		const approved = this.getApprovalDecision(resumeData);
-		if (approved === undefined) return;
-
 		try {
-			const message = this.options.formatApprovalDecisionMessage?.({
-				approved,
+			const approved =
+				callbackData.kind === 'approval' ? this.getApprovalDecision(resumeData) : undefined;
+			const message = this.options.formatActionDecisionMessage?.({
+				...(approved !== undefined ? { approved } : {}),
+				...(callbackData.label !== undefined ? { selectedLabel: callbackData.label } : {}),
 				raw: event.raw,
 				user: event.user,
 			});
-			if (message) {
+			if (!message) return;
+
+			if (this.options.settleActionMessage) {
+				await this.options.settleActionMessage({
+					agentId: this.options.agentId,
+					integration: this.options.integration,
+					threadId: event.threadId,
+					messageId: event.messageId,
+					content: message,
+				});
+			} else {
 				await event.adapter.editMessage(event.threadId, event.messageId, message);
 			}
 		} catch (editError) {
-			this.options.logger.warn('[AgentChatBridge] Failed to settle approval card', {
+			this.options.logger.warn('[AgentChatBridge] Failed to settle action card', {
 				error: editError instanceof Error ? editError.message : String(editError),
 			});
 		}

@@ -29,10 +29,18 @@ n8n-cli package export -w abc --include-tags=false -o export.n8np
 | `--include-variable-values` | `true` (default) or `false`. Whether values of variables referenced by the exported workflows are bundled into the package. When `false`, variables still travel as name/type files (and in the package requirements), just without their values. |
 | `--include-tags` | `true` (default) or `false`. Whether tags assigned to the exported workflows are bundled into the package. When `false`, no tag data is included in the package. |
 | `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail` aborts when any dependency is missing, `include-in-package` automatically adds missing static sub-workflows, and `reference-only` keeps them out of the package, listing them in the package requirements as workflows expected to already exist on the target. |
+| `--workflow-version-policy` | Which version of each workflow travels in the package: `latest` (default) exports the latest version whether or not it is published, `published-strict` exports the published version and aborts when any workflow has none, `prefer-published` falls back to the latest version where there is no published one, and `ignore-unpublished` leaves unpublished workflows out of the package entirely. |
 
 Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
 the API key to hold `workflow:export` when exporting workflows or folders, or
 `project:export` when exporting projects.
+
+A workflow has a latest version (what you see in the editor) and, once
+published, a published version; `--workflow-version-policy` picks which one
+travels. The chosen version decides which credentials, data tables, variables
+and sub-workflows are bundled alongside it, but the workflow's name, settings
+(including `errorWorkflow`) and tags are not versioned and always come from the
+latest version.
 
 Statically referenced sub-workflows are dependencies of the package. How
 missing ones are handled depends on
@@ -63,6 +71,7 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 | `--workflow-publishing-policy` | Whether imported workflows end up published. `preserve-published-state` (instance default) never publishes drafts — an updated workflow is republished only when it was already published and the package workflow is published too; `match-source` follows the package workflow's published flag; `publish-all` publishes every imported workflow; `unpublish-all` leaves new workflows unpublished and unpublishes updated ones. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
 | `--missing-node-type-mode` | What to do when a workflow uses a node type — or a version of a node type — this instance does not have. `fail` (instance default) rejects the import before anything is written, listing every missing node type and the workflows that use it; `import-anyway` imports the package, but the affected workflows are never published by the import, regardless of the publishing policy. |
+| `--project-conflict-policy` | What to do when a project in the package already exists on the instance, matched by ID (project packages only): `merge` (instance default) is purely additive — the existing project's name, description, icon and custom span attributes are left alone and the package's contents are added alongside; `overwrite` replaces those details with the package's, and a detail the package omits is left as it is, not cleared; `fail` rejects the import before anything is written. |
 | `--folder-conflict-policy` | What to do when a package folder already exists in the target project: `merge` (default, reuse the existing folder and merge the package's children into it) or `fail`. Requires a folders-enabled license when the package contains folders. |
 | `--credential-matching-mode` | How credential references are matched on the target instance: `id-only` (default, match by id), `name-and-type` (match by exact name and type), or `type-only` (match by type). For `name-and-type` and `type-only`, candidates are ranked by scope — owned by the target project, then shared into it, then global — and ties within a scope use the most recently updated credential. |
 | `--credential-missing-mode` | What to do when a referenced credential cannot be resolved. `create-stub` (instance default) creates empty placeholder credentials in the target project; `must-preexist` requires every referenced credential to already exist. |
@@ -89,6 +98,7 @@ When the import is blocked, the command exits non-zero and lists the blocking
 issues. Examples:
 
 - a workflow conflict under `--workflow-conflict-policy=fail`
+- a project that already exists under `--project-conflict-policy=fail`
 - an unresolved credential under `--credential-missing-mode=must-preexist`
 - a schema-incompatible data table
 - a workflow using a node type this instance does not have under

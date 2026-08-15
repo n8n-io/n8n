@@ -2,7 +2,8 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Request } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { getClientInfo, getToolName, getToolArguments } from '../mcp.utils';
+import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
+import { getClientInfo, getProtocolVersion, getToolName, getToolArguments } from '../mcp.utils';
 
 describe('mcp.utils', () => {
 	describe('getClientInfo', () => {
@@ -121,6 +122,103 @@ describe('mcp.utils', () => {
 				name: 'authenticated-client',
 				version: '2.0.0',
 			});
+		});
+
+		it('should read clientInfo from the 2026-07-28 _meta envelope', () => {
+			const req = {
+				body: {
+					jsonrpc: '2.0',
+					method: 'server/discover',
+					params: {
+						_meta: {
+							[MCP_CLIENT_INFO_META_KEY]: { name: 'Claude', version: '3.0.0' },
+						},
+					},
+					id: 1,
+				},
+			} as Request;
+
+			expect(getClientInfo(req)).toEqual({ name: 'Claude', version: '3.0.0' });
+		});
+
+		it('should prefer the _meta envelope over the legacy params.clientInfo', () => {
+			const req = {
+				body: {
+					jsonrpc: '2.0',
+					method: 'tools/call',
+					params: {
+						clientInfo: { name: 'legacy', version: '1.0.0' },
+						_meta: {
+							[MCP_CLIENT_INFO_META_KEY]: { name: 'modern', version: '2.0.0' },
+						},
+					},
+					id: 1,
+				},
+			} as Request;
+
+			expect(getClientInfo(req)).toEqual({ name: 'modern', version: '2.0.0' });
+		});
+
+		it('should handle a partial _meta clientInfo (name only)', () => {
+			const req = {
+				body: {
+					jsonrpc: '2.0',
+					method: 'server/discover',
+					params: {
+						_meta: { [MCP_CLIENT_INFO_META_KEY]: { name: 'Claude' } },
+					},
+					id: 1,
+				},
+			} as Request;
+
+			expect(getClientInfo(req)).toEqual({ name: 'Claude', version: undefined });
+		});
+	});
+
+	describe('getProtocolVersion', () => {
+		it('should read the protocol version from the _meta envelope', () => {
+			const req = {
+				body: {
+					jsonrpc: '2.0',
+					method: 'server/discover',
+					params: {
+						_meta: { [MCP_PROTOCOL_VERSION_META_KEY]: '2026-07-28' },
+					},
+					id: 1,
+				},
+			} as Request;
+
+			expect(getProtocolVersion(req)).toBe('2026-07-28');
+		});
+
+		it('should return undefined when the _meta envelope is absent (legacy client)', () => {
+			const req = {
+				body: {
+					jsonrpc: '2.0',
+					method: 'initialize',
+					params: { clientInfo: { name: 'legacy', version: '1.0.0' } },
+					id: 1,
+				},
+			} as Request;
+
+			expect(getProtocolVersion(req)).toBeUndefined();
+		});
+
+		it('should return undefined when the version is not a string', () => {
+			const req = {
+				body: {
+					jsonrpc: '2.0',
+					method: 'server/discover',
+					params: { _meta: { [MCP_PROTOCOL_VERSION_META_KEY]: 20260728 } },
+					id: 1,
+				},
+			} as Request;
+
+			expect(getProtocolVersion(req)).toBeUndefined();
+		});
+
+		it('should return undefined when body is not a valid JSON-RPC request', () => {
+			expect(getProtocolVersion({ body: 'invalid' } as Request)).toBeUndefined();
 		});
 	});
 

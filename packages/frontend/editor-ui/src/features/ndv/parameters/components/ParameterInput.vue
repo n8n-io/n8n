@@ -25,7 +25,7 @@ import {
 	resolveRelativePath,
 } from 'n8n-workflow';
 
-import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system';
 
 import type { CodeNodeLanguageOption } from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -62,6 +62,7 @@ import {
 	ExpressionLocalResolveContextSymbol,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
+	ToolConfigCredentialSelectedKey,
 } from '@/app/constants';
 
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
@@ -194,6 +195,7 @@ const builderStore = useBuilderStore();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const onToolConfigCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
 
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
@@ -814,6 +816,9 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 		// Update the issues
 		nodeHelpers.updateNodeCredentialIssues(updateNode);
 	}
+
+	// Tool-config hosts keep a separate local draft; sync credentials onto it.
+	onToolConfigCredentialSelected?.(updateInformation);
 
 	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 }
@@ -1492,6 +1497,7 @@ onUpdated(async () => {
 			:event-source="eventSource || 'ndv'"
 			:is-read-only="isReadOnly"
 			:redact-values="shouldRedactValue"
+			:additional-expression-data="additionalExpressionData"
 			@close-dialog="closeExpressionEditDialog"
 			@update:model-value="expressionUpdated"
 		/>

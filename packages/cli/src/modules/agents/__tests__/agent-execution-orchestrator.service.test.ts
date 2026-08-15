@@ -316,7 +316,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(executionService.finalizeExecution).toHaveBeenCalled();
 	});
 
-	it('executes in-app chat against the draft runtime', async () => {
+	it('executes in-app chat against the draft runtime with the caller source', async () => {
 		const {
 			service,
 			runtimeCacheService,
@@ -335,6 +335,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				message: 'hello',
 				user,
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				source: 'instance-ai',
 			}),
 		);
 
@@ -368,7 +369,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({
-				source: undefined,
+				source: 'instance-ai',
 				taskId: undefined,
 				telemetry: {
 					runType: 'test',
@@ -376,11 +377,9 @@ describe('AgentExecutionOrchestratorService', () => {
 				},
 			}),
 		);
-		// In-app test chat has no `source` — the tracing metadata normalizes it
-		// to 'test', distinct from the (unrelated) analytics `source` above.
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({
-				source: 'test',
+				source: 'instance-ai',
 				threadId: 'thread-1',
 				modelId: 'anthropic/claude-sonnet-4-5',
 			}),
@@ -799,6 +798,34 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
 	});
 
+	it('does not resume a checkpoint outside the expected draft memory scope', async () => {
+		const { service, checkpointStorage, runtimeCacheService } = makeService();
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: makeCheckpoint(),
+		});
+
+		for (const expectedMemory of [
+			{ threadId: 'another-thread', resourceId: 'draft-chat:user-1' },
+			{ threadId: 'thread-1', resourceId: 'draft-chat:another-user' },
+		]) {
+			await expect(
+				collect(
+					service.resumeForChat({
+						agentId,
+						projectId,
+						runId: 'run-1',
+						toolCallId: 'tool-call-1',
+						resumeData: { approved: true },
+						expectedMemory,
+					}),
+				),
+			).rejects.toThrow('Checkpoint run-1 does not belong to this chat');
+		}
+
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
 	it('does not directly cancel or resume a delegated child checkpoint', async () => {
 		const { service, checkpointStorage, runtimeCacheService } = makeService();
 		const checkpoint = makeCheckpoint(
@@ -992,6 +1019,14 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		expect(executionService.findLatestSuspendedRun).toHaveBeenCalledWith('thread-1');
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
+			expect.objectContaining({ source: 'telegram' }),
+		);
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({ source: 'telegram' }),
+			expect.any(Date),
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({ source: 'telegram' }),
 		);
 	});

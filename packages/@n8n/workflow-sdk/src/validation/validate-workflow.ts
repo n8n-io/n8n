@@ -23,6 +23,7 @@ import { containsPlaceholderMarker } from '../workflow-builder/string-utils';
  */
 export type ValidationErrorCode =
 	| 'NO_NODES'
+	| 'DUPLICATE_NODE_ID'
 	| 'MISSING_TRIGGER'
 	| 'DISCONNECTED_NODE'
 	| 'MISSING_PARAMETER'

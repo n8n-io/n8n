@@ -7,7 +7,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import type { UserAction, FolderResource } from '@/Interface';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useFoldersStore } from '../folders.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { type IUser } from 'n8n-workflow';

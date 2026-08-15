@@ -19,6 +19,7 @@ import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
 vi.mock('../workflows/setup-workflow.service', () => ({
 	analyzeWorkflow: vi.fn().mockResolvedValue([]),
+	applyCredentialHints: vi.fn(),
 	applyNodeCredentials: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeParameters: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeChanges: vi.fn().mockResolvedValue({ applied: [], failed: [] }),
@@ -645,6 +646,22 @@ describe('workflows tool', () => {
 				['wf1', 'v7'],
 			]);
 		});
+
+		/**
+		 * The code returned here is what the agent edits and builds back into the same
+		 * saved workflow, so it has to carry node ids or the rebuild re-identifies every
+		 * node (INS-970, INS-1120, INS-1179).
+		 */
+		it('should ask codegen to emit node ids for get-as-code', async () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, 'full');
+
+			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
+
+			expect(vi.mocked(generateWorkflowCode)).toHaveBeenCalledWith(
+				expect.objectContaining({ includeNodeIds: true }),
+			);
+		});
 	});
 
 	describe('workflow source binding refresh', () => {
@@ -756,6 +773,144 @@ describe('workflows tool', () => {
 				workflowVersionId: 'v-updated',
 				workflowChecksum: 'checksum-updated',
 			});
+		});
+	});
+
+	describe('update action', () => {
+		const workflowPayload = { name: 'Updated WF', nodes: [], connections: {} };
+
+		it('should suspend for approval before updating a foreign workflow', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'require_approval' },
+			});
+			(context.workflowService.get as Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'Foreign WF',
+			});
+			const suspend = vi.fn();
+
+			await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{ suspend } as never,
+			);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Update workflow "Foreign WF" (ID: wf1)?',
+					severity: 'warning',
+					workflowId: 'wf1',
+				}),
+			);
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('should update without approval when the workflow was created in this run', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'require_approval' },
+				aiCreatedWorkflowIds: new Set(['wf1']),
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+			});
+			const suspend = vi.fn();
+
+			const result = await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{ suspend } as never,
+			);
+
+			expect(result).toEqual({ success: true, workflowId: 'wf1' });
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+				'wf1',
+				workflowPayload,
+			);
+		});
+
+		it('should update without approval when the workflow has a session ownership grant', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'require_approval' },
+				sessionApprovedToolKeys: new Set(['workflows:update:wf1']),
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+			});
+			const suspend = vi.fn();
+
+			const result = await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{ suspend } as never,
+			);
+
+			expect(result).toEqual({ success: true, workflowId: 'wf1' });
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalled();
+		});
+
+		it('should still block updates when admin policy denies them for owned workflows', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'blocked' },
+				aiCreatedWorkflowIds: new Set(['wf1']),
+			});
+
+			const result = await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				success: false,
+				denied: true,
+				reason: 'Action blocked by admin',
+			});
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('should persist a session update grant when resumed with scope=session', async () => {
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'require_approval' },
+				grantSessionToolApproval,
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+			});
+
+			const result = await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{ resumeData: { approved: true, scope: 'session' } } as never,
+			);
+
+			expect(result).toEqual({ success: true, workflowId: 'wf1' });
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('workflows:update:wf1');
+		});
+
+		it('should not persist a grant for a one-time update approval', async () => {
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'require_approval' },
+				grantSessionToolApproval,
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+			});
+
+			await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{ resumeData: { approved: true } } as never,
+			);
+
+			expect(grantSessionToolApproval).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1222,6 +1377,98 @@ describe('workflows tool', () => {
 				setupRequests,
 				workflowId: 'wf1',
 			});
+		});
+
+		it('should reject a new plain generic credential on an HTTP Request node', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Call Replicate', type: 'n8n-nodes-base.httpRequest' },
+					credentialType: 'httpBearerAuth',
+					existingCredentials: [],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				error: 'plain_generic_auth',
+				nodes: [{ nodeName: 'Call Replicate', credentialType: 'httpBearerAuth' }],
+			});
+		});
+
+		it('should allow a plain generic credential when explicitly permitted', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Call Replicate', type: 'n8n-nodes-base.httpRequest' },
+					credentialType: 'httpBearerAuth',
+					existingCredentials: [],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1', allowPlainGenericAuth: true }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).toHaveBeenCalled();
+		});
+
+		it('should allow a plain generic type when credentials of it already exist', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Call Replicate', type: 'n8n-nodes-base.httpRequest' },
+					credentialType: 'httpBearerAuth',
+					existingCredentials: [{ id: 'cred-1', name: 'Existing bearer' }],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).toHaveBeenCalled();
+		});
+
+		it('should not gate plain generic auth on non-HTTP-Request nodes', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'MCP Client', type: 'n8n-nodes-langchain.mcpClientTool' },
+					credentialType: 'httpBearerAuth',
+					existingCredentials: [],
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).toHaveBeenCalled();
 		});
 
 		it('should return success when no nodes need setup', async () => {

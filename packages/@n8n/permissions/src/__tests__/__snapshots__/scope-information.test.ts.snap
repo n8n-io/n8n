@@ -144,6 +144,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "role:manage",
   "role:read",
   "role:manageProject",
+  "role:list",
   "mcp:manage",
   "mcp:oauth",
   "mcpApiKey:create",

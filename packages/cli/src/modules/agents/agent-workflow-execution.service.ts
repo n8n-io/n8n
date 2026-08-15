@@ -33,6 +33,7 @@ import {
 } from './agent-telemetry';
 import type { Agent } from './entities/agent.entity';
 import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
+import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { AgentRepository } from './repositories/agent.repository';
 import { createInputDataTool } from './tools/input-data-tool';
 import { createWorkflowContextTool } from './tools/workflow-context-tool';
@@ -42,6 +43,23 @@ import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { streamAgentChunks } from './utils/agent-stream';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { describeStructuredOutputError } from './utils/structured-output-error';
+
+function getFinalWorkflowResponse(messageRecord: MessageRecord): string {
+	let lastToolCallIndex = -1;
+	for (let index = messageRecord.timeline.length - 1; index >= 0; index--) {
+		if (messageRecord.timeline[index]?.type === 'tool-call') {
+			lastToolCallIndex = index;
+			break;
+		}
+	}
+	if (lastToolCallIndex === -1) return messageRecord.assistantResponse;
+
+	return messageRecord.timeline
+		.slice(lastToolCallIndex + 1)
+		.filter((event) => event.type === 'text')
+		.map((event) => event.content)
+		.join('');
+}
 
 /**
  * Executes agents invoked from inside a workflow execution (the AI Agent node
@@ -60,6 +78,7 @@ export class AgentWorkflowExecutionService {
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 		private readonly agentRunTracingService: AgentRunTracingService,
 		private readonly executionLevelTracer: ExecutionLevelTracer,
+		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -352,9 +371,14 @@ export class AgentWorkflowExecutionService {
 			}
 		}
 
+		const messageRecord = recorder.getMessageRecord();
+
 		return {
 			recorder,
-			messageRecord: recorder.getMessageRecord(),
+			messageRecord: {
+				...messageRecord,
+				assistantResponse: getFinalWorkflowResponse(messageRecord),
+			},
 			structuredOutput,
 			toolCalls,
 			streamError,
@@ -565,6 +589,18 @@ export class AgentWorkflowExecutionService {
 			: config;
 
 		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
+
+		// Re-validate any `__aiGatewayManaged` marker on node-tool credentials
+		// against live gateway eligibility. The marker is server-assigned, but the
+		// inline config comes straight from a workflow node parameter and never
+		// passes the agent-config write path that reconciles persisted agents — so
+		// re-earn it here, or a workflow author could forge one for a node/action
+		// n8n Connect doesn't cover and mint a managed credential regardless.
+		const accessibleCredentials = await credentialProvider.list();
+		await this.nodeToolAiGatewayService.assignManagedCredentials(
+			runtimeConfig.tools,
+			new Set(accessibleCredentials.map((credential) => credential.type)),
+		);
 
 		// For telemetry/logging and memory-owner keying — never persisted, and
 		// stable enough to aggregate runs of the same node across executions.

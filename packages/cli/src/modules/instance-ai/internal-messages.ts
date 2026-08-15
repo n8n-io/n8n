@@ -48,8 +48,9 @@ const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
 /** Captures the leading JSON line inside an agent-preview-context block. */
 const AGENT_PREVIEW_CONTEXT_JSON = /^<agent-preview-context>\n(\{[\s\S]*?\})\n/;
 
-/** Matches the per-turn date/time block the service appends to the user message. */
-const CURRENT_DATE_TIME_BLOCK = /\n*<current-date-time>[\s\S]*?<\/current-date-time>\s*$/;
+/** Match the final opening tag so user-authored lookalikes earlier in the message stay visible. */
+const CURRENT_DATE_TIME_BLOCK =
+	/\n*<current-date-time>(?:(?!<current-date-time>)[\s\S])*?<\/current-date-time>\s*$/;
 
 /** Append the per-turn clock as a tagged suffix the parser strips before display. */
 export function withCurrentDateTime(message: string, dateTimeSection: string): string {

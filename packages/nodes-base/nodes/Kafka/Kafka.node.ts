@@ -2,6 +2,7 @@ import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow'
 import { VersionedNodeType } from 'n8n-workflow';
 
 import { KafkaV1 } from './v1/KafkaV1.node';
+import { KafkaV2 } from './v2/KafkaV2.node';
 
 export class Kafka extends VersionedNodeType {
 	constructor() {
@@ -16,6 +17,7 @@ export class Kafka extends VersionedNodeType {
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new KafkaV1(baseDescription),
+			2: new KafkaV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

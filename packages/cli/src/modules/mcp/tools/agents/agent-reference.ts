@@ -29,9 +29,9 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
 ## Build sequence
 
 1. Use search_projects to identify the project, or search_agents and get_agent for an existing Agent.
-   By-ID tools (get_agent, mutate_agent, validate_agent, publish_agent, unpublish_agent,
-   revert_agent, list_agent_versions, delete_agent, update_agent_integration) take an agentId alone
-   and resolve the project from it.
+   By-ID tools (get_agent, mutate_agent, validate_agent, call_agent, publish_agent,
+   unpublish_agent, revert_agent, list_agent_versions, delete_agent, update_agent_integration) take
+   an agentId alone and resolve the project from it.
 2. Use discover_agent_assets plus list_credentials, search_nodes, get_node_types, and
    explore_node_resources to ground model, tool, workflow, integration, and credential choices.
 3. For a new Agent, call create_agent with the initial config after discovering its assets. The
@@ -41,12 +41,23 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
    server-generated IDs.
 5. Call validate_agent and resolve every reported error. A valid Agent is a completed draft; do not
    publish it merely to finish the build.
-6. Report that the draft is ready, include a clickable link using the \`url\` returned by
+6. After validation succeeds, if call_agent is available and authorized, send one representative
+   message before reporting the draft ready. Otherwise, report the successfully validated draft
+   ready without a test run.
+7. Report that the draft is ready, include a clickable link using the \`url\` returned by
    validate_agent, and ask whether the user wants to publish it.
-7. Call publish_agent only when the user explicitly requested publication, activation, deployment,
+8. Call publish_agent only when the user explicitly requested publication, activation, deployment,
    or making the Agent live, or confirms publication after the build.
-8. Use update_agent_integration to configure chat integrations. Configuration never publishes the
+9. Use update_agent_integration to configure chat integrations. Configuration never publishes the
    Agent. A configured channel stays inactive until explicit publication unless the Agent already has an active version.
+
+## Draft test runs
+
+call_agent verifies the draft Agent's behavior through built-in Preview chat, not configured channel
+triggers, platform context, message delivery, or replies. Real tools and credentials are used, so
+side effects are possible. If the test exposes errors, report them and ask whether to fix them rather
+than mutating the Agent automatically. Every approval decision must come from the human; resume each
+returned approval individually.
 
 ## Publication approval
 

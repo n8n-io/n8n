@@ -22,7 +22,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { isApiEnabled } from '@/public-api';
+import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -300,7 +300,7 @@ export class FrontendService {
 				maxSize: this.globalConfig.dataTable.maxSize,
 			},
 			publicApi: {
-				enabled: isApiEnabled(),
+				enabled: isApiKeyAuthEnabled(),
 				latestVersion: 1,
 				path: this.globalConfig.publicApi.path,
 				swaggerUi: {
@@ -607,6 +607,7 @@ export class FrontendService {
 			this.settings.aiGateway = {
 				enabled: true,
 				budget: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_BUDGET) ?? 0,
+				cloudUbbEnabled: this.licenseState.isAiGatewayCloudUbbLicensed(),
 			};
 		}
 

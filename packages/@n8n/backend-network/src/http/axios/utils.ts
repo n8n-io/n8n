@@ -11,6 +11,7 @@ import {
 	type IRequestOptions,
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
+import net from 'node:net';
 
 import { hasProxyEnvironmentVariables } from '../../proxy/proxy-resolution';
 import type { SsrfBridge } from '../../ssrf';
@@ -55,6 +56,24 @@ export function searchForHeader(config: AxiosRequestConfig, headerName: string) 
 	const headerNames = Object.keys(config.headers);
 	headerName = headerName.toLowerCase();
 	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
+}
+
+/**
+ * The SNI to announce when connecting to `host`.
+ *
+ * @returns the host, or `undefined` when it carries no name to announce: SNI takes a
+ * hostname and never an IP literal (RFC 6066 §3), and Node ignores IP values.
+ */
+export function sniFor(host: string | null | undefined): string | undefined {
+	if (!host) {
+		return undefined;
+	}
+	// A URL hostname keeps the brackets of an IPv6 literal; `net.isIP` expects it bare.
+	const unbracketed = host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1) : host;
+	if (net.isIP(unbracketed)) {
+		return undefined;
+	}
+	return host;
 }
 
 /** Extracts the hostname from a request object's URL or URI. */
@@ -115,7 +134,7 @@ export const getBeforeRedirectFn =
 
 		const redirectAgentOptions: AgentOptions = {
 			...agentOptions,
-			servername: redirectedRequest.hostname,
+			servername: sniFor(redirectedRequest.hostname as string | undefined),
 		};
 		const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
 		const proxy = resolveProxyOption(customProxyUrl);
@@ -248,10 +267,10 @@ export function isFormDataInstance(data: unknown): data is FormData {
  * Shared by the axios config builder and the manual redirect follower so both derive agents the same way.
  */
 export function buildAgentOptions(n8nRequest: IHttpRequestOptions): AgentOptions {
-	const host = getHostFromRequestObject(n8nRequest);
+	const servername = sniFor(getHostFromRequestObject(n8nRequest));
 	const agentOptions: AgentOptions = { ...n8nRequest.agentOptions };
-	if (host) {
-		agentOptions.servername = host;
+	if (servername) {
+		agentOptions.servername = servername;
 	}
 	if (n8nRequest.skipSslCertificateValidation === true) {
 		agentOptions.rejectUnauthorized = false;

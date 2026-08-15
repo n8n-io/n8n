@@ -6,6 +6,12 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
+import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
+import {
+	createCreateWorkflowFromCodeTool,
+	type CreateWorkflowFromCodeToolOptions,
+} from '../tools/workflow-builder/create-workflow-from-code.tool';
+
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
@@ -15,11 +21,6 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
-import {
-	createCreateWorkflowFromCodeTool,
-	type CreateWorkflowFromCodeToolOptions,
-} from '../tools/workflow-builder/create-workflow-from-code.tool';
 
 // Mocks referenced inside vi.mock factories must come from vi.hoisted, otherwise the
 // factory (hoisted above these declarations) silently loads the real module.
@@ -171,7 +172,6 @@ describe('create-workflow-from-code MCP tool', () => {
 	const workflowFinderService = mockInstance(WorkflowFinderService, {
 		findWorkflowForUser: vi.fn().mockResolvedValue(null),
 	});
-
 	const aiGatewayService = mock<AiGatewayService>();
 	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 
@@ -252,6 +252,38 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(result.isError).toBe(true);
 			const response = parseResult(result);
 			expect(response.error).toBe('projectId is required when folderId is provided');
+		});
+
+		test('passes the folder to the creation service and echoes it as targetFolder', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow) =>
+				Object.assign(new WorkflowEntity(), {
+					...workflow,
+					id: 'wf-saved-1',
+					parentFolder: { id: 'folder-1', name: 'Marketing Campaigns' },
+				}),
+			);
+
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+				folderId: 'folder-1',
+			});
+
+			expect(result.isError).toBeUndefined();
+			expect(createWorkflowMock).toHaveBeenCalledWith(
+				user,
+				expect.anything(),
+				expect.objectContaining({ projectId: 'custom-project-id', parentFolderId: 'folder-1' }),
+			);
+			const response = parseResult(result);
+			expect(response.targetFolder).toEqual({ id: 'folder-1', name: 'Marketing Campaigns' });
+		});
+
+		test('omits targetFolder when no folderId is provided', async () => {
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			expect(result.isError).toBeUndefined();
+			expect(parseResult(result).targetFolder).toBeUndefined();
 		});
 	});
 
@@ -504,7 +536,7 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			const response = parseResult(result);
 			// The response still describes the persisted workflow, not the telemetry
-			// failure — the workflow was successfully saved.
+			// failure - the workflow was successfully saved.
 			expect(response.workflowId).toBe('wf-saved-1');
 			expect(result.isError).toBeUndefined();
 			expect(postSaveMetrics.incrementPostSaveFailure).toHaveBeenCalledWith(
@@ -555,6 +587,34 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(response.errorCode).toBe('MISSING_PROJECT_ID');
 		});
 
+		test('includes targetFolder in recovery output from the persisted parent folder', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow: WorkflowEntity) => {
+				workflow.id = 'wf-recovery-2';
+				throw new Error('Post-save hook failed');
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValueOnce({
+				id: 'wf-recovery-2',
+				name: 'Recovered',
+				nodes: mockNodes,
+				parentFolder: { id: 'folder-1', name: 'Marketing Campaigns' },
+			});
+
+			const result = await callHandler({
+				code: 'const wf = ...',
+				projectId: 'custom-project-id',
+				folderId: 'folder-1',
+			});
+
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				'wf-recovery-2',
+				user,
+				['workflow:read'],
+				{ includeParentFolder: true },
+			);
+			const response = parseResult(result);
+			expect(response.targetFolder).toEqual({ id: 'folder-1', name: 'Marketing Campaigns' });
+			expect(response.note).toContain('post-save operation failed');
+		});
 		test('returns error when service throws permission error', async () => {
 			createWorkflowMock.mockRejectedValue(
 				new Error("You don't have the permissions to save the workflow in this project."),
