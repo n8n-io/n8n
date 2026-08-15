@@ -236,6 +236,9 @@ export class NodeTestHarness {
 			encryptedRunnerIdentity: undefined,
 		});
 		additionalData.credentialsHelper = credentialsHelper;
+		// Prevent the auto-mocked property from being truthy so credential and
+		// request helpers don't take the eval-mock code path.
+		(additionalData as unknown as Record<string, unknown>).evalLlmMockHandler = undefined;
 
 		let executionData: IRun;
 		const runExecutionData = createRunExecutionData({

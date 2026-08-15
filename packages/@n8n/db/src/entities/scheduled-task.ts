@@ -24,16 +24,24 @@ export {
  * - and who is currently running it ({@link claimedBy} and the lease columns)
  *
  * "Claiming" a row means a worker briefly reserves it
- * so two workers don't run the same task at once.
+ * so two workers don't *claim* the same task at once.
  *
  * That reservation (a "lease") expires after a while,
  * so if the worker dies mid-run another worker can take over.
+ *
+ * The reverse also holds: a worker that outlives its lease may still be running
+ * the task while another worker claims it, so the claim alone does not prevent
+ * two workers running one task. The scheduler is at-least-once (a lost run is
+ * worse than a duplicate), and running the same occurrence's effect twice is
+ * suppressed best-effort by the unique `deduplicationKey` index on
+ * `execution_entity`.
  */
 @Entity({ name: 'scheduled_task' })
 @Index(['jobId', 'scheduledFor'], { unique: true })
 @Index(['runAt'], { where: '"status" = \'pending\'' })
 @Index(['leaseExpiresAt'], { where: '"status" = \'running\'' })
 @Index(['finishedAt'], { where: '"finishedAt" IS NOT NULL' })
+@Index(['missedAfter'], { where: '"status" = \'pending\' AND "missedAfter" IS NOT NULL' })
 export class ScheduledTask extends WithCreatedAt {
 	/**
 	 * 64-bit identity.
@@ -92,7 +100,8 @@ export class ScheduledTask extends WithCreatedAt {
 
 	/**
 	 * Earliest time a worker may pick this run up.
-	 * Starts equal to {@link scheduledFor}.
+	 * Starts equal to {@link scheduledFor}, except for a catch-up run, which becomes
+	 * visible when it was materialized rather than when it was originally due.
 	 * If a try fails it is pushed later so the retry waits a bit before running again.
 	 */
 	@DateTimeColumn()
@@ -152,10 +161,25 @@ export class ScheduledTask extends WithCreatedAt {
 	leaseEpoch: number;
 
 	/**
-	 * When the current try started running.
+	 * When the current attempt started running, i.e. when the executor handed the
+	 * occurrence to its handler. Set by the executor's pre-dispatch compare-and-set
+	 * *before* the handler runs (guarded on this being `null`), so it doubles as the
+	 * mutex that runs each occurrence at most once per lease. Cleared when the row
+	 * goes back to `pending` (reclaim, reschedule, release) so a redelivery can
+	 * re-acquire it.
 	 */
 	@DateTimeColumn({ nullable: true })
 	startedAt: Date | null;
+
+	/**
+	 * When the current attempt handed off its effect, i.e. when the handler reported
+	 * dispatch. `null` until then, and a crash between {@link startedAt} and here
+	 * leaves it `null`. The reaper reads this, not {@link startedAt}, to resolve an
+	 * expired lease: set means the effect happened (complete it, never redeliver),
+	 * `null` means it did not (redeliver, so the run is not lost).
+	 */
+	@DateTimeColumn({ nullable: true })
+	dispatchedAt: Date | null;
 
 	/**
 	 * When this run finished, whether it succeeded or failed.
@@ -169,4 +193,13 @@ export class ScheduledTask extends WithCreatedAt {
 	 */
 	@Column({ type: 'text', nullable: true })
 	errorMessage: string | null;
+
+	/**
+	 * Deadline past which this occurrence counts as missed: {@link runAt} plus the
+	 * job's misfire grace, resolved at materialization so the claim compares one
+	 * column against the clock instead of joining to the job. `null` means no
+	 * deadline.
+	 */
+	@DateTimeColumn({ nullable: true })
+	missedAfter: Date | null;
 }

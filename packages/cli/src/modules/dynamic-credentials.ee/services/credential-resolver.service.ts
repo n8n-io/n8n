@@ -234,6 +234,17 @@ export class DynamicCredentialResolverService {
 					`Failed to reactivate workflow "${workflowId}" after resolver deletion, deactivating it`,
 					{ error },
 				);
+				// Reactivation may have failed partway with triggers already registered,
+				// in memory and as durable schedule jobs. Tear them down before flipping
+				// the flag below, or they keep firing a workflow marked inactive.
+				try {
+					await this.activeWorkflowManager.remove(workflowId);
+				} catch (cleanupError) {
+					this.logger.error(
+						`Failed to roll back partial reactivation of workflow "${workflowId}"`,
+						{ workflowId, error: cleanupError },
+					);
+				}
 				// Deactivate the workflow so UI state reflects reality
 				await this.workflowRepository.update(workflowId, {
 					active: false,

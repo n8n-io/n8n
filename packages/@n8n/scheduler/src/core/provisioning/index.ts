@@ -1,4 +1,5 @@
 export { provision, deprovision } from './provision';
+export { scheduleFingerprint } from './schedule-identity';
 export { createJobProvisioner } from './provisioner';
 export type { JobProvisioner, JobProvisionerDeps } from './provisioner';
 export type {

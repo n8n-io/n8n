@@ -12,6 +12,7 @@ import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 interface FakeProject {
 	name?: string;
 	start_time?: string;
+	extra?: Record<string, unknown>;
 }
 
 /**
@@ -26,8 +27,16 @@ function clientWith(projects: FakeProject[]): { client: Client; listProjects: Mo
 			for (const p of projects) yield p;
 		})(),
 	);
-	return { client: { listProjects } as unknown as Client, listProjects };
+	const readProject = vi.fn(async ({ projectName }: { projectName: string }) => {
+		const project = projects.find((p) => p.name === projectName);
+		if (!project) throw new Error(`not found: ${projectName}`);
+		return await Promise.resolve(project);
+	});
+	return { client: { listProjects, readProject } as unknown as Client, listProjects };
 }
+
+/** Aggregate metadata written by the CLI only when a run completes. */
+const COMPLETED = { metadata: { pass_rate_per_iter: '78%' } };
 
 describe('findLatestBaseline', () => {
 	it('queries with the default instance-ai baseline prefix when none is given', async () => {
@@ -74,6 +83,30 @@ describe('findLatestBaseline', () => {
 			{ name: 'mcp-baseline-no-ts' }, // no start_time → ts 0, still the only match
 		]);
 		expect(await findLatestBaseline(client, 'mcp-baseline-')).toBe('mcp-baseline-no-ts');
+	});
+
+	it('skips a newer capture that never wrote the completion marker (killed run)', async () => {
+		const { client } = clientWith([
+			{ name: 'instance-ai-baseline-done', start_time: '2026-07-08T00:00:00Z', extra: COMPLETED },
+			{ name: 'instance-ai-baseline-killed', start_time: '2026-07-09T00:00:00Z', extra: {} },
+		]);
+		expect(await findLatestBaseline(client)).toBe('instance-ai-baseline-done');
+	});
+
+	it('picks the newest among completed captures', async () => {
+		const { client } = clientWith([
+			{ name: 'instance-ai-baseline-old', start_time: '2026-07-01T00:00:00Z', extra: COMPLETED },
+			{ name: 'instance-ai-baseline-new', start_time: '2026-07-08T00:00:00Z', extra: COMPLETED },
+		]);
+		expect(await findLatestBaseline(client)).toBe('instance-ai-baseline-new');
+	});
+
+	it('falls back to the newest candidate when none carry the marker', async () => {
+		const { client } = clientWith([
+			{ name: 'instance-ai-baseline-a', start_time: '2026-07-01T00:00:00Z' },
+			{ name: 'instance-ai-baseline-b', start_time: '2026-07-08T00:00:00Z' },
+		]);
+		expect(await findLatestBaseline(client)).toBe('instance-ai-baseline-b');
 	});
 });
 

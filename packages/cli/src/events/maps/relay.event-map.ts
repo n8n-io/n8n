@@ -2,6 +2,7 @@ import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
+	HitlResponseTelemetryPayload,
 	IPersonalizationSurveyAnswersV4,
 	IRun,
 	IWorkflowBase,
@@ -12,6 +13,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type { CredentialAuthProbeOutcome } from '@/services/credentials-tester.service';
 import type {
 	ExportPackageEventCounts,
 	ImportAuditCredentialIds,
@@ -23,7 +25,13 @@ import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-
 
 import type { AiEventMap } from './ai.event-map';
 
-export type WorkflowActionSource = 'ui' | 'api' | 'n8n-mcp' | 'n8n-ai' | 'import';
+export type WorkflowActionSource =
+	| 'ui'
+	| 'api'
+	| 'n8n-mcp'
+	| 'n8n-ai'
+	| 'import'
+	| 'review-approval';
 
 export type UserLike = {
 	id: string;
@@ -93,7 +101,7 @@ export type RelayEventMap = {
 
 	'n8n-package-imported': {
 		user: UserLike;
-		projectId: string;
+		projectIds: string[];
 		folderId: string | null;
 		workflowIds: string[];
 		options: ImportPackageEventOptions;
@@ -201,6 +209,8 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflowName: string;
 		executionId: string;
+		projectId: string;
+		projectName: string;
 		source:
 			| 'user-manual'
 			| 'user-retry'
@@ -241,6 +251,8 @@ export type RelayEventMap = {
 		nodeName: string;
 		nodeType?: string;
 	};
+
+	'hitl-response-actioned': HitlResponseTelemetryPayload;
 
 	// #endregion
 
@@ -477,10 +489,21 @@ export type RelayEventMap = {
 		credentialId: string;
 	};
 
+	'credentials-probed': {
+		user: UserLike;
+		credentialId: string;
+		outcome: CredentialAuthProbeOutcome;
+	};
+
 	'oauth-callback-binding-rejected': {
 		reason: 'cookie-missing' | 'hash-mismatch';
 		credentialId?: string;
 		origin?: 'static-credential' | 'dynamic-credential';
+	};
+
+	'dynamic-credential-authorize-rejected': {
+		reason: 'unauthenticated' | 'user-mismatch';
+		credentialId?: string;
 	};
 
 	'private-credential-created': {
@@ -977,6 +1000,11 @@ export type RelayEventMap = {
 		executionId: string;
 	};
 
+	'runner-disconnected': {
+		reason: 'failed-heartbeat-check' | 'runner-unresponsive';
+		mode: 'internal' | 'external';
+	};
+
 	// #endregion
 
 	// #region queue
@@ -1036,6 +1064,10 @@ export type RelayEventMap = {
 	// #endregion
 
 	// region Agents
+	'agent-saved': {
+		agentId: string;
+	};
+
 	'agent-deleted': {
 		agentId: string;
 		projectId: string;
@@ -1119,6 +1151,30 @@ export type RelayEventMap = {
 		separate: boolean;
 		backup: boolean;
 		workflowCount: number;
+	};
+
+	// #endregion
+
+	// #region MCP server
+
+	'mcp-oauth-completed': {
+		userId: string;
+		clientId: string;
+		clientName?: string;
+	};
+
+	'mcp-tool-called': {
+		user: UserLike;
+		toolName: string;
+		workflowId?: string;
+		status: 'success' | 'error';
+		errorMessage?: string;
+		clientName?: string;
+	};
+
+	'mcp-access-updated': {
+		user: UserLike;
+		enabled: boolean;
 	};
 
 	// #endregion

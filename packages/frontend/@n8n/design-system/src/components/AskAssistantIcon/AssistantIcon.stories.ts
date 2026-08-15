@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import AssistantIcon from './AssistantIcon.vue';
 
 export default {
-	title: 'Assistant/AssistantIcon',
+	title: 'Areas/Assistant/AssistantIcon',
 	component: AssistantIcon,
 	argTypes: {},
 };

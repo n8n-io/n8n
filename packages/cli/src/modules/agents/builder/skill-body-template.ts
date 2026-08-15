@@ -9,7 +9,7 @@
  * carries the triggers; the body is loaded on demand and must read as a compact,
  * self-contained, actionable operating manual.
  *
- * Shared by the `create_skill` builder tool, the `agent-builder-target-skills`
+ * Shared by the `create_skills` builder tool, the `agent-builder-target-skills`
  * skill, and the builder prompt so the guidance is identical everywhere.
  */
 

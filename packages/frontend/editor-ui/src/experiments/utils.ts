@@ -1,6 +1,6 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { EXTRA_TEMPLATE_LINKS_EXPERIMENT } from '@/app/constants';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
@@ -40,7 +40,6 @@ export const enum TemplateClickSource {
 	emptyWorkflowLink = 'empty_workflow_link',
 	emptyInstanceCard = 'empty_instance_card',
 	sidebarButton = 'sidebar_button',
-	emptyStateBuilderPrompt = 'empty_state_builder_prompt',
 	instanceAiSplitEmptyState = 'instance_ai_split_empty_state',
 }
 

@@ -32,43 +32,43 @@ describe('ExecutionRepository', () => {
 		vi.resetAllMocks();
 	});
 
-	describe('getExecutionsCountForPublicApi', () => {
+	describe('countInWorkflows', () => {
 		test('should get executions matching all filter parameters', async () => {
 			const mockCount = 20;
-			const params = {
+			const workflowIds = ['3', '4'];
+			const options = {
 				limit: 10,
 				lastId: '3',
-				workflowIds: ['3', '4'],
 			};
 
 			entityManager.count.mockResolvedValueOnce(mockCount);
-			const result = await executionRepository.getExecutionsCountForPublicApi(params);
+			const result = await executionRepository.countInWorkflows(workflowIds, options);
 
 			expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
 				where: {
-					id: LessThan(params.lastId),
-					workflowId: In(params.workflowIds),
+					id: LessThan(options.lastId),
+					workflowId: In(workflowIds),
 				},
-				take: params.limit,
+				take: options.limit,
 			});
 			expect(result).toBe(mockCount);
 		});
 
 		test('should get executions matching the workflowIds filter', async () => {
 			const mockCount = 12;
-			const params = {
+			const workflowIds = ['7', '8'];
+			const options = {
 				limit: 10,
-				workflowIds: ['7', '8'],
 			};
 
 			entityManager.count.mockResolvedValueOnce(mockCount);
-			const result = await executionRepository.getExecutionsCountForPublicApi(params);
+			const result = await executionRepository.countInWorkflows(workflowIds, options);
 
 			expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
 				where: {
-					workflowId: In(params.workflowIds),
+					workflowId: In(workflowIds),
 				},
-				take: params.limit,
+				take: options.limit,
 			});
 			expect(result).toBe(mockCount);
 		});
@@ -86,19 +86,21 @@ describe('ExecutionRepository', () => {
 				'should find with id less than "$lastId" and not in "$excludedExecutionsIds"',
 				async ({ lastId, excludedExecutionsIds, expectedIdCondition }) => {
 					const mockCount = 15;
-					const params = {
+					const workflowIds = ['wf-1'];
+					const options = {
 						limit: 10,
 						...(lastId ? { lastId } : {}),
 						...(excludedExecutionsIds ? { excludedExecutionsIds } : {}),
 					};
 					entityManager.count.mockResolvedValueOnce(mockCount);
-					const result = await executionRepository.getExecutionsCountForPublicApi(params);
+					const result = await executionRepository.countInWorkflows(workflowIds, options);
 
 					expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
 						where: {
+							workflowId: In(workflowIds),
 							...(expectedIdCondition ? { id: expectedIdCondition } : {}),
 						},
-						take: params.limit,
+						take: options.limit,
 					});
 					expect(result).toBe(mockCount);
 				},
@@ -119,15 +121,16 @@ describe('ExecutionRepository', () => {
 			`('should retrieve all $filterStatus executions', async ({ filterStatus, entityStatus }) => {
 				const limit = 10;
 				const mockCount = 20;
+				const workflowIds = ['wf-1'];
 
 				entityManager.count.mockResolvedValueOnce(mockCount);
-				const result = await executionRepository.getExecutionsCountForPublicApi({
+				const result = await executionRepository.countInWorkflows(workflowIds, {
 					limit,
 					status: filterStatus,
 				});
 
 				expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
-					where: { status: entityStatus },
+					where: { status: entityStatus, workflowId: In(workflowIds) },
 					take: limit,
 				});
 
@@ -137,12 +140,13 @@ describe('ExecutionRepository', () => {
 			test('should find all executions without status filter', async () => {
 				const limit = 10;
 				const mockCount = 20;
+				const workflowIds = ['wf-1'];
 
 				entityManager.count.mockResolvedValueOnce(mockCount);
-				const result = await executionRepository.getExecutionsCountForPublicApi({ limit });
+				const result = await executionRepository.countInWorkflows(workflowIds, { limit });
 
 				expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
-					where: {},
+					where: { workflowId: In(workflowIds) },
 					take: limit,
 				});
 

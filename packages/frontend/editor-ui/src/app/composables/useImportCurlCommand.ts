@@ -4,7 +4,7 @@ import get from 'lodash/get';
 import { toJsonObject as curlToJson, type JSONOutput } from 'curlconverter';
 
 import { CURL_IMPORT_NODES_PROTOCOLS, CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS } from '@/app/constants';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { importCurlEventBus } from '@/app/event-bus';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -400,12 +400,12 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	}
 
 	if (!Object.keys(httpNodeParameters.options?.redirect.redirect).length) {
-		// @ts-ignore
+		// @ts-expect-error key is not optional in type
 		delete httpNodeParameters.options.redirect;
 	}
 
 	if (!Object.keys(httpNodeParameters.options.response.response).length) {
-		// @ts-ignore
+		// @ts-expect-error key is not optional in type
 		delete httpNodeParameters.options.response;
 	}
 

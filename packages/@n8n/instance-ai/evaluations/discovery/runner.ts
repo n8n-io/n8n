@@ -10,11 +10,11 @@
 // What's tested: the orchestrator's first dispatch decision. Tools are NOT
 // stubbed — when the orchestrator loads a runtime skill or reaches for a
 // Computer Use browser tool, the tool-call event fires before any downstream
-// failure, so the discovery check still sees the dispatch intent. maxSteps caps
-// the loop so an erroring tool can't drive API spend.
+// failure, so the discovery check still sees the dispatch intent. The wall-clock
+// timeout bounds the loop so an erroring tool can't drive API spend; scenarios
+// or --max-steps can additionally opt into an iteration cap.
 // ---------------------------------------------------------------------------
 
-import { Memory, type RuntimeSkillSource } from '@n8n/agents';
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
@@ -39,7 +39,6 @@ import type {
 	OrchestrationContext,
 	TaskStorage,
 } from '../../src/types';
-import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { asResumable } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
@@ -77,7 +76,10 @@ export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
 	const started = Date.now();
-	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps ?? 5;
+	// Uncapped by default, matching live behavior: today's orchestrator legitimately
+	// explores past any small fixed cap (data-table-workflow needs >8 iterations), and
+	// the wall-clock timeout below bounds runaway runs. Scenarios/CLI opt in to a cap.
+	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps;
 	const timeoutMs = options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
 
@@ -94,7 +96,6 @@ export async function runDiscoveryScenario(
 		const context = applyInstanceState(services.context, options.scenario);
 
 		const mcpManager = new McpClientManager();
-		const memory = new Memory().build();
 		const threadId = 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
 
@@ -124,12 +125,12 @@ export async function runDiscoveryScenario(
 			abortSignal: abortController.signal,
 		});
 
-		const agent = await createInstanceAgent({
+		const { agent } = await createInstanceAgent({
 			modelId: options.modelId,
 			context,
 			orchestrationContext,
 			mcpManager,
-			memory,
+			// No memory: discovery measures stateless first-step tool dispatch.
 			memoryConfig: {},
 			// Eager tool loading — discovery measures dispatch given the full toolset,
 			// not whether the orchestrator can find a tool through search.
@@ -139,7 +140,7 @@ export async function runDiscoveryScenario(
 
 		const streamSource = normalizeStreamSource(
 			await agent.stream(options.scenario.userMessage, {
-				maxSteps,
+				maxIterations: maxSteps,
 				abortSignal: abortController.signal,
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
@@ -240,24 +241,6 @@ function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 }
 
-/**
- * Mirror the CLI's agents-module gating (instance-ai.service.ts): production
- * filters the `agent-builder` skill from the runtime catalog when the agents
- * module is inactive. The package-level filter in `runtime-skills.ts` only
- * covers `intent-recognition`, so without this the eval catalog would always
- * include `agent-builder` and misrepresent the module-off production shape.
- */
-function applyAgentsModuleGating(source: RuntimeSkillSource): RuntimeSkillSource {
-	if (isAgentFeatureEnabled()) return source;
-	return {
-		...source,
-		registry: {
-			...source.registry,
-			skills: source.registry.skills.filter((skill) => skill.id !== 'agent-builder'),
-		},
-	};
-}
-
 interface StubOrchestrationContextOptions {
 	context: InstanceAiContext;
 	modelId: ModelConfig;
@@ -293,7 +276,7 @@ function createStubOrchestrationContext(
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
 		domainTools,
-		runtimeSkills: applyAgentsModuleGating(loadInstanceAiRuntimeSkillSource()),
+		runtimeSkills: loadInstanceAiRuntimeSkillSource(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
 		// Discovery evals assert first-dispatch intent only. Production starts a

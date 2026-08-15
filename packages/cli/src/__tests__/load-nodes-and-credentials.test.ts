@@ -1,11 +1,16 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { Module } from 'node:module';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
 import { CUSTOM_NODES_PACKAGE_NAME, DirectoryLoader } from 'n8n-core';
-import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME } from '@/constants';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 
@@ -202,6 +207,67 @@ describe('LoadNodesAndCredentials', () => {
 				version: '1.0.0',
 			});
 			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0.json');
+		});
+	});
+
+	describe('createOutputSchemaLookup', () => {
+		let instance: LoadNodesAndCredentials;
+		let nodesDir: string;
+
+		beforeEach(() => {
+			nodesDir = mkdtempSync(join(tmpdir(), 'n8n-lookup-'));
+			const schemaDir = join(nodesDir, 'Test', '__schema__', 'v1.0.0', 'account');
+			mkdirSync(schemaDir, { recursive: true });
+			writeFileSync(join(schemaDir, 'get.json'), JSON.stringify({ type: 'object' }));
+
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.knownNodes['n8n-nodes-base.test'] = {
+				className: 'Test',
+				sourcePath: join(nodesDir, 'Test', 'Test.node.js'),
+			};
+		});
+
+		afterEach(() => {
+			rmSync(nodesDir, { recursive: true, force: true });
+		});
+
+		it('should load the schema for a known node', () => {
+			const lookup = instance.createOutputSchemaLookup();
+			expect(
+				lookup({
+					type: 'n8n-nodes-base.test',
+					typeVersion: 1,
+					resource: 'account',
+					operation: 'get',
+				}),
+			).toEqual({ type: 'object' });
+		});
+
+		it('should fall back to an available older version', () => {
+			const lookup = instance.createOutputSchemaLookup();
+			expect(
+				lookup({
+					type: 'n8n-nodes-base.test',
+					typeVersion: 3,
+					resource: 'account',
+					operation: 'get',
+				}),
+			).toEqual({ type: 'object' });
+		});
+
+		it('should return undefined for unknown nodes or missing schemas', () => {
+			const lookup = instance.createOutputSchemaLookup();
+			expect(
+				lookup({ type: 'n8n-nodes-base.unknown', typeVersion: 1, operation: 'get' }),
+			).toBeUndefined();
+			expect(
+				lookup({
+					type: 'n8n-nodes-base.test',
+					typeVersion: 1,
+					resource: 'account',
+					operation: 'delete',
+				}),
+			).toBeUndefined();
 		});
 	});
 
@@ -451,6 +517,97 @@ describe('LoadNodesAndCredentials', () => {
 		});
 	});
 
+	describe('injectCustomApiCallOptions', () => {
+		let instance: LoadNodesAndCredentials;
+
+		const makeNode = (credentialName: string): INodeTypeDescription => ({
+			name: 'n8n-nodes-base.test',
+			displayName: 'Test',
+			group: ['transform'],
+			description: 'Test node',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					options: [{ name: 'Page', value: 'page' }],
+					default: 'page',
+				},
+			],
+			credentials: [{ name: credentialName }],
+		});
+
+		const makeCredential = (name: string, extendsTypes?: string[]): ICredentialType => ({
+			name,
+			displayName: name,
+			properties: [],
+			...(extendsTypes ? { extends: extendsTypes } : {}),
+		});
+
+		const injectedOption = { name: CUSTOM_API_CALL_NAME, value: CUSTOM_API_CALL_KEY };
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+		});
+
+		it('should inject the option when a credential extends a base OAuth type directly', () => {
+			const node = makeNode('slackOAuth2Api');
+			instance.types.nodes = [node];
+			instance.types.credentials = [makeCredential('slackOAuth2Api', ['oAuth2Api'])];
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(instance as any).injectCustomApiCallOptions();
+
+			expect(node.properties[0].options).toEqual([{ name: 'Page', value: 'page' }, injectedOption]);
+		});
+
+		it('should inject the option when a credential reaches a base OAuth type through an intermediate', () => {
+			const node = makeNode('confluenceCloudOAuth2Api');
+			instance.types.nodes = [node];
+			instance.types.credentials = [
+				makeCredential('confluenceCloudOAuth2Api', ['atlassianOAuth2Api']),
+				makeCredential('atlassianOAuth2Api', ['oAuth2Api']),
+			];
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(instance as any).injectCustomApiCallOptions();
+
+			expect(node.properties[0].options).toEqual([{ name: 'Page', value: 'page' }, injectedOption]);
+		});
+
+		it('should not inject the option when the extends chain never reaches a base OAuth type', () => {
+			const node = makeNode('someApi');
+			instance.types.nodes = [node];
+			instance.types.credentials = [
+				makeCredential('someApi', ['intermediateApi']),
+				makeCredential('intermediateApi'),
+			];
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(instance as any).injectCustomApiCallOptions();
+
+			expect(node.properties[0].options).toEqual([{ name: 'Page', value: 'page' }]);
+		});
+
+		it('should not loop on a cyclic extends chain', () => {
+			const node = makeNode('cyclicApi');
+			instance.types.nodes = [node];
+			instance.types.credentials = [
+				makeCredential('cyclicApi', ['otherCyclicApi']),
+				makeCredential('otherCyclicApi', ['cyclicApi']),
+			];
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(instance as any).injectCustomApiCallOptions();
+
+			expect(node.properties[0].options).toEqual([{ name: 'Page', value: 'page' }]);
+		});
+	});
+
 	describe('setupHotReload', () => {
 		let instance: LoadNodesAndCredentials;
 
@@ -520,7 +677,7 @@ describe('LoadNodesAndCredentials', () => {
 
 		beforeEach(async () => {
 			// Import the mocked functions
-			const toolGeneration = await import('@/tool-generation');
+			const toolGeneration = await import('@/tool-generation/index.js');
 			createAiTools = toolGeneration.createAiTools as Mock;
 			createHitlTools = toolGeneration.createHitlTools as Mock;
 

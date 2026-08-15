@@ -770,8 +770,8 @@ export class GSuiteAdmin implements INodeType {
 							body.primaryEmail = updateFields.primaryEmail as string;
 						}
 
-						if (updateFields.suspendUi) {
-							body.suspended = updateFields.suspendUi as boolean;
+						if (typeof updateFields.suspendUi === 'boolean') {
+							body.suspended = updateFields.suspendUi;
 						}
 
 						if (updateFields.roles) {

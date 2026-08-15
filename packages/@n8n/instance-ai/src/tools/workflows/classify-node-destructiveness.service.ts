@@ -17,11 +17,12 @@
  */
 
 import { isRecord } from '@n8n/utils/is-record';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { isAiRootNodeType, type WorkflowJSON } from '@n8n/workflow-sdk';
 import type { IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { isTriggerNodeType } from './workflow-json-utils';
+import type { ModelConfig } from '../../types';
 import { HAIKU_MODEL } from '../../utils/eval-agents';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
@@ -32,6 +33,8 @@ export interface ClassifyNodesForSimulationInput {
 	workflow: WorkflowJSON;
 	/** Node names whose credentials were mocked — always simulated. */
 	mockedNodeNames?: string[];
+	/** Host-resolved model used when no eval model API key is configured in the environment. */
+	fallbackModelConfig?: ModelConfig;
 }
 
 const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
@@ -65,15 +68,19 @@ const SAFE_NODE_TYPES = new Set([
 	'n8n-nodes-base.stopAndError',
 	// Responds to the workflow's own caller — part of the trigger contract.
 	'n8n-nodes-base.respondToWebhook',
-	// AI processing nodes: they call an LLM (read-only towards user systems).
-	// Write operations living as agent *tools* are a known gap — see spec.
-	'@n8n/n8n-nodes-langchain.agent',
-	'@n8n/n8n-nodes-langchain.chainLlm',
-	'@n8n/n8n-nodes-langchain.chainSummarization',
-	'@n8n/n8n-nodes-langchain.informationExtractor',
-	'@n8n/n8n-nodes-langchain.textClassifier',
-	'@n8n/n8n-nodes-langchain.sentimentAnalysis',
 ]);
+
+/**
+ * AI roots (agent/chain/extractor/classifier nodes) call an LLM but are
+ * read-only towards user systems, so they classify as safe — the set lives in
+ * `@n8n/workflow-sdk` (`isAiRootNodeType`), shared with fixture shaping. Write
+ * operations living as agent *tools* are a known gap. Roots whose LLM
+ * sub-node has no usable credentials are overridden to `simulate` later, in
+ * `plan-verification-simulation.ts`.
+ */
+function isSafeNodeType(nodeType: string): boolean {
+	return SAFE_NODE_TYPES.has(nodeType) || isAiRootNodeType(nodeType);
+}
 
 /** Node types that are destructive by their very type (no operation param needed). */
 const DESTRUCTIVE_NODE_TYPES = new Map<string, string>([
@@ -214,7 +221,7 @@ function deterministicVerdict(
 		return deterministic(node.name, 'simulate', 'Credentials are not configured for this node');
 	}
 
-	if (SAFE_NODE_TYPES.has(node.type)) {
+	if (isSafeNodeType(node.type)) {
 		return deterministic(node.name, 'execute', 'Transforms data without touching external systems');
 	}
 
@@ -350,6 +357,7 @@ function formatNodeBlock(node: WorkflowNode & { name: string }): string {
 
 async function classifyAmbiguousNodes(
 	nodes: Array<WorkflowNode & { name: string }>,
+	fallbackModelConfig?: ModelConfig,
 ): Promise<NodeSimulationVerdict[]> {
 	const userText = [
 		'Classify the following n8n workflow nodes.',
@@ -364,6 +372,7 @@ async function classifyAmbiguousNodes(
 		instructions: SYSTEM_INSTRUCTIONS,
 		userText,
 		schema: LlmVerdictSchema,
+		fallbackModelConfig,
 	});
 	const parsed = result.ok ? result.data : undefined;
 
@@ -422,7 +431,7 @@ export async function classifyNodesForSimulation(
 		// retired, the plan is the only source of verification pin data, so a
 		// throw here would leave every node executing for real. Fail destructive.
 		try {
-			for (const verdict of await classifyAmbiguousNodes(ambiguous)) {
+			for (const verdict of await classifyAmbiguousNodes(ambiguous, input.fallbackModelConfig)) {
 				verdictByName.set(verdict.nodeName, verdict);
 			}
 		} catch {

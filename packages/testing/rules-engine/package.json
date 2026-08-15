@@ -40,7 +40,7 @@
 		"@n8n/vitest-config": "workspace:*",
 		"@vitest/coverage-v8": "catalog:",
 		"tsx": "catalog:",
-		"typescript": "catalog:",
+		"typescript": "catalog:typescript",
 		"vitest": "catalog:"
 	}
 }

@@ -4,6 +4,7 @@ import CollectionParameterNew, { type Props } from './CollectionParameterNew.vue
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
 import { flushPromises } from '@vue/test-utils';
@@ -191,17 +192,20 @@ describe('CollectionParameterNew.vue', () => {
 			expect(dropdown).toBeInTheDocument();
 		});
 
-		it('renders add button in header', async () => {
-			const { getByTestId } = renderComponent();
+		it('opens the options menu when the header add button is clicked', async () => {
+			const { getByTestId, emitted } = renderComponent();
 
 			const addButton = getByTestId('collection-parameter-add-header');
 			await userEvent.click(addButton);
-
 			await nextTick();
 
-			// Verify the dropdown is present
-			const dropdown = getByTestId('collection-parameter-add-dropdown');
-			expect(dropdown).toBeInTheDocument();
+			// The menu should open and expose the available options
+			const option = await screen.findByText('Field 1');
+			expect(option).toBeVisible();
+
+			// Selecting an option adds the field
+			await userEvent.click(option);
+			expect(emitted('valueChanged')).toBeTruthy();
 		});
 	});
 

@@ -1,6 +1,7 @@
 import { projectRoleSchema } from '@n8n/permissions';
 import { z } from 'zod';
 
+import { projectIconSchema } from './project.schema';
 import { userSettingsSchema } from './user-settings.schema';
 
 export const ROLE = {
@@ -20,6 +21,7 @@ export const userProjectSchema = z.object({
 	id: z.string(),
 	role: projectRoleSchema,
 	name: z.string(),
+	icon: projectIconSchema.nullable().optional(),
 });
 
 export const userBaseSchema = z.object({
@@ -50,3 +52,4 @@ export const usersListSchema = z.object({
 
 export type User = z.infer<typeof userDetailSchema>;
 export type UsersList = z.infer<typeof usersListSchema>;
+export type UserProject = z.infer<typeof userProjectSchema>;

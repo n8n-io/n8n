@@ -1,6 +1,7 @@
 import { TextEditorDocument } from '@n8n/ai-utilities/generic-text-editor';
 import { z } from 'zod';
 
+import { isAbortError } from '../../sdk/abort';
 import { Tool } from '../../sdk/tool';
 import type { BuiltTool } from '../../types/sdk/tool';
 import type { WorkspaceFilesystem } from '../types';
@@ -33,9 +34,12 @@ export function createStrReplaceFileTool(filesystem: WorkspaceFilesystem): Built
 		)
 		.input(inputSchema)
 		.output(outputSchema)
-		.handler(async (input) => {
+		.handler(async (input, ctx) => {
 			try {
-				const content = await filesystem.readFile(input.path, { encoding: 'utf-8' });
+				const content = await filesystem.readFile(input.path, {
+					encoding: 'utf-8',
+					abortSignal: ctx.abortSignal,
+				});
 				const editor = new TextEditorDocument({ initialText: content.toString() });
 				const result = editor.execute({
 					command: 'str_replace',
@@ -48,9 +52,13 @@ export function createStrReplaceFileTool(filesystem: WorkspaceFilesystem): Built
 					throw new Error(`File "${input.path}" is not loaded.`);
 				}
 
-				await filesystem.writeFile(input.path, editedContent, { overwrite: true });
+				await filesystem.writeFile(input.path, editedContent, {
+					overwrite: true,
+					abortSignal: ctx.abortSignal,
+				});
 				return { success: true, result };
 			} catch (error) {
+				if (isAbortError(error)) throw error;
 				return createErrorOutput(error);
 			}
 		})

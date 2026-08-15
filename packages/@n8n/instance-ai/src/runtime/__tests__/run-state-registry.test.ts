@@ -548,6 +548,39 @@ describe('RunStateRegistry', () => {
 			it('does nothing when no active run exists', () => {
 				expect(() => registry.clearActiveRun('nonexistent')).not.toThrow();
 			});
+
+			it('does not clear an active run owned by a newer executor', () => {
+				const suspendedState = createSuspendedRunState({ threadId: 'thread-1' });
+				const currentExecution = Symbol('current-execution');
+				registry.suspendRun('thread-1', suspendedState);
+				registry.activateSuspendedRun('thread-1', currentExecution);
+
+				registry.clearActiveRun('thread-1', Symbol('stale-execution'));
+
+				expect(registry.getActiveRun('thread-1')?.executionToken).toBe(currentExecution);
+			});
+
+			it('does not let an unowned finalizer clear a newer tokenized executor', () => {
+				const suspendedState = createSuspendedRunState({ threadId: 'thread-1' });
+				const currentExecution = Symbol('current-execution');
+				registry.suspendRun('thread-1', suspendedState);
+				registry.activateSuspendedRun('thread-1', currentExecution);
+
+				registry.clearActiveRun('thread-1');
+
+				expect(registry.getActiveRun('thread-1')?.executionToken).toBe(currentExecution);
+			});
+
+			it('clears the active run owned by the matching executor', () => {
+				const suspendedState = createSuspendedRunState({ threadId: 'thread-1' });
+				const executionToken = Symbol('execution');
+				registry.suspendRun('thread-1', suspendedState);
+				registry.activateSuspendedRun('thread-1', executionToken);
+
+				registry.clearActiveRun('thread-1', executionToken);
+
+				expect(registry.hasActiveRun('thread-1')).toBe(false);
+			});
 		});
 
 		describe('cancelActiveRun', () => {

@@ -44,7 +44,6 @@ vi.mock('../cli/argument-parser', () => ({
 vi.mock('../support/environment', () => ({
 	setupTestEnvironment: (): unknown => mockSetupTestEnvironment(),
 	createAgent: (...args: unknown[]): unknown => mockCreateAgent(...args),
-	resolveNodesBasePath: (): string => '/mock/nodes-base',
 }));
 
 vi.mock('../langsmith/types', () => ({

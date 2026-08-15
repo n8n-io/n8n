@@ -22,6 +22,72 @@ describe('withDeterministicRouting', () => {
 		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
 	});
 
+	it('marks non-deterministic-trigger workflows as ready (trigger gets a simulated fixture)', () => {
+		const outcome = withDeterministicRouting(
+			makeOutcome({
+				triggerNodes: [{ nodeName: 'On New Email', nodeType: 'n8n-nodes-base.gmailTrigger' }],
+			}),
+		);
+
+		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+	});
+
+	it('marks suffix-less trigger types (webhook, cron) as ready', () => {
+		for (const nodeType of ['n8n-nodes-base.webhook', 'n8n-nodes-base.cron']) {
+			const outcome = withDeterministicRouting(
+				makeOutcome({ triggerNodes: [{ nodeName: 'Entry', nodeType }] }),
+			);
+
+			expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+		}
+	});
+
+	it('marks workflows without any trigger node as not verifiable', () => {
+		for (const triggerNodes of [
+			[],
+			undefined,
+			[{ nodeName: 'Set', nodeType: 'n8n-nodes-base.set' }],
+		]) {
+			const outcome = withDeterministicRouting(makeOutcome({ triggerNodes }));
+
+			expect(outcome.verificationReadiness).toMatchObject({
+				status: 'not_verifiable',
+				reason: 'no-trigger-node',
+			});
+		}
+	});
+
+	// One-off intent deliberately does NOT get its own readiness status — the
+	// readiness union is persisted and old readers hard-fail on unknown
+	// variants (see verification-obligation.ts). The intent rides on the
+	// outcome as a plain optional field instead.
+	it('keeps one-off builds on the ready readiness and passes the intent through', () => {
+		const outcome = withDeterministicRouting(makeOutcome({ executionIntent: 'one-off' }));
+
+		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+		expect(outcome.executionIntent).toBe('one-off');
+	});
+
+	it('keeps reusable and unspecified intents ready', () => {
+		for (const executionIntent of ['reusable', undefined] as const) {
+			const outcome = withDeterministicRouting(makeOutcome({ executionIntent }));
+
+			expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+		}
+	});
+
+	it('keeps impossible-to-verify verdicts for one-off builds', () => {
+		const outcome = withDeterministicRouting(
+			makeOutcome({ executionIntent: 'one-off', triggerNodes: [] }),
+		);
+
+		expect(outcome.verificationReadiness).toMatchObject({
+			status: 'not_verifiable',
+			reason: 'no-trigger-node',
+		});
+		expect(outcome.executionIntent).toBe('one-off');
+	});
+
 	it('keeps workflows with unresolved placeholders ready for verification', () => {
 		const outcome = withDeterministicRouting(
 			makeOutcome({

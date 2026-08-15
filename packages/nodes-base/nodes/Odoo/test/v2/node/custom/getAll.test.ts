@@ -1,11 +1,11 @@
+import type { IExecuteFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { OdooV2 } from '../../../../v2/OdooV2.node';
 import { versionDescription } from '../../../../v2/actions/versionDescription';
+import { OdooV2 } from '../../../../v2/OdooV2.node';
 import * as transport from '../../../../v2/transport';
-import type { Mock } from 'vitest';
 
 vi.mock('../../../../v2/transport', () => ({
 	odooApiRequest: vi.fn(),
@@ -133,5 +133,29 @@ describe('OdooV2 — custom:getAll', () => {
 		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Network error'));
 
 		await expect(node.execute.call(exec)).rejects.toThrow('Network error');
+	});
+
+	it('builds the domain from filters', async () => {
+		setupParams({
+			filters: {
+				filter: [
+					{ fieldName: 'name', operator: 'equal', value: 'Record A' },
+					{ fieldName: 'email', operator: 'like', value: 'foo' },
+				],
+			},
+		});
+		(transport.odooApiRequest as Mock).mockResolvedValue(MOCK_RECORDS);
+
+		await node.execute.call(exec);
+
+		expect(transport.odooApiRequest).toHaveBeenCalledWith('res.partner', 'search_read', {
+			domain: [
+				['name', '=', 'Record A'],
+				['email', 'like', 'foo'],
+			],
+			fields: [],
+			limit: 10,
+			offset: 0,
+		});
 	});
 });

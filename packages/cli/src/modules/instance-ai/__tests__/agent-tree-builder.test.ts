@@ -10,7 +10,7 @@ let findAgentNodeInTree: (
 
 beforeAll(async () => {
 	({ buildAgentTreeFromEvents, findAgentNodeInTree } = (await import(
-		'../../../../../@n8n/instance-ai/src/utils/agent-tree'
+		'../../../../../@n8n/instance-ai/src/utils/agent-tree.js'
 	)) as {
 		buildAgentTreeFromEvents: (events: InstanceAiEvent[]) => InstanceAiAgentNode;
 		findAgentNodeInTree: (

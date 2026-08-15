@@ -63,7 +63,7 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'User',
 					role: { slug: 'global:admin' },
 				},
-				projectId: 'proj-brie',
+				projectIds: ['proj-brie', 'proj-stilton'],
 				folderId: 'folder-cheese',
 				workflowIds: ['wf-cheddar', 'wf-brie'],
 				options: {
@@ -72,6 +72,15 @@ describe('LogStreamingEventRelay', () => {
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
+					missingNodeTypeMode: 'fail',
+					dataTableMatchingMode: 'by-id',
+					dataTableMissingMode: 'create',
+					dataTableSchemaConflictPolicy: 'keep-existing',
+					variableMissingMode: 'create-stub',
+					variableConflictPolicy: 'keep-existing',
+					variableParentPolicy: 'project',
+					tagMissingMode: 'create',
+					tagConflictPolicy: 'skip',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -92,6 +101,27 @@ describe('LogStreamingEventRelay', () => {
 						created: 0,
 						requirements: 1,
 					},
+					dataTables: {
+						matched: 0,
+						created: 1,
+						requirements: 1,
+					},
+					variables: {
+						matched: 0,
+						missing: 1,
+						created: 0,
+						stubbed: 0,
+						updated: 0,
+						requirements: 1,
+					},
+					tags: {
+						matched: 1,
+						created: 0,
+						renamed: 0,
+						reconciled: 0,
+						skipped: 0,
+						requirements: 1,
+					},
 				},
 			};
 
@@ -105,7 +135,7 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Import',
 					_lastName: 'User',
 					globalRole: 'global:admin',
-					projectId: 'proj-brie',
+					projectIds: ['proj-brie', 'proj-stilton'],
 					folderId: 'folder-cheese',
 					workflowIds: ['wf-cheddar', 'wf-brie'],
 					options: {
@@ -114,6 +144,15 @@ describe('LogStreamingEventRelay', () => {
 						credentialMatchingMode: 'id-only',
 						credentialMissingMode: 'must-preexist',
 						workflowPublishingPolicy: 'preserve-published-state',
+						missingNodeTypeMode: 'fail',
+						dataTableMatchingMode: 'by-id',
+						dataTableMissingMode: 'create',
+						dataTableSchemaConflictPolicy: 'keep-existing',
+						variableMissingMode: 'create-stub',
+						variableConflictPolicy: 'keep-existing',
+						variableParentPolicy: 'project',
+						tagMissingMode: 'create',
+						tagConflictPolicy: 'skip',
 					},
 					packageSourceId: 'source-instance-1',
 					packageVersion: '1',
@@ -143,6 +182,9 @@ describe('LogStreamingEventRelay', () => {
 					workflows: 2,
 					folders: 1,
 					credentials: 1,
+					dataTables: 1,
+					variables: 1,
+					tags: 1,
 				},
 			};
 
@@ -2071,6 +2113,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-manual',
 				workflowName: 'Manual Test Workflow',
 				executionId: 'exec-manual-123',
+				projectId: 'project-manual',
+				projectName: 'Manual Project',
 				source: 'user-manual',
 			};
 
@@ -2087,6 +2131,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-manual',
 					workflowName: 'Manual Test Workflow',
 					executionId: 'exec-manual-123',
+					projectId: 'project-manual',
+					projectName: 'Manual Project',
 					source: 'user-manual',
 				},
 			});
@@ -2143,6 +2189,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-retry',
 				workflowName: 'Retry Test Workflow',
 				executionId: 'exec-retry-456',
+				projectId: 'project-retry',
+				projectName: 'Retry Project',
 				source: 'user-retry',
 			};
 
@@ -2159,6 +2207,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-retry',
 					workflowName: 'Retry Test Workflow',
 					executionId: 'exec-retry-456',
+					projectId: 'project-retry',
+					projectName: 'Retry Project',
 					source: 'user-retry',
 				},
 			});
@@ -2169,6 +2219,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-webhook',
 				workflowName: 'Webhook Test Workflow',
 				executionId: 'exec-webhook-123',
+				projectId: 'project-webhook',
+				projectName: 'Webhook Project',
 				source: 'webhook',
 			};
 
@@ -2180,6 +2232,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-webhook',
 					workflowName: 'Webhook Test Workflow',
 					executionId: 'exec-webhook-123',
+					projectId: 'project-webhook',
+					projectName: 'Webhook Project',
 					source: 'webhook',
 				},
 			});
@@ -2190,6 +2244,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-trigger',
 				workflowName: 'Trigger Test Workflow',
 				executionId: 'exec-trigger-123',
+				projectId: 'project-trigger',
+				projectName: 'Trigger Project',
 				source: 'trigger',
 			};
 
@@ -2201,6 +2257,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-trigger',
 					workflowName: 'Trigger Test Workflow',
 					executionId: 'exec-trigger-123',
+					projectId: 'project-trigger',
+					projectName: 'Trigger Project',
 					source: 'trigger',
 				},
 			});
@@ -2211,6 +2269,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-error',
 				workflowName: 'Error Test Workflow',
 				executionId: 'exec-error-123',
+				projectId: 'project-error',
+				projectName: 'Error Project',
 				source: 'error',
 			};
 
@@ -2222,6 +2282,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-error',
 					workflowName: 'Error Test Workflow',
 					executionId: 'exec-error-123',
+					projectId: 'project-error',
+					projectName: 'Error Project',
 					source: 'error',
 				},
 			});
@@ -2235,6 +2297,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-cli',
 				workflowName: 'CLI Test Workflow',
 				executionId: 'exec-cli-123',
+				projectId: 'project-cli',
+				projectName: 'CLI Project',
 				source: 'cli',
 			};
 
@@ -2247,6 +2311,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-cli',
 					workflowName: 'CLI Test Workflow',
 					executionId: 'exec-cli-123',
+					projectId: 'project-cli',
+					projectName: 'CLI Project',
 					source: 'cli',
 				},
 			});
@@ -2260,6 +2326,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-integrated',
 				workflowName: 'Integrated Test Workflow',
 				executionId: 'exec-integrated-123',
+				projectId: 'project-integrated',
+				projectName: 'Integrated Project',
 				source: 'integrated',
 			};
 
@@ -2272,6 +2340,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-integrated',
 					workflowName: 'Integrated Test Workflow',
 					executionId: 'exec-integrated-123',
+					projectId: 'project-integrated',
+					projectName: 'Integrated Project',
 					source: 'integrated',
 				},
 			});
@@ -2285,6 +2355,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-evaluation',
 				workflowName: 'Evaluation Test Workflow',
 				executionId: 'exec-evaluation-123',
+				projectId: 'project-evaluation',
+				projectName: 'Evaluation Project',
 				source: 'evaluation',
 			};
 
@@ -2297,6 +2369,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-evaluation',
 					workflowName: 'Evaluation Test Workflow',
 					executionId: 'exec-evaluation-123',
+					projectId: 'project-evaluation',
+					projectName: 'Evaluation Project',
 					source: 'evaluation',
 				},
 			});
@@ -2310,6 +2384,8 @@ describe('LogStreamingEventRelay', () => {
 				workflowId: 'wf-chat',
 				workflowName: 'Chat Test Workflow',
 				executionId: 'exec-chat-123',
+				projectId: 'project-chat',
+				projectName: 'Chat Project',
 				source: 'chat',
 			};
 
@@ -2322,6 +2398,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-chat',
 					workflowName: 'Chat Test Workflow',
 					executionId: 'exec-chat-123',
+					projectId: 'project-chat',
+					projectName: 'Chat Project',
 					source: 'chat',
 				},
 			});
@@ -2957,6 +3035,121 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:owner',
 					before: 'production',
 					after: 'all',
+				},
+			});
+		});
+	});
+
+	describe('MCP server events', () => {
+		it('should log on `mcp-oauth-completed` event', () => {
+			const event: RelayEventMap['mcp-oauth-completed'] = {
+				userId: 'user-mcp-1',
+				clientId: 'client-abc',
+				clientName: 'Claude',
+			};
+
+			eventService.emit('mcp-oauth-completed', event);
+
+			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.mcp.oauth.completed',
+				payload: {
+					userId: 'user-mcp-1',
+					clientId: 'client-abc',
+					clientName: 'Claude',
+				},
+			});
+		});
+
+		it('should log on `mcp-tool-called` event with redacted user and target workflow', () => {
+			const event: RelayEventMap['mcp-tool-called'] = {
+				user: {
+					id: 'user-mcp-2',
+					email: 'mcp@n8n.io',
+					firstName: 'Em',
+					lastName: 'Cp',
+					role: { slug: 'global:member' },
+				},
+				toolName: 'execute_workflow',
+				workflowId: 'wf-789',
+				status: 'success',
+				clientName: 'Cursor',
+			};
+
+			eventService.emit('mcp-tool-called', event);
+
+			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.mcp.tool.called',
+				payload: {
+					userId: 'user-mcp-2',
+					_email: 'mcp@n8n.io',
+					_firstName: 'Em',
+					_lastName: 'Cp',
+					globalRole: 'global:member',
+					toolName: 'execute_workflow',
+					workflowId: 'wf-789',
+					status: 'success',
+					errorMessage: undefined,
+					clientName: 'Cursor',
+				},
+			});
+		});
+
+		it('should log on `mcp-tool-called` event with error status', () => {
+			const event: RelayEventMap['mcp-tool-called'] = {
+				user: {
+					id: 'user-mcp-3',
+					email: 'err@n8n.io',
+					firstName: 'Er',
+					lastName: 'Ror',
+					role: { slug: 'global:member' },
+				},
+				toolName: 'get_workflow_details',
+				status: 'error',
+				errorMessage: 'Workflow not found',
+			};
+
+			eventService.emit('mcp-tool-called', event);
+
+			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.mcp.tool.called',
+				payload: {
+					userId: 'user-mcp-3',
+					_email: 'err@n8n.io',
+					_firstName: 'Er',
+					_lastName: 'Ror',
+					globalRole: 'global:member',
+					toolName: 'get_workflow_details',
+					workflowId: undefined,
+					status: 'error',
+					errorMessage: 'Workflow not found',
+					clientName: undefined,
+				},
+			});
+		});
+
+		it('should log on `mcp-access-updated` event with redacted user', () => {
+			const event: RelayEventMap['mcp-access-updated'] = {
+				user: {
+					id: 'user-mcp-4',
+					email: 'owner@n8n.io',
+					firstName: 'Own',
+					lastName: 'Er',
+					role: { slug: 'global:owner' },
+				},
+				enabled: false,
+			};
+
+			eventService.emit('mcp-access-updated', event);
+
+			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.mcp.access.updated',
+				payload: {
+					userId: 'user-mcp-4',
+					_email: 'owner@n8n.io',
+					_firstName: 'Own',
+					_lastName: 'Er',
+					globalRole: 'global:owner',
+					enabled: false,
 				},
 			});
 		});

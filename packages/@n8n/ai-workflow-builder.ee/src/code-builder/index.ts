@@ -19,6 +19,7 @@ export { generateCodeBuilderThreadId } from './utils/code-builder-session';
 
 // Core utilities for MCP integration
 export { ParseValidateHandler, WorkflowCodeParseError } from './handlers/parse-validate-handler';
+export { getWarningKey } from './state/warning-tracker';
 export { createCodeBuilderSearchTool } from './tools/code-builder-search.tool';
 export { createCodeBuilderGetTool } from './tools/code-builder-get.tool';
 export { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';

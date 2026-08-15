@@ -8,11 +8,14 @@
  * Without this adapter, Daytona workspaces only get sandbox tools (execute_command).
  */
 import type {
+	AbortableOptions,
+	AppendOptions,
 	CopyOptions,
 	FileContent,
 	FileEntry,
 	FileStat,
 	ListOptions,
+	MkdirOptions,
 	ProviderStatus,
 	ReadOptions,
 	RemoveOptions,
@@ -43,9 +46,12 @@ export class DaytonaFilesystem extends BaseFilesystem {
 	 * sandbox is running with fresh auth and recovers once if the remote was stopped or
 	 * deleted while idle, so callers never touch a stale `fs` handle directly.
 	 */
-	private async withFs<T>(op: (fs: DaytonaFsHandle) => Promise<T>): Promise<T> {
+	private async withFs<T>(
+		op: (fs: DaytonaFsHandle) => Promise<T>,
+		abortSignal?: AbortSignal,
+	): Promise<T> {
 		await this.ensureReady();
-		return await this.sandbox.withFilesystem(op);
+		return await this.sandbox.withFilesystem(op, { abortSignal });
 	}
 
 	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
@@ -55,7 +61,7 @@ export class DaytonaFilesystem extends BaseFilesystem {
 				return buffer.toString(options.encoding);
 			}
 			return buffer;
-		});
+		}, options?.abortSignal);
 	}
 
 	async writeFile(path: string, content: FileContent, options?: WriteOptions): Promise<void> {
@@ -69,10 +75,10 @@ export class DaytonaFilesystem extends BaseFilesystem {
 			const buffer =
 				typeof content === 'string' ? Buffer.from(content, 'utf-8') : Buffer.from(content);
 			await fs.uploadFile(buffer, path);
-		});
+		}, options?.abortSignal);
 	}
 
-	async appendFile(path: string, content: FileContent): Promise<void> {
+	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {
 		await this.withFs(async (fs) => {
 			let existing: Buffer;
 			try {
@@ -86,34 +92,40 @@ export class DaytonaFilesystem extends BaseFilesystem {
 			const append =
 				typeof content === 'string' ? Buffer.from(content, 'utf-8') : Buffer.from(content);
 			await fs.uploadFile(Buffer.concat([existing, append]), path);
-		});
+		}, options?.abortSignal);
 	}
 
 	async deleteFile(path: string, options?: RemoveOptions): Promise<void> {
-		await this.withFs(async (fs) => await fs.deleteFile(path, options?.recursive));
+		await this.withFs(
+			async (fs) => await fs.deleteFile(path, options?.recursive),
+			options?.abortSignal,
+		);
 	}
 
-	async copyFile(src: string, dest: string, _options?: CopyOptions): Promise<void> {
+	async copyFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
 		await this.withFs(async (fs) => {
 			const content = await fs.downloadFile(src);
 			await fs.uploadFile(content, dest);
-		});
+		}, options?.abortSignal);
 	}
 
-	async moveFile(src: string, dest: string, _options?: CopyOptions): Promise<void> {
-		await this.withFs(async (fs) => await fs.moveFiles(src, dest));
+	async moveFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
+		await this.withFs(async (fs) => await fs.moveFiles(src, dest), options?.abortSignal);
 	}
 
-	async mkdir(path: string, _options?: { recursive?: boolean }): Promise<void> {
+	async mkdir(path: string, options?: MkdirOptions): Promise<void> {
 		// createFolder with mode '755' creates intermediate dirs
-		await this.withFs(async (fs) => await fs.createFolder(path, '755'));
+		await this.withFs(async (fs) => await fs.createFolder(path, '755'), options?.abortSignal);
 	}
 
 	async rmdir(path: string, options?: RemoveOptions): Promise<void> {
-		await this.withFs(async (fs) => await fs.deleteFile(path, options?.recursive ?? false));
+		await this.withFs(
+			async (fs) => await fs.deleteFile(path, options?.recursive ?? false),
+			options?.abortSignal,
+		);
 	}
 
-	async readdir(path: string, _options?: ListOptions): Promise<FileEntry[]> {
+	async readdir(path: string, options?: ListOptions): Promise<FileEntry[]> {
 		return await this.withFs(async (fs) => {
 			const files = await fs.listFiles(path);
 			return files.map((f) => ({
@@ -121,10 +133,10 @@ export class DaytonaFilesystem extends BaseFilesystem {
 				type: f.isDir ? ('directory' as const) : ('file' as const),
 				size: f.size,
 			}));
-		});
+		}, options?.abortSignal);
 	}
 
-	async exists(path: string): Promise<boolean> {
+	async exists(path: string, options?: AbortableOptions): Promise<boolean> {
 		return await this.withFs(async (fs) => {
 			try {
 				await fs.getFileDetails(path);
@@ -136,10 +148,10 @@ export class DaytonaFilesystem extends BaseFilesystem {
 				if (isDaytona404(error)) return false;
 				throw error;
 			}
-		});
+		}, options?.abortSignal);
 	}
 
-	async stat(path: string): Promise<FileStat> {
+	async stat(path: string, options?: AbortableOptions): Promise<FileStat> {
 		return await this.withFs(async (fs) => {
 			let info;
 			try {
@@ -158,7 +170,7 @@ export class DaytonaFilesystem extends BaseFilesystem {
 				createdAt: new Date(info.modTime ?? 0),
 				modifiedAt: new Date(info.modTime ?? 0),
 			};
-		});
+		}, options?.abortSignal);
 	}
 }
 

@@ -1,8 +1,7 @@
 {
-	"extends": ["./tsconfig.json", "@n8n/typescript-config/modern/tsconfig.cjs.json"],
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/modern/tsconfig.cjs.go.json"],
 	"compilerOptions": {
 		"outDir": "dist",
-		"module": "commonjs",
 		"declaration": true,
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},

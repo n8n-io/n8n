@@ -32,14 +32,23 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	const usageTotal = ref<number>(0);
 	const fetchError = ref<Error | null>(null);
 
+	// Every model selector fetches on mount, so several can be in flight before the
+	// first response lands. Share the promise rather than firing one request each.
+	let configFetch: Promise<void> | null = null;
+
 	async function fetchConfig(): Promise<void> {
 		if (config.value !== null) return;
-		try {
-			config.value = await getGatewayConfig(rootStore.restApiContext);
-			fetchError.value = null;
-		} catch (error) {
-			fetchError.value = toError(error);
-		}
+		configFetch ??= (async () => {
+			try {
+				config.value = await getGatewayConfig(rootStore.restApiContext);
+				fetchError.value = null;
+			} catch (error) {
+				fetchError.value = toError(error);
+			} finally {
+				configFetch = null;
+			}
+		})();
+		await configFetch;
 	}
 
 	async function fetchWallet(): Promise<void> {
@@ -81,6 +90,17 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 
 	function isCredentialTypeSupported(credentialType: string): boolean {
 		return config.value?.credentialTypes.includes(credentialType) ?? false;
+	}
+
+	/**
+	 * Whether the gateway holds a provider config for this credential type, i.e.
+	 * whether it can actually mint a managed credential for it. Narrower than
+	 * {@link isCredentialTypeSupported}, which lists every credential type the
+	 * gateway serves for any node — use this one to gate model providers, so the
+	 * offer matches what the backend will accept.
+	 */
+	function canServeCredentialType(credentialType: string): boolean {
+		return config.value?.providerConfig?.[credentialType] !== undefined;
 	}
 
 	/**
@@ -179,6 +199,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		isNodeSupported,
 		isNodeTypeVersionSupported,
 		isCredentialTypeSupported,
+		canServeCredentialType,
 		isActionSupported,
 		isActionOptionVisible,
 		isNodePropertyHidden,

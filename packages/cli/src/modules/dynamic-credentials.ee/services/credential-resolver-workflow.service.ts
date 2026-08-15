@@ -205,9 +205,10 @@ export class CredentialResolverWorkflowService {
 	}
 
 	/**
-	 * Extracts statically-resolvable sub-workflow ids from a workflow's nodes. Considers Execute
-	 * Sub-workflow and AI Workflow Tool nodes that reference a stored workflow by id; skips disabled
-	 * nodes, non-database sources, and expression-based ids that can't be resolved statically.
+	 * Extracts statically-resolvable sub-workflow ids from a workflow's nodes. Considers all nodes
+	 * that reference a stored workflow by id (Execute Sub-workflow, AI Workflow Tool, Workflow
+	 * Retriever); skips disabled nodes, non-database sources, and expression-based ids that can't be
+	 * resolved statically.
 	 */
 	private extractSubWorkflowIds(nodes: INode[]): string[] {
 		const ids = new Set<string>();

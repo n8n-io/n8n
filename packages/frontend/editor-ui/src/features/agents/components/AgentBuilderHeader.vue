@@ -17,11 +17,12 @@ import {
 	N8nIcon,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { AGENT_PREVIEW_VIEW, NEW_AGENT_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import { AGENT_PREVIEW_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 import AgentPublishButton from './AgentPublishButton.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
@@ -37,11 +38,17 @@ const props = defineProps<{
 	beforeRevertToPublished?: () => Promise<void> | void;
 	isVersionHistoryOpen?: boolean;
 	artifactMode?: boolean;
+	isPreviewOpen?: boolean;
+	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
+	editingLocked?: boolean;
+	configValidationStatus?: 'valid' | 'invalid' | null;
+	beforePublish?: () => Promise<boolean>;
 }>();
 
 const emit = defineEmits<{
 	'header-action': [item: string];
 	'open-preview': [];
+	'close-preview': [];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	reverted: [agent: AgentResource];
@@ -79,9 +86,13 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
-const isPreviewDisabled = computed(() => props.agent?.isRunnable !== true);
+const isPreviewDisabled = computed(() => !props.isPreviewOpen && props.agent?.isRunnable !== true);
+// Standalone keeps href for Cmd/Ctrl-click new-tab. Artifact mode is embedded
+// in Instance AI — plain button so a left-click cannot fall through to a link.
 const previewHref = computed(() =>
-	isPreviewDisabled.value ? undefined : router.resolve(previewRoute.value).href,
+	props.artifactMode || props.isPreviewOpen || isPreviewDisabled.value
+		? undefined
+		: router.resolve(previewRoute.value).href,
 );
 const previewDisabledTooltip = computed(() =>
 	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
@@ -110,7 +121,7 @@ function onSwitcherSelect(id: string) {
 }
 
 function onCreateAgent() {
-	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: props.projectId } });
+	void router.push(instanceAiCreateAgentRoute(props.projectId));
 }
 
 function onBreadcrumbSelect(item: PathItem) {
@@ -119,6 +130,11 @@ function onBreadcrumbSelect(item: PathItem) {
 }
 
 function onPreviewClick(event: MouseEvent) {
+	if (props.isPreviewOpen) {
+		event.preventDefault();
+		emit('close-preview');
+		return;
+	}
 	if (isPreviewDisabled.value) {
 		event.preventDefault();
 		return;
@@ -203,21 +219,27 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				<N8nButton
 					variant="ghost"
 					size="medium"
-					icon="play"
+					:icon="props.isPreviewOpen ? 'x' : 'play'"
 					:href="previewHref"
 					:disabled="isPreviewDisabled"
 					data-testid="agent-header-preview-btn"
 					@click="onPreviewClick"
 				>
-					{{ i18n.baseText('agents.builder.preview.button' as BaseTextKey) }}
+					{{
+						props.isPreviewOpen
+							? i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)
+							: i18n.baseText('agents.builder.preview.button' as BaseTextKey)
+					}}
 				</N8nButton>
 			</N8nTooltip>
 			<AgentPublishButton
 				:agent="agent"
 				:project-id="projectId"
 				:agent-id="agentId"
-				:is-saving="saveStatus === 'saving'"
+				:is-saving="saveStatus === 'saving' || editingLocked"
 				:before-revert-to-published="beforeRevertToPublished"
+				:config-validation-status="configValidationStatus"
+				:before-publish="beforePublish"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
 				@reverted="(a: AgentResource) => emit('reverted', a)"

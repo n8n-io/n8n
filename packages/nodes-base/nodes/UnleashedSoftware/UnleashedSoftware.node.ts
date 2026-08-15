@@ -24,7 +24,7 @@ export class UnleashedSoftware implements INodeType {
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:unleashedSoftware.png',
-		version: 1,
+		version: [1, 1.1],
 		description: 'Consume Unleashed Software API',
 		defaults: {
 			name: 'Unleashed Software',
@@ -70,6 +70,7 @@ export class UnleashedSoftware implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData: IDataObject | IDataObject[] = [];
+		const serializeDates = this.getNode().typeVersion >= 1.1;
 
 		for (let i = 0; i < length; i++) {
 			const resource = this.getNodeParameter('resource', 0);
@@ -121,7 +122,7 @@ export class UnleashedSoftware implements INodeType {
 						)) as IDataObject;
 						responseData = responseData.Items as IDataObject[];
 					}
-					convertNETDates(responseData);
+					convertNETDates(responseData, serializeDates);
 					responseData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData),
 						{ itemData: { item: i } },
@@ -173,7 +174,7 @@ export class UnleashedSoftware implements INodeType {
 						responseData = responseData.Items as IDataObject[];
 					}
 
-					convertNETDates(responseData);
+					convertNETDates(responseData, serializeDates);
 					responseData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData),
 						{ itemData: { item: i } },
@@ -183,7 +184,7 @@ export class UnleashedSoftware implements INodeType {
 				if (operation === 'get') {
 					const productId = this.getNodeParameter('productId', i) as string;
 					responseData = await unleashedApiRequest.call(this, 'GET', `/StockOnHand/${productId}`);
-					convertNETDates(responseData);
+					convertNETDates(responseData, serializeDates);
 				}
 			}
 			const executionData = this.helpers.constructExecutionMetaData(

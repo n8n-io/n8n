@@ -3,12 +3,7 @@ import { Service } from '@n8n/di';
 import type express from 'express';
 import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type { IRunData } from 'n8n-workflow';
-import {
-	FORM_NODE_TYPE,
-	WAIT_NODE_TYPE,
-	WAITING_FORMS_EXECUTION_STATUS,
-	Workflow,
-} from 'n8n-workflow';
+import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, Workflow } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -166,13 +161,8 @@ export class WaitingForms extends WaitingWebhooks {
 		let status: string = execution?.status ?? 'null';
 		const { node } = execution?.data.executionData?.nodeExecutionStack[0] ?? {};
 
-		if (node && status === 'waiting') {
-			if (node.type === FORM_NODE_TYPE) {
-				status = 'form-waiting';
-			}
-			if (node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form') {
-				status = 'form-waiting';
-			}
+		if (node && status === 'waiting' && this.isFormResumeNode(node)) {
+			status = 'form-waiting';
 		}
 
 		applyCors(req, res);

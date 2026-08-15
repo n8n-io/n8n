@@ -235,7 +235,11 @@ test.describe(
 			}
 		});
 
-		test(
+		// Skipped: the replay recording predates the create-tasks load_tool
+		// deferral (#33815), so the recorded direct create-tasks call fails as an
+		// unloaded tool and the approval panel never appears. Unskip once the
+		// recordings are updated (#34055 or a re-record).
+		test.skip(
 			'should show approval panel and approve workflow execution',
 			{
 				annotation: [
@@ -269,7 +273,8 @@ test.describe(
 			},
 		);
 
-		test(
+		// Skipped: same broken recording as the approve variant above (#33815).
+		test.skip(
 			'should show approval panel and deny workflow execution',
 			{
 				annotation: [

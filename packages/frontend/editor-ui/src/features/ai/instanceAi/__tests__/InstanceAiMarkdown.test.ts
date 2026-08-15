@@ -5,6 +5,13 @@ import InstanceAiMarkdown from '../components/InstanceAiMarkdown.vue';
 import type { ThreadRuntime } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 
+const routerPush = vi.fn();
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({ push: routerPush }),
+}));
+
 // Stub ChatMarkdownChunk to expose the processed content. v-html mirrors the
 // real component (VueMarkdown renders via innerHTML): plain text stays plain
 // text for the decoration assertions, HTML content produces real anchors for
@@ -33,6 +40,7 @@ function makeRegistry(
 
 describe('InstanceAiMarkdown', () => {
 	beforeEach(() => {
+		routerPush.mockReset();
 		createTestingPinia();
 		thread = {
 			id: 'thread-1',
@@ -201,6 +209,8 @@ describe('InstanceAiMarkdown', () => {
 		// HTML is stable across re-renders.
 		const content = '<a href="n8n-resource://workflow/wf-1">Invoice Processing Pipeline</a>';
 		const agentContent = '<a href="n8n-resource://agent/agent-1">Artifact Agent Test</a>';
+		const agentPreviewContent =
+			'<a href="/projects/project-1/agents/agent-1/preview" target="_blank">Preview</a>';
 
 		function renderWithPreview(openWorkflowPreview: (id: string) => boolean) {
 			const utils = renderComponent({
@@ -296,6 +306,22 @@ describe('InstanceAiMarkdown', () => {
 			link.dispatchEvent(event);
 
 			expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
+			expect(event.defaultPrevented).toBe(true);
+		});
+
+		it('should open agent Preview links in the current app tab', () => {
+			const { getByTestId } = renderComponent({ props: { content: agentPreviewContent } });
+			const link = getByTestId('markdown-output').querySelector('a');
+			if (!link) throw new Error('expected Preview anchor');
+
+			expect(link.target).toBe('');
+
+			const event = clickEvent();
+			link.dispatchEvent(event);
+
+			expect(routerPush).toHaveBeenCalledExactlyOnceWith(
+				'/projects/project-1/agents/agent-1/preview',
+			);
 			expect(event.defaultPrevented).toBe(true);
 		});
 	});

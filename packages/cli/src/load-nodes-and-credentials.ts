@@ -5,7 +5,7 @@ import { isWindowsFilePath } from '@n8n/utils/files/is-windows-file-path';
 import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
-import type { Class, Types } from 'n8n-core';
+import type { Class, OutputSchemaLookup, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
 	DirectoryLoader,
@@ -18,6 +18,9 @@ import {
 	UnrecognizedNodeTypeError,
 	ExecutionContextHookRegistry,
 	CUSTOM_NODES_PACKAGE_NAME,
+	resolveOutputSchemaPath,
+	loadOutputSchema,
+	OUTPUT_PARSER_SCHEMA_VARIANT,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -77,7 +80,7 @@ export class LoadNodesAndCredentials {
 			.filter(Boolean)
 			.join(delimiter);
 
-		// @ts-ignore
+		// @ts-expect-error Node internal _initPaths
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		module.constructor._initPaths();
 
@@ -268,11 +271,34 @@ export class LoadNodesAndCredentials {
 			return undefined;
 		}
 
-		const nodeParentPath = path.dirname(nodePath);
-		const schemaPath = ['__schema__', `v${version}`, resource, operation].filter(Boolean).join('/');
-		const filePath = path.resolve(nodeParentPath, schemaPath + '.json');
+		return resolveOutputSchemaPath({
+			nodeDir: path.dirname(nodePath),
+			version,
+			resource,
+			operation,
+		});
+	}
 
-		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
+	/**
+	 * Schema lookup for mock/pin-data generation: parsed `__schema__` content
+	 * with version fallback (same major first, then older, then newer — see the
+	 * n8n-core resolver), resolved through `known.nodes` so it works for
+	 * community nodes and production installs alike.
+	 */
+	createOutputSchemaLookup(): OutputSchemaLookup {
+		return ({ type, typeVersion, resource, operation, hasOutputParser }) => {
+			const nodePath = this.known.nodes[type]?.sourcePath;
+			if (!nodePath) return undefined;
+
+			return loadOutputSchema({
+				nodeDir: path.dirname(nodePath),
+				version: typeVersion,
+				resource,
+				operation,
+				versionFallback: true,
+				variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
+			});
+		};
 	}
 
 	getCustomDirectories(): string[] {
@@ -325,12 +351,26 @@ export class LoadNodesAndCredentials {
 			}
 			if (credType.authenticate !== undefined) return true;
 
-			return (
-				Array.isArray(credType.extends) &&
-				credType.extends.some((parentType) =>
-					['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
-				)
-			);
+			return this.extendsProxyAuthBaseType(credType);
+		});
+	}
+
+	/**
+	 * Whether a credential type reaches one of the OAuth base types through its
+	 * `extends` chain. Walks the chain transitively (cycle-guarded), since OAuth
+	 * credentials often extend a vendor intermediate (e.g. `atlassianOAuth2Api`)
+	 * rather than a base type directly.
+	 */
+	private extendsProxyAuthBaseType(credType: ICredentialType, seen = new Set<string>()): boolean {
+		if (!Array.isArray(credType.extends)) return false;
+
+		return credType.extends.some((parentName) => {
+			if (['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentName)) return true;
+			if (seen.has(parentName)) return false;
+			seen.add(parentName);
+
+			const parent = this.types.credentials.find((t) => t.name === parentName);
+			return parent !== undefined && this.extendsProxyAuthBaseType(parent, seen);
 		});
 	}
 
@@ -630,11 +670,11 @@ export class LoadNodesAndCredentials {
 	}
 
 	async setupHotReload() {
-		const { default: debounce } = await import('lodash/debounce');
+		const { default: debounce } = await import('lodash/debounce.js');
 
 		const { subscribe } = await import('@parcel/watcher');
 
-		const { Push } = await import('@/push');
+		const { Push } = await import('@/push/index.js');
 		const push = Container.get(Push);
 
 		for (const loader of Object.values(this.loaders)) {

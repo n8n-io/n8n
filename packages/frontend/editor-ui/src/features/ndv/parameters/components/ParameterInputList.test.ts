@@ -84,6 +84,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		isEnabled: { value: false },
 		isCredentialTypeSupported: vi.fn(() => false),
+		canServeCredentialType: vi.fn(() => false),
 		isActionSupported: vi.fn(() => true),
 		isActionOptionVisible: vi.fn(() => true),
 		isNodePropertyHidden: vi.fn(() => false),
@@ -271,6 +272,64 @@ describe('ParameterInputList', () => {
 		expect(await findByText('notice link')).toBeInTheDocument();
 		const link = await findByText('notice link');
 		expect(link.getAttribute('href')).toEqual('notice.n8n.io');
+	});
+
+	it('renders a notice with typeOptions.sectionHeader as a section header, not a notice box', async () => {
+		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+		const sectionHeaderParam: INodeProperties[] = [
+			{
+				displayName: 'Advanced Interactivity',
+				name: 'advancedInteractivityNotice',
+				type: 'notice',
+				default: '',
+				typeOptions: { sectionHeader: true },
+			},
+		];
+		const { getByTestId, queryByText } = renderComponent({
+			props: {
+				parameters: sectionHeaderParam,
+				nodeValues: TEST_NODE_VALUES,
+			},
+		});
+		await flushPromises();
+
+		// Renders as the section-header divider...
+		expect(getByTestId('section-header-title')).toHaveTextContent('Advanced Interactivity');
+		// ...and not as the fallthrough N8nNotice box.
+		expect(queryByText('Note: This is a notice with')).not.toBeInTheDocument();
+	});
+
+	it('indents the fields that follow a section header, ending at the next collection', async () => {
+		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+		const params: INodeProperties[] = [
+			{ displayName: 'Before', name: 'before', type: 'string', default: '' },
+			{
+				displayName: 'Advanced Interactivity',
+				name: 'advancedInteractivityNotice',
+				type: 'notice',
+				default: '',
+				typeOptions: { sectionHeader: true },
+			},
+			{ displayName: 'Toggle', name: 'toggle', type: 'boolean', default: false },
+			{ displayName: 'Field A', name: 'fieldA', type: 'string', default: '' },
+			{ displayName: 'Options', name: 'options', type: 'collection', default: {}, options: [] },
+		];
+		const { container } = renderComponent({
+			props: { parameters: params, nodeValues: TEST_NODE_VALUES },
+		});
+		await flushPromises();
+
+		// Only the two fields between the header and the Options collection are indented.
+		expect(container.querySelectorAll('[data-section-indent="true"]')).toHaveLength(2);
+		expect(
+			container.querySelector('[path="before"]')?.closest('[data-section-indent="true"]'),
+		).toBeNull();
+		expect(
+			container.querySelector('[path="toggle"]')?.closest('[data-section-indent="true"]'),
+		).not.toBeNull();
+		expect(
+			container.querySelector('[path="fieldA"]')?.closest('[data-section-indent="true"]'),
+		).not.toBeNull();
 	});
 
 	it('renders callout correctly', async () => {
@@ -1887,6 +1946,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				isActionOptionVisible: vi.fn(() => true),
@@ -1923,6 +1983,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				isActionOptionVisible: vi.fn(() => true),
@@ -1980,6 +2041,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				isActionOptionVisible: vi.fn(() => true),
@@ -2025,6 +2087,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				isActionOptionVisible: vi.fn(() => true),
@@ -2098,6 +2161,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				isActionOptionVisible: vi.fn(() => true),
@@ -2133,6 +2197,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				isActionOptionVisible: vi.fn(() => true),
@@ -2172,6 +2237,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				isActionOptionVisible: vi.fn(() => true),
@@ -2216,6 +2282,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				isActionOptionVisible: vi.fn(() => true),

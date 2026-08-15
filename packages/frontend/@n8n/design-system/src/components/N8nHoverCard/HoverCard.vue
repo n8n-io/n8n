@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+	HoverCardArrow,
 	HoverCardContent,
 	type HoverCardContentProps,
 	HoverCardPortal,
@@ -37,6 +38,8 @@ interface Props
 	maxHeight?: string;
 	/** Whether to wrap content in N8nScrollArea. */
 	enableScrolling?: boolean;
+	/** Whether to show an arrow pointing to the trigger. */
+	showArrow?: boolean;
 	/** Whether to teleport the hover card to the body element. */
 	teleported?: boolean;
 	/** Additional class name set on HoverCardContent. */
@@ -72,6 +75,7 @@ const props = withDefaults(defineProps<Props>(), {
 	maxWidth: undefined,
 	maxHeight: undefined,
 	enableScrolling: false,
+	showArrow: false,
 	forceMount: false,
 	teleported: true,
 	contentClass: undefined,
@@ -151,6 +155,7 @@ watch(
 				<template v-else>
 					<slot name="content" :close="close" />
 				</template>
+				<HoverCardArrow v-if="showArrow" :class="$style.hoverCardArrow" />
 			</HoverCardContent>
 		</HoverCardPortal>
 	</HoverCardRoot>
@@ -161,6 +166,14 @@ watch(
 
 .hiddenTrigger {
 	display: none;
+}
+
+.hoverCardArrow {
+	fill: var(--background--surface);
+	stroke: var(--border-color);
+	stroke-width: 1px;
+	// Overlap the card by 1px so its outline shadow doesn't cut the arrow off.
+	transform: translateY(-1px);
 }
 
 .hoverCardContent {

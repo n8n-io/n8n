@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
 
 import { useWorkflowDocumentNodeGroups } from './useWorkflowDocumentNodeGroups';
 
@@ -33,6 +34,26 @@ describe('useWorkflowDocumentNodeGroups', () => {
 
 			expect(dirtySpy).not.toHaveBeenCalled();
 			expect(nodeGroups.allGroups.value).toHaveLength(1);
+		});
+
+		it('seeds the description when provided (e.g. paste/import)', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'A', { description: 'Copied over' });
+			expect(group.description).toBe('Copied over');
+			expect(nodeGroups.getGroupById(group.id)?.description).toBe('Copied over');
+		});
+
+		it('caps an over-long seeded description to the server limit', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'A', {
+				description: 'x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 50),
+			});
+			expect(group.description).toHaveLength(GROUP_DESCRIPTION_MAX_LENGTH);
+		});
+
+		it('drops a non-string seeded description (untyped imported JSON)', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'A', {
+				description: 42 as unknown as string,
+			});
+			expect(group.description).toBeUndefined();
 		});
 
 		it('carries startCollapsed on the ADD event so the view can skip auto-expand', () => {
@@ -90,6 +111,42 @@ describe('useWorkflowDocumentNodeGroups', () => {
 
 		it('does nothing for an unknown group id', () => {
 			expect(() => nodeGroups.updateName('missing', 'X')).not.toThrow();
+		});
+	});
+
+	describe('updateDescription', () => {
+		it('sets the description of an existing group', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'G');
+			nodeGroups.updateDescription(group.id, 'What this group does');
+			expect(nodeGroups.getGroupById(group.id)?.description).toBe('What this group does');
+		});
+
+		it('clears the description when given an empty string', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'G');
+			nodeGroups.updateDescription(group.id, 'Something');
+			nodeGroups.updateDescription(group.id, '');
+			expect(nodeGroups.getGroupById(group.id)?.description).toBeUndefined();
+		});
+
+		it('does not fire a change event when the description is unchanged', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'G');
+			nodeGroups.updateDescription(group.id, 'Same');
+			const changeSpy = vi.fn();
+			nodeGroups.onNodeGroupsChange(changeSpy);
+			nodeGroups.updateDescription(group.id, 'Same');
+			expect(changeSpy).not.toHaveBeenCalled();
+		});
+
+		it('does nothing for an unknown group id', () => {
+			expect(() => nodeGroups.updateDescription('missing', 'X')).not.toThrow();
+		});
+
+		it('caps an over-long description to the server limit', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'G');
+			nodeGroups.updateDescription(group.id, 'x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 50));
+			expect(nodeGroups.getGroupById(group.id)?.description).toHaveLength(
+				GROUP_DESCRIPTION_MAX_LENGTH,
+			);
 		});
 	});
 

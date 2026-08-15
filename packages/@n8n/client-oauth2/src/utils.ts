@@ -46,6 +46,17 @@ export function getAuthError(body: {
 }
 
 /**
+ * Parse a string as a URL, returning `null` when it is not parseable.
+ */
+export function tryParseUrl(url: string): URL | null {
+	try {
+		return new URL(url);
+	} catch {
+		return null;
+	}
+}
+
+/**
  * Ensure a value is a string.
  */
 function toString(str: string | null | undefined) {

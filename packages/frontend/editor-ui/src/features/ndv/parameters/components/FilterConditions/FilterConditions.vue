@@ -18,7 +18,7 @@ import {
 	DEFAULT_OPERATOR_VALUE,
 } from './constants';
 import { useI18n } from '@n8n/i18n';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
 import { resolveParameter } from '@/app/composables/useWorkflowHelpers';

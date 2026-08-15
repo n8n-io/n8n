@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import type { GlobalConfig } from '@n8n/config';
 import type { CredentialsEntity, SettingsRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -8,10 +9,26 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { AiService } from '@/services/ai.service';
 
-import { AgentsBuilderSettingsService } from '../agents-builder-settings.service';
-import { BUILDER_NOT_CONFIGURED_CODE, BuilderNotConfiguredError } from '../errors';
+import { BUILDER_NOT_CONFIGURED_CODE, MOONSHOTAI_KIMI_K3_MODEL_ID } from '@n8n/api-types';
 
-const ENV_KEYS = ['N8N_AI_ANTHROPIC_KEY', 'ANTHROPIC_API_KEY'] as const;
+vi.mock('@ai-sdk/openai-compatible', () => ({
+	createOpenAICompatible: (opts: { name: string }) => (model: string) => ({
+		provider: opts.name,
+		modelId: model,
+		specificationVersion: 'v3',
+	}),
+}));
+
+import { AgentsBuilderSettingsService } from '../agents-builder-settings.service';
+import { BuilderNotConfiguredError } from '../errors';
+
+const ENV_KEYS = [
+	'N8N_AI_ANTHROPIC_KEY',
+	'ANTHROPIC_API_KEY',
+	'N8N_INSTANCE_AI_MODEL',
+	'N8N_INSTANCE_AI_MODEL_API_KEY',
+	'N8N_INSTANCE_AI_MODEL_URL',
+] as const;
 
 function makeJwt(exp: number): string {
 	const header = Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64url');
@@ -27,6 +44,9 @@ describe('AgentsBuilderSettingsService', () => {
 	const logger = mock<Logger>();
 	const settingsRepository = mock<SettingsRepository>();
 	const aiService = mock<AiService>();
+	const globalConfig = mock<GlobalConfig>({
+		instanceAi: { model: '' },
+	} as Partial<GlobalConfig>);
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const outboundHttp = mock<OutboundHttp>();
@@ -40,10 +60,12 @@ describe('AgentsBuilderSettingsService', () => {
 		const transport = mock<HttpTransport>();
 		transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 		outboundHttp.transport.mockReturnValue(transport);
+		globalConfig.instanceAi.model = '';
 		service = new AgentsBuilderSettingsService(
 			logger,
 			settingsRepository,
 			aiService,
+			globalConfig,
 			credentialsService,
 			credentialsFinderService,
 			outboundHttp,
@@ -106,6 +128,65 @@ describe('AgentsBuilderSettingsService', () => {
 				{ id: 'user-1' },
 				{ userMessageId: expect.any(String) },
 			);
+		});
+
+		it('mode=default + proxy enabled + Kimi env → Kimi proxy LanguageModel', async () => {
+			mockPersistedSettings({ mode: 'default' });
+			globalConfig.instanceAi.model = MOONSHOTAI_KIMI_K3_MODEL_ID;
+			const proxyToken = makeJwt(Math.floor(Date.now() / 1000) + 600);
+			const getBuilderApiProxyToken = vi
+				.fn()
+				.mockResolvedValue({ accessToken: proxyToken, tokenType: 'Bearer' });
+			aiService.isProxyEnabled.mockReturnValue(true);
+			aiService.getClient.mockResolvedValue({
+				getApiProxyBaseUrl: () => 'https://proxy.example/api',
+				getBuilderApiProxyToken,
+			} as never);
+
+			const result = await service.resolveModelConfig(user);
+
+			expect(result.isProxied).toBe(true);
+			expect(result.config).toMatchObject({
+				provider: 'moonshotai',
+				modelId: 'kimi-k3',
+			});
+			expect(result.tracingProxyConfig?.apiUrl).toBe('https://proxy.example/api/langsmith');
+		});
+
+		it('mode=default + proxy enabled + near-miss Kimi env → Anthropic default model', async () => {
+			mockPersistedSettings({ mode: 'default' });
+			globalConfig.instanceAi.model = 'moonshotai/kimi-k2';
+			const proxyToken = makeJwt(Math.floor(Date.now() / 1000) + 600);
+			aiService.isProxyEnabled.mockReturnValue(true);
+			aiService.getClient.mockResolvedValue({
+				getApiProxyBaseUrl: () => 'https://proxy.example/api',
+				getBuilderApiProxyToken: vi
+					.fn()
+					.mockResolvedValue({ accessToken: proxyToken, tokenType: 'Bearer' }),
+			} as never);
+
+			const result = await service.resolveModelConfig(user);
+
+			expect(result.isProxied).toBe(true);
+			expect(result.config).toMatchObject({ modelId: 'claude-sonnet-4-6' });
+		});
+
+		it('mode=default + proxy disabled + Instance AI env set → returns Instance AI model config', async () => {
+			mockPersistedSettings({ mode: 'default' });
+			aiService.isProxyEnabled.mockReturnValue(false);
+			process.env.N8N_INSTANCE_AI_MODEL = 'custom/Kimi-K3';
+			process.env.N8N_INSTANCE_AI_MODEL_API_KEY = 'custom-key';
+			process.env.N8N_AI_ANTHROPIC_KEY = 'sk-env';
+
+			const result = await service.resolveModelConfig(user);
+
+			expect(result).toEqual({
+				config: {
+					id: 'custom/Kimi-K3',
+					apiKey: 'custom-key',
+				},
+				isProxied: false,
+			});
 		});
 
 		it('mode=default + proxy disabled + env set → returns env-var anthropic config', async () => {
@@ -253,69 +334,13 @@ describe('AgentsBuilderSettingsService', () => {
 		});
 	});
 
-	describe('getStatus', () => {
-		it('mode=custom + resolvable credential → isConfigured: true', async () => {
-			mockPersistedSettings({
-				mode: 'custom',
-				provider: 'anthropic',
-				credentialId: 'cred-1',
-				modelName: 'claude-3-5-sonnet',
-			});
-			credentialsFinderService.findCredentialById.mockResolvedValue(
-				mock<CredentialsEntity>({ id: 'cred-1', type: 'anthropicApi' }),
-			);
-
-			await expect(service.getStatus()).resolves.toEqual({ isConfigured: true });
-		});
-
-		it('mode=custom + missing credential → isConfigured: false', async () => {
-			mockPersistedSettings({
-				mode: 'custom',
-				provider: 'anthropic',
-				credentialId: 'cred-1',
-				modelName: 'claude-3-5-sonnet',
-			});
-			credentialsFinderService.findCredentialById.mockResolvedValue(null);
-
-			await expect(service.getStatus()).resolves.toEqual({ isConfigured: false });
-		});
-
-		it('mode=default + proxy enabled → isConfigured: true', async () => {
-			mockPersistedSettings({ mode: 'default' });
-			aiService.isProxyEnabled.mockReturnValue(true);
-
-			await expect(service.getStatus()).resolves.toEqual({ isConfigured: true });
-		});
-
-		it('mode=default + proxy disabled + env set → isConfigured: true (env-var backstop counts)', async () => {
-			mockPersistedSettings({ mode: 'default' });
-			aiService.isProxyEnabled.mockReturnValue(false);
-			process.env.N8N_AI_ANTHROPIC_KEY = 'sk-env';
-
-			await expect(service.getStatus()).resolves.toEqual({ isConfigured: true });
-		});
-
-		it('mode=default + proxy disabled + ANTHROPIC_API_KEY set → isConfigured: true', async () => {
-			mockPersistedSettings({ mode: 'default' });
-			aiService.isProxyEnabled.mockReturnValue(false);
-			process.env.ANTHROPIC_API_KEY = 'sk-env';
-
-			await expect(service.getStatus()).resolves.toEqual({ isConfigured: true });
-		});
-
-		it('mode=default + proxy disabled + env empty → isConfigured: false', async () => {
-			mockPersistedSettings({ mode: 'default' });
-			aiService.isProxyEnabled.mockReturnValue(false);
-
-			await expect(service.getStatus()).resolves.toEqual({ isConfigured: false });
-		});
-
+	describe('getAdminSettings', () => {
 		it('no persisted settings → defaults to mode=default', async () => {
 			mockPersistedSettings(null);
-			aiService.isProxyEnabled.mockReturnValue(true);
 
-			const status = await service.getStatus();
-			expect(status).toEqual({ isConfigured: true });
+			const result = await service.getAdminSettings();
+
+			expect(result.settings).toEqual({ mode: 'default' });
 		});
 	});
 

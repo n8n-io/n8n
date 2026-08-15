@@ -536,6 +536,18 @@ describe('instanceAi.reducer', () => {
 			expect(state.messages[0].agentTree!.error).toContain('root fallback');
 		});
 
+		test('propagates a structured error code into errorDetails', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, {
+				type: 'error',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { content: 'Have reached end of quota', code: 'quota_exhausted' },
+			});
+
+			expect(state.messages[0].agentTree!.errorDetails?.code).toBe('quota_exhausted');
+		});
+
 		test('falls back to msg.content when no agentTree', () => {
 			const state = makeState({
 				messages: [
@@ -749,6 +761,13 @@ describe('instanceAi.reducer', () => {
 		test('returns planner render hint for create-tasks', () => {
 			expect(getRenderHint('create-tasks')).toBe('planner');
 		});
+
+		test.each(['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'])(
+			'returns skill render hint for %s',
+			(toolName) => {
+				expect(getRenderHint(toolName)).toBe('skill');
+			},
+		);
 
 		test('does not keep the removed plan tool as a render fallback', () => {
 			expect(getRenderHint('plan')).toBe('default');

@@ -1,4 +1,6 @@
 import type {
+	Cron,
+	CronExpression,
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	INode,
@@ -98,6 +100,33 @@ describe('TriggerContext', () => {
 	describe('getExecutionContext', () => {
 		it('should return undefined', () => {
 			expect(triggerContext.getExecutionContext()).toBeUndefined();
+		});
+	});
+
+	describe('scheduling helpers', () => {
+		it('should expose injected scheduling functions through helpers', () => {
+			const registerCron = vi.fn();
+			const context = new TriggerContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+				undefined,
+				undefined,
+				undefined,
+				{ registerCron },
+			);
+
+			const cron: Cron = { expression: '0 0 9 * * *' as CronExpression };
+			const onTick = vi.fn();
+			context.helpers.registerCron(cron, onTick);
+
+			expect(registerCron).toHaveBeenCalledWith(cron, onTick);
+		});
+
+		it('should fall back to the in-memory scheduling functions when none are injected', () => {
+			expect(typeof triggerContext.helpers.registerCron).toBe('function');
 		});
 	});
 });

@@ -11,10 +11,10 @@ export function subAgentsSkill(): RuntimeSkill {
 		name: 'Agent Builder Sub-Agents',
 		description:
 			'Use when configuring inline or saved sub-agent delegation for the target agent, selecting published same-project sub-agents, or changing subAgents.maxChildren.',
-		recommendedTools: ['list_sub_agents', 'ask_question', 'read_config', 'patch_config'],
+		recommendedTools: ['list_sub_agents', 'ask_questions', 'read_config', 'patch_config'],
 		allowedTools: [
 			'list_sub_agents',
-			'ask_question',
+			'ask_questions',
 			'read_config',
 			'patch_config',
 			'write_config',
@@ -55,8 +55,9 @@ subagent.
 1. Call \`list_sub_agents\` to discover published same-project agents that can be
    added. Do not write agent ids from memory, prose, or user-entered free text.
 2. If published agents are available and the user has not named exact agents,
-   call \`ask_question\` with \`allowMultiple: true\`. Use each option's
-   \`value\` as the returned \`agentId\`.
+   call \`ask_questions\` with one \`type: "multi"\` question whose \`options\`
+   are the returned agent names. Map each selected option back to the
+   matching \`agentId\` from the \`list_sub_agents\` result.
 3. If no published agents are available, do not configure saved subagents.
    Inline delegation still works without saved-agent refs.
 4. Determine the parent-owned routing guidance for each selected saved
@@ -72,7 +73,8 @@ Example patch flow:
 
 1. \`list_sub_agents()\`.
 2. If it returns one or more agents and the user has not named exact ones, call
-   \`ask_question({ allowMultiple: true, ... })\` with those agents as options.
+   \`ask_questions({ questions: [{ type: "multi", ... }] })\` with those agents
+   as options.
 3. If the user's request does not make the routing rule clear, ask when each
    selected saved subagent should be used.
 4. \`read_config()\`.

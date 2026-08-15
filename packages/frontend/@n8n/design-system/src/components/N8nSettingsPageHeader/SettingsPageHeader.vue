@@ -55,7 +55,13 @@ if (import.meta.env.DEV) {
 
 <template>
 	<header :class="$style.header">
-		<N8nHeading :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
+		<div v-if="slots.titleTrailing" :class="$style.titleRow">
+			<N8nHeading :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
+				{{ title }}
+			</N8nHeading>
+			<slot name="titleTrailing" />
+		</div>
+		<N8nHeading v-else :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
 			{{ title }}
 		</N8nHeading>
 		<p v-if="hasDescription || showDocsLink" :class="$style.description">
@@ -102,6 +108,12 @@ if (import.meta.env.DEV) {
 
 .title {
 	letter-spacing: var(--letter-spacing--tight);
+}
+
+.titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .description {

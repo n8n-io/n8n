@@ -13,9 +13,11 @@ const props = withDefaults(
 		item: ToolConnectionItem;
 		credentials: ToolCredentialRef[];
 		connectVariant?: 'solid' | 'outline';
+		teleported?: boolean;
 	}>(),
 	{
 		connectVariant: 'solid',
+		teleported: false,
 	},
 );
 
@@ -85,7 +87,7 @@ function createCredential(source: 'direct' | 'dropdown') {
 	} else {
 		emit('new-credential-connect', props.item);
 	}
-	adapter?.openNewCredential(createAuthType.value);
+	adapter?.openNewCredential(createAuthType.value, props.item);
 	isOpen.value = false;
 }
 
@@ -103,7 +105,7 @@ function editCredential(credentialId: string) {
 		align="end"
 		:side-offset="6"
 		:width="'260px'"
-		:teleported="false"
+		:teleported="teleported"
 		:z-index="2000"
 		data-test-id="tool-credential-picker"
 	>
@@ -254,7 +256,7 @@ function editCredential(credentialId: string) {
 	transition: background-color 80ms ease;
 
 	&:hover {
-		background: var(--color--background--light-2);
+		background: var(--color--background--light-1);
 
 		.rowEdit {
 			opacity: 1;
@@ -321,7 +323,7 @@ function editCredential(credentialId: string) {
 	text-align: left;
 
 	&:hover {
-		background: var(--color--background--light-2);
+		background: var(--color--background--light-1);
 	}
 }
 </style>

@@ -14,6 +14,9 @@ export class TokenExchangeConfig {
 	@Env('N8N_TOKEN_EXCHANGE_MAX_TOKEN_TTL')
 	maxTokenTtl: number = 900;
 
+	@Env('N8N_TOKEN_EXCHANGE_EXCLUDE_OWNER')
+	excludeOwner: boolean = true;
+
 	/**
 	 * JSON array of trusted key sources for JWT verification.
 	 * Each entry is validated against `TrustedKeySourceSchema`.

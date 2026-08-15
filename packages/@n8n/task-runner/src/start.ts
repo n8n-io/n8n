@@ -95,7 +95,7 @@ void (async function start() {
 	const { enabled, host, port } = config.baseRunnerConfig.healthcheckServer;
 
 	if (enabled) {
-		const { HealthCheckServer } = await import('./health-check-server');
+		const { HealthCheckServer } = await import('./health-check-server.js');
 		healthCheckServer = new HealthCheckServer();
 		await healthCheckServer.start(host, port);
 	}

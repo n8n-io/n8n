@@ -42,10 +42,8 @@ const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to execute'),
 	executionMode: z
 		.enum(['manual', 'production'])
-		.optional()
-		.default('production')
 		.describe(
-			'Use "manual" to test the current version of the workflow. Use "production" to execute the published (active) version.',
+			'Required execution intent. Use "manual" for testing or validating the current workflow, including tests against live external services. Use "production" only when intentionally running the published workflow as a live execution.',
 		),
 	inputs: z
 		.discriminatedUnion('type', [
@@ -107,7 +105,7 @@ export const createExecuteWorkflowTool = (
 	name: 'execute_workflow',
 	config: {
 		description:
-			'Execute a workflow by ID. Returns the execution ID immediately without waiting for completion. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
+			"Execute a workflow by ID. Returns the execution ID immediately without waiting for completion. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description; pass detailLevel 'execution' to that tool when running the workflow is all you need, since the full graph is not required here.",
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
@@ -202,8 +200,8 @@ export const executeWorkflow = async (
 	workflowsConfig: WorkflowsConfig,
 	workflowPublishedDataService: WorkflowPublishedDataService,
 	workflowId: string,
-	inputs?: z.infer<typeof inputSchema>['inputs'],
-	executionMode: z.infer<typeof inputSchema>['executionMode'] = 'production',
+	inputs: z.infer<typeof inputSchema>['inputs'],
+	executionMode: z.infer<typeof inputSchema>['executionMode'],
 ): Promise<ExecuteWorkflowOutput> => {
 	const workflow = await getMcpWorkflow(
 		workflowId,

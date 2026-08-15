@@ -30,3 +30,30 @@ get:
       $ref: '../../../../shared/spec/responses/forbidden.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'
+post:
+  x-eov-operation-id: createTestRun
+  x-required-scope: testRun:create
+  x-eov-operation-handler: v1/handlers/evaluations/evaluations.handler
+  tags:
+    - Evaluation
+  summary: Trigger a test run
+  description: Start a new evaluation test run for a workflow. The workflow must contain a configured evaluation trigger. Requires the `workflow:execute` project scope in addition to the `testRun:create` API key scope.
+  parameters:
+    - $ref: '../schemas/parameters/testRunWorkflowId.yml'
+  responses:
+    '201':
+      description: Test run triggered.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/testRun.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '402':
+      $ref: '../../../../shared/spec/responses/paymentRequired.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'

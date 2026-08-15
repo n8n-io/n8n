@@ -71,7 +71,7 @@ export class SecurityAudit extends BaseCommand<z.infer<typeof flagsSchema>> {
 			throw new UserError([message, hint].join('. '));
 		}
 
-		const { SecurityAuditService } = await import('@/security-audit/security-audit.service');
+		const { SecurityAuditService } = await import('@/security-audit/security-audit.service.js');
 
 		const result = await Container.get(SecurityAuditService).run(
 			categories,

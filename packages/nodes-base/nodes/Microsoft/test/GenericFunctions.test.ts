@@ -1,6 +1,10 @@
 import { NodeOperationError, type INode } from 'n8n-workflow';
 
-import { validateUserTargetId, type UserTargetMessages } from '../GenericFunctions';
+import {
+	stampItemIndexOnError,
+	validateUserTargetId,
+	type UserTargetMessages,
+} from '../GenericFunctions';
 
 const node: INode = {
 	id: 'test-node',
@@ -157,5 +161,30 @@ describe('Microsoft shared validateUserTargetId', () => {
 			expect(caught?.description).not.toContain('secret');
 			expect(caught?.description).not.toContain('%2');
 		});
+	});
+});
+
+describe('Microsoft shared stampItemIndexOnError', () => {
+	it('stamps context.itemIndex on a NodeError that lacks one, preserving other context keys', () => {
+		const error = new NodeOperationError(node, 'boom');
+		error.context.foo = 'bar';
+
+		expect(stampItemIndexOnError(error, 3)).toBe(error);
+		expect(error.context.itemIndex).toBe(3);
+		expect(error.context.foo).toBe('bar');
+	});
+
+	it('does not overwrite an already-set context.itemIndex', () => {
+		const error = new NodeOperationError(node, 'boom', { itemIndex: 5 });
+
+		expect(stampItemIndexOnError(error, 9)).toBe(error);
+		expect(error.context.itemIndex).toBe(5);
+	});
+
+	it('returns a plain (non-Node) Error as-is, unstamped', () => {
+		const error = new Error('boom');
+
+		expect(stampItemIndexOnError(error, 3)).toBe(error);
+		expect((error as { context?: unknown }).context).toBeUndefined();
 	});
 });

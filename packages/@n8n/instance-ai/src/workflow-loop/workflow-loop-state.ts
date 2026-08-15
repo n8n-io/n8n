@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { resolvedCredentialSchema } from '../tools/workflows/resolved-credential.schema';
+
 // ── Phase / status enums ────────────────────────────────────────────────────
 
 export const workflowLoopPhaseSchema = z.enum([
@@ -190,7 +192,14 @@ export const workflowVerificationReadinessSchema = z.discriminatedUnion('status'
 	}),
 	z.object({
 		status: z.literal('not_verifiable'),
-		reason: z.enum(['not-submitted', 'missing-workflow-id', 'non-mockable-trigger']),
+		// 'non-mockable-trigger' is the legacy spelling of 'no-trigger-node',
+		// kept so stored outcomes from older threads still parse.
+		reason: z.enum([
+			'not-submitted',
+			'missing-workflow-id',
+			'no-trigger-node',
+			'non-mockable-trigger',
+		]),
 		guidance: z.string(),
 	}),
 ]);
@@ -233,9 +242,34 @@ export const nodeSimulationVerdictSchema = z.object({
 	reason: z.string(),
 	confidence: z.enum(['high', 'low']),
 	source: z.enum(['deterministic', 'llm', 'fallback']),
+	/**
+	 * Verification pins this node with zero items so the branch halts there —
+	 * a pinned wait gate on a loop would replay the same decision forever.
+	 * Fixtures and overrides never apply to these nodes.
+	 */
+	haltBranch: z.boolean().optional(),
 });
 
 export type NodeSimulationVerdict = z.infer<typeof nodeSimulationVerdictSchema>;
+
+/**
+ * Scripted verification for a wait gate on a loop: verify runs one pass per
+ * decision with `cutEdge` removed from the run's connections, so every pass
+ * is acyclic no matter which way the decision routes. The gate keeps its
+ * `haltBranch` verdict as the fallback for older readers of this outcome.
+ */
+export const waitGateScriptSchema = z.object({
+	nodeName: z.string(),
+	/** Loop edge (main connection) removed for the scripted passes. */
+	cutEdge: z.object({ source: z.string(), target: z.string() }),
+	/** Response fixtures, one verification pass per entry. */
+	decisions: z
+		.array(z.object({ label: z.string(), items: z.array(z.record(z.unknown())) }))
+		.min(1)
+		.max(3),
+});
+
+export type WaitGateScript = z.infer<typeof waitGateScriptSchema>;
 
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
@@ -269,9 +303,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * from the saved workflow or auto-bound to the sole existing candidate).
 	 * These nodes are already connected — no credential setup is needed for them.
 	 */
-	resolvedCredentialsByNode: z
-		.record(z.array(z.object({ type: z.string(), id: z.string(), name: z.string() })))
-		.optional(),
+	resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
 	/**
 	 * @deprecated Legacy `{_mockedCredential}` marker channel. No longer
 	 * written — `nodeSimulationPlan` + `simulationFixtures` replaced it. Kept
@@ -286,6 +318,8 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * this build, never persisted to the workflow.
 	 */
 	nodeSimulationPlan: z.array(nodeSimulationVerdictSchema).optional(),
+	/** Scripted decisions for wait gates on loops — see `waitGateScriptSchema`. */
+	waitGateScripts: z.array(waitGateScriptSchema).optional(),
 	/**
 	 * LLM-generated mock output for `simulate`-verdict nodes, keyed by node
 	 * name. Items are plain objects (no `{json}` envelope) — the shape
@@ -297,6 +331,18 @@ export const workflowBuildOutcomeSchema = z.object({
 	supportingWorkflowIds: z.array(z.string()).optional(),
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
+	/**
+	 * How the user intends to use this workflow. `one-off`: a concrete effect
+	 * wanted once — verification becomes optional and completion is a live run
+	 * with read-back. Absent means `reusable` (the default flow).
+	 *
+	 * Deliberately a NEW OPTIONAL FIELD rather than a new
+	 * `verificationReadiness` status: previously deployed readers strip unknown
+	 * object keys but hard-fail on unknown union variants — and the loop storage
+	 * parses the whole per-thread map as one unit, so a single unparseable
+	 * outcome would wipe every work-item record on rollback.
+	 */
+	executionIntent: z.enum(['one-off', 'reusable']).optional(),
 	/**
 	 * Deterministic post-build routing verdict. The orchestrator should use this
 	 * instead of reasoning over pin-data internals or trigger allow-lists.
@@ -353,6 +399,9 @@ export const workflowVerificationObligationSchema = z.object({
 	readiness: workflowVerificationReadinessSchema.optional(),
 	setupRequirement: workflowSetupRequirementSchema.optional(),
 	evidence: workflowVerificationEvidenceSchema.optional(),
+	/** Mirrors the outcome's intent so consumers (e.g. the checklist projector)
+	 *  can tell a by-design one-off settlement from a could-not-verify one. */
+	executionIntent: z.enum(['one-off', 'reusable']).optional(),
 	blockingReason: z.string().optional(),
 	updatedAt: z.string(),
 });

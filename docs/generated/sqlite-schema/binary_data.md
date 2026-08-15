@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "binary_data" ("fileId" varchar PRIMARY KEY NOT NULL, "sourceType" varchar(50) NOT NULL, "sourceId" varchar(255) NOT NULL, "data" blob NOT NULL, "mimeType" varchar(255), "fileName" varchar(255), "fileSize" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_binary_data_sourceType" CHECK ("sourceType" IN ('execution', 'chat_message_attachment', 'agent_file')))
+CREATE TABLE "binary_data" ("fileId" varchar PRIMARY KEY NOT NULL, "sourceType" varchar(50) NOT NULL, "sourceId" varchar(255) NOT NULL, "data" blob NOT NULL, "mimeType" varchar(255), "fileName" varchar(255), "fileSize" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_binary_data_sourceType" CHECK ("sourceType" IN ('execution', 'chat_message_attachment', 'agent_file', 'agent_chat_attachment')))
 ```
 
 </details>
@@ -29,7 +29,7 @@ CREATE TABLE "binary_data" ("fileId" varchar PRIMARY KEY NOT NULL, "sourceType" 
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("sourceType" IN ('execution', 'chat_message_attachment', 'agent_file')) |
+| - | CHECK | CHECK ("sourceType" IN ('execution', 'chat_message_attachment', 'agent_file', 'agent_chat_attachment')) |
 | fileId | PRIMARY KEY | PRIMARY KEY (fileId) |
 | sqlite_autoindex_binary_data_1 | PRIMARY KEY | PRIMARY KEY (fileId) |
 

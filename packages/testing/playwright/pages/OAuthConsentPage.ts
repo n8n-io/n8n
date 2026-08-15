@@ -24,6 +24,15 @@ export class OAuthConsentPage extends BasePage {
 		await this.page.getByLabel('I recognize and trust this URL').click();
 	}
 
+	getScopesSelector() {
+		return this.page.getByTestId('consent-scopes');
+	}
+
+	/** Pick the "Read only" preset in the scope picker. */
+	async selectReadOnlyScopes() {
+		await this.clickByTestId('scopes-mode-read-only');
+	}
+
 	async allow() {
 		await this.acknowledgeRedirectUri();
 		await this.clickByTestId('consent-allow-button');

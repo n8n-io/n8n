@@ -8,6 +8,7 @@ import express from 'express';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
+import { SLACK_HITL_WEBHOOK_SUFFIX, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-core';
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
@@ -17,6 +18,8 @@ import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
 import { sendErrorResponse } from '@/response-helper';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
+import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
+import { TelegramInteractionWebhooks } from '@/webhooks/telegram-interaction-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
@@ -258,6 +261,22 @@ export abstract class AbstractServer {
 			this.app.all(
 				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
+			);
+
+			// Slack posts all button clicks to one fixed URL, so the ids travel in the button
+			// value instead of the path.
+			this.app.all(
+				`/${this.endpointWebhookWaiting}${SLACK_HITL_WEBHOOK_SUFFIX}`,
+				createWebhookHandlerFor(Container.get(SlackInteractionWebhooks)),
+			);
+
+			// Register a handler for Telegram HITL callback-button taps. Fixed path (no
+			// per-execution suffix): the reference travels inside the Telegram update body
+			// instead of the URL, since Telegram delivers every registered bot's updates to
+			// one fixed webhook URL.
+			this.app.all(
+				`/${this.endpointWebhookWaiting}${TELEGRAM_HITL_WEBHOOK_SUFFIX}`,
+				createWebhookHandlerFor(Container.get(TelegramInteractionWebhooks)),
 			);
 
 			// Register a handler for live MCP servers

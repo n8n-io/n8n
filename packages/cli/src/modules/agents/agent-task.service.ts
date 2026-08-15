@@ -14,6 +14,11 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import {
+	AgentModificationTelemetryService,
+	type AgentMutationTelemetryContext,
+	diffAgentConfigParts,
+} from './agent-modification-telemetry.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
@@ -25,6 +30,7 @@ import {
 } from './repositories/agent-task-run-lock.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
+import { isUnconfiguredAgent } from './utils/agent-capabilities';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { taskRunMemoryResourceId } from './utils/agent-memory-scope';
 import { generateAgentResourceId } from './utils/agent-resource-id';
@@ -62,6 +68,7 @@ export class AgentTaskService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly publisher: Publisher,
+		private readonly modificationTelemetry: AgentModificationTelemetryService,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -76,35 +83,104 @@ export class AgentTaskService {
 	 * agent's draft config in one transaction. Does not register a cron job —
 	 * scheduling follows the published config (see `registerEnabledForAgent`).
 	 */
-	async create(agentId: string, dto: CreateAgentTaskDto): Promise<AgentTaskDto> {
-		this.assertValidCron(dto.cronExpression);
+	async create(
+		agentId: string,
+		projectId: string,
+		dto: CreateAgentTaskDto,
+		context: AgentMutationTelemetryContext,
+	): Promise<AgentTaskDto> {
+		const [task] = await this.createTasksBatch(agentId, projectId, [dto], context);
+		return task;
+	}
 
-		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+	/**
+	 * Create multiple task bodies and attach their `{ type:'task', id, enabled }`
+	 * refs to the agent's draft config in one transaction. Scoped to
+	 * `projectId` to match the builder tool's existing project check. Does not
+	 * register cron jobs — scheduling follows the published config.
+	 */
+	async createTasks(
+		agentId: string,
+		projectId: string,
+		dtos: CreateAgentTaskDto[],
+		context: AgentMutationTelemetryContext,
+	): Promise<AgentTaskDto[]> {
+		return await this.createTasksBatch(agentId, projectId, dtos, context);
+	}
+
+	/**
+	 * Shared implementation behind `create` and `createTasks`. Rejects an empty
+	 * batch before loading the agent. All-or-nothing: every cron is validated
+	 * before any row is created, so an invalid item leaves the agent untouched.
+	 *
+	 * Task rows and the agent config refs are saved in one transaction.
+	 */
+	private async createTasksBatch(
+		agentId: string,
+		projectId: string,
+		dtos: CreateAgentTaskDto[],
+		context: AgentMutationTelemetryContext,
+	): Promise<AgentTaskDto[]> {
+		if (dtos.length === 0) {
+			throw new BadRequestError('At least one task is required');
+		}
+
+		for (const dto of dtos) {
+			this.assertValidCron(dto.cronExpression);
+		}
+
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (!agent.schema) throw new BadRequestError('Agent has no config yet');
 
-		const taskId = generateAgentResourceId(
-			'task',
-			(agent.schema.tasks ?? []).map((ref) => ref.id),
-		);
-		const task = this.taskRepository.create({
-			id: taskId,
-			agentId,
-			name: dto.name,
-			objective: dto.objective,
-			cronExpression: dto.cronExpression,
+		const previousSchema = agent.schema;
+		const previousIntegrations = agent.integrations ?? [];
+		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+
+		const tasks = dtos.map((dto) => {
+			const taskId = generateAgentResourceId(
+				'task',
+				(agent.schema?.tasks ?? []).map((ref) => ref.id),
+			);
+			this.attachTaskRef(agent, taskId, dto.enabled ?? true);
+			return this.taskRepository.create({
+				id: taskId,
+				agentId,
+				name: dto.name,
+				objective: dto.objective,
+				cronExpression: dto.cronExpression,
+			});
 		});
 
-		this.attachTaskRef(agent, taskId, dto.enabled ?? true);
 		markAgentDraftDirty(agent);
 
 		await this.agentRepository.manager.transaction(async (em) => {
-			await em.save(task);
+			for (const task of tasks) {
+				await em.save(task);
+			}
 			await em.save(agent);
 		});
 
-		this.logger.debug('[AgentTaskService] Created task', { agentId, taskId });
-		return this.toDto(task);
+		this.modificationTelemetry.record({
+			agent,
+			projectId,
+			user: context.user,
+			by: context.modifiedBy,
+			changedParts: diffAgentConfigParts(
+				previousSchema,
+				agent.schema,
+				previousIntegrations,
+				agent.integrations ?? [],
+				{ tasks: true },
+			),
+			wasUnconfigured,
+		});
+
+		this.logger.debug('[AgentTaskService] Created tasks', {
+			agentId,
+			taskIds: tasks.map((task) => task.id),
+		});
+		return tasks.map((task) => this.toDto(task));
 	}
 
 	/**
@@ -114,7 +190,13 @@ export class AgentTaskService {
 	 * (re)publish — the "republish to apply" contract. Manual "Run now" uses the
 	 * draft body immediately.
 	 */
-	async update(agentId: string, taskId: string, dto: UpdateAgentTaskDto): Promise<AgentTaskDto> {
+	async update(
+		agentId: string,
+		projectId: string,
+		taskId: string,
+		dto: UpdateAgentTaskDto,
+		context: AgentMutationTelemetryContext,
+	): Promise<AgentTaskDto> {
 		const task = await this.getOrThrow(agentId, taskId);
 
 		let changed = false;
@@ -137,33 +219,76 @@ export class AgentTaskService {
 		// Nothing actually changed — skip the agent lookup, draft-dirty bump, and writes.
 		if (!changed) return this.toDto(task);
 
-		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const previousSchema = agent.schema ?? null;
+		const previousIntegrations = agent.integrations ?? [];
+		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
 
 		const saved = await this.agentRepository.manager.transaction(async (em) => {
 			const savedTask = await em.save(task);
-			if (agent) {
-				markAgentDraftDirty(agent);
-				await em.save(agent);
-			}
+			markAgentDraftDirty(agent);
+			await em.save(agent);
 			return savedTask;
+		});
+
+		this.modificationTelemetry.record({
+			agent,
+			projectId,
+			user: context.user,
+			by: context.modifiedBy,
+			changedParts: diffAgentConfigParts(
+				previousSchema,
+				agent.schema,
+				previousIntegrations,
+				agent.integrations ?? [],
+				{ tasks: true },
+			),
+			wasUnconfigured,
 		});
 
 		return this.toDto(saved);
 	}
 
 	/** Delete a task body and remove its config ref in one transaction. */
-	async delete(agentId: string, taskId: string): Promise<void> {
+	async delete(
+		agentId: string,
+		projectId: string,
+		taskId: string,
+		context: AgentMutationTelemetryContext,
+	): Promise<void> {
 		const task = await this.getOrThrow(agentId, taskId);
-		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		if (agent?.schema?.tasks) {
+		const previousSchema = agent.schema ?? null;
+		const previousIntegrations = agent.integrations ?? [];
+		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+
+		if (agent.schema?.tasks) {
 			agent.schema.tasks = agent.schema.tasks.filter((ref) => ref.id !== taskId);
 			markAgentDraftDirty(agent);
 		}
 
 		await this.agentRepository.manager.transaction(async (em) => {
 			await em.remove(task);
-			if (agent) await em.save(agent);
+			await em.save(agent);
+		});
+
+		this.modificationTelemetry.record({
+			agent,
+			projectId,
+			user: context.user,
+			by: context.modifiedBy,
+			changedParts: diffAgentConfigParts(
+				previousSchema,
+				agent.schema,
+				previousIntegrations,
+				agent.integrations ?? [],
+				{ tasks: true },
+			),
+			wasUnconfigured,
 		});
 
 		this.logger.debug('[AgentTaskService] Deleted task', { agentId, taskId });

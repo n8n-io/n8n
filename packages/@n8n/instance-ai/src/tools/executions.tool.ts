@@ -5,6 +5,7 @@
 import { Tool } from '@n8n/agents';
 import {
 	buildRunWorkflowSessionGrantKey,
+	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
@@ -142,12 +143,8 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const resumeSchema = z.object({
-	approved: z.boolean(),
-	/** `'session'` — the user chose "always allow"; persist a thread-level grant so
-	 *  subsequent runs skip HITL for this action. */
-	scope: z.enum(['once', 'session']).optional(),
-});
+/** Includes `scope` for "always allow" session grants (see handler). */
+const resumeSchema = instanceAiApprovalResumeSchema;
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -202,6 +199,7 @@ async function handleRun(
 	input: Extract<Input, { action: 'run' }>,
 	resumeData: z.infer<typeof resumeSchema> | undefined,
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>,
+	abortSignal?: AbortSignal,
 ) {
 	if (context.permissions?.runWorkflow === 'blocked') {
 		return {
@@ -292,6 +290,7 @@ async function handleRun(
 	// Approved or always_allow — execute
 	return await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,
+		abortSignal,
 	});
 }
 
@@ -347,7 +346,7 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				case 'get':
 					return await handleGet(context, input);
 				case 'run': {
-					return await handleRun(context, input, ctx.resumeData, ctx.suspend);
+					return await handleRun(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
 				}
 				case 'debug':
 					return await handleDebug(context, input);

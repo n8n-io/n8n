@@ -8,7 +8,7 @@ import CredentialCard from './CredentialCard.vue';
 import type { CredentialsResource } from '@/Interface';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '../credentials.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { ICredentialsResponse } from '../credentials.types';
@@ -33,7 +33,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 
 const showMessage = vi.fn();
 const showError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage,
 		showError,
@@ -129,6 +129,42 @@ describe('CredentialCard', () => {
 			throw new Error('Actions menu not found');
 		}
 		expect(actions).toHaveTextContent('Move');
+	});
+
+	it('should hide the Delete action for an end-user credential without the createEndUser permission', async () => {
+		const data = createCredential({
+			isResolvable: true,
+			scopes: ['credential:delete'],
+		});
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('credential-card-actions');
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActionsOpener);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).not.toHaveTextContent('Delete');
+	});
+
+	it('should show the Delete action for an end-user credential with the createEndUser permission', async () => {
+		const data = createCredential({
+			isResolvable: true,
+			scopes: ['credential:delete', 'credential:createEndUser'],
+		});
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('credential-card-actions');
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActionsOpener);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Delete');
 	});
 
 	it('should set readOnly variant based on prop', () => {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, reactive, ref } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -9,7 +9,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -17,6 +17,10 @@ import type { Project, ProjectListItem } from '@/features/collaboration/projects
 import type { FrontendModuleSettings } from '@n8n/api-types';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
+
+// Reactive so the component's `watch(() => route.query[...])` fires on mutation,
+// matching vue-router's real reactive `route.query` behavior.
+const routeQuery = reactive({}) as Record<string, string | undefined>;
 
 const {
 	experimentMocks,
@@ -40,7 +44,6 @@ const {
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
-		workflowPreviewEnabled: { value: true }, // Experiment cleanup: remove with InstanceAiWorkflowPreviewSuggestionsExperiment
 		splitBelowInputVariant: { value: false },
 		personalizedPromptVariant: { value: undefined as string | undefined },
 		personalizedPromptFormat: { value: null as 'cards' | 'list' | null },
@@ -80,6 +83,7 @@ const {
 	},
 	appSettingsStoreMock: {
 		isCloudDeployment: false,
+		settings: { releaseChannel: 'stable' },
 	},
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({
 		type: 'prompt',
@@ -218,9 +222,6 @@ vi.mock('@/experiments/instanceAiPersonalizedPromptSuggestions', () => ({
 }));
 
 vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
-	useInstanceAiWorkflowPreviewSuggestionsExperiment: () => ({
-		isFeatureEnabled: experimentMocks.workflowPreviewEnabled,
-	}),
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS: workflowPreviewSuggestions,
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION: 'v3-workflow-preview',
 	WorkflowPreviewSuggestions: workflowPreviewSuggestionsComponent,
@@ -265,19 +266,19 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock }),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
-vi.mock('@/app/stores/cloudPlan.store', () => ({
+vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	useCloudPlanStore: () => cloudPlanStoreMock,
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => appSettingsStoreMock,
 }));
 
@@ -291,6 +292,7 @@ vi.mock('uuid', () => ({
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
+	useRoute: () => ({ query: routeQuery }),
 	useRouter: () => ({ push: vi.fn(), replace: replaceMock }),
 }));
 
@@ -411,6 +413,7 @@ describe('InstanceAiEmptyView', () => {
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
+		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		vi.stubGlobal('localStorage', {
 			getItem: vi.fn(),
 			setItem: vi.fn(),
@@ -439,7 +442,6 @@ describe('InstanceAiEmptyView', () => {
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
-		experimentMocks.workflowPreviewEnabled.value = true; // Experiment cleanup: remove with InstanceAiWorkflowPreviewSuggestionsExperiment
 		experimentMocks.splitBelowInputVariant.value = false;
 		experimentMocks.personalizedPromptVariant.value = undefined;
 		experimentMocks.personalizedPromptFormat.value = null;
@@ -458,6 +460,14 @@ describe('InstanceAiEmptyView', () => {
 		vi.useRealTimers();
 		vi.clearAllMocks();
 		vi.unstubAllGlobals();
+	});
+
+	it('resets the browser tab title left behind by the previous thread', () => {
+		document.title = 'Previous thread - n8n';
+
+		renderView();
+
+		expect(document.title).toBe('AI Assistant - n8n');
 	});
 
 	it('passes the fixed suggestions to the empty-state composer', () => {
@@ -601,9 +611,7 @@ describe('InstanceAiEmptyView', () => {
 		vi.useRealTimers();
 	});
 
-	it('passes workflow preview suggestions, component, and catalog version when workflow preview experiment is enabled', () => {
-		experimentMocks.workflowPreviewEnabled.value = true;
-
+	it('passes workflow preview suggestions, component, and catalog version', () => {
 		const { getByTestId, getByText } = renderView();
 
 		expect(getByText('What do you want to automate?')).toBeVisible();
@@ -683,7 +691,10 @@ describe('InstanceAiEmptyView', () => {
 		await fireEvent.click(getByTestId('instance-ai-split-stub-submit'));
 		await flushPromises();
 
-		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID);
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 		expect(store.getOrCreateRuntime).toHaveBeenCalledWith(
 			'thread-placeholder',
 			PERSONAL_PROJECT_ID,
@@ -807,7 +818,10 @@ describe('InstanceAiEmptyView', () => {
 		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
 		await flushPromises();
 
-		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID);
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 		expect(store.getOrCreateRuntime).toHaveBeenCalledWith(
 			'thread-placeholder',
 			PERSONAL_PROJECT_ID,
@@ -818,6 +832,77 @@ describe('InstanceAiEmptyView', () => {
 			params: { threadId: 'thread-placeholder' },
 		});
 		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('attributes syncThread to ?source= from an unsaved-canvas hand-off', async () => {
+		routeQuery.source = 'canvas_action_button';
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
+			source: 'canvas_action_button',
+			origin: 'internal',
+		});
+	});
+
+	it('falls back to assistant_page when ?source= is unknown', async () => {
+		routeQuery.source = 'not-a-real-source';
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
+	});
+
+	it('preselects the project from ?projectId= without starting a thread on mount', async () => {
+		const redirectedProjectId = 'team-project-42';
+		routeQuery.projectId = redirectedProjectId;
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+		await flushPromises();
+
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(replaceMock).not.toHaveBeenCalled();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', redirectedProjectId, {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
+	});
+
+	it('falls back to the personal project when the ?projectId= query is cleared', async () => {
+		const redirectedProjectId = 'team-project-42';
+		routeQuery.projectId = redirectedProjectId;
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+		await flushPromises();
+
+		routeQuery.projectId = undefined;
+		await flushPromises();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 	});
 
 	it('shows a toast and stays on the empty view when syncThread rejects', async () => {

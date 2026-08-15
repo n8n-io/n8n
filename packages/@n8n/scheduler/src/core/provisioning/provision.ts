@@ -1,12 +1,6 @@
-import { InvalidScheduleError } from '../errors';
+import { sameSchedule } from './schedule-identity';
 import type { RunInProvisionTransaction, RunInDeprovisionTransaction } from './transaction';
-import type {
-	DesiredJob,
-	ExistingJob,
-	ProvisionedJob,
-	ProvisionSummary,
-	ScheduleDefinition,
-} from './types';
+import type { DesiredJob, ExistingJob, ProvisionedJob, ProvisionSummary } from './types';
 
 /**
  * Provision a scope's jobs so the stored set matches `desired`, matched by name,
@@ -88,32 +82,4 @@ function holdsDefinition(current: ExistingJob, desired: DesiredJob): boolean {
 		// The clock must be as alive (or deliberately dead) as the fresh plan.
 		current.hasClock === (desired.firstRunAt !== null)
 	);
-}
-
-/**
- * Whether two schedules are the same rule: same kind and same per-kind fields.
- */
-function sameSchedule(a: ScheduleDefinition, b: ScheduleDefinition): boolean {
-	switch (a.kind) {
-		case 'cron':
-			return (
-				b.kind === 'cron' && a.cronExpression === b.cronExpression && a.timezone === b.timezone
-			);
-		case 'recurring_cron':
-			return (
-				b.kind === 'recurring_cron' &&
-				a.cronExpression === b.cronExpression &&
-				a.timezone === b.timezone &&
-				a.recurrenceUnit === b.recurrenceUnit &&
-				a.recurrenceSize === b.recurrenceSize
-			);
-		case 'interval':
-			return b.kind === 'interval' && a.intervalSeconds === b.intervalSeconds;
-		case 'one_off':
-			return b.kind === 'one_off' && a.fireAt.getTime() === b.fireAt.getTime();
-		default: {
-			const exhaustive: never = a;
-			throw new InvalidScheduleError(`Unexpected schedule kind: ${JSON.stringify(exhaustive)}`);
-		}
-	}
 }

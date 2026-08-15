@@ -62,6 +62,9 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			updateRows: vi.fn(),
 			deleteRows: vi.fn(),
 		},
+		workflowTemplateService: {
+			getTemplate: vi.fn(),
+		},
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 		...overrides,
 	};
@@ -76,6 +79,14 @@ describe('createParseFileTool', () => {
 		const context = createMockContext();
 		const tool = createParseFileTool(context);
 		expect(tool.name).toBe('parse-file');
+	});
+
+	it('requires data-table-manager before tabular Data Table imports', () => {
+		const context = createMockContext();
+		const tool = createParseFileTool(context);
+
+		expect(tool.description).toContain('data-table-manager');
+		expect(tool.description).toContain('load_skill');
 	});
 
 	describe('when no attachments are present', () => {

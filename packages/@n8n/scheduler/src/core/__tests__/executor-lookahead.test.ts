@@ -5,7 +5,7 @@ import {
 	type ClaimDueTasksBatch,
 	type ExecutorTaskStore,
 } from '../executor';
-import { Loop, executorLookaheadSeconds } from '../lifecycle';
+import { Loop, pollLookaheadSeconds } from '../lifecycle';
 import type { ClaimedTask } from '../types';
 
 /**
@@ -17,7 +17,7 @@ import type { ClaimedTask } from '../types';
  * interval·(1 + 2·jitterRatio) apart: a tick can land jitterRatio·interval early
  * and the next that much late. The scripted `random` below forces exactly that
  * worst case, so a task due in the tail of the gap is only claimable on the
- * earlier tick if the lookahead ({@link executorLookaheadSeconds}) covers the
+ * earlier tick if the lookahead ({@link pollLookaheadSeconds}) covers the
  * whole span. A lookahead that budgets only one side of the jitter leaves the
  * task to the next tick, by which point it is past due and fires late.
  */
@@ -68,7 +68,10 @@ describe('executor claims far enough ahead to fire on time', () => {
 			);
 		}
 
-		async markStarted(): Promise<number> {
+		async beginDispatch(): Promise<number> {
+			return await Promise.resolve(1);
+		}
+		async markDispatched(): Promise<number> {
 			return await Promise.resolve(1);
 		}
 		async completeTask(): Promise<number> {
@@ -101,15 +104,17 @@ describe('executor claims far enough ahead to fire on time', () => {
 		const registry = new TaskHandlerRegistry();
 		const firedAt = new Map<string, number>();
 		registry.register(TASK_TYPE, {
-			execute: async (t) => {
+			execute: async (t, report) => {
 				firedAt.set(t.id, Date.now());
+				const decision = report.dispatched();
 				await Promise.resolve();
+				return decision;
 			},
 		});
 
 		const executor = new Executor(store, registry, new PrecisionTimer(), {
 			leaseSeconds: 60,
-			lookaheadSeconds: executorLookaheadSeconds(INTERVAL_MS / 1_000, JITTER_RATIO),
+			lookaheadSeconds: pollLookaheadSeconds(INTERVAL_MS / 1_000, JITTER_RATIO),
 			batchSize: 100,
 		});
 

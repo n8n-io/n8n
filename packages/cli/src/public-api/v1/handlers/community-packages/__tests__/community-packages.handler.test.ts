@@ -23,7 +23,7 @@ vi.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
 
 beforeAll(async () => {
-	handler = (await import('../community-packages.handler')) as unknown as typeof handler;
+	handler = (await import('../community-packages.handler.js')) as unknown as typeof handler;
 });
 
 describe('CommunityPackages Handler', () => {
