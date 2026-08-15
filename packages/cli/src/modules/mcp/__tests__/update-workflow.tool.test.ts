@@ -12,6 +12,10 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
+import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
+import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
+import { NON_FATAL_OPERATION_TYPES } from '../tools/workflow-builder/workflow-operations';
+
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -25,10 +29,6 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-
-import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
-import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
-import { NON_FATAL_OPERATION_TYPES } from '../tools/workflow-builder/workflow-operations';
 
 const mockAutoPopulateNodeCredentials = vi.fn();
 const mockTrackAutoassignOutcomes = vi.fn();
@@ -3430,6 +3430,9 @@ describe('update-workflow MCP tool', () => {
 					subworkflowPolicyChecker,
 					workflowPublishedDataService,
 					aiGatewayService,
+					{},
+					logger,
+					postSaveMetrics,
 				);
 
 				const result = await callHandler(
