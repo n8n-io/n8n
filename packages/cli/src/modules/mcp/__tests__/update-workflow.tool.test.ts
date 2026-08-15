@@ -1474,6 +1474,39 @@ describe('update-workflow MCP tool', () => {
 			);
 		});
 
+		test('returns recovered workflow when post-save failure metric throws', async () => {
+			const postSaveError = new Error('workflow.afterUpdate hook failed');
+			const expectedWf = buildExistingWorkflow();
+			expectedWf.nodes.find((n) => n.name === 'B')!.parameters = {
+				url: 'https://new',
+				method: 'GET',
+			};
+			(postSaveMetrics.incrementPostSaveFailure as Mock).mockImplementationOnce(() => {
+				throw new Error('Metrics registration failed');
+			});
+
+			updateMock.mockRejectedValue(postSaveError);
+			findWorkflowMock
+				.mockResolvedValueOnce(buildExistingWorkflow())
+				.mockResolvedValueOnce(expectedWf);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.note).toContain('post-save operation failed');
+			expect(logger.error).toHaveBeenCalledWith(
+				'Post-save metrics failed for update_workflow (recovery path)',
+				expect.objectContaining({ workflowId: 'wf-1', error: expect.any(Error) }),
+			);
+		});
+
 		test('does not recover graph update when persisted graph differs', async () => {
 			const older = new Date('2024-01-01T00:00:00.000Z');
 			const recent = new Date('2024-01-02T00:00:00.000Z');
@@ -1581,6 +1614,44 @@ describe('update-workflow MCP tool', () => {
 			expect(response.note).toContain('post-save operation failed');
 		});
 
+		test.each([
+			{
+				name: 'DEFAULT settings',
+				initialSettings: { availableInMCP: true, saveManualExecutions: false },
+				operationSettings: { saveManualExecutions: 'DEFAULT' },
+			},
+			{
+				name: 'default executionTimeout',
+				initialSettings: { availableInMCP: true, executionTimeout: 120 },
+				operationSettings: { executionTimeout: -1 },
+			},
+		])(
+			'recovers settings-only update that normalizes $name when updatedAt has the same millisecond timestamp',
+			async ({ initialSettings, operationSettings }) => {
+				const sameTimestamp = new Date('2024-01-01T00:00:00.000Z');
+				updateMock.mockRejectedValue(new Error('Post-save hook failed'));
+
+				const preUpdate = buildExistingWorkflow();
+				preUpdate.updatedAt = sameTimestamp;
+				preUpdate.settings = initialSettings;
+				const recovered = buildExistingWorkflow();
+				recovered.updatedAt = sameTimestamp;
+				recovered.settings = { availableInMCP: true };
+
+				findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: operationSettings }],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBeUndefined();
+				expect(response.workflowId).toBe('wf-1');
+				expect(response.note).toContain('post-save operation failed');
+			},
+		);
+
 		test('does not recover tag update when persisted tags do not match expected tags', async () => {
 			const older = new Date('2024-01-01T00:00:00.000Z');
 			const recent = new Date('2024-01-02T00:00:00.000Z');
@@ -1615,6 +1686,39 @@ describe('update-workflow MCP tool', () => {
 				['workflow:read'],
 				expect.objectContaining({ includeTags: true }),
 			);
+		});
+
+		test('recovers tag update when persisted names match expected after trimming and case-deduplication', async () => {
+			// The LLM sometimes supplies tag names with surrounding whitespace or
+			// repeats the same name in different casings. The tag service normalizes
+			// those via dedupeNamesPreservingCase before persisting, so the recovery
+			// check must compare against the normalized expected names — not the raw
+			// input — otherwise a successful save would be reported as failed.
+			const older = new Date('2024-01-01T00:00:00.000Z');
+			const recent = new Date('2024-01-02T00:00:00.000Z');
+			updateMock.mockRejectedValue(new Error('Tag mapping failed'));
+			findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'Production' }]);
+
+			const preUpdate = Object.assign(buildExistingWorkflow(), {
+				updatedAt: older,
+				tags: [],
+			});
+			const recovered = Object.assign(buildExistingWorkflow(), {
+				updatedAt: recent,
+				tags: [{ id: 'tag-0', name: 'Production' }],
+			});
+
+			findWorkflowMock.mockResolvedValueOnce(preUpdate).mockResolvedValueOnce(recovered);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'addTags', names: [' Production ', 'production'] }],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.note).toContain('post-save operation failed');
 		});
 
 		test('reports a genuine failure when persisted nodes differ from expected (concurrent edit or uncommitted update)', async () => {

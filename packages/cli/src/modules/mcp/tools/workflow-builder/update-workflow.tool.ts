@@ -54,6 +54,7 @@ import type { Telemetry } from '@/telemetry';
 import {
 	dropInvalidNodeGroups,
 	makeGetNodeTypeForGrouping,
+	removeDefaultValues,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -713,7 +714,15 @@ function haveSameTagNames(
 		return false;
 	}
 
-	return isEqual(actualTags.map((tag) => tag.name).sort(), [...expectedTagNames].sort());
+	// expectedTagNames still carries the raw LLM-supplied names (with possible
+	// surrounding whitespace and case-duplicates). The tag service normalizes
+	// them via `dedupeNamesPreservingCase` before persisting, so comparing the
+	// raw input against canonical persisted names would always report a mismatch
+	// after a successful save — false negative in the recovery check.
+	return isEqual(
+		actualTags.map((tag) => tag.name).sort(),
+		dedupeNamesPreservingCase(expectedTagNames).sort(),
+	);
 }
 
 // Renames are followed so the key matches the node's name in the post-apply
@@ -1349,7 +1358,13 @@ export const createUpdateWorkflowTool = (
 						? { nodeGroups: workflowUpdateData.nodeGroups }
 						: {}),
 				};
-				expectedSettings = hasSettingsOperations ? workflowUpdateData.settings : undefined;
+				expectedSettings =
+					hasSettingsOperations && workflowUpdateData.settings
+						? removeDefaultValues(
+								{ ...(existingWorkflow.settings ?? {}), ...workflowUpdateData.settings },
+								globalConfig.executions.timeout,
+							)
+						: undefined;
 				expectedTagNames = result.tagNames;
 				updateAttempted = true;
 				const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
@@ -1493,7 +1508,14 @@ export const createUpdateWorkflowTool = (
 								workflowId: persisted.id,
 								error: telemetryError,
 							});
-							postSaveMetrics.incrementPostSaveFailure('update', telemetryError);
+							try {
+								postSaveMetrics.incrementPostSaveFailure('update', telemetryError);
+							} catch (metricsError) {
+								logger.error('Post-save metrics failed for update_workflow (recovery path)', {
+									workflowId: persisted.id,
+									error: metricsError,
+								});
+							}
 						}
 
 						const output: UpdateWorkflowOutput = {
@@ -1504,7 +1526,14 @@ export const createUpdateWorkflowTool = (
 							note: `Workflow was updated successfully, but a post-save operation failed: ${errorMessage}`,
 						};
 
-						postSaveMetrics.incrementPostSaveFailure('update', error);
+						try {
+							postSaveMetrics.incrementPostSaveFailure('update', error);
+						} catch (metricsError) {
+							logger.error('Post-save metrics failed for update_workflow (recovery path)', {
+								workflowId: persisted.id,
+								error: metricsError,
+							});
+						}
 
 						return {
 							content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
