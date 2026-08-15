@@ -99,6 +99,9 @@ onMounted(() => {
 
 <template>
 	<div ref="scrollContainer" :class="$style.feed" data-test-id="workflow-review-activity-feed">
+		<div v-if="$slots.header" :class="$style.header">
+			<slot name="header" />
+		</div>
 		<N8nLoading v-if="loading && entries.length === 0" :loading="true" :rows="3" />
 		<div
 			v-else-if="error && entries.length === 0"
@@ -182,6 +185,12 @@ onMounted(() => {
 	.feed {
 		max-height: 60vh;
 	}
+}
+
+/* Same inset the list gives its entries, so a card here starts on the avatar column. */
+.header {
+	padding-inline: var(--spacing--sm);
+	padding-bottom: var(--spacing--sm);
 }
 
 .list {

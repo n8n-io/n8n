@@ -19,7 +19,7 @@ vi.mock('./WorkflowReviewChangesSection.vue', () => ({
 vi.mock('./WorkflowReviewActivityFeed.vue', () => ({
 	default: {
 		name: 'WorkflowReviewActivityFeed',
-		template: '<div data-test-id="workflow-review-activity-feed" />',
+		template: '<div data-test-id="workflow-review-activity-feed"><slot name="header" /></div>',
 	},
 }));
 
@@ -140,7 +140,9 @@ describe('WorkflowReviewDetailTabs', () => {
 			expect(getByTestId('workflow-review-no-description')).toBeInTheDocument();
 		});
 
-		it('renders the feed and the composer below the description', () => {
+		// The description has to sit inside the feed's scroll container for the two to scroll
+		// together, and the composer has to stay outside it to keep its place at the bottom.
+		it('scrolls the description with the feed and keeps the composer below both', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					review: makeDetail({ description: 'Adds retry logic' }),
@@ -149,19 +151,12 @@ describe('WorkflowReviewDetailTabs', () => {
 				},
 			});
 
-			const panel = getByTestId('workflow-review-activity-panel');
-			const order = [
-				'workflow-review-description',
-				'workflow-review-activity-feed',
-				'workflow-review-comment-composer',
-			].map((testId) => {
-				const element = panel.querySelector(`[data-test-id="${testId}"]`);
-				if (!element) throw new Error(`${testId} is not in the activity panel`);
-				return element;
-			});
+			const feed = getByTestId('workflow-review-activity-feed');
+			const description = getByTestId('workflow-review-description');
+			const composer = getByTestId('workflow-review-comment-composer');
 
-			expect(order[0].compareDocumentPosition(order[1])).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-			expect(order[1].compareDocumentPosition(order[2])).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+			expect(feed).toContainElement(description);
+			expect(feed.compareDocumentPosition(composer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 		});
 
 		it.each([

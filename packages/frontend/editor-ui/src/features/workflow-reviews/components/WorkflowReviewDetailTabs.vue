@@ -85,35 +85,35 @@ const tabOptions = computed(() => [
 				:class="$style.activityPanel"
 				data-test-id="workflow-review-activity-panel"
 			>
-				<div :class="$style.activityHeader">
-					<!-- Carded and labelled so the review's own words are not mistaken for the
-						first entry of the feed below it. -->
-					<div :class="$style.descriptionCard">
-						<N8nText tag="h3" bold color="text-light" size="small">
-							{{ i18n.baseText('workflowReviews.detail.activity.description') }}
-						</N8nText>
-						<N8nText
-							v-if="detail?.description"
-							color="text-base"
-							size="medium"
-							:class="$style.description"
-							data-test-id="workflow-review-description"
-						>
-							{{ detail.description }}
-						</N8nText>
-						<N8nText
-							v-else
-							color="text-light"
-							size="medium"
-							:class="$style.noDescription"
-							data-test-id="workflow-review-no-description"
-						>
-							{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
-						</N8nText>
-					</div>
-				</div>
-
-				<WorkflowReviewActivityFeed :key="review.id" />
+				<WorkflowReviewActivityFeed :key="review.id">
+					<template #header>
+						<!-- Carded and labelled so the review's own words are not mistaken for the
+							first entry of the feed below it. -->
+						<div :class="$style.descriptionCard">
+							<N8nText tag="h3" bold color="text-light" size="small">
+								{{ i18n.baseText('workflowReviews.detail.activity.description') }}
+							</N8nText>
+							<N8nText
+								v-if="detail?.description"
+								color="text-base"
+								size="medium"
+								:class="$style.description"
+								data-test-id="workflow-review-description"
+							>
+								{{ detail.description }}
+							</N8nText>
+							<N8nText
+								v-else
+								color="text-light"
+								size="medium"
+								:class="$style.noDescription"
+								data-test-id="workflow-review-no-description"
+							>
+								{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
+							</N8nText>
+						</div>
+					</template>
+				</WorkflowReviewActivityFeed>
 
 				<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
 			</div>
@@ -200,27 +200,12 @@ const tabOptions = computed(() => [
 	margin-inline-end: auto;
 }
 
-/* Capped so a long description cannot push the composer off screen. */
-.activityHeader {
-	display: flex;
-	flex-shrink: 0;
-	max-height: 30%;
-	padding-bottom: var(--spacing--sm);
-	/* Same inset the feed gives its entries, so the description starts on the avatar column
-		rather than a step to its left. */
-	padding-inline: var(--spacing--sm);
-}
-
-/* Fills the capped header rather than overflowing it, so the card's border and its heading
-	stay put and only the description scrolls. */
 .descriptionCard {
 	@include activity-card;
 
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-	flex: 1;
-	min-height: 0;
 }
 
 .callout {
@@ -232,8 +217,6 @@ const tabOptions = computed(() => [
 .description {
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
-	overflow: auto;
-	min-height: 0;
 }
 
 .noDescription {
