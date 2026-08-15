@@ -196,6 +196,8 @@ const tabOptions = computed(() => [
 	flex: 1;
 	min-height: 0;
 	overflow: hidden;
+	max-width: var(--review-activity--max-width, 48rem);
+	margin-inline-end: auto;
 }
 
 /* Capped so a long description cannot push the composer off screen. */
@@ -256,6 +258,8 @@ const tabOptions = computed(() => [
 	.activityPanel {
 		flex: 0 0 auto;
 		overflow: visible;
+		max-width: none;
+		margin-inline-end: 0;
 	}
 }
 </style>
