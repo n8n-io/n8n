@@ -149,6 +149,9 @@ onMounted(() => {
 					{{ i18n.baseText('generic.retry') }}
 				</N8nButton>
 			</div>
+			<N8nText bold color="text-light" size="medium" :class="$style.header">{{
+				i18n.baseText('workflowReviews.detail.tabs.activity')
+			}}</N8nText>
 			<div
 				ref="list"
 				role="list"
