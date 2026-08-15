@@ -105,6 +105,7 @@ const tabOptions = computed(() => [
 							v-else
 							color="text-light"
 							size="medium"
+							:class="$style.noDescription"
 							data-test-id="workflow-review-no-description"
 						>
 							{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
@@ -231,6 +232,10 @@ const tabOptions = computed(() => [
 	overflow-wrap: anywhere;
 	overflow: auto;
 	min-height: 0;
+}
+
+.noDescription {
+	font-style: italic;
 }
 
 .decisionActions {
