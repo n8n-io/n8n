@@ -695,7 +695,10 @@ describe('enqueueExecution', () => {
 		abortSpy.mockRestore();
 	});
 
-	it('should carry the manual-execution identity into job data', async () => {
+	it.each([
+		{ encryptedRunnerIdentity: 'encrypted-identity-blob' },
+		{ mcpToolInput: { method: 'tools/call', headers: { 'x-user-id': 'user-1' } } },
+	])('should carry %o into job data', async (processData) => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		const scalingService = Container.get(ScalingService);
 
@@ -705,7 +708,7 @@ describe('enqueueExecution', () => {
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
-			encryptedRunnerIdentity: 'encrypted-identity-blob',
+			...processData,
 		});
 		const error = new Error('stop for test purposes');
 
@@ -715,9 +718,7 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(scalingService.addJob).toHaveBeenCalledWith(
-			expect.objectContaining({
-				encryptedRunnerIdentity: 'encrypted-identity-blob',
-			}),
+			expect.objectContaining(processData),
 			expect.any(Object),
 		);
 	});

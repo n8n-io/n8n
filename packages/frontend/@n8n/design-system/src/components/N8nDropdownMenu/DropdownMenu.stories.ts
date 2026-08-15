@@ -2,13 +2,12 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref, computed } from 'vue';
 
-import N8nBadge from '@n8n/design-system/components/N8nBadge/Badge.vue';
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
-import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import N8nKeyboardShortcut from '@n8n/design-system/components/N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
-import N8nTooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
-import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
-
+import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
+import N8nBadge from '../N8nBadge/Badge.vue';
+import N8nButton from '../N8nButton/Button.vue';
+import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 import { useDropdownSearch } from './composables/useDropdownSearch';
 import type { DropdownMenuItemProps } from './DropdownMenu.types';
 import DropdownMenu from './DropdownMenu.vue';

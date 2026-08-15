@@ -11,10 +11,17 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import {
+	findSetupHintProblems,
+	INVALID_SETUP_HINT_MESSAGE,
+	setupHintField,
+	TEMPLATABLE_PLAIN_AUTH_TYPES,
+} from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
+	applyCredentialHints,
 	applyNodeChanges,
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
@@ -24,6 +31,10 @@ import {
 	summarizeWorkflowStructure,
 } from './workflows/summarize-workflow';
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
+import {
+	grantSessionWorkflowUpdate,
+	canSkipWorkflowUpdateHitl,
+} from './workflows/workflow-build-context';
 import { refreshWorkflowSourceFileBindingFromWorkflow } from './workflows/workflow-file-bindings';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
@@ -105,6 +116,27 @@ const setupAction = z.object({
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+	credentialHints: z
+		.array(
+			setupHintField.extend({
+				nodeName: z
+					.string()
+					.optional()
+					.describe(
+						'Restrict the recipe to one node — needed when several nodes use Simplified Custom Auth for different services.',
+					),
+			}),
+		)
+		.optional()
+		.describe(
+			'Recipes for the Simplified Custom Auth credentials the user will create during setup: the card pre-fills the template and asks only for the placeholder values. Provide one per templated credential. REQUIRED before composing: load the `credential-recipe-research` skill and execute its lookup procedure — the template and testUrl must come from provider pages fetched there, never from memory.',
+		),
+	allowPlainGenericAuth: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
+		),
 });
 
 const validateAction = z.object({
@@ -177,16 +209,22 @@ const updateVersionAction = z.object({
 
 // ── Suspend / resume schemas ────────────────────────────────────────────────
 
-const confirmationSuspendSchema = setupSuspendSchema.pick({
-	requestId: true,
-	message: true,
-	severity: true,
-});
+const confirmationSuspendSchema = setupSuspendSchema
+	.pick({
+		requestId: true,
+		message: true,
+		severity: true,
+		workflowId: true,
+	})
+	.partial({ workflowId: true });
 
 const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
-// Resume: union of standard confirmation (approved) and setup-specific fields.
-const resumeSchema = setupResumeSchema;
+// Resume: setup-specific fields plus optional session scope for generic approvals
+// (e.g. update "always allow" → persist `workflows:update:<id>`).
+const resumeSchema = setupResumeSchema.extend({
+	scope: z.enum(['once', 'session']).optional(),
+});
 
 interface WorkflowToolContext {
 	resumeData: z.infer<typeof resumeSchema> | undefined;
@@ -445,7 +483,9 @@ async function handleGetAsCode(
 	const { generateWorkflowCode } = await import('@n8n/workflow-sdk');
 	try {
 		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
-		const code = generateWorkflowCode(json);
+		// Emit node ids: this code is edited and built back into the same saved workflow,
+		// and carrying the ids through is what keeps node identity stable.
+		const code = generateWorkflowCode({ workflow: json, includeNodeIds: true });
 		// Historical reads must not advance the optimistic-concurrency lock.
 		if (!input.versionId) {
 			await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
@@ -604,6 +644,7 @@ async function handleSetupTestTrigger(
 	const refreshedRequests = await analyzeWorkflow(context, input.workflowId, {
 		[testTriggerNode]: triggerTestResult,
 	});
+	applyCredentialHints(refreshedRequests, input.credentialHints);
 
 	// Generate a new requestId so the frontend doesn't filter it
 	// as already-resolved from the previous suspend cycle
@@ -679,9 +720,16 @@ async function handleSetupApply(
 		const mergedFailedNodes = allFailedNodes.length > 0 ? allFailedNodes : undefined;
 
 		if (pendingRequests.length > 0) {
+			// Carry the parameter issues, not just the node name: a value the connected
+			// credential can't reach (e.g. a model outside the free-credits allowlist) is
+			// only actionable if the caller learns which value was wrong, so it can replace
+			// it and say what it changed.
 			const skippedNodes = pendingRequests.map((r) => ({
 				nodeName: r.node.name,
 				credentialType: r.credentialType,
+				...(r.parameterIssues && Object.keys(r.parameterIssues).length > 0
+					? { parameterIssues: r.parameterIssues }
+					: {}),
 			}));
 			return {
 				success: true,
@@ -728,6 +776,48 @@ async function handleSetup(
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
 		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+
+		// Validated against the workflow's node URLs so a recipe can't set one of
+		// the workflow's own (action) endpoints as its probe testUrl.
+		const nodeUrls = setupRequests.map((request) => request.node.parameters?.url);
+		const hintProblems = (input.credentialHints ?? []).flatMap((hint) =>
+			findSetupHintProblems(hint, { nodeUrls }).map((problem) =>
+				hint.nodeName ? `${hint.nodeName}: ${problem}` : problem,
+			),
+		);
+		if (hintProblems.length > 0) {
+			return {
+				error: 'invalid_credential_hints',
+				message: INVALID_SETUP_HINT_MESSAGE,
+				problems: hintProblems,
+			};
+		}
+
+		applyCredentialHints(setupRequests, input.credentialHints);
+
+		// A provider documenting `Authorization: Bearer <token>` reliably lures the
+		// model into httpBearerAuth despite the skill guidance, so new plain generic
+		// credentials on HTTP Request nodes are rejected at the tool boundary.
+		if (!input.allowPlainGenericAuth) {
+			const plainAuthNodes = setupRequests.filter(
+				(request) =>
+					request.node.type === 'n8n-nodes-base.httpRequest' &&
+					request.credentialType !== undefined &&
+					TEMPLATABLE_PLAIN_AUTH_TYPES.has(request.credentialType) &&
+					(request.existingCredentials ?? []).length === 0,
+			);
+			if (plainAuthNodes.length > 0) {
+				return {
+					error: 'plain_generic_auth',
+					message:
+						'These HTTP Request nodes use a plain generic auth type for a credential that does not exist yet. Change each node\'s genericAuthType to "httpTemplatedCustomAuth" and re-run setup with a credentialHints recipe — even when the provider documents `Authorization: Bearer <token>`, express it as a template ({"headers":{"Authorization":"Bearer {{api_key}}"}}). Only if the user explicitly asked for the plain type (or the workflow pre-existed with it), re-call setup with allowPlainGenericAuth: true.',
+					nodes: plainAuthNodes.map((request) => ({
+						nodeName: request.node.name,
+						credentialType: request.credentialType,
+					})),
+				};
+			}
+		}
 
 		if (setupRequests.length === 0) {
 			return { success: true, reason: 'No nodes require setup.' };
@@ -815,7 +905,10 @@ async function handleUpdate(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
+	// Skip HITL for session-created or always-allowed workflows; others still need approval.
+	const needsApproval =
+		context.permissions?.updateWorkflow !== 'always_allow' &&
+		!canSkipWorkflowUpdateHitl(context, input.workflowId);
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
@@ -823,11 +916,19 @@ async function handleUpdate(
 			requestId: nanoid(),
 			message: `Update workflow "${workflowName}" (ID: ${input.workflowId})?`,
 			severity: 'warning' as const,
+			// Carried on the confirmation so the UI can scope "always allow" per workflow
+			// even if tool-call args are incomplete on resume.
+			workflowId: input.workflowId,
 		});
 	}
 
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
+	}
+
+	// "Always allow" — persist so later edits of this workflow skip HITL.
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await grantSessionWorkflowUpdate(context, input.workflowId);
 	}
 
 	if (!isWorkflowJson(input.workflow)) {

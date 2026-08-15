@@ -8,7 +8,7 @@ import {
 	N8nSettingsPageHeader,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableOptions } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -134,6 +134,7 @@ const onUpdateDescription = (workflow: WorkflowListItem) => {
 		name: WORKFLOW_DESCRIPTION_MODAL_KEY,
 		data: {
 			workflowId: workflow.id,
+			workflowName: workflow.name,
 			workflowDescription: workflow.description ?? '',
 			onSave: (updatedDescription: string | null) => {
 				const index = availableWorkflows.value.findIndex((w) => w.id === workflow.id);
