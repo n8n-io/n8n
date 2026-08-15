@@ -1214,7 +1214,7 @@ importers:
         version: 1.0.1(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.21.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.18(fd28358601308888b70560be7ff74ccb)
+        version: 1.1.18(02e35b492b4e3d8ab2e163af799276a6)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.21.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -1339,8 +1339,8 @@ importers:
         specifier: 4.18.0
         version: 4.18.0(patch_hash=c9c1aefdc3c11c84b56f0e446f4100ee59911491de392196faae26946b910b39)
       mammoth:
-        specifier: 1.11.0
-        version: 1.11.0
+        specifier: 1.12.1
+        version: 1.12.1
       mime-types:
         specifier: 'catalog:'
         version: 3.0.2
@@ -13845,8 +13845,8 @@ packages:
   makeerror@1.0.12:
     resolution: {integrity: sha512-JmqCvUhmt43madlpFzG4BQzG2Z3m6tvQDNKdClZnO3VbIudJYmxsT0FNJMeiB2+JTSlTQTSbU8QdesVmwJcmLg==}
 
-  mammoth@1.11.0:
-    resolution: {integrity: sha512-BcEqqY/BOwIcI1iR5tqyVlqc3KIaMRa4egSoK83YAVrBf6+yqdAAbtUcFDCWX8Zef8/fgNZ6rl4VUv+vVX8ddQ==}
+  mammoth@1.12.1:
+    resolution: {integrity: sha512-nCH9KKjWi3jQ+i8bUKs7k1yrXtSEGpWgF8IYkzsFMcbn+5S6l4bZEBbyx2hOQErFiXPuAs9RPa6qjXVxhyx/8g==}
     engines: {node: '>=12.0.0'}
     hasBin: true
 
@@ -22142,7 +22142,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.1.18(fd28358601308888b70560be7ff74ccb)':
+  '@langchain/community@1.1.18(02e35b492b4e3d8ab2e163af799276a6)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.56.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@16.6.1)(encoding@0.1.13)(openai@6.21.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -22185,7 +22185,7 @@ snapshots:
       ioredis: 5.3.2
       jsdom: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       lodash: 4.18.0(patch_hash=c9c1aefdc3c11c84b56f0e446f4100ee59911491de392196faae26946b910b39)
-      mammoth: 1.11.0
+      mammoth: 1.12.1
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
       mysql2: 3.23.1(@types/node@20.19.21)
       pdf-parse: 1.1.1
@@ -31797,7 +31797,7 @@ snapshots:
     dependencies:
       tmpl: 1.0.5
 
-  mammoth@1.11.0:
+  mammoth@1.12.1:
     dependencies:
       '@xmldom/xmldom': 0.8.14
       argparse: 1.0.10
