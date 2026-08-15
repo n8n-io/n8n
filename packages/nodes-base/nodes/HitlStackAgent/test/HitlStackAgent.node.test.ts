@@ -40,6 +40,7 @@ const baseParams = {
 	url: 'http://localhost:3100/hitl',
 	sendHeaders: false,
 	limitWaitTime: false,
+	includeContext: false,
 	options: {},
 };
 
@@ -67,6 +68,59 @@ describe('HITLStackAgent Node — registration', () => {
 		expect(ctx.putExecutionToWait).toHaveBeenCalledWith(WAIT_INDEFINITELY);
 		// Only surfaces if the wait times out; a callback replaces it via webhook()
 		expect(result[0]).toEqual([{ json: { customer: 'acme' } }]);
+	});
+
+	it('captures what upstream nodes produced when context is enabled', async () => {
+		const ctx = setupExecuteFunctions({ ...baseParams, includeContext: true, contextDepth: 2 });
+		ctx.getParentNodes.mockReturnValue([
+			{ name: 'AI Agent', type: 'n8n-nodes-base.agent', typeVersion: 1, disabled: false },
+			{ name: 'Chat Trigger', type: 'n8n-nodes-base.chatTrigger', typeVersion: 1, disabled: false },
+		]);
+		ctx.getWorkflowDataProxy.mockReturnValue({
+			$items: (name: string) =>
+				name === 'AI Agent'
+					? [{ json: { output: 'draft A' } }]
+					: [{ json: { chatInput: 'summarise this' } }],
+		} as never);
+		ctx.helpers.httpRequest.mockResolvedValue({});
+
+		await new HitlStackAgent().execute.call(ctx);
+
+		const body = ctx.helpers.httpRequest.mock.calls[0][0].body as IDataObject;
+		expect(body.trail).toEqual([
+			{
+				node: 'AI Agent',
+				type: 'n8n-nodes-base.agent',
+				executed: true,
+				output: { output: 'draft A' },
+			},
+			{
+				node: 'Chat Trigger',
+				type: 'n8n-nodes-base.chatTrigger',
+				executed: true,
+				output: { chatInput: 'summarise this' },
+			},
+		]);
+	});
+
+	it('marks an upstream node that never ran, without failing the registration', async () => {
+		const ctx = setupExecuteFunctions({ ...baseParams, includeContext: true, contextDepth: 2 });
+		ctx.getParentNodes.mockReturnValue([
+			{ name: 'Skipped Branch', type: 'n8n-nodes-base.set', typeVersion: 1, disabled: false },
+		]);
+		ctx.getWorkflowDataProxy.mockReturnValue({
+			$items: () => {
+				throw new Error("Node 'Skipped Branch' hasn't been executed");
+			},
+		} as never);
+		ctx.helpers.httpRequest.mockResolvedValue({});
+
+		await new HitlStackAgent().execute.call(ctx);
+
+		const body = ctx.helpers.httpRequest.mock.calls[0][0].body as IDataObject;
+		expect(body.trail).toEqual([
+			{ node: 'Skipped Branch', type: 'n8n-nodes-base.set', executed: false, output: null },
+		]);
 	});
 
 	it('rejects more than one input item before making any call', async () => {

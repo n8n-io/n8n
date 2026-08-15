@@ -124,6 +124,26 @@ export class HitlStackAgent implements INodeType {
 				],
 			},
 			{
+				displayName: 'Include Upstream Context',
+				name: 'includeContext',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to also send what the preceding nodes produced. A reviewer needs the question, not just the answer — and a revise round needs the original input to compose from.',
+			},
+			{
+				displayName: 'Context Depth',
+				name: 'contextDepth',
+				type: 'number',
+				typeOptions: { minValue: 1 },
+				default: 2,
+				displayOptions: {
+					show: { includeContext: [true] },
+				},
+				description:
+					'How many nodes back to walk. 2 covers an AI Agent and whatever fed it. Raising this grows the payload and sends more of the workflow to the endpoint.',
+			},
+			{
 				displayName: 'Limit Wait Time',
 				name: 'limitWaitTime',
 				type: 'boolean',
@@ -189,19 +209,25 @@ export class HitlStackAgent implements INodeType {
 			allowUnauthorizedCerts?: boolean;
 		};
 
+		const body: IDataObject = {
+			executionId: this.getExecutionId(),
+			workflowId: this.getWorkflow().id ?? 'unknown',
+			nodeName: this.getNode().name,
+			resumeUrl: this.getSignedResumeUrl(),
+			data: items[0].json,
+		};
+
+		if (this.getNodeParameter('includeContext', 0, true) as boolean) {
+			body.trail = buildTrail(this, this.getNodeParameter('contextDepth', 0, 2) as number);
+		}
+
 		const requestOptions: IHttpRequestOptions = {
 			url,
 			method: 'POST',
 			json: true,
 			timeout: options.timeout ?? 10000,
 			skipSslCertificateValidation: options.allowUnauthorizedCerts ?? false,
-			body: {
-				executionId: this.getExecutionId(),
-				workflowId: this.getWorkflow().id ?? 'unknown',
-				nodeName: this.getNode().name,
-				resumeUrl: this.getSignedResumeUrl(),
-				data: items[0].json,
-			} as IDataObject,
+			body,
 		};
 
 		if (this.getNodeParameter('sendHeaders', 0, false) as boolean) {
@@ -251,4 +277,30 @@ export class HitlStackAgent implements INodeType {
 			workflowData: [[{ json: body }]],
 		};
 	}
+}
+
+/**
+ * Walks back from the HITL node and records what each ancestor produced, nearest
+ * first. The reviewer needs the question alongside the answer, and a revise round
+ * needs the agent's original input to compose the next prompt from.
+ */
+function buildTrail(ctx: IExecuteFunctions, depth: number): IDataObject[] {
+	const proxy = ctx.getWorkflowDataProxy(0);
+	const parents = ctx.getParentNodes(ctx.getNode().name, {
+		connectionType: NodeConnectionTypes.Main,
+		depth,
+	});
+
+	return parents.map(({ name, type, disabled }) => {
+		const entry: IDataObject = { node: name, type, executed: !disabled };
+		try {
+			// A node that never ran on this branch throws rather than returning []
+			const items = proxy.$items(name);
+			entry.output = items[0]?.json ?? null;
+		} catch {
+			entry.executed = false;
+			entry.output = null;
+		}
+		return entry;
+	});
 }
