@@ -1,10 +1,11 @@
+import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IExecuteFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { gristApiRequest } from '../GenericFunctions';
 import { Grist } from '../Grist.node';
@@ -83,7 +84,107 @@ describe('Execute Grist Node', () => {
 			},
 			{},
 		);
+		// Fields sent happen to equal the full input item here, since autoMap maps every key.
 		expect(result).toEqual(items.map((item, i) => ({ json: item.json, pairedItem: { item: i } })));
+	});
+
+	it('includes the record id when the API returns recordIds', async () => {
+		vi.mocked(gristApiRequest).mockResolvedValue({ recordIds: [[101], [102], [103]] });
+
+		const result = await run(((name: string, i: number) => {
+			switch (name) {
+				case 'operation':
+					return 'upsert';
+				case 'docId':
+					return 'test-doc-id';
+				case 'tableId':
+					return 'test-table-id';
+				case 'dataToSend':
+					return 'autoMapInputs';
+				case 'inputsToIgnore':
+					return '';
+				case 'onMany':
+					return 'first';
+				case 'upsertCriteria':
+					return { properties: [{ fieldId: 'Repo', fieldValue: items[i].json.Repo }] };
+				default:
+					throw new Error(`Unexpected getNodeParameter call: ${name}`);
+			}
+		}) as IExecuteFunctions['getNodeParameter']);
+
+		expect(result).toEqual([
+			{ json: { id: 101, ...items[0].json }, pairedItem: { item: 0 } },
+			{ json: { id: 102, ...items[1].json }, pairedItem: { item: 1 } },
+			{ json: { id: 103, ...items[2].json }, pairedItem: { item: 2 } },
+		]);
+	});
+
+	it('emits one error item paired with every input item when continueOnFail is set', async () => {
+		vi.mocked(gristApiRequest).mockRejectedValue(new Error('Grist API is down'));
+
+		const ctx = mockDeep<IExecuteFunctions>();
+		ctx.getInputData.mockReturnValue(items);
+		ctx.continueOnFail.mockReturnValue(true);
+		ctx.helpers.returnJsonArray.mockImplementation(returnJsonArray);
+		ctx.helpers.constructExecutionMetaData.mockImplementation(constructExecutionMetaData);
+		ctx.getNodeParameter.mockImplementation(((name: string, i: number) => {
+			switch (name) {
+				case 'operation':
+					return 'upsert';
+				case 'docId':
+					return 'test-doc-id';
+				case 'tableId':
+					return 'test-table-id';
+				case 'dataToSend':
+					return 'autoMapInputs';
+				case 'inputsToIgnore':
+					return '';
+				case 'onMany':
+					return 'first';
+				case 'upsertCriteria':
+					return { properties: [{ fieldId: 'Repo', fieldValue: items[i].json.Repo }] };
+				default:
+					throw new Error(`Unexpected getNodeParameter call: ${name}`);
+			}
+		}) as IExecuteFunctions['getNodeParameter']);
+
+		const [result] = await new Grist().execute.call(ctx);
+
+		// One combined API call for the whole batch means one error, paired with
+		// every input item (array-form pairedItem), not an error per item.
+		expect(result).toHaveLength(1);
+		expect(result[0].json.error).toBe('Grist API is down');
+		expect(result[0].pairedItem).toEqual(items.map((_, i) => ({ item: i })));
+	});
+
+	it('rethrows when continueOnFail is not set', async () => {
+		vi.mocked(gristApiRequest).mockRejectedValue(new Error('Grist API is down'));
+
+		const ctx = mock<IExecuteFunctions>();
+		ctx.getInputData.mockReturnValue(items);
+		ctx.continueOnFail.mockReturnValue(false);
+		ctx.getNodeParameter.mockImplementation(((name: string, i: number) => {
+			switch (name) {
+				case 'operation':
+					return 'upsert';
+				case 'docId':
+					return 'test-doc-id';
+				case 'tableId':
+					return 'test-table-id';
+				case 'dataToSend':
+					return 'autoMapInputs';
+				case 'inputsToIgnore':
+					return '';
+				case 'onMany':
+					return 'first';
+				case 'upsertCriteria':
+					return { properties: [{ fieldId: 'Repo', fieldValue: items[i].json.Repo }] };
+				default:
+					throw new Error(`Unexpected getNodeParameter call: ${name}`);
+			}
+		}) as IExecuteFunctions['getNodeParameter']);
+
+		await expect(new Grist().execute.call(ctx)).rejects.toThrow('Grist API is down');
 	});
 
 	it('sends explicitly defined fields for all items in one batched request', async () => {
@@ -135,7 +236,17 @@ describe('Execute Grist Node', () => {
 			},
 			{},
 		);
-		expect(result).toEqual(items.map((item, i) => ({ json: item.json, pairedItem: { item: i } })));
+		expect(result).toEqual([
+			{ json: { Description: 'LINE Bot', Updated_At: '2025-08-11' }, pairedItem: { item: 0 } },
+			{
+				json: { Description: 'MIDI Controller', Updated_At: '2025-08-11' },
+				pairedItem: { item: 1 },
+			},
+			{
+				json: { Description: 'Mock API Endpoints', Updated_At: '2025-08-11' },
+				pairedItem: { item: 2 },
+			},
+		]);
 	});
 });
 
