@@ -15,6 +15,10 @@
 	gap: var(--spacing--2xs);
 }
 
+/* An avatar is shorter than a line of text, so the row's `flex-start` hangs it above the name.
+	Half the leading puts it back on that line — and only that line, so it stays put when a note
+	or a wrapped headline makes the row taller. Every entry kind must include this; without it
+	the avatar reads as sitting too high. */
 @mixin activity-avatar {
 	flex-shrink: 0;
 	margin-block-start: calc(

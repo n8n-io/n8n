@@ -99,6 +99,7 @@ const actorName = computed(() =>
 		<N8nAvatar
 			v-if="content.namesActor"
 			size="xxsmall"
+			:class="$style.avatar"
 			:first-name="entry.createdBy?.firstName"
 			:last-name="entry.createdBy?.lastName"
 		/>
@@ -155,9 +156,11 @@ const actorName = computed(() =>
 @use '../activity-card' as *;
 
 .entry {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--2xs);
+	@include activity-row;
+}
+
+.avatar {
+	@include activity-avatar;
 }
 
 .avatarSpacer {
@@ -186,9 +189,9 @@ const actorName = computed(() =>
 	@include activity-card;
 }
 
-/* Figma asks for 20px on 14px text; no line-height token gives that ratio. */
+/* The same line the avatar beside it is centred on, so the two cannot drift apart. */
 .line {
-	line-height: 20px;
+	line-height: var(--review-activity--line-height);
 }
 
 .body {
