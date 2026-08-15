@@ -90,7 +90,7 @@ const tabOptions = computed(() => [
 						<!-- Carded and labelled so the review's own words are not mistaken for the
 							first entry of the feed below it. -->
 						<div :class="$style.descriptionCard">
-							<N8nText tag="h3" bold color="text-light" size="small">
+							<N8nText tag="h3" bold color="text-light" size="medium">
 								{{ i18n.baseText('workflowReviews.detail.activity.description') }}
 							</N8nText>
 							<N8nText
