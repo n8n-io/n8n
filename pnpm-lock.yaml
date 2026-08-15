@@ -772,7 +772,7 @@ overrides:
   picomatch@4: 4.0.4
   avsc: 5.7.9
   brace-expansion@<2.1.4: 2.1.4
-  '@xmldom/xmldom': 0.8.13
+  '@xmldom/xmldom': 0.8.14
   yaml@<=2.8.3: 2.8.3
   axios: 1.18.0
   fast-xml-builder: 1.2.1
@@ -13858,8 +13858,8 @@ packages:
     resolution: {integrity: sha512-CJDxIgE5I0FH+ttq/Fxy6nRpxP70+e2O048EPe85J2use3XKdatVM7dDVvFNjQudd9B49NPoZ+8PG49zj4Er8Q==}
     engines: {node: '>= 16'}
 
-  '@xmldom/xmldom@0.8.13':
-    resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
+  '@xmldom/xmldom@0.8.14':
+    resolution: {integrity: sha512-T4EDRUBVZYRldYApjEJiU0e1stYWaRAX7CuSnKzrpwdZKo53zGV8/pqfzV6FfwNl9YThD2OumQYvqtvjvgG7aQ==}
     engines: {node: '>=10.0.0'}
 
   '@yuku-codegen/binding-darwin-arm64@0.6.1':
@@ -23531,7 +23531,7 @@ snapshots:
 
   '@authenio/xml-encryption@2.0.2':
     dependencies:
-      '@xmldom/xmldom': 0.8.13
+      '@xmldom/xmldom': 0.8.14
       escape-html: 1.0.3
       xpath: 0.0.32
 
@@ -31913,7 +31913,7 @@ snapshots:
 
   '@xmldom/is-dom-node@1.0.1': {}
 
-  '@xmldom/xmldom@0.8.13': {}
+  '@xmldom/xmldom@0.8.14': {}
 
   '@yuku-codegen/binding-darwin-arm64@0.6.1':
     optional: true
@@ -37221,7 +37221,7 @@ snapshots:
 
   mammoth@1.12.0:
     dependencies:
-      '@xmldom/xmldom': 0.8.13
+      '@xmldom/xmldom': 0.8.14
       argparse: 1.0.10
       base64-js: 1.5.1
       bluebird: 3.4.7
@@ -39206,7 +39206,7 @@ snapshots:
 
   plist@3.1.0:
     dependencies:
-      '@xmldom/xmldom': 0.8.13
+      '@xmldom/xmldom': 0.8.14
       base64-js: 1.5.1
       xmlbuilder: 15.1.1
 
@@ -40418,7 +40418,7 @@ snapshots:
   samlify@2.13.0:
     dependencies:
       '@authenio/xml-encryption': 2.0.2
-      '@xmldom/xmldom': 0.8.13
+      '@xmldom/xmldom': 0.8.14
       node-rsa: 2.0.0
       xml: 1.0.1
       xml-crypto: 6.1.2
@@ -43000,7 +43000,7 @@ snapshots:
   xml-crypto@6.1.2:
     dependencies:
       '@xmldom/is-dom-node': 1.0.1
-      '@xmldom/xmldom': 0.8.13
+      '@xmldom/xmldom': 0.8.14
       xpath: 0.0.33
 
   xml-escape@1.1.0: {}
