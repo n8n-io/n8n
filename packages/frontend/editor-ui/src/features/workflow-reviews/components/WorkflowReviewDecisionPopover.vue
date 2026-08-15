@@ -118,11 +118,9 @@ async function onComment() {
 		</template>
 		<template #content>
 			<div :class="$style.content" data-test-id="workflow-review-decision-popover">
-				<N8nText tag="label" :for="noteInputId" size="small" color="text-dark">
-					{{ i18n.baseText('workflowReviews.detail.decision.note.label') }}
-				</N8nText>
 				<N8nInput
 					:id="noteInputId"
+					:aria-label="i18n.baseText('workflowReviews.detail.decision.note.label')"
 					v-model="decisionNote"
 					type="textarea"
 					:rows="3"
@@ -187,11 +185,12 @@ async function onComment() {
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 }
 
 .actions {
 	display: flex;
+	justify-content: flex-end;
 	gap: var(--spacing--2xs);
 }
 </style>
