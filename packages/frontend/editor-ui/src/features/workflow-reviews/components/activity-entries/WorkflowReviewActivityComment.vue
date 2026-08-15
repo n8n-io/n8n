@@ -26,6 +26,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 		<div v-for="message in entry.messages" :key="message.id" :class="$style.message">
 			<N8nAvatar
 				size="xxsmall"
+				:class="$style.avatar"
 				:first-name="message.createdBy?.firstName"
 				:last-name="message.createdBy?.lastName"
 			/>
@@ -85,9 +86,11 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 }
 
 .message {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--2xs);
+	@include activity-row;
+}
+
+.avatar {
+	@include activity-avatar;
 }
 
 .content {
@@ -101,9 +104,8 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 	@include activity-headline;
 }
 
-/* Figma asks for 20px on 14px text; no line-height token gives that ratio. */
 .line {
-	line-height: 20px;
+	line-height: var(--review-activity--line-height);
 }
 
 .body {

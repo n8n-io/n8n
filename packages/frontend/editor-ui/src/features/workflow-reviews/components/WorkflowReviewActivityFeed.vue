@@ -191,6 +191,7 @@ onMounted(() => {
 		entry's negative margin and padding cancel out, so all avatars share this column. The
 		rail below is centred on it. */
 	--review-activity--avatar-size: 16px;
+	--review-activity--line-height: 20px;
 
 	display: flex;
 	flex-direction: column;

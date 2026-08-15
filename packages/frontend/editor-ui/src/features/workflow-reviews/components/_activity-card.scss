@@ -9,6 +9,19 @@
 	border-radius: var(--radius--2xs);
 }
 
+@mixin activity-row {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+}
+
+@mixin activity-avatar {
+	flex-shrink: 0;
+	margin-block-start: calc(
+		(var(--review-activity--line-height) - var(--review-activity--avatar-size)) / 2
+	);
+}
+
 /* The actor, the sentence and its timestamp read as one line, so every entry kind spaces
 	them by a word's worth. */
 @mixin activity-headline {
