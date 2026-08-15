@@ -18,9 +18,45 @@ import {
 
 import { getConnectedTools } from '@utils/helpers';
 
+import { createCredentialGateTool } from './CredentialGateTool';
 import { McpServer, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
 import { MessageParser } from './protocol/MessageParser';
 import type { CompressionResponse } from './transport';
+
+/**
+ * Builds the trigger's tool list, checking the triggering user's private-credential
+ * status first. Building eagerly connects MCP Client sub-nodes, which fails while
+ * the caller's end-user credentials are unconnected; in that case a placeholder
+ * connect-credentials tool is returned instead of failing the whole request, so
+ * session setup and tools/list keep working and the credential gate can hand out
+ * the personal connection links on the subsequent tool call.
+ */
+async function getConnectedToolsRespectingCredentialGate(
+	context: IWebhookFunctions,
+	toolInput: IDataObject | undefined,
+) {
+	// Undefined unless an OAuth2 identity was established and the
+	// dynamic-credentials module is enabled.
+	const gateResult = await context.checkTriggerCredentialStatus();
+
+	try {
+		return {
+			tools: await getConnectedTools(context, true, undefined, undefined, {
+				inputData: toolInput,
+			}),
+			gateResult,
+		};
+	} catch (error) {
+		if (!gateResult || gateResult.readyToExecute) throw error;
+
+		context.logger.warn(
+			`MCP Trigger: could not build the tool list while the caller has unconnected credentials, exposing the connect-credentials tool instead: ${
+				error instanceof Error ? error.message : String(error)
+			}`,
+		);
+		return { tools: [createCredentialGateTool(gateResult)], gateResult };
+	}
+}
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
@@ -153,6 +189,15 @@ export class McpTrigger extends Node {
 				required: true,
 				description: 'The base path for this MCP server',
 			},
+			{
+				displayName: 'Instructions',
+				name: 'instructions',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				description:
+					"Sent to MCP clients when they connect. Clients that support server instructions typically add them to the model's system prompt — use for guidance that spans multiple tools, such as tool-choice rules or multi-step workflows.",
+			},
 		],
 		webhooks: [
 			{
@@ -241,6 +286,9 @@ export class McpTrigger extends Node {
 			: undefined;
 
 		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
+		// Coerce, since an expression can resolve this to a non-string (e.g. `{{ 123 }}`),
+		// which the MCP client would reject when validating the initialize result
+		const instructions = String(context.getNodeParameter('instructions', '') ?? '') || undefined;
 		const mcpServer = McpServer.instance(context.logger);
 
 		if (webhookName === 'setup') {
@@ -249,10 +297,18 @@ export class McpTrigger extends Node {
 					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
 					: req.path;
 
-			const connectedTools = await getConnectedTools(context, true, undefined, undefined, {
-				inputData: toolInput,
-			});
-			await mcpServer.handleSetupRequest(req, resp, serverName, postUrl, connectedTools);
+			const { tools: connectedTools } = await getConnectedToolsRespectingCredentialGate(
+				context,
+				toolInput,
+			);
+			await mcpServer.handleSetupRequest(
+				req,
+				resp,
+				serverName,
+				postUrl,
+				connectedTools,
+				instructions,
+			);
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
@@ -264,20 +320,26 @@ export class McpTrigger extends Node {
 				context.logger.debug('MCP POST request received for existing session');
 
 				if (sessionId) {
-					const connectedTools = await getConnectedTools(context, true, undefined, undefined, {
-						inputData: toolInput,
-					});
+					const { tools: connectedTools, gateResult: credentialStatus } =
+						await getConnectedToolsRespectingCredentialGate(context, toolInput);
 
-					// For a tool call, check the triggering user's private-credential status
-					// before executing. Returns undefined (no gate) unless an OAuth2 identity
-					// was established and the dynamic-credentials module is enabled.
+					// For a tool call, gate on the triggering user's private-credential status
+					// before executing: a not-ready gate makes the CallTool handler return the
+					// connection links instead of running the workflow.
 					let gateResult: CredentialCheckResult | undefined;
 					if (MessageParser.isToolCall(req.rawBody.toString())) {
-						gateResult = await context.checkTriggerCredentialStatus();
+						gateResult = credentialStatus;
 					}
 
 					const { wasToolCall, toolCallInfo, messageId, relaySessionId, needsListToolsRelay } =
-						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName, gateResult);
+						await mcpServer.handlePostMessage(
+							req,
+							resp,
+							connectedTools,
+							serverName,
+							gateResult,
+							instructions,
+						);
 
 					if (wasToolCall) {
 						const workflowData = {
@@ -306,10 +368,17 @@ export class McpTrigger extends Node {
 						};
 					}
 				} else {
-					const connectedTools = await getConnectedTools(context, true, undefined, undefined, {
-						inputData: toolInput,
-					});
-					await mcpServer.handleStreamableHttpSetup(req, resp, serverName, connectedTools);
+					const { tools: connectedTools } = await getConnectedToolsRespectingCredentialGate(
+						context,
+						toolInput,
+					);
+					await mcpServer.handleStreamableHttpSetup(
+						req,
+						resp,
+						serverName,
+						connectedTools,
+						instructions,
+					);
 				}
 			}
 

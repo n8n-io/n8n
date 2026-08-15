@@ -125,6 +125,7 @@ export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
+export { folderNameSchema, folderIdSchema } from './schemas/folder.schema';
 export {
 	SYSTEM_RESOLVER_ID,
 	credentialResolverSchema,
@@ -214,9 +215,11 @@ export {
 	dataTableNameSchema,
 } from './schemas/data-table.schema';
 
-export type {
-	DataTableFilter,
-	DataTableFilterConditionType,
+export {
+	type DataTableFilter,
+	type DataTableFilterConditionType,
+	FilterConditionSchema,
+	dataTableFilterTypeSchema,
 } from './schemas/data-table-filter.schema';
 
 export type {
@@ -376,6 +379,14 @@ export {
 	instanceAiAgentAttachmentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
+	base64EncodedSize,
+	exceedsAttachmentSizeLimit,
+	formatAttachmentSizeLimit,
+	formatTotalAttachmentSizeLimit,
+	MAX_ATTACHMENT_DECODED_BYTES,
+	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
+	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 	instanceAiResourceAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
@@ -677,9 +688,18 @@ export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.s
 export {
 	X_N8N_FEATURE_HEADER,
 	X_N8N_VERSION_HEADER,
+	X_N8N_RUN_ID_HEADER,
+	X_N8N_THREAD_ID_HEADER,
 	N8N_PROXY_FEATURES,
 	buildProxyHeaders,
 	type N8nProxyFeature,
+	type ProxyContext,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
+export {
+	MOONSHOTAI_KIMI_K3_MODEL_ID,
+	MOONSHOTAI_KIMI_K3_MODEL_NAME,
+	MOONSHOTAI_KIMI_K3_PROVIDER,
+	isMoonshotaiKimiK3ModelId,
+} from './constants/instance-ai-models';
 export { BLOCK_ACCESS_ASSIGNMENT } from './constants/role-mapping';

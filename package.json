@@ -3,7 +3,7 @@
   "version": "2.35.0",
   "private": true,
   "engines": {
-    "node": ">=22.22",
+    "node": ">=24.0.0",
     "pnpm": ">=10.22.0"
   },
   "packageManager": "pnpm@10.32.1",
@@ -178,7 +178,7 @@
       "picomatch@4": "4.0.4",
       "avsc": "5.7.9",
       "brace-expansion@<2.1.4": "2.1.4",
-      "@xmldom/xmldom": "0.8.13",
+      "@xmldom/xmldom": "0.8.14",
       "yaml@<=2.8.3": "2.8.3",
       "axios": "catalog:",
       "fast-xml-builder": "1.2.1",
@@ -215,7 +215,8 @@
       "@babel/traverse": "^7.23.2",
       "@vitest/browser@<4.1.10": "4.1.10",
       "immutable": "5.1.8",
-      "nanoid@<3.3.18": "catalog:"
+      "nanoid@<3.3.18": "catalog:",
+      "@zone-eu/mailsplit@<5.4.15": "5.4.15"
     },
     "patchedDependencies": {
       "axios": "patches/axios.patch",

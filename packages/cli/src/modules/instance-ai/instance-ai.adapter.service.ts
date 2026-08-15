@@ -147,12 +147,12 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
 import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -264,7 +264,7 @@ export class InstanceAiAdapterService {
 		private readonly folderService: FolderService,
 		private readonly projectService: ProjectService,
 		private readonly tagService: TagService,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
@@ -546,7 +546,7 @@ export class InstanceAiAdapterService {
 	}
 
 	private assertInstanceNotReadOnly(resourceType: string) {
-		if (this.sourceControlPreferencesService.getPreferences().branchReadOnly) {
+		if (this.instanceWriteAccess.isReadOnly()) {
 			throw new Error(
 				`Cannot modify ${resourceType} on a protected instance. This instance is in read-only mode.`,
 			);
@@ -1684,13 +1684,18 @@ export class InstanceAiAdapterService {
 						try {
 							const loaded = loadNodesAndCredentials.getNode(nodeName);
 							const nodeInstance = loaded.type;
-							const nodeDesc =
+							// Every version has to be checked, not just one: `testedBy` is often declared
+							// only on an older version, and the credential test is resolved across all
+							// versions too. Reading a single version hides tests that do exist.
+							const nodeDescriptions =
 								'nodeVersions' in nodeInstance
-									? Object.values(nodeInstance.nodeVersions).pop()?.description
-									: nodeInstance.description;
-							const hasTestedBy = nodeDesc?.credentials?.some(
-								(cred: { name: string; testedBy?: unknown }) =>
-									cred.name === credentialType && cred.testedBy,
+									? Object.values(nodeInstance.nodeVersions).map((version) => version.description)
+									: [nodeInstance.description];
+							const hasTestedBy = nodeDescriptions.some((nodeDesc) =>
+								nodeDesc?.credentials?.some(
+									(cred: { name: string; testedBy?: unknown }) =>
+										cred.name === credentialType && cred.testedBy,
+								),
 							);
 							if (hasTestedBy) return true;
 						} catch {

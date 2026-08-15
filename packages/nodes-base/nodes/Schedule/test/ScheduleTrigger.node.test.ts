@@ -25,7 +25,7 @@ describe('ScheduleTrigger', () => {
 			expect(node.description.version).toContain(1.4);
 		});
 
-		it('defines misfirePolicy as a node setting offering exactly two values, defaulting to skip', () => {
+		it('defines misfirePolicy as a node setting offering exactly three values, defaulting to skip', () => {
 			const misfirePolicy = properties.find((property) => property.name === 'misfirePolicy');
 
 			expect(misfirePolicy).toMatchObject({
@@ -34,10 +34,17 @@ describe('ScheduleTrigger', () => {
 				isNodeSetting: true,
 				noDataExpression: true,
 				options: [
-					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce' },
+					{ name: 'Run the Most Recent Missed Execution Per Rule', value: 'coalesce' },
+					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce_owner' },
 					{ name: "Don't Run Missed Executions", value: 'skip' },
 				],
 			});
+		});
+
+		it('points the misfirePolicy hint at the grace period field', () => {
+			const misfirePolicy = properties.find((property) => property.name === 'misfirePolicy');
+
+			expect(misfirePolicy?.hint).toMatch(/grace period set below/i);
 		});
 
 		it.each<[number, boolean]>([
@@ -55,6 +62,55 @@ describe('ScheduleTrigger', () => {
 					node.description,
 				),
 			).toBe(shown);
+		});
+
+		it('defines misfireGraceSeconds as a numeric node setting defaulting to 0 and refusing negatives', () => {
+			const misfireGraceSeconds = properties.find(
+				(property) => property.name === 'misfireGraceSeconds',
+			);
+
+			expect(misfireGraceSeconds).toMatchObject({
+				type: 'number',
+				default: 0,
+				isNodeSetting: true,
+				noDataExpression: true,
+				typeOptions: { minValue: 0 },
+			});
+		});
+
+		it.each<[number, boolean]>([
+			[1.3, false],
+			[1.4, true],
+		])('shows misfireGraceSeconds at typeVersion %s: %s', (typeVersion, shown) => {
+			const misfireGraceSeconds = properties.find(
+				(property) => property.name === 'misfireGraceSeconds',
+			);
+			expect(misfireGraceSeconds).toBeDefined();
+
+			expect(
+				NodeHelpers.displayParameter(
+					{},
+					misfireGraceSeconds as INodeProperties,
+					{ typeVersion },
+					node.description,
+				),
+			).toBe(shown);
+		});
+
+		it('shows misfireGraceSeconds while the misfire policy is left at its skip default', () => {
+			const misfireGraceSeconds = properties.find(
+				(property) => property.name === 'misfireGraceSeconds',
+			);
+			expect(misfireGraceSeconds).toBeDefined();
+
+			expect(
+				NodeHelpers.displayParameter(
+					{ misfirePolicy: 'skip' },
+					misfireGraceSeconds as INodeProperties,
+					{ typeVersion: 1.4 },
+					node.description,
+				),
+			).toBe(true);
 		});
 	});
 
