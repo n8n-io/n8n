@@ -130,9 +130,7 @@ const actorName = computed(() =>
 				>
 					{{ content.text }}
 				</N8nText>
-				<!-- Lighter than the phrase it follows: the design gives both the same colour, but
-					the timestamp reads as metadata and recedes better greyed. -->
-				<N8nText size="small" color="text-light" :class="$style.line">
+				<N8nText size="small" color="text-light" :class="[$style.line, $style.timeStamp]">
 					<time :datetime="entry.createdAt">
 						<TimeAgo :date="entry.createdAt" />
 					</time>
@@ -182,6 +180,10 @@ const actorName = computed(() =>
 
 .separator {
 	margin-inline: var(--spacing--3xs);
+}
+
+.timeStamp {
+	padding-left: var(--spacing--3xs);
 }
 
 /* A decision that carries a note sits in a card, as a comment always does. */

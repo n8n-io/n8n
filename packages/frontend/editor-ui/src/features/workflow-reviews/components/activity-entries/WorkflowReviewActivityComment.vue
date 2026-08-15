@@ -40,11 +40,11 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 					>
 						{{ authorName(message) }}
 					</N8nText>
-					<!-- Same as a system entry's timestamp: metadata, so lighter than the name. -->
 					<N8nText size="small" color="text-light">
 						<time
 							:datetime="message.createdAt"
 							data-test-id="workflow-review-activity-comment-time"
+							:class="$style.timeStamp"
 						>
 							<TimeAgo :date="message.createdAt" />
 						</time>
@@ -106,6 +106,10 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 
 .line {
 	line-height: var(--review-activity--line-height);
+}
+
+.timeStamp {
+	padding-left: var(--spacing--3xs);
 }
 
 .body {
