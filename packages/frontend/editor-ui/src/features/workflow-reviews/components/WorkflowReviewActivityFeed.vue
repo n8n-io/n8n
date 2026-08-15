@@ -120,12 +120,6 @@ onMounted(() => {
 				{{ i18n.baseText('generic.retry') }}
 			</N8nButton>
 		</div>
-		<div v-else-if="entries.length === 0" data-test-id="workflow-review-activity-empty">
-			<N8nEmptyState
-				:heading="i18n.baseText('workflowReviews.detail.activity.empty.heading')"
-				:description="i18n.baseText('workflowReviews.detail.activity.empty.description')"
-			/>
-		</div>
 		<template v-else>
 			<div
 				v-if="initialScrollApplied && hasMore && !error"

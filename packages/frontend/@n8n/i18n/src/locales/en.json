@@ -5460,8 +5460,6 @@
 	"workflowReviews.detail.activity.description": "Description",
 	"workflowReviews.detail.activity.noDescription": "No description provided.",
 	"workflowReviews.detail.activity.listLabel": "Review activity",
-	"workflowReviews.detail.activity.empty.heading": "No activity yet",
-	"workflowReviews.detail.activity.empty.description": "Comments and review activity will appear here.",
 	"workflowReviews.detail.activity.comment.deleted": "This comment was deleted.",
 	"workflowReviews.detail.activity.unknownEntry": "This activity entry can't be displayed.",
 	"workflowReviews.detail.activity.unknownAuthor": "Deleted user",
