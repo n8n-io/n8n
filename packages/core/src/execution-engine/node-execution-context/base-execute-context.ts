@@ -334,6 +334,9 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		try {
 			if (this.additionalData.sendDataToUI) {
 				args = args.map((arg) => {
+					// console.log(null) / console.log(undefined) are valid and must pass through as-is
+					if (arg === null || arg === undefined) return arg;
+
 					// prevent invalid dates from being logged as null
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
 					if (arg.isLuxonDateTime && arg.invalidReason) return { ...arg };

@@ -234,6 +234,14 @@ export const describeCommonTests = (
 				messages: ['Testing', 1, 2, {}],
 			});
 		});
+
+		it('should not throw and should pass through null and undefined args unchanged', () => {
+			expect(() => context.sendMessageToUI(null, undefined)).not.toThrow();
+			expect(additionalData.sendDataToUI).toHaveBeenCalledWith('sendConsoleMessage', {
+				source: '[Node: "Test Node"]',
+				messages: [null, undefined],
+			});
+		});
 	});
 
 	describe('logAiEvent', () => {
