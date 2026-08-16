@@ -3,7 +3,9 @@ import { reactiveOmit, reactivePick } from '@vueuse/core';
 import { computed, nextTick, ref, useAttrs, useCssModule, useTemplateRef, watch } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
+import N8nTooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
+import { TOOLTIP_DELAY_MS } from '@n8n/design-system/constants';
 import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
 
 import type { PaginationEmits, PaginationProps, PaginationSlots } from './Pagination.types';
@@ -252,19 +254,25 @@ function handlePagerKeydown(event: KeyboardEvent) {
 				data-test-id="pagination-list"
 				@keydown="handlePagerKeydown"
 			>
-				<PaginationPrev as-child>
-					<slot name="prev" :disabled="isPrevDisabled(rootPage)">
-						<N8nButton
-							variant="ghost"
-							icon-only
-							icon="chevron-left"
-							:size="size"
-							:disabled="isPrevDisabled(rootPage)"
-							:aria-label="t('pagination.previousPage')"
-							data-test-id="pagination-prev"
-						/>
-					</slot>
-				</PaginationPrev>
+				<N8nTooltip
+					:content="t('pagination.previousPage')"
+					:show-after="TOOLTIP_DELAY_MS"
+					:disabled="!!$slots.prev || isPrevDisabled(rootPage)"
+				>
+					<PaginationPrev as-child>
+						<slot name="prev" :disabled="isPrevDisabled(rootPage)">
+							<N8nButton
+								variant="ghost"
+								icon-only
+								icon="chevron-left"
+								:size="size"
+								:disabled="isPrevDisabled(rootPage)"
+								:aria-label="t('pagination.previousPage')"
+								data-test-id="pagination-prev"
+							/>
+						</slot>
+					</PaginationPrev>
+				</N8nTooltip>
 
 				<template
 					v-for="(item, index) in items"
@@ -288,19 +296,25 @@ function handlePagerKeydown(event: KeyboardEvent) {
 					</PaginationListItem>
 				</template>
 
-				<PaginationNext as-child>
-					<slot name="next" :disabled="isNextDisabled(rootPage, rootPageCount)">
-						<N8nButton
-							variant="ghost"
-							icon-only
-							icon="chevron-right"
-							:size="size"
-							:disabled="isNextDisabled(rootPage, rootPageCount)"
-							:aria-label="t('pagination.nextPage')"
-							data-test-id="pagination-next"
-						/>
-					</slot>
-				</PaginationNext>
+				<N8nTooltip
+					:content="t('pagination.nextPage')"
+					:show-after="TOOLTIP_DELAY_MS"
+					:disabled="!!$slots.next || isNextDisabled(rootPage, rootPageCount)"
+				>
+					<PaginationNext as-child>
+						<slot name="next" :disabled="isNextDisabled(rootPage, rootPageCount)">
+							<N8nButton
+								variant="ghost"
+								icon-only
+								icon="chevron-right"
+								:size="size"
+								:disabled="isNextDisabled(rootPage, rootPageCount)"
+								:aria-label="t('pagination.nextPage')"
+								data-test-id="pagination-next"
+							/>
+						</slot>
+					</PaginationNext>
+				</N8nTooltip>
 			</PaginationList>
 		</PaginationRoot>
 
