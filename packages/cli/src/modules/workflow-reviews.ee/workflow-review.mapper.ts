@@ -6,9 +6,8 @@ import {
 	type WorkflowReviewActivityEntry,
 	type WorkflowReviewEligibleReviewer,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import type { Logger } from '@n8n/backend-common';
 import type { User, WorkflowReviewActivity, WorkflowReviewActivityComment } from '@n8n/db';
-import { Container } from '@n8n/di';
 import type { z } from 'zod';
 
 /**
@@ -29,7 +28,11 @@ export function toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
  * A stored payload the schema rejects becomes `null` rather than an exception: one bad row must
  * not take down the whole feed page.
  */
-function parsePayload<T>(schema: z.ZodType<T>, row: WorkflowReviewActivity): T | null {
+function parsePayload<T>(
+	schema: z.ZodType<T>,
+	row: WorkflowReviewActivity,
+	logger: Logger,
+): T | null {
 	// These schemas describe typeVersion 1 only; a later version gets its own schema and case.
 	if (row.typeVersion === 1) {
 		const parsed = schema.safeParse(row.data);
@@ -38,7 +41,7 @@ function parsePayload<T>(schema: z.ZodType<T>, row: WorkflowReviewActivity): T |
 		}
 	}
 
-	Container.get(Logger).warn('Discarded an unreadable workflow review activity payload', {
+	logger.warn('Failed to parse workflow review activity payload', {
 		activityId: row.id,
 		type: row.type,
 		typeVersion: row.typeVersion,
@@ -50,6 +53,7 @@ export function toActivityEntry(
 	row: WorkflowReviewActivity,
 	messages: WorkflowReviewActivityComment[],
 	usersById: Map<string, WorkflowReviewEligibleReviewer>,
+	logger: Logger,
 ): WorkflowReviewActivityEntry {
 	const createdBy = row.createdById ? (usersById.get(row.createdById) ?? null) : null;
 	const base = {
@@ -80,26 +84,26 @@ export function toActivityEntry(
 			return {
 				...base,
 				type: row.type,
-				data: parsePayload(workflowReviewOpenedActivityDataSchema, row),
+				data: parsePayload(workflowReviewOpenedActivityDataSchema, row, logger),
 			};
 		case 'review.changes_requested':
 		case 'review.approved':
 			return {
 				...base,
 				type: row.type,
-				data: parsePayload(workflowReviewDecisionActivityDataSchema, row),
+				data: parsePayload(workflowReviewDecisionActivityDataSchema, row, logger),
 			};
 		case 'review.version_updated':
 			return {
 				...base,
 				type: row.type,
-				data: parsePayload(workflowReviewVersionUpdatedActivityDataSchema, row),
+				data: parsePayload(workflowReviewVersionUpdatedActivityDataSchema, row, logger),
 			};
 		case 'review.closed':
 			return {
 				...base,
 				type: row.type,
-				data: parsePayload(workflowReviewClosedActivityDataSchema, row),
+				data: parsePayload(workflowReviewClosedActivityDataSchema, row, logger),
 			};
 		case 'workflow.published':
 			return { ...base, type: row.type, data: null };
