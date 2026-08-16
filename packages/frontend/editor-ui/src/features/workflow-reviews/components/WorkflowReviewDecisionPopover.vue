@@ -125,7 +125,7 @@ async function onComment() {
 					type="textarea"
 					:rows="3"
 					:maxlength="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
-					:placeholder="i18n.baseText('workflowReviews.detail.decision.note.placeholder')"
+					:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
 					data-test-id="workflow-review-decision-note"
 				/>
 				<div :class="$style.actions">

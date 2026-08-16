@@ -5495,7 +5495,6 @@
 	"workflowReviews.detail.notFound.body": "This review doesn't exist or you don't have access to it.",
 	"workflowReviews.detail.decision.trigger": "Review",
 	"workflowReviews.detail.decision.note.label": "Review note",
-	"workflowReviews.detail.decision.note.placeholder": "Add a note for the author...",
 	"workflowReviews.detail.decision.note.required": "Add a note to request changes",
 	"workflowReviews.detail.decision.comment": "Comment",
 	"workflowReviews.detail.decision.approveAndPublish": "Approve and publish",
