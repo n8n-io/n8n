@@ -4,6 +4,10 @@ import * as path from 'node:path';
 
 import type { Violation, Report, Severity } from './types.js';
 
+function normalizePath(filePath: string): string {
+	return filePath.replace(/\\/g, '/');
+}
+
 const BASELINE_VERSION = 1;
 
 export interface BaselineEntry {
@@ -21,7 +25,7 @@ export interface BaselineFile {
 }
 
 function hashViolation(violation: Violation, rootDir: string): string {
-	const relativePath = path.relative(rootDir, violation.file);
+	const relativePath = normalizePath(path.relative(rootDir, violation.file));
 	const content = `${relativePath}:${violation.rule}:${violation.message}`;
 	return crypto.createHash('md5').update(content).digest('hex').slice(0, 12);
 }
@@ -50,7 +54,7 @@ export function generateBaseline(report: Report, rootDir: string): BaselineFile 
 
 	for (const result of report.results) {
 		for (const violation of result.violations) {
-			const relativePath = path.relative(rootDir, violation.file);
+			const relativePath = normalizePath(path.relative(rootDir, violation.file));
 			if (!violations[relativePath]) violations[relativePath] = [];
 
 			violations[relativePath].push({
@@ -75,7 +79,7 @@ export function saveBaseline(baseline: BaselineFile, filePath: string): void {
 }
 
 function isInBaseline(violation: Violation, baseline: BaselineFile, rootDir: string): boolean {
-	const relativePath = path.relative(rootDir, violation.file);
+	const relativePath = normalizePath(path.relative(rootDir, violation.file));
 	const fileBaseline = baseline.violations[relativePath];
 	if (!fileBaseline) return false;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-
+import path from 'path';
 import { toJSON } from './reporter.js';
 import type { Report } from './types.js';
 
@@ -48,7 +48,7 @@ describe('toJSON', () => {
 
 	it('converts absolute paths to relative when rootDir provided', () => {
 		const parsed = parseJSON(toJSON(report, '/root'));
-		expect(parsed.results[0].violations[0].file).toBe('src/a.ts');
+		expect(parsed.results[0].violations[0].file).toBe(path.join('src', 'a.ts'));
 	});
 
 	it('keeps absolute paths when no rootDir', () => {
