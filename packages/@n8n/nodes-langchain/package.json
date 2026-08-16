@@ -309,7 +309,7 @@
     "jsdom": "23.0.1",
     "langchain": "catalog:",
     "lodash": "catalog:",
-    "mammoth": "1.12.0",
+    "mammoth": "1.12.1",
     "mime-types": "catalog:",
     "mongodb": "^6.17.0",
     "mysql2": "catalog:",
