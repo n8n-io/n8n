@@ -39,7 +39,7 @@
 		"Read All Sheets": [
 			{
 				"json": {
-					"_sheetName": "Q1",
+					"sheet_name": "Q1",
 					"row_number": 2,
 					"name": "Ada",
 					"amount": 10
@@ -47,7 +47,7 @@
 			},
 			{
 				"json": {
-					"_sheetName": "Q1",
+					"sheet_name": "Q1",
 					"row_number": 3,
 					"name": "Grace",
 					"amount": 20
@@ -55,7 +55,7 @@
 			},
 			{
 				"json": {
-					"_sheetName": "Q2",
+					"sheet_name": "Q2",
 					"row_number": 2,
 					"name": "Alan",
 					"amount": 30

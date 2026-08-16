@@ -92,7 +92,7 @@ describe('Google Sheets - router', () => {
 
 		expect(spreadsheetGetSheet).not.toHaveBeenCalled();
 		expect(spreadsheetGetSheets).toHaveBeenCalledTimes(1);
-		expect(result.map((item) => item.json._sheetName)).toEqual(['Q1', 'Q2']);
+		expect(result.map((item) => item.json.sheet_name)).toEqual(['Q1', 'Q2']);
 	});
 
 	test('should not read all sheets when the sheet selector is missing', async () => {
@@ -101,7 +101,7 @@ describe('Google Sheets - router', () => {
 		);
 
 		expect(spreadsheetGetSheet).toHaveBeenCalledTimes(1);
-		expect(result.map((item) => item.json._sheetName)).toEqual([undefined]);
+		expect(result.map((item) => item.json.sheet_name)).toEqual([undefined]);
 	});
 
 	test('should still resolve the sheet for other operations', async () => {

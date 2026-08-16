@@ -158,15 +158,15 @@ describe('Google Sheet - Read - All Sheets', () => {
 
 		expect(result).toEqual([
 			{
-				json: { _sheetName: 'Q1', name: 'Ada', amount: '10', row_number: 2 },
+				json: { sheet_name: 'Q1', name: 'Ada', amount: '10', row_number: 2 },
 				pairedItem: { item: 0 },
 			},
 			{
-				json: { _sheetName: 'Q2', name: 'Grace', amount: '20', row_number: 2 },
+				json: { sheet_name: 'Q2', name: 'Grace', amount: '20', row_number: 2 },
 				pairedItem: { item: 0 },
 			},
 			{
-				json: { _sheetName: 'Q2', name: 'Alan', amount: '30', row_number: 3 },
+				json: { sheet_name: 'Q2', name: 'Alan', amount: '30', row_number: 3 },
 				pairedItem: { item: 0 },
 			},
 		]);
@@ -214,7 +214,7 @@ describe('Google Sheet - Read - All Sheets', () => {
 
 		expect(sheet.getData).toHaveBeenCalledTimes(2);
 		expect(sheet.getData).not.toHaveBeenCalledWith('Chart', expect.anything(), expect.anything());
-		expect(result.map((item) => item.json._sheetName)).toEqual(['Q1', 'Q2', 'Q2']);
+		expect(result.map((item) => item.json.sheet_name)).toEqual(['Q1', 'Q2', 'Q2']);
 	});
 
 	test('should skip sheets that hold no rows', async () => {
@@ -226,12 +226,12 @@ describe('Google Sheet - Read - All Sheets', () => {
 		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
 
 		expect(sheet.getData).toHaveBeenCalledTimes(3);
-		expect(result.map((item) => item.json._sheetName)).toEqual(['Q1', 'Q2', 'Q2']);
+		expect(result.map((item) => item.json.sheet_name)).toEqual(['Q1', 'Q2', 'Q2']);
 	});
 
-	test('should keep the value of a column that is itself named _sheetName', async () => {
+	test('should keep the value of a column that is itself named sheet_name', async () => {
 		rowsBySheet.Q1 = [
-			['name', '_sheetName'],
+			['name', 'sheet_name'],
 			['Ada', 'from-the-spreadsheet'],
 		];
 
@@ -239,7 +239,7 @@ describe('Google Sheet - Read - All Sheets', () => {
 
 		expect(result[0].json).toEqual({
 			name: 'Ada',
-			_sheetName: 'from-the-spreadsheet',
+			sheet_name: 'from-the-spreadsheet',
 			row_number: 2,
 		});
 	});
@@ -257,11 +257,11 @@ describe('Google Sheet - Read - All Sheets', () => {
 		// fields are not unioned across sheets
 		expect(result).toEqual([
 			{
-				json: { _sheetName: 'Q1', name: 'Ada', amount: '10', row_number: 2 },
+				json: { sheet_name: 'Q1', name: 'Ada', amount: '10', row_number: 2 },
 				pairedItem: { item: 0 },
 			},
 			{
-				json: { _sheetName: 'Q2', amount: '20', name: 'Grace', region: 'EU', row_number: 2 },
+				json: { sheet_name: 'Q2', amount: '20', name: 'Grace', region: 'EU', row_number: 2 },
 				pairedItem: { item: 0 },
 			},
 		]);
@@ -305,7 +305,7 @@ describe('Google Sheet - Read - All Sheets', () => {
 		).rejects.toBeInstanceOf(NodeOperationError);
 	});
 
-	test('should keep rows from the other sheets when continueOnFail is set', async () => {
+	test('should route a failing sheet to the error output and keep the other rows when continueOnFail is set', async () => {
 		mockExecuteFunctions.continueOnFail = vi.fn().mockReturnValue(true);
 		sheet.getData = vi.fn(async (range: string) => {
 			if (range === 'Q1') throw new Error('Quota exceeded');
@@ -314,34 +314,65 @@ describe('Google Sheet - Read - All Sheets', () => {
 
 		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
 
-		expect(result).toEqual([
+		// The failing sheet becomes an error item: the sheet name stays in json, and
+		// the error sits on the top-level `error` property so the engine can route it
+		// to the error output instead of the success output
+		expect(result[0].json).toEqual({ sheet_name: 'Q1' });
+		expect(result[0].error).toBeInstanceOf(NodeOperationError);
+		expect(result[0].error?.message).toBe('Failed to read rows from sheet "Q1": Quota exceeded');
+		expect(result[0].pairedItem).toEqual({ item: 0 });
+
+		// The readable sheet's rows still come through
+		expect(result.slice(1)).toEqual([
 			{
-				json: {
-					_sheetName: 'Q1',
-					error: 'Failed to read rows from sheet "Q1": Quota exceeded',
-				},
+				json: { sheet_name: 'Q2', name: 'Grace', amount: '20', row_number: 2 },
 				pairedItem: { item: 0 },
 			},
 			{
-				json: { _sheetName: 'Q2', name: 'Grace', amount: '20', row_number: 2 },
-				pairedItem: { item: 0 },
-			},
-			{
-				json: { _sheetName: 'Q2', name: 'Alan', amount: '30', row_number: 3 },
+				json: { sheet_name: 'Q2', name: 'Alan', amount: '30', row_number: 3 },
 				pairedItem: { item: 0 },
 			},
 		]);
 	});
 
-	test('should read the spreadsheet once regardless of how many input items there are', async () => {
+	test('should read every sheet once per input item, like single sheet mode', async () => {
 		mockExecuteFunctions.getInputData = vi
 			.fn()
 			.mockReturnValue([{ json: {} }, { json: {} }, { json: {} }]);
 
 		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
 
+		// The sheet list is fetched once, then each of the two sheets is read once
+		// per input item (2 sheets x 3 items = 6 reads)
 		expect(sheet.spreadsheetGetSheets).toHaveBeenCalledTimes(1);
-		expect(sheet.getData).toHaveBeenCalledTimes(2);
-		expect(result).toHaveLength(3);
+		expect(sheet.getData).toHaveBeenCalledTimes(6);
+		// 3 input items x (1 row in Q1 + 2 rows in Q2) = 9 rows
+		expect(result).toHaveLength(9);
+	});
+
+	test('should filter rows per sheet, returning nothing from a sheet without the filtered column', async () => {
+		nodeParameters['filtersUI.values'] = [{ lookupColumn: 'amount', lookupValue: '20' }];
+		rowsBySheet = {
+			Q1: [
+				['name', 'city'],
+				['Ada', 'London'],
+			],
+			Q2: [
+				['name', 'amount'],
+				['Grace', '20'],
+				['Alan', '30'],
+			],
+		};
+
+		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
+
+		// Q1 has no "amount" column, so it contributes no rows for this filter; Q2
+		// returns only the row where amount is 20
+		expect(result).toEqual([
+			{
+				json: { sheet_name: 'Q2', name: 'Grace', amount: '20', row_number: 2 },
+				pairedItem: { item: 0 },
+			},
+		]);
 	});
 });

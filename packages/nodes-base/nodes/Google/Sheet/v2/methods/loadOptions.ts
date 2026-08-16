@@ -116,3 +116,55 @@ export async function getSheetHeaderRowAndSkipEmpty(
 	const returnData = await getSheetHeaderRow.call(this);
 	return returnData.filter((column) => column.value);
 }
+
+/**
+ * Column options for "All Sheets" mode: the union of every grid sheet's header
+ * row, in first-seen order. There is no single sheet to read from, so this walks
+ * each sheet's first row and de-duplicates the collected column names.
+ */
+export async function getSheetHeaderRowWithGeneratedColumnNamesForAllSheets(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const documentId = this.getNodeParameter('documentId', null) as IDataObject | null;
+
+	if (!documentId) return [];
+
+	const { mode, value } = documentId;
+
+	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
+
+	const sheet = new GoogleSheet(spreadsheetId, this);
+	const responseData = await sheet.spreadsheetGetSheets();
+
+	if (responseData === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No data got returned');
+	}
+
+	const seen = new Set<string>();
+	const returnData: INodePropertyOptions[] = [];
+
+	for (const entry of responseData.sheets ?? []) {
+		if (entry.properties?.sheetType !== 'GRID' || !entry.properties?.title) {
+			continue;
+		}
+
+		const title = entry.properties.title;
+		const sheetData = await sheet.getData(`${title}!1:1`, 'FORMATTED_VALUE');
+
+		if (sheetData === undefined) {
+			continue;
+		}
+
+		const columns = sheet.testFilter(sheetData, 0, 0);
+
+		columns.forEach((column, i) => {
+			// Match the single-sheet generated-name convention for empty headers
+			const name = column === '' ? `col_${i + 1}` : column;
+			if (seen.has(name)) return;
+			seen.add(name);
+			returnData.push({ name, value: name });
+		});
+	}
+
+	return returnData;
+}

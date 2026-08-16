@@ -1,4 +1,9 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { dataLocationOnSheet, outputFormatting } from './commonDescription';
@@ -8,7 +13,7 @@ import { getGridSheetNames, untilSheetSelected } from '../../helpers/GoogleSheet
 import { readSheet } from '../utils/readOperation';
 
 /** Column added to every row in "All Sheets" mode, naming the sheet it came from */
-const SHEET_NAME_FIELD = '_sheetName';
+const SHEET_NAME_FIELD = 'sheet_name';
 
 const combineFiltersOptions: INodeProperties = {
 	displayName: 'Combine Filters',
@@ -31,45 +36,57 @@ const combineFiltersOptions: INodeProperties = {
 	default: 'AND',
 };
 
-export const readFilter: INodeProperties = {
-	displayName: 'Filters',
-	name: 'filtersUI',
-	placeholder: 'Add Filter',
-	type: 'fixedCollection',
-	typeOptions: {
-		multipleValueButtonText: 'Add Filter',
-		multipleValues: true,
-	},
-	default: {},
-	options: [
-		{
-			displayName: 'Filter',
-			name: 'values',
-			values: [
-				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-					displayName: 'Column',
-					name: 'lookupColumn',
-					type: 'options',
-					typeOptions: {
-						loadOptionsDependsOn: ['sheetName.value'],
-						loadOptionsMethod: 'getSheetHeaderRowWithGeneratedColumnNames',
-					},
-					default: '',
-					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				},
-				{
-					displayName: 'Value',
-					name: 'lookupValue',
-					type: 'string',
-					default: '',
-					hint: 'The column must have this value to be matched',
-				},
-			],
+/** The Filters collection, with the column dropdown wired to a given load-options method */
+function createReadFilter(columnTypeOptions: IDataObject): INodeProperties {
+	return {
+		displayName: 'Filters',
+		name: 'filtersUI',
+		placeholder: 'Add Filter',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValueButtonText: 'Add Filter',
+			multipleValues: true,
 		},
-	],
-};
+		default: {},
+		options: [
+			{
+				displayName: 'Filter',
+				name: 'values',
+				values: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+						displayName: 'Column',
+						name: 'lookupColumn',
+						type: 'options',
+						typeOptions: columnTypeOptions,
+						default: '',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					},
+					{
+						displayName: 'Value',
+						name: 'lookupValue',
+						type: 'string',
+						default: '',
+						hint: 'The column must have this value to be matched',
+					},
+				],
+			},
+		],
+	};
+}
+
+export const readFilter: INodeProperties = createReadFilter({
+	loadOptionsDependsOn: ['sheetName.value'],
+	loadOptionsMethod: 'getSheetHeaderRowWithGeneratedColumnNames',
+});
+
+// "All Sheets" has no single sheet to read headers from, so the column list is
+// the union of every sheet's header row
+const readFilterAllSheets: INodeProperties = createReadFilter({
+	loadOptionsDependsOn: ['documentId.value'],
+	loadOptionsMethod: 'getSheetHeaderRowWithGeneratedColumnNamesForAllSheets',
+});
 
 const readOptions: INodeProperties = {
 	displayName: 'Options',
@@ -178,6 +195,29 @@ export const description: SheetProperties = [
 		},
 	},
 	{
+		// "All Sheets" filters against the union of every sheet's columns. A sheet
+		// that lacks a filtered column simply contributes no rows for that filter.
+		...readFilterAllSheets,
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['read'],
+				sheetSelectionMode: ['all'],
+			},
+		},
+	},
+	{
+		...combineFiltersOptions,
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 4.3 } }],
+				resource: ['sheet'],
+				operation: ['read'],
+				sheetSelectionMode: ['all'],
+			},
+		},
+	},
+	{
 		// "All Sheets" reads every sheet, so there is no sheet to wait for
 		...readOptions,
 		displayOptions: {
@@ -191,9 +231,9 @@ export const description: SheetProperties = [
 ];
 
 /**
- * Reads every sheet of the spreadsheet in turn, tagging each row with its source
- * sheet. Filters are not offered in this mode, so one pass over the spreadsheet
- * is enough regardless of how many input items there are.
+ * Reads every sheet of the spreadsheet, tagging each row with its source sheet.
+ * The sheet list is fetched once, then each sheet is read once per input item -
+ * matching single-sheet mode, so per-item filters apply the same way.
  */
 async function readAllSheets(
 	this: IExecuteFunctions,
@@ -201,34 +241,55 @@ async function readAllSheets(
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 	const nodeVersion = this.getNode().typeVersion;
+	const sheetNames = await getGridSheetNames(sheet);
 	const returnData: INodeExecutionData[] = [];
 
-	for (const currentSheetName of await getGridSheetNames(sheet)) {
-		try {
-			const rows = await readSheet.call(this, sheet, currentSheetName, 0, [], nodeVersion, items);
+	// Mirror single-sheet read: one pass per input item (older versions ran once)
+	const length = nodeVersion > 4.1 ? items.length : 1;
 
-			for (const row of rows) {
-				returnData.push({
-					// Row data spread last, so a column named `_sheetName` keeps its own value
-					json: { [SHEET_NAME_FIELD]: currentSheetName, ...row.json },
-					pairedItem: row.pairedItem,
-				});
+	for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+		for (const currentSheetName of sheetNames) {
+			try {
+				const rows = await readSheet.call(
+					this,
+					sheet,
+					currentSheetName,
+					itemIndex,
+					[],
+					nodeVersion,
+					items,
+					undefined,
+					undefined,
+					// Skip filters naming a column this sheet lacks, rather than throwing
+					true,
+				);
+
+				for (const row of rows) {
+					returnData.push({
+						// Row data spread last, so a column named `sheet_name` keeps its own value
+						json: { [SHEET_NAME_FIELD]: currentSheetName, ...row.json },
+						pairedItem: row.pairedItem,
+					});
+				}
+			} catch (error) {
+				const message = `Failed to read rows from sheet "${currentSheetName}": ${
+					error instanceof Error ? error.message : String(error)
+				}`;
+
+				// Without this a single unreadable sheet would discard the rows already read.
+				// The error goes on the top-level `error` property so the engine routes it
+				// to the error output; the sheet name stays readable in `json`.
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: { [SHEET_NAME_FIELD]: currentSheetName },
+						error: new NodeOperationError(this.getNode(), message),
+						pairedItem: { item: itemIndex },
+					});
+					continue;
+				}
+
+				throw new NodeOperationError(this.getNode(), message);
 			}
-		} catch (error) {
-			const message = `Failed to read rows from sheet "${currentSheetName}": ${
-				error instanceof Error ? error.message : String(error)
-			}`;
-
-			// Without this a single unreadable sheet would discard the rows already read
-			if (this.continueOnFail()) {
-				returnData.push({
-					json: { [SHEET_NAME_FIELD]: currentSheetName, error: message },
-					pairedItem: { item: 0 },
-				});
-				continue;
-			}
-
-			throw new NodeOperationError(this.getNode(), message);
 		}
 	}
 
