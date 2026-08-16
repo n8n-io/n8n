@@ -91,7 +91,7 @@ afterAll(async () => {
 	);
 	Container.get(WorkflowPublicationOutboxConsumer).stopPolling();
 	Container.get(WorkflowPublicationOutboxCleanupService).stopCleanup();
-	Container.get(WorkflowPublicationReconciler).stopReconciler();
+	Container.get(WorkflowPublicationReconciler).shutdown();
 	await Container.get(ActiveWorkflowManager).removeAll();
 	await testDb.terminate();
 });
@@ -140,7 +140,7 @@ describe('Start.run() with workflow publication service', () => {
 		);
 
 		const outboxRepository = Container.get(WorkflowPublicationOutboxRepository);
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 
 		// What a follower's publish triggers on this (leader) instance via Redis.
 		// Re-emitted per retry: a wake-up that lands while a previous drain is

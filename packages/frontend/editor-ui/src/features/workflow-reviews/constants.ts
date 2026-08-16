@@ -11,6 +11,8 @@ export const WORKFLOW_REVIEW_REQUESTS_VIEW = 'WorkflowReviewRequestsView';
  * change — reserve the key here, hydrate it in the view, and write it with
  * router.replace({ query }) preserving params.
  *   - `state`: 'open' | 'closed'. Default 'open' is omitted from the URL.
+ *   - `tab`: 'activity' | 'changes' — detail-pane tab. Default 'activity' is
+ *     omitted from the URL.
  *   - Reserved for later filters: `q`, `projectId`, `author`, `reviewer`.
  */
-export const REVIEW_INBOX_QUERY_PARAM = { state: 'state' } as const;
+export const REVIEW_INBOX_QUERY_PARAM = { state: 'state', tab: 'tab' } as const;

@@ -30,6 +30,9 @@ const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
+const loadMcpServersTool = lazyMod(
+	() => require('./mcp-servers.tool') as typeof import('./mcp-servers.tool'),
+);
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
@@ -145,6 +148,13 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 	// when `088_config_evaluations` is on, so presence = expose the tool.
 	if (context.evaluationConfigService) {
 		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
+	}
+
+	// Same pattern: the adapter only wires mcpService when MCP access is enabled
+	// instance-wide and the user is in the MCP-connections experiment. Orchestrator
+	// only — sub-agents can't offer the user a connection.
+	if (context.mcpService) {
+		tools.push([DOMAIN_TOOL_IDS.MCP_SERVERS, loadMcpServersTool().createMcpServersTool(context)]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {

@@ -7,10 +7,11 @@ import { incrementMessageCount, incrementTokenCountFromUsage } from './execution
 import { GenerateSink } from './generate-sink';
 import { hydrateFileParts } from './hydrate-file-parts';
 import type { RunOutputSink, RunServices } from './run-output-sink';
-import { RuntimeContextBuilder, getModelIdString } from './runtime-context';
+import { RuntimeContextBuilder } from './runtime-context';
 import {
 	extractSettledToolCalls,
 	formatMcpConnectionNote,
+	isEmptyModelTurn,
 	makeErrorStream,
 	mergeUsage,
 	normalizeInput,
@@ -51,12 +52,15 @@ import type {
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
+import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
+import type { WorkspaceFilesystem } from '../../workspace';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import type { FetchFn } from '../model/model-factory';
+import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
 	buildInstructionPromptCacheOptions,
@@ -90,6 +94,7 @@ export interface AgentRuntimeConfig {
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
+	workspaceFilesystem?: WorkspaceFilesystem;
 	toolSearch?: {
 		topK?: number;
 	};
@@ -135,6 +140,9 @@ export interface AgentRuntimeConfig {
 }
 
 const MAX_LOOP_ITERATIONS = 30;
+
+/** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
+const MAX_EMPTY_TURN_RETRIES = 2;
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
@@ -193,6 +201,7 @@ export class AgentRuntime {
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
+		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {
@@ -206,12 +215,15 @@ export class AgentRuntime {
 			this.backgroundTasks,
 			this.eventBus,
 			this.telemetry,
+			tokenCounter,
 		);
 		this.toolExecutor = new ToolCallExecutor({
 			telemetry: this.telemetry,
 			eventBus: this.eventBus,
 			concurrency: config.toolCallConcurrency ?? 1,
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
+			tokenCounter,
+			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -259,19 +271,25 @@ export class AgentRuntime {
 		const abortScope = this.eventBus.createAbortScope(options?.abortSignal);
 		let list: AgentMessageList | undefined = undefined;
 		try {
-			const initializedList = await this.initRun(input, options);
-			list = initializedList;
 			const sink = new GenerateSink(this.createRunServices());
-			const rawResult = await this.telemetry.withRootSpan(
+			// initRun runs inside the root span (not before it) so the history-load
+			// and eager-input-persist memory spans it creates nest under
+			// `<agent>.generate` instead of starting as detached root spans.
+			const { result: rawResult, list: builtList } = await this.telemetry.withRootSpan(
 				'generate',
 				options,
 				this.runId,
-				async () =>
-					await this.runAgentLoop<GenerateResult>(
+				async () => {
+					const initializedList = await this.initRun(input, options);
+					list = initializedList;
+					const result = await this.runAgentLoop<GenerateResult>(
 						{ list: initializedList, options, abortScope },
 						sink,
-					),
+					);
+					return { result, list: initializedList };
+				},
 			);
+			list = builtList;
 			return this.finalizeGenerate(rawResult, list);
 		} catch (error) {
 			await this.telemetry.flush(options);
@@ -302,24 +320,18 @@ export class AgentRuntime {
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
 		const abortScope = this.eventBus.createAbortScope(options?.abortSignal);
-		let list: AgentMessageList;
-		try {
-			list = await this.initRun(input, options);
-		} catch (error) {
-			const isAbort = abortScope.isAborted;
-			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
-			if (!isAbort) {
-				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
-			}
-			abortScope.dispose();
-			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
-		}
-
-		return {
+		// initRun runs inside startStream's root span (not before it) so the
+		// history-load and eager-input-persist memory spans it creates nest
+		// under `<agent>.stream` instead of starting as detached root spans.
+		// A failure there now surfaces through the same async error path as a
+		// loop failure (startStreamSession's catch), rather than a synchronous
+		// makeErrorStream — which also means cleanupRun/flushTelemetry now run
+		// on an init failure too, where they previously didn't.
+		return await Promise.resolve({
 			runId: this.runId,
-			stream: this.startStream({ list, options, abortScope }),
+			stream: this.startStream({ input, options, abortScope }),
 			getState: () => this.getState(),
-		};
+		});
 	}
 
 	/**
@@ -372,7 +384,7 @@ export class AgentRuntime {
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
 		if (!isCancellation(resumeData) && resumeSchema) {
-			const parseResult = await parseWithSchema(resumeSchema, data);
+			const parseResult = await parseWithSchema(resumeSchema, data, { stripUnknown: true });
 			if (!parseResult.success) {
 				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
@@ -861,7 +873,7 @@ export class AgentRuntime {
 				staticToolCacheName,
 			});
 
-			const turn = await sink.callModel({
+			const modelCallContext = {
 				model: staticLoopContext.model,
 				system,
 				messages: cached.messages,
@@ -871,8 +883,28 @@ export class AgentRuntime {
 				reasoning: staticLoopContext.reasoning,
 				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
+				maxOutputTokens: staticLoopContext.maxOutputTokens,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
-			});
+			};
+			let turn = await sink.callModel(modelCallContext);
+
+			// Some providers occasionally return a `stop` turn with no output at
+			// all mid-task, which would silently end the run with work half-done.
+			// Retry the call a bounded number of times before accepting the empty
+			// turn; each discarded attempt still bills its usage.
+			for (
+				let emptyRetry = 0;
+				emptyRetry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn);
+				emptyRetry++
+			) {
+				totalUsage = mergeUsage(totalUsage, turn.usage);
+				incrementTokenCountFromUsage(options?.executionCounter, turn.usage);
+				// Publish before the abort check so a cancel between the empty attempt
+				// and the retry still bills those tokens via getTerminalFinish().
+				sink.reportUsage(totalUsage);
+				this.assertNotAborted(abortScope);
+				turn = await sink.callModel(modelCallContext);
+			}
 
 			// Fold the just-finished turn's usage in before the abort check so a
 			// stop that lands right after the model call still bills its tokens.
@@ -938,9 +970,24 @@ export class AgentRuntime {
 	/**
 	 * Wire up a ReadableStream and start the stream loop in the background via the
 	 * StreamSession, which owns the single shutdown / cleanup path.
+	 *
+	 * Accepts either an already-built `list` (resume/crashResume, which restore
+	 * it from persisted state) or raw `input` (a fresh `stream()` call) — in the
+	 * latter case `initRun` builds the list from inside `runLoop`, i.e. inside
+	 * the telemetry root span, so its memory spans nest correctly.
 	 */
-	private startStream(ctx: LoopContext): ReadableStream<StreamChunk> {
+	private startStream(
+		ctx: (
+			| { list: AgentMessageList; input?: never }
+			| { list?: never; input: AgentMessage[] | string }
+		) & {
+			options?: RuntimeExecutionOptions;
+			abortScope: AgentAbortScope;
+			pendingResume?: PendingResume;
+		},
+	): ReadableStream<StreamChunk> {
 		let sink: StreamSink | undefined;
+		let list: AgentMessageList | undefined = ctx.list;
 		return startStreamSession({
 			eventBus: this.eventBus,
 			abortScope: ctx.abortScope,
@@ -961,18 +1008,30 @@ export class AgentRuntime {
 						server: failure.server,
 					});
 				}
+				const resolvedList = ctx.list ?? (await this.initRun(ctx.input, ctx.options));
+				list = resolvedList;
 				sink = new StreamSink(guard, this.createRunServices(), ctx.options);
-				await this.runAgentLoop(ctx, sink);
+				await this.runAgentLoop(
+					{
+						list: resolvedList,
+						options: ctx.options,
+						abortScope: ctx.abortScope,
+						pendingResume: ctx.pendingResume,
+					},
+					sink,
+				);
 			},
-			getAbortFinish: () => sink?.getAbortFinish() ?? {},
+			getTerminalFinish: () => sink?.getTerminalFinish() ?? {},
 			// Durably save the turn-so-far when a streaming run is aborted, so a cancelled
 			// run still leaves its assistant work in memory. Fold in the text streamed for
 			// the in-flight turn first — its `newMessages` are only built once the stream
-			// completes, which the abort skipped, so it isn't in the list yet.
+			// completes, which the abort skipped, so it isn't in the list yet. No-op if
+			// the run aborted before initRun finished building the list.
 			persistTurnOnAbort: async () => {
+				if (!list) return;
 				const partial = sink?.getAbortSnapshot();
-				if (partial) ctx.list.addResponse([partial]);
-				await this.memory.persistTurnDelta(ctx.list, ctx.options);
+				if (partial) list.addResponse([partial]);
+				await this.memory.persistTurnDelta(list, ctx.options);
 			},
 			flushTelemetry: async (options) => await this.telemetry.flush(options),
 			cleanupRun: async () => await this.cleanupRun(),

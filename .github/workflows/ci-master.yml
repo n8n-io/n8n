@@ -24,17 +24,20 @@ jobs:
           # The default is build without typechecking, we want both
           build-command: pnpm build
 
+      - name: Report build critical path
+        run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
+
   unit-test:
     name: Unit tests
     uses: ./.github/workflows/test-unit-reusable.yml
     strategy:
       fail-fast: false
       matrix:
-        node-version: [22.22.3, 24.18.0]
+        node-version: [24.18.1, 26.5.1]
     with:
       ref: ${{ github.sha }}
       nodeVersion: ${{ matrix.node-version }}
-      collectCoverage: ${{ matrix.node-version == '24.18.0' }}
+      collectCoverage: ${{ matrix.node-version == '24.18.1' }}
     secrets: inherit
 
   lint:

@@ -24,7 +24,7 @@ import {
 	N8nCheckbox,
 	N8nHeading,
 	N8nIconButton,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nText,
 } from '@n8n/design-system';
 
@@ -174,7 +174,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 					<template #dropdown>
 						<ElDropdownMenu :hide-on-click="false">
 							<div :class="$style.dropdownContent">
-								<N8nRadioButtons
+								<N8nSegmentControl
 									v-model="activeTab"
 									:options="tabs"
 									:class="$style.tabs"
@@ -184,7 +184,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 										{{ label }}
 										<span v-if="optionData?.count" class="ml-4xs"> ({{ optionData.count }}) </span>
 									</template>
-								</N8nRadioButtons>
+								</N8nSegmentControl>
 								<div>
 									<ul v-if="activeTab === 'nodes'">
 										<template v-if="nodeChanges.length > 0">
@@ -318,13 +318,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 }
 
 .tabs {
-	display: flex;
-	:global(.n8n-radio-button) {
-		flex: 1;
-	}
-	:global(.n8n-radio-button > div) {
-		justify-content: center;
-	}
+	width: 100%;
 }
 
 .popper {

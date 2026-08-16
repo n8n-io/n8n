@@ -5,4 +5,10 @@ export type {
 	StepType,
 	WorkflowGraph,
 } from './workflow-graph';
-export { findTriggerNode, getSuccessorNodeIds } from './workflow-graph-queries';
+export {
+	findTriggerNode,
+	getDescendantNodeIds,
+	getPredecessorNodeIds,
+	getSuccessorNodeIds,
+} from './workflow-graph-queries';
+export { GraphValidationError, validateExecutableGraph } from './validate-executable-graph';

@@ -1,13 +1,18 @@
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule } from '@n8n/decorators';
+import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
+	private interruptedExecutionSweepTimer?: NodeJS.Timeout;
+
 	async init() {
+		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
+		Container.get(SandboxSettingsService).registerCredentialUses();
+
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
 		await import('./agents.controller.js');
@@ -17,6 +22,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
+		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-vector-stores.controller.js');
 		await import('./agent-tasks.controller.js');
 		await import('./agent-sandbox.controller.js');
@@ -26,6 +32,9 @@ export class AgentsModule implements ModuleInterface {
 
 		const { AgentsService } = await import('./agents.service.js');
 		Container.get(AgentsService);
+
+		const { AgentCredentialIndexListener } = await import('./agent-credential-index.listener.js');
+		Container.get(AgentCredentialIndexListener).init();
 
 		const { AgentsBuilderSettingsService } = await import(
 			'./builder/agents-builder-settings.service.js'
@@ -53,6 +62,9 @@ export class AgentsModule implements ModuleInterface {
 			agentKnowledgeFileStore: Container.get(AgentKnowledgeFileStore),
 		});
 
+		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
+		registerFavoriteResolver();
+
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService);
 
@@ -67,16 +79,20 @@ export class AgentsModule implements ModuleInterface {
 		// Populate the integration registry with supported chat platforms.
 		// Adding a new platform is adding one subclass + one register() call.
 		const { ChatIntegrationRegistry } = await import('./integrations/agent-chat-integration.js');
-		const { SlackIntegration } = await import('./integrations/platforms/slack-integration.js');
+		const { SlackIntegration } = await import(
+			'./integrations/platforms/slack/slack-integration.js'
+		);
 		const { TelegramIntegration } = await import(
 			'./integrations/platforms/telegram-integration.js'
 		);
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
+		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
 		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
+		registry.register(Container.get(DiscordIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 
 		// Reconnect Chat and Task services on startup so this main resumes its
@@ -96,6 +112,24 @@ export class AgentsModule implements ModuleInterface {
 		const taskService = Container.get(AgentTaskService);
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
+		if (instanceSettings.instanceType === 'main') {
+			const { AgentInterruptedExecutionSweeper } = await import(
+				'./agent-interrupted-execution-sweeper.js'
+			);
+			const sweep = () => {
+				void Container.get(AgentInterruptedExecutionSweeper)
+					.sweep()
+					.catch((error: unknown) => {
+						logger.error('[Agents] Interrupted execution sweep failed', { error });
+					});
+			};
+			sweep();
+			this.interruptedExecutionSweepTimer = setInterval(
+				sweep,
+				AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS,
+			);
+			this.interruptedExecutionSweepTimer.unref();
+		}
 		void chatService.reconnectAll().catch((error) => {
 			logger.error('[Agents] Failed to reconnect integrations on startup', {
 				error: error instanceof Error ? error.message : String(error),
@@ -112,16 +146,23 @@ export class AgentsModule implements ModuleInterface {
 		}
 	}
 
+	@OnShutdown()
+	async shutdown() {
+		if (this.interruptedExecutionSweepTimer) {
+			clearInterval(this.interruptedExecutionSweepTimer);
+		}
+	}
+
 	async settings() {
 		const config = Container.get(AgentsConfig);
-		const { isAgentKnowledgeBaseEnabled } = await import('./agent-knowledge-gate.js');
 		const { AiService } = await import('@/services/ai.service.js');
+		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
 			enabled: true,
 			modules: [...config.modules],
-			knowledgeBaseEnabled: isAgentKnowledgeBaseEnabled(config, proxyEnabled),
+			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
 			proxyEnabled,
 		};
 	}
@@ -138,6 +179,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
+		const { AgentCredentialDependency } = await import(
+			'./entities/agent-credential-dependency.entity.js'
+		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
 		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity.js');
@@ -171,6 +215,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentExecutionThread,
 			AgentExecution,
 			AgentHistory,
+			AgentCredentialDependency,
 			AgentTask,
 			AgentTaskRunLock,
 			AgentTaskSnapshot,

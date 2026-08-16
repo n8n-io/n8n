@@ -40,6 +40,7 @@ import {
 	EnterpriseEditionFeature,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
@@ -66,7 +67,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -135,7 +136,9 @@ import {
 	TelemetryHelpers,
 	isCommunityPackageName,
 	isHitlToolType,
+	isResourceLocatorValue,
 } from 'n8n-workflow';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -1339,6 +1342,28 @@ export function useCanvasOperations() {
 			operation,
 			action: options.actionName,
 			next_view_shown: nextView,
+		});
+
+		if (nodeData.type === MESSAGE_AN_AGENT_NODE_TYPE) {
+			trackAddAgentNode(nodeData);
+		}
+	}
+
+	function trackAddAgentNode(nodeData: INodeUi) {
+		const { agentSource, agentId } = nodeData.parameters ?? {};
+
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE, {
+			// Raw stored value only — absent means the node was added without the
+			// agents panel preset, and analytics coalesces that to 'referenced'
+			agent_source:
+				agentSource === 'inline' || agentSource === 'referenced' ? agentSource : undefined,
+			agent_id:
+				isResourceLocatorValue(agentId) && typeof agentId.value === 'string' && agentId.value !== ''
+					? agentId.value
+					: undefined,
+			workflow_id: workflowDocumentStore.value.workflowId,
+			node_id: nodeData.id,
+			node_version: nodeData.typeVersion,
 		});
 	}
 

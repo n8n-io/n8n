@@ -1,7 +1,9 @@
+import type { ConsentUiHints } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { OAuthResourceGrant } from 'n8n-workflow';
 
 /**
  * Descriptor for an OAuth 2.1 protected resource served by this instance.
@@ -17,6 +19,9 @@ export interface ProtectedResource {
 
 	/** Human readable name, for consent screen */
 	displayName?: string;
+
+	/** Presentational hints for the consent screen; omit for the default client-brand treatment. */
+	uiHints?: ConsentUiHints;
 
 	/**
 	 * Canonical RFC 8707 resource URL used as the JWT `aud` claim and advertised
@@ -75,6 +80,14 @@ export interface ProtectedResource {
 	 * @returns A promise that resolves to a boolean indicating whether the user is authorized
 	 **/
 	authorize(user: User): Promise<boolean>;
+
+	/**
+	 * Serializable form of this resource's gate, sealed into the executions it grants
+	 * access to — see {@link OAuthResourceGrant}. Implement it on any resource derived
+	 * from something shorter-lived than an execution; omitting it makes those runs
+	 * depend on the resource still resolving at every credential access.
+	 */
+	getGrant?(): OAuthResourceGrant;
 }
 
 /**

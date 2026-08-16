@@ -366,7 +366,6 @@ describe('renderSbom — edge cases', () => {
 			'pkg:npm/busboy@1.6.0',
 			'pkg:npm/imap@0.8.19',
 			'pkg:npm/js-nacl@1.4.0',
-			'pkg:npm/seq-queue@0.0.5',
 			'pkg:npm/streamsearch@1.1.0',
 			'pkg:npm/utf7@1.0.2',
 			'pkg:npm/nub@0.0.0',

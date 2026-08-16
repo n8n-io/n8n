@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { AGENT_BUILDER_DEFAULT_MODEL } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nSegmentControl, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useAgentModelCredentials } from '../../composables/useAgentModelCredentials';
 import { useAgentProjectId } from '../../composables/useAgentProjectId';
@@ -195,10 +195,9 @@ function onCancel() {
 		</N8nText>
 
 		<div v-if="showModePicker" :class="$style.modeRow">
-			<N8nRadioButtons
+			<N8nSegmentControl
 				:model-value="store.mode"
 				:options="modeOptions"
-				size="medium"
 				@update:model-value="onModeChange"
 			/>
 		</div>
@@ -222,7 +221,7 @@ function onCancel() {
 		</N8nText>
 
 		<div v-if="canSave" :class="$style.actions">
-			<N8nButton type="secondary" size="small" @click="onCancel">
+			<N8nButton size="small" @click="onCancel">
 				{{ i18n.baseText('generic.cancel') }}
 			</N8nButton>
 			<N8nButton size="small" :loading="store.isSaving" @click="onSave">

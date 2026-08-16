@@ -170,7 +170,15 @@ export class CredentialsController {
 		@Param('credentialId') credentialId: string,
 	) {
 		try {
-			return await this.credentialsService.probeById(req.user, credentialId);
+			const result = await this.credentialsService.probeById(req.user, credentialId);
+
+			this.eventService.emit('credentials-probed', {
+				user: req.user,
+				credentialId,
+				outcome: result.outcome,
+			});
+
+			return result;
 		} catch (error) {
 			if (error instanceof CredentialNotFoundError) {
 				throw new ForbiddenError();
@@ -281,6 +289,9 @@ export class CredentialsController {
 		if (isTogglingToPrivate || isTogglingToStatic) {
 			const owningProject =
 				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			if (isTogglingToPrivate) {
+				this.credentialsService.ensureEndUserCredentialAllowedInProject(owningProject);
+			}
 			await this.credentialsService.ensureCanManageEndUserCredential(req.user, owningProject?.id);
 		}
 

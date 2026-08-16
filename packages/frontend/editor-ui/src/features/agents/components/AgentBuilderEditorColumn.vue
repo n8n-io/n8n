@@ -12,7 +12,7 @@ import type {
 	AgentSkill,
 } from '../types';
 import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
@@ -25,6 +25,7 @@ import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
+import AgentEvalsSection from './AgentEvalsSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -41,12 +42,16 @@ const props = defineProps<{
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
 	canEditAgent: boolean;
+	/** `agent:execute`, which a project viewer holds without holding update. */
+	canExecuteAgent?: boolean;
 	agentAvailableInMcp?: boolean;
 	executionsDescription: string;
+	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
+	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
 }>();
 
@@ -77,6 +82,7 @@ const emit = defineEmits<{
 	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
 	'agent-changed': [];
+	'generate-eval-cases': [];
 }>();
 
 const i18n = useI18n();
@@ -120,6 +126,7 @@ const i18n = useI18n();
 						:validation-issues="configValidationIssues ?? []"
 						:simple-channel-setup="artifactMode"
 						:agent-unsaved="agentUnsaved"
+						:ensure-agent-persisted="ensureAgentPersisted"
 						@update:connected-triggers="emit('update:connected-triggers', $event)"
 						@trigger-added="emit('trigger-added', $event)"
 						@agent-changed="emit('agent-changed')"
@@ -204,6 +211,7 @@ const i18n = useI18n();
 						:project-id="projectId"
 						:agent-id="agentId"
 						:open-session-in-new-tab="artifactMode"
+						:manage-store-lifecycle="false"
 						data-testid="agent-executions-panel"
 					/>
 				</AgentBuilderTabPanel>
@@ -253,6 +261,21 @@ const i18n = useI18n();
 							/>
 						</N8nCard>
 					</div>
+				</AgentBuilderTabPanel>
+
+				<AgentBuilderTabPanel
+					v-else-if="activeMainTab === 'evals'"
+					data-testid="agent-evals-tab-content"
+				>
+					<AgentEvalsSection
+						:project-id="projectId"
+						:agent-id="agentId"
+						:agent-unsaved="agentUnsaved"
+						:disabled="childrenDisabled"
+						:can-run="canExecuteAgent"
+						:generating="generatingEvalCases"
+						@generate="emit('generate-eval-cases')"
+					/>
 				</AgentBuilderTabPanel>
 			</div>
 		</div>

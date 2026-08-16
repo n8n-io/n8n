@@ -1,5 +1,5 @@
 import type { TagEntity, ITagWithCountDb } from '@n8n/db';
-import { TagRepository } from '@n8n/db';
+import { TagRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 
@@ -25,6 +25,7 @@ export class TagService {
 	constructor(
 		private externalHooks: ExternalHooks,
 		private tagRepository: TagRepository,
+		private txRunner: TransactionRunner,
 	) {}
 
 	toEntity(attrs: { name: string; id?: string }) {
@@ -45,6 +46,19 @@ export class TagService {
 		await this.externalHooks.run(`tag.after${action}`, [tag]);
 
 		return await savedTag;
+	}
+
+	/**
+	 * Re-keys an existing tag to a new id, moving its workflow and folder
+	 * mappings along. Does not run the `tag.beforeUpdate`/`afterUpdate`
+	 * external hooks: those model name edits, and no id-change hook contract
+	 * exists.
+	 */
+	async reconcileTagId(oldId: string, newId: string) {
+		await this.txRunner.run(
+			{},
+			async (ctx) => await this.tagRepository.reconcileTagId(oldId, newId, ctx),
+		);
 	}
 
 	async delete(id: string) {
@@ -110,6 +124,10 @@ export class TagService {
 	async getByNames(names: string[]): Promise<TagEntity[]> {
 		if (names.length === 0) return [];
 		return await this.tagRepository.findManyByName(names);
+	}
+
+	async getAllByWorkflowId(workflowId: string): Promise<TagEntity[]> {
+		return await this.tagRepository.findBy({ workflows: { id: workflowId } });
 	}
 
 	/**

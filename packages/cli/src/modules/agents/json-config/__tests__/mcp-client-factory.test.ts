@@ -575,6 +575,37 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 });
 
 // ---------------------------------------------------------------------------
+// buildMcpClientForServer — unresolvable credential
+// ---------------------------------------------------------------------------
+
+describe('buildMcpClientForServer — unresolvable credential', () => {
+	beforeEach(() => {
+		mcpClientCtor.mockReset();
+		proxyFetchMock.mockReset();
+		proxyFetchMock.mockResolvedValue(makeOk());
+	});
+
+	it('fails the connection with the resolution error instead of connecting unauthenticated', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockRejectedValue(
+			new Error('Could not load secrets [Error resolving credentials]'),
+		);
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(
+			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await expect(configs[0].fetch('https://example.test/mcp')).rejects.toThrow(
+			'Could not resolve the credential for MCP server "srv": Could not load secrets [Error resolving credentials]',
+		);
+		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
 // listMcpServerTools
 // ---------------------------------------------------------------------------
 

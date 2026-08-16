@@ -1,4 +1,5 @@
 name: 'Community: Close Stale PRs'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Community: Close Stale PRs (dry-run={0})', inputs['dry-run']) || '' }}"
 
 # Closes community PRs that were sent back to the contributor
 # (triage:needs-info / triage:tests-needed / Needs Feedback) and have been
@@ -37,6 +38,8 @@ jobs:
           days-before-pr-close: 14
           stale-pr-label: 'Stale'
           close-pr-label: 'status:internal-closed'
+          labels-to-add-when-unstale: 'triage:pending'
+          labels-to-remove-when-unstale: 'Stale'
           operations-per-run: 1000 # default 30 exhausts on page fetches before reaching recent PRs
           # contributor activity resets the clock (remove-stale-when-updated defaults to true)
           ascending: true # oldest first

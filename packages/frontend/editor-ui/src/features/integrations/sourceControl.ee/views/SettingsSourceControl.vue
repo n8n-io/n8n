@@ -9,7 +9,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { useSourceControlStore } from '../sourceControl.store';
 import type { SshKeyTypes, SourceControlPreferences } from '../sourceControl.types';
 import type { TupleToUnion } from '@/app/utils/typeHelpers';
-import type { Rule, RuleGroup } from '@n8n/design-system/types';
+import type { Rule, RuleGroup } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Validatable } from '@n8n/design-system';
 import { computed, onMounted, reactive, ref, watch } from 'vue';

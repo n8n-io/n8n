@@ -31,10 +31,7 @@ export interface AgentCapabilitiesTelemetry {
 	trackOpenedToolFromList?: (toolType: string) => void;
 	trackOpenedSkillFromList?: (skillId: string) => void;
 	trackOpenedAddSkillModal?: () => void;
-	trackTriggerListChanged?: (triggers: string[]) => void;
 	trackTriggerAdded?: (payload: { triggerType: string; triggers: string[] }) => void;
-	trackRemovedTool?: (ref: AgentJsonToolConfig) => void;
-	trackRemovedMcpServer?: (server: AgentJsonMcpServerConfig) => void;
 }
 
 export interface UseAgentCapabilitiesActionsDeps {
@@ -232,7 +229,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						(_, i) => i !== mcpServerIndex,
 					);
 					scheduleConfigUpdate({ mcpServers: nextMcpServers });
-					telemetry?.trackRemovedMcpServer?.(mcpServer);
 				},
 			},
 		});
@@ -310,12 +306,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							[skillId]: sanitizedSkill,
 						},
 					};
-					const nextSkills = [...(localConfig.value?.skills ?? [])];
-					const skillRefIndex = nextSkills.findIndex((skillRef) => skillRef.id === id);
-					if (skillRefIndex !== -1) {
-						nextSkills[skillRefIndex] = { type: 'skill', id: skillId };
-						scheduleConfigUpdate({ skills: nextSkills });
-					}
 					scheduleSkillSave({ skillId, skill: sanitizedSkill });
 				},
 			},
@@ -341,6 +331,15 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					icon: 'globe',
 				});
 			}
+		}
+
+		for (const server of localConfig.value?.mcpServers ?? []) {
+			if (!server.name) continue;
+			tools.push({
+				name: server.name,
+				label: formatToolNameForDisplay(server.name) || server.name,
+				icon: 'mcp',
+			});
 		}
 
 		return tools;
@@ -382,10 +381,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	function onRemoveTool(index: number) {
 		const currentTools = localConfig.value?.tools ?? [];
 		if (index < 0 || index >= currentTools.length) return;
-		const removed = currentTools[index];
 		const nextTools = currentTools.filter((_, i) => i !== index);
 		scheduleConfigUpdate({ tools: nextTools });
-		telemetry?.trackRemovedTool?.(removed);
 	}
 
 	function onRemoveSkill(id: string) {
@@ -480,7 +477,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	function onConnectedTriggersUpdate(triggers: string[]) {
 		connectedTriggers.value = triggers;
-		telemetry?.trackTriggerListChanged?.(triggers);
 	}
 
 	function onTriggerAdded(payload: { triggerType: string; triggers: string[] }) {

@@ -29,11 +29,12 @@ exhaustive field reference; this skill is the opinionated *how*.
 > `--source langtracer`. You still write the JSON file — it's just the input to
 > the push, not a committed artifact.
 >
-> **Exception — seeded cases.** The case-write API has no `seed` field, so seeded
-> cases are never pushed. A `seed.mode: "replay"` case is a local throwaway (don't
-> commit it either — it dies when its trace is pruned); a `seed.mode: "inline"`
-> case isn't transient and has no suite home, so it's the one sanctioned
-> exception — it lives as committed JSON. See [`case-shapes.md`](case-shapes.md).
+> **Seeded cases.** An `inline` seed pushes with the case — the case-write API
+> stores it verbatim, so the suite is its home like any other case. Only a
+> `seed.mode: "replay"` case is refused (listed under `skipped:`): it's
+> reconstructed from a LangSmith trace at run time, so it dies when that trace is
+> pruned and has no durable home. Don't commit a replay case either — derive a
+> synthetic case from it. See [`case-shapes.md`](case-shapes.md).
 
 ## Set the autonomy level first
 
@@ -104,7 +105,7 @@ case can still assert outcome), but the primary shape drives the work.
 | **Build** (default) | Does the workflow the agent builds actually *work*? | `outcomeExpectations` + `executionScenarios` |
 | **Behaviour / process** | Does the agent *converse* correctly (ask the right clarifying question, not re-ask, honour a correction, respect plan approval)? | `processExpectations` + multi-turn director script; often **build-only** |
 | **Credential** | Does the build behave correctly given a specific credential view? | `credentials[]` |
-| **Seeded** | Reproduce a conversation mid-thread and drive the turn under test | `seed` (`mode: "inline"` or `"replay"`) |
+| **Seeded** | Start mid-thread, with prior work already in place, and drive the turn under test | `seed` (authored `mode: "inline"`; `"replay"` for a local check) |
 
 **Build** is documented in full below. The other three, the director-script
 vocabulary, and the seeding modes are in [`case-shapes.md`](case-shapes.md).
@@ -206,9 +207,9 @@ calibration you hand the driver the thread link + login to review the real build
    [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)); the suite is the
    case's home, not the repo. Leave the `data/workflows/*.json` file uncommitted
    (or delete it once it's in the suite). Committing new case JSONs into the repo
-   is no longer the approach. (Exception: seeded cases can't be pushed — an
-   `inline`-seeded case stays committed JSON, a `replay` case is
-   a local throwaway; see [`case-shapes.md`](case-shapes.md).) For a sourced case,
+   is no longer the approach. (An `inline` seed pushes with the case; only a
+   `replay` case is refused — it's a local throwaway; see
+   [`case-shapes.md`](case-shapes.md).) For a sourced case,
    finish by **linking it to its source thread/finding** over the MCP — see
    [Link the pushed case to its source](#link-the-pushed-case-to-its-source-provenance-step--always-do-this).
 
@@ -667,12 +668,12 @@ npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --cha
   lang-tracer #48), so scenario edits re-push like any other field. A lang-tracer
   deployment predating that change silently ignores the key; if a pushed scenario
   edit doesn't land, update the scenario in the lang-tracer UI.
-- **Seeded cases can't be pushed:** the case-write API has no `seed` field, so the
-  push lists any seeded case under `skipped:` and it never reaches the suite. A
-  `replay` case shouldn't be committed either — it dies when its trace is pruned
-  or deleted — so derive a durable synthetic case as the artifact instead. An
-  `inline`-seeded case isn't transient and has no suite home, so it's the one
-  exception to "don't commit the JSON" — it lives as a committed artifact.
+- **An `inline` seed pushes with the case:** the case-write API stores it
+  verbatim, so a seeded case lives in a suite like any other. Only a `replay`
+  case is refused — the push lists it under `skipped:`, because it's
+  reconstructed from a LangSmith trace at run time and dies when that trace is
+  pruned or deleted. Don't commit a replay case either; derive a durable
+  synthetic case as the artifact instead.
 
 ### Link the pushed case to its source (provenance step — always do this)
 
