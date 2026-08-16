@@ -789,6 +789,7 @@ overrides:
   brace-expansion@5: 5.0.9
   '@tootallnate/once@2': 2.0.1
   '@vue/server-renderer@3.5.26': 3.5.40
+  '@vue/shared@3.5.26': 3.5.40
   '@opentelemetry/exporter-prometheus@<=0.217.0': 0.217.0
   '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
   langsmith: 0.6.0
@@ -13777,9 +13778,6 @@ packages:
 
   '@vue/server-renderer@3.5.40':
     resolution: {integrity: sha512-XNJym9WpevhTVt1HuwOrCRJ5Q+9z4BjTMrDtjTrvx74SmUll8spNTw6whWJa9mEkO4PKn5TihI/bm/8ds2QVJw==}
-
-  '@vue/shared@3.5.26':
-    resolution: {integrity: sha512-7Z6/y3uFI5PRoKeorTOSXKcDj0MSasfNNltcslbFrPpcw6aXRUALq4IfJlaTRspiWIUOEZbrpM+iQGmCOiWe4A==}
 
   '@vue/shared@3.5.40':
     resolution: {integrity: sha512-WxnBtruIqOoV3rA4jeKDWzrYI5h7Cp4+pjwDi8kWGHz+IslhiN+wguLVVhtv2l8VoU02rzDCVfDjgCl1lNpZVg==}
@@ -31657,7 +31655,7 @@ snapshots:
   '@vue/compiler-core@3.5.26':
     dependencies:
       '@babel/parser': 7.29.2
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       entities: 7.0.1
       estree-walker: 2.0.2
       source-map-js: 1.2.1
@@ -31673,7 +31671,7 @@ snapshots:
   '@vue/compiler-dom@3.5.26':
     dependencies:
       '@vue/compiler-core': 3.5.26
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
 
   '@vue/compiler-dom@3.5.40':
     dependencies:
@@ -31686,7 +31684,7 @@ snapshots:
       '@vue/compiler-core': 3.5.26
       '@vue/compiler-dom': 3.5.26
       '@vue/compiler-ssr': 3.5.26
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       estree-walker: 2.0.2
       magic-string: 0.30.21
       postcss: 8.5.10
@@ -31695,7 +31693,7 @@ snapshots:
   '@vue/compiler-ssr@3.5.26':
     dependencies:
       '@vue/compiler-dom': 3.5.26
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
 
   '@vue/compiler-ssr@3.5.40':
     dependencies:
@@ -31714,7 +31712,7 @@ snapshots:
       '@volar/language-core': 2.4.12
       '@vue/compiler-dom': 3.5.26
       '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       alien-signals: 0.2.2
       minimatch: 9.0.9
       muggle-string: 0.4.1
@@ -31727,7 +31725,7 @@ snapshots:
       '@volar/language-core': 2.4.12
       '@vue/compiler-dom': 3.5.26
       '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       alien-signals: 0.4.14
       minimatch: 9.0.9
       muggle-string: 0.4.1
@@ -31740,7 +31738,7 @@ snapshots:
       '@volar/language-core': 2.4.12
       '@vue/compiler-dom': 3.5.26
       '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       alien-signals: 1.0.4
       minimatch: 9.0.9
       muggle-string: 0.4.1
@@ -31753,7 +31751,7 @@ snapshots:
       '@volar/language-core': 2.4.12
       '@vue/compiler-dom': 3.5.26
       '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       alien-signals: 1.0.4
       minimatch: 9.0.9
       muggle-string: 0.4.1
@@ -31766,7 +31764,7 @@ snapshots:
       '@volar/language-core': 2.4.12
       '@vue/compiler-dom': 3.5.26
       '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       alien-signals: 1.0.4
       minimatch: 9.0.9
       muggle-string: 0.4.1
@@ -31777,7 +31775,7 @@ snapshots:
 
   '@vue/reactivity@3.5.26':
     dependencies:
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
 
   '@vue/reactivity@3.5.40':
     dependencies:
@@ -31786,7 +31784,7 @@ snapshots:
   '@vue/runtime-core@3.5.26':
     dependencies:
       '@vue/reactivity': 3.5.26
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
 
   '@vue/runtime-core@3.5.40':
     dependencies:
@@ -31797,7 +31795,7 @@ snapshots:
     dependencies:
       '@vue/reactivity': 3.5.26
       '@vue/runtime-core': 3.5.26
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       csstype: 3.2.3
 
   '@vue/runtime-dom@3.5.40':
@@ -31812,8 +31810,6 @@ snapshots:
       '@vue/compiler-ssr': 3.5.40
       '@vue/runtime-dom': 3.5.40
       '@vue/shared': 3.5.40
-
-  '@vue/shared@3.5.26': {}
 
   '@vue/shared@3.5.40': {}
 
@@ -42728,7 +42724,7 @@ snapshots:
       '@vue/compiler-sfc': 3.5.26
       '@vue/runtime-dom': 3.5.26
       '@vue/server-renderer': 3.5.40
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
     optionalDependencies:
       typescript: '@typescript/typescript6@6.0.2'
 
@@ -42738,7 +42734,7 @@ snapshots:
       '@vue/compiler-sfc': 3.5.26
       '@vue/runtime-dom': 3.5.26
       '@vue/server-renderer': 3.5.40
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
     optionalDependencies:
       typescript: 6.0.2
 
@@ -42748,7 +42744,7 @@ snapshots:
       '@vue/compiler-sfc': 3.5.26
       '@vue/runtime-dom': 3.5.26
       '@vue/server-renderer': 3.5.40
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
     optionalDependencies:
       typescript: 7.0.2
 
