@@ -526,4 +526,19 @@ export const describeCommonTests = (
 			});
 		});
 	});
+
+	describe('sendMessageToUI', () => {
+		it('should handle null and undefined arguments without throwing', () => {
+			additionalData.sendDataToUI = vi.fn();
+
+			expect(() => {
+				context.sendMessageToUI(null, undefined, 'hello', 123);
+			}).not.toThrow();
+
+			expect(additionalData.sendDataToUI).toHaveBeenCalledWith('sendConsoleMessage', {
+				source: `[Node: "${node.name}"]`,
+				messages: [null, undefined, 'hello', 123],
+			});
+		});
+	});
 };
