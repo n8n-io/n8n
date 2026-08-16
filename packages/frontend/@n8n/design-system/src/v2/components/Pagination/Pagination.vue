@@ -30,7 +30,7 @@ const props = withDefaults(defineProps<PaginationProps>(), {
 	pageSizes: () => [10, 20, 30, 40, 50, 100],
 	showTotal: true,
 	showSizes: true,
-	showJumper: true,
+	showJumper: false,
 	hideOnSinglePage: false,
 	defaultPage: 1,
 	defaultItemsPerPage: 10,

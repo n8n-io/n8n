@@ -41,7 +41,7 @@ export default {
 		},
 		showJumper: {
 			control: 'boolean',
-			description: 'Show the go-to-page jumper',
+			description: 'Show the go-to-page jumper. Off by default.',
 		},
 		total: {
 			control: 'number',
@@ -99,7 +99,6 @@ export const WithTotal: Story = {
 		itemsPerPage: 10,
 		showTotal: true,
 		showSizes: false,
-		showJumper: false,
 	},
 };
 
@@ -111,7 +110,6 @@ export const WithPageSizes: Story = {
 		pageSizes: [10, 20, 50, 100],
 		showTotal: false,
 		showSizes: true,
-		showJumper: false,
 	},
 };
 

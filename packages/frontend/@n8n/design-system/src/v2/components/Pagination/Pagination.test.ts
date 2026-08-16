@@ -5,7 +5,7 @@ import Pagination from './Pagination.vue';
 
 describe('v2/components/Pagination', () => {
 	describe('rendering', () => {
-		it('should render prev, next, total, sizes, and jumper by default', () => {
+		it('should render prev, next, total, and sizes by default without jumper', () => {
 			const wrapper = render(Pagination, {
 				props: {
 					total: 100,
@@ -15,6 +15,16 @@ describe('v2/components/Pagination', () => {
 			expect(wrapper.getByTestId('pagination-next')).toBeInTheDocument();
 			expect(wrapper.getByTestId('pagination-total')).toHaveTextContent('Total 100');
 			expect(wrapper.getByTestId('pagination-sizes')).toBeInTheDocument();
+			expect(wrapper.queryByTestId('pagination-jumper')).not.toBeInTheDocument();
+		});
+
+		it('should show jumper when showJumper is true', () => {
+			const wrapper = render(Pagination, {
+				props: {
+					total: 100,
+					showJumper: true,
+				},
+			});
 			expect(wrapper.getByTestId('pagination-jumper')).toBeInTheDocument();
 			expect(wrapper.getByTestId('pagination-jumper-input')).toHaveValue('1');
 		});
@@ -62,6 +72,7 @@ describe('v2/components/Pagination', () => {
 					total: 100,
 					itemsPerPage: 10,
 					disabled: true,
+					showJumper: true,
 				},
 			});
 
@@ -149,6 +160,7 @@ describe('v2/components/Pagination', () => {
 					page: 1,
 					total: 100,
 					itemsPerPage: 10,
+					showJumper: true,
 				},
 			});
 
@@ -165,6 +177,7 @@ describe('v2/components/Pagination', () => {
 				page: 2,
 				total: 100,
 				itemsPerPage: 10,
+				showJumper: true,
 			});
 
 			expect(wrapper.getByText('2')).toHaveAttribute('data-selected');
@@ -227,6 +240,7 @@ describe('v2/components/Pagination', () => {
 					defaultPage: 3,
 					total: 100,
 					itemsPerPage: 10,
+					showJumper: true,
 				},
 			});
 
@@ -343,6 +357,7 @@ describe('v2/components/Pagination', () => {
 					page: 1,
 					total: 100,
 					itemsPerPage: 10,
+					showJumper: true,
 				},
 			});
 
@@ -363,6 +378,7 @@ describe('v2/components/Pagination', () => {
 					defaultPage: 1,
 					total: 100,
 					itemsPerPage: 10,
+					showJumper: true,
 				},
 			});
 
@@ -384,6 +400,7 @@ describe('v2/components/Pagination', () => {
 					defaultPage: 3,
 					total: 100,
 					itemsPerPage: 10,
+					showJumper: true,
 				},
 			});
 
@@ -405,6 +422,7 @@ describe('v2/components/Pagination', () => {
 					page: 3,
 					total: 100,
 					itemsPerPage: 10,
+					showJumper: true,
 				},
 			});
 
@@ -425,6 +443,7 @@ describe('v2/components/Pagination', () => {
 					page: 1,
 					total: 100,
 					itemsPerPage: 10,
+					showJumper: true,
 				},
 			});
 
@@ -446,6 +465,7 @@ describe('v2/components/Pagination', () => {
 					page: 1,
 					total: 100,
 					itemsPerPage: 10,
+					showJumper: true,
 				},
 			});
 

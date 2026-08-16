@@ -32,7 +32,7 @@ export type PaginationProps = Omit<
 	showSizes?: boolean;
 	/**
 	 * Show the go-to-page jumper.
-	 * @defaultValue true
+	 * @defaultValue false
 	 */
 	showJumper?: boolean;
 	/**

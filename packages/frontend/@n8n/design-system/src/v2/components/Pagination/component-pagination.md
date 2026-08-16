@@ -2,7 +2,7 @@
 
 Displays data in paged format and provides navigation between pages. Enables users to navigate through large datasets by breaking content into manageable pages with controls for moving between them.
 
-Always renders **prev / pager / next**. Optionally renders **total**, **page size select**, and **jumper** via `showTotal` / `showSizes` / `showJumper` (all default `true`).
+Always renders **prev / pager / next**. Optionally renders **total**, **page size select**, and **jumper** via `showTotal` / `showSizes` / `showJumper` (`showTotal` and `showSizes` default `true`; `showJumper` defaults `false`).
 
 - **Component Name:** N8nPagination2
 - **Reka UI Component:** [Pagination](https://reka-ui.com/docs/components/pagination)
@@ -29,7 +29,7 @@ Extends Reka UI [`PaginationRootProps`](https://reka-ui.com/docs/components/pagi
 - `pageSizes?: number[]` - Options for the page size selector. Default: `[10, 20, 30, 40, 50, 100]`
 - `showTotal?: boolean` - Show the total item count. Default: `true`
 - `showSizes?: boolean` - Show the page size selector. Default: `true`
-- `showJumper?: boolean` - Show the go-to-page jumper. Default: `true`
+- `showJumper?: boolean` - Show the go-to-page jumper. Default: `false`
 - `hideOnSinglePage?: boolean` - Hide the component when there is only one page. Default: `false`
 - `size?: 'small' | 'medium'` - Size variant. Default: `'medium'`
 
