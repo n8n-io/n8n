@@ -65,6 +65,14 @@ function firstParam(value: string | string[] | undefined): string | null {
 
 const selectedReviewId = computed(() => firstParam(route.params.reviewRequestId));
 
+/**
+ * Watchers and resolved requests below both reach this view after the viewer may have left it,
+ * where the query params it writes mean something else entirely.
+ */
+function isOnInbox() {
+	return route.name === WORKFLOW_REVIEW_REQUESTS_VIEW;
+}
+
 function stateFromQuery(value: unknown): WorkflowReviewRequestState {
 	return value === 'closed' ? 'closed' : 'open';
 }
@@ -93,7 +101,7 @@ function handleListError(error: unknown) {
 watch(
 	selectedReviewId,
 	(id) => {
-		if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
+		if (!isOnInbox()) return;
 		if (id) {
 			void store.fetchDetail(id).catch(handleListError);
 			// Failures surface in the feed's own error row, never as a second toast.
@@ -109,7 +117,7 @@ watch(
 watch(
 	() => route.query[REVIEW_INBOX_QUERY_PARAM.state],
 	(next) => {
-		if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
+		if (!isOnInbox()) return;
 		void store.setActiveTab(stateFromQuery(next)).catch(handleListError);
 	},
 );
@@ -137,6 +145,7 @@ const detailTab = computed<WorkflowReviewDetailTab>(() =>
 );
 
 function onDetailTabChange(tab: WorkflowReviewDetailTab) {
+	if (!isOnInbox()) return;
 	const query = { ...route.query };
 	if (tab === 'changes') query[REVIEW_INBOX_QUERY_PARAM.tab] = tab;
 	else delete query[REVIEW_INBOX_QUERY_PARAM.tab];
@@ -174,6 +183,7 @@ function asSentence(message: string) {
  * refetches the list from here.
  */
 function followClosedReview(id: string) {
+	if (!isOnInbox()) return;
 	if (activeTab.value === 'closed') return;
 	void router.replace({
 		params: { reviewRequestId: id },
@@ -181,13 +191,26 @@ function followClosedReview(id: string) {
 	});
 }
 
-async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
+async function onDecide(id: string, input: WorkflowReviewDecisionInput) {
 	deciding.value = true;
 	try {
-		const { autoPublish, state } = await store.decideOnReview(id, decision);
-		if (state === 'closed') {
-			followClosedReview(id);
+		const { autoPublish, state } = await store.decideOnReview(id, input);
+		// The selection does not change, so the `selectedReviewId` watcher never refires and the
+		// entry this decision just wrote needs an explicit refetch. Guarded because the await
+		// above lets the viewer pick another review meanwhile: refetching the old one would wipe
+		// its feed and discard the newer review's in-flight page, and following it to the closed
+		// tab would yank the viewer off the review they are now typing on.
+		if (selectedReviewId.value === id) {
+			activityStore.clearDecisionNote(input.note ?? '');
+			void activityStore.fetchFeed(id);
+			if (state === 'closed') {
+				followClosedReview(id);
+			}
 		}
+
+		// The view can be gone by now, and a toast — the sticky publish warning above all —
+		// would sit on an unrelated page.
+		if (!isMounted) return;
 
 		if (autoPublish?.status === 'published') {
 			showMessage({
@@ -208,6 +231,9 @@ async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
 			});
 		}
 	} catch (error) {
+		// `onUnmounted` has already reset both stores, so there is nothing left to refresh and
+		// nowhere for the toast to land but an unrelated page.
+		if (!isMounted) return;
 		showError(error, i18n.baseText('workflowReviews.decision.error.title'));
 		// The decision failed because someone else already decided (409), so
 		// refetch. Otherwise the item keeps showing as open and every retry
@@ -220,6 +246,9 @@ async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
 		} catch (refetchError) {
 			handleListError(refetchError);
 		}
+		// The feed too, or the panel keeps one missing the decision that beat this one. The
+		// note stays: the reviewer may want to retry with it.
+		if (selectedReviewId.value === id) void activityStore.fetchFeed(id);
 	} finally {
 		deciding.value = false;
 	}
