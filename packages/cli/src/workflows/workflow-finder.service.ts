@@ -181,7 +181,11 @@ export class WorkflowFinderService {
 		workflowIds: string[],
 		user: User,
 		scopes: Scope[],
-		options: { includeParentFolder?: boolean; includeTags?: boolean } = {},
+		options: {
+			includeParentFolder?: boolean;
+			includeTags?: boolean;
+			includeActiveVersion?: boolean;
+		} = {},
 	): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) return [];
 
@@ -189,7 +193,11 @@ export class WorkflowFinderService {
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: { ...where, workflowId: In(workflowIds) },
 			relations: {
-				workflow: { parentFolder: options.includeParentFolder, tags: options.includeTags },
+				workflow: {
+					parentFolder: options.includeParentFolder,
+					tags: options.includeTags,
+					activeVersion: options.includeActiveVersion,
+				},
 			},
 		});
 

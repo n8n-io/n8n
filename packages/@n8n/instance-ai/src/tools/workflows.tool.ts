@@ -483,7 +483,9 @@ async function handleGetAsCode(
 	const { generateWorkflowCode } = await import('@n8n/workflow-sdk');
 	try {
 		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
-		const code = generateWorkflowCode(json);
+		// Emit node ids: this code is edited and built back into the same saved workflow,
+		// and carrying the ids through is what keeps node identity stable.
+		const code = generateWorkflowCode({ workflow: json, includeNodeIds: true });
 		// Historical reads must not advance the optimistic-concurrency lock.
 		if (!input.versionId) {
 			await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);

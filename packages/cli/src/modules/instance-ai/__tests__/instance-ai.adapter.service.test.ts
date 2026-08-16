@@ -1235,7 +1235,7 @@ import { UserError, UnexpectedError } from 'n8n-workflow';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
@@ -1259,7 +1259,7 @@ function createNodeAdapterServiceForTests(
 	nodes: Array<Record<string, unknown>>,
 	options?: {
 		nodeCatalogService?: Mocked<NodeCatalogService>;
-		loadNodesAndCredentials?: { addPostProcessor?: Mock };
+		loadNodesAndCredentials?: Record<string, unknown>;
 	},
 ) {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1304,7 +1304,7 @@ function createNodeAdapterServiceForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
@@ -1335,7 +1335,14 @@ function createNodeAdapterServiceForTests(
 		expiresAt: Date.now() + 60_000,
 	};
 
-	return { service, nodeService: service.createContext(mockUser).nodeService, nodeCatalogService };
+	const context = service.createContext(mockUser);
+
+	return {
+		service,
+		nodeService: context.nodeService,
+		credentialService: context.credentialService,
+		nodeCatalogService,
+	};
 }
 
 function createNodeAdapterForTests(
@@ -1627,10 +1634,8 @@ function createDataTableAdapterForTests(overrides?: {
 			.mockResolvedValue({ id: 'dt-1', name: 'Orders', projectId: 'team-project-id' }),
 	};
 
-	const mockSourceControlPreferencesService = {
-		getPreferences: vi.fn().mockReturnValue({
-			branchReadOnly: overrides?.branchReadOnly ?? false,
-		}),
+	const mockInstanceWriteAccess = {
+		isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
 	};
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1665,7 +1670,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
-		mockSourceControlPreferencesService as unknown as SourceControlPreferencesService,
+		mockInstanceWriteAccess as unknown as InstanceWriteAccessService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
@@ -1692,7 +1697,7 @@ function createDataTableAdapterForTests(overrides?: {
 		mockProjectRepository,
 		mockDataTableService,
 		mockDataTableRepository,
-		mockSourceControlPreferencesService,
+		mockInstanceWriteAccess,
 		mockUser,
 	};
 }
@@ -1979,10 +1984,8 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi
-				.fn()
-				.mockReturnValue({ branchReadOnly: overrides?.branchReadOnly ?? false }),
-		} as unknown as SourceControlPreferencesService,
+			isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
+		} as unknown as InstanceWriteAccessService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		mockWorkflowHistoryService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -2813,8 +2816,8 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
-		} as unknown as SourceControlPreferencesService,
+			isReadOnly: vi.fn().mockReturnValue(false),
+		} as unknown as InstanceWriteAccessService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
@@ -3075,7 +3078,7 @@ function createRunAdapterForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
@@ -3579,7 +3582,7 @@ function createAdapterWithGatewayMock(
 		typeof InstanceAiAdapterService
 	>[14];
 	args[21] = {
-		getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+		isReadOnly: vi.fn().mockReturnValue(false),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
 	if (overrides?.settingsService) {
 		args[22] = overrides.settingsService as unknown as ConstructorParameters<
@@ -3878,6 +3881,7 @@ describe('MCP registry discovery', () => {
 		moduleActive?: boolean;
 		featureFlags?: Record<string, string>;
 		registrySearch?: Mock;
+		registryResolveBySlugs?: Mock;
 		listConnectionsForUser?: Mock;
 	}
 
@@ -3886,11 +3890,12 @@ describe('MCP registry discovery', () => {
 	function stubContainer(stubs: McpStubs = {}) {
 		const getFeatureFlags = vi.fn().mockResolvedValue(stubs.featureFlags ?? {});
 		const search = stubs.registrySearch ?? vi.fn().mockResolvedValue([]);
+		const resolveBySlugs = stubs.registryResolveBySlugs ?? vi.fn().mockResolvedValue([]);
 		const listConnectionsForUser = stubs.listConnectionsForUser ?? vi.fn().mockResolvedValue([]);
 
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === PostHogClient) return { getFeatureFlags };
-			if (token === McpRegistryService) return { search };
+			if (token === McpRegistryService) return { search, resolveBySlugs };
 			if (token === InstanceAiMcpRegistryService) return { listConnectionsForUser };
 			// Stands in for ModuleRegistry: `mcp-registry` active, `agents` not.
 			return {
@@ -3898,7 +3903,7 @@ describe('MCP registry discovery', () => {
 			};
 		});
 
-		return { getFeatureFlags, search, listConnectionsForUser };
+		return { getFeatureFlags, search, resolveBySlugs, listConnectionsForUser };
 	}
 
 	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
@@ -3980,46 +3985,76 @@ describe('MCP registry discovery', () => {
 			const results = await context.mcpService!.search(['drive']);
 
 			expect(search).toHaveBeenCalledWith(['drive']);
-			// url/transport/authentication/credentialType/metadata never reach the agent.
+			// url/transport/authentication/metadata never reach the agent.
 			expect(results).toEqual([
 				{
 					slug: 'google-drive',
 					title: 'Google Drive',
 					description: 'Work with Drive files',
+					credentialType: 'googleDriveMcpOAuth2Api',
 					tools: ['list_files'],
 				},
 			]);
 		});
 
 		it('drops a server the user already has a connection for', async () => {
-			const { listConnectionsForUser } = stubContainer({
+			stubContainer({
 				registrySearch: vi
 					.fn()
 					.mockResolvedValue([registryHit, { ...registryHit, slug: 'notion', title: 'Notion' }]),
-				listConnectionsForUser: vi
-					.fn()
-					.mockResolvedValue([
-						{ id: 'conn-1', userId: 'user-1', serverSlug: 'google-drive', credentialId: 'cred-1' },
-					]),
+				listConnectionsForUser: vi.fn().mockResolvedValue([{ serverSlug: 'google-drive' }]),
 			});
 			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
 
 			const results = await context.mcpService!.search(['drive', 'notion']);
 
-			expect(listConnectionsForUser).toHaveBeenCalledWith(user);
 			expect(results.map((result) => result.slug)).toEqual(['notion']);
 		});
 
-		it('offers everything when listing connections fails', async () => {
+		it('resolves exact slugs through the same summary shape', async () => {
+			const { resolveBySlugs } = stubContainer({
+				registryResolveBySlugs: vi.fn().mockResolvedValue([registryHit]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			const results = await context.mcpService!.getServers(['google-drive', 'made-up']);
+
+			expect(resolveBySlugs).toHaveBeenCalledWith(['google-drive', 'made-up']);
+			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
+		});
+
+		it('lists slugs with a connection row, not just the loadable ones', async () => {
 			stubContainer({
-				registrySearch: vi.fn().mockResolvedValue([registryHit]),
+				listConnectionsForUser: vi
+					.fn()
+					.mockResolvedValue([{ serverSlug: 'google-drive' }, { serverSlug: 'retired' }]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			expect(await context.mcpService!.listConnections()).toEqual([
+				{ slug: 'google-drive' },
+				{ slug: 'retired' },
+			]);
+		});
+
+		it('reports a slug once even with several connection rows for it', async () => {
+			stubContainer({
+				listConnectionsForUser: vi
+					.fn()
+					.mockResolvedValue([{ serverSlug: 'google-drive' }, { serverSlug: 'google-drive' }]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			expect(await context.mcpService!.listConnections()).toEqual([{ slug: 'google-drive' }]);
+		});
+
+		it('surfaces a lookup failure rather than reporting no connections', async () => {
+			stubContainer({
 				listConnectionsForUser: vi.fn().mockRejectedValue(new Error('query failed')),
 			});
 			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
 
-			const results = await context.mcpService!.search(['drive']);
-
-			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
+			await expect(context.mcpService!.listConnections()).rejects.toThrow('query failed');
 		});
 	});
 });
@@ -4206,5 +4241,51 @@ describe('createContext — run model wiring', () => {
 		const service = createAdapterWithGatewayMock(vi.fn());
 
 		expect(service.createContext(mockUser).modelId).toBeUndefined();
+	});
+});
+
+describe('createCredentialAdapter', () => {
+	describe('isTestable', () => {
+		// A versioned node whose `testedBy` sits only on the versions named in `testedByOn`.
+		const loaderWithTestedByOn = (testedByOn: number[]) => {
+			const descriptionFor = (version: number) => ({
+				description: {
+					credentials: [
+						{
+							name: 'kafka',
+							...(testedByOn.includes(version) ? { testedBy: 'kafkaConnectionTest' } : {}),
+						},
+					],
+				},
+			});
+
+			return {
+				// No class-level `test`, so resolution falls through to the nodes.
+				getCredential: () => ({ type: { name: 'kafka' } }),
+				knownCredentials: { kafka: { supportedNodes: ['kafka'] } },
+				getNode: () => ({
+					type: { nodeVersions: { 1: descriptionFor(1), 2: descriptionFor(2) } },
+				}),
+			};
+		};
+
+		it('finds a test declared only on an older node version', async () => {
+			// Regression guard: reading a single version reported Kafka as untestable once v2
+			// registered without `testedBy`, which silently disabled its connection test.
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loaderWithTestedByOn([1]),
+			});
+
+			expect(credentialService.isTestable).toBeDefined();
+			await expect(credentialService.isTestable!('kafka')).resolves.toBe(true);
+		});
+
+		it('is false when no registered version declares a test', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loaderWithTestedByOn([]),
+			});
+
+			await expect(credentialService.isTestable!('kafka')).resolves.toBe(false);
+		});
 	});
 });

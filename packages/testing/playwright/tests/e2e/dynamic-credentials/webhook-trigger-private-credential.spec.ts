@@ -58,6 +58,12 @@ test.describe(
 				'',
 			);
 
+			// End-user credentials can only live in team projects
+			await api.enableFeature('projectRole:admin');
+			await api.enableFeature('projectRole:editor');
+			await api.setMaxTeamProjectsQuota(-1);
+			const project = await api.projects.createProject('Dynamic Credentials');
+
 			// Resolvable: the seeded `system-n8n` resolver stores its tokens per n8n user.
 			const credential = await api.credentials.createCredential({
 				name: `Webhook Private OAuth2 ${nanoid()}`,
@@ -72,49 +78,53 @@ test.describe(
 					ignoreSSLIssues: true,
 				},
 				isResolvable: true,
+				projectId: project.id,
 			});
 
 			const { workflowId, webhookPath, createdWorkflow } =
-				await api.workflows.createWorkflowFromDefinition({
-					name: `Webhook n8nOAuth2 Private Credential ${nanoid()}`,
-					nodes: [
-						{
-							id: nanoid(),
-							name: 'Webhook',
-							type: 'n8n-nodes-base.webhook',
-							typeVersion: 2.1,
-							position: [0, 0] as [number, number],
-							parameters: {
-								httpMethod: 'POST',
-								path: 'placeholder', // replaced with a unique value on create
-								authentication: 'n8nOAuth2',
-								// Any authenticated user may mint a token, so the member can call
-								// the trigger without being granted workflow:execute.
-								requireExecuteAccess: false,
-								options: {},
+				await api.workflows.createWorkflowFromDefinition(
+					{
+						name: `Webhook n8nOAuth2 Private Credential ${nanoid()}`,
+						nodes: [
+							{
+								id: nanoid(),
+								name: 'Webhook',
+								type: 'n8n-nodes-base.webhook',
+								typeVersion: 2.1,
+								position: [0, 0] as [number, number],
+								parameters: {
+									httpMethod: 'POST',
+									path: 'placeholder', // replaced with a unique value on create
+									authentication: 'n8nOAuth2',
+									// Any authenticated user may mint a token, so the member can call
+									// the trigger without being granted workflow:execute.
+									requireExecuteAccess: false,
+									options: {},
+								},
 							},
+							{
+								id: nanoid(),
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4.2,
+								position: [200, 0] as [number, number],
+								parameters: {
+									// Keycloak userinfo accepts the resolved Bearer token and returns 200
+									url: `${internalBase}/protocol/openid-connect/userinfo`,
+									authentication: 'predefinedCredentialType',
+									nodeCredentialType: 'oAuth2Api',
+								},
+								credentials: {
+									oAuth2Api: { id: credential.id, name: credential.name },
+								},
+							},
+						],
+						connections: {
+							Webhook: { main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]] },
 						},
-						{
-							id: nanoid(),
-							name: 'HTTP Request',
-							type: 'n8n-nodes-base.httpRequest',
-							typeVersion: 4.2,
-							position: [200, 0] as [number, number],
-							parameters: {
-								// Keycloak userinfo accepts the resolved Bearer token and returns 200
-								url: `${internalBase}/protocol/openid-connect/userinfo`,
-								authentication: 'predefinedCredentialType',
-								nodeCredentialType: 'oAuth2Api',
-							},
-							credentials: {
-								oAuth2Api: { id: credential.id, name: credential.name },
-							},
-						},
-					],
-					connections: {
-						Webhook: { main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]] },
 					},
-				});
+					{ projectId: project.id },
+				);
 
 			await api.workflows.activate(workflowId, createdWorkflow.versionId as string);
 

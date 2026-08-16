@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { WORKFLOW_REVIEW_TEXT_MAX_LENGTH } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nIcon, N8nInput, N8nPopover, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nInput, N8nPopover, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { computed, ref, useId } from 'vue';

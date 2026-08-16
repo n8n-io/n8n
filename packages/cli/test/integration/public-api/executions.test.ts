@@ -9,6 +9,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { ExecutionEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import { type ExecutionStatus } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 
@@ -41,6 +42,10 @@ let authUser2Agent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowManager;
 
 mockInstance(Telemetry);
+mockInstance(InstanceSettings, {
+	isMultiMain: false,
+	n8nFolder: '/tmp/n8n-test',
+});
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton, N8nEmptyState, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { onMounted, ref, watch } from 'vue';

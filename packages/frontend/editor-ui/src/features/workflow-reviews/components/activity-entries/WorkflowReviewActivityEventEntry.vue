@@ -6,7 +6,7 @@ import { computed } from 'vue';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
-import { formatActorName } from '../../formatUserDisplayName';
+import { formatActorName } from '../../workflowReviews.utils';
 import WorkflowReviewActivityFallback from './WorkflowReviewActivityFallback.vue';
 
 const props = defineProps<{

@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
-import { formatActorName } from '../../formatUserDisplayName';
+import { formatActorName } from '../../workflowReviews.utils';
 
 defineProps<{
 	entry: Extract<WorkflowReviewActivityEntry, { type: 'comment.created' }>;
