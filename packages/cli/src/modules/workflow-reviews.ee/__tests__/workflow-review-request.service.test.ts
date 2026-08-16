@@ -18,6 +18,7 @@ import type {
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestForWorkflowRow,
+	WorkflowReviewActivityRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	WorkflowRepository,
@@ -71,6 +72,7 @@ describe('WorkflowReviewRequestService', () => {
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
+	const activityRepository = mock<WorkflowReviewActivityRepository>();
 	const userRepository = mock<UserRepository>();
 	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const roleService = mock<RoleService>();
@@ -95,6 +97,7 @@ describe('WorkflowReviewRequestService', () => {
 		workflowRepository,
 		authorRepository,
 		reviewerRepository,
+		activityRepository,
 		userRepository,
 		eligibilityService,
 		roleService,
@@ -264,7 +267,11 @@ describe('WorkflowReviewRequestService', () => {
 			mockSuccessfulCreatePath();
 			workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: true });
 
-			await expect(service.create(user, dto)).rejects.toThrow(BadRequestError);
+			const creation = service.create(user, dto);
+			await expect(creation).rejects.toThrow(BadRequestError);
+			await expect(creation).rejects.toThrow(
+				"The workflow 'wf-1' is archived and cannot be submitted for review",
+			);
 
 			expect(dbLockService.withLockContext).toHaveBeenCalled();
 			expect(requestRepository.createRequest).not.toHaveBeenCalled();

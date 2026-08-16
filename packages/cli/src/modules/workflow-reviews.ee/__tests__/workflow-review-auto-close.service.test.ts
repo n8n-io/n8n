@@ -1,8 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
+import { DbLock } from '@n8n/db';
 import type {
 	DbLockService,
 	OperationContext,
 	Transaction,
+	WorkflowReviewActivity,
+	WorkflowReviewActivityRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestRepository,
 } from '@n8n/db';
@@ -15,6 +18,7 @@ import { WorkflowReviewAutoCloseService } from '../workflow-review-auto-close.se
 describe('WorkflowReviewAutoCloseService', () => {
 	const logger = mock<Logger>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
+	const activityRepository = mock<WorkflowReviewActivityRepository>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
@@ -23,6 +27,7 @@ describe('WorkflowReviewAutoCloseService', () => {
 	const service = new WorkflowReviewAutoCloseService(
 		logger,
 		requestRepository,
+		activityRepository,
 		dbLockService,
 		collaborationService,
 	);
@@ -40,6 +45,7 @@ describe('WorkflowReviewAutoCloseService', () => {
 		vi.resetAllMocks();
 		dbLockService.withLockContext.mockImplementation(async (_id, fn) => await fn(ctx));
 		requestRepository.saveRequest.mockImplementation(async (request) => request);
+		requestRepository.closeUnreviewableOpenRequests.mockResolvedValue([]);
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 	});
 
@@ -132,38 +138,95 @@ describe('WorkflowReviewAutoCloseService', () => {
 		expect(logger.error).toHaveBeenCalled();
 	});
 
-	describe('afterWorkflowsDeleted', () => {
-		it('closes the requests the delete orphaned, outside any lock', async () => {
-			requestRepository.closeOrphanedOpenRequests.mockResolvedValue(['req-9']);
+	describe('reconciliation sweep', () => {
+		it('closes the requests the delete orphaned and explains each of them', async () => {
+			requestRepository.closeUnreviewableOpenRequests.mockResolvedValue([
+				{ id: 'req-9', reason: 'workflow-deleted' },
+			]);
+			activityRepository.createActivity.mockResolvedValue(mock<WorkflowReviewActivity>());
 
 			await service.afterWorkflowsDeleted(['wf-1', 'wf-2']);
 
-			// A single atomic statement pair, so it needs no lock — and must not take one
-			// after a delete, where camping on the create lock would serialize submissions.
-			// The sweep is global, so the batch never reaches the query; it is log context only.
-			expect(requestRepository.closeOrphanedOpenRequests).toHaveBeenCalledExactlyOnceWith({});
-			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+			// Same lock and same transaction as every other close path: the sweep updates the
+			// requests it selected by id, so two racing sweeps would otherwise explain the same
+			// close twice. The sweep is global, so the batch never reaches the query; it is log
+			// context only.
+			expect(dbLockService.withLockContext).toHaveBeenCalledWith(
+				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+				expect.any(Function),
+			);
+			expect(requestRepository.closeUnreviewableOpenRequests).toHaveBeenCalledExactlyOnceWith(ctx);
+			expect(activityRepository.createActivity).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflowReviewRequestId: 'req-9',
+					type: 'review.closed',
+					data: { reason: 'workflow-deleted' },
+					createdById: null,
+				},
+				ctx,
+			);
 			expect(logger.info).toHaveBeenCalledExactlyOnceWith(
 				expect.any(String),
 				expect.objectContaining({
-					reason: 'workflow-deleted',
 					workflowIds: ['wf-1', 'wf-2'],
-					workflowReviewRequestIds: ['req-9'],
+					closedRequests: [{ id: 'req-9', reason: 'workflow-deleted' }],
 				}),
 			);
 		});
 
-		it('stays quiet when the delete orphaned nothing', async () => {
-			requestRepository.closeOrphanedOpenRequests.mockResolvedValue([]);
+		// The reason is per request, not per mutation: one sweep can find a review left by an
+		// archive next to one left by a move.
+		it('explains each request with the reason the sweep reported for it', async () => {
+			requestRepository.closeUnreviewableOpenRequests.mockResolvedValue([
+				{ id: 'req-1', reason: 'workflow-archived' },
+				{ id: 'req-2', reason: 'workflow-moved' },
+			]);
+			activityRepository.createActivity.mockResolvedValue(mock<WorkflowReviewActivity>());
+
+			await service.afterWorkflowsDeleted(['wf-1']);
+
+			expect(activityRepository.createActivity).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowReviewRequestId: 'req-1',
+					data: { reason: 'workflow-archived' },
+				}),
+				ctx,
+			);
+			expect(activityRepository.createActivity).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowReviewRequestId: 'req-2',
+					data: { reason: 'workflow-moved' },
+				}),
+				ctx,
+			);
+		});
+
+		it('stays quiet when nothing is left unreviewable', async () => {
+			requestRepository.closeUnreviewableOpenRequests.mockResolvedValue([]);
 
 			await service.afterWorkflowsDeleted(['wf-1']);
 
 			expect(logger.info).not.toHaveBeenCalled();
 		});
 
+		// The close and its explanation share one transaction, so an unwritable entry rolls the
+		// close back and the next sweep picks the review up again. The delete already committed,
+		// so there is nothing left to fail.
+		it('leaves a review it cannot explain to the next sweep', async () => {
+			requestRepository.closeUnreviewableOpenRequests.mockResolvedValue([
+				{ id: 'req-9', reason: 'workflow-deleted' },
+			]);
+			activityRepository.createActivity.mockRejectedValue(new Error('db down'));
+
+			await expect(service.afterWorkflowsDeleted(['wf-1'])).resolves.toBeUndefined();
+
+			expect(logger.error).toHaveBeenCalled();
+			expect(logger.info).not.toHaveBeenCalled();
+		});
+
 		// The delete already committed, so there is nothing left to abort.
 		it('swallows repository errors, unlike the pre-delete hook', async () => {
-			requestRepository.closeOrphanedOpenRequests.mockRejectedValue(new Error('db down'));
+			requestRepository.closeUnreviewableOpenRequests.mockRejectedValue(new Error('db down'));
 
 			await expect(service.afterWorkflowsDeleted(['wf-1', 'wf-2'])).resolves.toBeUndefined();
 
@@ -171,6 +234,37 @@ describe('WorkflowReviewAutoCloseService', () => {
 				expect.any(String),
 				expect.objectContaining({ workflowIds: ['wf-1', 'wf-2'] }),
 			);
+		});
+
+		// An archive or a move whose close rolled back stays committed, so the sweep has to run
+		// there too — the targeted close is done with the review by then.
+		it('runs after the targeted close on archive, and again on transfer', async () => {
+			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([]);
+
+			await service.afterWorkflowArchived('wf-1');
+			expect(requestRepository.closeUnreviewableOpenRequests).toHaveBeenCalledExactlyOnceWith(ctx);
+
+			await service.afterWorkflowsTransferred(['wf-2']);
+			expect(requestRepository.closeUnreviewableOpenRequests).toHaveBeenCalledTimes(2);
+		});
+
+		// A close that rolled back is exactly what the sweep is there to repair, so a throwing
+		// targeted close must not skip it.
+		it('still runs when the targeted close on archive failed', async () => {
+			requestRepository.findOpenRequestsForWorkflows.mockRejectedValue(new Error('db down'));
+
+			await expect(service.afterWorkflowArchived('wf-1')).resolves.toBeUndefined();
+
+			expect(requestRepository.closeUnreviewableOpenRequests).toHaveBeenCalledExactlyOnceWith(ctx);
+		});
+
+		// The pre-delete hook aborts the delete instead, so there is nothing to reconcile.
+		it('does not run before a delete', async () => {
+			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([]);
+
+			await service.beforeWorkflowDeleted('wf-1');
+
+			expect(requestRepository.closeUnreviewableOpenRequests).not.toHaveBeenCalled();
 		});
 	});
 

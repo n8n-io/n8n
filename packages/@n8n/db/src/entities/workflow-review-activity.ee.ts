@@ -31,8 +31,10 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	typeVersion: number;
 
 	/**
-	 * Immutable per-type detail. Ids only: a user id stored here would survive user deletion,
-	 * unlike `createdById`, so a type needing another actor gets its own `SET NULL` column.
+	 * Immutable per-type detail: ids, plus a reviewer's note on a decision. Nothing redacts it —
+	 * unlike a comment body, which is nulled on delete, it is frozen once written. No user ids: one
+	 * stored here would survive user deletion, unlike `createdById`, so a type needing another actor
+	 * gets its own `SET NULL` column.
 	 */
 	@JsonColumn({ nullable: true })
 	data: IDataObject | null;
@@ -42,9 +44,13 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	createdById: string | null;
 
 	/**
-	 * Scopes an entry to one workflow; `null` for review-level entries such as comments. A column
-	 * rather than a key in `data` so the feed can query and filter on it directly, for instance to
-	 * leave out entries about workflows the reader may not open. Nothing writes it yet.
+	 * Scopes an entry to one workflow; `null` for review-level entries such as comments and
+	 * decisions. Nothing writes it yet, deliberately: the FK is `ON DELETE CASCADE`, so setting it
+	 * means accepting that an ordinary workflow delete removes those entries from an append-only
+	 * feed, which is why `review.version_updated` keeps its `workflowId` in `data`. Filtering the
+	 * feed on this column is the precondition for relaxing
+	 * `CreateWorkflowReviewRequestDto.workflows.length(1)`, since a multi-workflow review would
+	 * otherwise show entries about workflows the reader may not open.
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	workflowId: string | null;

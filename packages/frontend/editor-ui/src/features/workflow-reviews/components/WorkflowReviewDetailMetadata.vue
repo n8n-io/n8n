@@ -38,13 +38,13 @@ const statusSummary = computed(() => {
 	<aside :class="$style.metadata" data-test-id="workflow-review-detail-metadata">
 		<N8nCard :class="$style.card" data-test-id="workflow-review-detail-status-card">
 			<template #header>
-				<N8nText bold color="text-light" size="small">
+				<N8nText bold color="text-light" size="medium">
 					{{ i18n.baseText('workflowReviews.detail.metadata.status') }}
 				</N8nText>
 			</template>
 			<div :class="$style.status">
 				<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" />
-				<N8nText size="small">{{ statusSummary }}</N8nText>
+				<N8nText size="medium">{{ statusSummary }}</N8nText>
 			</div>
 		</N8nCard>
 
@@ -53,7 +53,7 @@ const statusSummary = computed(() => {
 			data-test-id="workflow-review-detail-people-card"
 		>
 			<div :class="$style.section">
-				<N8nText bold color="text-light" size="small">
+				<N8nText bold color="text-light" size="medium">
 					{{ i18n.baseText('workflowReviews.detail.metadata.requestedBy') }}
 				</N8nText>
 				<div v-if="review.requester" :class="$style.person">
@@ -62,12 +62,12 @@ const statusSummary = computed(() => {
 						:last-name="review.requester.lastName"
 						size="xsmall"
 					/>
-					<N8nText size="small">{{ formatUserDisplayName(review.requester) }}</N8nText>
+					<N8nText size="medium">{{ formatUserDisplayName(review.requester) }}</N8nText>
 				</div>
 				<N8nText
 					v-else
 					color="text-light"
-					size="small"
+					size="medium"
 					data-test-id="workflow-review-detail-requester-deleted"
 				>
 					{{ i18n.baseText('workflowReviews.detail.metadata.requesterDeleted') }}
@@ -79,17 +79,17 @@ const statusSummary = computed(() => {
 				:class="$style.section"
 				data-test-id="workflow-review-detail-other-authors"
 			>
-				<N8nText bold color="text-light" size="small">
+				<N8nText bold color="text-light" size="medium">
 					{{ i18n.baseText('workflowReviews.detail.metadata.otherAuthors') }}
 				</N8nText>
 				<div v-for="author in otherAuthors" :key="author.id" :class="$style.person">
 					<N8nAvatar :first-name="author.firstName" :last-name="author.lastName" size="xsmall" />
-					<N8nText size="small">{{ formatUserDisplayName(author) }}</N8nText>
+					<N8nText size="medium">{{ formatUserDisplayName(author) }}</N8nText>
 				</div>
 			</div>
 
 			<div :class="$style.section">
-				<N8nText bold color="text-light" size="small">
+				<N8nText bold color="text-light" size="medium">
 					{{ i18n.baseText('workflowReviews.detail.metadata.reviewers') }}
 				</N8nText>
 				<div v-for="reviewer in review.reviewers" :key="reviewer.id" :class="$style.person">
@@ -98,12 +98,12 @@ const statusSummary = computed(() => {
 						:last-name="reviewer.lastName"
 						size="xsmall"
 					/>
-					<N8nText size="small">{{ formatUserDisplayName(reviewer) }}</N8nText>
+					<N8nText size="medium">{{ formatUserDisplayName(reviewer) }}</N8nText>
 				</div>
 				<N8nText
 					v-if="review.reviewers.length === 0"
 					color="text-light"
-					size="small"
+					size="medium"
 					data-test-id="workflow-review-detail-no-reviewers"
 				>
 					{{ i18n.baseText('workflowReviews.detail.metadata.noReviewers') }}
@@ -117,7 +117,7 @@ const statusSummary = computed(() => {
 			data-test-id="workflow-review-detail-changes-card"
 		>
 			<template #header>
-				<N8nText bold color="text-light" size="small">
+				<N8nText bold color="text-light" size="medium">
 					{{ i18n.baseText('workflowReviews.detail.metadata.workflow') }}
 				</N8nText>
 			</template>
@@ -127,11 +127,11 @@ const statusSummary = computed(() => {
 					:key="workflow.workflowId"
 					:to="{ name: VIEWS.WORKFLOW, params: { workflowId: workflow.workflowId } }"
 					theme="text"
-					size="small"
+					size="medium"
 					:class="$style.workflow"
 					data-test-id="workflow-review-detail-workflow-link"
 				>
-					<N8nIcon icon="workflow" size="small" :class="$style.workflowIcon" />
+					<N8nIcon icon="workflow" size="medium" :class="$style.workflowIcon" />
 					<span :class="$style.workflowName">{{ workflow.workflowName }}</span>
 				</N8nLink>
 			</div>
@@ -146,6 +146,7 @@ const statusSummary = computed(() => {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	min-width: 14rem;
+	padding-top: var(--spacing--5xs);
 }
 
 .card {

@@ -1,9 +1,12 @@
+import type { WorkflowReviewClosedReason } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import type { WorkflowSharingRole } from '@n8n/permissions';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { SharedWorkflow } from '../entities/shared-workflow';
+import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowReviewRequestAuthor } from '../entities/workflow-review-request-author.ee';
 import { WorkflowReviewRequestReviewer } from '../entities/workflow-review-request-reviewer.ee';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
@@ -92,6 +95,44 @@ export type InboxStateCounts = {
 	closed: number;
 };
 
+/** An open request the reconciliation sweep closed, and what made its workflow unreviewable. */
+export type ClosedUnreviewableRequest = {
+	id: string;
+	reason: WorkflowReviewClosedReason;
+};
+
+/** One row per (open request, linked workflow); a request with no link left yields one empty row. */
+type OpenRequestWorkflowRow = {
+	requestId: string;
+	requestProjectId: string;
+	linkedWorkflowId: string | null;
+	/** Raw, so the driver's own boolean: `1` on sqlite and mysql, `true` on postgres. */
+	isArchived: boolean | number | null;
+	owningProjectId: string | null;
+};
+
+/** Most to least definitive: one workflow can be several of these at once. */
+const CLOSE_REASON_PRECEDENCE: WorkflowReviewClosedReason[] = [
+	'workflow-deleted',
+	'workflow-archived',
+	'workflow-moved',
+];
+
+function closeReasonFor(row: OpenRequestWorkflowRow): WorkflowReviewClosedReason | null {
+	// Nothing behind the link: either the request has no link row left, or it points at a
+	// workflow that is gone. Both mean the delete cascade got there first.
+	if (row.linkedWorkflowId === null) return 'workflow-deleted';
+
+	if (row.isArchived) return 'workflow-archived';
+
+	// A workflow with no owning project at all is a broken row, not a move — leave it alone.
+	if (row.owningProjectId !== null && row.owningProjectId !== row.requestProjectId) {
+		return 'workflow-moved';
+	}
+
+	return null;
+}
+
 @Service()
 export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowReviewRequest> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -139,44 +180,69 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	}
 
 	/**
-	 * Closes every open request left with no linked workflow, returning the ids closed.
+	 * Closes every open request whose workflow can no longer be reviewed — deleted, archived, or
+	 * moved out of the request's project — reporting each id with the reason that closed it.
 	 *
-	 * A workflow hard delete cascades the link rows away, so an open request that has
-	 * lost its last one covers nothing and can never be acted on again. `create` writes
-	 * the request and its link row in one transaction, so a request is only ever visible
-	 * without links once the workflow behind it is gone — the two steps here cannot see
-	 * a half-written create and so need no lock.
+	 * Matches on the workflow's current state rather than on the mutation that changed it, so it
+	 * catches what the per-mutation hooks cannot: reviews a delete cascade unlinked before a hook
+	 * could find them by workflow id, mutations that skip the hooks entirely, and hooks whose
+	 * close rolled back after their mutation had already committed.
+	 *
+	 * Keys off the ids selected rather than off the state, so the caller must hold the
+	 * review-request lock.
 	 */
-	async closeOrphanedOpenRequests(ctx: OperationContext): Promise<string[]> {
+	async closeUnreviewableOpenRequests(ctx: OperationContext): Promise<ClosedUnreviewableRequest[]> {
 		const openState: WorkflowReviewRequestState = 'open';
 		const closedState: WorkflowReviewRequestState = 'closed';
+		const ownerRole: WorkflowSharingRole = 'workflow:owner';
 		const manager = this.managerFor(ctx);
 
-		const orphans = await manager
+		const rows = await manager
 			.createQueryBuilder(WorkflowReviewRequest, 'review')
-			.select('review.id', 'id')
+			.select('review.id', 'requestId')
+			.addSelect('review.projectId', 'requestProjectId')
+			.addSelect('workflow.id', 'linkedWorkflowId')
+			.addSelect('workflow.isArchived', 'isArchived')
+			.addSelect('shared.projectId', 'owningProjectId')
+			// Left joins throughout: a request with no link, or a link with no workflow, is
+			// precisely the orphan case, and dropping those rows would hide it.
+			.leftJoin(WorkflowReviewRequestWorkflow, 'link', 'link.workflowReviewRequestId = review.id')
+			.leftJoin(WorkflowEntity, 'workflow', 'workflow.id = link.workflowId')
+			.leftJoin(
+				SharedWorkflow,
+				'shared',
+				'shared.workflowId = link.workflowId AND shared.role = :ownerRole',
+				{ ownerRole },
+			)
 			.where('review.state = :openState', { openState })
-			.andWhere((qb) => {
-				const linkedWorkflowExists = qb
-					.subQuery()
-					.select('1')
-					.from(WorkflowReviewRequestWorkflow, 'requestWorkflow')
-					.where('requestWorkflow.workflowReviewRequestId = review.id')
-					.getQuery();
-				return `NOT EXISTS ${linkedWorkflowExists}`;
-			})
-			.getRawMany<{ id: string }>();
+			.getRawMany<OpenRequestWorkflowRow>();
 
-		if (orphans.length === 0) return [];
+		const reasonByRequestId = new Map<string, WorkflowReviewClosedReason>();
+		for (const row of rows) {
+			const reason = closeReasonFor(row);
+			if (reason === null) continue;
 
-		const ids = orphans.map(({ id }) => id);
+			// A request linked to several workflows gets one row each, so keep the most
+			// definitive reason rather than whichever row the database returned last.
+			const current = reasonByRequestId.get(row.requestId);
+			if (
+				current !== undefined &&
+				CLOSE_REASON_PRECEDENCE.indexOf(current) <= CLOSE_REASON_PRECEDENCE.indexOf(reason)
+			) {
+				continue;
+			}
+			reasonByRequestId.set(row.requestId, reason);
+		}
+
+		if (reasonByRequestId.size === 0) return [];
+
 		// A system close has no closing user; the decision stays as-is.
-		await manager.update(WorkflowReviewRequest, ids, {
+		await manager.update(WorkflowReviewRequest, [...reasonByRequestId.keys()], {
 			state: closedState,
 			closedById: null,
 		});
 
-		return ids;
+		return [...reasonByRequestId].map(([id, reason]) => ({ id, reason }));
 	}
 
 	async findById(id: string, ctx: OperationContext): Promise<WorkflowReviewRequest | null> {

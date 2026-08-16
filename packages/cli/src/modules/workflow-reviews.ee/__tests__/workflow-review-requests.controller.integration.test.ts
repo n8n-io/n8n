@@ -81,6 +81,8 @@ beforeEach(async () => {
 	testServer.license.enable('feat:workflowReviews');
 
 	await testDb.truncate([
+		'WorkflowReviewActivityComment',
+		'WorkflowReviewActivity',
 		'WorkflowReviewRequestAuthor',
 		'WorkflowReviewRequestReviewer',
 		'WorkflowReviewRequestWorkflow',
@@ -1535,7 +1537,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 
 		const response = await memberAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
-			.send({ decision: 'changes_requested' })
+			.send({ decision: 'changes_requested', note: 'Please rename the node' })
 			.expect(200);
 
 		expect(response.body.data).toMatchObject({
@@ -1576,7 +1578,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 
 		await memberAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
-			.send({ decision: 'changes_requested' })
+			.send({ decision: 'changes_requested', note: 'Please rename the node' })
 			.expect(200);
 
 		expect(await requestRepository.findById(request.id, {})).toMatchObject({
@@ -1665,7 +1667,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 
 		await viewerAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
-			.send({ decision: 'changes_requested' })
+			.send({ decision: 'changes_requested', note: 'Please rename the node' })
 			.expect(200);
 
 		expect(await requestRepository.findById(request.id, {})).toMatchObject({

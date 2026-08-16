@@ -83,6 +83,7 @@ export {
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {
 	WorkflowReviewRequestRepository,
+	type ClosedUnreviewableRequest,
 	type InboxCursor,
 	type InboxVisibility,
 	type WorkflowReviewRequestForWorkflowRow,
