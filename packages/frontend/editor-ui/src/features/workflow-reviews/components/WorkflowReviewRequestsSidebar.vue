@@ -314,7 +314,7 @@ function onListBackgroundClick() {
 	min-width: 0;
 	max-width: var(--review-sidebar--width);
 	height: 100%;
-	border-right: var(--border-width) solid var(--color--foreground--tint-1);
+	border-right: var(--border-width) solid var(--border-color);
 }
 
 .columnTitle {
