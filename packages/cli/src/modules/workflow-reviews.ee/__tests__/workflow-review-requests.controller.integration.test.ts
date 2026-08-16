@@ -827,6 +827,14 @@ describe('publishing a workflow under review', () => {
 		expect(
 			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
 		).toBe(versionId);
+
+		// The timeline completes: the approval that closed the review, then its publication.
+		const activity = await ownerAgent
+			.get(`/workflow-review-requests/${request.id}/activity`)
+			.expect(200);
+		expect((activity.body.data.data as Array<{ type: string }>).map((entry) => entry.type)).toEqual(
+			['review.approved', 'workflow.published'],
+		);
 	});
 
 	test('keeps the approval and allows manual publish when auto-publish fails', async () => {

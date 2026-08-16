@@ -62,6 +62,27 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 		);
 	}
 
+	/**
+	 * Every request — open or closed — whose pin matches the published version exactly. The happy
+	 * path is approval (which closes the request) followed by auto-publish, so the publish
+	 * recorder must reach closed requests too; the exact-version match is what keeps those
+	 * appends bounded.
+	 */
+	async findRequestIdsPinnedToVersion(
+		input: { workflowId: string; workflowVersionId: string },
+		ctx: OperationContext,
+	): Promise<string[]> {
+		const rows = await this.managerFor(ctx).find(WorkflowReviewRequestWorkflow, {
+			select: ['workflowReviewRequestId'],
+			where: {
+				workflowId: input.workflowId,
+				workflowVersionId: input.workflowVersionId,
+			},
+		});
+
+		return rows.map((row) => row.workflowReviewRequestId);
+	}
+
 	async findByRequestId(
 		requestId: string,
 		ctx: OperationContext,
