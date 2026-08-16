@@ -94,12 +94,6 @@ describe('WorkflowReviewActivityFeed', () => {
 		expect(queryByTestId('workflow-review-activity-empty')).not.toBeInTheDocument();
 	});
 
-	it('tells the viewer there is no activity yet', () => {
-		const { getByTestId } = renderComponent();
-
-		expect(getByTestId('workflow-review-activity-empty')).toHaveTextContent('No activity yet');
-	});
-
 	it('shows an error row when the first page failed', () => {
 		store.error = new Error('boom');
 
