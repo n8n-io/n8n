@@ -21,19 +21,22 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	createRunExecutionData,
+	TimeoutExecutionCancelledError,
 	type IRunExecutionData,
 	type WorkflowExecuteMode,
 	type ExecutionError,
 	WorkflowExpression,
 } from 'n8n-workflow';
+import type PCancelable from 'p-cancelable';
 import type { Mock, MockedClass, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { WebhookResponseTooLargeError } from '@/errors/webhook-response-too-large.error';
-import { ExternalHooks } from '@/external-hooks';
+import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExternalHooks } from '@/external-hooks';
 import type { ManualExecutionService } from '@/manual-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
@@ -1959,6 +1962,254 @@ describe('JobProcessor', () => {
 			});
 			run.waitTill = undefined;
 			expect(jobProcessor['deriveJobFinishedProps'](run, new Date()).waitTill).toBeNull();
+		});
+	});
+
+	describe('execution timeout watchdog', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('cancels the job once the workflow timeout elapses, independent of node boundaries', async () => {
+			vi.useFakeTimers();
+
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: {
+						id: 'workflow-id',
+						nodes: [],
+						staticData: {},
+						settings: { executionTimeout: 5 },
+					},
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			// Simulate a job stuck mid-node-execution: the engine's own cooperative
+			// timeout check never runs, so only the watchdog can cancel it.
+			const cancel = vi.fn();
+			let resolveRun: (run: IRun) => void;
+			const runPromise = new Promise<IRun>((resolve) => {
+				resolveRun = resolve;
+			});
+			cancel.mockImplementation(() => {
+				resolveRun(mock<IRun>({ status: 'canceled' }));
+			});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const eventService = mock<EventService>();
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				eventService,
+				mock(),
+			);
+
+			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+			const processing = jobProcessor.processJob(job);
+			const assertion = expect(processing).rejects.toThrow(TimeoutExecutionCancelledError);
+
+			await vi.advanceTimersByTimeAsync(5_000);
+			await assertion;
+
+			expect(cancel).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-cancelled',
+				expect.objectContaining({ reason: 'timeout' }),
+			);
+		});
+
+		it("reschedules in bounded chunks for timeouts beyond setTimeout's max delay", async () => {
+			vi.useFakeTimers();
+
+			// `setTimeout`'s delay is a 32-bit signed int; beyond ~24.8 days (2^31 - 1 ms) it
+			// truncates and fires almost immediately instead of waiting the full duration.
+			const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
+			const longExecutionsConfig = mock<ExecutionsConfig>({
+				timeout: -1,
+				maxTimeout: thirtyDaysInSeconds,
+			});
+
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: {
+						id: 'workflow-id',
+						nodes: [],
+						staticData: {},
+						settings: { executionTimeout: thirtyDaysInSeconds },
+					},
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const cancel = vi.fn();
+			let resolveRun: (run: IRun) => void;
+			const runPromise = new Promise<IRun>((resolve) => {
+				resolveRun = resolve;
+			});
+			cancel.mockImplementation(() => {
+				resolveRun(mock<IRun>({ status: 'canceled' }));
+			});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				longExecutionsConfig,
+				mock(),
+				mock(),
+			);
+
+			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+			const processing = jobProcessor.processJob(job);
+			const assertion = expect(processing).rejects.toThrow(TimeoutExecutionCancelledError);
+
+			// A naive `setTimeout(ms)` with `ms` beyond the 32-bit limit would fire here already.
+			await vi.advanceTimersByTimeAsync(2 ** 31);
+			expect(cancel).not.toHaveBeenCalled();
+
+			// Advancing past the full 30-day timeout must still cancel the job.
+			await vi.advanceTimersByTimeAsync(thirtyDaysInSeconds * 1000);
+			await assertion;
+
+			expect(cancel).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not cancel the job before the workflow timeout elapses', async () => {
+			vi.useFakeTimers();
+
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: {
+						id: 'workflow-id',
+						nodes: [],
+						staticData: {},
+						settings: { executionTimeout: 5 },
+					},
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const cancel = vi.fn();
+			const runPromise = new Promise<IRun>(() => {
+				// never resolves within this test
+			});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+			void jobProcessor.processJob(job);
+
+			await vi.advanceTimersByTimeAsync(4_000);
+
+			expect(cancel).not.toHaveBeenCalled();
+		});
+
+		it('clears the watchdog and running-job entry even when the run rejects', async () => {
+			vi.useFakeTimers();
+
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: {
+						id: 'workflow-id',
+						nodes: [],
+						staticData: {},
+						settings: { executionTimeout: 5 },
+					},
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const cancel = vi.fn();
+			let rejectRun!: (error: Error) => void;
+			const runPromise = new Promise<IRun>((_resolve, reject) => {
+				rejectRun = reject;
+			});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+			const processing = jobProcessor.processJob(job);
+			const assertion = expect(processing).rejects.toThrow('worker crashed');
+
+			// Flush the microtasks processJob runs before it starts tracking the job.
+			await vi.advanceTimersByTimeAsync(0);
+			expect(jobProcessor.getRunningJobIds()).toContain(String(job.id));
+
+			rejectRun(new Error('worker crashed'));
+			await assertion;
+
+			// The running-job entry must be gone, not left dangling as still "running".
+			expect(jobProcessor.getRunningJobIds()).not.toContain(String(job.id));
+
+			// The watchdog must be cleared too: advancing past the workflow timeout must not
+			// trigger a delayed, spurious cancellation of an already-failed execution.
+			await vi.advanceTimersByTimeAsync(5_000);
+			expect(cancel).not.toHaveBeenCalled();
 		});
 	});
 
