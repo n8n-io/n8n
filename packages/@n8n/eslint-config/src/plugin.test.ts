@@ -9,4 +9,8 @@ describe('localRulesPlugin recommended config', () => {
 			],
 		).toBe('error');
 	});
+
+	it('registers the reka-ui pagination import ban', () => {
+		expect(localRulesPlugin.rules?.['no-reka-ui-pagination']).toBeDefined();
+	});
 });

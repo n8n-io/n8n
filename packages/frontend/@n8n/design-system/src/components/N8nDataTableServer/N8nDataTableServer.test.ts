@@ -100,7 +100,9 @@ describe('N8nDataTableServer', () => {
 
 		await userEvent.click(container.querySelector('thead tr th')!);
 		await userEvent.click(container.querySelector('thead tr th')!);
-		await userEvent.click(within(getByTestId('pagination')).getByLabelText('page 2'));
+		await userEvent.click(
+			within(getByTestId('pagination')).getByRole('button', { name: /^Page 2$/ }),
+		);
 
 		expect(emitted('update:options').length).toBe(3);
 		expect(emitted('update:options')[0]).toStrictEqual([

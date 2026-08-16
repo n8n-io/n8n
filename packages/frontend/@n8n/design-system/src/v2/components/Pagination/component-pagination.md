@@ -4,7 +4,7 @@ Displays data in paged format and provides navigation between pages. Enables use
 
 Always renders **prev / pager / next**. Optionally renders **total**, **page size select**, and **jumper** via `showTotal` / `showSizes` / `showJumper` (`showTotal` and `showSizes` default `true`; `showJumper` defaults `false`).
 
-- **Component Name:** N8nPagination2
+- **Component Name:** N8nPagination
 - **Reka UI Component:** [Pagination](https://reka-ui.com/docs/components/pagination)
 - **Nuxt UI Component:** [Pagination](https://ui.nuxt.com/docs/components/pagination)
 
@@ -49,14 +49,14 @@ Extends Reka UI [`PaginationRootProps`](https://reka-ui.com/docs/components/pagi
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
-import { N8nPagination2 } from '@n8n/design-system'
+import { N8nPagination } from '@n8n/design-system'
 
 const page = ref(1)
 const itemsPerPage = ref(20)
 </script>
 
 <template>
-  <N8nPagination2
+  <N8nPagination
     v-model:page="page"
     v-model:items-per-page="itemsPerPage"
     :total="100"
@@ -68,11 +68,11 @@ const itemsPerPage = ref(20)
 **Uncontrolled:**
 ```vue
 <script setup lang="ts">
-import { N8nPagination2 } from '@n8n/design-system'
+import { N8nPagination } from '@n8n/design-system'
 </script>
 
 <template>
-  <N8nPagination2
+  <N8nPagination
     :default-page="1"
     :default-items-per-page="20"
     :total="100"

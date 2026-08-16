@@ -22,6 +22,7 @@ import { NoAwsCredentialDiscoveryImportsRule } from './no-aws-credential-discove
 import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
 import { NoApplicationErrorRule } from './no-application-error.js';
 import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
+import { NoRekaUiPaginationRule } from './no-reka-ui-pagination.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -47,4 +48,5 @@ export const rules = {
 	'no-uncentralized-http': NoUncentralizedHttpRule,
 	'no-application-error': NoApplicationErrorRule,
 	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
+	'no-reka-ui-pagination': NoRekaUiPaginationRule,
 } satisfies Record<string, AnyRuleModule>;

@@ -2208,7 +2208,7 @@ defineExpose({ enterEditMode });
 				hasNodeRun &&
 				!hasRunError &&
 				displayMode !== 'binary' &&
-				dataCount > pageSize &&
+				dataCount > 10 &&
 				!isSchemaView &&
 				!isArtificialRecoveredEventItem
 			"
