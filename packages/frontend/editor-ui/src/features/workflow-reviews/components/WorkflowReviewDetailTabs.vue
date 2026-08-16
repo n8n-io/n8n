@@ -115,7 +115,11 @@ const tabOptions = computed(() => [
 					</template>
 				</WorkflowReviewActivityFeed>
 
-				<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
+				<!-- Closed reviews take no new comments (the backend 409s) -->
+				<WorkflowReviewCommentComposer
+					v-if="review.state === 'open'"
+					:can-comment="viewerCanComment"
+				/>
 			</div>
 
 			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">

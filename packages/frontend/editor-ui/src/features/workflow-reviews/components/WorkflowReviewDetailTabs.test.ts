@@ -184,8 +184,8 @@ describe('WorkflowReviewDetailTabs', () => {
 			);
 		});
 
-		it('still lets the viewer comment on a closed review', () => {
-			const { getByTestId } = renderComponent({
+		it('does not render the composer on closed reviews', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					review: makeDetail({ state: 'closed', decision: 'approved' }),
 					tab: 'activity',
@@ -194,10 +194,7 @@ describe('WorkflowReviewDetailTabs', () => {
 			});
 
 			expect(getByTestId('workflow-review-activity-feed')).toBeInTheDocument();
-			expect(getByTestId('workflow-review-comment-composer')).toHaveAttribute(
-				'data-can-comment',
-				'true',
-			);
+			expect(queryByTestId('workflow-review-comment-composer')).not.toBeInTheDocument();
 		});
 	});
 

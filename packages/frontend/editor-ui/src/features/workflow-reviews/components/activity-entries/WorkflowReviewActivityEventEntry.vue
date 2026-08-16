@@ -18,7 +18,11 @@ const props = defineProps<{
 				| 'review.changes_requested'
 				| 'review.approved'
 				| 'review.version_updated'
-				| 'review.closed';
+				| 'review.closed'
+				| 'workflow.archived'
+				| 'workflow.deleted'
+				| 'workflow.moved'
+				| 'workflow.published';
 		}
 	>;
 }>();
@@ -26,18 +30,40 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const closedReasonKeys: Record<WorkflowReviewClosedReason, BaseTextKey> = {
-	'workflow-archived': 'workflowReviews.detail.activity.closed.archived',
-	'workflow-moved': 'workflowReviews.detail.activity.closed.moved',
-	'workflow-deleted': 'workflowReviews.detail.activity.closed.deleted',
+	'no-reviewable-workflows': 'workflowReviews.detail.activity.closed',
+};
+
+/** A cause event's sentence names the actor when a user acted, or stands alone for the system. */
+const causeKeys: Record<
+	'workflow.archived' | 'workflow.deleted' | 'workflow.moved',
+	{ user: BaseTextKey; system: BaseTextKey; testId: string }
+> = {
+	'workflow.archived': {
+		user: 'workflowReviews.detail.activity.workflowArchived.user',
+		system: 'workflowReviews.detail.activity.workflowArchived.system',
+		testId: 'workflow-review-activity-workflow-archived',
+	},
+	'workflow.deleted': {
+		user: 'workflowReviews.detail.activity.workflowDeleted.user',
+		system: 'workflowReviews.detail.activity.workflowDeleted.system',
+		testId: 'workflow-review-activity-workflow-deleted',
+	},
+	'workflow.moved': {
+		user: 'workflowReviews.detail.activity.workflowMoved.user',
+		system: 'workflowReviews.detail.activity.workflowMoved.system',
+		testId: 'workflow-review-activity-workflow-moved',
+	},
 };
 
 /**
  * Everything that varies by type, so a new type is one case rather than several. `null` only for
  * `review.closed`, whose sentence *is* the stored reason and so has nothing to fall back to. The
- * rest say what happened from the type alone, and an unreadable payload costs them only the note.
+ * rest say what happened from the type alone; an unreadable payload costs a decision only its
+ * note, and a cause event only its actor attribution (it degrades to the actorless system
+ * sentence rather than crediting the wrong kind of actor).
  *
- * `namesActor` follows the type, not a missing `createdBy`: that is also null for a decision
- * whose author was deleted, which must still read as that person's decision.
+ * `namesActor` follows the stored `actorKind` (or the type), not a missing `createdBy`: that is
+ * also null once a user is deleted, and their action must still read as a person's.
  */
 const content = computed<{
 	text: string;
@@ -82,6 +108,25 @@ const content = computed<{
 				note: null,
 				testId: 'workflow-review-activity-closed',
 				namesActor: false,
+			};
+		case 'workflow.archived':
+		case 'workflow.deleted':
+		case 'workflow.moved': {
+			const keys = causeKeys[entry.type];
+			const namesActor = entry.data?.actorKind === 'user';
+			return {
+				text: i18n.baseText(namesActor ? keys.user : keys.system),
+				note: null,
+				testId: keys.testId,
+				namesActor,
+			};
+		}
+		case 'workflow.published':
+			return {
+				text: i18n.baseText('workflowReviews.detail.activity.workflowPublished'),
+				note: null,
+				testId: 'workflow-review-activity-workflow-published',
+				namesActor: true,
 			};
 	}
 });

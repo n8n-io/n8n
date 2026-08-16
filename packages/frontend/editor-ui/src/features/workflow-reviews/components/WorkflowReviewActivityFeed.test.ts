@@ -333,27 +333,83 @@ describe('WorkflowReviewActivityFeed', () => {
 					},
 				],
 				[
-					'a review closed by archiving its workflow',
-					{ ...systemEntry, type: 'review.closed', data: { reason: 'workflow-archived' } },
+					'a review closed because nothing reviewable is left',
+					{ ...systemEntry, type: 'review.closed', data: { reason: 'no-reviewable-workflows' } },
 					{
 						testId: 'workflow-review-activity-closed',
-						text: 'Review closed because the workflow was archived',
+						text: 'Review closed because there is nothing left to review',
 					},
 				],
 				[
-					'a review closed by moving its workflow',
-					{ ...systemEntry, type: 'review.closed', data: { reason: 'workflow-moved' } },
+					'a workflow archived by a user',
 					{
-						testId: 'workflow-review-activity-closed',
-						text: 'Review closed because the workflow moved to another project',
+						...systemEntry,
+						type: 'workflow.archived',
+						data: { workflowId: 'wf-1', actorKind: 'user' },
+					},
+					{
+						testId: 'workflow-review-activity-workflow-archived',
+						text: 'Archived the workflow',
 					},
 				],
 				[
-					'a review closed by deleting its workflow',
-					{ ...systemEntry, type: 'review.closed', data: { reason: 'workflow-deleted' } },
+					'a workflow archived by the system',
 					{
-						testId: 'workflow-review-activity-closed',
-						text: 'Review closed because the workflow was deleted',
+						...systemEntry,
+						type: 'workflow.archived',
+						data: { workflowId: 'wf-1', actorKind: 'system' },
+					},
+					{
+						testId: 'workflow-review-activity-workflow-archived',
+						text: 'The workflow was archived',
+					},
+				],
+				[
+					'a workflow deleted by a user',
+					{
+						...systemEntry,
+						type: 'workflow.deleted',
+						data: { workflowId: 'wf-1', actorKind: 'user' },
+					},
+					{
+						testId: 'workflow-review-activity-workflow-deleted',
+						text: 'Deleted the workflow',
+					},
+				],
+				[
+					'a workflow deleted by the system',
+					{
+						...systemEntry,
+						type: 'workflow.deleted',
+						data: { workflowId: 'wf-1', actorKind: 'system' },
+					},
+					{
+						testId: 'workflow-review-activity-workflow-deleted',
+						text: 'The workflow was deleted',
+					},
+				],
+				[
+					'a workflow moved by a user',
+					{
+						...systemEntry,
+						type: 'workflow.moved',
+						data: { workflowId: 'wf-1', actorKind: 'user' },
+					},
+					{
+						testId: 'workflow-review-activity-workflow-moved',
+						text: 'Moved the workflow to another project',
+					},
+				],
+				[
+					'a workflow being published',
+					{
+						...systemEntry,
+						type: 'workflow.published',
+						data: { workflowId: 'wf-1', workflowVersionId: 'version-1' },
+					},
+					{
+						testId: 'workflow-review-activity-workflow-published',
+						text: 'Published the workflow',
 					},
 				],
 			],
@@ -399,14 +455,103 @@ describe('WorkflowReviewActivityFeed', () => {
 			expect(queryByTestId('workflow-review-activity-unknown')).not.toBeInTheDocument();
 		});
 
-		// No component is registered for this type yet, which is why the registry stays partial.
-		it('shows a placeholder for an entry type no renderer covers yet', async () => {
-			store.entries = [{ ...systemEntry, type: 'workflow.published', data: null }];
+		// Only a downgrade can produce a stored type outside the union; the feed must still
+		// hold its place rather than crash or drop it.
+		it('shows a placeholder for an entry type no renderer covers', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'review.something_newer',
+					data: null,
+				} as unknown as WorkflowReviewActivityEntry,
+			];
 
 			const { getByTestId } = renderComponent();
 			await nextTick();
 
 			expect(getByTestId('workflow-review-activity-unknown')).toBeInTheDocument();
+		});
+
+		// The payload names the actor kind, and without it the entry must not guess: it
+		// degrades to the actorless sentence rather than crediting the wrong kind of actor.
+		it('renders a cause entry whose payload cannot be read as a system sentence', async () => {
+			store.entries = [{ ...systemEntry, type: 'workflow.archived', data: null }];
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-workflow-archived')).toHaveTextContent(
+				'The workflow was archived',
+			);
+			expect(queryByTestId('workflow-review-activity-actor')).not.toBeInTheDocument();
+		});
+
+		it('names the user who archived the workflow, but no one for a system archive', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					id: '1',
+					type: 'workflow.archived',
+					data: { workflowId: 'wf-1', actorKind: 'user' },
+					createdBy: {
+						id: 'user-1',
+						email: 'ada@example.com',
+						firstName: 'Ada',
+						lastName: 'Lovelace',
+					},
+				},
+				{
+					...systemEntry,
+					id: '2',
+					type: 'workflow.archived',
+					data: { workflowId: 'wf-1', actorKind: 'system' },
+				},
+			];
+
+			const { getAllByTestId } = renderComponent();
+			await nextTick();
+
+			const actors = getAllByTestId('workflow-review-activity-actor');
+			expect(actors).toHaveLength(1);
+			expect(actors[0]).toHaveTextContent('Ada Lovelace');
+		});
+
+		// `actorKind: 'user'` with a null author is a deleted user, still a person.
+		it('names a deleted user as the actor of their archive', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'workflow.archived',
+					data: { workflowId: 'wf-1', actorKind: 'user' },
+					createdBy: null,
+				},
+			];
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-actor')).toHaveTextContent('Deleted user');
+		});
+
+		it('names the publisher on a published entry', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'workflow.published',
+					data: { workflowId: 'wf-1', workflowVersionId: 'version-1' },
+					createdBy: {
+						id: 'user-1',
+						email: 'ada@example.com',
+						firstName: 'Ada',
+						lastName: 'Lovelace',
+					},
+				},
+			];
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-actor')).toHaveTextContent('Ada Lovelace');
 		});
 
 		it('names the reviewer who acted', async () => {
@@ -455,7 +600,7 @@ describe('WorkflowReviewActivityFeed', () => {
 
 		it('shows no actor at all for a review the system closed', async () => {
 			store.entries = [
-				{ ...systemEntry, type: 'review.closed', data: { reason: 'workflow-moved' } },
+				{ ...systemEntry, type: 'review.closed', data: { reason: 'no-reviewable-workflows' } },
 			];
 
 			const { queryByTestId } = renderComponent();
