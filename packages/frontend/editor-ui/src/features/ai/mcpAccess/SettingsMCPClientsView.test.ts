@@ -9,10 +9,17 @@ import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 const { routerPush, routerReplace } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	routerReplace: vi.fn(),
+}));
+
+const { trackSpy } = vi.hoisted(() => ({ trackSpy: vi.fn() }));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackSpy }),
 }));
 
 vi.mock('vue-router', async (importOriginal) => ({
@@ -115,6 +122,32 @@ describe('SettingsMCPClientsView', () => {
 
 		await waitFor(() => {
 			expect(mcpStore.removeOAuthClient).toHaveBeenCalledWith('client-1', 'user-2');
+		});
+	});
+
+	it('should track the revoke once it succeeds, not when the dialog opens', async () => {
+		const { getByTestId } = createComponent({ pinia });
+		await nextTick();
+
+		await userEvent.click(getByTestId('stub-revoke-client'));
+
+		await waitFor(() => {
+			expect(
+				within(document.body).getByText('Revoke access for "Claude Code"?'),
+			).toBeInTheDocument();
+		});
+		expect(trackSpy).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.MCP.USER_REVOKED_MCP_CLIENT_ACCESS,
+			expect.anything(),
+		);
+
+		await userEvent.click(within(document.body).getByRole('button', { name: 'Revoke' }));
+
+		await waitFor(() => {
+			expect(trackSpy).toHaveBeenCalledWith(TELEMETRY_EVENT.MCP.USER_REVOKED_MCP_CLIENT_ACCESS, {
+				client_id: 'client-1',
+				revoked_for_other: true,
+			});
 		});
 	});
 });

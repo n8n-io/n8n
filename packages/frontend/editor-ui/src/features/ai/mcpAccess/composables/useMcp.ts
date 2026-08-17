@@ -25,10 +25,26 @@ export function useMcp() {
 		telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, { enabled, source });
 	};
 
+	const trackConnectClientClicked = () => {
+		telemetry.track(TELEMETRY_EVENT.MCP.USER_CLICKED_CONNECT_CLIENT_FROM_MCP_SETTINGS, {});
+	};
+
+	const trackClientAccessRevoked = ({
+		clientId,
+		revokedForOther,
+	}: { clientId: string; revokedForOther: boolean }) => {
+		telemetry.track(TELEMETRY_EVENT.MCP.USER_REVOKED_MCP_CLIENT_ACCESS, {
+			client_id: clientId,
+			revoked_for_other: revokedForOther,
+		});
+	};
+
 	return {
 		trackMcpAccessEnabledForWorkflow,
 		trackMcpAccessEnabledForAgent,
 		trackUserToggledMcpAccess,
 		trackAutoExposeToggled,
+		trackConnectClientClicked,
+		trackClientAccessRevoked,
 	};
 }
