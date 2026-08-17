@@ -612,6 +612,7 @@ function resetViewMocks() {
 	for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 	sessionThreads.length = 0;
 	fetchedSessionThreads.length = 0;
+	history.replaceState({}, '');
 	sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
 	// Reset to a built agent; tests that need an unbuilt agent override locally.
 	intendedConfig = {
@@ -673,6 +674,27 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
+	});
+
+	it('persists a route-backed agent only after its first configuration change', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		expect(getAgentMock).not.toHaveBeenCalled();
+		expect(fetchConfigMock).not.toHaveBeenCalled();
+		expect(createAgentMock).not.toHaveBeenCalled();
+		expect(editor.props('agentUnsaved')).toBe(true);
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+		expect(createAgentMock).toHaveBeenCalledOnce();
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+			id: 'a1',
+		});
+		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
 	});
 
 	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {

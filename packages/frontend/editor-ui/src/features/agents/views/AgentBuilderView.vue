@@ -78,6 +78,7 @@ import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { INSTANCE_AI_PENDING_AGENT_ID_STATE } from '@/features/ai/instanceAi/constants';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
@@ -161,6 +162,14 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
+const isRouteAgentPending = computed(() => {
+	if (isArtifactMode.value) return false;
+	const pendingAgentId = (history.state as Record<string, unknown>)[
+		INSTANCE_AI_PENDING_AGENT_ID_STATE
+	];
+	return pendingAgentId === agentId.value;
+});
+const isAgentPending = computed(() => props.artifactAgentPending || isRouteAgentPending.value);
 const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
 
 const {
@@ -735,6 +744,16 @@ interface McpAvailabilitySnapshot {
  */
 const persistFlights = new Map<string, Promise<void>>();
 const persistedAgentsByTarget = new Map<string, AgentResource>();
+
+function clearRoutePendingState() {
+	if (!isRouteAgentPending.value) return;
+	const { [INSTANCE_AI_PENDING_AGENT_ID_STATE]: _, ...state } = history.state as Record<
+		string,
+		unknown
+	>;
+	history.replaceState(state, '');
+}
+
 async function ensureAgentPersisted(): Promise<void> {
 	if (!isUnsaved.value) return;
 	const targetProjectId = projectId.value;
@@ -744,6 +763,7 @@ async function ensureAgentPersisted(): Promise<void> {
 	if (persistedAgent) {
 		isUnsaved.value = false;
 		agent.value = persistedAgent;
+		clearRoutePendingState();
 		emit('persisted', persistedAgent);
 		return;
 	}
@@ -761,9 +781,9 @@ async function ensureAgentPersisted(): Promise<void> {
 			if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 			isUnsaved.value = false;
 			agent.value = created;
-			// Lets the artifact host record that this agent is real now. Without it a
-			// reload would re-enter draft mode and overwrite the saved config with an
-			// empty one, since the pending marker itself cannot be deleted.
+			clearRoutePendingState();
+			// Lets an artifact host replace its pending metadata. Route-backed drafts
+			// clear their history marker above instead.
 			emit('persisted', created);
 		})();
 		persistFlights.set(targetKey, flight);
@@ -1353,7 +1373,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 	const sessionsFetchRequestId = ++latestSessionsFetchRequestId;
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
-	const targetArtifactPending = props.artifactAgentPending;
+	const targetAgentPending = isAgentPending.value;
 	const isCurrentInitialization = () =>
 		!disposed && sessionsFetchRequestId === latestSessionsFetchRequestId;
 	clearTimeout(externalRefreshTimer);
@@ -1404,7 +1424,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		// blank config the backend would have written, and let the first edit
 		// create it (see `ensureAgentPersisted`). The personalisation backfill is
 		// skipped too — it schedules a save, which would persist on mount alone.
-		isUnsaved.value = targetArtifactPending;
+		isUnsaved.value = targetAgentPending;
 		if (isUnsaved.value) {
 			const draftConfig: AgentJsonConfig = {
 				name: locale.baseText('agents.new.defaultName'),
@@ -1509,7 +1529,7 @@ watch(
 // When a pending artifact becomes persisted under the same id, hydrate its
 // agent-scoped state without unmounting the editor or any in-flight setup UI.
 watch(
-	[projectId, agentId, () => props.artifactAgentPending],
+	[projectId, agentId, isAgentPending],
 	([nextProjectId, nextAgentId, pending], [previousProjectId, previousAgentId]) => {
 		const sameTarget = nextProjectId === previousProjectId && nextAgentId === previousAgentId;
 		void initialize({ preserveState: sameTarget && !pending });
