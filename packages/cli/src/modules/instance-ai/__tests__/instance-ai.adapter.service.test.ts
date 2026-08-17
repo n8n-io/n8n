@@ -2162,6 +2162,43 @@ describe('createWorkflowAdapter', () => {
 		expect(result.totalInScope).toBe(3);
 	});
 
+	it('lists a caller-named project as a filter, leaving access resolution to getMany', async () => {
+		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.list({ projectId: 'other-project-id' });
+
+		// The user is still the one the query resolves readability from — the project
+		// id only narrows it, so it can never widen what the caller may read.
+		expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
+			take: 50,
+			filter: { isArchived: false, projectId: 'other-project-id' },
+		});
+	});
+
+	it('attributes the owning project only when the listing can span projects', async () => {
+		const { adapter, mockWorkflowService, savedWorkflow } = createWorkflowAdapterForTests();
+		mockWorkflowService.getMany.mockResolvedValue({
+			workflows: [{ ...savedWorkflow, homeProject: { id: 'p2', name: 'Primary', type: 'team' } }],
+			count: 1,
+		});
+
+		const instanceWide = await adapter.list({ scope: 'instance' });
+		expect(instanceWide.workflows[0].project).toEqual({ id: 'p2', name: 'Primary' });
+
+		// Narrowed to one project — repeating it on every row carries no information.
+		const singleProject = await adapter.list({ projectId: 'p2' });
+		expect(singleProject.workflows[0].project).toBeUndefined();
+	});
+
+	it('omits attribution when the listed row carries no home project', async () => {
+		const { adapter, mockWorkflowService, savedWorkflow } = createWorkflowAdapterForTests();
+		mockWorkflowService.getMany.mockResolvedValue({ workflows: [savedWorkflow], count: 1 });
+
+		const result = await adapter.list({ scope: 'instance' });
+
+		expect(result.workflows[0].project).toBeUndefined();
+	});
+
 	it('skips the extra count query when no name filter is given', async () => {
 		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
 

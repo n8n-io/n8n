@@ -480,6 +480,58 @@ describe('workflows tool', () => {
 			expect(result.note).toContain('Showing 1 of 12 matching workflows');
 		});
 
+		it('targets one project when given a projectId', async () => {
+			const context = createMockContext();
+			(context.workflowService.list as Mock).mockResolvedValue(emptyList);
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'list', projectId: 'other-project' }, {} as never);
+
+			expect(context.workflowService.list).toHaveBeenCalledWith({
+				projectId: 'other-project',
+			});
+		});
+
+		it('tells the caller to read project membership per workflow, not by subtracting counts', async () => {
+			const context = createMockContext();
+			(context.workflowService.list as Mock).mockResolvedValue({
+				workflows: [
+					{
+						id: 'wf1',
+						name: 'My workflow',
+						versionId: 'v1',
+						activeVersionId: null,
+						isArchived: false,
+						createdAt: '2024-01-01',
+						updatedAt: '2024-01-01',
+						project: { id: 'p1', name: 'Personal' },
+					},
+					{
+						id: 'wf2',
+						name: 'My workflow 2',
+						versionId: 'v2',
+						activeVersionId: null,
+						isArchived: false,
+						createdAt: '2024-01-01',
+						updatedAt: '2024-01-01',
+						project: { id: 'p2', name: 'Primary' },
+					},
+				],
+				total: 2,
+				totalInScope: 2,
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool<{ note: string }>(
+				tool,
+				{ action: 'list', scope: 'instance' },
+				{} as never,
+			);
+
+			expect(result.note).toContain('span multiple projects');
+			expect(result.note).toContain('never infer it by subtracting');
+		});
+
 		it('adds no note when the unfiltered list is complete', async () => {
 			const context = createMockContext();
 			(context.workflowService.list as Mock).mockResolvedValue(emptyList);

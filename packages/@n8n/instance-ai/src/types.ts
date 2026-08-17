@@ -69,6 +69,13 @@ export interface WorkflowSummary {
 	createdAt: string;
 	updatedAt: string;
 	tags?: string[];
+	/**
+	 * Owning project. Present only when the listing can span more than one
+	 * project — a list narrowed to a single project would repeat it on every row.
+	 * Without it, a cross-project listing gives no way to tell which project a
+	 * workflow belongs to.
+	 */
+	project?: { id: string; name: string };
 }
 
 export interface WorkflowDetail extends WorkflowSummary {
@@ -303,6 +310,13 @@ export interface InstanceAiWorkflowService {
 		limit?: number;
 		status?: WorkflowListStatus;
 		scope?: 'project' | 'instance';
+		/**
+		 * Restrict the listing to one project, overriding `scope`. A read-only
+		 * narrowing of what the caller can already reach: the adapter passes it as a
+		 * filter on top of the user's own read permissions, so it can never widen
+		 * access. Writes stay locked to the thread's bound project regardless.
+		 */
+		projectId?: string;
 	}): Promise<WorkflowListResult>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).

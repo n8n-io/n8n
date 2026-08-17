@@ -40,6 +40,11 @@ import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
+// `list` and `setup` share this field, and the schema sanitizer requires one
+// description per shared field, so it has to cover both uses.
+const PROJECT_ID_FIELD_DESCRIPTION =
+	'Project ID, obtainable from `workspace(action="list-projects")`. For `list`: read that one project instead of the default scope — use it for "what is in project X" rather than listing the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write. For `setup`: scope credential creation to that project.';
+
 const listAction = z.object({
 	action: z
 		.literal('list')
@@ -65,6 +70,7 @@ const listAction = z.object({
 		.describe(
 			"Which project(s) to search. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.",
 		),
+	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
 });
 
 const getAction = z.object({
@@ -122,7 +128,7 @@ const setupAction = z.object({
 			'Open the inline AI Assistant workflow setup card for credential and parameter configuration. Use for setup routing after a build.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
-	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
 	credentialHints: z
 		.array(
 			setupHintField.extend({
@@ -413,6 +419,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		query: input.query,
 		...(input.status ? { status: input.status } : {}),
 		...(input.scope ? { scope: input.scope } : {}),
+		...(input.projectId ? { projectId: input.projectId } : {}),
 	});
 
 	// A partial list must never read as the complete inventory: guessed name
@@ -426,6 +433,14 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 	if (total > workflows.length) {
 		notes.push(
 			`Showing ${workflows.length} of ${total} matching workflows — raise \`limit\` to see the rest.`,
+		);
+	}
+	// An instance-wide list spans projects, so membership has to be read off each
+	// workflow's `project`. Comparing this total against a per-project one to infer
+	// where the extras live only ever works for two projects, and silently not for three.
+	if (workflows.some((workflow) => workflow.project !== undefined)) {
+		notes.push(
+			"Results span multiple projects — each workflow carries its owning `project`. Read membership from that field; never infer it by subtracting one scope's count from another. To list a single project, pass its `projectId`.",
 		);
 	}
 
