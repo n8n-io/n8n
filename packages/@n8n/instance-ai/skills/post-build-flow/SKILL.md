@@ -65,7 +65,7 @@ Pick in this order:
 2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
    without a dedicated type whose auth is expressible as header/query/body
    values — which covers API keys and bearer tokens (`Authorization: Bearer
-   <token>` becomes `{"headers":{"Authorization":"Bearer {{api_key}}"}}`, not
+<token>` becomes `{"headers":{"Authorization":"Bearer {{api_key}}"}}`, not
    `httpBearerAuth`). Always provide a recipe (below) so the user only pastes
    their secret.
 3. **Plain generic types** (`httpBasicAuth`, `httpDigestAuth`, `oAuth2Api`, …)
@@ -118,26 +118,26 @@ key-check endpoint):
 
 ```json
 {
-  "action": "setup",
-  "workflowId": "...",
-  "credentialHints": [
-    {
-      "suggestedName": "fal.ai API Key",
-      "template": {
-        "headers": { "Authorization": "Key {{api_key}}" }
-      },
-      "placeholders": [
-        {
-          "name": "api_key",
-          "title": "fal.ai API key",
-          "info": "Key ID and secret, separated by a colon",
-          "type": "password"
-        }
-      ],
-      "docsUrl": "https://fal.ai/dashboard/keys",
-      "testUrl": "https://api.fal.ai/v1/models/usage"
-    }
-  ]
+	"action": "setup",
+	"workflowId": "...",
+	"credentialHints": [
+		{
+			"suggestedName": "fal.ai API Key",
+			"template": {
+				"headers": { "Authorization": "Key {{api_key}}" }
+			},
+			"placeholders": [
+				{
+					"name": "api_key",
+					"title": "fal.ai API key",
+					"info": "Key ID and secret, separated by a colon",
+					"type": "password"
+				}
+			],
+			"docsUrl": "https://fal.ai/dashboard/keys",
+			"testUrl": "https://api.fal.ai/v1/models/usage"
+		}
+	]
 }
 ```
 
@@ -220,16 +220,18 @@ again.
      again.
    - If `verificationReadiness.status === "already_verified"`, treat the
      workflow as verified and do **not** call `verify-built-workflow` again.
-  - If `verificationReadiness.status === "ready"`, call
-    `verify-built-workflow` with the `workflowId`, the `workItemId` when you
-    have it, and the trigger-appropriate `inputData` shape.
-   - If `verificationReadiness.status === "needs_setup"`, call
-     `workflows(action="setup")` with the workflowId so the user can configure it
-     through the inline setup card in the AI Assistant panel.
-   - If `verificationReadiness.status === "not_verifiable"`, do not infer
-     lower-level verification conditions; use the readiness guidance to give a
-     clear warning or manual-test note. This is a warning completion state, not
-     a verified state and not an infinite blocker.
+
+- If `verificationReadiness.status === "ready"`, call
+  `verify-built-workflow` with the `workflowId`, the `workItemId` when you
+  have it, and the trigger-appropriate `inputData` shape.
+- If `verificationReadiness.status === "needs_setup"`, call
+  `workflows(action="setup")` with the workflowId so the user can configure it
+  through the inline setup card in the AI Assistant panel.
+- If `verificationReadiness.status === "not_verifiable"`, do not infer
+  lower-level verification conditions; use the readiness guidance to give a
+  clear warning or manual-test note. This is a warning completion state, not
+  a verified state and not an infinite blocker.
+
 2. Judge coverage, not just status. A `verify-built-workflow` result with
    `success: true` but a non-empty `nodesNotReached` is **partial** evidence:
    the execution ended early (see `lastNodeExecuted` and `coverageNote`) and
@@ -268,16 +270,24 @@ again.
    when the latest verification evidence used mocks or simulations. If this
    follow-up is due, ask only whether the user wants the live test. Do not
    mention publishing or ask about the error workflow in the same response.
-7. If testing has not already been offered or completed, ask whether the user
+7. Before your final summary, scan the **whole conversation** for live runs that
+   already wrote test data into an external system — earlier turns included, not
+   just this one. For each such record still sitting there, follow
+   [Cleaning up after a live test](#cleaning-up-after-a-live-test): name it and
+   offer to remove it. This is about data that **already exists** — a promise to
+   clean up after some future run does not discharge it, and neither does the
+   user's silence. If a later run failed, that says nothing about records an
+   earlier successful run left behind; they are still there.
+8. If testing has not already been offered or completed, ask whether the user
    wants to test the workflow. Skip this if `verify-built-workflow` already
    proved it works end-to-end with full coverage.
-8. Only call `workflows(action="publish")` when the user explicitly asks to
+9. Only call `workflows(action="publish")` when the user explicitly asks to
    publish. Never publish automatically or proactively offer publishing before
    the publish-readiness requirement above is met.
-9. After a direct new primary workflow is successfully published, follow
-   [Error workflow follow-up](#error-workflow-follow-up).
-   Do not replace this explicit opt-in with a generic "add
-   anything else?", publish, or test question.
+10. After a direct new primary workflow is successfully published, follow
+    [Error workflow follow-up](#error-workflow-follow-up).
+    Do not replace this explicit opt-in with a generic "add
+    anything else?", publish, or test question.
 
 ## Error workflow follow-up
 
@@ -356,11 +366,19 @@ A live run against real credentials leaves **real artifacts** — a row in their
 sheet, a message in their channel, a block on their page. Test data you created
 is your mess, not theirs.
 
+This applies to any live run in the conversation, **not only one from this
+turn**. A test record written three turns ago is still on the user's page now,
+and the debt is still yours — carry it forward until it is cleared or the user
+declines. Undertaking to clean up after some _future_ run does not settle a
+record that already exists, and a run that failed afterwards does not remove
+what an earlier successful run wrote.
+
 When a live test, or a verification you seeded data for, wrote/sent/changed
 anything in an external system:
 
-1. **Name what it left behind**, in the same message that reports the run: which
-   record, where, and how to recognise it ("a `[Test] …` to-do at the bottom of
+1. **Name what it left behind**, in the message that reports the run — or, for a
+   record from an earlier turn, in your next response: which record, where, and
+   how to recognise it ("a `[Test] …` to-do at the bottom of
    the toggle"). Read it back from the effect node's output rather than guessing.
 2. **Offer to remove it yourself.** You can delete it the same way you wrote it —
    the target has an API and you can reach it with a workflow. When no node or
@@ -368,7 +386,7 @@ anything in an external system:
    what `one-off-operations` is for. Never present manual deletion as how this
    gets resolved, and never claim you have no way to delete it — "I don't have a
    delete tool for X" is false whenever X has a write API you just used. Noting
-   that the user *could* also remove it by hand is fine only alongside your own
+   that the user _could_ also remove it by hand is fine only alongside your own
    offer.
 3. **Ask before deleting.** Removal is destructive, so it goes through the usual
    approval gate. Never clean up silently — something labelled "test" may still
@@ -380,9 +398,9 @@ anything in an external system:
 If the user declines, note that the item is still there and move on — don't
 re-ask.
 
-**Not every write is test data.** When the live run *was* the point — a one-off
+**Not every write is test data.** When the live run _was_ the point — a one-off
 operation whose whole purpose is the effect (see `one-off-operations`) — what it
-wrote is the deliverable. There you offer to clean up the *workflow*, never the
+wrote is the deliverable. There you offer to clean up the _workflow_, never the
 result.
 
 ## Claiming success
@@ -399,8 +417,8 @@ complete; do not infer correctness from the fact that a node ran. The same
 applies to rows or records written to an external system: never make quantitative
 claims ("22 rows written", "columns matched") that you did not read back from
 the effect node's actual output (`executions(action="get-node-output")`) or from
-the target system itself — a successful run status does not prove the *right
-data* was written, only that nodes ran. If you could not run the
+the target system itself — a successful run status does not prove the _right
+data_ was written, only that nodes ran. If you could not run the
 failing path or inspect the artifact, say so plainly — "I couldn't verify X
 because Y" — and name what is unconfirmed. An honest "could not verify" beats an
 unverified success claim.
