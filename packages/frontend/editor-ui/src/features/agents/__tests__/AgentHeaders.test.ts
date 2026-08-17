@@ -82,6 +82,8 @@ describe('AgentSessionTimelineHeader', () => {
 				totalTokens: 1234,
 				totalCost: 0.1234,
 				durationLabel: '1.2s',
+				showLangsmithExport: false,
+				langsmithExportLoading: false,
 			},
 		});
 	}

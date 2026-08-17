@@ -124,6 +124,16 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		};
 	}
 
+	async findByParentThreadId(
+		parentThreadId: string,
+		projectId: string,
+	): Promise<AgentExecutionThread[]> {
+		return await this.find({
+			where: { parentThreadId, projectId },
+			order: { createdAt: 'ASC' },
+		});
+	}
+
 	/** Bump updatedAt to now so the thread sorts to top of the list. */
 	async bumpUpdatedAt(threadId: string): Promise<void> {
 		await this.update(threadId, { updatedAt: new Date() });

@@ -6,6 +6,7 @@ import { useTemplateRef } from 'vue';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
+import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
 import type {
 	AgentContinueLoadedEvent,
 	AgentFixWithAssistantEvent,
@@ -40,10 +41,24 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const dock = useTemplateRef<HTMLElement>('dock');
+const {
+	isEnabled: isLangSmithExportEnabled,
+	isExporting,
+	sendSession,
+} = useAgentSessionLangSmithExport();
 
 function viewTrace() {
 	if (!props.hasSession || !props.effectiveSessionId) return;
 	emit('view-trace');
+}
+
+function exportSession() {
+	if (!props.hasSession || !props.effectiveSessionId) return;
+	void sendSession({
+		projectId: props.projectId,
+		agentId: props.agentId,
+		threadId: props.effectiveSessionId,
+	});
 }
 
 function createNewSession() {
@@ -100,6 +115,25 @@ useKeybindings({
 						:aria-label="i18n.baseText('agents.builder.preview.viewSession')"
 						data-testid="agent-preview-view-session-btn"
 						@click="viewTrace"
+					/>
+				</N8nTooltip>
+
+				<N8nTooltip
+					v-if="isLangSmithExportEnabled && props.hasSession && props.effectiveSessionId"
+					:content="i18n.baseText('agentSessions.langsmithExport.button')"
+					placement="bottom"
+					:show-after="TOOLTIP_DELAY_MS"
+					data-testid="agent-preview-langsmith-export-tooltip"
+				>
+					<N8nIconButton
+						icon="bug"
+						variant="ghost"
+						size="small"
+						icon-size="large"
+						:loading="isExporting"
+						:aria-label="i18n.baseText('agentSessions.langsmithExport.button')"
+						data-testid="agent-preview-langsmith-export-btn"
+						@click="exportSession"
 					/>
 				</N8nTooltip>
 

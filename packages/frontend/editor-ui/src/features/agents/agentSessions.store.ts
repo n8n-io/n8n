@@ -5,6 +5,7 @@ import {
 	listThreads,
 	getThreadDetail as getThreadDetailApi,
 	deleteThread as deleteThreadApi,
+	exportThreadToLangSmith as exportThreadToLangSmithApi,
 	type AgentExecutionThread,
 	type ThreadDetail,
 } from './composables/useAgentThreadsApi';
@@ -148,6 +149,11 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		threads.value = threads.value.filter((t) => t.id !== threadId);
 	}
 
+	async function exportThreadToLangSmith(projectId: string, agentId: string, threadId: string) {
+		const rootStore = useRootStore();
+		return await exportThreadToLangSmithApi(rootStore.restApiContext, projectId, agentId, threadId);
+	}
+
 	function scheduleAutoRefresh() {
 		if (!autoRefreshActive || !autoRefresh.value || !currentProjectId || !currentAgentId) return;
 		refreshTimer = setTimeout(async () => {
@@ -195,6 +201,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		getThreadDetail,
 		upsertThread,
 		deleteThread,
+		exportThreadToLangSmith,
 		startAutoRefresh,
 		stopAutoRefresh,
 		reset,
