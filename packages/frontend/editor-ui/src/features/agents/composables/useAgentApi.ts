@@ -2,6 +2,7 @@ import type {
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
 	AgentConfigValidationResponse,
+	AgentDisconnectIntegrationResponse,
 	AgentFileDto,
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
@@ -173,6 +174,11 @@ export const warmAgentKnowledgeSandbox = async (
 	);
 };
 
+/** `replaces` swaps a same-type channel in the same request instead of a follow-up disconnect. */
+export interface ConnectIntegrationOptions {
+	replaces?: { credentialId: string };
+}
+
 export const connectIntegration = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -180,12 +186,18 @@ export const connectIntegration = async (
 	type: string,
 	credentialId: string,
 	settings?: AgentIntegrationSettings,
+	options?: ConnectIntegrationOptions,
 ): Promise<Pick<AgentIntegrationStatusResponse, 'status'>> => {
 	return await makeRestApiRequest<Pick<AgentIntegrationStatusResponse, 'status'>>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
-		{ type, credentialId, ...(settings ? { settings } : {}) },
+		{
+			type,
+			credentialId,
+			...(settings ? { settings } : {}),
+			...(options?.replaces ? { replaces: options.replaces } : {}),
+		},
 	);
 };
 
@@ -195,12 +207,13 @@ export const disconnectIntegration = async (
 	agentId: string,
 	type: string,
 	credentialId: string,
-): Promise<{ status: string }> => {
-	return await makeRestApiRequest<{ status: string }>(
+	deleteExternalResource?: boolean,
+): Promise<AgentDisconnectIntegrationResponse> => {
+	return await makeRestApiRequest<AgentDisconnectIntegrationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
-		{ type, credentialId },
+		{ type, credentialId, deleteExternalResource },
 	);
 };
 

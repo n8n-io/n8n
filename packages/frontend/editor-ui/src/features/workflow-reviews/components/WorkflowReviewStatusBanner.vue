@@ -4,7 +4,7 @@ import { N8nButton, N8nHeading, N8nPopover, N8nText, N8nTooltip } from '@n8n/des
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
-import { formatUserDisplayName } from '../formatUserDisplayName';
+import { formatUserDisplayName } from '../workflowReviews.utils';
 
 type BannerAction = 'submit-changes' | 'retry-publish';
 

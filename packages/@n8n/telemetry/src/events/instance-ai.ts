@@ -6,6 +6,12 @@ const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
+	USER_CLICKED_AI_CREDIT_BALANCE: {
+		name: 'User clicked AI credit balance',
+		description:
+			'The user clicked the AI Assistant credit balance button to open or close the balance dropdown.',
+		properties: z.object({}),
+	},
 	FREE_NUDGE_EXPOSED: {
 		name: 'Instance AI free nudge exposed',
 		description:

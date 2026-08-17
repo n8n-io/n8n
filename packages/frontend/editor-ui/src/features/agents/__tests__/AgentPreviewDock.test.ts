@@ -14,6 +14,14 @@ vi.mock('@/app/composables/useKeybindings', () => ({
 	useKeybindings: useKeybindingsMock,
 }));
 
+vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
+	useAgentSessionLangSmithExport: () => ({
+		isEnabled: false,
+		isExporting: false,
+		sendSession: vi.fn(),
+	}),
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
@@ -158,6 +166,17 @@ describe('AgentPreviewDock', () => {
 
 	it('forwards chat events and opts the chat page into dock layout', () => {
 		const beforeSend = vi.fn();
+		const fixEvent = {
+			executionId: 'execution-1',
+			failures: [
+				{
+					toolCallId: 'call-1',
+					toolName: 'http_request',
+					toolDisplayName: 'HTTP request',
+					error: 'Request failed',
+				},
+			],
+		};
 		const wrapper = mountDock({ beforeSend });
 		const chatPage = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
 
@@ -165,11 +184,11 @@ describe('AgentPreviewDock', () => {
 		expect(chatPage.props('beforeSend')).toBe(beforeSend);
 		chatPage.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 3 });
 		chatPage.vm.$emit('open-build');
-		chatPage.vm.$emit('send-to-assistant', 'execution-1');
+		chatPage.vm.$emit('send-to-assistant', fixEvent);
 
 		expect(wrapper.emitted('continue-loaded')).toEqual([[{ sessionId: 'thread-1', count: 3 }]]);
 		expect(wrapper.emitted('open-build')).toEqual([[]]);
-		expect(wrapper.emitted('send-to-assistant')).toEqual([['execution-1']]);
+		expect(wrapper.emitted('send-to-assistant')).toEqual([[fixEvent]]);
 	});
 
 	it('shows shortcut tooltips for the new-session and close actions', () => {
@@ -267,5 +286,24 @@ describe('AgentPreviewChatPage', () => {
 			.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 3 });
 
 		expect(wrapper.emitted('continue-loaded')).toEqual([[{ sessionId: 'thread-1', count: 3 }]]);
+	});
+
+	it('forwards Fix with Assistant metadata from the chat panel', () => {
+		const fixEvent = {
+			executionId: 'execution-1',
+			failures: [
+				{
+					toolCallId: 'call-1',
+					toolName: 'http_request',
+					toolDisplayName: 'HTTP request',
+					error: 'Request failed',
+				},
+			],
+		};
+		const wrapper = mountChatPage('dock');
+
+		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('send-to-assistant', fixEvent);
+
+		expect(wrapper.emitted('send-to-assistant')).toEqual([[fixEvent]]);
 	});
 });

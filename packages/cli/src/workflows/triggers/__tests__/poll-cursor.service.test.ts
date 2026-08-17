@@ -2,6 +2,7 @@ import type { PollerConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
 	OperationContext,
+	PollLeaseFence,
 	PollerStateRepository,
 	TransactionRunner,
 } from '@n8n/db';
@@ -10,6 +11,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 
 describe('PollCursorService', () => {
@@ -18,7 +20,7 @@ describe('PollCursorService', () => {
 
 	let txRunner: MockProxy<TransactionRunner>;
 
-	const buildService = (durableCursorsEnabled = true) => {
+	const buildService = (durableCursorsEnabled = true, durablePollersAllowed = true) => {
 		txRunner = mock<TransactionRunner>();
 		txRunner.run.mockImplementation(
 			async <T>(ctx: OperationContext, fn: (ctx: OperationContext) => Promise<T>) => await fn(ctx),
@@ -29,6 +31,7 @@ describe('PollCursorService', () => {
 			txRunner,
 			executionPersistence,
 			mock<PollerConfig>({ durableCursorsEnabled }),
+			mock<DurablePollerGateService>({ allowed: durablePollersAllowed }),
 		);
 	};
 
@@ -46,9 +49,11 @@ describe('PollCursorService', () => {
 	});
 
 	describe('enabled', () => {
-		it('reports the configured flag', () => {
-			expect(buildService(true).enabled).toBe(true);
-			expect(buildService(false).enabled).toBe(false);
+		it('requires both the config flag and the duplicate-id gate', () => {
+			expect(buildService(true, true).enabled).toBe(true);
+			expect(buildService(true, false).enabled).toBe(false);
+			expect(buildService(false, true).enabled).toBe(false);
+			expect(buildService(false, false).enabled).toBe(false);
 		});
 	});
 
@@ -87,6 +92,20 @@ describe('PollCursorService', () => {
 			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
 		});
 
+		// Pins the ticket's sticky-row remedy: with the gate refusing, a deleted
+		// `poller_state` row must never be recreated, even though the flag is on —
+		// otherwise deleting an offender's rows would not be terminal.
+		it('does not create a row when the flag is on but the gate refuses durable pollers', async () => {
+			const service = buildService(true, false);
+			pollerStateRepository.findCursor.mockResolvedValue(null);
+
+			await expect(service.resolveCursor('wf-1', 'node-1', {})).resolves.toEqual({
+				migrated: false,
+			});
+
+			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
+		});
+
 		it('still prefers an existing row when the flag is off', async () => {
 			const service = buildService(false);
 			pollerStateRepository.findCursor.mockResolvedValue({ lastItemId: 'from-db' });
@@ -109,17 +128,18 @@ describe('PollCursorService', () => {
 	describe('commitWithExecution', () => {
 		it('advances the cursor and creates the execution in one transaction when the flag is on', async () => {
 			const service = buildService(true);
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
 			executionPersistence.create.mockResolvedValue('exec-1');
 			const createPayload = payload();
 
-			const { executionId } = await service.commitWithExecution({
+			const result = await service.commitWithExecution({
 				workflowId: 'wf-1',
 				nodeId: 'node-1',
 				cursor: { lastItemId: 'b' },
 				payload: createPayload,
 			});
 
-			expect(executionId).toBe('exec-1');
+			expect(result).toEqual({ executionId: 'exec-1' });
 			expect(txRunner.run).toHaveBeenCalledTimes(1);
 
 			const ctx = txRunner.run.mock.calls[0][0];
@@ -128,29 +148,32 @@ describe('PollCursorService', () => {
 				'node-1',
 				{ lastItemId: 'b' },
 				ctx,
+				undefined,
 			);
 			expect(executionPersistence.create).toHaveBeenCalledWith(createPayload, ctx);
 		});
 
 		it('advances the cursor and creates the execution as two separate writes when the flag is off', async () => {
 			const service = buildService(false);
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
 			executionPersistence.create.mockResolvedValue('exec-1');
 			const createPayload = payload();
 
-			const { executionId } = await service.commitWithExecution({
+			const result = await service.commitWithExecution({
 				workflowId: 'wf-1',
 				nodeId: 'node-1',
 				cursor: { lastItemId: 'b' },
 				payload: createPayload,
 			});
 
-			expect(executionId).toBe('exec-1');
+			expect(result).toEqual({ executionId: 'exec-1' });
 			expect(txRunner.run).not.toHaveBeenCalled();
 			expect(pollerStateRepository.advanceCursor).toHaveBeenCalledWith(
 				'wf-1',
 				'node-1',
 				{ lastItemId: 'b' },
 				{},
+				undefined,
 			);
 			expect(executionPersistence.create).toHaveBeenCalledWith(createPayload, {});
 		});
@@ -183,6 +206,7 @@ describe('PollCursorService', () => {
 			{ title: 'a duplicate execution', error: new DuplicateExecutionError('dedup-key') },
 		])('propagates $title to the caller', async ({ error }) => {
 			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
 			executionPersistence.create.mockRejectedValue(error);
 
 			await expect(
@@ -194,26 +218,76 @@ describe('PollCursorService', () => {
 				}),
 			).rejects.toBe(error);
 		});
+
+		it.each([
+			{ title: 'the flag is on', durableCursorsEnabled: true },
+			{ title: 'the flag is off', durableCursorsEnabled: false },
+		])(
+			'resolves null and does not create the execution when the fence rejects the advance and $title',
+			async ({ durableCursorsEnabled }) => {
+				const service = buildService(durableCursorsEnabled);
+				pollerStateRepository.advanceCursor.mockResolvedValue(false);
+				const fence: PollLeaseFence = { taskId: 'task-1', leaseEpoch: 3 };
+
+				const result = await service.commitWithExecution({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					cursor: { lastItemId: 'b' },
+					payload: payload(),
+					fence,
+				});
+
+				expect(result).toBeNull();
+				expect(executionPersistence.create).not.toHaveBeenCalled();
+			},
+		);
+
+		it('passes the fence through to the cursor advance', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
+			executionPersistence.create.mockResolvedValue('exec-1');
+			const fence: PollLeaseFence = { taskId: 'task-1', leaseEpoch: 3 };
+
+			await service.commitWithExecution({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				cursor: { lastItemId: 'b' },
+				payload: payload(),
+				fence,
+			});
+
+			const ctx = txRunner.run.mock.calls[0][0];
+			expect(pollerStateRepository.advanceCursor).toHaveBeenCalledWith(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'b' },
+				ctx,
+				fence,
+			);
+		});
 	});
 
 	describe('commitCursorOnly', () => {
-		const commitCursorOnly = async (service: PollCursorService) =>
+		const commitCursorOnly = async (service: PollCursorService, fence?: PollLeaseFence) =>
 			await service.commitCursorOnly({
 				workflowId: 'wf-1',
 				nodeId: 'node-1',
 				cursor: { lastItemId: 'b' },
+				fence,
 			});
 
 		it('advances the cursor without creating an execution', async () => {
 			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
 
-			await commitCursorOnly(service);
+			await expect(commitCursorOnly(service)).resolves.toBe(true);
 
 			expect(pollerStateRepository.advanceCursor).toHaveBeenCalledWith(
 				'wf-1',
 				'node-1',
 				{ lastItemId: 'b' },
 				{},
+				undefined,
 			);
 			expect(executionPersistence.create).not.toHaveBeenCalled();
 		});
@@ -224,6 +298,31 @@ describe('PollCursorService', () => {
 			pollerStateRepository.advanceCursor.mockRejectedValue(advanceError);
 
 			await expect(commitCursorOnly(service)).rejects.toBe(advanceError);
+		});
+
+		it('resolves false when the fence rejects the advance', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(false);
+
+			await expect(commitCursorOnly(service, { taskId: 'task-1', leaseEpoch: 3 })).resolves.toBe(
+				false,
+			);
+		});
+
+		it('passes the fence through to the cursor advance', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
+			const fence: PollLeaseFence = { taskId: 'task-1', leaseEpoch: 3 };
+
+			await commitCursorOnly(service, fence);
+
+			expect(pollerStateRepository.advanceCursor).toHaveBeenCalledWith(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'b' },
+				{},
+				fence,
+			);
 		});
 	});
 });

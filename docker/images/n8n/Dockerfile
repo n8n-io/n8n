@@ -22,7 +22,19 @@ RUN rm -rf prebuilds && \
 
 FROM toolchain AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
-RUN cd /usr/local/lib/node_modules/n8n && npm rebuild sqlite3
+# Call node-gyp directly rather than `npm rebuild sqlite3`: sqlite3 is reachable through
+# several symlinks in the pnpm tree, and npm runs one install script per link
+# concurrently in the same store directory, where they collide on build/node_gyp_bins
+# and on each other's make output. npm's bundled node-gyp also fixes the toolchain
+# version to the pinned image digest instead of fetching it at build time.
+RUN cd /usr/local/lib/node_modules/n8n/node_modules/sqlite3 && \
+    node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release
+# The workspace install cannot build this binding, because CI installs on a Node version
+# Confluent ships no prebuild for, so `./compiled` arrives without one. Compile it here
+# and link against the runtime base's librdkafka. See: https://github.com/confluentinc/confluent-kafka-javascript/issues/397
+RUN apk add --no-cache librdkafka-dev && \
+    cd /usr/local/lib/node_modules/n8n/node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript && \
+    BUILD_LIBRDKAFKA=0 node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release
 COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
      /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build/Release/isolated_vm.node
 # node-gyp-build finds build/Release first. Delete the prebuilds to remove the glibc fallback.
@@ -30,7 +42,7 @@ RUN rm -rf /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/prebuilds
 
 # The digest pins n8nio/base:24.18.1 for amd64 and arm64. A separate workflow builds that
 # image, so a new base reaches this image only when you change the digest here.
-FROM n8nio/base:24.18.1@sha256:f7a23e449f093b8b203467919e969ca35d12ba959442aadc1f69bb174b160ad2
+FROM n8nio/base:24.18.1@sha256:37248501401c48fed77ef8af4f14a244888d07081a299f2d5d50d270839f27db
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
