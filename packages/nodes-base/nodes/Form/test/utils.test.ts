@@ -1603,6 +1603,25 @@ describe('FormTrigger, formWebhook', () => {
 				);
 				expect(result).toEqual({ noWebhookResponse: true });
 			});
+
+			// A typed-in ?n8nShellInner=1 is a top-level document navigation, not the
+			// shell iframe. Honoring the flag there would skip the connect UI.
+			it('still renders the hosting shell for a hand-typed n8nShellInner URL', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupAuthedGet(ctx, {
+					query: { n8nShellInner: '1' },
+					headers: { 'sec-fetch-dest': 'document' },
+				});
+				ctx.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: true,
+					credentials: [configured],
+				});
+
+				const result = await formWebhook(ctx);
+
+				expect(render).toHaveBeenCalledWith('form-shell', expect.any(Object));
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
 		});
 	});
 });
