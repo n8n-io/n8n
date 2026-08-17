@@ -86,11 +86,17 @@ describe('timeline status filters', () => {
 	const approved = item({ kind: 'hitl-response', hitlResponseStatus: 'approved' });
 	const declined = item({ kind: 'hitl-response', hitlResponseStatus: 'declined' });
 	const errored = item({ kind: 'tool', toolOutcome: 'error' });
+	const handledWorkflowError = item({
+		kind: 'workflow',
+		toolOutcome: 'success',
+		toolOutput: { executionId: 'exec-1', status: 'error' },
+	});
 
 	it('derives only the statuses exposed by the filter menu', () => {
 		expect(itemStatusFilterKey(approved)).toBe('approved');
 		expect(itemStatusFilterKey(declined)).toBe('declined');
 		expect(itemStatusFilterKey(errored)).toBe('error');
+		expect(itemStatusFilterKey(handledWorkflowError)).toBe('error');
 		expect(
 			itemStatusFilterKey(item({ kind: 'hitl-response', hitlResponseStatus: 'responded' })),
 		).toBeUndefined();
@@ -103,6 +109,7 @@ describe('timeline status filters', () => {
 		expect(matchesTimelineFilters(approved, new Set(['declined']))).toBe(false);
 		expect(matchesTimelineFilters(errored, new Set(['error']))).toBe(true);
 		expect(matchesTimelineFilters(errored, new Set(['tool']))).toBe(true);
+		expect(matchesTimelineFilters(handledWorkflowError, new Set(['error']))).toBe(true);
 	});
 });
 

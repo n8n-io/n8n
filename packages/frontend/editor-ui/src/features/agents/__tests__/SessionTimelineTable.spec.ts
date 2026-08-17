@@ -177,6 +177,25 @@ describe('SessionTimelineTable', () => {
 		},
 	);
 
+	it('shows an Error badge when a workflow tool returns an error status', () => {
+		const w = mountTable({
+			items: [
+				{
+					kind: 'workflow',
+					executionId: 'e1',
+					timestamp: 1000,
+					toolName: 'run_workflow',
+					toolOutcome: 'success',
+					toolOutput: { executionId: 'exec-1', status: 'error' },
+				},
+			],
+			selectedIndex: null,
+			visibleKinds: new Set<string>(),
+		});
+
+		expect(w.get('[data-test-id="timeline-tool-error-badge"]').text()).toBe('Error');
+	});
+
 	it.each([
 		['approved', 'Approved'],
 		['declined', 'Declined'],

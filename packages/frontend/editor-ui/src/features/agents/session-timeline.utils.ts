@@ -31,7 +31,9 @@ export function isSubAgentTimelineItem(item: TimelineItem): boolean {
 export function isErroredToolCallTimelineItem(item: TimelineItem): boolean {
 	if (item.kind !== 'tool' && item.kind !== 'node' && item.kind !== 'workflow') return false;
 	return (
-		item.toolOutcome === 'error' || (item.toolOutcome === undefined && item.toolSuccess === false)
+		item.toolOutcome === 'error' ||
+		(item.toolOutcome === undefined && item.toolSuccess === false) ||
+		(item.kind === 'workflow' && isRecord(item.toolOutput) && item.toolOutput.status === 'error')
 	);
 }
 
