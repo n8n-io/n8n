@@ -6362,6 +6362,9 @@ importers:
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 5.2.4(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
