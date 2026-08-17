@@ -1003,7 +1003,7 @@ describe('CredentialsService', () => {
 
 	describe('testById', () => {
 		it('throws CredentialNotFoundError when credential does not exist', async () => {
-			credentialsFinderService.getById.mockResolvedValue(null);
+			credentialsFinderService.findById.mockResolvedValue(null);
 
 			await expect(service.testById(ownerUser.id, 'missing-credential')).rejects.toThrow(
 				CredentialNotFoundError,
@@ -1012,7 +1012,7 @@ describe('CredentialsService', () => {
 		});
 
 		it('does not expose instance credentials through public API testing', async () => {
-			credentialsFinderService.getById.mockResolvedValue(
+			credentialsFinderService.findById.mockResolvedValue(
 				mock<CredentialsEntity>({
 					id: 'instance-credential',
 					usageScope: 'instance',
@@ -1035,13 +1035,13 @@ describe('CredentialsService', () => {
 			const decryptedData = { accessToken: 'secret-token' } as ICredentialDataDecryptedObject;
 			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
 
-			credentialsFinderService.getById.mockResolvedValue(storedCredential);
+			credentialsFinderService.findById.mockResolvedValue(storedCredential);
 			credentialsTester.testCredentials.mockResolvedValue(testResult);
 			vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
 
 			const result = await service.testById(ownerUser.id, storedCredential.id);
 
-			expect(credentialsFinderService.getById).toHaveBeenCalledWith(storedCredential.id);
+			expect(credentialsFinderService.findById).toHaveBeenCalledWith(storedCredential.id);
 			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
 			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(
 				ownerUser.id,

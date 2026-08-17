@@ -101,7 +101,7 @@ export const validCredentialsPropertiesForUpdate = async (
 		// Fetch existing credential to get type if not provided
 		if (type === undefined) {
 			const existingCredential =
-				await Container.get(CredentialsFinderService).getById(credentialId);
+				await Container.get(CredentialsFinderService).findById(credentialId);
 			if (!existingCredential) {
 				return res.status(404).json({ message: 'Credential not found' });
 			}
@@ -117,7 +117,7 @@ export const validCredentialsPropertiesForUpdate = async (
 
 	// If type is provided but data is not, check if type is changing
 	if (type !== undefined && data === undefined) {
-		const existingCredential = await Container.get(CredentialsFinderService).getById(credentialId);
+		const existingCredential = await Container.get(CredentialsFinderService).findById(credentialId);
 		if (!existingCredential) {
 			return res.status(404).json({ message: 'Credential not found' });
 		}

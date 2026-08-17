@@ -163,7 +163,7 @@ const credentialsHandlers: CredentialsHandlers = {
 		async (req, res) => {
 			const { id: credentialId } = req.params;
 
-			const credential = await Container.get(CredentialsFinderService).getById(credentialId, {
+			const credential = await Container.get(CredentialsFinderService).findById(credentialId, {
 				includeSharedProject: true,
 			});
 			if (!credential) {
@@ -249,7 +249,7 @@ const credentialsHandlers: CredentialsHandlers = {
 			const { id: credentialId } = req.params;
 			const credentialsService = Container.get(CredentialsService);
 
-			const existingCredential = await Container.get(CredentialsFinderService).getById(
+			const existingCredential = await Container.get(CredentialsFinderService).findById(
 				credentialId,
 				{ includeSharedProject: true },
 			);

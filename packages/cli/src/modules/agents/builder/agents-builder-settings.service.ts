@@ -176,7 +176,7 @@ export class AgentsBuilderSettingsService {
 			return null;
 		}
 
-		const credential = await this.credentialsFinderService.getById(settings.credentialId);
+		const credential = await this.credentialsFinderService.findById(settings.credentialId);
 		if (!credential) return null;
 
 		const data = await this.credentialsService.decrypt(credential, true);

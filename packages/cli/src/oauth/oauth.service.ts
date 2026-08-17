@@ -283,7 +283,7 @@ export class OauthService {
 		// Private credentials are connected per-user, so executing users can authorize
 		// their own account without edit rights. Shared/static credentials store the
 		// token on the shared credential itself, so connecting them still requires edit.
-		const existingCredential = await this.credentialsFinderService.getById(credentialId, {
+		const existingCredential = await this.credentialsFinderService.findById(credentialId, {
 			includeInstanceCredentials: true,
 		});
 		const requiredScope = existingCredential?.isResolvable

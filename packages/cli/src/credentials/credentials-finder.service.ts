@@ -52,7 +52,7 @@ export class CredentialsFinderService {
 		});
 	}
 
-	async getById(
+	async findById(
 		credentialId: string,
 		options: {
 			includeInstanceCredentials?: boolean;

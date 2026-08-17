@@ -73,7 +73,7 @@ describe('AgentsBuilderSettingsService', () => {
 			id: 'cred-1',
 			type: opts.credentialType ?? 'anthropicApi',
 		});
-		credentialsFinderService.getById.mockResolvedValue(credential);
+		credentialsFinderService.findById.mockResolvedValue(credential);
 		credentialsService.decrypt.mockReturnValue({
 			apiKey: opts.apiKey ?? 'sk-test',
 			...(opts.url ? { url: opts.url } : {}),
@@ -193,7 +193,7 @@ describe('AgentsBuilderSettingsService', () => {
 				modelName: 'anthropic.claude-3-5-sonnet-20240620-v1:0',
 			});
 			aiService.isProxyEnabled.mockReturnValue(false);
-			credentialsFinderService.getById.mockResolvedValue(
+			credentialsFinderService.findById.mockResolvedValue(
 				mock<CredentialsEntity>({ id: 'cred-1', type: 'aws' }),
 			);
 			credentialsService.decrypt.mockReturnValue({
@@ -241,7 +241,7 @@ describe('AgentsBuilderSettingsService', () => {
 				credentialId: 'cred-deleted',
 				modelName: 'claude-3-5-sonnet',
 			});
-			credentialsFinderService.getById.mockResolvedValue(null);
+			credentialsFinderService.findById.mockResolvedValue(null);
 			aiService.isProxyEnabled.mockReturnValue(false);
 			process.env.N8N_AI_ANTHROPIC_KEY = 'sk-env';
 

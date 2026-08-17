@@ -1241,7 +1241,7 @@ export class CredentialsService {
 	}
 
 	async testById(userId: User['id'], credentialId: string) {
-		const storedCredential = await this.credentialsFinderService.getById(credentialId);
+		const storedCredential = await this.credentialsFinderService.findById(credentialId);
 
 		// Dynamic-credential flows only; admins test instance credentials via testWithCredentials
 		if (!storedCredential || storedCredential.usageScope !== 'project') {

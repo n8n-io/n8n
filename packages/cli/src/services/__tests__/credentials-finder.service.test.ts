@@ -61,11 +61,11 @@ describe('CredentialsFinderService', () => {
 		});
 	});
 
-	describe('getById', () => {
+	describe('findById', () => {
 		it('queries project credentials by default', async () => {
 			credentialsRepository.findOne.mockResolvedValueOnce(null);
 
-			await credentialsFinderService.getById('credential-id');
+			await credentialsFinderService.findById('credential-id');
 
 			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
 				where: { id: 'credential-id', usageScope: 'project' },
@@ -76,7 +76,7 @@ describe('CredentialsFinderService', () => {
 		it('includes instance credentials and shared project when requested', async () => {
 			credentialsRepository.findOne.mockResolvedValueOnce(null);
 
-			await credentialsFinderService.getById('credential-id', {
+			await credentialsFinderService.findById('credential-id', {
 				includeInstanceCredentials: true,
 				includeSharedProject: true,
 			});
