@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { provide, ref } from 'vue';
 import type { INode } from 'n8n-workflow';
 import { UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS } from '@n8n/api-types';
 
+import { ResourceMapperSchemaAutoRefreshKey } from '@/app/constants';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 
 const props = defineProps<{
@@ -19,6 +20,8 @@ const emit = defineEmits<{
 }>();
 
 const contentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
+
+provide(ResourceMapperSchemaAutoRefreshKey, false);
 
 function handleChangeName(name: string) {
 	contentRef.value?.handleChangeName(name);

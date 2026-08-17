@@ -26,8 +26,8 @@ import {
 } from 'n8n-workflow';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { OwnershipService } from '@/services/ownership.service';
 
 import { DataTableAggregateService } from './data-table-aggregate.service';
@@ -54,14 +54,13 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		private readonly dataTableAggregateService: DataTableAggregateService,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
 
 	private checkInstanceWriteAccess(): void {
-		const preferences = this.sourceControlPreferencesService.getPreferences();
-		if (preferences.branchReadOnly) {
+		if (this.instanceWriteAccess.isReadOnly()) {
 			throw new ForbiddenError(
 				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
 			);

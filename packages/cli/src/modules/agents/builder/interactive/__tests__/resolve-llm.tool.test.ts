@@ -51,7 +51,7 @@ describe('resolve_llm tool', () => {
 		expect(result).toEqual({
 			ok: true,
 			provider: 'openai',
-			model: 'gpt-5-mini',
+			model: 'gpt-5.6-terra',
 			credentialId: 'c1',
 			credentialName: 'My OpenAI',
 		});
@@ -74,7 +74,7 @@ describe('resolve_llm tool', () => {
 		expect(result).toEqual({
 			ok: true,
 			provider: 'openrouter',
-			model: 'anthropic/claude-sonnet-4.6',
+			model: 'anthropic/claude-sonnet-5',
 			credentialId: 'c2',
 			credentialName: 'My OpenRouter',
 		});
@@ -311,7 +311,7 @@ describe('resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'openrouter',
-				model: 'anthropic/claude-sonnet-4.6',
+				model: 'anthropic/claude-sonnet-5',
 				credentialId: 'c2',
 				credentialName: 'Work OpenRouter',
 			});
@@ -355,7 +355,7 @@ describe('resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-6',
+				model: 'claude-sonnet-5',
 				credentialId: 'c2',
 				credentialName: 'My Anthropic',
 				autoPicked: true,
@@ -385,7 +385,7 @@ describe('resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-6',
+				model: 'claude-sonnet-5',
 				credentialId: 'c1',
 				credentialName: 'My Anthropic',
 			});
