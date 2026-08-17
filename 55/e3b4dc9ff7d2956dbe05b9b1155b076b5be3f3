@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_305955daf24d02::t_604ffe0ecd9a81 3
+  s_305955daf24d02::t_4b32f8a7eb9810 2,71-73,224-255,257,259-261,264,313
+  s_305955daf24d02::t_322b31bf231280 256,258
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_305955daf24d02::t_4b32f8a7eb9810 105-106
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_305955daf24d02::t_4b32f8a7eb9810 1488-1489
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_305955daf24d02::t_4b32f8a7eb9810 47-48
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_305955daf24d02::t_4b32f8a7eb9810 5,158-161,163-167,329-336,365
+  s_305955daf24d02::t_604ffe0ecd9a81 162
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_305955daf24d02::t_0f95a3ad10812d 274-368,413,441
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_305955daf24d02::t_0f95a3ad10812d 110-136
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_305955daf24d02::t_0f95a3ad10812d 145-173
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionDetailPanel.spec.ts
+  s_305955daf24d02::t_0f95a3ad10812d 198-230
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_305955daf24d02::t_4b32f8a7eb9810 4,18
+  s_305955daf24d02::t_c04b8f343c5d2a 19
+  s_305955daf24d02::t_322b31bf231280 3,17
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_305955daf24d02::t_4b32f8a7eb9810 2,113-121,165,172-173
+  s_305955daf24d02::t_e6979252586d7b 174-175
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_305955daf24d02::t_604ffe0ecd9a81 213-214,423,427,431
+  s_305955daf24d02::t_4b32f8a7eb9810 8,227-228,248-255,282-289,292,298-300,313-317,422,424-426,428-430,432-433
+  s_305955daf24d02::t_322b31bf231280 210-212,215-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "55e3b4dc9ff7d2956dbe05b9b1155b076b5be3f3",
+  "prompts": {},
+  "sessions": {
+    "s_305955daf24d02": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffb56-d72e-7fb2-bb76-81cc38f4e9a6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

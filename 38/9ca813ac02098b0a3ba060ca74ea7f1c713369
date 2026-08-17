@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_305955daf24d02::t_fb99b6c53b1f2a 150-165
+  s_305955daf24d02::t_33a4f922be3525 167-169
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_305955daf24d02::t_1c72249ac3f2a1 2,13
+  s_305955daf24d02::t_fbc6f32c0d649e 27,29-30,125,146,178-180,182-184,239-240,242-246,248
+  s_305955daf24d02::t_d601f6e85d7cd5 288,297,326-330,336,347,353,372
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_305955daf24d02::t_729bdedc3b9e4b 13-17
+  s_305955daf24d02::t_c79dd572070dd4 1,44-83,85
+  s_305955daf24d02::t_466b4abf110472 84,86-90
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_305955daf24d02::t_2df25df830b2c4 278-279,285,313,317-318,320,326,336,371,373
+  s_305955daf24d02::t_ef765eb8fa0061 207-233
+  s_305955daf24d02::t_e5ea2638197a67 266,269-270,276,374,382,388,391-392,398,429,435-436,444
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_305955daf24d02::t_62e8a2662673da 1261
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_305955daf24d02::t_ddc719f1eb2975 11,14,47-50,146-147,153-155,181,348-349,351-355,357
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_305955daf24d02::t_adf267027bbc67 11,13,60-61,67-68,126,128,130-134,136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "389ca813ac02098b0a3ba060ca74ea7f1c713369",
+  "prompts": {},
+  "sessions": {
+    "s_305955daf24d02": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffb56-d72e-7fb2-bb76-81cc38f4e9a6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
