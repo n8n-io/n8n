@@ -1,0 +1,95 @@
+name: 'Test: Single-instance deps (npm-install)'
+
+# An npm-install graph exposes curated-lib duplicates that pnpm dev/deploy hides, because root
+# `pnpm.overrides` don't travel in published tarballs.
+
+on:
+  workflow_call:
+    inputs:
+      scope:
+        description: '"changed" verifies only packages touched since base-ref; "all" packs every publishable package.'
+        required: true
+        type: string
+      base-ref:
+        description: 'Commit to diff against. Required when scope is "changed", rejected otherwise.'
+        required: false
+        type: string
+        default: ''
+      base-branch:
+        description: 'Branch to check out before verifying, so the run profiles that branch rather than the caller''s triggering revision. Only valid when scope is "all".'
+        required: false
+        type: string
+        default: ''
+      blocking:
+        description: 'Fail the calling workflow on a finding. Defaults to advisory while the curated-lib backlog is worked down.'
+        required: false
+        type: boolean
+        default: false
+      timeout-minutes:
+        description: 'Job timeout. The "all" scope packs every publishable package, so it needs longer than the scoped one.'
+        required: false
+        type: number
+        default: 20
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ !inputs.blocking }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+    steps:
+      # Every rejected combination below otherwise degrades into a run that verifies nothing and
+      # still exits 0 — silently, since this job is advisory by default.
+      - name: Validate inputs
+        env:
+          SCOPE: ${{ inputs.scope }}
+          BASE_REF: ${{ inputs.base-ref }}
+          BASE_BRANCH: ${{ inputs.base-branch }}
+        run: |
+          case "$SCOPE" in
+            changed)
+              [ -n "$BASE_REF" ] || { echo "::error::scope=changed requires base-ref."; exit 1; }
+              # A base-branch checkout would move HEAD away from the pushed commit, so the diff
+              # would silently describe the wrong range.
+              [ -z "$BASE_BRANCH" ] || { echo "::error::scope=changed cannot be combined with base-branch."; exit 1; }
+              ;;
+            all)
+              [ -z "$BASE_REF" ] || { echo "::error::scope=all does not use base-ref."; exit 1; }
+              ;;
+            *)
+              echo "::error::Unknown scope \"$SCOPE\" (expected \"changed\" or \"all\")."
+              exit 1
+              ;;
+          esac
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Switch to base branch
+        if: inputs.base-branch != ''
+        env:
+          BASE_BRANCH: ${{ inputs.base-branch }}
+        run: git checkout "$BASE_BRANCH"
+
+      # Only the verifier's own closure needs compiling. The check reads package.json out of the
+      # npm-install graph, so the packed tarballs' contents don't matter, and the two packages with
+      # a prepack hook build themselves.
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/code-health...
+
+      # `--dir` rather than `--filter`: a filter matching nothing exits 0, so a renamed or moved
+      # package would turn this into a green job that verified nothing.
+      - name: Verify npm-install closure (changed packages)
+        if: inputs.scope == 'changed'
+        env:
+          BASE_REF: ${{ inputs.base-ref }}
+        run: pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --changed="$BASE_REF"
+
+      - name: Verify npm-install closure (all packages)
+        if: inputs.scope == 'all'
+        run: pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --all
