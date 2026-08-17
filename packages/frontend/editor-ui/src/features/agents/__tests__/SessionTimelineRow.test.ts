@@ -61,9 +61,13 @@ async function renderComponent(it: TimelineItem) {
 }
 
 describe('SessionTimelineRow', () => {
-	it('renders the failure icon for a thrown tool call', async () => {
+	it('renders the failure icon for a generic tool soft-failure', async () => {
 		const wrapper = await renderComponent(
-			item({ kind: 'tool', toolSuccess: false, toolOutput: { error: 'boom' } }),
+			item({
+				kind: 'tool',
+				toolSuccess: true,
+				toolOutput: { success: false, error: 'boom' },
+			}),
 		);
 		expect(wrapper.find('[data-testid="timeline-failed-icon"]').exists()).toBe(true);
 	}, 30_000);

@@ -23,27 +23,42 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * A tool/workflow/node call is "failed" when the runtime flagged it
  * (`toolSuccess === false`) — the case for thrown tool and node errors.
  *
- * Workflow tools don't throw on sub-workflow failure; they return
- * `{ status: 'error', error?, executionId }` with `success: true`. Detect
- * that soft-failure shape here so it isn't invisible in the timeline.
- * In-flight calls (`toolSuccess === undefined`, no error status) are not failed.
+ * Built-in tools can also return soft-failure payloads instead of throwing.
+ * Detect their top-level failure signals so they aren't invisible in the
+ * timeline. In-flight calls without output are not failed.
  */
 export function isFailedTimelineItem(item: TimelineItem): boolean {
 	if (item.kind !== 'tool' && item.kind !== 'workflow' && item.kind !== 'node') return false;
 	if (item.toolSuccess === false) return true;
-	if (item.kind === 'workflow' && isRecord(item.toolOutput)) {
-		return item.toolOutput.status === 'error';
-	}
-	return false;
+	if (!isRecord(item.toolOutput)) return false;
+
+	const { error, status, success, ok, isError } = item.toolOutput;
+	const hasErrorMessage =
+		(typeof error === 'string' && error.length > 0) ||
+		(isRecord(error) && typeof error.message === 'string' && error.message.length > 0);
+
+	return (
+		hasErrorMessage ||
+		status === 'error' ||
+		status === 'failed' ||
+		success === false ||
+		ok === false ||
+		isError === true
+	);
 }
 
 /** Extracts a human-readable error message from a failed item's tool output. */
 export function timelineItemErrorMessage(item: TimelineItem): string {
 	if (!isFailedTimelineItem(item)) return '';
 	const output = item.toolOutput;
-	if (isRecord(output) && typeof output.error === 'string' && output.error.length > 0) {
-		return output.error;
-	}
+	if (!isRecord(output)) return '';
+	if (typeof output.error === 'string' && output.error.length > 0) return output.error;
+	if (
+		isRecord(output.error) &&
+		typeof output.error.message === 'string' &&
+		output.error.message.length > 0
+	)
+		return output.error.message;
 	return '';
 }
 

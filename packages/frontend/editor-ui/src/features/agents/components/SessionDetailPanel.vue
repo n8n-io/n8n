@@ -211,21 +211,15 @@ const headerIcon = computed((): IconName => {
 const isFailed = computed((): boolean => (props.item ? isFailedTimelineItem(props.item) : false));
 
 /**
- * Error message for a failed tool/workflow/node call. For nodes this mirrors
- * the previous `nodeErrorMessage` behaviour (prefix + message); for tools and
- * workflows it surfaces the failure text from `toolOutput.error` (workflow
- * soft-failures carry `success: true`, so the flag is derived in
- * `isFailedTimelineItem`).
+ * Error message for a failed tool/workflow/node call. It surfaces a string or
+ * nested `toolOutput.error.message` when available.
+ * Built-in soft-failure payloads carry `toolSuccess: true`, so the failure
+ * flag is derived in `isFailedTimelineItem`.
  */
 const errorMessage = computed((): string => {
 	const item = props.item;
 	if (!item || !isFailed.value) return '';
-	const prefix =
-		item.kind === 'workflow'
-			? i18n.baseText('agentSessions.timeline.workflowFailed')
-			: item.kind === 'tool'
-				? i18n.baseText('agentSessions.timeline.toolError')
-				: i18n.baseText('agentSessions.timeline.nodeError');
+	const prefix = i18n.baseText('agentSessions.timeline.toolError');
 	const message = timelineItemErrorMessage(item);
 	return message ? `${prefix}: ${message}` : prefix;
 });

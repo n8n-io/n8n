@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import SessionTimelineChart from '../components/SessionTimelineChart.vue';
@@ -102,13 +101,13 @@ describe('SessionTimelineChart', () => {
 		expect(blocks[2].element.getAttribute('data-selected')).toBe('true');
 	});
 
-	it('marks a failed tool block as failed', () => {
+	it('marks a generic tool soft-failure block as failed', () => {
 		const w = mountChart({
 			items: [
 				item({
 					kind: 'tool',
-					toolSuccess: false,
-					toolOutput: { error: 'boom' },
+					toolSuccess: true,
+					toolOutput: { success: false, error: 'boom' },
 				}),
 			],
 		});

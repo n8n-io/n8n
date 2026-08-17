@@ -451,48 +451,46 @@ describe('flattenExecutionsToTimelineItems', () => {
 });
 
 describe('isFailedTimelineItem', () => {
-	it('flags a thrown tool call (toolSuccess === false)', () => {
-		expect(isFailedTimelineItem(item({ kind: 'tool', toolSuccess: false }))).toBe(true);
+	it.each([
+		['runtime hard failure', { kind: 'tool', toolSuccess: false }],
+		['generic error string', { kind: 'tool', toolSuccess: true, toolOutput: { error: 'boom' } }],
+		[
+			'integration error object',
+			{
+				kind: 'tool',
+				toolSuccess: true,
+				toolOutput: { ok: false, error: { code: 'ACTION_FAILED', message: 'Action failed' } },
+			},
+		],
+		[
+			'workflow error status',
+			{ kind: 'workflow', toolSuccess: true, toolOutput: { status: 'error' } },
+		],
+		[
+			'delegate failed status',
+			{ kind: 'tool', toolSuccess: true, toolOutput: { status: 'failed' } },
+		],
+		[
+			'workspace success false',
+			{ kind: 'tool', toolSuccess: true, toolOutput: { success: false } },
+		],
+		['integration ok false', { kind: 'tool', toolSuccess: true, toolOutput: { ok: false } }],
+		['MCP isError true', { kind: 'tool', toolSuccess: true, toolOutput: { isError: true } }],
+	] satisfies Array<[string, Partial<TimelineItem>]>)('flags %s', (_label, partial) => {
+		expect(isFailedTimelineItem(item(partial))).toBe(true);
 	});
 
-	it('flags a thrown node call (toolSuccess === false)', () => {
-		expect(isFailedTimelineItem(item({ kind: 'node', toolSuccess: false }))).toBe(true);
-	});
-
-	it('flags a workflow soft-failure by output.status even when toolSuccess is true', () => {
-		expect(
-			isFailedTimelineItem(
-				item({ kind: 'workflow', toolSuccess: true, toolOutput: { status: 'error' } }),
-			),
-		).toBe(true);
-	});
-
-	it('flags a workflow soft-failure with an error message', () => {
-		expect(
-			isFailedTimelineItem(
-				item({
-					kind: 'workflow',
-					toolSuccess: true,
-					toolOutput: { status: 'error', error: 'boom', executionId: 'x' },
-				}),
-			),
-		).toBe(true);
-	});
-
-	it('does not flag a successful workflow', () => {
-		expect(
-			isFailedTimelineItem(
-				item({ kind: 'workflow', toolSuccess: true, toolOutput: { status: 'success' } }),
-			),
-		).toBe(false);
-	});
-
-	it('does not flag an in-flight tool call (toolSuccess undefined, no output)', () => {
-		expect(isFailedTimelineItem(item({ kind: 'tool', toolSuccess: undefined }))).toBe(false);
-	});
-
-	it('does not flag an in-flight workflow call without an error status', () => {
-		expect(isFailedTimelineItem(item({ kind: 'workflow', toolSuccess: undefined }))).toBe(false);
+	it.each([
+		['empty error string', { toolOutput: { error: '' } }],
+		['empty nested error message', { toolOutput: { error: { message: '' } } }],
+		['success status', { toolOutput: { status: 'success' } }],
+		['success true', { toolOutput: { success: true } }],
+		['ok true', { toolOutput: { ok: true } }],
+		['isError false', { toolOutput: { isError: false } }],
+		['non-record output', { toolOutput: 'failed' }],
+		['in-flight call', { toolSuccess: undefined, toolOutput: undefined }],
+	] satisfies Array<[string, Partial<TimelineItem>]>)('does not flag %s', (_label, partial) => {
+		expect(isFailedTimelineItem(item({ kind: 'tool', toolSuccess: true, ...partial }))).toBe(false);
 	});
 
 	it('does not flag user/agent/suspension kinds', () => {
@@ -521,6 +519,21 @@ describe('timelineItemErrorMessage', () => {
 				}),
 			),
 		).toBe('node X failed');
+	});
+
+	it('extracts a nested integration error message', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						ok: false,
+						error: { code: 'NO_MESSAGE_CONTEXT', message: 'No message context' },
+					},
+				}),
+			),
+		).toBe('No message context');
 	});
 
 	it('returns empty string when no error message is present', () => {

@@ -93,9 +93,6 @@ const label = computed((): string => {
 
 const failedLabel = computed((): string => {
 	if (!isFailed.value) return '';
-	if (props.item.kind === 'workflow') {
-		return i18n.baseText('agentSessions.timeline.workflowFailed');
-	}
 	return i18n.baseText('agentSessions.timeline.toolError');
 });
 </script>
