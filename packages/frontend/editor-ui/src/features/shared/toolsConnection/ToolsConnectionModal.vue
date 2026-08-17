@@ -128,8 +128,19 @@ function categoryOf(item: ToolConnectionItem): ToolCategoryKey {
 	return item.category ?? CATEGORY_BY_KIND[item.kind];
 }
 
+/**
+ * "All" ranks connected tools first, then those backed by n8n credits, then the
+ * rest — so the most immediately usable tools sit on top. Lower rank sorts first.
+ */
+function allSortRank(item: ToolConnectionItem): number {
+	if (item.isConnected) return 0;
+	if (item.freeCredits) return 1;
+	return 2;
+}
+
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
-	if (category === 'all') return props.items;
+	// Stable sort keeps each bucket in its original order (Array.sort is stable).
+	if (category === 'all') return [...props.items].sort((a, b) => allSortRank(a) - allSortRank(b));
 	if (category === 'connected') return props.items.filter((item) => item.isConnected);
 	return props.items.filter(
 		(item) => categoryOf(item) === category && (hasConnectedTab.value ? !item.isConnected : true),

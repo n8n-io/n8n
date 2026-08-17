@@ -2,7 +2,6 @@
 import { computed, inject } from 'vue';
 import { N8nActionPill, N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import ToolIcon from './ToolIcon.vue';
 import { TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, type ToolConnectionItem } from './types';
@@ -121,9 +120,10 @@ function handleConnect() {
 							:content="i18n.baseText('communityNodeInfo.approved')"
 							placement="top"
 						>
-							<ShieldIcon
+							<N8nIcon
+								icon="shield-half"
+								:size="14"
 								:class="$style.verifiedIcon"
-								role="img"
 								:aria-label="i18n.baseText('communityNodeInfo.approved')"
 								data-test-id="tools-connection-row-verified-badge"
 							/>
@@ -280,8 +280,7 @@ function handleConnect() {
 
 .verifiedIcon {
 	flex-shrink: 0;
-	width: 12px;
-	height: 12px;
+	vertical-align: middle;
 	color: var(--color--success);
 }
 
