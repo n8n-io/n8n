@@ -24,6 +24,7 @@ export type {
 	AiGatewayUsageMetadata,
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
+export type { AiGatewayWalletResponse } from './ai/ai-gateway-wallet-response.dto';
 
 export {
 	InstanceAiConfirmRequestDto,
@@ -190,6 +191,7 @@ export {
 } from './user/users-list-filter.dto';
 
 export { UpdateRoleDto } from './roles/update-role.dto';
+export { UpdateRolePublicDto } from './roles/update-role-public.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
 export {
 	RolePublicDto,

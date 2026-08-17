@@ -50,9 +50,31 @@ describe('isEmptyModelTurn', () => {
 		).toBe(false);
 	});
 
-	it('is false for non-stop finish reasons', () => {
+	it('is false for a tool-calls turn', () => {
 		expect(isEmptyModelTurn({ aiFinishReason: 'tool-calls', newMessages: [] })).toBe(false);
-		expect(isEmptyModelTurn({ aiFinishReason: 'length', newMessages: [] })).toBe(false);
+	});
+
+	it('is true for a truncated turn with no content', () => {
+		expect(isEmptyModelTurn({ aiFinishReason: 'length', newMessages: [] })).toBe(true);
+	});
+
+	it('is true for a reasoning-only turn whose stream died before its terminal chunk', () => {
+		expect(
+			isEmptyModelTurn({
+				aiFinishReason: 'other',
+				newMessages: [assistant([{ type: 'reasoning', text: 'thinking…' }])],
+			}),
+		).toBe(true);
+	});
+
+	it('is false when the provider blocked the prompt', () => {
+		expect(
+			isEmptyModelTurn({
+				aiFinishReason: 'other',
+				newMessages: [],
+				errorReason: { type: 'prompt_blocked', message: 'blocked: PROHIBITED_CONTENT' },
+			}),
+		).toBe(false);
 	});
 
 	it('is false when structured output was produced', () => {

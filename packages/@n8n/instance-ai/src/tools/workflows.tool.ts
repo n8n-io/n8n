@@ -10,6 +10,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
+import { WorkflowSaveConflictError } from '../errors/workflow-save-conflict.error';
 import type { InstanceAiContext } from '../types';
 import {
 	findSetupHintProblems,
@@ -18,7 +19,24 @@ import {
 	TEMPLATABLE_PLAIN_AUTH_TYPES,
 } from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
+import {
+	getObservedWorkflowChecksum,
+	rememberCurrentWorkflowChecksum,
+	rememberObservedWorkflowChecksum,
+} from './workflows/observed-workflow-checksums';
+import {
+	completedSetupSubjects,
+	describeSkippedSetup,
+	forgetSkippedSetup,
+	getSkippedSetupSubjects,
+	partitionSkippedSetupRequests,
+	rememberSkippedSetup,
+	resolveReopenTargets,
+	setupSkipSubject,
+	SKIPPED_SETUP_GUIDANCE,
+} from './workflows/setup-skip-state';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
+import type { SetupRequest } from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
 	applyCredentialHints,
@@ -136,6 +154,18 @@ const setupAction = z.object({
 		.optional()
 		.describe(
 			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
+		),
+	reopenSkipped: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Credential types (or node names) the user has just explicitly asked to configure after skipping them earlier — e.g. ["slackApi"] for "connect Slack now". Use the `reopenWith` value setup reported for that card. Anything the user skipped and did not ask about stays out of the card; without this, setup reports skipped credentials instead of re-opening them. An entry matching nothing in the workflow comes back as `unknown_reopen_target` with the list to choose from.',
+		),
+	includeAllNodes: z
+		.boolean()
+		.optional()
+		.describe(
+			'By default, setup after a build covers only the nodes that build changed. Set to true to cover every node in the workflow — ONLY when the user explicitly asked to set up the whole workflow or a node the last build did not touch. Cards the user skipped stay out unless named in `reopenSkipped`.',
 		),
 });
 
@@ -435,6 +465,7 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 			};
 		}
 		const detail = await context.workflowService.get(input.workflowId);
+		await rememberObservedWorkflowChecksum(context, input.workflowId, detail.checksum);
 		if (input.full || isSmallPayload(detail)) return detail;
 		const { nodes, connections, ...meta } = detail;
 		return {
@@ -466,7 +497,13 @@ async function handleGetJson(
 	input: Extract<Input, { action: 'get-json' }>,
 ) {
 	try {
-		return await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
+		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
+		// This is the graph the agent edits before `update`, so pin the state it
+		// saw. Historical reads must not advance the optimistic-concurrency lock.
+		if (!input.versionId) {
+			await rememberCurrentWorkflowChecksum(context, input.workflowId);
+		}
+		return json;
 	} catch (error) {
 		return {
 			workflowId: input.workflowId,
@@ -644,20 +681,68 @@ async function handleSetupTestTrigger(
 	const refreshedRequests = await analyzeWorkflow(context, input.workflowId, {
 		[testTriggerNode]: triggerTestResult,
 	});
-	applyCredentialHints(refreshedRequests, input.credentialHints);
+	// Re-derived from scratch, so it has to be partitioned again: this is the second path that
+	// builds the panel, and without it a trigger test mid-session puts back the cards state 1
+	// left out.
+	const { pending: refreshedPending } = partitionSkippedSetupRequests(
+		refreshedRequests,
+		input.workflowId,
+		getSkippedSetupSubjects(context),
+	);
+	applyCredentialHints(refreshedPending, input.credentialHints);
 
 	// Generate a new requestId so the frontend doesn't filter it
 	// as already-resolved from the previous suspend cycle
 	state.currentRequestId = nanoid();
 
+	// The thread-bound project is authoritative for credential scoping; without
+	// it the frontend falls back to the user's personal project and offers
+	// credentials from outside the conversation's project.
+	const projectId = context.projectId ?? input.projectId;
+
 	return await ctx.suspend({
 		requestId: state.currentRequestId,
 		message: 'Configure credentials for your workflow',
 		severity: 'info' as const,
-		setupRequests: refreshedRequests,
+		setupRequests: refreshedPending,
 		workflowId: input.workflowId,
-		...(input.projectId ? { projectId: input.projectId } : {}),
+		...(projectId ? { projectId } : {}),
 	});
+}
+
+/**
+ * Fold the panel's skip decisions into the thread's skip memory and return the requests
+ * that are now suppressed. Anything just configured wins over a skip of the same subject:
+ * two nodes can share a credential type, and a configured credential isn't a declined one.
+ */
+async function reconcileSetupSkips(
+	context: InstanceAiContext,
+	args: {
+		workflowId: string;
+		requests: readonly SetupRequest[];
+		skippedNodeNames: readonly string[];
+		/** The applied report — `credentialType` is set only where a credential was applied. */
+		completed: ReadonlyArray<{ nodeName: string; credentialType?: string }>;
+	},
+): Promise<SetupRequest[]> {
+	const byNodeName = new Map(args.requests.map((request) => [request.node.name, request]));
+
+	const completedSubjects = new Set(completedSetupSubjects(args.completed, args.workflowId));
+	await forgetSkippedSetup(context, completedSubjects);
+
+	const newlySkipped = args.skippedNodeNames
+		.map((name) => byNodeName.get(name))
+		.filter((request): request is SetupRequest => request !== undefined)
+		.filter(
+			(request) =>
+				request.needsAction && !completedSubjects.has(setupSkipSubject(request, args.workflowId)),
+		);
+	await rememberSkippedSetup(context, newlySkipped, args.workflowId);
+
+	const skipped = getSkippedSetupSubjects(context);
+	return args.requests.filter(
+		(request) => request.needsAction && skipped.has(setupSkipSubject(request, args.workflowId)),
+	);
 }
 
 /** Setup state 4: apply credentials and parameters atomically and report the outcome. */
@@ -701,11 +786,27 @@ async function handleSetupApply(
 		const remainingRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
 			includeSettled: true,
 		});
-		const pendingRequests = remainingRequests.filter((r) => r.needsAction);
 		const completedNodes = buildCompletedReport(
 			resumeData.credentials,
 			resumeData.nodeParameters,
 			applyResult.applied,
+		);
+
+		// The user dismissing a card and a card merely being unconfigured look identical in
+		// the re-analysis, so the panel tells us which ones were dismissed. Record those for
+		// the rest of the thread, and drop the record for anything just configured — a
+		// credential type that now has a working credential is no longer a declined decision.
+		const skippedByUser = await reconcileSetupSkips(context, {
+			workflowId: input.workflowId,
+			requests: remainingRequests,
+			skippedNodeNames: resumeData.skippedNodes ?? [],
+			completed: completedNodes,
+		});
+		const skippedSubjects = new Set(
+			skippedByUser.map((request) => setupSkipSubject(request, input.workflowId)),
+		);
+		const pendingRequests = remainingRequests.filter(
+			(r) => r.needsAction && !skippedSubjects.has(setupSkipSubject(r, input.workflowId)),
 		);
 
 		// Detect credentials that were applied but failed testing.
@@ -719,12 +820,22 @@ async function handleSetupApply(
 		const allFailedNodes = [...(failedNodes ?? []), ...credTestFailures];
 		const mergedFailedNodes = allFailedNodes.length > 0 ? allFailedNodes : undefined;
 
+		// Reported separately from the nodes that still need setup: these must not be
+		// re-opened, so folding them into one list is what made the agent ask again.
+		const skippedByUserReport =
+			skippedByUser.length > 0
+				? {
+						skippedByUser: describeSkippedSetup(skippedByUser),
+						skippedByUserGuidance: SKIPPED_SETUP_GUIDANCE,
+					}
+				: {};
+
 		if (pendingRequests.length > 0) {
 			// Carry the parameter issues, not just the node name: a value the connected
 			// credential can't reach (e.g. a model outside the free-credits allowlist) is
 			// only actionable if the caller learns which value was wrong, so it can replace
 			// it and say what it changed.
-			const skippedNodes = pendingRequests.map((r) => ({
+			const nodesStillNeedingSetup = pendingRequests.map((r) => ({
 				nodeName: r.node.name,
 				credentialType: r.credentialType,
 				...(r.parameterIssues && Object.keys(r.parameterIssues).length > 0
@@ -736,7 +847,8 @@ async function handleSetupApply(
 				partial: true,
 				reason: `Applied setup for ${String(validCompletedNodes.length)} node(s), ${String(pendingRequests.length)} node(s) still need configuration.`,
 				completedNodes: validCompletedNodes,
-				skippedNodes,
+				nodesStillNeedingSetup,
+				...skippedByUserReport,
 				failedNodes: mergedFailedNodes,
 				updatedNodes,
 				updatedConnections,
@@ -746,6 +858,7 @@ async function handleSetupApply(
 		return {
 			success: true,
 			completedNodes: validCompletedNodes,
+			...skippedByUserReport,
 			failedNodes: mergedFailedNodes,
 			updatedNodes,
 			updatedConnections,
@@ -755,6 +868,36 @@ async function handleSetupApply(
 			success: false,
 			error: `Workflow apply failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
 		};
+	}
+}
+
+/**
+ * Node names the latest build for this workflow changed, read from the stored
+ * build outcome. Scoping only applies to the build-bound setup handoff — the
+ * setup call made in the same run as the build. A setup call in any later run
+ * is user-initiated (e.g. "set up my workflow"), so it covers the whole
+ * workflow even when an unchanged node is the one the user wants configured.
+ * Also undefined when there is no build outcome or it predates change tracking.
+ */
+async function resolveSetupScopeNodeNames(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<string[] | undefined> {
+	const workflowTaskService = context.workflowBuildContext?.workflowTaskService;
+	if (!workflowTaskService) return undefined;
+	try {
+		const outcome = await workflowTaskService.getLatestBuildOutcomeForWorkflow(workflowId);
+		if (!outcome?.runId || outcome.runId !== context.runId) return undefined;
+		return outcome.changedNodeNames;
+	} catch (error) {
+		// Fail open: an unscoped setup equals the long-standing behavior (shows
+		// more, never less), while failing closed would block user-initiated
+		// setup on a storage hiccup.
+		context.logger.warn('Failed to resolve setup scope from the latest build outcome', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
 	}
 }
 
@@ -775,11 +918,70 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
-		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+		const allSetupRequests = await analyzeWorkflow(context, input.workflowId);
+
+		// The user asked to come back to something they skipped, so that decision no longer
+		// holds — drop it before partitioning so the card renders again. Scoped to what they
+		// named: anything else they skipped stays skipped.
+		//
+		// Validated as a whole before anything is forgotten or opened, like the credential-hint
+		// and plain-auth checks below. Honouring the entries that resolve and opening the card
+		// anyway would drop the rest of what the user asked for with nothing to report it: the
+		// card suspends, so this is the last point where the caller can still be told.
+		if (input.reopenSkipped && input.reopenSkipped.length > 0) {
+			// Matched against every analyzed node, not the build-scoped subset: the user named
+			// this card, so a node the last build happened not to touch is still a valid target
+			// and must not come back as "nothing matches".
+			const { subjects, unmatched } = resolveReopenTargets(
+				allSetupRequests,
+				input.workflowId,
+				input.reopenSkipped,
+			);
+			if (unmatched.length > 0) {
+				const reopenable = describeSkippedSetup(
+					partitionSkippedSetupRequests(
+						allSetupRequests,
+						input.workflowId,
+						getSkippedSetupSubjects(context),
+					).skippedByUser,
+				);
+				const named = unmatched.map((entry) => `"${entry}"`).join(', ');
+				return {
+					error: 'unknown_reopen_target',
+					message:
+						reopenable.length > 0
+							? `Nothing in this workflow matches ${named}. Call setup again passing only \`reopenWith\` values from \`reopenable\`, and tell the user that what they named is not part of this workflow.`
+							: `Nothing in this workflow matches ${named}, and nothing in it is currently skipped. Call setup again without \`reopenSkipped\`.`,
+					unmatchedReopen: unmatched,
+					reopenable,
+				};
+			}
+			await forgetSkippedSetup(context, subjects);
+		}
+
+		// Setup after a build covers only the nodes that build changed —
+		// pre-existing, unrelated nodes must not surface in the setup card.
+		const scopeNodeNames = input.includeAllNodes
+			? undefined
+			: await resolveSetupScopeNodeNames(context, input.workflowId);
+		const scopedRequests = scopeNodeNames
+			? allSetupRequests.filter((request) => scopeNodeNames.includes(request.node.name))
+			: allSetupRequests;
+
+		// Two reasons a card stays out, applied in order: this build never touched the node, or
+		// the user declined it. Partitioning the scoped list keeps them apart in the report —
+		// an out-of-scope card is not something the user passed on.
+		const { pending: setupRequests, skippedByUser } = partitionSkippedSetupRequests(
+			scopedRequests,
+			input.workflowId,
+			getSkippedSetupSubjects(context),
+		);
 
 		// Validated against the workflow's node URLs so a recipe can't set one of
-		// the workflow's own (action) endpoints as its probe testUrl.
-		const nodeUrls = setupRequests.map((request) => request.node.parameters?.url);
+		// the workflow's own (action) endpoints as its probe testUrl. Checked against every
+		// analyzed node, not just the pending ones — narrowing it to what the card shows would
+		// let a skipped or out-of-scope node's endpoint through.
+		const nodeUrls = allSetupRequests.map((request) => request.node.parameters?.url);
 		const hintProblems = (input.credentialHints ?? []).flatMap((hint) =>
 			findSetupHintProblems(hint, { nodeUrls }).map((problem) =>
 				hint.nodeName ? `${hint.nodeName}: ${problem}` : problem,
@@ -820,10 +1022,48 @@ async function handleSetup(
 		}
 
 		if (setupRequests.length === 0) {
+			// Two different silences, and the agent has to say different things about them: cards
+			// the user declined, and pre-existing nodes this build never touched. Both can hold at
+			// once, so neither branch may swallow the other. Named "out of scope" rather than
+			// "skipped" because in this file a skip is specifically a user decision.
+			const outOfScopeNodeNames = scopeNodeNames
+				? allSetupRequests
+						.map((request) => request.node.name)
+						.filter((name) => !scopeNodeNames.includes(name))
+				: [];
+			const outOfScopeReason =
+				outOfScopeNodeNames.length > 0
+					? `Pre-existing node(s) ${outOfScopeNodeNames
+							.map((name) => `"${name}"`)
+							.join(', ')} have pending setup, but this change did not touch them — ` +
+						'do not route the user to set them up now. Only if the user explicitly asks to set them up, call setup again with includeAllNodes: true.'
+					: undefined;
+
+			if (skippedByUser.length > 0) {
+				return {
+					success: true,
+					reason:
+						'The only nodes that need setup are ones the user already skipped.' +
+						(outOfScopeReason ? ` ${outOfScopeReason}` : ''),
+					skippedByUser: describeSkippedSetup(skippedByUser),
+					skippedByUserGuidance: SKIPPED_SETUP_GUIDANCE,
+				};
+			}
+			if (outOfScopeReason) {
+				return {
+					success: true,
+					reason: `No nodes changed by the latest build require setup. ${outOfScopeReason}`,
+				};
+			}
 			return { success: true, reason: 'No nodes require setup.' };
 		}
 
 		state.currentRequestId = nanoid();
+
+		// The thread-bound project is authoritative for credential scoping; without
+		// it the frontend falls back to the user's personal project and offers
+		// credentials from outside the conversation's project.
+		const projectId = context.projectId ?? input.projectId;
 
 		return await ctx.suspend({
 			requestId: state.currentRequestId,
@@ -831,7 +1071,7 @@ async function handleSetup(
 			severity: 'info' as const,
 			setupRequests,
 			workflowId: input.workflowId,
-			...(input.projectId ? { projectId: input.projectId } : {}),
+			...(projectId ? { projectId } : {}),
 		});
 	}
 
@@ -842,10 +1082,23 @@ async function handleSetup(
 			await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
 			state.preTestSnapshot = null;
 		}
+		// Re-analyze rather than remembering what was suspended: the closure state doesn't
+		// survive a resume in another process, and a skip that silently fails to persist is
+		// the whole bug. Everything still needing setup is what the user just dismissed.
+		const dismissed = (await analyzeWorkflow(context, input.workflowId)).filter(
+			(request) => request.needsAction,
+		);
+		await rememberSkippedSetup(context, dismissed, input.workflowId);
 		return {
 			success: true,
 			deferred: true,
 			reason: 'User skipped workflow setup for now.',
+			...(dismissed.length > 0
+				? {
+						skippedByUser: describeSkippedSetup(dismissed),
+						skippedByUserGuidance: SKIPPED_SETUP_GUIDANCE,
+					}
+				: {}),
 		};
 	}
 
@@ -938,11 +1191,32 @@ async function handleUpdate(
 		};
 	}
 
+	// Guard against overwriting a save this conversation never saw (canvas
+	// autosave, another user, another thread). Absent when the agent never read
+	// the workflow here — then there is nothing to pin the save to.
+	const expectedChecksum = await getObservedWorkflowChecksum(context, input.workflowId);
+
 	try {
-		await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow);
+		const saved = expectedChecksum
+			? await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow, {
+					expectedChecksum,
+				})
+			: await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow);
 		await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
+		// Pin to what this save wrote, not to the re-read above: if another writer
+		// landed in between, the next update should conflict rather than clobber.
+		if (saved.checksum) {
+			await rememberObservedWorkflowChecksum(context, input.workflowId, saved.checksum);
+		}
 		return { success: true, workflowId: input.workflowId };
 	} catch (error) {
+		if (error instanceof WorkflowSaveConflictError) {
+			return {
+				success: false,
+				error: `${error.message} Call workflows(action="get", workflowId="${input.workflowId}") to read the current state, re-apply your change, then update again.`,
+			};
+		}
+
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
