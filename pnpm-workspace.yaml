@@ -1,5 +1,4 @@
 pmOnFail: warn
-audit: false
 fund: false
 updateNotifier: false
 autoInstallPeers: true
@@ -441,6 +440,37 @@ patchedDependencies:
   '@langchain/google-common@2.1.24': patches/@langchain__google-common@2.1.24.patch
 
 allowBuilds:
+  '@biomejs/biome': false
+  '@confluentinc/kafka-javascript': false
+  '@jitsi/robotjs': false
+  '@parcel/watcher': false
+  '@sentry-internal/node-cpu-profiler': false
+  '@sentry-internal/node-native-stacktrace': false
+  '@sentry/cli': false
+  '@swc/core': false
   '@vscode/ripgrep': true
+  agent-browser: false
+  bufferutil: false
+  core-js: false
+  cpu-features: false
+  electron: false
+  electron-winstaller: false
+  es5-ext: false
+  esbuild: false
+  eslint-plugin-n8n-nodes-base: false
   isolated-vm: true
+  lefthook: false
+  libpq: false
+  msgpackr-extract: false
+  oracledb: false
+  protobufjs: false
+  puppeteer: false
+  sleep: false
   sqlite3: true
+  ssh2: false
+  tree-sitter: false
+  tree-sitter-bash: false
+  unrs-resolver: false
+  utf-8-validate: false
+  v-code-diff: false
+  vue-demi: false
