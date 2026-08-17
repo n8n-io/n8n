@@ -29,11 +29,9 @@ COPY ./compiled /usr/local/lib/node_modules/n8n
 # version to the pinned image digest instead of fetching it at build time.
 RUN cd /usr/local/lib/node_modules/n8n/node_modules/sqlite3 && \
     node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release
-# Confluent ships no Node 26 prebuilt for the Kafka binding
-# (https://github.com/confluentinc/confluent-kafka-javascript/issues/397), and
-# its bundled `librdkafka` cannot build inside `node_modules`. Hence we compile
-# only the binding and link it against the `librdkafka` that the runtime base
-# installs.
+# The workspace install cannot build this binding, because CI installs on a Node version
+# Confluent ships no prebuild for, so `./compiled` arrives without one. Compile it here
+# and link against the runtime base's librdkafka. See: https://github.com/confluentinc/confluent-kafka-javascript/issues/397
 RUN apk add --no-cache librdkafka-dev && \
     cd /usr/local/lib/node_modules/n8n/node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript && \
     BUILD_LIBRDKAFKA=0 node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release

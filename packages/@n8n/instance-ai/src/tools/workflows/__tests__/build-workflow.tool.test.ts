@@ -259,6 +259,12 @@ describe('createBuildWorkflowTool', () => {
 			'then mocked/no-mock live-test when latest verification used mocks or simulations',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
+			'never offer publishing as an alternative to the live test',
+		);
+		expect(result.postBuildFlow?.guidance).toContain(
+			'A user-run execution counts only after `executions(action="list")`',
+		);
+		expect(result.postBuildFlow?.guidance).toContain(
 			'Do not replace the error-workflow opt-in with a generic add-anything',
 		);
 		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
@@ -567,6 +573,109 @@ describe('createBuildWorkflowTool', () => {
 				status: 'required',
 				reason: 'workflow-needs-setup',
 			},
+		});
+	});
+
+	it('does not fail the build on blocking findings for nodes unchanged from the saved workflow', async () => {
+		// Severity-aware partition (the default test mock ignores severity).
+		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+			blocking: warnings.filter((w) => w.severity !== 'informational'),
+			informational: warnings.filter((w) => w.severity === 'informational'),
+		}));
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: structuredClone(generatedWorkflow),
+			warnings: [
+				{
+					code: 'INVALID_PARAMETER',
+					message: 'Node "Webhook": Missing discriminator "parameters.resource".',
+					nodeName: 'Webhook',
+				},
+			],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		// Saved workflow contains the identical node — this build did not touch it.
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			...structuredClone(generatedWorkflow),
+			name: 'Target workflow',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-bound' });
+		expect(result.warnings?.some((w) => w.includes('pre-existing node'))).toBe(true);
+	});
+
+	it('still fails the build on blocking findings for nodes the build changed', async () => {
+		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+			blocking: warnings.filter((w) => w.severity !== 'informational'),
+			informational: warnings.filter((w) => w.severity === 'informational'),
+		}));
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: structuredClone(generatedWorkflow),
+			warnings: [
+				{
+					code: 'INVALID_PARAMETER',
+					message: 'Node "Webhook": Missing discriminator "parameters.resource".',
+					nodeName: 'Webhook',
+				},
+			],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		// Saved workflow has different parameters on the node — the build changed it.
+		const saved = structuredClone(generatedWorkflow);
+		saved.nodes[0].parameters = { path: 'old-path' };
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			...saved,
+			name: 'Target workflow',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.errors?.some((e) => e.includes('Missing discriminator'))).toBe(true);
+	});
+
+	it('does not require setup for pending nodes the build did not change', async () => {
+		vi.mocked(analyzeWorkflow).mockResolvedValueOnce([
+			{
+				node: {
+					id: 'webhook-1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					parameters: {},
+					position: [0, 0],
+				},
+				parameterIssues: { path: ['Missing webhook path'] },
+				isTrigger: true,
+				needsAction: true,
+			} as SetupRequest,
+		]);
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		// Saved workflow is identical to the compiled one — nothing changed.
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			...structuredClone(generatedWorkflow),
+			name: 'Target workflow',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		expect(result).toMatchObject({
+			success: true,
+			setupRequirement: { status: 'not_required' },
 		});
 	});
 
@@ -973,6 +1082,233 @@ describe('createBuildWorkflowTool', () => {
 			{ expectedChecksum: 'checksum-current' },
 		);
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	/**
+	 * The compiled graph carries whatever ids the source declared. Surviving nodes must
+	 * keep theirs so execution logs and the version diff still pair up (INS-970, INS-1120,
+	 * INS-1179), and duplicates must be broken before reaching the DB, where
+	 * (workflowId, nodeId) is a primary key.
+	 */
+	it('saves the node ids declared in the compiled workflow', async () => {
+		const workflowJson = {
+			id: 'wf-existing',
+			name: 'Digest',
+			nodes: [
+				{
+					id: 'saved-trigger',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'saved-set',
+					name: 'Process',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [220, 0] as [number, number],
+					parameters: {},
+				},
+			],
+			connections: {},
+			settings: { executionOrder: 'v1' as const },
+		};
+		const { context, filePath } = makeContext({
+			source: JSON.stringify(workflowJson, null, 2),
+			filePath: 'src/workflows/digest.workflow.json',
+		});
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: workflowJson,
+			warnings: [],
+			compiler: 'workflow-json',
+		});
+
+		await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-existing',
+		});
+
+		const saved = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock.calls[0][1];
+		expect(saved.nodes.find((n) => n.name === 'Start')?.id).toBe('saved-trigger');
+		expect(saved.nodes.find((n) => n.name === 'Process')?.id).toBe('saved-set');
+	});
+
+	/**
+	 * With recovery-by-name in place this only fires when NOTHING matched — neither an id nor a
+	 * name — i.e. the rebuild genuinely replaced the graph. That is the case worth reporting.
+	 */
+	it('warns without blocking when a rebuild matches no saved node at all', async () => {
+		const rebuilt = {
+			id: 'wf-existing',
+			name: 'Digest',
+			nodes: [
+				{
+					id: 'fresh-1',
+					name: 'Rebuilt From Scratch',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			],
+			connections: {},
+			settings: { executionOrder: 'v1' as const },
+		};
+		const { context, filePath } = makeContext({
+			source: JSON.stringify(rebuilt, null, 2),
+			filePath: 'src/workflows/digest.workflow.json',
+		});
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			name: 'Digest',
+			nodes: [
+				{
+					id: 'saved-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		});
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: rebuilt,
+			warnings: [],
+			compiler: 'workflow-json',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-existing',
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.warnings?.join('\n')).toContain('node_ids_not_preserved');
+	});
+
+	/**
+	 * A node added in an earlier build has no `id` in the source file — nothing writes the
+	 * assigned one back — so a rebuild from that file arrives with a fresh UUID. The save must
+	 * hand it back the id it already has, or its identity churns on every rebuild.
+	 */
+	it('recovers the saved id of a rebuilt node whose source declares none', async () => {
+		const rebuilt = {
+			id: 'wf-existing',
+			name: 'Digest',
+			nodes: [
+				{
+					id: 'saved-trigger',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'fresh-uuid-this-build',
+					name: 'Added Earlier',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [220, 0] as [number, number],
+					parameters: {},
+				},
+			],
+			connections: {},
+			settings: { executionOrder: 'v1' as const },
+		};
+		const { context, filePath } = makeContext({
+			source: JSON.stringify(rebuilt, null, 2),
+			filePath: 'src/workflows/digest.workflow.json',
+		});
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			name: 'Digest',
+			nodes: [
+				{
+					id: 'saved-trigger',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'assigned-on-first-build',
+					name: 'Added Earlier',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [220, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		});
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: rebuilt,
+			warnings: [],
+			compiler: 'workflow-json',
+		});
+
+		await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-existing',
+		});
+
+		const saved = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock.calls[0][1];
+		expect(saved.nodes.find((n) => n.name === 'Added Earlier')?.id).toBe('assigned-on-first-build');
+		expect(saved.nodes.find((n) => n.name === 'Start')?.id).toBe('saved-trigger');
+	});
+
+	it('breaks duplicate node ids before saving', async () => {
+		const duplicated = {
+			id: 'wf-existing',
+			name: 'Digest',
+			nodes: [
+				{
+					id: 'shared',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'shared',
+					name: 'Process',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [220, 0] as [number, number],
+					parameters: {},
+				},
+			],
+			connections: {},
+			settings: { executionOrder: 'v1' as const },
+		};
+		const { context, filePath } = makeContext({
+			source: JSON.stringify(duplicated, null, 2),
+			filePath: 'src/workflows/digest.workflow.json',
+		});
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: duplicated,
+			warnings: [],
+			compiler: 'workflow-json',
+		});
+
+		await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-existing',
+		});
+
+		const saved = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock.calls[0][1];
+		const savedIds = saved.nodes.map((n) => n.id);
+		expect(savedIds[0]).toBe('shared');
+		expect(new Set(savedIds).size).toBe(2);
 	});
 
 	it('returns a code-fixable error for malformed WorkflowJSON source files', async () => {

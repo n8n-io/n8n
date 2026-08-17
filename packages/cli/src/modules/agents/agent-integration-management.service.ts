@@ -1,4 +1,8 @@
-import { AgentIntegrationSchema, type AgentIntegrationConfig } from '@n8n/api-types';
+import {
+	AgentIntegrationSchema,
+	type AgentIntegrationConfig,
+	type AgentIntegrationDisconnectWarning,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -33,13 +37,12 @@ export class AgentIntegrationManagementService {
 		private readonly agentRepository: AgentRepository,
 	) {}
 
-	async validateConfig(input: unknown): Promise<AgentIntegrationConfig> {
-		const parsed = await AgentIntegrationSchema.safeParseAsync(input);
+	async validateConfig(integration: unknown): Promise<AgentIntegrationConfig> {
+		const parsed = await AgentIntegrationSchema.safeParseAsync(integration);
 		if (!parsed.success) throw new BadRequestError(parsed.error.message);
-
-		const integration = parsed.data;
-		this.registry.require(integration.type).validateConfig?.(integration);
-		return integration;
+		const result = parsed.data;
+		this.registry.require(result.type).validateConfig?.(result);
+		return result;
 	}
 
 	/**
@@ -75,16 +78,22 @@ export class AgentIntegrationManagementService {
 		user: User;
 		type: string;
 		credentialId: string;
+		deleteExternalResource?: boolean;
 		modifiedBy?: AgentActor;
-	}): Promise<{ savedAgent: Agent }> {
+	}): Promise<{ savedAgent: Agent; warning?: AgentIntegrationDisconnectWarning }> {
 		const result = await this.applyChange({
 			agent: options.agent,
 			user: options.user,
 			remove: { type: options.type, credentialId: options.credentialId },
+			cleanupRemovedIntegration: true,
+			deleteExternalResource: options.deleteExternalResource,
 			modifiedBy: options.modifiedBy ?? 'user',
 		});
 
-		return { savedAgent: result.agent };
+		return {
+			savedAgent: result.agent,
+			...(result.warning ? { warning: result.warning } : {}),
+		};
 	}
 
 	/**
@@ -102,8 +111,10 @@ export class AgentIntegrationManagementService {
 		user: User;
 		add?: AgentIntegrationConfig;
 		remove?: IntegrationRef;
+		cleanupRemovedIntegration?: boolean;
+		deleteExternalResource?: boolean;
 		modifiedBy: AgentActor;
-	}): Promise<IntegrationDeltaResult> {
+	}): Promise<IntegrationDeltaResult & { warning?: AgentIntegrationDisconnectWarning }> {
 		return await this.serializePerAgent(
 			options.agent.id,
 			async () => await this.runChange(options),
@@ -136,8 +147,10 @@ export class AgentIntegrationManagementService {
 		user: User;
 		add?: AgentIntegrationConfig;
 		remove?: IntegrationRef;
+		cleanupRemovedIntegration?: boolean;
+		deleteExternalResource?: boolean;
 		modifiedBy: AgentActor;
-	}): Promise<IntegrationDeltaResult> {
+	}): Promise<IntegrationDeltaResult & { warning?: AgentIntegrationDisconnectWarning }> {
 		const { agent, add } = options;
 		// "Replace this channel with itself" is just a connect. Left as a removal,
 		// step 3 would release the connection step 1 just brought up, because both
@@ -151,7 +164,10 @@ export class AgentIntegrationManagementService {
 		// for both decisions that depend on it: whether to connect at all, and what
 		// a rollback would restore to. The write does its own read and reconciles
 		// anything that lands after this one.
-		const state = add ? await this.agentRepository.findIntegrationState(agent.id) : null;
+		const state =
+			add || options.cleanupRemovedIntegration
+				? await this.agentRepository.findIntegrationState(agent.id)
+				: null;
 		const publishedBefore = state ? state.activeVersionId !== null : agent.activeVersionId !== null;
 
 		// `connect` restarts a connection that is already live — a settings-only
@@ -206,12 +222,30 @@ export class AgentIntegrationManagementService {
 			);
 		}
 
-		if (remove) await this.releaseRemoved(agent, remove, result);
+		const isPublished = result.published ?? publishedBefore;
+		let warning: AgentIntegrationDisconnectWarning | undefined;
+		try {
+			warning =
+				result.removed && options.cleanupRemovedIntegration
+					? await this.registry.get(result.removed.type)?.onRemove?.({
+							agentId: agent.id,
+							projectId: agent.projectId,
+							credentialId: result.removed.credentialId,
+							user: options.user,
+							deleteExternalResource:
+								// if not published, by default delete the external resource
+								options.deleteExternalResource ?? !isPublished,
+						})
+					: undefined;
+		} finally {
+			if (remove) await this.releaseRemoved(agent, remove, result);
+		}
+
 		if (connected && add) {
 			await this.chatService.broadcastIntegrationChange(agent.id, add, 'connect');
 		}
 
-		return result;
+		return { ...result, ...(warning ? { warning } : {}) };
 	}
 
 	/**
@@ -365,6 +399,7 @@ export class AgentIntegrationManagementService {
 		integration: AgentIntegrationConfig,
 	): Promise<void> {
 		const implementation = this.registry.require(integration.type);
+
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
 			{ projectId: agent.projectId },

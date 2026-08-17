@@ -972,14 +972,76 @@ function renderFormShell({
 	const inner = new URL(buildAbsoluteFormUrl(req));
 	inner.searchParams.set('n8nShellInner', '1');
 
+	res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+	res.render('form-shell', {
+		formTitle,
+		iframeSrc: `${inner.pathname}${inner.search}`,
+		resourceUrl,
+		...buildFormShellViewModel(credentials, submitterEmail),
+	});
+}
+
+export type FormShellCredentialRow = {
+	id: string;
+	name: string;
+	type: string;
+	status: CredentialCheckStatus['status'];
+	connected: boolean;
+	/** Letter tile, used whenever the provider icon doesn't resolve. */
+	initial: string;
+	iconUrl?: string;
+	authorizationUrl?: string;
+	revokeUrl?: string;
+	resolverId?: string;
+	account?: string;
+	usedBy?: string;
+};
+
+export type FormShellViewModel = {
+	credentials: FormShellCredentialRow[];
+	total: number;
+	connectedCount: number;
+	useDialog: boolean;
+	allConnected: boolean;
+	summaryText: string;
+	footerText: string;
+	submitterEmail?: string;
+};
+
+/** Submitter-facing copy talks about accounts, never credentials — and never `account(s)`. */
+const accountsLabel = (count: number) => (count === 1 ? 'account' : 'accounts');
+
+/**
+ * The one-line state of the connect panel for two or more accounts. Mirrored by
+ * the shell's client-side `summaryText()`, which re-renders it in place as rows
+ * connect (a reload would bounce the submitter back through consent).
+ */
+export function formShellSummaryText(total: number, connectedCount: number): string {
+	const remaining = total - connectedCount;
+	if (remaining <= 0) return `All ${total} accounts connected · ready to submit`;
+	if (connectedCount === 0) return `${total} accounts needed to submit this form`;
+	return `${remaining} more ${accountsLabel(remaining)} needed to submit this form`;
+}
+
+/**
+ * View model for `form-shell.handlebars`. Two shapes: a single required account
+ * gets its own row with a Connect button that opens the OAuth popup directly;
+ * two or more collapse behind a summary line plus the "Connect your accounts"
+ * dialog.
+ */
+export function buildFormShellViewModel(
+	credentials: CredentialCheckStatus[],
+	submitterEmail?: string,
+): FormShellViewModel {
 	const initialOf = (name: string) => (name.trim().charAt(0) || '?').toUpperCase();
-	const rows = credentials.map((c) => ({
+	const rows: FormShellCredentialRow[] = credentials.map((c) => ({
 		id: c.credentialId,
 		name: c.credentialName,
 		type: c.credentialType,
 		status: c.status,
 		connected: c.status === 'configured',
 		initial: initialOf(c.credentialName),
+		iconUrl: c.iconUrl,
 		authorizationUrl: c.authorizationUrl,
 		revokeUrl: c.revokeUrl,
 		resolverId: c.resolverId,
@@ -988,27 +1050,23 @@ function renderFormShell({
 		// provider account (when it differs) is a backend-enrichment follow-up.
 		account: c.status === 'configured' ? submitterEmail : undefined,
 		// `usedBy` (owning node) comes from the backend-enrichment follow-up.
-		usedBy: undefined as string | undefined,
+		usedBy: undefined,
 	}));
 
 	const total = rows.length;
 	const connectedCount = rows.filter((r) => r.connected).length;
-	// Design: 1–2 credentials render inline; 3+ collapse into a strip + dialog.
-	const useDialog = total >= 3;
 
-	res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
-	res.render('form-shell', {
-		formTitle,
-		iframeSrc: `${inner.pathname}${inner.search}`,
-		resourceUrl,
+	return {
 		credentials: rows,
 		total,
 		connectedCount,
-		useDialog,
+		// Design: one account connects directly from its row; two or more collapse.
+		useDialog: total >= 2,
+		allConnected: total > 0 && connectedCount === total,
+		summaryText: formShellSummaryText(total, connectedCount),
+		footerText: `${connectedCount} of ${total} ${accountsLabel(total)} connected`,
 		submitterEmail,
-		iconStack: rows.slice(0, 3).map((r) => r.initial),
-		moreCount: total > 3 ? total - 3 : 0,
-	});
+	};
 }
 
 export async function formWebhook(

@@ -69,6 +69,14 @@ vi.mock('@/app/composables/useKeybindings', () => ({
 	useKeybindings: vi.fn(),
 }));
 
+vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
+	useAgentSessionLangSmithExport: () => ({
+		isEnabled: false,
+		isExporting: false,
+		sendSession: vi.fn(),
+	}),
+}));
+
 // Reads a Pinia store for notifications — irrelevant to panel behavior.
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: vi.fn() }),
