@@ -157,6 +157,20 @@ describe('jsonParse', () => {
 				text: 'hello world',
 			});
 		});
+
+		it('should handle trailing commas', () => {
+			const result = jsonParse('{"a": [1, 2,],}', options);
+			expect(result).toEqual({ a: [1, 2] });
+		});
+
+		it('should handle top-level arrays', () => {
+			const result = jsonParse("[{name: 'John'},]", options);
+			expect(result).toEqual([{ name: 'John' }]);
+		});
+
+		it('should throw the original error for non-object input', () => {
+			expect(() => jsonParse('invalid_json', options)).toThrow(SyntaxError);
+		});
 	});
 
 	describe('JSON repair', () => {

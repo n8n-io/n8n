@@ -120,17 +120,24 @@ function syntaxNodeToValue(expression?: SyntaxNode | null): unknown {
 }
 
 /**
- * Parse any JavaScript ObjectExpression, including:
+ * Parse any JavaScript object or array expression, including:
  * - single quoted keys
  * - unquoted keys
+ * - trailing commas
  */
 function parseJSObject(objectAsString: string): object {
 	const jsExpression = esprimaParse(`(${objectAsString})`).body.find(
 		(node): node is ExpressionStatement =>
-			node.type === Syntax.ExpressionStatement && node.expression.type === Syntax.ObjectExpression,
+			node.type === Syntax.ExpressionStatement &&
+			(node.expression.type === Syntax.ObjectExpression ||
+				node.expression.type === Syntax.ArrayExpression),
 	);
 
-	return syntaxNodeToValue(jsExpression?.expression) as object;
+	if (!jsExpression) {
+		throw new SyntaxError('Value is not an object or array expression');
+	}
+
+	return syntaxNodeToValue(jsExpression.expression) as object;
 }
 
 type MutuallyExclusive<T, U> =
