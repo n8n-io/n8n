@@ -7,9 +7,9 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 24.18.1 by default for reproducible builds.'
+    description: 'Node.js version to use. Pinned to 26.5.1 by default for reproducible builds.'
     required: false
-    default: '24.18.1'
+    default: '26.5.1'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -145,6 +145,19 @@ runs:
       shell: bash
       run: node .github/scripts/verify-safechain.mjs
 
+    # Confluent ships no Node 26 prebuilt and its vendored librdkafka cannot build
+    # inside node_modules: https://github.com/confluentinc/confluent-kafka-javascript/issues/397
+    - name: Skip Kafka native build (no Node 26 prebuilds)
+      if: ${{ startsWith(inputs.node-version, '26.') }}
+      shell: bash
+      run: |
+        node -e "
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          p.pnpm.onlyBuiltDependencies = p.pnpm.onlyBuiltDependencies.filter(d => d !== '@confluentinc/kafka-javascript');
+          fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
+        "
+
     # `--loglevel` CLI flag does NOT override `.npmrc` for that path, but
     # `--config.loglevel` does — so the failing script's real output reaches us.
     # (Confirmed on CI across Blacksmith + GitHub-hosted, through the SafeChain
@@ -183,7 +196,7 @@ runs:
         mkdir -p "$PNPM_DIAG_DIR/pnpm-logs"
 
         set +o pipefail
-        timeout --kill-after=30s 300s $INSTALL_COMMAND \
+        timeout --kill-after=30s 600s $INSTALL_COMMAND \
           --config.logs-dir="$PNPM_DIAG_DIR/pnpm-logs" \
           --reporter=append-only --config.loglevel=info 2>&1 | tee "$INSTALL_LOG"
         rc=${PIPESTATUS[0]}
@@ -217,7 +230,7 @@ runs:
           find "$PNPM_DIAG_DIR/pnpm-logs" -type f -exec sh -c 'echo "----- $1 -----"; cat "$1"' _ {} \; 2>/dev/null || echo "(none)"
           echo "::endgroup::"
           case "$rc" in
-            124) echo "::error::pnpm install timed out after 300s (exit 124)" ;;
+            124) echo "::error::pnpm install timed out after 600s (exit 124)" ;;
             137) echo "::error::pnpm install received SIGKILL (exit 137 — likely OOM or kill-after timeout)" ;;
           esac
         fi

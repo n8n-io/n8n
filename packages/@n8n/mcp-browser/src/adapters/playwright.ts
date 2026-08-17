@@ -243,7 +243,10 @@ export class PlaywrightAdapter {
 	// Pages
 	// =========================================================================
 
-	async newPage(url?: string): Promise<PageInfo> {
+	async newPage(
+		url?: string,
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
+	): Promise<PageInfo> {
 		log.debug('newPage: creating page, url =', url ?? '(none)');
 		const page = await this.requireContext().newPage();
 		// The relay assigned an ID during Target.createTarget → createTab()
@@ -252,7 +255,7 @@ export class PlaywrightAdapter {
 		const state = this.findPageState(page) ?? this.trackPage(page, tabId);
 
 		if (url) {
-			await page.goto(url, { waitUntil: 'load' });
+			await page.goto(url, { waitUntil });
 			state.info.title = await page.title();
 			state.info.url = page.url();
 		}
@@ -335,7 +338,7 @@ export class PlaywrightAdapter {
 	async navigate(
 		pageId: string,
 		url: string,
-		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'load',
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
 	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
 		const response = await page.goto(url, { waitUntil });
@@ -346,21 +349,27 @@ export class PlaywrightAdapter {
 		};
 	}
 
-	async back(pageId: string): Promise<NavigateResult> {
+	async back(
+		pageId: string,
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
+	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
-		await page.goBack({ waitUntil: 'load' });
+		await page.goBack({ waitUntil });
 		return { title: await page.title(), url: page.url(), status: 0 };
 	}
 
-	async forward(pageId: string): Promise<NavigateResult> {
+	async forward(
+		pageId: string,
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
+	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
-		await page.goForward({ waitUntil: 'load' });
+		await page.goForward({ waitUntil });
 		return { title: await page.title(), url: page.url(), status: 0 };
 	}
 
 	async reload(
 		pageId: string,
-		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'load',
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
 	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
 		const response = await page.reload({ waitUntil });
