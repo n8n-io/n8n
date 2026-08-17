@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { frontendConfig } from './configs/frontend.js';
 import { localRulesPlugin } from './plugin.js';
 
 describe('localRulesPlugin recommended config', () => {
@@ -9,8 +10,14 @@ describe('localRulesPlugin recommended config', () => {
 			],
 		).toBe('error');
 	});
+});
 
-	it('registers the reka-ui pagination import ban', () => {
-		expect(localRulesPlugin.rules?.['no-reka-ui-pagination']).toBeDefined();
+describe('frontendConfig', () => {
+	it('enables the reka-ui pagination import ban as an error', () => {
+		expect(
+			frontendConfig.find(
+				(config) => config.rules?.['n8n-local-rules/no-reka-ui-pagination'] !== undefined,
+			)?.rules?.['n8n-local-rules/no-reka-ui-pagination'],
+		).toBe('error');
 	});
 });
