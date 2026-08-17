@@ -57,6 +57,7 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -166,6 +167,7 @@ const service = new InstanceAiAdapterService(
 	mock<OutboundHttp>(),
 	mock<AiGatewayService>(),
 	mock<WorkflowTemplatesService>(),
+	mock<CollaborationService>(),
 );
 
 const user = mock<User>({
