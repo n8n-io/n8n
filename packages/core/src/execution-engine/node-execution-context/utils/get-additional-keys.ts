@@ -24,6 +24,8 @@ export function getAdditionalKeys(
 	options: { isCredential: boolean } = { isCredential: false },
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
+	// Sub-workflows always execute as 'integrated' regardless of what started the root run,
+	// so fall back to the root mode to keep $execution.mode accurate there too.
 	const effectiveMode = additionalData.rootExecutionMode ?? mode;
 
 	let resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
