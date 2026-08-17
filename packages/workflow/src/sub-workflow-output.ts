@@ -93,6 +93,24 @@ function outputFromNodeRuns(runs: ITaskData[], lastRunOnly: boolean): INodeExecu
 	return flattenSubWorkflowBranches(branches);
 }
 
+function collectTerminalOutputItems(
+	runData: IRunData,
+	terminalNodeNames: string[],
+	lastRunOnly: boolean,
+): INodeExecutionData[] {
+	const runsInProductionOrder = terminalNodeNames
+		.flatMap((nodeName) => {
+			const runs = getSortedNodeRuns(runData, nodeName);
+			const selectedRuns = lastRunOnly && runs.length > 0 ? [runs[runs.length - 1]] : runs;
+			return selectedRuns.map((run) => ({ nodeName, run }));
+		})
+		.sort((a, b) => (a.run.executionIndex ?? 0) - (b.run.executionIndex ?? 0));
+
+	return runsInProductionOrder.flatMap(({ run }) =>
+		flattenSubWorkflowBranches(run.data?.main ?? []),
+	);
+}
+
 export interface SubWorkflowOutputOptions {
 	lastRunOnly: boolean;
 	mode?: WorkflowExecuteMode;
@@ -128,18 +146,12 @@ export function buildSubWorkflowOutputFromRunData(
 		}
 	}
 
-	const terminalNodesWithRuns = getTerminalNodeNames(workflow.nodes, workflow.connections)
-		.filter((nodeName) => getSortedNodeRuns(runData, nodeName).length > 0)
-		.sort((nodeA, nodeB) => {
-			const runA = getSortedNodeRuns(runData, nodeA)[0];
-			const runB = getSortedNodeRuns(runData, nodeB)[0];
-			return (runA?.executionIndex ?? 0) - (runB?.executionIndex ?? 0);
-		});
+	const terminalNodesWithRuns = getTerminalNodeNames(workflow.nodes, workflow.connections).filter(
+		(nodeName) => getSortedNodeRuns(runData, nodeName).length > 0,
+	);
 
 	if (terminalNodesWithRuns.length > 0) {
-		const items = terminalNodesWithRuns.flatMap((nodeName) =>
-			outputFromNodeRuns(getSortedNodeRuns(runData, nodeName), lastRunOnly),
-		);
+		const items = collectTerminalOutputItems(runData, terminalNodesWithRuns, lastRunOnly);
 
 		return items.length > 0 ? [items] : [null];
 	}

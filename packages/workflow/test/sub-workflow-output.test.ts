@@ -158,7 +158,7 @@ describe('buildSubWorkflowOutputFromRunData', () => {
 			[DEAD_END_IF]: [
 				{
 					data: {
-						main: [[], [{ json: { id: 55 } }, { json: { id: 56 } }, { json: { id: 57 } }]],
+						main: [[], [{ json: { id: 1 } }, { json: { id: 2 } }, { json: { id: 3 } }]],
 					},
 				},
 			] as unknown as ITaskData[],
@@ -174,6 +174,44 @@ describe('buildSubWorkflowOutputFromRunData', () => {
 		);
 
 		expect(output).toEqual([[{ json: { id: 55 } }, { json: { id: 56 } }, { json: { id: 57 } }]]);
+		expect(output).not.toEqual([[{ json: { id: 1 } }, { json: { id: 2 } }, { json: { id: 3 } }]]);
+	});
+
+	it('interleaves multiple terminal node runs by executionIndex', () => {
+		const runData: IRunData = {
+			'Terminal A': [
+				{
+					executionIndex: 0,
+					data: { main: [[{ json: { label: 'a0' } }]] },
+				},
+				{
+					executionIndex: 2,
+					data: { main: [[{ json: { label: 'a2' } }]] },
+				},
+			] as unknown as ITaskData[],
+			'Terminal B': [
+				{
+					executionIndex: 1,
+					data: { main: [[{ json: { label: 'b1' } }]] },
+				},
+			] as unknown as ITaskData[],
+		};
+
+		const multiTerminalWorkflow = {
+			nodes: [
+				mock<INode>({ name: 'Terminal A', disabled: false }),
+				mock<INode>({ name: 'Terminal B', disabled: false }),
+			],
+			connections: {} as IConnections,
+		};
+
+		const output = buildSubWorkflowOutputFromRunData({ runData }, multiTerminalWorkflow, {
+			lastRunOnly: false,
+		});
+
+		expect(output).toEqual([
+			[{ json: { label: 'a0' } }, { json: { label: 'b1' } }, { json: { label: 'a2' } }],
+		]);
 	});
 
 	it('flattens multi-branch terminal output onto the single main branch', () => {
