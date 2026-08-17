@@ -130,10 +130,13 @@ const fallbackRuntime = createAgentChannelRuntime(getAgentChannelPlatform('unkno
 });
 const currentPlatform = computed(() => getAgentChannelPlatform(props.integrationType));
 const currentRuntime = computed(() => runtimes[props.integrationType] ?? fallbackRuntime);
-const channelActionInFlight = computed(
-	() => connectionInFlight.value || currentRuntime.value.loading.value,
-);
 const channelViewRef = ref<AgentChannelViewExpose>();
+const channelActionInFlight = computed(
+	() =>
+		connectionInFlight.value ||
+		currentRuntime.value.loading.value ||
+		channelViewRef.value?.loading === true,
+);
 const integrationLabel = computed(() => currentIntegration.value.label);
 
 const connectedDescription = computed(() => {
@@ -329,7 +332,6 @@ watch(
 				:agent-id="agentId"
 				:force-new-credential="true"
 				:simple-setup="true"
-				:credential-replacement-pending="false"
 				:runtime="currentRuntime"
 				@create="createCredential"
 				@edit="editCredential"

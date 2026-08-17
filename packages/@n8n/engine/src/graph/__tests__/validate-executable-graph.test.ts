@@ -37,6 +37,31 @@ describe('validateExecutableGraph', () => {
 		expect(() => validateExecutableGraph(graph)).toThrow('one trigger node');
 	});
 
+	it('rejects an edge feeding a reachable node from one the trigger cannot reach', () => {
+		// nothing ever reaches r, so it never settles and a would wait forever
+		const graph: WorkflowGraph = {
+			nodes: [...validGraph.nodes, { id: 'r', name: 'R', type: 'v1-node' }],
+			edges: [...validGraph.edges, { from: 'r', to: 'a', outputIndex: 0, inputIndex: 1 }],
+		};
+
+		expect(() => validateExecutableGraph(graph)).toThrow(GraphValidationError);
+		expect(() => validateExecutableGraph(graph)).toThrow('would wait on r forever');
+	});
+
+	it('accepts a disconnected island that feeds nothing reachable', () => {
+		// parked nodes are v1-legal and never considered
+		const graph: WorkflowGraph = {
+			nodes: [
+				...validGraph.nodes,
+				{ id: 'r', name: 'R', type: 'v1-node' },
+				{ id: 's', name: 'S', type: 'v1-node' },
+			],
+			edges: [...validGraph.edges, { from: 'r', to: 's', outputIndex: 0, inputIndex: 0 }],
+		};
+
+		expect(() => validateExecutableGraph(graph)).not.toThrow();
+	});
+
 	it('accepts a fan-out: several edges leaving one output slot', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
@@ -68,14 +93,13 @@ describe('validateExecutableGraph', () => {
 		expect(() => validateExecutableGraph(graph)).toThrow('above 100');
 	});
 
-	it('rejects an edge leaving an output slot other than 0 as unimplemented', () => {
+	it('accepts a fan-out across output slots (If/Switch shape)', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
 			edges: [...validGraph.edges, { from: 'a', to: 'b', outputIndex: 1, inputIndex: 0 }],
 		};
 
-		expect(() => validateExecutableGraph(graph)).toThrow(UnimplementedError);
-		expect(() => validateExecutableGraph(graph)).toThrow('output slot');
+		expect(() => validateExecutableGraph(graph)).not.toThrow();
 	});
 
 	it('accepts a fan-in: edges into distinct input slots of one node', () => {
