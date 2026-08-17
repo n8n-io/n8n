@@ -13,6 +13,17 @@ describe('Confluence Node', () => {
 		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
+	it('should expose the page resource with the create and get operations', () => {
+		const resource = node.description.properties.find((p) => p.name === 'resource');
+		expect(resource?.options).toEqual([expect.objectContaining({ value: 'page' })]);
+
+		const operation = node.description.properties.find((p) => p.name === 'operation');
+		expect(operation?.options).toEqual([
+			expect.objectContaining({ value: 'create' }),
+			expect.objectContaining({ value: 'get' }),
+		]);
+	});
+
 	it('should reference the confluenceCloudOAuth2Api credential by name', () => {
 		expect(node.description.credentials).toEqual([
 			{ name: 'confluenceCloudOAuth2Api', required: true },

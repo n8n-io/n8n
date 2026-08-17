@@ -4,8 +4,8 @@ import type { Alias } from 'vite';
 import { frontendModuleAliases, frontendSourceAliases } from './source-packages.js';
 
 /**
- * Workspace-resolution exceptions: packages reached *transitively*, so they are not declared
- * dependencies of anyone and cannot sit in the source-packages table.
+ * Packages reached *transitively*: they are not a declared dependency of anyone, so they cannot sit
+ * in the source-packages table.
  *
  * `n8n-workflow`'s expression-sandboxing imports `astVisit` from `@n8n/tournament`, whose dist is
  * CJS. Linked workspace packages skip optimizeDeps, so the dev server serves that file verbatim and
@@ -17,12 +17,11 @@ export const transitiveWorkspaceAliases = (packagesDir: string): Alias[] => [
 ];
 
 /**
- * Rewrites for third-party specifiers, unrelated to how workspace packages resolve.
- *
- * **Shell-only, deliberately out of `frontendAliases`:** these replacements are bare specifiers
+ * Shell-only, deliberately out of `frontendAliases`: these replacements are bare specifiers
  * resolved from the consumer's own `node_modules`, and only editor-ui declares `lodash` and
  * `stream-browserify`. Shared with a module's vitest, a value import of `stream` anywhere in its
- * graph fails to resolve — latent today only because `n8n-workflow` imports `stream` as a type.
+ * graph would fail to resolve — latent today only because `n8n-workflow` imports `stream` as a
+ * type.
  */
 export const vendorAliases = (): Alias[] => [
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
@@ -35,14 +34,8 @@ export const vendorAliases = (): Alias[] => [
 ];
 
 /**
- * Everything a frontend Vite or vitest config needs that is *not* specific to one package: the
- * platform source mapping plus the transitive workspace exceptions. Every entry here rewrites to an
- * absolute path under `packages/`, which is what makes the set safe to share from any directory —
- * `aliases.test.ts` holds that line.
- *
- * Sibling modules are deliberately absent — `frontendModuleAliases` is exported separately because
- * only the shell may resolve them. A module aliasing its siblings would let an accidental
- * cross-module import resolve at test time, which is the boundary the module tsconfig base holds.
+ * Every entry rewrites to an absolute path under `packages/`, which is what makes the set safe to
+ * share from any directory — `aliases.test.ts` holds that line.
  */
 export const frontendAliases = (packagesDir: string): Alias[] => [
 	...frontendSourceAliases(packagesDir),
@@ -50,9 +43,7 @@ export const frontendAliases = (packagesDir: string): Alias[] => [
 ];
 
 /**
- * The shell's full set: the shared aliases, the module mapping only it may resolve, and the vendor
- * rewrites only it can resolve. Vendor rewrites stay last, where they sat before this package
- * existed, so the shell's resolution order is unchanged by the move.
+ * Order is resolution order: vendor rewrites stay last, where they sat before this package existed.
  */
 export const shellAliases = (packagesDir: string): Alias[] => [
 	...frontendAliases(packagesDir),

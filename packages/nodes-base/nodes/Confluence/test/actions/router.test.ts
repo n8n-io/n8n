@@ -1,107 +1,120 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INode,
-	INodeExecutionData,
-	IPairedItemData,
-} from 'n8n-workflow';
-import { mockDeep } from 'vitest-mock-extended';
+import { NodeOperationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
-import { execute as getExecute } from '../../actions/page/get.operation';
 import { router } from '../../actions/router';
+import { confluenceApiRequest } from '../../transport';
+import { mockExecuteCtx } from '../shared';
 
-vi.mock('../../actions/page/get.operation', () => ({
-	description: [],
-	execute: vi.fn(),
+vi.mock('../../transport', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	confluenceApiRequest: vi.fn(),
 }));
 
-const getExecuteMock = vi.mocked(getExecute);
+const apiRequest = confluenceApiRequest as unknown as Mock;
 
-const mockNode: INode = {
-	id: 'test-node',
-	name: 'Test Confluence Node',
-	type: 'n8n-nodes-base.confluence',
-	typeVersion: 1,
-	position: [0, 0],
-	parameters: {},
+const createParams: Record<string, unknown> = {
+	resource: 'page',
+	operation: 'create',
+	space: { mode: 'list', value: '111' },
+	title: 'My Page',
+	bodyFormat: 'plainText',
+	bodyPlainText: 'Hello',
+	parentPage: '',
+	options: {},
 };
 
-function createContext(itemCount: number, continueOnFail = false) {
-	const ctx = mockDeep<IExecuteFunctions>();
-	ctx.getNode.mockReturnValue(mockNode);
-	ctx.getInputData.mockReturnValue(Array.from({ length: itemCount }, () => ({ json: {} })));
-	ctx.getNodeParameter.mockImplementation(
-		(name: string) => (name === 'resource' ? 'page' : 'get') as never,
-	);
-	ctx.continueOnFail.mockReturnValue(continueOnFail);
-	ctx.helpers.returnJsonArray.mockImplementation((data: IDataObject | IDataObject[]) =>
-		(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
-	);
-	ctx.helpers.constructExecutionMetaData.mockImplementation(
-		(data: INodeExecutionData[], { itemData }: { itemData: IPairedItemData | IPairedItemData[] }) =>
-			data.map((entry) => ({ ...entry, pairedItem: itemData })) as never,
-	);
-	return ctx;
-}
+const getParams: Record<string, unknown> = {
+	resource: 'page',
+	operation: 'get',
+	page: { mode: 'list', value: '1' },
+	bodyFormat: 'storage',
+	includeDescendants: false,
+};
 
 describe('Confluence router', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		apiRequest.mockResolvedValue({ id: '222', title: 'My Page' });
 	});
 
-	it('runs the page:get operation once per input item', async () => {
-		getExecuteMock.mockResolvedValueOnce({ id: '1' }).mockResolvedValueOnce({ id: '2' });
-		const ctx = createContext(2);
+	it('dispatches page:create per item and pairs outputs to their inputs', async () => {
+		const result = await router.call(mockExecuteCtx(createParams, 2));
 
-		const result = await router.call(ctx);
-
-		expect(getExecuteMock).toHaveBeenCalledTimes(2);
-		expect(getExecuteMock).toHaveBeenNthCalledWith(1, 0);
-		expect(getExecuteMock).toHaveBeenNthCalledWith(2, 1);
+		expect(apiRequest).toHaveBeenCalledTimes(2);
 		expect(result).toEqual([
 			[
-				{ json: { id: '1' }, pairedItem: { item: 0 } },
-				{ json: { id: '2' }, pairedItem: { item: 1 } },
+				{ json: { id: '222', title: 'My Page' }, pairedItem: { item: 0 } },
+				{ json: { id: '222', title: 'My Page' }, pairedItem: { item: 1 } },
 			],
+		]);
+	});
+
+	it('dispatches page:get and returns the fetched page', async () => {
+		const result = await router.call(mockExecuteCtx(getParams));
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/pages/1',
+			{},
+			{ 'body-format': 'storage' },
+		);
+		expect(result).toEqual([
+			[{ json: { id: '222', title: 'My Page' }, pairedItem: { item: 0 } }],
 		]);
 	});
 
 	it('fans an array response out into one item per page', async () => {
-		getExecuteMock.mockResolvedValueOnce([{ id: 'root' }, { id: 'child' }]);
-		const ctx = createContext(1);
+		apiRequest.mockImplementation(async (_method: string, url: string) =>
+			url.endsWith('/descendants')
+				? { results: [{ id: '2', type: 'page', depth: 1 }] }
+				: { results: [{ id: '1' }, { id: '2' }] },
+		);
 
-		const result = await router.call(ctx);
+		const result = await router.call(
+			mockExecuteCtx({ ...getParams, includeDescendants: true, maxPages: 100 }),
+		);
 
 		expect(result).toEqual([
 			[
-				{ json: { id: 'root' }, pairedItem: { item: 0 } },
-				{ json: { id: 'child' }, pairedItem: { item: 0 } },
+				{ json: { id: '1' }, pairedItem: { item: 0 } },
+				{ json: { id: '2' }, pairedItem: { item: 0 } },
 			],
 		]);
 	});
 
-	it('emits an error item and keeps going when continue-on-fail is on', async () => {
-		getExecuteMock
-			.mockRejectedValueOnce(new Error('page not found'))
-			.mockResolvedValueOnce({ id: '2' });
-		const ctx = createContext(2, true);
+	it('emits an error item and continues with later items when continue-on-fail is on', async () => {
+		const ctx = mockExecuteCtx(createParams, 2);
+		ctx.continueOnFail.mockReturnValue(true);
+		apiRequest.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce({ id: '333' });
 
-		const result = await router.call(ctx);
-
-		expect(getExecuteMock).toHaveBeenCalledTimes(2);
-		expect(result).toEqual([
+		expect(await router.call(ctx)).toEqual([
 			[
-				{ json: { error: 'page not found' }, pairedItem: { item: 0 } },
-				{ json: { id: '2' }, pairedItem: { item: 1 } },
+				{ json: { error: 'boom' }, pairedItem: { item: 0 } },
+				{ json: { id: '333' }, pairedItem: { item: 1 } },
 			],
 		]);
 	});
 
-	it('rethrows the first failure when continue-on-fail is off', async () => {
-		getExecuteMock.mockRejectedValueOnce(new Error('page not found'));
-		const ctx = createContext(2);
+	it('rethrows when continue-on-fail is off', async () => {
+		const ctx = mockExecuteCtx(createParams);
+		ctx.continueOnFail.mockReturnValue(false);
+		apiRequest.mockRejectedValue(new Error('boom'));
 
-		await expect(router.call(ctx)).rejects.toThrow('page not found');
-		expect(getExecuteMock).toHaveBeenCalledTimes(1);
+		await expect(router.call(ctx)).rejects.toThrow('boom');
+	});
+
+	it.each([
+		['constructor', 'create'],
+		['__proto__', 'create'],
+		['page', 'constructor'],
+		['page', 'hasOwnProperty'],
+	])('rejects inherited-property lookups (%s:%s) as unsupported', async (resource, operation) => {
+		const ctx = mockExecuteCtx({ ...createParams, resource, operation });
+
+		await expect(router.call(ctx)).rejects.toThrow(NodeOperationError);
+		await expect(router.call(ctx)).rejects.toThrow(
+			`The operation "${resource}:${operation}" is not supported`,
+		);
+		expect(apiRequest).not.toHaveBeenCalled();
 	});
 });

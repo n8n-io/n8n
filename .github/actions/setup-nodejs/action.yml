@@ -145,16 +145,6 @@ runs:
       shell: bash
       run: node .github/scripts/verify-safechain.mjs
 
-    - name: Skip Kafka native build (no Node 26 prebuilds)
-      shell: bash
-      run: |
-        node -e "
-          const fs = require('fs');
-          const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          p.pnpm.onlyBuiltDependencies = p.pnpm.onlyBuiltDependencies.filter(d => d !== '@confluentinc/kafka-javascript');
-          fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
-        "
-
     # `--loglevel` CLI flag does NOT override `.npmrc` for that path, but
     # `--config.loglevel` does — so the failing script's real output reaches us.
     # (Confirmed on CI across Blacksmith + GitHub-hosted, through the SafeChain

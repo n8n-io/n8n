@@ -24,6 +24,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			let responseData: IDataObject | IDataObject[];
 
 			switch (`${resource}:${operation}`) {
+				case 'page:create':
+					responseData = await page.create.execute.call(this, i);
+					break;
 				case 'page:get':
 					responseData = await page.get.execute.call(this, i);
 					break;
