@@ -26,6 +26,9 @@ importers:
       glob:
         specifier: 13.0.6
         version: 13.0.6
+      json-with-bigint:
+        specifier: 3.5.11
+        version: 3.5.11
       minimatch:
         specifier: 10.2.4
         version: 10.2.4
@@ -732,8 +735,8 @@ packages:
   json-stringify-nice@1.1.4:
     resolution: {integrity: sha512-5Z5RFW63yxReJ7vANgW6eZFGWaQvnPE3WNmZoOJrSkGju2etKA2L5rrOa1sm877TVTFt57A80BH1bArcmlLfPw==}
 
-  json-with-bigint@3.5.12:
-    resolution: {integrity: sha512-uwbF/wSSuOgC7qqlq27Xp5B6a2MHVug3t0idZdTqu0JnlFvgJuH7ju+KAk/J06C7GfhoYy2gnb9wz2INqcne7w==}
+  json-with-bigint@3.5.11:
+    resolution: {integrity: sha512-WvkM9Hfb9kqzCcbsvpwfWDvdfGZDhYuCoaCwHRe5q3LtULKkbrI/L6JYcN8owflgA3di5dP2yVAV2NVCXkgtkA==}
 
   jsonata@2.1.0:
     resolution: {integrity: sha512-OCzaRMK8HobtX8fp37uIVmL8CY1IGc/a6gLsDqz3quExFR09/U78HUzWYr7T31UEB6+Eu0/8dkVD5fFDOl9a8w==}
@@ -1495,7 +1498,7 @@ snapshots:
       '@octokit/request-error': 7.1.1
       '@octokit/types': 17.0.0
       content-type: 2.1.0
-      json-with-bigint: 3.5.12
+      json-with-bigint: 3.5.11
       universal-user-agent: 7.0.3
 
   '@octokit/types@16.0.0':
@@ -1996,7 +1999,7 @@ snapshots:
 
   json-stringify-nice@1.1.4: {}
 
-  json-with-bigint@3.5.12: {}
+  json-with-bigint@3.5.11: {}
 
   jsonata@2.1.0:
     optional: true
