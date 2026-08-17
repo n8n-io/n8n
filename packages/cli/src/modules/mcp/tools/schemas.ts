@@ -109,6 +109,20 @@ export const columnNameSchema = z
 		'Column name. Must start with a letter, contain only letters, numbers, and underscores (max 63 chars)',
 	);
 
+export const folderOutputSchema = {
+	id: z.string().optional().describe('The ID of the folder'),
+	name: z.string().optional().describe('The name of the folder'),
+	parentFolderId: z
+		.string()
+		.nullable()
+		.optional()
+		.describe('The ID of the parent folder, or null if the folder is at the project root'),
+	error: z
+		.string()
+		.optional()
+		.describe('Error message explaining why the operation failed. Present only on failure.'),
+} satisfies z.ZodRawShape;
+
 export const dataTableRowSchema = z.record(
 	z.string(),
 	z.union([z.string(), z.number(), z.boolean(), z.null()]),

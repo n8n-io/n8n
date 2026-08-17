@@ -1,7 +1,8 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { RoleRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+
+import { createCustomRoleWithScopeSlugs, createRole } from '@test-integration/db/roles';
 import { addApiKey, createOwnerWithApiKey, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -400,6 +401,292 @@ describe('Roles in Public API', () => {
 				.publicApiAgentFor(owner)
 				.post('/roles')
 				.send({ displayName: 'PA unlicensed', roleType: 'global', scopes: ['user:read'] });
+
+			expect(response.status).toBe(403);
+
+			testServer.license.enable('feat:customRoles');
+		});
+	});
+
+	describe('PUT /roles/{slug}', () => {
+		type CreatedRole = {
+			slug: string;
+			displayName: string;
+			description: string | null;
+			scopes: string[];
+		};
+
+		const createGlobalRole = async (
+			displayName: string,
+			scopes: string[] = ['user:read'],
+		): Promise<CreatedRole> => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/roles')
+				.send({ displayName, roleType: 'global', scopes });
+			expect(response.status).toBe(201);
+			return response.body;
+		};
+
+		const fullBody = (overrides: Partial<CreatedRole> = {}) => ({
+			displayName: 'PA updated role',
+			description: null,
+			scopes: ['user:read'],
+			...overrides,
+		});
+
+		it('replaces displayName, description, and scopes, returns the full public shape', async () => {
+			const role = await createGlobalRole('PA put all fields');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${role.slug}`)
+				.send(
+					fullBody({
+						displayName: 'PA put all fields updated',
+						description: 'An updated description',
+						scopes: ['user:read', 'user:list'],
+					}),
+				);
+
+			expect(response.status).toBe(200);
+			// Full-shape assertion also proves no extra fields leak (e.g. licensed, usedByUsers).
+			expect(response.body).toEqual({
+				slug: role.slug,
+				displayName: 'PA put all fields updated',
+				description: 'An updated description',
+				systemRole: false,
+				roleType: 'global',
+				scopes: expect.arrayContaining(['user:read', 'user:list']),
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			});
+			expect(response.body.scopes).toHaveLength(2);
+		});
+
+		it('replaces scopes entirely rather than merging them with the existing set', async () => {
+			const role = await createGlobalRole('PA put scopes', ['user:read', 'user:list']);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: role.displayName, scopes: ['user:read'] }));
+
+			expect(response.status).toBe(200);
+			expect(response.body.scopes).toEqual(['user:read']);
+		});
+
+		it('clears an existing description by sending null', async () => {
+			const created = await testServer
+				.publicApiAgentFor(owner)
+				.post('/roles')
+				.send({ displayName: 'PA put clear description', roleType: 'global', scopes: [] });
+			expect(created.status).toBe(201);
+			const withDescription = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${created.body.slug}`)
+				.send(
+					fullBody({ displayName: created.body.displayName, description: 'Has a description' }),
+				);
+			expect(withDescription.body.description).toBe('Has a description');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${created.body.slug}`)
+				.send(fullBody({ displayName: created.body.displayName, description: null }));
+
+			expect(response.status).toBe(200);
+			expect(response.body.description).toBeNull();
+		});
+
+		it('accepts a GET response of the role as a PUT body unchanged (round-trip)', async () => {
+			const role = await createGlobalRole('PA put round trip', ['user:read', 'user:list']);
+			const getResponse = await testServer.publicApiAgentFor(owner).get('/roles');
+			const current = getResponse.body.global.find((r: { slug: string }) => r.slug === role.slug);
+
+			const response = await testServer.publicApiAgentFor(owner).put(`/roles/${role.slug}`).send({
+				displayName: current.displayName,
+				description: current.description,
+				scopes: current.scopes,
+			});
+
+			expect(response.status).toBe(200);
+			expect(response.body.displayName).toBe(role.displayName);
+			expect(response.body.description).toBeNull();
+			expect(response.body.scopes).toEqual(expect.arrayContaining(['user:read', 'user:list']));
+		});
+
+		it('rejects a body missing a required field with 400', async () => {
+			const role = await createGlobalRole('PA put missing field');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${role.slug}`)
+				.send({ displayName: 'PA put missing field updated', description: null });
+
+			expect(response.status).toBe(400);
+		});
+
+		it('rejects an empty body with 400', async () => {
+			const role = await createGlobalRole('PA put empty body');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${role.slug}`)
+				.send({});
+
+			expect(response.status).toBe(400);
+		});
+
+		it('lets a role:manageProject key update a project role (200)', async () => {
+			const agent = await makeManageProjectUserAgent();
+			const created = await agent.post('/roles').send({
+				displayName: 'MP put project role',
+				roleType: 'project',
+				scopes: ['workflow:read'],
+			});
+			expect(created.status).toBe(201);
+
+			const response = await agent
+				.put(`/roles/${created.body.slug}`)
+				.send(fullBody({ displayName: 'MP put project role updated', scopes: ['workflow:read'] }));
+
+			expect(response.status).toBe(200);
+			expect(response.body.displayName).toBe('MP put project role updated');
+		});
+
+		it('forbids a role:manageProject key from updating a global role (403)', async () => {
+			const role = await createGlobalRole('PA global role for MP put test');
+			const agent = await makeManageProjectUserAgent();
+
+			const response = await agent
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: 'MP should not put this' }));
+
+			expect(response.status).toBe(403);
+		});
+
+		it('returns 404 for an unknown slug', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/roles/global:does-not-exist')
+				.send(fullBody());
+
+			expect(response.status).toBe(404);
+		});
+
+		it('returns 404 for a role type not exposed by the public API (e.g. credential)', async () => {
+			const credentialRole = await createRole({ roleType: 'credential', scopes: [] });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${credentialRole.slug}`)
+				.send(fullBody({ displayName: 'Should not be reachable' }));
+
+			expect(response.status).toBe(404);
+		});
+
+		it('rejects updating a system role with 400', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/roles/global:owner')
+				.send(fullBody({ displayName: 'Renamed owner role' }));
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('Cannot update system roles');
+		});
+
+		it('rejects an unknown scope slug with 400', async () => {
+			const role = await createGlobalRole('PA put bad slug');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: role.displayName, scopes: ['not:a-real-scope'] }));
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('Invalid scope');
+		});
+
+		it('rejects a scope not allowed for the role type with 400', async () => {
+			const role = await createGlobalRole('PA put wrong scope');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: role.displayName, scopes: ['workflow:read'] }));
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('not allowed for global roles');
+		});
+
+		it('rejects a too-short displayName with 400', async () => {
+			const role = await createGlobalRole('PA put short name');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: 'a' }));
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('at least 2');
+		});
+
+		it('rejects renaming onto an existing role name with 400', async () => {
+			await createGlobalRole('PA put existing name');
+			const role = await createGlobalRole('PA put rename target');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: 'PA put existing name' }));
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('already exists');
+		});
+
+		it('rejects with 401 without an API key', async () => {
+			const role = await createGlobalRole('PA put no key');
+
+			const response = await testServer
+				.publicApiAgentWithoutApiKey()
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: 'Should not work' }));
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 401 with an invalid API key', async () => {
+			const role = await createGlobalRole('PA put bad key');
+
+			const response = await testServer
+				.publicApiAgentWithApiKey('invalid-key')
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: 'Should not work' }));
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 403 when the key lacks a role scope', async () => {
+			const role = await createGlobalRole('PA put no scope');
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['user:read'] });
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: 'Should not work' }));
+
+			expect(response.status).toBe(403);
+		});
+
+		it('rejects with 403 when the custom roles feature is not licensed', async () => {
+			const role = await createGlobalRole('PA put unlicensed');
+			testServer.license.disable('feat:customRoles');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: 'Should not work' }));
 
 			expect(response.status).toBe(403);
 

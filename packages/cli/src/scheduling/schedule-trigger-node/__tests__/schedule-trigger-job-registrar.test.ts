@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { Logger } from '@n8n/backend-common';
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
@@ -185,6 +185,24 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				ScheduledJobMisfirePolicy.Skip,
 				undefined,
 			);
+		});
+
+		it('provisions a multi-rule node in one call, under the skip policy', async () => {
+			const session = makeRegistrar().createSession();
+			const collector = session.createCollector(workflow, scheduleNode);
+			collector.registerCron(dailyAtNine, vi.fn());
+			collector.registerCron(everyThreeWeeksMonday, vi.fn());
+			collector.registerCron(
+				{ expression: '0 30 9 * * *' as CronExpression, recurrence: { activated: false } },
+				vi.fn(),
+			);
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision).toHaveBeenCalledTimes(1);
+			const [, , , , desired, misfirePolicy] = jobProvisioner.provision.mock.calls.at(-1)!;
+			expect(desired).toHaveLength(3);
+			expect(misfirePolicy).toBe(ScheduledJobMisfirePolicy.Skip);
 		});
 
 		it('provisions a 5-field custom cron (no seconds) and plans its first fire', async () => {
@@ -392,12 +410,26 @@ describe('ScheduleTriggerJobRegistrar', () => {
 		it.each<[string, INodeParameters | undefined, ScheduledJobMisfirePolicy]>([
 			['1.4', undefined, ScheduledJobMisfirePolicy.Skip],
 			['1.4', { misfirePolicy: 'coalesce' }, ScheduledJobMisfirePolicy.Coalesce],
+			['1.4', { misfirePolicy: 'coalesce_owner' }, ScheduledJobMisfirePolicy.CoalesceOwner],
 			['1.4', { misfirePolicy: 'skip' }, ScheduledJobMisfirePolicy.Skip],
 			['1.3', undefined, ScheduledJobMisfirePolicy.Skip],
 			['1.4', { misfirePolicy: 'nonsense' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
+			['1.4', { misfirePolicy: 'wrong' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
+			['1.4', { misfirePolicy: '' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
 			['1.4', { misfirePolicy: 'Coalesce' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
 			['1.4', { misfirePolicy: ' coalesce' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
 			['1.4', { misfirePolicy: 'coalesce ' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
+			[
+				'1.4',
+				{ misfirePolicy: 'CoalesceOwner' } as INodeParameters,
+				ScheduledJobMisfirePolicy.Skip,
+			],
+			[
+				'1.4',
+				{ misfirePolicy: 'coalesce_owner ' } as INodeParameters,
+				ScheduledJobMisfirePolicy.Skip,
+			],
+			['1.4', { misfirePolicy: '__proto__' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
 		])(
 			'resolves misfirePolicy %s with parameters %s to %s',
 			async (typeVersionLabel, parameters, expected) => {

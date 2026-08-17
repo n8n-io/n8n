@@ -266,6 +266,44 @@ echo(
 
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
 
+// Check the production closure for single-instance dependency duplication. A curated
+// library resolving to more than one physical copy silently breaks instanceof /
+// singletons at runtime. Report-first: a duplicate is surfaced loudly but does NOT fail
+// the build — matching the continue-on-error npm-install CI jobs, so a transitive
+// third-party re-split can't hard-break every nightly/release with no config escape.
+// Promote to a hard gate once it has proven stable across releases.
+// Both closures this build produces are checked. The task runner is deployed independently and
+// ships as its own image, and `@n8n/task-runner` is a host package — it carries the curated libs as
+// real dependencies rather than peers, so it is if anything the likelier place for a second copy.
+const verifySingleInstance = async (label, dir) => {
+	echo(chalk.yellow(`INFO: Verifying single-instance dependency integrity in ${label}...`));
+	// `--dir` rather than `--filter`: a filter that matches nothing exits 0, so a renamed or moved
+	// package would report a passing check having run no verifier at all.
+	const verifyProcess = $`cd ${config.rootDir} && pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-closure ${dir}`.nothrow();
+	verifyProcess.pipe(process.stdout);
+	const { exitCode } = await verifyProcess;
+	// 0 and 3 are the only codes the verifier itself produces; everything else (tsx failing to load,
+	// a missing package or closure, a crash) means the closure was never checked.
+	if (exitCode === 0) {
+		echo(chalk.green(`✅ Single-instance dependency check passed for ${label}`));
+	} else if (exitCode === 3) {
+		echo(
+			chalk.red(
+				`⚠️  Single-instance dependency duplication reported in ${label} (see above) — not failing the build (report-first).`,
+			),
+		);
+	} else {
+		echo(
+			chalk.red(
+				`⚠️  Single-instance verifier failed to run for ${label} (exit ${exitCode}); that closure was NOT checked. This is a tooling error, not a duplication report.`,
+			),
+		);
+	}
+};
+
+await verifySingleInstance('the production closure', config.compiledAppDir);
+await verifySingleInstance('the JavaScript task runner closure', config.compiledTaskRunnerDir);
+
 const packageDeployTime = getElapsedTime('package_deploy');
 
 // Generate SBOM + render THIRD_PARTY_LICENSES.md from the deployed runtime closure.

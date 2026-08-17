@@ -4,6 +4,7 @@ import {
 	RoleListPublicDto,
 	RoleListQueryPublicDto,
 	RolePublicDto,
+	UpdateRolePublicDto,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -20,6 +21,7 @@ import {
 	Param,
 	Post,
 	PublicApiController,
+	Put,
 	Query,
 } from '@n8n/decorators';
 import { RoleNamespace, type Role as RoleDTO } from '@n8n/permissions';
@@ -34,19 +36,23 @@ type PublicRoleNamespace = Extract<RoleNamespace, 'global' | 'project'>;
 const isPublicRole = (role: RoleDTO): role is RoleDTO & { roleType: PublicRoleNamespace } =>
 	role.roleType === 'global' || role.roleType === 'project';
 
-const toPublicRole = <T extends PublicRoleNamespace>(
-	role: RoleDTO & { roleType: T },
-	withUsageCount = false,
-) => ({
+const toRolePublicDto = (role: RoleDTO & { roleType: PublicRoleNamespace }): RolePublicDto => ({
 	slug: role.slug,
 	displayName: role.displayName,
 	description: role.description,
 	systemRole: role.systemRole,
 	roleType: role.roleType,
-	licensed: role.licensed,
 	scopes: role.scopes,
 	createdAt: role.createdAt!.toISOString(),
 	updatedAt: role.updatedAt!.toISOString(),
+});
+
+const toRoleGetPublicDto = (
+	role: RoleDTO & { roleType: PublicRoleNamespace },
+	withUsageCount: boolean,
+): RoleGetPublicDto => ({
+	...toRolePublicDto(role),
+	licensed: role.licensed,
 	...(withUsageCount ? { usedByUsers: role.usedByUsers, usedByProjects: role.usedByProjects } : {}),
 });
 
@@ -77,7 +83,10 @@ export class RolesPublicController {
 		const groupOf = <T extends PublicRoleNamespace>(roleType: T) =>
 			publicRoles
 				.filter((role): role is RoleDTO & { roleType: T } => role.roleType === roleType)
-				.map((role) => toPublicRole(role, withUsageCount));
+				.map((role) => ({
+					...toRoleGetPublicDto({ ...role, roleType }, withUsageCount),
+					roleType,
+				}));
 
 		return {
 			global: groupOf('global'),
@@ -105,7 +114,7 @@ export class RolesPublicController {
 		if (!isPublicRole(role)) {
 			throw new NotFoundError('Role not found');
 		}
-		return toPublicRole(role, withUsageCount);
+		return toRoleGetPublicDto({ ...role, roleType: role.roleType }, withUsageCount);
 	}
 
 	@Post('/')
@@ -132,15 +141,37 @@ export class RolesPublicController {
 			scopes: role.scopes,
 		});
 
-		return {
-			slug: role.slug,
-			displayName: role.displayName,
-			description: role.description,
-			systemRole: role.systemRole,
-			roleType: createRole.roleType,
-			scopes: role.scopes,
-			createdAt: role.createdAt!.toISOString(),
-			updatedAt: role.updatedAt!.toISOString(),
-		};
+		return toRolePublicDto({ ...role, roleType: createRole.roleType });
+	}
+
+	@Put('/:slug')
+	@ApiKeyScope({ anyOf: ['role:manage', 'role:manageProject'] })
+	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
+	@ApiSummary('Update a custom role')
+	@ApiDescription(
+		"Replaces a custom role's display name, description, and scopes. System roles cannot be updated.",
+	)
+	@ApiTags(['Role'])
+	@ApiResponse(200, RolePublicDto)
+	@ApiErrorResponse(404)
+	async updateRole(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('slug') slug: string,
+		@Body updateRole: UpdateRolePublicDto,
+	): Promise<RolePublicDto> {
+		const role = await this.roleService.getRole(slug);
+		if (!isPublicRole(role)) {
+			throw new NotFoundError('Role not found');
+		}
+		assertCanManageRoleType(req.user, role.roleType);
+
+		const result = await this.roleService.updateCustomRole({
+			slug,
+			newRole: updateRole,
+			userId: req.user.id,
+		});
+
+		return toRolePublicDto({ ...result, roleType: role.roleType });
 	}
 }
