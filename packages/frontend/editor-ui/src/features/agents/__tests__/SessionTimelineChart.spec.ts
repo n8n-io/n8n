@@ -1,8 +1,41 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { mount } from '@vue/test-utils';
 import SessionTimelineChart from '../components/SessionTimelineChart.vue';
 import type { TimelineItem } from '../session-timeline.types';
+
+beforeAll(() => {
+	class ResizeObserverMock {
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+	}
+	(window as unknown as { ResizeObserver: typeof ResizeObserverMock }).ResizeObserver =
+		ResizeObserverMock;
+	vi.stubGlobal('matchMedia', (query: string) => ({
+		matches: false,
+		media: query,
+		addEventListener() {},
+		removeEventListener() {},
+	}));
+});
+
+vi.mock('@n8n/i18n', () => ({
+	useI18n: () => ({ baseText: (key: string) => key }),
+}));
+
+vi.mock('@/app/utils/formatters/dateFormatter', () => ({
+	convertToDisplayDate: () => ({ date: '', time: '00:00' }),
+}));
+
+vi.mock('@n8n/utils/string/truncate', () => ({
+	truncate: (value: string) => value,
+}));
+
+vi.mock('../utils/toolDisplayName', () => ({
+	formatToolNameForDisplay: (name: string) => name,
+	resolveToolNameForDisplay: (name: string) => name,
+}));
 
 function item(partial: Partial<TimelineItem>): TimelineItem {
 	return { kind: 'agent', executionId: 'e1', timestamp: 0, ...partial };
@@ -30,6 +63,18 @@ function mountChart(overrides: Partial<InstanceType<typeof SessionTimelineChart>
 					props: ['open'],
 					template:
 						'<div data-test-id="timeline-hover-card" :data-open="open"><slot name="content" /></div>',
+				},
+				N8nIconButton: {
+					props: ['icon', 'variant', 'size', 'disabled', 'ariaLabel'],
+					template: '<button :data-icon="icon" :disabled="disabled" />',
+				},
+				N8nIcon: {
+					props: ['icon', 'size'],
+					template: '<span :data-icon="icon" />',
+				},
+				SessionTimelinePill: {
+					props: ['kind', 'label', 'showLabel'],
+					template: '<span :data-kind="kind" />',
 				},
 			},
 		},
@@ -141,5 +186,60 @@ describe('SessionTimelineChart', () => {
 			w.unmount();
 			vi.useRealTimers();
 		}
+	});
+
+	it('marks a failed tool block with the failed class and data attribute', async () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'tool',
+					toolName: 'http',
+					timestamp: 1000,
+					endTimestamp: 1500,
+					toolSuccess: false,
+					toolOutput: { error: 'boom' },
+				}),
+			],
+		});
+		const block = w.find('[data-test-id="timeline-block"]');
+		expect(block.exists()).toBe(true);
+		expect(block.attributes('data-failed')).toBe('true');
+		expect(block.classes()).toContain('failed');
+	}, 30_000);
+
+	it('marks a workflow soft-failure block as failed', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'workflow',
+					toolName: 'run-wf',
+					timestamp: 2000,
+					endTimestamp: 3000,
+					toolSuccess: true,
+					toolOutput: { status: 'error', error: 'x' },
+				}),
+			],
+		});
+		const block = w.find('[data-test-id="timeline-block"]');
+		expect(block.attributes('data-failed')).toBe('true');
+		expect(block.classes()).toContain('failed');
+	});
+
+	it('does not mark a successful tool block as failed', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'tool',
+					toolName: 'http',
+					timestamp: 1000,
+					endTimestamp: 1500,
+					toolSuccess: true,
+					toolOutput: { ok: true },
+				}),
+			],
+		});
+		const block = w.find('[data-test-id="timeline-block"]');
+		expect(block.attributes('data-failed')).toBeUndefined();
+		expect(block.classes()).not.toContain('failed');
 	});
 });
