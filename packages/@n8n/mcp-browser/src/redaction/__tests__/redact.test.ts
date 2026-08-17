@@ -139,13 +139,39 @@ describe('pattern cost', () => {
 	});
 });
 
+describe('variable-length provider shapes', () => {
+	// Google keys are not a fixed length. A pattern that matches a fixed count of
+	// one leaves the rest of the key in the text the model reads.
+	it('redacts an over-long google key completely', () => {
+		const key = `AIza${'SyC7mQ2xR9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1Bc'}`;
+
+		expect(redactString(`Your key is ${key} keep it`)).toBe(
+			'Your key is [REDACTED:google_api_key:1] keep it',
+		);
+	});
+
+	// A console that lists a key truncated beside the full one must not let the
+	// short rendering decide what gets stored.
+	it('keeps a truncated rendering separate from the full key', () => {
+		const truncated = `AIza${'B'.repeat(35)}`;
+		const full = `${truncated}EXTRA12`;
+
+		const hits = findRegexSecretHits(`Keys: ${truncated} Detail: ${full} end`);
+
+		expect(hits.map((hit) => (hit.captureValue ?? hit.value).length).sort()).toEqual([
+			truncated.length,
+			full.length,
+		]);
+	});
+});
+
 describe('capture safety', () => {
 	// Long secrets are exactly the ones worth capturing; a PEM match carries its
 	// own boundaries, so its length must not make it uncapturable.
 	// An occurrence inside an undelimitable run says nothing about the token's
 	// extent, so it must not overrule what a delimited occurrence established.
 	it('ignores an undelimited occurrence when a delimited one exists', () => {
-		const key = `AIza${'B'.repeat(35)}`;
+		const key = `ghp_${'B'.repeat(36)}`;
 		const run = 'x'.repeat(600);
 
 		const [hit] = findRegexSecretHits(`id.${key} and ${run}${key}${run}`);
@@ -155,7 +181,7 @@ describe('capture safety', () => {
 	});
 
 	it('blocks capture when every occurrence is undelimited', () => {
-		const key = `AIza${'B'.repeat(35)}`;
+		const key = `ghp_${'B'.repeat(36)}`;
 		const run = 'x'.repeat(600);
 
 		const [hit] = findRegexSecretHits(`${run}${key}${run} and ${run}${key}${run}`);

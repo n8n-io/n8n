@@ -92,7 +92,12 @@ function browserCaptureSecret(
 			} else {
 				value = await state.adapter.getElementValue(pageId, { ref: args.element.ref });
 			}
-			// A stored marker would only fail once the provider is called.
+			// Both would only fail once the provider is called.
+			if (!value) {
+				throw new Error(
+					`The element for "${args.field}" holds no value. Take a fresh snapshot and capture the element that shows the secret.`,
+				);
+			}
 			if (containsRedactionMarker(value)) {
 				throw new Error(
 					`The value read for "${args.field}" is a redaction marker, not a secret. Take a fresh snapshot and capture the element that holds the value.`,

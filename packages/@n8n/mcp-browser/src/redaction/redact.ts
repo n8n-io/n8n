@@ -64,8 +64,6 @@ export function findRegexSecretHits(input: string): SecretHit[] {
 			const value = match[0];
 			if (!value) continue;
 			const key = `${slug}:${value}`;
-			// Fixed-count patterns match only their first N characters of a longer
-			// token, so record the whole token for capturing.
 			const hit = hitForSpan(slug, value, expandToTokenSpan(input, match.index, value.length));
 			const existing = hits.get(key);
 			hits.set(key, existing ? narrowerCapture(existing, hit) : hit);
@@ -84,7 +82,7 @@ export function captureSpanOf(hit: SecretHit): string {
 }
 
 /** Fixed-count patterns match only part of a longer token, so record the span. */
-export function hitForSpan(type: string, value: string, { span, delimited }: TokenSpan): SecretHit {
+function hitForSpan(type: string, value: string, { span, delimited }: TokenSpan): SecretHit {
 	if (!delimited) return { type, value, captureBlocked: UNDELIMITED_TOKEN };
 	return span === value ? { type, value } : { type, value, captureValue: span };
 }
@@ -162,7 +160,6 @@ function replaceInValue(value: unknown, replacements: readonly Replacement[]): u
 	return value;
 }
 
-/** Replace every hit's value with its marker throughout a tool result, in place. */
 export function applyHitsToResult(
 	result: CallToolResult,
 	hits: readonly SecretHit[],

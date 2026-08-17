@@ -298,6 +298,18 @@ describe('browser_capture_secret', () => {
 			expect(buffer.capture).not.toHaveBeenCalled();
 		});
 
+		it('refuses to buffer an empty value', async () => {
+			mockConn.adapter.getElementValue.mockResolvedValue('');
+
+			const result = await getTool().execute(
+				{ credentialsKey: 'k1', field: 'apiKey', element: { ref: 'e42' } },
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
 		// Expansion gives up inside an undelimitable run, and the match it falls
 		// back to may be partial — that must fail, not be stored.
 		it('refuses to buffer a value whose token could not be delimited', async () => {

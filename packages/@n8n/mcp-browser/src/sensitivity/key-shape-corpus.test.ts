@@ -126,15 +126,13 @@ describe('current provider key shapes', () => {
 		expect(residue(minifiedRevealPanel(key))).toBe(textWithoutKey(minifiedRevealPanel));
 	});
 
-	// Coverage is chosen over labelling: where an entropy span reaches further
-	// than a provider pattern's match, the wider span replaces first and the
-	// marker carries the generic type. Narrowing it back would re-expose the part
-	// of the key the pattern's fixed length does not cover.
-	it('labels an over-long key generically rather than leaving its tail visible', () => {
+	// An open-ended provider pattern covers the whole key, so the marker keeps the
+	// specific type rather than being subsumed by a wider entropy span.
+	it('labels an over-long key with its provider type', () => {
 		const { key } = KEY_SHAPES[1];
 		const snapshot = redactedSnapshot(revealPanel(key));
 
-		expect(snapshot).toContain('[REDACTED:secret:');
+		expect(snapshot).toContain('[REDACTED:google_api_key:');
 		expect(snapshot).not.toContain(key.slice(-7));
 	});
 });

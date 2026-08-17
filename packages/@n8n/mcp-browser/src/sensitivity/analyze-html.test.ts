@@ -37,7 +37,7 @@ describe('analyzeHtmlSensitivity', () => {
 	// One document delimits the key unambiguously, another cannot. Whichever is
 	// merged last, the delimited occurrence is the one that knows the extent.
 	it('lets a delimited occurrence override a blocked one from another document', () => {
-		const key = `AIza${'B'.repeat(35)}`;
+		const key = `ghp_${'B'.repeat(36)}`;
 		const run = 'x'.repeat(600);
 		const result = analyzeHtmlSensitivity(
 			probe(`<p>${run}${key}${run}</p>`, [
