@@ -259,7 +259,11 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 		const valueItem = value[i];
 		const otherItem = others[i];
 
-		if (valueItem !== undefined && typeof valueItem === 'object') {
+		if (
+			valueItem !== undefined &&
+			typeof valueItem === 'object' &&
+			(otherItem === undefined || typeof otherItem === 'object')
+		) {
 			// mergeObjects() returns valueItem unchanged when otherItem is missing,
 			// so elements unique to `value` are kept even if `others` is shorter
 			merged = Object.assign(
@@ -267,8 +271,9 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 				mergeObjects(valueItem as Record<string, unknown>, [otherItem]),
 			);
 		} else if (otherItem !== undefined && typeof otherItem === 'object') {
-			// Elements unique to `others` (past the end of `value`) are merged directly
-			merged = Object.assign(merged, otherItem as Record<string, unknown>);
+			// Elements unique to `others` (past the end of `value`) are merged with
+			// first-value-wins so existing keys aren't overwritten
+			merged = Object.assign(merged, mergeObjects(merged, [otherItem]));
 		}
 	}
 	return merged;

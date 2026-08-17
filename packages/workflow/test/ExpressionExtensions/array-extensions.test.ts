@@ -149,6 +149,24 @@ describe('Data Transformation Functions', () => {
 			});
 		});
 
+		test('.merge() should not overwrite existing keys with a trailing object in the argument array', () => {
+			expect(evaluate('={{ [{ a: 1 }].merge([{ b: 2 }, { a: 99 }]) }}')).toEqual({
+				a: 1,
+				b: 2,
+			});
+		});
+
+		test('.merge() should skip truthy primitives in the argument array without throwing', () => {
+			expect(evaluate('={{ [{ a: 1 }].merge([1]) }}')).toEqual({});
+		});
+
+		test('.merge() should merge objects while skipping truthy primitives', () => {
+			expect(evaluate('={{ [{ a: 1 }, { b: 2 }].merge([1, { c: 3 }]) }}')).toEqual({
+				b: 2,
+				c: 3,
+			});
+		});
+
 		test('.smartJoin() should work correctly on an array of objects', () => {
 			expect(
 				evaluate(
