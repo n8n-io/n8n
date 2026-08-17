@@ -256,7 +256,9 @@ export class SamlController {
 		if (result?.binding === 'redirect') {
 			return result.context.context;
 		} else if (result?.binding === 'post') {
-			return res.send(getInitSSOFormView(result.context as PostBindingContext));
+			return res.send(
+				getInitSSOFormView(result.context as PostBindingContext, res.locals.cspNonce),
+			);
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}
@@ -267,7 +269,9 @@ export class SamlController {
 		if (result?.binding === 'redirect') {
 			return result.context.context;
 		} else if (result?.binding === 'post') {
-			return res.send(getInitSSOFormView(result.context as PostBindingContext));
+			return res.send(
+				getInitSSOFormView(result.context as PostBindingContext, res.locals.cspNonce),
+			);
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}
