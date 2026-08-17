@@ -29,7 +29,6 @@ const agentsSdkMocks = vi.hoisted(() => {
 	const modelCalls: unknown[] = [];
 	const promptCachingCalls: unknown[] = [];
 	const reasoningCalls: string[] = [];
-	const skillsCalls: unknown[] = [];
 	const telemetryCalls: unknown[] = [];
 	const memoryTaskObserverCalls: unknown[] = [];
 	const observationalMemoryCalls: Array<{
@@ -63,8 +62,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 			instructionsCalls.push(text);
 			return this;
 		}
-		skills(skills: unknown) {
-			skillsCalls.push(skills);
+		skills(_skills: unknown) {
 			return this;
 		}
 		memory() {
@@ -130,7 +128,6 @@ const agentsSdkMocks = vi.hoisted(() => {
 		modelCalls,
 		promptCachingCalls,
 		reasoningCalls,
-		skillsCalls,
 		telemetryCalls,
 		memoryTaskObserverCalls,
 		observationalMemoryCalls,
@@ -239,7 +236,6 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.modelCalls.length = 0;
 		agentsSdkMocks.promptCachingCalls.length = 0;
 		agentsSdkMocks.reasoningCalls.length = 0;
-		agentsSdkMocks.skillsCalls.length = 0;
 		agentsSdkMocks.telemetryCalls.length = 0;
 		agentsSdkMocks.memoryTaskObserverCalls.length = 0;
 		agentsSdkMocks.observationalMemoryCalls.length = 0;
@@ -333,17 +329,6 @@ describe('AgentsBuilderService session isolation', () => {
 		await service.cancelCheckpoint('agent-1', 'run-1');
 
 		expect(n8nCheckpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
-	});
-
-	it('includes the external services skill', async () => {
-		const { service, user, credentialProvider } = setup();
-
-		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
-		);
-
-		const skills = agentsSdkMocks.skillsCalls[0] as Array<{ id: string }>;
-		expect(skills.some((skill) => skill.id === 'agent-builder-external-services')).toBe(true);
 	});
 
 	it('uses session.modelConfig directly for the builder model', async () => {

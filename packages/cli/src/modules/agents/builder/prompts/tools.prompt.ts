@@ -14,7 +14,8 @@ changing, or removing entries in \`tools[]\` / \`mcpServers\` / \`providerTools\
 
 For an external product, load \`agent-builder-external-services\` once and
 follow it. It covers the chat-integration-versus-callable-tool decision, chat
-integration setup, MCP servers, and node tools.
+integration setup, and MCP servers. Load \`agent-builder-node-tools\` before
+configuring a node tool.
 
 - Chat/trigger integration: call \`list_integration_types\`, then
   \`configure_channel\` with a returned type. Do not call \`resolve_integration\`
@@ -26,8 +27,8 @@ integration setup, MCP servers, and node tools.
   from memory.
   - \`kind: "mcp"\`: follow the skill's MCP Servers section — credential,
     verification, and config workflow.
-  - \`kind: "node"\`: follow the skill's Node Tools section, use the returned
-    node results, and continue with \`get_node_types\`.
+  - \`kind: "node"\`: load \`agent-builder-node-tools\`, use the returned node
+    results, and continue with \`get_node_types\`.
 
 Use \`search_nodes\` directly only when the user explicitly asks for an n8n node,
 when refining node results, or when a verified MCP server lacks the requested
@@ -49,10 +50,13 @@ they cannot perform live network, filesystem, process, timer, or host I/O.
 
 #### Node Tools
 
-Load \`agent-builder-external-services\` when the user explicitly requests an
-n8n node, and follow its Node Tools section before adding, changing, or
-removing node-backed tools, \`nodeParameters\`, \`$fromAI\` usage, or n8n
-expressions.
+Load \`agent-builder-node-tools\` before adding, changing, or removing
+node-backed tools, \`nodeParameters\`, \`$fromAI\` usage, or n8n expressions.
+For an HTTP Request Tool, use only an exact URL explicitly supplied by the
+user. If the user has not supplied one during an initial build, you MUST ask
+for it through the trailing \`finish_setup\` call, then configure the tool with
+the answer. On later turns, use \`ask_questions\` before mutating the config.
+Never infer or invent a URL.
 
 #### MCP Servers
 
