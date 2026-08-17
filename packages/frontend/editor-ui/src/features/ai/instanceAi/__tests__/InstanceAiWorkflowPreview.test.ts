@@ -17,7 +17,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { requestCanvasTidyUp } from '@/features/workflows/canvas/canvasTidyUpQueue';
+import { requestCanvasTidyUp } from '@/features/workflows/canvas/pendingCanvasTidyUp';
 import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -50,7 +50,7 @@ vi.mock('../instanceAi.store', () => ({
 	useThread: () => thread,
 }));
 
-vi.mock('@/features/workflows/canvas/canvasTidyUpQueue', () => ({
+vi.mock('@/features/workflows/canvas/pendingCanvasTidyUp', () => ({
 	requestCanvasTidyUp: vi.fn(),
 }));
 

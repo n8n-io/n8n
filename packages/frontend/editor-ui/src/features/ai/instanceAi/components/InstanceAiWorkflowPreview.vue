@@ -16,7 +16,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { requestCanvasTidyUp } from '@/features/workflows/canvas/canvasTidyUpQueue';
+import { requestCanvasTidyUp } from '@/features/workflows/canvas/pendingCanvasTidyUp';
 import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
 import {
 	buildInstanceAiArtifactCredentialQuestion,

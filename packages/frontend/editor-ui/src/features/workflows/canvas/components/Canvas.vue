@@ -63,7 +63,7 @@ import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
 import { shouldIgnoreCanvasShortcut, type CanvasRenderData } from '../canvas.utils';
-import { consumePendingCanvasTidyUp, usePendingCanvasTidyUp } from '../canvasTidyUpQueue';
+import { consumePendingCanvasTidyUp, usePendingCanvasTidyUp } from '../pendingCanvasTidyUp';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,

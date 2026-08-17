@@ -5,7 +5,7 @@ import {
 	consumePendingCanvasTidyUp,
 	requestCanvasTidyUp,
 	usePendingCanvasTidyUp,
-} from '../canvasTidyUpQueue';
+} from '../pendingCanvasTidyUp';
 import { createComponentRenderer } from '@/__tests__/render';
 import Canvas from './Canvas.vue';
 import { createPinia, setActivePinia } from 'pinia';
