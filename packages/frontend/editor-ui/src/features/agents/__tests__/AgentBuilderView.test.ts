@@ -1609,18 +1609,15 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 		editorColumn.vm.$emit('toggle-mcp-access', true);
 		await nextTick();
-		const autosave = (
-			wrapper.vm as unknown as { flushAutosave: () => Promise<void> }
-		).flushAutosave();
-		await vi.waitFor(() =>
-			expect(toggleAgentMcpAccess).toHaveBeenCalledExactlyOnceWith('a2', true),
-		);
 
+		// Switching agents flushes the pending MCP debounce — same path as
+		// production, and not dependent on fake timers + nextTick.
 		await wrapper.setProps({ artifactAgentId: 'a3', artifactAgentPending: true });
 		await flushPromises();
+		expect(toggleAgentMcpAccess).toHaveBeenCalledExactlyOnceWith('a2', true);
+
 		await wrapper.setProps({ artifactAgentPending: false });
 		mcpSave.resolve({ updatedCount: 1, updatedIds: ['a2'], unchangedIds: [] });
-		await autosave;
 		await flushPromises();
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p2', 'a3');
