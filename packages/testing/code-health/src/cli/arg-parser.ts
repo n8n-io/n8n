@@ -1,5 +1,11 @@
 // The default command is `analyze`; these are the explicit subcommands accepted as argv[0].
-const SUBCOMMANDS = ['baseline', 'rules', 'verify-closure', 'verify-npm-install'] as const;
+const SUBCOMMANDS = [
+	'baseline',
+	'rules',
+	'verify-closure',
+	'verify-npm-install',
+	'verify-packed-consumer',
+] as const;
 type Subcommand = (typeof SUBCOMMANDS)[number];
 
 export interface CliOptions {

@@ -1,48 +1,24 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 
 import { analyze, collectCopies } from './collect-copies.js';
-import type { PackageJsonInfo } from '../utils/package-json-scanner.js';
+import type { WorkspacePkg } from '../utils/pack-workspace.js';
 import {
-	findPackageJsonFiles,
-	parsePackageJson,
-	relativeDir,
-} from '../utils/package-json-scanner.js';
+	closureOf,
+	loadWorkspace,
+	packClosure,
+	packageDirPrefixes,
+} from '../utils/pack-workspace.js';
 
 // Repo-relative paths whose change can shift dependency resolution repo-wide (the catalog, the
 // root manifest, or the single-instance tooling itself) — a scoped diff would otherwise miss them.
 const ROOT_TRIGGERS = ['pnpm-workspace.yaml', 'package.json', 'packages/testing/code-health/'];
 
-// Sections that follow the publish graph — devDependencies don't ship, so they're not packed.
-const CLOSURE_SECTIONS = new Set(['dependencies', 'peerDependencies', 'optionalDependencies']);
-
 /** True when a changed file can shift dependency resolution repo-wide, forcing a full check. */
 export function filesTriggerFullRun(files: string[]): boolean {
 	return files.some((f) => ROOT_TRIGGERS.some((t) => f === t || f.startsWith(t)));
-}
-
-interface WorkspacePkg {
-	dir: string;
-	relDir: string;
-	info: PackageJsonInfo;
-}
-
-/** Every non-private workspace package: name -> { dir, relDir, info }. */
-async function loadWorkspace(rootDir: string): Promise<Map<string, WorkspacePkg>> {
-	const byName = new Map<string, WorkspacePkg>();
-	for (const file of await findPackageJsonFiles(rootDir)) {
-		const info = parsePackageJson(file);
-		if (info.private) continue;
-		byName.set(info.packageName, { dir: dirname(file), relDir: relativeDir(rootDir, file), info });
-	}
-	return byName;
-}
-
-/** Package dirs as forward-slash, trailing-slash prefixes (matches git's path output on any OS). */
-function packageDirPrefixes(byName: Map<string, WorkspacePkg>): Array<[string, string]> {
-	return [...byName.entries()].map(([name, { relDir }]) => [name, `${relDir}/`]);
 }
 
 /**
@@ -95,25 +71,6 @@ function changedPackages(
 	return matchChangedFiles(files, packageDirPrefixes(byName));
 }
 
-/** BFS the workspace-internal dependency closure of the given target names. */
-export function closureOf(targets: string[], byName: Map<string, WorkspacePkg>): string[] {
-	const seen = new Set<string>();
-	const queue = [...targets];
-	while (queue.length > 0) {
-		const name = queue.shift();
-		if (name === undefined || seen.has(name)) continue;
-		const entry = byName.get(name);
-		if (!entry) continue;
-		seen.add(name);
-		for (const dep of entry.info.deps) {
-			if (CLOSURE_SECTIONS.has(dep.section) && byName.has(dep.name) && !seen.has(dep.name)) {
-				queue.push(dep.name);
-			}
-		}
-	}
-	return [...seen];
-}
-
 function resolveTargets(
 	args: string[],
 	byName: Map<string, WorkspacePkg>,
@@ -164,19 +121,7 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 	mkdirSync(scratch, { recursive: true });
 
 	console.log(`Packing ${toPack.length} workspace package(s) (targets: ${targets.length})...`);
-	const tarballByName: Record<string, string> = {};
-	for (const name of toPack) {
-		const entry = byName.get(name);
-		if (!entry) continue;
-		const before = new Set(readdirSync(tarballs));
-		execFileSync('pnpm', ['pack', '--pack-destination', tarballs], {
-			cwd: entry.dir,
-			stdio: ['ignore', 'ignore', 'inherit'],
-		});
-		const produced = readdirSync(tarballs).find((f) => !before.has(f) && f.endsWith('.tgz'));
-		if (!produced) throw new Error(`pnpm pack produced no tarball for ${name}`);
-		tarballByName[name] = join(tarballs, produced);
-	}
+	const tarballByName = packClosure(toPack, byName, tarballs);
 
 	// Scratch project: install targets as file: deps, force ALL packed workspace deps to their
 	// local tarballs. Third-party deps resolve from the real npm registry.

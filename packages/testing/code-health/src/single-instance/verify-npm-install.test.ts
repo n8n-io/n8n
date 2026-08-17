@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { closureOf, filesTriggerFullRun, matchChangedFiles } from './verify-npm-install.js';
+import { filesTriggerFullRun, matchChangedFiles } from './verify-npm-install.js';
+import { closureOf } from '../utils/pack-workspace.js';
 
 /** Build a WorkspacePkg fixture from `[depName, section]` pairs (only names + sections matter). */
 function ws(name: string, deps: Array<[string, string]>) {

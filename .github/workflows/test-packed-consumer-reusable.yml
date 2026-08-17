@@ -1,0 +1,68 @@
+name: 'Test: Packed consumer (@n8n/design-system)'
+
+# `@n8n/design-system` published a broken artifact for months with a green pipeline, because
+# nothing in the monorepo consumed `dist`: every internal package aliases the specifier to `src`,
+# so the published output was never exercised. This job is the consumer that does exercise it —
+# it packs the package, installs the tarball outside the workspace resolution graph, then builds,
+# typechecks and loads a generated consumer against it.
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Commit to check out.'
+        required: true
+        type: string
+      scope:
+        description: >-
+          "full" packs, installs and compiles a consumer. "static" only checks that the exports map
+          covers every specifier the monorepo imports — seconds instead of a minute, no registry.
+        required: false
+        type: string
+        default: 'full'
+      timeout-minutes:
+        description: 'Job timeout. The full scope installs from the npm registry, so it needs room.'
+        required: false
+        type: number
+        default: 15
+
+jobs:
+  verify:
+    name: Packed consumer
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+    steps:
+      # Rejecting an unknown scope here rather than defaulting to one: `--static-only` skips the
+      # build, typecheck and load, so a typo silently downgrading the job to the cheap half would
+      # leave a green check that never compiled anything.
+      - name: Validate inputs
+        env:
+          SCOPE: ${{ inputs.scope }}
+        run: |
+          case "$SCOPE" in
+            full|static) ;;
+            *) echo "::error::Unknown scope \"$SCOPE\" (expected \"full\" or \"static\")."; exit 1 ;;
+          esac
+
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      # `pnpm pack` packs whatever is on disk, so `dist` has to exist first — and it has to be
+      # this commit's `dist`. Only the design-system's own build closure is needed, plus the
+      # verifier's.
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/design-system... --filter=@n8n/code-health...
+
+      - name: Verify the packed tarball
+        env:
+          SCOPE: ${{ inputs.scope }}
+        run: |
+          ARGS=""
+          if [ "$SCOPE" = "static" ]; then ARGS="--static-only"; fi
+          pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-packed-consumer $ARGS

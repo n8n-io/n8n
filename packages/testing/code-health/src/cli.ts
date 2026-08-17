@@ -13,6 +13,7 @@ import * as path from 'node:path';
 import { parseArgs } from './cli/arg-parser.js';
 import type { CodeHealthContext } from './context.js';
 import { createDefaultRunner } from './index.js';
+import { runVerifyPackedConsumer } from './packed-consumer/verify-packed-consumer.js';
 import { runVerifyClosure } from './single-instance/verify-closure.js';
 import { runVerifyNpmInstall } from './single-instance/verify-npm-install.js';
 
@@ -37,6 +38,10 @@ async function main(): Promise<void> {
 
 	if (options.command === 'verify-npm-install') {
 		process.exit(await runVerifyNpmInstall(options.args, rootDir));
+	}
+
+	if (options.command === 'verify-packed-consumer') {
+		process.exit(await runVerifyPackedConsumer(options.args, rootDir));
 	}
 
 	const runner = createDefaultRunner();

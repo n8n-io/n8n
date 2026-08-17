@@ -62,10 +62,21 @@ jobs:
       scope: changed
       base-ref: ${{ github.event.before }}
 
+  # Also a required check on PRs. Repeated here because the merge queue is not the last word: a
+  # tarball can break from a dependency resolving differently on master than it did on the branch.
+  packed-consumer:
+    name: Packed consumer
+    uses: ./.github/workflows/test-packed-consumer-reusable.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ github.sha }}
+      scope: full
+
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
-    needs: [unit-test, lint, performance, build-github]
+    needs: [unit-test, lint, performance, build-github, packed-consumer]
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

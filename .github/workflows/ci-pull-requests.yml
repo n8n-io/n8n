@@ -251,6 +251,23 @@ jobs:
         run: |
           pnpm -r pack --dry-run
 
+  # Builds, typechecks and loads a generated consumer against the packed `@n8n/design-system`
+  # tarball, outside the workspace resolution graph.
+  #
+  # Gated on the broad `ci` filter rather than a path filter over the package's build config and
+  # `exports` map. Half of what this catches is a specifier added elsewhere in the monorepo that
+  # only resolves through a build-time alias to `src` — and a path filter listing the packages
+  # that consume the design system is exactly the hand-maintained list that let the artifact rot
+  # in the first place. The job costs well under two minutes, so breadth is the cheaper mistake.
+  packed-consumer:
+    name: Packed consumer
+    needs: install-and-build
+    if: needs.install-and-build.outputs.ci == 'true'
+    uses: ./.github/workflows/test-packed-consumer-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+      scope: full
+
   # Seeds the SHA-keyed Docker image cache once so that downstream e2e jobs
   # (each of which invokes prepare-docker internally) short-circuit to a
   # cache hit instead of racing to rebuild.
@@ -405,6 +422,7 @@ jobs:
         typecheck,
         lint,
         check-packaging,
+        packed-consumer,
         sqlite-sanity,
         e2e,
         dev-server-smoke,
