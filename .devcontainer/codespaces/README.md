@@ -71,6 +71,19 @@ A turn stops after about 25 minutes (`TURN_TIMEOUT_MS`). This limit is below the
 n8n Wait limit. So the worker reports a clear message before n8n reports a
 generic timeout. Keep the worker limit below the n8n limit if you change either.
 
+**A turn is atomic, and the worker tells the session so.** The turn ends on the
+session's final message, and its children end with it: a background `Bash` task
+is killed, `Monitor` events never arrive, `PushNotification` has nowhere to go,
+and `ScheduleWakeup` never fires. The session also gets no turn of its own to
+report back in — the turn's resume URL continues one waiting n8n execution and is
+then spent, so nothing on the box can post to the thread unprompted. A session
+that backgrounds a build and signs off with "I'll verify once it finishes" is
+therefore describing something that cannot happen. The worker states this in
+`--append-system-prompt` on every turn (`turnContract`), together with a pointer
+to this file for the box-specific parts. This is only the n8n/Slack path: an
+interactive session (`pnpm session`, tmux) is long-lived, so background work,
+monitors and notifications behave normally there.
+
 ### Build and run the app in a session
 
 The prebuild already installed the dependencies and warmed the build. So a
@@ -100,8 +113,10 @@ session rarely needs a cold `pnpm install` or a full `pnpm build`. Both are slow
   turbo cache and is fast when warm.
 - To clear stale build outputs after a branch switch, run `pnpm reset`. Add
   `--full` if that does not clear it.
-- Give a long build its own turn. Do not chain an install and a full build
-  behind other work in one turn.
+- Run a long build in the foreground and give it its own turn. Backgrounding it
+  does not help: it is killed when the turn ends (see above). Do not chain an
+  install and a full build behind other work in one turn either — that is what
+  runs into the 25-minute limit.
 
 ## Flaky tools (MCP)
 
