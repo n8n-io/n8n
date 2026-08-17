@@ -1540,7 +1540,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						position: [240, 300],
 					},
 					{
-						id: 'uuid-1234',
+						id: 'uuid-5678',
 						parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
 						name: 'Schedule Trigger',
 						type: 'n8n-nodes-base.scheduleTrigger',
