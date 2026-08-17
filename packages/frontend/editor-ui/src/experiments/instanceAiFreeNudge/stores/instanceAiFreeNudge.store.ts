@@ -54,15 +54,13 @@ export const useInstanceAiFreeNudgeStore = defineStore(
 		});
 		const isDismissed = computed(() => dismissedStorage.value === 'true');
 		const shouldShowNudge = computed(() => treatmentVariant.value !== null && !isDismissed.value);
-		const shouldTrackExposure = computed(
-			() =>
-				experimentVariant.value === INSTANCE_AI_FREE_NUDGE_EXPERIMENT.control ||
-				shouldShowNudge.value,
-		);
+		// Exposure follows assignment, not visibility: a dismissed treatment user must keep
+		// counting as exposed, or a rerun would silently drop them from the variant cohort.
+		const shouldTrackExposure = computed(() => experimentVariant.value !== null);
 
 		function trackExposure() {
 			const variant = experimentVariant.value;
-			if (!variant || !shouldTrackExposure.value) return;
+			if (!variant) return;
 
 			telemetry.track(
 				TELEMETRY_EVENT.INSTANCE_AI.FREE_NUDGE_EXPOSED,

@@ -1,14 +1,17 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { ref } from 'vue';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { INSTANCE_AI_FREE_NUDGE_EXPERIMENT } from '@/app/constants/experiments';
 
-const { track, storageRef, useStorage, getVariant } = vi.hoisted(() => ({
+const { track, useStorage, getVariant } = vi.hoisted(() => ({
 	track: vi.fn(),
-	storageRef: { value: null as string | null },
 	useStorage: vi.fn(),
 	getVariant: vi.fn(),
 }));
+
+// Mirrors useStorage's real Ref<string | null> so the isDismissed computed tracks writes.
+const storageRef = ref<string | null>(null);
 useStorage.mockReturnValue(storageRef);
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -89,29 +92,34 @@ describe('instanceAiFreeNudge store', () => {
 		});
 	});
 
-	it.each([INSTANCE_AI_FREE_NUDGE_EXPERIMENT.variant1, INSTANCE_AI_FREE_NUDGE_EXPERIMENT.variant2])(
-		'does not expose dismissed treatment %s',
-		(variant) => {
-			storageRef.value = 'true';
-			getVariant.mockReturnValue(variant);
-			const store = useInstanceAiFreeNudgeStore();
-
-			expect(store.isDismissed).toBe(true);
-			expect(store.shouldShowNudge).toBe(false);
-			expect(store.shouldTrackExposure).toBe(false);
-			store.trackExposure();
-			expect(track).not.toHaveBeenCalled();
-		},
-	);
-
-	it('still exposes control when a dismissal is stored', () => {
+	it.each([
+		INSTANCE_AI_FREE_NUDGE_EXPERIMENT.control,
+		INSTANCE_AI_FREE_NUDGE_EXPERIMENT.variant1,
+		INSTANCE_AI_FREE_NUDGE_EXPERIMENT.variant2,
+	])('still exposes %s when a dismissal is stored', (variant) => {
 		storageRef.value = 'true';
-		getVariant.mockReturnValue(INSTANCE_AI_FREE_NUDGE_EXPERIMENT.control);
+		getVariant.mockReturnValue(variant);
 		const store = useInstanceAiFreeNudgeStore();
 
+		expect(store.isDismissed).toBe(true);
+		expect(store.shouldShowNudge).toBe(false);
 		expect(store.shouldTrackExposure).toBe(true);
+
 		store.trackExposure();
-		expect(track).toHaveBeenCalledOnce();
+
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.FREE_NUDGE_EXPOSED, {
+			variant,
+			[featureFlagProperty]: variant,
+		});
+	});
+
+	it('does not expose a user outside the experiment', () => {
+		getVariant.mockReturnValue(undefined);
+		const store = useInstanceAiFreeNudgeStore();
+
+		store.trackExposure();
+
+		expect(track).not.toHaveBeenCalled();
 	});
 
 	it.each([INSTANCE_AI_FREE_NUDGE_EXPERIMENT.variant1, INSTANCE_AI_FREE_NUDGE_EXPERIMENT.variant2])(
@@ -119,6 +127,8 @@ describe('instanceAiFreeNudge store', () => {
 		(variant) => {
 			getVariant.mockReturnValue(variant);
 			const store = useInstanceAiFreeNudgeStore();
+
+			expect(store.shouldShowNudge).toBe(true);
 
 			store.dismiss();
 

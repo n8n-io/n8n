@@ -28,12 +28,14 @@ export const useReadyToRunWorkflowsStore = defineStore(
 		const cloudPlanStore = useCloudPlanStore();
 
 		const isFeatureEnabled = computed(() => {
+			const variant = posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name);
+
 			return (
 				[
 					BATCH_11AUG_EXPERIMENT.variantReadyToRun,
 					BATCH_11AUG_EXPERIMENT.variantReadyToRun2,
 					BATCH_11AUG_EXPERIMENT.variantReadyToRun3,
-				].includes(posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name)?.toString() ?? '') &&
+				].some((readyToRunVariant) => readyToRunVariant === variant) &&
 				cloudPlanStore.userIsTrialing
 			);
 		});
