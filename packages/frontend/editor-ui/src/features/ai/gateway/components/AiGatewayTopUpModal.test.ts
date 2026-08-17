@@ -84,13 +84,14 @@ describe('AiGatewayTopUpModal.vue', () => {
 	});
 
 	it('tells trial non-owners that the Instance Owner must upgrade and top up', () => {
-		renderModal({ variant: 'memberTrial' });
+		const { usersStore } = renderModal({ variant: 'memberTrial' });
 
 		expect(screen.getByText('Contact your admin to top-up')).toBeInTheDocument();
 		expect(screen.getByText(/needs to upgrade to a paid plan/)).toBeInTheDocument();
-		expect(screen.queryByTestId('ai-gateway-topup-services')).not.toBeInTheDocument();
+		expect(screen.getByTestId('ai-gateway-topup-services')).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Contact admin' })).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Upgrade' })).not.toBeInTheDocument();
+		expect(usersStore.fetchUsers).toHaveBeenCalledWith({ filter: { isOwner: true } });
 	});
 
 	it('mails the Instance Owner when Contact admin is clicked', async () => {
@@ -136,22 +137,6 @@ describe('AiGatewayTopUpModal.vue', () => {
 		expect(uiStore.closeModal).not.toHaveBeenCalled();
 	});
 
-	it('shows license copy and covered services for self-hosted owners', async () => {
-		const { uiStore } = renderModal({ variant: 'owner' });
-
-		expect(screen.getByText('Top up n8n credits')).toBeInTheDocument();
-		expect(screen.getByText(/come from your instance license/)).toBeInTheDocument();
-		expect(screen.getByTestId('ai-gateway-topup-services')).toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: 'Contact admin' })).not.toBeInTheDocument();
-		expect(screen.queryByRole('button', { name: 'Upgrade' })).not.toBeInTheDocument();
-
-		await userEvent.click(screen.getByRole('button', { name: 'Close' }));
-
-		expect(uiStore.closeModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
-		expect(windowOpen).not.toHaveBeenCalled();
-		expect(mockGoToUpgrade).not.toHaveBeenCalled();
-	});
-
 	it('shows Upgrade copy and covered services for owners during trial', async () => {
 		renderModal({ variant: 'ownerTrial' });
 
@@ -172,6 +157,9 @@ describe('AiGatewayTopUpModal.vue', () => {
 			'OpenAI',
 			'Anthropic',
 			'Google Gemini',
+			'MiniMax',
+			'Moonshot',
+			'Qwen Cloud',
 			'Firecrawl',
 			'Browserbase',
 			'Brave Search',
@@ -189,6 +177,9 @@ describe('AiGatewayTopUpModal.vue', () => {
 			'openAiApi',
 			'anthropicApi',
 			'googlePalmApi',
+			'minimaxApi',
+			'moonshotApi',
+			'alibabaCloudApi',
 			'firecrawlApi',
 			'browserbaseApi',
 			'braveSearchApi',

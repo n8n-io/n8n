@@ -79,10 +79,12 @@ export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirect
 	 * Otherwise, it redirect them to our docs.
 	 */
 	const goToVersions = async () => {
-		const didNavigate = await goToCloudDashboard({ redirectionPath: '/manage' });
-		if (didNavigate) return;
+		if (!canAutoLoginToCloudDashboard()) {
+			window.open(versionsStore.infoUrl, '_blank', 'noopener');
+			return;
+		}
 
-		window.open(versionsStore.infoUrl, '_blank', 'noopener');
+		await goToCloudDashboard({ redirectionPath: '/manage' });
 	};
 
 	const goToDashboard = async () => {

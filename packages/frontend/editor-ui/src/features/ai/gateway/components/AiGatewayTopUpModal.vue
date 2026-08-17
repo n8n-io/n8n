@@ -8,12 +8,15 @@ import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import type { AiGatewayTopUpVariant } from '@/app/composables/useAiGatewayTopUp';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/app/stores/ui.store';
+import AlibabaLogo from '../assets/service-icons/alibaba.svg?component';
 import AnthropicLogo from '../assets/service-icons/anthropic.svg?component';
 import BraveSearchLogo from '../assets/service-icons/brave-search.svg?component';
 import BrowserbaseLogo from '../assets/service-icons/browserbase.svg?component';
 import FirecrawlLogo from '../assets/service-icons/firecrawl.svg?component';
 import GeminiLogo from '../assets/service-icons/gemini.svg?component';
 import LlamaIndexLogo from '../assets/service-icons/llamaindex.svg?component';
+import MiniMaxLogo from '../assets/service-icons/minimax.svg?component';
+import MoonshotLogo from '../assets/service-icons/moonshot.svg?component';
 import OpenAiLogo from '../assets/service-icons/openai.svg?component';
 import PdfcoLogo from '../assets/service-icons/pdfco.svg?component';
 
@@ -32,6 +35,21 @@ const FEATURED_SERVICES = [
 		credentialType: 'googlePalmApi',
 		labelKey: 'aiGateway.topUp.modal.service.googleGemini',
 		logo: GeminiLogo,
+	},
+	{
+		credentialType: 'minimaxApi',
+		labelKey: 'aiGateway.topUp.modal.service.minimax',
+		logo: MiniMaxLogo,
+	},
+	{
+		credentialType: 'moonshotApi',
+		labelKey: 'aiGateway.topUp.modal.service.moonshot',
+		logo: MoonshotLogo,
+	},
+	{
+		credentialType: 'alibabaCloudApi',
+		labelKey: 'aiGateway.topUp.modal.service.qwenCloud',
+		logo: AlibabaLogo,
 	},
 	{
 		credentialType: 'firecrawlApi',
@@ -71,17 +89,19 @@ const { goToUpgrade } = usePageRedirectionHelper();
 
 const isOpen = ref(true);
 const isOwnerTrial = computed(() => props.variant === 'ownerTrial');
-const showsServices = computed(() => props.variant === 'owner' || props.variant === 'ownerTrial');
+const needsOwnerEmail = computed(
+	() => props.variant === 'member' || props.variant === 'memberTrial',
+);
+const showsServices = computed(() => props.variant !== 'member');
 
 onMounted(async () => {
-	if (showsServices.value) return;
+	if (!needsOwnerEmail.value) return;
 
 	await usersStore.fetchUsers({ filter: { isOwner: true } });
 });
 
 const title = computed(() => {
 	const keys = {
-		owner: 'aiGateway.topUp.modal.title.owner',
 		ownerTrial: 'aiGateway.topUp.modal.title.trial',
 		memberTrial: 'aiGateway.topUp.modal.title.member',
 		member: 'aiGateway.topUp.modal.title.member',
@@ -91,7 +111,6 @@ const title = computed(() => {
 
 const description = computed(() => {
 	const keys = {
-		owner: 'aiGateway.topUp.modal.description.owner',
 		ownerTrial: 'aiGateway.topUp.modal.description.trial',
 		memberTrial: 'aiGateway.topUp.modal.description.member.trial',
 		member: 'aiGateway.topUp.modal.description.member',
@@ -101,7 +120,6 @@ const description = computed(() => {
 
 const actionLabel = computed(() => {
 	if (isOwnerTrial.value) return i18n.baseText('generic.upgrade');
-	if (props.variant === 'owner') return i18n.baseText('generic.close');
 	return i18n.baseText('aiGateway.topUp.modal.cta.contactAdmin');
 });
 
@@ -128,11 +146,6 @@ function ownerMailtoHref(): string {
 }
 
 async function onAction(): Promise<void> {
-	if (props.variant === 'owner') {
-		close();
-		return;
-	}
-
 	if (isOwnerTrial.value) {
 		close();
 		await goToUpgrade('ai-gateway-top-up', 'upgrade-ai-gateway-top-up');
@@ -167,7 +180,7 @@ async function onAction(): Promise<void> {
 					:class="$style.serviceTag"
 					role="listitem"
 				>
-					<span :class="$style.logo">
+					<span :class="$style.logo" aria-hidden="true">
 						<component
 							:is="service.logo"
 							:class="$style.logoSvg"

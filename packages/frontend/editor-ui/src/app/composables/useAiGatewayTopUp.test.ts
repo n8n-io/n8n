@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { mockedStore } from '@/__tests__/utils';
-import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -26,10 +25,6 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 		goToCloudDashboard: goToCloudDashboardMock,
 	}),
 }));
-
-function setPaidPlan() {
-	mockedStore(useCloudPlanStore).currentPlanData = { userIsTrialing: false } as Cloud.PlanData;
-}
 
 describe('useAiGatewayTopUp', () => {
 	beforeEach(() => {
@@ -56,21 +51,11 @@ describe('useAiGatewayTopUp', () => {
 		});
 	});
 
-	it('does not send users to the Admin Panel when plan data has not loaded', async () => {
-		goToCloudDashboardMock.mockResolvedValue(true);
+	it('sends non-trial owners to the Cloud Admin Panel', async () => {
+		const usersStore = mockedStore(useUsersStore);
 		const uiStore = mockedStore(useUIStore);
-
-		const { openTopUp } = useAiGatewayTopUp();
-		await openTopUp({ source: 'settings_page' });
-
-		expect(goToCloudDashboardMock).not.toHaveBeenCalled();
-		expect(uiStore.openModalWithData).toHaveBeenCalled();
-	});
-
-	it('sends paid Cloud owners straight to the Cloud Admin Panel', async () => {
-		setPaidPlan();
+		usersStore.isInstanceOwner = true;
 		goToCloudDashboardMock.mockResolvedValue(true);
-		const uiStore = mockedStore(useUIStore);
 
 		const { openTopUp } = useAiGatewayTopUp();
 		await openTopUp({ source: 'settings_page' });
@@ -83,14 +68,28 @@ describe('useAiGatewayTopUp', () => {
 	});
 
 	it('reports the error when the Admin Panel link fails', async () => {
-		setPaidPlan();
-		goToCloudDashboardMock.mockRejectedValue(new Error('no auto-login code'));
+		const usersStore = mockedStore(useUsersStore);
 		const uiStore = mockedStore(useUIStore);
+		usersStore.isInstanceOwner = true;
+		goToCloudDashboardMock.mockRejectedValue(new Error('no auto-login code'));
 
 		const { openTopUp } = useAiGatewayTopUp();
 		await openTopUp({ source: 'settings_page' });
 
 		expect(showErrorMock).toHaveBeenCalled();
+		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+	});
+
+	it('does not open a modal when Admin Panel navigation does not happen', async () => {
+		const usersStore = mockedStore(useUsersStore);
+		const uiStore = mockedStore(useUIStore);
+		usersStore.isInstanceOwner = true;
+		goToCloudDashboardMock.mockResolvedValue(false);
+
+		const { openTopUp } = useAiGatewayTopUp();
+		await openTopUp({ source: 'settings_page' });
+
+		expect(goToCloudDashboardMock).toHaveBeenCalled();
 		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 	});
 
@@ -124,19 +123,5 @@ describe('useAiGatewayTopUp', () => {
 			data: { variant: 'memberTrial' },
 		});
 		expect(goToCloudDashboardMock).not.toHaveBeenCalled();
-	});
-
-	it('opens the license dialog for paid local owners', async () => {
-		const usersStore = mockedStore(useUsersStore);
-		const uiStore = mockedStore(useUIStore);
-		usersStore.isInstanceOwner = true;
-
-		const { openTopUp } = useAiGatewayTopUp();
-		await openTopUp({ source: 'settings_page' });
-
-		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-			name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-			data: { variant: 'owner' },
-		});
 	});
 });
