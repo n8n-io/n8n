@@ -1,5 +1,10 @@
-// `@types/js-nacl` omits the sealed-box helpers, which js-nacl has exported since 1.3.
-// See https://github.com/tonyg/js-nacl#anonymous-authenticated-encryption-crypto_box_seal
+// `@types/js-nacl@1.3.0` is incomplete for the sealed-box API we use:
+//   - `instantiate` is typed as returning `void`, but it returns the promise that
+//     resolves to the same Nacl instance it passes to the callback (and rejects if
+//     initialisation aborts). Fixed upstream in @types/js-nacl 1.3.1+.
+//   - `crypto_box_seal`/`crypto_box_seal_open` are missing entirely, though js-nacl
+//     has exported them since 1.3.
+// https://github.com/tonyg/js-nacl#anonymous-authenticated-encryption-crypto_box_seal
 import 'js-nacl';
 
 declare module 'js-nacl' {
@@ -11,4 +16,6 @@ declare module 'js-nacl' {
 			recipientSecretKey: Uint8Array,
 		) => Uint8Array;
 	}
+
+	function instantiate(cb: NaclCallback, opts?: NaclOpts): Promise<Nacl>;
 }
