@@ -1176,8 +1176,8 @@ importers:
         specifier: 3.0.3
         version: 3.0.3
       undici:
-        specifier: catalog:undici-v6
-        version: 6.28.0
+        specifier: catalog:undici-v7
+        version: 7.29.0
       zod:
         specifier: 3.25.76
         version: 3.25.76

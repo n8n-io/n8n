@@ -576,13 +576,12 @@ export class LmChatAnthropic implements INodeType {
 			};
 		};
 
-		const clientOptions: {
-			fetchOptions?: { dispatcher: ReturnType<typeof getProxyAgent> };
-			defaultHeaders?: Record<string, string>;
-		} = {
+		const clientOptions: NonNullable<ChatAnthropicInput['clientOptions']> = {
+			// undici v7 and the SDK's bundled fetch types disagree structurally
+			// (FormData iterators), so the dispatcher cannot carry its own type here.
 			fetchOptions: {
 				dispatcher: getProxyAgent(baseURL),
-			},
+			} as NonNullable<ChatAnthropicInput['clientOptions']>['fetchOptions'],
 		};
 
 		const customHeader = getCustomCredentialHeader(credentials);
