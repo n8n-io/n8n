@@ -1,4 +1,4 @@
-import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { PollerConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -20,9 +20,14 @@ import { createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { POLL_TRIGGER_TASK_TYPE } from '@/scheduling/poll-trigger-node/poll-trigger-task';
+import { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 
 import { createDueJobFactory, seedDueTask } from '../scheduling/shared/job-factory';
+
+// The duplicate-trigger-id gate is fail-closed until a boot scan runs; open it
+// so the config flag alone controls the paths under test.
+mockInstance(DurablePollerGateService, { allowed: true });
 
 describe('poll cursor atomicity', () => {
 	const nodeId = 'node-1';

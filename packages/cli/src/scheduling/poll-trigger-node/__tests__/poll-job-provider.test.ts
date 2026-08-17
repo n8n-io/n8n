@@ -6,6 +6,8 @@ import { Container } from '@n8n/di';
 import { NoOpPollJobManager, PollJobManager } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
+
 import { PollJobProvider } from '../poll-job-provider';
 import type { PollTriggerJobRegistrar } from '../poll-trigger-job-registrar';
 
@@ -20,6 +22,7 @@ describe('PollJobProvider', () => {
 		schedulerEnabled = true,
 		publicationEnabled = true,
 		enabledForPollTriggers = true,
+		durablePollersAllowed = true,
 		logger = mockLogger(),
 	} = {}) =>
 		new PollJobProvider(
@@ -27,6 +30,7 @@ describe('PollJobProvider', () => {
 			mock<GlobalConfig>({ scheduler: { enabled: schedulerEnabled, enabledForPollTriggers } }),
 			mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),
 			pollTriggerJobRegistrar,
+			mock<DurablePollerGateService>({ allowed: durablePollersAllowed }),
 		);
 
 	describe('init', () => {
@@ -35,30 +39,52 @@ describe('PollJobProvider', () => {
 				schedulerEnabled: true,
 				publicationEnabled: true,
 				enabledForPollTriggers: true,
+				durablePollersAllowed: true,
 				active: true,
 			},
 			{
 				schedulerEnabled: false,
 				publicationEnabled: true,
 				enabledForPollTriggers: true,
+				durablePollersAllowed: true,
 				active: false,
 			},
 			{
 				schedulerEnabled: true,
 				publicationEnabled: false,
 				enabledForPollTriggers: true,
+				durablePollersAllowed: true,
 				active: false,
 			},
 			{
 				schedulerEnabled: true,
 				publicationEnabled: true,
 				enabledForPollTriggers: false,
+				durablePollersAllowed: true,
+				active: false,
+			},
+			{
+				schedulerEnabled: true,
+				publicationEnabled: true,
+				enabledForPollTriggers: true,
+				durablePollersAllowed: false,
 				active: false,
 			},
 		] as const)(
-			'binds $active for scheduler=$schedulerEnabled publication=$publicationEnabled pollTriggers=$enabledForPollTriggers',
-			({ schedulerEnabled, publicationEnabled, enabledForPollTriggers, active }) => {
-				makeProvider({ schedulerEnabled, publicationEnabled, enabledForPollTriggers }).init();
+			'binds $active for scheduler=$schedulerEnabled publication=$publicationEnabled pollTriggers=$enabledForPollTriggers gate=$durablePollersAllowed',
+			({
+				schedulerEnabled,
+				publicationEnabled,
+				enabledForPollTriggers,
+				durablePollersAllowed,
+				active,
+			}) => {
+				makeProvider({
+					schedulerEnabled,
+					publicationEnabled,
+					enabledForPollTriggers,
+					durablePollersAllowed,
+				}).init();
 
 				const bound = Container.get(PollJobManager);
 				if (active) {

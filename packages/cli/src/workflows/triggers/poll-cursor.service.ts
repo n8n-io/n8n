@@ -6,6 +6,8 @@ import type { PollCursor } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
+import { DurablePollerGateService } from './durable-poller-gate.service';
+
 /** Narrows a stored cursor, which the persistence layer types more loosely. */
 const toPollCursor = (cursor: PollerCursor): PollCursor => cursor as PollCursor;
 
@@ -16,10 +18,11 @@ export class PollCursorService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly pollerConfig: PollerConfig,
+		private readonly durablePollerGateService: DurablePollerGateService,
 	) {}
 
 	get enabled(): boolean {
-		return this.pollerConfig.durableCursorsEnabled;
+		return this.pollerConfig.durableCursorsEnabled && this.durablePollerGateService.allowed;
 	}
 
 	/**

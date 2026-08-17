@@ -10,11 +10,11 @@ import {
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
+import { sleep } from '@n8n/utils/sleep';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
 import { BinaryDataConfig } from 'n8n-core';
-import { sleep } from '@n8n/utils/sleep';
 import { jsonParse } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
@@ -42,9 +42,10 @@ import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
-import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { UrlService } from '@/services/url.service';
+import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
+import { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 
 import { BaseCommand } from './base-command';
 
@@ -215,6 +216,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(DeprecationService).warn();
 
+		// Must complete before PollJobProvider.init() reads the verdict below.
+		await Container.get(DurablePollerGateService).init();
 		// Resolved lazily at activation time, so this only needs to run before the
 		// first workflow activation.
 		Container.get(PollJobProvider).init();

@@ -1,6 +1,6 @@
 import { ScheduledTaskStatus } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { DataSource, type EntityManager, type ObjectLiteral } from '@n8n/typeorm';
+import { DataSource, In, type EntityManager, type ObjectLiteral } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -118,6 +118,20 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
 			extra: { workflowId, nodeId },
 		});
+	}
+
+	/**
+	 * Removes all stored cursors of the given workflows and returns how many
+	 * rows were deleted. Used when durable pollers are refused for the instance:
+	 * with the gate closed, a node whose row is gone falls back to its
+	 * static-data cursor for good.
+	 */
+	async deleteWorkflowCursors(workflowIds: string[], ctx: OperationContext = {}): Promise<number> {
+		if (workflowIds.length === 0) return 0;
+		const result = await this.managerFor(ctx).delete(PollerState, {
+			workflowId: In(workflowIds),
+		});
+		return result.affected ?? 0;
 	}
 
 	private buildFenceClause(
