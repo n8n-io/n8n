@@ -39,11 +39,21 @@ function labelForKey(key: string): string {
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspended');
-		case 'suspension-waiting':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
-		case 'user-feedback':
-			return i18n.baseText('agentSessions.timeline.userFeedback');
+			return i18n.baseText('agentSessions.timeline.hitlRequest');
+		case 'hitl-response':
+			return i18n.baseText('agentSessions.timeline.hitlResponse');
+		case 'approval-requested':
+			return i18n.baseText('agentSessions.timeline.approvalRequested');
+		case 'hitl-requested':
+			return i18n.baseText('agentSessions.timeline.hitlRequested');
+		case 'approved':
+			return i18n.baseText('agentSessions.timeline.approved');
+		case 'responded':
+			return i18n.baseText('agentSessions.timeline.responseReceived');
+		case 'declined':
+			return i18n.baseText('agentSessions.timeline.declined');
+		case 'error':
+			return i18n.baseText('agentSessions.timeline.error');
 		default:
 			return key;
 	}

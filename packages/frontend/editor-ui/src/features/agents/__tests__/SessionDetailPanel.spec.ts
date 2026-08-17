@@ -9,7 +9,11 @@ vi.mock('../components/WorkflowExecutionLogViewer.vue', () => ({
 	default: { template: '<div data-test-id="wf-log-viewer"></div>' },
 }));
 vi.mock('../components/ToolIoView.vue', () => ({
-	default: { template: '<div data-test-id="tool-io-view"></div>' },
+	default: {
+		name: 'ToolIoView',
+		props: ['input', 'nodeParameters'],
+		template: '<div data-test-id="tool-io-view"></div>',
+	},
 }));
 vi.mock('vue-markdown-render', () => ({
 	default: { template: '<div data-test-id="markdown"><slot /></div>' },
@@ -195,6 +199,73 @@ describe('SessionDetailPanel — workflow branches', () => {
 	});
 });
 
+describe('SessionDetailPanel — HITL sequence', () => {
+	it('keeps the original node call focused on its input and configuration', () => {
+		const toolInput = { query: 'open entries' };
+		const nodeParameters = { operation: 'get', returnAll: true };
+		const w = mountIt({
+			kind: 'node',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'check_ledger',
+			toolInput,
+			toolOutcome: undefined,
+			nodeType: 'n8n-nodes-base.dataTableTool',
+			nodeTypeVersion: 1.1,
+			nodeDisplayName: 'Check ledger',
+			nodeParameters,
+		});
+
+		const toolIoView = w.getComponent({ name: 'ToolIoView' });
+		expect(toolIoView.props('input')).toEqual(toolInput);
+		expect(toolIoView.props('nodeParameters')).toEqual(nodeParameters);
+		expect(w.find('[data-test-id="detail-hitl-response-badge"]').exists()).toBe(false);
+	});
+
+	it('shows the linked tool and full request details on the HITL request', () => {
+		const w = mountIt({
+			kind: 'suspension',
+			executionId: 'e1',
+			timestamp: 100,
+			toolName: 'check_ledger',
+			hitlRequestType: 'approval',
+			hitlToolDisplayName: 'Check ledger',
+			hitlRequest: {
+				type: 'approval',
+				toolName: 'check_ledger',
+				args: { returnAll: true },
+			},
+		});
+
+		expect(w.text()).toContain('Approval request for Check ledger');
+		expect(w.text()).toContain('Check ledger');
+		expect(w.get('[data-test-id="hitl-request-details"]').text()).toContain('returnAll');
+	});
+
+	it.each([
+		['approved', 'Approved'],
+		['declined', 'Declined'],
+		['responded', 'Response received'],
+	] as const)('shows a %s status and response on the HITL response', (status, label) => {
+		const w = mountIt({
+			kind: 'hitl-response',
+			executionId: 'e2',
+			timestamp: 200,
+			toolName: 'check_ledger',
+			hitlRequestType: status === 'responded' ? 'interaction' : 'approval',
+			hitlResponseStatus: status,
+			hitlResponse: { value: status },
+		});
+
+		expect(w.get('[data-test-id="detail-hitl-response-badge"]').text()).toBe(label);
+		expect(w.text()).toContain(
+			status === 'responded' ? 'User response' : 'Approval response for Check ledger',
+		);
+		expect(w.get('[data-test-id="hitl-response-details"]').text()).toContain(status);
+		expect(w.find('[data-test-id="node-error-callout"]').exists()).toBe(false);
+	});
+});
+
 describe('SessionDetailPanel — other kinds', () => {
 	it('renders Input/Output JSON sections for generic tool calls', () => {
 		const w = mountIt({
@@ -237,13 +308,14 @@ describe('SessionDetailPanel — other kinds', () => {
 			nodeDisplayName: 'Telegram',
 			toolInput: { chatId: '1' },
 			toolOutput: { error: 'Node does not have any credentials set' },
-			toolSuccess: false,
+			toolOutcome: 'error',
 		});
 		const callout = w.find('[data-test-id="node-error-callout"]');
 		expect(callout.exists()).toBe(true);
 		expect(callout.text()).toContain(
 			'Tool experienced an error: Node does not have any credentials set',
 		);
+		expect(w.get('[data-test-id="detail-tool-error-badge"]').text()).toBe('Error');
 	});
 
 	it('falls back to the prefix-only message when the failed node output has no error string', () => {
@@ -276,9 +348,10 @@ describe('SessionDetailPanel — other kinds', () => {
 			nodeDisplayName: 'HTTP Request',
 			toolInput: { url: 'https://x' },
 			toolOutput: { status: 200 },
-			toolSuccess: true,
+			toolOutcome: 'success',
 		});
 		expect(w.find('[data-test-id="node-error-callout"]').exists()).toBe(false);
+		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(false);
 	});
 
 	it('renders markdown for user messages', () => {

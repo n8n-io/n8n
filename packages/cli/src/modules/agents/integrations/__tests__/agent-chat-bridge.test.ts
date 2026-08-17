@@ -400,7 +400,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenNthCalledWith(3, { markdown: 'After resume.' });
 		});
 
-		it('includes tool approval details when posting a suspension card', async () => {
+		it('posts tool approval cards without raw JSON input', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
@@ -450,13 +450,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						},
 						{
 							type: 'fields',
-							fields: [
-								{ label: 'Tool', value: 'GIPHY GIF Search' },
-								{
-									label: 'Input',
-									value: '{\n  "query": "project status",\n  "limit": 3\n}',
-								},
-							],
+							fields: [{ label: 'Tool', value: 'GIPHY GIF Search' }],
 						},
 						{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
 						{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },

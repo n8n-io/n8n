@@ -523,6 +523,15 @@ describe('SubAgentForegroundRunner', () => {
 				agentId: 'agent-1',
 				userMessage: null,
 				hitlStatus: 'resumed',
+				record: expect.objectContaining({
+					timeline: expect.arrayContaining([
+						expect.objectContaining({
+							type: 'hitl-response',
+							toolCallId: 'tool-call-1',
+							response: { approved: true },
+						}),
+					]),
+				}),
 			}),
 		);
 		expect(childAgent.close).toHaveBeenCalledTimes(1);

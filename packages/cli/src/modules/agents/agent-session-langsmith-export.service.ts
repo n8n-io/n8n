@@ -334,6 +334,18 @@ function buildEventRun(event: TimelineEvent, execution: AgentExecution, path: st
 				metadata: {},
 				children: [],
 			};
+		case 'hitl-response':
+			return {
+				path,
+				name: 'HITL response',
+				runType: 'chain',
+				startTime: event.timestamp,
+				endTime: event.timestamp,
+				inputs: { toolCallId: event.toolCallId },
+				outputs: toRecord(event.response),
+				metadata: {},
+				children: [],
+			};
 		case 'tool-call':
 			return {
 				path,
