@@ -91,4 +91,41 @@ describe('test GoogleDriveV2: file download', () => {
 			{ encoding: 'arraybuffer', json: false, returnFullResponse: true, useStream: true },
 		);
 	});
+
+	// Reproduces NODE-5539: downloading a Google Sheets file without an explicit
+	// conversion format falls back to the OpenOffice/ODF export MIME type, which
+	// Google no longer supports and now answers with HTTP 500. The fallback should
+	// match the UI dropdown default (text/csv), a format Google still exports.
+	it('should export Google Sheets with a supported format by default', async () => {
+		const nodeParameters = {
+			operation: 'download',
+			fileId: {
+				__rl: true,
+				value: 'fileIDxxxxxx',
+				mode: 'list',
+			},
+			options: {},
+		};
+
+		(transport.googleApiRequest as Mock)
+			.mockResolvedValueOnce({ mimeType: 'application/vnd.google-apps.spreadsheet', name: 'test' })
+			.mockResolvedValueOnce({
+				headers: { 'content-type': 'text/csv' },
+				body: Buffer.from(''),
+			});
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, driveNode);
+		await download.execute.call(fakeExecuteFunction, 0, { json: {} });
+
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.googleApiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/drive/v3/files/fileIDxxxxxx/export',
+			{},
+			{ mimeType: 'text/csv', supportsAllDrives: true },
+			undefined,
+			{ encoding: 'arraybuffer', json: false, returnFullResponse: true, useStream: true },
+		);
+	});
 });
