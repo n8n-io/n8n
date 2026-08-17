@@ -23,6 +23,13 @@ describe('resolveStreamStatus', () => {
 		);
 	});
 
+	it.each(['length', 'content-filter', 'error', 'other'] as const)(
+		'reports a run cut short by %s as errored',
+		(finishReason) => {
+			expect(resolveStreamStatus(streamResult({ finishReason }), false)).toBe('errored');
+		},
+	);
+
 	it('prefers timed-out over the step cap', () => {
 		expect(resolveStreamStatus(streamResult({ finishReason: 'max-iterations' }), true)).toBe(
 			'timed-out',
