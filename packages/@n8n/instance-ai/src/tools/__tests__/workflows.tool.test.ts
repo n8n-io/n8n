@@ -646,6 +646,22 @@ describe('workflows tool', () => {
 				['wf1', 'v7'],
 			]);
 		});
+
+		/**
+		 * The code returned here is what the agent edits and builds back into the same
+		 * saved workflow, so it has to carry node ids or the rebuild re-identifies every
+		 * node (INS-970, INS-1120, INS-1179).
+		 */
+		it('should ask codegen to emit node ids for get-as-code', async () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, 'full');
+
+			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
+
+			expect(vi.mocked(generateWorkflowCode)).toHaveBeenCalledWith(
+				expect.objectContaining({ includeNodeIds: true }),
+			);
+		});
 	});
 
 	describe('workflow source binding refresh', () => {
