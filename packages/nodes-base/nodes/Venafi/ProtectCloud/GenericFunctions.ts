@@ -1,4 +1,3 @@
-import * as nacl_factory from 'js-nacl';
 import get from 'lodash/get';
 import type {
 	IExecuteFunctions,
@@ -114,30 +113,22 @@ export async function encryptPassphrase(
 		pubKey = pubKeyResponse.key;
 	}
 
-	let encryptedKeyPass = '';
-	let encryptedKeyStorePass = '';
+	// js-nacl is an Emscripten build with a large per-instance heap, so it is only
+	// pulled in on this path rather than by every node that imports this module.
+	const nacl_factory = await import('js-nacl');
 
-	const promise = async () => {
-		return await new Promise((resolve, reject) => {
-			nacl_factory.instantiate((nacl: any) => {
-				try {
-					const passphraseUTF8 = nacl.encode_utf8(passphrase) as string;
-					const keyPassBuffer = nacl.crypto_box_seal(passphraseUTF8, Buffer.from(pubKey, 'base64'));
-					encryptedKeyPass = Buffer.from(keyPassBuffer as Buffer).toString('base64');
+	// `instantiate` resolves to the same instance it passes to the callback, so awaiting it
+	// surfaces initialisation failures as a rejection instead of never invoking the callback.
+	// The callback is still required: js-nacl throws if it is not a function.
+	const nacl = await nacl_factory.instantiate(() => {});
 
-					const storePassphraseUTF8 = nacl.encode_utf8(storePassphrase) as string;
-					const keyStorePassBuffer = nacl.crypto_box_seal(
-						storePassphraseUTF8,
-						Buffer.from(pubKey, 'base64'),
-					);
-					encryptedKeyStorePass = Buffer.from(keyStorePassBuffer as Buffer).toString('base64');
+	const keyBytes = new Uint8Array(Buffer.from(pubKey, 'base64'));
+	const encryptedKeyPass = Buffer.from(
+		nacl.crypto_box_seal(nacl.encode_utf8(passphrase), keyBytes),
+	).toString('base64');
+	const encryptedKeyStorePass = Buffer.from(
+		nacl.crypto_box_seal(nacl.encode_utf8(storePassphrase), keyBytes),
+	).toString('base64');
 
-					return resolve([encryptedKeyPass, encryptedKeyStorePass]);
-				} catch (error) {
-					return reject(error);
-				}
-			});
-		});
-	};
-	return await promise();
+	return [encryptedKeyPass, encryptedKeyStorePass];
 }
