@@ -38,7 +38,6 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
@@ -52,16 +51,6 @@ import { WorkflowService } from '@/workflows/workflow.service';
 const PUBLISH_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. publication blocked by an open workflow review (then `reason` and ' +
 	'`workflowReviewRequestId` are present) or a webhook path conflict.';
-
-/**
- * Keeps the legacy handler's mapping: a `ResponseError` already carries its status and body, and
- * anything else answers 400 rather than 500.
- */
-function rethrowAsPublicApiError(error: unknown): never {
-	if (error instanceof ResponseError) throw error;
-	if (error instanceof Error) throw new BadRequestError(error.message);
-	throw error;
-}
 
 function toPublicJson(value: unknown): Record<string, unknown> | null {
 	return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -353,18 +342,14 @@ export class WorkflowsPublicController {
 		@Param('workflowId') workflowId: string,
 		@Body body: PublishWorkflowPublicDto,
 	): Promise<WorkflowPublishPublicDto> {
-		try {
-			const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
-				versionId: body.versionId,
-				name: body.name,
-				description: body.description,
-				source: 'api',
-			});
+		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
+			versionId: body.versionId,
+			name: body.name,
+			description: body.description,
+			source: 'api',
+		});
 
-			return this.toWorkflowPublishPublicDto(workflow);
-		} catch (error) {
-			return rethrowAsPublicApiError(error);
-		}
+		return this.toWorkflowPublishPublicDto(workflow);
 	}
 
 	@Post('/:workflowId/unpublish')
@@ -382,15 +367,11 @@ export class WorkflowsPublicController {
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	): Promise<WorkflowPublicDto> {
-		try {
-			const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId, {
-				source: 'api',
-			});
+		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId, {
+			source: 'api',
+		});
 
-			return this.toWorkflowPublicDto(workflow);
-		} catch (error) {
-			return rethrowAsPublicApiError(error);
-		}
+		return this.toWorkflowPublicDto(workflow);
 	}
 
 	@Get('/:workflowId/history')
