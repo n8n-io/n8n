@@ -2,8 +2,9 @@ import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 
 import { AdmittanceRejectedError } from '../../admittance';
-import type { JsonValue } from '../../common';
+import { UnimplementedError, type JsonValue } from '../../common';
 import type { StartExecutionService } from '../../execution/start-execution.service';
+import { GraphValidationError } from '../../graph';
 
 const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 	z.union([
@@ -68,6 +69,14 @@ export function createWorkflowExecutionsRouter(startExecution: StartExecutionSer
 		} catch (error) {
 			if (error instanceof AdmittanceRejectedError) {
 				res.status(429).json({ error: 'admittance_rejected', reason: error.reason });
+				return;
+			}
+			if (error instanceof GraphValidationError) {
+				res.status(400).json({ error: 'invalid_graph', reason: error.message });
+				return;
+			}
+			if (error instanceof UnimplementedError) {
+				res.status(501).json({ error: 'unimplemented', reason: error.message });
 				return;
 			}
 			throw error;

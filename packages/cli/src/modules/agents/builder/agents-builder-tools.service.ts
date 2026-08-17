@@ -1,6 +1,16 @@
-import type { BuiltTool, CredentialProvider } from '@n8n/agents';
-import { isAbortError } from '@n8n/agents';
-import { Tool } from '@n8n/agents/tool';
+import {
+	isAbortError,
+	type BuiltTool,
+	type CredentialProvider,
+	type InterruptibleToolContext,
+} from '@n8n/agents';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	APPROVAL_SUSPEND_SCHEMA,
+	Tool,
+	type ApprovalResumePayload,
+	type ApprovalSuspendPayload,
+} from '@n8n/agents/tool';
 import {
 	applyNativeWebSearchDefaultOn,
 	getProviderPrefix,
@@ -10,6 +20,7 @@ import {
 	type AgentConfigValidationMessages,
 } from '@n8n/ai-utilities/agent-config';
 import {
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
@@ -48,10 +59,17 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
+import {
+	AgentTestRunService,
+	collectStandardApprovals,
+	InvalidAgentTestRunCheckpointError,
+	type AgentTestRunResult,
+} from '../agent-test-run.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { BuilderTrackFn } from './builder-config-telemetry';
+import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
@@ -70,6 +88,7 @@ import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-templa
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 
@@ -104,6 +123,49 @@ const createSkillInputSchema = z
 	.strict();
 
 type CreateSkillInput = z.infer<typeof createSkillInputSchema>;
+
+const readSkillInputSchema = z
+	.object({
+		skillId: z.string().min(1).describe('Persisted target-agent skill id to read.'),
+		referencePaths: z
+			.array(z.string().min(1))
+			.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
+			.optional()
+			.describe(
+				'Optional reference paths whose content is needed. Omit to receive paths and UTF-8 byte sizes only.',
+			),
+	})
+	.strict();
+
+type ReadSkillInput = z.infer<typeof readSkillInputSchema>;
+
+const updateSkillFieldsSchema = z
+	.object({
+		name: agentSkillSchema.shape.name.optional(),
+		description: agentSkillSchema.shape.description.optional(),
+		instructions: agentSkillSchema.shape.instructions.optional(),
+		allowedTools: agentSkillSchema.shape.allowedTools.unwrap().min(1).nullable().optional(),
+		references: agentSkillSchema.shape.references
+			.unwrap()
+			.refine((references) => references.length > 0, 'Pass null to clear references.')
+			.nullable()
+			.optional(),
+	})
+	.strict()
+	.refine((updates) => Object.keys(updates).length > 0, {
+		message: 'At least one skill field must be supplied.',
+	});
+
+const updateSkillInputSchema = z
+	.object({
+		skillId: z.string().min(1).describe('Persisted target-agent skill id to update.'),
+		updates: updateSkillFieldsSchema.describe(
+			'Only the fields to change. Pass null for allowedTools or references to remove that field; empty arrays are invalid.',
+		),
+	})
+	.strict();
+
+type UpdateSkillInput = z.infer<typeof updateSkillInputSchema>;
 
 interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
@@ -201,6 +263,7 @@ export class AgentsBuilderToolsService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentPublishService: AgentPublishService,
+		private readonly agentTestRunService: AgentTestRunService,
 		private readonly aiService: AiService,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly outboundHttp: OutboundHttp,
@@ -611,6 +674,137 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const callAgentTool = new Tool(BUILDER_TOOLS.CALL_AGENT)
+			.description(
+				'Tests the draft agent through built-in Preview chat. It does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. ' +
+					'Pass the returned sessionId on later calls to continue the same conversation; omit it to start a new one. ' +
+					'The draft uses its real configured tools and credentials, so external side effects are possible. ' +
+					'Standard tool approvals pause this test until the user approves or rejects them in chat. ' +
+					'Unsupported interactive requests return approval_required with a Preview path.',
+			)
+			.input(
+				z.object({
+					message: z.string().trim().min(1).describe('Message to send to the target agent'),
+					sessionId: z
+						.string()
+						.trim()
+						.min(1)
+						.optional()
+						.describe('Session ID from a previous call_agent result'),
+				}),
+			)
+			.suspend(APPROVAL_SUSPEND_SCHEMA)
+			.resume(APPROVAL_RESUME_SCHEMA)
+			.handler(
+				async (
+					{ message, sessionId }: { message: string; sessionId?: string },
+					ctx: InterruptibleToolContext<ApprovalSuspendPayload, ApprovalResumePayload>,
+				) => {
+					if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
+						return {
+							status: 'error',
+							code: 'forbidden',
+							message: 'You do not have permission to run agents in this project.',
+						};
+					}
+
+					const previewPath = buildAgentPreviewPath(projectId, agentId);
+					try {
+						let result: AgentTestRunResult;
+						if (ctx.resumeData === undefined) {
+							result = await this.agentTestRunService.executeDraftRun({
+								agentId,
+								projectId,
+								message,
+								sessionId,
+								credentialProvider,
+								user,
+								source: 'instance-ai',
+								...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
+							});
+						} else {
+							result = await this.agentTestRunService.resumeDraftApproval({
+								agentId,
+								projectId,
+								continuation: ctx.continuation,
+								approved: ctx.resumeData.approved,
+								user,
+								source: 'instance-ai',
+								...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
+							});
+						}
+
+						if (result.status === 'session_not_found') {
+							return {
+								status: 'error',
+								code: 'session_not_found',
+								message: 'Session not found.',
+							};
+						}
+						if (result.status === 'agent_misconfigured') {
+							return {
+								status: 'error',
+								code: 'agent_misconfigured',
+								message: "This agent isn't ready to run yet. Finish configuring it and try again.",
+								missing: result.missing,
+							};
+						}
+						if (result.status === 'completed') return result;
+
+						const approvals = collectStandardApprovals(result);
+						const firstApproval = approvals?.[0];
+						if (firstApproval) {
+							const { continuation, ...approval } = firstApproval;
+							return await ctx.suspend(approval, { continuation });
+						}
+
+						const cancelled = await this.agentTestRunService.cancelSuspendedRuns({
+							agentId,
+							suspensions: result.suspensions,
+							userId: user.id,
+						});
+						if (!cancelled) {
+							return {
+								status: 'error',
+								code: 'cancellation_failed',
+								message:
+									'This test needs approval, but its suspended run could not be cancelled. Open Preview before continuing this session.',
+								sessionId: result.sessionId,
+								previewPath,
+							};
+						}
+
+						return {
+							status: 'approval_required',
+							response: result.response,
+							sessionId: result.sessionId,
+							...(result.executionId ? { executionId: result.executionId } : {}),
+							suspensions: result.suspensions.map(({ runId, toolCallId, toolName }) => ({
+								runId,
+								toolCallId,
+								toolName,
+							})),
+							previewPath,
+						};
+					} catch (error) {
+						if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(error)) throw error;
+						if (error instanceof InvalidAgentTestRunCheckpointError) {
+							return {
+								status: 'error',
+								code: error.code,
+								message: error.message,
+							};
+						}
+						return {
+							status: 'error',
+							code: 'execution_failed',
+							message: error instanceof Error ? error.message : 'Agent test run failed.',
+						};
+					}
+				},
+			)
+			.build();
+
 		const modelLookup: ModelLookup = {
 			// `list` resolves the n8n Connect managed tag to the synthetic gateway
 			// credential internally, so no managed branch is needed here.
@@ -632,6 +826,7 @@ export class AgentsBuilderToolsService {
 			listSubAgentsTool,
 			this.withConfigMutationMarker(publishAgentTool, agentId),
 			this.withConfigMutationMarker(unpublishAgentTool, agentId),
+			callAgentTool,
 			buildResolveLlmTool({
 				credentialProvider,
 				modelLookup,
@@ -658,6 +853,7 @@ export class AgentsBuilderToolsService {
 			}),
 			buildAskCredentialTool({
 				credentialProvider,
+				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				listIntegrationCredentialIds: async () => {
 					const agent = await this.agentsService.findById(agentId, projectId);
@@ -669,6 +865,7 @@ export class AgentsBuilderToolsService {
 			}),
 			buildAskEmbeddingCredentialTool({
 				credentialProvider,
+				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
 				track,
@@ -704,6 +901,10 @@ export class AgentsBuilderToolsService {
 						this.agentIntegrationPersistenceService
 							.listChatIntegrations()
 							.map((integration) => integration.type),
+					listAiGatewayManagedCredentialTypes: async () => {
+						const agent = await this.agentsService.findById(agentId, projectId);
+						return listAiGatewayManagedCredentialTypes(agent?.schema?.tools, this.nodeTypes);
+					},
 				}),
 				agentId,
 			),
@@ -834,6 +1035,118 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const readSkillTool = new Tool(BUILDER_TOOLS.READ_SKILL)
+			.description(
+				'Read an existing target-agent skill by id. The response includes its instructions, but ' +
+					'references are returned as { path, sizeBytes } metadata by default to keep context small. ' +
+					'Pass only the referencePaths whose content you need. Returns { ok: true, id, skill } or ' +
+					'{ ok: false, errors }.',
+			)
+			.input(readSkillInputSchema)
+			.handler(async ({ skillId, referencePaths = [] }: ReadSkillInput) => {
+				try {
+					const skill = await this.agentSkillsService.getSkill(agentId, projectId, skillId);
+					const { references, ...body } = skill;
+					const requestedPaths = new Set(referencePaths);
+					const knownPaths = new Set(references?.map((reference) => reference.path) ?? []);
+					const missingPaths = referencePaths.filter((path) => !knownPaths.has(path));
+					if (missingPaths.length > 0) {
+						return {
+							ok: false,
+							errors: [
+								{
+									message: `Reference path${missingPaths.length === 1 ? '' : 's'} not found: ${missingPaths.join(', ')}`,
+								},
+							],
+						};
+					}
+
+					return {
+						ok: true,
+						id: skillId,
+						skill: {
+							...body,
+							...(references
+								? {
+										references: references.map((reference) => ({
+											path: reference.path,
+											sizeBytes: new TextEncoder().encode(reference.content).byteLength,
+											...(requestedPaths.has(reference.path) ? { content: reference.content } : {}),
+										})),
+									}
+								: {}),
+						},
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
+		const listSkillsTool = new Tool(BUILDER_TOOLS.LIST_SKILLS)
+			.description(
+				'List lightweight metadata for persisted target-agent skills. Use this to identify which ' +
+					'existing skill owns a capability before reading or creating a skill. Returns ' +
+					'{ ok: true, skills: [{ id, name, description }] } or { ok: false, errors }.',
+			)
+			.input(z.object({}).strict())
+			.handler(async () => {
+				try {
+					const skills = await this.agentSkillsService.listSkills(agentId, projectId);
+					return {
+						ok: true,
+						skills: Object.entries(skills).map(([id, skill]) => ({
+							id,
+							name: skill.name,
+							description: skill.description,
+						})),
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
+		const updateSkillTool = new Tool(BUILDER_TOOLS.UPDATE_SKILL)
+			.description(
+				'Update selected fields of an existing target-agent skill in place, preserving its id and ' +
+					'agent config reference. Pass null for allowedTools to remove the tool restriction, or null ' +
+					'for references to remove all references; empty arrays are invalid. Returns ' +
+					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }.',
+			)
+			.input(updateSkillInputSchema)
+			.handler(async ({ skillId, updates }: UpdateSkillInput) => {
+				const { allowedTools, references, ...requiredUpdates } = updates;
+				const normalizedUpdates = {
+					...requiredUpdates,
+					...(allowedTools !== undefined ? { allowedTools: allowedTools ?? undefined } : {}),
+					...(references !== undefined ? { references: references ?? undefined } : {}),
+				};
+
+				try {
+					const updated = await this.agentSkillsService.updateSkill(
+						agentId,
+						projectId,
+						skillId,
+						normalizedUpdates,
+						{ user, modifiedBy: 'builder' },
+					);
+					return { ok: true, id: updated.id, name: updated.skill.name };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
 		const createTasksTool = new Tool(BUILDER_TOOLS.CREATE_TASKS)
 			.description(
 				'Create one or more recurring scheduled tasks for the target agent (name + objective + cron ' +
@@ -933,6 +1246,9 @@ export class AgentsBuilderToolsService {
 		return [
 			buildCustomToolTool,
 			createSkillsTool,
+			listSkillsTool,
+			readSkillTool,
+			this.withConfigMutationMarker(updateSkillTool, agentId),
 			this.withConfigMutationMarker(createTasksTool, agentId),
 			listWorkflowsTool,
 			buildGetResourceLocatorOptionsTool({

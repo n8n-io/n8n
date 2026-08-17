@@ -1,6 +1,6 @@
+import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 import { BreakingChangeRule } from '@n8n/decorators';
 
-import { CommunityPackagesConfig } from '../../../community-packages/community-packages.config';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -8,9 +8,29 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
+/**
+ * Mirrors the effective `enabled` flag of the community-packages module's
+ * `CommunityPackagesConfig` (same env vars, same sanitize rule) so this rule
+ * doesn't import across module boundaries.
+ */
+@Config
+export class CommunityPackagesEnabledConfig {
+	@Env('N8N_COMMUNITY_PACKAGES_ENABLED')
+	enabled: boolean = true;
+
+	@Env('N8N_DISABLED_MODULES')
+	private disabledModules: CommaSeparatedStringArray<string> = [];
+
+	sanitize() {
+		if (this.disabledModules.includes('community-packages')) {
+			this.enabled = false;
+		}
+	}
+}
+
 @BreakingChangeRule({ version: 'v3' })
 export class UnverifiedPackagesRule implements IBreakingChangeInstanceRule {
-	constructor(private readonly communityPackagesConfig: CommunityPackagesConfig) {}
+	constructor(private readonly communityPackagesConfig: CommunityPackagesEnabledConfig) {}
 
 	id: string = 'unverified-packages-v3';
 

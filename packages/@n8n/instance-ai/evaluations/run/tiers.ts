@@ -11,4 +11,4 @@
 // ---------------------------------------------------------------------------
 
 /** Tiers whose runs assert the absolute gate instead of comparing to a baseline. */
-export const GATED_TIER_NAMES: ReadonlySet<string> = new Set(['pr']);
+export const GATED_TIER_NAMES: ReadonlySet<string> = new Set(['pr', 'mcp-gate']);

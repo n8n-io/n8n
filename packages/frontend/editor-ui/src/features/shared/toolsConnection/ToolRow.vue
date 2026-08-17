@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
-import { N8nButton, N8nIcon, N8nNodeIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
+import ToolIcon from './ToolIcon.vue';
 import { TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, type ToolConnectionItem } from './types';
 import { resolveToolItemIcon } from './toolItemIcon';
 
@@ -111,17 +112,7 @@ function handleConnect() {
 			</template>
 
 			<template v-else>
-				<span :class="$style.iconWrapper" aria-hidden="true">
-					<N8nNodeIcon
-						v-if="resolvedIcon"
-						:type="resolvedIcon.type"
-						:src="resolvedIcon.type === 'file' ? resolvedIcon.src : undefined"
-						:name="resolvedIcon.type === 'icon' ? resolvedIcon.name : undefined"
-						:color="resolvedIcon.type === 'icon' ? resolvedIcon.color : undefined"
-						:size="20"
-					/>
-					<N8nIcon v-else :icon="placeholderIcon" :size="20" :class="$style.iconFallback" />
-				</span>
+				<ToolIcon :source="resolvedIcon" :fallback-icon="placeholderIcon" />
 				<span :class="$style.text">
 					<span :class="$style.titleRow">
 						<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>
@@ -243,22 +234,6 @@ function handleConnect() {
 
 .row--workflow {
 	min-height: 48px;
-}
-
-.iconWrapper {
-	flex-shrink: 0;
-	width: 40px;
-	height: 40px;
-	border-radius: 50%;
-	background: var(--color--background--light-1);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	overflow: hidden;
-}
-
-.iconFallback {
-	color: var(--color--text--tint-1);
 }
 
 .workflowIcon {

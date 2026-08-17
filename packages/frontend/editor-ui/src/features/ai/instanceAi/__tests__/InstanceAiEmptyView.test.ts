@@ -44,7 +44,6 @@ const {
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
-		workflowPreviewEnabled: { value: true }, // Experiment cleanup: remove with InstanceAiWorkflowPreviewSuggestionsExperiment
 		splitBelowInputVariant: { value: false },
 		personalizedPromptVariant: { value: undefined as string | undefined },
 		personalizedPromptFormat: { value: null as 'cards' | 'list' | null },
@@ -84,6 +83,7 @@ const {
 	},
 	appSettingsStoreMock: {
 		isCloudDeployment: false,
+		settings: { releaseChannel: 'stable' },
 	},
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({
 		type: 'prompt',
@@ -222,9 +222,6 @@ vi.mock('@/experiments/instanceAiPersonalizedPromptSuggestions', () => ({
 }));
 
 vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
-	useInstanceAiWorkflowPreviewSuggestionsExperiment: () => ({
-		isFeatureEnabled: experimentMocks.workflowPreviewEnabled,
-	}),
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS: workflowPreviewSuggestions,
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION: 'v3-workflow-preview',
 	WorkflowPreviewSuggestions: workflowPreviewSuggestionsComponent,
@@ -445,7 +442,6 @@ describe('InstanceAiEmptyView', () => {
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
-		experimentMocks.workflowPreviewEnabled.value = true; // Experiment cleanup: remove with InstanceAiWorkflowPreviewSuggestionsExperiment
 		experimentMocks.splitBelowInputVariant.value = false;
 		experimentMocks.personalizedPromptVariant.value = undefined;
 		experimentMocks.personalizedPromptFormat.value = null;
@@ -464,6 +460,14 @@ describe('InstanceAiEmptyView', () => {
 		vi.useRealTimers();
 		vi.clearAllMocks();
 		vi.unstubAllGlobals();
+	});
+
+	it('resets the browser tab title left behind by the previous thread', () => {
+		document.title = 'Previous thread - n8n';
+
+		renderView();
+
+		expect(document.title).toBe('AI Assistant - n8n');
 	});
 
 	it('passes the fixed suggestions to the empty-state composer', () => {
@@ -607,9 +611,7 @@ describe('InstanceAiEmptyView', () => {
 		vi.useRealTimers();
 	});
 
-	it('passes workflow preview suggestions, component, and catalog version when workflow preview experiment is enabled', () => {
-		experimentMocks.workflowPreviewEnabled.value = true;
-
+	it('passes workflow preview suggestions, component, and catalog version', () => {
 		const { getByTestId, getByText } = renderView();
 
 		expect(getByText('What do you want to automate?')).toBeVisible();

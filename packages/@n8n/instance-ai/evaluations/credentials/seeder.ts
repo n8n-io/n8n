@@ -49,6 +49,11 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		envVar: 'EVAL_GOOGLE_DRIVE_ACCESS_TOKEN',
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
 	},
+	googleSheetsOAuth2Api: {
+		defaultName: '[eval] Google Sheets',
+		envVar: 'EVAL_GOOGLE_SHEETS_ACCESS_TOKEN',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
 	// MCP-registry-synthesized credential types (agent MCP servers). Creating
 	// them requires the backend to run with the `mcp-registry` module enabled;
 	// placeholder tokens are fine — agent eval runs mock the MCP wire.
@@ -85,6 +90,10 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 	httpHeaderAuth: {
 		defaultName: '[eval] HTTP Header',
 		buildData: () => ({ name: 'Authorization', value: 'Bearer eval-placeholder' }),
+	},
+	httpBearerAuth: {
+		defaultName: '[eval] HTTP Bearer',
+		buildData: (token) => ({ token }),
 	},
 	httpBasicAuth: {
 		defaultName: '[eval] HTTP Basic',

@@ -5,6 +5,7 @@ import AppModals from '@/app/components/app/AppModals.vue';
 import AppCommandBar from '@/app/components/app/AppCommandBar.vue';
 import AppLayout from '@/app/components/app/AppLayout.vue';
 import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
+import E2ETestModeMarker from '@/app/components/app/E2ETestModeMarker.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useBackendStatus } from '@/app/composables/useBackendStatus';
@@ -135,6 +136,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		<AppCommandBar />
 		<template #overlays>
 			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
+			<E2ETestModeMarker />
 		</template>
 		<template #aside>
 			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />

@@ -9,6 +9,7 @@ import { ProjectSerializer } from './project.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { FolderExporter } from '../folder/folder.exporter';
 import type { FolderExportResult } from '../folder/folder.exporter';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
@@ -22,6 +23,7 @@ export interface ProjectExportRequest {
 	projectIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
+	workflowVersionPolicy: WorkflowVersionPolicy;
 }
 
 interface ProjectExportResult {
@@ -111,6 +113,7 @@ export class ProjectExporter {
 			folderIds,
 			writer: request.writer,
 			includeTags: request.includeTags,
+			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix: target,
 		});
 	}
@@ -130,6 +133,7 @@ export class ProjectExporter {
 			workflowIds: rootWorkflowIds,
 			writer: request.writer,
 			includeTags: request.includeTags,
+			workflowVersionPolicy: request.workflowVersionPolicy,
 			basePrefix: target,
 		});
 	}

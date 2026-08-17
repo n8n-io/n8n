@@ -623,6 +623,38 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(close).toHaveBeenCalledTimes(1);
 	});
 
+	// Killed for TIME, not by the builder. The harness classifies this off the wording
+	// ("exceeded its …s eval budget", `isServerBudgetStop`) and routes it to the timeout
+	// path; reported as a plain `Agent run failed:` it scored as a builder verdict —
+	// exactly the misattribution the budget plumbing exists to prevent.
+	it('reports a budget abort in the words the harness classifies as a timeout', async () => {
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				generate: vi
+					.fn()
+					.mockImplementation(async (_message, opts: { abortSignal: AbortSignal }) => {
+						// What AbortSignal.timeout does once the budget elapses.
+						await new Promise((resolve) => setTimeout(resolve, 5));
+						throw Object.assign(new Error('The operation was aborted due to timeout'), {
+							name: 'TimeoutError',
+							signalAborted: opts.abortSignal.aborted,
+						});
+					}),
+				close: vi.fn().mockResolvedValue(undefined),
+			},
+			toolRegistry: {},
+		});
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, {
+			...request,
+			timeoutMs: 1,
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.errors[0]).toMatch(/exceeded its \d+s eval budget/);
+		expect(result.errors[0]).not.toMatch(/Agent run failed/);
+	});
+
 	it('flips success off when the run finishes with a model error', async () => {
 		reconstructFromAgentEntity.mockResolvedValue({
 			agent: {

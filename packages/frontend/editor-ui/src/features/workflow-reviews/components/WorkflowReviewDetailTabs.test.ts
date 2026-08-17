@@ -16,36 +16,47 @@ vi.mock('./WorkflowReviewChangesSection.vue', () => ({
 	},
 }));
 
-const renderComponent = createComponentRenderer(WorkflowReviewDetailTabs, {
-	global: {
-		stubs: {
-			N8nTooltip: {
-				props: ['disabled', 'content'],
-				template: `
-					<div data-test-id="workflow-review-decision-tooltip" :data-disabled="disabled" :data-content="content">
-						<slot />
-					</div>`,
-			},
-		},
+vi.mock('./WorkflowReviewActivityFeed.vue', () => ({
+	default: {
+		name: 'WorkflowReviewActivityFeed',
+		template: '<div data-test-id="workflow-review-activity-feed"><slot name="header" /></div>',
 	},
-});
+}));
 
-function decisionButtons(getByTestId: (id: string) => HTMLElement) {
-	return [
-		getByTestId('workflow-review-approve-button'),
-		getByTestId('workflow-review-request-changes-button'),
-	];
-}
+vi.mock('./WorkflowReviewCommentComposer.vue', () => ({
+	default: {
+		name: 'WorkflowReviewCommentComposer',
+		props: ['canComment'],
+		template:
+			'<div data-test-id="workflow-review-comment-composer" :data-can-comment="canComment" />',
+	},
+}));
 
-/**
- * The tab bar renders a tooltip per tab, which the N8nTooltip stub matches too,
- * so walk up from the button rather than querying the test id globally.
- */
-function decisionTooltip(button: HTMLElement) {
-	const tooltip = button.closest('[data-test-id="workflow-review-decision-tooltip"]');
-	if (!tooltip) throw new Error('decision button is not wrapped in a tooltip');
-	return tooltip;
-}
+vi.mock('./WorkflowReviewDetailMetadata.vue', () => ({
+	default: {
+		name: 'WorkflowReviewDetailMetadata',
+		template: '<aside data-test-id="workflow-review-detail-metadata" />',
+	},
+}));
+
+// The real popover cannot open in jsdom (Reka UI), so expose what this component passes
+// down as attributes and let a button stand in for the comment it reports back.
+vi.mock('./WorkflowReviewDecisionPopover.vue', () => ({
+	default: {
+		name: 'WorkflowReviewDecisionPopover',
+		props: ['deciding', 'viewerCanDecide', 'viewerCanComment', 'ineligibilityHint'],
+		template: `
+			<div
+				data-test-id="workflow-review-decision-popover"
+				:data-can-decide="viewerCanDecide"
+				:data-ineligibility-hint="ineligibilityHint"
+			>
+				<button data-test-id="emit-comment-posted" @click="$emit('comment-posted')" />
+			</div>`,
+	},
+}));
+
+const renderComponent = createComponentRenderer(WorkflowReviewDetailTabs);
 
 function makeInboxItem(overrides: Partial<WorkflowReviewInboxItem> = {}): WorkflowReviewInboxItem {
 	return {
@@ -55,6 +66,7 @@ function makeInboxItem(overrides: Partial<WorkflowReviewInboxItem> = {}): Workfl
 		workflowName: 'My workflow',
 		workflowVersionId: null,
 		requester: null,
+		authors: [],
 		reviewers: [],
 		decision: 'pending',
 		state: 'open',
@@ -86,6 +98,7 @@ function makeDetail(
 		workflows: [makeWorkflowDetail()],
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
+		viewerCanComment: true,
 		...overrides,
 	};
 }
@@ -95,7 +108,7 @@ describe('WorkflowReviewDetailTabs', () => {
 		createTestingPinia();
 	});
 
-	it('emits update:tab when a tab is selected', async () => {
+	it('lets the viewer switch between the Activity and Changes tabs', async () => {
 		const { getByText, emitted } = renderComponent({
 			props: { review: makeDetail(), tab: 'activity', deciding: false },
 		});
@@ -125,6 +138,66 @@ describe('WorkflowReviewDetailTabs', () => {
 			});
 
 			expect(getByTestId('workflow-review-no-description')).toBeInTheDocument();
+		});
+
+		// The description has to sit inside the feed's scroll container for the two to scroll
+		// together, and the composer has to stay outside it to keep its place at the bottom.
+		it('scrolls the description with the feed and keeps the composer below both', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					review: makeDetail({ description: 'Adds retry logic' }),
+					tab: 'activity',
+					deciding: false,
+				},
+			});
+
+			const feed = getByTestId('workflow-review-activity-feed');
+			const description = getByTestId('workflow-review-description');
+			const composer = getByTestId('workflow-review-comment-composer');
+
+			expect(feed).toContainElement(description);
+			expect(feed.compareDocumentPosition(composer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		});
+
+		it.each([
+			['lets a viewer who may comment use the composer', true],
+			['locks the composer for a viewer who may not', false],
+		])('%s', (_label, viewerCanComment) => {
+			const { getByTestId } = renderComponent({
+				props: { review: makeDetail({ viewerCanComment }), tab: 'activity', deciding: false },
+			});
+
+			expect(getByTestId('workflow-review-comment-composer')).toHaveAttribute(
+				'data-can-comment',
+				String(viewerCanComment),
+			);
+		});
+
+		it('defaults the composer to read-only on a review whose detail never loaded', () => {
+			const { getByTestId } = renderComponent({
+				props: { review: makeInboxItem(), tab: 'activity', deciding: false },
+			});
+
+			expect(getByTestId('workflow-review-comment-composer')).toHaveAttribute(
+				'data-can-comment',
+				'false',
+			);
+		});
+
+		it('still lets the viewer comment on a closed review', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					review: makeDetail({ state: 'closed', decision: 'approved' }),
+					tab: 'activity',
+					deciding: false,
+				},
+			});
+
+			expect(getByTestId('workflow-review-activity-feed')).toBeInTheDocument();
+			expect(getByTestId('workflow-review-comment-composer')).toHaveAttribute(
+				'data-can-comment',
+				'true',
+			);
 		});
 	});
 
@@ -182,18 +255,19 @@ describe('WorkflowReviewDetailTabs', () => {
 	});
 
 	describe('decision actions', () => {
-		it('emits decisions from the action buttons', () => {
+		// The trigger lives outside the tab panel, so a comment posted from the Changes tab
+		// would otherwise succeed with nothing to show for it.
+		it('switches to the activity tab once a comment was posted from the popover', () => {
 			const { getByTestId, emitted } = renderComponent({
-				props: { review: makeDetail(), tab: 'activity', deciding: false },
+				props: { review: makeDetail(), tab: 'changes', deciding: false },
 			});
 
-			getByTestId('workflow-review-approve-button').click();
-			getByTestId('workflow-review-request-changes-button').click();
+			getByTestId('emit-comment-posted').click();
 
-			expect(emitted('decide')).toEqual([['approved'], ['changes_requested']]);
+			expect(emitted('update:tab')).toEqual([['activity']]);
 		});
 
-		it('hides the action buttons for a closed review', () => {
+		it('offers no decision on a closed review', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					review: makeDetail({ state: 'closed', decision: 'approved' }),
@@ -202,41 +276,28 @@ describe('WorkflowReviewDetailTabs', () => {
 				},
 			});
 
-			expect(queryByTestId('workflow-review-approve-button')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-review-request-changes-button')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-review-decision-popover')).not.toBeInTheDocument();
 		});
 
-		it('hides the action buttons on a review whose detail payload never loaded', () => {
+		it('offers no decision on a review whose detail payload never loaded', () => {
 			const { queryByTestId } = renderComponent({
 				props: { review: makeInboxItem(), tab: 'activity', deciding: false },
 			});
 
-			expect(queryByTestId('workflow-review-approve-button')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-review-request-changes-button')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-review-decision-popover')).not.toBeInTheDocument();
 		});
 
-		it('disables the action buttons while deciding', () => {
-			const { getByTestId } = renderComponent({
-				props: { review: makeDetail(), tab: 'activity', deciding: true },
-			});
-
-			expect(getByTestId('workflow-review-approve-button')).toBeDisabled();
-			expect(getByTestId('workflow-review-request-changes-button')).toBeDisabled();
-		});
-
-		// Each button carries its own tooltip, so both must agree.
-		it('keeps the buttons enabled and the tooltips off when the viewer can decide', () => {
+		it('leaves the decision actions open with no hint when the viewer can decide', () => {
 			const { getByTestId } = renderComponent({
 				props: { review: makeDetail(), tab: 'activity', deciding: false },
 			});
 
-			for (const button of decisionButtons(getByTestId)) {
-				expect(button).not.toBeDisabled();
-				expect(decisionTooltip(button)).toHaveAttribute('data-disabled', 'true');
-			}
+			const popover = getByTestId('workflow-review-decision-popover');
+			expect(popover).toHaveAttribute('data-can-decide', 'true');
+			expect(popover).toHaveAttribute('data-ineligibility-hint', '');
 		});
 
-		it('disables the buttons and says why when the viewer contributed a version', () => {
+		it('says the viewer contributed a version when that is why they cannot decide', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					review: makeDetail({
@@ -248,14 +309,12 @@ describe('WorkflowReviewDetailTabs', () => {
 				},
 			});
 
-			for (const button of decisionButtons(getByTestId)) {
-				expect(button).toBeDisabled();
-				expect(decisionTooltip(button)).toHaveAttribute('data-disabled', 'false');
-				expect(decisionTooltip(button)).toHaveAttribute(
-					'data-content',
-					'You contributed a version to this review.',
-				);
-			}
+			const popover = getByTestId('workflow-review-decision-popover');
+			expect(popover).toHaveAttribute('data-can-decide', 'false');
+			expect(popover).toHaveAttribute(
+				'data-ineligibility-hint',
+				'You contributed a version to this review.',
+			);
 		});
 
 		it('falls back to the generic permission hint for any other reason', () => {
@@ -263,37 +322,19 @@ describe('WorkflowReviewDetailTabs', () => {
 				props: {
 					review: makeDetail({
 						viewerCanDecide: false,
-						viewerDecisionIneligibilityReason: 'missing_publish_permission',
+						viewerDecisionIneligibilityReason: 'missing_reviewer_permission',
 					}),
 					tab: 'activity',
 					deciding: false,
 				},
 			});
 
-			for (const button of decisionButtons(getByTestId)) {
-				expect(button).toBeDisabled();
-				expect(decisionTooltip(button)).toHaveAttribute(
-					'data-content',
-					'Missing permissions to perform this action',
-				);
-			}
-		});
-
-		it('does not emit a decision for an ineligible viewer', () => {
-			const { getByTestId, emitted } = renderComponent({
-				props: {
-					review: makeDetail({
-						viewerCanDecide: false,
-						viewerDecisionIneligibilityReason: 'author',
-					}),
-					tab: 'activity',
-					deciding: false,
-				},
-			});
-
-			getByTestId('workflow-review-approve-button').click();
-
-			expect(emitted('decide')).toBeUndefined();
+			const popover = getByTestId('workflow-review-decision-popover');
+			expect(popover).toHaveAttribute('data-can-decide', 'false');
+			expect(popover).toHaveAttribute(
+				'data-ineligibility-hint',
+				'Missing permissions to perform this action',
+			);
 		});
 	});
 });

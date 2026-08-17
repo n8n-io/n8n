@@ -98,6 +98,7 @@ function createWorkflowToolConfigStub(emitValid: boolean) {
 				getDescription: () => props.initialRef?.description ?? '',
 				getAllOutputs: () => props.initialRef?.allOutputs ?? false,
 				getWorkflow: () => props.initialRef?.workflow ?? '',
+				getWorkflowId: () => props.initialRef?.workflowId,
 				handleChangeName: vi.fn(),
 			});
 			onMounted(() => {
@@ -357,16 +358,34 @@ describe('AgentToolConfigModal', () => {
 		expect(updated).toEqual({ type: 'custom', id: 'custom-tool-1', requireApproval: true });
 	});
 
-	it('renders the workflow-tool config content for workflow refs', () => {
+	it('preserves the stable workflow id when saving a workflow tool', async () => {
+		const onConfirm = vi.fn();
 		const { getByTestId, queryByTestId } = renderModal({
+			valid: true,
+			onConfirm,
 			ref: {
 				type: 'workflow',
-				workflow: 'w-1',
+				workflowId: 'wf-1',
+				workflow: 'My Workflow',
 				name: 'My Workflow Tool',
 				description: 'Does something',
 			},
 		});
+
 		expect(getByTestId('workflow-tool-config-content')).toBeTruthy();
 		expect(queryByTestId('node-tool-settings-content')).toBeNull();
+
+		await waitFor(() => {
+			expect(getByTestId('agent-tool-config-save')).not.toBeDisabled();
+		});
+		await fireEvent.click(getByTestId('agent-tool-config-save'));
+
+		expect(onConfirm).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'workflow',
+				workflowId: 'wf-1',
+				workflow: 'My Workflow',
+			}),
+		);
 	});
 });
