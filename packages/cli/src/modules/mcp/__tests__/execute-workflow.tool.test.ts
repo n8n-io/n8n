@@ -344,6 +344,44 @@ describe('execute-workflow MCP tool', () => {
 				).rejects.toThrow(/no trigger that can be executed in production mode/);
 			});
 
+			test('names the supported trigger types when inputs are passed and no trigger is eligible', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Error Trigger',
+							type: 'n8n-nodes-base.errorTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+
+				// Without the eligibility check inside the guard this reports
+				// "Available triggers: none.", which the caller cannot act on.
+				await expect(
+					executeWorkflow(
+						user,
+						workflowFinderService,
+						workflowRunner,
+						mcpService,
+						workflowsConfig,
+						workflowPublishedDataService,
+						'unsupported-trigger',
+						{ webhookData: { method: 'POST', body: { hello: 'world' } } },
+						'production',
+					),
+				).rejects.toMatchObject({
+					reason: 'unsupported_trigger',
+					message: expect.stringContaining('no trigger that can be executed in production mode'),
+				});
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
 			test('throws error with correct reason when workflow has unsupported trigger', async () => {
 				const workflow = createWorkflow({
 					activeVersionId: uuid(),
@@ -713,7 +751,7 @@ describe('execute-workflow MCP tool', () => {
 						'production',
 					),
 				).rejects.toMatchObject({
-					reason: 'unsupported_trigger',
+					reason: 'invalid_inputs',
 					message: expect.stringContaining('Provide triggerNodeName and inputs'),
 				});
 				expect(workflowRunner.run).not.toHaveBeenCalled();
@@ -950,7 +988,7 @@ describe('execute-workflow MCP tool', () => {
 						'production',
 					),
 				).rejects.toMatchObject({
-					reason: 'unsupported_trigger',
+					reason: 'invalid_inputs',
 					message: expect.stringContaining('Provide triggerNodeName and inputs'),
 				});
 				expect(workflowRunner.run).not.toHaveBeenCalled();
@@ -1142,7 +1180,7 @@ describe('execute-workflow MCP tool', () => {
 					'production',
 				),
 			).rejects.toMatchObject({
-				reason: 'unsupported_trigger',
+				reason: 'invalid_inputs',
 				message: expect.stringContaining('Provide triggerNodeName when passing inputs'),
 			});
 			expect(workflowRunner.run).not.toHaveBeenCalled();
