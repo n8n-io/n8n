@@ -272,10 +272,7 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 			isPreviewOpen.value = true;
 			workflowRefreshKey.value++;
 
-			// Edit-mode builds keep the user's manual layout untouched
-			if (!latestBuildResult.value.fromEditBuilder) {
-				markPendingTidy(latestBuildResult.value.workflowId);
-			}
+			markPendingTidy(latestBuildResult.value.workflowId);
 		},
 		{ flush: 'sync' },
 	);

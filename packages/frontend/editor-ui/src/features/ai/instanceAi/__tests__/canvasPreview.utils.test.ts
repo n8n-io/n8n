@@ -88,7 +88,6 @@ describe('getLatestBuildResult', () => {
 		expect(getLatestBuildResult(node)).toEqual({
 			workflowId: 'wf-123',
 			toolCallId: 'tc-build-1',
-			fromEditBuilder: false,
 		});
 	});
 
@@ -105,7 +104,6 @@ describe('getLatestBuildResult', () => {
 		expect(getLatestBuildResult(node)).toEqual({
 			workflowId: 'wf-456',
 			toolCallId: 'tc-submit-1',
-			fromEditBuilder: false,
 		});
 	});
 
@@ -127,7 +125,6 @@ describe('getLatestBuildResult', () => {
 		expect(getLatestBuildResult(node)).toEqual({
 			workflowId: 'wf-new',
 			toolCallId: 'tc-2',
-			fromEditBuilder: false,
 		});
 	});
 
@@ -166,7 +163,6 @@ describe('getLatestBuildResult', () => {
 		expect(getLatestBuildResult(parent)).toEqual({
 			workflowId: 'wf-child',
 			toolCallId: 'tc-child',
-			fromEditBuilder: false,
 		});
 	});
 
@@ -192,71 +188,6 @@ describe('getLatestBuildResult', () => {
 			],
 		});
 		expect(getLatestBuildResult(parent)?.workflowId).toBe('wf-child');
-	});
-
-	test('flags builds under an edit-mode builder (targetResource with id)', () => {
-		const builder = makeAgentNode({
-			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
-			kind: 'builder',
-			targetResource: { type: 'workflow', id: 'wf-existing' },
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-edit',
-					toolName: 'build-workflow',
-					result: { success: true, workflowId: 'wf-existing' },
-				}),
-			],
-		});
-		const parent = makeAgentNode({ children: [builder] });
-
-		expect(getLatestBuildResult(parent)).toEqual({
-			workflowId: 'wf-existing',
-			toolCallId: 'tc-edit',
-			fromEditBuilder: true,
-		});
-	});
-
-	test('does not flag builds under a create-mode builder (no targetResource id)', () => {
-		const builder = makeAgentNode({
-			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
-			kind: 'builder',
-			targetResource: { type: 'workflow' },
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-create',
-					toolName: 'build-workflow',
-					result: { success: true, workflowId: 'wf-new' },
-				}),
-			],
-		});
-		const parent = makeAgentNode({ children: [builder] });
-
-		expect(getLatestBuildResult(parent)?.fromEditBuilder).toBe(false);
-	});
-
-	test('flags builds in descendants of an edit-mode builder', () => {
-		const grandchild = makeAgentNode({
-			agentId: 'agent-sub-1',
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-deep',
-					toolName: 'submit-workflow',
-					result: { success: true, workflowId: 'wf-existing' },
-				}),
-			],
-		});
-		const builder = makeAgentNode({
-			agentId: 'agent-builder-1',
-			role: 'workflow-builder',
-			kind: 'builder',
-			targetResource: { type: 'workflow', id: 'wf-existing' },
-			children: [grandchild],
-		});
-		const parent = makeAgentNode({ children: [builder] });
-
-		expect(getLatestBuildResult(parent)?.fromEditBuilder).toBe(true);
 	});
 });
 

@@ -480,37 +480,6 @@ describe('useCanvasPreview', () => {
 			expect(ctx.pendingTidyWorkflowId.value).toBe('wf-1');
 		});
 
-		test('does not set the marker for edit-mode builds', async () => {
-			const ctx = setup();
-			ctx.thread.isStreaming = true;
-			registerWorkflow(ctx.thread, 'wf-existing');
-
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder-1',
-								role: 'workflow-builder',
-								kind: 'builder',
-								targetResource: { type: 'workflow', id: 'wf-existing' },
-								toolCalls: [
-									makeToolCall({
-										toolCallId: 'tc-edit',
-										toolName: 'build-workflow',
-										result: { success: true, workflowId: 'wf-existing' },
-									}),
-								],
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(ctx.pendingTidyWorkflowId.value).toBeNull();
-		});
-
 		test('does not set the marker while hydrating historical messages', async () => {
 			const ctx = setup();
 			ctx.thread.isHydratingThread = true;
