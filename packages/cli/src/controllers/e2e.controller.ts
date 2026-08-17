@@ -34,6 +34,7 @@ import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
+import { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 if (!inE2ETests) {
@@ -202,6 +203,7 @@ export class E2EController {
 		private readonly scheduledJobRepository: ScheduledJobRepository,
 		private readonly pollerStateRepository: PollerStateRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly taskBroker: TaskBroker,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -308,6 +310,16 @@ export class E2EController {
 		const { workflowId, nodeId, secondsAgo } = req.body;
 		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, secondsAgo);
 		return { success: true };
+	}
+
+	/**
+	 * Number of task runners currently registered with the broker, so a test can
+	 * wait for a runner to be ready instead of racing its startup.
+	 */
+	@Get('/task-runners/count', { skipAuth: true })
+	countTaskRunners() {
+		const count = this.taskBroker.getKnownRunners().size;
+		return { count };
 	}
 
 	@Get('/env-feature-flags', { skipAuth: true })
