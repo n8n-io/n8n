@@ -98,7 +98,7 @@ describe('npm rename aliases', () => {
 	});
 });
 
-describe('missing closure', () => {
+describe('unusable closure', () => {
 	// Reporting "no duplicates" for a tree that was never read is the worst outcome for this check,
 	// so callers get a throw (read as "did not run") rather than a clean verdict.
 	it('throws instead of reporting a clean result when the root has no node_modules', () => {
@@ -106,6 +106,13 @@ describe('missing closure', () => {
 
 		expect(() => collectCopies(join(ROOT, 'empty'))).toThrow(/No node_modules/);
 		expect(() => collectCopies(join(ROOT, 'does-not-exist'))).toThrow(/nothing was verified/);
+	});
+
+	it('throws when node_modules exists but is not a directory', () => {
+		mkdirSync(join(ROOT, 'nm-is-a-file'), { recursive: true });
+		writeFileSync(join(ROOT, 'nm-is-a-file/node_modules'), 'not a directory');
+
+		expect(() => collectCopies(join(ROOT, 'nm-is-a-file'))).toThrow(/No node_modules directory/);
 	});
 });
 

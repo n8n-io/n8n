@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { CURATED_LIBS } from './libs.js';
@@ -118,10 +118,13 @@ export function collectCopies(root: string): Map<string, Copy[]> {
 	// Absent nested `node_modules` are normal, so the walk tolerates them — but an absent root means
 	// there is no closure to inspect, and staying quiet about it reports "no duplicates found" for a
 	// closure that was never read. Callers treat a throw as "the check did not run".
+	// Anything that is not a directory fails the same way: `readdirSync` raises, the walk tolerates
+	// it, and the run reports a clean closure. `throwIfNoEntry: false` folds missing and non-directory
+	// into one check.
 	const rootNodeModules = join(root, 'node_modules');
-	if (!existsSync(rootNodeModules)) {
+	if (!statSync(rootNodeModules, { throwIfNoEntry: false })?.isDirectory()) {
 		throw new Error(
-			`No node_modules at ${rootNodeModules} — expected an installed closure, so nothing was verified.`,
+			`No node_modules directory at ${rootNodeModules} — expected an installed closure, so nothing was verified.`,
 		);
 	}
 
