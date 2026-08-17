@@ -1,6 +1,6 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-interface WorkerPoolOptions {
+interface OutboxWorkerPoolOptions {
 	/** A single worker's work: claim and process records until none remain. */
 	runPass: () => Promise<void>;
 	/** Whether the pool may (keep) spawning workers, checked before every spawn. */
@@ -16,7 +16,7 @@ interface WorkerPoolOptions {
  * mechanics only: topping up to `concurrency` workers, containing each
  * pass's failure to its own slot, the follow-up pass for a wake-up that
  * arrives at capacity, and awaiting idleness. Everything domain-specific
- * belongs to the owner, injected via {@link WorkerPoolOptions}.
+ * belongs to the owner, injected via {@link OutboxWorkerPoolOptions}.
  */
 export class WorkflowPublicationOutboxWorkerPool {
 	/** Worker passes in flight. A worker never rejects (so `Promise.all` over
@@ -29,7 +29,7 @@ export class WorkflowPublicationOutboxWorkerPool {
 	 * running workers' final claims is still picked up promptly. */
 	private wakeRequested = false;
 
-	constructor(private readonly options: WorkerPoolOptions) {}
+	constructor(private readonly options: OutboxWorkerPoolOptions) {}
 
 	/**
 	 * Top the pool up to the configured concurrency, or flag a follow-up pass
