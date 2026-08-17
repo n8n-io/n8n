@@ -79,12 +79,12 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
-		this.pool = new WorkflowPublicationOutboxWorkerPool(
-			async () => await this.runWorkerPass(),
-			() => this.shouldKeepPolling(),
-			() => this.workflowsConfig.workflowPublicationConcurrency,
-			(error) => this.errorReporter.error(error, { shouldBeLogged: true }),
-		);
+		this.pool = new WorkflowPublicationOutboxWorkerPool({
+			runPass: async () => await this.runWorkerPass(),
+			shouldRun: () => this.shouldKeepPolling(),
+			getConcurrency: () => this.workflowsConfig.workflowPublicationConcurrency,
+			onWorkerError: (error) => this.errorReporter.error(error, { shouldBeLogged: true }),
+		});
 	}
 
 	async init() {

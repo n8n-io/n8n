@@ -1,12 +1,22 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
+interface WorkerPoolOptions {
+	/** A single worker's work: claim and process records until none remain. */
+	runPass: () => Promise<void>;
+	/** Whether the pool may (keep) spawning workers, checked before every spawn. */
+	shouldRun: () => boolean;
+	/** Maximum number of concurrent workers. */
+	getConcurrency: () => number;
+	/** The owner's error policy, invoked exactly once per failed pass, at the source. */
+	onWorkerError: (error: Error) => void;
+}
+
 /**
  * A capped pool of independent, concurrent runs of `runPass`. Owns the pool
  * mechanics only: topping up to `getConcurrency()` workers, containing each
  * pass's failure to its own slot, the follow-up pass for a wake-up that
- * arrives at capacity, and awaiting idleness. What a pass does, whether the
- * pool may run (`shouldRun`), and the error policy (`onWorkerError`, invoked
- * exactly once per failed pass, at the source) belong to the owner.
+ * arrives at capacity, and awaiting idleness. Everything domain-specific
+ * belongs to the owner, injected via {@link WorkerPoolOptions}.
  */
 export class WorkflowPublicationOutboxWorkerPool {
 	/** Worker passes in flight. A worker never rejects (so `Promise.all` over
@@ -19,12 +29,7 @@ export class WorkflowPublicationOutboxWorkerPool {
 	 * running workers' final claims is still picked up promptly. */
 	private wakeRequested = false;
 
-	constructor(
-		private readonly runPass: () => Promise<void>,
-		private readonly shouldRun: () => boolean,
-		private readonly getConcurrency: () => number,
-		private readonly onWorkerError: (error: Error) => void,
-	) {}
+	constructor(private readonly options: WorkerPoolOptions) {}
 
 	/**
 	 * Top the pool up to the configured concurrency, or flag a follow-up pass
@@ -32,9 +37,9 @@ export class WorkflowPublicationOutboxWorkerPool {
 	 * is never wedged by a stuck worker.
 	 */
 	topUp() {
-		if (!this.shouldRun()) return;
+		if (!this.options.shouldRun()) return;
 
-		const concurrency = this.getConcurrency();
+		const concurrency = this.options.getConcurrency();
 		if (this.activeWorkers.size >= concurrency) {
 			// The running workers' final claims may predate the record behind this
 			// wake-up; have the next worker to exit run a follow-up pass.
@@ -58,12 +63,13 @@ export class WorkflowPublicationOutboxWorkerPool {
 	}
 
 	private spawnWorker() {
-		const worker = this.runPass()
+		const worker = this.options
+			.runPass()
 			.then(
 				() => null,
 				(error) => {
 					const failure = ensureError(error);
-					this.onWorkerError(failure);
+					this.options.onWorkerError(failure);
 					return failure;
 				},
 			)
@@ -71,7 +77,7 @@ export class WorkflowPublicationOutboxWorkerPool {
 				this.activeWorkers.delete(worker);
 				if (this.wakeRequested) {
 					this.wakeRequested = false;
-					if (this.shouldRun()) this.spawnWorker();
+					if (this.options.shouldRun()) this.spawnWorker();
 				}
 			});
 		this.activeWorkers.add(worker);
