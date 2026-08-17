@@ -16,7 +16,7 @@ const { name, isError, isDeleted } = defineProps<{
 		:class="$style.name"
 		:color="isError ? 'danger' : undefined"
 	>
-		<del v-if="isDeleted">
+		<del v-if="isDeleted" data-test-id="logs-node-name-deleted">
 			{{ name }}
 		</del>
 		<template v-else>

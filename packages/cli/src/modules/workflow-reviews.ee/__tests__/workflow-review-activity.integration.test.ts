@@ -352,6 +352,244 @@ describe('Commenting on a review', () => {
 	});
 });
 
+describe('Recording the review lifecycle in the feed', () => {
+	/** Two history versions so the review can be re-pinned from one to the other. */
+	async function createReviewableWorkflow() {
+		const workflow = await createWorkflow({ name: 'Reviewed workflow' }, teamProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-1' });
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
+		return workflow;
+	}
+
+	/** Opened by `member`, so `owner` is free to decide on it without an admin override. */
+	async function openReview(workflowId: string, workflowVersionId = 'version-1') {
+		const response = await memberAgent
+			.post('/workflow-review-requests')
+			.send({
+				title: 'Please review',
+				workflows: [{ workflowId, workflowVersionId, workflowVersionName: 'Release candidate' }],
+				reviewerUserIds: [owner.id],
+			})
+			.expect(201);
+		return response.body.data.id as string;
+	}
+
+	const entryTypes = (feed: { data: FeedEntry[] }) => feed.data.map((entry) => entry.type);
+
+	test('shows who opened the review and which version they submitted', async () => {
+		const workflow = await createReviewableWorkflow();
+
+		const requestId = await openReview(workflow.id);
+
+		const feed = await getActivity(memberAgent, requestId);
+		expect(feed.data).toHaveLength(1);
+		expect(feed.data[0]).toMatchObject({
+			type: 'review.opened',
+			typeVersion: 1,
+			createdBy: expect.objectContaining({ id: member.id }),
+		});
+		expect(feed.data[0].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+		});
+	});
+
+	test('records the note and the reviewed version when a reviewer requests changes', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'changes_requested', note: 'Please rename the node' })
+			.expect(200);
+
+		const feed = await getActivity(ownerAgent, requestId);
+		expect(entryTypes(feed)).toEqual(['review.opened', 'review.changes_requested']);
+		expect(feed.data[1]).toMatchObject({
+			createdBy: expect.objectContaining({ id: owner.id }),
+		});
+		expect(feed.data[1].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+			note: 'Please rename the node',
+		});
+	});
+
+	test('refuses to request changes without a note, and records nothing', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'changes_requested' })
+			.expect(400);
+
+		expect(entryTypes(await getActivity(ownerAgent, requestId))).toEqual(['review.opened']);
+		expect(await requestRepository.findById(requestId, {})).toMatchObject({
+			state: 'open',
+			decision: 'pending',
+		});
+	});
+
+	test('records the note a reviewer leaves when they approve', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'approved', note: 'Ships as is' })
+			.expect(200);
+
+		const feed = await getActivity(ownerAgent, requestId);
+		expect(entryTypes(feed)).toEqual(['review.opened', 'review.approved']);
+		expect(feed.data[1].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+			note: 'Ships as is',
+		});
+	});
+
+	test('records an approval left without a note as having none', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		const feed = await getActivity(ownerAgent, requestId);
+		// `null`, not a missing key: "no note given" and "the payload did not parse" are
+		// different things on an audit record.
+		expect(feed.data[1].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+			note: null,
+		});
+	});
+
+	test('still names the workflow an approved version came from after that workflow is deleted', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		await workflowEntityRepository.delete(workflow.id);
+
+		// The pin cascades away with the workflow, so the entry is the only record left of which
+		// version was approved.
+		expect(await workflowRepository.findByRequestId(requestId, {})).toEqual([]);
+
+		const feed = await getActivity(ownerAgent, requestId);
+		expect(feed.data[1].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+			note: null,
+		});
+	});
+
+	test('records the version a re-pinned review moved from and to, scoped to that workflow', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${requestId}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-2',
+				workflowVersionName: 'Second attempt',
+			})
+			.expect(200);
+
+		const feed = await getActivity(memberAgent, requestId);
+		expect(entryTypes(feed)).toEqual(['review.opened', 'review.version_updated']);
+		expect(feed.data[1].data).toEqual({
+			workflowId: workflow.id,
+			fromWorkflowVersionId: 'version-1',
+			toWorkflowVersionId: 'version-2',
+		});
+
+		// The scoping column stays unwritten: its FK cascades, so a workflow delete would take
+		// the entry with it.
+		const rows = await activityRepository.findBy({ type: 'review.version_updated' });
+		expect(rows).toHaveLength(1);
+		expect(rows[0].workflowId).toBeNull();
+	});
+
+	test('keeps a version update in the feed after its workflow is deleted', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${requestId}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-2',
+				workflowVersionName: 'Second attempt',
+			})
+			.expect(200);
+
+		// Straight from the repository, as a folder-hierarchy cascade does, so nothing but the
+		// database's own cascades decides what survives.
+		await workflowEntityRepository.delete(workflow.id);
+
+		const feed = await getActivity(memberAgent, requestId);
+		expect(entryTypes(feed)).toEqual(['review.opened', 'review.version_updated']);
+		expect(feed.data[1].data).toMatchObject({ workflowId: workflow.id });
+	});
+
+	test('records nothing when a review is re-pinned to the version it already covers', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${requestId}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-1',
+				workflowVersionName: 'Renamed only',
+			})
+			.expect(200);
+
+		expect(entryTypes(await getActivity(memberAgent, requestId))).toEqual(['review.opened']);
+	});
+
+	test('leaves the review undecided when its feed entry cannot be written', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+		vi.spyOn(activityRepository, 'createActivity').mockRejectedValueOnce(new Error('write failed'));
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'approved' })
+			.expect(500);
+
+		expect(await requestRepository.findById(requestId, {})).toMatchObject({
+			state: 'open',
+			decision: 'pending',
+		});
+		expect(entryTypes(await getActivity(ownerAgent, requestId))).toEqual(['review.opened']);
+	});
+
+	// Only a stored row can be malformed, so these are seeded past the write union.
+	test.each([
+		['a decision whose payload is not an object', 'review.changes_requested', 'oops'],
+		['a close with a reason this version does not know', 'review.closed', { reason: 'nope' }],
+		['a version update missing its version ids', 'review.version_updated', { from: 1 }],
+		['an opening entry written in an older shape', 'review.opened', { index: 1 }],
+	])('serves %s without its details rather than failing the feed', async (_label, type, data) => {
+		const { request } = await seedReviewInTeamProject(owner);
+		await activityRepository.createActivity(
+			{ workflowReviewRequestId: request.id, type, data, createdById: owner.id } as never,
+			{},
+		);
+
+		const feed = await getActivity(ownerAgent, request.id);
+
+		expect(feed.data).toHaveLength(1);
+		expect(feed.data[0].type).toBe(type);
+		expect(feed.data[0].data).toBeNull();
+	});
+});
+
 describe('Reading the activity feed', () => {
 	/** Non-comment entries, cheap to seed and enough to pin the paging arithmetic. */
 	async function seedEntries(workflowReviewRequestId: string, count: number) {
@@ -361,7 +599,7 @@ describe('Reading the activity feed', () => {
 				{
 					workflowReviewRequestId,
 					type: 'review.opened',
-					data: { index },
+					data: { workflowVersions: [] },
 					createdById: owner.id,
 				},
 				{},
@@ -502,7 +740,10 @@ describe('Reading the activity feed', () => {
 
 	test('shows a non-comment activity entry with its details intact and no messages', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
-		const data = { workflowVersionIds: ['version-pinned'], note: 'needs work' };
+		const data = {
+			workflowVersions: [{ workflowId: 'workflow-reviewed', workflowVersionId: 'version-pinned' }],
+			note: 'needs work',
+		};
 		await activityRepository.createActivity(
 			{
 				workflowReviewRequestId: request.id,
