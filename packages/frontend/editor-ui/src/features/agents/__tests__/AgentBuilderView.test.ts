@@ -492,10 +492,33 @@ const commonStubs = {
 			'toggle-version-history',
 		],
 	},
+	AgentPreviewHeader: {
+		name: 'AgentPreviewHeader',
+		template: '<header data-testid="stub-agent-preview-header" />',
+		props: ['agentName', 'agentHref', 'sessionTitle', 'sessionOptions', 'hasTrace'],
+		emits: ['back', 'new-session', 'session-select', 'view-trace'],
+	},
+	AgentPreviewChatPage: {
+		name: 'AgentPreviewChatPage',
+		template: '<main data-testid="stub-agent-preview-chat-page" />',
+		props: [
+			'initialized',
+			'projectId',
+			'agentId',
+			'agent',
+			'localConfig',
+			'connectedTriggers',
+			'effectiveSessionId',
+			'canSendToAssistant',
+			'beforeSend',
+		],
+		emits: ['continue-loaded', 'send-to-assistant'],
+	},
 	AgentPreviewDock: {
 		name: 'AgentPreviewDock',
 		template: '<aside data-testid="stub-agent-preview-dock" />',
 		props: [
+			'isOpen',
 			'sessionTitle',
 			'hasSession',
 			'initialized',
@@ -565,7 +588,7 @@ const commonStubs = {
 	AgentSessionsListView: {
 		name: 'AgentSessionsListView',
 		template: '<div data-testid="stub-agent-sessions-list-view" />',
-		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab', 'manageStoreLifecycle'],
+		props: ['embedded', 'projectId', 'agentId', 'manageStoreLifecycle'],
 	},
 	N8nButton: {
 		template:
@@ -591,6 +614,10 @@ const commonStubs = {
 // (permission defaults, spy restoration, or mocks it alone exercises).
 function resetViewMocks() {
 	vi.clearAllMocks();
+	for (let index = localStorage.length - 1; index >= 0; index--) {
+		const key = localStorage.key(index);
+		if (key?.startsWith('N8N_AGENT_PREVIEW_OPEN')) localStorage.removeItem(key);
+	}
 	routerPush.mockReset();
 	routerReplace.mockReset();
 	routerResolve.mockClear();
@@ -739,54 +766,50 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		).toBe(1);
 	});
 
-	it('renders the normal editor and Preview dock on the direct preview route', async () => {
+	it('renders the standalone preview on the direct preview route', async () => {
 		routeName = 'AgentPreviewView';
 		routeQuery.continueSessionId = 'thread-1';
-		fetchedSessionThreads.push({
+		const wrapper = await renderView();
+		sessionThreads.push({
 			id: 'thread-1',
 			title: 'Support session',
 			updatedAt: '2026-01-01T00:00:00Z',
 		});
+		await nextTick();
+		const header = wrapper.findComponent({ name: 'AgentPreviewHeader' });
+		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
 
-		const wrapper = await renderView();
-		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
-
-		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentBuilderPreviewHeader' }).exists()).toBe(false);
-		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).props('isPreviewOpen')).toBe(true);
-		expect(dock.exists()).toBe(true);
-		expect(dock.props()).toEqual(
+		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).exists()).toBe(false);
+		expect(header.props()).toEqual(
 			expect.objectContaining({
+				agentName: 'Agent One',
+				agentHref: '/AgentBuilderView/p1/a1',
 				sessionTitle: 'Support session',
-				hasSession: true,
+				hasTrace: true,
+			}),
+		);
+		expect(preview.props()).toEqual(
+			expect.objectContaining({
 				effectiveSessionId: 'thread-1',
 				projectId: 'p1',
 				agentId: 'a1',
 			}),
 		);
-		expect(wrapper.emitted('preview-open-change')).toEqual([[true]]);
+		expect(wrapper.emitted('preview-open-change')).toEqual([[false]]);
 	});
 
-	it('returns to the Sessions tab when closing preview opened with section=__executions', async () => {
+	it('returns to the builder when leaving preview opened from Sessions', async () => {
 		routeName = 'AgentPreviewView';
 		routeQuery.continueSessionId = 'thread-1';
 		routeQuery.section = '__executions';
 
 		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('close-preview');
+		wrapper.findComponent({ name: 'AgentPreviewHeader' }).vm.$emit('back');
 		await flushPromises();
 
-		expect(routerPush).toHaveBeenCalledWith({
-			name: 'AgentBuilderView',
-			params: { projectId: 'p1', agentId: 'a1' },
-			query: expect.objectContaining({ section: '__executions' }),
-		});
-		expect(routerPush).toHaveBeenCalledWith(
-			expect.objectContaining({
-				query: expect.not.objectContaining({ continueSessionId: expect.anything() }),
-			}),
-		);
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith('/AgentBuilderView/p1/a1');
 	});
 
 	it('returns to the plain builder when closing preview without a sessions section', async () => {
@@ -794,30 +817,26 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		routeQuery.continueSessionId = 'thread-1';
 
 		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentPreviewDock' }).vm.$emit('close');
+		wrapper.findComponent({ name: 'AgentPreviewHeader' }).vm.$emit('back');
 		await flushPromises();
 
-		expect(routerPush).toHaveBeenCalledWith({
-			name: 'AgentBuilderView',
-			params: { projectId: 'p1', agentId: 'a1' },
-			query: expect.not.objectContaining({
-				continueSessionId: expect.anything(),
-				section: expect.anything(),
-			}),
-		});
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith('/AgentBuilderView/p1/a1');
 	});
 
 	it('opens the persisted Preview session trace in the full-page trace view', async () => {
 		routeName = 'AgentPreviewView';
 		routeQuery.continueSessionId = 'thread-1';
-		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
-
 		const wrapper = await renderView();
-		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		sessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+		await nextTick();
+		const header = wrapper.findComponent({ name: 'AgentPreviewHeader' });
+		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+		preview.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 1 });
+		await flushPromises();
 		routerPush.mockClear();
 		routerReplace.mockClear();
 
-		dock.vm.$emit('view-trace');
+		header.vm.$emit('view-trace');
 		await flushPromises();
 
 		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
@@ -827,24 +846,14 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(routerReplace).not.toHaveBeenCalled();
 	});
 
-	it('keeps version history mounted between the editor and Preview dock', async () => {
+	it('does not mount editor panels on the standalone preview route', async () => {
 		routeName = 'AgentPreviewView';
 		const wrapper = await renderView();
 
-		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('toggle-version-history');
-		await nextTick();
-
-		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
-		const history = wrapper.findComponent({ name: 'AgentVersionHistoryPanel' });
-		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
-		const follows = (first: Element, second: Element) =>
-			Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
-
-		expect([editor.exists(), history.exists(), dock.exists()]).toEqual([true, true, true]);
-		expect([
-			follows(editor.element, history.element),
-			follows(history.element, dock.element),
-		]).toEqual([true, true]);
+		expect(wrapper.findComponent({ name: 'AgentPreviewChatPage' }).exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).exists()).toBe(false);
 	});
 
 	const fixEvent: AgentFixWithAssistantEvent = {
@@ -879,7 +888,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		});
 
 		const wrapper = await renderView();
-		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
 
 		expect(preview.props('canSendToAssistant')).toBe(true);
 		preview.vm.$emit('send-to-assistant', event);
@@ -1269,23 +1278,18 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(false);
 	});
 
-	it('opens the preview route from the header preview action', async () => {
+	it('opens the preview dock from the header preview action', async () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 
 		header.vm.$emit('open-preview');
 		await flushPromises();
 
-		expect(routerPush).toHaveBeenCalledWith(
-			expect.objectContaining({
-				name: 'AgentPreviewView',
-				params: { projectId: 'p1', agentId: 'a1' },
-				query: expect.not.objectContaining({ continueSessionId: expect.anything() }),
-			}),
-		);
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		expect(routerPush).not.toHaveBeenCalled();
 	});
 
-	it('opens preview with the latest thread when prior sessions exist', async () => {
+	it('opens the preview dock with the latest thread when prior sessions exist', async () => {
 		fetchedSessionThreads.push(
 			{ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' },
 			{ id: 'thread-older', updatedAt: '2026-01-01T00:00:00Z' },
@@ -1297,13 +1301,10 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		header.vm.$emit('open-preview');
 		await flushPromises();
 
-		expect(routerPush).toHaveBeenCalledWith(
-			expect.objectContaining({
-				name: 'AgentPreviewView',
-				params: { projectId: 'p1', agentId: 'a1' },
-				query: expect.objectContaining({ continueSessionId: 'thread-latest' }),
-			}),
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props()).toEqual(
+			expect.objectContaining({ isOpen: true, effectiveSessionId: 'thread-latest' }),
 		);
+		expect(routerPush).not.toHaveBeenCalled();
 	});
 
 	it('opens and starts new artifact Preview sessions without route navigation', async () => {
@@ -1335,7 +1336,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(routeQuery).toEqual({});
 	});
 
-	it('opens an artifact Preview trace in a new tab without changing the dock', async () => {
+	it('navigates to an artifact Preview trace without changing the dock session', async () => {
 		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
 		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
 		const wrapper = await renderView({
@@ -1353,11 +1354,15 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		dock.vm.$emit('view-trace');
 		await nextTick();
 
-		expect(routerPush).not.toHaveBeenCalled();
-		expect(windowOpen).toHaveBeenCalledExactlyOnceWith(
-			'/AgentSessionDetailView/p2/a2/thread-1',
-			'_blank',
-		);
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentSessionDetailView',
+			params: {
+				projectId: 'p2',
+				agentId: 'a2',
+				threadId: 'thread-1',
+			},
+		});
+		expect(windowOpen).not.toHaveBeenCalled();
 		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
 			'thread-1',
 		);
@@ -1478,7 +1483,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			await wrapper.setProps(nextProps);
 			await flushPromises();
 
-			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).exists()).toBe(false);
+			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
 			expect(wrapper.emitted('preview-open-change')).toEqual([[false], [true], [false]]);
 			expect(routerPush).not.toHaveBeenCalled();
 			expect(routerReplace).not.toHaveBeenCalled();
@@ -1632,7 +1637,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		const wrapper = await renderView();
 		await flushPromises();
 		const effectiveSessionId = wrapper
-			.findComponent({ name: 'AgentPreviewDock' })
+			.findComponent({ name: 'AgentPreviewChatPage' })
 			.props('effectiveSessionId') as string;
 
 		expect(routerReplace).toHaveBeenCalledWith(
@@ -1674,9 +1679,9 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await flushPromises();
 
 		expect(routerReplace).not.toHaveBeenCalled();
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
-			'faulty-thread',
-		);
+		expect(
+			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
+		).toBe('faulty-thread');
 	});
 
 	it('replaces an unknown continued session with a fresh chat when there is no history', async () => {
@@ -1712,9 +1717,9 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 		routeQuery.continueSessionId = 'stale-route-thread';
 		await nextTick();
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
-			'stale-route-thread',
-		);
+		expect(
+			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
+		).toBe('stale-route-thread');
 
 		(
 			wrapper.vm as unknown as {
@@ -1726,21 +1731,22 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(routerReplace).toHaveBeenCalledWith({
 			query: expect.objectContaining({ continueSessionId: 'thread-latest' }),
 		});
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
-			'thread-latest',
-		);
+		expect(
+			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
+		).toBe('thread-latest');
 	});
 
 	it('ignores stale continue-loaded events after New session takes ownership', async () => {
 		routeName = 'AgentPreviewView';
 		routeQuery.continueSessionId = 'stale-route-thread';
 		const wrapper = await renderView();
-		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const header = wrapper.findComponent({ name: 'AgentPreviewHeader' });
+		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
 		routerReplace.mockClear();
 
-		dock.vm.$emit('new-session');
+		header.vm.$emit('new-session');
 		await nextTick();
-		const newSessionId = dock.props('effectiveSessionId') as string;
+		const newSessionId = preview.props('effectiveSessionId') as string;
 		expect(newSessionId).not.toBe('stale-route-thread');
 		expect(routerReplace).toHaveBeenCalledWith({
 			query: expect.objectContaining({ continueSessionId: newSessionId }),
@@ -1755,7 +1761,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await flushPromises();
 
 		expect(routerReplace).not.toHaveBeenCalled();
-		expect(dock.props('effectiveSessionId')).toBe(newSessionId);
+		expect(preview.props('effectiveSessionId')).toBe(newSessionId);
 	});
 
 	it('does not warm the knowledge sandbox again when switching preview sessions', async () => {
@@ -1771,7 +1777,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			'a1',
 		);
 
-		wrapper.findComponent({ name: 'AgentPreviewDock' }).vm.$emit('new-session');
+		wrapper.findComponent({ name: 'AgentPreviewHeader' }).vm.$emit('new-session');
 		await nextTick();
 		await flushPromises();
 
@@ -2150,7 +2156,6 @@ describe('AgentBuilderView — three-column shell', () => {
 			embedded: true,
 			projectId: 'p2',
 			agentId: 'a2',
-			openSessionInNewTab: true,
 			manageStoreLifecycle: false,
 		});
 	});
@@ -2621,6 +2626,20 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 
 	it('opens the tool config modal with the custom tool source', async () => {
+		const validationIssue = {
+			code: 'missing_reference' as const,
+			path: 'tools.0.id',
+			capability: {
+				kind: 'tool' as const,
+				id: 'custom_tool',
+				index: 0,
+				toolType: 'custom' as const,
+			},
+		};
+		getAgentConfigValidationMock.mockResolvedValue({
+			status: 'invalid',
+			issues: [validationIssue],
+		});
 		const customTool: CustomToolEntry = {
 			code: 'export async function run() {\n\treturn "ok";\n}',
 			descriptor: {
@@ -2665,6 +2684,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				data: expect.objectContaining({
 					toolRef,
 					customTool,
+					validationIssues: [validationIssue],
 				}),
 			}),
 		);
