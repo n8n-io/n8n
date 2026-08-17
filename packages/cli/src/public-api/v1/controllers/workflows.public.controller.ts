@@ -36,7 +36,6 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
@@ -290,19 +289,13 @@ export class WorkflowsPublicController {
 	)
 	@ApiTags(['Workflow'])
 	@ApiResponse(200, WorkflowPublicDto)
-	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async archiveWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	): Promise<WorkflowPublicDto> {
-		let workflow: WorkflowEntity | undefined;
-		try {
-			workflow = await this.workflowService.archiveForPublicApi(req.user, workflowId);
-		} catch (error) {
-			this.rethrowWorkflowServiceError(error);
-		}
+		const workflow = await this.workflowService.archiveForPublicApi(req.user, workflowId);
 
 		if (!workflow) {
 			throw new NotFoundError('Workflow not found');
@@ -325,12 +318,7 @@ export class WorkflowsPublicController {
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	): Promise<WorkflowPublicDto> {
-		let workflow: WorkflowEntity | undefined;
-		try {
-			workflow = await this.workflowService.unarchiveForPublicApi(req.user, workflowId);
-		} catch (error) {
-			this.rethrowWorkflowServiceError(error);
-		}
+		const workflow = await this.workflowService.unarchiveForPublicApi(req.user, workflowId);
 
 		if (!workflow) {
 			throw new NotFoundError('Workflow not found');
@@ -502,15 +490,5 @@ export class WorkflowsPublicController {
 		const tags = await this.workflowService.updateWorkflowTags(req.user, workflowId, tagIds);
 
 		return tags.map(toPublicTag);
-	}
-
-	private rethrowWorkflowServiceError(error: unknown): never {
-		if (error instanceof ResponseError) {
-			throw error;
-		}
-		if (error instanceof Error) {
-			throw new BadRequestError(error.message);
-		}
-		throw error;
 	}
 }
