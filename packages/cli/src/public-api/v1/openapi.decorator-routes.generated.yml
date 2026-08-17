@@ -25,6 +25,12 @@ paths:
   /workflows/{workflowId}:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflow.generated.yml
+  /workflows/{workflowId}/publish:
+    post:
+      $ref: ./handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  /workflows/{workflowId}/unpublish:
+    post:
+      $ref: ./handlers/workflows/spec/paths/unpublishWorkflow.generated.yml
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml

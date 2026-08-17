@@ -42,14 +42,14 @@ type WorkflowHandlers = {
 	deleteWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
 	updateWorkflow: PublicAPIEndpoint<WorkflowRequest.Update>;
-	publishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
-	unpublishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	activateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	deactivateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	archiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	unarchiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 };
 
+// `/publish` and `/unpublish` are served by `WorkflowsPublicController`. These two tuples remain
+// only as the bodies of the deprecated `/activate` and `/deactivate` aliases below.
 const publishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate> = [
 	publicApiScope('workflow:activate'),
 	projectScope('workflow:publish', 'workflow'),
@@ -230,8 +230,6 @@ const workflowHandlers: WorkflowHandlers = {
 			}
 		},
 	],
-	publishWorkflow,
-	unpublishWorkflow,
 	activateWorkflow: [deprecated({ since: new Date('2026-07-23T00:00:00Z') }), ...publishWorkflow],
 	deactivateWorkflow: [
 		deprecated({ since: new Date('2026-07-23T00:00:00Z') }),

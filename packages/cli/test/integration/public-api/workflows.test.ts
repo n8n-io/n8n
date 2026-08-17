@@ -1458,6 +1458,17 @@ describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
 		expect(await workflowRepository.isActive(workflow.id)).toBe(true);
 	});
 
+	// Publishing re-reads the workflow without its `shared` relation, so the response has never
+	// carried that field. Unpublishing runs a query that does load it — see the sibling suite.
+	test('should not return the shared field', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
 	test('should set activeVersionId', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
@@ -1651,6 +1662,23 @@ describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) =>
 		});
 
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
+	});
+
+	// The counterpart of the publish suite's `shared` guard: unpublishing reads the workflow through
+	// a query that loads the relation, so the field is part of this response.
+	test('should return the shared field', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.shared).toEqual([
+			expect.objectContaining({
+				workflowId: workflow.id,
+				projectId: memberPersonalProject.id,
+				project: expect.objectContaining({ id: memberPersonalProject.id }),
+			}),
+		]);
 	});
 
 	test('should return 403 when user lacks workflow:publish permission', async () => {
