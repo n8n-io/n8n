@@ -296,10 +296,7 @@ export class CredentialsService {
 		user: User,
 		options: GetManyOptions & { includeData: true },
 	): Promise<CredentialsWithCount<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
-	async getManyAndCount(
-		user: User,
-		options?: GetManyOptions,
-	): Promise<CredentialsWithCount>;
+	async getManyAndCount(user: User, options?: GetManyOptions): Promise<CredentialsWithCount>;
 	async getManyAndCount(
 		user: User,
 		{
@@ -311,9 +308,7 @@ export class CredentialsService {
 			filters = {},
 		}: GetManyOptions = {},
 	): Promise<
-		CredentialsWithCount<
-			ICredentialsDecrypted<ICredentialDataDecryptedObject> | CredentialsEntity
-		>
+		CredentialsWithCount<ICredentialsDecrypted<ICredentialDataDecryptedObject> | CredentialsEntity>
 	> {
 		const { externalSecretsStore } = filters;
 		const returnAll = hasGlobalScope(user, 'credential:list');
