@@ -32,6 +32,8 @@ const icon = computed((): IconName => {
 		case 'suspension':
 		case 'idle':
 			return 'clock';
+		case 'hitl-response':
+			return 'message-square';
 		default:
 			return 'info';
 	}

@@ -15,7 +15,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { OwnershipService } from '@/services/ownership.service';
 
@@ -34,7 +34,7 @@ describe('DataTableProxyService', () => {
 	let dataTableAggregateServiceMock = mock<DataTableAggregateService>();
 	let ownershipServiceMock = mock<OwnershipService>();
 	let loggerMock = mock<Logger>();
-	let sourceControlPreferencesServiceMock = mock<SourceControlPreferencesService>();
+	let instanceWriteAccessMock = mock<InstanceWriteAccessService>();
 	let dataTableProxyService: DataTableProxyService;
 
 	let workflow: Workflow;
@@ -46,17 +46,15 @@ describe('DataTableProxyService', () => {
 		dataTableAggregateServiceMock = mock<DataTableAggregateService>();
 		ownershipServiceMock = mock<OwnershipService>();
 		loggerMock = mock<Logger>();
-		sourceControlPreferencesServiceMock = mock<SourceControlPreferencesService>();
-		sourceControlPreferencesServiceMock.getPreferences.mockReturnValue({
-			branchReadOnly: false,
-		} as ReturnType<SourceControlPreferencesService['getPreferences']>);
+		instanceWriteAccessMock = mock<InstanceWriteAccessService>();
+		instanceWriteAccessMock.isReadOnly.mockReturnValue(false);
 
 		dataTableProxyService = new DataTableProxyService(
 			dataTableServiceMock,
 			dataTableAggregateServiceMock,
 			ownershipServiceMock,
 			loggerMock,
-			sourceControlPreferencesServiceMock,
+			instanceWriteAccessMock,
 		);
 
 		workflow = mock<Workflow>({
@@ -340,7 +338,7 @@ describe('makeDataTableOperationsForUser', () => {
 	let dataTableServiceMock = mock<DataTableService>();
 	let dataTableAggregateServiceMock = mock<DataTableAggregateService>();
 	let loggerMock = mock<Logger>();
-	let sourceControlPreferencesServiceMock = mock<SourceControlPreferencesService>();
+	let instanceWriteAccessMock = mock<InstanceWriteAccessService>();
 	let dataTableProxyService: DataTableProxyService;
 	let userHasScopesSpy: MockInstance;
 
@@ -350,17 +348,15 @@ describe('makeDataTableOperationsForUser', () => {
 		dataTableServiceMock = mock<DataTableService>();
 		dataTableAggregateServiceMock = mock<DataTableAggregateService>();
 		loggerMock = mock<Logger>();
-		sourceControlPreferencesServiceMock = mock<SourceControlPreferencesService>();
-		sourceControlPreferencesServiceMock.getPreferences.mockReturnValue({
-			branchReadOnly: false,
-		} as ReturnType<SourceControlPreferencesService['getPreferences']>);
+		instanceWriteAccessMock = mock<InstanceWriteAccessService>();
+		instanceWriteAccessMock.isReadOnly.mockReturnValue(false);
 
 		dataTableProxyService = new DataTableProxyService(
 			dataTableServiceMock,
 			dataTableAggregateServiceMock,
 			mock<OwnershipService>(),
 			loggerMock,
-			sourceControlPreferencesServiceMock,
+			instanceWriteAccessMock,
 		);
 
 		userHasScopesSpy = vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
@@ -668,9 +664,7 @@ describe('makeDataTableOperationsForUser', () => {
 
 	describe('read-only instance protection', () => {
 		beforeEach(() => {
-			sourceControlPreferencesServiceMock.getPreferences.mockReturnValue({
-				branchReadOnly: true,
-			} as ReturnType<SourceControlPreferencesService['getPreferences']>);
+			instanceWriteAccessMock.isReadOnly.mockReturnValue(true);
 		});
 
 		it('should reject createDataTable on a read-only instance', async () => {

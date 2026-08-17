@@ -20,11 +20,11 @@ export function createEngineStepDataLoader(
 		const execution = await executionStore.loadExecution(context.executionId);
 
 		const nodeIds = execution.graph.nodes.map((node) => node.id);
-		const stored = await stepStore.loadStepOutputs(context.executionId, nodeIds);
+		const stored = await stepStore.loadStepsByNodeIds(context.executionId, nodeIds);
 
 		const outputsByNodeId: Record<string, StepSlots> = {};
-		for (const [nodeId, outputs] of Object.entries(stored)) {
-			if (outputs !== null) outputsByNodeId[nodeId] = outputs;
+		for (const [nodeId, row] of Object.entries(stored)) {
+			if (row.status === 'completed' && row.outputs !== null) outputsByNodeId[nodeId] = row.outputs;
 		}
 
 		return { graph: execution.graph, outputsByNodeId };

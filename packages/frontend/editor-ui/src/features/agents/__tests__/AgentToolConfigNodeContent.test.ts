@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { INode } from 'n8n-workflow';
+import { inject } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { ResourceMapperSchemaAutoRefreshKey } from '@/app/constants';
 import AgentToolConfigNodeContent from '../components/AgentToolConfigNodeContent.vue';
 
 const renderComponent = createComponentRenderer(AgentToolConfigNodeContent, {
@@ -9,8 +11,13 @@ const renderComponent = createComponentRenderer(AgentToolConfigNodeContent, {
 		stubs: {
 			NodeToolSettingsContent: {
 				template:
-					'<div data-test-id="node-tool-settings">{{ JSON.stringify(hiddenOperations) }}</div>',
+					'<div data-test-id="node-tool-settings" :data-schema-auto-refresh="schemaAutoRefreshEnabled">{{ JSON.stringify(hiddenOperations) }}</div>',
 				props: ['initialNode', 'existingToolNames', 'projectId', 'hiddenOperations'],
+				setup() {
+					return {
+						schemaAutoRefreshEnabled: inject(ResourceMapperSchemaAutoRefreshKey, true),
+					};
+				},
 			},
 		},
 	},
@@ -32,5 +39,14 @@ describe('AgentToolConfigNodeContent', () => {
 		const hiddenOperations = container.textContent ?? '';
 		expect(hiddenOperations).toContain('sendAndWait');
 		expect(hiddenOperations).toContain('dispatchAndWait');
+	});
+
+	it('disables automatic resource mapper schema refreshes', () => {
+		const { container } = renderComponent({ props: { initialNode: node } });
+
+		expect(container.querySelector('[data-schema-auto-refresh]')).toHaveAttribute(
+			'data-schema-auto-refresh',
+			'false',
+		);
 	});
 });
