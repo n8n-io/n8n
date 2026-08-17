@@ -172,6 +172,16 @@ export class InstanceAiTracingService {
 		return sameGroup ?? entries.find((entry) => entry.threadId === threadId)?.tracing;
 	}
 
+	registerTraceContext(
+		runId: string,
+		threadId: string,
+		tracing: InstanceAiTraceContext,
+		messageGroupId?: string,
+	): void {
+		this.storeTraceContext(runId, threadId, tracing, messageGroupId);
+		this.runState.attachTracing(threadId, tracing);
+	}
+
 	async createOrchestratorResumeTraceContext(options: {
 		baseTracing?: InstanceAiTraceContext;
 		threadId: string;
@@ -184,6 +194,8 @@ export class InstanceAiTracingService {
 		proxyConfig?: ServiceProxyConfig;
 		resumeReason: OrchestratorResumeReason;
 		metadata?: Record<string, unknown>;
+		/** Defer process-local registration until the durable resume claim succeeds. */
+		register?: boolean;
 	}): Promise<InstanceAiTraceContext | undefined> {
 		const baseTracing =
 			options.baseTracing ??
@@ -210,8 +222,9 @@ export class InstanceAiTracingService {
 
 		if (tracing) {
 			await this.configureTraceReplayMode(tracing);
-			this.storeTraceContext(options.runId, options.threadId, tracing, options.messageGroupId);
-			this.runState.attachTracing(options.threadId, tracing);
+			if (options.register !== false) {
+				this.registerTraceContext(options.runId, options.threadId, tracing, options.messageGroupId);
+			}
 		}
 
 		return tracing;

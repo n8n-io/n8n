@@ -71,11 +71,10 @@ describe('Agent telemetry', () => {
 		const firstCall = generateText.mock.calls[0][0] as Record<string, unknown>;
 
 		const secondCall = generateText.mock.calls[1][0] as Record<string, unknown>;
-		const firstTelemetry = firstCall.experimental_telemetry as Record<string, unknown>;
-		const secondTelemetry = secondCall.experimental_telemetry as Record<string, unknown>;
+		const firstTelemetry = firstCall.telemetry as Record<string, unknown>;
+		const secondTelemetry = secondCall.telemetry as Record<string, unknown>;
 
 		expect(firstTelemetry.functionId).toBe('initial-agent');
 		expect(secondTelemetry.functionId).toBe('updated-agent');
-		expect(secondTelemetry.metadata).toEqual({ functionId: 'updated-agent' });
 	});
 });

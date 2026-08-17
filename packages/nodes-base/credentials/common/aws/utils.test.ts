@@ -583,6 +583,8 @@ describe('assertSupportedAwsRegion', () => {
 		['cn-north-1'],
 		['us-gov-west-1'],
 		['eu-central-2'],
+		['ap-east-2'],
+		['ap-southeast-6'],
 	])('accepts the supported region %s', (region) => {
 		expect(() => assertSupportedAwsRegion(region)).not.toThrow();
 	});

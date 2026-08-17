@@ -12,7 +12,7 @@ import {
 } from '@n8n/design-system';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 
 const props = defineProps<{
 	open: boolean;

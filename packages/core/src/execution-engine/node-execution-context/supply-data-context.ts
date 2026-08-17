@@ -429,7 +429,10 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		}
 
 		if (process.env.CODE_ENABLE_STDOUT === 'true') {
-			console.log(`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`, ...args);
+			console.log(
+				`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`,
+				...this.redactedConsoleArgs(args),
+			);
 		}
 	}
 

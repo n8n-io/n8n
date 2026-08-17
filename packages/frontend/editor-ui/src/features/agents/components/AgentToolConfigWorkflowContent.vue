@@ -7,6 +7,7 @@ import type { WorkflowToolRef } from '../types';
 
 const props = defineProps<{
 	initialRef: WorkflowToolRef;
+	projectId?: string;
 	showApprovalSetting?: boolean;
 	approvalRequired?: boolean;
 }>();
@@ -35,10 +36,20 @@ function getAllOutputs() {
 	return contentRef.value?.allOutputs ?? false;
 }
 
+function getWorkflow() {
+	return contentRef.value?.getWorkflow() ?? '';
+}
+
+function getWorkflowId() {
+	return contentRef.value?.getWorkflowId();
+}
+
 defineExpose({
 	getName,
 	getDescription,
 	getAllOutputs,
+	getWorkflow,
+	getWorkflowId,
 	handleChangeName,
 });
 </script>
@@ -47,6 +58,7 @@ defineExpose({
 	<WorkflowToolConfigContent
 		ref="contentRef"
 		:initial-ref="props.initialRef"
+		:project-id="props.projectId"
 		@update:valid="emit('update:valid', $event)"
 		@update:node-name="emit('update:node-name', $event)"
 	>

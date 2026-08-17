@@ -39,12 +39,34 @@ describe('workflow-review-requests (env flag off)', () => {
 			.expect(404);
 	});
 
+	test('POST decision is unreachable (404) even though the license is present', async () => {
+		await ownerAgent
+			.post('/workflow-review-requests/some-request/decision')
+			.send({ decision: 'approved' })
+			.expect(404);
+	});
+
 	test('GET inbox is unreachable (404)', async () => {
 		await ownerAgent.get('/workflow-review-requests/inbox').expect(404);
 	});
 
 	test('GET summary is unreachable (404)', async () => {
 		await ownerAgent.get('/workflow-review-requests/summary').expect(404);
+	});
+
+	test('GET detail is unreachable (404)', async () => {
+		await ownerAgent.get('/workflow-review-requests/some-id').expect(404);
+	});
+
+	test('GET activity is unreachable (404)', async () => {
+		await ownerAgent.get('/workflow-review-requests/some-id/activity').expect(404);
+	});
+
+	test('POST comment is unreachable (404)', async () => {
+		await ownerAgent
+			.post('/workflow-review-requests/some-id/comments')
+			.send({ body: 'Hello' })
+			.expect(404);
 	});
 });
 

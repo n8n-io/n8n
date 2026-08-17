@@ -737,7 +737,7 @@ describe('validateWorkflowGroups', () => {
 			{
 				groupId: 'g1',
 				code: 'node-already-grouped',
-				message: 'Node group "First" (g1) contains nodes that already belong to another group: A.',
+				message: 'Node group "First" contains nodes that already belong to another group: A.',
 			},
 		]);
 	});
@@ -785,7 +785,7 @@ describe('validateWorkflowGroups', () => {
 		expectViolations(result, [
 			{
 				code: 'trigger-selected',
-				message: 'Node group "Group" (g1) cannot contain trigger nodes: Trigger.',
+				message: 'Node group "Group" cannot contain trigger nodes: Trigger.',
 			},
 		]);
 	});
@@ -813,7 +813,7 @@ describe('validateWorkflowGroups', () => {
 			{
 				code: 'non-main-boundary',
 				message:
-					'Node group "Group" (g1) cannot cross the "ai_languageModel" connection between "Model" and "B".',
+					'Node group "Group" cannot cross the "ai_languageModel" connection between "Model" and "B".',
 			},
 		]);
 	});
@@ -832,9 +832,28 @@ describe('validateWorkflowGroups', () => {
 			{
 				code: 'invalid-subgraph',
 				message:
-					'Node group "Group" (g1) must form a single connected subgraph with a single entry and exit.',
+					'Node group "Group" must form a single connected subgraph with a single entry and exit.',
 			},
 		]);
+	});
+
+	it('identifies the group by name only, keeping the id on the structured violation', () => {
+		// The id is deliberately absent from the message: a group that fails these
+		// rules may never have been persisted. Consumers use `groupId` instead.
+		const graph = makeLinearGraph();
+
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [{ id: 'group-uuid-1', name: 'Group', nodeIds: ['a', 'c'] }],
+			getNodeType,
+		});
+
+		expect(result.valid).toBe(false);
+		if (!result.valid) {
+			expect(result.violations[0].groupId).toBe('group-uuid-1');
+			expect(result.violations[0].message).not.toContain('group-uuid-1');
+		}
 	});
 
 	it('skips graph rules for a group that already has a basic violation', () => {

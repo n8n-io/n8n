@@ -11,10 +11,15 @@
  * Usage:
  *   <N8nButton variant="solid" class="n8n-button--success">Save</N8nButton>
  *   <N8nButton variant="ghost" class="n8n-button--highlight">Info</N8nButton>
+ *
+ * Do not wrap these selectors in `:global()`. This file is `@use`d from
+ * Button.vue's plain (non-module) style block, where selectors are already
+ * global, so `:global()` is never transformed away — it ships as an invalid
+ * pseudo-class and browsers drop the whole rule.
  */
 
 /** @deprecated Use a semantic variant instead of success color */
-:global(.n8n-button--success) {
+.n8n-button--success {
 	--button--color--background: var(--color--success);
 	--button--color--background-hover: var(--color--success--shade-1);
 	--button--color--background-active: var(--color--success--shade-1);
@@ -31,7 +36,7 @@
 }
 
 /** @deprecated Use a semantic variant instead of warning color */
-:global(.n8n-button--warning) {
+.n8n-button--warning {
 	--button--color--background: var(--color--warning);
 	--button--color--background-hover: var(--color--warning--shade-1);
 	--button--color--background-active: var(--color--warning--shade-1);

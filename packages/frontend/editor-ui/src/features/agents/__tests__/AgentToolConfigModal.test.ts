@@ -5,6 +5,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { defineComponent, onMounted, nextTick } from 'vue';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
 import AgentToolConfigModal from '../components/AgentToolConfigModal.vue';
 import type { AgentJsonToolRef, CustomToolEntry } from '../types';
@@ -23,6 +24,35 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('uuid', () => ({ v4: () => 'mocked-uuid' }));
+
+// N8nDialog teleports out of the tree via Reka UI's DialogPortal, so its
+// content is unreachable from the render container. Swap it for an inline
+// pass-through; the header and footer wrappers render fine as-is.
+vi.mock('@n8n/design-system', async () => {
+	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
+	const N8nDialog = {
+		name: 'N8nDialog',
+		props: {
+			open: Boolean,
+			size: String,
+			showCloseButton: Boolean,
+			trapFocus: { type: Boolean, default: true },
+			disableOutsidePointerEvents: { type: Boolean, default: true },
+		},
+		emits: ['update:open', 'interactOutside'],
+		template: `
+			<div
+				v-if="open"
+				role="dialog"
+				:data-trap-focus="trapFocus"
+				:data-disable-outside-pointer-events="disableOutsidePointerEvents"
+			>
+				<slot />
+			</div>
+		`,
+	};
+	return { ...actual, N8nDialog };
+});
 
 function createToolSettingsStub(emitValid: boolean) {
 	return defineComponent({
@@ -60,13 +90,15 @@ function createToolSettingsStub(emitValid: boolean) {
 
 function createWorkflowToolConfigStub(emitValid: boolean) {
 	return defineComponent({
-		props: ['initialRef', 'showApprovalSetting', 'approvalRequired'],
+		props: ['initialRef', 'projectId', 'showApprovalSetting', 'approvalRequired'],
 		emits: ['update:valid', 'update:node-name', 'update:approvalRequired'],
 		setup(props, { emit, expose }) {
 			expose({
 				getName: () => props.initialRef?.name ?? '',
 				getDescription: () => props.initialRef?.description ?? '',
 				getAllOutputs: () => props.initialRef?.allOutputs ?? false,
+				getWorkflow: () => props.initialRef?.workflow ?? '',
+				getWorkflowId: () => props.initialRef?.workflowId,
 				handleChangeName: vi.fn(),
 			});
 			onMounted(() => {
@@ -87,33 +119,6 @@ function createWorkflowToolConfigStub(emitValid: boolean) {
 		`,
 	});
 }
-
-const ElDialogStub = {
-	template: `
-		<div role="dialog">
-			<slot name="header" />
-			<slot />
-			<slot name="footer" />
-		</div>
-	`,
-	props: [
-		'modelValue',
-		'beforeClose',
-		'class',
-		'center',
-		'width',
-		'showClose',
-		'closeOnClickModal',
-		'closeOnPressEscape',
-		'style',
-		'appendTo',
-		'lockScroll',
-		'appendToBody',
-		'dataTestId',
-		'modalClass',
-		'zIndex',
-	],
-};
 
 const MODAL_NAME = 'AgentToolConfigModal';
 
@@ -152,20 +157,12 @@ function renderModal({
 	const renderComponent = createComponentRenderer(AgentToolConfigModal, {
 		global: {
 			stubs: {
-				ElDialog: ElDialogStub,
 				NodeIcon: { template: '<div data-test-id="header-node-icon" />' },
+				FocusScope: {
+					template: '<div data-test-id="nested-credential-focus-scope"><slot /></div>',
+				},
 				AgentToolConfigNodeContent: createToolSettingsStub(valid),
 				AgentToolConfigWorkflowContent: createWorkflowToolConfigStub(valid),
-				AgentJsonEditor: {
-					props: ['value'],
-					template: '<pre data-test-id="agent-tool-raw-json">{{ JSON.stringify(value) }}</pre>',
-				},
-				N8nRadioButtons: {
-					props: ['modelValue', 'options'],
-					emits: ['update:modelValue'],
-					template:
-						'<div><button v-for="option in options" :key="option.value" @click="$emit(\'update:modelValue\', option.value)">{{ option.label }}</button></div>',
-				},
 				N8nSwitch2: {
 					props: ['modelValue'],
 					emits: ['update:modelValue'],
@@ -201,6 +198,22 @@ describe('AgentToolConfigModal', () => {
 	it('renders the shared node-tool settings content', () => {
 		const { getByTestId } = renderModal();
 		expect(getByTestId('node-tool-settings-content')).toBeTruthy();
+	});
+
+	it('releases dialog focus handling while the credential modal is open', async () => {
+		const { getByRole, getByTestId, queryByTestId } = renderModal();
+		const dialog = getByRole('dialog');
+
+		expect(dialog).toHaveAttribute('data-trap-focus', 'true');
+		expect(dialog).toHaveAttribute('data-disable-outside-pointer-events', 'true');
+		expect(queryByTestId('nested-credential-focus-scope')).toBeNull();
+
+		uiStore.openModal(CREDENTIAL_EDIT_MODAL_KEY);
+		await nextTick();
+
+		expect(dialog).toHaveAttribute('data-trap-focus', 'false');
+		expect(dialog).toHaveAttribute('data-disable-outside-pointer-events', 'false');
+		expect(getByTestId('nested-credential-focus-scope')).toBeInTheDocument();
 	});
 
 	it('passes agent project context to the node-tool settings content', () => {
@@ -247,16 +260,6 @@ describe('AgentToolConfigModal', () => {
 		// Fields merged from the edited INode
 		expect(updated.node.nodeParameters).toEqual({ edited: true });
 		expect(updated.node.credentials).toEqual({ slackApi: { id: 'cred-1', name: 'Prod Slack' } });
-	});
-
-	it('shows draft node edits in the raw tab before saving', async () => {
-		const { getByText, getByTestId } = renderModal({ valid: true, ref: toolRef() });
-
-		await fireEvent.click(getByText('Raw'));
-
-		await waitFor(() => {
-			expect(getByTestId('agent-tool-raw-json').textContent).toContain('"edited":true');
-		});
 	});
 
 	it('saves the approval requirement on node tool refs', async () => {
@@ -355,16 +358,34 @@ describe('AgentToolConfigModal', () => {
 		expect(updated).toEqual({ type: 'custom', id: 'custom-tool-1', requireApproval: true });
 	});
 
-	it('renders the workflow-tool config content for workflow refs', () => {
+	it('preserves the stable workflow id when saving a workflow tool', async () => {
+		const onConfirm = vi.fn();
 		const { getByTestId, queryByTestId } = renderModal({
+			valid: true,
+			onConfirm,
 			ref: {
 				type: 'workflow',
-				workflow: 'w-1',
+				workflowId: 'wf-1',
+				workflow: 'My Workflow',
 				name: 'My Workflow Tool',
 				description: 'Does something',
 			},
 		});
+
 		expect(getByTestId('workflow-tool-config-content')).toBeTruthy();
 		expect(queryByTestId('node-tool-settings-content')).toBeNull();
+
+		await waitFor(() => {
+			expect(getByTestId('agent-tool-config-save')).not.toBeDisabled();
+		});
+		await fireEvent.click(getByTestId('agent-tool-config-save'));
+
+		expect(onConfirm).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'workflow',
+				workflowId: 'wf-1',
+				workflow: 'My Workflow',
+			}),
+		);
 	});
 });

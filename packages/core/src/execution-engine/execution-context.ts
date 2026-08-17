@@ -126,7 +126,7 @@ export const establishExecutionContext = async (
 		source: mode,
 	};
 
-	if (mode === 'manual' && additionalData?.encryptedRunnerIdentity) {
+	if (additionalData?.encryptedRunnerIdentity) {
 		executionData.runtimeData.credentials = additionalData.encryptedRunnerIdentity;
 	}
 

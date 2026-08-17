@@ -9,16 +9,18 @@ import {
 	type UsersListFilterDto,
 } from '@n8n/api-types';
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
+import { PERSONALIZATION_MODAL_KEY } from '@n8n/frontend-constants/users';
 import type { AssignableGlobalRole } from '@n8n/permissions';
+import { ResponseError } from '@n8n/rest-api-client';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 import * as mfaApi from '@n8n/rest-api-client/api/mfa';
+import * as ssoApi from '@n8n/rest-api-client/api/sso';
 import type {
 	UpdateGlobalRolePayload,
 	IUserResponse,
 	IUser,
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
-	IPersonalizationSurveyVersions,
 } from '@n8n/rest-api-client/api/users';
 import * as usersApi from '@n8n/rest-api-client/api/users';
 import { useAsyncState } from '@vueuse/core';
@@ -32,25 +34,15 @@ import * as onboardingApi from './onboarding.api';
 import { useSettingsStore } from './settings.store';
 import { useRootStore } from './useRootStore';
 
-/**
- * Registration key of the app's personalization modal, passed to the injected
- * modal opener. Mirrors `PERSONALIZATION_MODAL_KEY` in editor-ui's
- * `users.constants`; kept as a literal so the store carries no `@/app` import.
- */
-const PERSONALIZATION_MODAL_KEY = 'personalization';
-
-/**
- * Resolves a user's personalization-survey answers to recommended node types.
- * Injected by the app (see `app/init.ts`) so the store avoids importing the
- * node-type constants that the real implementation depends on.
- */
-type PersonalizedNodeTypesResolver = (answers: IPersonalizationSurveyVersions) => string[];
-
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
 const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
 const _isAdmin = (user: IUserResponse | null) => user?.role === ROLE.Admin;
+
+// A 401 means the session was already dead server-side; any other error must still propagate.
+const _isSessionAlreadyInvalid = (error: unknown) =>
+	error instanceof ResponseError && error.httpStatusCode === 401;
 
 export type LoginHook = (user: CurrentUserResponse) => void | Promise<void>;
 type LogoutHook = () => void | Promise<void>;
@@ -92,12 +84,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const canListUsers = ref<() => boolean>(() => false);
 	const setPermissionsResolvers = (resolvers: { listUsers: () => boolean }) => {
 		canListUsers.value = resolvers.listUsers;
-	};
-
-	// Maps a user's personalization-survey answers to recommended node types.
-	const nodeTypesResolver = ref<PersonalizedNodeTypesResolver>(() => []);
-	const setNodeTypesResolver = (resolver: PersonalizedNodeTypesResolver) => {
-		nodeTypesResolver.value = resolver;
 	};
 
 	// Stores
@@ -153,19 +139,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			currentUser.value.settings.dismissedCallouts[callout] = true;
 		}
 	};
-
-	const personalizedNodeTypes = computed(() => {
-		const user = currentUser.value;
-		if (!user) {
-			return [];
-		}
-
-		const answers = user.personalizationAnswers;
-		if (!answers) {
-			return [];
-		}
-		return nodeTypesResolver.value(answers);
-	});
 
 	const usersLimitNotReached = computed(
 		(): boolean => userQuota.value === -1 || userQuota.value > allUsers.value.length,
@@ -272,8 +245,29 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		logoutHooks.value.push(hook);
 	};
 
-	const logout = async () => {
-		await usersApi.logout(rootStore.restApiContext);
+	const standardLogout = async () => {
+		try {
+			await usersApi.logout(rootStore.restApiContext);
+		} catch (error) {
+			if (!_isSessionAlreadyInvalid(error)) throw error;
+		}
+	};
+
+	const logout = async (options?: { viaOidc?: boolean }) => {
+		let redirectUrl: string | null = null;
+
+		if (options?.viaOidc) {
+			try {
+				({ redirectUrl } = await ssoApi.oidcLogout(rootStore.restApiContext));
+			} catch {
+				// The OIDC logout endpoint may be unavailable (e.g. the license
+				// lapsed since login). Fall back to the standard logout so the
+				// n8n session is terminated in any case.
+				await standardLogout();
+			}
+		} else {
+			await standardLogout();
+		}
 
 		unsetCurrentUser();
 
@@ -286,6 +280,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 
 		localStorage.removeItem(BROWSER_ID_STORAGE_KEY);
+
+		return { redirectUrl };
 	};
 
 	const createOwner = async (params: {
@@ -511,7 +507,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		isAdminOrOwner,
 		mfaEnabled,
 		globalRoleName,
-		personalizedNodeTypes,
 		userClaimedAiCredits,
 		isEasyAIWorkflowOnboardingDone,
 		canUserUpdateVersion,
@@ -526,7 +521,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		registerLogoutHook,
 		registerModalOpeners,
 		setPermissionsResolvers,
-		setNodeTypesResolver,
 		createOwner,
 		validateSignupToken,
 		acceptInvitation,

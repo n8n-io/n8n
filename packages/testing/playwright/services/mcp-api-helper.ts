@@ -88,8 +88,6 @@ export interface SearchWorkflowsResult {
 		createdAt: string | null;
 		updatedAt: string | null;
 		triggerCount: number | null;
-		scopes: string[];
-		canExecute: boolean;
 		availableInMCP: boolean;
 		tags: Array<{ id: string; name: string }>;
 	}>;
@@ -127,7 +125,7 @@ export interface ExecuteWorkflowResult {
 	error?: string;
 }
 
-/** Response from get_execution tool */
+/** Response from get_workflow_execution tool */
 export interface GetExecutionResult {
 	execution: {
 		id: string;
@@ -741,6 +739,28 @@ export class McpApiHelper {
 	}
 
 	/**
+	 * Parses a JSON-RPC response and returns the full envelope (result or error)
+	 * without throwing on a protocol error, for tests that assert on the error
+	 * itself. Handles both direct JSON and SSE responses. Prefer
+	 * {@link parseResponse} when only the successful result matters.
+	 */
+	async parseResponseEnvelope(response: APIResponse): Promise<McpJsonRpcResponse> {
+		const contentType = response.headers()['content-type'] ?? '';
+		const body = await response.text();
+
+		if (contentType.includes('text/event-stream')) {
+			for (const line of body.split('\n')) {
+				if (line.startsWith('data:')) {
+					return JSON.parse(line.slice(5).trim()) as McpJsonRpcResponse;
+				}
+			}
+			throw new Error(`Could not extract data from SSE response: ${body}`);
+		}
+
+		return JSON.parse(body) as McpJsonRpcResponse;
+	}
+
+	/**
 	 * Parses an SSE event stream to extract the JSON-RPC response.
 	 *
 	 * @param body - The SSE event stream body
@@ -982,7 +1002,7 @@ export class McpApiHelper {
 	}
 
 	/**
-	 * Calls get_execution tool on the internal MCP service.
+	 * Calls get_workflow_execution tool on the internal MCP service.
 	 */
 	async internalMcpGetExecution(
 		apiKey: string,
@@ -991,7 +1011,7 @@ export class McpApiHelper {
 		options?: { includeData?: boolean; nodeNames?: string[]; truncateData?: number },
 	): Promise<GetExecutionResult> {
 		try {
-			return await this.callInternalMcpTool<GetExecutionResult>(apiKey, 'get_execution', {
+			return await this.callInternalMcpTool<GetExecutionResult>(apiKey, 'get_workflow_execution', {
 				workflowId,
 				executionId,
 				...options,

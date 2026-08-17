@@ -29,18 +29,42 @@ export type {
 export { InMemoryWorkQueue } from './queue';
 export type {
 	ExecutionEnqueuedEvent,
+	OrchestrationMessage,
+	StepSettledEvent,
+	StepMessage,
+	StepReadyEvent,
 	WorkQueue,
-	WorkQueueMessage,
 } from './queue';
 
+export {
+	ExecutionNotFoundError,
+	ExecutionStartHandler,
+	OrchestrationWorker,
+	StartExecutionService,
+	StepNotFoundError,
+	StepReadyHandler,
+	StepSettledHandler,
+	StepWorker,
+} from './execution';
 export type {
 	ExecutionMode,
+	ExecutionRecord,
 	ExecutionStatus,
 	ExecutionStore,
 	NewExecutionRecord,
 	NewStepRecord,
+	StartExecutionRequest,
+	StartExecutionResult,
+	StepError,
+	StepRecord,
+	StepSlots,
 	StepStatus,
 	StepStore,
 } from './execution';
 
-export { createDataSource, TypeOrmExecutionStore, TypeOrmStepStore } from './database';
+export {
+	createDataSource,
+	createStores,
+	WorkflowExecution,
+	WorkflowStepExecution,
+} from './database';

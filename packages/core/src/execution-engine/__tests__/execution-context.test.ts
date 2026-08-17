@@ -1265,29 +1265,24 @@ describe('establishExecutionContext', () => {
 			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
 		});
 
-		it('should NOT inject credentials for webhook mode even when ciphertext is present', async () => {
-			const runExecutionData = buildRunDataWithManualTrigger();
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({
-				encryptedRunnerIdentity: 'encrypted-credential-blob',
-			});
+		// The identity channel is not manual-only: identity-bearing triggers (Form, MCP)
+		// run in webhook/trigger mode and must resolve the submitter's credentials too.
+		it.each(['webhook', 'trigger'] as const)(
+			'should inject credentials for %s mode when ciphertext is present',
+			async (mode) => {
+				const runExecutionData = buildRunDataWithManualTrigger();
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					encryptedRunnerIdentity: 'encrypted-credential-blob',
+				});
 
-			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'webhook');
+				await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, mode);
 
-			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
-			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
-		});
-
-		it('should NOT inject credentials for trigger mode even when ciphertext is present', async () => {
-			const runExecutionData = buildRunDataWithManualTrigger();
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({
-				encryptedRunnerIdentity: 'encrypted-credential-blob',
-			});
-
-			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'trigger');
-
-			expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
-			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
-		});
+				expect(mockExecutionContextService.buildManualExecutionCredentials).not.toHaveBeenCalled();
+				expect(runExecutionData.executionData!.runtimeData!.credentials).toBe(
+					'encrypted-credential-blob',
+				);
+			},
+		);
 
 		it('should not overwrite existing runtimeData when it is already established', async () => {
 			const runExecutionData = buildRunDataWithManualTrigger();

@@ -98,6 +98,13 @@ export class McpConnection {
 		if (this.connectionPromise !== undefined) {
 			return await this.connectionPromise;
 		}
+		// Starting a fresh connection (the initial connect, or a retry after a
+		// prior disconnect cleared `connectionPromise`). Reset the closed
+		// flag so a subsequent disconnect() can tear down the new client —
+		// otherwise a reconnect after disconnect would leave the new transport
+		// open (doDisconnect() no-ops while `closed` is true).
+		this.closed = false;
+		this.disconnectPromise = undefined;
 		const sdk = await loadMcpSdk();
 		this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
 		this.connectionPromise = this.connectWithTransport(this.createTransport(this.config, sdk));
@@ -185,11 +192,13 @@ export class McpConnection {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const { CallToolResultSchema } = await loadMcpSdk();
 		try {
-			const result = (await this.client.callTool(
-				{ name, arguments: args },
-				CallToolResultSchema,
-				options?.abortSignal ? { signal: options.abortSignal } : undefined,
-			)) as McpCallToolResult;
+			const result = (await this.client.callTool({ name, arguments: args }, CallToolResultSchema, {
+				...(options?.abortSignal ? { signal: options.abortSignal } : {}),
+				// Reset the SDK's 60s idle timeout on progress notifications so a
+				// long-running MCP call that streams progress stays alive, while
+				// a stalled call (no progress) dies at the idle deadline.
+				resetTimeoutOnProgress: true,
+			})) as McpCallToolResult;
 			await this.notifyToolCallSettled({
 				toolName: name,
 				...(options?.modelToolName !== undefined && { modelToolName: options.modelToolName }),

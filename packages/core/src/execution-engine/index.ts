@@ -86,6 +86,8 @@ declare module 'n8n-workflow' {
 export * from './active-workflow-triggers';
 export {
 	synthesizeBinaryFixture,
+	evalCanvasPng,
+	buildPdfWithText,
 	type FixtureSizeHint,
 	type SynthesizeBinaryFixtureOptions,
 } from './eval-mock-fixtures';
@@ -99,6 +101,7 @@ export * from './node-execution-context';
 export * from './node-execution-context/utils/execution-metadata';
 export { NoOpPollJobManager } from './noop-poll-job-manager';
 export * from './partial-execution-utils';
+export { commitStagedCursor, runPollInStagingScope } from './poll-cursor-hooks';
 export { PollJobManager } from './poll-job-manager';
 export { PollTriggerExecutor } from './poll-trigger-executor';
 export { isEngineRequest } from './requests-response';

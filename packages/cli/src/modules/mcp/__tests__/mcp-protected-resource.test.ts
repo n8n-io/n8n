@@ -1,3 +1,4 @@
+import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
@@ -17,25 +18,34 @@ describe('McpProtectedResource', () => {
 	const urlService = mock<UrlService>();
 	const mcpSettingsService = mock<McpSettingsService>();
 	const mcpConfig = mock<McpConfig>();
+	const moduleRegistry = mock<ModuleRegistry>();
+	const licenseState = mock<LicenseState>();
 	const resource = new McpProtectedResource(
 		urlService,
 		mcpSettingsService,
 		mcpConfig,
 		makeGlobalConfig(),
+		moduleRegistry,
+		licenseState,
 	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mcpConfig.baseUrl = '';
+		moduleRegistry.isActive.mockReturnValue(true);
+		licenseState.isFoldersLicensed.mockReturnValue(true);
 	});
 
 	describe('getScopeTools', () => {
 		it('should expose the full tool mapping when all features are enabled', () => {
 			const scopeTools = resource.getScopeTools();
 
+			expect(resource.scopes).toContain('agent:read');
+			expect(resource.scopes).toContain('agent:write');
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 			expect(scopeTools['workflow:read']).toContain('search_nodes');
-			expect(scopeTools['tag:read']).toContain('list_tags');
+			expect(scopeTools['agent:read']).toContain('search_agents');
+			expect(scopeTools['tag:read']).toContain('list_workflow_tags');
 		});
 
 		it('should drop tools this instance does not expose', () => {
@@ -44,17 +54,45 @@ describe('McpProtectedResource', () => {
 				mcpSettingsService,
 				mcpConfig,
 				makeGlobalConfig({ builderEnabled: false, tagsDisabled: true }),
+				moduleRegistry,
+				licenseState,
 			);
 
 			const scopeTools = limitedResource.getScopeTools();
 
+			expect(limitedResource.scopes).not.toContain('agent:read');
+			expect(limitedResource.scopes).not.toContain('agent:write');
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 			// builder-only tools are hidden when the builder is off
 			expect(scopeTools['workflow:read']).not.toContain('search_nodes');
 			expect(scopeTools['workflow:write']).not.toContain('create_workflow_from_code');
 			expect(scopeTools['project:read']).toEqual([]);
-			// list_tags is hidden when tags are disabled
+			expect(scopeTools['agent:read']).toBeUndefined();
+			expect(scopeTools['agent:write']).toBeUndefined();
+			// list_workflow_tags is hidden when tags are disabled
 			expect(scopeTools['tag:read']).toEqual([]);
+		});
+
+		it('should drop folder tools when folders are not licensed', () => {
+			licenseState.isFoldersLicensed.mockReturnValue(false);
+
+			const scopeTools = resource.getScopeTools();
+
+			expect(scopeTools['project:write']).not.toContain('create_folder');
+			expect(scopeTools['project:write']).not.toContain('update_folder');
+			expect(scopeTools['workflow:write']).not.toContain('move_workflows_to_folder');
+			expect(scopeTools['project:write']).not.toContain('search_folders');
+			expect(scopeTools['project:read']).not.toContain('search_folders');
+			expect(scopeTools['project:read']).toContain('search_projects');
+		});
+
+		it('should drop agent scopes and tools when the agents module is inactive', () => {
+			moduleRegistry.isActive.mockReturnValue(false);
+
+			expect(resource.scopes).not.toContain('agent:read');
+			expect(resource.scopes).not.toContain('agent:write');
+			expect(resource.getScopeTools()).not.toHaveProperty('agent:read');
+			expect(resource.getScopeTools()).not.toHaveProperty('agent:write');
 		});
 	});
 

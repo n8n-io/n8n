@@ -38,3 +38,12 @@ post:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'
+    '409':
+      description: >-
+        Conflict, e.g. publication blocked by an open workflow review (then
+        `reason` and `workflowReviewRequestId` are present) or a webhook path
+        conflict.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflowPublishBlockedError.yml'

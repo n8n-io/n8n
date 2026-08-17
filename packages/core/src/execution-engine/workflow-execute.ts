@@ -5,6 +5,7 @@
 import { isAxiosError } from '@n8n/backend-network';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
 import get from 'lodash/get';
@@ -50,7 +51,6 @@ import {
 	NodeConnectionTypes,
 	ApplicationError,
 	BaseError,
-	sleep,
 	isNodeClassInstance,
 	UnexpectedError,
 	UserError,
@@ -2755,9 +2755,10 @@ export class WorkflowExecute {
 				let errorData: GenericValue | undefined;
 				if (item.error) {
 					errorData = item.error;
-				} else if (item.json.error && Object.keys(item.json).length === 1) {
-					errorData = item.json.error;
-				} else if (item.json.error && item.json.message && Object.keys(item.json).length === 2) {
+				} else if (
+					item.json.error &&
+					Object.keys(item.json).every((key) => ['error', 'message', 'details'].includes(key))
+				) {
 					errorData = item.json.error;
 				}
 

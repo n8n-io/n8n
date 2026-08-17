@@ -76,6 +76,14 @@ describe('renderObservationLog', () => {
 		expect(renderObservationLog([entry({ tokenCount: 2 })], { renderTokenBudget: 1 })).toBeNull();
 	});
 
+	it('does not treat an invalid persisted token count as free', () => {
+		expect(
+			renderObservationLog([entry({ text: 'This entry does not fit.', tokenCount: 0 })], {
+				renderTokenBudget: 1,
+			}),
+		).toBeNull();
+	});
+
 	it('does not render a child as a root when its parent is outside the budget', () => {
 		const parent = entry({ id: 'parent', tokenCount: 3 });
 		const child = entry({

@@ -5,6 +5,18 @@
 			"status": "covered",
 			"nodeOperation": "audit:generate"
 		},
+		"GET /roles": {
+			"status": "gap"
+		},
+		"GET /roles/{slug}": {
+			"status": "gap"
+		},
+		"POST /roles": {
+			"status": "gap"
+		},
+		"POST /role-mapping-rules": {
+			"status": "gap"
+		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},
@@ -221,6 +233,12 @@
 			"status": "gap"
 		},
 		"POST /settings/log-streaming/destinations/{id}/test": {
+			"status": "gap"
+		},
+		"GET /settings/sso/oidc": {
+			"status": "gap"
+		},
+		"PUT /settings/sso/oidc": {
 			"status": "gap"
 		},
 		"POST /variables": {

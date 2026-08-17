@@ -25,7 +25,7 @@ import {
 	resolveRelativePath,
 } from 'n8n-workflow';
 
-import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system';
 
 import type { CodeNodeLanguageOption } from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -62,6 +62,7 @@ import {
 	ExpressionLocalResolveContextSymbol,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
+	ToolConfigCredentialSelectedKey,
 } from '@/app/constants';
 
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
@@ -70,14 +71,14 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -194,6 +195,7 @@ const builderStore = useBuilderStore();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const onToolConfigCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
 
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
@@ -547,12 +549,16 @@ const dependentParametersValues = computedAsync(async () => {
 }, null);
 
 const getStringInputType = computed(() => {
+	const rows = editorRows.value;
+	const isMultiline = rows !== undefined && rows > 1;
+
 	if (getTypeOption('password') === true) {
-		return 'password';
+		// A multiline masked field must be a textarea: a single-line
+		// <input type="password"> strips newlines and corrupts pasted keys.
+		return isMultiline ? 'textarea' : 'password';
 	}
 
-	const rows = editorRows.value;
-	if (rows !== undefined && rows > 1) {
+	if (isMultiline) {
 		return 'textarea';
 	}
 
@@ -562,6 +568,12 @@ const getStringInputType = computed(() => {
 
 	return 'text';
 });
+
+// A password field rendered as a textarea (multiline secret) still needs to be
+// visually masked and kept out of PostHog capture.
+const isMaskedTextarea = computed(
+	() => getStringInputType.value === 'textarea' && getTypeOption('password') === true,
+);
 
 const getIssues = computed<string[]>(() => {
 	const validationError = jsonValidationError.value;
@@ -741,7 +753,9 @@ const remoteParameterOptionsKeys = computed<string[]>(() => {
 });
 
 const shouldRedactValue = computed<boolean>(() => {
-	return getStringInputType.value === 'password' || props.isForCredential;
+	// Keyed off the field being a password (not the rendered control type) so a
+	// multiline masked field stays redacted even outside credential contexts.
+	return getTypeOption('password') === true || props.isForCredential;
 });
 
 const isCodeNode = computed(
@@ -802,6 +816,9 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 		// Update the issues
 		nodeHelpers.updateNodeCredentialIssues(updateNode);
 	}
+
+	// Tool-config hosts keep a separate local draft; sync credentials onto it.
+	onToolConfigCredentialSelected?.(updateInformation);
 
 	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 }
@@ -1480,6 +1497,7 @@ onUpdated(async () => {
 			:event-source="eventSource || 'ndv'"
 			:is-read-only="isReadOnly"
 			:redact-values="shouldRedactValue"
+			:additional-expression-data="additionalExpressionData"
 			@close-dialog="closeExpressionEditDialog"
 			@update:model-value="expressionUpdated"
 		/>
@@ -1843,6 +1861,7 @@ onUpdated(async () => {
 					:class="{ 'input-with-opener': true, 'ph-no-capture': shouldRedactValue }"
 					:size="parameterInputSize"
 					:type="getStringInputType"
+					:masked="isMaskedTextarea"
 					:rows="editorRows"
 					:disabled="
 						isReadOnly ||

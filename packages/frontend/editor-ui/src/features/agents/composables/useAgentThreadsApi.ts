@@ -20,9 +20,11 @@ export interface AgentExecutionThread {
 	createdAt: string;
 	updatedAt: string;
 	firstMessage?: string | null;
+	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
+	source?: string | null;
 }
 
-export type AgentExecutionStatus = 'success' | 'error';
+export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 
 /**
@@ -32,6 +34,14 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
  * API surface doesn't need to track every event field.
  */
 export type AgentExecutionTimelineEvent = Record<string, unknown> & { type: string };
+
+/** Metadata of a file attached to the user turn; bytes come from the chat attachment download route. */
+export interface AgentExecutionAttachment {
+	id: string;
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
+}
 
 export interface AgentExecution {
 	id: string;
@@ -43,6 +53,7 @@ export interface AgentExecution {
 	stoppedAt: string | null;
 	duration: number;
 	userMessage: string | null;
+	attachments: AgentExecutionAttachment[] | null;
 	model: string | null;
 	promptTokens: number | null;
 	completionTokens: number | null;

@@ -258,4 +258,46 @@ describe('ScheduleTriggerJobRegistrar deviations', () => {
 			).toThrow();
 		});
 	});
+
+	describe('D6: a non-dividing minutes cadence is an interval job in both modes', () => {
+		// every 50 minutes (50 does not divide 60): the node compiles an
+		// every-minute cron gated by an elapsed-time recurrence, which
+		// recurring_cron can't express (no minutes unit).
+		const cron: Cron = {
+			expression: '7 * * * * *' as CronExpression,
+			recurrence: { activated: true, index: 0, intervalSize: 50, typeInterval: 'minutes' },
+			source: { field: 'minutes', size: 50 },
+		};
+
+		it('persists as a steady 50-minute interval in `legacy` and `new` mode', async () => {
+			const legacy = await collect('legacy', cron);
+			const fresh = await collect('new', cron);
+
+			for (const row of [legacy, fresh]) {
+				expect(row.kind).toBe('interval');
+				expect(row.intervalSeconds).toBe(50 * 60);
+			}
+
+			// legacy seeds the first fire from the cron (the in-memory engine fires
+			// ungated at its next minute tick); new anchors to activation + 50 min
+			expect(legacy.nextRunAt).toEqual(new Date('2026-01-05T12:01:07.000Z'));
+			expect(fresh.nextRunAt).toEqual(new Date('2026-01-05T12:50:07.000Z'));
+
+			// steady cadence after the seed: every gap is exactly 50 minutes
+			expect(gaps([legacy.nextRunAt!, ...fires(scheduleOf(legacy), legacy.nextRunAt!, 3)])).toEqual(
+				Array(3).fill(50 * 60 * 1000),
+			);
+		});
+
+		it('a dividing minutes cadence stays a clock-aligned cron in `legacy` mode', async () => {
+			const dividing: Cron = {
+				expression: '7 */30 * * * *' as CronExpression,
+				recurrence: { activated: false },
+				source: { field: 'minutes', size: 30 },
+			};
+			const legacy = await collect('legacy', dividing);
+			expect(legacy.kind).toBe('cron');
+			expect(legacy.cronExpression).toBe('7 */30 * * * *');
+		});
+	});
 });

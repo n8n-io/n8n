@@ -1,10 +1,12 @@
 export { Workspace } from './workspace';
+export { createScopedWorkspace } from './scoped-workspace';
+export { getToolResultThreadDirectory } from './tool-result-storage';
 
 export { BaseFilesystem } from './filesystem/base-filesystem';
 
 export { BaseSandbox } from './sandbox/base-sandbox';
 
-export { createWorkspaceTools } from './tools/workspace-tools';
+export { CORE_WORKSPACE_TOOL_NAMES, createWorkspaceTools } from './tools/workspace-tools';
 export { callLifecycle } from './lifecycle';
 
 export type { BaseFilesystemOptions, FilesystemLifecycleHook } from './filesystem/base-filesystem';

@@ -19,6 +19,8 @@ import {
 	isIgnoreStatusErrorConfig,
 	isProxyPotentiallyActive,
 	isRedirectStatus,
+	resolveLegacyRequestTarget,
+	resolveLegacyRequestUrl,
 	searchForHeader,
 	setAxiosAgents,
 	tryParseUrl,
@@ -438,9 +440,14 @@ describe('buildTargetUrl', () => {
 		expect(buildTargetUrl('/path', 'https://example.com')).toBe('https://example.com/path');
 	});
 
-	it('should return undefined for falsy url', () => {
+	it('should return undefined for falsy url without a baseURL', () => {
 		expect(buildTargetUrl(undefined)).toBeUndefined();
 		expect(buildTargetUrl('')).toBeUndefined();
+	});
+
+	it('should fall back to baseURL for a falsy url', () => {
+		expect(buildTargetUrl(undefined, 'https://example.com/path')).toBe('https://example.com/path');
+		expect(buildTargetUrl('', 'https://example.com/path')).toBe('https://example.com/path');
 	});
 
 	it('should return undefined for invalid URL combination', () => {
@@ -450,6 +457,56 @@ describe('buildTargetUrl', () => {
 	it('should prefer absolute url over baseURL', () => {
 		expect(buildTargetUrl('https://other.com/path', 'https://example.com')).toBe(
 			'https://other.com/path',
+		);
+	});
+});
+
+describe('resolveLegacyRequestTarget', () => {
+	it('should return the url', () => {
+		expect(resolveLegacyRequestTarget({ url: 'https://example.com/path' })).toBe(
+			'https://example.com/path',
+		);
+	});
+
+	it('should return the uri when no url is set', () => {
+		expect(resolveLegacyRequestTarget({ uri: 'https://example.com/path' })).toBe(
+			'https://example.com/path',
+		);
+	});
+
+	it('should prefer url over uri when both are set', () => {
+		expect(
+			resolveLegacyRequestTarget({
+				uri: 'https://uri.example.com/path',
+				url: 'https://url.example.com/path',
+			}),
+		).toBe('https://url.example.com/path');
+	});
+
+	it('should return undefined when neither url nor uri is set', () => {
+		expect(resolveLegacyRequestTarget({})).toBeUndefined();
+	});
+});
+
+describe('resolveLegacyRequestUrl', () => {
+	it('should prefer url over uri when both are set', () => {
+		expect(
+			resolveLegacyRequestUrl({
+				uri: 'https://uri.example.com/path',
+				url: 'https://url.example.com/path',
+			}),
+		).toBe('https://url.example.com/path');
+	});
+
+	it('should resolve a relative target against the baseURL', () => {
+		expect(resolveLegacyRequestUrl({ url: '/path', baseURL: 'https://example.com' })).toBe(
+			'https://example.com/path',
+		);
+	});
+
+	it('should resolve to the baseURL when no target is set', () => {
+		expect(resolveLegacyRequestUrl({ baseURL: 'https://example.com/path' })).toBe(
+			'https://example.com/path',
 		);
 	});
 });
@@ -643,5 +700,15 @@ describe('buildAgentOptions', () => {
 		});
 		expect(options.keepAlive).toBe(true);
 		expect(options.servername).toBe('api.example.com');
+	});
+
+	// SNI takes a hostname, never an IP literal (RFC 6066 §3).
+	it.each([
+		['IPv4', 'https://185.90.154.8/v1'],
+		['IPv6', 'https://[2001:db8::1]/v1'],
+	])('sets no servername when the host is an %s literal', (_label, url) => {
+		const options = buildAgentOptions({ method: 'GET', url });
+
+		expect(options.servername).toBeUndefined();
 	});
 });

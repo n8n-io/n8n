@@ -66,12 +66,16 @@ export function scopeLabel(
 }
 
 /**
- * Whether a grant covers every scope the instance offers. Pre-scoping grants
- * are backfilled to the full launch scope set, so they surface as a single
- * "Full access" label rather than an enumeration of every scope.
+ * Whether a grant covers every scope the instance currently offers.
+ * Older grants need fresh consent for scopes introduced after they were made.
+ *
+ * `offeredScopes` comes from the backend, which drops scopes this instance
+ * cannot serve (agent scopes when the agents module is off). Without it a
+ * full grant on such an instance would never count as full access.
  */
-export function isFullAccessGrant(scopes: string[]): boolean {
-	return scopes.length > 0 && MCP_INSTANCE_SCOPES.every((scope) => scopes.includes(scope));
+export function isFullAccessGrant(scopes: string[], offeredScopes?: string[]): boolean {
+	const required = offeredScopes?.length ? offeredScopes : MCP_INSTANCE_SCOPES;
+	return scopes.length > 0 && required.every((scope) => scopes.includes(scope));
 }
 
 /** UI state of the connected-clients search + filter popover; applied server-side. */

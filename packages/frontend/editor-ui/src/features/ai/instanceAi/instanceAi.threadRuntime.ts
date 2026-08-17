@@ -2,7 +2,9 @@ import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
+	buildDataTablesSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
+	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	instanceAiEventSchema,
@@ -22,8 +24,9 @@ import {
 	type AgentRunState,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
@@ -42,7 +45,12 @@ import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
-import { INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY } from './constants';
+import {
+	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
+	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+} from './constants';
 import {
 	findToolCallInTree,
 	isOrchestratorLive,
@@ -115,6 +123,45 @@ export function getAgentBuilderTargetFromThreadMetadata(
 	};
 }
 
+export function getPendingAgentTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const raw = metadata?.[INSTANCE_AI_PENDING_AGENT_METADATA_KEY];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
+	return { agentId: target.agentId, projectId: target.projectId };
+}
+
+export function getAgentPreviewViewFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	return getAgentPreviewTargetFromThreadMetadata(
+		metadata,
+		INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	);
+}
+
+export function getAgentPreviewSessionFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	return getAgentPreviewTargetFromThreadMetadata(
+		metadata,
+		INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
+	);
+}
+
+function getAgentPreviewTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+	metadataKey: string,
+) {
+	const raw = metadata?.[metadataKey];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.agentId !== 'string' || typeof target.threadId !== 'string') return undefined;
+	return { agentId: target.agentId, threadId: target.threadId };
+}
+
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
 function collectPendingConfirmations(
 	node: InstanceAiAgentNode,
@@ -134,8 +181,10 @@ function collectPendingConfirmations(
 			// would block the chat input on a confirmation the user can no
 			// longer act on.
 			!tc.confirmation.expired &&
-			// Plan review renders inline in the timeline, not in the confirmation panel
-			tc.confirmation.inputType !== 'plan-review'
+			// Plan review and the MCP connect card render inline in the timeline, not
+			// in the confirmation panel
+			tc.confirmation.inputType !== 'plan-review' &&
+			!tc.confirmation.mcpConnectRequest
 		) {
 			out.push({
 				toolCall: tc as InstanceAiToolCallState & { confirmation: InstanceAiConfirmation },
@@ -151,7 +200,7 @@ function collectPendingConfirmations(
 
 /**
  * Whether any tool call in the tree still waits on user input. Broader than
- * `collectPendingConfirmations`: plan-review and expired confirmations also
+ * `collectPendingConfirmations`: timeline-rendered and expired confirmations also
  * pause the run, so the stall watchdog must not count them as thinking time.
  */
 function hasUnresolvedConfirmation(
@@ -304,6 +353,7 @@ export function createThreadRuntime(
 	const workflowsListStore = useWorkflowsListStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
+	const i18n = useI18n();
 
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
@@ -388,6 +438,10 @@ export function createThreadRuntime(
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 		() => archivedWorkflowIds.value,
 		() => getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		() => {
+			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
+			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
+		},
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -545,35 +599,85 @@ export function createThreadRuntime(
 
 	// --- Session "Always allow" ---
 	// Thread-scoped: cleared by `resetState()` so grants don't leak when the
-	// runtime is disposed and recreated. Key: `${toolName}:${args.action ?? ''}`
-	// for most tools; `submit-workflow` is keyed on `workflowId` presence so a
-	// create grant doesn't silently auto-approve later updates (the backend
-	// distinguishes createWorkflow vs updateWorkflow by that field).
+	// runtime is disposed and recreated. Prefer shared builders from
+	// `@n8n/api-types` so UI keys match persisted thread grants:
+	// `executions:run:<id>`, `workflows:update:<id>`, `data-tables:<action>`.
+	// Fallback for other tools: `${toolName}:${args.action ?? ''}`.
+	// `submit-workflow` is keyed on `workflowId` presence so a create grant
+	// doesn't silently auto-approve later updates.
 	const sessionAlwaysAllowKeys = ref<Set<string>>(new Set());
 
-	function buildAlwaysAllowKey(toolName: string, args: Record<string, unknown>): string {
+	function resolveAlwaysAllowWorkflowId(
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): string {
+		if (typeof args.workflowId === 'string' && args.workflowId.length > 0) {
+			return args.workflowId;
+		}
+		if (typeof confirmationWorkflowId === 'string' && confirmationWorkflowId.length > 0) {
+			return confirmationWorkflowId;
+		}
+		return '';
+	}
+
+	/**
+	 * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
+	 * generic `build-workflow:` key would auto-approve later foreign edits.
+	 */
+	function buildAlwaysAllowKey(
+		toolName: string,
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): string | null {
 		if (toolName === 'submit-workflow') {
 			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
 			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
+		const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
 		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
 		// workflow the user approved.
 		if (toolName === 'executions' && action === 'run') {
-			const workflowId = typeof args.workflowId === 'string' ? args.workflowId : '';
 			return buildRunWorkflowSessionGrantKey(workflowId);
+		}
+		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
+		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow
+		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
+		// payload instead. Without either ID, refuse to store a key (fail closed).
+		if ((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow') {
+			if (!workflowId) return null;
+			return buildUpdateWorkflowSessionGrantKey(workflowId);
+		}
+		if (toolName === 'data-tables') {
+			return buildDataTablesSessionGrantKey(action);
 		}
 		return `${toolName}:${action}`;
 	}
 
-	function addAlwaysAllowKey(toolName: string, args: Record<string, unknown>): void {
+	function addAlwaysAllowKey(
+		toolName: string,
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): void {
+		const key = buildAlwaysAllowKey(toolName, args, confirmationWorkflowId);
+		if (key === null) return;
 		const next = new Set(sessionAlwaysAllowKeys.value);
-		next.add(buildAlwaysAllowKey(toolName, args));
+		next.add(key);
 		sessionAlwaysAllowKeys.value = next;
+	}
+
+	/** False when Always allow cannot be scoped (e.g. workflow edit with no workflow ID). */
+	function canAlwaysAllow(
+		toolName: string,
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): boolean {
+		return buildAlwaysAllowKey(toolName, args, confirmationWorkflowId) !== null;
 	}
 
 	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
 		const conf = item.toolCall.confirmation;
+		if (conf.targetApproval) return false;
 		if (conf.severity === 'destructive') return false;
 		if (conf.domainAccess) return false;
 		if (conf.inputType) return false;
@@ -599,8 +703,12 @@ export function createThreadRuntime(
 				if (resolvedConfirmationIds.has(conf.requestId)) continue;
 				if (autoApproveInFlight.has(conf.requestId)) continue;
 				if (!isGenericApprovalEligible(item)) continue;
-				const key = buildAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
-				if (!sessionAlwaysAllowKeys.value.has(key)) continue;
+				const key = buildAlwaysAllowKey(
+					item.toolCall.toolName,
+					item.toolCall.args ?? {},
+					conf.workflowId,
+				);
+				if (key === null || !sessionAlwaysAllowKeys.value.has(key)) continue;
 
 				autoApproveInFlight.add(conf.requestId);
 				try {
@@ -1296,6 +1404,7 @@ export function createThreadRuntime(
 		confirmResourceDecision,
 		resolveConfirmation,
 		addAlwaysAllowKey,
+		canAlwaysAllow,
 		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,

@@ -42,7 +42,6 @@ function mountSection(simpleChannelSetup?: boolean) {
 			connectedTriggers: [],
 			projectId: 'project-id',
 			agentId: 'agent-id',
-			isPublished: false,
 			simpleChannelSetup,
 		},
 		global: {

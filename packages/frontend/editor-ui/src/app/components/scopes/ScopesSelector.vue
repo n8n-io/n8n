@@ -2,10 +2,12 @@
 import { computed, ref, watch } from 'vue';
 
 import { capitalCase } from 'change-case';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 
 import {
+	N8nAnimatedCollapsibleContent,
 	N8nBadge,
 	N8nCheckbox,
 	N8nIcon,
@@ -292,132 +294,136 @@ function toggleScope(scope: S, checked: boolean) {
 			</N8nRadioGroup>
 		</N8nInputLabel>
 
-		<div :class="$style.customSection">
-			<button
-				type="button"
-				:class="$style.treeHeader"
-				:aria-expanded="treeExpanded"
-				data-test-id="scopes-tree-toggle"
-				@click="treeExpanded = !treeExpanded"
-			>
-				<N8nIcon :icon="treeExpanded ? 'chevron-down' : 'chevron-right'" size="small" />
-				<span data-test-id="scopes-count">
-					{{
-						baseText('count', {
-							selected: modelValue.length,
-							total: availableScopes.length,
-						})
-					}}
-				</span>
-			</button>
+		<CollapsibleRoot v-model:open="treeExpanded" :class="$style.customSection">
+			<CollapsibleTrigger as-child>
+				<button type="button" :class="$style.treeHeader" data-test-id="scopes-tree-toggle">
+					<N8nIcon :icon="treeExpanded ? 'chevron-down' : 'chevron-right'" size="small" />
+					<span data-test-id="scopes-count">
+						{{
+							baseText('count', {
+								selected: modelValue.length,
+								total: availableScopes.length,
+							})
+						}}
+					</span>
+				</button>
+			</CollapsibleTrigger>
 
-			<template v-if="treeExpanded">
-				<N8nInput
-					v-model="searchTerm"
-					size="small"
-					clearable
-					:placeholder="baseText('search.placeholder')"
-					:aria-label="baseText('search.placeholder')"
-					data-test-id="scopes-search"
-				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-				</N8nInput>
+			<N8nAnimatedCollapsibleContent blur>
+				<div :class="$style.treeBody">
+					<N8nInput
+						v-model="searchTerm"
+						size="small"
+						clearable
+						:placeholder="baseText('search.placeholder')"
+						:aria-label="baseText('search.placeholder')"
+						data-test-id="scopes-search"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
 
-				<div :class="$style.groups">
-					<div v-for="{ group, visibleScopes } in filteredGroups" :key="group.key">
-						<div :class="$style.groupHeader">
-							<N8nIconButton
-								v-if="!isSearching"
-								:icon="isGroupExpanded(group) ? 'chevron-down' : 'chevron-right'"
-								variant="ghost"
-								size="small"
-								:aria-expanded="isGroupExpanded(group)"
-								:aria-label="baseText('toggleGroup', { group: getGroupLabel(group) })"
-								:data-test-id="`scope-group-toggle-${group.key}`"
-								@click="toggleGroupExpanded(group)"
-							/>
-							<N8nCheckbox
-								:model-value="isGroupChecked(group)"
-								:indeterminate="isGroupIndeterminate(group)"
-								:label="getGroupLabel(group)"
-								:disabled="disabled"
-								:data-test-id="`scope-group-${group.key}`"
-								@update:model-value="(checked: boolean) => toggleGroup(group, checked)"
-							/>
-							<N8nTooltip
-								v-if="groupTools(group).length > 0"
-								placement="right"
-								:show-after="150"
-								:content-class="$style['tools-tooltip']"
-							>
-								<template #content>
-									<div
-										:class="$style['tools-popover']"
-										:data-test-id="`scope-group-tools-popover-${group.key}`"
-									>
-										<div :class="$style['tools-popover-header']">
-											{{
-												baseText('tools.enabledOf', {
-													enabled: groupEnabledTools(group).size,
-													total: groupTools(group).length,
-												})
-											}}
-										</div>
+					<div :class="$style.groups">
+						<div v-for="{ group, visibleScopes } in filteredGroups" :key="group.key">
+							<div :class="$style.groupHeader">
+								<N8nIconButton
+									v-if="!isSearching"
+									:icon="isGroupExpanded(group) ? 'chevron-down' : 'chevron-right'"
+									variant="ghost"
+									size="small"
+									:aria-expanded="isGroupExpanded(group)"
+									:aria-label="baseText('toggleGroup', { group: getGroupLabel(group) })"
+									:data-test-id="`scope-group-toggle-${group.key}`"
+									@click="toggleGroupExpanded(group)"
+								/>
+								<N8nCheckbox
+									:model-value="isGroupChecked(group)"
+									:indeterminate="isGroupIndeterminate(group)"
+									:label="getGroupLabel(group)"
+									:disabled="disabled"
+									:data-test-id="`scope-group-${group.key}`"
+									@update:model-value="(checked: boolean) => toggleGroup(group, checked)"
+								/>
+								<N8nTooltip
+									v-if="groupTools(group).length > 0"
+									placement="right"
+									:show-after="150"
+									:content-class="$style['tools-tooltip']"
+								>
+									<template #content>
 										<div
-											v-for="tool in groupTools(group)"
-											:key="tool"
-											:class="[
-												$style['tool-row'],
-												{ [$style['tool-row-disabled']]: !groupEnabledTools(group).has(tool) },
-											]"
+											:class="$style['tools-popover']"
+											:data-test-id="`scope-group-tools-popover-${group.key}`"
 										>
-											<N8nIcon
-												:icon="groupEnabledTools(group).has(tool) ? 'check' : 'circle'"
-												size="xsmall"
-												:class="$style['tool-icon']"
+											<div :class="$style['tools-popover-header']">
+												{{
+													baseText('tools.enabledOf', {
+														enabled: groupEnabledTools(group).size,
+														total: groupTools(group).length,
+													})
+												}}
+											</div>
+											<div
+												v-for="tool in groupTools(group)"
+												:key="tool"
+												:class="[
+													$style['tool-row'],
+													{ [$style['tool-row-disabled']]: !groupEnabledTools(group).has(tool) },
+												]"
+											>
+												<N8nIcon
+													:icon="groupEnabledTools(group).has(tool) ? 'check' : 'circle'"
+													size="xsmall"
+													:class="$style['tool-icon']"
+												/>
+												<span :class="$style['tool-name']">{{ tool }}</span>
+											</div>
+										</div>
+									</template>
+									<span
+										:class="$style['tools-tag']"
+										tabindex="0"
+										:data-test-id="`scope-group-tools-${group.key}`"
+									>
+										<N8nIcon icon="wrench" size="xsmall" />
+										{{
+											baseText(
+												'tools.count',
+												{ count: groupTools(group).length },
+												groupTools(group).length,
+											)
+										}}
+									</span>
+								</N8nTooltip>
+							</div>
+							<CollapsibleRoot :open="isGroupExpanded(group)">
+								<N8nAnimatedCollapsibleContent blur>
+									<div :class="$style.scopeList">
+										<div v-for="scope in visibleScopes" :key="scope" :class="$style.scopeRow">
+											<N8nCheckbox
+												:model-value="selectedSet.has(scope)"
+												:label="scope"
+												:disabled="disabled"
+												:data-test-id="`scope-checkbox-${scope}`"
+												@update:model-value="(checked: boolean) => toggleScope(scope, checked)"
 											/>
-											<span :class="$style['tool-name']">{{ tool }}</span>
+											<N8nBadge
+												:theme="
+													classifyScope(scope, readActions) === 'read' ? 'default' : 'success'
+												"
+											>
+												{{ getBadgeLabel(scope) }}
+											</N8nBadge>
 										</div>
 									</div>
-								</template>
-								<span
-									:class="$style['tools-tag']"
-									tabindex="0"
-									:data-test-id="`scope-group-tools-${group.key}`"
-								>
-									<N8nIcon icon="wrench" size="xsmall" />
-									{{
-										baseText(
-											'tools.count',
-											{ count: groupTools(group).length },
-											groupTools(group).length,
-										)
-									}}
-								</span>
-							</N8nTooltip>
-						</div>
-						<div v-if="isGroupExpanded(group)" :class="$style.scopeList">
-							<div v-for="scope in visibleScopes" :key="scope" :class="$style.scopeRow">
-								<N8nCheckbox
-									:model-value="selectedSet.has(scope)"
-									:label="scope"
-									:disabled="disabled"
-									:data-test-id="`scope-checkbox-${scope}`"
-									@update:model-value="(checked: boolean) => toggleScope(scope, checked)"
-								/>
-								<N8nBadge
-									:theme="classifyScope(scope, readActions) === 'read' ? 'default' : 'success'"
-								>
-									{{ getBadgeLabel(scope) }}
-								</N8nBadge>
-							</div>
+								</N8nAnimatedCollapsibleContent>
+							</CollapsibleRoot>
 						</div>
 					</div>
 				</div>
-			</template>
-		</div>
+			</N8nAnimatedCollapsibleContent>
+		</CollapsibleRoot>
 	</div>
 </template>
 
@@ -450,8 +456,16 @@ function toggleScope(scope: S, checked: boolean) {
 .customSection {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--xs);
+}
+
+/* Spacing lives inside the animated wrapper (as padding, not flex gap on the
+   parent), so the collapse animates all the way to zero height with no jump. */
+.treeBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding-top: var(--spacing--2xs);
 }
 
 .treeHeader {

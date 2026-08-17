@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import { AgentRunTracingService, modelIdFromSnapshot } from '../agent-run-tracing.service';
 
 vi.mock('@opentelemetry/api', () => ({
-	trace: { getTracer: vi.fn(() => ({ startActiveSpan: vi.fn() })) },
+	trace: { getTracer: vi.fn(() => ({ startSpan: vi.fn(), startActiveSpan: vi.fn() })) },
 }));
 
 describe('AgentRunTracingService', () => {
@@ -156,6 +156,30 @@ describe('AgentRunTracingService', () => {
 		// the AgentRunTracingMetadata union — a non-workflow source can't carry
 		// it, enforced at compile time rather than filtered at runtime.
 		await service.build({ ...baseMetadata, source: 'slack', executionId: 'exec-1' });
+	});
+
+	it('marks workflow-sourced runs as rootAnchored: false only when a parent context was found, and leaves other sources anchored', async () => {
+		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
+		const service = new AgentRunTracingService(agentsConfig);
+
+		const workflowBuilt = await service.build({
+			...baseMetadata,
+			source: 'workflow',
+			executionId: 'exec-1',
+			hasParentContext: true,
+		});
+		expect(workflowBuilt?.rootAnchored).toBe(false);
+
+		const workflowBuiltWithoutParent = await service.build({
+			...baseMetadata,
+			source: 'workflow',
+			executionId: 'exec-1',
+			hasParentContext: false,
+		});
+		expect(workflowBuiltWithoutParent?.rootAnchored).toBeUndefined();
+
+		const slackBuilt = await service.build({ ...baseMetadata, source: 'slack' });
+		expect(slackBuilt?.rootAnchored).toBeUndefined();
 	});
 
 	it('includes user_id and model_id only when provided', async () => {

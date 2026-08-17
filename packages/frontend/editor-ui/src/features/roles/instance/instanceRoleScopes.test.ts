@@ -165,21 +165,21 @@ describe('resolveOptionState', () => {
 	});
 
 	it('returns indeterminate for a genuine partial subset with no fully-checked sub-option', () => {
-		// Only 1 of 4 "Manage own" scopes present — "Manage own" sub-option is not fully checked
+		// Only 1 of 2 "Manage own" scopes present — "Manage own" sub-option is not fully checked
 		expect(resolveOptionState(manageAll, apiKeyGroup.options, ['apiKey:create'])).toBe(
 			'indeterminate',
 		);
 	});
 
 	it('suppresses false indeterminate on "Manage all" when "Manage own" is fully checked', () => {
-		// "Manage own" (4 scopes) fully checked → "Manage all" would be 4/5 (indeterminate)
-		// but all 4 matching scopes come from the fully-checked sub-option → unchecked
+		// "Manage own" (2 scopes) fully checked → "Manage all" would be 2/3 (indeterminate)
+		// but both matching scopes come from the fully-checked sub-option → unchecked
 		expect(resolveOptionState(manageAll, apiKeyGroup.options, ownScopes)).toBe('unchecked');
 	});
 
 	it('keeps indeterminate on "Manage all" when the sub-option is only partially checked', () => {
-		// 3 of 4 "Manage own" scopes present — "Manage own" is indeterminate, not fully checked
-		const partialOwn = ownScopes.slice(0, 3);
+		// 1 of 2 "Manage own" scopes present — "Manage own" is indeterminate, not fully checked
+		const partialOwn = ownScopes.slice(0, 1);
 		expect(resolveOptionState(manageAll, apiKeyGroup.options, partialOwn)).toBe('indeterminate');
 	});
 

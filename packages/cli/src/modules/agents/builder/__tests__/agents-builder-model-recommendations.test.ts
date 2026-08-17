@@ -1,7 +1,7 @@
 import type { ProviderCatalog } from '@n8n/agents';
 
 import { buildModelRecommendationsSection } from '../agents-builder-model-recommendations';
-import { buildBuilderPrompt } from '../agents-builder-prompts';
+import { PREREQUISITES_SECTION, buildBuilderPrompt } from '../agents-builder-prompts';
 import { getBuilderRuntimeSkills } from '../skills';
 
 const catalog: ProviderCatalog = {
@@ -110,6 +110,12 @@ describe('builder model recommendations', () => {
 		const prompt = buildPrompt(null);
 
 		expect(prompt).toContain('## Config Mutation Guidance');
+		expect(prompt).toContain('## Prerequisites you cannot create');
+		expect(PREREQUISITES_SECTION).toContain('cannot create n8n workflows or data tables');
+		expect(PREREQUISITES_SECTION).toContain('Do not ask the user to create them in this chat');
+		expect(prompt.indexOf('## Prerequisites you cannot create')).toBeLessThan(
+			prompt.indexOf('## When To Build vs When To Converse'),
+		);
 		expect(prompt).toContain('## LLM Selection Guidance');
 		expect(prompt).toContain('## Memory Guidance');
 		expect(prompt).toContain('## Tool Guidance');
@@ -139,6 +145,43 @@ describe('builder model recommendations', () => {
 		expect(prompt).not.toContain('Use `list_sub_agents` to discover published same-project agents');
 		expect(skill).toBeDefined();
 		expect(skill?.instructions).toContain('`delegate_subagent`');
+	});
+
+	it('routes distinct target-agent functions into autonomously managed skills', () => {
+		const prompt = buildPrompt(null);
+		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-target-skills');
+
+		expect(prompt).toContain(
+			'Keep the target agent instructions lightweight: identity, overall purpose, and rules that apply to every operation',
+		);
+		expect(prompt).toContain('even when the user never calls it a skill');
+		expect(prompt).toContain('create missing skills or update existing ones as part of the build');
+		expect(prompt).not.toContain('Infer and create these skills');
+		expect(prompt).toContain('creating tickets, reviewing images, and generating reports');
+		expect(prompt).not.toContain('create any requested tools, skills, or tasks');
+
+		expect(skill?.description).toContain('designing, creating, or editing target-agent behavior');
+		expect(skill?.description).toContain('without calling it a skill');
+		expect(skill?.recommendedTools).toEqual(
+			expect.arrayContaining(['list_skills', 'read_skill', 'update_skill', 'create_skills']),
+		);
+		expect(skill?.allowedTools).toEqual(
+			expect.arrayContaining(['list_skills', 'read_skill', 'update_skill', 'create_skills']),
+		);
+		expect(skill?.instructions).toContain(
+			'Call `list_skills` once and compare its metadata with the attached ids',
+		);
+		expect(skill?.instructions).toContain('preserving its id and existing config reference');
+		expect(skill?.instructions).toContain(
+			'Only call `create_skills` when no attached skill owns the capability',
+		);
+
+		const listIndex = skill?.instructions.indexOf('Call `list_skills`') ?? -1;
+		const readIndex = skill?.instructions.indexOf('Call `read_skill`') ?? -1;
+		const updateIndex = skill?.instructions.indexOf('Call `update_skill`') ?? -1;
+		expect(listIndex).toBeGreaterThan(-1);
+		expect(readIndex).toBeGreaterThan(listIndex);
+		expect(updateIndex).toBeGreaterThan(readIndex);
 	});
 
 	it('tells the builder to preserve fallback web search on model switches', () => {
@@ -221,13 +264,6 @@ describe('builder model recommendations', () => {
 			'agent-builder-target-tasks',
 		]);
 		expect(skillsById.has('agent-builder-research')).toBe(false);
-
-		const externalServices = skillsById.get('agent-builder-external-services');
-		expect(externalServices?.description).toContain(
-			'chat integration/trigger versus an MCP, node, or workflow tool',
-		);
-		expect(externalServices?.instructions).toContain('Integration vs Callable Tool Decision');
-		expect(externalServices?.instructions).toContain('Linear callable tools');
 
 		const resourceLocators = skillsById.get('agent-builder-resource-locators');
 		expect(resourceLocators?.description).toContain('stable dynamic selector fields');

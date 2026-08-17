@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { type ParsedAiContent } from '@/app/utils/aiUtils';
 import { type IDataObject } from 'n8n-workflow';
 import VueMarkdown from 'vue-markdown-render';

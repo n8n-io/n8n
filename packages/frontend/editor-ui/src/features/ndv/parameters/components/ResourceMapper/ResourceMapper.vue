@@ -15,7 +15,10 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, NodeHelpers } from 'n8n-workflow';
 import { computed, inject, onMounted, reactive, watch } from 'vue';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import {
+	ExpressionLocalResolveContextSymbol,
+	ResourceMapperSchemaAutoRefreshKey,
+} from '@/app/constants';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
@@ -53,6 +56,7 @@ const ndvStore = injectNDVStore();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const projectsStore = useProjectsStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const schemaAutoRefreshEnabled = inject(ResourceMapperSchemaAutoRefreshKey, true);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const props = withDefaults(defineProps<Props>(), {
@@ -137,7 +141,11 @@ async function checkStaleFields(): Promise<void> {
 		state.paramValue.schema,
 		fetchedFields.fields,
 	);
-	if (isSchemaStale && props.parameter.typeOptions?.resourceMapper?.refreshStaleSchemaOnOpen) {
+	if (
+		isSchemaStale &&
+		schemaAutoRefreshEnabled &&
+		props.parameter.typeOptions?.resourceMapper?.refreshStaleSchemaOnOpen
+	) {
 		await initFetching(true, fetchedFields);
 		return;
 	}
@@ -216,6 +224,7 @@ onMounted(async () => {
 		// Only fetch a schema if it's not already set
 		await initFetching();
 	} else if (
+		schemaAutoRefreshEnabled &&
 		props.parameter.typeOptions?.resourceMapper?.refreshIncompleteSchemaOnOpen &&
 		isResourceMapperSchemaIncomplete(state.paramValue.schema)
 	) {

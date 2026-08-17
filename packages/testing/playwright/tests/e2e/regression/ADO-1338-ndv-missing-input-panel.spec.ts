@@ -19,7 +19,7 @@ test.describe(
 		}) => {
 			await setupRequirements(requirements);
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
-				'Workflow successfully executed',
+				'Workflow executed successfully',
 			);
 
 			await n8n.canvas.openNode('Discourse1');

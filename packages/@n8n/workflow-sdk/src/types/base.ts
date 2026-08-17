@@ -433,6 +433,12 @@ export interface WorkflowContext {
  * Configuration options for creating a node
  */
 export interface NodeConfig<TParams = IDataObject> {
+	/**
+	 * Stable n8n node id. Keep it verbatim when editing an existing node — execution
+	 * logs, poll cursors, dedupe state and the version diff are all keyed on it, and a
+	 * rename does not change it. Omit it for a node you are adding; one is assigned on save.
+	 */
+	id?: string;
 	parameters?: TParams;
 	credentials?: Record<
 		string,
@@ -465,6 +471,8 @@ export interface NodeConfig<TParams = IDataObject> {
  * Configuration for sticky notes
  */
 export interface StickyNoteConfig {
+	/** Stable n8n node id — see {@link NodeConfig.id}. */
+	id?: string;
 	color?: number;
 	position?: [number, number];
 	width?: number;
@@ -659,6 +667,27 @@ export function isNodeInstance(value: unknown): value is NodeInstance<string, st
 	// After 'in' checks, safely access the to property
 	const toProp = (value as Record<string, unknown>).to;
 	return typeof toProp === 'function';
+}
+
+/**
+ * A sticky note that was asked to wrap a set of nodes.
+ *
+ * Only the anchor node IDs are recorded at construction time: node positions do not
+ * exist yet when `sticky()` runs, so the box is resolved during serialization from
+ * wherever the anchors ended up. IDs rather than names, because a node can be
+ * auto-renamed on its way into the workflow.
+ */
+export interface AnchoredStickyNote {
+	readonly stickyAnchorIds: readonly string[];
+}
+
+/** Type guard for {@link AnchoredStickyNote}. */
+export function isAnchoredStickyNote(value: object): value is AnchoredStickyNote {
+	return (
+		'stickyAnchorIds' in value &&
+		Array.isArray(value.stickyAnchorIds) &&
+		value.stickyAnchorIds.every((id) => typeof id === 'string')
+	);
 }
 
 // =============================================================================
@@ -1024,6 +1053,26 @@ export interface ToJSONOptions {
  */
 export type GroupMember = NodeInstance<string, string, unknown>;
 
+/** Optional group settings passed as `.group()`'s third argument. */
+export type GroupOptions = {
+	/**
+	 * Description shown when the group is collapsed on the canvas. Capped to
+	 * `GROUP_DESCRIPTION_MAX_LENGTH` characters on serialization; blank is
+	 * treated as no description.
+	 */
+	description?: string;
+};
+
+/**
+ * A node group as authored: members are node handles, resolved to the emitted node
+ * IDs only at serialization. `id` is present for a group carried in from JSON.
+ */
+export type AuthoredNodeGroup = GroupOptions & {
+	id?: string;
+	name: string;
+	members: GroupMember[];
+};
+
 export interface WorkflowBuilder {
 	readonly id: string;
 	readonly name: string;
@@ -1103,6 +1152,8 @@ export interface WorkflowBuilder {
 	 * Members resolve to the emitted node IDs in `toJSON()`, so groups survive
 	 * `regenerateNodeIds()` like connections do. Chainable.
 	 *
+	 * Pass `{ description }` to add the text shown when the group is collapsed.
+	 *
 	 * @example
 	 * ```typescript
 	 * const fetch = node({ ... });
@@ -1110,10 +1161,12 @@ export interface WorkflowBuilder {
 	 * workflow('id', 'Name')
 	 *   .add(fetch)
 	 *   .to(transform)
-	 *   .group('Data ingestion', [fetch, transform]);
+	 *   .group('Data ingestion', [fetch, transform], {
+	 *     description: 'Pulls the CRM contacts and normalizes them',
+	 *   });
 	 * ```
 	 */
-	group(name: string, members: GroupMember[]): WorkflowBuilder;
+	group(name: string, members: GroupMember[], options?: GroupOptions): WorkflowBuilder;
 
 	/**
 	 * Validate the workflow graph structure.
