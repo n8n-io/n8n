@@ -15,10 +15,6 @@
   "exports": {
     ".": "./index.ts"
   },
-  "imports": {
-    "#aliases": "./aliases.ts",
-    "#source-packages": "./source-packages.ts"
-  },
   "scripts": {
     "clean": "rimraf .turbo",
     "typecheck": "tsc --noEmit",
