@@ -162,12 +162,15 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
+const pendingAgentIdFromHistory = (history.state as Record<string, unknown>)[
+	INSTANCE_AI_PENDING_AGENT_ID_STATE
+];
+const routePendingAgentId = ref(
+	typeof pendingAgentIdFromHistory === 'string' ? pendingAgentIdFromHistory : null,
+);
 const isRouteAgentPending = computed(() => {
 	if (isArtifactMode.value) return false;
-	const pendingAgentId = (history.state as Record<string, unknown>)[
-		INSTANCE_AI_PENDING_AGENT_ID_STATE
-	];
-	return pendingAgentId === agentId.value;
+	return routePendingAgentId.value === agentId.value;
 });
 const isAgentPending = computed(() => props.artifactAgentPending || isRouteAgentPending.value);
 const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
@@ -752,6 +755,7 @@ function clearRoutePendingState() {
 		unknown
 	>;
 	history.replaceState(state, '');
+	routePendingAgentId.value = null;
 }
 
 async function ensureAgentPersisted(): Promise<void> {

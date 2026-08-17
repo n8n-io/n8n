@@ -695,6 +695,8 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			id: 'a1',
 		});
 		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
+		await vi.waitFor(() => expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1'));
+		expect(fetchSessionThreadsMock).toHaveBeenCalledWith('p1', 'a1');
 	});
 
 	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {
