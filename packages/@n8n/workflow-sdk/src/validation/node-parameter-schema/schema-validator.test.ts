@@ -155,6 +155,19 @@ describe('schema-validator', () => {
 				expect(result.errors[0].missingDiscriminator).toBe(true);
 			});
 
+			it('flags when only a later variant is satisfied apart from the discriminators', () => {
+				// `recipient` is missing, so the FIRST variant (send) also fails on a
+				// non-discriminator field; only the second variant (list) is satisfied
+				// apart from the omitted discriminators. The flag must not depend on
+				// which variant best-path selection happens to rank first.
+				const result = validateNodeConfig('custom-pkg.messenger', 1, {
+					parameters: { channel: '#general' },
+				});
+				expect(result.valid).toBe(false);
+				expect(result.errors[0].message).toContain('Missing discriminator');
+				expect(result.errors[0].missingDiscriminator).toBe(true);
+			});
+
 			it('does not flag when the union also fails on other fields', () => {
 				// Discriminators are omitted AND `channel` has the wrong type in
 				// every variant — a genuinely misconfigured node must stay blocking.
