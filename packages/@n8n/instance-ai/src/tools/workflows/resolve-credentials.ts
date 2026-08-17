@@ -69,6 +69,13 @@ export interface CredentialResolutionResult {
 	/** Map of node name → credential types that were mocked on that node. */
 	mockedCredentialsByNode: Record<string, string[]>;
 	/**
+	 * Credential types from `preferNewCredentialTypes` the resolver actually left
+	 * open for the user to create. Not derivable from `mockedCredentialTypes`: a
+	 * slot the source omitted entirely is held by the required-type pass, which
+	 * attaches nothing and therefore mocks nothing.
+	 */
+	heldForNewCredentialTypes: string[];
+	/**
 	 * Map of node name → credentials the resolver attached automatically
 	 * (restored from the saved workflow or auto-bound to the sole existing
 	 * candidate). These nodes are already connected — the agent must not ask
@@ -159,6 +166,7 @@ export async function resolveCredentials(
 	preferNewCredentialTypes?: readonly string[],
 ): Promise<CredentialResolutionResult> {
 	const preferNewTypes = new Set(preferNewCredentialTypes ?? []);
+	const heldForNewCredentialTypes = new Set<string>();
 	const mockedNodeNames: string[] = [];
 	const mockedCredentialTypesSet = new Set<string>();
 	const mockedCredentialsByNode: Record<string, string[]> = {};
@@ -387,6 +395,7 @@ export async function resolveCredentials(
 				// view — they asked to create their own, so don't answer with ours.
 				if (wantsNewCredential) {
 					mockCredential();
+					heldForNewCredentialTypes.add(key);
 					return;
 				}
 				if (!hasStoredCredential(key)) {
@@ -493,9 +502,15 @@ export async function resolveCredentials(
 			const creds = (node.credentials ?? {}) as Record<string, unknown>;
 			const existing = creds[credType];
 			if (existing !== undefined && existing !== null) continue;
-			if (hasStoredCredential(credType)) continue;
 			// Asked-for-fresh types stay open for setup — never pre-answered with credits.
-			if (preferNewTypes.has(credType)) continue;
+			// Checked before the stored-credential bail so the type is reported as held
+			// either way: this pass attaches nothing, so it mocks nothing, and the build
+			// result would otherwise carry no trace of the request for the setup call.
+			if (preferNewTypes.has(credType)) {
+				heldForNewCredentialTypes.add(credType);
+				continue;
+			}
+			if (hasStoredCredential(credType)) continue;
 
 			let managedType = credType;
 			if (!(await isGatewayCredentialType(credType))) {
@@ -533,6 +548,7 @@ export async function resolveCredentials(
 		mockedNodeNames,
 		mockedCredentialTypes: [...mockedCredentialTypesSet],
 		mockedCredentialsByNode,
+		heldForNewCredentialTypes: [...heldForNewCredentialTypes],
 		resolvedCredentialsByNode,
 	};
 }

@@ -1508,6 +1508,7 @@ describe('resolveCredentials with preferNewCredentialTypes', () => {
 		expect(result.resolvedCredentialsByNode).toEqual({});
 		expect(result.mockedNodeNames).toEqual(['Slack']);
 		expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+		expect(result.heldForNewCredentialTypes).toEqual(['slackApi']);
 	});
 
 	it('does not reuse a credential bound to a sibling node of the same type', async () => {
@@ -1610,6 +1611,73 @@ describe('resolveCredentials with preferNewCredentialTypes', () => {
 			telegramApi: { id: 'cred-2', name: 'Telegram account' },
 		});
 		expect(result.mockedNodeNames).toEqual(['Slack']);
+	});
+
+	// The source can omit the credential slot altogether; the required-type pass
+	// then holds it, attaching — and so mocking — nothing. The held type still has to
+	// be reported, or the build result carries no trace of the request and the setup
+	// call can auto-apply an existing credential.
+	it('reports a held type when the source omitted the slot and a credential is stored', async () => {
+		const json = makeWorkflow({
+			nodes: [
+				{
+					id: '1',
+					name: 'Send Hello',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2,
+					position: [0, 0],
+				},
+			],
+		});
+		const ctx = createMockContext();
+		(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+			.fn()
+			.mockResolvedValue({ credentials: [{ name: 'slackApi' }] });
+		const map = makeCredentialMap([{ id: 'cred-1', name: 'Slack account', type: 'slackApi' }]);
+
+		const result = await resolveCredentials(json, undefined, ctx, map, ['slackApi']);
+
+		expect(result.heldForNewCredentialTypes).toEqual(['slackApi']);
+		expect(json.nodes[0].credentials).toBeUndefined();
+	});
+
+	it('reports a held type when the omitted slot would have taken n8n credits', async () => {
+		const json = makeWorkflow({
+			nodes: [
+				{
+					id: '1',
+					name: 'Send Hello',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2,
+					position: [0, 0],
+				},
+			],
+		});
+		const ctx = createMockContext();
+		(ctx.credentialService.list as Mock).mockResolvedValue([]);
+		(
+			ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+		(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+			.fn()
+			.mockResolvedValue({ credentials: [{ name: 'slackApi' }] });
+
+		const result = await resolveCredentials(json, undefined, ctx, makeCredentialMap([]), [
+			'slackApi',
+		]);
+
+		expect(result.heldForNewCredentialTypes).toEqual(['slackApi']);
+		expect(json.nodes[0].credentials).toBeUndefined();
+	});
+
+	it('reports nothing held for a type no node in the workflow uses', async () => {
+		const json = makeWorkflow({ nodes: [makeSlackNode()] });
+
+		const result = await resolveCredentials(json, undefined, createMockContext(), undefined, [
+			'telegramApi',
+		]);
+
+		expect(result.heldForNewCredentialTypes).toEqual([]);
 	});
 
 	it('still honors a credential id the builder wrote deliberately', async () => {

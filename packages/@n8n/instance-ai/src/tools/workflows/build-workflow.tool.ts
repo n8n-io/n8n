@@ -935,11 +935,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 				const hasMockedCredentialNodes = mockResult.mockedNodeNames.length > 0;
 				const hasResolvedCredentials = Object.keys(mockResult.resolvedCredentialsByNode).length > 0;
-				// Only the asked-for-fresh types the resolver actually held back, so the
-				// note never tells the agent to route a type nothing is pending for.
-				const heldForNewCredentialTypes = (input.preferNewCredentials ?? []).filter((type) =>
-					mockResult.mockedCredentialTypes.includes(type),
-				);
+				// Reported by the resolver rather than inferred from the mocked types, so a
+				// slot the source omitted entirely — held by the required-type pass, which
+				// mocks nothing — still carries the request into the setup call.
+				const heldForNewCredentialTypes = mockResult.heldForNewCredentialTypes;
 				const referencedWorkflowIds = getReferencedWorkflowIds(json);
 				const triggerNodes = (json.nodes ?? [])
 					.filter((n) => isTriggerNodeType(n.type))
