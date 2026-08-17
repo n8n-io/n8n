@@ -2621,6 +2621,20 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 
 	it('opens the tool config modal with the custom tool source', async () => {
+		const validationIssue = {
+			code: 'missing_reference' as const,
+			path: 'tools.0.id',
+			capability: {
+				kind: 'tool' as const,
+				id: 'custom_tool',
+				index: 0,
+				toolType: 'custom' as const,
+			},
+		};
+		getAgentConfigValidationMock.mockResolvedValue({
+			status: 'invalid',
+			issues: [validationIssue],
+		});
 		const customTool: CustomToolEntry = {
 			code: 'export async function run() {\n\treturn "ok";\n}',
 			descriptor: {
@@ -2665,6 +2679,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				data: expect.objectContaining({
 					toolRef,
 					customTool,
+					validationIssues: [validationIssue],
 				}),
 			}),
 		);
