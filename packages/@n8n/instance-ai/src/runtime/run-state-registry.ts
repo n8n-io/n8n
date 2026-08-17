@@ -67,6 +67,8 @@ export interface ConfirmationData {
 	domainAccessAction?: string;
 	action?: 'apply' | 'test-trigger';
 	nodeParameters?: Record<string, Record<string, unknown>>;
+	/** Workflow-setup cards the user actively skipped, by node name. */
+	skippedNodes?: string[];
 	testTriggerNode?: string;
 	answers?: Array<{
 		questionId: string;

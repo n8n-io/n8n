@@ -732,7 +732,7 @@ async function buildRequestForCredentialType(
 	// rides along in credentialTestResult for display.
 	// A parameter request needs action if issues remain.
 	// A trigger-only request (no credential, no param issues) never blocks apply.
-	let needsAction = false;
+	let credentialNeedsAction = false;
 	if (credentialType) {
 		const existingOnNode = node.credentials?.[credentialType];
 		const boundId =
@@ -743,11 +743,11 @@ async function buildRequestForCredentialType(
 			isAiGatewayManagedCredential(existingOnNode) ||
 			(boundId !== undefined &&
 				existingCredentials.some((credential) => credential.id === boundId));
-		needsAction = !isSettled;
+		credentialNeedsAction = !isSettled;
 	}
-	if (hasParamIssues) {
-		needsAction = true;
-	}
+	// Tracked apart from `needsAction` because the two answer different questions: a node with a
+	// working credential and an unfilled parameter needs action, but not *about the credential*.
+	const needsAction = credentialNeedsAction || hasParamIssues;
 
 	return {
 		node: {
@@ -777,6 +777,7 @@ async function buildRequestForCredentialType(
 			? { editableParameters: nodeCtx.editableParameters }
 			: {}),
 		needsAction,
+		...(credentialNeedsAction ? { credentialNeedsAction } : {}),
 	};
 }
 

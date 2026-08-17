@@ -286,7 +286,8 @@ When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
 
 - The workflow is verified by structured tool evidence.
-- Setup is required and `workflows(action="setup")` has been routed or deferred.
+- Setup is required and `workflows(action="setup")` has been routed or deferred,
+  or the only setup left is for credentials the user skipped earlier.
 - A remediation guard says `shouldEdit: false`.
 - You are blocked after one repair attempt per unique failure signature.
 

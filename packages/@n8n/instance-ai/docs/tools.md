@@ -272,7 +272,9 @@ configure it interactively.
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow to set up |
 
-**Returns**: `{ completedNodes, skippedNodes, failedNodes }`
+**Returns**: `{ completedNodes, nodesStillNeedingSetup, skippedByUser, failedNodes }` —
+`nodesStillNeedingSetup` is what nobody has configured yet, `skippedByUser` what the user
+actively dismissed and the agent must not re-open (see `reopenSkipped`).
 
 ### `publish-workflow`
 

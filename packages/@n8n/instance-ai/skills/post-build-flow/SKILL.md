@@ -50,6 +50,9 @@ is to call `workflows(action="setup")` with the `workflowId` from the payload. D
 not verify, do not ask, do not write a message first — the inline setup card in
 the AI Assistant panel is the user-visible surface. If it returns `deferred:
 true`, respect the user's choice and do not retry with any other setup tool.
+A result carrying `skippedByUser` names credentials the user already passed on:
+never re-open setup for those, in this turn or any later one — see
+[Credentials the user skipped](#credentials-the-user-skipped).
 After setup completes or is applied, follow
 [Mocked verification live-test follow-up](#mocked-verification-live-test-follow-up)
 if the payload or prior verification evidence says mocked credentials,
@@ -152,6 +155,35 @@ the moment to have the user re-open the credential and re-paste the value.
 If the user defers setup instead, don't hand them manual field-by-field
 credential instructions for the n8n editor — tell them to reopen setup when
 they're ready: the card pre-fills everything except their key.
+
+### Credentials the user skipped
+
+Skipping is remembered for the whole conversation. A setup result may carry
+`skippedByUser` (nodes and credential types the user passed on), and a build
+outcome may carry `setupRequirement.status === "not_required"` with
+`reason: "skipped-by-user"`. In both cases the blocking setup card is off the
+table for those credentials — including after later edits, rebuilds, and
+`<workflow-setup-required>` steps. Asking again is the single most common
+complaint about this flow.
+
+Instead, in your normal message:
+
+- name what stays unconfigured and what happens at runtime (e.g. "the Slack post
+  will fail until a channel is selected; the email still sends"),
+- offer to set it up whenever they want.
+
+Only once the user asks for a specific credential — "connect Slack now", "let's
+do the Slack setup", or picking it out of an offer you made — call
+`workflows(action="setup", reopenSkipped: ["slackApi"])`, naming just what they
+asked for so the rest stays skipped. A generic "yes" to an unrelated question is
+not an ask.
+
+Pass the `reopenWith` value the tool reported for that card, not the user's
+wording — a credential type for a credential card, a node name for one that was
+only missing a parameter. If nothing matches, setup answers with
+`unknown_reopen_target` and the list you can choose from; pick from it or tell
+the user what they named isn't part of this workflow. Don't fall back to
+re-offering, the user already asked.
 
 ## Publishing and testing
 
@@ -258,9 +290,13 @@ again.
 4. When `workflows(action="setup")` opens the inline setup card, the card is the
    user-visible surface. Do not tell the user to open the editor, use the canvas,
    or click a Setup button; the user does not need to navigate anywhere.
-5. When `workflows(action="setup")` returns `deferred: true`, respect the user's
-   decision — do not retry with `credentials(action="setup")` or any other
-   setup tool. The user chose to set things up later.
+5. When `workflows(action="setup")` returns `deferred: true`, or reports
+   `skippedByUser`, or applies only part of the card, respect the user's
+   decision — do not retry with `credentials(action="setup")`, another
+   `workflows(action="setup")` call, or any other setup tool. `partial: true`
+   with `nodesStillNeedingSetup` is not permission to re-open the card in the
+   same turn: report what remains as described in
+   [Credentials the user skipped](#credentials-the-user-skipped).
 6. After setup completes or is applied, follow
    [Mocked verification live-test follow-up](#mocked-verification-live-test-follow-up)
    when the latest verification evidence used mocks or simulations. If this

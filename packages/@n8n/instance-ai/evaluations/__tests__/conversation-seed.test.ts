@@ -679,7 +679,45 @@ describe('transcriptPrefixFromSeed', () => {
 			{
 				kind: 'setup-wizard',
 				completedNodes: [{ nodeName: 'Schedule', parametersSet: ['rule'] }],
-				skippedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
+				// Seeded before the split: the pre-split `skippedNodes` key still parses.
+				nodesStillNeedingSetup: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
+				reason: undefined,
+			},
+		]);
+	});
+
+	it('renders a skipped-only setup outcome, which carries neither completedNodes nor the old key', () => {
+		// The apply result splits "still unconfigured" from "the user declined this". A seed
+		// carrying only the latter used to fall through the guard and vanish from the transcript.
+		const turns = transcriptPrefixFromSeed([
+			{
+				id: 'a1',
+				type: 'tool',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'c1',
+						toolName: 'workflows[setup]',
+						state: 'resolved',
+						input: { action: 'setup', workflowId: 'wf1' },
+						output: {
+							success: true,
+							skippedByUser: [
+								{ nodeName: 'Post to Slack', credentialType: 'slackApi', reopenWith: 'slackApi' },
+							],
+						},
+					},
+				],
+				createdAt: '2026-01-01T00:00:00Z',
+			},
+		]);
+		expect(turns[0].steps).toEqual([
+			{
+				kind: 'setup-wizard',
+				completedNodes: [],
+				nodesStillNeedingSetup: [],
+				skippedByUser: [{ nodeName: 'Post to Slack', credentialType: 'slackApi' }],
 				reason: undefined,
 			},
 		]);

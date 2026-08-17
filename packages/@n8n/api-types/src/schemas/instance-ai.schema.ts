@@ -73,6 +73,35 @@ export function buildDataTablesSessionGrantKey(action: string): string {
 	return `data-tables:${action}`;
 }
 
+// --- Workflow-setup skips ---
+
+const SETUP_SKIP_GRANT_PREFIX = 'workflows:setup-skip:';
+
+/**
+ * Builds the thread-level key recording that the user passed on a setup card. Unlike its
+ * siblings this records a *declined* decision rather than an approval, but it belongs on the
+ * same per-thread, per-user store: the setup flow reads it to stop re-opening the blocking
+ * setup card for something the user already skipped in this conversation.
+ *
+ * `subject` is opaque here — what a skip generalises to is the setup flow's call, so the
+ * kind-tagged subjects (`cred:<type>`, `node:<workflowId>:<name>`) are built by
+ * `setup-skip-state.ts` in the instance-ai package.
+ */
+export function buildSetupSkipGrantKey(subject: string): string {
+	return `${SETUP_SKIP_GRANT_PREFIX}${subject}`;
+}
+
+/** The skip subjects recorded for this thread, parsed out of persisted grant keys. */
+export function parseSetupSkipGrants(keys: ReadonlySet<string>): Set<string> {
+	const skipped = new Set<string>();
+	for (const key of keys) {
+		if (key.startsWith(SETUP_SKIP_GRANT_PREFIX)) {
+			skipped.add(key.slice(SETUP_SKIP_GRANT_PREFIX.length));
+		}
+	}
+	return skipped;
+}
+
 // --- Domain-access grants ("always allow" for web access) ---
 // These keys mirror the research tool's action names (`fetch-url`, `web-search`) the same
 // way `executions:run:<id>` mirrors the executions `run` action, so a persisted grant row
@@ -484,6 +513,14 @@ export const workflowSetupNodeSchema = z.object({
 		.describe(
 			'Whether this node still requires user intervention. ' +
 				'False when credentials are set and valid, parameters are resolved, etc.',
+		),
+	credentialNeedsAction: z
+		.boolean()
+		.optional()
+		.describe(
+			'Whether the credential slot itself is what needs intervention. False when the node has a ' +
+				'resolvable credential and only a parameter is missing — that card asks about a parameter, ' +
+				'not about the service, so a skip of it must not be generalised to the credential type.',
 		),
 	subnodeRootNode: z
 		.object({

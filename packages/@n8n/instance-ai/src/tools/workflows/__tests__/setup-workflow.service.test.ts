@@ -482,6 +482,28 @@ describe('buildSetupRequests', () => {
 		expect(result[0].parameterIssues).toBeDefined();
 	});
 
+	it('reports credentialNeedsAction only for the credential slot itself', async () => {
+		// A connected credential with an unfilled parameter needs action, but not about the
+		// service — skipping that card must not be read as "I don't want this credential".
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as Mock).mockResolvedValue({ success: true });
+		(context.nodeService as unknown as Record<string, unknown>).getParameterIssues = vi
+			.fn()
+			.mockResolvedValue({ resource: ['Parameter "resource" is required'] });
+
+		const withCredential = await buildSetupRequests(
+			context,
+			makeNode({ credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } } }),
+		);
+		expect(withCredential[0].needsAction).toBe(true);
+		expect(withCredential[0].credentialNeedsAction).toBeFalsy();
+
+		const withoutCredential = await buildSetupRequests(context, makeNode());
+		expect(withoutCredential[0].credentialNeedsAction).toBe(true);
+	});
+
 	it('auto-applies the only credential when node has none', async () => {
 		(context.credentialService.list as Mock).mockResolvedValue([
 			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },

@@ -83,6 +83,9 @@ const setupWorkflowApplyConfirmSchema = z.object({
 	kind: z.literal('setupWorkflowApply'),
 	nodeCredentials: nodeCredentialsRecord,
 	nodeParameters: nodeParametersRecord,
+	/** Nodes whose cards the user actively skipped in this panel. Without this the backend
+	 *  can only see that they're still unconfigured, which reads as "ask again". */
+	skippedNodes: z.array(z.string()).optional(),
 });
 
 /** Workflow-setup wizard: run a test-trigger against a specific node. Approval is implied;

@@ -12,6 +12,8 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildDataTablesSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
+	buildSetupSkipGrantKey,
+	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	errorPayloadSchema,
@@ -452,6 +454,25 @@ describe('data-tables session grant keys', () => {
 describe('workflow update session grant keys', () => {
 	it('builds per-workflow keys matching the frontend always-allow format', () => {
 		expect(buildUpdateWorkflowSessionGrantKey('wf-1')).toBe('workflows:update:wf-1');
+	});
+});
+
+describe('workflow-setup skip keys', () => {
+	it('round-trips credential types and ignores unrelated keys', () => {
+		const keys = new Set([
+			buildSetupSkipGrantKey('slackApi'),
+			buildSetupSkipGrantKey('Wait for Form'),
+			'executions:run:wf-1',
+		]);
+
+		expect(buildSetupSkipGrantKey('slackApi')).toBe('workflows:setup-skip:slackApi');
+		expect(parseSetupSkipGrants(keys)).toEqual(new Set(['slackApi', 'Wait for Form']));
+	});
+
+	it('does not collide with the workflow-update namespace', () => {
+		expect(parseSetupSkipGrants(new Set([buildUpdateWorkflowSessionGrantKey('wf-1')])).size).toBe(
+			0,
+		);
 	});
 });
 
