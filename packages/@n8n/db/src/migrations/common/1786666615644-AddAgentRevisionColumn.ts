@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddAgentRevisionColumn1786627203741 implements ReversibleMigration {
+export class AddAgentRevisionColumn1786666615644 implements ReversibleMigration {
 	async up({ escape, runQuery }: MigrationContext) {
 		const table = escape.tableName('agents');
 		const column = escape.columnName('revision');
