@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -7,13 +6,14 @@ import type { Response } from 'express';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentSandboxController {
 	constructor(
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly logger: Logger,
-		private readonly agentsConfig: AgentsConfig,
+		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 	) {}
 
 	@Post('/:agentId/sandbox/knowledge/warmup')
@@ -34,7 +34,7 @@ export class AgentSandboxController {
 	}
 
 	private assertKnowledgeBaseEnabled() {
-		if (!this.agentsConfig.sandboxEnabled) {
+		if (!this.agentSandboxRuntimeService.isEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}

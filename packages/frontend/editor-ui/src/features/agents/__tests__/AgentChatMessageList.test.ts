@@ -51,7 +51,17 @@ vi.mock('@/features/ai/chatHub/components/ChatTypingIndicator.vue', () => ({
 vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
 	default: {
 		name: 'AgentChatToolSteps',
-		template: '<button data-test-id="tool-steps-fix-stub" @click="$emit(\'fixWithAssistant\')" />',
+		template: `<button
+			data-test-id="tool-steps-fix-stub"
+			@click="$emit('fixWithAssistant', [{
+				toolCallId: 'tc-1',
+				toolName: 'http_request',
+				toolDisplayName: 'HTTP request',
+				error: 'boom',
+				startedAt: 1000,
+				endedAt: 1250
+			}])"
+		/>`,
 		props: ['toolCalls', 'projectId', 'canFixWithAssistant', 'executionId'],
 		emits: ['fixWithAssistant'],
 	},
@@ -338,7 +348,23 @@ describe('AgentChatMessageList', () => {
 
 		await wrapper.find('[data-test-id="tool-steps-fix-stub"]').trigger('click');
 
-		expect(wrapper.emitted('sendToAssistant')).toEqual([['exec-turn-1']]);
+		expect(wrapper.emitted('sendToAssistant')).toEqual([
+			[
+				{
+					executionId: 'exec-turn-1',
+					failures: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'http_request',
+							toolDisplayName: 'HTTP request',
+							error: 'boom',
+							startedAt: 1_000,
+							endedAt: 1_250,
+						},
+					],
+				},
+			],
+		]);
 	});
 
 	it('does not render actions for user text messages', () => {

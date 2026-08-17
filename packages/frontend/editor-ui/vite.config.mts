@@ -24,6 +24,10 @@ const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const packagesDir = resolve(__dirname, '..', '..');
 
+// zod is the only single-instance-sensitive library the frontend bundles; dedupe it so
+// Vite resolves it to a single copy. The other curated libs are backend-only.
+const singleInstanceDedupe = ['zod'];
+
 const alias = editorUiAliases(__dirname, packagesDir);
 
 const { RELEASE: release } = process.env;
@@ -157,7 +161,7 @@ export default defineConfig({
 		BASE_PATH: `'${publicPath}'`,
 	},
 	plugins,
-	resolve: { alias },
+	resolve: { alias, dedupe: singleInstanceDedupe },
 	base: publicPath,
 	envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 	css: {

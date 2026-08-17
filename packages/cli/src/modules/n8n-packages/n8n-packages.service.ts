@@ -32,6 +32,7 @@ import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
 import {
 	MissingWorkflowDependencyPolicy,
+	WorkflowVersionPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageResult,
@@ -79,6 +80,7 @@ export class N8nPackagesService {
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
 		const includeTags = (request.includeTags ?? true) && !this.globalConfig.tags.disabled;
+		const workflowVersionPolicy = request.workflowVersionPolicy ?? WorkflowVersionPolicy.Latest;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -87,6 +89,7 @@ export class N8nPackagesService {
 						folderIds,
 						writer,
 						includeTags,
+						workflowVersionPolicy,
 					})
 				: undefined;
 
@@ -102,6 +105,7 @@ export class N8nPackagesService {
 						workflowIds: workflowsForExport,
 						writer,
 						includeTags,
+						workflowVersionPolicy,
 					})
 				: undefined;
 
@@ -112,6 +116,7 @@ export class N8nPackagesService {
 						projectIds,
 						writer,
 						includeTags,
+						workflowVersionPolicy,
 					})
 				: undefined;
 
@@ -133,6 +138,7 @@ export class N8nPackagesService {
 			user: request.user,
 			workflowIds: allWorkflowsBeforeAutoInclude.map(({ id }) => id),
 			traversal: isReferenceOnly ? 'direct' : 'transitive',
+			workflowVersionPolicy,
 		});
 
 		let autoIncludedExportResult: AutoIncludedWorkflowExportResult | undefined;
@@ -145,6 +151,7 @@ export class N8nPackagesService {
 				folderWorkflowIds: folderExportResult?.workflowEntries.map(({ id }) => id) ?? [],
 				projectWorkflowIds: projectExportResult?.workflowEntries.map(({ id }) => id) ?? [],
 				includeTags,
+				workflowVersionPolicy,
 			});
 
 			autoIncludedExportResult = this.autoIncludedWorkflowExporter.export({

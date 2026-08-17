@@ -8,6 +8,7 @@ import type {
 	AgentJsonConfig,
 	AgentJsonSkillRef,
 	AgentJsonToolRef,
+	AgentFixWithAssistantEvent,
 	CustomToolEntry,
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
@@ -127,15 +128,23 @@ const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
 const getAgentConfigValidationMock = vi.fn().mockResolvedValue({ status: 'valid', issues: [] });
-const sessionThreads: Array<{
+interface SessionThread {
 	id: string;
 	updatedAt: string;
 	title?: string | null;
 	firstMessage?: string | null;
-}> = [];
-const fetchedSessionThreads: typeof sessionThreads = [];
+	sessionNumber?: number;
+}
+const sessionThreads = reactive<SessionThread[]>([]);
+const fetchedSessionThreads: SessionThread[] = [];
 const fetchSessionThreadsMock = vi.fn().mockImplementation(async () => {
 	sessionThreads.splice(0, sessionThreads.length, ...fetchedSessionThreads);
+});
+const getSessionThreadDetailMock = vi.fn().mockResolvedValue({ executions: [] });
+const upsertSessionThreadMock = vi.fn((thread: (typeof sessionThreads)[number]) => {
+	const index = sessionThreads.findIndex(({ id }) => id === thread.id);
+	if (index === -1) sessionThreads.push(thread);
+	else sessionThreads.splice(index, 1, thread);
 });
 const resetSessionStoreMock = vi.fn(() => {
 	sessionThreads.length = 0;
@@ -285,6 +294,8 @@ vi.mock('../agentSessions.store', () => ({
 		threads: sessionThreads,
 		loading: false,
 		fetchThreads: fetchSessionThreadsMock,
+		getThreadDetail: getSessionThreadDetailMock,
+		upsertThread: upsertSessionThreadMock,
 		startAutoRefresh: startSessionAutoRefreshMock,
 		stopAutoRefresh: stopSessionAutoRefreshMock,
 		reset: resetSessionStoreMock,
@@ -322,12 +333,18 @@ vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
 	}),
 }));
 
-const baseTextFn = (key: string) => {
+const baseTextFn = (key: string, options?: { interpolate?: Record<string, string | number> }) => {
 	const map: Record<string, string> = {
 		'agents.builder.preview.button': 'Preview',
 		'agents.builder.preview.close.ariaLabel': 'Close preview',
 		'projects.menu.personal': 'Personal',
 	};
+	if (key === 'agents.builder.preview.fixWithAssistantPrompt.template') {
+		return `Review these failed tool calls, identify the root cause, fix the agent, and verify the change.
+
+${String(options?.interpolate?.diagnostics ?? '')}
+`;
+	}
 	return map[key] ?? key;
 };
 
@@ -566,6 +583,8 @@ function resetViewMocks() {
 	fetchSessionThreadsMock.mockImplementation(async () => {
 		sessionThreads.splice(0, sessionThreads.length, ...fetchedSessionThreads);
 	});
+	getSessionThreadDetailMock.mockReset();
+	getSessionThreadDetailMock.mockResolvedValue({ executions: [] });
 	resetSessionStoreMock.mockClear();
 	startSessionAutoRefreshMock.mockReset();
 	stopSessionAutoRefreshMock.mockReset();
@@ -813,18 +832,42 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		]).toEqual([true, true]);
 	});
 
+	const fixEvent: AgentFixWithAssistantEvent = {
+		executionId: 'exec-turn-1',
+		failures: [
+			{
+				toolCallId: 'call-1',
+				toolName: 'data_table_get_rows',
+				toolDisplayName: 'Get rows from Data Table',
+				error: 'Column "status" does not exist',
+			},
+			{
+				toolCallId: 'call-2',
+				toolName: 'data_table_update_row',
+				toolDisplayName: 'Update row in Data Table',
+				error: 'Column "status" does not exist',
+			},
+		],
+	};
+
 	it.each([
-		{ label: 'without execution context', executionId: undefined },
-		{ label: 'with execution context', executionId: 'exec-turn-1' },
-	])('sends the active preview session to Instance AI $label', async ({ executionId }) => {
+		{ label: 'without execution context', event: undefined },
+		{ label: 'with execution context', event: fixEvent },
+	])('sends the active preview session to Instance AI $label', async ({ event }) => {
 		routeName = 'AgentPreviewView';
 		routeQuery.continueSessionId = 'thread-1';
+		fetchedSessionThreads.push({
+			id: 'thread-1',
+			updatedAt: '2026-01-01T00:00:00Z',
+			title: 'Failed order lookup',
+			sessionNumber: 7,
+		});
 
 		const wrapper = await renderView();
 		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
 
 		expect(preview.props('canSendToAssistant')).toBe(true);
-		preview.vm.$emit('send-to-assistant', executionId);
+		preview.vm.$emit('send-to-assistant', event);
 		await flushPromises();
 
 		expect(sendPreviewSessionToInstanceAiMock).toHaveBeenCalledWith({
@@ -833,9 +876,191 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			threadId: 'thread-1',
 			agentName: 'Agent One',
 			agentIcon: 'bot',
-			sessionTitle: 'agents.builder.chat.newChat.label',
-			...(executionId ? { executionId } : {}),
+			sessionTitle: 'Failed order lookup',
+			...(event
+				? {
+						executionId: event.executionId,
+						initialDraft: expect.any(String),
+					}
+				: {}),
 		});
+
+		if (event) {
+			const initialDraft = sendPreviewSessionToInstanceAiMock.mock.calls[0]?.[0]?.initialDraft;
+			expect(initialDraft).toContain(
+				'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
+			);
+			expect(initialDraft).toContain('Agent One');
+			expect(initialDraft).toContain('Failed order lookup');
+			expect(initialDraft).toContain('thread-1');
+			expect(initialDraft).toContain('exec-turn-1');
+			expect(initialDraft).toContain('Get rows from Data Table');
+			expect(initialDraft).toContain('Update row in Data Table');
+			expect(initialDraft?.match(/Column \\"status\\" does not exist/g)).toHaveLength(1);
+		}
+	});
+
+	it('keeps an artifact on the selected preview session and stages the handoff in its Assistant thread', async () => {
+		fetchedSessionThreads.push(
+			{
+				id: 'thread-latest',
+				updatedAt: '2026-01-02T00:00:00Z',
+				title: 'Latest session',
+			},
+			{
+				id: 'thread-1',
+				updatedAt: '2026-01-01T00:00:00Z',
+				title: 'Failed order lookup',
+				sessionNumber: 7,
+			},
+		);
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactPreviewSessionId: 'thread-1',
+			},
+		});
+		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+
+		expect(preview.props('effectiveSessionId')).toBe('thread-1');
+		preview.vm.$emit('send-to-assistant', fixEvent);
+		await flushPromises();
+
+		expect(sendPreviewSessionToInstanceAiMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('assistant-handoff')).toEqual([
+			[
+				expect.objectContaining({
+					projectId: 'p2',
+					agentId: 'a2',
+					threadId: 'thread-1',
+					sessionTitle: 'Failed order lookup',
+					executionId: 'exec-turn-1',
+					initialDraft: expect.stringContaining(
+						'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
+					),
+				}),
+			],
+		]);
+	});
+
+	it('restores a preview session that arrives while the artifact is initializing', async () => {
+		fetchedSessionThreads.push(
+			{ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' },
+			{ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' },
+		);
+		const wrapper = await renderView({
+			waitForAsyncSetup: false,
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+			},
+		});
+
+		await wrapper.setProps({ artifactPreviewSessionId: 'thread-1' });
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+			'thread-1',
+		);
+	});
+
+	it('falls back from an unavailable persisted artifact preview session', async () => {
+		fetchedSessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' });
+		getSessionThreadDetailMock.mockRejectedValueOnce({ httpStatusCode: 404 });
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactPreviewSessionId: 'missing-thread',
+			},
+		});
+
+		await vi.waitFor(() =>
+			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+				'thread-latest',
+			),
+		);
+		expect(getSessionThreadDetailMock).toHaveBeenCalledWith('p2', 'a2', 'missing-thread');
+	});
+
+	it('keeps a valid persisted artifact preview session outside the first page', async () => {
+		fetchedSessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' });
+		const olderThread = {
+			id: 'thread-older-than-first-page',
+			updatedAt: '2025-12-01T00:00:00Z',
+			title: 'Older debugging session',
+			sessionNumber: 42,
+		};
+		getSessionThreadDetailMock.mockResolvedValueOnce({ thread: olderThread, executions: [] });
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactPreviewSessionId: 'thread-older-than-first-page',
+			},
+		});
+
+		await vi.waitFor(() => expect(upsertSessionThreadMock).toHaveBeenCalledWith(olderThread));
+		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		expect(preview.props('effectiveSessionId')).toBe('thread-older-than-first-page');
+		expect(preview.props('sessionTitle')).toBe('Older debugging session');
+		expect(preview.props('hasSession')).toBe(true);
+		expect(getSessionThreadDetailMock).toHaveBeenCalledWith(
+			'p2',
+			'a2',
+			'thread-older-than-first-page',
+		);
+
+		preview.vm.$emit('send-to-assistant', fixEvent);
+		await nextTick();
+		expect(wrapper.emitted('assistant-handoff')).toEqual([
+			[
+				expect.objectContaining({
+					initialDraft: expect.stringContaining('"sessionNumber": 42'),
+				}),
+			],
+		]);
+	});
+
+	it('does not update the shared session store when validation resolves after unmount', async () => {
+		fetchedSessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' });
+		const detail = Promise.withResolvers<{
+			thread: SessionThread;
+			executions: [];
+		}>();
+		getSessionThreadDetailMock.mockReturnValueOnce(detail.promise);
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactPreviewSessionId: 'thread-older-than-first-page',
+			},
+		});
+		await vi.waitFor(() =>
+			expect(getSessionThreadDetailMock).toHaveBeenCalledWith(
+				'p2',
+				'a2',
+				'thread-older-than-first-page',
+			),
+		);
+
+		wrapper.unmount();
+		detail.resolve({
+			thread: {
+				id: 'thread-older-than-first-page',
+				updatedAt: '2025-12-01T00:00:00Z',
+			},
+			executions: [],
+		});
+		await flushPromises();
+
+		expect(upsertSessionThreadMock).not.toHaveBeenCalled();
 	});
 
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
@@ -1359,23 +1584,20 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			.spyOn(useMCPStore(), 'toggleAgentMcpAccess')
 			.mockReturnValueOnce(mcpSave.promise);
 
-		// Match the sibling MCP-flush test: wait for the emit handler to schedule
-		// the debounced autosave before switching agents, otherwise initialize's
-		// flushAutosave can race the schedule and find nothing pending.
 		vi.useFakeTimers();
 		try {
 			wrapper
 				.findComponent({ name: 'AgentBuilderEditorColumn' })
 				.vm.$emit('toggle-mcp-access', true);
 			await nextTick();
-
-			await wrapper.setProps({ artifactAgentId: 'a3', artifactAgentPending: true });
-			await flushPromises();
-			expect(toggleAgentMcpAccess).toHaveBeenCalledTimes(1);
+			await vi.advanceTimersByTimeAsync(500);
+			expect(toggleAgentMcpAccess).toHaveBeenCalledExactlyOnceWith('a2', true);
 		} finally {
 			vi.useRealTimers();
 		}
 
+		await wrapper.setProps({ artifactAgentId: 'a3', artifactAgentPending: true });
+		await flushPromises();
 		await wrapper.setProps({ artifactAgentPending: false });
 		mcpSave.resolve({ updatedCount: 1, updatedIds: ['a2'], unchangedIds: [] });
 		await flushPromises();
