@@ -1,0 +1,14 @@
+// The upright InterVariable face on its own. Standalone surfaces that render no
+// italic or monospace text pull this instead of `../fonts.scss`, which also declares
+// the Inter italic and CommitMono faces and would ship two font files they never use.
+//
+// `dist/css/fonts/` sits three levels below the package root exactly like
+// `src/css/fonts/`, so the relative `url()` below resolves the same inside the
+// monorepo and from a published tarball.
+@font-face {
+	font-family: InterVariable;
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('../../../assets/fonts/InterVariable.woff2') format('woff2');
+}

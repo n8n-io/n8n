@@ -1,8 +1,12 @@
+import type { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
+import type { InstanceAiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import { AiService } from '@/services/ai.service';
+import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
 import { AgentsModule } from '../agents.module';
 
@@ -15,55 +19,60 @@ describe('AgentsModule', () => {
 	});
 
 	describe('settings()', () => {
-		it('exposes knowledgeBaseEnabled when the direct Daytona sandbox config is complete', async () => {
-			Container.set(
-				AgentsConfig,
-				mock<AgentsConfig>({
+		it.each([
+			{
+				agentsSandboxEnabled: true,
+				instanceAiSandboxEnabled: false,
+				proxyEnabled: false,
+				knowledgeBaseEnabled: true,
+			},
+			{
+				agentsSandboxEnabled: false,
+				instanceAiSandboxEnabled: true,
+				proxyEnabled: false,
+				knowledgeBaseEnabled: true,
+			},
+			{
+				agentsSandboxEnabled: false,
+				instanceAiSandboxEnabled: false,
+				proxyEnabled: true,
+				knowledgeBaseEnabled: false,
+			},
+		])(
+			'enables knowledge base=$knowledgeBaseEnabled for Agents sandbox=$agentsSandboxEnabled and Instance AI sandbox=$instanceAiSandboxEnabled',
+			async ({
+				agentsSandboxEnabled,
+				instanceAiSandboxEnabled,
+				proxyEnabled,
+				knowledgeBaseEnabled,
+			}) => {
+				const agentsConfig = mock<AgentsConfig>({
 					modules: [],
-					sandboxEnabled: true,
-					sandboxProvider: 'daytona',
-				}),
-			);
-			Container.set(AiService, mock<AiService>({ isProxyEnabled: () => false }));
+					sandboxEnabled: agentsSandboxEnabled,
+				});
+				Container.set(AgentsConfig, agentsConfig);
+				Container.set(
+					SandboxSettingsService,
+					new SandboxSettingsService(
+						{
+							agents: agentsConfig,
+							instanceAi: mock<InstanceAiConfig>({
+								sandboxEnabled: instanceAiSandboxEnabled,
+								sandboxProvider: 'n8n-sandbox',
+							}),
+							deployment: { type: 'default' },
+						} as never,
+						mock<InstanceCredentialBroker>(),
+						mock<Logger>(),
+					),
+				);
+				Container.set(AiService, mock<AiService>({ isProxyEnabled: () => proxyEnabled }));
 
-			const settings = await module.settings();
+				const settings = await module.settings();
 
-			expect(settings.knowledgeBaseEnabled).toBe(true);
-			expect(settings.proxyEnabled).toBe(false);
-		});
-
-		it('exposes knowledgeBaseEnabled when the AI Assistant proxy is available without sandbox env vars', async () => {
-			Container.set(
-				AgentsConfig,
-				mock<AgentsConfig>({
-					modules: [],
-					sandboxEnabled: false,
-					sandboxProvider: '',
-				}),
-			);
-			Container.set(AiService, mock<AiService>({ isProxyEnabled: () => true }));
-
-			const settings = await module.settings();
-
-			expect(settings.knowledgeBaseEnabled).toBe(true);
-			expect(settings.proxyEnabled).toBe(true);
-		});
-
-		it('disables knowledgeBaseEnabled when neither the sandbox config nor the proxy is available', async () => {
-			Container.set(
-				AgentsConfig,
-				mock<AgentsConfig>({
-					modules: [],
-					sandboxEnabled: false,
-					sandboxProvider: '',
-				}),
-			);
-			Container.set(AiService, mock<AiService>({ isProxyEnabled: () => false }));
-
-			const settings = await module.settings();
-
-			expect(settings.knowledgeBaseEnabled).toBe(false);
-			expect(settings.proxyEnabled).toBe(false);
-		});
+				expect(settings.knowledgeBaseEnabled).toBe(knowledgeBaseEnabled);
+				expect(settings.proxyEnabled).toBe(proxyEnabled);
+			},
+		);
 	});
 });

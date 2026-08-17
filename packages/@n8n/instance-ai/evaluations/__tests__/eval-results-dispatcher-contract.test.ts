@@ -86,7 +86,12 @@ function iteration2(): WorkflowTestCaseResult {
 		workflowBuildSuccess: true,
 		buildError: 'agent stopped before producing a workflow',
 		buildExpectationResults: [
-			{ expectation: 'sends a digest', pass: false, reason: 'digest node missing' },
+			{
+				expectation: 'sends a digest',
+				pass: false,
+				reason: 'digest node missing',
+				attribution: 'builder_issue',
+			},
 		],
 		executionScenarioResults: [
 			{
@@ -95,6 +100,7 @@ function iteration2(): WorkflowTestCaseResult {
 				score: 0,
 				reasoning: 'no digest was produced',
 				failureCategory: 'mock_issue',
+				attribution: 'mock_issue',
 				rootCause: 'mock returned an empty page',
 				evalResult: { errors: ['HTTP 500 from the mocked API'] } as InstanceAiEvalExecutionResult,
 			},
@@ -118,6 +124,7 @@ interface DispatcherView {
 			expectation: string;
 			pass: boolean;
 			reason: string;
+			attribution?: string;
 		}> | null>;
 		buildCostUsdPerRun?: Array<number | null>;
 		buildTurnsPerRun?: Array<number | null>;
@@ -132,6 +139,7 @@ interface DispatcherView {
 				score: number;
 				reasoning: string;
 				failureCategory?: string;
+				attribution?: string;
 				rootCause?: string;
 				execErrors: string[];
 			}>;
@@ -181,7 +189,16 @@ describe('eval-results.json — dispatcher contract', () => {
 		});
 		expect(tc.buildExpectationResultsPerRun).toEqual([
 			[{ expectation: 'sends a digest', pass: true, reason: 'digest node present' }],
-			[{ expectation: 'sends a digest', pass: false, reason: 'digest node missing' }],
+			[
+				{
+					expectation: 'sends a digest',
+					pass: false,
+					reason: 'digest node missing',
+					// A missed expectation is a builder miss — the harness decides this,
+					// lang-tracer stores it (TRUST-375).
+					attribution: 'builder_issue',
+				},
+			],
 		]);
 		// Spend arrays are `--build-via-mcp`-only — absent when no iteration
 		// recorded `claude` spend, so non-MCP dispatcher output is unchanged.
@@ -220,9 +237,15 @@ describe('eval-results.json — dispatcher contract', () => {
 			score: 0,
 			reasoning: 'no digest was produced',
 			failureCategory: 'mock_issue',
+			// The attribution rides ALONGSIDE the legacy category — lang-tracer reads
+			// this one and only falls back to re-deriving from the category for rows
+			// written by an older pinned harness commit (TRUST-375).
+			attribution: 'mock_issue',
 			rootCause: 'mock returned an empty page',
 			execErrors: ['HTTP 500 from the mocked API'],
 		});
+		// A passing run carries no attribution at all — nobody owns a pass.
+		expect(sc.runs[0]).not.toHaveProperty('attribution');
 	});
 
 	it('serializes per-iteration `claude` build spend when a run recorded it', () => {

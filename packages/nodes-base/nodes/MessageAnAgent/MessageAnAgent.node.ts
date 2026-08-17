@@ -9,7 +9,7 @@ import { MessageAnAgentV2 } from './v2/MessageAnAgentV2.node';
  * the `agentId` property, and (v1 only) the `listAgents` search method.
  */
 export const baseDescription: INodeTypeBaseDescription = {
-	displayName: 'AI Agent V2',
+	displayName: 'Message an Agent',
 	name: 'messageAnAgent',
 	icon: 'node:ai-agent',
 	group: ['transform'],

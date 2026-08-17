@@ -185,16 +185,52 @@ describe('AgentEvalRunRepository', () => {
 		});
 	});
 
-	describe('findByDatasetIdAndAgentId', () => {
+	describe('findAndCountByDatasetIdAndAgentId', () => {
 		it('constrains the dataset’s runs by that agent, newest first', async () => {
-			entityManager.find.mockResolvedValueOnce([]);
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
 
-			await repo.findByDatasetIdAndAgentId('ds-1', 'agent-1');
+			await repo.findAndCountByDatasetIdAndAgentId('ds-1', 'agent-1');
 
-			expect(entityManager.find.mock.calls[0]?.[1]).toEqual({
+			expect(entityManager.findAndCount.mock.calls[0]?.[1]).toMatchObject({
 				where: { datasetId: 'ds-1', dataset: { agentId: 'agent-1' } },
-				order: { createdAt: 'DESC' },
 			});
+		});
+
+		// `createdAt` alone is not a total order, so without the tiebreak a run
+		// sharing a timestamp could show up on two pages, or on none.
+		it('breaks createdAt ties deterministically so paging cannot skip a run', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repo.findAndCountByDatasetIdAndAgentId('ds-1', 'agent-1');
+
+			expect(entityManager.findAndCount.mock.calls[0]?.[1]).toMatchObject({
+				order: { createdAt: 'DESC', id: 'DESC' },
+			});
+		});
+
+		// The point of the method: one page from the database, not every run.
+		it('pushes the page window into the query', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repo.findAndCountByDatasetIdAndAgentId('ds-1', 'agent-1', { take: 20, skip: 40 });
+
+			expect(entityManager.findAndCount.mock.calls[0]?.[1]).toMatchObject({
+				take: 20,
+				skip: 40,
+			});
+		});
+
+		it('returns the unpaginated total alongside the page', async () => {
+			const page = [{ id: 'run-1' }, { id: 'run-2' }] as AgentEvalRun[];
+			entityManager.findAndCount.mockResolvedValueOnce([page, 137]);
+
+			const [runs, count] = await repo.findAndCountByDatasetIdAndAgentId('ds-1', 'agent-1', {
+				take: 2,
+				skip: 0,
+			});
+
+			expect(runs).toEqual(page);
+			expect(count).toBe(137);
 		});
 	});
 

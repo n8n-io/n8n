@@ -3,10 +3,12 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INode,
+	INodeParameters,
+	INodeProperties,
 	INodeExecutionData,
 	INodeParameterResourceLocator,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { displayParameter, NodeOperationError } from 'n8n-workflow';
 
 import { SlackV2 } from '../../V2/SlackV2.node';
 import * as GenericFunctions from '../../V2/GenericFunctions';
@@ -2513,6 +2515,44 @@ describe('SlackV2', () => {
 					'U111111111',
 				]);
 			});
+		});
+	});
+	describe('Message Operations - Search parameter visibility', () => {
+		const searchProps = (typeVersion: number) => {
+			const description = new SlackV2({
+				displayName: 'Slack',
+				name: 'slack',
+				group: ['output'],
+				description: 'Consume Slack API',
+			}).description;
+
+			const base = { resource: 'message', operation: 'search' };
+			const isShown = (property: INodeProperties, nodeValues: INodeParameters) =>
+				displayParameter(nodeValues, property, { typeVersion }, description);
+
+			// Mirror the editor: a parameter that is not displayed never lands in the node's
+			// values, so returnAll must be absent (not false) on versions that hide it.
+			const showsReturnAll = description.properties.some(
+				(property) => property.name === 'returnAll' && isShown(property, base),
+			);
+			const nodeValues = showsReturnAll ? { ...base, returnAll: false } : base;
+
+			return description.properties
+				.filter((property) => isShown(property, nodeValues))
+				.map((property) => property.name);
+		};
+
+		it('should offer Return All only up to 2.6', () => {
+			expect(searchProps(2.6)).toContain('returnAll');
+			expect(searchProps(2.7)).not.toContain('returnAll');
+		});
+
+		// Limit is declared twice so that dropping Return All in 2.7 does not hide it: the
+		// <= 2.6 variant is only shown when returnAll is false, which no longer resolves.
+		it('should offer exactly one Limit on both sides of the version split', () => {
+			for (const typeVersion of [2.6, 2.7]) {
+				expect(searchProps(typeVersion).filter((name) => name === 'limit')).toHaveLength(1);
+			}
 		});
 	});
 });

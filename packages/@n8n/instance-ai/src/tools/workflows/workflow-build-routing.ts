@@ -52,6 +52,11 @@ function determineVerificationReadiness(
 		};
 	}
 
+	// One-off intent does NOT get its own readiness status: readiness is
+	// persisted inside the build outcome, and previously deployed readers
+	// hard-fail on unknown union variants (which would wipe the whole per-thread
+	// loop map on rollback). The obligation derivation reads
+	// `outcome.executionIntent` instead — see verification-obligation.ts.
 	return { status: 'ready' };
 }
 

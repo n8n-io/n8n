@@ -5,6 +5,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { defineComponent, onMounted, nextTick } from 'vue';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
 import AgentToolConfigModal from '../components/AgentToolConfigModal.vue';
 import type { AgentJsonToolRef, CustomToolEntry } from '../types';
@@ -31,9 +32,24 @@ vi.mock('@n8n/design-system', async () => {
 	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
 	const N8nDialog = {
 		name: 'N8nDialog',
-		props: ['open', 'size', 'showCloseButton'],
-		emits: ['update:open'],
-		template: '<div v-if="open" role="dialog"><slot /></div>',
+		props: {
+			open: Boolean,
+			size: String,
+			showCloseButton: Boolean,
+			trapFocus: { type: Boolean, default: true },
+			disableOutsidePointerEvents: { type: Boolean, default: true },
+		},
+		emits: ['update:open', 'interactOutside'],
+		template: `
+			<div
+				v-if="open"
+				role="dialog"
+				:data-trap-focus="trapFocus"
+				:data-disable-outside-pointer-events="disableOutsidePointerEvents"
+			>
+				<slot />
+			</div>
+		`,
 	};
 	return { ...actual, N8nDialog };
 });
@@ -82,6 +98,7 @@ function createWorkflowToolConfigStub(emitValid: boolean) {
 				getDescription: () => props.initialRef?.description ?? '',
 				getAllOutputs: () => props.initialRef?.allOutputs ?? false,
 				getWorkflow: () => props.initialRef?.workflow ?? '',
+				getWorkflowId: () => props.initialRef?.workflowId,
 				handleChangeName: vi.fn(),
 			});
 			onMounted(() => {
@@ -141,6 +158,9 @@ function renderModal({
 		global: {
 			stubs: {
 				NodeIcon: { template: '<div data-test-id="header-node-icon" />' },
+				FocusScope: {
+					template: '<div data-test-id="nested-credential-focus-scope"><slot /></div>',
+				},
 				AgentToolConfigNodeContent: createToolSettingsStub(valid),
 				AgentToolConfigWorkflowContent: createWorkflowToolConfigStub(valid),
 				N8nSwitch2: {
@@ -178,6 +198,22 @@ describe('AgentToolConfigModal', () => {
 	it('renders the shared node-tool settings content', () => {
 		const { getByTestId } = renderModal();
 		expect(getByTestId('node-tool-settings-content')).toBeTruthy();
+	});
+
+	it('releases dialog focus handling while the credential modal is open', async () => {
+		const { getByRole, getByTestId, queryByTestId } = renderModal();
+		const dialog = getByRole('dialog');
+
+		expect(dialog).toHaveAttribute('data-trap-focus', 'true');
+		expect(dialog).toHaveAttribute('data-disable-outside-pointer-events', 'true');
+		expect(queryByTestId('nested-credential-focus-scope')).toBeNull();
+
+		uiStore.openModal(CREDENTIAL_EDIT_MODAL_KEY);
+		await nextTick();
+
+		expect(dialog).toHaveAttribute('data-trap-focus', 'false');
+		expect(dialog).toHaveAttribute('data-disable-outside-pointer-events', 'false');
+		expect(getByTestId('nested-credential-focus-scope')).toBeInTheDocument();
 	});
 
 	it('passes agent project context to the node-tool settings content', () => {
@@ -322,16 +358,34 @@ describe('AgentToolConfigModal', () => {
 		expect(updated).toEqual({ type: 'custom', id: 'custom-tool-1', requireApproval: true });
 	});
 
-	it('renders the workflow-tool config content for workflow refs', () => {
+	it('preserves the stable workflow id when saving a workflow tool', async () => {
+		const onConfirm = vi.fn();
 		const { getByTestId, queryByTestId } = renderModal({
+			valid: true,
+			onConfirm,
 			ref: {
 				type: 'workflow',
-				workflow: 'w-1',
+				workflowId: 'wf-1',
+				workflow: 'My Workflow',
 				name: 'My Workflow Tool',
 				description: 'Does something',
 			},
 		});
+
 		expect(getByTestId('workflow-tool-config-content')).toBeTruthy();
 		expect(queryByTestId('node-tool-settings-content')).toBeNull();
+
+		await waitFor(() => {
+			expect(getByTestId('agent-tool-config-save')).not.toBeDisabled();
+		});
+		await fireEvent.click(getByTestId('agent-tool-config-save'));
+
+		expect(onConfirm).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'workflow',
+				workflowId: 'wf-1',
+				workflow: 'My Workflow',
+			}),
+		);
 	});
 });

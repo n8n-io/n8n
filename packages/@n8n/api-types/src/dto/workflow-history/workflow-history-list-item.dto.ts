@@ -8,8 +8,8 @@ export const workflowHistoryListItemSchema = z.object({
 	authors: z.string(),
 	name: z.string().nullable(),
 	description: z.string().nullable(),
-	createdAt: z.coerce.date(),
-	updatedAt: z.coerce.date(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
 	autosaved: z.boolean(),
 });
 

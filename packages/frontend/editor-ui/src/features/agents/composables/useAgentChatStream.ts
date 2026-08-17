@@ -1,13 +1,14 @@
 import { ref, reactive, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentBuilderOpenSuspension,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
 	CancellationResumeData,
 } from '@n8n/api-types';
-import { applyForwardedChildChunk, emptyChildTrace } from '@n8n/api-types';
+import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
@@ -63,6 +64,11 @@ type ResumePayload =
 			cancelled: true;
 			text: string;
 	  };
+
+function getApprovalDecision(value: unknown): boolean | undefined {
+	if (!isRecord(value) || typeof value.approved !== 'boolean') return undefined;
+	return value.approved;
+}
 
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
@@ -348,6 +354,30 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		);
 	}
 
+	/**
+	 * Settle tool calls left `pending`/`running` after the stream ended (their
+	 * terminal events never arrived). Used by `stopGenerating` to recover the
+	 * desync where the chat is idle and responsive but tool steps keep pulsing.
+	 * Suspended tools are left untouched — they have a `runId` and are still
+	 * resolvable through the normal resume/cancel flow.
+	 */
+	function settleStaleInFlightToolCalls(): void {
+		for (const message of messages.value) {
+			let changed = false;
+			for (const toolCall of message.toolCalls ?? []) {
+				if (
+					toolCall.state === TOOL_CALL_STATE.PENDING ||
+					toolCall.state === TOOL_CALL_STATE.RUNNING
+				) {
+					toolCall.state = TOOL_CALL_STATE.CANCELLED;
+					toolCall.canceled = true;
+					changed = true;
+				}
+			}
+			if (changed) markMessageSuccessIfSettled(message);
+		}
+	}
+
 	function handleEvent(
 		event: AgentSseEvent,
 		session: StreamSession,
@@ -478,13 +508,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
-					// If this was an interactive tool call, the result IS the user's
-					// resume payload — refresh the matching card so it flips to its
-					// resolved (disabled) state immediately. Display-only n8n chat
-					// cards never suspend, so they are also born here when the tool
-					// settles.
+					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
 					const updated = rebuildInteractiveFromHistory(found.tc);
-					if (updated) upsertMessageInteractive(found.msg, updated);
+					if (updated && currentInteractive?.resolvedAt === undefined) {
+						upsertMessageInteractive(found.msg, updated);
+					}
 					markMessageSuccessIfSettled(found.msg);
 				}
 				break;
@@ -492,9 +520,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-call-suspended': {
 				const { payload } = event;
 				const found = findToolCallById(payload.toolCallId);
-				// The approval tool suspends with its renderable input; integration
-				// actions suspend with a sidecar — keep the card-bearing tool input
-				// and store the sidecar separately.
+				// Keep the model-authored tool input intact. A delegated tool can
+				// suspend with a nested approval payload that renders a different tool.
 				const suspendIsRenderableInput = isApprovalSuspendInput(payload.input);
 				let msg: ChatMessage;
 				let tc: ToolCall;
@@ -502,12 +529,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					msg = found.msg;
 					tc = found.tc;
 					tc.state = TOOL_CALL_STATE.SUSPENDED;
+					tc.canceled = false;
+					tc.output = undefined;
+					tc.endTime = undefined;
+					tc.displaySummary = undefined;
 					tc.runId = payload.runId;
-					if (suspendIsRenderableInput) {
-						tc.input = payload.input;
-					} else {
-						tc.suspendPayload = payload.input;
-					}
+					tc.suspendPayload = payload.input;
 				} else {
 					msg = ensureCurrent(session);
 					tc = {
@@ -628,6 +655,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		settleOpenReasoning(session);
 		for (const msg of session.minted) {
 			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+			// Defensive: if the stream completed (`done`) while tool calls are
+			// still `pending`/`running`, their terminal events never arrived
+			// (e.g. backend emitted `done` before per-tool `tool-execution-end`,
+			// or the events were dropped). Settle them so the UI stops pulsing
+			// and Stop hides — the run is over and the agent is responsive.
+			for (const toolCall of msg.toolCalls ?? []) {
+				if (isToolCallInFlight(toolCall) && toolCall.state !== TOOL_CALL_STATE.SUSPENDED) {
+					toolCall.state = TOOL_CALL_STATE.DONE;
+				}
+			}
 		}
 	}
 
@@ -791,6 +828,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.input,
 				);
 				const updated = rebuildInteractiveFromHistory(found.tc);
+				if (updated?.toolName === APPROVAL_TOOL_NAME) {
+					const approved = getApprovalDecision(payload.resumeData);
+					if (approved !== undefined) updated.resolvedValue = { approved };
+				}
 				if (updated) upsertMessageInteractive(found.msg, updated);
 			}
 			markMessageSuccessIfSettled(found.msg);
@@ -898,6 +939,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (!openSuspension) {
 			activeController?.abort();
 			await activeStreamSettlement;
+			// Desync recovery: the stream already ended but tool calls are still
+			// pulsing because their terminal events never arrived. There is no
+			// backend run left to cancel — settle the stale state locally so
+			// the UI stops showing Stop and the shimmer clears.
+			if (!isStreaming.value) {
+				settleStaleInFlightToolCalls();
+			}
 			return;
 		}
 

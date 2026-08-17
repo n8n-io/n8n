@@ -17,7 +17,6 @@ const props = withDefaults(
 		disabled?: boolean;
 		connected?: boolean;
 		loading?: boolean;
-		publishing?: boolean;
 		showConnectButton?: boolean;
 		showDisconnectButton?: boolean;
 		showEditButton?: boolean;
@@ -37,7 +36,6 @@ const props = withDefaults(
 		disabled: false,
 		connected: false,
 		loading: false,
-		publishing: false,
 		showConnectButton: false,
 		showDisconnectButton: false,
 		showEditButton: true,
@@ -62,9 +60,7 @@ const canEdit = computed(() => props.showEditButton && !props.connected && !!pro
 const selectedCredentialName = computed(
 	() => props.credentials.find((c) => c.id === props.modelValue)?.name ?? '',
 );
-const connectDisabled = computed(
-	() => !props.modelValue || props.loading || props.publishing || props.disabled,
-);
+const connectDisabled = computed(() => !props.modelValue || props.loading || props.disabled);
 </script>
 
 <template>
@@ -145,7 +141,7 @@ const connectDisabled = computed(
 				v-if="showConnectButton"
 				variant="outline"
 				:disabled="connectDisabled"
-				:loading="loading || publishing"
+				:loading="loading"
 				size="large"
 				:data-testid="`${integrationType}-connect-button`"
 				@click="emit('connect')"

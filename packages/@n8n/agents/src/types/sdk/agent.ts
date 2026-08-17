@@ -179,6 +179,12 @@ export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
+	/**
+	 * Cap on completion tokens for each model call (`max_tokens` /
+	 * `maxOutputTokens`). When unset, provider/model defaults from
+	 * `resolveDefaultMaxOutputTokens` apply.
+	 */
+	maxOutputTokens?: number;
 	/** AI SDK `smoothStream` transform. Enabled by default; pass `false` to disable. */
 	smoothStream?: SmoothStreamOptions | false;
 	/**
@@ -188,6 +194,23 @@ export interface ExecutionOptions {
 	 * streaming raw provider events that nothing consumes.
 	 */
 	recoverUsageOnAbort?: boolean;
+	/**
+	 * Max silence in milliseconds between model stream chunks (after the turn
+	 * has streamed content) before the turn fails with a stall error. Healthy
+	 * streaming responses emit chunks continuously, so prolonged chunk silence
+	 * means a dead connection that the long AI network timeouts (raised to 1h
+	 * for slow non-streaming calls) would otherwise keep open. 0 disables the
+	 * stall watchdog entirely. Defaults to 90 seconds.
+	 */
+	modelStreamIdleTimeoutMs?: number;
+	/**
+	 * Max silence in milliseconds before the turn's first content chunk.
+	 * Longer than the idle limit by design — large cache-miss prompts spend
+	 * minutes in prompt processing before the provider sends anything — and a
+	 * trip here is recovered by a silent retry instead of a user-facing error.
+	 * Clamped to at least `modelStreamIdleTimeoutMs`. Defaults to 3 minutes.
+	 */
+	modelStreamFirstOutputTimeoutMs?: number;
 	/** Inherited telemetry from a host runtime. */
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
@@ -304,6 +327,8 @@ export interface StreamResult {
 export interface ResumeOptions {
 	runId: string;
 	toolCallId: string;
+	/** @internal Host lifecycle hook invoked after the checkpoint claim succeeds. */
+	onResumeClaimed?: () => void | Promise<void>;
 }
 
 export interface BuiltAgent {
@@ -383,6 +408,7 @@ export type PendingToolCall = {
 			suspended: true;
 			suspendPayload: unknown;
 			resumeSchema: JsonSchema7Type;
+			continuation?: JSONValue;
 			runId: string;
 	  }
 	| {
@@ -406,6 +432,8 @@ export interface SerializableAgentState {
 export type AgentPersistenceOptions = {
 	threadId: string;
 	resourceId: string;
+	/** Internal child runs must only be resumed through their suspended parent. */
+	delegated?: true;
 	/**
 	 * The host application's own run id (distinct from the agent-SDK runId that
 	 * keys checkpoints). Persisted with checkpoints so host-side recovery (e.g.

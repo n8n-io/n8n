@@ -1083,6 +1083,24 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBe('wf-1');
 		});
 
+		test('opens an unsaved new-agent artifact on arrival', async () => {
+			const ctx = setup();
+			const next = new Map<string, ResourceEntry>();
+			next.set('aBcDeFgHiJkLmNoP', {
+				type: 'agent',
+				id: 'aBcDeFgHiJkLmNoP',
+				name: 'New agent',
+				projectId: 'project-1',
+				pending: true,
+			});
+			ctx.thread.producedArtifacts = next;
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('aBcDeFgHiJkLmNoP');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(ctx.activeAgentPending.value).toBe(true);
+		});
+
 		test('does not clear activeTabId when registry is empty (race condition)', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');

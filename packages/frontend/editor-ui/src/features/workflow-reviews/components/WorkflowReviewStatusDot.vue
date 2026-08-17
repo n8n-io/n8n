@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import type { WorkflowReviewRequestDecision, WorkflowReviewRequestState } from '@n8n/api-types';
-import { computed } from 'vue';
-import { useI18n } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
 
 const props = defineProps<{
 	state: WorkflowReviewRequestState;
@@ -12,31 +12,31 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const status = computed(() => {
-	if (props.state === 'open') {
-		return props.decision === 'changes_requested'
-			? {
-					variant: 'changesRequested',
-					label: i18n.baseText('workflowReviews.status.changesRequested'),
-				}
-			: { variant: 'pending', label: i18n.baseText('workflowReviews.status.pending') };
-	}
-	return props.decision === 'approved'
-		? { variant: 'approved', label: i18n.baseText('workflowReviews.status.approved') }
-		: { variant: 'closed', label: i18n.baseText('workflowReviews.status.closed') };
+	const variant =
+		props.state === 'open' ? props.decision : props.decision === 'approved' ? 'approved' : 'closed';
+
+	const label =
+		variant === 'closed'
+			? i18n.baseText('workflowReviews.status.closed')
+			: i18n.baseText(`workflowReviews.decision.${variant}` as BaseTextKey);
+
+	const colorClass = variant === 'changes_requested' ? 'changesRequested' : variant;
+
+	return { colorClass, label };
 });
 </script>
 
 <template>
 	<N8nTooltip :content="status.label" placement="top">
 		<div
-			:class="[$style.dot, $style[status.variant]]"
+			:class="[$style.dot, $style[status.colorClass]]"
 			data-test-id="workflow-review-request-status-dot"
 			:aria-label="status.label"
 		/>
 	</N8nTooltip>
 </template>
 
-<style lang="scss" module>
+<style module lang="scss">
 .dot {
 	flex-shrink: 0;
 	width: var(--font-size--3xs);

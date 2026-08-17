@@ -81,6 +81,15 @@ export class UpdateAgentsMcpAvailabilityDto extends Z.class({
 
 export class CreateAgentDto extends Z.class({
 	name: z.string().min(1),
+	/**
+	 * Client-minted agent id, so a surface can reference the agent (an artifact
+	 * tab, a thread binding) before it decides to persist it. Must match the
+	 * nanoid shape the entity would otherwise generate.
+	 */
+	id: z
+		.string()
+		.regex(/^[0-9A-Za-z]{16}$/)
+		.optional(),
 }) {}
 
 export class UpdateAgentConfigDto extends Z.class({
@@ -208,6 +217,20 @@ export class AgentChatResumeDto extends Z.class({
 	resumeData: z.unknown(),
 }) {}
 
+/**
+ * Envelope check for the connect body. The channel itself is validated against
+ * the per-platform integration schema, which is where `settings` is checked.
+ */
+export class AgentConnectIntegrationDto extends Z.class({
+	type: z.string().min(1),
+	credentialId: z.string().min(1),
+	/**
+	 * Credential of the same type this channel takes over from. Swapping in one
+	 * request keeps the agent from ever holding two live channels or none.
+	 */
+	replaces: z.object({ credentialId: z.string().min(1) }).optional(),
+}) {}
+
 export class AgentDisconnectIntegrationDto extends Z.class({
 	type: z.string().min(1),
 	// Empty string targets a draft integration entry (`credentialId: ''`).
@@ -220,10 +243,6 @@ export class PublishAgentDto extends Z.class({
 
 export class RevertAgentToVersionDto extends Z.class({
 	versionId: z.string().min(1),
-}) {}
-
-export class CreateSlackAgentAppDto extends Z.class({
-	appConfigurationToken: z.string().min(1),
 }) {}
 
 export class TestAgentVectorStoreDto extends Z.class({

@@ -1,21 +1,21 @@
+import type { SqlCreatePromptArgs } from '@langchain/classic/agents/toolkits/sql';
+import { SqlToolkit, createSqlAgent } from '@langchain/classic/agents/toolkits/sql';
+import { SqlDatabase } from '@langchain/classic/sql_db';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { DynamicTool } from '@langchain/core/tools';
 import type { DataSource } from '@n8n/typeorm';
-import type { SqlCreatePromptArgs } from '@langchain/classic/agents/toolkits/sql';
-import { SqlToolkit, createSqlAgent } from '@langchain/classic/agents/toolkits/sql';
-import { SqlDatabase } from '@langchain/classic/sql_db';
+import { isRecord } from '@n8n/utils/is-record';
+import { getPromptInputByType, serializeChatHistory } from '@utils/helpers';
+import type { TracingMetadataEntry } from '@utils/tracing';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 import {
+	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	NodeConnectionTypes,
 	NodeOperationError,
-	type IDataObject,
 } from 'n8n-workflow';
-
-import { getPromptInputByType, serializeChatHistory } from '@utils/helpers';
-import type { TracingMetadataEntry } from '@utils/tracing';
-import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
 import { getMysqlDataSource } from './other/handlers/mysql';
 import { getPostgresDataSource } from './other/handlers/postgres';
@@ -27,6 +27,17 @@ const parseTablesString = (tablesString: string) =>
 		.split(',')
 		.map((table) => table.trim())
 		.filter((table) => table.length > 0);
+
+function getErrorMessage(error: unknown): unknown {
+	if (error instanceof Error) return error.message;
+	if (isRecord(error) && 'message' in error) return error.message;
+	return error;
+}
+
+function stringifyErrorMessage(error: unknown): string {
+	const message = getErrorMessage(error);
+	return typeof message === 'string' ? message : JSON.stringify(message);
+}
 
 const BLOCKED_SQL_OPERATIONS = new Set([
 	'INSERT',
@@ -47,6 +58,7 @@ export function detectBlockedSqlKeyword(sql: string): string | undefined {
 		.replace(/'(?:[^'\\]|\\.)*'/g, "''")
 		.replace(/"(?:[^"\\]|\\.)*"/g, '""');
 
+	// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
 	const pattern = new RegExp(`\\b(${[...BLOCKED_SQL_OPERATIONS].join('|')})\\b`, 'i');
 	const match = stripped.match(pattern);
 	return match ? match[1].toUpperCase() : undefined;
@@ -186,17 +198,20 @@ export async function sqlAgentAgentExecute(
 					chatHistory,
 				});
 			} catch (error) {
-				if ((error.message as IDataObject)?.output) {
-					response = error.message as IDataObject;
+				const errorMessage = getErrorMessage(error);
+				if (isRecord(errorMessage) && errorMessage.output) {
+					response = errorMessage as IDataObject;
 				} else {
-					throw new NodeOperationError(this.getNode(), error.message as string, { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), stringifyErrorMessage(error), {
+						itemIndex: i,
+					});
 				}
 			}
 
 			returnData.push({ json: response });
 		} catch (error) {
 			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
+				returnData.push({ json: { error: stringifyErrorMessage(error) }, pairedItem: { item: i } });
 				continue;
 			}
 

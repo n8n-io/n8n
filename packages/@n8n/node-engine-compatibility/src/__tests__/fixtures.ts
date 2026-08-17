@@ -1,5 +1,6 @@
-import type { JsonObject, JsonValue, StepExecutionRequest, WorkflowGraph } from '@n8n/engine';
+import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
 import type {
 	CloseFunction,
@@ -15,6 +16,8 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { Node, NodeConnectionTypes } from 'n8n-workflow';
+
+import { V1StepExecutor } from '../v1-step-executor';
 
 class EchoParam implements INodeType {
 	description = {
@@ -193,8 +196,16 @@ const registry = new Map<string, INodeType>([
 ]);
 
 export const testNodeTypes: INodeTypes = {
-	getByName: (type: string): INodeType | IVersionedNodeType => registry.get(type)!,
-	getByNameAndVersion: (type: string): INodeType => registry.get(type)!,
+	getByName: (type: string): INodeType | IVersionedNodeType => {
+		const nodeType = registry.get(type);
+		if (!nodeType) throw new UnrecognizedNodeTypeError('test', type);
+		return nodeType;
+	},
+	getByNameAndVersion: (type: string): INodeType => {
+		const nodeType = registry.get(type);
+		if (!nodeType) throw new UnrecognizedNodeTypeError('test', type);
+		return nodeType;
+	},
 	getKnownTypes: (): IDataObject => ({}),
 };
 
@@ -235,11 +246,21 @@ export const v1Workflow = (
 export const stepRequest = (
 	graph: WorkflowGraph,
 	nodeId: string,
-	inputs: JsonValue,
+	inputs: StepSlots,
 ): StepExecutionRequest => ({
 	node: graph.nodes.find((n) => n.id === nodeId)!,
 	inputs,
-	context: { executionId: 'exec-1', stepId: 'step-1', workflowId: 'wf-1', mode: 'manual' },
+	context: { executionId: 'exec-1', stepId: nodeId, workflowId: 'wf-1', mode: 'manual' },
 });
 
-export const items = (...objects: JsonObject[]): JsonValue => [objects.map((json) => ({ json }))];
+export const testStepExecutor = (
+	graph: WorkflowGraph,
+	outputsByNodeId: Record<string, StepSlots> = {},
+): V1StepExecutor =>
+	new V1StepExecutor({
+		nodeTypes: testNodeTypes,
+		additionalDataFactory: testAdditionalDataFactory,
+		loadStepData: async () => await Promise.resolve({ graph, outputsByNodeId }),
+	});
+
+export const items = (...objects: JsonObject[]): StepSlots => [objects.map((json) => ({ json }))];

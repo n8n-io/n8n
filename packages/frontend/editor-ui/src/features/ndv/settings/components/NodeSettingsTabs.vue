@@ -19,7 +19,6 @@ type Props = {
 	nodeType?: INodeTypeDescription | null;
 	pushRef?: string;
 	hideDocs?: boolean;
-	tabsVariant?: 'modern' | 'legacy';
 	includeAction?: boolean;
 	includeCredential?: boolean;
 	hasCredentialIssue?: boolean;
@@ -30,7 +29,6 @@ const props = withDefaults(defineProps<Props>(), {
 	modelValue: 'params',
 	nodeType: undefined,
 	pushRef: '',
-	tabsVariant: undefined,
 	hasCredentialIssue: false,
 });
 const emit = defineEmits<{
@@ -166,7 +164,7 @@ function onTooltipClick(tab: NodeSettingsTab, event: MouseEvent) {
 	<N8nTabs
 		:options="options"
 		:model-value="modelValue"
-		:variant="tabsVariant"
+		variant="modern"
 		:size="compact ? 'small' : 'medium'"
 		@update:model-value="onTabSelect"
 		@tooltip-click="onTooltipClick"

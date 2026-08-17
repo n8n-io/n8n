@@ -1,4 +1,5 @@
 name: 'CI: CLA Check'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: CLA Check (PR #{0})', inputs.pr_number) || '' }}"
 
 # In-house replacement for the GitHub App "CLA Bot".
 #

@@ -1,6 +1,15 @@
 import { ListTagsQueryDto, TagListPublicDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { ApiKeyScope, ApiResponse, Get, PublicApiController, Query } from '@n8n/decorators';
+import {
+	ApiDescription,
+	ApiKeyScope,
+	ApiResponse,
+	ApiSummary,
+	ApiTags,
+	Get,
+	PublicApiController,
+	Query,
+} from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -13,7 +22,10 @@ export class TagsPublicController {
 
 	@Get('/')
 	@ApiKeyScope('tag:list')
-	@ApiResponse(TagListPublicDto)
+	@ApiSummary('Retrieve all tags')
+	@ApiDescription('Retrieve all tags from your instance.')
+	@ApiTags(['Tags'])
+	@ApiResponse(200, TagListPublicDto)
 	async getTags(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -39,7 +51,11 @@ export class TagsPublicController {
 		const { data, count } = await this.tagService.getPaginated({ offset, limit });
 
 		return {
-			data,
+			data: data.map((tag) => ({
+				...tag,
+				createdAt: tag.createdAt.toISOString(),
+				updatedAt: tag.updatedAt.toISOString(),
+			})),
 			nextCursor: encodeNextCursor({
 				offset,
 				limit,

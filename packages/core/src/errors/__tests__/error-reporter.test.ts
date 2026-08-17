@@ -268,6 +268,15 @@ describe('ErrorReporter', () => {
 					},
 				});
 			});
+
+			it('should preserve a warning level supplied in the capture context', async () => {
+				const originalException = new TestError('Test error', { level: 'error' });
+				const testEvent = { level: 'warning' } as ErrorEvent;
+
+				const result = await errorReporter.beforeSend(testEvent, { originalException });
+
+				expect(result?.level).toBe('warning');
+			});
 		});
 
 		// `ExecutionBaseError` (the base of NodeApiError/NodeOperationError/ExpressionError)

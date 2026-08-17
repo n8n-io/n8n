@@ -475,6 +475,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					inputThreadId: event.payload.inputThreadId,
 					severity: event.payload.severity,
 					message: event.payload.message,
+					targetApproval: event.payload.targetApproval,
 					credentialRequests: event.payload.credentialRequests,
 					projectId: event.payload.projectId,
 					inputType: event.payload.inputType,
@@ -489,6 +490,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					tasks: event.payload.tasks,
 					resourceDecision: event.payload.resourceDecision,
 					channelConfig: event.payload.channelConfig,
+					mcpConnectRequest: event.payload.mcpConnectRequest,
 				};
 			}
 			break;

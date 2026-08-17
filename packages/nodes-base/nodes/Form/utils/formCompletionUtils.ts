@@ -93,12 +93,15 @@ export const renderFormCompletion = async (
 		formTitle: string;
 		customCss?: string;
 	};
-	const responseText = (context.getNodeParameter('responseText', '') as string) ?? '';
 	const respondWith = context.getNodeParameter('respondWith', '') as
 		| 'text'
 		| 'redirect'
 		| 'showText'
 		| 'returnBinary';
+	const responseText =
+		respondWith === 'showText'
+			? ((context.getNodeParameter('responseText', '') as string) ?? '')
+			: '';
 	const binary = respondWith === 'returnBinary' ? await binaryResponse(context) : [];
 	const triggerRef = getNodeReference(trigger.name);
 

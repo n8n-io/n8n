@@ -1,7 +1,8 @@
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
-import { watch } from 'vue';
+import { computed, getCurrentInstance, watch } from 'vue';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -39,15 +40,25 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGroupCleanup';
 
 export function useWorkflowSaving({
 	router,
 	onSaved,
+	ownsAutoSave = false,
 }: {
 	router: ReturnType<typeof useRouter>;
 	onSaved?: (isFirstSave: boolean) => void;
+	/**
+	 * Whether this instance drives the canvas's autosave. Only the component
+	 * rendering the canvas passes `true`: it sits inside the host that scopes the
+	 * editor context, so it is the only one that can tell a preview from an
+	 * editable canvas. Everyone else — dialogs, a Pinia store, a push handler —
+	 * builds this composable for its explicit save calls, and an autosave engine
+	 * there would react to app-wide signals from outside any canvas.
+	 */
+	ownsAutoSave?: boolean;
 }) {
 	const uiStore = useUIStore();
 	const npsSurveyStore = useNpsSurveyStore();
@@ -69,6 +80,13 @@ export function useWorkflowSaving({
 	const settingsStore = useSettingsStore();
 	const workflowId = useWorkflowId();
 	const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+
+	// Preview hosts (template, workflow history, execution) render the real canvas
+	// and scope their subtree read-only through the editor context. The context is
+	// injected, so it only resolves inside a component — fall back to no context
+	// for the out-of-tree callers, the way `useRunWorkflow` does for the same key.
+	const editorContext = getCurrentInstance() ? useEditorContext() : undefined;
+	const canAutoSave = computed(() => ownsAutoSave && editorContext?.readOnly.value !== true);
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -201,7 +219,6 @@ export function useWorkflowSaving({
 				if (!forceSave && isLoading) {
 					return true;
 				}
-				uiStore.addActiveAction('workflowSaving');
 
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(currentWorkflow),
@@ -253,7 +270,6 @@ export function useWorkflowSaving({
 					// workflow id and the autosave would create an empty workflow.
 					if (!autosaved) cancelAutoSave();
 				}
-				uiStore.removeActiveAction('workflowSaving');
 				void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 				// Reset AI Builder edits flag only after successful save
@@ -266,8 +282,6 @@ export function useWorkflowSaving({
 				return true;
 			} catch (error) {
 				console.error(error);
-
-				uiStore.removeActiveAction('workflowSaving');
 
 				if (error.errorCode === 409) {
 					telemetry.track('User attempted to save locked workflow', {
@@ -397,8 +411,6 @@ export function useWorkflowSaving({
 		redirect = true,
 	): Promise<IWorkflowDb['id'] | null> {
 		try {
-			uiStore.addActiveAction('workflowSaving');
-
 			const currentDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowId.value),
 			);
@@ -411,6 +423,11 @@ export function useWorkflowSaving({
 			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
 			const workflowDataRequest: WorkflowDataCreate = data || currentDocumentStore.serialize();
+			// A description staged on an unsaved workflow (via the description and
+			// tags modal) is not part of serialize(), so carry it into the first save.
+			if (!data && currentDocumentStore.description) {
+				workflowDataRequest.description = currentDocumentStore.description;
+			}
 			const changedNodes = {} as IDataObject;
 
 			if (requestNewId) {
@@ -439,7 +456,9 @@ export function useWorkflowSaving({
 					if (node.webhookId) {
 						const newId = nodeHelpers.assignWebhookId(node);
 
-						if (!isExpression(node.parameters.path)) {
+						// Triggers whose webhook path comes from the node description (e.g. Trello
+						// Trigger, Wait) have no `path` parameter to re-key.
+						if ('path' in node.parameters && !isExpression(node.parameters.path)) {
 							node.parameters.path = newId;
 						}
 
@@ -481,7 +500,6 @@ export function useWorkflowSaving({
 					params: { workflowId: workflowData.id },
 				});
 				window.open(routeData.href, '_blank');
-				uiStore.removeActiveAction('workflowSaving');
 				onSaved?.(true); // First save of new workflow
 				return workflowData.id;
 			}
@@ -519,6 +537,10 @@ export function useWorkflowSaving({
 			});
 			workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
 
+			if (workflowData.settings) {
+				workflowDocumentStore.setSettings(workflowData.settings);
+			}
+
 			// Only update webhook IDs if we explicitly reset them
 			if (resetWebhookUrls) {
 				Object.keys(changedNodes).forEach((nodeName) => {
@@ -549,7 +571,6 @@ export function useWorkflowSaving({
 				});
 			}
 
-			uiStore.removeActiveAction('workflowSaving');
 			// Only mark state clean if no new changes were made during the save
 			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
 				uiStore.markStateClean();
@@ -562,8 +583,6 @@ export function useWorkflowSaving({
 			onSaved?.(true); // First save of new workflow
 			return workflowData.id;
 		} catch (e) {
-			uiStore.removeActiveAction('workflowSaving');
-
 			toast.showMessage({
 				title: i18n.baseText('workflowHelpers.showMessage.title'),
 				message: (e as Error).message,
@@ -608,6 +627,13 @@ export function useWorkflowSaving({
 	);
 
 	const scheduleAutoSave = () => {
+		// Don't schedule from a read-only canvas, or from an instance that doesn't
+		// own one. Every autosave entry point funnels through here, so a preview
+		// never writes whatever marked it dirty.
+		if (!canAutoSave.value) {
+			return;
+		}
+
 		// Don't schedule if autosave is disabled via environment variable
 		if (!settingsStore.isAutosaveEnabled) {
 			return;
@@ -640,17 +666,34 @@ export function useWorkflowSaving({
 		saveStore.setAutoSaveState(AutoSaveState.Idle);
 	};
 
-	// Watch for network coming back online
-	watch(
-		() => backendConnectionStore.isOnline,
-		(isOnline, wasOnline) => {
-			if (isOnline && !wasOnline) {
-				if (uiStore.stateIsDirty) {
-					scheduleAutoSave();
-				}
+	// These watchers write on their own, off app-wide signals, so only the canvas's
+	// owner arms them. A non-owner instance armed them too, and outside a canvas
+	// host there is no read-only scope to consult — which is how a preview still
+	// issued a save when the connection returned. They are also unstopped, so the
+	// push handler that builds this composable per message would leak one apiece.
+	if (ownsAutoSave) {
+		// Re-arm when a host lifts read-only with changes still pending — the
+		// Instance AI preview locks the canvas while its agent edits, and nothing
+		// else would save what the agent wrote. Mirrors the AI-builder re-arm in
+		// NodeView.
+		watch(canAutoSave, (allowed, wasAllowed) => {
+			if (allowed && !wasAllowed && uiStore.stateIsDirty) {
+				scheduleAutoSave();
 			}
-		},
-	);
+		});
+
+		// Watch for network coming back online
+		watch(
+			() => backendConnectionStore.isOnline,
+			(isOnline, wasOnline) => {
+				if (isOnline && !wasOnline) {
+					if (uiStore.stateIsDirty) {
+						scheduleAutoSave();
+					}
+				}
+			},
+		);
+	}
 
 	return {
 		promptSaveUnsavedWorkflowChanges,

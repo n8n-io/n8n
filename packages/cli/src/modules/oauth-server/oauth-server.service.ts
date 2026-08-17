@@ -17,12 +17,15 @@ import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-typ
 import { getMcpClientType, MCP_CLIENT_TYPE_FILTER_BUCKETS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
+import { AuthService } from '@/auth/auth.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
@@ -31,7 +34,8 @@ import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
-import { OAuthSessionService } from './oauth-session.service';
+import { OAuthConsentService } from './oauth-consent.service';
+import { OAuthSessionPayload, OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
 
@@ -104,6 +108,9 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
+		private readonly eventService: EventService,
+		private readonly authService: AuthService,
+		private readonly oauthConsentService: OAuthConsentService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -357,14 +364,23 @@ export class OAuthServerService implements OAuthServerProvider {
 			const supportedScopes = targetResource?.scopes ?? [];
 			const requestedScopes = params.scopes?.filter((scope) => supportedScopes.includes(scope));
 
-			this.oauthSessionService.createSession(res, {
+			const sessionPayload: OAuthSessionPayload = {
 				clientId: client.client_id,
 				redirectUri: params.redirectUri,
 				codeChallenge: params.codeChallenge,
 				state: params.state ?? null,
 				resource,
 				...(requestedScopes && requestedScopes.length > 0 && { requestedScopes }),
-			});
+			};
+
+			const autoApproval = await this.tryAutoApproveConsent(res, sessionPayload, client);
+
+			if (autoApproval) {
+				res.redirect(autoApproval.redirectUrl);
+				return;
+			}
+
+			this.oauthSessionService.createSession(res, sessionPayload);
 
 			res.redirect('/oauth/consent');
 		} catch (error) {
@@ -452,6 +468,21 @@ export class OAuthServerService implements OAuthServerProvider {
 			grantedScopes,
 		);
 
+		// Completion of the authorization-code grant is the point at which the user
+		// has finished the OAuth flow for this client. The authorization server is
+		// shared by every protected resource on the instance (MCP, forms, ...), so
+		// only grants targeting the instance MCP server count as MCP usage.
+		const grantedResource = finalResource
+			? await this.resourceRegistry.getByResourceUrl(finalResource)
+			: this.resourceRegistry.getDefaultResource();
+		if (grantedResource?.id === INSTANCE_MCP_RESOURCE_ID) {
+			this.eventService.emit('mcp-oauth-completed', {
+				userId: authRecord.userId,
+				clientId: client.client_id,
+				clientName: client.client_name,
+			});
+		}
+
 		return {
 			access_token: accessToken,
 			token_type: 'Bearer',
@@ -482,6 +513,35 @@ export class OAuthServerService implements OAuthServerProvider {
 
 	async verifyAccessToken(token: string): Promise<AuthInfo> {
 		return await this.tokenService.verifyAccessToken(token);
+	}
+
+	private async tryAutoApproveConsent(
+		res: Response,
+		sessionPayload: OAuthSessionPayload,
+		client: OAuthClientInformationFull,
+	): Promise<{ redirectUrl: string } | null> {
+		const req = res.req;
+		const cookie = this.authService.getCookieToken(req);
+		if (cookie) {
+			let user: User | undefined;
+
+			try {
+				user = await this.authService.authenticateUserByCookie(cookie);
+			} catch (error) {
+				this.logger.debug('Auto-approval failed: user not authenticated', {
+					clientId: client.client_id,
+				});
+			}
+
+			if (user) {
+				const reuseResult = await this.oauthConsentService.tryReuseConsent(user, sessionPayload);
+				if (reuseResult) {
+					return { redirectUrl: reuseResult.redirectUrl };
+				}
+			}
+		}
+
+		return null;
 	}
 
 	// Exact-match against a registered resource, as required by RFC 8707 §2.1.

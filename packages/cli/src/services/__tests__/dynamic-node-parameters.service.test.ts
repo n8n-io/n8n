@@ -1,9 +1,13 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
+import type { HttpRequestClient, SsrfBridge } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { RoutingNode } from 'n8n-core';
 import {
+	type ILoadOptionsFunctions,
 	type INodeParameters,
 	type INodeType,
 	type IWorkflowExecuteAdditionalData,
@@ -213,6 +217,125 @@ describe('DynamicNodeParametersService', () => {
 			expect(acquireSpy).toHaveBeenCalledTimes(1);
 			expect(releaseSpy).toHaveBeenCalledTimes(1);
 		});
+	});
+
+	// The method-name branch runs a node's own loadOptions/listSearch/etc. method,
+	// which may issue outbound requests to a credential-supplied host. Those
+	// requests must carry the execution's egress policy so that, when SSRF
+	// protection is enabled, they honour the same restrictions as node execution.
+	// Many such methods use the legacy `this.helpers.request` helper (e.g. nodes
+	// that build the request and set auth by hand), which routes through
+	// `OutboundHttp.requests({ ssrf })` — asserting that argument proves the
+	// bridge is forwarded end to end.
+	describe('egress policy for method-name requests', () => {
+		const requestLegacy = vi.fn();
+		const requests = vi.fn();
+		const outboundHttp = mock<OutboundHttp>({ requests });
+
+		beforeEach(() => {
+			requestLegacy.mockResolvedValue([]);
+			requests.mockReturnValue(mock<HttpRequestClient>({ requestLegacy }));
+			Container.set(OutboundHttp, outboundHttp);
+		});
+
+		/** A node method that issues one legacy `this.helpers.request` to an internal host. */
+		const requestingMethod = () =>
+			vi.fn(async function (this: ILoadOptionsFunctions) {
+				await this.helpers.request({
+					uri: 'http://internal-service.local/api',
+					json: true,
+				});
+				return [];
+			});
+
+		type Scenario = {
+			name: string;
+			register: (method: ReturnType<typeof requestingMethod>) => void;
+			invoke: (additionalData: IWorkflowExecuteAdditionalData) => Promise<unknown>;
+		};
+
+		const nodeTypeAndVersion = { name: 'TestNode', version: 1 };
+
+		const registerMethod = (
+			type: 'loadOptions' | 'listSearch' | 'resourceMapping' | 'actionHandler',
+			method: ReturnType<typeof requestingMethod>,
+		) => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { [type]: { run: method } },
+				}),
+			);
+		};
+
+		const scenarios: Scenario[] = [
+			{
+				name: 'loadOptions (getOptionsViaMethodName)',
+				register: (method) => registerMethod('loadOptions', method),
+				invoke: async (additionalData) =>
+					await service.getOptionsViaMethodName('run', '', additionalData, nodeTypeAndVersion, {}),
+			},
+			{
+				name: 'listSearch (getResourceLocatorResults)',
+				register: (method) => registerMethod('listSearch', method),
+				invoke: async (additionalData) =>
+					await service.getResourceLocatorResults(
+						'run',
+						'',
+						additionalData,
+						nodeTypeAndVersion,
+						{},
+					),
+			},
+			{
+				name: 'resourceMapping (getResourceMappingFields)',
+				register: (method) => registerMethod('resourceMapping', method),
+				invoke: async (additionalData) =>
+					await service.getResourceMappingFields('run', '', additionalData, nodeTypeAndVersion, {}),
+			},
+			{
+				name: 'actionHandler (getActionResult)',
+				register: (method) => registerMethod('actionHandler', method),
+				invoke: async (additionalData) =>
+					await service.getActionResult(
+						'run',
+						'',
+						additionalData,
+						nodeTypeAndVersion,
+						{},
+						undefined,
+					),
+			},
+		];
+
+		it.each(scenarios)(
+			'forwards the SSRF bridge to requests made from the $name method',
+			async ({ register, invoke }) => {
+				const method = requestingMethod();
+				register(method);
+				const ssrfBridge = mock<SsrfBridge>();
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge });
+
+				await invoke(additionalData);
+
+				expect(method).toHaveBeenCalled();
+				expect(requests).toHaveBeenCalledWith({ ssrf: ssrfBridge });
+			},
+		);
+
+		it.each(scenarios)(
+			'disables SSRF for requests from the $name method when no bridge is attached',
+			async ({ register, invoke }) => {
+				const method = requestingMethod();
+				register(method);
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge: undefined });
+
+				await invoke(additionalData);
+
+				expect(method).toHaveBeenCalled();
+				expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			},
+		);
 	});
 
 	describe('getOptionsViaLoadOptions', () => {

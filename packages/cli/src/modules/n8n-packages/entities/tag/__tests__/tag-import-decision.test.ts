@@ -115,18 +115,19 @@ describe('decideTagImportAction', () => {
 			});
 		});
 
-		it('gates under create + rename (renaming would need id reconciliation)', () => {
-			expect(decideTagImportAction(source, undefined, otherIdSameName, 'create', 'rename')).toEqual(
-				{
-					action: 'fail',
-					failure: {
-						kind: 'name-collision',
-						sourceId: 'tag-1',
-						name: 'prod',
-						existingTagId: 'tag-2',
-					},
-				},
-			);
+		it('reconciles the name holder to the source id under create + rename', () => {
+			expect(
+				decideTagImportAction(
+					{ id: 'tag-1', name: ' prod ' },
+					undefined,
+					otherIdSameName,
+					'create',
+					'rename',
+				),
+			).toEqual({
+				action: 'reconcile',
+				reconcile: { id: 'tag-1', name: 'prod', oldId: 'tag-2' },
+			});
 		});
 
 		it('drops under create + skip', () => {
@@ -239,7 +240,7 @@ describe('decideTagImportAction', () => {
 		});
 	});
 
-	describe('tag id validation (only when the import would create the tag)', () => {
+	describe('tag id validation (only when the import would create or reconcile the tag)', () => {
 		it('creates a 36-character id but gates a 37-character one', () => {
 			const ok = 'i'.repeat(36);
 			const tooLong = 'i'.repeat(37);
@@ -260,6 +261,38 @@ describe('decideTagImportAction', () => {
 			).toEqual({
 				action: 'fail',
 				failure: { kind: 'invalid-id', sourceId: tooLong, name: 'prod' },
+			});
+		});
+
+		it('gates a reconcile whose source id exceeds 36 characters', () => {
+			const tooLong = 'i'.repeat(37);
+			expect(
+				decideTagImportAction(
+					{ id: tooLong, name: 'prod' },
+					undefined,
+					otherIdSameName,
+					'create',
+					'rename',
+				),
+			).toEqual({
+				action: 'fail',
+				failure: { kind: 'invalid-id', sourceId: tooLong, name: 'prod' },
+			});
+		});
+
+		it('gates an id containing control characters', () => {
+			const controlId = 'tag\u00001';
+			expect(
+				decideTagImportAction(
+					{ id: controlId, name: 'prod' },
+					undefined,
+					undefined,
+					'create',
+					'fail',
+				),
+			).toEqual({
+				action: 'fail',
+				failure: { kind: 'invalid-id', sourceId: controlId, name: 'prod' },
 			});
 		});
 	});

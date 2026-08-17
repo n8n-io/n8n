@@ -15,6 +15,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/license';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
@@ -68,6 +69,23 @@ export class AiGatewayService {
 	) {}
 
 	/**
+	 * Whether this instance is licensed and configured for n8n Connect.
+	 */
+	isEnabled(): boolean {
+		return (
+			this.licenseState.isAiGatewayLicensed() &&
+			this.globalConfig.aiGateway.enabled &&
+			!!this.globalConfig.aiAssistant.baseUrl
+		);
+	}
+
+	assertEnabled(): void {
+		if (!this.isEnabled()) {
+			throw new BadRequestError('n8n Connect is not enabled on this instance');
+		}
+	}
+
+	/**
 	 * Performs a request against the AI Gateway and returns the parsed body.
 	 */
 	private async gatewayRequest<T>(
@@ -113,17 +131,35 @@ export class AiGatewayService {
 		workflowId: string | undefined;
 	}): Promise<string | undefined> {
 		if (userId) return userId;
-		const resolvedProjectId =
-			projectId ??
-			(workflowId
-				? (await this.ownershipService.getWorkflowProjectCached(workflowId))?.id
-				: undefined);
+		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
 		const owner = resolvedProjectId
 			? await this.ownershipService.getPersonalProjectOwnerCached(resolvedProjectId)
 			: null;
 		if (owner) return owner.id;
 		try {
 			return (await this.ownershipService.getInstanceOwner()).id;
+		} catch {
+			return undefined;
+		}
+	}
+
+	/**
+	 * Resolves the concrete project a request belongs to: the explicit `projectId`
+	 * when provided, otherwise the owning project of `workflowId` (cached lookup).
+	 * Returns undefined when neither is available or workflow ownership cannot be
+	 * resolved, so project attribution never blocks gateway credential creation.
+	 */
+	private async resolveProjectId({
+		projectId,
+		workflowId,
+	}: {
+		projectId: string | undefined;
+		workflowId: string | undefined;
+	}): Promise<string | undefined> {
+		if (projectId) return projectId;
+		if (!workflowId) return undefined;
+		try {
+			return (await this.ownershipService.getWorkflowProjectCached(workflowId)).id;
 		} catch {
 			return undefined;
 		}
@@ -150,6 +186,9 @@ export class AiGatewayService {
 		if (!this.licenseState.isAiGatewayLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
 		}
+		if (!this.isEnabled()) {
+			throw new UserError('n8n Connect is not enabled on this instance.');
+		}
 
 		const baseUrl = this.requireBaseUrl();
 
@@ -159,7 +198,12 @@ export class AiGatewayService {
 			throw new UserError(`Credential type "${credentialType}" is not supported by n8n credits.`);
 		}
 
-		const resolvedUserId = await this.resolveUserId({ userId, projectId, workflowId });
+		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
+		const resolvedUserId = await this.resolveUserId({
+			userId,
+			projectId: resolvedProjectId,
+			workflowId,
+		});
 		if (!resolvedUserId) {
 			throw new UserError('Failed to resolve user for n8n credits attribution.');
 		}
@@ -168,7 +212,11 @@ export class AiGatewayService {
 			throw new UserError('Failed to obtain a valid n8n credits token.');
 		}
 
-		const urlFields = this.buildUrlFields(baseUrl, providerConfig, { executionId, workflowId });
+		const urlFields = this.buildUrlFields(baseUrl, providerConfig, {
+			executionId,
+			workflowId,
+			projectId: resolvedProjectId,
+		});
 
 		return {
 			[providerConfig.apiKeyField]: jwt,
@@ -186,7 +234,7 @@ export class AiGatewayService {
 	private buildUrlFields(
 		baseUrl: string,
 		providerConfig: { gatewayPath: string; urlField: string; routing?: Record<string, string> },
-		context: { executionId?: string; workflowId?: string },
+		context: { executionId?: string; workflowId?: string; projectId?: string },
 	): Record<string, string> {
 		const routing = providerConfig.routing;
 		if (routing && Object.keys(routing).length > 0) {
@@ -267,23 +315,31 @@ export class AiGatewayService {
 	 * When both `executionId` and `workflowId` are provided, embeds them as an
 	 * `/exec/:executionId/:workflowId/` prefix inside the gateway path. The AI Gateway's
 	 * URL-rewriting middleware strips this prefix before proxying upstream, so all SDK
-	 * clients remain unaware of it while the gateway can record both IDs in usage metadata.
+	 * clients remain unaware of it while the gateway can record the IDs in usage metadata.
+	 *
+	 * When a `projectId` is available it is appended to the workflow path segment as a
+	 * `|`-joined, encoded list (`:workflowId|:projectId`, the `|` percent-encoded), so the
+	 * gateway can group usage by project. Omitting it keeps the `:workflowId`-only form.
 	 *
 	 * Example (OpenAI):
 	 *   without context → `<base>/v1/gateway/openai/v1`
 	 *   with context    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/openai/v1`
+	 *   with project    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cnr6r2FfB0mVeqZP1/openai/v1`
 	 */
 	private buildGatewayUrl(
 		baseUrl: string,
 		gatewayPath: string,
-		context: { executionId?: string; workflowId?: string },
+		context: { executionId?: string; workflowId?: string; projectId?: string },
 	): string {
 		if (context.executionId && context.workflowId) {
 			if (!gatewayPath.startsWith(AiGatewayService.GATEWAY_PATH_PREFIX)) {
 				return `${baseUrl}${gatewayPath}`;
 			}
 			const providerSuffix = gatewayPath.slice(AiGatewayService.GATEWAY_PATH_PREFIX.length);
-			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(context.executionId)}/${encodeURIComponent(context.workflowId)}${providerSuffix}`;
+			const contextSegment = encodeURIComponent(
+				[context.workflowId, context.projectId].filter(Boolean).join('|'),
+			);
+			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(context.executionId)}/${contextSegment}${providerSuffix}`;
 		}
 		return `${baseUrl}${gatewayPath}`;
 	}
@@ -302,12 +358,12 @@ export class AiGatewayService {
 	}
 
 	/**
-	 * Returns `{ available: true, config }` when the AI Gateway is both licensed
-	 * AND its config fetches successfully; `{ available: false }` otherwise.
+	 * Returns `{ available: true, config }` when n8n Connect is enabled, licensed,
+	 * and its config fetches successfully; `{ available: false }` otherwise.
 	 * Never propagates gateway or config errors.
 	 */
 	async isAvailable(): Promise<AiGatewayAvailability> {
-		if (!this.licenseState.isAiGatewayLicensed()) return { available: false };
+		if (!this.isEnabled()) return { available: false };
 		try {
 			const config = await this.getGatewayConfig();
 			return { available: true, config };
@@ -359,7 +415,7 @@ export class AiGatewayService {
 	 * authoritative n8n Connect provider → credential-type support gate.
 	 */
 	async getCredentialTypeForProvider(provider: string): Promise<string | undefined> {
-		if (!this.licenseState.isAiGatewayLicensed()) return undefined;
+		if (!this.isEnabled()) return undefined;
 		const config = await this.getGatewayConfig();
 		return AiGatewayService.matchCredentialTypeForProvider(config, provider);
 	}
@@ -377,7 +433,7 @@ export class AiGatewayService {
 	 * answer is preferable to a network call here.
 	 */
 	getCredentialTypeForProviderCached(provider: string): string | null | undefined {
-		if (!this.licenseState.isAiGatewayLicensed()) return null;
+		if (!this.isEnabled()) return null;
 		if (!this.gatewayConfig) return undefined;
 		return AiGatewayService.matchCredentialTypeForProvider(this.gatewayConfig, provider) ?? null;
 	}

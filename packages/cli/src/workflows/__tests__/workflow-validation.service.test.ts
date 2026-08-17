@@ -1068,11 +1068,42 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('identity extractor');
 		});
 
+		const withFormOAuth2 = (enabled: boolean) =>
+			vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', enabled ? 'true' : 'false');
+
+		describe('webhook trigger', () => {
+			const validateWithOAuth2Webhook = async () => {
+				const nodes: INode[] = [
+					createNode('Webhook', 'n8n-nodes-base.webhook', {
+						parameters: { authentication: 'n8nOAuth2' },
+					}),
+					createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+						credentials: { oAuth2Api: { id: 'cred-1' } },
+					}),
+				];
+
+				mockCredentialsRepository.find.mockResolvedValue([
+					{ id: 'cred-1', name: 'My OAuth2' } as any,
+				]);
+				useSystemResolver();
+
+				mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === 'n8n-nodes-base.webhook') return createTriggerNodeType();
+					return {} as INodeType;
+				}) as any);
+
+				return await service.validateDynamicCredentials(nodes, mockNodeTypes);
+			};
+
+			it('should return valid for n8nOAuth2', async () => {
+				const result = await validateWithOAuth2Webhook();
+
+				expect(result.isValid).toBe(true);
+			});
+		});
+
 		describe('form trigger', () => {
 			const FORM_TRIGGER = 'n8n-nodes-base.formTrigger';
-
-			const withFormOAuth2 = (enabled: boolean) =>
-				vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', enabled ? 'true' : 'false');
 
 			const validateWithFormTrigger = async (authentication: string) => {
 				const nodes: INode[] = [
@@ -1427,6 +1458,57 @@ describe('WorkflowValidationService', () => {
 			expect(result.isValid).toBe(false);
 			expect(result.error).toMatch(/HTTP Request/);
 			expect(result.error).toMatch(/Slack/);
+		});
+	});
+
+	describe('validateTriggerNodeIds', () => {
+		const triggerNode = (name: string, id?: string): INode =>
+			({
+				name,
+				id,
+				type: 'n8n-nodes-base.cron',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			}) as INode;
+
+		it('accepts trigger nodes that each carry a distinct id', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', 'node-1'),
+				triggerNode('Webhook', 'node-2'),
+			]);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('accepts a workflow with no trigger nodes', () => {
+			const result = service.validateTriggerNodeIds([]);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('rejects trigger nodes that share an id, naming each node and the id', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', 'node-1'),
+				triggerNode('Webhook', 'node-1'),
+			]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('Cannot publish workflow');
+			expect(result.error).toContain('"Cron"');
+			expect(result.error).toContain('"Webhook"');
+			expect(result.error).toContain('"node-1"');
+		});
+
+		it('rejects a trigger node that carries no id', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', 'node-1'),
+				triggerNode('Webhook', undefined),
+			]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('Cannot publish workflow');
+			expect(result.error).toContain('"Webhook"');
 		});
 	});
 });

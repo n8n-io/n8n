@@ -33,10 +33,9 @@ export interface ToolCall {
 	 */
 	displaySummary?: string;
 	/**
-	 * Raw suspend payload from `tool-call-suspended` for tools other than
-	 * `approval` (e.g. `{ type: 'integration_action', ... }`). The approval
-	 * tool instead overwrites `input` (its suspend payload IS the renderable
-	 * input).
+	 * Raw suspend payload from `tool-call-suspended`. Kept separate from the
+	 * model-authored tool input because delegated tools can surface a nested
+	 * approval for a child tool.
 	 */
 	suspendPayload?: unknown;
 	/** Live progress of a delegated child, streamed while the delegation runs

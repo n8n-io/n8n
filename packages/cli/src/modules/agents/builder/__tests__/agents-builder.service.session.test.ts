@@ -142,7 +142,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 	};
 });
 
-vi.mock('@n8n/agents', () => ({
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents')>()),
 	Agent: agentsSdkMocks.MockAgent,
 	Memory: agentsSdkMocks.MockMemory,
 	createObservationLogObserveFn: agentsSdkMocks.createObservationLogObserveFn,
@@ -282,6 +283,7 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 		expect(agentsSdkMocks.streamCalls[0]?.options.abortSignal).toBe(abortSignal);
 		expect(agentsSdkMocks.resumeCalls[0]?.options.abortSignal).toBe(abortSignal);
+		expect(n8nCheckpointStorage.getStatus).toHaveBeenCalledWith('builder-run-1', 'agent-1');
 	});
 
 	it('appends the session instructionsAddendum to the built prompt when provided', async () => {
@@ -361,12 +363,28 @@ describe('AgentsBuilderService session isolation', () => {
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
 		);
 
-		expect(agentsSdkMocks.promptCachingCalls).toEqual([{ anthropic: { ttl: '5m' } }]);
+		expect(agentsSdkMocks.promptCachingCalls).toEqual([
+			{ enabled: true, anthropic: { ttl: '5m' } },
+		]);
+	});
+
+	it('uses low reasoning and skips Anthropic prompt caching for proxied Kimi', async () => {
+		const { service, user, credentialProvider } = setup();
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				modelConfig: { provider: 'moonshotai', modelId: 'kimi-k3' } as never,
+			}),
+		);
+
+		expect(agentsSdkMocks.promptCachingCalls).toEqual([]);
+		expect(agentsSdkMocks.reasoningCalls).toEqual(['low']);
 	});
 
 	it.each([
 		['Anthropic', 'anthropic/claude-sonnet-host-resolved'],
-		['OpenAI', 'openai/gpt-5.5'],
+		['OpenAI', 'openai/gpt-5.6-sol'],
 		['Google', 'google/gemini-2.5-pro'],
 	])('enables generic reasoning for a %s builder model', async (_provider, modelConfig) => {
 		const { service, user, credentialProvider } = setup();

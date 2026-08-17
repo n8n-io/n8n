@@ -6,8 +6,8 @@ import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { createPasswordRules } from '@n8n/design-system';
 
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/app/constants';

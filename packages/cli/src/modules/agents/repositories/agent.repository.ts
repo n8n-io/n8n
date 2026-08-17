@@ -1,6 +1,6 @@
-import type { ListAgentsQueryDto } from '@n8n/api-types';
+import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
 
@@ -8,6 +8,9 @@ export type AgentSummary = Pick<
 	Agent,
 	'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'
 >;
+
+/** The only columns an integration mutation reads or writes. */
+export type AgentIntegrationState = Pick<Agent, 'integrations' | 'versionId' | 'activeVersionId'>;
 
 export type AgentSummaryFilters = {
 	query?: string;
@@ -159,6 +162,33 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
+	async findCredentialIndexAgentIdsBatch(
+		afterId: string | null,
+		batchSize: number,
+	): Promise<Array<Pick<Agent, 'id'>>> {
+		const query = this.createQueryBuilder('agent')
+			.select(['agent.id'])
+			.orderBy('agent.id', 'ASC')
+			.take(batchSize);
+
+		if (afterId !== null) {
+			query.where('agent.id > :afterId', { afterId });
+		}
+
+		return await query.getMany();
+	}
+
+	async findSummariesByIds(
+		ids: string[],
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'projectId'>>> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			select: ['id', 'name', 'projectId'],
+			where: { id: In(ids) },
+		});
+	}
+
 	async findByIdInProjects(id: string, projectIds: string[]): Promise<Agent | null> {
 		if (projectIds.length === 0) return null;
 		return await this.findOne({
@@ -205,6 +235,60 @@ export class AgentRepository extends Repository<Agent> {
 	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
 		if (agentIds.length === 0) return;
 		await this.update({ id: In(agentIds) }, { availableInMCP });
+	}
+
+	/**
+	 * Claims the once-per-agent setup-completion marker. Returns true only for
+	 * the caller that actually set it, so concurrent writers that all saw the
+	 * marker unset cannot each report the milestone.
+	 */
+	async claimSetupCompleted(id: string, completedAt: Date): Promise<boolean> {
+		const result = await this.update(
+			{ id, setupCompletedAt: IsNull() },
+			{ setupCompletedAt: completedAt },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Reads just the columns an integration mutation needs, so its write derives
+	 * from the current row rather than a possibly-stale request-scoped entity.
+	 */
+	async findIntegrationState(id: string): Promise<AgentIntegrationState | null> {
+		return await this.findOne({
+			select: ['integrations', 'versionId', 'activeVersionId'],
+			where: { id },
+		});
+	}
+
+	/**
+	 * Compare-and-set the two columns an integration mutation owns, so a channel
+	 * change can never revert a concurrent publish or config write. Returns false
+	 * when another writer got there first; the caller can re-read and reapply,
+	 * because its input is a delta rather than a whole array.
+	 *
+	 * `activeVersionId` is guarded but never written: publishing leaves `versionId`
+	 * untouched, so without it in the `WHERE` a publish landing after the read
+	 * would let the write through and the caller would act on stale publication
+	 * state.
+	 */
+	async updateIntegrations(
+		id: string,
+		integrations: AgentIntegrationConfig[],
+		expected: Pick<AgentIntegrationState, 'versionId' | 'activeVersionId'>,
+		versionId: string | null,
+	): Promise<boolean> {
+		const result = await this.update(
+			{
+				id,
+				versionId: expected.versionId ?? IsNull(),
+				activeVersionId: expected.activeVersionId ?? IsNull(),
+			},
+			{ integrations, versionId },
+		);
+
+		return (result.affected ?? 0) > 0;
 	}
 
 	async findPublished(): Promise<Agent[]> {

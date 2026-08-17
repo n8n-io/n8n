@@ -17,7 +17,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
@@ -336,6 +336,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 				:min="SUB_AGENT_MAX_CHILDREN_MIN"
 				:max="SUB_AGENT_MAX_CHILDREN_MAX"
 				:precision="0"
+				:controls="false"
 				:disabled="disabled"
 				:class="$style.shortInput"
 				data-testid="agent-sub-agents-max-children-input"

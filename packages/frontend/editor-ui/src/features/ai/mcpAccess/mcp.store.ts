@@ -20,6 +20,7 @@ import {
 	fetchMcpAgents,
 	getAllowedRedirectUris,
 	updateAllowedRedirectUris,
+	type McpSettingsResponse,
 	type ToggleWorkflowsMcpAccessResponse,
 	type ToggleWorkflowsMcpAccessTarget,
 	type ToggleAgentsMcpAccessResponse,
@@ -27,7 +28,7 @@ import {
 } from '@/features/ai/mcpAccess/mcp.api';
 import type { Agent } from '@/features/agents/agent.types';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	EMPTY_OAUTH_CLIENT_FILTERS,
 	type OAuthClientFilters,
@@ -66,6 +67,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
 	const mcpManagedByEnv = computed(() => !!settingsStore.moduleSettings.mcp?.mcpManagedByEnv);
+	const autoExposeNewWorkflows = computed(
+		() => !!settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows,
+	);
 
 	// Backend-provided canonical URL, so a configured dedicated MCP base URL is
 	// reflected; the editor-base fallback covers settings not yet loaded.
@@ -135,17 +139,31 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return await clampToLastPage(fetchAgentsAvailableForMCP, page, pageSize);
 	}
 
-	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
-		const { mcpAccessEnabled: updated } = await updateMcpSettings(
-			rootStore.restApiContext,
-			enabled,
-		);
+	// The PATCH endpoint always returns both current values, so local state can
+	// be synced from the response without a follow-up module-settings fetch.
+	function applyMcpSettingsResponse(response: McpSettingsResponse) {
 		settingsStore.moduleSettings.mcp = {
 			mcpManagedByEnv: false,
 			...(settingsStore.moduleSettings.mcp ?? {}),
-			mcpAccessEnabled: updated,
+			mcpAccessEnabled: response.mcpAccessEnabled,
+			autoExposeNewWorkflows: response.autoExposeNewWorkflows,
 		};
-		return updated;
+	}
+
+	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
+		const response = await updateMcpSettings(rootStore.restApiContext, {
+			mcpAccessEnabled: enabled,
+		});
+		applyMcpSettingsResponse(response);
+		return response.mcpAccessEnabled;
+	}
+
+	async function setAutoExposeNewWorkflows(enabled: boolean): Promise<boolean> {
+		const response = await updateMcpSettings(rootStore.restApiContext, {
+			autoExposeNewWorkflows: enabled,
+		});
+		applyMcpSettingsResponse(response);
+		return response.autoExposeNewWorkflows;
 	}
 
 	function applyAvailableInMCPToLocalStores(workflowId: string, availableInMCP: boolean) {
@@ -390,12 +408,14 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	return {
 		mcpAccessEnabled,
 		mcpManagedByEnv,
+		autoExposeNewWorkflows,
 		serverUrl,
 		fetchWorkflowsAvailableForMCP,
 		fetchWorkflowsAvailableForMCPPage,
 		fetchAgentsAvailableForMCP,
 		fetchAgentsAvailableForMCPPage,
 		setMcpAccessEnabled,
+		setAutoExposeNewWorkflows,
 		toggleWorkflowMcpAccess,
 		toggleWorkflowsMcpAccess,
 		toggleAgentMcpAccess,

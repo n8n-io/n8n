@@ -11,7 +11,7 @@ import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { ToolConnectionItem } from '@/features/shared/toolsConnection/types';
 import type { IWorkflowDb } from '@/Interface';
 
@@ -182,7 +182,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([]);
 		mockedStore(useUsersStore).isAdminOrOwner = true;
 
-		uiStore.modalsById = {
+		uiStore.modalStateById = {
 			[MODAL_NAME]: { open: true, data: {} },
 			agentToolConfigModal: { open: false },
 		};
@@ -234,7 +234,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
 
-		uiStore.modalsById[MODAL_NAME].open = false;
+		uiStore.modalStateById[MODAL_NAME].open = false;
 		await flushPromises();
 		expect(modalAttrs.open).toBe(false);
 	});
@@ -247,11 +247,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
 
-		uiStore.modalsById.agentToolConfigModal.open = true;
+		uiStore.modalStateById.agentToolConfigModal.open = true;
 		await flushPromises();
 		expect(modalAttrs.open).toBe(false);
 
-		uiStore.modalsById.agentToolConfigModal.open = false;
+		uiStore.modalStateById.agentToolConfigModal.open = false;
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
 	});
