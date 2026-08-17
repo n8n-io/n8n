@@ -434,6 +434,9 @@ describe('Instance AI runtime skills', () => {
 			'Do not proactively offer, recommend, or mention publishing until a successful',
 		);
 		expect(loaded?.instructions).toContain(
+			'A user-run execution satisfies the publishing gate only',
+		);
+		expect(loaded?.instructions).toContain(
 			'Do not offer publishing as an alternative or describe the workflow as ready to\nuse or publish',
 		);
 
