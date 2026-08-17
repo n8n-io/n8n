@@ -1159,18 +1159,52 @@ export const instanceAiAgentAttachmentSchema = z.object({
 });
 export type InstanceAiAgentAttachment = z.infer<typeof instanceAiAgentAttachmentSchema>;
 
+const instanceAiNodeRefSchema = z.object({
+	id: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+});
+
+const instanceAiNodeSetSchema = z.object({
+	/** Ordered from the set's input side to its output side. Length 1 = a single loose node; length > 1 = a chain of connected nodes. */
+	nodes: z.array(instanceAiNodeRefSchema).min(1).max(50),
+	/** The node feeding into this set from outside it, if any (absent when the set starts at a trigger/root). */
+	inputNode: instanceAiNodeRefSchema.optional(),
+	/** The node this set feeds into from outside it, if any (absent when the set ends at a terminal node). */
+	outputNode: instanceAiNodeRefSchema.optional(),
+	/**
+	 * The canvas group this set belongs to, if any. A group has a single entry/exit
+	 * (no islands), so a group's own nodes selected alone always resolve to exactly
+	 * one set — no merging/collapsing logic is needed elsewhere for this field.
+	 */
+	canvasGroupId: z.string().min(1).max(64).optional(),
+	/** Paired with canvasGroupId so the model's context and the FE chip agree on the same display name. */
+	canvasGroupName: z.string().max(255).optional(),
+});
+
+/**
+ * A reference to one or more sets of canvas-selected nodes the editor hands off to a
+ * message. Carries no bytes — the agent resolves node details via its existing
+ * workflow tools; only ids/names travel here.
+ */
+export const instanceAiNodesAttachmentSchema = z.object({
+	type: z.literal('nodes'),
+	workflowId: z.string().min(1).max(64),
+	sets: z.array(instanceAiNodeSetSchema).min(1).max(50),
+});
+export type InstanceAiNodesAttachment = z.infer<typeof instanceAiNodesAttachmentSchema>;
+
 /** A resource reference attachable to a message (as opposed to a binary file). */
 export const instanceAiResourceAttachmentSchema = z.discriminatedUnion('type', [
 	instanceAiWorkflowAttachmentSchema,
 	instanceAiAgentAttachmentSchema,
+	instanceAiNodesAttachmentSchema,
 ]);
 export type InstanceAiResourceAttachment = z.infer<typeof instanceAiResourceAttachmentSchema>;
 
 /** Anything attachable to a message: a binary file or a resource reference. */
 export const instanceAiAttachmentSchema = z.discriminatedUnion('type', [
 	instanceAiFileAttachmentSchema,
-	instanceAiWorkflowAttachmentSchema,
-	instanceAiAgentAttachmentSchema,
+	...instanceAiResourceAttachmentSchema.options,
 ]);
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
