@@ -386,7 +386,13 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 					? i18n.baseText('agents.modelSelector.freeCredits.badge')
 					: undefined,
 			actionPill: isAiGatewayManagedAvailable
-				? { text: i18n.baseText('generic.freeCredits'), type: 'default' as const }
+				? {
+						text: i18n.baseText(aiGateway.creditsLabelKey.value),
+						type:
+							aiGateway.creditsLabelKey.value === 'generic.freeCredits'
+								? ('default' as const)
+								: ('info' as const),
+					}
 				: undefined,
 		},
 		children: [...connectHeader, ...connectItems, ...modelsHeader, ...modelsSection],

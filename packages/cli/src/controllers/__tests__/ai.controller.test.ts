@@ -673,7 +673,7 @@ describe('AiController', () => {
 		});
 
 		it('should return wallet from aiGatewayService', async () => {
-			const walletData = { budget: 10, balance: 7 };
+			const walletData = { budget: 10, balance: 7, hasEverToppedUp: false };
 			aiGatewayService.getWallet.mockResolvedValue(walletData);
 
 			const result = await controller.getGatewayWallet(request);

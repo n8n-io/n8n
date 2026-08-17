@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import type { INode } from 'n8n-workflow';
 import type { AiGatewayConfigDto, AiGatewayUsageEntry } from '@n8n/api-types';
@@ -22,12 +22,26 @@ function toError(e: unknown): Error {
 export const stripToolSuffix = (nodeName: string) =>
 	nodeName.replace(/HitlTool$/, '').replace(/Tool$/, '');
 
+/** Free credits until we know they topped up or the balance is gone. */
+export function usesFreeCreditsLabel(
+	hasEverToppedUp: boolean | undefined,
+	balance: number | undefined,
+): boolean {
+	return hasEverToppedUp !== true && (balance === undefined || balance > 0);
+}
+
 export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	const rootStore = useRootStore();
 
 	const config = ref<AiGatewayConfigDto | null>(null);
 	const balance = ref<number | undefined>(undefined);
 	const budget = ref<number | undefined>(undefined);
+	const hasEverToppedUp = ref<boolean | undefined>(undefined);
+	const creditsLabelKey = computed((): 'generic.freeCredits' | 'generic.n8nCredits' =>
+		usesFreeCreditsLabel(hasEverToppedUp.value, balance.value)
+			? 'generic.freeCredits'
+			: 'generic.n8nCredits',
+	);
 	const usageEntries = ref<AiGatewayUsageEntry[]>([]);
 	const usageTotal = ref<number>(0);
 	const fetchError = ref<Error | null>(null);
@@ -35,6 +49,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	// Every model selector fetches on mount, so several can be in flight before the
 	// first response lands. Share the promise rather than firing one request each.
 	let configFetch: Promise<void> | null = null;
+	let walletFetch: Promise<void> | null = null;
 
 	async function fetchConfig(): Promise<void> {
 		if (config.value !== null) return;
@@ -52,14 +67,20 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	}
 
 	async function fetchWallet(): Promise<void> {
-		try {
-			const data = await getGatewayWallet(rootStore.restApiContext);
-			balance.value = data.balance;
-			budget.value = data.budget;
-			fetchError.value = null;
-		} catch (error) {
-			fetchError.value = toError(error);
-		}
+		walletFetch ??= (async () => {
+			try {
+				const data = await getGatewayWallet(rootStore.restApiContext);
+				balance.value = data.balance;
+				budget.value = data.budget;
+				hasEverToppedUp.value = data.hasEverToppedUp;
+				fetchError.value = null;
+			} catch (error) {
+				fetchError.value = toError(error);
+			} finally {
+				walletFetch = null;
+			}
+		})();
+		await walletFetch;
 	}
 
 	async function fetchUsage(offset = 0, limit = 50): Promise<void> {
@@ -189,6 +210,8 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		config,
 		balance,
 		budget,
+		hasEverToppedUp,
+		creditsLabelKey,
 		usageEntries,
 		usageTotal,
 		fetchError,

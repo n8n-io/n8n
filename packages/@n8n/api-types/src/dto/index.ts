@@ -24,6 +24,7 @@ export type {
 	AiGatewayUsageMetadata,
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
+export type { AiGatewayWalletResponse } from './ai/ai-gateway-wallet-response.dto';
 
 export {
 	InstanceAiConfirmRequestDto,
