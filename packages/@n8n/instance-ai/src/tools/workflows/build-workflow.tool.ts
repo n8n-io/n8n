@@ -337,7 +337,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			'Build and save a workflow from workflow source. ' +
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
 				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
-				'Use TypeScript SDK .workflow.ts source for new workflows and existing workflow edits. For an existing workflow, call workflows(action="get-as-code") before making targeted edits. ' +
+				'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
 				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
 				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)

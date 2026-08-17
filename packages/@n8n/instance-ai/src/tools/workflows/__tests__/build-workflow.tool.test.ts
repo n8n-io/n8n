@@ -218,9 +218,8 @@ describe('createBuildWorkflowTool', () => {
 		expect(tool.description).toContain('data-table-manager');
 		expect(tool.description).toContain('load_skill');
 		expect(tool.description).toContain(
-			'Use TypeScript SDK .workflow.ts source for new workflows and existing workflow edits.',
+			'Use TypeScript SDK .workflow.ts source for new and existing workflows.',
 		);
-		expect(tool.description).toContain('workflows(action="get-as-code")');
 		expect(tool.description).not.toContain('WorkflowJSON .json source for existing workflow edits');
 		expect(buildWorkflowInputSchema.shape.filePath.description).toContain(
 			'Workspace-relative path to the TypeScript SDK workflow source file',
