@@ -25,13 +25,26 @@ const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
 };
 
 // Status codes an `@ApiErrorResponse` can declare backed by hand-written schemas
-const ERROR_RESPONSE_REFS: Record<number, { $ref: string }> = {
+export const ERROR_RESPONSE_REFS: Record<number, { $ref: string }> = {
 	400: { $ref: '../../../../shared/spec/responses/badRequest.yml' },
 	401: { $ref: '../../../../shared/spec/responses/unauthorized.yml' },
 	402: { $ref: '../../../../shared/spec/responses/paymentRequired.yml' },
 	403: { $ref: '../../../../shared/spec/responses/forbidden.yml' },
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
+};
+
+/**
+ * The wording each file in `ERROR_RESPONSE_REFS` carries, for the one case that cannot `$ref` it.
+ * `error-response-descriptions.test.ts` asserts the two stay in step.
+ */
+export const ERROR_RESPONSE_DESCRIPTIONS: Record<number, string> = {
+	400: 'The request is invalid or provides malformed data.',
+	401: 'Unauthorized',
+	402: 'Payment required',
+	403: 'Forbidden',
+	404: 'The specified resource was not found.',
+	409: 'Conflict',
 };
 
 /** A `ResponseDtoClass` narrowed to the two fields the generator actually reads off it. */
@@ -142,9 +155,13 @@ function buildRequestBody(
  * invented: the success status is the one `@ApiResponse` declares (and the same one the registry
  * sends), auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
  * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
- * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`. Error
- * response *bodies* (schemas) stay hand-written $refs — generating those is out of scope for this
- * pass.
+ * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`. An error
+ * body is documented only when that decorator was given a DTO; otherwise the status points at its
+ * shared, description-only response file.
+ *
+ * Error body schemas are always inlined, never hoisted into a shared component the way success
+ * schemas are. Hoisting would move the schema between files as soon as a second route declared the
+ * same error, producing a large diff that changes nothing.
  */
 function buildResponses(
 	route: ResolvedPublicApiRoute,
@@ -176,7 +193,7 @@ function buildResponses(
 		responses[403] = ERROR_RESPONSE_REFS[403];
 	}
 
-	for (const status of route.errorResponses ?? []) {
+	for (const { status, dto, description } of route.errorResponses ?? []) {
 		const ref = ERROR_RESPONSE_REFS[status];
 		if (!ref) {
 			throw new UnexpectedError(
@@ -185,7 +202,16 @@ function buildResponses(
 					'and register it there.',
 			);
 		}
-		responses[status] = ref;
+
+		// A `$ref` cannot carry siblings, so a documented body means spelling the description out
+		// here instead of pointing at the shared file that would have supplied it.
+		responses[status] =
+			dto && hasNamedSchema(dto)
+				? {
+						description: description ?? ERROR_RESPONSE_DESCRIPTIONS[status],
+						content: { 'application/json': { schema: dto.schema } },
+					}
+				: ref;
 	}
 
 	return responses;
