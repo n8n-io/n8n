@@ -20,6 +20,7 @@ import {
 	githubApiRequestAllItems,
 	isBase64,
 	validateJSON,
+	validateSecretName,
 } from './GenericFunctions';
 import { getRefs, getRepositories, getUsers, getWorkflows } from './SearchFunctions';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
@@ -3072,6 +3073,11 @@ export class Github implements INodeType {
 
 						const secretName = this.getNodeParameter('secretName', i) as string;
 						const secretValue = this.getNodeParameter('secretValue', i) as string;
+
+						const secretNameError = validateSecretName(secretName);
+						if (secretNameError) {
+							throw new NodeOperationError(this.getNode(), secretNameError, { itemIndex: i });
+						}
 
 						// First, get the repository's public key for encryption
 						const { key_id, key } = await getRepositoryPublicKey.call(this, owner, repository);
