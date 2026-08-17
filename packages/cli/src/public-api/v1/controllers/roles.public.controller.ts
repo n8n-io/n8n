@@ -215,11 +215,9 @@ export class RolesPublicController {
 			user: req.user,
 		});
 
-		// Check both the API Key scopes and the user's global role scopes to determine if they can reassign users.
-		const reassignRoleSlug =
-			canReassignUsers(req.user, role) && apiKeyScopes.includes('user:changeRole')
-				? query.reassignRoleSlug
-				: undefined;
+		const reassignRoleSlug = canReassignUsers({ apiKeyScopes, role, user: req.user })
+			? query.reassignRoleSlug
+			: undefined;
 
 		const result = await this.roleService.removeCustomRole({
 			slug,

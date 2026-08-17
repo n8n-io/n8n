@@ -1,24 +1,12 @@
 import type { User } from '@n8n/db';
-import {
-	getAuthPrincipalScopes,
-	hasGlobalScope,
-	type Scope,
-	type Role as RoleDTO,
-	type RoleNamespace,
-} from '@n8n/permissions';
+import { getAuthPrincipalScopes, type Role as RoleDTO, type RoleNamespace } from '@n8n/permissions';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 /**
- * Managing a role requires `role:manage`; `role:manageProject` grants it for
+ * Whether a caller can manage a role requires `role:manage`; `role:manageProject` grants it for
  * project roles only.
- *
- * When `apiKeyScopes` is given (Public API), authorization is
- * decided entirely by the API key's own granted scopes.
- *
- * When `apiKeyScopes` is omitted (Internal API, no API-key
- * concept), authorization falls back to the user's own scopes.
  */
 export function assertCanManageRoleType({
 	apiKeyScopes,
@@ -41,15 +29,22 @@ export function assertCanManageRoleType({
 }
 
 /**
- * Check if a user has a global role capable of reassigning users to another role
- * and the user does not hold the target role.
+ * Whether the caller may reassign a global role's users to another role before deleting it.
  */
-export function canReassignUsers(user: User, role: RoleDTO): boolean {
-	const requiredScopes: Scope[] = ['role:manage', 'user:changeRole'];
+export function canReassignUsers({
+	apiKeyScopes,
+	role,
+	user,
+}: {
+	apiKeyScopes?: readonly string[];
+	role: RoleDTO;
+	user: User;
+}): boolean {
+	if (role.roleType !== 'global' || user.role.slug === role.slug) {
+		return false;
+	}
 
-	return (
-		role.roleType === 'global' &&
-		user.role.slug !== role.slug &&
-		requiredScopes.every((scope) => hasGlobalScope(user, scope))
-	);
+	const scopes = apiKeyScopes ?? getAuthPrincipalScopes(user);
+
+	return scopes.includes('role:manage') && scopes.includes('user:changeRole');
 }

@@ -140,7 +140,9 @@ export class RoleController {
 			roleType: role.roleType,
 			user: req.user,
 		});
-		const reassignRoleSlug = canReassignUsers(req.user, role) ? query.reassignRoleSlug : undefined;
+		const reassignRoleSlug = canReassignUsers({ role, user: req.user })
+			? query.reassignRoleSlug
+			: undefined;
 		return await this.roleService.removeCustomRole({
 			slug,
 			reassignRoleSlug,
