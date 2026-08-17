@@ -133,6 +133,22 @@ describe('Data Transformation Functions', () => {
 			).toEqual({ a: 1, some: null, c: 'something', b: 23 });
 		});
 
+		test('.merge() should preserve elements when the base array is longer', () => {
+			expect(evaluate('={{ [{ a: 1 }, { b: 2 }].merge([{ c: 3 }]) }}')).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
+		test('.merge() should preserve elements when the argument array is longer', () => {
+			expect(evaluate('={{ [{ a: 1 }].merge([{ b: 2 }, { c: 3 }]) }}')).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
 		test('.smartJoin() should work correctly on an array of objects', () => {
 			expect(
 				evaluate(

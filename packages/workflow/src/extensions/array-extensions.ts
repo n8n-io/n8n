@@ -256,13 +256,19 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 	const listLength = value.length > others.length ? value.length : others.length;
 	let merged = {};
 	for (let i = 0; i < listLength; i++) {
-		if (value[i] !== undefined) {
-			if (typeof value[i] === 'object' && typeof others[i] === 'object') {
-				merged = Object.assign(
-					merged,
-					mergeObjects(value[i] as Record<string, unknown>, [others[i]]),
-				);
-			}
+		const valueItem = value[i];
+		const otherItem = others[i];
+
+		if (valueItem !== undefined && typeof valueItem === 'object') {
+			// mergeObjects() returns valueItem unchanged when otherItem is missing,
+			// so elements unique to `value` are kept even if `others` is shorter
+			merged = Object.assign(
+				merged,
+				mergeObjects(valueItem as Record<string, unknown>, [otherItem]),
+			);
+		} else if (otherItem !== undefined && typeof otherItem === 'object') {
+			// Elements unique to `others` (past the end of `value`) are merged directly
+			merged = Object.assign(merged, otherItem as Record<string, unknown>);
 		}
 	}
 	return merged;
