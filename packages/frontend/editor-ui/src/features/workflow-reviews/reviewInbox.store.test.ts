@@ -454,7 +454,7 @@ describe('useReviewInboxStore', () => {
 				updatedAt: '2024-01-02T00:00:00.000Z',
 			});
 
-			await store.decideOnReview('req-1', 'approved');
+			await store.decideOnReview('req-1', { decision: 'approved' });
 
 			expect(store.sections.waiting.items).toEqual([]);
 			expect(store.sections.authored.items).toHaveLength(1);
@@ -476,8 +476,16 @@ describe('useReviewInboxStore', () => {
 				updatedAt: '2024-01-02T00:00:00.000Z',
 			});
 
-			await store.decideOnReview('req-2', 'changes_requested');
+			await store.decideOnReview('req-2', {
+				decision: 'changes_requested',
+				note: 'needs work',
+			});
 
+			expect(workflowReviewsApi.decideWorkflowReviewRequest).toHaveBeenCalledWith(
+				expect.anything(),
+				'req-2',
+				{ decision: 'changes_requested', note: 'needs work' },
+			);
 			expect(store.sections.waiting.items.map((item) => item.id)).toEqual(['req-1']);
 			expect(store.sections.authored.items).toEqual([
 				expect.objectContaining({ id: 'req-2', state: 'open', decision: 'changes_requested' }),
@@ -498,7 +506,7 @@ describe('useReviewInboxStore', () => {
 				autoPublish: { status: 'published' },
 			});
 
-			const response = await store.decideOnReview('req-1', 'approved');
+			const response = await store.decideOnReview('req-1', { decision: 'approved' });
 
 			expect(response.autoPublish).toEqual({ status: 'published' });
 		});
@@ -509,7 +517,9 @@ describe('useReviewInboxStore', () => {
 				new Error('forbidden'),
 			);
 
-			await expect(store.decideOnReview('req-1', 'approved')).rejects.toThrow('forbidden');
+			await expect(store.decideOnReview('req-1', { decision: 'approved' })).rejects.toThrow(
+				'forbidden',
+			);
 
 			expect(store.sections.waiting.items).toEqual([
 				expect.objectContaining({ state: 'open', decision: 'pending' }),
