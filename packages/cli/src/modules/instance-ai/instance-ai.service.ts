@@ -647,6 +647,7 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 				action: 'apply',
 				nodeCredentials: request.nodeCredentials,
 				nodeParameters: request.nodeParameters,
+				skippedNodes: request.skippedNodes,
 			};
 		case 'setupWorkflowTestTrigger':
 			return {
@@ -903,6 +904,7 @@ export class InstanceAiService {
 			dbSnapshotStorage: this.dbSnapshotStorage,
 			agentMemory: this.agentMemory,
 			telemetry: this.telemetry,
+			errorReporter: this.instanceAiErrorReporter,
 			logger: this.logger,
 			runState: this.runState,
 			suspendedThreads: this.suspendedThreads,
@@ -1017,6 +1019,27 @@ export class InstanceAiService {
 			await this.threadGrantRepo.grant(threadId, userId, key);
 		} catch (error) {
 			this.logger.warn('Failed to persist Instance AI session grant', {
+				threadId,
+				key,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	/**
+	 * Drop a per-user, thread-level grant. Used by decisions that are meant to be reversible
+	 * within a thread — e.g. the user skipped a credential's setup, then later asks for it.
+	 * Best-effort: a failed delete leaves the decision in place until the next run.
+	 */
+	private async revokeThreadSessionGrant(
+		threadId: string,
+		userId: string,
+		key: string,
+	): Promise<void> {
+		try {
+			await this.threadGrantRepo.revoke(threadId, userId, key);
+		} catch (error) {
+			this.logger.warn('Failed to revoke Instance AI session grant', {
 				threadId,
 				key,
 				error: getErrorMessage(error),
@@ -2448,6 +2471,10 @@ export class InstanceAiService {
 			sessionGrants.add(key);
 		};
 		context.grantSessionToolApproval = grantSessionToolApproval;
+		context.revokeSessionToolApproval = async (key: string) => {
+			await this.revokeThreadSessionGrant(threadId, user.id, key);
+			sessionGrants.delete(key);
+		};
 
 		// Domain-access approvals are stored as grant keys in `instance_ai_thread_grants` (via
 		// the same load/persist path as above), so they survive restart and are visible
@@ -5105,6 +5132,7 @@ export class InstanceAiService {
 			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
 			...(data.action ? { action: data.action } : {}),
 			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
+			...(data.skippedNodes ? { skippedNodes: data.skippedNodes } : {}),
 			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 			...(data.answers ? { answers: data.answers } : {}),
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),

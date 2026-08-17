@@ -853,6 +853,7 @@ export class AgentsBuilderToolsService {
 			}),
 			buildAskCredentialTool({
 				credentialProvider,
+				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				listIntegrationCredentialIds: async () => {
 					const agent = await this.agentsService.findById(agentId, projectId);
@@ -864,6 +865,7 @@ export class AgentsBuilderToolsService {
 			}),
 			buildAskEmbeddingCredentialTool({
 				credentialProvider,
+				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
 				track,
