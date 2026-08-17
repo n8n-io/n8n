@@ -24,7 +24,7 @@ const FIELD_LABEL = 'What is your first name?';
 
 /** The banner a plain form (no hosting shell above it) shows on a rejection. */
 const BANNER =
-	'Not all required credentials are connected. Open this form in a new tab to connect them, then come back here and submit again.';
+	'Not all required accounts are connected. Open this form in a new tab to connect them, then come back here and submit again.';
 
 const GATE_BODY = {
 	status: 'credential_connections_required',
