@@ -332,6 +332,14 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
 	/**
+	 * Nodes this build added or modified relative to the previously saved
+	 * workflow. Setup routing and `workflows(action="setup")` requests are
+	 * scoped to these nodes so editing one node never routes pre-existing,
+	 * unrelated nodes into setup. Absent when the build created the workflow
+	 * or the prior state was unreadable — every node is then in scope.
+	 */
+	changedNodeNames: z.array(z.string()).optional(),
+	/**
 	 * How the user intends to use this workflow. `one-off`: a concrete effect
 	 * wanted once — verification becomes optional and completion is a live run
 	 * with read-back. Absent means `reusable` (the default flow).

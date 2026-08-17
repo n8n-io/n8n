@@ -10,6 +10,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
+import { WorkflowSaveConflictError } from '../errors/workflow-save-conflict.error';
 import type { InstanceAiContext } from '../types';
 import {
 	findSetupHintProblems,
@@ -18,6 +19,11 @@ import {
 	TEMPLATABLE_PLAIN_AUTH_TYPES,
 } from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
+import {
+	getObservedWorkflowChecksum,
+	rememberCurrentWorkflowChecksum,
+	rememberObservedWorkflowChecksum,
+} from './workflows/observed-workflow-checksums';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
@@ -136,6 +142,12 @@ const setupAction = z.object({
 		.optional()
 		.describe(
 			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
+		),
+	includeAllNodes: z
+		.boolean()
+		.optional()
+		.describe(
+			'By default, setup after a build covers only the nodes that build changed. Set to true to cover every node in the workflow — ONLY when the user explicitly asked to set up the whole workflow or a node the last build did not touch.',
 		),
 });
 
@@ -435,6 +447,7 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 			};
 		}
 		const detail = await context.workflowService.get(input.workflowId);
+		await rememberObservedWorkflowChecksum(context, input.workflowId, detail.checksum);
 		if (input.full || isSmallPayload(detail)) return detail;
 		const { nodes, connections, ...meta } = detail;
 		return {
@@ -466,7 +479,13 @@ async function handleGetJson(
 	input: Extract<Input, { action: 'get-json' }>,
 ) {
 	try {
-		return await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
+		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
+		// This is the graph the agent edits before `update`, so pin the state it
+		// saw. Historical reads must not advance the optimistic-concurrency lock.
+		if (!input.versionId) {
+			await rememberCurrentWorkflowChecksum(context, input.workflowId);
+		}
+		return json;
 	} catch (error) {
 		return {
 			workflowId: input.workflowId,
@@ -758,6 +777,36 @@ async function handleSetupApply(
 	}
 }
 
+/**
+ * Node names the latest build for this workflow changed, read from the stored
+ * build outcome. Scoping only applies to the build-bound setup handoff — the
+ * setup call made in the same run as the build. A setup call in any later run
+ * is user-initiated (e.g. "set up my workflow"), so it covers the whole
+ * workflow even when an unchanged node is the one the user wants configured.
+ * Also undefined when there is no build outcome or it predates change tracking.
+ */
+async function resolveSetupScopeNodeNames(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<string[] | undefined> {
+	const workflowTaskService = context.workflowBuildContext?.workflowTaskService;
+	if (!workflowTaskService) return undefined;
+	try {
+		const outcome = await workflowTaskService.getLatestBuildOutcomeForWorkflow(workflowId);
+		if (!outcome?.runId || outcome.runId !== context.runId) return undefined;
+		return outcome.changedNodeNames;
+	} catch (error) {
+		// Fail open: an unscoped setup equals the long-standing behavior (shows
+		// more, never less), while failing closed would block user-initiated
+		// setup on a storage hiccup.
+		context.logger.warn('Failed to resolve setup scope from the latest build outcome', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
+}
+
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
@@ -775,11 +824,20 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
-		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+		const allSetupRequests = await analyzeWorkflow(context, input.workflowId);
+
+		// Setup after a build covers only the nodes that build changed —
+		// pre-existing, unrelated nodes must not surface in the setup card.
+		const scopeNodeNames = input.includeAllNodes
+			? undefined
+			: await resolveSetupScopeNodeNames(context, input.workflowId);
+		const setupRequests = scopeNodeNames
+			? allSetupRequests.filter((request) => scopeNodeNames.includes(request.node.name))
+			: allSetupRequests;
 
 		// Validated against the workflow's node URLs so a recipe can't set one of
 		// the workflow's own (action) endpoints as its probe testUrl.
-		const nodeUrls = setupRequests.map((request) => request.node.parameters?.url);
+		const nodeUrls = allSetupRequests.map((request) => request.node.parameters?.url);
 		const hintProblems = (input.credentialHints ?? []).flatMap((hint) =>
 			findSetupHintProblems(hint, { nodeUrls }).map((problem) =>
 				hint.nodeName ? `${hint.nodeName}: ${problem}` : problem,
@@ -820,6 +878,21 @@ async function handleSetup(
 		}
 
 		if (setupRequests.length === 0) {
+			const skippedNodeNames = scopeNodeNames
+				? allSetupRequests
+						.map((request) => request.node.name)
+						.filter((name) => !scopeNodeNames.includes(name))
+				: [];
+			if (skippedNodeNames.length > 0) {
+				return {
+					success: true,
+					reason:
+						`No nodes changed by the latest build require setup. Pre-existing node(s) ${skippedNodeNames
+							.map((name) => `"${name}"`)
+							.join(', ')} have pending setup, but this change did not touch them — ` +
+						'do not route the user to set them up now. Only if the user explicitly asks to set them up, call setup again with includeAllNodes: true.',
+				};
+			}
 			return { success: true, reason: 'No nodes require setup.' };
 		}
 
@@ -938,11 +1011,32 @@ async function handleUpdate(
 		};
 	}
 
+	// Guard against overwriting a save this conversation never saw (canvas
+	// autosave, another user, another thread). Absent when the agent never read
+	// the workflow here — then there is nothing to pin the save to.
+	const expectedChecksum = await getObservedWorkflowChecksum(context, input.workflowId);
+
 	try {
-		await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow);
+		const saved = expectedChecksum
+			? await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow, {
+					expectedChecksum,
+				})
+			: await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow);
 		await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
+		// Pin to what this save wrote, not to the re-read above: if another writer
+		// landed in between, the next update should conflict rather than clobber.
+		if (saved.checksum) {
+			await rememberObservedWorkflowChecksum(context, input.workflowId, saved.checksum);
+		}
 		return { success: true, workflowId: input.workflowId };
 	} catch (error) {
+		if (error instanceof WorkflowSaveConflictError) {
+			return {
+				success: false,
+				error: `${error.message} Call workflows(action="get", workflowId="${input.workflowId}") to read the current state, re-apply your change, then update again.`,
+			};
+		}
+
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : String(error),

@@ -13,12 +13,19 @@ type WorkflowBuildRoutingInput = Omit<
 };
 
 function hasSetupCredentials(
-	outcome: Pick<WorkflowBuildOutcome, 'mockedCredentialTypes' | 'mockedCredentialsByNode'>,
+	outcome: Pick<
+		WorkflowBuildOutcome,
+		'mockedCredentialTypes' | 'mockedCredentialsByNode' | 'changedNodeNames'
+	>,
 ): boolean {
-	return (
-		(outcome.mockedCredentialTypes?.length ?? 0) > 0 ||
-		Object.keys(outcome.mockedCredentialsByNode ?? {}).length > 0
-	);
+	const mockedNodeNames = Object.keys(outcome.mockedCredentialsByNode ?? {});
+	// Scope to nodes this build changed: a pre-existing node with a broken or
+	// missing credential must not route an unrelated edit into setup.
+	if (mockedNodeNames.length > 0) {
+		const scope = outcome.changedNodeNames;
+		return mockedNodeNames.some((nodeName) => !scope || scope.includes(nodeName));
+	}
+	return (outcome.mockedCredentialTypes?.length ?? 0) > 0;
 }
 
 function determineVerificationReadiness(
@@ -69,6 +76,7 @@ function determineSetupRequirement(
 		| 'mockedCredentialsByNode'
 		| 'hasUnresolvedPlaceholders'
 		| 'workflowNeedsSetup'
+		| 'changedNodeNames'
 	>,
 ): WorkflowSetupRequirement {
 	if (!outcome.submitted || !outcome.workflowId) {
