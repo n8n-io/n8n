@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { annotation, rebaseBundleBranch } from './rebase-bundle-branch.mjs';
+import { annotation, syncBundleBranch } from './sync-bundle-branch.mjs';
 
 // A git stub: routes calls by a matcher, records every invocation.
 function makeStub(routes = []) {
@@ -29,6 +29,7 @@ const fail =
 const PRE_HEAD = 'PREHEAD';
 const BASE = 'BASESHA';
 const MERGE_TREE = 'MERGETREEOID';
+const REMOTE = 'https://x-access-token:tok@github.com/n8n-io/n8n-private.git';
 
 const env = {
 	BUNDLE_BRANCH: 'bundle/2.x',
@@ -37,7 +38,7 @@ const env = {
 	GITHUB_REPOSITORY: 'n8n-io/n8n-private',
 };
 
-const isRebase = (a) => a[0] === 'rebase' && a[1] !== '--abort';
+const isMerge = (a) => a[0] === 'merge';
 const isPush = (a) => a[0] === 'push';
 
 // What `git merge-tree --write-tree --name-only` emits on a conflict: the (marker-carrying)
@@ -46,7 +47,7 @@ const conflictedMergeTree = (...paths) =>
 	fail(`${MERGE_TREE}\n${paths.join('\n')}\n\nCONFLICT (content): Merge conflict in ${paths[0]}`);
 
 // Routes shared by every path: base fetched, the bundle branch hasn't absorbed it yet, the
-// merge tree is computable, and the replay lands on exactly that tree. git grep exits
+// merge tree is computable, and the merge lands on exactly that tree. git grep exits
 // non-zero => no markers.
 const baseGitRoutes = [
 	[(a) => a[0] === 'rev-parse' && a[1] === 'FETCH_HEAD', BASE],
@@ -61,44 +62,42 @@ const silent = () => {};
 
 test('a missing branch env var fails before any git command runs', () => {
 	const git = makeStub();
-	assert.throws(
-		() => rebaseBundleBranch({ git, env: { ...env, BUNDLE_BRANCH: '' }, log: silent }),
-		{
-			message: /BUNDLE_BRANCH env var is required/,
-		},
-	);
+	assert.throws(() => syncBundleBranch({ git, env: { ...env, BUNDLE_BRANCH: '' }, log: silent }), {
+		message: /BUNDLE_BRANCH env var is required/,
+	});
 	assert.equal(git.calls.length, 0);
 });
 
-test('a clean replay force-pushes with the pre-replay tip as the lease', () => {
+test('a clean sync merges the base in and pushes without forcing', () => {
 	const git = makeStub(baseGitRoutes);
-	const result = rebaseBundleBranch({ git, env, log: silent });
+	const result = syncBundleBranch({ git, env, log: silent });
 
-	assert.deepEqual(result, { status: 'replayed' });
+	assert.deepEqual(result, { status: 'merged' });
 	assert.deepEqual(
 		git.calls.find((a) => a[0] === 'checkout'),
 		['checkout', '--force', '-B', 'bundle/2.x', 'FETCH_HEAD'],
 	);
-	// Commits already on the base are dropped rather than stopping the replay.
-	assert.deepEqual(git.calls.find(isRebase), ['rebase', '--empty=drop', BASE]);
-	assert.deepEqual(git.calls.find(isPush), [
-		'push',
-		`--force-with-lease=refs/heads/bundle/2.x:${PRE_HEAD}`,
-		'https://x-access-token:tok@github.com/n8n-io/n8n-private.git',
-		'HEAD:refs/heads/bundle/2.x',
+	assert.deepEqual(git.calls.find(isMerge), [
+		'merge',
+		'--no-edit',
+		'-m',
+		'Merge master into bundle/2.x',
+		BASE,
 	]);
+	// No lease and no --force: the branch is append-only, so a non-fast-forward must be
+	// refused by git rather than resolved by overwriting whatever landed.
+	assert.deepEqual(git.calls.find(isPush), ['push', REMOTE, 'HEAD:refs/heads/bundle/2.x']);
 });
 
 test('both fetches are authenticated — the private repo rejects an anonymous origin fetch', () => {
 	const git = makeStub(baseGitRoutes);
-	rebaseBundleBranch({ git, env, log: silent });
+	syncBundleBranch({ git, env, log: silent });
 
-	const remote = 'https://x-access-token:tok@github.com/n8n-io/n8n-private.git';
 	assert.deepEqual(
 		git.calls.filter((a) => a[0] === 'fetch'),
 		[
-			['fetch', remote, 'master'],
-			['fetch', remote, 'bundle/2.x'],
+			['fetch', REMOTE, 'master'],
+			['fetch', REMOTE, 'bundle/2.x'],
 		],
 	);
 });
@@ -108,10 +107,10 @@ test('a bundle branch that already contains its base is left alone', () => {
 		[(a) => a[0] === 'merge-base', ''], // --is-ancestor succeeds
 		...baseGitRoutes,
 	]);
-	const result = rebaseBundleBranch({ git, env, log: silent });
+	const result = syncBundleBranch({ git, env, log: silent });
 
 	assert.deepEqual(result, { status: 'current' });
-	assert.equal(git.calls.some(isRebase), false);
+	assert.equal(git.calls.some(isMerge), false);
 	assert.equal(git.calls.some(isPush), false);
 });
 
@@ -122,50 +121,71 @@ test('a conflicting base fails without touching the branch', () => {
 	]);
 	const logs = [];
 
-	assert.throws(() => rebaseBundleBranch({ git, env, log: (m) => logs.push(m) }), {
+	assert.throws(() => syncBundleBranch({ git, env, log: (m) => logs.push(m) }), {
 		message: /master conflicts with bundle\/2\.x/,
 	});
-	// The conflict is detected from the merge tree alone: no rebase, no push.
-	assert.equal(git.calls.some(isRebase), false);
+	// The conflict is detected from the merge tree alone: no merge, no push.
+	assert.equal(git.calls.some(isMerge), false);
 	assert.equal(git.calls.some(isPush), false);
 	assert.match(logs.join('\n'), /::error title=bundle\/2\.x is out of sync::/);
 	assert.match(logs.join('\n'), /packages\/cli\/src\/a\.ts/);
 });
 
-test('a replay that stalls aborts the rebase and refuses to push', () => {
-	const git = makeStub([...baseGitRoutes, [isRebase, fail('could not apply')]]);
-	const logs = [];
-
-	assert.throws(() => rebaseBundleBranch({ git, env, log: (m) => logs.push(m) }), {
-		message: /Could not replay bundle\/2\.x onto master/,
-	});
-	assert.deepEqual(git.calls.at(-1), ['rebase', '--abort']);
-	assert.equal(git.calls.some(isPush), false);
-	assert.match(logs.join('\n'), /::error title=bundle\/2\.x could not be replayed::/);
-});
-
-test('a replayed tree that is not the merge tree refuses to push', () => {
+test('a merged tree that is not the merge tree refuses to push', () => {
 	const git = makeStub([
 		[(a) => a[0] === 'rev-parse' && a[1] === 'HEAD^{tree}', 'SOMEOTHERTREE'],
 		...baseGitRoutes,
 	]);
 
-	assert.throws(() => rebaseBundleBranch({ git, env, log: silent }), {
+	assert.throws(() => syncBundleBranch({ git, env, log: silent }), {
 		message: /does not match the merge tree MERGETREEOID; refusing to push/,
 	});
 	assert.equal(git.calls.some(isPush), false);
 });
 
-test('conflict markers in the replayed tree refuse to push', () => {
+test('conflict markers in the merged tree refuse to push', () => {
 	const git = makeStub([
 		[(a) => a[0] === 'grep', 'packages/cli/src/a.ts'], // git grep found markers
 		...baseGitRoutes,
 	]);
 
-	assert.throws(() => rebaseBundleBranch({ git, env, log: silent }), {
+	assert.throws(() => syncBundleBranch({ git, env, log: silent }), {
 		message: /conflict markers present in HEAD/,
 	});
 	assert.equal(git.calls.some(isPush), false);
+});
+
+test('a fix landing mid-run is retried from a fresh fetch, never forced', () => {
+	let pushes = 0;
+	const git = makeStub([
+		[
+			isPush,
+			() => {
+				pushes += 1;
+				if (pushes === 1) throw Object.assign(new Error('rejected'), { status: 1 });
+				return '';
+			},
+		],
+		...baseGitRoutes,
+	]);
+	const result = syncBundleBranch({ git, env, log: silent });
+
+	assert.deepEqual(result, { status: 'merged' });
+	assert.equal(pushes, 2);
+	// The retry re-fetches rather than reusing the tip it already merged onto.
+	assert.equal(git.calls.filter((a) => a[0] === 'fetch').length, 4);
+	assert.equal(
+		git.calls.every((a) => !a.some((arg) => String(arg).includes('force-with-lease'))),
+		true,
+	);
+});
+
+test('a branch that keeps moving fails instead of forcing', () => {
+	const git = makeStub([[isPush, fail('non-fast-forward')], ...baseGitRoutes]);
+
+	assert.throws(() => syncBundleBranch({ git, env, log: silent }), {
+		message: /bundle\/2\.x kept moving while syncing/,
+	});
 });
 
 test('annotation keeps a multi-line message on one line', () => {
