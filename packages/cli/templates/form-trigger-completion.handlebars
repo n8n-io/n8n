@@ -161,6 +161,31 @@
 		// Get signature from URL for fetch requests
 		const url = new URL(window.location.href);
 		const formSignature = url.searchParams.get('signature');
+		const authToken = '{{authToken}}';
+		let formResource = url.searchParams.get('n8nFormResource') || (
+			window.location.href.includes('form-waiting')
+				? ''
+				: (window.location.origin + window.location.pathname)
+		);
+		if (url.searchParams.has('n8nFormToken') || url.searchParams.has('n8nFormResource')) {
+			url.searchParams.delete('n8nFormToken');
+			url.searchParams.delete('n8nFormResource');
+			history.replaceState(null, '', url.pathname + url.search + url.hash);
+		}
+
+		function withFormAuth(target) {
+			const redirectUrl = target instanceof URL ? target : new URL(target, window.location.href);
+			if (formSignature) {
+				redirectUrl.searchParams.set('signature', formSignature);
+			}
+			if (authToken) {
+				redirectUrl.searchParams.set('n8nFormToken', authToken);
+			}
+			if (formResource) {
+				redirectUrl.searchParams.set('n8nFormResource', formResource);
+			}
+			return redirectUrl;
+		}
 
 		let interval = 1000;
 		let timeoutId;
@@ -178,12 +203,7 @@
 				const text = (await response.text()).trim();
 
 				if (text === "form-waiting") {
-					// Redirect with signature in URL (will be cleaned after load)
-					const redirectUrl = new URL(window.location.href);
-					if (formSignature) {
-						redirectUrl.searchParams.set('signature', formSignature);
-					}
-					window.location.replace(redirectUrl.toString());
+					window.location.replace(withFormAuth(window.location.href).toString());
 					return;
 				}
 
@@ -227,15 +247,17 @@
 
 			// Include signature in POST URL for waiting forms
 			let postUrl = '';
-			if (window.location.href.includes('form-waiting') && formSignature) {
-				postUrl = '?signature=' + encodeURIComponent(formSignature);
+			if (window.location.href.includes('form-waiting')) {
+				const postParams = new URLSearchParams();
+				if (formSignature) {
+					postParams.set('signature', formSignature);
+				}
+				if (formResource) {
+					postParams.set('n8nFormResource', formResource);
+				}
+				postUrl = postParams.toString() ? '?' + postParams.toString() : '';
 			}
 
-			// Double-stash (Handlebars-escaped) so a future change to the token
-			// format can't introduce HTML/JS injection here. The current token
-			// is `<base64url>|<digits>|<hex>` — none of those characters
-			// trigger HTML escaping, so this is a no-op today.
-			const authToken = '{{authToken}}';
 			const headers = {};
 			if (authToken) {
 				headers['x-auth-token'] = authToken;

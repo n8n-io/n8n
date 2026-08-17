@@ -474,6 +474,35 @@ describe('formCompletionUtils', () => {
 			expect(verifyFormUserAuthToken(renderArgs.authToken, mockNode)).toEqual(authedUser);
 		});
 
+		it('re-embeds a provided OAuth authToken instead of minting an HMAC token', async () => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Form has been submitted successfully',
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+
+			await renderFormCompletion(
+				mockWebhookFunctions,
+				mockResponse,
+				trigger,
+				{
+					id: 'user-1',
+					email: 'user@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+				},
+				'oauth-access-token',
+			);
+
+			const renderArgs = vi.mocked(mockResponse.render).mock.calls.at(-1)?.[1] as unknown as {
+				authToken: string;
+			};
+			expect(renderArgs.authToken).toBe('oauth-access-token');
+		});
+
 		it('should NOT set Content-Security-Policy header when form HTML sandboxing is disabled', async () => {
 			vi.mocked(isFormHtmlSandboxingDisabled).mockReturnValueOnce(true);
 

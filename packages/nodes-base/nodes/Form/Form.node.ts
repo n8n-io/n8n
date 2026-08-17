@@ -400,7 +400,13 @@ export class Form extends Node {
 		const method = context.getRequestObject().method;
 
 		if (operation === 'completion' && method === 'GET') {
-			return await renderFormCompletion(context, res, trigger, authResult.authedUser);
+			return await renderFormCompletion(
+				context,
+				res,
+				trigger,
+				authResult.authedUser,
+				authResult.authToken,
+			);
 		}
 
 		if (operation === 'completion' && method === 'POST') {
@@ -410,7 +416,15 @@ export class Form extends Node {
 		}
 
 		if (method === 'GET') {
-			return await renderFormNode(context, res, trigger, fields, mode, authResult.authedUser);
+			return await renderFormNode(
+				context,
+				res,
+				trigger,
+				fields,
+				mode,
+				authResult.authedUser,
+				authResult.authToken,
+			);
 		}
 
 		let useWorkflowTimezone = context.evaluateExpression(

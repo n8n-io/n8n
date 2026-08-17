@@ -735,6 +735,32 @@
 			// Get signature from URL for fetch requests
 			const url = new URL(window.location.href);
 			let formSignature = url.searchParams.get('signature');
+			const authToken = '{{{ authToken }}}';
+			// Trigger page: this URL is the OAuth audience. Waiting pages: carried from the previous page.
+			let formResource = url.searchParams.get('n8nFormResource') || (
+				window.location.href.includes('form-waiting')
+					? ''
+					: (window.location.origin + window.location.pathname)
+			);
+			if (url.searchParams.has('n8nFormToken') || url.searchParams.has('n8nFormResource')) {
+				url.searchParams.delete('n8nFormToken');
+				url.searchParams.delete('n8nFormResource');
+				history.replaceState(null, '', url.pathname + url.search + url.hash);
+			}
+
+			function withFormAuth(target) {
+				const redirectUrl = target instanceof URL ? target : new URL(target, window.location.href);
+				if (formSignature) {
+					redirectUrl.searchParams.set('signature', formSignature);
+				}
+				if (authToken) {
+					redirectUrl.searchParams.set('n8nFormToken', authToken);
+				}
+				if (formResource) {
+					redirectUrl.searchParams.set('n8nFormResource', formResource);
+				}
+				return redirectUrl;
+			}
 
 			function updateError(errorElement, action = 'add', message = '') {
 				if(action === 'add') {
@@ -994,11 +1020,7 @@
 					const text = (await response.text()).trim();
 
 					if (text === "form-waiting") {
-						// Redirect to form page with signature in URL (will be cleaned after load)
-						const redirectUrl = new URL(formWaitingUrl ?? window.location.href);
-						if (formSignature) {
-							redirectUrl.searchParams.set('signature', formSignature);
-						}
+						const redirectUrl = withFormAuth(new URL(formWaitingUrl ?? window.location.href));
 						window.location.replace(redirectUrl.toString());
 						return;
 					}
@@ -1089,12 +1111,17 @@
 					let postUrl = '';
 					if (!window.location.href.includes('form-waiting')) {
 						postUrl = window.location.search;
-					} else if (formSignature) {
-						// For waiting forms, include signature in POST URL since it was cleaned from address bar
-						postUrl = '?signature=' + encodeURIComponent(formSignature);
+					} else {
+						const postParams = new URLSearchParams();
+						if (formSignature) {
+							postParams.set('signature', formSignature);
+						}
+						if (formResource) {
+							postParams.set('n8nFormResource', formResource);
+						}
+						postUrl = postParams.toString() ? '?' + postParams.toString() : '';
 					}
 
-					const authToken = '{{{ authToken }}}';
 					const headers = {};
 					if(authToken) {
 						headers['x-auth-token'] = authToken;
@@ -1169,7 +1196,7 @@
 
 							if (response.status === 200) {
 								if(response.redirected) {
-									window.location.replace(response.url);
+									window.location.replace(withFormAuth(response.url).toString());
 									return;
 								}
 								const redirectUrl = document.getElementById("redirectUrl");

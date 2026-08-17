@@ -796,6 +796,54 @@ describe('Form Node', () => {
 			expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger', expect.any(Object));
 		});
 
+		it('renders the page when GET carries an OAuth token on the waiting URL', async () => {
+			const mockResponseObject = {
+				render: vi.fn(),
+				writeHead: vi.fn(),
+				end: vi.fn(),
+				setHeader: vi.fn(),
+				status: vi.fn().mockReturnValue({ send: vi.fn() }),
+				cookie: vi.fn(),
+			};
+			mockWebhookFunctions.getResponseObject.mockReturnValue(
+				mockResponseObject as unknown as Response,
+			);
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+				originalUrl: '/form-waiting/exec',
+				headers: { host: 'localhost:5678' },
+				query: {
+					n8nFormToken: 'as-token',
+					n8nFormResource: 'http://localhost:5678/form/test',
+				},
+			} as unknown as Request);
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ type: 'n8n-nodes-base.form' }));
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'page';
+				if (paramName === 'useJson') return false;
+				if (paramName === 'formFields.values') return [{ fieldLabel: 'test' }];
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+			setupParentTriggerWithAuth('n8nUserAuth');
+			mockWebhookFunctions.validateN8nOAuth2Token.mockResolvedValue({
+				valid: true,
+				user: authedUser,
+			});
+
+			await form.webhook(mockWebhookFunctions);
+
+			expect(mockWebhookFunctions.validateN8nOAuth2Token).toHaveBeenCalledWith(
+				'as-token',
+				'http://localhost:5678/form/test',
+			);
+			expect(mockResponseObject.writeHead).not.toHaveBeenCalled();
+			expect(mockResponseObject.render).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({ authToken: 'as-token' }),
+			);
+		});
+
 		it('includes user info in POST output when authentication is n8nUserAuth', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'POST',
