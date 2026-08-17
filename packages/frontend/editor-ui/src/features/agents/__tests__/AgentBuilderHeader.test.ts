@@ -44,6 +44,13 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href'],
 		emits: ['click'],
 	},
+	N8nToggle: {
+		name: 'N8nToggle',
+		template:
+			'<button v-bind="$attrs" :data-variant="variant" :data-icon="icon" :disabled="disabled" :aria-label="label" :aria-pressed="modelValue" @click="$emit(\'click\', $event)" />',
+		props: ['modelValue', 'variant', 'size', 'icon', 'label', 'disabled'],
+		emits: ['click'],
+	},
 	N8nDropdownMenuItem: {
 		name: 'N8nDropdownMenuItem',
 		template: '<button :data-testid="testId" @click="$emit(\'select\', id)">{{ label }}</button>',
@@ -288,36 +295,32 @@ describe('AgentBuilderHeader', () => {
 	});
 
 	it.each([
-		{ label: 'opens', isPreviewOpen: false, event: 'open-preview', icon: 'play' },
-		{ label: 'closes', isPreviewOpen: true, event: 'close-preview', icon: 'x' },
-	])('$label Preview from the preview action', async ({ isPreviewOpen, event, icon }) => {
-		const wrapper = mountHeader({ isPreviewOpen });
-		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-		expect(previewButton.attributes('data-icon')).toBe(icon);
+		{
+			label: 'opens',
+			isPreviewOpen: false,
+			event: 'open-preview',
+			accessibleLabel: 'agents.builder.preview.button',
+		},
+		{
+			label: 'closes',
+			isPreviewOpen: true,
+			event: 'close-preview',
+			accessibleLabel: 'agents.builder.preview.close.ariaLabel',
+		},
+	])(
+		'$label Preview from the preview action',
+		async ({ isPreviewOpen, event, accessibleLabel }) => {
+			const wrapper = mountHeader({ isPreviewOpen });
+			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+			expect(previewButton.attributes('data-icon')).toBe('play');
+			expect(previewButton.attributes('aria-label')).toBe(accessibleLabel);
+			expect(previewButton.attributes('aria-pressed')).toBe(String(isPreviewOpen));
 
-		if (isPreviewOpen) {
-			expect(previewButton.text()).toBe('agents.builder.preview.close.ariaLabel');
-			expect(previewButton.attributes('href')).toBeUndefined();
-		}
-
-		await previewButton.trigger('click');
-		expect(wrapper.emitted(event)).toEqual([[]]);
-		expect(wrapper.emitted(isPreviewOpen ? 'open-preview' : 'close-preview')).toBeUndefined();
-	});
-
-	it('exposes the preview route href for browser new-tab actions', () => {
-		const wrapper = mountHeader();
-		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-
-		expect(previewButton.attributes('href')).toBe('/projects/p1/agents/a1/preview');
-	});
-
-	it('does not expose a preview href in artifact mode', () => {
-		const wrapper = mountHeader({ artifactMode: true });
-		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-
-		expect(previewButton.attributes('href')).toBeUndefined();
-	});
+			await previewButton.trigger('click');
+			expect(wrapper.emitted(event)).toEqual([[]]);
+			expect(wrapper.emitted(isPreviewOpen ? 'open-preview' : 'close-preview')).toBeUndefined();
+		},
+	);
 
 	it('disables preview with a tooltip when the agent is not runnable', async () => {
 		const wrapper = mountHeader({
@@ -326,7 +329,6 @@ describe('AgentBuilderHeader', () => {
 		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
 
 		expect(previewButton.attributes('disabled')).toBeDefined();
-		expect(previewButton.attributes('href')).toBeUndefined();
 		expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled')).toBe('false');
 		expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-content')).toBe(
 			'agents.builder.preview.disabledTooltip',

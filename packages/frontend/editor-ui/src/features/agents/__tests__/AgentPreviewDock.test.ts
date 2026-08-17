@@ -1,18 +1,30 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, shallowMount } from '@vue/test-utils';
-import { TOOLTIP_DELAY_MS } from '@n8n/design-system';
 
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
-const { useKeybindingsMock } = vi.hoisted(() => ({
-	useKeybindingsMock: vi.fn(),
-}));
+const { routerResolve, useKeybindingsMock } = vi.hoisted(function createMocks() {
+	return {
+		routerResolve: vi.fn(function resolveRoute() {
+			return { href: '/resolved-preview' };
+		}),
+		useKeybindingsMock: vi.fn(),
+	};
+});
 
-vi.mock('@/app/composables/useKeybindings', () => ({
-	useKeybindings: useKeybindingsMock,
-}));
+vi.mock('@/app/composables/useKeybindings', function mockUseKeybindings() {
+	return { useKeybindings: useKeybindingsMock };
+});
+
+vi.mock('vue-router', function mockVueRouter() {
+	return {
+		useRouter: function useRouter() {
+			return { resolve: routerResolve };
+		},
+	};
+});
 
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 	useAgentSessionLangSmithExport: () => ({
@@ -27,6 +39,21 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nButton: {
+		name: 'N8nButton',
+		template: '<button v-bind="$attrs" :data-variant="variant" :data-size="size"><slot /></button>',
+		props: ['size', 'variant'],
+	},
+	N8nDropdownMenu: {
+		name: 'N8nDropdownMenu',
+		template: '<div><slot name="trigger" /></div>',
+		emits: ['select'],
+	},
+	N8nIcon: {
+		name: 'N8nIcon',
+		template: '<i :data-icon="icon" />',
+		props: ['icon'],
+	},
 	N8nIconButton: {
 		name: 'N8nIconButton',
 		template:
@@ -35,10 +62,9 @@ vi.mock('@n8n/design-system', () => ({
 		emits: ['click'],
 	},
 	N8nKeyboardShortcut: { name: 'N8nKeyboardShortcut', template: '<span />' },
-	N8nHeading: {
-		name: 'N8nHeading',
-		template: '<component :is="tag" v-bind="$attrs" :data-size="size"><slot /></component>',
-		props: ['size', 'tag'],
+	N8nText: {
+		name: 'N8nText',
+		template: '<span v-bind="$attrs"><slot /></span>',
 	},
 	N8nTooltip: {
 		name: 'N8nTooltip',
@@ -67,7 +93,9 @@ function mountDock(
 	return mount(AgentPreviewDock, {
 		...(attachTo ? { attachTo } : {}),
 		props: {
+			isOpen: true,
 			sessionTitle: 'Order help',
+			sessionOptions: [],
 			hasSession: true,
 			initialized: true,
 			projectId: 'project-1',
@@ -86,16 +114,21 @@ function mountDock(
 
 describe('AgentPreviewDock', () => {
 	beforeEach(() => {
+		routerResolve.mockClear();
 		useKeybindingsMock.mockClear();
+		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
 	});
 
-	it('renders the Instance AI session heading before the compact actions', () => {
+	it('renders the session switcher before the compact actions', () => {
 		const wrapper = mountDock();
 		const title = wrapper.get('[data-testid="agent-preview-session-title"]');
 
 		expect(title.text()).toBe('Order help');
-		expect(title.element.tagName).toBe('H2');
-		expect(title.attributes('data-size')).toBe('small');
+		expect(title.element.tagName).toBe('BUTTON');
+		expect(title.attributes()).toMatchObject({
+			'aria-label': 'agentSessions.sessionName',
+			'data-size': 'small',
+		});
 		expect(
 			wrapper
 				.get('[data-testid="agent-preview-dock-header"]')
@@ -105,11 +138,12 @@ describe('AgentPreviewDock', () => {
 			'agent-preview-session-title',
 			'agent-preview-view-session-btn',
 			'agent-preview-new-chat-btn',
-			'agent-preview-close-btn',
+			'agent-preview-layout-btn',
 		]);
 	});
 
 	it('renders accessible header actions and emits their events', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
 		const wrapper = mountDock();
 		const expectedActions = [
 			{
@@ -122,18 +156,12 @@ describe('AgentPreviewDock', () => {
 				icon: 'message-circle-plus',
 				label: 'agents.builder.chat.newChat.label',
 			},
-			{
-				testId: 'agent-preview-close-btn',
-				icon: 'x',
-				label: 'agents.builder.preview.close.ariaLabel',
-			},
 		];
 		const traceTooltip = wrapper.get('[data-testid="agent-preview-view-session-tooltip"]');
 
 		expect(traceTooltip.attributes()).toMatchObject({
 			'data-content': 'agents.builder.preview.viewSession',
 			'data-placement': 'bottom',
-			'data-show-after': String(TOOLTIP_DELAY_MS),
 		});
 
 		for (const action of expectedActions) {
@@ -151,7 +179,7 @@ describe('AgentPreviewDock', () => {
 
 		expect(wrapper.emitted('view-trace')).toEqual([[]]);
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
-		expect(wrapper.emitted('close')).toEqual([[]]);
+		expect(wrapper.emitted('close')).toBeUndefined();
 	});
 
 	it.each([
@@ -191,24 +219,36 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('send-to-assistant')).toEqual([[fixEvent]]);
 	});
 
-	it('shows shortcut tooltips for the new-session and close actions', () => {
+	it('shows the new-session shortcut tooltip', () => {
 		const wrapper = mountDock();
 		const tooltips = wrapper.findAllComponents({
 			name: 'KeyboardShortcutTooltip',
 		});
-		const [newSessionTooltip, closeTooltip] = tooltips;
 
-		expect(tooltips).toHaveLength(2);
-		expect(newSessionTooltip?.props()).toMatchObject({
+		expect(tooltips).toHaveLength(1);
+		expect(tooltips[0]?.props()).toMatchObject({
 			label: 'agents.builder.chat.newChat.label',
 			placement: 'bottom',
 			shortcut: { metaKey: true, shiftKey: true, keys: [';'] },
 		});
-		expect(closeTooltip?.props()).toMatchObject({
-			label: 'generic.close',
-			placement: 'bottom',
-			shortcut: { keys: ['Esc'] },
+	});
+
+	it('opens the active session in a new tab', () => {
+		const open = vi.spyOn(window, 'open').mockImplementation(function openWindow() {
+			return null;
 		});
+		const wrapper = mountDock();
+		const layoutMenu = wrapper.findAllComponents({ name: 'N8nDropdownMenu' })[1];
+
+		layoutMenu?.vm.$emit('select', 'open-in-new-tab');
+
+		expect(routerResolve).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentPreviewView',
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+			query: { continueSessionId: 'thread-1' },
+		});
+		expect(open).toHaveBeenCalledExactlyOnceWith('/resolved-preview', '_blank', 'noopener');
+		open.mockRestore();
 	});
 
 	it('creates a new session from the registered keyboard shortcut', () => {
@@ -223,6 +263,7 @@ describe('AgentPreviewDock', () => {
 	});
 
 	it('only enables Escape while focus is within the dock', () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
 		const host = document.createElement('div');
 		const outsideButton = document.createElement('button');
 		document.body.append(host, outsideButton);
@@ -235,7 +276,9 @@ describe('AgentPreviewDock', () => {
 		outsideButton.focus();
 		expect(escapeBinding.disabled()).toBe(true);
 
-		(wrapper.get('[data-testid="agent-preview-close-btn"]').element as HTMLButtonElement).focus();
+		(
+			wrapper.get('[data-testid="agent-preview-new-chat-btn"]').element as HTMLButtonElement
+		).focus();
 		expect(escapeBinding.disabled()).toBe(false);
 		escapeBinding.run();
 		expect(wrapper.emitted('close')).toEqual([[]]);

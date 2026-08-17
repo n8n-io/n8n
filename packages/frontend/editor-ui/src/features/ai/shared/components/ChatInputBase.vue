@@ -106,8 +106,8 @@ function handleAttach() {
 	fileInputRef.value?.click();
 }
 
-function focusInput() {
-	inputRef.value?.focusInput();
+function focusInput(options?: FocusOptions) {
+	inputRef.value?.focusInput(options);
 }
 
 /**

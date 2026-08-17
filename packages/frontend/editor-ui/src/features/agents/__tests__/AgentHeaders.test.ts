@@ -13,7 +13,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nButton: {
 		name: 'N8nButton',
 		template:
-			'<button v-bind="$attrs" :data-variant="variant" :data-size="size" :data-icon-only="iconOnly" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+			'<button v-bind="$attrs" :data-variant="variant" :data-size="size" :data-icon-only="iconOnly" :disabled="disabled" @click="$emit(\'click\')"><i v-if="icon" :data-icon="icon"></i><slot /></button>',
 		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled'],
 		emits: ['click'],
 	},
@@ -27,6 +27,12 @@ vi.mock('@n8n/design-system', () => ({
 	N8nTooltip: {
 		name: 'N8nTooltip',
 		template: '<div><slot /><slot name="content" /></div>',
+	},
+	N8nToggle: {
+		name: 'N8nToggle',
+		template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ label }}</button>',
+		props: ['modelValue', 'variant', 'size', 'icon', 'label'],
+		emits: ['click'],
 	},
 	N8nKeyboardShortcut: {
 		name: 'N8nKeyboardShortcut',

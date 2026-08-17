@@ -246,8 +246,8 @@ function handleFocusableRegionClick(event: MouseEvent) {
 	handleContainerClick();
 }
 
-function focusInput() {
-	textareaRef.value?.focus();
+function focusInput(options?: FocusOptions) {
+	textareaRef.value?.focus(options);
 }
 
 onMounted(() => {
