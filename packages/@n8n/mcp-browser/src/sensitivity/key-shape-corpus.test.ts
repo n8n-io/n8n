@@ -5,8 +5,14 @@ import { elementText } from './dom-matchers';
 import { REDACTION_MARKER_PATTERN } from '../redaction/redact';
 import { applyRedactions } from '../redaction/redaction-applier';
 import { createCredentialTools } from '../tools/credential';
-import { createMockConnection, findTool, textOf, TOOL_CONTEXT } from '../tools/test-helpers';
-import type { CallToolResult, HtmlProbeResult } from '../types';
+import {
+	createMockConnection,
+	findTool,
+	htmlProbe,
+	textOf,
+	TOOL_CONTEXT,
+} from '../tools/test-helpers';
+import type { CallToolResult } from '../types';
 
 // Patterns go stale, so this corpus pins the shapes providers issue *today*:
 // every one must survive snapshot → marker → capture byte-exact and leave no
@@ -46,20 +52,7 @@ function revealPanel(key: string): string {
 // The same panel as a real console ships it: no whitespace between tags, so
 // `textContent` runs the sibling text together.
 function minifiedRevealPanel(key: string): string {
-	return `<html><body><section><span>Your API key</span><div>${key}</div><button aria-label="Copy API key">Copy</button><button aria-label="Show API key">Show</button></section></body></html>`;
-}
-
-function probe(html: string): HtmlProbeResult {
-	return {
-		ok: true,
-		root: {
-			kind: 'document',
-			html,
-			url: 'https://provider.test/keys',
-			children: [],
-			errors: [],
-		},
-	};
+	return revealPanel(key).replace(/>\s+</g, '><');
 }
 
 /**
@@ -70,22 +63,21 @@ function visibleText(html: string): string {
 	return elementText(new JSDOM(html).window.document.body);
 }
 
-function normalize(text: string): string {
-	return text.replace(/\s+/g, ' ').trim();
-}
-
 /** What must remain once every marker is stripped: the page without the key. */
 function textWithoutKey(render: (key: string) => string): string {
-	return normalize(visibleText(render('')));
+	return visibleText(render(''));
 }
 
 function residue(html: string): string {
-	return normalize(redactedSnapshot(html).replace(new RegExp(REDACTION_MARKER_PATTERN, 'g'), ''));
+	return redactedSnapshot(html)
+		.replace(new RegExp(REDACTION_MARKER_PATTERN, 'g'), '')
+		.replace(/\s+/g, ' ')
+		.trim();
 }
 
 /** The redacted page text the model reads for a page rendering a key. */
 function redactedSnapshot(html: string): string {
-	const sensitivity = analyzeHtmlSensitivity(probe(html));
+	const sensitivity = analyzeHtmlSensitivity(htmlProbe(html));
 	if (!sensitivity.ok) throw new Error(sensitivity.error);
 	const result: CallToolResult = { content: [{ type: 'text', text: visibleText(html) }] };
 	return textOf(applyRedactions(result, sensitivity));
@@ -101,7 +93,7 @@ function markerFor(html: string): string {
 async function capturedVia(marker: string, html: string): Promise<string | undefined> {
 	const capture = vi.fn();
 	const mockConn = createMockConnection();
-	mockConn.adapter.probePageHtml.mockResolvedValue(probe(html));
+	mockConn.adapter.probePageHtml.mockResolvedValue(htmlProbe(html));
 
 	await findTool(createCredentialTools(mockConn.connection), 'browser_capture_secret').execute(
 		{ credentialsKey: 'k1', field: 'apiKey', element: { redactedKey: marker } },
@@ -139,7 +131,7 @@ describe('current provider key shapes', () => {
 	// marker carries the generic type. Narrowing it back would re-expose the part
 	// of the key the pattern's fixed length does not cover.
 	it('labels an over-long key generically rather than leaving its tail visible', () => {
-		const key = `AIza${'SyC7mQ2xR9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1Bc'}`;
+		const { key } = KEY_SHAPES[1];
 		const snapshot = redactedSnapshot(revealPanel(key));
 
 		expect(snapshot).toContain('[REDACTED:secret:');

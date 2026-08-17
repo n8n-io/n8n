@@ -34,6 +34,21 @@ describe('analyzeHtmlSensitivity', () => {
 		expect(result.ok && result.hits).toContainEqual({ type: 'google_api_key', value: key });
 	});
 
+	// One document delimits the key unambiguously, another cannot. Whichever is
+	// merged last, the delimited occurrence is the one that knows the extent.
+	it('lets a delimited occurrence override a blocked one from another document', () => {
+		const key = `AIza${'B'.repeat(35)}`;
+		const run = 'x'.repeat(600);
+		const result = analyzeHtmlSensitivity(
+			probe(`<p>${run}${key}${run}</p>`, [
+				{ kind: 'iframe', html: `<p>${key}</p>`, children: [], errors: [] },
+			]),
+		);
+		const hit = result.ok && result.hits.find((candidate) => candidate.value === key);
+
+		expect(hit && hit.captureBlocked).toBeUndefined();
+	});
+
 	// The entropy pass needs the same fail-closed rule as the pattern pass: inside
 	// an undelimitable run its candidate is a fragment of the real token.
 	it('blocks capture of an entropy candidate whose token could not be delimited', () => {

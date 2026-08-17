@@ -2,8 +2,11 @@ import { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
 import { createConnectedTool, pageIdField } from './helpers';
-import type { SecretHit } from '../redaction/redact';
-import { containsRedactionMarker, createRedactionMarkerFormatter } from '../redaction/redact';
+import {
+	captureSpanOf,
+	containsRedactionMarker,
+	createRedactionMarkerFormatter,
+} from '../redaction/redact';
 import { analyzeHtmlSensitivity } from '../sensitivity/analyze-html';
 import type {
 	AffectedResource,
@@ -69,12 +72,9 @@ function browserCaptureSecret(
 				const sensitivity = analyzeHtmlSensitivity(await state.adapter.probePageHtml(pageId));
 				if (sensitivity.ok) {
 					const formatMarker = createRedactionMarkerFormatter(sensitivity.hits);
-					const markerMap = sensitivity.hits.reduce((result, hit) => {
-						result.set(formatMarker(hit), hit);
-						return result;
-					}, new Map<string, SecretHit>());
+					const byMarker = new Map(sensitivity.hits.map((hit) => [formatMarker(hit), hit]));
 
-					const hit = markerMap.get(redactedKey);
+					const hit = byMarker.get(redactedKey);
 					if (!hit) {
 						throw new Error(`The marker "${redactedKey}" was not found.`);
 					}
@@ -85,7 +85,7 @@ function browserCaptureSecret(
 							`"${redactedKey}" cannot be captured because ${hit.captureBlocked}. Take a fresh snapshot and capture the element that holds the value.`,
 						);
 					}
-					value = hit.captureValue ?? hit.value;
+					value = captureSpanOf(hit);
 				} else {
 					throw new Error(`Secret capturing failed with error: ${sensitivity.error}`);
 				}

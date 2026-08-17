@@ -1,3 +1,4 @@
+import { narrowerCapture, UNDELIMITED_TOKEN, type SecretHit } from '../redaction/redact';
 import { expandToTokenSpan } from '../redaction/token-span';
 
 export const TESTID_ATTRS = ['data-testid', 'data-test-id', 'data-test', 'data-qa'] as const;
@@ -148,20 +149,20 @@ export function shannonEntropy(value: string): number {
 	return entropy;
 }
 
-export interface EntropyCandidate {
-	value: string;
-	/** False when the span is only the inner match, so it may be a fragment. */
-	delimited: boolean;
-}
-
 // Scored on the inner match, reported as the whole token: a shape this class
 // misses must not be split into fragments.
-export function highEntropyCandidates(text: string): EntropyCandidate[] {
-	const candidates = new Map<string, boolean>();
+export function highEntropyCandidates(text: string): SecretHit[] {
+	const hits = new Map<string, SecretHit>();
 	for (const match of text.matchAll(/[A-Za-z0-9_/+=-]{20,}/g)) {
 		if (shannonEntropy(match[0]) < 4.5) continue;
 		const { span, delimited } = expandToTokenSpan(text, match.index, match[0].length);
-		candidates.set(span, delimited || (candidates.get(span) ?? false));
+		// Unlike a provider pattern, an entropy match is only ever a fragment of the
+		// token it sits in, so the span — not the match — is the redaction target.
+		const hit: SecretHit = delimited
+			? { type: 'secret', value: span }
+			: { type: 'secret', value: match[0], captureBlocked: UNDELIMITED_TOKEN };
+		const existing = hits.get(hit.value);
+		hits.set(hit.value, existing ? narrowerCapture(existing, hit) : hit);
 	}
-	return [...candidates].map(([value, delimited]) => ({ value, delimited }));
+	return [...hits.values()];
 }

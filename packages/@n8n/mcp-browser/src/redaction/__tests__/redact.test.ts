@@ -125,6 +125,20 @@ describe('BUILTIN_PATTERNS coverage', () => {
 	});
 });
 
+describe('pattern cost', () => {
+	// Page text includes inline script/style, which is one long run with no
+	// delimiters. An unanchored pattern that backtracks over such a run turns
+	// every tool call into a stall.
+	it('scans a long undelimited run without backtracking', () => {
+		const blob = 'a1B2c3D4e5F6g7H8i9J0'.repeat(5000);
+
+		const started = performance.now();
+		findRegexSecretHits(blob);
+
+		expect(performance.now() - started).toBeLessThan(1000);
+	});
+});
+
 describe('capture safety', () => {
 	// Long secrets are exactly the ones worth capturing; a PEM match carries its
 	// own boundaries, so its length must not make it uncapturable.

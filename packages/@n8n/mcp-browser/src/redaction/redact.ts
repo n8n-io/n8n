@@ -1,6 +1,6 @@
 import type { CallToolResult } from '../types';
 import { BUILTIN_PATTERNS, type SecretPattern } from './patterns';
-import { expandToTokenSpan } from './token-span';
+import { expandToTokenSpan, type TokenSpan } from './token-span';
 
 export interface SecretHit {
 	type: string;
@@ -66,10 +66,9 @@ export function findRegexSecretHits(input: string): SecretHit[] {
 			const key = `${slug}:${value}`;
 			// Fixed-count patterns match only their first N characters of a longer
 			// token, so record the whole token for capturing.
-			const { span, delimited } = expandToTokenSpan(input, match.index, value.length);
+			const hit = hitForSpan(slug, value, expandToTokenSpan(input, match.index, value.length));
 			const existing = hits.get(key);
-			if (existing) recordSpan(existing, span, delimited);
-			else hits.set(key, newHit(slug, value, span, delimited));
+			hits.set(key, existing ? narrowerCapture(existing, hit) : hit);
 		}
 	}
 	return [...hits.values()];
@@ -77,35 +76,39 @@ export function findRegexSecretHits(input: string): SecretHit[] {
 
 export const UNDELIMITED_TOKEN = 'its surrounding text has no delimiter';
 
-function newHit(slug: string, value: string, span: string, delimited: boolean): SecretHit {
-	const hit: SecretHit = { type: slug, value };
-	if (!delimited) hit.captureBlocked = UNDELIMITED_TOKEN;
-	else if (span !== value) hit.captureValue = span;
-	return hit;
+export const CONCATENATED_ONLY = 'it only appears where markup runs text together';
+
+/** The value capturing would store, which is the whole token when one was found. */
+export function captureSpanOf(hit: SecretHit): string {
+	return hit.captureValue ?? hit.value;
+}
+
+/** Fixed-count patterns match only part of a longer token, so record the span. */
+export function hitForSpan(type: string, value: string, { span, delimited }: TokenSpan): SecretHit {
+	if (!delimited) return { type, value, captureBlocked: UNDELIMITED_TOKEN };
+	return span === value ? { type, value } : { type, value, captureValue: span };
 }
 
 /**
- * An occurrence inside an undelimitable run says nothing about how far the token
- * reaches, so only delimited ones count — and of those the narrowest wins, since
- * a wider span carries its neighbours into the captured value.
+ * The same secret seen again — in another occurrence, pass, or document. An
+ * occurrence inside an undelimitable run says nothing about how far the token
+ * reaches, so a delimited span always beats a blocked one; among delimited spans
+ * the narrowest wins, since a wider one carries its neighbours into the value.
  */
-function recordSpan(hit: SecretHit, span: string, delimited: boolean): void {
-	if (!delimited) return;
-	const established = hit.captureBlocked ? undefined : (hit.captureValue ?? hit.value);
-	if (established !== undefined && span.length >= established.length) return;
-	delete hit.captureBlocked;
-	if (span === hit.value) delete hit.captureValue;
-	else hit.captureValue = span;
+export function narrowerCapture(existing: SecretHit, incoming: SecretHit): SecretHit {
+	if (incoming.captureBlocked) return existing;
+	if (existing.captureBlocked) return incoming;
+	return captureSpanOf(incoming).length < captureSpanOf(existing).length ? incoming : existing;
 }
 
-export type Replacement = readonly [value: string, marker: string];
+type Replacement = readonly [value: string, marker: string];
 
 /**
  * Longest value first: where an entropy span contains a pattern's shorter match,
  * replacing the short one first leaves the rest of the token visible. Build once
  * per call, then apply to every string.
  */
-export function buildReplacements(
+function buildReplacements(
 	hits: readonly SecretHit[],
 	marker: (hit: RedactionMarkerHit) => string,
 ): Replacement[] {
@@ -114,7 +117,7 @@ export function buildReplacements(
 		.map((hit) => [hit.value, marker(hit)] as const);
 }
 
-export function applyReplacements(input: string, replacements: readonly Replacement[]): string {
+function applyReplacements(input: string, replacements: readonly Replacement[]): string {
 	let output = input;
 	for (const [value, marker] of replacements) output = replaceLiteral(output, value, marker);
 	return output;
@@ -125,7 +128,7 @@ export function redactString(input: string): string {
 	return applyReplacements(input, buildReplacements(hits, createRedactionMarkerFormatter(hits)));
 }
 
-export function replaceLiteral(input: string, value: string, replacement: string): string {
+function replaceLiteral(input: string, value: string, replacement: string): string {
 	if (!value) return input;
 	return input.split(value).join(replacement);
 }
@@ -145,15 +148,7 @@ function collectStrings(value: unknown): string[] {
 	return [];
 }
 
-export function redactValue(
-	value: unknown,
-	hits = findRegexSecretHits(collectStrings(value).join('\n')),
-	marker = createRedactionMarkerFormatter(hits),
-): unknown {
-	return replaceInValue(value, buildReplacements(hits, marker));
-}
-
-export function replaceInValue(value: unknown, replacements: readonly Replacement[]): unknown {
+function replaceInValue(value: unknown, replacements: readonly Replacement[]): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value === 'string') return applyReplacements(value, replacements);
 	if (Array.isArray(value)) return value.map((entry) => replaceInValue(entry, replacements));
@@ -167,16 +162,12 @@ export function replaceInValue(value: unknown, replacements: readonly Replacemen
 	return value;
 }
 
-export function redactCallToolResult(result: CallToolResult): CallToolResult {
-	const hits = findRegexSecretHits(
-		[
-			...result.content.flatMap((item) =>
-				item.type === 'text' && typeof item.text === 'string' ? [item.text] : [],
-			),
-			...collectStrings(result.structuredContent),
-		].join('\n'),
-	);
-	const replacements = buildReplacements(hits, createRedactionMarkerFormatter(hits));
+/** Replace every hit's value with its marker throughout a tool result, in place. */
+export function applyHitsToResult(
+	result: CallToolResult,
+	hits: readonly SecretHit[],
+): CallToolResult {
+	const replacements = buildReplacements(hits, createRedactionMarkerFormatter([...hits]));
 
 	for (const item of result.content) {
 		if (item.type === 'text' && typeof item.text === 'string') {
@@ -188,4 +179,14 @@ export function redactCallToolResult(result: CallToolResult): CallToolResult {
 		if (isPlainObject(redacted)) result.structuredContent = redacted;
 	}
 	return result;
+}
+
+export function redactCallToolResult(result: CallToolResult): CallToolResult {
+	const texts = [
+		...result.content.flatMap((item) =>
+			item.type === 'text' && typeof item.text === 'string' ? [item.text] : [],
+		),
+		...collectStrings(result.structuredContent),
+	];
+	return applyHitsToResult(result, findRegexSecretHits(texts.join('\n')));
 }
