@@ -102,7 +102,9 @@ export class InstanceAiTerminalResponseGuard {
 					reason: 'completed-after-error',
 				};
 			}
-			if (visibility.hasRootText) {
+			// Closing text only: a preamble the model never followed with an answer
+			// leaves the user watching a turn that looks like it is still running.
+			if (visibility.hasClosingRootText) {
 				return {
 					status,
 					visibilitySource: 'root-text',
@@ -216,15 +218,27 @@ export class InstanceAiTerminalResponseGuard {
 
 	private getVisibility(events: InstanceAiEvent[]): {
 		hasRootText: boolean;
+		hasClosingRootText: boolean;
 		hasRootError: boolean;
 		hasMessageGroupRootText: boolean;
 		hasCurrentRunFallback: boolean;
 		hasAgentText: boolean;
 	} {
 		const currentRunEvents = events.filter((event) => event.runId === this.options.runId);
+		// The loop runs another turn for every tool call, so the turn that ends the
+		// run never carries one: root text before the last tool call is a preamble
+		// ("Let me read the source…"), text after it is the answer. With no tool
+		// calls the index is -1 and every text event counts.
+		const lastRootToolCall = currentRunEvents.findLastIndex(
+			(event) => event.agentId === this.options.rootAgentId && event.type === 'tool-call',
+		);
 		return {
 			hasRootText: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && hasText(event),
+			),
+			hasClosingRootText: currentRunEvents.some(
+				(event, index) =>
+					index > lastRootToolCall && event.agentId === this.options.rootAgentId && hasText(event),
 			),
 			// Any agent's text this run. Tool calls don't count — internal calls (e.g. complete-checkpoint) aren't a visible answer.
 			hasAgentText: currentRunEvents.some((event) => hasText(event)),
