@@ -352,10 +352,11 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 
 	function displayCredentialParameter(parameter: INodeProperties): boolean {
 		if (parameter.type === 'hidden') return false;
-
+		const isManagedCredential = isEditingManagedCredential.value || isManagedOAuthMode.value;
 		if (
 			MANAGED_CREDENTIAL_HIDDEN_PROPERTIES.has(parameter.name) &&
-			(isEditingManagedCredential.value || isManagedOAuthMode.value)
+			isManagedCredential &&
+			!credentialType.value?.__showManagedOAuthScopes
 		) {
 			return false;
 		}

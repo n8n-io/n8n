@@ -765,11 +765,12 @@ export class FrontendService {
 	private overwriteCredentialsProperties() {
 		const { credentials } = this.loadNodesAndCredentials.types;
 		const credentialsOverwrites = this.credentialsOverwrites.getAll();
-		const { skipTypes } = this.globalConfig.credentials.overwrite;
+		const { showScopes = [], skipTypes } = this.globalConfig.credentials.overwrite;
 		for (const credential of credentials) {
 			// Clear any existing overwritten properties to prevent stale data
 			delete credential.__overwrittenProperties;
 			delete credential.__skipManagedCreation;
+			delete credential.__showManagedOAuthScopes;
 
 			const overwrittenProperties = [];
 			this.credentialTypes
@@ -792,6 +793,10 @@ export class FrontendService {
 			// (overwrite is conditional on stored data; users should provide their own credentials)
 			if (skipTypes.includes(credential.name)) {
 				credential.__skipManagedCreation = true;
+			}
+
+			if (showScopes.includes(credential.name)) {
+				credential.__showManagedOAuthScopes = true;
 			}
 
 			// Inject the per-instance JWKS URI as the default of any `jwksUri`
