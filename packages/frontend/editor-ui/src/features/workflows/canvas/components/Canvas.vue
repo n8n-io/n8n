@@ -223,7 +223,7 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
-const { addSelectedNodesToChat } = useAddNodesToChat();
+const { addSelectedNodesToChat, isNodeContextEnabled } = useAddNodesToChat();
 const instanceAiStore = useInstanceAiStore();
 const instanceAiCapability = useInstanceAiEditorCapability();
 
@@ -559,7 +559,11 @@ const keyMap = computed(() => {
 		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
 		shift_alt_u: emitWithLastSelectedNode((id) => emit('copy:test:url', id)),
 		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
-		alt_i: emitWithSelectedNodes((ids) => onAddSelectedNodesToAi(ids)),
+		// Alt+I adds the selected nodes to the AI chat. The two features are mutually
+		// exclusive (Focus AI requires !instanceAi), so they share the same key.
+		alt_i: emitWithSelectedNodes((ids) =>
+			isNodeContextEnabled.value ? onAddNodesToChat(ids) : onAddSelectedNodesToAi(ids),
+		),
 	};
 
 	fullKeymap.ctrl_g = {

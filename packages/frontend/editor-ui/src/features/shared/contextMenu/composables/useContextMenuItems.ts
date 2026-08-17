@@ -346,7 +346,7 @@ export function useContextMenuItems(
 							adjustToNumber: nodes.length,
 							interpolate: { count: nodes.length },
 						}),
-						shortcut: { metaKey: true, keys: ['Enter'] },
+						shortcut: { altKey: true, keys: ['I'] },
 						disabled: false, // It only adds chat context, so it stays enabled in read-only mode.
 					}
 				: null;
