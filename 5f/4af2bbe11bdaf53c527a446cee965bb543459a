@@ -54,6 +54,8 @@ packages/modules/instance-registry/frontend/tsconfig.json
   s_3abcbb0b42c321::t_917e8173ab9f99 1-21
 packages/modules/instance-registry/frontend/vite.config.ts
   s_3abcbb0b42c321::t_29bf31d3a9c7f4 1-23
+packages/frontend/@n8n/frontend-vite-config/index.ts
+  s_a971782e3fbe48::t_895ca407f6a1d0 45-47
 ---
 {
   "schema_version": "authorship/3.0.0",
