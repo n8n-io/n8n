@@ -2,10 +2,6 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class EngineConfig {
-	/** Whether the EXPERIMENTAL engine 2.0 is enabled. When enabled, workflows with `engineType: 'v2'` are dispatched to the new engine. */
-	@Env('N8N_ENGINE_V2_ENABLED')
-	v2Enabled: boolean = false;
-
 	/** Port the engine HTTP server listens on. */
 	@Env('N8N_ENGINE_PORT')
 	port: number = 3000;
