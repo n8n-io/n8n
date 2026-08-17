@@ -16,7 +16,12 @@ const setupSnapshotProps = {
 		.string()
 		.nullable()
 		.describe("Model provider, e.g. 'anthropic'. Null when not configured or not derivable"),
-	model_name: z.string().nullable().describe('Selected model name. Null when not configured'),
+	model_name: z
+		.string()
+		.nullable()
+		.describe(
+			'Selected model name. Null when not configured; on the page-view event also null when the name is env-managed, which the emitting frontend cannot resolve — "AI Assistant setup completed" carries the resolved name',
+		),
 	sandbox_source: z.enum(['ui', 'env', 'none']),
 	sandbox_type: z.enum(['n8n-sandbox', 'daytona']).nullable(),
 	web_search_source: z
@@ -78,7 +83,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_MODEL: {
 		name: 'User configured AI Assistant model',
 		description:
-			'An admin saved an AI Assistant model connection through the UI (PUT /instance-ai/settings), covering both the first connect and later changes: first connects are rows where previous_provider is absent. The wizard verifies the connection before this save, so a configured model has passed verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
+			'An admin saved an AI Assistant model connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
 		properties: z.object({
 			provider: z
 				.string()
@@ -96,7 +101,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_SANDBOX: {
 		name: 'User configured AI Assistant sandbox',
 		description:
-			'An admin saved an AI Assistant sandbox connection through the UI (PUT /instance-ai/settings), covering both the first connect and later changes: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
+			'An admin saved an AI Assistant sandbox connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
 		properties: z.object({
 			sandbox_type: z.enum(['n8n-sandbox', 'daytona']),
 			previous_sandbox_type: z
@@ -110,7 +115,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_WEB_SEARCH: {
 		name: 'User configured AI Assistant web search',
 		description:
-			'An admin saved an AI Assistant web search connection through the UI (PUT /instance-ai/settings), covering both the first connect and later changes: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
+			'An admin saved an AI Assistant web search connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
 		properties: z.object({
 			provider: z.enum(['brave', 'searxng']),
 			previous_provider: z

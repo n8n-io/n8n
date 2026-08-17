@@ -2442,6 +2442,8 @@ describe('InstanceAiSettingsService', () => {
 					credentialSelections: {
 						previous: expect.objectContaining({ modelCredentialId: null, modelName: null }),
 						next: expect.objectContaining({ modelCredentialId: 'model-cred', modelName: 'gpt-4' }),
+						// No connection payload in this save — a raw credential-id assignment
+						connectionsUpdated: { model: false, sandbox: false, search: false },
 					},
 				}),
 			);

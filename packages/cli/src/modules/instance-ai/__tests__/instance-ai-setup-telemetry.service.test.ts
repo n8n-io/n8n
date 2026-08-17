@@ -84,6 +84,7 @@ describe('InstanceAiSetupTelemetryService', () => {
 				credentialSelections: {
 					previous: emptySelection,
 					next: { ...emptySelection, modelCredentialId: 'model-cred', modelName: 'gpt-4' },
+					connectionsUpdated: { model: false, sandbox: false, search: false },
 				},
 			});
 			await vi.waitFor(() => expect(telemetry.track).toHaveBeenCalled());
@@ -137,6 +138,30 @@ describe('InstanceAiSetupTelemetryService', () => {
 			await service.reportSetupChanges(selection, { ...selection });
 
 			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		it('reports a key rotation that keeps the credential id and model unchanged', async () => {
+			const selection = {
+				...emptySelection,
+				modelCredentialId: 'model-cred',
+				modelName: 'gpt-4',
+			};
+
+			await service.reportSetupChanges(
+				selection,
+				{ ...selection },
+				{ model: true, sandbox: false, search: false },
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_CONFIGURED_AI_ASSISTANT_MODEL,
+				{
+					provider: 'openai',
+					model: 'gpt-4',
+					previous_provider: 'openai',
+					previous_model: 'gpt-4',
+				},
+			);
 		});
 
 		it('reports a first sandbox connect without previous properties', async () => {

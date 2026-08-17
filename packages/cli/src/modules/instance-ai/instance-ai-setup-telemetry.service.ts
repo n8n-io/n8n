@@ -75,7 +75,11 @@ export class InstanceAiSetupTelemetryService {
 
 		eventService.on('instance-ai-settings-updated', ({ credentialSelections }) => {
 			if (!credentialSelections) return;
-			void this.reportSetupChanges(credentialSelections.previous, credentialSelections.next);
+			void this.reportSetupChanges(
+				credentialSelections.previous,
+				credentialSelections.next,
+				credentialSelections.connectionsUpdated,
+			);
 		});
 	}
 
@@ -182,8 +186,10 @@ export class InstanceAiSetupTelemetryService {
 	private async emitModelConfigured(
 		previous: AdminCredentialSelection,
 		next: AdminCredentialSelection,
+		connectionUpdated: boolean,
 	): Promise<void> {
 		const changed =
+			connectionUpdated ||
 			previous.modelCredentialId !== next.modelCredentialId ||
 			previous.modelName !== next.modelName;
 		if (!changed || !next.modelCredentialId || !next.modelName) return;
@@ -203,8 +209,10 @@ export class InstanceAiSetupTelemetryService {
 	private emitSandboxConfigured(
 		previous: AdminCredentialSelection,
 		next: AdminCredentialSelection,
+		connectionUpdated: boolean,
 	): void {
 		const changed =
+			connectionUpdated ||
 			previous.daytonaCredentialId !== next.daytonaCredentialId ||
 			previous.n8nSandboxCredentialId !== next.n8nSandboxCredentialId;
 		const nextSandboxType = this.sandboxTypeOf(next);
@@ -219,8 +227,10 @@ export class InstanceAiSetupTelemetryService {
 	private async emitSearchConfigured(
 		previous: AdminCredentialSelection,
 		next: AdminCredentialSelection,
+		connectionUpdated: boolean,
 	): Promise<void> {
-		if (previous.searchCredentialId === next.searchCredentialId || !next.searchCredentialId) return;
+		const changed = connectionUpdated || previous.searchCredentialId !== next.searchCredentialId;
+		if (!changed || !next.searchCredentialId) return;
 		const [provider, previousProvider] = await Promise.all([
 			this.searchProviderForCredential(next.searchCredentialId),
 			this.searchProviderForCredential(previous.searchCredentialId),
@@ -240,12 +250,17 @@ export class InstanceAiSetupTelemetryService {
 	async reportSetupChanges(
 		previous: AdminCredentialSelection,
 		next: AdminCredentialSelection,
+		connectionsUpdated: { model: boolean; sandbox: boolean; search: boolean } = {
+			model: false,
+			sandbox: false,
+			search: false,
+		},
 	): Promise<void> {
 		if (!this.isDirectSelfManaged()) return;
 		try {
-			await this.emitModelConfigured(previous, next);
-			this.emitSandboxConfigured(previous, next);
-			await this.emitSearchConfigured(previous, next);
+			await this.emitModelConfigured(previous, next, connectionsUpdated.model);
+			this.emitSandboxConfigured(previous, next, connectionsUpdated.sandbox);
+			await this.emitSearchConfigured(previous, next, connectionsUpdated.search);
 		} catch (error) {
 			this.logger.warn('Failed to report AI Assistant setup telemetry', {
 				error: ensureError(error).message,

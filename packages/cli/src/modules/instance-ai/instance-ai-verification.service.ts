@@ -14,6 +14,7 @@ import { Service } from '@n8n/di';
 import type { ModelConfig, SandboxConfig } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 import { Telemetry } from '@/telemetry';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
@@ -25,23 +26,28 @@ const VERIFICATION_TIMEOUT_MS = 30_000;
 
 const MAX_ERROR_MESSAGE_LENGTH = 512;
 
-/** Query strings can carry API keys (e.g. ?key=...), so drop them from any URL echoed back by a provider. */
+/**
+ * Providers can echo credentials back in error messages. Scrub known secret
+ * shapes (API keys, bearer tokens, key=value pairs), drop URL query strings
+ * (e.g. ?key=...), and cap the length.
+ */
 function sanitizeVerificationError(error: unknown): string {
-	return ensureError(error)
-		.message.replace(/(https?:\/\/[^\s?]+)\?\S*/g, '$1')
+	return scrubSecretsInText(ensureError(error).message)
+		.replace(/(https?:\/\/[^\s?]+)\?\S*/g, '$1')
 		.slice(0, MAX_ERROR_MESSAGE_LENGTH);
 }
 
 function modelProviderOf(config: ModelConfig): string | null {
-	const id =
-		typeof config === 'string'
-			? config
-			: typeof config === 'object' && 'id' in config && typeof config.id === 'string'
-				? config.id
-				: null;
-	if (!id) return null;
-	const provider = id.split('/', 1)[0];
-	return provider || null;
+	if (typeof config === 'string') return config.split('/', 1)[0] || null;
+	if (typeof config !== 'object') return null;
+	if ('id' in config && typeof config.id === 'string') {
+		return config.id.split('/', 1)[0] || null;
+	}
+	// Pre-built AI SDK LanguageModel instances carry `provider` like 'anthropic.messages'.
+	if ('provider' in config && typeof config.provider === 'string') {
+		return config.provider.split('.', 1)[0] || null;
+	}
+	return null;
 }
 
 function numericStatus(error: unknown): number | undefined {

@@ -411,6 +411,38 @@ describe('InstanceAiVerificationService', () => {
 			);
 		});
 
+		it('scrubs credential-shaped values from the reported error message', async () => {
+			generateTextMock.mockRejectedValueOnce(
+				new Error('Incorrect API key provided: sk-proj-abcdef1234567890abcdef'),
+			);
+
+			await service.verifyModel(user, {});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_CONNECTION_FAILED,
+				expect.objectContaining({
+					error_message: expect.stringContaining('[REDACTED]'),
+				}),
+			);
+			expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain('sk-proj-abcdef');
+		});
+
+		it('attributes the provider for pre-built language-model configs', async () => {
+			modelService.resolveAgentModelConfig.mockResolvedValue({
+				specificationVersion: 'v2',
+				provider: 'anthropic.messages',
+				modelId: 'claude-sonnet-4',
+			} as never);
+			generateTextMock.mockRejectedValueOnce(new Error('Provider returned 401'));
+
+			await service.verifyModel(user, {});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_CONNECTION_FAILED,
+				expect.objectContaining({ provider: 'anthropic' }),
+			);
+		});
+
 		it('strips URL query strings from the reported error message', async () => {
 			generateTextMock.mockRejectedValueOnce(
 				new Error('request to https://api.example.com/v1?key=secret-key failed'),

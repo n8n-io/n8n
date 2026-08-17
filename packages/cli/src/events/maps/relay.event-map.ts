@@ -1128,6 +1128,12 @@ export type RelayEventMap = {
 		credentialSelections?: {
 			previous: InstanceAiCredentialSelection;
 			next: InstanceAiCredentialSelection;
+			/** Components whose connection payload was written in this save. Same-provider key rotations update the credential in place and keep its id, so an id diff alone cannot see them. */
+			connectionsUpdated: {
+				model: boolean;
+				sandbox: boolean;
+				search: boolean;
+			};
 		};
 	};
 

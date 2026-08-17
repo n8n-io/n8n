@@ -780,6 +780,11 @@ export class InstanceAiSettingsService {
 		this.emitSettingsUpdated(previous, next, {
 			previous: previousSelection,
 			next: credentialSelection,
+			connectionsUpdated: {
+				model: modelConnection !== undefined && modelConnection !== null,
+				sandbox: sandboxConnection !== undefined && sandboxConnection !== null,
+				search: searchConnection !== undefined && searchConnection !== null,
+			},
 		});
 
 		return this.buildAdminSettingsResponse(credentialSelection);
@@ -1825,7 +1830,11 @@ export class InstanceAiSettingsService {
 	private emitSettingsUpdated(
 		previous: PersistedAdminSettings,
 		current: PersistedAdminSettings,
-		credentialSelections?: { previous: AdminCredentialSelection; next: AdminCredentialSelection },
+		credentialSelections?: {
+			previous: AdminCredentialSelection;
+			next: AdminCredentialSelection;
+			connectionsUpdated: { model: boolean; sandbox: boolean; search: boolean };
+		},
 	): void {
 		try {
 			this.eventService.emit('instance-ai-settings-updated', {
