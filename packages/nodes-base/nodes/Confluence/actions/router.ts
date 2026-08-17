@@ -1,10 +1,11 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import * as page from './page';
+
 /**
- * Compile-checked contract for operation modules. The router body (owned by ENT-125)
- * calls `<resource>.<operation>.execute.call(this, i)` once per item, SharePoint v2
- * shape; the other op tickets (ENT-126/319/127/305/327/306) implement against this.
+ * Compile-checked contract for operation modules. The router calls
+ * `<resource>.<operation>.execute.call(this, i)` once per item.
  */
 export type ConfluenceOperation = (
 	this: IExecuteFunctions,
@@ -12,16 +13,41 @@ export type ConfluenceOperation = (
 ) => Promise<IDataObject | IDataObject[]>;
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	// Fallbacks: the shell ships properties: [], so these parameters don't exist yet
+	const items = this.getInputData();
 	const resource = this.getNodeParameter('resource', 0, '');
 	const operation = this.getNodeParameter('operation', 0, '');
 
-	switch (resource) {
-		// Op tickets (ENT-125/126/319/127/305/327/306) add their resource cases here
-		default:
-			throw new NodeOperationError(
-				this.getNode(),
-				`The operation "${resource}:${operation}" is not supported`,
+	const returnData: INodeExecutionData[] = [];
+
+	for (let i = 0; i < items.length; i++) {
+		try {
+			let responseData: IDataObject | IDataObject[];
+
+			switch (`${resource}:${operation}`) {
+				case 'page:create':
+					responseData = await page.create.execute.call(this, i);
+					break;
+				default:
+					throw new NodeOperationError(
+						this.getNode(),
+						`The operation "${resource}:${operation}" is not supported`,
+					);
+			}
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
 			);
+			returnData.push.apply(returnData, executionData);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				const message = error instanceof Error ? error.message : String(error);
+				returnData.push({ json: { error: message }, pairedItem: { item: i } });
+				continue;
+			}
+			throw error;
+		}
 	}
+
+	return [returnData];
 }
