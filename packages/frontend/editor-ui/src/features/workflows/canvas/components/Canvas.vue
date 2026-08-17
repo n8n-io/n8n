@@ -63,6 +63,7 @@ import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
 import { shouldIgnoreCanvasShortcut, type CanvasRenderData } from '../canvas.utils';
+import { consumePendingCanvasTidyUp, usePendingCanvasTidyUp } from '../canvasTidyUpQueue';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
@@ -1636,6 +1637,7 @@ function onWindowBlur() {
 const initialized = ref(false);
 
 let pendingFitViewOnInit = false;
+let pendingTidyUpOnInit: CanvasEventBusEvents['tidyUp'] | null = null;
 let pendingConnections: IConnections | null = null;
 
 // When fitView runs while the browser tab is in the background, VueFlow's
@@ -1658,6 +1660,34 @@ function onRequestFitViewOnInit() {
 	}
 	pendingFitViewOnInit = true;
 }
+
+function onRequestTidyUpOnInit(payload: CanvasEventBusEvents['tidyUp']) {
+	if (initialized.value) {
+		void onTidyUp(payload);
+		return;
+	}
+
+	pendingTidyUpOnInit = payload;
+}
+
+// Consume tidy-up requests parked in the queue (see canvasTidyUpQueue.ts).
+// A watch — not a bus listener — so requests made while no Canvas was mounted
+// (the Instance AI preview remounts NodeView on every refresh) still land here.
+const pendingCanvasTidyUp = usePendingCanvasTidyUp();
+watch(
+	pendingCanvasTidyUp,
+	(pending) => {
+		if (!pending || pending.workflowId !== workflowDocumentStore.value.workflowId) {
+			return;
+		}
+
+		const payload = consumePendingCanvasTidyUp(pending.workflowId);
+		if (payload) {
+			onRequestTidyUpOnInit(payload);
+		}
+	},
+	{ immediate: true },
+);
 
 function onRequestSetConnectionsOnInit(connections: IConnections) {
 	// Always defer — this event is only emitted during importWorkflowExact which
@@ -1705,6 +1735,14 @@ onNodesInitialized(() => {
 		const connections = pendingConnections;
 		pendingConnections = null;
 		workflowDocumentStore?.value?.setConnections(connections);
+	}
+
+	if (pendingTidyUpOnInit) {
+		const payload = pendingTidyUpOnInit;
+		pendingTidyUpOnInit = null;
+		// onTidyUp already ends in a fitView, so a pending one would be redundant
+		pendingFitViewOnInit = false;
+		void onTidyUp(payload);
 	}
 
 	if (pendingFitViewOnInit) {

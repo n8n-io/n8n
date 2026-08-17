@@ -1,6 +1,8 @@
 import { computed, ref, watch } from 'vue';
+import { useLocalStorage } from '@vueuse/core';
 import type { IconName } from '@n8n/design-system';
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
+import { LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY } from '@/app/constants/localStorage';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
@@ -214,6 +216,36 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 
 	const workflowRefreshKey = ref(0);
 
+	// Workflows that should get a one-shot layout tidy once the agent finishes.
+	// Server-side builds position group members as if the groups were expanded,
+	// so collapsed chips render staircased until a layout runs with the chips as
+	// units (ADO-5798). localStorage-backed so the marker survives page reloads
+	// and other tabs of the same user (a reload mid-run would otherwise lose it
+	// and leave the workflow staircased forever). Consumed — for the active
+	// workflow — by InstanceAiWorkflowPreview when the agent goes idle.
+	const pendingTidyWorkflowIds = useLocalStorage<string[]>(
+		LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY,
+		[],
+	);
+
+	const pendingTidyWorkflowId = computed(() => {
+		const active = activeWorkflowId.value;
+		return active && pendingTidyWorkflowIds.value.includes(active) ? active : null;
+	});
+
+	function markPendingTidy(workflowId: string) {
+		if (!pendingTidyWorkflowIds.value.includes(workflowId)) {
+			pendingTidyWorkflowIds.value = [...pendingTidyWorkflowIds.value, workflowId];
+		}
+	}
+
+	function clearPendingTidy() {
+		const active = activeWorkflowId.value;
+		if (active) {
+			pendingTidyWorkflowIds.value = pendingTidyWorkflowIds.value.filter((id) => id !== active);
+		}
+	}
+
 	const latestBuildResult = computed(() => {
 		for (let i = thread.messages.length - 1; i >= 0; i--) {
 			const msg = thread.messages[i];
@@ -243,6 +275,11 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 			activeTabId.value = latestBuildResult.value.workflowId;
 			isPreviewOpen.value = true;
 			workflowRefreshKey.value++;
+
+			// Edit-mode builds keep the user's manual layout untouched
+			if (!latestBuildResult.value.fromEditBuilder) {
+				markPendingTidy(latestBuildResult.value.workflowId);
+			}
 		},
 		{ flush: 'sync' },
 	);
@@ -458,6 +495,8 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		dataTableRefreshKey,
 		isPreviewVisible,
 		workflowRefreshKey,
+		pendingTidyWorkflowId,
+		clearPendingTidy,
 		selectTab,
 		closePreview,
 		openWorkflowPreview,

@@ -22,6 +22,12 @@ export interface BuildResult {
 	workflowId: string;
 	/** Unique per build — changes even when the same workflow is rebuilt. */
 	toolCallId: string;
+	/**
+	 * True when the build came from an edit-mode builder (spawned with a concrete
+	 * `targetResource.id`), i.e. the AI modified an existing workflow rather than
+	 * creating one.
+	 */
+	fromEditBuilder: boolean;
 }
 
 export interface BuilderTarget {
@@ -54,13 +60,22 @@ type AgentArtifactTarget = Pick<AgentArtifactResult, 'agentId' | 'projectId'>;
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * and toolCallId from the latest successful build-workflow / submit-workflow tool result.
+ * and toolCallId from the latest successful build-workflow / submit-workflow
+ * tool result, flagging whether it ran under an edit-mode builder.
  */
-export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | undefined {
+export function getLatestBuildResult(
+	node: InstanceAiAgentNode,
+	inEditBuilder = false,
+): BuildResult | undefined {
+	const nodeIsEditBuilder = inEditBuilder || isEditModeBuilderNode(node);
+
 	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestBuildResult(node.children[i]);
-		if (childResult) return childResult;
+		const childResult = getLatestBuildResult(node.children[i], nodeIsEditBuilder);
+		if (childResult) {
+			return childResult;
+		}
 	}
+
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		if (
@@ -71,7 +86,11 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 		) {
 			const result = tc.result as Record<string, unknown>;
 			if (result.success === true && typeof result.workflowId === 'string') {
-				return { workflowId: result.workflowId, toolCallId: tc.toolCallId };
+				return {
+					workflowId: result.workflowId,
+					toolCallId: tc.toolCallId,
+					fromEditBuilder: nodeIsEditBuilder,
+				};
 			}
 		}
 	}
@@ -81,6 +100,18 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 /** A workflow-builder sub-agent node, identified by kind or role. */
 function isBuilderNode(node: InstanceAiAgentNode): boolean {
 	return node.kind === 'builder' || node.role === 'workflow-builder';
+}
+
+/**
+ * An edit-mode builder is spawned with a concrete `targetResource.id` — it
+ * modifies an existing workflow instead of creating one.
+ */
+function isEditModeBuilderNode(node: InstanceAiAgentNode): boolean {
+	return (
+		isBuilderNode(node) &&
+		node.targetResource?.type === 'workflow' &&
+		typeof node.targetResource.id === 'string'
+	);
 }
 
 /**
