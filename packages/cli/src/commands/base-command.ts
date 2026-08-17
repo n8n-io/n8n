@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import {
 	inDevelopment,
 	inTest,
@@ -15,6 +14,7 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
 import {
 	BinaryDataBlobManager,
 	BinaryDataConfig,
@@ -25,10 +25,10 @@ import {
 	ExecutionContextHookRegistry,
 	StorageConfig,
 } from 'n8n-core';
-import { sleep } from '@n8n/utils/sleep';
 import { Expression, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
+import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
@@ -43,6 +43,8 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { MessageTransportService } from '@/scaling/transport/message-transport.service';
+import { TransportModeService } from '@/scaling/transport-mode.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
@@ -143,13 +145,38 @@ export abstract class BaseCommand<F = never> {
 
 		await Container.get(LoadNodesAndCredentials).init();
 
+		// Hypervisor children run all transports over IPC and have no Redis to
+		// lock against; they keep the in-process provider. Per-child lock scope
+		// is a known gap until a lock host lands on the hypervisor channel.
 		const useRedisForLocking =
-			this.globalConfig.executions.mode === 'queue' ||
-			this.globalConfig.multiMainSetup.enabled ||
-			this.globalConfig.cache.backend === 'redis';
+			!Container.get(TransportModeService).isUnderHypervisor() &&
+			(this.globalConfig.executions.mode === 'queue' ||
+				this.globalConfig.multiMainSetup.enabled ||
+				this.globalConfig.cache.backend === 'redis');
 		if (useRedisForLocking) {
 			const { RedisLockService } = await import('@/scaling/redis-lock.service.js');
 			Container.get(LockService).setProvider(Container.get(RedisLockService));
+		}
+
+		// `Publisher`/`Subscriber` only exchange messages in queue mode - `MessageTransportService`
+		// defaults to an inert `NoopMessageTransport`, and this is the single call site that opts a
+		// deployment into `RedisMessageTransport` or `HypervisorMessageTransport` instead. The
+		// decision comes from `TransportModeService` (explicit `N8N_TRANSPORT_PUBSUB`, defaulting
+		// to `redis`), the same mechanism `Start.leaderElection()` uses for `leaderElection` and
+		// `ScalingService.setupQueue()` uses for the execution queue - not re-derived here. Redis
+		// remains required for locking in queue mode (`useRedisForLocking` above), so dropping
+		// Redis entirely still waits on the locking/cache facet.
+		const transportModeService = Container.get(TransportModeService);
+		if (transportModeService.resolve('pubsub') === 'redis') {
+			const { RedisMessageTransport } = await import(
+				'@/scaling/transport/redis-message-transport.js'
+			);
+			Container.get(MessageTransportService).setProvider(Container.get(RedisMessageTransport));
+		} else if (transportModeService.isUnderHypervisor()) {
+			const { HypervisorMessageTransport } = await import(
+				'@/scaling/transport/hypervisor-message-transport.js'
+			);
+			Container.get(MessageTransportService).setProvider(Container.get(HypervisorMessageTransport));
 		}
 
 		await this.dbConnection

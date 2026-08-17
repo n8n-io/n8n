@@ -46,11 +46,10 @@ import { NodeTypes } from '@/node-types';
 import { withExpressionIsolate } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
+import type { QueueJob } from './queue/job-queue.interface';
 import type {
-	Job,
 	JobFinishedMessage,
 	JobFinishedProps,
-	JobId,
 	JobResult,
 	RespondToWebhookMessage,
 	McpResponseMessage,
@@ -64,7 +63,7 @@ import { WebhookResponseRelay } from './webhook-response-relay';
  */
 @Service()
 export class JobProcessor {
-	private readonly runningJobs: Record<JobId, RunningJob> = {};
+	private readonly runningJobs: Record<string, RunningJob> = {};
 
 	constructor(
 		private readonly logger: Logger,
@@ -81,7 +80,7 @@ export class JobProcessor {
 		this.logger = this.logger.scoped('scaling');
 	}
 
-	async processJob(job: Job): Promise<JobResult> {
+	async processJob(job: QueueJob): Promise<JobResult> {
 		const { executionId, loadStaticData } = job.data;
 
 		const execution = await this.executionPersistence.findSingleExecution(executionId, {
@@ -222,7 +221,7 @@ export class JobProcessor {
 					workerId: this.instanceSettings.hostId,
 				};
 
-				await job.progress(msg);
+				await job.sendMessage(msg);
 				return;
 			}
 
@@ -234,7 +233,7 @@ export class JobProcessor {
 				workerId: this.instanceSettings.hostId,
 			};
 
-			await job.progress(msg);
+			await job.sendMessage(msg);
 		});
 
 		lifecycleHooks.addHandler('sendChunk', async (chunk: StructuredChunk): Promise<void> => {
@@ -245,7 +244,7 @@ export class JobProcessor {
 				workerId: this.instanceSettings.hostId,
 			};
 
-			await job.progress(msg);
+			await job.sendMessage(msg);
 		});
 
 		additionalData.executionId = executionId;
@@ -357,7 +356,7 @@ export class JobProcessor {
 			...props,
 		};
 
-		await job.progress(msg);
+		await job.sendMessage(msg);
 
 		// For MCP Trigger executions with tool calls, execute the tool and send result
 		if (
@@ -448,7 +447,7 @@ export class JobProcessor {
 				workerId: this.instanceSettings.hostId,
 			};
 
-			await job.progress(mcpMsg);
+			await job.sendMessage(mcpMsg);
 		} else if (job.data.isMcpExecution && job.data.mcpSessionId) {
 			// For MCP Service executions or MCP Trigger without tool call, send basic response
 			const mcpMsg: McpResponseMessage = {
@@ -461,7 +460,7 @@ export class JobProcessor {
 				workerId: this.instanceSettings.hostId,
 			};
 
-			await job.progress(mcpMsg);
+			await job.sendMessage(mcpMsg);
 		}
 
 		/**
@@ -486,7 +485,7 @@ export class JobProcessor {
 		};
 	}
 
-	stopJob(jobId: JobId) {
+	stopJob(jobId: string) {
 		const runningJob = this.runningJobs[jobId];
 		if (!runningJob) return;
 
@@ -502,7 +501,7 @@ export class JobProcessor {
 		delete this.runningJobs[jobId];
 	}
 
-	getRunningJobIds(): JobId[] {
+	getRunningJobIds(): string[] {
 		return Object.keys(this.runningJobs);
 	}
 

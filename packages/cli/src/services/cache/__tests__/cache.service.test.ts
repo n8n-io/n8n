@@ -4,6 +4,7 @@ import { sleep } from '@n8n/utils/sleep';
 import random from 'lodash/random';
 
 import config from '@/config';
+import { TransportModeService } from '@/scaling/transport-mode.service';
 import { CacheService } from '@/services/cache/cache.service';
 
 vi.mock('ioredis', () => {
@@ -26,8 +27,8 @@ for (const backend of ['memory', 'redis'] as const) {
 
 		beforeAll(async () => {
 			globalConfig = Container.get(GlobalConfig);
-			globalConfig.cache.backend = backend;
-			cacheService = new CacheService(globalConfig);
+			globalConfig.transport.cache = backend;
+			cacheService = new CacheService(globalConfig, new TransportModeService(globalConfig));
 			await cacheService.init();
 		});
 
@@ -40,19 +41,8 @@ for (const backend of ['memory', 'redis'] as const) {
 			test('should select backend based on config', () => {
 				expect(cacheService.isMemory()).toBe(backend === 'memory');
 				expect(cacheService.isRedis()).toBe(backend === 'redis');
+				expect(cacheService.isIpc()).toBe(false);
 			});
-
-			if (backend === 'redis') {
-				describe('when backend is redis', () => {
-					test('with auto backend and queue mode, should select redis', async () => {
-						globalConfig.executions.mode = 'queue';
-
-						await cacheService.init();
-
-						expect(cacheService.isRedis()).toBe(true);
-					});
-				});
-			}
 
 			if (backend === 'memory') {
 				test('should honor max size when enough', async () => {
@@ -323,3 +313,25 @@ for (const backend of ['memory', 'redis'] as const) {
 		});
 	});
 }
+
+describe('ipc', () => {
+	// The ipc store's behavior is covered by ipc.cache-manager.test.ts (it needs the
+	// hypervisor primary). Here we only assert selection, then dispose the store's
+	// process listener without touching it (a real op would time out with no primary).
+	it('selects the ipc store when N8N_TRANSPORT_CACHE=ipc', async () => {
+		const globalConfig = Container.get(GlobalConfig);
+		globalConfig.transport.cache = 'ipc';
+		const cacheService = new CacheService(globalConfig, new TransportModeService(globalConfig));
+
+		await cacheService.init();
+
+		try {
+			expect(cacheService.isIpc()).toBe(true);
+			expect(cacheService.isMemory()).toBe(false);
+			expect(cacheService.isRedis()).toBe(false);
+		} finally {
+			(cacheService as unknown as { cache: { store: { dispose(): void } } }).cache.store.dispose();
+			globalConfig.transport.cache = 'memory';
+		}
+	});
+});

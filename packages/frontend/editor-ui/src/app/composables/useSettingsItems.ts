@@ -169,6 +169,16 @@ export function useSettingsItems() {
 		});
 
 		menuItems.push({
+			id: 'settings-cluster',
+			icon: 'network',
+			label: i18n.baseText('settings.cluster'),
+			position: 'top',
+			available:
+				settingsStore.isQueueModeEnabled && canUserAccessRouteByName(VIEWS.CLUSTER_SETTINGS),
+			route: { to: { name: VIEWS.CLUSTER_SETTINGS } },
+		});
+
+		menuItems.push({
 			id: 'settings-opentelemetry',
 			icon: 'telescope',
 			label: i18n.baseText('settings.opentelemetry'),

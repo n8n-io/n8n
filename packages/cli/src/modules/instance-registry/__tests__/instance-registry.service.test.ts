@@ -1,9 +1,10 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
+
+import type { TransportModeService } from '@/scaling/transport-mode.service';
 
 import { InstanceRegistryService } from '../instance-registry.service';
 import { REGISTRY_CONSTANTS } from '../instance-registry.types';
@@ -68,8 +69,13 @@ const makeInstanceSettings = (overrides: Partial<InstanceSettings> = {}) =>
 		...overrides,
 	});
 
-const makeExecutionsConfig = (mode: 'regular' | 'queue' = 'regular') =>
-	mock<ExecutionsConfig>({ mode });
+type RegistryMode = 'memory' | 'redis' | 'ipc';
+
+const makeTransportMode = (registryMode: RegistryMode = 'memory') => {
+	const transportMode = mock<TransportModeService>();
+	transportMode.resolve.mockReturnValue(registryMode as never);
+	return transportMode;
+};
 
 const makeLogger = () => {
 	const logger = mock<Logger>();
@@ -98,29 +104,29 @@ describe('InstanceRegistryService', () => {
 
 	const createService = (
 		settingsOverrides: Partial<InstanceSettings> = {},
-		executionMode: 'regular' | 'queue' = 'regular',
+		registryMode: RegistryMode = 'memory',
 	) =>
 		new InstanceRegistryService(
 			makeInstanceSettings(settingsOverrides),
-			makeExecutionsConfig(executionMode),
+			makeTransportMode(registryMode),
 			logger,
 		);
 
 	describe('backend selection', () => {
-		it('should select memory storage when not multi-main and not queue mode', async () => {
-			service = createService({ isMultiMain: false }, 'regular');
+		it('should select memory storage by default (N8N_TRANSPORT_INSTANCE_REGISTRY=memory)', async () => {
+			service = createService({}, 'memory');
 
 			await service.init();
 
 			expect(service.storageBackend).toBe('memory');
 		});
 
-		it('should select memory storage for worker in regular mode', async () => {
-			service = createService({ isMultiMain: false, instanceType: 'worker' }, 'regular');
+		it('should select ipc storage when configured', async () => {
+			service = createService({}, 'ipc');
 
 			await service.init();
 
-			expect(service.storageBackend).toBe('memory');
+			expect(service.storageBackend).toBe('ipc');
 		});
 
 		describe('redis selection', () => {
@@ -131,27 +137,9 @@ describe('InstanceRegistryService', () => {
 				Container.set(RedisInstanceStorage, new MockCtor());
 			};
 
-			it('should select redis storage when isMultiMain', async () => {
+			it('should select redis storage when configured', async () => {
 				bindRedisStub();
-				service = createService({ isMultiMain: true }, 'regular');
-
-				await service.init();
-
-				expect(service.storageBackend).toBe('redis');
-			});
-
-			it('should select redis storage in queue mode even when not multi-main', async () => {
-				bindRedisStub();
-				service = createService({ isMultiMain: false }, 'queue');
-
-				await service.init();
-
-				expect(service.storageBackend).toBe('redis');
-			});
-
-			it('should select redis storage when multi-main and queue mode', async () => {
-				bindRedisStub();
-				service = createService({ isMultiMain: true }, 'queue');
+				service = createService({}, 'redis');
 
 				await service.init();
 
@@ -281,7 +269,7 @@ describe('InstanceRegistryService', () => {
 
 		it('should reflect instanceRole changes in heartbeat', async () => {
 			const settings = makeInstanceSettings({ instanceRole: 'unset' });
-			service = new InstanceRegistryService(settings, makeExecutionsConfig(), logger);
+			service = new InstanceRegistryService(settings, makeTransportMode(), logger);
 			await service.init();
 
 			// Simulate role change (e.g., leader election completed)

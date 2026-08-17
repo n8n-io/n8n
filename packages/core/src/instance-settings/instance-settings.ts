@@ -69,7 +69,7 @@ export class InstanceSettings {
 
 	hmacSignatureSecret: string;
 
-	readonly instanceType: InstanceType;
+	instanceType: InstanceType;
 
 	constructor(
 		private readonly config: InstanceSettingsConfig,

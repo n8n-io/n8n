@@ -5,10 +5,6 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
-
-import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import { Start } from '../start';
-import { WaitTracker } from '@/wait-tracker';
 import { mock } from 'vitest-mock-extended';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -26,10 +22,14 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { JwtService } from '@/services/jwt.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import { WaitTracker } from '@/wait-tracker';
+
+import { Start } from '../start';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
@@ -84,7 +84,6 @@ describe('Start - AuthRolesService initialization', () => {
 		isMultiMain: boolean,
 		isLeader: boolean,
 	) => {
-		// @ts-expect-error - Read-only property, but needed for testing
 		instanceSettings.instanceType = instanceType;
 		Object.defineProperty(instanceSettings, 'isMultiMain', {
 			get: vi.fn(() => isMultiMain),

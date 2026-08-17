@@ -1,6 +1,8 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 
 import type { InstanceStorage } from './instance-storage.interface';
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 
 /**
  * In-memory storage backend for single-instance deployments.
@@ -18,6 +20,9 @@ export class MemoryInstanceStorage implements InstanceStorage {
 	}
 
 	async heartbeat(registration: InstanceRegistration): Promise<void> {
+		Container.get(Logger).warn('Heartbeat called on MemoryInstanceStorage, which is a no-op', {
+			registration,
+		});
 		this.localRegistration = registration;
 	}
 

@@ -48,6 +48,7 @@ import { SsoConfig } from './configs/sso.config';
 import { SsrfProtectionConfig } from './configs/ssrf-protection.config';
 import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
+import { TransportConfig } from './configs/transport.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
 import { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
@@ -169,6 +170,9 @@ export class GlobalConfig {
 
 	@Nested
 	queue: ScalingModeConfig;
+
+	@Nested
+	transport: TransportConfig;
 
 	@Nested
 	logging: LoggingConfig;

@@ -1,11 +1,11 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
 import { N8N_VERSION } from '@/constants';
+import { TransportModeService } from '@/scaling/transport-mode.service';
 
 import { REGISTRY_CONSTANTS } from './instance-registry.types';
 import type { InstanceStorage } from './storage/instance-storage.interface';
@@ -28,7 +28,7 @@ export class InstanceRegistryService {
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
-		private readonly executionsConfig: ExecutionsConfig,
+		private readonly transportMode: TransportModeService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('instance-registry');
@@ -89,7 +89,7 @@ export class InstanceRegistryService {
 		return await this.storage.cleanupStaleMembers();
 	}
 
-	get storageBackend(): 'redis' | 'memory' {
+	get storageBackend(): 'redis' | 'memory' | 'ipc' {
 		return this.storage.kind;
 	}
 
@@ -103,13 +103,19 @@ export class InstanceRegistryService {
 			version: N8N_VERSION,
 			registeredAt: this.registeredAt,
 			lastSeen: Date.now(),
+			pid: process.pid,
 		};
 	}
 
 	private async selectStorage(): Promise<InstanceStorage> {
-		const useRedis = this.instanceSettings.isMultiMain || this.executionsConfig.mode === 'queue';
+		const mode = this.transportMode.resolve('instanceRegistry');
 
-		if (useRedis) {
+		if (mode === 'ipc') {
+			const { IpcInstanceStorage } = await import('./storage/ipc-instance-storage.js');
+			return new IpcInstanceStorage();
+		}
+
+		if (mode === 'redis') {
 			const { RedisInstanceStorage } = await import('./storage/redis-instance-storage.js');
 			const { Container } = await import('@n8n/di');
 			return Container.get(RedisInstanceStorage);

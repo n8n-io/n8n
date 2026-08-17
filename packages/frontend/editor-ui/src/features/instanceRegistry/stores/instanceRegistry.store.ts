@@ -1,4 +1,5 @@
-import type { ClusterInfoResponse } from '@n8n/api-types';
+import type { ClusterInfo, ClusterInfoResponse } from '@n8n/api-types';
+import * as clusterInfoApi from '@n8n/rest-api-client/api/cluster-info';
 import * as instanceRegistryApi from '@n8n/rest-api-client/api/instance-registry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
@@ -8,6 +9,10 @@ export const useInstanceRegistryStore = defineStore('instanceRegistry', () => {
 	const rootStore = useRootStore();
 
 	const clusterInfo = ref<ClusterInfoResponse | null>(null);
+
+	// The process that answered the last /cluster-info poll plus, under the
+	// hypervisor, the live view of every forked process.
+	const clusterProcessInfo = ref<ClusterInfo | null>(null);
 
 	const isAvailable = computed(() => clusterInfo.value !== null);
 
@@ -21,9 +26,21 @@ export const useInstanceRegistryStore = defineStore('instanceRegistry', () => {
 		}
 	}
 
+	async function fetchClusterProcessInfo(): Promise<void> {
+		try {
+			clusterProcessInfo.value = await clusterInfoApi.getClusterProcessInfo(
+				rootStore.restApiContext,
+			);
+		} catch (error) {
+			console.debug('Failed to fetch cluster process info', error);
+		}
+	}
+
 	return {
 		clusterInfo,
+		clusterProcessInfo,
 		isAvailable,
 		fetchClusterInfo,
+		fetchClusterProcessInfo,
 	};
 });

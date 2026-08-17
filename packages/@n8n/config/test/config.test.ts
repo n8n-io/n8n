@@ -404,6 +404,13 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		transport: {
+			leaderElection: 'redis',
+			cache: 'memory',
+			pubsub: 'redis',
+			queue: 'redis',
+			instanceRegistry: 'memory',
+		},
 		taskRunners: {
 			mode: 'internal',
 			path: '/runners',

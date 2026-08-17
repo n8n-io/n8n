@@ -74,6 +74,7 @@
     "watch": "turbo run watch --concurrency=64",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
+    "hypervisor": "./packages/cli/bin/n8n hypervisor",
     "dev:computer-use": "pnpm --filter @n8n/computer-use build && node packages/@n8n/computer-use/dist/cli.js serve",
     "stop:computer-use": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'computer-use stopped'"
   },

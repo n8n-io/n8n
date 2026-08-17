@@ -1,5 +1,4 @@
 import type { RunningJobSummary } from '@n8n/api-types';
-import type Bull from 'bull';
 import type {
 	ExecutionError,
 	ExecutionStatus,
@@ -9,12 +8,6 @@ import type {
 	StructuredChunk,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
-
-export type JobQueue = Bull.Queue<JobData>;
-
-export type Job = Bull.Job<JobData>;
-
-export type JobId = Job['id'];
 
 export type JobData = {
 	workflowId: string;
@@ -52,10 +45,6 @@ export type JobData = {
 export type JobResult = {
 	success: boolean;
 };
-
-export type JobStatus = Bull.JobStatus;
-
-export type JobOptions = Bull.JobOptions;
 
 /**
  * Message sent by main to worker and vice versa about a job. `JobMessage` is

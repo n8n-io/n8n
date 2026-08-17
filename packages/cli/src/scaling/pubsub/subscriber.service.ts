@@ -1,13 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
 import debounce from 'lodash/debounce';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { LogMetadata } from 'n8n-workflow';
-
-import { RedisClientService } from '@/services/redis-client.service';
 
 import { PubSubEventBus } from './pubsub.eventbus';
 import type { PubSub } from './pubsub.types';
@@ -16,6 +13,7 @@ import {
 	WORKER_RESPONSE_PUBSUB_CHANNEL,
 	MCP_RELAY_PUBSUB_CHANNEL,
 } from '../constants';
+import { MessageTransportService } from '../transport/message-transport.service';
 
 /**
  * Responsible for subscribing to the pubsub channels used by scaling mode.
@@ -32,8 +30,6 @@ export interface McpRelayMessage {
 
 @Service()
 export class Subscriber {
-	private readonly client: SingleNodeClient | MultiNodeClient;
-
 	private readonly commandChannel: string;
 
 	private readonly workerResponseChannel: string;
@@ -49,7 +45,7 @@ export class Subscriber {
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly pubsubEventBus: PubSubEventBus,
-		private readonly redisClientService: RedisClientService,
+		private readonly messageTransport: MessageTransportService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly globalConfig: GlobalConfig,
 	) {
@@ -63,32 +59,34 @@ export class Subscriber {
 		this.commandChannel = `${prefix}:${COMMAND_PUBSUB_CHANNEL}`;
 		this.workerResponseChannel = `${prefix}:${WORKER_RESPONSE_PUBSUB_CHANNEL}`;
 		this.mcpRelayChannel = `${prefix}:${MCP_RELAY_PUBSUB_CHANNEL}`;
+	}
 
-		this.client = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
+	/** Routes an incoming raw message the same way regardless of which transport delivered it. */
+	private handleIncoming(channel: string, str: string) {
+		// Handle MCP relay messages separately
+		if (channel === this.mcpRelayChannel) {
+			this.handleMcpRelayMessage(str);
+			return;
+		}
 
-		const handlerFn = (msg: PubSub.Command | PubSub.WorkerResponse) => {
-			this.pubsubEventBus.emit(this.eventNameFrom(msg), msg.payload);
-		};
+		const msg = this.parseMessage(str, channel);
+		if (!msg) return;
+		if (!msg.debounce) return this.emitToEventBus(msg);
 
-		this.client.on('message', (channel: string, str: string) => {
-			// Handle MCP relay messages separately
-			if (channel === this.mcpRelayChannel) {
-				this.handleMcpRelayMessage(str);
-				return;
-			}
+		const eventName = this.eventNameFrom(msg);
+		let handler = this.debouncedHandlers.get(eventName);
+		if (!handler) {
+			handler = debounce(
+				(m: PubSub.Command | PubSub.WorkerResponse) => this.emitToEventBus(m),
+				300,
+			);
+			this.debouncedHandlers.set(eventName, handler);
+		}
+		handler(msg);
+	}
 
-			const msg = this.parseMessage(str, channel);
-			if (!msg) return;
-			if (!msg.debounce) return handlerFn(msg);
-
-			const eventName = this.eventNameFrom(msg);
-			let handler = this.debouncedHandlers.get(eventName);
-			if (!handler) {
-				handler = debounce(handlerFn, 300);
-				this.debouncedHandlers.set(eventName, handler);
-			}
-			handler(msg);
-		});
+	private emitToEventBus(msg: PubSub.Command | PubSub.WorkerResponse) {
+		this.pubsubEventBus.emit(this.eventNameFrom(msg), msg.payload);
 	}
 
 	/**
@@ -116,10 +114,6 @@ export class Subscriber {
 		}
 	}
 
-	getClient() {
-		return this.client;
-	}
-
 	getCommandChannel() {
 		return this.commandChannel;
 	}
@@ -135,18 +129,13 @@ export class Subscriber {
 	// @TODO: Use `@OnShutdown()` decorator
 	shutdown() {
 		for (const handler of this.debouncedHandlers.values()) handler.cancel();
-		this.client.disconnect();
+		void this.messageTransport.shutdown();
 	}
 
 	async subscribe(channel: string) {
-		await this.client.subscribe(channel, (error) => {
-			if (error) {
-				this.logger.error(`Failed to subscribe to channel ${channel}`, { error });
-				return;
-			}
-
-			this.logger.debug(`Subscribed to channel ${channel}`);
-		});
+		await this.messageTransport.subscribe(channel, (message) =>
+			this.handleIncoming(channel, message),
+		);
 	}
 
 	private eventNameFrom(msg: PubSub.Command | PubSub.WorkerResponse) {

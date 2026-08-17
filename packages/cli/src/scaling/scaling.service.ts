@@ -17,25 +17,20 @@ import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
 
-import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
 import { JobProcessor } from './job-processor';
+import type { IJobQueue, JobStatus, QueueJob } from './queue/job-queue.interface';
 import type {
-	JobQueue,
-	Job,
 	JobData,
-	JobOptions,
-	JobStatus,
-	JobId,
 	JobFinishedProps,
 	QueueRecoveryContext,
-	JobMessage,
 	JobFailedMessage,
 } from './scaling.types';
+import { TransportModeService } from './transport-mode.service';
 import { decodeRelayedWebhookResponse, WebhookResponseRelay } from './webhook-response-relay';
 
 @Service()
 export class ScalingService {
-	private queue: JobQueue;
+	private jobQueue: IJobQueue;
 
 	private jobResults = new Map<string, JobFinishedProps>();
 
@@ -50,6 +45,7 @@ export class ScalingService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
 		private readonly webhookResponseRelay: WebhookResponseRelay,
+		private readonly transportModeService: TransportModeService,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -57,21 +53,17 @@ export class ScalingService {
 	// #region Lifecycle
 
 	async setupQueue() {
-		const { default: BullQueue } = await import('bull');
-		const { RedisClientService } = await import('@/services/redis-client.service.js');
+		if (this.jobQueue) return;
 
-		if (this.queue) return;
-
-		const service = Container.get(RedisClientService);
-
-		const bullPrefix = this.globalConfig.queue.bull.prefix;
-		const prefix = service.toValidPrefix(bullPrefix);
-
-		this.queue = new BullQueue(QUEUE_NAME, {
-			prefix,
-			settings: { ...this.globalConfig.queue.bull.settings, maxStalledCount: 0 },
-			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
-		});
+		const mode = this.transportModeService.resolve('queue');
+		if (mode === 'ipc') {
+			const { IpcJobQueue } = await import('./queue/ipc-job-queue.js');
+			this.jobQueue = Container.get(IpcJobQueue);
+		} else {
+			const { BullJobQueue } = await import('./queue/bull-job-queue.js');
+			this.jobQueue = Container.get(BullJobQueue);
+		}
+		await this.jobQueue.start();
 
 		this.registerListeners();
 
@@ -79,30 +71,37 @@ export class ScalingService {
 
 		this.scheduleQueueMetrics();
 
-		const { McpServer, QueuedExecutionStrategy, RedisSessionStore } = await import(
-			'@n8n/n8n-nodes-langchain/mcp/core'
-		);
-		const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+		// The MCP session store needs a cross-process KV, which today only the
+		// Redis-backed Publisher provides. Skip it under ipc until the KV facet
+		// is ported to the hypervisor channel (cache service work).
+		if (mode === 'redis') {
+			const { McpServer, QueuedExecutionStrategy, RedisSessionStore } = await import(
+				'@n8n/n8n-nodes-langchain/mcp/core'
+			);
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 
-		const publisher = Container.get(Publisher);
+			const publisher = Container.get(Publisher);
 
-		const MCP_SESSION_TTL = 86400;
-		const getMcpSessionKey = (sessionId: string) =>
-			`${this.globalConfig.redis.prefix}:mcp-session:${sessionId}`;
+			const MCP_SESSION_TTL = 86400;
+			const getMcpSessionKey = (sessionId: string) =>
+				`${this.globalConfig.redis.prefix}:mcp-session:${sessionId}`;
 
-		const mcpServer = McpServer.instance(this.logger);
-		const redisStore = new RedisSessionStore(
-			{
-				set: async (key, value, ttl) => await publisher.set(key, value, ttl),
-				get: async (key) => await publisher.get(key),
-				clear: async (key) => await publisher.clear(key),
-			},
-			getMcpSessionKey,
-			MCP_SESSION_TTL,
-		);
+			const mcpServer = McpServer.instance(this.logger);
+			const redisStore = new RedisSessionStore(
+				{
+					set: async (key, value, ttl) => await publisher.set(key, value, ttl),
+					get: async (key) => await publisher.get(key),
+					clear: async (key) => await publisher.clear(key),
+				},
+				getMcpSessionKey,
+				MCP_SESSION_TTL,
+			);
 
-		mcpServer.setSessionStore(redisStore);
-		mcpServer.setExecutionStrategy(new QueuedExecutionStrategy(mcpServer.getPendingCallsManager()));
+			mcpServer.setSessionStore(redisStore);
+			mcpServer.setExecutionStrategy(
+				new QueuedExecutionStrategy(mcpServer.getPendingCallsManager()),
+			);
+		}
 
 		this.logger.debug('Queue setup completed');
 	}
@@ -111,13 +110,13 @@ export class ScalingService {
 		this.assertWorker();
 		this.assertQueue();
 
-		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+		this.jobQueue.registerProcessor(concurrency, async (job: QueueJob) => {
 			try {
 				this.eventService.emit('job-dequeued', {
 					executionId: job.data.executionId,
 					workflowId: job.data.workflowId,
 					hostId: this.instanceSettings.hostId,
-					jobId: job.id.toString(),
+					jobId: job.id,
 				});
 
 				if (!this.hasValidJobData(job)) {
@@ -135,7 +134,7 @@ export class ScalingService {
 		this.logger.debug('Worker setup completed');
 	}
 
-	private async reportJobProcessingError(error: Error, job: Job) {
+	private async reportJobProcessingError(error: Error, job: QueueJob) {
 		const { executionId } = job.data;
 
 		this.logger.error(`Worker errored while running execution ${executionId} (job ${job.id})`, {
@@ -152,7 +151,7 @@ export class ScalingService {
 			errorStack: error.stack ?? '',
 		};
 
-		await job.progress(msg);
+		await job.sendMessage(msg);
 
 		this.errorReporter.error(error, { executionId });
 
@@ -168,7 +167,7 @@ export class ScalingService {
 	}
 
 	private async pauseQueue() {
-		await this.queue.pause(true, true); // no more jobs will be enqueued or picked up
+		await this.jobQueue.pause(); // no more jobs will be enqueued or picked up
 		this.logger.debug('Paused queue');
 	}
 
@@ -196,7 +195,7 @@ export class ScalingService {
 	}
 
 	async pingQueue() {
-		await this.queue.client.ping();
+		await this.jobQueue.ping();
 	}
 
 	// #endregion
@@ -211,9 +210,7 @@ export class ScalingService {
 	}
 
 	async getPendingJobCounts() {
-		const { active, waiting } = await this.queue.getJobCounts();
-
-		return { active, waiting };
+		return await this.jobQueue.getPendingCounts();
 	}
 
 	/**
@@ -225,15 +222,7 @@ export class ScalingService {
 	async addJob(jobData: JobData, { priority }: { priority: number }) {
 		strict(priority > 0 && priority <= Number.MAX_SAFE_INTEGER);
 
-		const { keepLastCompleted, keepLastFailed } = this.globalConfig.executions.queueRetention;
-
-		const jobOptions: JobOptions = {
-			priority,
-			removeOnComplete: keepLastCompleted,
-			removeOnFail: keepLastFailed,
-		};
-
-		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
+		const job = await this.jobQueue.enqueue(jobData, { priority });
 
 		const { executionId } = jobData;
 		const jobId = job.id;
@@ -243,28 +232,26 @@ export class ScalingService {
 			executionId,
 			workflowId: jobData.workflowId,
 			hostId: this.instanceSettings.hostId,
-			jobId: jobId.toString(),
+			jobId,
 		});
 
 		return job;
 	}
 
-	async getJob(jobId: JobId) {
-		return await this.queue.getJob(jobId);
+	async getJob(jobId: string) {
+		return await this.jobQueue.getJob(jobId);
 	}
 
 	async findJobsByStatus(statuses: JobStatus[]) {
-		const jobs = await this.queue.getJobs(statuses);
-
-		return jobs.filter((job) => job !== null);
+		return await this.jobQueue.findJobsByStatus(statuses);
 	}
 
-	async stopJob(job: Job) {
+	async stopJob(job: QueueJob) {
 		const props = { jobId: job.id, executionId: job.data.executionId };
 
 		try {
 			if (await job.isActive()) {
-				await job.progress({ kind: 'abort-job' }); // being processed by worker
+				await job.sendMessage({ kind: 'abort-job' }); // being processed by worker
 				this.logger.debug('Sent abort signal to worker', props);
 				return true;
 			}
@@ -307,13 +294,11 @@ export class ScalingService {
 	 * Register listeners on a `worker` process for Bull queue events.
 	 */
 	private registerWorkerListeners() {
-		this.queue.on('global:progress', (jobId: JobId, msg: unknown) => {
-			if (!this.isJobMessage(msg)) return;
-
+		this.jobQueue.onMessage((jobId, msg) => {
 			if (msg.kind === 'abort-job') this.jobProcessor.stopJob(jobId);
 		});
 
-		this.queue.on('error', (error: Error) => {
+		this.jobQueue.onError((error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
 
 			/**
@@ -336,7 +321,7 @@ export class ScalingService {
 	 * Register listeners on a `main` or `webhook` process for Bull queue events.
 	 */
 	private registerMainOrWebhookListeners() {
-		this.queue.on('error', (error: Error) => {
+		this.jobQueue.onError((error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
 
 			this.logger.error('Queue errored', { error });
@@ -344,11 +329,9 @@ export class ScalingService {
 			throw error;
 		});
 
-		this.queue.on('global:progress', (jobId: JobId, msg: unknown) => {
-			if (!this.isJobMessage(msg)) return;
-
-			// completion and failure are reported via `global:progress` to convey more details
-			// than natively provided by Bull in `global:completed` and `global:failed` events
+		this.jobQueue.onMessage((jobId, msg) => {
+			// completion and failure are reported via the job message channel to convey
+			// more details than natively provided by the queue's own outcome events
 
 			switch (msg.kind) {
 				case 'send-chunk':
@@ -433,14 +416,8 @@ export class ScalingService {
 		});
 
 		if (this.isQueueMetricsEnabled) {
-			this.queue.on('global:completed', () => this.jobCounters.completed++);
-			this.queue.on('global:failed', () => this.jobCounters.failed++);
+			this.jobQueue.onJobOutcome((outcome) => this.jobCounters[outcome]++);
 		}
-	}
-
-	/** Whether the argument is a message sent via Bull's internal pubsub setup. */
-	private isJobMessage(candidate: unknown): candidate is JobMessage {
-		return typeof candidate === 'object' && candidate !== null && 'kind' in candidate;
 	}
 
 	/**
@@ -516,7 +493,7 @@ export class ScalingService {
 	// #endregion
 
 	private assertQueue() {
-		if (this.queue) return;
+		if (this.jobQueue) return;
 
 		throw new UnexpectedError('This method must be called after `setupQueue`');
 	}
@@ -651,7 +628,7 @@ export class ScalingService {
 			: jsonStringify(error, { replaceCircularRefs: true });
 	}
 
-	private hasValidJobData(job: Job) {
+	private hasValidJobData(job: QueueJob) {
 		return isObjectLiteral(job.data) && 'executionId' in job.data && 'loadStaticData' in job.data;
 	}
 

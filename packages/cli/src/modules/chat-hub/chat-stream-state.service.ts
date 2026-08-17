@@ -3,10 +3,11 @@ import { Logger } from '@n8n/backend-common';
 import { ChatHubConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnShutdown } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
 import { InstanceSettings } from 'n8n-core';
 
+import { TransportModeService } from '@/scaling/transport-mode.service';
 import { RedisClientService } from '@/services/redis-client.service';
 
 /**
@@ -74,7 +75,12 @@ export class ChatStreamStateService {
 		private readonly redisClientService: RedisClientService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
-		this.useRedis = this.instanceSettings.isMultiMain || this.executionsConfig.mode === 'queue';
+		// Hypervisor children have no Redis; they fall back to the in-memory
+		// store (per-process, a known gap until the KV facet lands on the
+		// hypervisor channel).
+		this.useRedis =
+			(this.instanceSettings.isMultiMain || this.executionsConfig.mode === 'queue') &&
+			!Container.get(TransportModeService).isUnderHypervisor();
 		this.redisPrefix = `${this.globalConfig.redis.prefix}:chat-hub:stream:`;
 		this.cleanupDelayMs = this.chatHubConfig.streamStateTtl * Time.seconds.toMilliseconds;
 

@@ -51,7 +51,8 @@ import type { ResumableExecution } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
-import type { Job, JobData } from '@/scaling/scaling.types';
+import type { QueueJob } from '@/scaling/queue/job-queue.interface';
+import type { JobData } from '@/scaling/scaling.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -548,7 +549,7 @@ export class WorkflowRunner {
 
 		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
 		//       Check if they get retried by default and how often.
-		let job: Job;
+		let job: QueueJob;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
 			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
@@ -590,17 +591,12 @@ export class WorkflowRunner {
 				try {
 					await job.finished();
 				} catch (error) {
-					if (
-						error instanceof Error &&
-						typeof error.message === 'string' &&
-						error.message.includes('job stalled more than maxStalledCount')
-					) {
-						error = new MaxStalledCountError(error);
+					if (error instanceof MaxStalledCountError) {
 						this.eventService.emit('job-stalled', {
 							executionId: job.data.executionId,
 							workflowId: job.data.workflowId,
 							hostId: this.instanceSettings.hostId,
-							jobId: job.id.toString(),
+							jobId: job.id,
 						});
 					}
 
@@ -648,7 +644,7 @@ export class WorkflowRunner {
 						status: fullExecutionData.status,
 						waitTill: fullExecutionData.waitTill,
 						data: fullExecutionData.data,
-						jobId: job.id.toString(),
+						jobId: job.id,
 						storedAt: fullExecutionData.storedAt,
 					};
 				} else {
@@ -667,7 +663,7 @@ export class WorkflowRunner {
 								metadata: jobResult.metadata,
 							},
 						}),
-						jobId: job.id.toString(),
+						jobId: job.id,
 						storedAt: this.storageConfig.modeTag,
 					};
 				}

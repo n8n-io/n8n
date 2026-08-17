@@ -14,6 +14,7 @@ import { Container } from '@n8n/di';
 export class InstanceRegistryModule implements ModuleInterface {
 	async init() {
 		await import('./instance-registry.controller.js');
+		await import('./cluster-info.controller.js');
 
 		const { InstanceRegistryService } = await import('./instance-registry.service.js');
 		const instanceRegistryService = Container.get(InstanceRegistryService);
