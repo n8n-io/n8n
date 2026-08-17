@@ -56,13 +56,15 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 
 	// Markup with no whitespace between tags runs sibling text together in
 	// `textContent`, where a match can span text the model never sees as one
-	// token — and then nothing replaces it.
-	const texts = new Set([
-		document.documentElement.textContent ?? '',
-		elementText(document.documentElement),
-	]);
-	for (const text of texts) {
-		for (const hit of findRegexSecretHits(text)) addHit(hits, hit);
+	// token — and then nothing replaces it. Such a match still marks the page
+	// sensitive, but it cannot become a credential.
+	const rendered = elementText(document.documentElement);
+	for (const hit of findRegexSecretHits(rendered)) addHit(hits, hit);
+	for (const hit of findRegexSecretHits(document.documentElement.textContent ?? '')) {
+		if (!rendered.includes(hit.value)) {
+			hit.captureBlocked = 'it only appears where markup runs text together';
+		}
+		addHit(hits, hit);
 	}
 
 	// Inputs/textareas that are password-shaped or whose label reads as a secret

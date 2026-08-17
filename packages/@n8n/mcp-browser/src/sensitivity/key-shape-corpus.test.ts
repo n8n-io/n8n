@@ -32,8 +32,6 @@ const KEY_SHAPES: Array<{ name: string; key: string }> = [
 	{ name: 'unknown dotted shape', key: 'Zt7.9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1BcRmZxQ' },
 ];
 
-const VISIBLE_TEXT = 'Your API key Copy Show';
-
 // How a provider console renders a fresh key: a text node in a panel with
 // copy/reveal affordances, so there is no ref to capture from.
 function revealPanel(key: string): string {
@@ -72,6 +70,19 @@ function visibleText(html: string): string {
 	return elementText(new JSDOM(html).window.document.body);
 }
 
+function normalize(text: string): string {
+	return text.replace(/\s+/g, ' ').trim();
+}
+
+/** What must remain once every marker is stripped: the page without the key. */
+function textWithoutKey(render: (key: string) => string): string {
+	return normalize(visibleText(render('')));
+}
+
+function residue(html: string): string {
+	return normalize(redactedSnapshot(html).replace(new RegExp(REDACTION_MARKER_PATTERN, 'g'), ''));
+}
+
 /** The redacted page text the model reads for a page rendering a key. */
 function redactedSnapshot(html: string): string {
 	const sensitivity = analyzeHtmlSensitivity(probe(html));
@@ -102,12 +113,7 @@ async function capturedVia(marker: string, html: string): Promise<string | undef
 
 describe('current provider key shapes', () => {
 	it.each(KEY_SHAPES)('leaves nothing of a $name key visible', ({ key }) => {
-		const withoutMarkers = redactedSnapshot(revealPanel(key)).replace(
-			new RegExp(REDACTION_MARKER_PATTERN, 'g'),
-			'',
-		);
-
-		expect(withoutMarkers.replace(/\s+/g, ' ').trim()).toBe(VISIBLE_TEXT);
+		expect(residue(revealPanel(key))).toBe(textWithoutKey(revealPanel));
 	});
 
 	it.each(KEY_SHAPES)('captures a $name key whole via its marker', async ({ key }) => {
@@ -121,11 +127,11 @@ describe('current provider key shapes', () => {
 	it('redacts a low-entropy key that only the provider pattern finds', () => {
 		const key = `AQ.${'AbCdEfGhIj'.repeat(3)}Ab`;
 
-		expect(redactedSnapshot(minifiedRevealPanel(key))).not.toContain(key);
+		expect(residue(minifiedRevealPanel(key))).toBe(textWithoutKey(minifiedRevealPanel));
 	});
 
 	it.each(KEY_SHAPES)('leaves nothing of a $name key visible in minified markup', ({ key }) => {
-		expect(redactedSnapshot(minifiedRevealPanel(key))).not.toContain(key);
+		expect(residue(minifiedRevealPanel(key))).toBe(textWithoutKey(minifiedRevealPanel));
 	});
 
 	// Coverage is chosen over labelling: where an entropy span reaches further

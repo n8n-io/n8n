@@ -12,6 +12,8 @@ export interface SecretHit {
 	 * span is a guess, and markers are what the model has already seen.
 	 */
 	captureValue?: string;
+	/** Why this hit must not become a credential, when it must not. */
+	captureBlocked?: string;
 }
 
 type RedactionMarkerHit = Pick<SecretHit, 'type' | 'value' | 'ref'>;
@@ -64,11 +66,12 @@ export function findRegexSecretHits(input: string): SecretHit[] {
 			const key = `${slug}:${value}`;
 			// Fixed-count patterns match only their first N characters of a longer
 			// token, so record the whole token for capturing.
-			const span = expandToTokenSpan(input, match.index, value.length);
+			const { span, delimited } = expandToTokenSpan(input, match.index, value.length);
 			const existing = hits.get(key);
 			if (!existing) {
 				const hit: SecretHit = { type: slug, value };
 				if (span !== value) hit.captureValue = span;
+				if (!delimited) hit.captureBlocked = 'its surrounding text has no delimiter';
 				hits.set(key, hit);
 			} else if (span.length < (existing.captureValue ?? existing.value).length) {
 				// Narrowest wins: a wider span carries its neighbours into the value.

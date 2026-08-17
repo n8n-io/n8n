@@ -34,6 +34,17 @@ describe('analyzeHtmlSensitivity', () => {
 		expect(result.ok && result.hits).toContainEqual({ type: 'google_api_key', value: key });
 	});
 
+	// A key split across siblings is only visible in concatenated `textContent`,
+	// and redaction cannot replace it there — but the page must still count as
+	// sensitive, which is what gates screenshots.
+	it('still flags a page whose key only appears in concatenated markup', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(`<p><span>AQ.</span><span>${'AbCdEfGhIj'.repeat(3)}Ab</span></p>`),
+		);
+
+		expect(result.ok && result.sensitive).toBe(true);
+	});
+
 	it('finds regex hits in plain DOM text', () => {
 		const result = analyzeHtmlSensitivity(probe(`<p>${ANTHROPIC}</p>`));
 		expect(result.ok && result.sensitive).toBe(true);

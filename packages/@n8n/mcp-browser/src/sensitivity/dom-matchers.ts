@@ -154,7 +154,7 @@ export function highEntropyCandidates(text: string): string[] {
 	const spans = new Set<string>();
 	for (const match of text.matchAll(/[A-Za-z0-9_/+=-]{20,}/g)) {
 		if (shannonEntropy(match[0]) >= 4.5) {
-			spans.add(expandToTokenSpan(text, match.index, match[0].length));
+			spans.add(expandToTokenSpan(text, match.index, match[0].length).span);
 		}
 	}
 	return [...spans];

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
 import { createConnectedTool, pageIdField } from './helpers';
+import type { SecretHit } from '../redaction/redact';
 import { containsRedactionMarker, createRedactionMarkerFormatter } from '../redaction/redact';
 import { analyzeHtmlSensitivity } from '../sensitivity/analyze-html';
 import type {
@@ -69,14 +70,22 @@ function browserCaptureSecret(
 				if (sensitivity.ok) {
 					const formatMarker = createRedactionMarkerFormatter(sensitivity.hits);
 					const markerMap = sensitivity.hits.reduce((result, hit) => {
-						result.set(formatMarker(hit), hit.captureValue ?? hit.value);
+						result.set(formatMarker(hit), hit);
 						return result;
-					}, new Map<string, string>());
+					}, new Map<string, SecretHit>());
 
-					if (!markerMap.get(redactedKey)) {
+					const hit = markerMap.get(redactedKey);
+					if (!hit) {
 						throw new Error(`The marker "${redactedKey}" was not found.`);
 					}
-					value = markerMap.get(redactedKey)!;
+					// Better to send the agent back for a fresh snapshot than to store a
+					// value that may be a fragment of the real one.
+					if (hit.captureBlocked) {
+						throw new Error(
+							`"${redactedKey}" cannot be captured because ${hit.captureBlocked}. Take a fresh snapshot and capture the element that holds the value.`,
+						);
+					}
+					value = hit.captureValue ?? hit.value;
 				} else {
 					throw new Error(`Secret capturing failed with error: ${sensitivity.error}`);
 				}

@@ -1,7 +1,11 @@
 import { expandToTokenSpan } from '../token-span';
 
 function expand(text: string, match: string): string {
-	return expandToTokenSpan(text, text.indexOf(match), match.length);
+	return expandToTokenSpan(text, text.indexOf(match), match.length).span;
+}
+
+function delimited(text: string, match: string): boolean {
+	return expandToTokenSpan(text, text.indexOf(match), match.length).delimited;
 }
 
 describe('expandToTokenSpan', () => {
@@ -43,6 +47,15 @@ describe('expandToTokenSpan', () => {
 		expect(expand('https://api.test/v1?key=AQ.abc123&alt=json', 'abc123')).toBe('AQ.abc123');
 	});
 
+	it.each(['|', '*', '·'])('stops at %s used as an inline separator', (separator) => {
+		expect(expand(`AQ.abc123${separator}Copy`, 'abc123')).toBe('AQ.abc123');
+	});
+
+	// `+` is base64 and `~` is the Azure key shape, so both must keep crossing.
+	it.each(['+', '~'])('crosses %s, which occurs inside secrets', (inner) => {
+		expect(expand(`AQ.abc123${inner}def456 rest`, 'abc123')).toBe(`AQ.abc123${inner}def456`);
+	});
+
 	it('stops at a dash used as prose punctuation', () => {
 		expect(expand('Key—AQ.abc123 rest', 'abc123')).toBe('AQ.abc123');
 	});
@@ -51,5 +64,11 @@ describe('expandToTokenSpan', () => {
 		const run = 'x'.repeat(5000);
 
 		expect(expand(`${run}abc123${run}`, 'abc123')).toBe('abc123');
+	});
+
+	// Callers must be able to tell a whole token from a match they fell back to.
+	it('reports whether the token was delimited', () => {
+		expect(delimited('key AQ.abc123 rest', 'abc123')).toBe(true);
+		expect(delimited(`${'x'.repeat(5000)}abc123`, 'abc123')).toBe(false);
 	});
 });
