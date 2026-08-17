@@ -83,6 +83,20 @@ describe('SessionTimelineChart', () => {
 		expect(w.emitted('select')).toBeUndefined();
 	});
 
+	it('keeps only failed calls active when filtering by Error', () => {
+		const w = mountChart({
+			items: [
+				item({ kind: 'tool', toolName: 'successful_tool', toolOutcome: 'success' }),
+				item({ kind: 'tool', toolName: 'failed_tool', toolOutcome: 'error' }),
+			],
+			visibleKinds: new Set(['error']),
+		});
+		const blocks = w.findAll('[data-test-id="timeline-block"]');
+
+		expect(blocks[0].attributes('style')).toMatch(/opacity:\s*0\.15/);
+		expect(blocks[1].attributes('style')).not.toMatch(/opacity:\s*0\.15/);
+	});
+
 	it('renders idle blobs interleaved with events in chronological order', () => {
 		const w = mountChart({ idleRanges: [{ start: 1500, end: 2000 }] });
 		expect(w.findAll('[data-test-id="timeline-idle"]')).toHaveLength(1);
@@ -194,6 +208,7 @@ describe('SessionTimelineChart', () => {
 		try {
 			const block = w.get('[data-test-id="timeline-block"]');
 			expect(block.attributes('aria-label')).toContain('Error');
+			expect(block.attributes('data-error')).toBe('true');
 
 			await block.trigger('focus');
 			await vi.runAllTimersAsync();

@@ -10,6 +10,7 @@ export type EventKind =
 export type ToolCallOutcome = 'success' | 'error';
 export type HitlRequestType = 'approval' | 'interaction';
 export type HitlResponseStatus = 'approved' | 'declined' | 'responded';
+export type TimelineStatusFilterKey = 'approved' | 'declined' | 'error';
 
 export interface TimelineItem {
 	kind: EventKind;
@@ -61,9 +62,15 @@ export interface IdleRange {
 	end: number;
 }
 
-export interface FilterOption {
+interface BaseFilterOption {
 	key: string;
 	label: string;
-	color: string;
 	count: number;
 }
+
+export type FilterOption =
+	| (BaseFilterOption & { presentation: 'swatch'; color: string })
+	| (BaseFilterOption & {
+			presentation: 'badge';
+			badgeTheme: 'default' | 'success' | 'danger';
+	  });

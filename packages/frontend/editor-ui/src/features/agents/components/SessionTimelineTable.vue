@@ -52,6 +52,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.responseReceived');
 		case 'declined':
 			return i18n.baseText('agentSessions.timeline.declined');
+		case 'error':
+			return i18n.baseText('agentSessions.timeline.error');
 		default:
 			return key;
 	}

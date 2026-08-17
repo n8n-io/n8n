@@ -177,6 +177,45 @@ describe('SessionTimelineTable', () => {
 		},
 	);
 
+	it.each([
+		['approved', 'Approved'],
+		['declined', 'Declined'],
+		['error', 'Error'],
+	] as const)('filters timeline rows by %s status', (filterKey, label) => {
+		const w = mountTable({
+			items: [
+				{
+					kind: 'hitl-response',
+					executionId: 'e1',
+					timestamp: 1000,
+					toolName: 'approved_action',
+					hitlRequestType: 'approval',
+					hitlResponseStatus: 'approved',
+				},
+				{
+					kind: 'hitl-response',
+					executionId: 'e1',
+					timestamp: 2000,
+					toolName: 'declined_action',
+					hitlRequestType: 'approval',
+					hitlResponseStatus: 'declined',
+				},
+				{
+					kind: 'tool',
+					executionId: 'e1',
+					timestamp: 3000,
+					toolName: 'failed_tool',
+					toolOutcome: 'error',
+				},
+			],
+			selectedIndex: null,
+			visibleKinds: new Set<string>([filterKey]),
+		});
+
+		expect(w.findAll('[data-test-id="timeline-row"]')).toHaveLength(1);
+		expect(w.text()).toContain(label);
+	});
+
 	it('hides items whose filterKey is not in visibleKinds', () => {
 		const w = mountTable({
 			items: makeItems(),

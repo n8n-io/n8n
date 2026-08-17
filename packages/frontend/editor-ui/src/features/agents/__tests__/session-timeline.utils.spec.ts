@@ -8,7 +8,9 @@ import {
 	formatDuration,
 	IDLE_THRESHOLD_MS,
 	flattenExecutionsToTimelineItems,
+	itemStatusFilterKey,
 	matchesSearch,
+	matchesTimelineFilters,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -77,6 +79,30 @@ describe('itemFilterKey', () => {
 		expect(itemFilterKey(item({ kind: 'tool', toolName: 'http' }))).toBe('tool');
 		expect(itemFilterKey(item({ kind: 'tool', toolName: 'search' }))).toBe('tool');
 		expect(itemFilterKey(item({ kind: 'tool' }))).toBe('tool');
+	});
+});
+
+describe('timeline status filters', () => {
+	const approved = item({ kind: 'hitl-response', hitlResponseStatus: 'approved' });
+	const declined = item({ kind: 'hitl-response', hitlResponseStatus: 'declined' });
+	const errored = item({ kind: 'tool', toolOutcome: 'error' });
+
+	it('derives only the statuses exposed by the filter menu', () => {
+		expect(itemStatusFilterKey(approved)).toBe('approved');
+		expect(itemStatusFilterKey(declined)).toBe('declined');
+		expect(itemStatusFilterKey(errored)).toBe('error');
+		expect(
+			itemStatusFilterKey(item({ kind: 'hitl-response', hitlResponseStatus: 'responded' })),
+		).toBeUndefined();
+		expect(itemStatusFilterKey(item({ kind: 'tool', toolOutcome: 'success' }))).toBeUndefined();
+	});
+
+	it('matches items by either event kind or status', () => {
+		expect(matchesTimelineFilters(approved, new Set(['approved']))).toBe(true);
+		expect(matchesTimelineFilters(approved, new Set(['hitl-response']))).toBe(true);
+		expect(matchesTimelineFilters(approved, new Set(['declined']))).toBe(false);
+		expect(matchesTimelineFilters(errored, new Set(['error']))).toBe(true);
+		expect(matchesTimelineFilters(errored, new Set(['tool']))).toBe(true);
 	});
 });
 

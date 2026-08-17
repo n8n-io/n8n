@@ -9,8 +9,9 @@ import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import {
 	formatDuration,
 	hitlTimelineName,
+	isErroredToolCallTimelineItem,
 	isSubAgentTimelineItem,
-	itemFilterKey,
+	matchesTimelineFilters,
 	timelineItemStatus,
 } from '../session-timeline.utils';
 import { chartBlockStyleForItem } from '../session-timeline.styles';
@@ -78,8 +79,7 @@ const segments = computed<Segment[]>(() => {
 });
 
 function isDimmed(item: TimelineItem): boolean {
-	if (props.visibleKinds.size === 0) return false;
-	return !props.visibleKinds.has(itemFilterKey(item));
+	return !matchesTimelineFilters(item, props.visibleKinds);
 }
 
 function cellStyle(seg: Segment): Record<string, string> {
@@ -384,8 +384,13 @@ onBeforeUnmount(() => {
 					type="button"
 					data-test-id="timeline-block"
 					:data-timeline-index="seg.index"
+					:data-error="isErroredToolCallTimelineItem(seg.item) ? 'true' : undefined"
 					:aria-label="blockAriaLabel(seg.item)"
-					:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
+					:class="[
+						$style.block,
+						props.selectedIndex === seg.index && $style.selected,
+						isErroredToolCallTimelineItem(seg.item) && $style.error,
+					]"
 					:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
 					:style="eventStyle(seg.item)"
 					@mouseenter="showPopover(seg, $event)"
@@ -494,10 +499,20 @@ onBeforeUnmount(() => {
 }
 
 .selected {
-	outline: 2px solid var(--session-timeline-chart-block-color);
-	outline-offset: 1px;
+	outline: var(--focus--border-width) solid var(--session-timeline-chart-block-color);
+	outline-offset: var(--spacing--5xs);
 	/* Lift above neighbouring idle stripes so the highlight outline doesn't
 	   get covered by the adjacent .idle background. */
+	z-index: 2;
+}
+
+.error {
+	outline: var(--focus--border-width) solid var(--border-color--danger);
+	outline-offset: var(--spacing--5xs);
+	z-index: 1;
+}
+
+.selected.error {
 	z-index: 2;
 }
 

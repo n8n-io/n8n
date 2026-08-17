@@ -15,15 +15,20 @@ import {
 	flattenExecutionsToTimelineItems,
 	computeIdleRanges,
 	sessionBounds,
-	itemFilterKey,
 	chartBlockColor,
 	filteredTimelineItemIndexes,
 	isSubAgentTimelineItem,
+	itemStatusFilterKey,
 } from '@/features/agents/session-timeline.utils';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
-import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
+import type {
+	EventKind,
+	FilterOption,
+	TimelineItem,
+	TimelineStatusFilterKey,
+} from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
@@ -110,25 +115,56 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.responseReceived');
 		case 'declined':
 			return i18n.baseText('agentSessions.timeline.declined');
+		case 'error':
+			return i18n.baseText('agentSessions.timeline.error');
 		default:
 			return key;
 	}
 }
 
+const STATUS_FILTER_OPTIONS = [
+	{ key: 'approved', badgeTheme: 'success' },
+	{ key: 'declined', badgeTheme: 'default' },
+	{ key: 'error', badgeTheme: 'danger' },
+] satisfies Array<{
+	key: TimelineStatusFilterKey;
+	badgeTheme: 'default' | 'success' | 'danger';
+}>;
+
 const filterOptions = computed<FilterOption[]>(() => {
-	const counts = new Map<string, number>();
-	const colorByKey = new Map<string, string>();
+	const kindCounts = new Map<EventKind, number>();
+	const statusCounts = new Map<TimelineStatusFilterKey, number>();
 	for (const item of items.value) {
-		const key = itemFilterKey(item);
-		counts.set(key, (counts.get(key) ?? 0) + 1);
-		if (!colorByKey.has(key)) colorByKey.set(key, chartBlockColor(item.kind));
+		kindCounts.set(item.kind, (kindCounts.get(item.kind) ?? 0) + 1);
+		const statusKey = itemStatusFilterKey(item);
+		if (statusKey) {
+			statusCounts.set(statusKey, (statusCounts.get(statusKey) ?? 0) + 1);
+		}
 	}
-	return Array.from(counts.entries()).map(([key, count]) => ({
-		key,
-		label: labelForKey(key),
-		color: colorByKey.get(key) ?? 'var(--border-color)',
-		count,
-	}));
+	return [
+		...Array.from(kindCounts.entries()).map(
+			([key, count]): FilterOption => ({
+				key,
+				label: labelForKey(key),
+				presentation: 'swatch',
+				color: chartBlockColor(key),
+				count,
+			}),
+		),
+		...STATUS_FILTER_OPTIONS.flatMap(({ key, badgeTheme }): FilterOption[] => {
+			const count = statusCounts.get(key);
+			if (!count) return [];
+			return [
+				{
+					key,
+					label: labelForKey(key),
+					presentation: 'badge',
+					badgeTheme,
+					count,
+				},
+			];
+		}),
+	];
 });
 
 const selectedItem = computed<TimelineItem | null>(() =>

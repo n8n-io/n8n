@@ -6,6 +6,7 @@ import type {
 	HitlResponseStatus,
 	IdleRange,
 	TimelineItem,
+	TimelineStatusFilterKey,
 	ToolCallOutcome,
 } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
@@ -110,6 +111,23 @@ export function itemFilterKey(item: TimelineItem): string {
 	return item.kind;
 }
 
+export function itemStatusFilterKey(item: TimelineItem): TimelineStatusFilterKey | undefined {
+	if (isErroredToolCallTimelineItem(item)) return 'error';
+	if (
+		item.kind === 'hitl-response' &&
+		(item.hitlResponseStatus === 'approved' || item.hitlResponseStatus === 'declined')
+	) {
+		return item.hitlResponseStatus;
+	}
+	return undefined;
+}
+
+export function matchesTimelineFilters(item: TimelineItem, selectedFilters: Set<string>): boolean {
+	if (selectedFilters.size === 0 || selectedFilters.has(itemFilterKey(item))) return true;
+	const statusKey = itemStatusFilterKey(item);
+	return statusKey !== undefined && selectedFilters.has(statusKey);
+}
+
 export type TimelineLabelResolver = (key: string) => string;
 
 function searchableValueText(value: unknown): string | undefined {
@@ -144,6 +162,9 @@ export function timelineItemSearchText(
 	}
 	if (item.hitlResponseStatus) {
 		parts.push(labelForKey(item.hitlResponseStatus));
+	}
+	if (isErroredToolCallTimelineItem(item)) {
+		parts.push(labelForKey('error'));
 	}
 
 	parts.push(
@@ -187,7 +208,7 @@ export function filteredTimelineItemIndexes(
 		.map((item, index) => ({ item, index }))
 		.filter(
 			({ item }) =>
-				(visibleKinds.size === 0 || visibleKinds.has(itemFilterKey(item))) &&
+				matchesTimelineFilters(item, visibleKinds) &&
 				matchesSearch(item, searchQuery.trim(), labelForKey),
 		)
 		.map(({ index }) => index);
