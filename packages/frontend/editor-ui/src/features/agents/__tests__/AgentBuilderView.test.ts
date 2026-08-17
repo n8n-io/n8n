@@ -404,13 +404,10 @@ const mountedWrappers: Array<ReturnType<typeof mount>> = [];
 // this, a still-mounted view's pending debounce timers and in-flight save
 // chains keep running into later tests, where they consume shared mock
 // `*Once` queues and emit bus events against the next test's component.
+// A second unmount after a test's own `wrapper.unmount()` is a no-op.
 afterEach(async () => {
 	for (const wrapper of mountedWrappers.splice(0)) {
-		try {
-			wrapper.unmount();
-		} catch {
-			// Already unmounted by the test itself.
-		}
+		wrapper.unmount();
 	}
 	await flushPromises();
 });
@@ -2965,17 +2962,11 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 
 	it('shows the loading spinner while initialize() is in flight and hides it after', async () => {
-		const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
-		const pinia = createPinia();
-		setActivePinia(pinia);
-
 		// A promise that we control — lets us capture the intermediate loading state.
 		let resolveAgent!: (v: unknown) => void;
 		getAgentMock.mockReturnValueOnce(new Promise((r) => (resolveAgent = r)));
 
-		const wrapper = mount(AgentBuilderView, {
-			global: { plugins: [pinia], stubs: commonStubs },
-		});
+		const wrapper = await renderView({ waitForAsyncSetup: false });
 
 		// initialize() hasn't resolved yet → spinner visible, content hidden.
 		await nextTick();
@@ -2992,15 +2983,9 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 
 	it('clears the loading spinner and shows an error when initialize() throws (finally path)', async () => {
-		const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
-		const pinia = createPinia();
-		setActivePinia(pinia);
-
 		getAgentMock.mockRejectedValueOnce(new Error('network error'));
 
-		const wrapper = mount(AgentBuilderView, {
-			global: { plugins: [pinia], stubs: commonStubs },
-		});
+		const wrapper = await renderView({ waitForAsyncSetup: false });
 
 		await flushPromises();
 
