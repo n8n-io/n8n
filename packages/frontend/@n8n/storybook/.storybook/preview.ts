@@ -1,8 +1,9 @@
-// Import from deep paths, not the '@n8n/design-system' barrel: preview.ts is a
-// TurboSnap global, and the barrel's `export * from './components'` would make
+// Import from the subpath entries, not the '@n8n/design-system' barrel: preview.ts
+// is a TurboSnap global, and the barrel's `export * from './components'` would make
 // every component a global dep, forcing a full snapshot on any component change.
-import { IconBodyLoaderKey } from '@n8n/design-system/composables/useIconBodyLoader';
-import { loadLucideIconBody } from '@n8n/design-system/icons/lucide';
+// Both specifiers are published `exports` keys, so they resolve outside this
+// monorepo alias too.
+import { IconBodyLoaderKey, loadLucideIconBody } from '@n8n/design-system/icons/lucide';
 import { N8nPlugin } from '@n8n/design-system/plugin';
 import { i18nInstance } from '@n8n/i18n';
 import { setup } from '@storybook/vue3';
