@@ -486,11 +486,16 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 
 export function finalizeItems(items: INodeCreateElement[]): INodeCreateElement[] {
 	return items
-		.map((item) => ({
-			...item,
-			uuid: `${item.key}-${uuidv4()}`,
-			properties: { ...item.properties },
-		}))
+		.map((item) =>
+			item.type !== 'node'
+				? { ...item, uuid: `${item.key}-${uuidv4()}` }
+				: {
+						...item,
+						uuid: `${item.key}-${uuidv4()}`,
+						// Clone so applyNodeTags cannot stamp a stale credits tag onto baselineItems.
+						properties: { ...item.properties },
+					},
+		)
 		.map(applyNodeTags);
 }
 
