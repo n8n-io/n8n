@@ -5,8 +5,22 @@ import {
 	SENSITIVE_ARIA_LABEL_PATTERN,
 	SENSITIVE_FIELD_LABEL_PATTERN,
 	SENSITIVE_TESTID_PATTERN,
+	highEntropyCandidates,
 	shannonEntropy,
 } from './dom-matchers';
+
+describe('highEntropyCandidates', () => {
+	// A large inline script is one long undelimited run. Expansion must not
+	// rescan it for every match, or sensitivity analysis stalls the tool call.
+	it('stays linear on a large run of high-entropy segments', () => {
+		const text = Array.from({ length: 3200 }, () => 'aB3xY9zQ7wE2rT5yU8iO1pL4kJ6hG0fD').join('.');
+
+		const started = performance.now();
+		highEntropyCandidates(text);
+
+		expect(performance.now() - started).toBeLessThan(1000);
+	});
+});
 
 describe('shannonEntropy', () => {
 	it('returns 0 for empty and repeated strings', () => {

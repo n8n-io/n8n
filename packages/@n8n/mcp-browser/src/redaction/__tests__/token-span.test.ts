@@ -47,7 +47,7 @@ describe('expandToTokenSpan', () => {
 		expect(expand('https://api.test/v1?key=AQ.abc123&alt=json', 'abc123')).toBe('AQ.abc123');
 	});
 
-	it.each(['|', '*', '·'])('stops at %s used as an inline separator', (separator) => {
+	it.each(['|', '*', '·', '…'])('stops at %s used as an inline separator', (separator) => {
 		expect(expand(`AQ.abc123${separator}Copy`, 'abc123')).toBe('AQ.abc123');
 	});
 
