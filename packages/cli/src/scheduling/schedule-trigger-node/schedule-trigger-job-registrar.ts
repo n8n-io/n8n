@@ -320,6 +320,8 @@ export class ScheduleTriggerJobRegistrar {
 		});
 
 		const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
+		// `skip` matches the legacy engine, which never runs a missed occurrence
+		// late. Running late is a per-node opt-in (see `resolveMisfirePolicy`).
 		const summary = await this.jobProvisioner.provision(
 			workflowId,
 			nodeId,
@@ -421,15 +423,20 @@ function withResolvedTimezone(schedule: Schedule, defaultTimezone: string): Sche
 }
 
 /**
- * Anything other than an explicit `coalesce` resolves to skipping, so an
+ * Any value other than an explicit policy resolves to skipping, so an
  * unrecognised value does not fail the activation. No `typeVersion` check is
  * needed: `Workflow`'s constructor drops a parameter its `displayOptions` hide,
  * so a node older than the option cannot arrive carrying it.
  */
 function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
-	return node.parameters?.misfirePolicy === ScheduledJobMisfirePolicy.Coalesce
-		? ScheduledJobMisfirePolicy.Coalesce
-		: ScheduledJobMisfirePolicy.Skip;
+	switch (node.parameters?.misfirePolicy) {
+		case 'coalesce':
+			return ScheduledJobMisfirePolicy.Coalesce;
+		case 'coalesce_owner':
+			return ScheduledJobMisfirePolicy.CoalesceOwner;
+		default:
+			return ScheduledJobMisfirePolicy.Skip;
+	}
 }
 
 function resolveMisfireGraceSeconds(

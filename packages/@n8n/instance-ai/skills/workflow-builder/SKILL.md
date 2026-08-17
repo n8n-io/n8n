@@ -286,7 +286,8 @@ When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
 
 - The workflow is verified by structured tool evidence.
-- Setup is required and `workflows(action="setup")` has been routed or deferred.
+- Setup is required and `workflows(action="setup")` has been routed or deferred,
+  or the only setup left is for credentials the user skipped earlier.
 - A remediation guard says `shouldEdit: false`.
 - You are blocked after one repair attempt per unique failure signature.
 
@@ -500,6 +501,15 @@ every reported error and warning before calling `build-workflow`.
   configs and from `sticky()` options alike. Positions are auto-calculated, and
   the saved workflow's own layout is restored on save, so nothing you drop here
   is lost. Leaving some in place is worse than dropping all of them.
+- When editing a pre-loaded workflow, keep every `config.id` value **exactly** as
+  `get-as-code` produced it, on the node it came with. `id` is the node's
+  permanent identity in n8n — execution logs, poll cursors, deduplication state
+  and the version diff are all keyed on it. Rename a node freely; the `id` stays.
+  Move it, rewire it, change its parameters — the `id` stays. Never invent, edit,
+  renumber or reuse an `id`, and never copy one from a template, another workflow
+  or another node. **Omit `id` entirely for any node you are adding** — one is
+  assigned on save. Deleting a node means deleting its `id` line with it. This is
+  the opposite of `position`: drop every `position`, keep every `id`.
 - Use `placeholder('hint')` directly as the parameter value. Do not wrap
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one

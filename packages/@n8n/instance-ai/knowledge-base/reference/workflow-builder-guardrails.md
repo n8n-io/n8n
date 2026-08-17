@@ -22,6 +22,18 @@ can fan one source into many records. Carry fields such as channel, city,
 account, request ID, team, label, or origin on the current item before fan-out,
 and create failure records with explicit source fields only on real error paths.
 
+## Preserve Node Identity
+
+`config.id` is a node's stable identity in n8n, not a cosmetic field. Two nodes may
+never share one `id`; `build-workflow` rejects the save with `DUPLICATE_NODE_ID`
+when they do, and the fix is to delete the `id` line from the node you added, not to
+invent a new value.
+
+If you rewrite a workflow file from scratch and lose the `id` lines, every node is
+recorded as deleted and recreated: execution-log pairing, poll cursors and
+deduplication state all reset, and the version diff becomes unreadable. Carry the
+`id` lines through every rewrite.
+
 ## Keep Effects Independent
 
 When the user asks for multiple final effects from the same trigger, each effect

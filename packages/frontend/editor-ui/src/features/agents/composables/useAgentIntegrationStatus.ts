@@ -1,5 +1,6 @@
 import { ref, type Ref } from 'vue';
 import type {
+	AgentDisconnectIntegrationResponse,
 	AgentIntegrationStatusEntry,
 	AgentIntegrationStatusResponse,
 	AgentIntegrationSettings,
@@ -7,7 +8,12 @@ import type {
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { connectIntegration, disconnectIntegration, getIntegrationStatus } from './useAgentApi';
+import {
+	connectIntegration,
+	disconnectIntegration,
+	getIntegrationStatus,
+	type ConnectIntegrationOptions,
+} from './useAgentApi';
 
 type ConfirmedStatus = AgentIntegrationStatusResponse['status'];
 type Status = ConfirmedStatus | 'unknown';
@@ -117,6 +123,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		type: string,
 		credId: string,
 		settings?: AgentIntegrationSettings,
+		options?: ConnectIntegrationOptions,
 	): Promise<Pick<AgentIntegrationStatusResponse, 'status'>> {
 		state.loadingMap.value[type] = true;
 		state.errorMessages.value[type] = '';
@@ -129,6 +136,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 				type,
 				credId,
 				settings,
+				options,
 			);
 			// Reflect the change in the shared reactive state immediately so the
 			// other consumer re-renders without waiting for a round-trip refetch.
@@ -151,13 +159,25 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		}
 	}
 
-	async function disconnect(type: string, credId: string): Promise<void> {
+	async function disconnect(
+		type: string,
+		credId: string,
+		options: { deleteExternalResource?: boolean } = {},
+	): Promise<AgentDisconnectIntegrationResponse> {
 		state.loadingMap.value[type] = true;
 		try {
-			await disconnectIntegration(rootStore.restApiContext, projectId, agentId, type, credId);
+			const result = await disconnectIntegration(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				type,
+				credId,
+				options.deleteExternalResource,
+			);
 			state.statuses.value[type] = 'disconnected';
 			state.connectedCredentials.value[type] = '';
 			state.integrationSettings.value[type] = undefined;
+			return result;
 		} finally {
 			state.loadingMap.value[type] = false;
 		}
@@ -171,6 +191,11 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		return ['configured', 'connected'].includes(state.statuses.value[type]);
 	}
 
+	function clearError(type: string): void {
+		state.errorMessages.value[type] = '';
+		state.errorIsConflict.value[type] = false;
+	}
+
 	return {
 		statuses: state.statuses,
 		connectedCredentials: state.connectedCredentials,
@@ -181,6 +206,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		fetchStatus,
 		connect,
 		disconnect,
+		clearError,
 		isConnected,
 		isConfigured,
 	};

@@ -54,6 +54,7 @@ import {
 	deriveCredentialHosts,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
+	WorkflowEditorLockedError,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
@@ -126,7 +127,9 @@ import {
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -278,6 +281,7 @@ export class InstanceAiAdapterService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly workflowTemplatesService: WorkflowTemplatesService,
+		private readonly collaborationService: CollaborationService,
 		private readonly nodeCatalogService?: NodeCatalogService,
 		// Optional: absent only in package/test contexts constructed without DI.
 		// DI (by type, not position) always provides it in a running instance.
@@ -608,11 +612,40 @@ export class InstanceAiAdapterService {
 			license,
 			allowSendingParameterValues,
 			telemetry,
+			collaborationService,
 		} = this;
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
 		const redactParameters = !allowSendingParameterValues;
+
+		/**
+		 * Instance AI writes bypass the REST controller, so the editor write lock
+		 * has to be honoured here — otherwise the agent silently overwrites the
+		 * work of whoever is editing the workflow on the canvas right now.
+		 */
+		const assertNotLockedByEditor = async (workflowId: string) => {
+			try {
+				await collaborationService.ensureWorkflowEditable(workflowId);
+			} catch (error) {
+				if (error instanceof LockedError) throw new WorkflowEditorLockedError(workflowId);
+				throw error;
+			}
+		};
+
+		/** Tells open editors to reload, mirroring what the REST controller does after a write. */
+		const notifyWorkflowUpdated = async (workflowId: string) => {
+			try {
+				await collaborationService.broadcastWorkflowUpdate(workflowId, user.id);
+			} catch (error) {
+				// The write is already committed — a failed notification must not fail it.
+				logger.warn('Failed to notify open editors of an AI workflow update', {
+					threadId,
+					workflowId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		};
 
 		return {
 			async list(options) {
@@ -656,10 +689,12 @@ export class InstanceAiAdapterService {
 
 			async archive(workflowId: string) {
 				assertNotReadOnly();
+				await assertNotLockedByEditor(workflowId);
 				const result = await workflowService.archive(user, workflowId, { skipArchived: true });
 				if (!result) {
 					throw new WorkflowNotFoundError(workflowId);
 				}
+				await notifyWorkflowUpdated(workflowId);
 			},
 
 			async unarchive(workflowId: string) {
@@ -704,6 +739,7 @@ export class InstanceAiAdapterService {
 				workflowId: string,
 				options?: { versionId?: string; name?: string; description?: string },
 			) {
+				await assertNotLockedByEditor(workflowId);
 				const wf = await workflowService.activateWorkflow(user, workflowId, {
 					versionId: options?.versionId,
 					name: options?.name,
@@ -723,13 +759,17 @@ export class InstanceAiAdapterService {
 					});
 				}
 
+				await notifyWorkflowUpdated(workflowId);
+
 				return { activeVersionId: wf.activeVersionId };
 			},
 
 			async unpublish(workflowId: string) {
+				await assertNotLockedByEditor(workflowId);
 				await workflowService.deactivateWorkflow(user, workflowId, {
 					source: 'n8n-ai',
 				});
+				await notifyWorkflowUpdated(workflowId);
 			},
 
 			async getAsWorkflowJSON(workflowId: string, versionId?: string) {
@@ -911,6 +951,7 @@ export class InstanceAiAdapterService {
 				options?: { projectId?: string; expectedChecksum?: string },
 			) {
 				assertNotReadOnly();
+				await assertNotLockedByEditor(workflowId);
 				// Strip redactionPolicy if the user lacks the required directional scope —
 				// mirrors the check in WorkflowService.update().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
@@ -987,6 +1028,8 @@ export class InstanceAiAdapterService {
 					});
 				}
 
+				await notifyWorkflowUpdated(workflowId);
+
 				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
 			},
 
@@ -1049,6 +1092,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async restoreVersion(workflowId, versionId) {
+				await assertNotLockedByEditor(workflowId);
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 
 				const updateData = workflowRepository.create({
@@ -1062,6 +1106,8 @@ export class InstanceAiAdapterService {
 				await workflowService.update(user, updateData, workflowId, {
 					source: 'n8n-ai',
 				});
+
+				await notifyWorkflowUpdated(workflowId);
 			},
 
 			...(this.license.isLicensed('feat:namedVersions')
@@ -1189,11 +1235,10 @@ export class InstanceAiAdapterService {
 
 				const nodes = workflow.nodes ?? [];
 
-				// Use the explicitly requested trigger node when provided,
-				// otherwise auto-detect using known trigger type constants
-				// then fall back to naive string matching for unknown trigger types
+				// Use the explicitly requested trigger node when provided — the only way to
+				// pick a branch in a multi-trigger workflow — otherwise auto-detect.
 				const triggerNode = options?.triggerNodeName
-					? (nodes.find((n) => n.name === options.triggerNodeName) ?? findTriggerNode(nodes))
+					? resolveRequestedTriggerNode(nodes, options.triggerNodeName)
 					: findTriggerNode(nodes);
 
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
@@ -3589,7 +3634,7 @@ export async function extractNodeOutput(
 	};
 }
 
-/** Known trigger node types in priority order. */
+/** Trigger node types we know how to make runnable, preferred over any other. */
 const KNOWN_TRIGGER_TYPES = new Set([
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -3598,16 +3643,58 @@ const KNOWN_TRIGGER_TYPES = new Set([
 ]);
 
 /**
- * Find the trigger node: known types first (priority among multiple triggers),
- * then the canonical n8n-workflow detection — the same detection the
- * instance-ai simulation planner uses, so a trigger the planner simulates
- * (e.g. suffix-less cron/emailReadImap) is always found here too.
+ * Find the trigger node to start from: known types first, then the canonical
+ * n8n-workflow detection — the same detection the instance-ai simulation planner
+ * uses, so a trigger the planner simulates (e.g. suffix-less
+ * cron/emailReadImap) is always found here too.
+ *
+ * Among equally-eligible triggers, enabled ones win and then node order decides,
+ * so the pick stays predictable for the caller (a multi-trigger workflow should
+ * name its trigger explicitly rather than rely on this). Filtering out disabled
+ * triggers is what makes "disable the other trigger" a working way to choose a
+ * branch; without it, a disabled trigger was still selected and its branch ran.
  */
 function findTriggerNode(nodes: INode[]): INode | undefined {
-	const known = nodes.find((n) => KNOWN_TRIGGER_TYPES.has(n.type));
-	if (known) return known;
+	const byPreference = [
+		(n: INode) => KNOWN_TRIGGER_TYPES.has(n.type),
+		(n: INode) => isTriggerNodeType(n.type),
+	];
 
-	return nodes.find((n) => isTriggerNodeType(n.type));
+	for (const isEligible of byPreference) {
+		const enabled = nodes.find((n) => isEligible(n) && !n.disabled);
+		if (enabled) return enabled;
+	}
+
+	// Every trigger is disabled — still start from one rather than silently
+	// degrading to a manual whole-workflow run.
+	for (const isEligible of byPreference) {
+		const anyTrigger = nodes.find((n) => isEligible(n));
+		if (anyTrigger) return anyTrigger;
+	}
+
+	return undefined;
+}
+
+/**
+ * Resolve the caller-requested trigger. Unlike auto-detection this must never
+ * fall through to a different node: silently running another branch is how a
+ * typo turns into "the agent ran the wrong flow".
+ */
+function resolveRequestedTriggerNode(nodes: INode[], triggerNodeName: string): INode {
+	const requested = nodes.find((n) => n.name === triggerNodeName);
+	if (requested && isTriggerNodeType(requested.type)) return requested;
+
+	const available = nodes.filter((n) => isTriggerNodeType(n.type)).map((n) => `"${n.name}"`);
+	const reason = requested
+		? `"${triggerNodeName}" is not a trigger node`
+		: `Trigger node "${triggerNodeName}" not found in the workflow`;
+	throw new UserError(
+		`${reason}. ${
+			available.length > 0
+				? `Available trigger nodes: ${available.join(', ')}.`
+				: 'This workflow has no trigger nodes.'
+		}`,
+	);
 }
 
 /** Copy of `connections` minus every listed source→target edge (any type). */
