@@ -1,4 +1,3 @@
-import * as nacl_factory from 'js-nacl';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -143,19 +142,20 @@ export function validateJSON(json: string | undefined): any {
  * @returns The base64-encoded encrypted secret
  */
 export async function encryptSecret(secretValue: string, publicKey: string): Promise<string> {
-	return await new Promise((resolve, reject) => {
-		nacl_factory.instantiate((nacl: ReturnType<typeof nacl_factory.instantiate>) => {
-			try {
-				const secretBytes: Uint8Array = nacl.encode_utf8(secretValue);
-				const keyBytes = Buffer.from(publicKey, 'base64');
-				const encryptedBytes: Uint8Array = nacl.crypto_box_seal(secretBytes, keyBytes);
-				const encryptedBase64 = Buffer.from(encryptedBytes).toString('base64');
-				resolve(encryptedBase64);
-			} catch (error) {
-				reject(error);
-			}
-		});
-	});
+	// js-nacl is an Emscripten build with a large per-instance heap, so it is only
+	// pulled in on this path rather than by every node that imports this module.
+	const nacl_factory = await import('js-nacl');
+
+	// `instantiate` resolves to the same instance it passes to the callback, so awaiting it
+	// surfaces initialisation failures as a rejection instead of never invoking the callback.
+	// The callback is still required: js-nacl throws if it is not a function.
+	const nacl = await nacl_factory.instantiate(() => {});
+
+	const secretBytes = nacl.encode_utf8(secretValue);
+	const keyBytes = new Uint8Array(Buffer.from(publicKey, 'base64'));
+	const encryptedBytes = nacl.crypto_box_seal(secretBytes, keyBytes);
+
+	return Buffer.from(encryptedBytes).toString('base64');
 }
 
 /**
