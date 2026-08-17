@@ -29,8 +29,6 @@ export class PollJobProvider {
 	init(): void {
 		const intercepting =
 			this.globalConfig.scheduler.enabled && this.workflowsConfig.useWorkflowPublicationService;
-		// Gate: job identity is `${workflowId}:${nodeId}`, so duplicate trigger node
-		// ids would collapse two nodes onto one job — independent of the cursor harm.
 		const active =
 			intercepting &&
 			this.globalConfig.scheduler.enabledForPollTriggers &&
