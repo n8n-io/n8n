@@ -216,13 +216,9 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 
 	const workflowRefreshKey = ref(0);
 
-	// Workflows that should get a one-shot layout tidy once the agent finishes.
-	// Server-side builds position group members as if the groups were expanded,
-	// so collapsed chips render staircased until a layout runs with the chips as
-	// units (ADO-5798). localStorage-backed so the marker survives page reloads
-	// and other tabs of the same user (a reload mid-run would otherwise lose it
-	// and leave the workflow staircased forever). Consumed — for the active
-	// workflow — by InstanceAiWorkflowPreview when the agent goes idle.
+	// AI-built workflows still awaiting their one-shot layout tidy. Kept in
+	// localStorage so a reload mid-build doesn't lose the marker; consumed by
+	// InstanceAiWorkflowPreview once the agent goes idle.
 	const pendingTidyWorkflowIds = useLocalStorage<string[]>(
 		LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY,
 		[],

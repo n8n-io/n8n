@@ -1670,9 +1670,7 @@ function onRequestTidyUpOnInit(payload: CanvasEventBusEvents['tidyUp']) {
 	pendingTidyUpOnInit = payload;
 }
 
-// Consume tidy-up requests parked in the queue (see canvasTidyUpQueue.ts).
-// A watch — not a bus listener — so requests made while no Canvas was mounted
-// (the Instance AI preview remounts NodeView on every refresh) still land here.
+// Consume tidy-up requests parked in the queue for this workflow, if any.
 const pendingCanvasTidyUp = usePendingCanvasTidyUp();
 watch(
 	pendingCanvasTidyUp,

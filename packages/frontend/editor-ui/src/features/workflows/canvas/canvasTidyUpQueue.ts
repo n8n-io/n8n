@@ -6,27 +6,19 @@ export type PendingCanvasTidyUp = CanvasTidyUpEvent & {
 	workflowId: string;
 };
 
-/**
- * Single-slot, consumable tidy-up request. Unlike a `canvasEventBus` emit —
- * which is dropped when no Canvas listener is mounted — a request parked here
- * survives canvas remounts (the Instance AI preview remounts NodeView on every
- * workflow refresh) and is consumed by the next matching Canvas.
- */
+// Single-slot, consumable request. Unlike a canvasEventBus emit — dropped when
+// no Canvas is mounted — a request parked here survives canvas remounts and is
+// consumed by the next matching Canvas.
 const pendingCanvasTidyUp = ref<PendingCanvasTidyUp | null>(null);
 
 export function requestCanvasTidyUp(request: PendingCanvasTidyUp): void {
 	pendingCanvasTidyUp.value = request;
 }
 
-/** Reactive read access for the consumer (Canvas) to watch. */
 export function usePendingCanvasTidyUp() {
 	return pendingCanvasTidyUp;
 }
 
-/**
- * Atomically take the pending request when it targets the given workflow.
- * Returns null (and leaves the slot untouched) otherwise.
- */
 export function consumePendingCanvasTidyUp(workflowId: string): CanvasTidyUpEvent | null {
 	const pending = pendingCanvasTidyUp.value;
 	if (!pending || pending.workflowId !== workflowId) {

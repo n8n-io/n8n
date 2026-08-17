@@ -161,15 +161,13 @@ const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
 
-// === Post-build auto tidy-up (ADO-5798) ===
-// Server-side builds position group members as if the groups were expanded, so
-// the collapsed chips render staircased. Run one layout pass — the equivalent
-// of the manual tidy-up button — once the agent has fully finished: by then the
-// canvas is settled, readOnly has lifted (so the moved positions autosave), and
-// no further refreshes can reload stale server positions over the result.
+// === Post-build auto tidy-up ===
+// The AI lays out group members as if the groups were open, so collapsed
+// chips render misaligned. Auto-run the canvas tidy-up: visual-only during
+// the run, persisted (readOnly lifts → autosave) once the agent goes idle.
 
-// True while the host is between a refresh trigger and its workflow-loaded —
-// tidying in that window would be dropped (no canvas mounted) or measured wrong.
+// True between a refresh trigger and its workflow-loaded — tidying in that
+// window would hit an unmounted or unmeasured canvas.
 const isCanvasReloading = ref(true);
 
 watch(
@@ -194,24 +192,18 @@ function maybeAutoTidy() {
 		return;
 	}
 
-	// While the agent is still working this is an intermediate tidy: purely
-	// visual (positions get replaced by the next reload anyway), so the marker
-	// is kept for the final, persisting tidy once the agent goes idle.
+	// Agent still working → intermediate, visual-only tidy: keep the marker so
+	// the final, persisting tidy still runs at idle.
 	if (!isEditorLocked.value) {
 		emit('tidy-up-consumed');
 	}
 
-	// Without groups the server layout is already the intended one — leave the
-	// nodes untouched.
+	// Without groups the server layout is already the intended one
 	const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(props.workflowId));
 	if (docStore.allGroups.length === 0) {
 		return;
 	}
 
-	// Parked in the queue, not emitted on the bus: right after a refresh the
-	// remounted Canvas hasn't registered listeners yet and a bus emit would be
-	// silently dropped. The Canvas consumes the request whenever it (re)mounts
-	// and its nodes initialize.
 	requestCanvasTidyUp({
 		workflowId: props.workflowId,
 		source: 'builder-update',

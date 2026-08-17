@@ -23,9 +23,8 @@ export interface BuildResult {
 	/** Unique per build — changes even when the same workflow is rebuilt. */
 	toolCallId: string;
 	/**
-	 * True when the build came from an edit-mode builder (spawned with a concrete
-	 * `targetResource.id`), i.e. the AI modified an existing workflow rather than
-	 * creating one.
+	 * True when the AI edited an existing workflow rather than creating one —
+	 * consumers use it to skip layout changes that would undo a manual layout.
 	 */
 	fromEditBuilder: boolean;
 }
@@ -61,7 +60,11 @@ type AgentArtifactTarget = Pick<AgentArtifactResult, 'agentId' | 'projectId'>;
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
  * and toolCallId from the latest successful build-workflow / submit-workflow
- * tool result, flagging whether it ran under an edit-mode builder.
+ * tool result.
+ *
+ * `inEditBuilder` threads "an ancestor is an edit-mode builder" down the
+ * recursion, so a build found anywhere under that builder (e.g. on a nested
+ * sub-agent) is still flagged `fromEditBuilder`. Callers never pass it.
  */
 export function getLatestBuildResult(
 	node: InstanceAiAgentNode,
