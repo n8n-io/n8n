@@ -56,7 +56,9 @@ function installExtensionMock(responses: Record<string, unknown>): void {
 	(globalThis as { chrome?: unknown }).chrome = { runtime };
 }
 
-const renderComponent = createComponentRenderer(BrowserUseConnectStep);
+const renderComponent = createComponentRenderer(BrowserUseConnectStep, {
+	props: { autoConnect: true },
+});
 
 describe('BrowserUseConnectStep', () => {
 	beforeEach(() => {
@@ -66,6 +68,16 @@ describe('BrowserUseConnectStep', () => {
 
 	afterEach(() => {
 		delete (globalThis as { chrome?: unknown }).chrome;
+	});
+
+	it('does not start a direct connect attempt when autoConnect is off', async () => {
+		installExtensionMock({ connect: { accepted: true } });
+		const { getByTestId, queryByTestId } = createComponentRenderer(BrowserUseConnectStep)();
+		await flushPromises();
+
+		expect(getByTestId('browser-use-open-connect-page')).toBeVisible();
+		expect(queryByTestId('browser-use-direct-connect-waiting')).toBeNull();
+		expect(telemetryMock.trackDirectConnectRequested).not.toHaveBeenCalled();
 	});
 
 	it('shows the manual connect link when the extension cannot be messaged', async () => {

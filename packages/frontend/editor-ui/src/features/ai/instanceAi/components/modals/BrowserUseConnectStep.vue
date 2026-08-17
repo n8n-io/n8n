@@ -10,6 +10,8 @@ const CONNECT_URL_REFRESH_MARGIN_MS = 30_000;
 const CONNECT_POPUP_WIDTH = 620;
 const CONNECT_POPUP_HEIGHT = 640;
 
+const props = withDefaults(defineProps<{ autoConnect?: boolean }>(), { autoConnect: false });
+
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
@@ -40,7 +42,7 @@ async function refreshConnectUrl(): Promise<void> {
 
 onMounted(async () => {
 	await refreshConnectUrl();
-	if (!connectUrl.value) return;
+	if (!props.autoConnect || !connectUrl.value) return;
 	telemetry.trackDirectConnectRequested();
 	await attempt(connectUrl.value);
 });

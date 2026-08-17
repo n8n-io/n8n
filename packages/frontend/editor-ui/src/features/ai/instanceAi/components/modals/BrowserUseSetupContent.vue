@@ -18,9 +18,11 @@ import {
 const props = withDefaults(
 	defineProps<{
 		embedded?: boolean;
+		autoConnect?: boolean;
 	}>(),
 	{
 		embedded: false,
+		autoConnect: false,
 	},
 );
 
@@ -135,7 +137,7 @@ useEventListener(window, 'focus', reprobeExtension);
 			</div>
 
 			<div v-else-if="statusChecked" :class="$style.step">
-				<BrowserUseConnectStep />
+				<BrowserUseConnectStep :auto-connect="props.autoConnect" />
 			</div>
 
 			<div v-if="!isExtensionMissing" :class="$style.waitingRow">
