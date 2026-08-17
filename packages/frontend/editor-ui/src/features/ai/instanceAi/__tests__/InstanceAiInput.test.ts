@@ -200,6 +200,11 @@ const CustomRawPromptSuggestionsComponent = defineComponent({
 
 const renderComponent = createComponentRenderer(InstanceAiInput, {
 	props: defaultProps(),
+	global: {
+		stubs: {
+			InstanceAiInputMenu: true,
+		},
+	},
 });
 
 describe('InstanceAiInput', () => {
