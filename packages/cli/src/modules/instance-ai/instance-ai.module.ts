@@ -21,6 +21,13 @@ export class InstanceAiModule implements ModuleInterface {
 		Container.get(SandboxSettingsService).registerCredentialUses();
 		credentialBroker.registerUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY);
 		await settingsService.loadFromDb();
+		// Instantiating the setup telemetry service registers its settings-updated
+		// listener. A setup finished by env vars only becomes observable at boot,
+		// so the once-per-instance completion telemetry is also checked here.
+		const { InstanceAiSetupTelemetryService } = await import(
+			'./instance-ai-setup-telemetry.service.js'
+		);
+		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 
