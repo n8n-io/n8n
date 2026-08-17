@@ -264,11 +264,12 @@ export class BannerbearV2 implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						responseData = (await bannerbearApiRequest.call(
+						const templates = (await bannerbearApiRequest.call(
 							this,
 							'GET',
 							'/image_templates',
 						)) as IDataObject[];
+						responseData = applyLimit(this, templates, i);
 					}
 				}
 
@@ -291,11 +292,12 @@ export class BannerbearV2 implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						responseData = (await bannerbearApiRequest.call(
+						const workflows = (await bannerbearApiRequest.call(
 							this,
 							'GET',
 							'/workflows',
 						)) as IDataObject[];
+						responseData = applyLimit(this, workflows, i);
 					}
 				}
 
@@ -315,9 +317,7 @@ export class BannerbearV2 implements INodeType {
 							'GET',
 							'/workflow_runs',
 						)) as IDataObject[];
-						responseData = this.getNodeParameter('returnAll', i)
-							? runs
-							: runs.slice(0, this.getNodeParameter('limit', i));
+						responseData = applyLimit(this, runs, i);
 					}
 				}
 
@@ -343,10 +343,9 @@ export class BannerbearV2 implements INodeType {
 							'GET',
 							'/animations',
 						)) as IDataObject[];
-						const trimmed = this.getNodeParameter('returnAll', i)
-							? animations
-							: animations.slice(0, this.getNodeParameter('limit', i));
-						responseData = trimmed.map((animation) => flattenAnimationFiles(animation));
+						responseData = applyLimit(this, animations, i).map((animation) =>
+							flattenAnimationFiles(animation),
+						);
 					}
 				}
 
@@ -361,11 +360,12 @@ export class BannerbearV2 implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						responseData = (await bannerbearApiRequest.call(
+						const templates = (await bannerbearApiRequest.call(
 							this,
 							'GET',
 							'/animation_templates',
 						)) as IDataObject[];
+						responseData = applyLimit(this, templates, i);
 					}
 				}
 
@@ -411,21 +411,53 @@ export class BannerbearV2 implements INodeType {
 	}
 }
 
+/**
+ * n8n's fixedCollection serialises every declared field with its default, so a row
+ * where the user only picked a layer still carries `opacity: 1` and `ratingScore: 0`.
+ * Sending those would silently override whatever the template already sets, so a
+ * field left at its declared default is treated as unset. `hidden` is a three-way
+ * option instead, because explicitly showing or hiding a layer is a real use case
+ * that a plain boolean could not express.
+ */
+const LAYER_FIELD_DEFAULTS: IDataObject = {
+	opacity: 1,
+	ratingScore: 0,
+};
+
+function applyLimit(ctx: IExecuteFunctions, items: IDataObject[], i: number): IDataObject[] {
+	if (ctx.getNodeParameter('returnAll', i)) return items;
+	return items.slice(0, ctx.getNodeParameter('limit', i) as number);
+}
+
+function buildLayerObjects(rows: IDataObject[]): IDataObject[] {
+	const objects: IDataObject[] = [];
+
+	for (const row of rows) {
+		if (!row.id) continue;
+
+		const object: IDataObject = { id: row.id };
+		for (const [name, value] of Object.entries(row)) {
+			if (name === 'id') continue;
+			if (value === undefined || value === null || value === '') continue;
+			if (LAYER_FIELD_DEFAULTS[name] === value) continue;
+
+			const key = (LAYER_PROPERTY_NAMES[name] as string) ?? name;
+			object[key] = name === 'hidden' ? value === 'true' : value;
+		}
+
+		if (Object.keys(object).length > 1) objects.push(object);
+	}
+
+	return objects;
+}
+
 async function createImage(this: IExecuteFunctions, i: number): Promise<IDataObject> {
 	const templateId = this.getNodeParameter('templateId', i) as string;
 	const additionalFields = this.getNodeParameter('additionalFields', i);
 	const waitForImage = this.getNodeParameter('waitForImage', i) as boolean;
 	const modificationsUi = this.getNodeParameter('modificationsUi', i) as IDataObject;
 
-	const objects: IDataObject[] = [];
-	for (const modification of (modificationsUi.modificationsValues ?? []) as IDataObject[]) {
-		const object: IDataObject = {};
-		for (const [name, value] of Object.entries(modification)) {
-			if (value === undefined || value === null || value === '') continue;
-			object[(LAYER_PROPERTY_NAMES[name] as string) ?? name] = value;
-		}
-		if (Object.keys(object).length > 1) objects.push(object);
-	}
+	const objects = buildLayerObjects((modificationsUi.modificationsValues ?? []) as IDataObject[]);
 
 	const modifications: IDataObject = { objects };
 
@@ -514,15 +546,7 @@ async function createAnimation(this: IExecuteFunctions, i: number): Promise<IDat
 	const waitForCompletion = this.getNodeParameter('waitForCompletion', i) as boolean;
 	const modificationsUi = this.getNodeParameter('modificationsUi', i) as IDataObject;
 
-	const objects: IDataObject[] = [];
-	for (const modification of (modificationsUi.modificationsValues ?? []) as IDataObject[]) {
-		const object: IDataObject = {};
-		for (const [name, value] of Object.entries(modification)) {
-			if (value === undefined || value === null || value === '') continue;
-			object[(LAYER_PROPERTY_NAMES[name] as string) ?? name] = value;
-		}
-		if (Object.keys(object).length > 1) objects.push(object);
-	}
+	const objects = buildLayerObjects((modificationsUi.modificationsValues ?? []) as IDataObject[]);
 
 	const modifications: IDataObject = { objects };
 	const templateOverrides = compact({

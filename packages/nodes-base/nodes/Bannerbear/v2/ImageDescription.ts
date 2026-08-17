@@ -121,9 +121,23 @@ export const imageFields: INodeProperties[] = [
 					{
 						displayName: 'Hidden',
 						name: 'hidden',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to hide this layer in the render',
+						type: 'options',
+						options: [
+							{
+								name: 'Hide',
+								value: 'true',
+							},
+							{
+								name: 'Leave Unchanged',
+								value: '',
+							},
+							{
+								name: 'Show',
+								value: 'false',
+							},
+						],
+						default: '',
+						description: 'Whether to show or hide this layer, or inherit from the template',
 					},
 					{
 						displayName: 'Image URL',
@@ -142,7 +156,7 @@ export const imageFields: INodeProperties[] = [
 							numberPrecision: 2,
 						},
 						default: 1,
-						description: 'Layer opacity between 0 and 1',
+						description: 'Layer opacity between 0 and 1. Left at 1, the template value is kept.',
 					},
 					{
 						displayName: 'QR Target',
@@ -156,7 +170,7 @@ export const imageFields: INodeProperties[] = [
 						name: 'ratingScore',
 						type: 'number',
 						default: 0,
-						description: 'Score shown by a rating layer',
+						description: 'Score shown by a rating layer. Left at 0, the template value is kept.',
 					},
 					{
 						displayName: 'Stroke',
@@ -266,14 +280,14 @@ export const imageFields: INodeProperties[] = [
 				name: 'templateHeight',
 				type: 'number',
 				default: 0,
-				description: 'Override the height, for adaptive templates only',
+				description: 'Override the height, for responsive templates only',
 			},
 			{
 				displayName: 'Template Width',
 				name: 'templateWidth',
 				type: 'number',
 				default: 0,
-				description: 'Override the width, for adaptive templates only',
+				description: 'Override the width, for responsive templates only',
 			},
 		],
 	},

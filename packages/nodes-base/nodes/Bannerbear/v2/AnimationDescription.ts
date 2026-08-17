@@ -113,9 +113,23 @@ export const animationFields: INodeProperties[] = [
 					{
 						displayName: 'Hidden',
 						name: 'hidden',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to hide this layer in the render',
+						type: 'options',
+						options: [
+							{
+								name: 'Hide',
+								value: 'true',
+							},
+							{
+								name: 'Leave Unchanged',
+								value: '',
+							},
+							{
+								name: 'Show',
+								value: 'false',
+							},
+						],
+						default: '',
+						description: 'Whether to show or hide this layer, or inherit from the template',
 					},
 					{
 						displayName: 'Image URL',
@@ -134,7 +148,7 @@ export const animationFields: INodeProperties[] = [
 							numberPrecision: 2,
 						},
 						default: 1,
-						description: 'Layer opacity between 0 and 1',
+						description: 'Layer opacity between 0 and 1. Left at 1, the template value is kept.',
 					},
 					{
 						displayName: 'Text',
@@ -353,5 +367,35 @@ export const animationTemplateFields: INodeProperties[] = [
 			},
 		},
 		description: 'Unique identifier for the animation template',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['animationTemplate'],
+				operation: ['getAll'],
+			},
+		},
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 50,
+		displayOptions: {
+			show: {
+				resource: ['animationTemplate'],
+				operation: ['getAll'],
+				returnAll: [false],
+			},
+		},
+		description: 'Max number of results to return',
 	},
 ];
