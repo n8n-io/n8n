@@ -190,6 +190,7 @@ export {
 } from './user/users-list-filter.dto';
 
 export { UpdateRoleDto } from './roles/update-role.dto';
+export { UpdateRolePublicDto } from './roles/update-role-public.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
 export {
 	RolePublicDto,
