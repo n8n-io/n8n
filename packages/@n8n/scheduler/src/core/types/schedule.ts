@@ -91,4 +91,10 @@ export interface ScheduledJob {
 	misfirePolicy: ScheduledJobMisfirePolicy;
 	/** How late an occurrence may be before {@link misfirePolicy} applies to it. */
 	misfireGraceSeconds: number;
+	/**
+	 * Groups jobs for `coalesce_owner`: same value, same group. The scheduler
+	 * only compares values, it never reads them. `null` means the job stands
+	 * alone. Required so an adapter that forgets to map it fails to compile.
+	 */
+	ownerKey: string | null;
 }

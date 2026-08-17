@@ -57,8 +57,11 @@ import {
 	saveWorkflowSourceFileBinding,
 } from './workflow-file-bindings';
 import {
+	ensureUniqueNodeIds,
 	ensureWebhookIds,
 	getReferencedWorkflowIds,
+	hasLostAllSavedNodeIds,
+	preserveExistingNodeIds,
 	isTriggerNodeType,
 	preserveExistingNodeGroupIds,
 	preserveExistingSetupValues,
@@ -71,8 +74,13 @@ import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
 import type { InstanceAiContext } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';
-import { remediationMetadataSchema } from '../../workflow-loop/workflow-loop-state';
+import {
+	remediationMetadataSchema,
+	workflowVerificationReadinessSchema,
+	type WorkflowBuildOutcome,
+} from '../../workflow-loop/workflow-loop-state';
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
+import { buildChatModelProviderMismatchWarnings } from '../nodes/preferred-chat-model';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
 
 /** Over this serialized length only a `truncated` marker is emitted; the seed
@@ -163,6 +171,16 @@ export const buildWorkflowInputSchema = z
 				'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
 					'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
 			),
+		executionIntent: z
+			.enum(['one-off', 'reusable'])
+			.optional()
+			.describe(
+				'How the user intends to use this workflow. Pass `one-off` when the user wants a concrete ' +
+					'effect once (an export, migration, backfill, or cleanup) and the workflow is only the ' +
+					'vehicle — verification becomes an optional pre-flight and completion is a live run whose ' +
+					'output was read back (see the one-off-operations skill). Omit or pass `reusable` for ' +
+					'anything the user may run again.',
+			),
 	})
 	.strict();
 
@@ -171,31 +189,9 @@ const triggerNodeOutputSchema = z.object({
 	nodeType: z.string(),
 });
 
-const verificationReadinessOutputSchema = z.discriminatedUnion('status', [
-	z.object({ status: z.literal('ready') }),
-	z.object({ status: z.literal('already_verified') }),
-	z.object({
-		status: z.literal('needs_setup'),
-		reason: z.enum([
-			'unresolved-placeholders',
-			'missing-mocked-credential-pin-data',
-			'workflow-needs-setup',
-		]),
-		guidance: z.string(),
-	}),
-	z.object({
-		status: z.literal('not_verifiable'),
-		// 'non-mockable-trigger' is the legacy spelling of 'no-trigger-node',
-		// kept so stored outcomes from older threads still parse.
-		reason: z.enum([
-			'not-submitted',
-			'missing-workflow-id',
-			'no-trigger-node',
-			'non-mockable-trigger',
-		]),
-		guidance: z.string(),
-	}),
-]);
+// Reuse the workflow-loop schema — the tool output mirrors the persisted
+// readiness verdict, and a second hand-maintained copy drifts.
+const verificationReadinessOutputSchema = workflowVerificationReadinessSchema;
 
 const setupRequirementOutputSchema = z.discriminatedUnion('status', [
 	z.object({ status: z.literal('not_required') }),
@@ -249,12 +245,16 @@ export function autoImportMissingSdkSymbols(
 }
 
 const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
+const ONE_OFF_OPERATIONS_SKILL_ID = 'one-off-operations';
+
+const ONE_OFF_OPERATIONS_GUIDANCE =
+	'This one-off build is not complete yet. Follow the one-off instructions in `instructions` now (do NOT load the one-off-operations skill — they are the same instructions). Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.';
 
 const POST_BUILD_FLOW_GUIDANCE =
 	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
 
-// Inlined into successful build results; the skill stays registered for tag-driven follow-up turns.
-let postBuildFlowInstructionsCache: string | undefined;
+// Inlined into successful build results; the skills stay registered for tag-driven follow-up turns.
+const inlineSkillInstructionsCache = new Map<string, string>();
 
 /** Tag-turn-only sections, stripped from the inline copy; follow-up turns load the full skill. */
 const INLINE_SKIPPED_SECTIONS = [
@@ -263,44 +263,68 @@ const INLINE_SKIPPED_SECTIONS = [
 	'## Credentials before build',
 ];
 
-function getPostBuildFlowInstructions(): string {
-	if (postBuildFlowInstructionsCache === undefined) {
-		const raw = readFileSync(
-			join(INSTANCE_AI_SKILLS_DIR, POST_BUILD_FLOW_SKILL_ID, 'SKILL.md'),
-			'utf-8',
-		);
+function getInlineSkillInstructions(skillId: string): string {
+	let instructions = inlineSkillInstructionsCache.get(skillId);
+	if (instructions === undefined) {
+		const raw = readFileSync(join(INSTANCE_AI_SKILLS_DIR, skillId, 'SKILL.md'), 'utf-8');
 		// Strip the YAML front-matter; catalog metadata is noise in a tool result.
 		const body = raw.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
-		postBuildFlowInstructionsCache = body
+		instructions = body
 			.split(/\n(?=## )/)
 			.filter((section) => !INLINE_SKIPPED_SECTIONS.some((title) => section.startsWith(title)))
 			.join('\n')
 			.trim();
+		inlineSkillInstructionsCache.set(skillId, instructions);
 	}
-	return postBuildFlowInstructionsCache;
+	return instructions;
 }
 
-const postBuildFlowOutputSchema = z.object({
-	required: z.literal(true),
-	skillId: z.literal(POST_BUILD_FLOW_SKILL_ID),
-	reason: z.literal('direct-build-succeeded'),
-	guidance: z.string(),
-	/** Full post-build instructions (the post-build-flow skill body), inlined. */
-	instructions: z.string(),
-});
+// Discriminated on skillId so a mismatched skillId/reason pair cannot validate.
+const postBuildFlowOutputSchema = z.discriminatedUnion('skillId', [
+	z.object({
+		required: z.literal(true),
+		skillId: z.literal(POST_BUILD_FLOW_SKILL_ID),
+		reason: z.literal('direct-build-succeeded'),
+		guidance: z.string(),
+		/** Full post-build instructions (the selected skill body), inlined. */
+		instructions: z.string(),
+	}),
+	z.object({
+		required: z.literal(true),
+		skillId: z.literal(ONE_OFF_OPERATIONS_SKILL_ID),
+		reason: z.literal('direct-one-off-build-succeeded'),
+		guidance: z.string(),
+		instructions: z.string(),
+	}),
+]);
 
 function directPostBuildFlowHandoff(
 	owner: ReturnType<typeof resolveBuildIdentifiers>['owner'],
 	isAuxiliarySupportingWorkflow: boolean,
+	outcome: WorkflowBuildOutcome,
 ): z.infer<typeof postBuildFlowOutputSchema> | undefined {
 	if (owner?.type !== 'direct' || isAuxiliarySupportingWorkflow) return undefined;
+
+	// One-off instructions only apply when the workflow can actually run — their
+	// completion criterion is a live run. A triggerless or otherwise unrunnable
+	// build falls back to the standard post-build flow, which handles
+	// not_verifiable outcomes.
+	if (outcome.executionIntent === 'one-off' && outcome.verificationReadiness?.status === 'ready') {
+		return {
+			required: true,
+			skillId: ONE_OFF_OPERATIONS_SKILL_ID,
+			reason: 'direct-one-off-build-succeeded',
+			guidance: ONE_OFF_OPERATIONS_GUIDANCE,
+			instructions: getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID),
+		};
+	}
 
 	return {
 		required: true,
 		skillId: POST_BUILD_FLOW_SKILL_ID,
 		reason: 'direct-build-succeeded',
 		guidance: POST_BUILD_FLOW_GUIDANCE,
-		instructions: getPostBuildFlowInstructions(),
+		instructions: getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID),
 	};
 }
 
@@ -327,6 +351,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				workItemId: z.string().optional(),
 				triggerNodes: z.array(triggerNodeOutputSchema).optional(),
 				verificationReadiness: verificationReadinessOutputSchema.optional(),
+				/** Effective intent after merging with the prior outcome for this work
+				 *  item — a repair rebuild that omits the input keeps the stored value. */
+				executionIntent: z.enum(['one-off', 'reusable']).optional(),
 				setupRequirement: setupRequirementOutputSchema.optional(),
 				postBuildFlow: postBuildFlowOutputSchema.optional(),
 				isSupportingWorkflow: z.boolean().optional(),
@@ -625,6 +652,19 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				buildContext,
 				runId: context.runId,
 			});
+			// One-off intent is sticky per work item: a repair rebuild that omits the
+			// flag must not silently flip the stored outcome back to the verify-first
+			// flow (which would re-arm verification follow-ups mid-repair).
+			let executionIntent = input.executionIntent;
+			if (executionIntent === undefined) {
+				try {
+					executionIntent = (
+						await buildContext?.workflowTaskService?.getBuildOutcome(resolvedWorkItemId)
+					)?.executionIntent;
+				} catch {
+					// Best-effort: no prior outcome just means the default flow.
+				}
+			}
 			const withEscalation = (
 				errors: string[],
 				options: { includeSdkLanguageGuidance?: boolean } = {},
@@ -816,13 +856,48 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const credentialMap = await buildCredentialMap(context.credentialService);
 			const mockResult = await resolveCredentials(json, targetWorkflowId, context, credentialMap);
 
+			// Deterministic backstop for a builder that never checked credentials:
+			// a chat-model node for a provider the user has no credential for gets
+			// flagged with the LLM credentials they do have. Nodes the resolver
+			// covered with n8n credits are exempt — they run as built.
+			for (const message of buildChatModelProviderMismatchWarnings(
+				json.nodes ?? [],
+				[...credentialMap.values()].flat(),
+				mockResult.resolvedCredentialsByNode,
+			)) {
+				informational.push({
+					code: 'chat_model_provider_mismatch',
+					message,
+					severity: 'informational',
+				});
+			}
+
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			try {
+				// Runs first: the passes below key off node ids, so they must be unique.
+				ensureUniqueNodeIds(json);
+				// Recovers the saved id of a surviving node whose source declared none — layered
+				// under the declared id, so a rename still follows the id.
+				await preserveExistingNodeIds(json, targetWorkflowId, context);
 				await preserveExistingSetupValues(json, targetWorkflowId, context);
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 				await preserveExistingNodePositions(json, targetWorkflowId, context);
+
+				if (await hasLostAllSavedNodeIds(json, targetWorkflowId, context)) {
+					context.logger.debug('Build kept none of the saved node ids', {
+						workflowId: targetWorkflowId,
+					});
+					informational.push({
+						code: 'node_ids_not_preserved',
+						message:
+							"None of this workflow's saved node IDs were kept, so every node is recorded as " +
+							"deleted and re-added. Keep each node's `id` from get-as-code verbatim when " +
+							'editing, and omit `id` only for nodes you add.',
+						severity: 'informational',
+					});
+				}
 
 				const hasMockedCredentialNodes = mockResult.mockedNodeNames.length > 0;
 				const hasResolvedCredentials = Object.keys(mockResult.resolvedCredentialsByNode).length > 0;
@@ -926,9 +1001,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
+						executionIntent,
 						summary,
 					});
-					const postBuildFlow = directPostBuildFlowHandoff(owner, isAuxiliarySupportingWorkflow);
+					const postBuildFlow = directPostBuildFlowHandoff(
+						owner,
+						isAuxiliarySupportingWorkflow,
+						outcome,
+					);
 
 					await promoteMainWorkflow(context, saved.id);
 					await reportWorkflowBuildOutcome(context, outcome, {
@@ -959,6 +1039,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						isSupportingWorkflow: isSupportingWorkflow || undefined,
 						triggerNodes,
 						verificationReadiness: outcome.verificationReadiness,
+						executionIntent: outcome.executionIntent,
 						setupRequirement: outcome.setupRequirement,
 						...(postBuildFlow ? { postBuildFlow } : {}),
 						mockedNodeNames: hasMockedCredentialNodes ? mockResult.mockedNodeNames : undefined,
