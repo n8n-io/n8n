@@ -7,6 +7,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
+import Underline from '@tiptap/extension-underline';
 import { Markdown } from '@tiptap/markdown';
 import type { EditorState } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
@@ -64,6 +65,7 @@ export const useMarkdownEditor = (
 		TaskItem.configure({
 			nested: true,
 		}),
+		Underline,
 		Markdown.configure({
 			markedOptions: {
 				gfm: true,

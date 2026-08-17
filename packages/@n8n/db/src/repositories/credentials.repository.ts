@@ -1,27 +1,119 @@
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In, Like, Repository } from '@n8n/typeorm';
+import { DataSource, In, Like, Not, QueryFailedError } from '@n8n/typeorm';
 
 import { CredentialsEntity, type User } from '../entities';
+import { BaseRepository } from './base-repository';
 import {
 	addCredentialDependencyExistsFilter,
 	type CredentialDependencyFilter,
 } from './credential-dependency.repository';
+import { InstanceCredentialAssignmentRepository } from './instance-credential-assignment.repository';
 import { SharedCredentialsRepository } from './shared-credentials.repository';
-import type { ListQuery } from '../entities/types-db';
+import type { ICredentialsDb, ListQuery } from '../entities/types-db';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 
 @Service()
-export class CredentialsRepository extends Repository<CredentialsEntity> {
-	constructor(dataSource: DataSource) {
-		super(CredentialsEntity, dataSource.manager);
+export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
+	constructor(
+		dataSource: DataSource,
+		private readonly instanceCredentialAssignmentRepository: InstanceCredentialAssignmentRepository,
+		transactionRunner: TransactionRunner,
+	) {
+		super(CredentialsEntity, dataSource.manager, transactionRunner);
 	}
 
 	async findStartingWith(credentialName: string) {
 		return await this.find({
 			select: ['name'],
-			where: { name: Like(`${credentialName}%`) },
+			where: { name: Like(`${credentialName}%`), usageScope: 'project' },
 		});
+	}
+
+	async findNonProjectCredentialsByIds(ids: string[]): Promise<CredentialsEntity[]> {
+		return await this.find({
+			where: { id: In(ids), usageScope: Not('project') },
+			select: ['id'],
+		});
+	}
+
+	async findDanglingProjectCredentials(): Promise<CredentialsEntity[]> {
+		return await this.createQueryBuilder('credentials')
+			.leftJoinAndSelect('credentials.shared', 'shared')
+			.where('shared.credentialsId is null')
+			.andWhere('credentials.usageScope = :usageScope', { usageScope: 'project' })
+			.getMany();
+	}
+
+	async findInstanceCredentialById(
+		credentialId: string,
+		ctx: OperationContext,
+	): Promise<CredentialsEntity | null> {
+		return await this.managerFor(ctx).findOneBy(CredentialsEntity, {
+			id: credentialId,
+			usageScope: 'instance',
+		});
+	}
+
+	async saveInstanceCredential(
+		credential: CredentialsEntity,
+		ctx: OperationContext,
+	): Promise<CredentialsEntity> {
+		return await this.managerFor(ctx).save(CredentialsEntity, credential);
+	}
+
+	async updateInstanceCredential(
+		credentialId: string,
+		data: Pick<ICredentialsDb, 'id' | 'name' | 'type' | 'data'>,
+		ctx: OperationContext,
+	): Promise<CredentialsEntity | null> {
+		const manager = this.managerFor(ctx);
+		await manager.update(CredentialsEntity, { id: credentialId, usageScope: 'instance' }, data);
+		return await manager.findOneBy(CredentialsEntity, {
+			id: credentialId,
+			usageScope: 'instance',
+		});
+	}
+
+	async deleteInstanceCredentialIfUnassigned(
+		credentialId: string,
+		ctx: OperationContext = {},
+	): Promise<
+		| { status: 'deleted' }
+		| { status: 'notFound' }
+		| { status: 'assigned'; credentialUseIds: string[] }
+	> {
+		const manager = this.managerFor(ctx);
+		const credential = await manager.findOneBy(CredentialsEntity, {
+			id: credentialId,
+			usageScope: 'instance',
+		});
+		if (!credential) return { status: 'notFound' };
+
+		const credentialUseIds = await this.instanceCredentialAssignmentRepository.findCredentialUseIds(
+			credentialId,
+			ctx,
+		);
+		if (credentialUseIds.length > 0) return { status: 'assigned', credentialUseIds };
+
+		try {
+			const result = await manager.delete(CredentialsEntity, {
+				id: credentialId,
+				usageScope: 'instance',
+			});
+			return result.affected === 0 ? { status: 'notFound' } : { status: 'deleted' };
+		} catch (error) {
+			if (error instanceof QueryFailedError && !ctx.trx) {
+				const concurrentCredentialUseIds =
+					await this.instanceCredentialAssignmentRepository.findCredentialUseIds(credentialId, ctx);
+				if (concurrentCredentialUseIds.length > 0) {
+					return { status: 'assigned', credentialUseIds: concurrentCredentialUseIds };
+				}
+			}
+			throw error;
+		}
 	}
 
 	async findMany(
@@ -39,7 +131,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
 		}
 
-		return await this.find(findManyOptions);
+		return await this.find(this.onlyProjectCredentials(findManyOptions));
 	}
 
 	async findManyAndCount(
@@ -57,7 +149,14 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
 		}
 
-		return await this.findAndCount(findManyOptions);
+		return await this.findAndCount(this.onlyProjectCredentials(findManyOptions));
+	}
+
+	private onlyProjectCredentials(
+		findManyOptions: FindManyOptions<CredentialsEntity>,
+	): FindManyOptions<CredentialsEntity> {
+		findManyOptions.where = { ...findManyOptions.where, usageScope: 'project' };
+		return findManyOptions;
 	}
 
 	private toFindManyOptions(
@@ -172,7 +271,9 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	async getManyByIds(ids: string[], { withSharings } = { withSharings: false }) {
-		const findManyOptions: FindManyOptions<CredentialsEntity> = { where: { id: In(ids) } };
+		const findManyOptions: FindManyOptions<CredentialsEntity> = {
+			where: { id: In(ids), usageScope: 'project' },
+		};
 
 		if (withSharings) {
 			findManyOptions.relations = {
@@ -212,6 +313,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		findManyOptions.where = {
 			...findManyOptions.where,
 			isGlobal: true,
+			usageScope: 'project',
 			...(type ? { type: Like(`%${type}%`) } : {}),
 		};
 		return await this.find(findManyOptions);
@@ -226,6 +328,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		const qb = this.createQueryBuilder('credential');
 		qb.where('credential.isGlobal = :isGlobal', { isGlobal: true });
+		qb.andWhere('credential.usageScope = :usageScope', { usageScope: 'project' });
 		if (type) {
 			qb.andWhere('credential.type LIKE :type', { type: `%${type}%` });
 		}
@@ -259,7 +362,10 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 * Find all credentials that are owned by a personal project.
 	 */
 	async findAllPersonalCredentials(): Promise<CredentialsEntity[]> {
-		return await this.findBy({ shared: { project: { type: 'personal' } } });
+		return await this.findBy({
+			usageScope: 'project',
+			shared: { project: { type: 'personal' } },
+		});
 	}
 
 	/**
@@ -271,6 +377,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 */
 	async findAllCredentialsForWorkflow(workflowId: string): Promise<CredentialsEntity[]> {
 		return await this.findBy({
+			usageScope: 'project',
 			shared: { project: { sharedWorkflows: { workflowId } } },
 		});
 	}
@@ -282,7 +389,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 * are part of this project.
 	 */
 	async findAllCredentialsForProject(projectId: string): Promise<CredentialsEntity[]> {
-		return await this.findBy({ shared: { projectId } });
+		return await this.findBy({ usageScope: 'project', shared: { projectId } });
 	}
 
 	/**
@@ -294,7 +401,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		type: string,
 		projectId: string,
 	): Promise<CredentialsEntity[]> {
-		return await this.findBy({ name, type, shared: { projectId } });
+		return await this.findBy({ name, type, usageScope: 'project', shared: { projectId } });
 	}
 
 	/**
@@ -360,6 +467,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		} = {},
 	): SelectQueryBuilder<CredentialsEntity> {
 		const qb = this.createQueryBuilder('credential');
+		qb.andWhere('credential.usageScope = :usageScope', { usageScope: 'project' });
 
 		if (options.filters?.dependency) {
 			addCredentialDependencyExistsFilter(qb, options.filters.dependency);

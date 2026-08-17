@@ -67,9 +67,80 @@ describe('rebuildInteractiveFromHistory', () => {
 		expect(result?.resolvedAt).toBeDefined();
 		expect(result?.resolvedValue).toEqual({ approved: false });
 	});
+
+	it('does not show a declined nested approval as approved from the delegate result', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'delegate_subagent',
+			toolCallId: 'call-delegate-1',
+			input: { subAgentId: 'inline', taskName: 'Research API' },
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'http_request',
+				args: { url: 'https://example.com' },
+			},
+			output: { status: 'completed', answer: 'The request was declined.' },
+			state: 'done',
+		});
+
+		expect(result?.resolvedValue).toBeUndefined();
+	});
 });
 
 describe('convertDbMessages — interactive turn synthesis', () => {
+	it('restores reasoning segments and their timing from history', () => {
+		const [assistant] = convertDbMessages([
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'Inspect the inputs.', startTime: 1_000, endTime: 2_000 },
+					{ type: 'reasoning', text: 'Form the answer.', startTime: 3_000, endTime: 5_000 },
+					{ type: 'text', text: 'Done' },
+				],
+			},
+		]);
+
+		expect(assistant.thinkingSegments).toEqual([
+			{
+				id: 'assistant-1:reasoning:0',
+				content: 'Inspect the inputs.',
+				startTime: 1_000,
+				endTime: 2_000,
+			},
+			{
+				id: 'assistant-1:reasoning:1',
+				content: 'Form the answer.',
+				startTime: 3_000,
+				endTime: 5_000,
+			},
+		]);
+	});
+
+	it('uses executionId from the persisted message dto', () => {
+		const chat = convertDbMessages([
+			{
+				id: 'exec-1:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Hi' }],
+				executionId: 'exec-1',
+			},
+		]);
+
+		expect(chat[0].executionId).toBe('exec-1');
+	});
+
+	it('does not invent executionId from the message id when the dto omits it', () => {
+		const chat = convertDbMessages([
+			{
+				id: 'exec-1:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Hi' }],
+			},
+		]);
+
+		expect(chat[0].executionId).toBeUndefined();
+	});
+
 	it('preserves multiple resolved n8n chat cards from one persisted assistant message', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{
@@ -192,6 +263,35 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		expect(tc?.output).toBe('Error: permission denied');
 	});
 
+	it('marks unfinished tool calls from failed executions as errors', () => {
+		const [assistant] = applyOpenSuspensions(
+			convertDbMessages([
+				{
+					id: 'm-error',
+					role: 'assistant',
+					executionStatus: 'error',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: 'calculator',
+							toolCallId: 'tc-error',
+							input: {
+								type: 'approval',
+								toolName: 'calculator',
+								args: { input: '2 + 2' },
+							},
+						},
+					],
+				},
+			]),
+			[],
+		);
+
+		expect(assistant.toolCalls?.[0].state).toBe('error');
+		expect(assistant.status).toBe('error');
+		expect(assistant.interactive).toBeUndefined();
+	});
+
 	it('treats state:resolved non-interactive tool call as done with output', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{
@@ -289,6 +389,34 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		const chat = convertDbMessages(dbMessages);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('done');
+	});
+
+	it('hydrates childProgress from a persisted childTrace', () => {
+		const childTrace = {
+			text: 'Looking things up',
+			reasoningSegments: [{ id: 'r-1', content: 'Checking schemas.' }],
+			steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+		};
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-d-trace',
+						input: { subAgentId: 'inline' },
+						state: 'resolved',
+						output: { status: 'completed', answer: 'all good' },
+						childTrace,
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		expect(chat[0].toolCalls?.[0].childProgress).toEqual(childTrace);
 	});
 
 	it('leaves delegate difficulty summary for render-time i18n on reload', () => {
@@ -500,19 +628,31 @@ describe('buildDisplayGroups — interactive payloads', () => {
 });
 
 describe('applyOpenSuspensions', () => {
-	it('stamps the runId onto a matching open interactive card', () => {
+	it('rebuilds a nested approval and leaves resolved cards closed', () => {
+		const delegateInput = {
+			subAgentId: 'inline',
+			taskName: 'research_api',
+			goal: 'Research the requested API',
+			context: 'Use the configured research agent',
+		};
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com/data' },
+		};
 		const chat: ChatMessage[] = [
 			{
 				id: 'm1',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: 'tool_a', toolCallId: 'c-open', state: 'suspended' }],
-				interactive: {
-					toolName: APPROVAL_TOOL_NAME,
-					toolCallId: 'c-open',
-					input: { type: 'approval', toolName: 'tool_a', args: {} },
-				},
-				status: 'awaitingUser',
+				toolCalls: [
+					{
+						tool: 'delegate_subagent',
+						toolCallId: 'parent-tool-call-1',
+						input: delegateInput,
+						state: 'running',
+					},
+				],
 			},
 			{
 				id: 'm2',
@@ -530,29 +670,79 @@ describe('applyOpenSuspensions', () => {
 			},
 		];
 
-		const result = applyOpenSuspensions(chat, [{ toolCallId: 'c-open', runId: 'run-42' }]);
+		const result = applyOpenSuspensions(chat, [
+			{
+				toolCallId: 'parent-tool-call-1',
+				runId: 'parent-run-1',
+				suspendPayload,
+			},
+		]);
 
-		expect(result[0].interactive?.runId).toBe('run-42');
-		// Resolved card not in the suspension list — runId stays undefined.
+		expect(result[0].toolCalls?.[0]).toMatchObject({
+			input: delegateInput,
+			suspendPayload,
+			state: 'suspended',
+			runId: 'parent-run-1',
+		});
+		expect(result[0].interactive).toMatchObject({
+			toolName: APPROVAL_TOOL_NAME,
+			input: suspendPayload,
+			runId: 'parent-run-1',
+		});
+		expect(result[0].status).toBe('awaitingUser');
 		expect(result[1].interactive?.runId).toBeUndefined();
 	});
 
-	it('returns chat unchanged when the suspension list is empty', () => {
+	it('retires unmatched unresolved interactive cards when no suspension is open', () => {
 		const chat: ChatMessage[] = [
 			{
 				id: 'm1',
 				role: 'assistant',
 				content: '',
+				toolCalls: [{ tool: 'tool_a', toolCallId: 'c1', state: 'suspended' }],
 				interactive: {
 					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'c1',
 					input: { type: 'approval', toolName: 'tool_a', args: {} },
 				},
+				status: 'awaitingUser',
 			},
 		];
 		const result = applyOpenSuspensions(chat, []);
 		expect(result).toBe(chat);
-		expect(result[0].interactive?.runId).toBeUndefined();
+		expect(result[0].interactive).toBeUndefined();
+		expect(result[0].toolCalls?.[0]).toMatchObject({ state: 'cancelled', canceled: true });
+		expect(result[0].status).toBe('success');
+	});
+
+	it('retires unfinished non-interactive tools when no suspension is open', () => {
+		const chat: ChatMessage[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'external_action', toolCallId: 'c1', state: 'running' }],
+			},
+		];
+
+		applyOpenSuspensions(chat, []);
+
+		expect(chat[0].toolCalls?.[0]).toMatchObject({ state: 'cancelled', canceled: true });
+	});
+
+	it('attaches the run id to an open non-interactive suspension', () => {
+		const chat: ChatMessage[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'external_action', toolCallId: 'c1', state: 'running' }],
+			},
+		];
+
+		applyOpenSuspensions(chat, [{ toolCallId: 'c1', runId: 'run-1' }]);
+
+		expect(chat[0].toolCalls?.[0]).toMatchObject({ state: 'suspended', runId: 'run-1' });
 	});
 
 	it('ignores suspensions that do not match any interactive card', () => {
@@ -569,6 +759,6 @@ describe('applyOpenSuspensions', () => {
 			},
 		];
 		applyOpenSuspensions(chat, [{ toolCallId: 'unknown', runId: 'run-x' }]);
-		expect(chat[0].interactive?.runId).toBeUndefined();
+		expect(chat[0].interactive).toBeUndefined();
 	});
 });

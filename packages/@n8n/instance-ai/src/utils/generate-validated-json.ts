@@ -8,6 +8,7 @@
  * helper's own tests mock `eval-agents`.
  */
 
+import type { ModelConfig } from '@n8n/agents';
 import type { z } from 'zod';
 
 import { createEvalAgent, extractText } from './eval-agents';
@@ -25,6 +26,8 @@ export interface GenerateValidatedJsonOptions<T> {
 	instructions: string;
 	userText: string;
 	schema: z.ZodType<T>;
+	/** Host-resolved model used when no eval model API key is configured in the environment. */
+	fallbackModelConfig?: ModelConfig;
 }
 
 function stripMarkdownFences(text: string): string {
@@ -42,6 +45,7 @@ export async function generateValidatedJson<T>(
 		const llm = createEvalAgent(agentName, {
 			model: options.model,
 			instructions: options.instructions,
+			fallbackModelConfig: options.fallbackModelConfig,
 		});
 		const result = await llm.generate([
 			{ role: 'user' as const, content: [{ type: 'text' as const, text: options.userText }] },

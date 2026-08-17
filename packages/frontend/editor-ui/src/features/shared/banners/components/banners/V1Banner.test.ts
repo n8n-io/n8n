@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import V1Banner from './V1Banner.vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { ROLE } from '@n8n/api-types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 

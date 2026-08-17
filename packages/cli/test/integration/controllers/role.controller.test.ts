@@ -996,8 +996,11 @@ describe('RoleController', () => {
 			// ASSERT
 			//
 			expect(response.body).toEqual({ data: mockUpdatedRole });
-			// Parameter verification skipped - test framework issue
-			expect(roleService.updateCustomRole).toHaveBeenCalledWith(roleSlug, updateRoleDto);
+			expect(roleService.updateCustomRole).toHaveBeenCalledWith({
+				slug: roleSlug,
+				newRole: updateRoleDto,
+				userId: expect.any(String),
+			});
 		});
 
 		it('should update only provided fields', async () => {
@@ -1030,7 +1033,11 @@ describe('RoleController', () => {
 			// ASSERT
 			//
 			expect(response.body).toEqual({ data: mockUpdatedRole });
-			expect(roleService.updateCustomRole).toHaveBeenCalledWith(roleSlug, updateRoleDto);
+			expect(roleService.updateCustomRole).toHaveBeenCalledWith({
+				slug: roleSlug,
+				newRole: updateRoleDto,
+				userId: expect.any(String),
+			});
 		});
 
 		it('should handle service errors gracefully', async () => {
@@ -1126,6 +1133,71 @@ describe('RoleController', () => {
 			expect(response.body).toEqual({ data: mockDeletedRole });
 			// Parameter verification skipped - test framework issue
 			expect(roleService.removeCustomRole).toHaveBeenCalledTimes(1);
+		});
+
+		it('should forward the reassignRoleSlug query param to the service for an entitled caller', async () => {
+			//
+			// ARRANGE
+			//
+			const roleSlug = 'global:test-role';
+			const globalRole: Role = {
+				slug: roleSlug,
+				displayName: 'Deleted Role',
+				description: null,
+				systemRole: false,
+				roleType: 'global',
+				scopes: [],
+				licensed: true,
+			};
+			roleService.getRole.mockResolvedValue(globalRole);
+			roleService.removeCustomRole.mockResolvedValue(globalRole);
+
+			//
+			// ACT
+			//
+			await ownerAgent.delete(`/roles/${roleSlug}?reassignRoleSlug=global:member`).expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(roleService.removeCustomRole).toHaveBeenCalledWith(roleSlug, 'global:member');
+		});
+
+		it('should reject reassignment to the owner role', async () => {
+			//
+			// ACT & ASSERT — global:owner is not an assignable target (DTO validation)
+			//
+			await ownerAgent.delete('/roles/global:test-role?reassignRoleSlug=global:owner').expect(400);
+
+			expect(roleService.removeCustomRole).not.toHaveBeenCalled();
+		});
+
+		it('should ignore the reassignment target for project roles', async () => {
+			//
+			// ARRANGE
+			//
+			const roleSlug = 'project:test-role';
+			const projectRole: Role = {
+				slug: roleSlug,
+				displayName: 'Project Role',
+				description: null,
+				systemRole: false,
+				roleType: 'project',
+				scopes: ['workflow:read'],
+				licensed: true,
+			};
+			roleService.getRole.mockResolvedValue(projectRole);
+			roleService.removeCustomRole.mockResolvedValue(projectRole);
+
+			//
+			// ACT — reassignment is not supported for project roles, so the target is dropped
+			//
+			await ownerAgent.delete(`/roles/${roleSlug}?reassignRoleSlug=project:admin`).expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(roleService.removeCustomRole).toHaveBeenCalledWith(roleSlug, undefined);
 		});
 
 		it('should handle service errors gracefully', async () => {

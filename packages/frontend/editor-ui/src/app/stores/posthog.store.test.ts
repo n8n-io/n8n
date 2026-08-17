@@ -1,14 +1,14 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { FrontendSettings } from '@n8n/api-types';
 import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
 import { nextTick } from 'vue';
 import { defaultSettings } from '@/__tests__/defaults';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import type { FeatureFlags } from 'n8n-workflow';
 import postHogInitStub from '../../../public/static/posthog.init.js?raw';
 
@@ -164,6 +164,58 @@ describe('Posthog store', () => {
 			);
 		});
 
+		it('disables client-side flag refetch when flags are bootstrapped', () => {
+			const posthog = usePostHog();
+			posthog.init({ test: 'variant' });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({
+					advanced_disable_feature_flags: true,
+				}),
+			);
+		});
+
+		it('keeps client-side flag refetch when flags are not bootstrapped', () => {
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.not.objectContaining({
+					advanced_disable_feature_flags: expect.anything(),
+				}),
+			);
+		});
+
+		it('does not request tracing headers when session recording is disabled', () => {
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.not.objectContaining({
+					tracing_headers: expect.anything(),
+				}),
+			);
+		});
+
+		it('requests tracing headers for the REST host when session recording is enabled', () => {
+			setSettings({
+				posthog: { ...DEFAULT_POSTHOG_SETTINGS, disableSessionRecording: false },
+			});
+
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({
+					tracing_headers: [window.location.hostname],
+				}),
+			);
+		});
+
 		it('should identify user', () => {
 			const posthog = usePostHog();
 			posthog.init();
@@ -262,6 +314,69 @@ describe('Posthog store', () => {
 
 			expect(posthog.hasPendingFeatureFlags()).toBe(false);
 			expect(posthog.getVariant('test')).toEqual('variant');
+		});
+
+		describe('trackExposure', () => {
+			it('fires the native exposure event for a resolved variant', () => {
+				const posthog = usePostHog();
+				posthog.init({ test: 'variant' });
+
+				posthog.trackExposure('test');
+
+				expect(window.posthog?.capture).toHaveBeenCalledWith('$feature_flag_called', {
+					$feature_flag: 'test',
+					$feature_flag_response: 'variant',
+				});
+			});
+
+			it('does not fire the exposure event twice for the same variant', () => {
+				const posthog = usePostHog();
+				posthog.init({ test: 'variant' });
+
+				posthog.trackExposure('test');
+				posthog.trackExposure('test');
+
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(1);
+			});
+
+			it('re-fires the exposure event when the variant changes', () => {
+				const posthog = usePostHog();
+				posthog.init({ test: 'variant' });
+
+				posthog.trackExposure('test');
+				posthog.overrides.test = 'variant-2';
+				posthog.trackExposure('test');
+
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
+				expect(window.posthog?.capture).toHaveBeenLastCalledWith('$feature_flag_called', {
+					$feature_flag: 'test',
+					$feature_flag_response: 'variant-2',
+				});
+			});
+
+			it('skips flags with no variant or a disabled boolean flag', () => {
+				const posthog = usePostHog();
+				posthog.init({ enabled_flag: false });
+
+				posthog.trackExposure('missing_flag');
+				posthog.trackExposure('enabled_flag');
+
+				expect(window.posthog?.capture).not.toHaveBeenCalled();
+			});
+
+			it('re-fires the exposure event after reset clears the dedupe cache', () => {
+				const posthog = usePostHog();
+				posthog.overrides.test = 'variant';
+
+				posthog.trackExposure('test');
+				posthog.trackExposure('test');
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(1);
+
+				posthog.reset();
+				posthog.trackExposure('test');
+
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
+			});
 		});
 
 		afterEach(() => {

@@ -19,10 +19,10 @@ import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
 import type { TelemetryNdvType } from '@/app/types/telemetry';

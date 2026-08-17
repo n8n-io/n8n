@@ -177,7 +177,7 @@ describe('formNodeUtils', () => {
 		const triggerName = 'triggerName';
 		webhookFunctions.evaluateExpression.mockImplementation((expression) => {
 			// The trigger stores the raw, unresolved expression string in its params.
-			if (expression === `{{ $('${triggerName}').params.formTitle }}`) {
+			if (expression === `{{ $(${JSON.stringify(triggerName)}).params.formTitle }}`) {
 				return "={{ $workflow.name.split('-')[0].trim() }}";
 			}
 			if (expression === "{{ $workflow.name.split('-')[0].trim() }}") {
@@ -209,7 +209,7 @@ describe('formNodeUtils', () => {
 		const triggerName = 'triggerName';
 		webhookFunctions.evaluateExpression.mockImplementation((expression) => {
 			// The trigger stores the raw, unresolved expression string in its params.
-			if (expression === `{{ $('${triggerName}').params.options?.buttonLabel }}`) {
+			if (expression === `{{ $(${JSON.stringify(triggerName)}).params.options?.buttonLabel }}`) {
 				return '={{ $workflow.name }}';
 			}
 			if (expression === '{{ $workflow.name }}') {
@@ -294,7 +294,7 @@ describe('formNodeUtils', () => {
 			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
 
 			webhookFunctions.evaluateExpression
-				.calledWith(`{{ $('${formTrigger1.name}').first() }}`)
+				.calledWith(`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`)
 				.mockReturnValue('success');
 
 			const result = getFormTriggerNode(webhookFunctions);
@@ -302,7 +302,7 @@ describe('formNodeUtils', () => {
 			expect(result).toBe(formTrigger1);
 			expect(webhookFunctions.getParentNodes).toHaveBeenCalledWith('currentNode');
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger1.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`,
 			);
 		});
 
@@ -324,22 +324,22 @@ describe('formNodeUtils', () => {
 			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
 
 			webhookFunctions.evaluateExpression
-				.calledWith(`{{ $('${formTrigger1.name}').first() }}`)
+				.calledWith(`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`)
 				.mockImplementation(() => {
 					throw new Error('Evaluation failed');
 				});
 			webhookFunctions.evaluateExpression
-				.calledWith(`{{ $('${formTrigger2.name}').first() }}`)
+				.calledWith(`{{ $(${JSON.stringify(formTrigger2.name)}).first() }}`)
 				.mockReturnValue('success');
 
 			const result = getFormTriggerNode(webhookFunctions);
 
 			expect(result).toBe(formTrigger2);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger1.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`,
 			);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger2.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger2.name)}).first() }}`,
 			);
 		});
 
@@ -387,10 +387,10 @@ describe('formNodeUtils', () => {
 			);
 
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger1.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger1.name)}).first() }}`,
 			);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger2.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger2.name)}).first() }}`,
 			);
 		});
 
@@ -427,7 +427,7 @@ describe('formNodeUtils', () => {
 			webhookFunctions.getParentNodes.mockReturnValue(parentNodes);
 
 			webhookFunctions.evaluateExpression
-				.calledWith(`{{ $('${formTrigger.name}').first() }}`)
+				.calledWith(`{{ $(${JSON.stringify(formTrigger.name)}).first() }}`)
 				.mockReturnValue('success');
 
 			const result = getFormTriggerNode(webhookFunctions);
@@ -435,7 +435,7 @@ describe('formNodeUtils', () => {
 			expect(result).toBe(formTrigger);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledTimes(1);
 			expect(webhookFunctions.evaluateExpression).toHaveBeenCalledWith(
-				`{{ $('${formTrigger.name}').first() }}`,
+				`{{ $(${JSON.stringify(formTrigger.name)}).first() }}`,
 			);
 		});
 	});

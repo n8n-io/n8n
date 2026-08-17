@@ -10,7 +10,7 @@ import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsS
 import { N8nButton, N8nNotice } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 type SelectRef = InstanceType<typeof MCPWorkflowsSelect>;
 
@@ -87,6 +87,7 @@ onBeforeUnmount(() => {
 		width="600px"
 		:class="$style.container"
 		:event-bus="modalBus"
+		:close-on-click-modal="false"
 	>
 		<template #content>
 			<div :class="$style.content">
@@ -113,7 +114,6 @@ onBeforeUnmount(() => {
 				<N8nButton
 					variant="subtle"
 					:label="i18n.baseText('generic.cancel')"
-					:size="'small'"
 					:disabled="isSaving"
 					data-test-id="mcp-connect-workflows-cancel-button"
 					@click="cancel(close)"

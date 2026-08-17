@@ -4,6 +4,7 @@ import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView
 import type { IWorkflowDb } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
+import { isPostMessageOriginAllowed } from '@/app/utils/postMessageUtils';
 
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -36,7 +37,8 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 	if (
 		!messageEvent ||
 		typeof messageEvent.data !== 'string' ||
-		!messageEvent.data?.includes?.('"command"')
+		!messageEvent.data?.includes?.('"command"') ||
+		!isPostMessageOriginAllowed(messageEvent.origin)
 	) {
 		return;
 	}

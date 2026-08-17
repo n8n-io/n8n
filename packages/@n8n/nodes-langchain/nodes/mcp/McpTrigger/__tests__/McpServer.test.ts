@@ -13,6 +13,7 @@ import {
 } from './helpers';
 import type { McpServerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
 import { QueuedExecutionStrategy } from '../execution/QueuedExecutionStrategy';
 import { McpServer } from '../McpServer';
@@ -170,6 +171,111 @@ describe('McpServer', () => {
 		});
 	});
 
+	describe('handlePostMessage resolution', () => {
+		const sessionId = 'sse-session';
+		const requestId = 'call-1';
+
+		type CallToolHandler = (
+			request: { params: { name: string; arguments: Record<string, unknown> } },
+			extra: { sessionId?: string; requestId?: string },
+		) => Promise<{ isError?: boolean; content: Array<{ text: string }> }>;
+
+		async function setupSseSession(tool: ReturnType<typeof createMockTool>) {
+			const transport = createMockTransport(sessionId, 'sse');
+			const server = createMockServer();
+			const internals = mcpServer as unknown as {
+				sessionManager: SessionManager;
+				setupHandlers(server: unknown): void;
+			};
+
+			await internals.sessionManager.registerSession(sessionId, server, transport, [tool]);
+			internals.setupHandlers(server);
+
+			const handler = server.setRequestHandler.mock.calls[1][1] as unknown as CallToolHandler;
+			let handlerResult: ReturnType<CallToolHandler> | undefined;
+			transport.handleRequest.mockImplementation(async () => {
+				handlerResult = handler(
+					{ params: { name: tool.name, arguments: {} } },
+					{ sessionId, requestId },
+				);
+			});
+
+			return {
+				transport,
+				getHandlerResult: (): ReturnType<CallToolHandler> | undefined => handlerResult,
+			};
+		}
+
+		const postToolCall = async (tool: ReturnType<typeof createMockTool>) =>
+			await mcpServer.handlePostMessage(
+				createMockRequestWithSessionId(
+					sessionId,
+					createValidToolCallMessage(tool.name, {}, requestId),
+				),
+				createMockResponse(),
+				[tool],
+			);
+
+		it('should keep an SSE tool call pending until the tool has finished', async () => {
+			let finishTool!: () => void;
+			const tool = createMockTool('get_weather');
+			tool.invoke.mockImplementation(async () => {
+				await new Promise<void>((resolve) => (finishTool = resolve));
+				return { ok: true };
+			});
+			await setupSseSession(tool);
+
+			let resolved = false;
+			const postPromise = postToolCall(tool).then((result) => {
+				resolved = true;
+				return result;
+			});
+
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(tool.invoke).toHaveBeenCalled();
+			expect(resolved).toBe(false);
+
+			finishTool();
+
+			expect((await postPromise).wasToolCall).toBe(true);
+		});
+
+		it('should resolve an SSE tool call whose tool throws', async () => {
+			const tool = createMockTool('get_weather', { invokeError: new Error('boom') });
+			const { getHandlerResult } = await setupSseSession(tool);
+
+			expect((await postToolCall(tool)).wasToolCall).toBe(true);
+
+			const handlerResult = await getHandlerResult();
+			expect(handlerResult?.isError).toBe(true);
+			expect(handlerResult?.content[0].text).toContain('boom');
+		});
+
+		it('should resolve an SSE tool call when the transport fails to handle the request', async () => {
+			const tool = createMockTool('get_weather');
+			const { transport } = await setupSseSession(tool);
+			transport.handleRequest.mockRejectedValue(new Error('SSE connection not established'));
+
+			expect((await postToolCall(tool)).wasToolCall).toBe(true);
+			expect(tool.invoke).not.toHaveBeenCalled();
+		});
+
+		it('should resolve a queue-mode tool call before the worker result arrives', async () => {
+			const tool = createMockTool('get_weather');
+			const { getHandlerResult } = await setupSseSession(tool);
+			mcpServer.setExecutionStrategy(
+				new QueuedExecutionStrategy(mcpServer.getPendingCallsManager()),
+			);
+
+			expect((await postToolCall(tool)).wasToolCall).toBe(true);
+			expect(mcpServer.hasPendingResponse(sessionId, requestId)).toBe(true);
+
+			mcpServer.handleWorkerResponse(sessionId, requestId, { ok: true });
+
+			expect((await getHandlerResult())?.isError).toBeUndefined();
+		});
+	});
+
 	describe('handleDeleteRequest', () => {
 		it('should return 400 when no sessionId provided', async () => {
 			const response = createMockResponse();
@@ -193,6 +299,60 @@ describe('McpServer', () => {
 
 			expect(response.status).toHaveBeenCalledWith(404);
 			expect(response.send).toHaveBeenCalledWith('Session not found');
+		});
+	});
+
+	describe('createServer', () => {
+		type ServerFactory = {
+			createServer(serverName: string, instructions?: string): Server;
+		};
+
+		// Drives a real SDK Server through a stub transport and returns the
+		// InitializeResult the client would receive.
+		const initialize = async (server: Server) => {
+			const sent: Array<{ result?: { instructions?: string; serverInfo?: { name: string } } }> = [];
+			const transport = {
+				start: vi.fn().mockResolvedValue(undefined),
+				send: vi.fn().mockImplementation(async (message: (typeof sent)[number]) => {
+					sent.push(message);
+				}),
+				close: vi.fn().mockResolvedValue(undefined),
+				onmessage: undefined as ((message: unknown) => void) | undefined,
+			};
+			await server.connect(transport as never);
+			transport.onmessage?.({
+				jsonrpc: '2.0',
+				id: 1,
+				method: 'initialize',
+				params: {
+					protocolVersion: '2025-03-26',
+					capabilities: {},
+					clientInfo: { name: 'test-client', version: '1.0' },
+				},
+			});
+			await vi.waitFor(() => expect(sent).toHaveLength(1));
+			return sent[0].result;
+		};
+
+		it('should include instructions in the initialize result when provided', async () => {
+			const server = (mcpServer as unknown as ServerFactory).createServer(
+				'test-server',
+				'Call the context tool first.',
+			);
+
+			const result = await initialize(server);
+
+			expect(result?.serverInfo?.name).toBe('test-server');
+			expect(result?.instructions).toBe('Call the context tool first.');
+		});
+
+		it('should omit instructions from the initialize result when not provided', async () => {
+			const server = (mcpServer as unknown as ServerFactory).createServer('test-server');
+
+			const result = await initialize(server);
+
+			expect(result?.serverInfo?.name).toBe('test-server');
+			expect(result?.instructions).toBeUndefined();
 		});
 	});
 

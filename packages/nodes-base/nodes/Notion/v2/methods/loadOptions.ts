@@ -166,9 +166,13 @@ export async function getDatabaseIdFromPage(
 export async function getDatabaseOptionsFromPage(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const pageId = extractPageId(
-		this.getCurrentNodeParameter('pageId', { extractValue: true }) as string,
-	);
+	const pageIdValue = this.getCurrentNodeParameter('pageId', { extractValue: true }) as
+		| string
+		| null;
+	const pageId = extractPageId(pageIdValue ?? '');
+	if (!pageId) {
+		return [];
+	}
 	const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');
 	const {
 		parent: { database_id: databaseId },

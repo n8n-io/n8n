@@ -783,6 +783,7 @@ describe('test-workflow MCP tool', () => {
 					workflowId: 'wf-1',
 					pinData: { Trigger: [{ json: {} }] },
 					triggerNodeName: undefined,
+					timeout: undefined,
 				},
 				{} as any,
 			);
@@ -792,6 +793,56 @@ describe('test-workflow MCP tool', () => {
 				status: 'error',
 				error: expect.stringContaining('timed out'),
 			});
+		});
+
+		test('records whether a custom timeout was provided in telemetry', async () => {
+			const workflow = createWorkflow({
+				settings: { availableInMCP: true },
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Trigger',
+						type: WEBHOOK_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+					} as INode,
+				],
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+			(workflowRunner.run as Mock).mockResolvedValue('exec-timeout-telemetry');
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: {} } },
+			});
+
+			const tool = createTestWorkflowTool(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				telemetry,
+				mcpService,
+			);
+
+			await tool.handler(
+				{
+					workflowId: 'wf-1',
+					pinData: { Trigger: [{ json: {} }] },
+					triggerNodeName: undefined,
+					timeout: 42,
+				},
+				{} as any,
+			);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					parameters: expect.objectContaining({ hasCustomTimeout: true }),
+				}),
+			);
 		});
 
 		test('WorkflowAccessError returns error with null executionId', async () => {
@@ -812,6 +863,7 @@ describe('test-workflow MCP tool', () => {
 					workflowId: 'missing-wf',
 					pinData: {},
 					triggerNodeName: undefined,
+					timeout: undefined,
 				},
 				{} as any,
 			);
@@ -821,6 +873,103 @@ describe('test-workflow MCP tool', () => {
 				status: 'error',
 				error: expect.stringContaining("not found or you don't have permission"),
 			});
+		});
+	});
+
+	describe('timeout parameter', () => {
+		const singleTriggerWorkflow = () =>
+			createWorkflow({
+				settings: { availableInMCP: true },
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Trigger',
+						type: WEBHOOK_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+					} as INode,
+				],
+			});
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			(activeExecutions.stopExecution as Mock).mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		test('times out at the provided custom timeout rather than the default', async () => {
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(
+				singleTriggerWorkflow(),
+			);
+			(workflowRunner.run as Mock).mockResolvedValue('exec-custom-timeout');
+			// Never resolves — only the timeout can settle the race.
+			(activeExecutions.getPostExecutePromise as Mock).mockReturnValue(new Promise(() => {}));
+
+			const promise = testWorkflow(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				mcpService,
+				'wf-1',
+				{ Trigger: [{ json: {} }] },
+				undefined,
+				10,
+			);
+			const assertion = expect(promise).rejects.toMatchObject({
+				name: 'McpExecutionTimeoutError',
+				timeoutMs: 10_000,
+			});
+
+			// Flush the microtasks up to the timeout, then trip it.
+			await vi.advanceTimersByTimeAsync(10_000);
+			await assertion;
+			expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+				'exec-custom-timeout',
+				expect.anything(),
+			);
+		});
+
+		test('does not time out before the custom timeout elapses', async () => {
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(
+				singleTriggerWorkflow(),
+			);
+			(workflowRunner.run as Mock).mockResolvedValue('exec-slow');
+			let resolveExecution: (value: unknown) => void = () => {};
+			(activeExecutions.getPostExecutePromise as Mock).mockReturnValue(
+				new Promise((resolve) => {
+					resolveExecution = resolve;
+				}),
+			);
+
+			const promise = testWorkflow(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				mcpService,
+				'wf-1',
+				{ Trigger: [{ json: {} }] },
+				undefined,
+				600,
+			);
+
+			// Advance well past the 300s default — a custom 600s timeout must keep waiting.
+			await vi.advanceTimersByTimeAsync(300_000);
+			resolveExecution({ status: 'success', data: { resultData: { runData: {} } } });
+
+			await expect(promise).resolves.toMatchObject({
+				executionId: 'exec-slow',
+				status: 'success',
+			});
+			expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 		});
 	});
 
@@ -871,6 +1020,7 @@ describe('test-workflow MCP tool', () => {
 					workflowId: 'wf-1',
 					pinData: { Trigger: [{ json: {} }], OtherNode: [{ json: { x: 1 } }] },
 					triggerNodeName: 'Trigger',
+					timeout: undefined,
 				},
 				{} as any,
 			);
@@ -884,6 +1034,7 @@ describe('test-workflow MCP tool', () => {
 						workflowId: 'wf-1',
 						nodeCount: 2,
 						hasTriggerNodeName: true,
+						hasCustomTimeout: false,
 					},
 					results: {
 						success: true,
@@ -907,7 +1058,7 @@ describe('test-workflow MCP tool', () => {
 			);
 
 			await tool.handler(
-				{ workflowId: 'missing', pinData: {}, triggerNodeName: undefined },
+				{ workflowId: 'missing', pinData: {}, triggerNodeName: undefined, timeout: undefined },
 				{} as any,
 			);
 

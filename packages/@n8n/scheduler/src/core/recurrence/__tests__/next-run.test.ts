@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon';
+import type { CronExpression } from 'n8n-workflow';
 
 import { InvalidScheduleError } from '../../errors';
 import type { CronSchedule, RecurringCronSchedule, Schedule } from '../../types';
@@ -40,6 +41,37 @@ describe('computeNextRunAt', () => {
 			expect(nextOf(schedule, new Date('2026-01-10T00:00:00Z')).toISOString()).toBe(
 				'2026-01-10T00:00:30.000Z',
 			);
+		});
+
+		it('fires a 5-field weekday cron at the right times, skipping the weekend', () => {
+			const schedule: CronSchedule = {
+				kind: 'cron',
+				cronExpression: '0 9 * * 1-5' as unknown as CronExpression,
+				timezone: 'UTC',
+			};
+			// From Friday noon, the next fire is Monday 09:00 (Sat/Sun skipped)...
+			const monday = nextOf(schedule, new Date('2026-07-31T12:00:00Z'));
+			expect(monday.toISOString()).toBe('2026-08-03T09:00:00.000Z');
+			// ...then Tuesday, then Wednesday.
+			const tuesday = nextOf(schedule, monday);
+			expect(tuesday.toISOString()).toBe('2026-08-04T09:00:00.000Z');
+			expect(nextOf(schedule, tuesday).toISOString()).toBe('2026-08-05T09:00:00.000Z');
+		});
+
+		it('treats a 5-field expression as its 6-field seconds-zero equivalent', () => {
+			const after = new Date('2026-01-10T12:00:00Z');
+			const fiveField: CronSchedule = {
+				kind: 'cron',
+				cronExpression: '30 9 * * 1-5' as unknown as CronExpression,
+				timezone: 'UTC',
+			};
+			const sixField: CronSchedule = {
+				kind: 'cron',
+				// Day ranges are valid cron but outside the branded template type.
+				cronExpression: '0 30 9 * * 1-5' as unknown as CronExpression,
+				timezone: 'UTC',
+			};
+			expect(nextOf(fiveField, after)).toEqual(nextOf(sixField, after));
 		});
 
 		it('throws when the timezone is unresolved (null)', () => {

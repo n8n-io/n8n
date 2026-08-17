@@ -183,6 +183,7 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		stoppedAt: null,
 		duration: 0,
 		userMessage: null,
+		attachments: null,
 		model: null,
 		promptTokens: null,
 		completionTokens: null,
@@ -204,6 +205,33 @@ function withTimeline(
 }
 
 describe('flattenExecutionsToTimelineItems', () => {
+	const attachment = { id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 };
+
+	it('carries attachments on the user item', () => {
+		const items = flattenExecutionsToTimelineItems([
+			exec({ userMessage: 'look at this', attachments: [attachment] }),
+		]);
+
+		expect(items).toHaveLength(1);
+		expect(items[0].kind).toBe('user');
+		expect(items[0].content).toBe('look at this');
+		expect(items[0].attachments).toEqual([attachment]);
+	});
+
+	it('emits a user item for attachment-only turns without text', () => {
+		const items = flattenExecutionsToTimelineItems([exec({ attachments: [attachment] })]);
+
+		expect(items).toHaveLength(1);
+		expect(items[0].kind).toBe('user');
+		expect(items[0].content).toBe('');
+		expect(items[0].attachments).toEqual([attachment]);
+	});
+
+	it('emits no user item when there is neither text nor attachments', () => {
+		const items = flattenExecutionsToTimelineItems([exec()]);
+		expect(items).toHaveLength(0);
+	});
+
 	it('marks the resumed record of a suspended tool call as user feedback', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline(
@@ -291,7 +319,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		});
 	});
 
-	it('maps a regular tool-call timeline event to kind:tool', () => {
+	it('maps a running tool-call without marking it failed', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline([
 				{
@@ -300,10 +328,10 @@ describe('flattenExecutionsToTimelineItems', () => {
 					name: 'http',
 					toolCallId: 'tc-1',
 					input: { method: 'GET' },
-					output: { ok: true },
+					output: undefined,
 					startTime: 1000,
-					endTime: 1200,
-					success: true,
+					endTime: 0,
+					success: false,
 				},
 			]),
 		]);
@@ -311,9 +339,10 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(tool).toMatchObject({
 			toolName: 'http',
 			timestamp: 1000,
-			endTimestamp: 1200,
+			endTimestamp: 1000,
 			toolInput: { method: 'GET' },
-			toolOutput: { ok: true },
+			toolOutput: undefined,
+			toolSuccess: undefined,
 		});
 		expect(tool?.workflowId).toBeUndefined();
 	});

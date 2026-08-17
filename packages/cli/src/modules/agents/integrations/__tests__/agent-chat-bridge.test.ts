@@ -1,9 +1,12 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
+import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
 
+import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
 	AgentChatIntegration,
@@ -12,7 +15,7 @@ import {
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
 import type { IntegrationMessageContextService } from '../integration-message-context.service';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 
@@ -27,6 +30,9 @@ interface FakeThread {
 	startTyping: Mock;
 	messages?: AsyncIterable<unknown>;
 }
+
+const GENERIC_ERROR_MESSAGE =
+	'⚠️ Something went wrong while processing your request. Please try again.';
 
 function makeBot() {
 	const handlers: {
@@ -177,12 +183,62 @@ describe('AgentChatBridge — consumeStream', () => {
 		credentialId: 'cred-1',
 	} as unknown as AgentIntegrationConfig;
 
+	const finishChunk: StreamChunk = { type: 'finish', finishReason: 'stop' };
+	const erroredToolResult: StreamChunk = {
+		type: 'tool-result',
+		toolCallId: 'tool-1',
+		toolName: 'slack',
+		output: { error: 'invalid input' },
+		isError: true,
+	};
+	const successfulToolResult: StreamChunk = {
+		type: 'tool-result',
+		toolCallId: 'tool-2',
+		toolName: 'slack',
+		output: { ok: true },
+		isError: false,
+	};
+	const integrationActionSuspension: StreamChunk = {
+		type: 'tool-call-suspended',
+		runId: 'run-1',
+		toolCallId: 'tool-1',
+		toolName: 'slack',
+		suspendPayload: {
+			type: 'integration_action',
+			action: 'send_channel_message',
+			integrationConnectionId: 'slack:cred-1',
+		},
+	};
+
+	/** Build a bridge for the integration, fire a mention that streams the given chunks, and return the thread. */
+	async function runMention(
+		integration: AgentIntegrationConfig,
+		chunks: StreamChunk[],
+		options: { thread?: FakeThread } = {},
+	): Promise<FakeThread> {
+		const { bot, handlers } = makeBot();
+		const thread = options.thread ?? makeThread();
+
+		new AgentChatBridge(
+			bot as unknown as ChatBotLike,
+			'agent-1',
+			makeAgentExecutor(chunks) as never,
+			componentMapper,
+			logger,
+			'project-1',
+			integration,
+		);
+
+		await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+		return thread;
+	}
+
 	beforeEach(() => {
 		registry = new ChatIntegrationRegistry();
 		registry.register(new BufferingTestIntegration());
 		registry.register(new StreamingTestIntegration());
 		registry.register(new FormattedBufferedTestIntegration());
-		registry.register(new SlackIntegration());
+		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 
@@ -190,6 +246,94 @@ describe('AgentChatBridge — consumeStream', () => {
 		vi.useRealTimers();
 		Container.reset();
 		vi.clearAllMocks();
+	});
+
+	describe('silent outcome from the integration action tool', () => {
+		const silentToolResult: StreamChunk = {
+			type: 'tool-result',
+			toolCallId: 'tool-1',
+			toolName: 'test-streaming_action',
+			output: { ok: true, silent: true, note: 'No reply will be sent.' },
+			isError: false,
+		};
+
+		it('drops text streamed after a silent do_not_respond result', async () => {
+			const thread = await runMention(streamingIntegration, [
+				silentToolResult,
+				{ type: 'text-delta', id: 't1', delta: 'Staying silent now.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('drops text when the silent result is nested in a batched action call', async () => {
+			const thread = await runMention(streamingIntegration, [
+				{
+					type: 'tool-result',
+					toolCallId: 'tool-1',
+					toolName: 'test-streaming_action',
+					output: {
+						ok: true,
+						results: [
+							{ action: 'add_reaction', result: { ok: true } },
+							{ action: 'do_not_respond', result: { ok: true, silent: true } },
+						],
+					},
+					isError: false,
+				},
+				{ type: 'text-delta', id: 't1', delta: 'Staying silent now.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('ignores a nested silent field on batch entries for other actions', async () => {
+			const thread = await runMention(streamingIntegration, [
+				{
+					type: 'tool-result',
+					toolCallId: 'tool-1',
+					toolName: 'test-streaming_action',
+					output: {
+						ok: true,
+						results: [{ action: 'add_reaction', result: { ok: true, silent: true } }],
+					},
+					isError: false,
+				},
+				{ type: 'text-delta', id: 't1', delta: 'Regular reply.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).toHaveBeenCalled();
+		});
+
+		it('ignores a silent field returned by tools other than the integration action tool', async () => {
+			const thread = await runMention(streamingIntegration, [
+				{
+					type: 'tool-result',
+					toolCallId: 'tool-1',
+					toolName: 'my_custom_tool',
+					output: { ok: true, silent: true },
+					isError: false,
+				},
+				{ type: 'text-delta', id: 't1', delta: 'Regular reply.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).toHaveBeenCalled();
+		});
+
+		it('discards buffered text when the silent result arrives before the flush', async () => {
+			const thread = await runMention(bufferedIntegration, [
+				{ type: 'text-delta', id: 't1', delta: 'Draft I should not send. ' },
+				{ ...silentToolResult, toolName: 'test-buffered_action' },
+				{ type: 'text-delta', id: 't2', delta: 'More text.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('when integration disables streaming', () => {
@@ -258,6 +402,12 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+			const resumeSchema = {
+				type: 'object' as const,
+				properties: { approved: { type: 'boolean' as const } },
+				required: ['approved'],
+				additionalProperties: false,
+			};
 
 			const agentExecutor = makeAgentExecutor([
 				{
@@ -265,6 +415,7 @@ describe('AgentChatBridge — consumeStream', () => {
 					runId: 'run-1',
 					toolCallId: 'tool-1',
 					toolName: 'approval',
+					resumeSchema,
 					suspendPayload: {
 						type: 'approval',
 						toolName: 'giphy-gif-search',
@@ -311,7 +462,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				},
 				'run-1',
 				'tool-1',
-				undefined,
+				resumeSchema,
 				undefined,
 				'test-buffered',
 			);
@@ -363,6 +514,63 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith({ card: { kind: 'card' } });
 		});
 
+		it('posts a generic error when an approval card cannot be posted', async () => {
+			const thread = makeThread();
+			thread.post
+				.mockRejectedValueOnce(new Error('card post failed'))
+				.mockResolvedValueOnce(undefined);
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+
+			await runMention(
+				bufferedIntegration,
+				[
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-1',
+						toolCallId: 'tool-1',
+						toolName: 'approval',
+						suspendPayload: { message: 'Approve?' },
+					},
+					finishChunk,
+				],
+				{ thread },
+			);
+
+			expect(thread.post).toHaveBeenCalledTimes(2);
+			expect(thread.post).toHaveBeenNthCalledWith(1, { card: { kind: 'card' } });
+			expect(thread.post).toHaveBeenNthCalledWith(2, GENERIC_ERROR_MESSAGE);
+		});
+
+		it('posts a generic error when an approval card cannot be posted after earlier text', async () => {
+			const thread = makeThread();
+			thread.post
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('card post failed'))
+				.mockResolvedValueOnce(undefined);
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+
+			await runMention(
+				bufferedIntegration,
+				[
+					{ type: 'text-delta', id: 't1', delta: 'Let me check that.' },
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-1',
+						toolCallId: 'tool-1',
+						toolName: 'approval',
+						suspendPayload: { message: 'Approve?' },
+					},
+					finishChunk,
+				],
+				{ thread },
+			);
+
+			expect(thread.post).toHaveBeenCalledTimes(3);
+			expect(thread.post).toHaveBeenNthCalledWith(1, { markdown: 'Let me check that.' });
+			expect(thread.post).toHaveBeenNthCalledWith(2, { card: { kind: 'card' } });
+			expect(thread.post).toHaveBeenNthCalledWith(3, GENERIC_ERROR_MESSAGE);
+		});
+
 		it('does not post when the buffer is only whitespace', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
@@ -382,6 +590,53 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('posts a generic error when an errored tool result ends without output', async () => {
+			const thread = await runMention(bufferedIntegration, [erroredToolResult, finishChunk]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it('does not add a generic error when text follows an errored tool result', async () => {
+			const thread = await runMention(bufferedIntegration, [
+				erroredToolResult,
+				{ type: 'text-delta', id: 't1', delta: 'I could not send that report.' },
+				finishChunk,
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'I could not send that report.' });
+		});
+
+		it('does not post an error for a successful tool-only run', async () => {
+			const thread = await runMention(bufferedIntegration, [successfulToolResult, finishChunk]);
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('drops buffered card preamble but keeps text emitted after suspension', async () => {
+			const thread = await runMention(bufferedIntegration, [
+				{ type: 'text-delta', id: 't1', delta: 'Here is the approval card.' },
+				integrationActionSuspension,
+				{ type: 'text-delta', id: 't2', delta: 'The action was approved.' },
+				finishChunk,
+			]);
+
+			expect(componentMapper.toCard).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'The action was approved.' });
+		});
+
+		it('does not post an error when a failed tool call is retried successfully', async () => {
+			const thread = await runMention(bufferedIntegration, [
+				erroredToolResult,
+				successfulToolResult,
+				finishChunk,
+			]);
 
 			expect(thread.post).not.toHaveBeenCalled();
 		});
@@ -476,6 +731,270 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 	});
 
+	describe('when the inbound message carries attachments', () => {
+		function makeAttachmentService() {
+			let counter = 0;
+			return {
+				storeInbound: vi.fn(
+					async (params: { fileName: string; mimeType: string; data: Buffer }) => ({
+						id: `att-${++counter}`,
+						fileName: params.fileName,
+						mimeType: params.mimeType,
+						fileSizeBytes: params.data.byteLength,
+					}),
+				),
+				deleteByIds: vi.fn(async () => {}),
+			};
+		}
+
+		function makeBridge(
+			agentExecutor: ReturnType<typeof makeAgentExecutor>,
+			attachmentService: ReturnType<typeof makeAttachmentService>,
+			integration: AgentIntegrationConfig = streamingIntegration,
+			discordHttpClient?: HttpRequestClient,
+		) {
+			const { bot, handlers } = makeBot();
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integration,
+				undefined,
+				attachmentService as never,
+				discordHttpClient,
+			);
+			return handlers;
+		}
+
+		// PNG magic bytes so the mime sniff confirms the declared type.
+		const pngBytes = Buffer.from([
+			0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+			0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f,
+			0x15, 0xc4, 0x89,
+		]);
+
+		it('downloads, stores, and passes attachment refs to the executor', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, {
+				text: 'look at this',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					threadId: 'agent-1:thread-1',
+					source: 'test-streaming',
+					fileName: 'photo.png',
+					mimeType: 'image/png',
+				}),
+			);
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'look at this',
+					attachments: [
+						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
+					],
+				}),
+			);
+		});
+
+		it('downloads Discord CDN attachments without fetching untrusted URLs', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const request = vi.fn().mockResolvedValue({
+				body: pngBytes,
+				headers: {},
+				statusCode: 200,
+			});
+			const httpClient = { request } as unknown as HttpRequestClient;
+			const handlers = makeBridge(
+				agentExecutor,
+				attachmentService,
+				{
+					type: 'discord',
+					credentialId: 'cred-discord',
+				} as unknown as AgentIntegrationConfig,
+				httpClient,
+			);
+			const attachmentUrl = 'https://cdn.discordapp.com/attachments/123/456/photo.png?ex=signed';
+
+			await handlers.mention!(makeThread(), {
+				text: 'what is this?',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						url: attachmentUrl,
+						name: 'photo.png',
+						mimeType: 'image/png',
+					},
+					{
+						type: 'image',
+						url: 'http://127.0.0.1/internal.png',
+						name: 'internal.png',
+						mimeType: 'image/png',
+					},
+				],
+			});
+
+			expect(request).toHaveBeenCalledOnce();
+			expect(request).toHaveBeenCalledWith(expect.objectContaining({ url: attachmentUrl }));
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					source: 'discord',
+					fileName: 'photo.png',
+					mimeType: 'image/png',
+				}),
+			);
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'what is this?\n[Attachment "internal.png" could not be processed]',
+					attachments: [
+						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
+					],
+				}),
+			);
+		});
+
+		it('deletes stored attachments when execution setup fails before the stream is consumed', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+			const integrationImpl = registry.get('test-streaming')!;
+			// The test integration doesn't implement this optional hook; inject one.
+			integrationImpl.createBridgeExecutionContext = vi
+				.fn()
+				.mockRejectedValue(new Error('platform down'));
+
+			try {
+				await handlers.mention!(thread, {
+					text: 'look at this',
+					author: { userId: 'u1', userName: 'user1' },
+					attachments: [
+						{
+							type: 'image',
+							name: 'photo.png',
+							mimeType: 'image/png',
+							fetchData: vi.fn().mockResolvedValue(pngBytes),
+						},
+					],
+				});
+
+				expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+				expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+				// The mention handler swallows the re-thrown error and reports it to
+				// the platform thread — the awaited call above resolving (rather than
+				// rejecting) is by design.
+				expect(thread.post).toHaveBeenCalledWith(
+					'⚠️ Something went wrong while processing your request. Please try again.',
+				);
+			} finally {
+				delete integrationImpl.createBridgeExecutionContext;
+			}
+		});
+
+		it('truncates a platform file name to the fileName column width', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, {
+				text: 'look at this',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: `${'a'.repeat(MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH + 10)}.png`,
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					fileName: 'a'.repeat(MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH),
+				}),
+			);
+		});
+
+		it('executes attachment-only messages that have no text', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+
+			await handlers.mention!(makeThread(), {
+				text: '',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					attachments: [expect.objectContaining({ id: 'att-1' })],
+				}),
+			);
+		});
+
+		it('degrades failed downloads and oversize files to text notes without aborting', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+
+			await handlers.mention!(makeThread(), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'file',
+						name: 'broken.pdf',
+						mimeType: 'application/pdf',
+						fetchData: vi.fn().mockRejectedValue(new Error('download failed')),
+					},
+					{
+						type: 'file',
+						name: 'huge.pdf',
+						mimeType: 'application/pdf',
+						size: 50 * 1024 * 1024,
+						fetchData: vi.fn(),
+					},
+				],
+			});
+
+			expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+			const config = agentExecutor.captured[0] as { message: string; attachments?: unknown };
+			expect(config.attachments).toBeUndefined();
+			expect(config.message).toContain('[Attachment "broken.pdf" could not be processed]');
+			expect(config.message).toContain('[Attachment "huge.pdf" was skipped: larger than 10 MB]');
+		});
+	});
+
 	describe('when integration keeps streaming enabled', () => {
 		it('posts an AsyncIterable whose drained content equals the concatenated deltas', async () => {
 			const { bot, handlers } = makeBot();
@@ -503,6 +1022,21 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(received).toBe('Hello world');
 		});
 
+		it('omits reasoning chunks from streamed external-channel responses', async () => {
+			const thread = await runMention(streamingIntegration, [
+				{ type: 'reasoning-start', id: 'reasoning-1' },
+				{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The user is asking...' },
+				{ type: 'reasoning-end', id: 'reasoning-1' },
+				{ type: 'text-start', id: 'text-1' },
+				{ type: 'text-delta', id: 'text-1', delta: 'Final answer' },
+				{ type: 'text-end', id: 'text-1' },
+				finishChunk,
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe('Final answer');
+		});
+
 		it('posts an error message when the streaming post fails', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
@@ -525,10 +1059,82 @@ describe('AgentChatBridge — consumeStream', () => {
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledTimes(2);
-			expect(thread.post).toHaveBeenNthCalledWith(
-				2,
-				'⚠️ Something went wrong while processing your request. Please try again.',
+			expect(thread.post).toHaveBeenNthCalledWith(2, GENERIC_ERROR_MESSAGE);
+		});
+
+		it('posts a generic error when an errored tool result ends without output', async () => {
+			const thread = await runMention(streamingIntegration, [erroredToolResult, finishChunk]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it('does not add a generic error when streamed text follows an errored tool result', async () => {
+			const thread = await runMention(streamingIntegration, [
+				erroredToolResult,
+				{ type: 'text-delta', id: 't1', delta: 'I could not send that report.' },
+				finishChunk,
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe(
+				'I could not send that report.',
 			);
+		});
+
+		it('does not post an error for a successful streamed tool-only run', async () => {
+			const thread = await runMention(streamingIntegration, [successfulToolResult, finishChunk]);
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('does not post a fallback for a streamed cardless integration action suspension', async () => {
+			const thread = await runMention(streamingIntegration, [
+				integrationActionSuspension,
+				finishChunk,
+			]);
+
+			expect(componentMapper.toCard).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('posts a generic error when an approval card cannot be posted after streamed text', async () => {
+			const thread = makeThread();
+			thread.post
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('card post failed'))
+				.mockResolvedValueOnce(undefined);
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+
+			await runMention(
+				streamingIntegration,
+				[
+					{ type: 'text-delta', id: 't1', delta: 'Let me check that.' },
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-1',
+						toolCallId: 'tool-1',
+						toolName: 'approval',
+						suspendPayload: { message: 'Approve?' },
+					},
+					finishChunk,
+				],
+				{ thread },
+			);
+
+			expect(thread.post).toHaveBeenCalledTimes(3);
+			expect(thread.post).toHaveBeenNthCalledWith(2, { card: { kind: 'card' } });
+			expect(thread.post).toHaveBeenNthCalledWith(3, GENERIC_ERROR_MESSAGE);
+		});
+
+		it('does not post an error when a failed streamed tool call is retried successfully', async () => {
+			const thread = await runMention(streamingIntegration, [
+				erroredToolResult,
+				successfulToolResult,
+				finishChunk,
+			]);
+
+			expect(thread.post).not.toHaveBeenCalled();
 		});
 	});
 
@@ -569,6 +1175,79 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalled();
+		});
+
+		it('does not set a thinking status for subscribed channel messages where the reply is optional', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus, botUserId: 'U_BOT' });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			await handlers.subscribed!(thread, {
+				text: 'chatter between colleagues',
+				raw: {
+					channel: 'C123',
+					channel_type: 'channel',
+					thread_ts: '1779466577.518139',
+					ts: '1779466588.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalled();
+			expect(thread.startTyping).not.toHaveBeenCalled();
+			expect(setAssistantStatus).not.toHaveBeenCalled();
+		});
+
+		it('clears the thread typing status when the turn ends without a response', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			// A silent turn: the agent finishes without any text or post, so
+			// Slack's post-triggered auto-clear never happens.
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			await handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					channel: 'C123',
+					channel_type: 'channel',
+					thread_ts: '1779466577.518139',
+					ts: '1779466588.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(setAssistantStatus).toHaveBeenCalledWith('C123', '1779466577.518139', '');
 		});
 
 		it('clears assistant status before responding to top-level Slack channel mentions', async () => {
@@ -852,10 +1531,14 @@ describe('AgentChatBridge — consumeStream', () => {
 		it('sets a thinking status and buffers the response when resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
+			const deleteMessage = vi.fn().mockResolvedValue(undefined);
 			const agentExecutor = {
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 				resumeForChat: vi.fn(() =>
 					toStream([
+						{ type: 'reasoning-start', id: 'reasoning-1' },
+						{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The tool was approved.' },
+						{ type: 'reasoning-end', id: 'reasoning-1' },
 						{ type: 'text-delta', id: 't1', delta: 'Approved ' },
 						{ type: 'text-delta', id: 't1', delta: 'response' },
 						{ type: 'finish', finishReason: 'stop' },
@@ -880,9 +1563,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				thread,
 				threadId: 'thread-1',
 				user: { userId: 'u2', userName: 'user2' },
-				adapter: { deleteMessage: vi.fn().mockResolvedValue(undefined) },
+				adapter: { deleteMessage },
 			});
 
+			expect(deleteMessage).toHaveBeenCalledWith('thread-1', 'card-message-1');
 			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
 			expect(thread.startTyping.mock.invocationCallOrder[0]).toBeLessThan(
 				thread.post.mock.invocationCallOrder[0],
@@ -934,6 +1618,81 @@ describe('AgentChatBridge — consumeStream', () => {
 					interactingUserId: 'u1',
 					messageId: 'message-1',
 				}),
+			);
+		});
+
+		it('stores the platform reply expectation for subscribed Slack channel messages', async () => {
+			const { bot, handlers } = makeBot();
+			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
+			const thread = makeThread();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.subscribed!(thread, {
+				id: 'message-2',
+				text: 'chatter between colleagues',
+				author: { userId: 'u1', userName: 'user1' },
+				raw: { channel: 'C123', channel_type: 'channel' },
+			});
+
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:thread-1',
+				'u1',
+				expect.objectContaining({
+					replyExpectation: 'optional',
+					replyTarget: {
+						type: 'thread',
+						threadId: 'thread-1',
+						channelId: 'channel-1',
+					},
+					replyMessageId: 'message-2',
+				}),
+			);
+		});
+
+		it('defaults the reply expectation to required for platforms without a reply policy', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+				messageContextStore,
+			);
+
+			await handlers.subscribed!(thread, {
+				id: 'message-2',
+				text: 'follow-up',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:thread-1',
+				'u1',
+				expect.objectContaining({ replyExpectation: 'required' }),
 			);
 		});
 
@@ -1052,6 +1811,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						id: 'ENG-123',
 						title: 'Fix signup',
 					},
+					replyExpectation: 'required',
 				}),
 			);
 		});
@@ -1122,7 +1882,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 
 	beforeEach(() => {
 		const registry = new ChatIntegrationRegistry();
-		registry.register(new SlackIntegration());
+		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 

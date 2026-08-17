@@ -2,23 +2,23 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { ROLE, type Role } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { IFormInputs, ThemeOption } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import { MFA_DOCS_URL } from '@/app/constants';
 import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
-	MFA_DOCS_URL,
 	MFA_SETUP_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
-} from '@/app/constants';
+} from '../auth.constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
-import { createFormEventBus } from '@n8n/design-system/utils';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { createFormEventBus } from '@n8n/design-system';
 import type { MfaModalEvents } from '../auth.eventBus';
 import { promptMfaCodeBus } from '../auth.eventBus';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -97,15 +97,17 @@ const isManagedByEnv = computed((): boolean => {
 	return currentUser.value?.isManagedByEnv ?? false;
 });
 
+const isLdapCurrentAuthMethod = computed((): boolean => {
+	return ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
+});
+
 const isExternalAuthEnabled = computed((): boolean => {
-	const isLdapEnabled =
-		ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
 	const isSamlEnabled = ssoStore.isSamlLoginEnabled && ssoStore.isDefaultAuthenticationSaml;
 	const isOidcEnabled =
 		ssoStore.isEnterpriseOidcEnabled &&
 		ssoStore.isOidcLoginEnabled &&
 		currentUser.value?.signInType === 'oidc';
-	return isLdapEnabled || isSamlEnabled || isOidcEnabled;
+	return isLdapCurrentAuthMethod.value || isSamlEnabled || isOidcEnabled;
 });
 
 const isPersonalSecurityEnabled = computed((): boolean => {
@@ -120,6 +122,18 @@ const mfaEnforced = computed((): boolean => {
 });
 const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
+});
+
+// Unlike SAML/OIDC, LDAP has no native 2FA, so n8n's own 2FA must stay
+// configurable for LDAP users even though password management is external.
+const canConfigureMfa = computed((): boolean => {
+	return (
+		isMfaFeatureEnabled.value && (isPersonalSecurityEnabled.value || isLdapCurrentAuthMethod.value)
+	);
+});
+
+const isSecuritySectionVisible = computed((): boolean => {
+	return !isManagedByEnv.value && (isPersonalSecurityEnabled.value || canConfigureMfa.value);
 });
 
 const hasAnyPersonalisationChanges = computed((): boolean => {
@@ -403,18 +417,18 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 		</div>
-		<div v-if="isPersonalSecurityEnabled && !isManagedByEnv">
+		<div v-if="isSecuritySectionVisible">
 			<div class="mb-s">
 				<N8nHeading size="large">{{ i18n.baseText('settings.personal.security') }}</N8nHeading>
 			</div>
-			<div class="mb-s">
+			<div v-if="isPersonalSecurityEnabled" class="mb-s">
 				<N8nInputLabel :label="i18n.baseText('auth.password')">
 					<N8nLink data-test-id="change-password-link" @click="openPasswordModal">{{
 						i18n.baseText('auth.changePassword')
 					}}</N8nLink>
 				</N8nInputLabel>
 			</div>
-			<div v-if="isMfaFeatureEnabled" data-test-id="mfa-section">
+			<div v-if="canConfigureMfa" data-test-id="mfa-section">
 				<div class="mb-xs">
 					<N8nInputLabel :label="i18n.baseText('settings.personal.mfa.section.title')" />
 					<N8nText :bold="false" :class="$style.infoText">

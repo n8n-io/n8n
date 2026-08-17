@@ -1,7 +1,7 @@
 import type { InstanceAiEvalExecutionResult, InstanceAiEvalNodeResult } from '@n8n/api-types';
 
 import type { WorkflowResponse } from '../clients/n8n-client';
-import { buildVerificationArtifact, selectScenarioWorkflowId } from '../harness/runner';
+import { buildVerificationArtifact, selectScenarioWorkflowId } from '../harness/scenario-execution';
 import type { ExecutionScenario } from '../types';
 
 function makeNodeResult(
@@ -602,6 +602,7 @@ describe('buildVerificationArtifact', () => {
 				interceptedRequests: Array.from({ length: 30 }, (_, i) => ({
 					method: 'GET',
 					url: `https://api.example.com/page/${i}`,
+					nodeType: 'n8n-nodes-base.httpRequest',
 					mockResponse: { page: i },
 				})),
 				iterationCount: 1,

@@ -1,3 +1,4 @@
+import type { MetricScale } from '@n8n/api-types';
 import { computed, type Ref } from 'vue';
 
 import { useI18n } from '@n8n/i18n';
@@ -16,11 +17,13 @@ export interface CompareVersion {
 	label: string;
 	status: EvalCollectionRunStatus;
 	avgScore: number | null;
+	// This run's own metric scales (from its frozen config snapshot), so per-column
+	// normalization uses the scales the values were produced with.
+	metricScales?: Record<string, MetricScale>;
 }
 
-// One metric row in the hero chart: a value per version (aligned to the
-// `versions` order; `null` where a run lacks the metric) plus which version
-// scored highest so the legend/table can flag the winner.
+// One metric row in the hero chart: a value per version (aligned to `versions`
+// order, `null` where a run lacks the metric) plus which version scored highest.
 export interface CompareMetricGroup {
 	key: string;
 	label: string;
@@ -36,12 +39,10 @@ export interface CompareData {
 }
 
 /**
- * Shapes a collection's aggregate detail into the compare view's model:
- * one `CompareVersion` per run (in stored order) and one `CompareMetricGroup`
- * per score-shaped metric with per-version values aligned by version index.
- *
- * Only aggregate per-version metrics are read here — per-case data (Cases /
- * Outputs tabs) is fetched separately by those components.
+ * Shapes a collection's aggregate detail into the compare view's model: one
+ * `CompareVersion` per run and one `CompareMetricGroup` per score-shaped metric.
+ * Only aggregate per-version metrics are read here — per-case data is fetched
+ * separately by the Cases/Outputs components.
  */
 export function useCompareData(detail: Ref<EvaluationCollectionDetail | null>) {
 	const i18n = useI18n();
@@ -59,16 +60,19 @@ export function useCompareData(detail: Ref<EvaluationCollectionDetail | null>) {
 					: run.workflowVersionId.slice(0, 7),
 			status: run.status,
 			avgScore: run.avgScore,
+			metricScales: run.metricScales,
 		}));
 	});
 
 	const metricGroups = computed<CompareMetricGroup[]>(() =>
-		buildScoreShapedMetricGroups(detail.value?.runs ?? []).map(({ key, values }) => ({
-			key,
-			label: formatMetricLabel(key),
-			values,
-			bestIndex: indexOfMax(values),
-		})),
+		buildScoreShapedMetricGroups(detail.value?.runs ?? [], detail.value?.metricScales).map(
+			({ key, values }) => ({
+				key,
+				label: formatMetricLabel(key),
+				values,
+				bestIndex: indexOfMax(values),
+			}),
+		),
 	);
 
 	const bestVersionIndex = computed<number | null>(() =>

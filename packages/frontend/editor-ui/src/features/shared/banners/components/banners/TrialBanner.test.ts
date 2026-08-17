@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import TrialBanner from './TrialBanner.vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { vi } from 'vitest';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -11,7 +11,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		settings: { n8nMetadata: { userId: 'test-user-id' } },
 		isCloudDeployment: true,
@@ -36,12 +36,19 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	})),
 }));
 
+vi.mock('@/experiments/trialIntroModal/stores/trialIntroModal.store', () => ({
+	useTrialIntroModalStore: vi.fn(() => ({
+		shouldSuppressTrialBackground: false,
+	})),
+}));
+
 const routerPushMock = vi.fn();
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal();
 	return {
 		...(actual as object),
 		useRouter: vi.fn(() => ({
+			currentRoute: { value: { name: 'WorkflowsView' } },
 			push: routerPushMock,
 		})),
 	};
@@ -52,11 +59,11 @@ const renderComponent = createComponentRenderer(TrialBanner, {
 		stubs: {
 			N8nIcon: true,
 			BaseBanner: {
-				template: `<div class="base-banner" data-test-id="trial-banner">
+				template: `<div class="base-banner" data-test-id="trial-banner" :data-icon-tooltip="iconTooltip">
 					<slot name="mainContent" />
 					<slot name="trailingContent" />
 				</div>`,
-				props: ['name', 'theme', 'dismissible', 'customIcon'],
+				props: ['name', 'theme', 'dismissible', 'customIcon', 'iconTooltip'],
 			},
 		},
 	},
@@ -115,6 +122,17 @@ describe('TrialBanner', () => {
 
 		const { container } = renderComponent();
 		expect(container.textContent).not.toContain('25/100');
+	});
+
+	it('should pass the executions quota tooltip for the banner icon', () => {
+		cloudPlanStore.state.data = {
+			bannerConfig: {},
+		} as never;
+
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('trial-banner').getAttribute('data-icon-tooltip')).toBe(
+			"Manual runs from the editor don't count. Only production executions use your quota.",
+		);
 	});
 
 	it('should render CTA button with custom text', () => {

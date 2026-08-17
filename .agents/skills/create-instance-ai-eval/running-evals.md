@@ -41,7 +41,7 @@ instance's Instance AI config and the README's environment-variables section.
 
 | Mode | How | Produces |
 |---|---|---|
-| **Direct loop** | no `LANGSMITH_API_KEY` | `eval-results.json` + HTML report locally |
+| **Direct driver** | no `LANGSMITH_API_KEY` | `eval-results.json` + HTML report locally — same pipeline and row order as the LangSmith driver (TRUST-261), row concurrency follows `--concurrency` |
 | **LangSmith** | `LANGSMITH_API_KEY` set | also records an experiment and auto-compares against the baseline |
 | **Prebuilt** | `--prebuilt-workflows <manifest>` | skips the build; verifies existing workflows (score MCP/hand-built cohorts on the same verifier) |
 
@@ -49,12 +49,35 @@ Narrow any run with `--filter <slug>` (filename substring, comma = OR),
 `--tier <name>`, and `--exclude`. `--keep-workflows` leaves built workflows for
 inspection; `--iterations N` runs each case N times for pass@k / pass^k.
 
+**Seeded cases and `--keep-workflows`.** A seeded case's live turn addresses its
+workflow the way a user would — by name, often loosely ("the batch image
+workflow"). So a leftover copy is something the agent can rationally pick instead
+of its own, and it prefers the one with failed executions when the message
+mentions a failure; the judge then grades a different workflow than the agent
+edited. That produces false greens as readily as false reds, so it doesn't
+announce itself.
+
+Restore now defends against this on both sides: each restored workflow gets a
+`[seed <8 hex>]` name suffix so copies are distinguishable, and any leftover
+carrying that suffix with the same base name is deleted before the next restore.
+You'll see `Evicted N leftover seed workflow(s) before restore` when it fires.
+Workflows without the suffix — real ones, and anything the agent built — are never
+touched. So `--keep-workflows` is safe to use on a seeded case; the leftover is
+cleaned up by the next run rather than contaminating it.
+
+**Seeded agents are not evicted** — they get a fresh id per run but keep their
+authored name, so `--keep-workflows` on an agent-seeding case leaves one behind
+and they accumulate under the same name. That can't misdirect a later run (the
+live turn is bound to its own agent by id), but it does clutter what the `agents`
+tool lists. Delete them yourself when calibrating:
+`DELETE /rest/projects/<projectId>/agents/v2/<agentId>`.
+
 ## Case source: disk vs langtracer
 
 | Source | When to use it |
 |---|---|
-| **`disk`** (default) | **Preferred for local development** — authoring and calibrating the case in front of you: drop the JSON into `data/workflows/`, `--filter` it, iterate. Also the only home of the `agents` tier and the seeded carve-out cases; since the corpus migration the directory holds only those, not the full suite. |
-| **`langtracer`** (`--source langtracer --suite n8n-workflows`) | Bigger runs (the full corpus or a whole tier), re-running specific cases that already live in the suite, and CI — which always runs this way. Needs `LANGTRACER_URL`/`LANGTRACER_API_KEY` in your env. |
+| **`disk`** (default) | **Preferred for local development** — authoring and calibrating the case in front of you: drop the JSON into `data/workflows/`, `--filter` it, iterate. Also the only home of the `agents` tier and of a `replay`-seeded case (reconstructed from a trace at run time, so no suite can hold it); since the corpus migration the directory holds only those, not the full suite. |
+| **`langtracer`** (`--source langtracer --suite baseline`) | Bigger runs (the full corpus or a whole tier), re-running specific cases that already live in the suite, and CI — which always runs this way. Needs `LANGTRACER_URL`/`LANGTRACER_API_KEY` in your env. |
 
 ## Configuration & secrets
 
@@ -96,7 +119,12 @@ flag wins — use it.
   getAuthToken`.
 - `ANTHROPIC_API_KEY` — the non-proxy orchestrator reads this (not just
   `N8N_AI_ANTHROPIC_KEY`); the eval helper (mock-gen / verify / judge) reads
-  either.
+  either. **You usually don't need a separate key: `.env.eval` already carries
+  `N8N_AI_ANTHROPIC_KEY`** — mirror it rather than hunting for another one
+  (`ANTHROPIC_API_KEY="$(grep '^N8N_AI_ANTHROPIC_KEY=' .env.eval | cut -d= -f2-)"`,
+  or just export it inside the `dotenvx` child). Check the file before concluding
+  a key is missing — and grep its names with `^[A-Za-z0-9_]+=`, since a
+  `^[A-Z_]*=` pattern silently drops every `N8N_*` var (the digit).
 - `E2E_TESTS=true` — exposes `POST /rest/e2e/reset` so you can seed a known owner.
 
 **Seed an owner** (a fresh instance has none → login 401s). Full payload shape in
@@ -114,11 +142,22 @@ it): a running instance holds both its main port *and* the task-broker port
 second instance its own everything:
 
 ```bash
+# .env.eval alone is enough — it carries N8N_AI_*, the sandbox/Daytona keys and
+# N8N_AI_ANTHROPIC_KEY. Skip .env.local: its staging base-url / port-5678
+# defaults fight the settings below.
 N8N_PORT=5680 N8N_RUNNERS_BROKER_PORT=5681 N8N_USER_FOLDER=/tmp/n8n-eval-run \
-E2E_TESTS=true N8N_AI_ASSISTANT_BASE_URL= ANTHROPIC_API_KEY=… \
-  npx dotenvx run -f .env.local -f .env.eval -- pnpm start
+E2E_TESTS=true N8N_AI_ASSISTANT_BASE_URL= \
+  npx dotenvx run -f .env.eval -- \
+  sh -c 'ANTHROPIC_API_KEY="$N8N_AI_ANTHROPIC_KEY" exec pnpm start'
 # then seed the owner (above), and run the eval with: --base-url http://localhost:5680
 ```
+
+**Don't reach for `DB_SQLITE_POOL_SIZE=0`** if you find it in an older note. It
+can't disable pooling: the schema is `.int().gte(1)`, so `0` is rejected and
+`@Env` warns (`Invalid value for DB_SQLITE_POOL_SIZE … Falling back to default
+value.`) and keeps the default of 3. There is no non-pooled path to select
+anyway — `getSqliteConnectionOptions()` always returns `type: 'sqlite-pooled'`.
+`POST /rest/e2e/reset` seeds the owner fine under the pooled driver.
 
 `pnpm start` (built dist) is enough — no need for `pnpm dev:ai`. Case JSON is read
 from source at run time, so new/edited cases need no rebuild.
@@ -172,7 +211,7 @@ server-side filter. The two that matter for CI:
   capability diversity.
 
 Other values group cases logically (e.g. `behaviour` for conversation-behaviour
-cases, `seeded` for transient `seedThread` cases kept out of CI). For a new
+cases, `seeded` for transient `replay` cases kept out of CI). For a new
 local case, put the value in its `datasets` array before pushing; for a case
 already in LangTracer, edit `datasets` there — `eval:langtracer-push`
 deliberately does not re-sync tier-only edits to an existing case. **Only
@@ -194,7 +233,7 @@ for low noise:
 # with your env loaded and LANGSMITH_API_KEY set, from packages/@n8n/instance-ai/
 # (--dataset/--baseline-prefix mirror CI's pins — langtracer mode otherwise
 # derives suite-scoped names and later runs would never find this baseline)
-pnpm eval:instance-ai --source langtracer --suite n8n-workflows \
+pnpm eval:instance-ai --source langtracer --suite baseline \
   --dataset instance-ai-workflow-evals --baseline-prefix instance-ai-baseline- \
   --experiment-name instance-ai-baseline --iterations 10
 ```

@@ -4,9 +4,15 @@ import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import { libraryRLC, siteRLC } from '../../descriptions/common.descriptions';
+import { libraryRLC, siteRLC, workbookRLC } from '../../descriptions/common.descriptions';
 import { SERVICE_PRINCIPAL_AUTH } from '../../helpers/constants';
-import { getSheets, getTables, searchLibraries, searchSites } from '../../methods/listSearch';
+import {
+	getSheets,
+	getTables,
+	searchLibraries,
+	searchSites,
+	searchWorkbooks,
+} from '../../methods/listSearch';
 import { MicrosoftExcelSharePoint } from '../../MicrosoftExcelSharePoint.node';
 import * as transport from '../../transport';
 import type * as _importType0 from '../../transport';
@@ -229,6 +235,124 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 		});
 	});
 
+	describe('searchWorkbooks', () => {
+		const libraryParams = {
+			authentication: 'microsoftOAuth2Api',
+			site: { mode: 'id', value: SITE_ID },
+			library: { mode: 'id', value: 'b!drive1' },
+		};
+		const searchPath = (q: string) =>
+			`/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/root/search(q='${q}')`;
+		const SELECT = { $select: 'id,name,webUrl,file' };
+		const BOOK = { id: 'wb1', name: 'Budget.xlsx', webUrl: 'https://c.sharepoint.com/b', file: {} };
+		const BOOK_ITEM = { name: 'Budget.xlsx', value: 'wb1', url: 'https://c.sharepoint.com/b' };
+
+		beforeEach(() => setParams(libraryParams));
+
+		it('searches the chosen library with the typed text, doubling quotes to stay inside the search literal', async () => {
+			apiRequest.mockResolvedValue({ value: [BOOK] });
+
+			const result = await searchWorkbooks.call(ctx, 'budget');
+			await searchWorkbooks.call(ctx, "O'Brien");
+
+			expect(apiRequest).toHaveBeenCalledWith('GET', searchPath('budget'), {}, SELECT);
+			expect(apiRequest).toHaveBeenLastCalledWith('GET', searchPath("O''Brien"), {}, SELECT);
+			expect(result.results).toEqual([BOOK_ITEM]);
+		});
+
+		it('searches for the workbook extensions themselves when nothing is typed', async () => {
+			apiRequest.mockResolvedValueOnce({ value: [] });
+
+			await searchWorkbooks.call(ctx);
+
+			expect(apiRequest).toHaveBeenCalledWith('GET', searchPath('.xlsx%20OR%20.xlsm'), {}, SELECT);
+		});
+
+		it('shows only workbook files from a listing that mixes in other types', async () => {
+			apiRequest.mockResolvedValueOnce({
+				value: [
+					BOOK,
+					{ id: 'wb2', name: 'Macros.XLSM', file: {} },
+					{ id: 'doc1', name: 'Notes.docx', file: {} },
+					{ id: 'folder1', name: 'Archive.xlsx', folder: {} },
+					{ id: 'bak1', name: 'report.xlsx.bak', file: {} },
+				],
+			});
+
+			const result = await searchWorkbooks.call(ctx);
+
+			expect(result.results.map((item) => item.value)).toEqual(['wb1', 'wb2']);
+		});
+
+		it('hands back the next-page link and requests it exactly as returned', async () => {
+			const nextLink = 'https://graph.microsoft.com/v1.0/sites/s/drives/d/root/search?$skiptoken=a';
+			apiRequest.mockResolvedValueOnce({ value: [BOOK], '@odata.nextLink': nextLink });
+
+			const firstPage = await searchWorkbooks.call(ctx);
+			expect(firstPage.paginationToken).toBe(nextLink);
+
+			apiRequest.mockResolvedValueOnce({ value: [] });
+			const secondPage = await searchWorkbooks.call(ctx, undefined, nextLink);
+
+			expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+			expect(secondPage.paginationToken).toBeUndefined();
+		});
+
+		it('keeps walking pages while a filter is typed until one holds a workbook', async () => {
+			const nextLink = 'https://graph.microsoft.com/v1.0/sites/s/drives/d/root/search?$skiptoken=b';
+			apiRequest
+				.mockResolvedValueOnce({
+					value: [{ id: 'doc1', name: 'Budget.docx', file: {} }],
+					'@odata.nextLink': nextLink,
+				})
+				.mockResolvedValueOnce({ value: [BOOK] });
+
+			const result = await searchWorkbooks.call(ctx, 'budget');
+
+			expect(apiRequest).toHaveBeenCalledTimes(2);
+			expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+			expect(result.results).toEqual([BOOK_ITEM]);
+		});
+
+		it('does not auto-page without a filter, even when the trim empties the page', async () => {
+			const nextLink = 'https://graph.microsoft.com/v1.0/sites/s/drives/d/root/search?$skiptoken=c';
+			apiRequest.mockResolvedValueOnce({
+				value: [{ id: 'doc1', name: 'Notes.docx', file: {} }],
+				'@odata.nextLink': nextLink,
+			});
+
+			const result = await searchWorkbooks.call(ctx);
+
+			expect(apiRequest).toHaveBeenCalledTimes(1);
+			expect(result.results).toEqual([]);
+			expect(result.paginationToken).toBe(nextLink);
+		});
+
+		it('rejects when no Library has been chosen yet', async () => {
+			setParams({ ...libraryParams, library: { mode: 'id', value: '' } });
+
+			await expect(searchWorkbooks.call(ctx)).rejects.toThrow("The 'Library' parameter is empty");
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+
+		it('lists workbooks signed in as an app (Service Principal)', async () => {
+			const { microsoftApiRequest: realApiRequest } =
+				await vi.importActual<typeof _importType0>('../../transport');
+			apiRequest.mockImplementationOnce(realApiRequest);
+			ctx.getCredentials.mockResolvedValue({});
+			ctx.helpers.httpRequestWithAuthentication.mockResolvedValue({ value: [BOOK] });
+			setParams({ ...libraryParams, authentication: SERVICE_PRINCIPAL_AUTH });
+
+			const result = await searchWorkbooks.call(ctx);
+
+			expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				SERVICE_PRINCIPAL_AUTH,
+				expect.objectContaining({ url: expect.stringContaining("/root/search(q='") }),
+			);
+			expect(result.results).toEqual([BOOK_ITEM]);
+		});
+	});
+
 	describe('getSheets', () => {
 		it('lists the sheets in the workbook', async () => {
 			setParams(byIdParams);
@@ -376,11 +500,22 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 			expect(libraryRLC.default).toEqual({ mode: 'list', value: '' });
 		});
 
+		it('keeps URL as the default Workbook mode, with the list and ID modes alongside', () => {
+			expect(workbookRLC.modes?.map((mode) => mode.name)).toEqual(['url', 'list', 'id']);
+			expect(workbookRLC.modes?.[1].typeOptions?.searchListMethod).toBe('searchWorkbooks');
+			expect(workbookRLC.typeOptions?.loadOptionsDependsOn).toEqual([
+				'site.value',
+				'library.value',
+			]);
+			expect(workbookRLC.default).toEqual({ mode: 'url', value: '' });
+		});
+
 		it('is wired into the node as list-search methods', () => {
 			const node = new MicrosoftExcelSharePoint();
 
 			expect(node.methods?.listSearch?.searchSites).toBe(searchSites);
 			expect(node.methods?.listSearch?.searchLibraries).toBe(searchLibraries);
+			expect(node.methods?.listSearch?.searchWorkbooks).toBe(searchWorkbooks);
 			expect(node.methods?.listSearch?.getSheets).toBe(getSheets);
 			expect(node.methods?.listSearch?.getTables).toBe(getTables);
 		});

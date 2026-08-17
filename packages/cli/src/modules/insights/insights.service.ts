@@ -1,10 +1,13 @@
 import { type InsightsSummary } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
@@ -21,6 +24,7 @@ export class InsightsService {
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
+		private readonly workflowSharingService: WorkflowSharingService,
 	) {
 		this.logger = this.logger.scoped('insights');
 	}
@@ -70,15 +74,18 @@ export class InsightsService {
 		startDate,
 		endDate,
 		projectId,
+		timeZone,
 	}: {
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}): Promise<InsightsSummary> {
 		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
 			startDate,
 			endDate,
 			projectId,
+			timeZone,
 		});
 
 		// Initialize data structures for both periods
@@ -161,19 +168,23 @@ export class InsightsService {
 	}
 
 	async getInsightsByWorkflow({
+		user,
 		skip = 0,
 		take = 10,
 		sortBy = 'total:desc',
 		projectId,
 		startDate,
 		endDate,
+		timeZone,
 	}: {
+		user: User;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}) {
 		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
 			startDate,
@@ -182,11 +193,24 @@ export class InsightsService {
 			take,
 			sortBy,
 			projectId,
+			timeZone,
 		});
+
+		const accessibleWorkflowIds = new Set(
+			await this.workflowSharingService.getSharedWorkflowIds(user, {
+				scopes: ['workflow:read'],
+				projectId,
+			}),
+		);
+
+		const data = rows.map((row) => ({
+			...row,
+			hasReadAccess: row.workflowId !== null && accessibleWorkflowIds.has(row.workflowId),
+		}));
 
 		return {
 			count,
-			data: rows,
+			data,
 		};
 	}
 
@@ -196,11 +220,13 @@ export class InsightsService {
 		projectId,
 		startDate,
 		endDate,
+		timeZone,
 	}: {
 		insightTypes?: TypeUnit[];
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}) {
 		const periodUnit = this.getDateFiltersGranularity({ startDate, endDate });
 		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
@@ -209,6 +235,7 @@ export class InsightsService {
 			projectId,
 			startDate,
 			endDate,
+			timeZone,
 		});
 
 		return rows.map((r) => {

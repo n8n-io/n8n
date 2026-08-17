@@ -22,12 +22,13 @@ vi.mock('../../json-config/mcp-client-factory', () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeDeps() {
+function makeDeps(overrides: Partial<Parameters<typeof buildVerifyMcpServerTool>[0]> = {}) {
 	return {
 		credentialProvider: mock<CredentialProvider>(),
 		oauthService: mock<OauthService>(),
 		projectId: 'proj-1',
 		proxyFetch: vi.fn() as unknown as CustomFetch,
+		...overrides,
 	};
 }
 
@@ -46,6 +47,17 @@ function makeMcpClient(overrides: Partial<McpClient> = {}): McpClient {
 describe('buildVerifyMcpServerTool', () => {
 	beforeEach(() => {
 		buildMcpClientForServerMock.mockReset();
+	});
+
+	it('accepts a human-readable MCP server name', () => {
+		const tool = buildVerifyMcpServerTool(makeDeps());
+		const result = (
+			tool.inputSchema as unknown as {
+				safeParse: (input: unknown) => { success: boolean };
+			}
+		).safeParse({ name: 'Linear production (EU)', url: 'https://example.test/mcp' });
+
+		expect(result.success).toBe(true);
 	});
 
 	it('returns { ok: true, tools } with name and description on success', async () => {
@@ -69,6 +81,30 @@ describe('buildVerifyMcpServerTool', () => {
 				{ name: 'echo', description: 'Echo the input' },
 				{ name: 'add', description: 'Add two numbers' },
 			],
+		});
+	});
+
+	it('returns original unprefixed MCP tool names', async () => {
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([
+				{
+					name: 'Linear_Prod_list_issues',
+					mcpToolName: 'list_issues',
+					description: 'List issues',
+				},
+			]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(makeDeps());
+		const result = await tool.handler!(
+			{ name: 'Linear Prod', url: 'https://example.test/mcp' },
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: true,
+			tools: [{ name: 'list_issues', description: 'List issues' }],
 		});
 	});
 
@@ -255,5 +291,137 @@ describe('buildVerifyMcpServerTool', () => {
 
 		expect(result).toEqual({ ok: false, error: 'MCP server verification was cancelled' });
 		expect(closeMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('auto-applies the credential when verification succeeds and the callback reports applied', async () => {
+		const applyCredentialToMcpServer = vi.fn().mockResolvedValue({ applied: true });
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([{ name: 'echo', description: 'Echo the input' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(
+			makeDeps({
+				agentId: 'agent-1',
+				applyCredentialToMcpServer,
+			}),
+		);
+		const result = await tool.handler!(
+			{
+				name: 'notion',
+				url: 'https://example.test/mcp',
+				credential: 'cred-42',
+			},
+			{} as never,
+		);
+
+		expect(applyCredentialToMcpServer).toHaveBeenCalledWith('notion', 'cred-42');
+		expect(result).toEqual({
+			ok: true,
+			tools: [{ name: 'echo', description: 'Echo the input' }],
+			credentialApplied: true,
+			configMutated: true,
+			agentId: 'agent-1',
+		});
+	});
+
+	it('returns a plain success result when the callback reports not applied', async () => {
+		const applyCredentialToMcpServer = vi.fn().mockResolvedValue({ applied: false });
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([{ name: 'echo', description: 'Echo the input' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(
+			makeDeps({
+				agentId: 'agent-1',
+				applyCredentialToMcpServer,
+			}),
+		);
+		const result = await tool.handler!(
+			{
+				name: 'notion',
+				url: 'https://example.test/mcp',
+				credential: 'cred-42',
+			},
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: true,
+			tools: [{ name: 'echo', description: 'Echo the input' }],
+		});
+	});
+
+	it('returns credentialApplied false when the callback throws', async () => {
+		const applyCredentialToMcpServer = vi.fn().mockRejectedValue(new Error('config write failed'));
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([{ name: 'echo', description: 'Echo the input' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(
+			makeDeps({
+				agentId: 'agent-1',
+				applyCredentialToMcpServer,
+			}),
+		);
+		const result = await tool.handler!(
+			{
+				name: 'notion',
+				url: 'https://example.test/mcp',
+				credential: 'cred-42',
+			},
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: true,
+			tools: [{ name: 'echo', description: 'Echo the input' }],
+			credentialApplied: false,
+		});
+	});
+
+	it('does not call the credential callback when verification fails', async () => {
+		const applyCredentialToMcpServer = vi.fn();
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockRejectedValue(new Error('connection timeout')),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(
+			makeDeps({
+				agentId: 'agent-1',
+				applyCredentialToMcpServer,
+			}),
+		);
+		await tool.handler!(
+			{
+				name: 'notion',
+				url: 'https://example.test/mcp',
+				credential: 'cred-42',
+			},
+			{} as never,
+		);
+
+		expect(applyCredentialToMcpServer).not.toHaveBeenCalled();
+	});
+
+	it('does not call the credential callback when no credential is provided', async () => {
+		const applyCredentialToMcpServer = vi.fn();
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([{ name: 'echo', description: 'Echo the input' }]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(
+			makeDeps({
+				agentId: 'agent-1',
+				applyCredentialToMcpServer,
+			}),
+		);
+		await tool.handler!({ name: 'notion', url: 'https://example.test/mcp' }, {} as never);
+
+		expect(applyCredentialToMcpServer).not.toHaveBeenCalled();
 	});
 });

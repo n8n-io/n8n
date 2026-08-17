@@ -6,7 +6,7 @@ import { reactive } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { JSONSchema7 } from 'json-schema';
 import type { PushPayload } from '@n8n/api-types';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { generateJsonSchema } from '@/app/utils/json-schema';
 
 export const useSchemaPreviewStore = defineStore('schemaPreview', () => {

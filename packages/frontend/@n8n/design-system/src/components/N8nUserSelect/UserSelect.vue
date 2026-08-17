@@ -17,6 +17,8 @@ interface UserSelectProps {
 	remote?: boolean;
 	remoteMethod?: (query: string) => void;
 	loading?: boolean;
+	/** Set to false to keep the dropdown in the local stacking context, e.g. inside N8nDialog */
+	teleported?: boolean;
 }
 
 const props = withDefaults(defineProps<UserSelectProps>(), {
@@ -26,6 +28,7 @@ const props = withDefaults(defineProps<UserSelectProps>(), {
 	currentUserId: '',
 	remote: false,
 	loading: false,
+	teleported: true,
 });
 
 const emit = defineEmits<{
@@ -101,7 +104,7 @@ const getLabel = (user: IUser) =>
 		:filter-method="setFilter"
 		:placeholder="placeholder || t('nds.userSelect.selectUser')"
 		:default-first-option="true"
-		teleported
+		:teleported="teleported"
 		:popper-class="$style.limitPopperWidth"
 		:no-data-text="t('nds.userSelect.noMatchingUsers')"
 		:size="size"

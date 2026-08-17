@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useCollaborationStore } from '../collaboration.store';
 
 import { N8nUserStack } from '@n8n/design-system';

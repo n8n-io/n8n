@@ -5,12 +5,36 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
 import ToolRow from '../ToolRow.vue';
-import type { McpServerConnectionItem, NodeConnectionItem, WorkflowConnectionItem } from '../types';
+import {
+	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	type McpServerConnectionItem,
+	type NodeConnectionItem,
+	type WorkflowConnectionItem,
+} from '../types';
 
 const renderRow = createComponentRenderer(ToolRow);
 
 function render(item: McpServerConnectionItem | NodeConnectionItem | WorkflowConnectionItem) {
 	return renderRow({ props: { item }, pinia: createTestingPinia() });
+}
+
+/** Mirrors a consumer that manages credentials inline, such as Instance AI. */
+function renderWithAdapter(
+	item: McpServerConnectionItem | NodeConnectionItem | WorkflowConnectionItem,
+) {
+	return renderRow({
+		props: { item },
+		pinia: createTestingPinia(),
+		global: {
+			provide: {
+				[TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY as symbol]: {
+					getCredentialsByType: () => [{ id: 'cred-1', name: 'Prod', type: 'mcpOAuth2Api' }],
+					openNewCredential: vi.fn(),
+					openExistingCredential: vi.fn(),
+				},
+			},
+		},
+	});
 }
 
 const baseMcp: McpServerConnectionItem = {
@@ -29,6 +53,12 @@ const baseNode: NodeConnectionItem = {
 	description: 'Talk to GPT',
 	isConnected: false,
 	nodeTypeName: '@n8n/n8n-nodes-langchain.openAi',
+};
+
+const connectedMcp: McpServerConnectionItem = {
+	...baseMcp,
+	isConnected: true,
+	credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1', required: true }],
 };
 
 const baseWorkflow: WorkflowConnectionItem = {
@@ -64,31 +94,31 @@ describe('ToolRow', () => {
 		expect(emitted().connect?.[0]).toEqual([item]);
 	});
 
-	it('shows a Connect button for an available node and emits connect on click', async () => {
-		const { getByTestId, emitted } = render(baseNode);
+	it.each([
+		['node', baseNode],
+		['workflow', baseWorkflow],
+	])('leaves a %s row to the row click, with no button repeating it', (_kind, item) => {
+		const { queryByTestId } = render(item);
 
-		const connect = getByTestId('tools-connection-row-connect');
-		expect(connect.textContent).toContain('Connect');
-
-		await fireEvent.click(connect);
-		expect(emitted().connect?.[0]).toEqual([baseNode]);
-		expect(emitted()['open-detail']).toBeUndefined();
+		expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+		expect(queryByTestId('tools-connection-row-install')).toBeNull();
 	});
 
-	it('shows a Connect button for an available workflow', () => {
-		const { getByTestId } = render(baseWorkflow);
-		expect(getByTestId('tools-connection-row-connect')).toBeTruthy();
-	});
-
-	it('shows the credential picker for a connected item', () => {
-		const connected: McpServerConnectionItem = {
-			...baseMcp,
-			isConnected: true,
-			credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1', required: true }],
-		};
-		const { getByTestId } = render(connected);
+	it('shows the credential picker for a connected item when an adapter is provided', () => {
+		const { getByTestId } = renderWithAdapter(connectedMcp);
 
 		expect(getByTestId('tool-credential-picker')).toBeTruthy();
+	});
+
+	it('shows a static connected marker when no credential adapter is provided', () => {
+		// The picker cannot list or create anything without an adapter, so
+		// consumers that manage credentials elsewhere get status only.
+		const { getByTestId, queryByTestId } = render(connectedMcp);
+
+		expect(getByTestId('tools-connection-row-connected')).toBeTruthy();
+		expect(queryByTestId('tool-credential-picker')).toBeNull();
+		// Crucially not a Connect button — the tool is already connected.
+		expect(queryByTestId('tools-connection-row-connect')).toBeNull();
 	});
 
 	it('emits open-detail when the main row action is clicked', async () => {
@@ -160,5 +190,44 @@ describe('ToolRow', () => {
 		const { container } = render(baseNode);
 		const img = container.querySelector('img');
 		expect(img).toBeNull();
+	});
+
+	it('offers Install for an uninstalled community node', async () => {
+		const item: NodeConnectionItem = { ...baseNode, verified: true, communityPreview: true };
+		const { getByTestId, queryByTestId, emitted } = render(item);
+
+		expect(getByTestId('tools-connection-row-verified-badge')).toBeTruthy();
+		expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+
+		const install = getByTestId('tools-connection-row-install');
+		expect(install.textContent).toContain('Install');
+
+		await fireEvent.click(install);
+		expect(emitted().connect?.[0]).toEqual([item]);
+	});
+
+	it('keeps the verified badge on an installed community node', () => {
+		const item: NodeConnectionItem = { ...baseNode, verified: true };
+		const { getByTestId, queryByTestId } = render(item);
+
+		// The badge tracks "reviewed by n8n", not install state.
+		expect(getByTestId('tools-connection-row-verified-badge')).toBeTruthy();
+		expect(queryByTestId('tools-connection-row-install')).toBeNull();
+	});
+
+	it('blocks the install action when the user cannot install community nodes', async () => {
+		const item: NodeConnectionItem = {
+			...baseNode,
+			verified: true,
+			communityPreview: true,
+			installDisabled: true,
+		};
+		const { getByTestId, emitted } = render(item);
+
+		const install = getByTestId('tools-connection-row-install');
+		expect(install).toBeDisabled();
+
+		await fireEvent.click(install);
+		expect(emitted().connect).toBeUndefined();
 	});
 });

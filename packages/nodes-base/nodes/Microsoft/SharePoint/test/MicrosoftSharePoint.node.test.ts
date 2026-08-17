@@ -1,4 +1,5 @@
 import { MicrosoftSharePoint } from '../MicrosoftSharePoint.node';
+import { versionDescription } from '../v2/actions/versionDescription';
 
 describe('MicrosoftSharePoint (versioned root)', () => {
 	it('should register only version 1, with version 1 as the default', () => {
@@ -18,9 +19,39 @@ describe('MicrosoftSharePoint (versioned root)', () => {
 		expect(v1.methods?.resourceMapping).toBeDefined();
 	});
 
+	it('should trim the subdomain in the declarative base URL', () => {
+		const node = new MicrosoftSharePoint();
+
+		expect(node.nodeVersions[1].description.requestDefaults?.baseURL).toBe(
+			'=https://{{ ($credentials.subdomain || "").trim() }}.sharepoint.com/_api/v2.0/',
+		);
+	});
+
 	it('should not register the under-construction version 2', () => {
 		const node = new MicrosoftSharePoint();
 
 		expect(Object.keys(node.nodeVersions)).toEqual(['1']);
+	});
+
+	it('should expose version 2 as an AI tool once registered', () => {
+		expect(versionDescription.usableAsTool).toBe(true);
+	});
+
+	it('describes every version 2 operation for a model choosing between tools', () => {
+		const operationProperties = versionDescription.properties.filter(
+			(property) => property.name === 'operation',
+		);
+
+		expect(operationProperties.length).toBeGreaterThan(0);
+		for (const property of operationProperties) {
+			for (const option of property.options ?? []) {
+				if (!('value' in option)) continue;
+				expect(option.description, `operation ${String(option.value)}`).toMatch(/\w+/);
+				expect(
+					(option as { action?: string }).action,
+					`operation ${String(option.value)} action`,
+				).toMatch(/\w+/);
+			}
+		}
 	});
 });

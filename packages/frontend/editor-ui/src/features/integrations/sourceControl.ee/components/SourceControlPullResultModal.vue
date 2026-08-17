@@ -153,7 +153,7 @@ function close() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="primary" @click="close">
+				<N8nButton @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.pullResult.buttons.close') }}
 				</N8nButton>
 			</div>

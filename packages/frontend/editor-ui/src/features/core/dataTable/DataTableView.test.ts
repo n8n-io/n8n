@@ -56,7 +56,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 const mockToast = {
 	showError: vi.fn(),
 };
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => mockToast),
 }));
 
@@ -71,7 +71,8 @@ const mockDebounce = {
 	callDebounced: vi.fn((fn) => fn()),
 	debounce: vi.fn(),
 };
-vi.mock('@/app/composables/useDebounce', () => ({
+vi.mock('@n8n/composables/useDebounce', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/composables/useDebounce')>()),
 	useDebounce: vi.fn(() => mockDebounce),
 }));
 

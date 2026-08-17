@@ -24,8 +24,8 @@ describe('DatabricksOAuth2Api Credential', () => {
 			expect(field).toBeDefined();
 		});
 
-		it('should default to 401 to preserve existing behavior', () => {
-			expect(field?.default).toBe(401);
+		it('should default to 403 since Databricks returns 403 for expired tokens', () => {
+			expect(field?.default).toBe(403);
 		});
 
 		it('should be a configurable number field (not hidden)', () => {

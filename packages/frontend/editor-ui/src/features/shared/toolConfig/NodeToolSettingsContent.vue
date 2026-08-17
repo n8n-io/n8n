@@ -21,6 +21,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { collectParametersByTab, createCommonNodeSettings } from '@/features/ndv/shared/ndv.utils';
+import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
 import { N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -29,11 +30,12 @@ import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch }
 import {
 	ChatHubToolContextKey,
 	ExpressionLocalResolveContextSymbol,
+	ToolConfigCredentialSelectedKey,
 	WorkflowDocumentStoreKey,
 } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
@@ -46,6 +48,8 @@ const props = defineProps<{
 	existingToolNames?: string[];
 	hideAskAssistant?: boolean;
 	projectId?: string;
+	/** Operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
+	hiddenOperations?: readonly string[];
 }>();
 
 const emit = defineEmits<{
@@ -76,7 +80,11 @@ const nodeTypeDescription = computed(() => {
 	if (!props.initialNode) {
 		return null;
 	}
-	return nodeTypesStore.getNodeType(props.initialNode.type);
+	const description = nodeTypesStore.getNodeType(props.initialNode.type);
+	if (!description || !props.hiddenOperations?.length) {
+		return description;
+	}
+	return omitOperationOptions(description, props.hiddenOperations);
 });
 
 type ToolSettingsTab = 'params' | 'settings';
@@ -149,15 +157,19 @@ const hasCredentialIssues = computed(() => {
 	return Object.keys(credentialIssues?.credentials ?? {}).length > 0;
 });
 
-const workflowDocumentStore = computed(() => {
-	const store = useWorkflowDocumentStore(createWorkflowDocumentId('node-tool-workflow'));
+const toolWorkflowDocumentId = createWorkflowDocumentId('node-tool-workflow');
+const toolWorkflowStore = useWorkflowDocumentStore(toolWorkflowDocumentId);
+const workflowDocumentStore = computed(() => toolWorkflowStore);
 
-	if (node.value) {
-		store.setNodes([node.value]);
-	}
-
-	return store;
-});
+watch(
+	node,
+	(currentNode) => {
+		if (currentNode) {
+			toolWorkflowStore.setNodes([currentNode]);
+		}
+	},
+	{ immediate: true },
+);
 
 const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
 	if (!node.value) return undefined;
@@ -233,6 +245,10 @@ function handleChangeCredential(updateData: INodeUpdatePropertiesInformation) {
 		};
 	}
 }
+
+// CredentialsSelect → ParameterInput writes the document store only; this
+// keeps the local draft (isValid / save payload) in sync.
+provide(ToolConfigCredentialSelectedKey, handleChangeCredential);
 
 function handleChangeName(name: string) {
 	if (node.value) {

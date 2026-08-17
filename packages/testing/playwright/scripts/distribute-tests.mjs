@@ -44,6 +44,9 @@ const CONTAINER_STARTUP_TIME = 22_500; // 22.5s average per fixture
 // multi-minute retry tails that tip a single shard over its timeout. Quarantine
 // them here until the flakiness is fixed via the Flaky pipeline.
 //   tests/e2e/ai/hitl-for-tools.spec.ts — 34.2% flakyRate (2x next worst)
+// NOTE: this list is shared with impact-scoped PR CI, so a quarantined spec is
+// removed from PR shards too and cannot gate a PR. If a shard's whole spec list
+// is quarantined it becomes the `skip` sentinel below (never the full suite).
 const QUARANTINE = new Set(['tests/e2e/ai/hitl-for-tools.spec.ts']);
 
 const CAPABILITY_IMAGES = {
@@ -109,7 +112,10 @@ function selectV8Specs(externalFiles, base) {
 		if (parsed.mode === 'broad') {
 			return {
 				broad: true,
-				reason: parsed.failOpen ?? `unmapped: ${(parsed.unmapped ?? []).join(', ')}`,
+				// Not "unmapped": every non-fail-open broad reason is a file the map
+				// can't be trusted for (runtime-defining, resolution-changing, or an
+				// unscoped dependency change), which may well have a map entry.
+				reason: parsed.failOpen ?? `forced broad by: ${(parsed.unmapped ?? []).join(', ')}`,
 			};
 		}
 		// Coverage-gap alarm: changes with no E2E that verifies them aren't run
@@ -277,13 +283,26 @@ if (matrixMode) {
 	} else {
 		const result = getOrchestration(shards, { includeSpecsFile });
 
-		if (result.shards.length === 0) {
-			console.error('\n⏭️  No specs to run — all filtered out by discovery/impact. Skipping.\n');
+		// Apply the quarantine BEFORE the empty check and drop any shard it
+		// empties out. A shard whose only specs are quarantined must become the
+		// `skip` sentinel — not an empty spec list, which the e2e job would
+		// silently expand to `--shard=1/1` and run the entire suite (DEVP-671).
+		const shardsWithSpecs = result.shards
+			.map((shard) => ({
+				...shard,
+				specs: shard.specs.filter((s) => !QUARANTINE.has(s)),
+			}))
+			.filter((shard) => shard.specs.length > 0);
+
+		if (shardsWithSpecs.length === 0) {
+			console.error(
+				'\n⏭️  No specs to run — all filtered out by discovery/impact/quarantine. Skipping.\n',
+			);
 			console.log(JSON.stringify([{ shard: 1, specs: '', images: '', skip: true }]));
 		} else {
 			console.error('\n📊 Shard Distribution:');
 			let maxShardTime = 0;
-			for (const shard of result.shards) {
+			for (const shard of shardsWithSpecs) {
 				const overhead = shard.fixtureCount * CONTAINER_STARTUP_TIME;
 				const totalTime = shard.testTime + overhead;
 				maxShardTime = Math.max(maxShardTime, totalTime);
@@ -300,9 +319,9 @@ if (matrixMode) {
 				`  Expected wall-clock: ~${(maxShardTime / 60_000).toFixed(1)} min (longest shard)\n`,
 			);
 
-			const matrix = result.shards.map((shard) => ({
+			const matrix = shardsWithSpecs.map((shard) => ({
 				shard: shard.shard,
-				specs: shard.specs.filter((s) => !QUARANTINE.has(s)).join(' '),
+				specs: shard.specs.join(' '),
 				images: getRequiredImages(shard.capabilities).join(' '),
 			}));
 			console.log(JSON.stringify(matrix));

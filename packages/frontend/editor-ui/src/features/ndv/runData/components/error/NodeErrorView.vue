@@ -2,9 +2,9 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useEditorContext } from '@/app/composables/useEditorContext';

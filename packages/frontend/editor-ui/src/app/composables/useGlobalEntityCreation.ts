@@ -3,25 +3,25 @@ import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { sortByProperty } from '@n8n/utils/sort/sort-by-property';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { Scope } from '@n8n/permissions';
 import type { RouteLocationRaw } from 'vue-router';
-import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { updatedIconSet, type IconName } from '@n8n/design-system';
 
 type ProjectIcon = IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
 
@@ -93,12 +93,7 @@ export const useGlobalEntityCreation = () => {
 
 	const isAgentsModuleActive = computed(() => settingsStore.isModuleActive(AGENTS_MODULE_NAME));
 
-	const isInstanceAiAvailable = computed(
-		() =>
-			settingsStore.isModuleActive('instance-ai') &&
-			settingsStore.moduleSettings['instance-ai']?.enabled !== false &&
-			hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } }),
-	);
+	const isInstanceAiAvailable = useInstanceAiAvailable();
 
 	const instanceAiThreadItem = computed<Item | null>(() =>
 		isInstanceAiAvailable.value

@@ -1,4 +1,3 @@
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -35,19 +34,14 @@ export class OAuthServerModule implements ModuleInterface {
 		const { OAuthTokenService } = await import('./oauth-token.service.js');
 		Container.get(OAuthTokenVerifierProxy).registerProvider(Container.get(OAuthTokenService));
 
-		const { WorkflowMcpTriggerResourceResolver } = await import(
-			'./protected-resource-resolvers/workflow-mcp-trigger-resource.resolver.js'
+		const { registerProtectedResourceResolvers } = await import(
+			'./protected-resource-resolvers/index.js'
 		);
-		Container.get(ProtectedResourceRegistry).registerResolver(
-			Container.get(WorkflowMcpTriggerResourceResolver),
-		);
+		registerProtectedResourceResolvers();
 
-		const { WorkflowMcpTestTriggerResourceResolver } = await import(
-			'./protected-resource-resolvers/workflow-mcp-test-trigger-resource.resolver.js'
-		);
-		Container.get(ProtectedResourceRegistry).registerResolver(
-			Container.get(WorkflowMcpTestTriggerResourceResolver),
-		);
+		const { OAuth2FlowProxy } = await import('@/services/oauth2-flow-proxy.service.js');
+		const { OAuth2FlowService } = await import('./oauth-flow.service.js');
+		Container.get(OAuth2FlowProxy).registerProvider(Container.get(OAuth2FlowService));
 	}
 
 	async entities() {

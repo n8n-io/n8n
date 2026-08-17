@@ -6,6 +6,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createMember, createOwner } from '@test-integration/db/users';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -19,7 +20,6 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CollaborationState } from '@/collaboration/collaboration.state';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
-import { createMember, createOwner } from '@test-integration/db/users';
 
 describe('CollaborationService', () => {
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));
@@ -377,6 +377,35 @@ describe('CollaborationService', () => {
 
 			// Assert
 			expect(lockHolder).toBeNull();
+		});
+	});
+
+	describe('broadcastWorkflowReviewStateChanged', () => {
+		it('should send the invalidation message to exactly the current collaborators', async () => {
+			const sendToUsersSpy = pushService.sendToUsers;
+			await sendWorkflowOpenedMessage(workflow.id, owner.id, 'owner-client-id');
+			await sendWorkflowOpenedMessage(workflow.id, memberWithAccess.id, 'member-client-id');
+			vi.mocked(sendToUsersSpy).mockClear();
+
+			await collaborationService.broadcastWorkflowReviewStateChanged(workflow.id);
+
+			expect(sendToUsersSpy).toHaveBeenCalledTimes(1);
+			expect(sendToUsersSpy).toHaveBeenCalledWith(
+				{
+					type: 'workflowReviewStateChanged',
+					data: { workflowId: workflow.id },
+				},
+				expect.arrayContaining([owner.id, memberWithAccess.id]),
+			);
+			expect(vi.mocked(sendToUsersSpy).mock.calls[0][1]).toHaveLength(2);
+		});
+
+		it('should not send anything when there are no collaborators', async () => {
+			const sendToUsersSpy = pushService.sendToUsers;
+
+			await collaborationService.broadcastWorkflowReviewStateChanged(workflow.id);
+
+			expect(sendToUsersSpy).not.toHaveBeenCalled();
 		});
 	});
 

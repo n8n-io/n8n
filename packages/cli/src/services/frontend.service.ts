@@ -22,7 +22,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { isApiEnabled } from '@/public-api';
+import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -143,6 +143,7 @@ export class FrontendService {
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
+		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
 		void this.generateTypes();
 		// @TODO: Move to community-packages module
 		if (Container.get(CommunityPackagesConfig).enabled) {
@@ -299,7 +300,7 @@ export class FrontendService {
 				maxSize: this.globalConfig.dataTable.maxSize,
 			},
 			publicApi: {
-				enabled: isApiEnabled(),
+				enabled: isApiKeyAuthEnabled(),
 				latestVersion: 1,
 				path: this.globalConfig.publicApi.path,
 				swaggerUi: {
@@ -409,6 +410,22 @@ export class FrontendService {
 			},
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
+				postMessageAllowedOrigins: this.securityConfig.postMessageAllowedOrigins
+					.split(',')
+					.map((origin) => origin.trim())
+					.filter((origin) => origin !== '')
+					// Normalize to a serialized origin (lowercase scheme/host, no trailing
+					// slash or default port) so config values match `MessageEvent.origin`.
+					// URLs with an opaque origin serialize to 'null', which would match any
+					// opaque-origin sender — keep the raw value for those instead.
+					.map((origin) => {
+						try {
+							const normalized = new URL(origin).origin;
+							return normalized === 'null' ? origin : normalized;
+						} catch {
+							return origin;
+						}
+					}),
 			},
 			chatTrigger: {
 				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,
@@ -420,6 +437,8 @@ export class FrontendService {
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
+				configEvalsEnabled: this.globalConfig.evaluation.configEvalsEnabled,
+				agentEvalsEnabled: this.globalConfig.evaluation.agentEvalsEnabled,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly,
@@ -581,11 +600,14 @@ export class FrontendService {
 		}
 
 		const isAiGatewayEnabled =
-			this.licenseState.isAiGatewayLicensed() && !!this.globalConfig.aiAssistant.baseUrl;
+			this.globalConfig.aiGateway.enabled &&
+			this.licenseState.isAiGatewayLicensed() &&
+			!!this.globalConfig.aiAssistant.baseUrl;
 		if (isAiGatewayEnabled) {
 			this.settings.aiGateway = {
 				enabled: true,
 				budget: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_BUDGET) ?? 0,
+				cloudUbbEnabled: this.licenseState.isAiGatewayCloudUbbLicensed(),
 			};
 		}
 
@@ -743,11 +765,12 @@ export class FrontendService {
 	private overwriteCredentialsProperties() {
 		const { credentials } = this.loadNodesAndCredentials.types;
 		const credentialsOverwrites = this.credentialsOverwrites.getAll();
-		const { skipTypes } = this.globalConfig.credentials.overwrite;
+		const { showScopes = [], skipTypes } = this.globalConfig.credentials.overwrite;
 		for (const credential of credentials) {
 			// Clear any existing overwritten properties to prevent stale data
 			delete credential.__overwrittenProperties;
 			delete credential.__skipManagedCreation;
+			delete credential.__showManagedOAuthScopes;
 
 			const overwrittenProperties = [];
 			this.credentialTypes
@@ -770,6 +793,10 @@ export class FrontendService {
 			// (overwrite is conditional on stored data; users should provide their own credentials)
 			if (skipTypes.includes(credential.name)) {
 				credential.__skipManagedCreation = true;
+			}
+
+			if (showScopes.includes(credential.name)) {
+				credential.__showManagedOAuthScopes = true;
 			}
 
 			// Inject the per-instance JWKS URI as the default of any `jwksUri`

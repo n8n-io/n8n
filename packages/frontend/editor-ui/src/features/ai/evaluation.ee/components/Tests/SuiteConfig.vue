@@ -12,7 +12,8 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useTestCasePersistence } from '../../composables/useTestCasePersistence';
 import { useAiRootNodes } from '../../composables/useAiRootNodes';

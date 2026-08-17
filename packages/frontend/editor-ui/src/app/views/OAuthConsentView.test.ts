@@ -155,7 +155,7 @@ describe('OAuthConsentView', () => {
 		expect(window.location.href).toBe(redirectUrl);
 	});
 
-	it('should disable allow button until redirect URL is trusted', async () => {
+	it('should disable the allow button until the redirect URL is acknowledged', async () => {
 		const { getByTestId, getByLabelText } = renderComponent();
 		await waitAllPromises();
 
@@ -165,6 +165,64 @@ describe('OAuthConsentView', () => {
 		await userEvent.click(getByLabelText('I recognize and trust this URL'));
 
 		expect(allowButton).not.toBeDisabled();
+	});
+
+	it('should show the redirect URL inside the warning callout', async () => {
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(getByTestId('consent-redirect-warning')).toBeVisible();
+		expect(getByTestId('consent-redirect-uri')).toHaveTextContent(
+			'https://legitimate-client.com/callback',
+		);
+	});
+
+	describe('first-party consent', () => {
+		const firstPartyDetails = {
+			clientName: 'My Form',
+			clientId: 'c1',
+			redirectUri: 'https://instance.example/form/abc',
+			resourceName: 'Feedback workflow',
+			scopes: [],
+			isFirstParty: true,
+			uiHints: { icon: 'square-pen', consentType: 'form' },
+		};
+
+		beforeEach(() => {
+			consentStore.consentDetails = firstPartyDetails;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = firstPartyDetails;
+				return firstPartyDetails;
+			});
+		});
+
+		it('should hide the trust checkbox and enable Allow without acknowledgement', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(queryByTestId('consent-redirect-confirm')).toBeNull();
+			expect(getByTestId('consent-allow-button')).not.toBeDisabled();
+		});
+
+		it('should not show the redirect URL or the warning callout', async () => {
+			const { queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(queryByTestId('consent-redirect-warning')).toBeNull();
+			expect(queryByTestId('consent-redirect-uri')).toBeNull();
+		});
+
+		it('should render the first-party heading and resource-driven description', async () => {
+			const { getByText } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByText('"Feedback workflow" wants to run using your n8n login')).toBeVisible();
+			expect(
+				getByText(
+					'Running this form executes its workflow using your account and any connected credentials. Only continue if you trust the creator of this form.',
+				),
+			).toBeVisible();
+		});
 	});
 
 	describe('scope selection', () => {
@@ -188,7 +246,6 @@ describe('OAuthConsentView', () => {
 			await waitAllPromises();
 
 			expect(getByTestId('consent-scopes')).toBeVisible();
-			expect(getByTestId('consent-scopes-note')).toBeVisible();
 			expect(queryByText('Get a list of your workflows')).toBeNull();
 		});
 
@@ -239,7 +296,7 @@ describe('OAuthConsentView', () => {
 				scopeTools: {
 					'workflow:read': ['search_workflows', 'get_workflow_details'],
 					'workflow:write': ['update_workflow', 'search_workflows'],
-					'execution:read': ['get_execution'],
+					'execution:read': ['get_workflow_execution'],
 				},
 			};
 			consentStore.consentDetails = detailsWithTools;

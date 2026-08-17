@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { LockNamespace, LockAcquisitionTimeoutError, LockService } from '@n8n/backend-common';
-import { removeEmptyBody } from '@n8n/backend-network';
+import { removeEmptyBody, type SsrfBridge } from '@n8n/backend-network';
 import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
@@ -42,7 +42,10 @@ import clientOAuth1 from 'oauth-1.0a';
 
 import type { IResponseError } from '@/interfaces';
 
-function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
+function createOAuth2Client(
+	credentials: OAuth2CredentialData,
+	ssrfBridge?: SsrfBridge,
+): ClientOAuth2 {
 	// Split and trim scopes; empty scope tokens are not RFC 6749-compliant and may be rejected by authorization servers
 	const scopes = credentials.scope
 		?.split(' ')
@@ -59,6 +62,7 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 		...(resource ? { resource } : {}),
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
+		ssrfBridge,
 		...(credentials.additionalBodyProperties && {
 			additionalBodyProperties: jsonParse(credentials.additionalBodyProperties, {
 				fallbackValue: {},
@@ -82,6 +86,18 @@ function buildSigningToken(
 		},
 		oAuth2Options?.tokenType || tokenData.tokenType,
 	);
+}
+
+function addExpiresAt(tokenData: ClientOAuth2TokenData): ClientOAuth2TokenData {
+	const expiresInSeconds = Number(tokenData.expires_in);
+	if (!Number.isFinite(expiresInSeconds) || expiresInSeconds <= 0) {
+		return tokenData;
+	}
+
+	return {
+		...tokenData,
+		n8n_expires_at: String(Date.now() + expiresInSeconds * 1000),
+	};
 }
 
 interface RefreshOAuth2TokenContext {
@@ -228,7 +244,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		// Merge old and new token data so fields that the authorization server
 		// does not echo back on refresh (e.g. `resource`) are preserved from the
 		// original token response.
-		const newOAuthTokenData = { ...token.data, ...newToken.data };
+		const newOAuthTokenData = addExpiresAt({ ...token.data, ...newToken.data });
 
 		// If the server doesn't echo the resource back, restore it from the
 		// previous token data to ensure it's not lost on refresh.
@@ -253,7 +269,11 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 			credentials as unknown as ICredentialDataDecryptedObject,
 			credentialsType,
 		);
-		let signingToken = newToken;
+		let signingToken = buildSigningToken(
+			token.client,
+			credentials.oauthTokenData as ClientOAuth2TokenData,
+			oAuth2Options,
+		);
 		if (preAuthData) {
 			Object.assign(credentials, preAuthData);
 			signingToken = buildSigningToken(
@@ -332,7 +352,7 @@ export async function requestOAuth2(
 		throw new UserError('OAuth credentials not connected');
 	}
 
-	const oAuthClient = createOAuth2Client(credentials);
+	const oAuthClient = createOAuth2Client(credentials, additionalData.ssrfBridge);
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
 	// if it's the first time using the credentials, get the access token and save it into the DB.
@@ -558,7 +578,7 @@ export async function refreshOAuth2Token(
 		throw new UserError('OAuth credentials not connected');
 	}
 
-	const oAuthClient = createOAuth2Client(credentials);
+	const oAuthClient = createOAuth2Client(credentials, additionalData.ssrfBridge);
 	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
 	const token = buildSigningToken(oAuthClient, oauthTokenData, oAuth2Options);
 

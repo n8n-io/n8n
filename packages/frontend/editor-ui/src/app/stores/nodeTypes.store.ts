@@ -34,7 +34,7 @@ import { groupNodeTypesByNameAndType } from '@/app/utils/nodeTypes/nodeTypeTrans
 import { computed, shallowRef } from 'vue';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import type { WorkflowObjectAccessors } from '../types';
 
@@ -531,7 +531,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 					description: nodeTypeDescription,
 					// As we do not have the trigger/poll functions available in the frontend
 					// we use the information available to figure out what are trigger nodes
-					// @ts-ignore
+					// @ts-expect-error frontend flags triggers with a boolean
 					trigger:
 						(![ERROR_TRIGGER_NODE_TYPE].includes(nodeType) &&
 							nodeTypeDescription.inputs.length === 0 &&
@@ -565,6 +565,8 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		isConfigurableNode,
 		communityNodesAndActions,
 		communityNodeType,
+		officialCommunityNodeTypes,
+		unofficialCommunityNodeTypes,
 		fetchCommunityNodePreviews,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,

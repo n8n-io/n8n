@@ -1,12 +1,52 @@
-import type { IConnections, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
+import type {
+	IConnections,
+	INode,
+	IWorkflowGroup,
+	IWorkflowSettings,
+	WorkflowFEMeta,
+} from 'n8n-workflow';
 import z from 'zod';
+
+export const nodeCredentialSummarySchema = z
+	.object({
+		id: z
+			.string()
+			.describe('The credential ID, used to reference this credential in write operations'),
+		name: z.string().describe('The credential name'),
+	})
+	.describe('The credential assigned to this slot (id and name only, never secret data)');
 
 export const nodeSchema = z
 	.object({
 		name: z.string(),
 		type: z.string(),
+		credentials: z
+			.record(z.string(), nodeCredentialSummarySchema)
+			.optional()
+			.describe(
+				'Credentials assigned to the node, keyed by credential type (e.g. "slackApi"). Reuse these when adding nodes for the same service to this workflow.',
+			),
 	})
 	.passthrough();
+
+/**
+ * Reduces a node's credentials to `{ id, name }` per slot for the read path,
+ * keeping only slots a client can reference by id when reusing them. Any slot
+ * with no id is dropped; in practice those are AI Gateway synthetic sentinels
+ * (`__aiGatewayManaged`, always `id: null`), which have no id to reference and
+ * whose marker is stripped here, leaving them indistinguishable from a real
+ * credential. DB-backed managed credentials (`isManaged`) keep a real id and
+ * are retained.
+ */
+export const sanitizeNodeCredentials = ({ credentials, ...node }: INode) => {
+	const referenceable: Array<[string, { id: string; name: string }]> = [];
+	for (const [type, cred] of Object.entries(credentials ?? {})) {
+		if (!cred?.id) continue;
+		referenceable.push([type, { id: cred.id, name: cred.name }]);
+	}
+	if (referenceable.length === 0) return node;
+	return { ...node, credentials: Object.fromEntries(referenceable) };
+};
 
 export const connectionsSchema = z
 	.custom<IConnections>((_value): _value is IConnections => true)
@@ -69,6 +109,25 @@ export const columnNameSchema = z
 		'Column name. Must start with a letter, contain only letters, numbers, and underscores (max 63 chars)',
 	);
 
+export const folderOutputSchema = {
+	id: z.string().optional().describe('The ID of the folder'),
+	name: z.string().optional().describe('The name of the folder'),
+	parentFolderId: z
+		.string()
+		.nullable()
+		.optional()
+		.describe('The ID of the parent folder, or null if the folder is at the project root'),
+	error: z
+		.string()
+		.optional()
+		.describe('Error message explaining why the operation failed. Present only on failure.'),
+} satisfies z.ZodRawShape;
+
+export const dataTableRowSchema = z.record(
+	z.string(),
+	z.union([z.string(), z.number(), z.boolean(), z.null()]),
+);
+
 export const successMessageOutputSchema = {
 	success: z.boolean().describe('Whether the operation succeeded'),
 	message: z.string().describe('Description of the result'),
@@ -78,10 +137,35 @@ export const nodeGroupSchema = z
 	.object({
 		id: z.string(),
 		name: z.string(),
-		nodeIds: z.array(z.string()),
+		nodeNames: z
+			.array(z.string())
+			.describe('Names of the member nodes, matching the update_workflow group operations.'),
 		description: z.string().optional(),
 	})
 	.describe('A named visual grouping of nodes');
+
+export type NodeGroupSummary = z.infer<typeof nodeGroupSchema>;
+
+/**
+ * Maps persisted node groups (which store member node *ids*) to the read-path
+ * shape, which presents member node *names* — the same contract the
+ * update_workflow group operations accept. Stale ids that no longer resolve to
+ * a node are dropped, so echoing a group back into a write op repairs it.
+ */
+export const toNodeGroupSummary = (
+	nodeGroups: IWorkflowGroup[],
+	nodes: Array<Pick<INode, 'id' | 'name'>>,
+): NodeGroupSummary[] => {
+	const nameById = new Map(nodes.map((node) => [node.id, node.name]));
+	return nodeGroups.map(({ id, name, nodeIds, description }) => ({
+		id,
+		name,
+		nodeNames: nodeIds.flatMap((nodeId) => nameById.get(nodeId) ?? []),
+		...(description !== undefined ? { description } : {}),
+	}));
+};
+
+const FULL_DETAIL_ONLY_NOTE = "Only included when detailLevel is 'full'.";
 
 export const workflowDetailsOutputSchema = z.object({
 	workflow: z
@@ -96,22 +180,41 @@ export const workflowDetailsOutputSchema = z.object({
 				.nullable()
 				.describe('The active workflow version ID, if available'),
 			triggerCount: z.number(),
+			nodeCount: z
+				.number()
+				.describe('Number of nodes in the workflow, reported even when detailLevel omits them'),
 			createdAt: z.string().nullable(),
 			updatedAt: z.string().nullable(),
 			settings: workflowSettingsSchema,
-			connections: z.record(z.unknown()),
-			nodes: z.array(nodeSchema),
-			nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the workflow'),
+			connections: z.record(z.unknown()).optional().describe(FULL_DETAIL_ONLY_NOTE),
+			nodes: z.array(nodeSchema).optional().describe(FULL_DETAIL_ONLY_NOTE),
+			nodeGroups: z
+				.array(nodeGroupSchema)
+				.optional()
+				.describe(`Node groups in the workflow. ${FULL_DETAIL_ONLY_NOTE}`),
 			activeVersion: z
-				.object({
-					nodes: z.array(nodeSchema),
-					connections: z.record(z.unknown()),
-					nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the active version'),
-				})
+				.discriminatedUnion('sameAsDraft', [
+					z.object({
+						sameAsDraft: z
+							.literal(true)
+							.describe(
+								'The published version is identical to the current draft — use the top-level nodes, connections and nodeGroups.',
+							),
+					}),
+					z.object({
+						sameAsDraft: z.literal(false),
+						nodes: z.array(nodeSchema),
+						connections: z.record(z.unknown()),
+						nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the active version'),
+					}),
+				])
 				.nullable()
-				.describe('Active workflow graph, if available'),
+				.optional()
+				.describe(
+					`Published (active) workflow graph. Null when the workflow has no published version. ${FULL_DETAIL_ONLY_NOTE}`,
+				),
 			tags: z.array(tagSchema),
-			meta: workflowMetaSchema,
+			meta: workflowMetaSchema.optional().describe(FULL_DETAIL_ONLY_NOTE),
 			parentFolderId: z.string().nullable(),
 			description: z.string().optional().describe('The description of the workflow'),
 			scopes: z.array(z.string()).describe('User permissions for this workflow'),
@@ -121,5 +224,13 @@ export const workflowDetailsOutputSchema = z.object({
 		.describe('Sanitized workflow data safe for MCP consumption'),
 	triggerInfo: z
 		.string()
-		.describe('Human-readable instructions describing how to trigger the workflow'),
+		.describe(
+			'Human-readable instructions describing how to trigger the workflow, based on the current draft (what manual executions run)',
+		),
+	activeVersionTriggerInfo: z
+		.string()
+		.optional()
+		.describe(
+			"Trigger info for the published (active) version, which production executions via execute_workflow run. Only present when it differs from the draft's triggerInfo.",
+		),
 });
