@@ -485,6 +485,22 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			fireChange(value === null ? CHANGE_ACTION.DELETE : CHANGE_ACTION.UPDATE);
 		}
 
+		/**
+		 * Settles the terminal status without touching run data. A sub-execution's
+		 * data comes purely from live pushes, so it must survive the status change.
+		 */
+		function setExecutionStatus(status: ExecutionStatus, stoppedAt: Date) {
+			if (!execution.value) return;
+			execution.value = {
+				...execution.value,
+				status,
+				stoppedAt,
+				finished: status === 'success',
+			};
+			executionResultDataLastUpdate.value = Date.now();
+			fireChange(CHANGE_ACTION.UPDATE);
+		}
+
 		function setExecutionRunData(runExecutionData: IRunExecutionData) {
 			if (!execution.value) return;
 			execution.value = { ...execution.value, data: runExecutionData };
@@ -729,6 +745,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			getExecutionSnapshot,
 			// Write API
 			setExecution,
+			setExecutionStatus,
 			setExecutionRunData,
 			addNodeExecutionStartedData,
 			clearExecutionStartedData,

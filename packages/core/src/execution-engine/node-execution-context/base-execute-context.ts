@@ -166,6 +166,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 				inputData,
 				parentWorkflowSettings: this.workflow.settings,
 				node: this.node,
+				nodeRunIndex: this.runIndex,
 				parentCallbackManager,
 			});
 		} catch (error) {

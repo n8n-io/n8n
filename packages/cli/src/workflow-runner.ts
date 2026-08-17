@@ -390,6 +390,8 @@ export class WorkflowRunner {
 		additionalData.restartExecutionId = restartExecutionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
 		additionalData.encryptedRunnerIdentity = data.encryptedRunnerIdentity;
+		// Carried so sub-executions push to the same session as this run.
+		additionalData.pushRef = data.pushRef;
 
 		additionalData.executionId = executionId;
 		additionalData.evaluationRunId = data.evaluationRunId;
