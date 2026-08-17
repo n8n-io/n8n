@@ -89,31 +89,7 @@
 				},
 				{
 					"name": "workspace_str_replace_file",
-					"description": "Replace one exact, unique text match in a workspace file without rewriting the whole file.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"path": {
-								"type": "string",
-								"description": "Path to the file to edit"
-							},
-							"old_str": {
-								"type": "string",
-								"description": "Exact text to replace. Must match exactly and be unique."
-							},
-							"new_str": {
-								"type": "string",
-								"description": "Replacement text to write in place of old_str."
-							}
-						},
-						"required": ["path", "old_str", "new_str"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "workspace_batch_str_replace_file",
-					"description": "Apply multiple exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
+					"description": "Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -138,6 +114,7 @@
 									"required": ["old_str", "new_str"],
 									"additionalProperties": false
 								},
+								"minItems": 1,
 								"description": "Ordered exact string replacements applied atomically."
 							}
 						},
@@ -400,33 +377,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013cd564d6fdb300cbde757183c3b9b932ec8a6db3e8eeb50acd807360f0263b3b11a457225daed10f8bf174ae2244ed26e97c1f34d2445bef7284ba49a0c8b6849dee39ca467743cc89151442be0df2581808e13e2760d62054b9b93060199c62aa761816a510d5f0d27c371329e8c92640431a83ce4f073998c46eff3ba741fcaabfa6efcf5cbfcddc7eb6b55cf203eaa043138ab8301bd579ed184b299354c8641fcfc1583675b4a47e8ad01612aadb7264f7715998c3ac69c1895f6adad6ad12b53562cd92ec87810e337d3d731649815243347c8ca1ad90d495abf23cc9ff2b57b43052a0b5a92432d27cbd3f8bd77541c7b9b186cc51d7c93183cb95a652459910301419a1c5d1e543637e4027339270b028c6589352a8d334dd03451f89ac180360ddf8a2967da668bf36d3f13b2ae93d3c386eda13f90ddee636bb5ac3cb5ad0feb4a26a3cbdbe9ccbc9de2a71ff5b7ab8b8b3bfacce3cbef1083c165d8776fddc2979891bc778a49de28bdce117401b16a82be5a07debb52b9729471cbee905fa9ccfc885004c1084f699093667c5e83754847838d650f68d3c45b6fcd2eb844c70af5da0802e0146b2f38562994c845ba03d4331e11a5f0129a9e5114a4b57dc10f0c4ddf82b49de919461ca5216bef9d09e9d2f529d9fd417d4be3d9112ed777ca7f81270a3768ef8df22934fb163dfbe8d8f24f6f8e2d0fd09ccdd90e2767d9759c70c0a6333e1cbe587f394434ff708a387af6a7d333e77d3f929d6a78e883a8fb3583c12342bc62eaf2090000"
+			"1f8b0800000000000013cd564d8fd33010bdf75744734e21a9a876956b572c020921b4200141d634996d4c1d3bd89376d92aff1db96db6493f602fd0e6e6f9f0bcf766a2312d48731294e41cce483846cb831c19936005fcab2248a0e784b03d43b282d2e4a420814c619dd3b04039af87af86e3e1281a8de3288a210499fb3bdc4c44713cc91f278b6cc1b7a67cfb61449f5e5f4fbe1610ee558210ac51de80ce49c7a87dd9cc6826cd907cfb1e826353094be88c8644d74a6d4d8e7ed6a433ea19736294cab5b6ba452f7555b3603327ed20195dc7710819660589cc12b2345af443a2d66f09f353be36d757a0aaa0922c2a312e0fe377deb8d8f73621989a7bf8c62138b20b999160491612f0d2e46873afb2be27eb998b191948401b16b840a970aa089a26e87ecd60409bc66f45155365b2f9f1f61f0959d7cbe961c3baebf7a4b7796c8c12b5a37604fcb91651fcae9c4eefde4f6e8a2ff4f899efccf216df7cbc811034963e6f69ecdc559891585ac924eea55adfe1f58164d5789d95f2fc9f4ae5d252c65d963b8695d4b33d4a0178239c522127c5f86715d6213d1536961da44d3b7f38a39f822bb42c51ad8d90001c437b1624ab142ae422f5ca341781288597052905cf1bdbff04cabce0074ee1b2408541babd750fd7b981b11fa7141c5fc84859c2525ece3fa767c1d2f45b766e81e62e85a60be9f49a30d5dfb684a93a707a77b5cf89a3b47a4ee8d0e82dfcee6e79e6da6ffee1dedf5bd45757cda182bb47d4a1765d1fac937e03f6bc92d697090000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9998000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-11T10:45:27Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:44Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-11T10:45:27Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:44Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-11T10:45:27Z",
+			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:44Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11998000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-11T10:45:27Z",
+			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:44Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a296a69f797b25c0-VIE",
+			"cf-ray": "a2a55d2498dd5ac3-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Tue, 11 Aug 2026 10:45:28 GMT",
-			"request-id": "req_011CdvprDERqVk87V64E9c8F",
+			"date": "Thu, 13 Aug 2026 05:36:45 GMT",
+			"request-id": "req_011CdzCvcBF7Mv4P1ps4ckaz",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-3b35b498fba615a01c32fc04801e263f-ff74b075c4b93ceb-01",
+			"traceresponse": "00-36f47c02adf95b01a770276051513429-9fc7717bcbf20592-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -461,7 +438,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01Mj7bnA7aNZvWP33qeRt2MX",
+							"id": "toolu_01KmbbTNCDhYezVtTowGaHRD",
 							"name": "workspace_write_file",
 							"input": {
 								"path": "/hello.txt",
@@ -478,7 +455,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01Mj7bnA7aNZvWP33qeRt2MX",
+							"tool_use_id": "toolu_01KmbbTNCDhYezVtTowGaHRD",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -550,31 +527,7 @@
 				},
 				{
 					"name": "workspace_str_replace_file",
-					"description": "Replace one exact, unique text match in a workspace file without rewriting the whole file.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"path": {
-								"type": "string",
-								"description": "Path to the file to edit"
-							},
-							"old_str": {
-								"type": "string",
-								"description": "Exact text to replace. Must match exactly and be unique."
-							},
-							"new_str": {
-								"type": "string",
-								"description": "Replacement text to write in place of old_str."
-							}
-						},
-						"required": ["path", "old_str", "new_str"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "workspace_batch_str_replace_file",
-					"description": "Apply multiple exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
+					"description": "Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -599,6 +552,7 @@
 									"required": ["old_str", "new_str"],
 									"additionalProperties": false
 								},
+								"minItems": 1,
 								"description": "Ordered exact string replacements applied atomically."
 							}
 						},
@@ -861,33 +815,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013bd544d8fd33010bdf7579839a74bb250217c437c5c800b0784c422ef341e12ab8e9db5276dd12aff1db94d76936e77e102be447e6fecf766c613da9263291a8a112b529131f04223a314b7c0bf5a02093312b2710ff2161aafc98284d262a76959a3d974cb97cbd5f232bf5c15795e400646a73b62a5f2a278abb76df8a4bf7c2cbf7d7ebfbbf9ba7ea37105d989126410bc4d00c66822a34bb2a5774c8e417eff914164dfaa4018bd03e93a6b0728d24d47aea419a889d1d83862dde8deb8b663c57e432e827c91bf2a3228b1ac499581908d776a1e928f7c20d48f71e3d9a4406d4d0d05b46ad53c8cbf678bfa94ed33f01d4fa1228348616b4a526c28808454198d41a722bb9f1452e2aa220f129c67855b3416d796a0ef8510a25f2ce8d8eea1946a6d7db939dff4332107194dfb63ae533ea53a9c63daa7c0c34702f433ddd6b8ea44484002e1316f9a2ce3d3de0e21336f4764eee92e6c70f6ce3b3ab81bd67f37f04c7c3096c4e1b59016c8e2fa794dd6fa0bdef3b5d819ae472be20a2207c2c6b84aec7cd8c42bb8989a7fb2b9befd536f7d3b713fbb6b1cfdb355989130c97a369c404e2bee8283bf1ed1fe1fcee8e950bdee4feb77ffbb7b58b92997deec6fb20bcd5a3f050000"
+			"1f8b0800000000000013c555b16edb3010ddfd15ec2d5de454326214e516a44bb7a01d9b82b988178b354daae4c9511ae8df0bda562c394eda25ae1641ef1defbd3b8a475a9363295614232e4845c6c0138d8c523c023fd40412462464fd37c84758794d162494161b4dd30acdb2999e4fe7d3593e9b17795e400646a71c71a1f2a2b8d4bf2fd7cb8f3fbf9aab16ababb67cf8d65c4076a00419046f1380319ac8e8926ce91d936390df7f6410d9d72a1046ef40bac6da1d14e95743aea411a889d1d8d8634defdeb8ba61c57e492e829c7dcacf3328b1ac489581908d776a1c92f77c20d42f71fddaa44075452b0a68d57cf53c7ecf16d521db65e01b1e42450691c2da94a4d8500009a9331a834e4d76771452e16a411e2438cf0ad7682cde5a82ae13427493096d777bd749756b7db93cbee74742362a9ada6da9433e55ba5bc7d4a6c0cd4b027443d9dab8c5818e8004c24bd63459c6d7ad6d4246d6b6c8d8d253d8ced867ef52574e2dfb4e7c79bf26b1f94348a7eef4cfc9ad08ae48dc194be2e6c37f355291b5fe8c5bbe11f786ab8daf5d5e710d7b6b2737163910ae8c5b887b1f96f11acea07be510f9fa6f67c8d7030ffb44fd783d5ac8888481f1d10004725a71131cfcf318ecde700e1e0caed9ac1b6fe0fe4279deb4210769cd1ff96b6c01a2060000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9998000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-11T10:45:29Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:46Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-11T10:45:29Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:46Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-11T10:45:29Z",
+			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:46Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11998000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-11T10:45:29Z",
+			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:46Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a296a6a9aafe25c0-VIE",
+			"cf-ray": "a2a55d2c5d515ac3-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Tue, 11 Aug 2026 10:45:29 GMT",
-			"request-id": "req_011CdvprLBPKMksnVdhVe21B",
+			"date": "Thu, 13 Aug 2026 05:36:46 GMT",
+			"request-id": "req_011CdzCvhVUVPFCNU2Y77TZQ",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-f65c2bd509f39372a31913ac2591efd2-16dc82c2807ba48f-01",
+			"traceresponse": "00-4bf9c5d36d62537b31ce24b873e2d455-48916de6fcde9c36-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
