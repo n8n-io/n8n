@@ -74,6 +74,30 @@ export type ExtensionMessage =
 	| ClearRelayUrlMessage;
 
 // ---------------------------------------------------------------------------
+// External messages (web page → background, via externally_connectable)
+// ---------------------------------------------------------------------------
+
+export interface ExternalConnectMessage {
+	type: 'connect';
+	relayUrl: string;
+}
+
+export interface ExternalConnectResultMessage {
+	type: 'connectResult';
+	relayUrl: string;
+}
+
+export type ExternalMessage = ExternalConnectMessage | ExternalConnectResultMessage;
+
+export interface ExternalConnectResponse {
+	accepted: boolean;
+}
+
+export interface ExternalConnectResultResponse {
+	connected: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Background → UI push messages
 // ---------------------------------------------------------------------------
 
@@ -93,6 +117,14 @@ export type BackgroundPushMessage = RelayUrlReadyMessage | StatusChangedMessage;
 // ---------------------------------------------------------------------------
 // Type guards
 // ---------------------------------------------------------------------------
+
+export function isExternalMessage(raw: unknown): raw is ExternalMessage {
+	if (raw === null || typeof raw !== 'object') return false;
+	const obj = raw as Record<string, unknown>;
+	return (
+		(obj.type === 'connect' || obj.type === 'connectResult') && typeof obj.relayUrl === 'string'
+	);
+}
 
 export function isConnectResponse(raw: unknown): raw is ConnectResponse {
 	if (raw === null || typeof raw !== 'object') return false;

@@ -152,6 +152,10 @@ export function useConnection() {
 			if (isStatusResponse(statusResponse)) {
 				controlledTabIds.value = statusResponse.tabIds ?? [];
 			}
+			const currentWindow = await chrome.windows.getCurrent();
+			if (currentWindow.type === 'popup') {
+				window.close();
+			}
 		} else {
 			status.value = 'disconnected';
 			errorMessage.value = isConnectResponse(raw)

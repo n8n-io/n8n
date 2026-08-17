@@ -14,5 +14,8 @@ export function useInstanceAiBrowserUseTelemetry() {
 		trackOpenExtensionClicked() {
 			telemetry.track('Instance AI Open Browser Use Extension button clicked');
 		},
+		trackDirectConnectRequested() {
+			telemetry.track('Instance AI Browser Use direct connect requested');
+		},
 	};
 }

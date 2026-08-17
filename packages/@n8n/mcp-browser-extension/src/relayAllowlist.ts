@@ -25,7 +25,22 @@ export function isAllowedRelayUrl(url: string | null | undefined): boolean {
 		return false;
 	}
 	if (parsed.protocol !== 'ws:' && parsed.protocol !== 'wss:') return false;
-	const host = parsed.hostname;
+	return isAllowedHost(parsed.hostname);
+}
+
+export function isAllowedPageOrigin(origin: string | null | undefined): boolean {
+	if (!origin) return false;
+	let parsed: URL;
+	try {
+		parsed = new URL(origin);
+	} catch {
+		return false;
+	}
+	if (parsed.protocol === 'https:') return isAllowedHost(parsed.hostname);
+	return parsed.protocol === 'http:' && LOCAL_HOSTS.has(parsed.hostname);
+}
+
+function isAllowedHost(host: string): boolean {
 	if (LOCAL_HOSTS.has(host)) return true;
 	return N8N_CLOUD_SUFFIXES.some((suffix) => host === suffix.slice(1) || host.endsWith(suffix));
 }
