@@ -262,14 +262,14 @@ export default defineConfig(
 					selector:
 						'ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name!=/^MODAL_(CANCEL|CONFIRM|CLOSE)$/]',
 					message:
-						"Modal keys do not live in the shell. Declare this key in its owning feature's constants file (src/features/<feature>/<feature>.constants.ts) and register the modal from that feature's modals.ts fragment — see src/features/core/auth/modals.ts. A modal the shell genuinely owns declares its key beside its fragment in src/app/modals.manifest.ts, not here. Only MODAL_CANCEL/MODAL_CONFIRM/MODAL_CLOSE stay: they are dialog result sentinels, not modal keys.",
+						'Do not declare a modal key here. Declare the key in the constants file of the feature that owns it. Then register the modal from the modals.ts fragment of that feature. To see an example, open src/features/core/auth/modals.ts. If the shell owns the modal, declare its key next to its fragment in src/app/modals.manifest.ts. Only MODAL_CANCEL, MODAL_CONFIRM and MODAL_CLOSE stay here. These three are dialog result sentinels, not modal keys.',
 				},
 				{
 					// This selector matches `export { X } from '...'` and also a bare
 					// `export { X }` list.
 					selector: 'ExportNamedDeclaration[specifiers.length>0]',
 					message:
-						'Do not re-export a modal key through the shell — it keeps @/app/constants alive as an import path for a key the shell no longer owns, which is the reacquisition this ratchet exists to stop. Import it from its owning feature or package directly.',
+						'Do not re-export a modal key from the shell. A re-export makes @/app/constants an import path for a key that the shell does not own. The shell must not get such a key again. Import the key directly from its feature or from its package.',
 				},
 			],
 		},
@@ -287,7 +287,7 @@ export default defineConfig(
 					selector:
 						"VariableDeclarator[id.name='SHELL_MODAL_INITIAL_STATE'] > CallExpression > ObjectExpression > :matches(Property, SpreadElement)",
 					message:
-						"SHELL_MODAL_INITIAL_STATE only shrinks. Give the modal a ModalDefinition (component + initialState) in its feature's modals.ts fragment so it registers through modalRegistry and renders through DynamicModalLoader — see src/features/core/auth/modals.ts — and delete its <ModalRoot> from Modals.vue in the same change.",
+						'Do not add an entry to SHELL_MODAL_INITIAL_STATE. This catalogue can only become smaller. Write a ModalDefinition for the modal in the modals.ts fragment of its feature. Give the definition a component and an initialState. Then modalRegistry registers the modal, and DynamicModalLoader shows it. In the same change, delete the <ModalRoot> of the modal from Modals.vue. To see an example, open src/features/core/auth/modals.ts.',
 				},
 			],
 		},

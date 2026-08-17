@@ -126,14 +126,14 @@ describe('modal-key ratchet', () => {
 	it('does not let the shell reacquire a modal key constant', () => {
 		expect(
 			shellKeyExports(),
-			"Declare the key in its owning feature's constants file and register the modal from that feature's modals.ts fragment — see src/features/core/auth/modals.ts. If a key left the shell, delete it from ALLOWED_KEY_EXPORTS in this file.",
+			'Declare the key in the constants file of the feature that owns it. Then register the modal from the modals.ts fragment of that feature. If a key moved to its feature, delete its name from ALLOWED_KEY_EXPORTS in this file.',
 		).toEqual(ALLOWED_KEY_EXPORTS);
 	});
 
 	it('does not let the shell reacquire a modal definition', () => {
 		expect(
 			Object.keys(SHELL_MODAL_INITIAL_STATE).sort(),
-			'Give the modal a ModalDefinition in its feature fragment so it registers through modalRegistry, and delete its <ModalRoot> from Modals.vue in the same change. If a modal left the shell, delete its key from ALLOWED_CATALOGUE_KEYS in this file.',
+			'Write a ModalDefinition for the modal in the fragment of its feature. Then modalRegistry registers the modal. In the same change, delete the <ModalRoot> of the modal from Modals.vue. If a modal moved to its feature, delete its key from ALLOWED_CATALOGUE_KEYS in this file.',
 		).toEqual(ALLOWED_CATALOGUE_KEYS);
 	});
 });
