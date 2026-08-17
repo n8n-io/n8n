@@ -304,7 +304,7 @@ describe('OauthService', () => {
 				user: mock<User>({ id: '123' }),
 			});
 
-			credentialsFinderService.findCredentialById.mockResolvedValue(
+			credentialsFinderService.findById.mockResolvedValue(
 				mock<CredentialsEntity>({ id: 'credential-id', isResolvable: false }),
 			);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
@@ -327,7 +327,7 @@ describe('OauthService', () => {
 				user: mock<User>({ id: '123' }),
 			});
 
-			credentialsFinderService.findCredentialById.mockResolvedValue(mockCredential);
+			credentialsFinderService.findById.mockResolvedValue(mockCredential);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
 
 			const result = await service.getCredentialForAuthFlow(req);

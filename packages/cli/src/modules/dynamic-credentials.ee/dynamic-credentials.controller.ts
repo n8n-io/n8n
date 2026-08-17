@@ -310,7 +310,7 @@ export class DynamicCredentialsController {
 		res: Response,
 		@Param('credentialId') credentialId: string,
 	): Promise<void> {
-		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
+		const credential = await this.credentialsFinderService.findById(credentialId);
 
 		if (!credential) {
 			throw new NotFoundError('Credential not found');

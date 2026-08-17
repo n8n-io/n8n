@@ -77,7 +77,7 @@ export class BuilderModelLiveLookupService {
 			throw new Error(`Credential ${credentialId} not found or not accessible`);
 		}
 
-		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
+		const credential = await this.credentialsFinderService.findById(credentialId);
 		if (!credential) {
 			throw new Error(`Credential ${credentialId} not found or not accessible`);
 		}

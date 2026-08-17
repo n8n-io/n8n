@@ -52,15 +52,19 @@ export class CredentialsFinderService {
 		});
 	}
 
-	async findCredentialById(
+	async findById(
 		credentialId: string,
-		options: { includeInstanceCredentials?: boolean } = {},
+		options: {
+			includeInstanceCredentials?: boolean;
+			includeSharedProject?: boolean;
+		} = {},
 	): Promise<CredentialsEntity | null> {
 		return await this.credentialsRepository.findOne({
 			where: {
 				id: credentialId,
 				usageScope: options.includeInstanceCredentials ? In(['project', 'instance']) : 'project',
 			},
+			relations: options.includeSharedProject ? { shared: { project: true } } : undefined,
 		});
 	}
 

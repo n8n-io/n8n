@@ -53,7 +53,7 @@ describe('BuilderModelLiveLookupService', () => {
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'openAiApi'),
 			);
-			credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+			credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
 			credentialsService.decrypt.mockResolvedValue({
 				apiKey: 'sk-key',
 				url: 'https://openai-compatible.example/v1',
@@ -89,7 +89,7 @@ describe('BuilderModelLiveLookupService', () => {
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'openAiApi'),
 			);
-			credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+			credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
 			credentialsService.decrypt.mockResolvedValue({
 				apiKey: 'sk-key',
 				url: 'https://openai-compatible.example/v1',
@@ -115,7 +115,7 @@ describe('BuilderModelLiveLookupService', () => {
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'openAiApi'),
 			);
-			credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+			credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
 			credentialsService.decrypt.mockResolvedValue({
 				apiKey: 'sk-key',
 				url: 'https://api.openai.com/v1',
@@ -136,7 +136,7 @@ describe('BuilderModelLiveLookupService', () => {
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'openAiApi'),
 			);
-			credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+			credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
 			credentialsService.decrypt.mockResolvedValue({
 				apiKey: 'sk-key',
 				url: 'https://openai-compatible.example/v1',
@@ -154,7 +154,7 @@ describe('BuilderModelLiveLookupService', () => {
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'openAiApi'),
 			);
-			credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+			credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
 			credentialsService.decrypt.mockResolvedValue({
 				apiKey: 'sk-key',
 				url: 'https://openai-compatible.example/v1',
@@ -218,7 +218,7 @@ describe('BuilderModelLiveLookupService', () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 			usable('cred-1', 'anthropicApi'),
 		);
-		credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+		credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
 		credentialsService.decrypt.mockResolvedValue({ apiKey: 'sk-key', url: 'https://proxy.local' });
 		listModelsForProvider.mockResolvedValue([
 			{ id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
@@ -242,7 +242,7 @@ describe('BuilderModelLiveLookupService', () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 			usable('cred-1', 'anthropicApi'),
 		);
-		credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+		credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
 		credentialsService.decrypt.mockResolvedValue({ apiKey: 'sk-key' });
 		// An empty list from a chat provider is far more likely a broken request
 		// or drifted response shape than a real zero-model account — callers must
