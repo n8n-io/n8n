@@ -220,7 +220,7 @@ const userEnabledShowData = ref(false);
 const outputIndex = ref(0);
 const binaryDataDisplayData = ref<IBinaryData | null>(null);
 const currentPage = ref(1);
-const pageSize = ref(RUN_DATA_DEFAULT_PAGE_SIZE);
+const pageSize = ref(10);
 const previousExecutionDataUsedInEditMode = ref<boolean>(false);
 
 const pinDataDiscoveryTooltipVisible = ref(false);

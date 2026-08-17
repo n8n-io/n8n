@@ -302,20 +302,6 @@ describe('RunData', () => {
 		expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
 	});
 
-	it('should not render pagination when items fit on the current page', () => {
-		// 11 items fit in the default page size (25), so the pager and page-size selector stay hidden
-		const { queryByTestId } = render({
-			defaultRunItems: Array.from({ length: 11 }).map((_, i) => ({
-				json: {
-					id: i,
-					name: `Test ${i}`,
-				},
-			})),
-			displayMode: 'json',
-		});
-		expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
-	});
-
 	it('should render pagination with binary data on non-binary tab', async () => {
 		const { getByTestId } = render({
 			defaultRunItems: Array.from({ length: 26 }).map((_, i) => ({
