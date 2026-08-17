@@ -1,9 +1,7 @@
 import { resolve } from 'node:path';
 import type { Alias } from 'vite';
 
-// ————————————————————————————————————————————————————————————————————————————————————————————————
-// The tables. Edit these; everything below them is machinery.
-// ————————————————————————————————————————————————————————————————————————————————————————————————
+// Edit the two tables that follow. Keep the tables at the top of this file.
 
 /**
  * Workspace packages the frontend consumes from source rather than from `dist`, so that an edit in
@@ -43,10 +41,9 @@ export const sourcePackages = [
  */
 export const modulePackages: Array<{ name: string; dir: string; entry?: boolean }> = [];
 
-// ————————————————————————————————————————————————————————————————————————————————————————————————
-// Machinery. One file rather than three: an import between them needed either a `.ts` specifier
-// (TS5097 in every consumer whose program these files enter) or a package subpath.
-// ————————————————————————————————————————————————————————————————————————————————————————————————
+// The code below makes the Vite aliases from the two tables. Keep this code in the same file as
+// the tables. A second file needs an import with a `.ts` specifier. That import causes error
+// TS5097 in each package that imports this one.
 
 const escapeForRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
