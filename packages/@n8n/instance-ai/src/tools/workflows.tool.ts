@@ -10,6 +10,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
+import { WorkflowSaveConflictError } from '../errors/workflow-save-conflict.error';
 import type { InstanceAiContext } from '../types';
 import {
 	findSetupHintProblems,
@@ -18,6 +19,11 @@ import {
 	TEMPLATABLE_PLAIN_AUTH_TYPES,
 } from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
+import {
+	getObservedWorkflowChecksum,
+	rememberCurrentWorkflowChecksum,
+	rememberObservedWorkflowChecksum,
+} from './workflows/observed-workflow-checksums';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
@@ -441,6 +447,7 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 			};
 		}
 		const detail = await context.workflowService.get(input.workflowId);
+		await rememberObservedWorkflowChecksum(context, input.workflowId, detail.checksum);
 		if (input.full || isSmallPayload(detail)) return detail;
 		const { nodes, connections, ...meta } = detail;
 		return {
@@ -472,7 +479,13 @@ async function handleGetJson(
 	input: Extract<Input, { action: 'get-json' }>,
 ) {
 	try {
-		return await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
+		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
+		// This is the graph the agent edits before `update`, so pin the state it
+		// saw. Historical reads must not advance the optimistic-concurrency lock.
+		if (!input.versionId) {
+			await rememberCurrentWorkflowChecksum(context, input.workflowId);
+		}
+		return json;
 	} catch (error) {
 		return {
 			workflowId: input.workflowId,
@@ -998,11 +1011,32 @@ async function handleUpdate(
 		};
 	}
 
+	// Guard against overwriting a save this conversation never saw (canvas
+	// autosave, another user, another thread). Absent when the agent never read
+	// the workflow here — then there is nothing to pin the save to.
+	const expectedChecksum = await getObservedWorkflowChecksum(context, input.workflowId);
+
 	try {
-		await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow);
+		const saved = expectedChecksum
+			? await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow, {
+					expectedChecksum,
+				})
+			: await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow);
 		await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
+		// Pin to what this save wrote, not to the re-read above: if another writer
+		// landed in between, the next update should conflict rather than clobber.
+		if (saved.checksum) {
+			await rememberObservedWorkflowChecksum(context, input.workflowId, saved.checksum);
+		}
 		return { success: true, workflowId: input.workflowId };
 	} catch (error) {
+		if (error instanceof WorkflowSaveConflictError) {
+			return {
+				success: false,
+				error: `${error.message} Call workflows(action="get", workflowId="${input.workflowId}") to read the current state, re-apply your change, then update again.`,
+			};
+		}
+
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
