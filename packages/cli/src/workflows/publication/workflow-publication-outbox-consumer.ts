@@ -17,6 +17,7 @@ import type { PublicationResult } from '@/workflows/publication/publication-resu
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
+import { WorkflowPublicationOutboxWorkerPool } from '@/workflows/publication/workflow-publication-outbox-worker-pool';
 import type { TriggerOperationAbort } from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
@@ -63,14 +64,7 @@ export class WorkflowPublicationOutboxConsumer {
 
 	private isShuttingDown = false;
 
-	/** Worker passes in flight. A worker never rejects: it settles with the
-	 * error that ended its pass, or `null` when the pass completed. */
-	private readonly activeWorkers = new Set<Promise<Error | null>>();
-
-	/** Set when a wake-up arrives while the pool is at capacity; a worker
-	 * exiting then starts a follow-up pass, so a record committed after the
-	 * running workers' final claims is still picked up promptly. */
-	private wakeRequested = false;
+	private readonly pool: WorkflowPublicationOutboxWorkerPool;
 
 	constructor(
 		private readonly logger: Logger,
@@ -85,6 +79,12 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
+		this.pool = new WorkflowPublicationOutboxWorkerPool(
+			async () => await this.runWorkerPass(),
+			() => this.shouldKeepPolling(),
+			() => this.workflowsConfig.workflowPublicationConcurrency,
+			(error) => this.errorReporter.error(error, { shouldBeLogged: true }),
+		);
 	}
 
 	async init() {
@@ -120,7 +120,7 @@ export class WorkflowPublicationOutboxConsumer {
 		this.stopPolling();
 		// Wait for in-flight workers to finish their current record so triggers
 		// aren't left half-activated.
-		await this.awaitIdle();
+		await this.pool.awaitIdle();
 	}
 
 	/**
@@ -160,8 +160,7 @@ export class WorkflowPublicationOutboxConsumer {
 		if (!this.shouldKeepPolling()) return;
 
 		this.pollTimeout = setTimeout(() => {
-			this.topUpWorkers();
-
+			this.pool.topUp();
 			if (this.shouldKeepPolling()) this.schedulePollCycle();
 		}, this.workflowsConfig.publicationOutboxPollIntervalMs);
 	}
@@ -182,8 +181,8 @@ export class WorkflowPublicationOutboxConsumer {
 	 * telemetry) — they report their layer's outcome, never the pool's error.
 	 */
 	async drainPending(): Promise<void> {
-		this.topUpWorkers();
-		const error = await this.awaitIdle();
+		this.pool.topUp();
+		const error = await this.pool.awaitIdle();
 		if (error) {
 			// `level: 'warning'` makes the wrapper non-reportable (`shouldReport`
 			// false), so an awaiting caller's generic catch passing it to the
@@ -194,58 +193,6 @@ export class WorkflowPublicationOutboxConsumer {
 				level: 'warning',
 			});
 		}
-	}
-
-	/** Resolves once the pool is idle, with the first worker error observed. */
-	private async awaitIdle(): Promise<Error | null> {
-		let firstError: Error | null = null;
-		// Loop: a follow-up pass (see `wakeRequested`) can repopulate the pool
-		// after the currently observed workers settle.
-		while (this.activeWorkers.size > 0) {
-			// `Promise.all` is safe here: workers settle with their error, never reject.
-			const outcomes = await Promise.all([...this.activeWorkers]);
-			firstError ??= outcomes.find((outcome) => outcome !== null) ?? null;
-		}
-		return firstError;
-	}
-
-	private topUpWorkers() {
-		if (!this.shouldKeepPolling()) return;
-
-		const concurrency = this.workflowsConfig.workflowPublicationConcurrency;
-		if (this.activeWorkers.size >= concurrency) {
-			// The running workers' final claims may predate the record behind this
-			// wake-up; have the next worker to exit run a follow-up pass.
-			this.wakeRequested = true;
-			return;
-		}
-
-		while (this.activeWorkers.size < concurrency) this.spawnWorker();
-	}
-
-	private spawnWorker() {
-		const worker = this.runWorkerPass()
-			.then(
-				() => null,
-				(error) => {
-					// A worker failure (e.g. a claim query error) is contained to its own
-					// slot. The pool owns its workers' errors and reports each exactly once
-					// here at the source, regardless of who is awaiting; `drainPending`
-					// rejects with a wrapper so awaiting callers can fail their own
-					// operation without re-reporting the cause.
-					const failure = ensureError(error);
-					this.errorReporter.error(failure, { shouldBeLogged: true });
-					return failure;
-				},
-			)
-			.finally(() => {
-				this.activeWorkers.delete(worker);
-				if (this.wakeRequested) {
-					this.wakeRequested = false;
-					if (this.shouldKeepPolling()) this.spawnWorker();
-				}
-			});
-		this.activeWorkers.add(worker);
 	}
 
 	/**
