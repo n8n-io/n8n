@@ -1607,18 +1607,15 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		const editorColumn = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 		expect(editorColumn.props('agent')).toBeTruthy();
 
-		vi.useFakeTimers();
-		try {
-			editorColumn.vm.$emit('toggle-mcp-access', true);
-			await nextTick();
-			await vi.runOnlyPendingTimersAsync();
-			expect(toggleAgentMcpAccess).toHaveBeenCalledExactlyOnceWith('a2', true);
-		} finally {
-			vi.useRealTimers();
-		}
+		editorColumn.vm.$emit('toggle-mcp-access', true);
+		await nextTick();
 
+		// Switching agents flushes the pending MCP debounce — same path as
+		// production, and not dependent on fake timers + nextTick.
 		await wrapper.setProps({ artifactAgentId: 'a3', artifactAgentPending: true });
 		await flushPromises();
+		expect(toggleAgentMcpAccess).toHaveBeenCalledExactlyOnceWith('a2', true);
+
 		await wrapper.setProps({ artifactAgentPending: false });
 		mcpSave.resolve({ updatedCount: 1, updatedIds: ['a2'], unchangedIds: [] });
 		await flushPromises();
