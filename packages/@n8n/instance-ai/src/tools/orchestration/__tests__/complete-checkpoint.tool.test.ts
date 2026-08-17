@@ -137,6 +137,38 @@ describe('createCompleteCheckpointTool', () => {
 		expect(service.markCheckpointFailed).not.toHaveBeenCalled();
 	});
 
+	it('ignores pending setup on nodes the build did not change', async () => {
+		const graph = makeSetupRequiredGraph();
+		const buildTask = graph.tasks[0];
+		buildTask.outcome = { ...buildTask.outcome, changedNodeNames: ['Google Sheets'] };
+		const service = makeService({
+			getGraph: vi.fn().mockResolvedValue(graph),
+			markCheckpointSucceeded: vi
+				.fn()
+				.mockResolvedValue({ ok: true, graph: { tasks: [], planRunId: 'r', status: 'active' } }),
+		});
+		// Pre-existing Slack node still needs setup, but this build never touched it.
+		vi.mocked(analyzeWorkflow).mockResolvedValue([
+			{
+				node: { name: 'Slack' } as SetupRequest['node'],
+				credentialType: 'slackApi',
+				needsAction: true,
+			},
+		] as SetupRequest[]);
+		const tool = createCompleteCheckpointTool(
+			makeContext(service, { domainContext: {} as OrchestrationContext['domainContext'] }),
+		);
+
+		const res = await executeTool(tool, {
+			taskId: 'verify-1',
+			status: 'succeeded',
+			result: 'Verified',
+		});
+
+		expect(res.ok).toBe(true);
+		expect(service.markCheckpointSucceeded).toHaveBeenCalled();
+	});
+
 	it('marks a setup-required checkpoint succeeded after setup has no pending action', async () => {
 		const service = makeService({
 			getGraph: vi.fn().mockResolvedValue(makeSetupRequiredGraph()),

@@ -611,6 +611,20 @@ export function validateWorkflow(
 						}
 					}
 
+					// An omitted discriminator falls back to the node default at runtime
+					// (the editor strips defaults on save), so a round-tripped workflow
+					// must not fail the build on it — surface it as informational.
+					if (error.missingDiscriminator) {
+						warnings.push(
+							ValidationWarning.informational(
+								'INVALID_PARAMETER',
+								`Node "${node.name}": ${message}`,
+								node.name,
+							),
+						);
+						continue;
+					}
+
 					// Report as WARNING (non-blocking) to maintain backwards compatibility
 					warnings.push(
 						new ValidationWarning(

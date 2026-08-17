@@ -47,6 +47,13 @@ function getWorkflowId(outcome: Record<string, unknown> | undefined): string | u
 	return typeof workflowId === 'string' && workflowId.length > 0 ? workflowId : undefined;
 }
 
+/** Nodes the build changed — pending setup on other (pre-existing) nodes must not gate the checkpoint. */
+function getChangedNodeNames(outcome: Record<string, unknown> | undefined): string[] | undefined {
+	const changedNodeNames = outcome?.changedNodeNames;
+	if (!Array.isArray(changedNodeNames)) return undefined;
+	return changedNodeNames.filter((name): name is string => typeof name === 'string');
+}
+
 async function rejectIfSetupStillRequired(
 	context: OrchestrationContext,
 	checkpointTaskId: string,
@@ -58,13 +65,19 @@ async function rejectIfSetupStillRequired(
 	if (!checkpoint || checkpoint.kind !== 'checkpoint') return { ok: true };
 	if (checkpoint.status !== 'running') return { ok: true };
 
-	const dependentWorkflowIds = graph.tasks
+	const dependentWorkflows = graph.tasks
 		.filter((task) => checkpoint.deps.includes(task.id))
 		.filter((task) => task.kind === 'build-workflow' && requiresWorkflowSetup(task.outcome))
-		.map((task) => getWorkflowId(task.outcome))
-		.filter((workflowId): workflowId is string => workflowId !== undefined);
+		.map((task) => ({
+			workflowId: getWorkflowId(task.outcome),
+			changedNodeNames: getChangedNodeNames(task.outcome),
+		}))
+		.filter(
+			(entry): entry is { workflowId: string; changedNodeNames: string[] | undefined } =>
+				entry.workflowId !== undefined,
+		);
 
-	if (dependentWorkflowIds.length === 0) return { ok: true };
+	if (dependentWorkflows.length === 0) return { ok: true };
 
 	const domainContext = context.domainContext;
 	if (!domainContext) {
@@ -76,10 +89,14 @@ async function rejectIfSetupStillRequired(
 		};
 	}
 
-	for (const workflowId of dependentWorkflowIds) {
+	for (const { workflowId, changedNodeNames } of dependentWorkflows) {
 		try {
 			const setupRequests = await analyzeWorkflow(domainContext, workflowId);
-			const pendingRequests = setupRequests.filter((request) => request.needsAction);
+			const pendingRequests = setupRequests.filter(
+				(request) =>
+					request.needsAction &&
+					(!changedNodeNames || changedNodeNames.includes(request.node.name)),
+			);
 			if (pendingRequests.length > 0) {
 				const nodeNames = pendingRequests
 					.map((request) => request.node.name)

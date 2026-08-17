@@ -1,6 +1,11 @@
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import * as path from 'path';
+
 import { validateWorkflow, ValidationError } from '.';
 import type { NodeInstance, WorkflowJSON } from '../types/base';
 import { workflow } from '../workflow-builder';
+import { getSchemaBaseDirs, setSchemaBaseDirs } from './node-parameter-schema/schema-validator';
 import { setupTestSchemas, teardownTestSchemas } from './node-parameter-schema/test-schema-setup';
 import { node, trigger, sticky } from '../workflow-builder/node-builders/node-builder';
 import { languageModel, tool } from '../workflow-builder/node-builders/subnode-builders';
@@ -671,6 +676,63 @@ describe('Validation', () => {
 			const result = validateWorkflow(wf);
 
 			expect(result.warnings.some((w) => w.code === 'INVALID_PARAMETER')).toBe(false);
+		});
+
+		it('should report an omitted discriminator as informational so it never blocks a build', () => {
+			// Editor-saved workflows strip default discriminators; a round-tripped
+			// untouched node must not fail the build on the omitted resource/operation.
+			// Uses a hand-authored union without default resolution — real node
+			// schemas resolve defaulted discriminators since #35952.
+			const previousBaseDirs = getSchemaBaseDirs();
+			const tmpRoot = mkdtempSync(path.join(tmpdir(), 'sdk-validate-discriminator-'));
+			try {
+				const nodeDir = path.join(tmpRoot, 'nodes', 'custom-pkg', 'messenger');
+				mkdirSync(nodeDir, { recursive: true });
+				writeFileSync(
+					path.join(nodeDir, 'v1.schema.js'),
+					`module.exports = function ({ z }) {
+	const sendVariant = z.object({
+		parameters: z.object({
+			resource: z.literal('message'),
+			operation: z.literal('send'),
+			channel: z.string(),
+		}),
+	});
+	const listVariant = z.object({
+		parameters: z.object({
+			resource: z.literal('channel'),
+			operation: z.literal('list'),
+			channel: z.string(),
+		}),
+	});
+	return z.union([sendVariant, listVariant]);
+};
+`,
+				);
+				setSchemaBaseDirs([tmpRoot]);
+
+				const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+				const messengerNode = node({
+					type: 'custom-pkg.messenger',
+					version: 1,
+					config: {
+						name: 'Send Message',
+						parameters: { channel: '#general' },
+					},
+				});
+
+				const wf = workflow('test-id', 'Test').add(t).to(messengerNode);
+				const result = validateWorkflow(wf);
+
+				const discriminatorWarning = result.warnings.find(
+					(w) => w.code === 'INVALID_PARAMETER' && w.message.includes('Missing discriminator'),
+				);
+				expect(discriminatorWarning).toBeDefined();
+				expect(discriminatorWarning?.severity).toBe('informational');
+			} finally {
+				rmSync(tmpRoot, { recursive: true, force: true });
+				setSchemaBaseDirs(previousBaseDirs);
+			}
 		});
 
 		it('should include node name in INVALID_PARAMETER warning', () => {
