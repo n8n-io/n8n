@@ -132,12 +132,14 @@ function installTelegramApiStub(bot: TelegramUserFixture, failedMethods: string[
 			let result: unknown = true;
 			if (method === 'getMe') {
 				result = bot;
-			} else if (method === 'sendMessage') {
+			} else if (method === 'sendMessage' || method === 'sendRichMessage') {
 				result = {
 					message_id: nextMessageId++,
 					chat: { id: Number(body.chat_id) },
 					date: 1719000000,
-					text: body.text ?? '',
+					...(method === 'sendRichMessage'
+						? { rich_message: body.rich_message }
+						: { text: body.text ?? '' }),
 				};
 			}
 			return { apiCall: { method, body }, responseBody: { ok: true, result } };
