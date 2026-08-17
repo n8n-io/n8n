@@ -122,7 +122,7 @@ function isNextDisabled(page: number, pageCount: number) {
 function pageSizeItems() {
 	return props.pageSizes.map((s) => ({
 		value: String(s),
-		label: String(s),
+		label: t('pagination.pageSizeOption', { size: s }),
 	}));
 }
 

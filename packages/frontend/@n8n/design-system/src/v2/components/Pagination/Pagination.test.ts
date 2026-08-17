@@ -259,6 +259,23 @@ describe('v2/components/Pagination', () => {
 	});
 
 	describe('v-model:itemsPerPage', () => {
+		it('should label page size options with a /page suffix', async () => {
+			const wrapper = render(Pagination, {
+				props: {
+					page: 1,
+					itemsPerPage: 10,
+					total: 100,
+				},
+			});
+
+			await userEvent.click(wrapper.getByRole('combobox'));
+
+			await waitFor(() => {
+				expect(wrapper.getByRole('option', { name: '10/page' })).toBeInTheDocument();
+				expect(wrapper.getByRole('option', { name: '50/page' })).toBeInTheDocument();
+			});
+		});
+
 		it('should emit update:itemsPerPage when page size changes', async () => {
 			const wrapper = render(Pagination, {
 				props: {
@@ -271,7 +288,7 @@ describe('v2/components/Pagination', () => {
 			await userEvent.click(wrapper.getByRole('combobox'));
 
 			await waitFor(async () => {
-				await userEvent.click(wrapper.getByRole('option', { name: '20' }));
+				await userEvent.click(wrapper.getByRole('option', { name: '20/page' }));
 			});
 
 			await waitFor(() => {
@@ -291,13 +308,13 @@ describe('v2/components/Pagination', () => {
 			await userEvent.click(wrapper.getByRole('combobox'));
 
 			await waitFor(async () => {
-				await userEvent.click(wrapper.getByRole('option', { name: '20' }));
+				await userEvent.click(wrapper.getByRole('option', { name: '20/page' }));
 			});
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:itemsPerPage')?.[0]).toEqual([20]);
 			});
-			expect(wrapper.getByRole('combobox')).toHaveTextContent('10');
+			expect(wrapper.getByRole('combobox')).toHaveTextContent('10/page');
 
 			await wrapper.rerender({
 				page: 1,
@@ -305,7 +322,7 @@ describe('v2/components/Pagination', () => {
 				total: 100,
 			});
 
-			expect(wrapper.getByRole('combobox')).toHaveTextContent('20');
+			expect(wrapper.getByRole('combobox')).toHaveTextContent('20/page');
 		});
 
 		it('should support uncontrolled mode via defaultItemsPerPage', async () => {
@@ -320,11 +337,11 @@ describe('v2/components/Pagination', () => {
 			await userEvent.click(wrapper.getByRole('combobox'));
 
 			await waitFor(async () => {
-				await userEvent.click(wrapper.getByRole('option', { name: '20' }));
+				await userEvent.click(wrapper.getByRole('option', { name: '20/page' }));
 			});
 
 			await waitFor(() => {
-				expect(wrapper.getByRole('combobox')).toHaveTextContent('20');
+				expect(wrapper.getByRole('combobox')).toHaveTextContent('20/page');
 				expect(wrapper.emitted('update:itemsPerPage')?.[0]).toEqual([20]);
 			});
 		});
@@ -341,7 +358,7 @@ describe('v2/components/Pagination', () => {
 			await userEvent.click(wrapper.getByRole('combobox'));
 
 			await waitFor(async () => {
-				await userEvent.click(wrapper.getByRole('option', { name: '20' }));
+				await userEvent.click(wrapper.getByRole('option', { name: '20/page' }));
 			});
 
 			await waitFor(() => {

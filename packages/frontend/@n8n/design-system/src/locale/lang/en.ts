@@ -33,6 +33,7 @@ export default {
 	'pagination.nextPage': 'Next page',
 	'pagination.total': 'Total {total}',
 	'pagination.pageSize': 'Page size',
+	'pagination.pageSizeOption': '{size}/page',
 	'pagination.goTo': 'Go to',
 	'pagination.goToPage': 'Go to page',
 	'codeDiff.couldNotReplace': 'Could not replace code',

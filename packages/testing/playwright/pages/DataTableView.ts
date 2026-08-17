@@ -65,7 +65,7 @@ export class DataTableView extends BasePage {
 	}
 
 	getDataTablePageOption(pageSize: string) {
-		return this.getVisiblePopoverOption(`${pageSize} per page`, { exact: true });
+		return this.getVisiblePopoverOption(`${pageSize}/page`, { exact: true });
 	}
 
 	getPaginationNextButton() {

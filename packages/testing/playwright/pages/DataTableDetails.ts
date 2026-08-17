@@ -286,7 +286,7 @@ export class DataTableDetails extends BasePage {
 	async setPageSize(size: '10' | '20' | '50') {
 		const pagination = this.getPagination();
 		await pagination.getByTestId('pagination-sizes').click();
-		await this.getVisiblePopoverOption(`${size} per page`, { exact: true }).click();
+		await this.getVisiblePopoverOption(`${size}/page`, { exact: true }).click();
 	}
 
 	getCell(rowIndex: number, columnId: string) {
