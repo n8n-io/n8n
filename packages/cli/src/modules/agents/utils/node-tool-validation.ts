@@ -35,7 +35,7 @@ export function findHttpRequestToolUrlFromAiViolations(
 		try {
 			if (extractFromAICalls(url).length === 0) return [];
 		} catch {
-			return [];
+			// A malformed $fromAI call is still unsafe in this field.
 		}
 
 		return [

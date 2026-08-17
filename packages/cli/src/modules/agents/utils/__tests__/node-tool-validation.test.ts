@@ -45,6 +45,9 @@ describe('HTTP Request URL validation', () => {
 				configuredNodeTool('HTTP Request', 'n8n-nodes-base.httpRequest', {
 					url: "={{ $FromAI ('url') }}",
 				}),
+				configuredNodeTool('Malformed HTTP Request', 'n8n-nodes-base.httpRequestTool', {
+					url: "={{ $fromAI('url' }}",
+				}),
 			]),
 		).toEqual([
 			{
@@ -56,6 +59,11 @@ describe('HTTP Request URL validation', () => {
 				toolIndex: 1,
 				toolName: 'HTTP Request',
 				path: 'tools.1.node.nodeParameters.url',
+			},
+			{
+				toolIndex: 2,
+				toolName: 'Malformed HTTP Request',
+				path: 'tools.2.node.nodeParameters.url',
 			},
 		]);
 
