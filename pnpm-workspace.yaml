@@ -1,12 +1,14 @@
+strictDepBuilds: true
+strictPeerDependencies: false
+preferWorkspacePackages: true
+autoInstallPeers: true
+linkWorkspacePackages: deep
+hoist: false
+hoistWorkspacePackages: false
+
 pmOnFail: warn
 fund: false
 updateNotifier: false
-autoInstallPeers: true
-strictPeerDependencies: false
-preferWorkspacePackages: true
-linkWorkspacePackages: deep
-hoist: true
-hoistWorkspacePackages: false
 loglevel: warn
 packageImportMethod: clone-or-copy
 

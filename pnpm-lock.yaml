@@ -814,60 +814,24 @@ overrides:
   '@zone-eu/mailsplit@<5.4.15': 5.4.15
 
 patchedDependencies:
-  '@langchain/google-common@2.1.24':
-    hash: b50436a6c7b0a82d54472dff331ba1b42ab8b816995f83295eef2ee4b482a87d
-    path: patches/@langchain__google-common@2.1.24.patch
-  '@langchain/openai@1.4.4':
-    hash: 0160a23d307d3bb4aedce23be0d1df4224738bee9184dd4b56bc03eaa37c9a87
-    path: patches/@langchain__openai@1.4.4.patch
-  '@lezer/highlight':
-    hash: 97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c
-    path: patches/@lezer__highlight.patch
-  '@types/express-serve-static-core@5.0.6':
-    hash: d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb
-    path: patches/@types__express-serve-static-core@5.0.6.patch
-  '@types/ws@8.18.1':
-    hash: 682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb
-    path: patches/@types__ws@8.18.1.patch
-  assert@2.1.0:
-    hash: a73271b303dca8c10a0c9caf77d2083b52032b6a887227563bee3ce3dbf5e9d2
-    path: patches/assert@2.1.0.patch
-  axios:
-    hash: 149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49
-    path: patches/axios.patch
-  bull@4.16.4:
-    hash: a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42
-    path: patches/bull@4.16.4.patch
-  element-plus@2.4.3:
-    hash: fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee
-    path: patches/element-plus@2.4.3.patch
-  ics:
-    hash: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
-    path: patches/ics.patch
-  lodash@4.18.1:
-    hash: 81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b
-    path: patches/lodash@4.18.1.patch
-  minifaker:
-    hash: bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33
-    path: patches/minifaker.patch
-  pdfjs-dist@5.4.296:
-    hash: e652436fd7a04798432ecfcf33f92fbe6ebedbc248af535faca00b8181aa936f
-    path: patches/pdfjs-dist@5.4.296.patch
-  pkce-challenge@5.0.0:
-    hash: 651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90
-    path: patches/pkce-challenge@5.0.0.patch
-  v-code-diff:
-    hash: 21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9
-    path: patches/v-code-diff.patch
-  vue-tsc@2.2.8:
-    hash: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
-    path: patches/vue-tsc@2.2.8.patch
-  vuedraggable@4.1.0:
-    hash: eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049
-    path: patches/vuedraggable@4.1.0.patch
-  z-vue-scan:
-    hash: bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8
-    path: patches/z-vue-scan.patch
+  '@langchain/google-common@2.1.24': b50436a6c7b0a82d54472dff331ba1b42ab8b816995f83295eef2ee4b482a87d
+  '@langchain/openai@1.4.4': 0160a23d307d3bb4aedce23be0d1df4224738bee9184dd4b56bc03eaa37c9a87
+  '@lezer/highlight': 97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c
+  '@types/express-serve-static-core@5.0.6': d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb
+  '@types/ws@8.18.1': 682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb
+  assert@2.1.0: a73271b303dca8c10a0c9caf77d2083b52032b6a887227563bee3ce3dbf5e9d2
+  axios: 149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49
+  bull@4.16.4: a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42
+  element-plus@2.4.3: fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee
+  ics: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
+  lodash@4.18.1: 81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b
+  minifaker: bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33
+  pdfjs-dist@5.4.296: e652436fd7a04798432ecfcf33f92fbe6ebedbc248af535faca00b8181aa936f
+  pkce-challenge@5.0.0: 651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90
+  v-code-diff: 21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9
+  vue-tsc@2.2.8: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
+  vuedraggable@4.1.0: eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049
+  z-vue-scan: bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8
 
 importers:
 
@@ -22860,7 +22824,7 @@ packages:
     engines: {node: '>=18'}
 
   wa-sqlite@https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7:
-    resolution: {tarball: https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7}
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7}
     version: 1.0.9
 
   walkdir@0.4.1:
