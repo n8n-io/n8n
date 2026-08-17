@@ -4,6 +4,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
+	type AgentIntegrationConfig,
 } from '@n8n/api-types';
 import { LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
@@ -11,12 +12,17 @@ import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
+import { CacheService } from '@/services/cache/cache.service';
+
 import {
 	AgentChatAttachmentService,
 	type StoredAttachmentRef,
 } from '../agent-chat-attachment.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
-import { CacheService } from '@/services/cache/cache.service';
+import {
+	hashAgentSandboxPrincipal,
+	type AgentSandboxPrincipalHash,
+} from '../agent-sandbox-principal';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import { resolveInboundMimeType } from '../utils/inbound-attachments';
 import type {
@@ -37,7 +43,6 @@ import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import type { ReplyExpectation } from './integration-tools';
 import { downloadDiscordAttachment } from './platforms/discord-operations';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 import { type InternalThread, toInternalThreadId } from './types';
 
@@ -49,6 +54,7 @@ interface AgentExecutor {
 		attachments?: StoredAttachmentRef[];
 		memory: { threadId: InternalThread; resourceId: string };
 		integrationType?: string;
+		sandboxPrincipalHash: AgentSandboxPrincipalHash;
 	}): AsyncGenerator<StreamChunk>;
 
 	resumeForChat(config: {
@@ -186,6 +192,7 @@ export class AgentChatBridge {
 				message,
 				attachments,
 				integrationType,
+				sandboxPrincipalHash,
 			}) {
 				yield* agentService.executeForChatPublished({
 					agentId: aid,
@@ -200,6 +207,7 @@ export class AgentChatBridge {
 						}),
 					},
 					integrationType,
+					sandboxPrincipalHash,
 				});
 			},
 			async *resumeForChat(config) {
@@ -368,6 +376,12 @@ export class AgentChatBridge {
 					resourceId,
 				},
 				integrationType: this.integration.type,
+				sandboxPrincipalHash: hashAgentSandboxPrincipal({
+					type: 'integration-user',
+					connectionId: this.integration.credentialId,
+					platform: this.integration.type,
+					platformUserId: message.author.userId,
+				}),
 			});
 
 			consumeStarted = true;
