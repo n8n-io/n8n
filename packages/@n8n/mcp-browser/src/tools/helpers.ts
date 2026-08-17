@@ -2,6 +2,7 @@ import type { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
 import { createLogger } from '../logger';
+import { buildErrorResponse, enrichResponse, resolvePageContext } from './response-envelope';
 import { redactCallToolResult } from '../redaction/redact';
 import type {
 	AffectedResource,
@@ -10,7 +11,6 @@ import type {
 	ToolContext,
 	ToolDefinition,
 } from '../types';
-import { buildErrorResponse, enrichResponse, resolvePageContext } from './response-envelope';
 
 const log = createLogger('connected-tool');
 
