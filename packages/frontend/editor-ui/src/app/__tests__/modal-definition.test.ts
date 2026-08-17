@@ -12,7 +12,7 @@ import { EXAMPLE_FEATURE_MODAL_KEY } from './fixtures/exampleFeature/exampleFeat
 import { EXAMPLE_FEATURE_MODALS } from './fixtures/exampleFeature/modals';
 
 /**
- * CAT-3688 AC #3 — a new modal needs no change to `ui.store` or `app/constants`.
+ * A a new modal needs no change to `ui.store` or `app/constants`.
  *
  * The first test registers a fixture modal and opens it on the screen. The second
  * test makes sure that the shell does not define the same key. Without the second
