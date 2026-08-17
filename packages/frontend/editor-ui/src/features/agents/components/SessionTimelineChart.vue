@@ -2,11 +2,16 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { truncate } from '@n8n/utils/string/truncate';
 import { useI18n } from '@n8n/i18n';
-import { N8nHoverCard, N8nIconButton } from '@n8n/design-system';
+import { N8nHoverCard, N8nIconButton, N8nIcon } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
-import { formatDuration, isSubAgentTimelineItem, itemFilterKey } from '../session-timeline.utils';
+import {
+	formatDuration,
+	isFailedTimelineItem,
+	isSubAgentTimelineItem,
+	itemFilterKey,
+} from '../session-timeline.utils';
 import { chartBlockStyleForItem } from '../session-timeline.styles';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
@@ -89,6 +94,10 @@ function eventStyle(item: TimelineItem): CSSProperties {
 
 function popoverPillKind(item: TimelineItem) {
 	return isSubAgentTimelineItem(item) ? 'subagent' : item.kind;
+}
+
+function isFailed(item: TimelineItem): boolean {
+	return isFailedTimelineItem(item);
 }
 
 function popoverLabel(item: TimelineItem): string {
@@ -310,6 +319,16 @@ onBeforeUnmount(() => {
 						<span :class="$style.popoverMeta">{{ idleDuration(activePopover.segment.range) }}</span>
 					</div>
 					<div v-else-if="activePopover" :class="$style.popoverInner">
+						<N8nIcon
+							v-if="isFailed(activePopover.segment.item)"
+							icon="circle-x"
+							size="xsmall"
+							:class="$style.popoverFailedIcon"
+							data-testid="timeline-block-failed-icon"
+						/>
+						<span v-if="isFailed(activePopover.segment.item)" :class="$style.popoverFailedLabel">
+							{{ i18n.baseText('agentSessions.timeline.failed') }}
+						</span>
 						<SessionTimelinePill
 							:kind="popoverPillKind(activePopover.segment.item)"
 							:label="popoverLabel(activePopover.segment.item)"
@@ -344,8 +363,13 @@ onBeforeUnmount(() => {
 					type="button"
 					data-test-id="timeline-block"
 					:data-timeline-index="seg.index"
-					:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
+					:class="[
+						$style.block,
+						props.selectedIndex === seg.index && $style.selected,
+						isFailed(seg.item) && $style.failed,
+					]"
 					:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
+					:data-failed="isFailed(seg.item) ? 'true' : undefined"
 					:style="eventStyle(seg.item)"
 					@mouseenter="showPopover(seg, $event)"
 					@mouseleave="hidePopover($event)"
@@ -458,6 +482,30 @@ onBeforeUnmount(() => {
 	/* Lift above neighbouring idle stripes so the highlight outline doesn't
 	   get covered by the adjacent .idle background. */
 	z-index: 2;
+}
+
+/*
+ * Failed tool/workflow/node calls keep their kind colour but get a danger
+ * ring via box-shadow so it composes with the `.selected` outline rather
+ * than competing with it (outline + box-shadow render independently).
+ */
+.failed {
+	box-shadow: 0 0 0 2px var(--color--danger);
+}
+
+.failed.selected {
+	box-shadow: 0 0 0 2px var(--color--danger);
+}
+
+.popoverFailedIcon {
+	color: var(--color--danger);
+	flex-shrink: 0;
+}
+
+.popoverFailedLabel {
+	color: var(--color--danger);
+	font-weight: var(--font-weight--bold);
+	white-space: nowrap;
 }
 
 /*

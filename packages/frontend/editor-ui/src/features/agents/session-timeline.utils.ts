@@ -15,6 +15,38 @@ export function isSubAgentTimelineItem(item: TimelineItem): boolean {
 	return item.kind === 'tool' && isDelegateSubAgentTool(item.toolName);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+/**
+ * A tool/workflow/node call is "failed" when the runtime flagged it
+ * (`toolSuccess === false`) — the case for thrown tool and node errors.
+ *
+ * Workflow tools don't throw on sub-workflow failure; they return
+ * `{ status: 'error', error?, executionId }` with `success: true`. Detect
+ * that soft-failure shape here so it isn't invisible in the timeline.
+ * In-flight calls (`toolSuccess === undefined`, no error status) are not failed.
+ */
+export function isFailedTimelineItem(item: TimelineItem): boolean {
+	if (item.kind !== 'tool' && item.kind !== 'workflow' && item.kind !== 'node') return false;
+	if (item.toolSuccess === false) return true;
+	if (item.kind === 'workflow' && isRecord(item.toolOutput)) {
+		return item.toolOutput.status === 'error';
+	}
+	return false;
+}
+
+/** Extracts a human-readable error message from a failed item's tool output. */
+export function timelineItemErrorMessage(item: TimelineItem): string {
+	if (!isFailedTimelineItem(item)) return '';
+	const output = item.toolOutput;
+	if (isRecord(output) && typeof output.error === 'string' && output.error.length > 0) {
+		return output.error;
+	}
+	return '';
+}
+
 export function computeIdleRanges(items: TimelineItem[]): IdleRange[] {
 	const ranges: IdleRange[] = [];
 	for (let i = 0; i < items.length - 1; i++) {

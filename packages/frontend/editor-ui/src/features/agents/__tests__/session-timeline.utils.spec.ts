@@ -9,6 +9,8 @@ import {
 	IDLE_THRESHOLD_MS,
 	flattenExecutionsToTimelineItems,
 	matchesSearch,
+	isFailedTimelineItem,
+	timelineItemErrorMessage,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -445,5 +447,96 @@ describe('flattenExecutionsToTimelineItems', () => {
 			withTimeline([{ type: 'text', content: 'b', timestamp: 200 }], { id: 'e-b' }),
 		]);
 		expect(items.map((i) => i.content)).toEqual(['a', 'b']);
+	});
+});
+
+describe('isFailedTimelineItem', () => {
+	it('flags a thrown tool call (toolSuccess === false)', () => {
+		expect(isFailedTimelineItem(item({ kind: 'tool', toolSuccess: false }))).toBe(true);
+	});
+
+	it('flags a thrown node call (toolSuccess === false)', () => {
+		expect(isFailedTimelineItem(item({ kind: 'node', toolSuccess: false }))).toBe(true);
+	});
+
+	it('flags a workflow soft-failure by output.status even when toolSuccess is true', () => {
+		expect(
+			isFailedTimelineItem(
+				item({ kind: 'workflow', toolSuccess: true, toolOutput: { status: 'error' } }),
+			),
+		).toBe(true);
+	});
+
+	it('flags a workflow soft-failure with an error message', () => {
+		expect(
+			isFailedTimelineItem(
+				item({
+					kind: 'workflow',
+					toolSuccess: true,
+					toolOutput: { status: 'error', error: 'boom', executionId: 'x' },
+				}),
+			),
+		).toBe(true);
+	});
+
+	it('does not flag a successful workflow', () => {
+		expect(
+			isFailedTimelineItem(
+				item({ kind: 'workflow', toolSuccess: true, toolOutput: { status: 'success' } }),
+			),
+		).toBe(false);
+	});
+
+	it('does not flag an in-flight tool call (toolSuccess undefined, no output)', () => {
+		expect(isFailedTimelineItem(item({ kind: 'tool', toolSuccess: undefined }))).toBe(false);
+	});
+
+	it('does not flag an in-flight workflow call without an error status', () => {
+		expect(isFailedTimelineItem(item({ kind: 'workflow', toolSuccess: undefined }))).toBe(false);
+	});
+
+	it('does not flag user/agent/suspension kinds', () => {
+		expect(isFailedTimelineItem(item({ kind: 'user', toolSuccess: false }))).toBe(false);
+		expect(isFailedTimelineItem(item({ kind: 'agent', toolSuccess: false }))).toBe(false);
+		expect(isFailedTimelineItem(item({ kind: 'suspension', toolSuccess: false }))).toBe(false);
+	});
+});
+
+describe('timelineItemErrorMessage', () => {
+	it('extracts the error message from a thrown tool call', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({ kind: 'tool', toolSuccess: false, toolOutput: { error: 'timed out' } }),
+			),
+		).toBe('timed out');
+	});
+
+	it('extracts the error message from a workflow soft-failure', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'workflow',
+					toolSuccess: true,
+					toolOutput: { status: 'error', error: 'node X failed' },
+				}),
+			),
+		).toBe('node X failed');
+	});
+
+	it('returns empty string when no error message is present', () => {
+		expect(
+			timelineItemErrorMessage(item({ kind: 'tool', toolSuccess: false, toolOutput: {} })),
+		).toBe('');
+		expect(
+			timelineItemErrorMessage(
+				item({ kind: 'workflow', toolSuccess: true, toolOutput: { status: 'error' } }),
+			),
+		).toBe('');
+	});
+
+	it('returns empty string for non-failed items', () => {
+		expect(
+			timelineItemErrorMessage(item({ kind: 'tool', toolSuccess: true, toolOutput: { ok: true } })),
+		).toBe('');
 	});
 });

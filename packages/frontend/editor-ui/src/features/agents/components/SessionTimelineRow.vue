@@ -7,7 +7,7 @@ import { truncate } from '@n8n/utils/string/truncate';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
-import { isSubAgentTimelineItem } from '../session-timeline.utils';
+import { isFailedTimelineItem, isSubAgentTimelineItem } from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
@@ -26,6 +26,7 @@ const i18n = useI18n();
 // to match the chat, rather than as a plain tool.
 const isSubAgent = computed((): boolean => isSubAgentTimelineItem(props.item));
 const pillKind = computed(() => (isSubAgent.value ? 'subagent' : props.item.kind));
+const isFailed = computed((): boolean => isFailedTimelineItem(props.item));
 
 const time = computed((): string => {
 	if (!props.item.timestamp) return '';
@@ -89,13 +90,31 @@ const label = computed((): string => {
 			return '';
 	}
 });
+
+const failedLabel = computed((): string => {
+	if (!isFailed.value) return '';
+	if (props.item.kind === 'workflow') {
+		return i18n.baseText('agentSessions.timeline.workflowFailed');
+	}
+	return i18n.baseText('agentSessions.timeline.toolError');
+});
 </script>
 
 <template>
 	<div :class="[$style.row, selected && $style.selected]" role="gridcell" @click="emit('select')">
-		<N8nTooltip :content="label" placement="top">
-			<SessionTimelinePill :kind="pillKind" />
-		</N8nTooltip>
+		<div :class="$style.pillGroup">
+			<N8nTooltip :content="label" placement="top">
+				<SessionTimelinePill :kind="pillKind" />
+			</N8nTooltip>
+			<N8nTooltip v-if="isFailed" :content="failedLabel" placement="top">
+				<N8nIcon
+					icon="circle-x"
+					size="xsmall"
+					:class="$style.failedIcon"
+					data-testid="timeline-failed-icon"
+				/>
+			</N8nTooltip>
+		</div>
 		<div :class="$style.info">
 			<template v-if="item.kind === 'workflow' && workflowHref">
 				<a
@@ -140,6 +159,17 @@ const label = computed((): string => {
 
 .selected {
 	background-color: var(--background--active);
+}
+
+.pillGroup {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.failedIcon {
+	color: var(--color--danger);
+	flex-shrink: 0;
 }
 
 .info {
