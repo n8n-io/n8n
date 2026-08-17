@@ -8,12 +8,16 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Post, RestController, Body } from '@n8n/decorators';
 import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow';
 
+import { DesignTimeExecutionContextService } from '@/services/design-time-execution-context.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 
 @RestController('/dynamic-node-parameters')
 export class DynamicNodeParametersController {
-	constructor(private readonly dynamicNodeParametersService: DynamicNodeParametersService) {}
+	constructor(
+		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+		private readonly designTimeExecutionContextService: DesignTimeExecutionContextService,
+	) {}
 
 	@Post('/options')
 	async getOptions(
@@ -39,6 +43,7 @@ export class DynamicNodeParametersController {
 			currentNodeParameters,
 		});
 		additionalData.dataTableProjectId = projectId;
+		additionalData.executionContext = await this.designTimeExecutionContextService.buildFor(req);
 
 		if (methodName) {
 			return await this.dynamicNodeParametersService.getOptionsViaMethodName(
@@ -89,6 +94,7 @@ export class DynamicNodeParametersController {
 			currentNodeParameters,
 		});
 		additionalData.dataTableProjectId = projectId;
+		additionalData.executionContext = await this.designTimeExecutionContextService.buildFor(req);
 
 		return await this.dynamicNodeParametersService.getResourceLocatorResults(
 			methodName,
@@ -119,6 +125,7 @@ export class DynamicNodeParametersController {
 			currentNodeParameters,
 		});
 		additionalData.dataTableProjectId = projectId;
+		additionalData.executionContext = await this.designTimeExecutionContextService.buildFor(req);
 
 		return await this.dynamicNodeParametersService.getResourceMappingFields(
 			methodName,
@@ -146,6 +153,8 @@ export class DynamicNodeParametersController {
 			projectId,
 		});
 
+		// No execution context here: local resource mapping reads a sub-workflow's own
+		// inputs and never touches a credential.
 		return await this.dynamicNodeParametersService.getLocalResourceMappingFields(
 			methodName,
 			path,
@@ -177,6 +186,7 @@ export class DynamicNodeParametersController {
 			projectId,
 			currentNodeParameters,
 		});
+		additionalData.executionContext = await this.designTimeExecutionContextService.buildFor(req);
 
 		return await this.dynamicNodeParametersService.getActionResult(
 			handler,

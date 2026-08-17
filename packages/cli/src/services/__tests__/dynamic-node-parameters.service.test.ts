@@ -10,6 +10,7 @@ import {
 	type ILoadOptionsFunctions,
 	type INodeParameters,
 	type INodeType,
+	type IExecutionContext,
 	type IWorkflowExecuteAdditionalData,
 	type ResourceMapperFields,
 	Expression,
@@ -427,6 +428,55 @@ describe('DynamicNodeParametersService', () => {
 			expect(RoutingNode).toHaveBeenCalled();
 			expect(runNode).toHaveBeenCalled();
 			expect(result).toEqual([{ name: 'opt', value: 'v' }]);
+		});
+	});
+
+	describe('declarative loadOptions routing', () => {
+		it("should hand the entry point's execution context to the routing node", async () => {
+			// `ExecuteContext` reads the execution context off `runExecutionData`, not off
+			// `additionalData`, so end-user credentials on declarative nodes only resolve if
+			// the design-time context is threaded through there.
+			const runNode = vi.fn().mockResolvedValue([[{ json: { name: 'opt', value: 'v' } }]]);
+			(RoutingNode as unknown as Mock).mockImplementation(function () {
+				return { runNode };
+			});
+			vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
+
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'TestNode',
+					displayName: 'TestNode',
+					group: [],
+					version: 1,
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: [],
+					requestDefaults: { baseURL: 'https://api.example.com' },
+				},
+			} as unknown as INodeType);
+
+			const executionContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1,
+				source: 'internal',
+				credentials: 'sealed-credential-context',
+			};
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			additionalData.executionContext = executionContext;
+
+			await service.getOptionsViaLoadOptions(
+				{ routing: { request: { url: '/v1/models' } } },
+				additionalData,
+				{ name: 'TestNode', version: 1 },
+				{} as INodeParameters,
+			);
+
+			const [executeFunctions] = (RoutingNode as unknown as Mock).mock.calls[0] as [
+				ILoadOptionsFunctions,
+			];
+			expect(executeFunctions.getExecutionContext()).toBe(executionContext);
 		});
 	});
 

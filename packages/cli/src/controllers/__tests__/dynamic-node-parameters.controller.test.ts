@@ -15,18 +15,22 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { DynamicNodeParametersController } from '@/controllers/dynamic-node-parameters.controller';
+import type { DesignTimeExecutionContextService } from '@/services/design-time-execution-context.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 
 describe('DynamicNodeParametersController', () => {
 	let service: Mocked<DynamicNodeParametersService>;
+	let designTimeExecutionContextService: Mocked<DesignTimeExecutionContextService>;
 	let controller: DynamicNodeParametersController;
 	let mockUser: { id: string };
 	let baseAdditionalData: IWorkflowExecuteAdditionalData;
 
 	beforeEach(() => {
 		service = mock<DynamicNodeParametersService>();
-		controller = new DynamicNodeParametersController(service);
+		designTimeExecutionContextService = mock<DesignTimeExecutionContextService>();
+		designTimeExecutionContextService.buildFor.mockResolvedValue(undefined);
+		controller = new DynamicNodeParametersController(service, designTimeExecutionContextService);
 
 		mockUser = { id: 'user123' };
 		baseAdditionalData = mock<IWorkflowExecuteAdditionalData>();

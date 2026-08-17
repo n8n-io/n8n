@@ -34,11 +34,37 @@ const N8nOAuthMetadataSchema = z.object({
 	grant: OAuthResourceGrantSchema.optional(),
 });
 
-const N8NIdentifierMetadataSchema = z.discriminatedUnion('source', [
+/** Exported for the drift test that keeps {@link N8N_IDENTITY_SOURCES} in step with it. */
+export const N8NIdentifierMetadataSchema = z.discriminatedUnion('source', [
 	ManualExecutionMetadataSchema,
 	RequestBoundMetadataSchema,
 	N8nOAuthMetadataSchema,
 ]);
+
+/**
+ * Every `source` the union above accepts. Kept in step with it by
+ * `n8n-identifier.test.ts`, which fails if the schema gains a source this list lacks.
+ */
+export const N8N_IDENTITY_SOURCES: readonly string[] = [
+	'manual-execution',
+	'chat-hub-injected',
+	'cookie-source',
+	'n8n-oauth',
+];
+
+/**
+ * Whether the context's identity is a token n8n itself issued (session cookie or
+ * n8n-issued OAuth access token), as opposed to one minted by an external provider.
+ *
+ * Callers use it to keep an n8n token away from resolvers that would hand it to a
+ * third party as if it were their own. Deliberately keyed on `source` alone rather
+ * than the full schema: a malformed n8n-sourced context must still be recognised as
+ * carrying an n8n token, not waved through as external.
+ */
+export function carriesN8nIdentity(context: ICredentialContext): boolean {
+	const source = (context.metadata as { source?: unknown } | undefined)?.source;
+	return typeof source === 'string' && N8N_IDENTITY_SOURCES.includes(source);
+}
 
 /**
  * N8N JWT token identifier.

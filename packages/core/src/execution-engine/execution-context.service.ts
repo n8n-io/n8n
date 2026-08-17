@@ -60,6 +60,33 @@ export class ExecutionContextService {
 	}
 
 	/**
+	 * Builds and encrypts a credential context for work done on behalf of a live HTTP
+	 * request — design-time parameter loading, for instance — where the originating
+	 * request is still available.
+	 *
+	 * Preferred over {@link buildManualExecutionCredentials} whenever there is a request:
+	 * the `cookie-source` metadata is re-validated with the request context (browser id,
+	 * method, endpoint), which the `manual-execution` shape deliberately skips because a
+	 * running execution no longer has a request to check against.
+	 *
+	 * @param n8nAuthCookie - The JWT string extracted from the `n8n-auth` browser cookie.
+	 * @param request - Method, endpoint and browser id of the originating request.
+	 */
+	async buildRequestBoundCredentials(
+		n8nAuthCookie: string,
+		{ method, endpoint, browserId }: { method: string; endpoint: string; browserId?: string },
+	): Promise<string> {
+		const payload: ICredentialContext = {
+			version: 1,
+			identity: n8nAuthCookie,
+			// Listed field by field rather than spread, so the sealed context can only ever
+			// carry what the resolver re-validates.
+			metadata: { source: 'cookie-source', method, endpoint, browserId },
+		};
+		return await this.cipher.encryptV2(payload);
+	}
+
+	/**
 	 * Seals the token a trigger authenticated its caller with, plus the grant it was
 	 * accepted under, so the run can re-verify itself for as long as it lasts. See
 	 * {@link OAuthResourceGrant}.

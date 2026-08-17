@@ -25,7 +25,7 @@ import type {
 import {
 	Workflow,
 	UnexpectedError,
-	createEmptyRunExecutionData,
+	createRunExecutionData,
 	findDisplayedProperty,
 } from 'n8n-workflow';
 
@@ -203,7 +203,12 @@ export class DynamicNodeParametersService {
 		const mode = 'internal';
 		const runIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData = createEmptyRunExecutionData();
+		// `runtimeData` is where `ExecuteContext` looks for the execution context, so the
+		// design-time context has to be threaded through it for declarative nodes to resolve
+		// end-user credentials. `LoadOptionsContext` reads `additionalData` directly instead.
+		const runExecutionData = createRunExecutionData({
+			executionData: { runtimeData: additionalData.executionContext },
+		});
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const node = workflow.nodes['Temp-Node'];
 
