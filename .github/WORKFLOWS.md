@@ -397,6 +397,8 @@ Push to master/1.x
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
+| Weekdays 09:00            | `community-pr-close-stale.yml`    | Close community PRs awaiting a reply |
+| Weekdays 09:30            | `community-issue-close-resolved.yml` | Close GitHub issues whose Linear issue is done |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
@@ -506,6 +508,7 @@ Scripts in `.github/scripts/`:
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
+| `community/close-resolved-github-issues.mjs` | Close issues whose linked Linear issue is done | `community-issue-close-resolved.yml` |
 
 ### Branch Replay Scripts
 
@@ -808,6 +811,7 @@ Adding a new channel requires inviting the bot first; the first run otherwise fa
 | Error Tracking      | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_*_PROJECT`       |
 | Cloud/CDN           | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`             |
 | GitHub Automation   | `N8N_ASSISTANT_APP_ID`, `N8N_ASSISTANT_PRIVATE_KEY`         |
+| Issue Tracking      | `LINEAR_API_KEY` (read-only Linear key, used by `community-issue-close-resolved.yml`) |
 | Benchmarking        | `BENCHMARK_ARM_*`, `N8N_BENCHMARK_LICENSE_CERT`             |
 | AI/Evals            | `EVALS_ANTHROPIC_KEY`, `EVALS_OPENAI_KEY`, `EVALS_OPENROUTER_KEY`, `EVALS_XAI_KEY`, `EVALS_BASETEN_KEY`, `EVALS_FIREWORKS_KEY`, `EVALS_TOGETHER_KEY`, `EVALS_DATABRICKS_KEY`, `EVALS_MODAL_KEY`, `EVALS_LYCEUM_KEY`, `EVALS_AZURE_FOUNDRY_KEY`, `EVALS_VERTEX_KEY`, `EVALS_VERTEX_PROJECT_ID`, `EVALS_VERTEX_LOCATION`, `EVALS_LANGSMITH_*` |
 

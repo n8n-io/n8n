@@ -1,0 +1,56 @@
+name: 'Community: Close Resolved Issues'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Community: Close Resolved Issues (dry-run={0}, days={1})', inputs['dry-run'], inputs.days) || '' }}"
+
+# Closes community GitHub issues whose mirrored Linear issue has been completed.
+# Without this, a fixed community bug stays open on GitHub: the reporter never
+# hears that it shipped and the public backlog goes stale.
+#
+# Requires the LINEAR_API_KEY secret (a read-only Linear API key is enough —
+# the workflow only writes to GitHub). Runs are dry by default on manual
+# dispatch; the scheduled run executes.
+
+on:
+  schedule:
+    - cron: '30 9 * * 1-5' # weekdays 9:30 UTC
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Dry run: log the issues that would be closed without commenting/closing.'
+        type: boolean
+        default: true
+      days:
+        description: 'Days of Linear completions to look back over.'
+        type: string
+        default: '7'
+      max:
+        description: 'Maximum number of GitHub issues to close in this run.'
+        type: string
+        default: '50'
+
+permissions:
+  contents: read # checkout
+  issues: write # comment on and close the resolved issues
+
+jobs:
+  close-resolved-community-issues:
+    name: Close resolved community issues
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # The script only needs Node builtins + global fetch, so no install step.
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24.18.1
+
+      - name: Close resolved community issues
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LOOKBACK_DAYS: ${{ inputs.days || '7' }}
+          MAX_CLOSURES: ${{ inputs.max || '50' }}
+        # Scheduled runs have no inputs, so they execute; manual runs default to dry.
+        run: node .github/scripts/community/close-resolved-github-issues.mjs ${{ !inputs.dry-run && '--execute' || '--dry-run' }}
