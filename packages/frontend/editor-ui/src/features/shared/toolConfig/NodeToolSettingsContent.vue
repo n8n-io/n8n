@@ -50,6 +50,8 @@ const props = defineProps<{
 	projectId?: string;
 	/** Operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
 	hiddenOperations?: readonly string[];
+	parameterIssues?: Record<string, string[]>;
+	fromAiDisabledParameters?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -427,6 +429,8 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					:node-values="node.parameters"
 					:is-read-only="false"
 					:node="node"
+					:parameter-issues="props.parameterIssues"
+					:from-ai-disabled-parameters="props.fromAiDisabledParameters"
 					@value-changed="handleChangeParameter"
 				>
 					<NodeCredentials
