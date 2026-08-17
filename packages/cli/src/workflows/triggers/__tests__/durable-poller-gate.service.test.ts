@@ -239,20 +239,21 @@ describe('DurablePollerGateService', () => {
 			expect(pollerStateRepository.deleteWorkflowCursors).toHaveBeenCalledWith(['wf-dup']);
 		});
 
-		it('reports the refusal to telemetry with the offending workflow ids', async () => {
+		it('reports the refusal to telemetry with the offending workflow ids and deleted row count', async () => {
 			givenActiveWorkflows({
 				'wf-dup': [
 					node('dup-id', 'poll', { name: 'Poll A' }),
 					node('dup-id', 'poll', { name: 'Poll B' }),
 				],
 			});
+			pollerStateRepository.deleteWorkflowCursors.mockResolvedValue(1);
 			const service = buildService();
 
 			await service.init();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.INSTANCE.INSTANCE_REFUSED_DURABLE_POLLERS,
-				{ workflow_ids: ['wf-dup'] },
+				{ workflow_ids: ['wf-dup'], deleted_cursor_rows: 1 },
 			);
 		});
 	});

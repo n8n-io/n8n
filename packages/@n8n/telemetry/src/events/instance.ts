@@ -105,6 +105,9 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 			workflow_ids: z
 				.array(z.string())
 				.describe('Active workflows whose published version failed the trigger node id check'),
+			deleted_cursor_rows: z
+				.number()
+				.describe('How many poller_state rows of the offending workflows were deleted'),
 		}),
 	},
 });

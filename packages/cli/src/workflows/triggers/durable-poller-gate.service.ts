@@ -86,16 +86,17 @@ export class DurablePollerGateService {
 
 		if (offenders.length > 0) {
 			const workflowIds = offenders.map(({ workflowId }) => workflowId);
+			// Deletion is terminal only because the gate keeps `enabled` false —
+			// otherwise the next poll would recreate the rows via getOrCreateCursor.
+			const deletedCursorRows = await this.pollerStateRepository.deleteWorkflowCursors(workflowIds);
 			this.logger.error(
 				`Durable pollers are disabled on this instance: active workflows [${workflowIds.join(', ')}] have duplicate or missing trigger node ids in their published version. Re-publish them after removing and re-adding the affected trigger nodes.`,
-				{ offenders },
+				{ offenders, deletedCursorRows },
 			);
 			this.telemetry.track(TELEMETRY_EVENT.INSTANCE.INSTANCE_REFUSED_DURABLE_POLLERS, {
 				workflow_ids: workflowIds,
+				deleted_cursor_rows: deletedCursorRows,
 			});
-			// Deletion is terminal only because the gate keeps `enabled` false —
-			// otherwise the next poll would recreate the rows via getOrCreateCursor.
-			await this.pollerStateRepository.deleteWorkflowCursors(workflowIds);
 		}
 	}
 }

@@ -10,6 +10,7 @@ import {
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -24,7 +25,7 @@ import { createOwner } from '../shared/db/users';
 import * as utils from '../shared/utils';
 import { loadNodesFromDist } from '../shared/utils/node-types-data';
 
-mockInstance(Telemetry);
+const telemetry = mockInstance(Telemetry);
 
 /**
  * The gate against a real database: published versions are read from the
@@ -156,5 +157,10 @@ describe('DurablePollerGateService (integration)', () => {
 		await expect(
 			pollerStateRepository.findCursor(cleanWorkflow.id, cleanTrigger.id),
 		).resolves.toEqual({ lastItemId: 'seeded' });
+		// The deleted-row count reported to telemetry is the real DELETE's count.
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE.INSTANCE_REFUSED_DURABLE_POLLERS,
+			{ workflow_ids: [offender.id], deleted_cursor_rows: 1 },
+		);
 	});
 });
