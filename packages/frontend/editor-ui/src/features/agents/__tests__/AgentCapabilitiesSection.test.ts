@@ -899,6 +899,72 @@ describe('AgentCapabilitiesSection', () => {
 			);
 		});
 
+		it('uses a reason-specific tooltip for incompatible workflow tools when a reason is set', async () => {
+			// Two workflow tools, each incompatible for a different reason. The
+			// reason discriminator must select a more specific i18n key than the
+			// generic "can't be used as an agent tool" message.
+			const tools: AgentJsonToolRef[] = [
+				{ type: 'workflow', workflow: 'Has Wait' },
+				{ type: 'workflow', workflow: 'No Trigger' },
+			];
+
+			const wrapper = mountSection(tools, {}, null, [], [], {
+				validationIssues: [
+					{
+						code: 'incompatible_reference',
+						path: 'tools.0.workflow',
+						capability: { kind: 'tool', id: 'Has Wait', index: 0, toolType: 'workflow' },
+						reason: 'incompatible_nodes',
+					},
+					{
+						code: 'incompatible_reference',
+						path: 'tools.1.workflow',
+						capability: { kind: 'tool', id: 'No Trigger', index: 1, toolType: 'workflow' },
+						reason: 'no_supported_trigger',
+					},
+				],
+			});
+			await flushPromises();
+
+			const toolChips = wrapper.findAll('[data-testid="agent-capabilities-tool-row"]');
+			expect(toolChips).toHaveLength(2);
+
+			expect(toolChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+				'agents.builder.validation.issue.tool.workflow.incompatibleNodes',
+			);
+			expect(toolChips[1].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+				'agents.builder.validation.issue.tool.workflow.noSupportedTrigger',
+			);
+		});
+
+		it('falls back to the generic incompatible_reference key when the reason is absent or unknown', async () => {
+			const tools: AgentJsonToolRef[] = [{ type: 'workflow', workflow: 'Unknown' }];
+
+			const wrapper = mountSection(tools, {}, null, [], [], {
+				validationIssues: [
+					{
+						code: 'incompatible_reference',
+						path: 'tools.0.workflow',
+						capability: { kind: 'tool', id: 'Unknown', index: 0, toolType: 'workflow' },
+					},
+					{
+						code: 'incompatible_reference',
+						path: 'tools.1.workflow',
+						capability: { kind: 'tool', id: 'Other', index: 1, toolType: 'workflow' },
+						reason: 'some_future_reason',
+					},
+				],
+			});
+			await flushPromises();
+
+			const toolChips = wrapper.findAll('[data-testid="agent-capabilities-tool-row"]');
+			// Only one workflow tool is configured; the second issue has no matching chip.
+			expect(toolChips).toHaveLength(1);
+			expect(toolChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+				'agents.builder.validation.issue.tool.workflow.incompatibleReference',
+			);
+		});
+
 		it('leaves capability chips unmarked when there are no matching validation issues', () => {
 			const tools: AgentJsonToolRef[] = [
 				{

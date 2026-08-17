@@ -25,6 +25,42 @@ export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
 
 export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
 
+/**
+ * Why a workflow can't be attached as an agent tool. `null` means compatible.
+ *
+ * @remarks Computed from `nodes[].type` only, so it stays pure and shareable
+ * between the backend validation service and the frontend picker. The runtime
+ * `validateCompatibility`/`detectTriggerNode` throws still cover edge cases that
+ * a pure node-type scan can't (e.g. a trigger that resolves to a supported
+ * type only after parameter materialisation), so this is a strict subset of
+ * the runtime check — never relax the runtime check based on this.
+ */
+export type WorkflowToolIncompatibilityReason =
+	| { reason: 'incompatible_nodes'; nodeTypes: string[] }
+	| { reason: 'no_supported_trigger' };
+
+export function getWorkflowToolIncompatibilityReason(workflow: {
+	nodes?: Array<{ type: string }>;
+}): WorkflowToolIncompatibilityReason | null {
+	const nodes = workflow.nodes ?? [];
+
+	const incompatibleNodeTypes = nodes
+		.filter((n) =>
+			(INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES as readonly string[]).includes(n.type),
+		)
+		.map((n) => n.type);
+	if (incompatibleNodeTypes.length > 0) {
+		return { reason: 'incompatible_nodes', nodeTypes: incompatibleNodeTypes };
+	}
+
+	const hasSupportedTrigger = nodes.some((n) =>
+		(SUPPORTED_WORKFLOW_TOOL_TRIGGERS as readonly string[]).includes(n.type),
+	);
+	if (!hasSupportedTrigger) return { reason: 'no_supported_trigger' };
+
+	return null;
+}
+
 export interface ChatIntegrationDescriptor {
 	type: string;
 	label: string;

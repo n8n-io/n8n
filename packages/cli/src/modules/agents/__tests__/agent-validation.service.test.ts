@@ -957,6 +957,7 @@ describe('AgentValidationService — structured issues', () => {
 					{ type: 'workflow', workflow: 'Workflow B' },
 					{ type: 'workflow', workflow: 'Workflow C' },
 					{ type: 'workflow', workflowId: 'wf-missing', workflow: 'Workflow A' },
+					{ type: 'workflow', workflowId: 'wf-wait', workflow: 'Workflow With Wait' },
 				],
 			}),
 		);
@@ -980,6 +981,28 @@ describe('AgentValidationService — structured issues', () => {
 				],
 			},
 			{ id: 'wf-c', name: 'Workflow C', nodes: [] },
+			{
+				id: 'wf-wait',
+				name: 'Workflow With Wait',
+				nodes: [
+					{
+						id: 'trigger-2',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'wait-1',
+						name: 'Wait',
+						type: 'n8n-nodes-base.wait',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+				],
+			},
 		] as never);
 
 		const result = await service.validateAgentConfiguration(
@@ -1013,11 +1036,18 @@ describe('AgentValidationService — structured issues', () => {
 				code: 'incompatible_reference',
 				path: 'tools.3.workflow',
 				capability: { kind: 'tool', id: 'Workflow C', index: 3, toolType: 'workflow' },
+				reason: 'no_supported_trigger',
 			},
 			{
 				code: 'missing_reference',
 				path: 'tools.4.workflowId',
 				capability: { kind: 'tool', id: 'Workflow A', index: 4, toolType: 'workflow' },
+			},
+			{
+				code: 'incompatible_reference',
+				path: 'tools.5.workflowId',
+				capability: { kind: 'tool', id: 'Workflow With Wait', index: 5, toolType: 'workflow' },
+				reason: 'incompatible_nodes',
 			},
 		]);
 	});

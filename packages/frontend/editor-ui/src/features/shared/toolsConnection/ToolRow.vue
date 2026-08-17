@@ -70,6 +70,8 @@ const installBlocked = computed(
 	() => Boolean(props.item.communityPreview) && Boolean(props.item.installDisabled),
 );
 
+const isDisabled = computed(() => Boolean(props.item.disabled));
+
 /**
  * For most rows the button only repeated what clicking the row already does.
  * What survives is the pair that goes somewhere the row body cannot: installing
@@ -81,6 +83,7 @@ const hasDirectAction = computed(
 );
 
 function handleRowClick() {
+	if (props.item.disabled) return;
 	emit('open-detail', props.item);
 }
 
@@ -94,13 +97,14 @@ function handleConnect() {
 
 <template>
 	<div
-		:class="[$style.row, $style[`row--${item.kind}`]]"
+		:class="[$style.row, $style[`row--${item.kind}`], { [$style.rowDisabled]: isDisabled }]"
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
 	>
 		<button
 			type="button"
 			:class="$style.mainAction"
+			:disabled="isDisabled"
 			data-test-id="tools-connection-row-main"
 			@click="handleRowClick"
 		>
@@ -143,8 +147,18 @@ function handleConnect() {
 		</button>
 
 		<div :class="$style.action">
+			<N8nTooltip
+				v-if="isDisabled"
+				:content="item.disabledReason ?? ''"
+				:disabled="!item.disabledReason"
+				placement="top"
+			>
+				<span :class="$style.disabledMarker" data-test-id="tools-connection-row-disabled">
+					<N8nIcon icon="info" :size="14" color="text-light" />
+				</span>
+			</N8nTooltip>
 			<ToolCredentialPicker
-				v-if="shouldShowCredentialPicker"
+				v-else-if="shouldShowCredentialPicker"
 				:item="item"
 				:credentials="item.credentials ?? []"
 				connect-variant="outline"
@@ -212,6 +226,14 @@ function handleConnect() {
 	}
 }
 
+.rowDisabled {
+	opacity: 0.6;
+
+	&:hover {
+		background: transparent;
+	}
+}
+
 .mainAction {
 	display: flex;
 	align-items: center;
@@ -225,6 +247,10 @@ function handleConnect() {
 	color: inherit;
 	text-align: left;
 	cursor: pointer;
+
+	&:disabled {
+		cursor: not-allowed;
+	}
 
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--focus--border-color);
@@ -309,5 +335,12 @@ function handleConnect() {
 	border-radius: 50%;
 	background: var(--color--success);
 	flex-shrink: 0;
+}
+
+.disabledMarker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color--text--tint-2);
 }
 </style>
