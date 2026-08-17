@@ -404,7 +404,7 @@ describe('Instance AI runtime skills', () => {
 			'Do not replace this explicit opt-in with a generic "add\n   anything else?", publish, or test question.',
 		);
 		expect(loaded?.instructions).toMatch(
-			/ask only that question now; do not also ask about the error\s+workflow/,
+			/ask only whether the user wants the live test\. Do not\s+mention publishing or ask about the error workflow/,
 		);
 		expect(loaded?.instructions).toContain(
 			'The error workflow must be published before it can be assigned',
@@ -429,6 +429,15 @@ describe('Instance AI runtime skills', () => {
 		);
 		expect(loaded?.instructions).toContain(
 			'Only call `workflows(action="publish")` when the user explicitly asks',
+		);
+		expect(loaded?.instructions).toContain(
+			'Do not proactively offer, recommend, or mention publishing until a successful',
+		);
+		expect(loaded?.instructions).toContain(
+			'A user-run execution satisfies the publishing gate only',
+		);
+		expect(loaded?.instructions).toContain(
+			'Do not offer publishing as an alternative or describe the workflow as ready to\nuse or publish',
 		);
 
 		const loadTool = createSkillLoadTool(source);
