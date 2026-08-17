@@ -31,6 +31,8 @@ vi.mock('@n8n/workflow-sdk', () => ({
 	generateWorkflowCode: vi.fn().mockReturnValue('// generated code'),
 }));
 
+const emptyList = { workflows: [], total: 0, totalInScope: 0 };
+
 function createMockContext(
 	overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
 		permissions?: Partial<InstanceAiPermissions>;
@@ -39,7 +41,7 @@ function createMockContext(
 	return {
 		userId: 'user-1',
 		workflowService: {
-			list: vi.fn(),
+			list: vi.fn().mockResolvedValue(emptyList),
 			get: vi.fn().mockResolvedValue({
 				id: 'wf1',
 				name: 'Test WF',
@@ -382,7 +384,11 @@ describe('workflows tool', () => {
 				},
 			];
 			const context = createMockContext();
-			(context.workflowService.list as Mock).mockResolvedValue(workflows);
+			(context.workflowService.list as Mock).mockResolvedValue({
+				workflows,
+				total: 1,
+				totalInScope: 1,
+			});
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(
@@ -392,12 +398,12 @@ describe('workflows tool', () => {
 			);
 
 			expect(context.workflowService.list).toHaveBeenCalledWith({ limit: 10, query: 'test' });
-			expect(result).toEqual({ workflows });
+			expect(result).toEqual({ workflows, total: 1, totalInScope: 1 });
 		});
 
 		it('should pass archived status when listing archived workflows', async () => {
 			const context = createMockContext();
-			(context.workflowService.list as Mock).mockResolvedValue([]);
+			(context.workflowService.list as Mock).mockResolvedValue(emptyList);
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'list', status: 'archived' }, {} as never);
@@ -407,12 +413,81 @@ describe('workflows tool', () => {
 
 		it('should pass all status when listing all workflows', async () => {
 			const context = createMockContext();
-			(context.workflowService.list as Mock).mockResolvedValue([]);
+			(context.workflowService.list as Mock).mockResolvedValue(emptyList);
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'list', status: 'all' }, {} as never);
 
 			expect(context.workflowService.list).toHaveBeenCalledWith({ status: 'all' });
+		});
+
+		it('warns that a name filter hid workflows in scope', async () => {
+			const context = createMockContext();
+			(context.workflowService.list as Mock).mockResolvedValue({
+				workflows: [
+					{
+						id: 'wf1',
+						name: 'PRD Per-Page Action',
+						versionId: 'v1',
+						activeVersionId: null,
+						isArchived: false,
+						createdAt: '2024-01-01',
+						updatedAt: '2024-01-01',
+					},
+				],
+				total: 1,
+				totalInScope: 3,
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool<{
+				total: number;
+				totalInScope: number;
+				note: string;
+			}>(tool, { action: 'list', query: 'PRD' }, {} as never);
+
+			expect(result.total).toBe(1);
+			expect(result.totalInScope).toBe(3);
+			expect(result.note).toContain('matched 1 of 3 workflows in scope');
+			expect(result.note).toContain('2 are hidden');
+		});
+
+		it('warns when the limit truncated the result', async () => {
+			const context = createMockContext();
+			(context.workflowService.list as Mock).mockResolvedValue({
+				workflows: [
+					{
+						id: 'wf1',
+						name: 'Trigger',
+						versionId: 'v1',
+						activeVersionId: null,
+						isArchived: false,
+						createdAt: '2024-01-01',
+						updatedAt: '2024-01-01',
+					},
+				],
+				total: 12,
+				totalInScope: 12,
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool<{ note: string }>(
+				tool,
+				{ action: 'list', limit: 1 },
+				{} as never,
+			);
+
+			expect(result.note).toContain('Showing 1 of 12 matching workflows');
+		});
+
+		it('adds no note when the unfiltered list is complete', async () => {
+			const context = createMockContext();
+			(context.workflowService.list as Mock).mockResolvedValue(emptyList);
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'list' }, {} as never);
+
+			expect(result).toEqual({ workflows: [], total: 0, totalInScope: 0 });
 		});
 	});
 

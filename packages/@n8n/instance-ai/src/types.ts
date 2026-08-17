@@ -283,13 +283,27 @@ export interface WorkflowVersionDetail extends WorkflowVersionSummary {
 
 export type WorkflowListStatus = 'active' | 'archived' | 'all';
 
+export interface WorkflowListResult {
+	/** The page of workflows, capped by `limit`. */
+	workflows: WorkflowSummary[];
+	/** Total workflows matching every requested filter, ignoring `limit`. */
+	total: number;
+	/**
+	 * Total workflows in scope with the `query` name filter removed — what an
+	 * unfiltered list of the same status and scope would return. Equals `total`
+	 * when no `query` was given. Lets callers tell a name-filtered subset apart
+	 * from the full inventory.
+	 */
+	totalInScope: number;
+}
+
 export interface InstanceAiWorkflowService {
 	list(options?: {
 		query?: string;
 		limit?: number;
 		status?: WorkflowListStatus;
 		scope?: 'project' | 'instance';
-	}): Promise<WorkflowSummary[]>;
+	}): Promise<WorkflowListResult>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
 	 *  Pass a versionId to get a past version's graph instead of the current draft. */

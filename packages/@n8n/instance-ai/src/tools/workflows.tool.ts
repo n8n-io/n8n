@@ -43,8 +43,15 @@ import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 const listAction = z.object({
 	action: z
 		.literal('list')
-		.describe('List workflows accessible to the current user. Use for workflow inspection.'),
-	query: z.string().optional().describe('Filter workflows by name'),
+		.describe(
+			'List workflows accessible to the current user. Use for workflow inspection. Call it without `query` to get the complete inventory in scope — the result reports how many workflows a filter or the limit left out.',
+		),
+	query: z
+		.string()
+		.optional()
+		.describe(
+			'Substring filter on the workflow NAME only — it does not match node types, descriptions, or what a workflow does. Omit it whenever you need the actual inventory (what exists here, project status, what to do next): a name-filtered list is not the set of workflows in scope. Use it only when the user named a workflow, or to locate one you already know exists.',
+		),
 	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
 	status: z
 		.enum(['active', 'archived', 'all'])
@@ -401,13 +408,33 @@ async function resolveWorkflowName(
 }
 
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
-	const workflows = await context.workflowService.list({
+	const { workflows, total, totalInScope } = await context.workflowService.list({
 		limit: input.limit,
 		query: input.query,
 		...(input.status ? { status: input.status } : {}),
 		...(input.scope ? { scope: input.scope } : {}),
 	});
-	return { workflows };
+
+	// A partial list must never read as the complete inventory: guessed name
+	// filters used to silently hide the rest of a project's workflows.
+	const notes: string[] = [];
+	if (input.query !== undefined && totalInScope > total) {
+		notes.push(
+			`Name filter "${input.query}" matched ${total} of ${totalInScope} workflows in scope — ${totalInScope - total} are hidden. This is NOT the full set: re-run without \`query\` before answering anything about what exists here.`,
+		);
+	}
+	if (total > workflows.length) {
+		notes.push(
+			`Showing ${workflows.length} of ${total} matching workflows — raise \`limit\` to see the rest.`,
+		);
+	}
+
+	return {
+		workflows,
+		total,
+		totalInScope,
+		...(notes.length > 0 ? { note: notes.join(' ') } : {}),
+	};
 }
 
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
@@ -447,7 +474,7 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 		const message = error instanceof Error ? error.message : 'Failed to fetch workflow';
 		const available = await context.workflowService
 			.list({ limit: 25 })
-			.then((items) => items.map((w) => ({ id: w.id, name: w.name })))
+			.then(({ workflows }) => workflows.map((w) => ({ id: w.id, name: w.name })))
 			.catch(() => [] as Array<{ id: string; name: string }>);
 		return {
 			workflowId: input.workflowId,

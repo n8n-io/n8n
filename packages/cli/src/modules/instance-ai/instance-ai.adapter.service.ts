@@ -616,30 +616,45 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
-				const filter = {
+				const scopeFilter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
-					...(options?.query ? { query: options.query } : {}),
 					...(options?.scope !== 'instance' && boundProjectId ? { projectId: boundProjectId } : {}),
 				};
+				const filter = {
+					...scopeFilter,
+					...(options?.query ? { query: options.query } : {}),
+				};
 
-				const { workflows } = await workflowService.getMany(user, {
+				const { workflows, count } = await workflowService.getMany(user, {
 					take: options?.limit ?? 50,
 					filter,
 				});
 
-				return workflows
-					.filter((wf): wf is WorkflowEntity => 'versionId' in wf)
-					.map(
-						(wf): WorkflowSummary => ({
-							id: wf.id,
-							name: wf.name,
-							versionId: wf.versionId,
-							activeVersionId: wf.activeVersionId ?? null,
-							isArchived: wf.isArchived,
-							createdAt: wf.createdAt.toISOString(),
-							updatedAt: wf.updatedAt.toISOString(),
-						}),
-					);
+				// Count the same scope without the name filter so callers can tell a
+				// filtered subset apart from the full inventory. Only worth a second
+				// query when a filter was actually applied, and `take` must stay >= 1:
+				// the repository skips pagination for a falsy take and would load every row.
+				const totalInScope = options?.query
+					? (await workflowService.getMany(user, { take: 1, filter: scopeFilter })).count
+					: count;
+
+				return {
+					workflows: workflows
+						.filter((wf): wf is WorkflowEntity => 'versionId' in wf)
+						.map(
+							(wf): WorkflowSummary => ({
+								id: wf.id,
+								name: wf.name,
+								versionId: wf.versionId,
+								activeVersionId: wf.activeVersionId ?? null,
+								isArchived: wf.isArchived,
+								createdAt: wf.createdAt.toISOString(),
+								updatedAt: wf.updatedAt.toISOString(),
+							}),
+						),
+					total: count,
+					totalInScope,
+				};
 			},
 
 			async get(workflowId: string) {

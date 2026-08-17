@@ -180,13 +180,19 @@ List workflows accessible to the current user.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `query` | string | no | — | Filter workflows by name |
+| `query` | string | no | — | Substring filter on the workflow name only — omit for inventory questions |
 | `limit` | number | no | 50 | Max results (1–100) |
 | `status` | `"active" \| "archived" \| "all"` | no | `"active"` | Which workflows to list |
+| `scope` | `"project" \| "instance"` | no | `"project"` | Which project(s) to search |
 
-**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt }] }`
+**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt }], total, totalInScope, note? }`
 
 `activeVersionId` is `null` when the workflow is unpublished.
+
+`total` is how many workflows match every filter; `totalInScope` is how many the
+same status and scope hold with `query` dropped. When a name filter or `limit`
+left workflows out, `note` says so — a filtered page must never be read as the
+project's full inventory.
 
 ### `get-workflow`
 
@@ -606,7 +612,7 @@ require `workspaceService.listFolders`.
 
 | Tool | Description |
 |------|-------------|
-| `list-projects` | List projects accessible to the user |
+| `list-projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
 | `tag-workflow` | Apply tags to a workflow |
 | `list-tags` | List available tags |
 | `cleanup-test-executions` | Remove test execution data |

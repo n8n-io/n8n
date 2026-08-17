@@ -1932,7 +1932,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	};
 
 	const mockWorkflowService = {
-		getMany: vi.fn().mockResolvedValue({ workflows: [savedWorkflow] }),
+		getMany: vi.fn().mockResolvedValue({ workflows: [savedWorkflow], count: 1 }),
 		archive: vi.fn().mockResolvedValue(savedWorkflow),
 		unarchive: vi.fn().mockResolvedValue(savedWorkflow),
 		activateWorkflow: vi.fn().mockResolvedValue({ activeVersionId: 'version-1' }),
@@ -2025,6 +2025,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	return {
 		adapter,
 		context,
+		savedWorkflow,
 		mockProjectRepository,
 		mockWorkflowRepository,
 		mockWorkflowFinderService,
@@ -2135,12 +2136,40 @@ describe('createWorkflowAdapter', () => {
 				projectId: 'team-project-id',
 			},
 		});
-		expect(result).toEqual([
+		expect(result.workflows).toEqual([
 			expect.objectContaining({
 				id: 'wf-new',
 				isArchived: false,
 			}),
 		]);
+	});
+
+	it('reports how many workflows the name filter left out', async () => {
+		const { adapter, mockWorkflowService, mockUser, savedWorkflow } =
+			createWorkflowAdapterForTests();
+		mockWorkflowService.getMany
+			.mockResolvedValueOnce({ workflows: [savedWorkflow], count: 1 })
+			.mockResolvedValueOnce({ workflows: [savedWorkflow], count: 3 });
+
+		const result = await adapter.list({ query: 'PRD' });
+
+		// Second call re-counts the same scope without the name filter.
+		expect(mockWorkflowService.getMany).toHaveBeenNthCalledWith(2, mockUser, {
+			take: 1,
+			filter: { isArchived: false, projectId: 'team-project-id' },
+		});
+		expect(result.total).toBe(1);
+		expect(result.totalInScope).toBe(3);
+	});
+
+	it('skips the extra count query when no name filter is given', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		const result = await adapter.list();
+
+		expect(mockWorkflowService.getMany).toHaveBeenCalledTimes(1);
+		expect(result.total).toBe(1);
+		expect(result.totalInScope).toBe(1);
 	});
 
 	it('lists archived workflows when requested', async () => {
