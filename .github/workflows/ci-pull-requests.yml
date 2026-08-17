@@ -259,10 +259,15 @@ jobs:
   # only resolves through a build-time alias to `src` — and a path filter listing the packages
   # that consume the design system is exactly the hand-maintained list that let the artifact rot
   # in the first place. The job costs well under two minutes, so breadth is the cheaper mistake.
+  #
+  # `workflows` as well as `ci`: the `ci` filter excludes `.github/**`, so a PR that only edits
+  # this job's own workflow would skip it, and `required-checks` passes on a skipped job.
   packed-consumer:
     name: Packed consumer
     needs: install-and-build
-    if: needs.install-and-build.outputs.ci == 'true'
+    if: >-
+      needs.install-and-build.outputs.ci == 'true' ||
+      needs.install-and-build.outputs.workflows == 'true'
     uses: ./.github/workflows/test-packed-consumer-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}

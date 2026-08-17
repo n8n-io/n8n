@@ -1,4 +1,4 @@
-import fg from 'fast-glob';
+import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -10,28 +10,55 @@ import * as path from 'node:path';
  * for every package inside the workspace and fails for the first consumer outside it. Deriving
  * the set from the source tree — rather than from a list in this file — is what keeps that
  * property true after the next import is added.
+ *
+ * The file set comes from `git ls-files`, not from a glob. A glob needs a hand-written list of
+ * directories to skip, and every entry missing from that list is a silent hole: `dot: false` (the
+ * `fast-glob` default) hid `.storybook/`, where a build-time config imports this package, and
+ * `storybook-static/` — a build output nobody had thought to exclude — contributed four specifiers
+ * out of bundled asset files. Tracked-or-not answers both, permanently and without a list:
+ * generated output is never tracked, and a dot-directory is tracked like anything else.
  */
 
+const SCANNED_EXTENSIONS = new Set([
+	'.ts',
+	'.tsx',
+	'.mts',
+	'.cts',
+	'.js',
+	'.jsx',
+	'.mjs',
+	'.cjs',
+	'.vue',
+	'.scss',
+	'.sass',
+	'.css',
+]);
+
 /**
- * Files that can carry a module or stylesheet specifier.
+ * Tracked paths that still must not contribute a specifier.
  *
- * Test files are excluded, and deliberately so. The question this check asks is what the published
- * surface owes a consumer, and a test never ships — but a test is exactly where a made-up
- * specifier appears as a fixture string, which would fail the job for a specifier nobody imports.
+ * Unlike the directories a glob would have to skip, each of these is a semantic exclusion rather
+ * than a mechanical one, so each is stated with its reason:
+ *
+ * - Test files never ship, and a test is exactly where a made-up specifier appears as a fixture
+ *   string — which would fail the job for a specifier nobody imports.
+ * - This checker generates consumer code, so it holds specifiers as data and names them in doc
+ *   comments. Both were observed producing phantom findings.
+ * - `src/template/` is scaffolding for generated user projects, not code this repo builds.
  */
-const SOURCE_GLOBS = [
-	'**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,vue,scss,sass,css}',
-	'!**/node_modules/**',
-	'!**/dist/**',
-	'!**/.turbo/**',
-	'!**/src/template/**',
-	'!**/*.{test,spec}.*',
-	'!**/__tests__/**',
-	'!**/__mocks__/**',
-	// This checker itself. It generates consumer code, so it holds specifiers as data and names
-	// them in doc comments — none of which is anybody importing anything.
-	'!packages/testing/code-health/**',
-];
+function isSemanticallyExcluded(relPath: string): boolean {
+	if (/(^|\/)__(tests|mocks)__\//.test(relPath)) return true;
+	if (/\.(test|spec)\.[^/]+$/.test(relPath)) return true;
+	if (relPath.startsWith('packages/testing/code-health/')) return true;
+	if (relPath.includes('/src/template/')) return true;
+	return false;
+}
+
+/** True when a tracked repo-relative path should be read for specifiers. */
+export function isScannableFile(relPath: string): boolean {
+	if (!SCANNED_EXTENSIONS.has(path.extname(relPath))) return false;
+	return !isSemanticallyExcluded(relPath);
+}
 
 export interface SpecifierUse {
 	specifier: string;
@@ -73,35 +100,52 @@ export function isInternalSourceSpecifier(pkgName: string, specifier: string): b
 	return specifier === `${pkgName}/src` || specifier.startsWith(`${pkgName}/src/`);
 }
 
+/**
+ * Every git-tracked, scannable path in the repo.
+ *
+ * Throws rather than falling back to a filesystem walk. A fallback would keep the job green while
+ * scanning a different — and smaller — set of files than it reports, which is the failure mode this
+ * whole function was just rewritten to remove.
+ */
+export function trackedScannableFiles(rootDir: string): string[] {
+	let out: string;
+	try {
+		out = execFileSync('git', ['ls-files', '-z'], {
+			cwd: rootDir,
+			encoding: 'utf8',
+			maxBuffer: 64 * 1024 * 1024,
+		});
+	} catch (cause) {
+		throw new Error(
+			`Cannot list tracked files in ${rootDir}. This check reads the git index to know what ` +
+				'to scan, so it needs a git checkout.',
+			{ cause },
+		);
+	}
+	return out.split('\0').filter((f) => f.length > 0 && isScannableFile(f));
+}
+
 /** Scan the whole repo (excluding the package itself) for specifiers naming `pkgName`. */
-export async function collectConsumerSpecifiers(
+export function collectConsumerSpecifiers(
 	rootDir: string,
 	pkgName: string,
 	ownRelDir: string,
-): Promise<SpecifierUse[]> {
-	const files = await fg(SOURCE_GLOBS, {
-		cwd: rootDir,
-		absolute: true,
+): SpecifierUse[] {
+	const bySpecifier = new Map<string, SpecifierUse>();
+	for (const relPath of trackedScannableFiles(rootDir)) {
 		// The package's own sources import themselves through the `@n8n/design-system` -> `src`
 		// self-alias, which says nothing about what the tarball owes an external consumer.
-		ignore: [`${ownRelDir}/**`],
-	});
-
-	const bySpecifier = new Map<string, SpecifierUse>();
-	for (const file of files) {
+		if (relPath.startsWith(`${ownRelDir}/`)) continue;
 		let content: string;
 		try {
-			content = fs.readFileSync(file, 'utf-8');
+			content = fs.readFileSync(path.join(rootDir, relPath), 'utf-8');
 		} catch {
 			continue;
 		}
 		if (!content.includes(pkgName)) continue;
 		for (const specifier of extractSpecifiers(content, pkgName)) {
 			if (bySpecifier.has(specifier)) continue;
-			bySpecifier.set(specifier, {
-				specifier,
-				file: path.relative(rootDir, file).split(path.sep).join('/'),
-			});
+			bySpecifier.set(specifier, { specifier, file: relPath });
 		}
 	}
 	return [...bySpecifier.values()].sort((a, b) => a.specifier.localeCompare(b.specifier));

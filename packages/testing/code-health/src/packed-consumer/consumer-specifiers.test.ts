@@ -3,10 +3,69 @@ import { describe, expect, it } from 'vitest';
 import {
 	extractSpecifiers,
 	isInternalSourceSpecifier,
+	isScannableFile,
 	targetCandidates,
+	trackedScannableFiles,
 } from './consumer-specifiers.js';
 
 const PKG = '@n8n/design-system';
+
+describe('isScannableFile', () => {
+	it('scans a file inside a dot-directory', () => {
+		// The original glob ran with `fast-glob`'s default `dot: false`, which skipped
+		// `.storybook/preview.ts` — a build-time config that imports this package — and so passed
+		// over two unexported specifiers.
+		expect(isScannableFile('packages/frontend/@n8n/storybook/.storybook/preview.ts')).toBe(true);
+	});
+
+	it('scans the source extensions that can carry a specifier', () => {
+		for (const file of ['a.ts', 'a.mts', 'a.vue', 'a.scss', 'a.css', 'a.mjs']) {
+			expect(isScannableFile(`packages/x/src/${file}`)).toBe(true);
+		}
+	});
+
+	it('ignores extensions that cannot', () => {
+		for (const file of ['a.md', 'a.json', 'a.yml', 'a.snap', 'a']) {
+			expect(isScannableFile(`packages/x/src/${file}`)).toBe(false);
+		}
+	});
+
+	it('ignores test files, whose specifiers are fixtures rather than imports', () => {
+		expect(isScannableFile('packages/x/src/a.test.ts')).toBe(false);
+		expect(isScannableFile('packages/x/src/a.spec.ts')).toBe(false);
+		expect(isScannableFile('packages/x/src/__tests__/a.ts')).toBe(false);
+		expect(isScannableFile('packages/x/src/__mocks__/a.ts')).toBe(false);
+	});
+
+	it('ignores this checker, which holds specifiers as data', () => {
+		expect(isScannableFile('packages/testing/code-health/src/packed-consumer/fixture.ts')).toBe(
+			false,
+		);
+	});
+
+	it('ignores scaffolding templates for generated user projects', () => {
+		expect(isScannableFile('packages/@n8n/node-cli/src/template/templates/a.ts')).toBe(false);
+	});
+});
+
+describe('trackedScannableFiles', () => {
+	it('reads the git index, so generated output can never be scanned', () => {
+		// `storybook-static/` is gitignored build output. It bundles this package's stylesheets, so
+		// scanning it contributed four specifiers attributed to unreadable asset chunks. Tracking
+		// status excludes every such directory at once, with no list to maintain.
+		const files = trackedScannableFiles(process.cwd());
+		expect(files.length).toBeGreaterThan(0);
+		expect(files.some((f) => f.includes('storybook-static/'))).toBe(false);
+		expect(files.some((f) => f.includes('node_modules/'))).toBe(false);
+		expect(files.some((f) => f.includes('/dist/'))).toBe(false);
+	});
+
+	it('throws rather than silently scanning a smaller set than it reports', () => {
+		expect(() => trackedScannableFiles('/nonexistent-path-outside-any-repo')).toThrow(
+			/needs a git checkout/,
+		);
+	});
+});
 
 describe('extractSpecifiers', () => {
 	it('finds an import, a type-only import and a sass `@use`', () => {

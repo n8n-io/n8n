@@ -58,10 +58,29 @@ the component named in the fixture: the acceptance criteria call for a typed slo
 inherently a named example. If it leaves the barrel the fixture stops compiling, which is a loud
 failure rather than silent rot.
 
-**Test files and this package are excluded from the specifier scan.** A test never ships, and a
-test is exactly where a made-up specifier appears as a fixture string; this checker generates
-consumer code, so it holds specifiers as data and names them in doc comments. Both were observed
-producing phantom findings before the exclusions went in.
+**The file set comes from `git ls-files`, not from a glob.** A glob needs a hand-written list of
+directories to skip, and every entry missing from that list is a silent hole. Two were found in
+review: `fast-glob`'s default `dot: false` hid `.storybook/`, where a build-time config imports
+this package (two real violations passed under it), and `storybook-static/` — build output nobody
+had thought to exclude — contributed four specifiers out of bundled asset chunks. Tracked-or-not
+answers both permanently and without a list: generated output is never tracked, and a
+dot-directory is tracked like anything else. The command throws rather than falling back to a
+filesystem walk, because a fallback would scan a different set than it reports.
+
+**Test files and this package are still excluded** — but as semantic exclusions, each stated with
+its reason in `isSemanticallyExcluded`. A test never ships, and a test is exactly where a made-up
+specifier appears as a fixture string; this checker generates consumer code, so it holds
+specifiers as data. Both were observed producing phantom findings.
+
+**Two specifiers are grandfathered, loudly.** `.storybook/preview.ts` imports
+`@n8n/design-system/plugin` and `…/composables/useIconBodyLoader` deeply on purpose — `preview.ts`
+is a TurboSnap global, and a barrel import would make every component a global dep and force a
+full Chromatic snapshot on any component change. Those imports predate the stage-5 exports flip by
+three weeks, so the subpath migration missed them under the same dot-directory blind spot. Both
+symbols are on the root barrel, so a root import compiles, but it costs that property — which is
+not this job's call to spend. They sit in `grandfathered.ts` with their reason, are printed on
+every run, and the check **fails if one becomes resolvable**, so the exception cannot outlive its
+cause. Anything new is enforced normally.
 
 Subpaths with no monorepo consumer are still covered: `style.css` and `theme.css` exist for
 external consumers only, and the fixture imports them because its CSS import list comes from the
@@ -89,6 +108,8 @@ Vite 5–6 peer, and the catalog is on Vite 8) is narrowed in the fixture's `ove
 | `./icons/lucide` removed from the `exports` map | phase 2, naming the importing file |
 | One pre-built icon bucket chunk deleted from `dist` | phase 6, naming the chunk; also phase 5 |
 | `TableHeader<T>` widened to `any` in the shipped `.d.ts` | phase 4 (`TS2344`, and `TS2578` on the now-unused `@ts-expect-error`) |
+| A new unexported deep import added to `editor-ui` | phase 2 — the grandfathered list does not excuse it |
+| `./plugin` added to `exports`, making a grandfathered entry stale | phase 2, telling you to delete the entry |
 
 ## Known confusion this does not fix
 

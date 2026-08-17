@@ -8,9 +8,11 @@ import {
 	collectConsumerSpecifiers,
 	isInternalSourceSpecifier,
 	resolveTargetFile,
+	type SpecifierUse,
 } from './consumer-specifiers.js';
 import { collectExportEntries, resolveSpecifier, type ExportEntry } from './exports-map.js';
 import { buildFixture } from './fixture.js';
+import { findGrandfathered } from './grandfathered.js';
 import type { WorkspacePkg } from '../utils/pack-workspace.js';
 import { closureOf, loadWorkspace, packClosure } from '../utils/pack-workspace.js';
 import { parseCatalog } from '../utils/workspace-parser.js';
@@ -71,16 +73,15 @@ function extractTarball(tarball: string, destDir: string): string {
  * so a specifier missing from `exports` is invisible until the first consumer outside the
  * workspace tries it.
  */
-async function verifySpecifiersResolve(
-	rootDir: string,
+function verifySpecifiersResolve(
+	uses: SpecifierUse[],
 	pkgName: string,
-	ownRelDir: string,
 	packageRoot: string,
 	entries: ExportEntry[],
-): Promise<Failure[]> {
-	const uses = await collectConsumerSpecifiers(rootDir, pkgName, ownRelDir);
+): Failure[] {
 	const failures: Failure[] = [];
 	const internal: string[] = [];
+	const quarantined: string[] = [];
 
 	for (const use of uses) {
 		if (isInternalSourceSpecifier(pkgName, use.specifier)) {
@@ -88,10 +89,27 @@ async function verifySpecifiersResolve(
 			continue;
 		}
 		const match = resolveSpecifier(pkgName, use.specifier, entries);
+		const known = findGrandfathered(use.specifier);
 		if (!match) {
+			if (known) {
+				quarantined.push(`${known.specifier} (${use.file})\n        ${known.reason}`);
+				continue;
+			}
 			failures.push({
 				phase: 'specifiers',
 				detail: `${use.specifier} — no matching key in the exports map (${use.file})`,
+			});
+			continue;
+		}
+		// A grandfathered specifier that now resolves means the underlying work landed. Failing here
+		// is what stops the exception list outliving its reason and quietly excusing a future
+		// regression on the same subpath.
+		if (known) {
+			failures.push({
+				phase: 'specifiers',
+				detail:
+					`${use.specifier} resolves through \`exports\` now, so its grandfathered entry is ` +
+					'stale — delete it from `grandfathered.ts`',
 			});
 			continue;
 		}
@@ -108,8 +126,16 @@ async function verifySpecifiersResolve(
 		console.log(`  ok  ${use.specifier} -> ${match.entry.subpath}`);
 	}
 
+	// Printed unconditionally, and not as a warning that scrolls past: an exception nobody can see
+	// in the output is how this check shipped green over two real violations in the first place.
+	if (quarantined.length > 0) {
+		console.log(`\n  ${quarantined.length} grandfathered specifier(s) — NOT enforced:`);
+		for (const entry of quarantined) console.log(`    - ${entry}`);
+	}
+
 	console.log(
-		`\n  ${uses.length - internal.length} published specifier(s) checked; ` +
+		`\n  ${uses.length - internal.length - quarantined.length} published specifier(s) enforced; ` +
+			`${quarantined.length} grandfathered; ` +
 			`${internal.length} alias-only \`${pkgName}/src…\` specifier(s) skipped ` +
 			'(deliberately outside `exports` — `files` ships `dist`).',
 	);
@@ -238,10 +264,9 @@ export async function runVerifyPackedConsumer(args: string[], rootDir: string): 
 	const packageArg = args.find((a) => a.startsWith('--package='));
 	const pkgName = packageArg ? packageArg.slice('--package='.length) : DEFAULT_TARGET;
 	const keep = args.includes('--keep');
-	// The two halves have very different costs. The static half needs only the tarball and a repo
-	// glob, so it can afford to run on any PR — which is what catches a deep import added anywhere
-	// in the monorepo. The consumer half installs from the registry and compiles, so it runs when
-	// the package's own packaging changes.
+	// Local shortcut: the static half needs only the tarball and the git index, so it answers "did I
+	// just add an unexported specifier?" in seconds. Both CI callers run the full scope; nothing
+	// passes `static`, deliberately — a green check that skipped the compile is worth little.
 	const staticOnly = args.includes('--static-only');
 
 	const byName = await loadWorkspace(rootDir);
@@ -292,10 +317,9 @@ export async function runVerifyPackedConsumer(args: string[], rootDir: string): 
 	}
 
 	heading('Every specifier the monorepo imports resolves through `exports`');
-	const ownRelDir = target.relDir;
-	failures.push(
-		...(await verifySpecifiersResolve(rootDir, pkgName, ownRelDir, packageRoot, entries)),
-	);
+	// Collected once and reused below: the scan reads every tracked source file in the repo.
+	const uses = collectConsumerSpecifiers(rootDir, pkgName, target.relDir);
+	failures.push(...verifySpecifiersResolve(uses, pkgName, packageRoot, entries));
 
 	// The static phases are cheap and their findings are complete on their own. Installing and
 	// compiling on top of a broken exports map only buries them under a compiler error.
@@ -328,7 +352,7 @@ export async function runVerifyPackedConsumer(args: string[], rootDir: string): 
 		.filter((e) => !e.isWildcard && e.targets.some((t) => t.kind === 'style'))
 		.map((e) => e.specifier)
 		.filter((s): s is string => s !== undefined);
-	const styleSpecifiers = (await collectConsumerSpecifiers(rootDir, pkgName, ownRelDir))
+	const styleSpecifiers = uses
 		.map((u) => u.specifier)
 		.filter((s) => !isInternalSourceSpecifier(pkgName, s))
 		.filter((s) => {
