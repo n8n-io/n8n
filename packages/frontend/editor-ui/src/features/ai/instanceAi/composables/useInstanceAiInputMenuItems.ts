@@ -185,10 +185,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			const connectionStatus =
 				settingsStore.connections.find(({ type }) => type === COMPUTER_USE_CONNECTION_TYPE)
 					?.status ?? 'none';
-			const status =
-				connectionStatus === 'disconnected' && !settingsStore.hasEverConnectedGateway
-					? 'none'
-					: connectionStatus;
+			const status = connectionStatus === 'disconnected' ? 'none' : connectionStatus;
 			items.push(
 				createConnectionItem({
 					id: 'computer',
