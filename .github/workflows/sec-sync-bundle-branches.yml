@@ -2,23 +2,31 @@
 #
 # Fixes are integrated on bundle/2.x and bundle/1.x and eventually merged into private
 # master/1.x as a squashed `chore: Bundle/*` PR. Those branches must not drift from their
-# base, or CI on the fix PRs targeting them stops meaning anything and the bundle cut turns
-# into a conflict-resolution session.
+# base, or the bundle cut turns into a conflict-resolution session.
 #
-# The base is REPLAYED, not merged: merging added a merge commit on nearly every run, and the
-# bundle publishes as a single squashed, obfuscated commit anyway — so SHAs on these branches
-# buy nothing, while a readable `base..bundle` list of pending fixes buys a lot. Every push is
-# verified to carry exactly the tree a merge would produce. See rebase-bundle-branch.mjs.
+# The base is MERGED IN, never replayed: these branches receive PRs, and rewriting a branch
+# that receives PRs orphans the commits its PR branches already hold — each such PR then shows
+# everyone else's fixes in its commit list and its diff, and picks up another duplicate
+# generation every time its author refreshes. The merge commits cost nothing downstream: a
+# bundle publishes as one squashed, obfuscated commit taken from the tree, not the history.
+# Every push is verified to carry exactly the tree a merge would produce. See
+# sync-bundle-branch.mjs.
+#
+# Daily rather than hourly on purpose: a base force-push never re-triggered CI on the fix PRs,
+# so a faster cadence bought them nothing while re-running the full suite on the cut PR (whose
+# head is the bundle branch). A merged fix and a manual dispatch before a cut are the moments
+# that matter.
 #
 # One job per bundle branch: a conflict on one FAILS THAT JOB and leaves its branch untouched,
-# while the other still syncs. Recovery is manual and deliberate — rebase onto the base
-# locally, force-push, then re-run this workflow.
+# while the other still syncs. Recovery is manual and deliberate — merge the base in locally,
+# resolve, push, then re-run this workflow. That resolution then lives in the merge commit,
+# instead of being re-litigated on every later run.
 
-name: 'Security: Rebase Bundle Branches'
+name: 'Security: Sync Bundle Branches'
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 3 * * *'
   pull_request: # a fix landing on a bundle branch is when freshness matters most
     types: [closed]
     branches:
@@ -26,12 +34,12 @@ on:
       - 'bundle/1.x'
   workflow_dispatch:
 
-# Least privilege by default; the replay job opts into exactly what it needs.
+# Least privilege by default; the sync job opts into exactly what it needs.
 permissions: {}
 
 jobs:
-  replay:
-    name: Replay ${{ matrix.bundle }}
+  sync:
+    name: Sync ${{ matrix.bundle }}
     if: |
       github.repository == 'n8n-io/n8n-private' &&
       (github.event_name != 'pull_request' || github.event.pull_request.merged == true)
@@ -46,8 +54,8 @@ jobs:
             base: 'master'
           - bundle: 'bundle/1.x'
             base: '1.x'
-    concurrency: # serialize per branch — never two replays of the same one at once
-      group: rebase-${{ matrix.bundle }}
+    concurrency: # serialize per branch — never two syncs of the same one at once
+      group: sync-${{ matrix.bundle }}
       cancel-in-progress: false
     steps:
       - name: Generate GitHub App Token
@@ -56,33 +64,33 @@ jobs:
         with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
-          # Scope the installation token to only what the replay needs.
-          permission-contents: write # force-push the bundle branch
+          # Scope the installation token to only what the sync needs.
+          permission-contents: write # push the bundle branch
 
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           # Always run the script from the default branch, never from a pull_request merge
-          # ref — the replay holds a contents:write token and fetches what it needs itself,
+          # ref — the sync holds a contents:write token and fetches what it needs itself,
           # so the checked-out branch is irrelevant beyond supplying trusted code.
           ref: master
           fetch-depth: 0
           persist-credentials: false # we push with an explicit token URL instead
 
-      - name: Replay bundle branch onto its base
-        # On a merged bundle PR, only the branch that received it needs replaying.
+      - name: Merge the base into the bundle branch
+        # On a merged bundle PR, only the branch that received it needs syncing.
         # (`matrix` is not available in a job-level `if`, so the filter lives here.)
         if: github.event_name != 'pull_request' || github.event.pull_request.base.ref == matrix.bundle
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           BUNDLE_BRANCH: ${{ matrix.bundle }}
           BASE_BRANCH: ${{ matrix.base }}
-        run: node .github/scripts/rebase-bundle-branch.mjs
+        run: node .github/scripts/sync-bundle-branch.mjs
 
   notify-on-failure:
     name: Notify Slack on failure
-    needs: [replay]
-    if: ${{ always() && needs.replay.result == 'failure' }}
+    needs: [sync]
+    if: ${{ always() && needs.sync.result == 'failure' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read # checkout the slack scripts
@@ -101,4 +109,4 @@ jobs:
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel '#alerts-security' \
-            --text "<${RUN_URL}|A bundle branch could not be replayed onto its base>. The branch is untouched; see the run for which one and why."
+            --text "<${RUN_URL}|A bundle branch could not be synced with its base>. The branch is untouched; see the run for which one and why."
