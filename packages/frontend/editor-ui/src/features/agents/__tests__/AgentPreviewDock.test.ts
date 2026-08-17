@@ -14,6 +14,14 @@ vi.mock('@/app/composables/useKeybindings', () => ({
 	useKeybindings: useKeybindingsMock,
 }));
 
+vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
+	useAgentSessionLangSmithExport: () => ({
+		isEnabled: false,
+		isExporting: false,
+		sendSession: vi.fn(),
+	}),
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));

@@ -69,6 +69,14 @@ vi.mock('@/app/composables/useKeybindings', () => ({
 	useKeybindings: vi.fn(),
 }));
 
+vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
+	useAgentSessionLangSmithExport: () => ({
+		isEnabled: false,
+		isExporting: false,
+		sendSession: vi.fn(),
+	}),
+}));
+
 // Reads a Pinia store for notifications — irrelevant to panel behavior.
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: vi.fn() }),
@@ -427,6 +435,31 @@ describe('AgentChatPanel', () => {
 						toolCallId: 'tc-1',
 						runId: 'run-1',
 						state: 'suspended',
+					},
+				],
+			},
+		];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('isStreaming')).toBe(true);
+	});
+
+	it('shows stop while tool calls are in-flight even when the stream ended (desync)', () => {
+		// Stream ended (isStreaming=false) but a tool call is still `running` —
+		// the pulsing desync. Stop must stay visible so the user can clear it.
+		isStreamingMock.value = false;
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{
+						tool: 'create_issue',
+						toolCallId: 'tc-stuck',
+						state: 'running',
 					},
 				],
 			},

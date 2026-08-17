@@ -996,8 +996,11 @@ describe('RoleController', () => {
 			// ASSERT
 			//
 			expect(response.body).toEqual({ data: mockUpdatedRole });
-			// Parameter verification skipped - test framework issue
-			expect(roleService.updateCustomRole).toHaveBeenCalledWith(roleSlug, updateRoleDto);
+			expect(roleService.updateCustomRole).toHaveBeenCalledWith({
+				slug: roleSlug,
+				newRole: updateRoleDto,
+				userId: expect.any(String),
+			});
 		});
 
 		it('should update only provided fields', async () => {
@@ -1030,7 +1033,11 @@ describe('RoleController', () => {
 			// ASSERT
 			//
 			expect(response.body).toEqual({ data: mockUpdatedRole });
-			expect(roleService.updateCustomRole).toHaveBeenCalledWith(roleSlug, updateRoleDto);
+			expect(roleService.updateCustomRole).toHaveBeenCalledWith({
+				slug: roleSlug,
+				newRole: updateRoleDto,
+				userId: expect.any(String),
+			});
 		});
 
 		it('should handle service errors gracefully', async () => {

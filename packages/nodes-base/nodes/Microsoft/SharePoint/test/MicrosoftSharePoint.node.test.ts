@@ -19,6 +19,14 @@ describe('MicrosoftSharePoint (versioned root)', () => {
 		expect(v1.methods?.resourceMapping).toBeDefined();
 	});
 
+	it('should trim the subdomain in the declarative base URL', () => {
+		const node = new MicrosoftSharePoint();
+
+		expect(node.nodeVersions[1].description.requestDefaults?.baseURL).toBe(
+			'=https://{{ ($credentials.subdomain || "").trim() }}.sharepoint.com/_api/v2.0/',
+		);
+	});
+
 	it('should not register the under-construction version 2', () => {
 		const node = new MicrosoftSharePoint();
 

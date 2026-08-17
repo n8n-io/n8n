@@ -73,6 +73,9 @@ function readAllowedDomainsField(
 }
 
 function shouldInjectDomainRestrictionFields(credentialType: ICredentialType): boolean {
+	if (credentialType.hideDomainRestrictionFields) {
+		return false;
+	}
 	return (
 		credentialType.authenticate !== undefined ||
 		credentialType.genericAuth === true ||
