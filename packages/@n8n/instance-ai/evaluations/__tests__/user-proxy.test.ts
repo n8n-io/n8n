@@ -24,8 +24,9 @@ import {
 // Spies on the real seeder so existing credential-creation tests (which assert
 // against `client.createCredential`) keep working unchanged, while the new
 // setupHint tests below can assert on what reaches `createOneCredential`
-// itself — the boundary this task's plumbing stops at (minting the credential
-// from the hint is a later task).
+// itself. The mock wraps the real implementation, so tests execute the full
+// minting path (including the seeder's throw when `httpTemplatedCustomAuth`
+// is reached without a valid hint).
 vi.mock('../credentials/seeder', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../credentials/seeder')>();
 	return { ...actual, createOneCredential: vi.fn(actual.createOneCredential) };
