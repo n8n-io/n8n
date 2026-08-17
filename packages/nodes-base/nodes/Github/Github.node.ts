@@ -2093,6 +2093,9 @@ export class Github implements INodeType {
 			{
 				displayName: 'Secret Name',
 				name: 'secretName',
+				// The identifier of a secret is not itself sensitive — GitHub displays it in
+				// the UI and API — so it stays visible; only 'Secret Value' below is masked.
+				// eslint-disable-next-line n8n-nodes-base/node-param-type-options-password-missing
 				type: 'string',
 				default: '',
 				required: true,
