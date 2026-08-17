@@ -29,9 +29,9 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		completeStep: vi.fn(),
 		failStep: vi.fn(),
 		cancelQueuedSteps: vi.fn(),
-		loadStepOutputs: vi.fn(),
-		loadCompletedNodeIds: vi.fn(),
-		hasActiveSteps: vi.fn(),
+		loadStepsByNodeIds: vi.fn().mockResolvedValue({}),
+		loadStepSummaries: vi.fn().mockResolvedValue({}),
+		countSettledSteps: vi.fn(),
 		hasFailedSteps: vi.fn(),
 	};
 }
@@ -70,19 +70,18 @@ describe('ExecutionStartHandler', () => {
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
 		expect(executionStore.transitionStatus).toHaveBeenCalledWith('exec-1', 'queued', 'running');
-		// only the trigger's row — planning is the step:completed handler's job.
+		// only the trigger's row — planning is the step:settled handler's job.
 		// Its payload rides along as output slot 0, read downstream like any
 		// other predecessor's outputs.
-		expect(createSteps).toHaveBeenCalledExactlyOnceWith([
+		expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
 			{
-				executionId: 'exec-1',
 				nodeId: 'trigger',
 				status: 'completed',
 				outputs: [{ webhook: 'data' }],
 			},
 		]);
 		expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
-			type: 'step:completed',
+			type: 'step:settled',
 			executionId: 'exec-1',
 			stepId: 'step-trigger',
 		});
@@ -104,8 +103,8 @@ describe('ExecutionStartHandler', () => {
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
-		expect(createSteps).toHaveBeenCalledExactlyOnceWith([
-			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed', outputs: [{}] },
+		expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'trigger', status: 'completed', outputs: [{}] },
 		]);
 	});
 

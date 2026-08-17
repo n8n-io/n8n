@@ -1,5 +1,6 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
@@ -20,7 +21,7 @@ import {
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
-import { StepCompletedHandler } from '../step-completed-handler';
+import { StepSettledHandler } from '../step-settled-handler';
 
 const graph: WorkflowGraph = {
 	nodes: [
@@ -35,7 +36,7 @@ describe('execution start (integration)', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer('postgres:18-alpine').start();
+		container = await new PostgreSqlContainer(postgresVersions.primary).start();
 		dataSource = createDataSource(container.getConnectionUri());
 		await dataSource.initialize();
 		await dataSource.runMigrations();
@@ -60,7 +61,7 @@ describe('execution start (integration)', () => {
 		const worker = new OrchestrationWorker(
 			orchestrationQueue,
 			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepCompletedHandler(executionStore, stepStore, stepQueue),
+			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
 		);
 		worker.start();
 		const startExecution = new StartExecutionService(

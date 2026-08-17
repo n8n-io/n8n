@@ -1,4 +1,4 @@
-import type { CreateCredentialDto } from '@n8n/api-types';
+import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	Project,
@@ -179,8 +179,7 @@ type WorkflowCredentialResult = {
 	homeProject: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 	currentUserHasAccess: boolean;
-	connectedByMe?: boolean;
-};
+} & CredentialConnectionStatus;
 
 /** Codes an auth probe must not treat as rejection, stored as a JSON array in the credential. */
 function parseAcceptedStatusCodes(raw: unknown): number[] | undefined {
@@ -218,18 +217,18 @@ export class CredentialsService {
 		private readonly eventService: EventService,
 	) {}
 
-	/**
-	 * Sets `connectedByMe` on every resolvable credential in `credentials`,
-	 * using a single bulk lookup against the per-user storage. Static
-	 * (non-resolvable) credentials are left untouched.
-	 *
-	 * Mutates in place; callers may pass entities, decrypted DTOs, or plain
-	 * object literals — any shape that carries `id` and `isResolvable`.
-	 */
 	async countConnectedUsers(credentialId: string): Promise<number> {
 		return await this.connectionStatusProxy.countConnectedUsers(credentialId);
 	}
 
+	/**
+	 * Sets `connectedByMe` and `connectedAccountIdentifier` on every resolvable
+	 * credential in `credentials`, using a single bulk lookup against the per-user
+	 * storage. Static (non-resolvable) credentials are left untouched.
+	 *
+	 * Mutates in place; callers may pass entities, decrypted DTOs, or plain
+	 * object literals — any shape that carries `id` and `isResolvable`.
+	 */
 	async populateConnectedByMe<T extends { id: string; isResolvable?: boolean }>(
 		credentials: T[],
 		user: User,
@@ -237,13 +236,18 @@ export class CredentialsService {
 		const resolvable = credentials.filter((c) => c.isResolvable === true);
 		if (resolvable.length === 0) return;
 
-		const connected = await this.connectionStatusProxy.findConnectedCredentialIds(
+		const connections = await this.connectionStatusProxy.findMyConnections(
 			user.id,
 			resolvable.map((c) => c.id),
 		);
 
 		for (const c of resolvable) {
-			(c as T & { connectedByMe?: boolean }).connectedByMe = connected.has(c.id);
+			const connection = connections.get(c.id);
+			const enriched = c as T & CredentialConnectionStatus;
+			enriched.connectedByMe = connection !== undefined;
+			// The account the caller's own connection authenticates as. Only ever
+			// their own — a connection is never labelled with someone else's account.
+			enriched.connectedAccountIdentifier = connection?.accountIdentifier;
 		}
 	}
 
@@ -1009,7 +1013,7 @@ export class CredentialsService {
 		}
 
 		// Reflect connections cleared above by deleteUserEntries, not a stale pre-update value.
-		const enriched: (CredentialsEntity & { connectedByMe?: boolean }) | null = result;
+		const enriched: (CredentialsEntity & CredentialConnectionStatus) | null = result;
 		if (enriched && options?.user) {
 			await this.populateConnectedByMe([enriched], options.user);
 		}
@@ -1601,7 +1605,7 @@ export class CredentialsService {
 
 		const { data: _, ...rest } = credential;
 
-		const enriched: typeof rest & { connectedByMe?: boolean; connectedUserCount?: number } = rest;
+		const enriched: typeof rest & CredentialConnectionStatus = rest;
 		await this.populateConnectedByMe([enriched], user);
 
 		if (credential.isResolvable) {
@@ -1855,6 +1859,17 @@ export class CredentialsService {
 	}
 
 	/**
+	 * End-user credentials can only live in team projects: creating, switching
+	 * to, or transferring one into a personal project is rejected for every
+	 * role. Deleting or switching back to fixed stays allowed for cleanup.
+	 */
+	ensureEndUserCredentialAllowedInProject(project?: Pick<Project, 'type'> | null) {
+		if (project?.type === 'personal') {
+			throw new ForbiddenError('End-user credentials are not available in personal projects');
+		}
+	}
+
+	/**
 	 * The end-user (resolvable) credential lifecycle — creating one, switching a
 	 * credential to or from end-user, deleting or transferring one — is limited
 	 * to roles holding `credential:createEndUser` on the owning project
@@ -1884,6 +1899,8 @@ export class CredentialsService {
 		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
 
 		if (opts.isResolvable === true) {
+			const targetProject = await this.projectRepository.findOneBy({ id: targetProjectId });
+			this.ensureEndUserCredentialAllowedInProject(targetProject);
 			await this.ensureCanManageEndUserCredential(user, targetProjectId);
 		}
 

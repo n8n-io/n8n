@@ -2,7 +2,9 @@ import { z } from 'zod';
 
 import {
 	domainAccessActionSchema,
+	instanceAiApprovalResumeSchema,
 	instanceGatewayResourceDecisionSchema,
+	mcpConnectResumeSchema,
 } from '../../schemas/instance-ai.schema';
 
 /**
@@ -10,14 +12,12 @@ import {
  *   - text-input confirmations (inputType='text')
  *   - plan-review feedback accompanying approve/request-changes
  *   - deferring/skipping credential or workflow setup wizards (`approved: false`)
+ *
+ * Payload fields (minus `kind`) are shared with tool `.resume()` schemas via
+ * `instanceAiApprovalResumeSchema` so wire/resume drift fails at typecheck.
  */
-const approvalConfirmSchema = z.object({
+const approvalConfirmSchema = instanceAiApprovalResumeSchema.extend({
 	kind: z.literal('approval'),
-	approved: z.boolean(),
-	userInput: z.string().optional(),
-	/** `'session'` grants the same tool/action without re-asking for the rest of the
-	 *  thread ("always allow"). Absent/`'once'` approves this single request only. */
-	scope: z.enum(['once', 'session']).optional(),
 });
 
 /** Q&A wizard submission (inputType='questions'). */
@@ -44,6 +44,9 @@ const credentialSelectionConfirmSchema = z.object({
 const credentialAutoSetupConfirmSchema = z.object({
 	kind: z.literal('credentialAutoSetup'),
 	credentialType: z.string(),
+	/** Client-generated id shared by the setup-choice telemetry events and the
+	 *  terminal setup-completed event, so retries can be told apart in the funnel. */
+	attemptId: z.string().trim().min(1).max(64).optional(),
 });
 
 /** Domain-access approval — `domainAccessAction` carries which scope the user picked. */
@@ -91,6 +94,10 @@ const setupWorkflowTestTriggerConfirmSchema = z.object({
 	nodeParameters: nodeParametersRecord,
 });
 
+const mcpConnectConfirmSchema = mcpConnectResumeSchema.extend({
+	kind: z.literal('mcpConnect'),
+});
+
 export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	approvalConfirmSchema,
 	questionsConfirmSchema,
@@ -102,6 +109,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	resourceDecisionConfirmSchema,
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,
+	mcpConnectConfirmSchema,
 ]);
 
 export type InstanceAiConfirmRequest = z.infer<typeof InstanceAiConfirmRequestDto>;

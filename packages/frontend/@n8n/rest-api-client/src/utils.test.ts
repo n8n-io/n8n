@@ -1,4 +1,68 @@
-import { ResponseError, STREAM_SEPARATOR, streamRequest } from './utils';
+import {
+	MfaRequiredError,
+	ResponseError,
+	STREAM_SEPARATOR,
+	request,
+	setUnauthorizedHandler,
+	streamRequest,
+} from './utils';
+
+const { axiosRequest } = vi.hoisted(() => ({ axiosRequest: vi.fn() }));
+
+vi.mock('axios', () => ({
+	default: { request: axiosRequest },
+}));
+
+describe('request', () => {
+	afterEach(() => {
+		setUnauthorizedHandler(() => {});
+	});
+
+	const baseConfig = {
+		method: 'GET' as const,
+		baseURL: 'https://api.example.com',
+		endpoint: '/workflows',
+	};
+
+	it('calls the registered unauthorized handler with the request baseURL on a 401 response', async () => {
+		axiosRequest.mockRejectedValueOnce({
+			response: { status: 401, data: { message: 'Unauthorized' } },
+		});
+
+		const handler = vi.fn();
+		setUnauthorizedHandler(handler);
+
+		await expect(request(baseConfig)).rejects.toThrow('Unauthorized');
+
+		expect(handler).toHaveBeenCalledExactlyOnceWith(baseConfig.baseURL);
+	});
+
+	it('does not call the unauthorized handler on a non-401 error response', async () => {
+		axiosRequest.mockRejectedValueOnce({
+			response: { status: 500, data: { message: 'Internal Server Error' } },
+		});
+
+		const handler = vi.fn();
+		setUnauthorizedHandler(handler);
+
+		await expect(request(baseConfig)).rejects.toThrow('Internal Server Error');
+
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('does not call the unauthorized handler on a 401 that is actually an MFA-required response', async () => {
+		axiosRequest.mockRejectedValueOnce({
+			response: { status: 401, data: { message: 'Unauthorized', mfaRequired: true } },
+		});
+
+		const handler = vi.fn();
+		setUnauthorizedHandler(handler);
+
+		await expect(request(baseConfig)).rejects.toThrow(MfaRequiredError);
+
+		expect(handler).not.toHaveBeenCalled();
+	});
+});
 
 describe('streamRequest', () => {
 	it('should stream data from the API endpoint', async () => {

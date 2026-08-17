@@ -66,6 +66,7 @@ const {
 	isConnected: isIntegrationConnected,
 	isConfigured: isIntegrationConfigured,
 	connect,
+	disconnect,
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const submitted = ref(false);
@@ -180,9 +181,19 @@ function notifyAgentUpdated() {
 	agentsEventBus.emit('agentUpdated', { agentId: props.agentId, source: 'channel-setup-card' });
 }
 
-function skipSetup() {
-	if (channelActionInFlight.value) return;
-	finish(false);
+async function skipSetup() {
+	if (isBlocked() || channelActionInFlight.value) return;
+
+	connectionInFlight.value = true;
+	try {
+		await disconnect(props.integrationType, '');
+		notifyAgentUpdated();
+		finish(false);
+	} catch {
+		// Keep setup pending so the user can retry instead of leaving a draft channel behind.
+	} finally {
+		connectionInFlight.value = false;
+	}
 }
 
 async function saveChannelConfig() {
@@ -318,7 +329,6 @@ watch(
 				:agent-id="agentId"
 				:force-new-credential="true"
 				:simple-setup="true"
-				:credential-replacement-pending="false"
 				:runtime="currentRuntime"
 				@create="createCredential"
 				@edit="editCredential"
