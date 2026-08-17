@@ -122,16 +122,6 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		}
 	}
 
-	async findMany(listQueryOptions?: CredentialsListQueryOptions, credentialIds?: string[]) {
-		const findManyOptions = this.toFindManyOptions(listQueryOptions);
-
-		if (credentialIds) {
-			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
-		}
-
-		return await this.find(this.onlyProjectCredentials(findManyOptions));
-	}
-
 	async findManyAndCount(
 		listQueryOptions?: CredentialsListQueryOptions,
 		credentialIds?: string[],
