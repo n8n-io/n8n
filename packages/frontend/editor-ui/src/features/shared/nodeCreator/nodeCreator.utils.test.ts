@@ -814,6 +814,21 @@ describe('NodeCreator - utils', () => {
 			expect(result.properties.tag).toEqual({ text: 'n8n credits', pill: true, type: 'info' });
 		});
 
+		it('should retag credits when the wallet arrives after the first finalize', () => {
+			const items = [makeGatewayNode()];
+			const [first] = finalizeItems(items) as NodeCreateElement[];
+			expect(first.properties.tag).toEqual({ text: 'Free credits', pill: true });
+
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.n8nCredits',
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			const [second] = finalizeItems(items) as NodeCreateElement[];
+			expect(second.properties.tag).toEqual({ text: 'n8n credits', pill: true, type: 'info' });
+		});
+
 		it('should suppress Free credits badge when latest version is below the minimum', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),

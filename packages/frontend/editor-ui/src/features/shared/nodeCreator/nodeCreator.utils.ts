@@ -489,6 +489,7 @@ export function finalizeItems(items: INodeCreateElement[]): INodeCreateElement[]
 		.map((item) => ({
 			...item,
 			uuid: `${item.key}-${uuidv4()}`,
+			properties: { ...item.properties },
 		}))
 		.map(applyNodeTags);
 }
