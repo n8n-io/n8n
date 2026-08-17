@@ -5,6 +5,7 @@ import type {
 	WorkflowReviewActivityEntry,
 	WorkflowReviewEligibleReviewer,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import {
 	TransactionRunner,
 	UserRepository,
@@ -33,6 +34,7 @@ export class WorkflowReviewActivityService {
 		private readonly activityCommentRepository: WorkflowReviewActivityCommentRepository,
 		private readonly userRepository: UserRepository,
 		private readonly txRunner: TransactionRunner,
+		private readonly logger: Logger,
 	) {}
 
 	async listActivity(
@@ -96,7 +98,12 @@ export class WorkflowReviewActivityService {
 			return { activity, message };
 		});
 
-		return toActivityEntry(activity, [message], new Map([[user.id, toEligibleReviewer(user)]]));
+		return toActivityEntry(
+			activity,
+			[message],
+			new Map([[user.id, toEligibleReviewer(user)]]),
+			this.logger,
+		);
 	}
 
 	private async hydrate(
@@ -109,7 +116,9 @@ export class WorkflowReviewActivityService {
 			]),
 		);
 
-		return entries.map((entry) => toActivityEntry(entry.activity, entry.messages, usersById));
+		return entries.map((entry) =>
+			toActivityEntry(entry.activity, entry.messages, usersById, this.logger),
+		);
 	}
 
 	private async hydrateAuthors(

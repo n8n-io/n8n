@@ -474,6 +474,22 @@ describe('FormTrigger, formWebhook', () => {
 		await expect(formWebhook(ctx)).resolves.toEqual({ noWebhookResponse: true });
 	});
 
+	// Only a form that identifies the submitter can hit the submit-time credential
+	// gate, so the rest must not ship its client-side handling.
+	it('omits the credential-gate flag for a form that cannot be gated', async () => {
+		const mockRender = vi.fn();
+
+		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue([]);
+		executeFunctions.getResponseObject.mockReturnValue({
+			render: mockRender,
+			setHeader: vi.fn(),
+		} as any);
+
+		await formWebhook(executeFunctions);
+
+		expect(mockRender.mock.calls[0][1].hasAuthenticatedSubmitter).toBeUndefined();
+	});
+
 	it('should call response render', async () => {
 		const mockRender = vi.fn();
 
@@ -984,6 +1000,24 @@ describe('FormTrigger, formWebhook', () => {
 
 			expect(ctx.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
 			expect(render).toHaveBeenCalledWith('form-trigger', expect.any(Object));
+		});
+
+		// The gate can only reject a form that knows who is submitting, so this is the
+		// only rendering that carries its client-side handling.
+		it('sets hasAuthenticatedSubmitter so the form handles a submit-time gate rejection', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { render } = setupContext(ctx, {
+				method: 'GET',
+				cookie: 'n8n-auth=valid.jwt.token',
+			});
+			ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+			await formWebhook(ctx);
+
+			expect(render).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({ hasAuthenticatedSubmitter: true }),
+			);
 		});
 
 		it('parses n8n-auth alongside other cookies', async () => {

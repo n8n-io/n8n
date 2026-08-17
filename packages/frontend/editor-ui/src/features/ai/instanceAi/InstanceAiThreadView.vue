@@ -685,7 +685,7 @@ function isCurrentThreadRuntime(): boolean {
 
 const composerContextChip = computed(() => {
 	const agentAttachment = currentAgentAttachment.value;
-	if (pendingAgentAttachment.value?.pending && agentAttachment) {
+	if (agentAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
 		return {
 			key: `pending-agent:${agentAttachment.id}`,
 			label: agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
@@ -1017,7 +1017,7 @@ function dismissPendingComposerContext(key: string): boolean {
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
 
-	if (pendingAgentAttachment.value?.pending) {
+	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
 		clearPendingAgentAttachment(props.threadId);
 		pendingAgentAttachment.value = null;
 		return;
