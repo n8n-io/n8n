@@ -19,6 +19,7 @@ describe('AgentThreadsController route access scopes', () => {
 	it.each([
 		['listThreads', 'get', '/:agentId/threads'],
 		['getThread', 'get', '/:agentId/threads/:threadId'],
+		['exportThreadToLangSmith', 'post', '/:agentId/threads/:threadId/langsmith-export'],
 		['deleteThread', 'delete', '/:agentId/threads/:threadId'],
 	])('%s uses %s %s', (handlerName, method, path) => {
 		expect(routes.get(handlerName)).toMatchObject({ method, path });
@@ -27,6 +28,7 @@ describe('AgentThreadsController route access scopes', () => {
 	it.each([
 		['listThreads', 'agent:read'],
 		['getThread', 'agent:read'],
+		['exportThreadToLangSmith', 'agent:read'],
 		['deleteThread', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
