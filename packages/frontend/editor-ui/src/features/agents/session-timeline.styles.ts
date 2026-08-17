@@ -22,6 +22,8 @@ export function pillColors(
 		case 'suspension':
 		case 'idle':
 			return { backgroundColor: 'var(--color--yellow-200)', color: 'var(--color--yellow-950)' };
+		case 'hitl-response':
+			return { backgroundColor: 'var(--color--blue-200)', color: 'var(--color--blue-950)' };
 		default:
 			return { backgroundColor: 'var(--color--neutral-200)', color: 'var(--color--neutral-950)' };
 	}

@@ -17,6 +17,7 @@ vi.mock('@n8n/i18n', () => {
 			if (key === 'agents.chat.approval.reject') return 'Reject';
 			if (key === 'agents.chat.approval.approved') return 'Approved';
 			if (key === 'agents.chat.approval.rejected') return 'Rejected';
+			if (key === 'agents.chat.approval.viewToolDetails') return 'View tool details';
 			return key;
 		},
 	};
@@ -51,6 +52,11 @@ const approvalPayload: InteractivePayload = {
 		toolName: 'calculator',
 		displayName: 'Calculator',
 		args: { input: '2 + 2' },
+		details: {
+			toolName: 'calculator',
+			input: { input: '2 + 2' },
+			node: { parameters: { operation: 'calculate' } },
+		},
 	},
 };
 
@@ -62,6 +68,10 @@ describe('InteractiveCard', () => {
 		expect(wrapper.text()).toContain('The agent wants to run the Calculator tool.');
 		expect(wrapper.text()).not.toContain('calculator.');
 		expect(wrapper.text()).toContain('2 + 2');
+		expect(wrapper.text()).toContain('operation');
+		const details = wrapper.find('[data-testid="agent-approval-tool-details"]');
+		expect(details.exists()).toBe(true);
+		expect(details.attributes('open')).toBeUndefined();
 
 		await wrapper.find('[data-testid="agent-approval-approve"]').trigger('click');
 
@@ -72,7 +82,9 @@ describe('InteractiveCard', () => {
 		const wrapper = mountCard({
 			...approvalPayload,
 			input: {
-				...approvalPayload.input,
+				type: 'approval',
+				toolName: 'calculator',
+				displayName: 'Calculator',
 				args: {
 					query: 'project status',
 					password: 'super-secret-password',
