@@ -53,7 +53,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 			.send({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
-				triggerPayload: { hello: 'world' },
+				triggerPayload: [[{ json: { hello: 'world' } }]],
 			});
 
 		expect(response.status).toBe(201);
@@ -61,12 +61,14 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(executionId).toBeTruthy();
 
 		const repo = dataSource.getRepository(WorkflowExecution);
-		const row = await repo.findOneByOrFail({ id: executionId });
+		// `findOne({ where })`, not `findOneByOrFail`: the latter's overload exceeds
+		// TypeScript's instantiation depth on the recursive `triggerPayload` column type.
+		const row = await repo.findOneOrFail({ where: { id: executionId } });
 		expect(row.workflowId).toBe('wf-1');
 		expect(row.status).toBe('queued');
 		expect(row.mode).toBe('production');
 		expect(row.graph).toEqual(sampleGraph);
-		expect(row.triggerPayload).toEqual({ hello: 'world' });
+		expect(row.triggerPayload).toEqual([[{ json: { hello: 'world' } }]]);
 
 		expect(workQueue.publish).toHaveBeenCalledWith({ type: 'execution:enqueued', executionId });
 	});
@@ -75,6 +77,41 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.send({ workflowId: 'wf-1' }); // missing graph
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it('rejects a bare-object triggerPayload with 400 (the legacy, dropped shape)', async () => {
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.send({
+				workflowId: 'wf-1',
+				graph: sampleGraph,
+				triggerPayload: { hello: 'world' },
+			});
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it.each([['str'], [42]])('rejects triggerPayload %p with 400', async (triggerPayload) => {
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.send({ workflowId: 'wf-1', graph: sampleGraph, triggerPayload });
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it('rejects a triggerPayload with more slots than the cap with 400', async () => {
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.send({
+				workflowId: 'wf-1',
+				graph: sampleGraph,
+				triggerPayload: Array.from({ length: 102 }, () => []),
+			});
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');

@@ -30,18 +30,21 @@ describe('workflow_execution table (integration)', () => {
 			status: 'running',
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
-			triggerPayload: { foo: 'bar' },
+			triggerPayload: [{ foo: 'bar' }],
 			finishedAt: null,
 		});
 		await repo.save(created);
 
-		const found = await repo.findOneByOrFail({ id: created.id });
+		// NOTE: `findOne({ where })`, not `findOneByOrFail`: the latter's overload
+		// exceeds TypeScript's instantiation depth on the recursive `triggerPayload`
+		// column type.
+		const found = await repo.findOneOrFail({ where: { id: created.id } });
 
 		expect(found.id).toBeTruthy();
 		expect(found.workflowId).toBe('wf-1');
 		expect(found.status).toBe('running');
 		expect(found.mode).toBe('production');
-		expect(found.triggerPayload).toEqual({ foo: 'bar' });
+		expect(found.triggerPayload).toEqual([{ foo: 'bar' }]);
 		expect(found.finishedAt).toBeNull();
 		expect(found.createdAt).toBeInstanceOf(Date);
 		expect(found.updatedAt).toBeInstanceOf(Date);

@@ -1,14 +1,14 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
-import type { JsonObject } from '../common';
 import { validateExecutableGraph, type WorkflowGraph } from '../graph';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
-import type { ExecutionMode } from './execution.types';
+import type { ExecutionMode, TriggerOutputs } from './execution.types';
 
 export interface StartExecutionRequest {
 	workflowId: string;
 	graph: WorkflowGraph;
-	triggerPayload?: JsonObject | null;
+	/** Trigger step's output slots, one entry per output. */
+	triggerPayload?: TriggerOutputs | null;
 	mode?: ExecutionMode;
 }
 

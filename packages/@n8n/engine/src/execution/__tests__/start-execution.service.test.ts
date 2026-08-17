@@ -37,7 +37,7 @@ describe('StartExecutionService', () => {
 		const result = await service.start({
 			workflowId: 'wf-1',
 			graph: sampleGraph,
-			triggerPayload: { hello: 'world' },
+			triggerPayload: [[{ json: { hello: 'world' } }]],
 		});
 
 		expect(result.executionId).toBe('exec-id-1');
@@ -47,7 +47,7 @@ describe('StartExecutionService', () => {
 			status: 'queued',
 			mode: 'production',
 			graph: sampleGraph,
-			triggerPayload: { hello: 'world' },
+			triggerPayload: [[{ json: { hello: 'world' } }]],
 		});
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'execution:enqueued',
