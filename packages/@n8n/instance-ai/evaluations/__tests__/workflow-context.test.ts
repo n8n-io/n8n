@@ -63,7 +63,7 @@ describe('buildWorkflowContextBlock', () => {
 
 		expect(buildWorkflowContextBlock(wf)).toContain(
 			groupsJson([
-				{ name: 'Ingestion', description: 'Pulls the raw CSV', nodes: ['Fetch Data'] },
+				{ name: 'Ingestion', nodes: ['Fetch Data'], description: 'Pulls the raw CSV' },
 				{ name: 'Notify', nodes: ['Send Email'] },
 			]),
 		);

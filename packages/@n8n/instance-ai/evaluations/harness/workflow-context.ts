@@ -23,7 +23,7 @@ function renderNodeGroupLines(wf: WorkflowResponse): string[] {
 			groups.map((group) => ({
 				name: group.name,
 				nodes: group.nodeIds.flatMap((nodeId) => nameById.get(nodeId) ?? []),
-				...(group.description !== undefined ? { description: group.description } : {}),				
+				...(group.description !== undefined ? { description: group.description } : {}),
 			})),
 			null,
 			2,
