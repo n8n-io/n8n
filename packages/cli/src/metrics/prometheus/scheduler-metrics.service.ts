@@ -39,6 +39,7 @@ export class PrometheusSchedulerMetricsService
 	private tasksReclaimed!: promClient.Counter;
 	private tasksDeadLettered!: promClient.Counter;
 	private tasksPruned!: promClient.Counter;
+	private tasksLeaseLost!: promClient.Counter<'task_type'>;
 	private dispatchLagSeconds!: promClient.Histogram<'task_type'>;
 
 	constructor(
@@ -118,6 +119,12 @@ export class PrometheusSchedulerMetricsService
 		this.tasksPruned = new promClient.Counter({
 			name: `${prefix}scheduler_tasks_pruned_total`,
 			help: 'Total number of finished scheduler tasks deleted by retention.',
+		});
+
+		this.tasksLeaseLost = new promClient.Counter({
+			name: `${prefix}scheduler_tasks_lease_lost_total`,
+			help: 'Total number of scheduler tasks whose handler finished after the lease was reclaimed, so another instance may have run the same occurrence concurrently, by task type.',
+			labelNames: ['task_type'],
 		});
 
 		this.dispatchLagSeconds = new promClient.Histogram({
@@ -219,6 +226,12 @@ export class PrometheusSchedulerMetricsService
 	observeDispatchLagSeconds(taskType: string, seconds: number) {
 		if (this.initialized) {
 			this.dispatchLagSeconds.observe({ task_type: taskType }, seconds);
+		}
+	}
+
+	recordLeaseLost(taskType: string) {
+		if (this.initialized) {
+			this.tasksLeaseLost.inc({ task_type: taskType }, 1);
 		}
 	}
 
