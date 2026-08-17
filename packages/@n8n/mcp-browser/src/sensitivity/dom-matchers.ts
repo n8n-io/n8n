@@ -148,14 +148,20 @@ export function shannonEntropy(value: string): number {
 	return entropy;
 }
 
+export interface EntropyCandidate {
+	value: string;
+	/** False when the span is only the inner match, so it may be a fragment. */
+	delimited: boolean;
+}
+
 // Scored on the inner match, reported as the whole token: a shape this class
 // misses must not be split into fragments.
-export function highEntropyCandidates(text: string): string[] {
-	const spans = new Set<string>();
+export function highEntropyCandidates(text: string): EntropyCandidate[] {
+	const candidates = new Map<string, boolean>();
 	for (const match of text.matchAll(/[A-Za-z0-9_/+=-]{20,}/g)) {
-		if (shannonEntropy(match[0]) >= 4.5) {
-			spans.add(expandToTokenSpan(text, match.index, match[0].length).span);
-		}
+		if (shannonEntropy(match[0]) < 4.5) continue;
+		const { span, delimited } = expandToTokenSpan(text, match.index, match[0].length);
+		candidates.set(span, delimited || (candidates.get(span) ?? false));
 	}
-	return [...spans];
+	return [...candidates].map(([value, delimited]) => ({ value, delimited }));
 }

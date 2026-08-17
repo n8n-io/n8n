@@ -66,6 +66,14 @@ describe('expandToTokenSpan', () => {
 		expect(expand(`${run}abc123${run}`, 'abc123')).toBe('abc123');
 	});
 
+	// A long match that expansion never extended is its own token — nothing was
+	// guessed, so it must not be treated as undelimited (e.g. a PEM key).
+	it('treats a match that is already the whole run as delimited', () => {
+		const long = 'a'.repeat(600);
+
+		expect(delimited(`before ${long} after`, long)).toBe(true);
+	});
+
 	// Callers must be able to tell a whole token from a match they fell back to.
 	it('reports whether the token was delimited', () => {
 		expect(delimited('key AQ.abc123 rest', 'abc123')).toBe(true);

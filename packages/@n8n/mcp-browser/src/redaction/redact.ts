@@ -68,19 +68,34 @@ export function findRegexSecretHits(input: string): SecretHit[] {
 			// token, so record the whole token for capturing.
 			const { span, delimited } = expandToTokenSpan(input, match.index, value.length);
 			const existing = hits.get(key);
-			if (!existing) {
-				const hit: SecretHit = { type: slug, value };
-				if (span !== value) hit.captureValue = span;
-				if (!delimited) hit.captureBlocked = 'its surrounding text has no delimiter';
-				hits.set(key, hit);
-			} else if (span.length < (existing.captureValue ?? existing.value).length) {
-				// Narrowest wins: a wider span carries its neighbours into the value.
-				if (span === value) delete existing.captureValue;
-				else existing.captureValue = span;
-			}
+			if (existing) recordSpan(existing, span, delimited);
+			else hits.set(key, newHit(slug, value, span, delimited));
 		}
 	}
 	return [...hits.values()];
+}
+
+export const UNDELIMITED_TOKEN = 'its surrounding text has no delimiter';
+
+function newHit(slug: string, value: string, span: string, delimited: boolean): SecretHit {
+	const hit: SecretHit = { type: slug, value };
+	if (!delimited) hit.captureBlocked = UNDELIMITED_TOKEN;
+	else if (span !== value) hit.captureValue = span;
+	return hit;
+}
+
+/**
+ * An occurrence inside an undelimitable run says nothing about how far the token
+ * reaches, so only delimited ones count — and of those the narrowest wins, since
+ * a wider span carries its neighbours into the captured value.
+ */
+function recordSpan(hit: SecretHit, span: string, delimited: boolean): void {
+	if (!delimited) return;
+	const established = hit.captureBlocked ? undefined : (hit.captureValue ?? hit.value);
+	if (established !== undefined && span.length >= established.length) return;
+	delete hit.captureBlocked;
+	if (span === hit.value) delete hit.captureValue;
+	else hit.captureValue = span;
 }
 
 export type Replacement = readonly [value: string, marker: string];

@@ -34,6 +34,20 @@ describe('analyzeHtmlSensitivity', () => {
 		expect(result.ok && result.hits).toContainEqual({ type: 'google_api_key', value: key });
 	});
 
+	// The entropy pass needs the same fail-closed rule as the pattern pass: inside
+	// an undelimitable run its candidate is a fragment of the real token.
+	it('blocks capture of an entropy candidate whose token could not be delimited', () => {
+		const blob = 'aB3xY9zQ7wE2rT5yU8iO1pL4kJ6hG0fD'.repeat(20);
+		const key = `AQ.${'Zt7vLpQ9mKdW4xR2bNfH3jEuXaGoT5wPqYs1Bc'}`;
+		const result = analyzeHtmlSensitivity(
+			probe(`<div data-testid="api-key">${blob}${key}${blob}</div>`),
+		);
+		const hit = result.ok && result.hits.find((candidate) => candidate.type === 'secret');
+
+		expect(hit).toBeTruthy();
+		expect(hit && hit.captureBlocked).toBeTruthy();
+	});
+
 	// A key split across siblings is only visible in concatenated `textContent`,
 	// and redaction cannot replace it there — but the page must still count as
 	// sensitive, which is what gates screenshots.

@@ -7,6 +7,7 @@ import {
 	elementText,
 	hasButtonMatching,
 	highEntropyCandidates,
+	type EntropyCandidate,
 	isSensitiveInput,
 	getLabelTextByControlIdMap,
 	REVEAL_BUTTON_PATTERN,
@@ -18,7 +19,7 @@ import {
 	getTestId,
 } from './dom-matchers';
 import type { SecretHit } from '../redaction/redact';
-import { findRegexSecretHits } from '../redaction/redact';
+import { findRegexSecretHits, UNDELIMITED_TOKEN } from '../redaction/redact';
 import type { HtmlProbeNode, HtmlProbeResult } from '../types';
 
 export interface SensitivityOk {
@@ -43,6 +44,13 @@ function addHit(hits: Map<string, SecretHit>, hit: SecretHit): void {
 	// Keep the narrowest capture span, not whichever copy came last.
 	if (existing && spanOf(existing).length <= spanOf(hit).length) return;
 	hits.set(key, hit);
+}
+
+/** Undelimited candidates still redact, but must not become a credential. */
+function secretHit({ value, delimited }: EntropyCandidate): SecretHit {
+	return delimited
+		? { type: 'secret', value }
+		: { type: 'secret', value, captureBlocked: UNDELIMITED_TOKEN };
 }
 
 function spanOf(hit: SecretHit): string {
@@ -90,8 +98,8 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 		const hasRevealPhrase = REVEAL_PHRASE_PATTERNS.some((pattern) => pattern.test(text));
 		const hasCopyButton = hasButtonMatching(dialog, COPY_BUTTON_PATTERN);
 		if (!hasRevealPhrase && !hasCopyButton) continue;
-		for (const value of highEntropyCandidates(text)) {
-			addHit(hits, { type: 'secret', value });
+		for (const candidate of highEntropyCandidates(text)) {
+			addHit(hits, secretHit(candidate));
 		}
 	}
 
@@ -103,8 +111,8 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 		const testId = getTestId(el);
 		if (!testId || !SENSITIVE_TESTID_PATTERN.test(testId)) continue;
 		if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') continue;
-		for (const value of highEntropyCandidates(elementText(el))) {
-			addHit(hits, { type: 'secret', value });
+		for (const candidate of highEntropyCandidates(elementText(el))) {
+			addHit(hits, secretHit(candidate));
 		}
 	}
 
@@ -113,8 +121,8 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 	for (const el of Array.from(document.querySelectorAll('[aria-label], [aria-labelledby]'))) {
 		if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') continue;
 		if (!SENSITIVE_ARIA_LABEL_PATTERN.test(elementLabel(el, document))) continue;
-		for (const value of highEntropyCandidates(elementText(el))) {
-			addHit(hits, { type: 'secret', value });
+		for (const candidate of highEntropyCandidates(elementText(el))) {
+			addHit(hits, secretHit(candidate));
 		}
 	}
 
@@ -130,8 +138,8 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 		}
 		if (!container || container.matches('[role="dialog"], dialog[open]')) continue;
 		if (!hasButtonMatching(container, REVEAL_BUTTON_PATTERN)) continue;
-		for (const value of highEntropyCandidates(elementText(container))) {
-			addHit(hits, { type: 'secret', value });
+		for (const candidate of highEntropyCandidates(elementText(container))) {
+			addHit(hits, secretHit(candidate));
 		}
 	}
 
@@ -151,8 +159,8 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 			depth++;
 		}
 		if (!confident) continue;
-		for (const value of highEntropyCandidates(elementText(code))) {
-			addHit(hits, { type: 'secret', value });
+		for (const candidate of highEntropyCandidates(elementText(code))) {
+			addHit(hits, secretHit(candidate));
 		}
 	}
 }

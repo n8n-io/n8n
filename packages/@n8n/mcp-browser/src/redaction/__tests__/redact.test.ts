@@ -125,6 +125,40 @@ describe('BUILTIN_PATTERNS coverage', () => {
 	});
 });
 
+describe('capture safety', () => {
+	// Long secrets are exactly the ones worth capturing; a PEM match carries its
+	// own boundaries, so its length must not make it uncapturable.
+	// An occurrence inside an undelimitable run says nothing about the token's
+	// extent, so it must not overrule what a delimited occurrence established.
+	it('ignores an undelimited occurrence when a delimited one exists', () => {
+		const key = `AIza${'B'.repeat(35)}`;
+		const run = 'x'.repeat(600);
+
+		const [hit] = findRegexSecretHits(`id.${key} and ${run}${key}${run}`);
+
+		expect(hit.captureValue).toBe(`id.${key}`);
+		expect(hit.captureBlocked).toBeUndefined();
+	});
+
+	it('blocks capture when every occurrence is undelimited', () => {
+		const key = `AIza${'B'.repeat(35)}`;
+		const run = 'x'.repeat(600);
+
+		const [hit] = findRegexSecretHits(`${run}${key}${run} and ${run}${key}${run}`);
+
+		expect(hit.captureBlocked).toBeTruthy();
+	});
+
+	it('does not block capture of a PEM key longer than the span cap', () => {
+		const pem = `-----BEGIN RSA PRIVATE KEY-----\n${'MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSj\n'.repeat(14)}-----END RSA PRIVATE KEY-----`;
+
+		const [hit] = findRegexSecretHits(`Here is the key:\n${pem}\nkeep it safe`);
+
+		expect(pem.length).toBeGreaterThan(512);
+		expect(hit.captureBlocked).toBeUndefined();
+	});
+});
+
 describe('redactString', () => {
 	it('redacts issuer-shaped secrets', () => {
 		expect(redactString(`key=${ANTHROPIC}`)).toBe('key=[REDACTED:anthropic_api_key:1]');

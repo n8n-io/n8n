@@ -32,7 +32,10 @@ export function expandToTokenSpan(text: string, index: number, length: number): 
 	while (start < index && EDGES.test(text[start])) start++;
 	while (end > index + length && EDGES.test(text[end - 1])) end--;
 	if (end - start > MAX_SPAN) {
-		return { span: text.slice(index, index + length), delimited: false };
+		// A match expansion never extended carries its own boundaries (a PEM key),
+		// so nothing was guessed and it stays capturable.
+		const unextended = start === index && end === index + length;
+		return { span: text.slice(index, index + length), delimited: unextended };
 	}
 	return { span: text.slice(start, end), delimited: true };
 }
