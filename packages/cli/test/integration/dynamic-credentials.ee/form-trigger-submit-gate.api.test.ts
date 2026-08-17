@@ -129,7 +129,6 @@ const executionCountFor = async (workflowId: string) =>
 	await Container.get(ExecutionRepository).count({ where: { workflowId } });
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 = 'true';
 	formEndpoint = Container.get(GlobalConfig).endpoints.form;
 
 	// The webhook path is served by a real `WebhookServer` running the real Form
@@ -146,10 +145,6 @@ beforeAll(async () => {
 	const server = new WebhookServer();
 	await server.start();
 	agent = testAgent(server.app) as unknown as SuperAgentTest;
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2;
 });
 
 beforeEach(async () => {

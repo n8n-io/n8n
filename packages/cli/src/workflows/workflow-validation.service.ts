@@ -23,7 +23,6 @@ import type {
 } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
-import { isFormOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
@@ -420,14 +419,10 @@ export class WorkflowValidationService {
 
 	/**
 	 * Describes which triggers the system resolver currently accepts, for the
-	 * publish-error copy. Manual, chat, MCP, sub-workflow, and webhook triggers
-	 * always qualify; form only joins the list while the form OAuth2 flag is
-	 * enabled, mirroring `classifyTriggerIdentities`.
+	 * publish-error copy. Mirrors `classifyTriggerIdentities`.
 	 */
 	private getN8nUserAuthTriggersList(): string {
-		const formTrigger = isFormOAuth2Enabled() ? 'form or ' : '';
-
-		return `manual, chat, MCP, sub-workflow, and ${formTrigger}webhook triggers with n8n user authentication`;
+		return 'manual, chat, MCP, sub-workflow, and form or webhook triggers with n8n user authentication';
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
@@ -469,7 +464,6 @@ export class WorkflowValidationService {
 		let allTriggersProvideExternalIdentity = true;
 		let allTriggersProvideN8nIdentity = true;
 		let hasTrigger = false;
-		const formOAuth2Enabled = isFormOAuth2Enabled();
 
 		for (const node of nodes) {
 			if (node.disabled) continue;
@@ -485,7 +479,6 @@ export class WorkflowValidationService {
 			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
 				node.type,
 				node.parameters,
-				{ isFormOAuth2Enabled: formOAuth2Enabled },
 			);
 			allTriggersProvideExternalIdentity &&= providesExternalIdentity;
 			allTriggersProvideN8nIdentity &&= providesN8nIdentity;
