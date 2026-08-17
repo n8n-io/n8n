@@ -9,7 +9,11 @@ vi.mock('../components/WorkflowExecutionLogViewer.vue', () => ({
 	default: { template: '<div data-test-id="wf-log-viewer"></div>' },
 }));
 vi.mock('../components/ToolIoView.vue', () => ({
-	default: { template: '<div data-test-id="tool-io-view"></div>' },
+	default: {
+		name: 'ToolIoView',
+		props: ['input', 'nodeParameters'],
+		template: '<div data-test-id="tool-io-view"></div>',
+	},
 }));
 vi.mock('vue-markdown-render', () => ({
 	default: { template: '<div data-test-id="markdown"><slot /></div>' },
@@ -197,20 +201,24 @@ describe('SessionDetailPanel — workflow branches', () => {
 
 describe('SessionDetailPanel — HITL sequence', () => {
 	it('keeps the original node call focused on its input and configuration', () => {
+		const toolInput = { query: 'open entries' };
+		const nodeParameters = { operation: 'get', returnAll: true };
 		const w = mountIt({
 			kind: 'node',
 			executionId: 'e1',
 			timestamp: 0,
 			toolName: 'check_ledger',
-			toolInput: {},
+			toolInput,
 			toolOutcome: undefined,
 			nodeType: 'n8n-nodes-base.dataTableTool',
 			nodeTypeVersion: 1.1,
 			nodeDisplayName: 'Check ledger',
-			nodeParameters: { operation: 'get', returnAll: true },
+			nodeParameters,
 		});
 
-		expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(true);
+		const toolIoView = w.getComponent({ name: 'ToolIoView' });
+		expect(toolIoView.props('input')).toEqual(toolInput);
+		expect(toolIoView.props('nodeParameters')).toEqual(nodeParameters);
 		expect(w.find('[data-test-id="detail-hitl-response-badge"]').exists()).toBe(false);
 	});
 

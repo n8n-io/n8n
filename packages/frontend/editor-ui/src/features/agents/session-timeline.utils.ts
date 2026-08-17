@@ -390,7 +390,7 @@ function hitlResponseStatus(
 	response: unknown,
 	isLegacyResponse = false,
 ): HitlResponseStatus {
-	if (isRecord(response) && typeof response.approved === 'boolean') {
+	if (requestType === 'approval' && isRecord(response) && typeof response.approved === 'boolean') {
 		return response.approved ? 'approved' : 'declined';
 	}
 	if (isDeclinedToolOutput(response)) return 'declined';

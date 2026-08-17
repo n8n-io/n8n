@@ -148,7 +148,7 @@ describe('SessionTimelineTable', () => {
 	});
 
 	it.each(['tool', 'node', 'workflow'] as const)(
-		'shows an Error badge on failed %s calls',
+		'shows an Error badge only on failed %s calls',
 		(kind) => {
 			const w = mountTable({
 				items: [
@@ -159,12 +159,21 @@ describe('SessionTimelineTable', () => {
 						toolName: 'failed_tool',
 						toolOutcome: 'error',
 					},
+					{
+						kind,
+						executionId: 'e1',
+						timestamp: 2000,
+						toolName: 'successful_tool',
+						toolOutcome: 'success',
+					},
 				],
 				selectedIndex: null,
 				visibleKinds: new Set<string>(),
 			});
 
-			expect(w.get('[data-test-id="timeline-tool-error-badge"]').text()).toBe('Error');
+			const rows = w.findAll('[data-test-id="timeline-row"]');
+			expect(rows[0].get('[data-test-id="timeline-tool-error-badge"]').text()).toBe('Error');
+			expect(rows[1].find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
 		},
 	);
 

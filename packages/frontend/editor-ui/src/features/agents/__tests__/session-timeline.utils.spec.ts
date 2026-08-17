@@ -274,7 +274,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 			withTimeline(
 				[
 					hitlResponseEvent({
-						response: { type: 'button', value: 'approve' },
+						response: { approved: false },
 					}),
 					toolCallEvent({
 						name: 'chat_action',
@@ -300,7 +300,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		});
 		expect(items[2]).toMatchObject({
 			hitlResponseStatus: 'responded',
-			hitlResponse: { type: 'button', value: 'approve' },
+			hitlResponse: { approved: false },
 		});
 	});
 
