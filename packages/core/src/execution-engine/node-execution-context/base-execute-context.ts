@@ -23,9 +23,12 @@ import type {
 	IWorkflowDataProxyData,
 	ISourceData,
 	AiEvent,
+	ChunkType,
 	NodeConnectionType,
 	IExecuteFunctions,
 	ExecuteAgentWorkflowContext,
+	IDataObject,
+	StructuredChunk,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
@@ -45,6 +48,24 @@ import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 import { deepMerge } from '@/utils/deep-merge';
 
 import { NodeExecutionContext } from './node-execution-context';
+
+type ExecuteAgentFunction = NonNullable<IWorkflowExecuteAdditionalData['executeAgent']>;
+
+type ExecuteAgentWithInvocationContext = (
+	...args: [
+		...Parameters<ExecuteAgentFunction>,
+		invocationContext?: {
+			nodeId: string;
+			nodeName: string;
+			runIndex: number;
+			itemIndex: number;
+			sendResponseChunk?: (
+				type: 'begin' | 'item' | 'end' | 'error',
+				content?: string,
+			) => Promise<void>;
+		},
+	]
+) => ReturnType<ExecuteAgentFunction>;
 
 export class BaseExecuteContext extends NodeExecutionContext {
 	constructor(
@@ -240,7 +261,14 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			runExecutionData: this.runExecutionData,
 		};
 
-		return await this.additionalData.executeAgent(
+		const executeAgent: ExecuteAgentWithInvocationContext = this.additionalData.executeAgent;
+		const sendResponseChunk =
+			agentInfo.outputSchema === undefined && this.isStreaming()
+				? async (type: 'begin' | 'item' | 'end' | 'error', content?: string) =>
+						await this.sendChunk(type, itemIndex, content)
+				: undefined;
+
+		return await executeAgent(
 			source,
 			message,
 			executionId,
@@ -249,7 +277,47 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.additionalData.rootExecutionMode ?? this.getMode(),
 			agentInfo.outputSchema,
 			workflowContext,
+			{
+				nodeId: this.node.id,
+				nodeName: this.node.name,
+				runIndex: this.runIndex,
+				itemIndex,
+				...(sendResponseChunk ? { sendResponseChunk } : {}),
+			},
 		);
+	}
+
+	isStreaming(): boolean {
+		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
+		const hasHandlers = handlers !== undefined && handlers > 0;
+		const streamingEnabled = this.additionalData.streamingEnabled === true;
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated', 'chat'];
+
+		return hasHandlers && executionModeSupportsStreaming.includes(this.mode) && streamingEnabled;
+	}
+
+	async sendChunk(
+		type: ChunkType,
+		itemIndex: number,
+		content?: IDataObject | string,
+	): Promise<void> {
+		const metadata = {
+			nodeId: this.node.id,
+			nodeName: this.node.name,
+			itemIndex,
+			runIndex: this.runIndex,
+			timestamp: Date.now(),
+		};
+
+		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);
+
+		const message: StructuredChunk = {
+			type,
+			content: parsedContent,
+			metadata,
+		};
+
+		await this.additionalData.hooks?.runHook('sendChunk', [message]);
 	}
 
 	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {

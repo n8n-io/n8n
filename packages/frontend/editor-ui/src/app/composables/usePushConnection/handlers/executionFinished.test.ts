@@ -271,6 +271,7 @@ describe('executionFinished', () => {
 	it('should clear lastAddedExecutingNode when execution is finished', async () => {
 		const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 		workflowExecutionStateStore.executingNode.lastAddedExecutingNode = 'test-node';
+		vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue('1');
 
 		await executionFinished(
 			{
@@ -285,6 +286,7 @@ describe('executionFinished', () => {
 		);
 
 		expect(workflowExecutionStateStore.executingNode.lastAddedExecutingNode).toBeNull();
+		expect(workflowExecutionStateStore.clearAgentProgress).toHaveBeenCalled();
 	});
 
 	describe('ready-to-run AI workflow tracking', () => {

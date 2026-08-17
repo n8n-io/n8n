@@ -12,6 +12,7 @@ import type {
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 	WorkflowExpression,
+	IWorkflowBase,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
@@ -21,7 +22,7 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
+import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
@@ -415,6 +416,17 @@ describe('ExecuteContext', () => {
 	});
 
 	describe('executeAgent', () => {
+		type InvocationContext = {
+			nodeId: string;
+			nodeName: string;
+			runIndex: number;
+			itemIndex: number;
+			sendResponseChunk?: (
+				type: 'begin' | 'item' | 'end' | 'error',
+				content?: string,
+			) => Promise<void>;
+		};
+
 		const webhookNode: INode = {
 			id: 'webhook-node-id',
 			name: 'Webhook',
@@ -483,7 +495,101 @@ describe('ExecuteContext', () => {
 					],
 					runExecutionData,
 				},
+				{
+					nodeId: node.id,
+					nodeName: node.name,
+					runIndex,
+					itemIndex: 0,
+				},
 			);
+		});
+
+		it('passes a response chunk callback when workflow streaming is available', async () => {
+			const hooks = new ExecutionLifecycleHooks('manual', 'exec-1', mock<IWorkflowBase>());
+			const sendChunkHandler = vi.fn();
+			hooks.addHandler('sendChunk', sendChunkHandler);
+			const executeAgentMock = vi.fn().mockResolvedValue({ response: 'ok' });
+			const streamingAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				hooks,
+				rootExecutionMode: undefined,
+				streamingEnabled: true,
+			});
+			streamingAdditionalData.executeAgent =
+				executeAgentMock as IWorkflowExecuteAdditionalData['executeAgent'];
+			const streamingContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				streamingAdditionalData,
+				'manual',
+				runExecutionData,
+				2,
+				connectionInputData,
+				{ main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]] },
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await streamingContext.executeAgent({ agentId: 'agent-1' }, 'hello', 'exec-1', 1);
+			const invocationContext = executeAgentMock.mock.calls[0]?.[8] as InvocationContext;
+
+			expect(invocationContext).toMatchObject({
+				nodeId: node.id,
+				nodeName: node.name,
+				runIndex: 2,
+				itemIndex: 1,
+				sendResponseChunk: expect.any(Function),
+			});
+
+			await invocationContext.sendResponseChunk?.('item', 'partial');
+
+			expect(sendChunkHandler).toHaveBeenCalledWith({
+				type: 'item',
+				content: 'partial',
+				metadata: {
+					nodeId: node.id,
+					nodeName: node.name,
+					runIndex: 2,
+					itemIndex: 1,
+					timestamp: expect.any(Number),
+				},
+			});
+		});
+
+		it('omits the response chunk callback when structured output is configured', async () => {
+			const hooks = new ExecutionLifecycleHooks('manual', 'exec-1', mock<IWorkflowBase>());
+			hooks.addHandler('sendChunk', vi.fn());
+			const executeAgentMock = vi.fn().mockResolvedValue({ response: 'ok' });
+			const structuredAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				hooks,
+				rootExecutionMode: undefined,
+				streamingEnabled: true,
+			});
+			structuredAdditionalData.executeAgent =
+				executeAgentMock as IWorkflowExecuteAdditionalData['executeAgent'];
+			const structuredContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				structuredAdditionalData,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await structuredContext.executeAgent(
+				{ agentId: 'agent-1', outputSchema: { type: 'object' } },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			const invocationContext = executeAgentMock.mock.calls[0]?.[8] as InvocationContext;
+			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
 		});
 
 		it('passes all input items when inputDataScope is all', async () => {
@@ -511,6 +617,7 @@ describe('ExecuteContext', () => {
 					inputDataScope: 'all',
 					exposeWorkflowData: true,
 				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -555,6 +662,7 @@ describe('ExecuteContext', () => {
 				'manual',
 				undefined,
 				expect.objectContaining({ inputData: [{ json: { idx: 1 } }], inputDataScope: 'item' }),
+				expect.objectContaining({ itemIndex: 1, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -602,6 +710,7 @@ describe('ExecuteContext', () => {
 					inputData: [{ json: { idx: 0 } }, { json: { idx: 1 } }],
 					inputDataScope: 'all',
 				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -649,6 +758,7 @@ describe('ExecuteContext', () => {
 					inputData: [{ json: { branch: 0 } }, { json: { branch: 2 } }],
 					inputDataScope: 'all',
 				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -693,6 +803,7 @@ describe('ExecuteContext', () => {
 				'manual',
 				undefined,
 				expect.objectContaining({ inputData: [], inputDataScope: 'item' }),
+				expect.objectContaining({ itemIndex: 5, nodeId: node.id, runIndex }),
 			);
 		});
 	});

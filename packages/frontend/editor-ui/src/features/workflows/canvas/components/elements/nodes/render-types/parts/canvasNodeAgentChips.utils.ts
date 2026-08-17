@@ -2,6 +2,12 @@ import type { AgentCapabilitySummary, AgentCapabilityTool } from '@n8n/api-types
 import type { IconName } from '@n8n/design-system';
 import { formatToolNameForDisplay } from '@/features/agents/utils/toolDisplayName';
 import { MIN_GROUPED_TOOLS_PER_TYPE } from '@/features/agents/components/AgentCapabilitiesSection.utils';
+import {
+	skillIdActivityKey,
+	skillNameActivityKey,
+	toolActivityKey,
+	type AgentCapabilityActivityKey,
+} from '@/features/agents/utils/agentCapabilityActivity';
 
 export interface AgentCardChip {
 	/** Stable key for v-for and overflow dropdown item ids. */
@@ -9,6 +15,8 @@ export interface AgentCardChip {
 	/** Fallback design-system icon, used when `nodeType` is absent or unresolved. */
 	icon: IconName;
 	label: string;
+	/** Runtime identities that can activate this chip during an agent invocation. */
+	activityKeys: AgentCapabilityActivityKey[];
 	/**
 	 * Node type + version for node-tool chips, so the chip can render the node's
 	 * own icon (via `NodeIcon`) instead of the generic fallback. Absent for
@@ -39,6 +47,7 @@ function individualToolChip(tool: AgentCapabilityTool, index: number): AgentCard
 		icon: TOOL_ICONS[tool.type],
 		// Mirror the agent edit page, which humanizes every tool name.
 		label: formatToolNameForDisplay(tool.name),
+		activityKeys: [toolActivityKey(tool.name)],
 		nodeType: tool.nodeType,
 		nodeTypeVersion: tool.nodeTypeVersion,
 	};
@@ -86,6 +95,7 @@ function buildToolChips(
 					key: `tool:node:${nodeType}`,
 					icon: TOOL_ICONS.node,
 					label: `${group.length} ${nodeTypeLabels.get(nodeType)}`,
+					activityKeys: group.map(({ tool }) => toolActivityKey(tool.name)),
 					// All members share this node type, so the group chip shows its icon.
 					nodeType,
 					nodeTypeVersion: group[0].tool.nodeTypeVersion,
@@ -121,11 +131,17 @@ export function buildAgentCardChips(
 			key: `mcp:${server.name}`,
 			icon: 'mcp',
 			label: formatToolNameForDisplay(server.name),
+			activityKeys: [],
 		});
 	}
 
 	for (const skill of summary.skills) {
-		chips.push({ key: `skill:${skill.id}`, icon: 'sparkles', label: skill.name });
+		chips.push({
+			key: `skill:${skill.id}`,
+			icon: 'sparkles',
+			label: skill.name,
+			activityKeys: [skillIdActivityKey(skill.id), skillNameActivityKey(skill.name)],
+		});
 	}
 
 	return chips;

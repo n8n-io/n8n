@@ -19,7 +19,7 @@ const renderComponent = createComponentRenderer(CanvasNodeAgentChips, {
 });
 
 function chip(label: string, overrides: Partial<AgentCardChip> = {}): AgentCardChip {
-	return { key: `k:${label}`, icon: 'zap', label, ...overrides };
+	return { key: `k:${label}`, icon: 'zap', label, activityKeys: [], ...overrides };
 }
 
 beforeEach(() => {
@@ -67,5 +67,35 @@ describe('CanvasNodeAgentChips', () => {
 		});
 
 		expect(queryByTestId('chip-node-icon')).toBeNull();
+	});
+
+	it('marks a matching inline capability as active and busy', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				chips: [chip('Lookup', { activityKeys: ['tool:lookup'] })],
+				activeCapabilityKeys: new Set(['tool:lookup']),
+			},
+		});
+
+		const activeChip = getByTestId('canvas-node-agent-chip');
+		expect(activeChip).toHaveAttribute('aria-busy', 'true');
+		expect(activeChip.className).toContain('active');
+	});
+
+	it('marks the overflow pill active when a hidden capability is active', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				chips: [
+					chip('Visible', { activityKeys: ['tool:visible'] }),
+					chip('Hidden', { activityKeys: ['tool:hidden'] }),
+				],
+				maxInline: 1,
+				isReadOnly: true,
+				activeCapabilityKeys: new Set(['tool:hidden']),
+			},
+		});
+
+		const overflowChip = getByTestId('canvas-node-agent-chips-overflow');
+		expect(overflowChip).toHaveAttribute('aria-busy', 'true');
 	});
 });

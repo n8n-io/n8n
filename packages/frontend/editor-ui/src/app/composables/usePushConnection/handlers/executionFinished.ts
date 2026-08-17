@@ -107,6 +107,7 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 	if (!belongsToThisDocument) {
 		return;
 	}
+	workflowExecutionStateStore.clearAgentProgress();
 
 	const telemetry = useTelemetry();
 

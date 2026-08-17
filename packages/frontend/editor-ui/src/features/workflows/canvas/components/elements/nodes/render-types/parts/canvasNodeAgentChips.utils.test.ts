@@ -38,7 +38,10 @@ describe('buildAgentCardChips', () => {
 			tools: [{ type: 'node', name: 'send_telegram_message' }],
 		});
 
-		expect(buildAgentCardChips(summary)[0].label).toBe('Send telegram message');
+		expect(buildAgentCardChips(summary)[0]).toMatchObject({
+			label: 'Send telegram message',
+			activityKeys: ['tool:send_telegram_message'],
+		});
 	});
 
 	it('orders MCP servers between tools and skills, with the MCP icon', () => {
@@ -155,6 +158,21 @@ describe('buildAgentCardChips', () => {
 			label: '2 Telegram',
 			nodeType: 'n8n-nodes-base.telegramTool',
 			nodeTypeVersion: 1,
+			activityKeys: ['tool:send_message', 'tool:get_chat'],
 		});
+	});
+
+	it('uses skill id and name activity keys while leaving MCP inactive', () => {
+		const summary = makeSummary({
+			mcpServers: [{ name: 'notion-mcp' }],
+			skills: [{ id: 'skill-1', name: 'Research' }],
+		});
+
+		const chips = buildAgentCardChips(summary);
+		expect(chips.find((chip) => chip.key === 'mcp:notion-mcp')?.activityKeys).toEqual([]);
+		expect(chips.find((chip) => chip.key === 'skill:skill-1')?.activityKeys).toEqual([
+			'skill:id:skill-1',
+			'skill:name:Research',
+		]);
 	});
 });

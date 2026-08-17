@@ -47,6 +47,7 @@ const emit = defineEmits<{
 			},
 		]"
 		:disabled="props.disabled"
+		:aria-busy="props.active"
 		@click="emit('click', $event)"
 	>
 		<span v-if="props.icon || $slots.icon" :class="$style.iconWrapper">
@@ -98,6 +99,12 @@ const emit = defineEmits<{
 
 .default:not(:disabled):hover {
 	background-color: var(--background--hover);
+}
+
+.default.active:not(:disabled) {
+	border-color: color-mix(in srgb, var(--background--brand) 28%, var(--border-color--subtle));
+	background: color-mix(in srgb, var(--background--brand) 12%, var(--background--hover));
+	box-shadow: var(--shadow--xs);
 }
 
 .chip:disabled {

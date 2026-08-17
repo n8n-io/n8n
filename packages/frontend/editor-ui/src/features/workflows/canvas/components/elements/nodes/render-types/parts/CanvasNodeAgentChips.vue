@@ -7,14 +7,20 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import AgentChipButton from '@/features/agents/components/AgentChipButton.vue';
 import { type AgentCardChip, MAX_INLINE_AGENT_CHIPS } from './canvasNodeAgentChips.utils';
+import type { AgentCapabilityActivityKey } from '@/features/agents/utils/agentCapabilityActivity';
 
 const props = withDefaults(
 	defineProps<{
 		chips: AgentCardChip[];
 		maxInline?: number;
 		isReadOnly?: boolean;
+		activeCapabilityKeys?: ReadonlySet<AgentCapabilityActivityKey>;
 	}>(),
-	{ maxInline: MAX_INLINE_AGENT_CHIPS, isReadOnly: false },
+	{
+		maxInline: MAX_INLINE_AGENT_CHIPS,
+		isReadOnly: false,
+		activeCapabilityKeys: () => new Set<AgentCapabilityActivityKey>(),
+	},
 );
 
 const i18n = useI18n();
@@ -31,6 +37,9 @@ const inlineChips = computed(() =>
 	})),
 );
 const overflowChips = computed(() => props.chips.slice(props.maxInline));
+const isChipActive = (chip: AgentCardChip) =>
+	(chip.activityKeys ?? []).some((key) => props.activeCapabilityKeys.has(key));
+const isOverflowActive = computed(() => overflowChips.value.some(isChipActive));
 const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 	overflowChips.value.map((chip) => ({ id: chip.key, label: chip.label, icon: chip.icon })),
 );
@@ -43,6 +52,7 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			:key="chip.key"
 			:icon="chip.nodeTypeDescription ? undefined : chip.icon"
 			:clickable="false"
+			:active="isChipActive(chip)"
 			data-test-id="canvas-node-agent-chip"
 		>
 			<template v-if="chip.nodeTypeDescription" #icon>
@@ -53,6 +63,7 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 		<AgentChipButton
 			v-if="overflowChips.length && isReadOnly"
 			:clickable="false"
+			:active="isOverflowActive"
 			data-test-id="canvas-node-agent-chips-overflow"
 		>
 			{{
@@ -69,7 +80,7 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			data-test-id="canvas-node-agent-chips-overflow"
 		>
 			<template #activator>
-				<AgentChipButton>
+				<AgentChipButton :active="isOverflowActive">
 					{{
 						i18n.baseText('agentNode.card.moreChips', {
 							interpolate: { count: overflowChips.length },
