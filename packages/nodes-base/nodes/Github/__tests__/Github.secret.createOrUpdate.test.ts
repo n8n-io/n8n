@@ -104,9 +104,10 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 			expect(result[0].length).toBeGreaterThan(0);
 		});
 
-		it('should handle secret names that require URL encoding', async () => {
-			// Secret name with characters that need URL encoding (e.g., spaces become %20)
-			const secretNameWithSpecialChars = 'SECRET WITH SPACES';
+	});
+
+	describe('Secret CreateOrUpdate - Name Validation', () => {
+		const mockSecretParams = (secretName: string) => {
 			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
@@ -114,7 +115,7 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 						operation: 'createOrUpdate',
 						owner: 'test-owner',
 						repository: 'test-repo',
-						secretName: secretNameWithSpecialChars,
+						secretName,
 						secretValue: 'value',
 					};
 					return params[paramName] ?? fallback;
@@ -125,16 +126,36 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 				key_id: 'key-id',
 				key: 'public-key',
 			});
-
 			(GenericFunctions.encryptSecret as jest.Mock).mockResolvedValue('encrypted');
 			(GenericFunctions.githubApiRequest as jest.Mock).mockResolvedValue({});
+		};
+
+		it.each([
+			['a name containing spaces', 'SECRET WITH SPACES'],
+			['a name starting with a number', '1_SECRET'],
+			['a name containing a hyphen', 'MY-SECRET'],
+			['a name using the reserved GITHUB_ prefix', 'GITHUB_TOKEN'],
+		])('should reject %s before contacting the API', async (_label, secretName) => {
+			mockSecretParams(secretName);
+
+			await expect(github.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				`Secret name "${secretName}" is invalid`,
+			);
+
+			// The name is rejected locally, so no key lookup or encryption happens
+			expect(GenericFunctions.getRepositoryPublicKey).not.toHaveBeenCalled();
+			expect(GenericFunctions.encryptSecret).not.toHaveBeenCalled();
+			expect(GenericFunctions.githubApiRequest).not.toHaveBeenCalled();
+		});
+
+		it('should accept a valid secret name', async () => {
+			mockSecretParams('MY_SECRET_2');
 
 			await github.execute.call(mockExecuteFunctions);
 
-			// Verify the secret name is URL encoded in the API path
 			expect(GenericFunctions.githubApiRequest).toHaveBeenCalledWith(
 				'PUT',
-				'/repos/test-owner/test-repo/actions/secrets/SECRET%20WITH%20SPACES',
+				'/repos/test-owner/test-repo/actions/secrets/MY_SECRET_2',
 				expect.any(Object),
 				{},
 			);
