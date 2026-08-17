@@ -215,7 +215,7 @@ describe('$execution.mode inside a manually started run', () => {
 		expect(outputItems(execution, 'Only Test')).toHaveLength(1);
 	});
 
-	it('resolves to test inside a sub-workflow of a manual execution', async () => {
+	it('resolves to test and keeps filtered items inside a sub-workflow of a manual execution', async () => {
 		const childWorkflow = await createActiveWorkflow(
 			{
 				name: 'Mode Probe Sub-workflow',
@@ -244,6 +244,7 @@ describe('$execution.mode inside a manually started run', () => {
 
 		expect(childExecution.status).toBe('success');
 		expect(outputItems(childExecution, 'Report Mode')[0].json.executionMode).toBe('test');
+		expect(outputItems(childExecution, 'Only Test')).toHaveLength(1);
 	});
 
 	it('resolves to test two sub-workflow levels below a manual execution', async () => {
@@ -283,33 +284,5 @@ describe('$execution.mode inside a manually started run', () => {
 
 		expect(outputItems(grandchildExecution, 'Report Mode')[0].json.executionMode).toBe('test');
 		expect(outputItems(grandchildExecution, 'Only Test')).toHaveLength(1);
-	});
-
-	it('keeps items in a sub-workflow filter that tests for a manual run', async () => {
-		const childWorkflow = await createActiveWorkflow(
-			{
-				name: 'Mode Probe Sub-workflow',
-				...createModeProbeSubWorkflowFixture(),
-			} as unknown as IWorkflowDb,
-			owner,
-		);
-
-		const parentWorkflow = await createWorkflow(
-			{
-				name: 'Parent Workflow',
-				...createParentWorkflowFixture(childWorkflow.id),
-			} as unknown as IWorkflowDb,
-			owner,
-		);
-
-		await runManually(parentWorkflow);
-
-		const [childExecutionSummary] = await executionRepository.find({
-			where: { workflowId: childWorkflow.id },
-			order: { createdAt: 'DESC' },
-		});
-		const childExecution = await getExecutionWithData(childExecutionSummary.id);
-
-		expect(outputItems(childExecution, 'Only Test')).toHaveLength(1);
 	});
 });

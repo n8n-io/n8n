@@ -151,9 +151,9 @@ describe('getAdditionalKeys', () => {
 		expect(result.$execution?.mode).toBe('production');
 	});
 
-	it('should honour the root mode for any non-manual execution mode', () => {
-		const nodeToolData = { ...additionalData, rootExecutionMode: 'manual' as const };
-		const result = getAdditionalKeys(nodeToolData, 'internal', null);
+	it('should return test mode for an internal execution whose root execution is manual', () => {
+		const subWorkflowData = { ...additionalData, rootExecutionMode: 'manual' as const };
+		const result = getAdditionalKeys(subWorkflowData, 'internal', null);
 
 		expect(result.$execution?.mode).toBe('test');
 	});
