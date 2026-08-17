@@ -783,6 +783,30 @@ describe('CredentialEdit', () => {
 			expect(queryByText('Custom Scopes Notice')).not.toBeInTheDocument();
 		});
 
+		test('shows scope fields when enabled for the managed OAuth credential type', async () => {
+			const credentialsStore = setupManagedCapableStores({
+				grantType: 'authorizationCode',
+				customScopes: true,
+			});
+			credentialsStore.state.credentialTypes[discordOAuth2ApiManagedCapable.name] = {
+				...discordOAuth2ApiManagedCapable,
+				__showManagedOAuthScopes: true,
+			};
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'cred-2',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			expect(queryByText('Custom Scopes')).toBeInTheDocument();
+			expect(queryByText('Enabled Scopes')).toBeInTheDocument();
+		});
+
 		test('shows scope fields when managed OAuth is available but user has provided their own clientId/clientSecret', async () => {
 			const credentialsStore = setupManagedCapableStores({
 				grantType: 'authorizationCode',
