@@ -37,6 +37,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { Agent } from '../entities/agent.entity';
@@ -258,6 +259,19 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 });
 
 describe('AgentRuntimeReconstructionService — workspace attachment', () => {
+	const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+	const reconstructWithWorkspace = async (service: AgentRuntimeReconstructionService) =>
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity(),
+			mock<CredentialProvider>(),
+			'production',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			principalHash,
+		);
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
@@ -278,13 +292,14 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			agentWorkspaceService,
 		});
 
-		await service.reconstructFromAgentEntity(
-			makeAgentEntity(),
-			mock<CredentialProvider>(),
-			'production',
-		);
+		await reconstructWithWorkspace(service);
 
 		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
+		expect(agentWorkspaceService.getAgentWorkspace).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			principalHash,
+		);
 		expect(getInjectedToolNames()).not.toContain('find_file');
 	});
 
@@ -302,11 +317,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			agentWorkspaceService,
 		});
 
-		await service.reconstructFromAgentEntity(
-			makeAgentEntity(),
-			mock<CredentialProvider>(),
-			'production',
-		);
+		await reconstructWithWorkspace(service);
 
 		expect(getInjectedToolNames()).toEqual(
 			expect.arrayContaining(['find_file', 'search_text', 'read_file']),
@@ -355,14 +366,26 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			agentWorkspaceService,
 		});
 
+		await expect(reconstructWithWorkspace(service)).resolves.toEqual(
+			expect.objectContaining({ agent: builtAgent }),
+		);
+		expect(builtAgent.workspace).not.toHaveBeenCalled();
+	});
+
+	it('rejects a first-class runtime without a workspace principal', async () => {
+		const service = makeReconstructionService({
+			agentSandboxRuntimeService: mock<AgentSandboxRuntimeService>({
+				isEnabled: () => true,
+			}),
+		});
+
 		await expect(
 			service.reconstructFromAgentEntity(
 				makeAgentEntity(),
 				mock<CredentialProvider>(),
 				'production',
 			),
-		).resolves.toEqual(expect.objectContaining({ agent: builtAgent }));
-		expect(builtAgent.workspace).not.toHaveBeenCalled();
+		).rejects.toThrow('workspace scope is missing');
 	});
 });
 
