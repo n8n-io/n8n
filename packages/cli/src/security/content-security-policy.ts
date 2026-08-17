@@ -13,10 +13,7 @@ export const NONCE_PLACEHOLDER = '<nonce>';
  */
 export const HTML_NONCE_PLACEHOLDER = '{{CSP_NONCE}}';
 
-/**
- * Value either policy variable accepts to mean n8n's own policy, so an instance can
- * enforce it without transcribing it - and keep following it as n8n changes it.
- */
+/** Value either policy variable accepts to mean n8n's own policy, as n8n changes it. */
 export const DEFAULT_POLICY_KEYWORD = 'default';
 
 /** Value either policy variable accepts to mean "send no such header". */
@@ -44,9 +41,9 @@ const isDirectivesObject = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * Serialize a helmet.js style directives object into a policy string, keeping helmet's own
- * reading of the two special values: `null` drops the directive, and an empty array leaves
- * it valueless, e.g. `{ "upgrade-insecure-requests": [] }`.
+ * Serialize a helmet.js directives object into a policy string, keeping helmet's reading
+ * of two special values: `null` drops the directive, and an empty array leaves it
+ * valueless, e.g. `{ "upgrade-insecure-requests": [] }`.
  */
 const serializeDirectives = (directives: Record<string, unknown>) =>
 	Object.entries(directives)
@@ -59,12 +56,9 @@ const serializeDirectives = (directives: Record<string, unknown>) =>
 		.join('; ');
 
 /**
- * Parse a policy configured through an env var. Both formats are supported:
- * a helmet.js directives object (the historical format, unchanged) and a plain
- * policy string like the header itself.
- *
- * Returns `undefined` when nothing usable is configured, so the caller can fall
- * back to {@link DEFAULT_CONTENT_SECURITY_POLICY}.
+ * Parse a policy from an env var, in either the historical helmet.js directives object
+ * or a policy string. Returns `undefined` when nothing usable is configured, so the
+ * caller can fall back to {@link DEFAULT_CONTENT_SECURITY_POLICY}.
  */
 export const parseContentSecurityPolicy = (
 	rawValue: string,
@@ -96,23 +90,18 @@ export const parseContentSecurityPolicy = (
 };
 
 /**
- * Work out which CSP headers to send from the two env vars. Both hold a policy,
- * in either accepted format; `{}` or an empty value means "send no such header".
- *
- * Only the report-only var has a policy by default, so out of the box n8n
- * reports violations without being able to break a running instance.
+ * Decide which CSP headers to send from the two env vars. Only the report-only var
+ * holds a policy by default, so a new instance reports violations but cannot break
+ * on them.
  */
 export const resolveContentSecurityPolicies = (
 	rawPolicy: string,
 	rawReportOnly: string,
 	logger: Pick<Logger, 'warn'>,
 ): ContentSecurityPolicies => {
-	// It used to be a boolean. A bare `true` is not a policy, so say so rather than
-	// serving a header made of nonsense.
 	/**
-	 * An empty value or `{}` means the header is switched off, and is left alone.
-	 * A value that is set but unusable falls back, so a typo cannot quietly turn a
-	 * policy off - `fallback` is what is safe for that particular header.
+	 * An empty value or `{}` switches the header off. A value that is set but unusable
+	 * falls back instead, so a typo cannot quietly turn a policy off.
 	 */
 	const resolve = (rawValue: string, envVarName: string, fallback?: string) => {
 		const value = rawValue?.trim() ?? '';
@@ -121,10 +110,9 @@ export const resolveContentSecurityPolicies = (
 		return parseContentSecurityPolicy(value, envVarName, logger) ?? fallback;
 	};
 
-	// The variable was a boolean before it held a policy, and instances have been setting
-	// it that way since 1.100. A boolean is honoured one last time, with a warning, rather
-	// than read as a policy: `true` especially must not start enforcing a policy that the
-	// instance deliberately kept report-only.
+	// The variable held a boolean from 1.100 until it took a policy, so honor a boolean
+	// one last time with a warning. Read as a policy, `true` would start enforcing a
+	// policy that the instance deliberately kept report-only.
 	const reportOnlyValue = rawReportOnly?.trim() ?? '';
 	const legacyBoolean = LEGACY_TRUE.includes(reportOnlyValue.toLowerCase())
 		? true
@@ -134,7 +122,7 @@ export const resolveContentSecurityPolicies = (
 
 	if (legacyBoolean !== undefined) {
 		logger.warn(
-			`N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY=${reportOnlyValue} is deprecated: the variable now holds the policy to report on, in the same formats as N8N_CONTENT_SECURITY_POLICY. Honouring the old meaning for now - set it to a policy, or to \`{}\` to report on nothing.`,
+			`N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY=${reportOnlyValue} is deprecated: the variable now holds the policy to report on, in the same formats as N8N_CONTENT_SECURITY_POLICY. Honoring the old meaning for now - set it to a policy, or to \`{}\` to report on nothing.`,
 		);
 		const configured = resolve(rawPolicy, 'N8N_CONTENT_SECURITY_POLICY');
 
@@ -154,6 +142,5 @@ export const resolveContentSecurityPolicies = (
 	};
 };
 
-/** Substitute the per-request nonce into a policy. */
 export const renderContentSecurityPolicy = (policy: string, nonce: string) =>
 	policy.replaceAll(NONCE_PLACEHOLDER, `'nonce-${nonce}'`);

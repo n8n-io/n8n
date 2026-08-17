@@ -31,9 +31,9 @@ function renderClaimsSection(label: string, payload: Record<string, unknown>): s
 }
 
 /**
- * The close button's handler has to live in a script carrying the response's
- * Content-Security-Policy nonce: an inline `onclick` is refused by any policy with a
- * `script-src`, since a nonce cannot be attached to an event-handler attribute.
+ * The click handler lives in a script that carries the response's Content-Security-Policy
+ * nonce. An event-handler attribute such as `onclick` cannot carry a nonce, so a policy
+ * with `script-src` always refuses it.
  */
 function renderCloseButton(cspNonce: string): string {
 	return `<button id="close-window">You can close this window now</button>

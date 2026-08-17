@@ -8,11 +8,6 @@ import { createContentSecurityPolicyMiddleware } from '../content-security-polic
 const ENFORCED = 'content-security-policy';
 const REPORT_ONLY = 'content-security-policy-report-only';
 
-/**
- * An app with one route per kind of response the middleware has to deal with:
- * an HTML page, a JSON API response, and a page that sets its own policy the way
- * the webhook, form and binary-data routes do.
- */
 const setupApp = (policies: ContentSecurityPolicies) => {
 	const app = express();
 	app.use(createContentSecurityPolicyMiddleware(policies));

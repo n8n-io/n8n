@@ -53,8 +53,6 @@ describe('ToolResultRenderer', () => {
 			},
 		});
 
-		// An iframe, not an embed: `object-src 'none'` in the CSP refuses embeds. The media
-		// type comes from the data URI, so the element needs no `type` of its own.
 		const iframe = container.querySelector('iframe');
 		expect(iframe?.getAttribute('src')).toBe('data:application/pdf;base64,base64-pdf');
 		expect(container.querySelector('embed')).not.toBeInTheDocument();

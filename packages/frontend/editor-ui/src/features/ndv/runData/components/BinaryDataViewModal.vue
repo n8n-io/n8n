@@ -175,7 +175,7 @@ onBeforeUnmount(() => {
 					>
 
 					<!-- PDF -->
-					<!-- An iframe rather than an embed, so a `object-src 'none'` CSP does not refuse it -->
+					<!-- An iframe, not an embed: an `object-src 'none'` CSP refuses embeds -->
 					<iframe
 						v-else-if="binaryData.fileType === 'pdf'"
 						:src="embedSource"

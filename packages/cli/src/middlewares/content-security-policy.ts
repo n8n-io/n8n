@@ -7,10 +7,7 @@ import { renderContentSecurityPolicy } from '@/security/content-security-policy'
 declare global {
 	namespace Express {
 		interface Locals {
-			/**
-			 * Nonce for this request's Content-Security-Policy, to put on the `<script>` tags
-			 * of an HTML response. Guaranteed by `createContentSecurityPolicyMiddleware`.
-			 */
+			/** Nonce to put on the `<script>` tags of an HTML response. */
 			cspNonce: string;
 		}
 	}
@@ -28,16 +25,10 @@ const hasOwnPolicy = (res: Response) =>
 	res.hasHeader(ENFORCED_HEADER) || res.hasHeader(REPORT_ONLY_HEADER);
 
 /**
- * Serves the instance's Content-Security-Policy on HTML responses.
- *
- * A fresh nonce is generated per request and exposed as `res.locals.cspNonce`,
- * which is how the editor's `index.html` and the handlebars templates get the
- * nonce into their `<script>` tags.
- *
- * Responses that already carry a policy of their own - the `sandbox` policy on
- * webhook, form and binary-data pages - are left untouched, and non-HTML
- * responses are not given a policy at all. Both are decided when the response
- * headers are flushed, since neither is known when the middleware runs.
+ * Serves the instance's Content-Security-Policy on HTML responses that do not already
+ * set one, e.g. the `sandbox` policy on webhook, form and binary-data pages. The
+ * middleware checks both conditions at header-flush time, because neither is known
+ * when it runs.
  */
 export const createContentSecurityPolicyMiddleware = ({
 	enforced,
@@ -49,8 +40,8 @@ export const createContentSecurityPolicyMiddleware = ({
 		// `=` padding that a handlebars template would escape into `&#x3D;`.
 		const getNonce = () => (nonce ??= randomBytes(16).toString('base64url'));
 
-		// Lazy, so requests that never render HTML don't generate a nonce. Enumerable
-		// so `res.render` passes it to templates as `{{cspNonce}}`.
+		// Lazy, so requests that render no HTML generate no nonce. Enumerable, so
+		// `res.render` passes it to templates as `{{cspNonce}}`.
 		Object.defineProperty(res.locals, 'cspNonce', {
 			get: getNonce,
 			enumerable: true,

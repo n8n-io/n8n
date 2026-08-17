@@ -5,9 +5,9 @@ import { Config, Env } from '../decorators';
 const crossOriginOpenerPolicySchema = z.enum(['same-origin', 'same-origin-allow-popups']);
 
 /**
- * The [Level 3](https://web.dev/articles/strict-csp) policy n8n reports on out of the box.
+ * The [Level 3](https://web.dev/articles/strict-csp) policy n8n reports on by default.
  *
- * `<nonce>` is substituted with the response's nonce when the header is served (see
+ * `<nonce>` takes the response's nonce when n8n serves the header (see
  * `NONCE_PLACEHOLDER` in `packages/cli/src/security/content-security-policy.ts`).
  */
 export const DEFAULT_CONTENT_SECURITY_POLICY =
@@ -93,11 +93,11 @@ export class SecurityConfig {
 
 	/**
 	 * The policy n8n serves as `Content-Security-Policy-Report-Only`, in the same two formats
-	 * `N8N_CONTENT_SECURITY_POLICY` accepts. This header blocks nothing, so it is how a policy is
-	 * trialled before it is enforced - both headers report violations, only the enforced one blocks.
+	 * `N8N_CONTENT_SECURITY_POLICY` accepts. This header blocks nothing, so use it to try a
+	 * policy out first. Both headers report violations, but only the enforced one blocks.
 	 *
-	 * Defaults to n8n's Level 3 policy. Set to `default` for that policy explicitly, or to `{}` to
-	 * send no report-only header at all.
+	 * Defaults to n8n's Level 3 policy. Set it to `default` for that policy explicitly, or to
+	 * `{}` to send no report-only header.
 	 */
 	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY')
 	contentSecurityPolicyReportOnly: string = DEFAULT_CONTENT_SECURITY_POLICY;

@@ -81,12 +81,8 @@ export function applySandboxCSP(res: Response): void {
 }
 
 /**
- * Set the sandbox CSP header on a form page response, unless explicitly disabled.
- *
- * Use this for every HTML page served on a form endpoint, including the error and
- * status pages: they are rendered on paths a workflow author controls and can echo
- * workflow-supplied text, and leaving one without a policy makes it the weakest
- * page of the form flow.
+ * Set the sandbox CSP header on a form page response, unless an operator disabled it.
+ * Call this for every HTML page a form endpoint serves, error and status pages included.
  */
 export function applyFormSandboxCSP(res: Response): void {
 	if (isFormHtmlSandboxingDisabled()) return;

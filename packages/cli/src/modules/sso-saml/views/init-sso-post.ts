@@ -1,8 +1,8 @@
 import type { PostBindingContext } from 'samlify/types/src/entity';
 
 /**
- * The auto-submit script needs the response's Content-Security-Policy nonce, or a
- * policy with `script-src` refuses it and the login request is never sent.
+ * The auto-submit script needs the response's Content-Security-Policy nonce. Without it,
+ * a policy with `script-src` refuses the script and the browser sends no login request.
  */
 export function getInitSSOFormView(context: PostBindingContext, cspNonce: string): string {
 	return `

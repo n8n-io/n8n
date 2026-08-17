@@ -161,8 +161,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		let scriptsString = '';
 		if (hooksUrls) {
-			// The nonce placeholder is filled in per request, so these scripts are allowed
-			// by the `script-src` nonce in the Content-Security-Policy.
+			// The placeholder takes the request's nonce, so `script-src` allows these scripts.
 			scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
 				return `${acc}<script nonce="${HTML_NONCE_PLACEHOLDER}" src="${curr}"></script>`;
 			}, '');

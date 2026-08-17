@@ -41,8 +41,6 @@ describe('renderOidcTestSuccess', () => {
 		expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
 	});
 
-	// The close button's handler needs the nonce, and cannot be an inline `onclick`: a
-	// policy with `script-src` refuses event-handler attributes outright.
 	it('should close the window from a nonced script rather than an inline handler', () => {
 		const html = renderOidcTestSuccess({ claims, userInfo }, 'nonce-value');
 

@@ -206,9 +206,8 @@ export class Server extends AbstractServer {
 			next();
 		});
 
-		// Serve the CSP on the HTML pages below - the editor, the OAuth callbacks and the
-		// SAML test pages. Deliberately installed here, after the webhook and form routes
-		// that `AbstractServer` registers with their own `sandbox` policy.
+		// Installed here on purpose: `AbstractServer` already registered the webhook and
+		// form routes, which serve their own `sandbox` policy.
 		const securityConfig = Container.get(SecurityConfig);
 		this.app.use(
 			createContentSecurityPolicyMiddleware(
@@ -408,8 +407,8 @@ export class Server extends AbstractServer {
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
 			const crossOriginOpenerPolicy = Container.get(SecurityConfig).crossOriginOpenerPolicy;
-			// The CSP is served by `createContentSecurityPolicyMiddleware` instead, which can
-			// inject a per-request nonce and leaves responses that carry their own policy alone.
+			// `createContentSecurityPolicyMiddleware` serves the CSP instead: helmet cannot
+			// inject a per-request nonce.
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: false,
 				xFrameOptions:
@@ -448,9 +447,8 @@ export class Server extends AbstractServer {
 			].filter((u) => !!u);
 			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
 
-			// `index.html` is compiled into the static cache dir at startup and does not
-			// change while n8n runs, so read it once and keep it split around the nonce
-			// placeholders - serving a request is then just a join.
+			// `index.html` does not change while n8n runs. Read it once and keep it split
+			// around the nonce placeholders, so serving a request is only a join.
 			let indexHtmlParts: string[] | undefined;
 			const indexHtmlTemplate = async () => {
 				indexHtmlParts ??= (await readFile(resolve(staticCacheDir, 'index.html'), 'utf8')).split(
@@ -464,9 +462,9 @@ export class Server extends AbstractServer {
 					method,
 					headers: { accept },
 				} = req;
-				// A request with no `Accept` counts as wanting the page: this handler is the only
-				// one that fills in the nonce placeholders, and falling through to `express.static`
-				// would serve `index.html` with its placeholders intact, unrunnable under the CSP.
+				// A request with no `Accept` also gets the page. Only this handler fills in the
+				// nonce placeholders, so `express.static` would serve `index.html` with the
+				// placeholders intact, and no script on it could run under the CSP.
 				if (
 					method === 'GET' &&
 					(!accept || accept.includes('text/html') || accept.includes('*/*')) &&
@@ -484,9 +482,8 @@ export class Server extends AbstractServer {
 						return;
 					}
 
-					// Give the scripts n8n ships the request's nonce, so `strict-dynamic` lets
-					// them run. Only the placeholders the build put there are replaced - markup
-					// that arrived some other way must not get a nonce.
+					// Only the placeholders the build wrote get the nonce. Markup that arrived
+					// any other way must not get one.
 					securityHeadersMiddleware(req, res, () => {
 						res.type('html').send(template.join(res.locals.cspNonce));
 					});

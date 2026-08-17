@@ -14,8 +14,6 @@ describe('getInitSSOFormView', () => {
 	it('should put the nonce on the auto-submit script', () => {
 		const html = getInitSSOFormView(context, 'nonce-value');
 
-		// Without the nonce, a policy with `script-src` refuses the script and the login
-		// request is never posted to the IdP.
 		expect(html).toContain('<script type="text/javascript" nonce="nonce-value">');
 	});
 

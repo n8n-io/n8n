@@ -429,7 +429,6 @@ describe('BinaryDataViewModal.vue', () => {
 			});
 
 			await waitFor(() => {
-				// An iframe, not an embed: `object-src 'none'` in the CSP refuses embeds
 				const iframe = container.querySelector('iframe');
 				expect(iframe).toBeInTheDocument();
 				expect(iframe?.classList.contains('binary-data')).toBe(true);

@@ -5,12 +5,8 @@ import { TEMPLATES_DIR } from '@/constants';
 import { createContentSecurityPolicyMiddleware } from '@/middlewares/content-security-policy';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 
-/**
- * The pages n8n renders from a handlebars template read the nonce out of `res.locals`
- * as `{{cspNonce}}`. These tests render the real templates through the same view engine
- * `AbstractServer` sets up, so the wiring cannot silently break and leave the scripts on
- * those pages without a nonce.
- */
+// Rendered through the same view engine `AbstractServer` sets up, so a break in the
+// `{{cspNonce}}` wiring cannot leave these pages' scripts without a nonce.
 const TEMPLATES_WITH_SCRIPTS = [
 	'oauth-callback',
 	'oauth-error-callback',

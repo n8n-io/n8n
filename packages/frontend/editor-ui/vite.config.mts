@@ -102,9 +102,9 @@ const plugins: UserConfig['plugins'] = [
 		},
 	},
 	{
-		// Mark the scripts we ship as ours, so the backend can hand them the request's
-		// Content-Security-Policy nonce (`HTML_NONCE_PLACEHOLDER` in packages/cli).
-		// Build output only - the dev server has no CSP to satisfy.
+		// Marks the scripts n8n ships, so the backend can give them the request's nonce
+		// (`HTML_NONCE_PLACEHOLDER` in packages/cli). Build output only: the dev server
+		// serves no CSP.
 		name: 'csp-nonce',
 		transformIndexHtml(html, ctx) {
 			if (ctx.server) return html;

@@ -54,9 +54,8 @@ describe('parseContentSecurityPolicy', () => {
 			expect(parse('{"frame-ancestors":"\'none\'"}')).toBe("frame-ancestors 'none'");
 		});
 
-		// In helmet.js `null` switches a directive off, so an instance using it to drop one
-		// must not end up with the directive present and empty - `script-src` with nothing
-		// allowed refuses every script on the page.
+		// A directive kept but left empty would allow nothing: `script-src` alone refuses
+		// every script on the page.
 		it('should drop a directive set to null, as helmet.js does', () => {
 			expect(parse('{"frame-ancestors":["\'none\'"],"script-src":null}')).toBe(
 				"frame-ancestors 'none'",
@@ -92,7 +91,7 @@ describe('resolveContentSecurityPolicies', () => {
 	const resolve = (policy: string, reportOnly: string) =>
 		resolveContentSecurityPolicies(policy, reportOnly, logger);
 
-	/** What each variable holds when the operator has not set it. */
+	// What each variable holds when the operator sets neither.
 	const UNSET_POLICY = '{}';
 	const UNSET_REPORT_ONLY = DEFAULT_CONTENT_SECURITY_POLICY;
 
@@ -205,8 +204,6 @@ describe('resolveContentSecurityPolicies', () => {
 		});
 	});
 
-	// The helmet.js format predates this feature. These cases pin its behaviour so the
-	// backwards-compatible path cannot drift.
 	describe('with a policy configured as a helmet.js directives object', () => {
 		const helmetJson = '{"frame-ancestors":["http://localhost:3000"]}';
 		const policy = 'frame-ancestors http://localhost:3000';
