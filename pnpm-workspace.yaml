@@ -296,3 +296,5 @@ minimumReleaseAgeExclude:
   # installing before the 3-day minimumReleaseAge so agents/evals aren't stuck on
   # the unknown-model 4096 max_tokens default.
   - '@ai-sdk/anthropic'
+  # Security patch (Aikido) newer than the minimumReleaseAge window; allow it in.
+  - '@xmldom/xmldom'

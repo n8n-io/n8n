@@ -40,4 +40,11 @@ describe('instance ai browser use telemetry', () => {
 		expect(track).toHaveBeenCalledTimes(1);
 		expect(track).toHaveBeenCalledWith('Instance AI Open Browser Use Extension button clicked');
 	});
+
+	test('tracks a direct connect request', () => {
+		useInstanceAiBrowserUseTelemetry().trackDirectConnectRequested();
+
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith('Instance AI Browser Use direct connect requested');
+	});
 });

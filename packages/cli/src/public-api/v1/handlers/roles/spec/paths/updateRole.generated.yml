@@ -1,0 +1,52 @@
+operationId: updateRole
+tags:
+  - Role
+summary: Update a custom role
+description: Replaces a custom role's display name, description, and scopes. System roles cannot be updated.
+x-required-scope: role:manage,role:manageProject
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: slug
+    in: path
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          displayName:
+            type: string
+            minLength: 2
+            maxLength: 100
+          description:
+            type: string
+            nullable: true
+            maxLength: 500
+          scopes:
+            type: array
+            items:
+              type: string
+        required:
+          - displayName
+          - description
+          - scopes
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/rolePublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

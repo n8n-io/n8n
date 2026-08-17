@@ -41,6 +41,47 @@ export class StaleRefError extends McpBrowserError {
 	}
 }
 
+const RESUME_AFTER_SESSION_LOST =
+	'the session went down with the tab, so call browser_connect first, then redo the step in a fresh tab';
+
+/** Chrome will not re-grant debugger access to this tab; recovery means a fresh one. */
+export class ExtensionConflictError extends McpBrowserError {
+	static tabLost(blockingExtensionIds: string[]): ExtensionConflictError {
+		return new ExtensionConflictError(blockingExtensionIds, true);
+	}
+
+	static sessionLost(blockingExtensionIds: string[]): ExtensionConflictError {
+		return new ExtensionConflictError(blockingExtensionIds, false);
+	}
+
+	private constructor(
+		readonly blockingExtensionIds: string[],
+		sessionAlive: boolean,
+	) {
+		const which =
+			blockingExtensionIds.length > 0
+				? `another browser extension (${blockingExtensionIds.join(', ')})`
+				: 'another browser extension';
+		// Opposite advice per case: reconnecting is rejected while the session is up,
+		// and required once it is down.
+		const resume = sessionAlive
+			? 'open a fresh tab with browser_tab_open and redo the step there — do not call browser_connect, the session is still live'
+			: RESUME_AFTER_SESSION_LOST;
+		super(
+			`This tab can no longer be automated — it was blocked by ${which}`,
+			'Chrome stops automating a tab as soon as another extension opens a frame in it — a ' +
+				'password manager showing its autofill menu does exactly that. This tab cannot be ' +
+				'recovered and anything already typed into it is lost. Dismissing the menu does not ' +
+				'help: it reappears the moment the field is focused again, so a retry fails the same ' +
+				'way. In your reply, explain this and offer the user both ways forward: (1) they ' +
+				`turn that extension off for this site and tell you once done, after which ${resume}; ` +
+				'or (2) they finish this step themselves in the browser. If you were capturing a ' +
+				'credential, (2) means the value never comes back through the page — stop using ' +
+				'browser tools for it and let the user enter it through n8n credential setup instead.',
+		);
+	}
+}
+
 export class UnsupportedOperationError extends McpBrowserError {
 	constructor(
 		readonly operation: string,
@@ -73,6 +114,7 @@ export type ConnectionLostReason =
 	| 'browser_closed'
 	| 'extension_disconnected'
 	| 'debugger_detached'
+	| 'blocked_by_extension'
 	| 'network_error'
 	| 'heartbeat_timeout';
 
@@ -80,15 +122,21 @@ const connectionLostMessages: Record<ConnectionLostReason, string> = {
 	browser_closed: 'The browser was closed',
 	extension_disconnected: 'The browser extension disconnected',
 	debugger_detached: 'The Chrome debugger was detached (banner dismissed or DevTools closed)',
+	blocked_by_extension: 'Another browser extension blocked automation of the tab',
 	network_error: 'The connection to the browser extension was lost',
 	heartbeat_timeout: 'The browser extension stopped responding',
+};
+
+/** Reasons that override the default "just reconnect" hint. */
+const connectionLostHints: Partial<Record<ConnectionLostReason, string>> = {
+	blocked_by_extension: `Another extension blocked that tab — ${RESUME_AFTER_SESSION_LOST}.`,
 };
 
 export class ConnectionLostError extends McpBrowserError {
 	constructor(readonly reason: ConnectionLostReason) {
 		super(
 			`Browser connection lost: ${connectionLostMessages[reason]}`,
-			'Call browser_connect to reconnect.',
+			connectionLostHints[reason] ?? 'Call browser_connect to reconnect.',
 		);
 	}
 }

@@ -22,7 +22,7 @@ describe('SlackIntegration', () => {
 	const createSlackAdapter = vi.fn();
 
 	beforeEach(() => {
-		integration = new SlackIntegration();
+		integration = new SlackIntegration(mock<AgentRepository>());
 		createSlackAdapter.mockReset();
 		createSlackAdapter.mockReturnValue({ marker: 'adapter' });
 		mockedLoadSlackAdapter.mockReset();
