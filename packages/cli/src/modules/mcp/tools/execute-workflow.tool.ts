@@ -344,9 +344,12 @@ const resolveExecuteWorkflowTrigger = (
 	const available = formatTriggerNames(eligible);
 
 	if (inputs && !triggerNodeName) {
+		// Checked here too: with no eligible trigger, `available` is "none", so asking
+		// for a name would leave the caller nothing to act on.
+		if (eligible.length === 0) throw noEligibleTriggerError(executionMode);
 		throw new WorkflowAccessError(
 			`Provide triggerNodeName when passing inputs. Available triggers: ${available}.`,
-			'unsupported_trigger',
+			'invalid_inputs',
 		);
 	}
 
@@ -386,17 +389,12 @@ const resolveExecuteWorkflowTrigger = (
 		return noPayloadTriggers[0];
 	}
 
-	if (eligible.length === 0) {
-		throw new WorkflowAccessError(
-			`This workflow has no trigger that can be executed in ${executionMode} mode. Supported triggers: ${getSupportedTriggerNamesForMode(executionMode).join(', ')}.`,
-			'unsupported_trigger',
-		);
-	}
+	if (eligible.length === 0) throw noEligibleTriggerError(executionMode);
 
 	if (eligible.every((node) => triggerRequiresInputs(node.type))) {
 		throw new WorkflowAccessError(
 			`Provide triggerNodeName and inputs to execute this workflow. Available triggers: ${available}.`,
-			'unsupported_trigger',
+			'invalid_inputs',
 		);
 	}
 
@@ -440,6 +438,16 @@ const inputsMatchTrigger = (nodeType: string, inputs: WorkflowInputs): boolean =
 
 const formatTriggerNames = (nodes: INode[]): string =>
 	nodes.length > 0 ? nodes.map((node) => node.name).join(', ') : 'none';
+
+/**
+ * Raised when the workflow holds no trigger this mode can drive. Names the supported
+ * types rather than the workflow's own triggers, since there are none to list.
+ */
+const noEligibleTriggerError = (executionMode: ExecutionMode): WorkflowAccessError =>
+	new WorkflowAccessError(
+		`This workflow has no trigger that can be executed in ${executionMode} mode. Supported triggers: ${getSupportedTriggerNamesForMode(executionMode).join(', ')}.`,
+		'unsupported_trigger',
+	);
 
 /**
  * Gets the execution mode based on the trigger node type.
