@@ -1,5 +1,10 @@
 import type { IDataObject, INodeParameters, INodeType, INodeTypes } from 'n8n-workflow';
-import { Workflow, WEBHOOK_RESOLVERS, webhookDescriptionIsNativelyResolvable } from 'n8n-workflow';
+import {
+	Workflow,
+	WEBHOOK_RESOLVERS,
+	nodeParametersAreStatic,
+	webhookDescriptionIsNativelyResolvable,
+} from 'n8n-workflow';
 
 import { defaultWebhookDescription } from '../description';
 import { Webhook } from '../Webhook.node';
@@ -18,14 +23,14 @@ const nodeTypes: INodeTypes = {
 	getKnownTypes: () => ({}) as IDataObject,
 };
 
-const nodeWithParameters = (parameters: INodeParameters) => {
+const nodeWithParameters = (parameters: INodeParameters, typeVersion = 2.1) => {
 	const workflow = new Workflow({
 		id: '1',
 		nodes: [
 			{
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
-				typeVersion: 2.1,
+				typeVersion,
 				id: 'webhook-1',
 				position: [0, 0],
 				parameters,
@@ -115,5 +120,25 @@ describe('defaultWebhookDescription', () => {
 				expect(native).toEqual(viaEngine);
 			});
 		});
+	});
+});
+
+describe('triggerConditions (v2.2)', () => {
+	it('keeps node parameters static so the webhook-phase isolate skip holds', () => {
+		const { node } = nodeWithParameters(
+			{
+				options: {
+					triggerConditions: {
+						conditions: [
+							{ source: 'body', property: 'campaign.id', operator: 'equals', value: 'invite' },
+							{ source: 'query', property: 'limit', operator: 'gt', value: '10' },
+						],
+					},
+				},
+			},
+			2.2,
+		);
+
+		expect(nodeParametersAreStatic(node)).toBe(true);
 	});
 });
