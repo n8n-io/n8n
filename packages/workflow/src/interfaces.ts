@@ -413,6 +413,16 @@ export interface ICredentialType {
 	 * Opt-in. Existing credentials without this flag are unaffected.
 	 */
 	restrictToSupportedNodes?: true;
+
+	/**
+	 * If `true`, the domain restriction fields will not be shown in the credential type properties.
+	 */
+	hideDomainRestrictionFields?: boolean;
+
+	/**
+	 * If `true`, the credential type will not be shown in the credentials add modal
+	 */
+	hidden?: boolean;
 }
 
 export interface ICredentialTypes {
