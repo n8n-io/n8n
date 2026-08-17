@@ -1,4 +1,4 @@
-// Modal keys move to the feature that owns them (CAT-3688). Only the three
+// Modal keys belong to the feature that owns them. Only the three
 // dialog result sentinels stay here. To read the removal policy, see PR #36324.
 export const MODAL_CANCEL = 'cancel';
 export const MODAL_CONFIRM = 'confirm';
