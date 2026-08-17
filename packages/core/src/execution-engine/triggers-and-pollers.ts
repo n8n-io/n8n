@@ -42,17 +42,18 @@ const classifyPollError = (error: unknown): PollErrorKind => {
 	return 'thrown';
 };
 
+type PollTickBase = {
+	nodeType: string;
+	durationMs: number;
+	/** Whether another tick for the same node was still in flight in this process when this one started. */
+	overlapped: boolean;
+};
+
 export type PollTickEventMap = {
 	/** One `poll()` call finished, successfully or not. */
-	'poll-tick-completed': {
-		nodeType: string;
-		status: 'success' | 'error';
-		/** Only present when `status` is `error`. */
-		errorKind?: PollErrorKind;
-		durationMs: number;
-		/** Whether another tick for the same node was still in flight in this process when this one started. */
-		overlapped: boolean;
-	};
+	'poll-tick-completed':
+		| (PollTickBase & { status: 'success' })
+		| (PollTickBase & { status: 'error'; errorKind: PollErrorKind });
 };
 
 @Service()

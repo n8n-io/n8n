@@ -68,18 +68,18 @@ export class PrometheusPollTriggerMetricsService implements PrometheusMetricsCol
 			buckets: DURATION_BUCKETS_SECONDS,
 		});
 
-		this.triggersAndPollers.events.on(
-			'poll-tick-completed',
-			({ nodeType, status, errorKind, durationMs, overlapped }) => {
-				tickDuration.observe({ node_type: nodeType, status }, durationMs / 1000);
-				if (status === 'error') {
-					tickErrors.inc({ node_type: nodeType, kind: errorKind ?? 'thrown' });
-				}
-				if (overlapped) {
-					overlappingTicks.inc({ node_type: nodeType });
-				}
-			},
-		);
+		this.triggersAndPollers.events.on('poll-tick-completed', (tick) => {
+			tickDuration.observe(
+				{ node_type: tick.nodeType, status: tick.status },
+				tick.durationMs / 1000,
+			);
+			if (tick.status === 'error') {
+				tickErrors.inc({ node_type: tick.nodeType, kind: tick.errorKind });
+			}
+			if (tick.overlapped) {
+				overlappingTicks.inc({ node_type: tick.nodeType });
+			}
+		});
 
 		this.eventService.on('poll-cursor-commit-settled', ({ operation, result, durationMs }) => {
 			cursorCommits.inc({ operation, result });
