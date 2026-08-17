@@ -50,16 +50,18 @@ export class WorkflowPublicationOutboxWorkerPool {
 		while (this.activeWorkers.size < concurrency) this.spawnWorker();
 	}
 
-	/** Resolves once the pool is idle, with the first worker error observed. */
+	/** Resolves once the pool is idle, with one of the worker errors if any
+	 * pass failed (which one is arbitrary; every failure is already handed to
+	 * `onWorkerError` at the source). */
 	async awaitIdle(): Promise<Error | null> {
-		let firstError: Error | null = null;
+		let error: Error | null = null;
 		// Loop: a follow-up pass (see `wakeRequested`) can repopulate the pool
 		// after the currently observed workers settle.
 		while (this.activeWorkers.size > 0) {
 			const outcomes = await Promise.all([...this.activeWorkers]);
-			firstError ??= outcomes.find((outcome) => outcome !== null) ?? null;
+			error ??= outcomes.find((outcome) => outcome !== null) ?? null;
 		}
-		return firstError;
+		return error;
 	}
 
 	private spawnWorker() {

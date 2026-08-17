@@ -175,7 +175,7 @@ export class WorkflowPublicationOutboxConsumer {
 	 * record delays it (bounded by the abort/abandon deadline) — but not the
 	 * processing of other records, which the remaining slots keep serving.
 	 * Rejects once the pool idles if a worker pass failed, with an error
-	 * wrapping the first failure. The pool has already reported the underlying
+	 * wrapping one of the failures. The pool has already reported the underlying
 	 * error (exactly once, at the source); the rejection exists so awaiting
 	 * callers can fail their own operation (e.g. the reconciler's failure
 	 * telemetry) — they report their layer's outcome, never the pool's error.
