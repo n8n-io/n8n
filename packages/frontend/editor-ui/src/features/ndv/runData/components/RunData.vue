@@ -220,7 +220,7 @@ const userEnabledShowData = ref(false);
 const outputIndex = ref(0);
 const binaryDataDisplayData = ref<IBinaryData | null>(null);
 const currentPage = ref(1);
-const pageSize = ref(10);
+const pageSize = ref(RUN_DATA_DEFAULT_PAGE_SIZE);
 const previousExecutionDataUsedInEditMode = ref<boolean>(false);
 
 const pinDataDiscoveryTooltipVisible = ref(false);
@@ -2208,7 +2208,7 @@ defineExpose({ enterEditMode });
 				hasNodeRun &&
 				!hasRunError &&
 				displayMode !== 'binary' &&
-				dataCount > 10 &&
+				dataCount > pageSize &&
 				!isSchemaView &&
 				!isArtificialRecoveredEventItem
 			"
