@@ -1584,22 +1584,20 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			.spyOn(useMCPStore(), 'toggleAgentMcpAccess')
 			.mockReturnValueOnce(mcpSave.promise);
 
-		vi.useFakeTimers();
-		try {
-			wrapper
-				.findComponent({ name: 'AgentBuilderEditorColumn' })
-				.vm.$emit('toggle-mcp-access', true);
-			await nextTick();
-			await vi.advanceTimersByTimeAsync(500);
-			expect(toggleAgentMcpAccess).toHaveBeenCalledExactlyOnceWith('a2', true);
-		} finally {
-			vi.useRealTimers();
-		}
+		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('toggle-mcp-access', true);
+		await nextTick();
+		const autosave = (
+			wrapper.vm as unknown as { flushAutosave: () => Promise<void> }
+		).flushAutosave();
+		await vi.waitFor(() =>
+			expect(toggleAgentMcpAccess).toHaveBeenCalledExactlyOnceWith('a2', true),
+		);
 
 		await wrapper.setProps({ artifactAgentId: 'a3', artifactAgentPending: true });
 		await flushPromises();
 		await wrapper.setProps({ artifactAgentPending: false });
 		mcpSave.resolve({ updatedCount: 1, updatedIds: ['a2'], unchangedIds: [] });
+		await autosave;
 		await flushPromises();
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p2', 'a3');
