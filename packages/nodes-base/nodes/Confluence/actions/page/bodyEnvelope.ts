@@ -42,7 +42,8 @@ export function bodyProperties(operations: string[]): INodeProperties[] {
 			type: 'string',
 			typeOptions: { rows: 4 },
 			default: '',
-			description: 'Page content as plain text; each line becomes a paragraph',
+			description:
+				'Page content as plain text; each line becomes a paragraph. Blank lines and leading whitespace are removed.',
 			displayOptions: { show: { ...show, bodyFormat: ['plainText'] } },
 		},
 		{
