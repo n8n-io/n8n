@@ -1,4 +1,4 @@
-import { Agent, ProxyAgent } from 'undici';
+import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici';
 import type { MockedFunction } from 'vitest';
 
 import { getNodeProxyAgent, getProxyAgent, proxyFetch } from 'src/utils/http-proxy-agent';
@@ -11,10 +11,8 @@ vi.mock('undici', () => ({
 	ProxyAgent: vi.fn(function (options) {
 		return { type: 'ProxyAgent', options };
 	}),
+	fetch: vi.fn(),
 }));
-
-// Mock global fetch
-global.fetch = vi.fn();
 
 describe('getProxyAgent', () => {
 	// Store original environment variables
@@ -308,7 +306,7 @@ describe('getProxyAgent', () => {
 describe('proxyFetch', () => {
 	// Store original environment variables
 	const originalEnv = { ...process.env };
-	const mockFetch = global.fetch as MockedFunction<typeof fetch>;
+	const mockFetch = undiciFetch as unknown as MockedFunction<typeof fetch>;
 
 	// Reset environment variables and mocks before each test
 	beforeEach(() => {

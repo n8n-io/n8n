@@ -21,7 +21,7 @@ import { createHttpsProxyAgent, resolveProxyUrl } from '@n8n/backend-network/pro
 import type { AgentOptions } from 'node:https';
 import type { LookupFunction } from 'node:net';
 /* eslint-disable n8n-local-rules/no-uncentralized-http -- langchain consumers pin undici v6, incompatible with backend-network's v7 dispatchers; see block comment below */
-import { Agent, ProxyAgent } from 'undici';
+import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici';
 
 /**
  * Options for configuring HTTP agent timeouts.
@@ -113,11 +113,12 @@ export async function proxyFetch(
 	const targetUrl = input instanceof Request ? input.url : input.toString();
 	const dispatcher = getProxyAgent(targetUrl, timeoutOptions, lookup);
 
-	return await fetch(input, {
-		...init,
-		// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
+	// The dispatcher comes from this package's undici, so the request must use
+	// the same undici's fetch: the global fetch on Node >= 26 rejects it.
+	return (await undiciFetch(input as Parameters<typeof undiciFetch>[0], {
+		...(init as Parameters<typeof undiciFetch>[1]),
 		dispatcher,
-	});
+	})) as unknown as Response;
 }
 
 /**
