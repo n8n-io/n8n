@@ -93,11 +93,22 @@ const needsOwnerEmail = computed(
 	() => props.variant === 'member' || props.variant === 'memberTrial',
 );
 const showsServices = computed(() => props.variant !== 'member');
+const ownerEmails = computed(() =>
+	usersStore.allUsers
+		.filter((user) => user.role === ROLE.Owner)
+		.map((user) => user.email)
+		.filter((email): email is string => Boolean(email)),
+);
+const ownerLookupPending = ref(needsOwnerEmail.value && ownerEmails.value.length === 0);
 
 onMounted(async () => {
 	if (!needsOwnerEmail.value) return;
 
-	await usersStore.fetchUsers({ filter: { isOwner: true } });
+	try {
+		await usersStore.fetchUsers({ filter: { isOwner: true } });
+	} finally {
+		ownerLookupPending.value = false;
+	}
 });
 
 const title = computed(() => {
@@ -133,15 +144,11 @@ function onOpenChange(open: boolean): void {
 }
 
 function ownerMailtoHref(): string {
-	const emails = usersStore.allUsers
-		.filter((user) => user.role === ROLE.Owner)
-		.map((user) => user.email)
-		.filter((email): email is string => Boolean(email));
 	const subject = encodeURIComponent(
 		i18n.baseText('aiGateway.topUp.modal.cta.contactAdmin.subject'),
 	);
-	return emails.length > 0
-		? `mailto:${emails.join(',')}?subject=${subject}`
+	return ownerEmails.value.length > 0
+		? `mailto:${ownerEmails.value.join(',')}?subject=${subject}`
 		: `mailto:?subject=${subject}`;
 }
 
@@ -163,6 +170,7 @@ async function onAction(): Promise<void> {
 		:title="title"
 		:description="description"
 		:action-label="actionLabel"
+		:loading="ownerLookupPending"
 		:cancel-label="i18n.baseText('generic.cancel')"
 		size="medium"
 		data-test-id="ai-gateway-topup-modal"

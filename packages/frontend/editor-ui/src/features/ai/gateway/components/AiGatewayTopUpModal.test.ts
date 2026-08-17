@@ -1,4 +1,5 @@
 import { describe, it, vi, beforeEach, expect } from 'vitest';
+import { flushPromises } from '@vue/test-utils';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
@@ -28,7 +29,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 		...actual,
 		N8nAlertDialog: {
 			name: 'N8nAlertDialog',
-			props: ['open', 'title', 'description', 'actionLabel', 'cancelLabel', 'size'],
+			props: ['open', 'title', 'description', 'actionLabel', 'cancelLabel', 'size', 'loading'],
 			emits: ['action', 'cancel', 'update:open'],
 			template: `
 				<div v-if="open" role="dialog" data-test-id="ai-gateway-topup-modal">
@@ -37,7 +38,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 					<slot />
 					<button type="button" @click="$emit('cancel'); $emit('update:open', false)">{{ cancelLabel }}</button>
 					<button type="button" data-test-id="ai-gateway-topup-keep-open" @click="$emit('update:open', true)">keep</button>
-					<button type="button" @click="$emit('action')">{{ actionLabel }}</button>
+					<button type="button" :disabled="loading" @click="$emit('action')">{{ actionLabel }}</button>
 				</div>
 			`,
 		},
@@ -49,16 +50,20 @@ const renderComponent = createComponentRenderer(AiGatewayTopUpModal);
 function renderModal({
 	variant,
 	allUsers = [],
+	fetchUsers,
 }: {
 	variant: AiGatewayTopUpVariant;
 	allUsers?: IUser[];
+	fetchUsers?: () => Promise<void>;
 }) {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	const usersStore = mockedStore(useUsersStore);
 	const uiStore = mockedStore(useUIStore);
 	usersStore.allUsers = allUsers;
-	usersStore.fetchUsers = vi.fn().mockResolvedValue(undefined);
+	usersStore.fetchUsers = fetchUsers
+		? vi.fn().mockImplementation(fetchUsers)
+		: vi.fn().mockResolvedValue(undefined);
 	renderComponent({ pinia, props: { variant } });
 	return { usersStore, uiStore };
 }
@@ -108,11 +113,24 @@ describe('AiGatewayTopUpModal.vue', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
 	});
 
+	it('keeps Contact admin disabled until the owner lookup finishes', async () => {
+		const fetchUsers = Promise.withResolvers<void>();
+		renderModal({ variant: 'member', fetchUsers: () => fetchUsers.promise });
+
+		expect(screen.getByRole('button', { name: 'Contact admin' })).toBeDisabled();
+
+		fetchUsers.resolve();
+		await flushPromises();
+
+		expect(screen.getByRole('button', { name: 'Contact admin' })).toBeEnabled();
+	});
+
 	it('opens a blank mailto when no Instance Owner email is available', async () => {
 		renderModal({
 			variant: 'member',
 			allUsers: [{ email: '', role: ROLE.Owner } as IUser],
 		});
+		await flushPromises();
 
 		await userEvent.click(screen.getByRole('button', { name: 'Contact admin' }));
 
