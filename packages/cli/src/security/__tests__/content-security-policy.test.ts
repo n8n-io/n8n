@@ -54,6 +54,19 @@ describe('parseContentSecurityPolicy', () => {
 			expect(parse('{"frame-ancestors":"\'none\'"}')).toBe("frame-ancestors 'none'");
 		});
 
+		// In helmet.js `null` switches a directive off, so an instance using it to drop one
+		// must not end up with the directive present and empty - `script-src` with nothing
+		// allowed refuses every script on the page.
+		it('should drop a directive set to null, as helmet.js does', () => {
+			expect(parse('{"frame-ancestors":["\'none\'"],"script-src":null}')).toBe(
+				"frame-ancestors 'none'",
+			);
+		});
+
+		it('should return undefined when every directive is null', () => {
+			expect(parse('{"script-src":null}')).toBeUndefined();
+		});
+
 		it('should warn and return undefined for invalid JSON', () => {
 			expect(parse('{"script-src":')).toBeUndefined();
 			expect(logger.warn).toHaveBeenCalledWith(

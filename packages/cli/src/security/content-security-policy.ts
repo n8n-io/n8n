@@ -43,9 +43,14 @@ const toDirectiveName = (name: string) =>
 const isDirectivesObject = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** Serialize a helmet.js style directives object into a policy string. */
+/**
+ * Serialize a helmet.js style directives object into a policy string, keeping helmet's own
+ * reading of the two special values: `null` drops the directive, and an empty array leaves
+ * it valueless, e.g. `{ "upgrade-insecure-requests": [] }`.
+ */
 const serializeDirectives = (directives: Record<string, unknown>) =>
 	Object.entries(directives)
+		.filter(([, value]) => value !== null)
 		.map(([directive, value]) => {
 			const values = Array.isArray(value) ? value : value === undefined ? [] : [value];
 			return [toDirectiveName(directive), ...values.map(String)].join(' ').trim();
