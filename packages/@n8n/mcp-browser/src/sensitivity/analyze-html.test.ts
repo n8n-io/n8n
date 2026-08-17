@@ -21,6 +21,19 @@ function probe(
 }
 
 describe('analyzeHtmlSensitivity', () => {
+	// The same key often appears in the page and again in an embedded frame; the
+	// bare occurrence is the span that can safely become a credential.
+	it('keeps the narrowest capture span when a key appears in several documents', () => {
+		const key = `AIza${'B'.repeat(35)}`;
+		const result = analyzeHtmlSensitivity(
+			probe(`<p>${key}</p>`, [
+				{ kind: 'iframe', html: `<p>id.${key}</p>`, children: [], errors: [] },
+			]),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'google_api_key', value: key });
+	});
+
 	it('finds regex hits in plain DOM text', () => {
 		const result = analyzeHtmlSensitivity(probe(`<p>${ANTHROPIC}</p>`));
 		expect(result.ok && result.sensitive).toBe(true);

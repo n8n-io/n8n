@@ -259,6 +259,40 @@ describe('browser_capture_secret', () => {
 
 			expect(result.isError).toBe(true);
 		});
+
+		it('refuses to buffer a value that is itself a redaction marker', async () => {
+			mockProbe(htmlWithPasswordInput('[REDACTED:secret:1] trailing'));
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
+		// A fixed-length pattern matches only the first N characters of a longer
+		// token; extraction must not inherit that boundary.
+		it('captures the whole token when a provider pattern matched only its prefix', async () => {
+			const key = `AIza${'SyC7mQ2xR9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1Bc'}`;
+			mockProbe(`<html><body><p>Your key is ${key}</p></body></html>`);
+
+			await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:google_api_key:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(buffer.capture).toHaveBeenCalledWith('k1', 'apiKey', key);
+		});
 	});
 });
 

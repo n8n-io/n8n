@@ -1,0 +1,142 @@
+import { JSDOM } from 'jsdom';
+
+import { analyzeHtmlSensitivity } from './analyze-html';
+import { elementText } from './dom-matchers';
+import { REDACTION_MARKER_PATTERN } from '../redaction/redact';
+import { applyRedactions } from '../redaction/redaction-applier';
+import { createCredentialTools } from '../tools/credential';
+import { createMockConnection, findTool, textOf, TOOL_CONTEXT } from '../tools/test-helpers';
+import type { CallToolResult, HtmlProbeResult } from '../types';
+
+// Patterns go stale, so this corpus pins the shapes providers issue *today*:
+// every one must survive snapshot → marker → capture byte-exact and leave no
+// fragment in what the model reads.
+const KEY_SHAPES: Array<{ name: string; key: string }> = [
+	{
+		name: 'google (dot-prefixed)',
+		key: `AQ.${'Ab8RN6Jr7xQfP2mKdW9tZsLyVc4hEuNgT3iBoXaQwMzRkJvSpH'}`,
+	},
+	// Longer than the fixed-count pattern matches, which covers only a prefix.
+	{
+		name: 'google (legacy, over-long)',
+		key: `AIza${'SyC7mQ2xR9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1Bc'}`,
+	},
+	{
+		name: 'jwt',
+		key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0N2FjMzhkOWJmIiwiaWF0IjoxNzE2Mzk5MDIyfQ.9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1BcRmZxQ',
+	},
+	{ name: 'telegram (colon-separated)', key: '7845123096:AAHd9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1' },
+	{ name: 'azure (tilde-separated)', key: 'xY8~Q9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1Bc7mR2' },
+	{ name: 'sendgrid (two dots)', key: 'SG.9tKdW4vLpZ8bNfH.3jEuXaGoT5wPqYs1BcRmZxQ2vLp' },
+	// No pattern knows this shape — stands in for the next format change.
+	{ name: 'unknown dotted shape', key: 'Zt7.9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1BcRmZxQ' },
+];
+
+const VISIBLE_TEXT = 'Your API key Copy Show';
+
+// How a provider console renders a fresh key: a text node in a panel with
+// copy/reveal affordances, so there is no ref to capture from.
+function revealPanel(key: string): string {
+	return `<html><body><section>
+			<span>Your API key</span>
+			<div>${key}</div>
+			<button aria-label="Copy API key">Copy</button>
+			<button aria-label="Show API key">Show</button>
+		</section></body></html>`;
+}
+
+// The same panel as a real console ships it: no whitespace between tags, so
+// `textContent` runs the sibling text together.
+function minifiedRevealPanel(key: string): string {
+	return `<html><body><section><span>Your API key</span><div>${key}</div><button aria-label="Copy API key">Copy</button><button aria-label="Show API key">Show</button></section></body></html>`;
+}
+
+function probe(html: string): HtmlProbeResult {
+	return {
+		ok: true,
+		root: {
+			kind: 'document',
+			html,
+			url: 'https://provider.test/keys',
+			children: [],
+			errors: [],
+		},
+	};
+}
+
+/**
+ * Derived from the page, not hand-written: a value the detector reports but that
+ * never appears in what the model reads would otherwise pass unnoticed.
+ */
+function visibleText(html: string): string {
+	return elementText(new JSDOM(html).window.document.body);
+}
+
+/** The redacted page text the model reads for a page rendering a key. */
+function redactedSnapshot(html: string): string {
+	const sensitivity = analyzeHtmlSensitivity(probe(html));
+	if (!sensitivity.ok) throw new Error(sensitivity.error);
+	const result: CallToolResult = { content: [{ type: 'text', text: visibleText(html) }] };
+	return textOf(applyRedactions(result, sensitivity));
+}
+
+function markerFor(html: string): string {
+	const marker = REDACTION_MARKER_PATTERN.exec(redactedSnapshot(html))?.[0];
+	if (!marker) throw new Error('No redaction marker found');
+	return marker;
+}
+
+/** Run `browser_capture_secret` for a marker and return what it buffered. */
+async function capturedVia(marker: string, html: string): Promise<string | undefined> {
+	const capture = vi.fn();
+	const mockConn = createMockConnection();
+	mockConn.adapter.probePageHtml.mockResolvedValue(probe(html));
+
+	await findTool(createCredentialTools(mockConn.connection), 'browser_capture_secret').execute(
+		{ credentialsKey: 'k1', field: 'apiKey', element: { redactedKey: marker } },
+		{ ...TOOL_CONTEXT, secretsBuffer: { capture, getFields: vi.fn(), clear: vi.fn() } },
+	);
+
+	return capture.mock.calls[0]?.[2] as string | undefined;
+}
+
+describe('current provider key shapes', () => {
+	it.each(KEY_SHAPES)('leaves nothing of a $name key visible', ({ key }) => {
+		const withoutMarkers = redactedSnapshot(revealPanel(key)).replace(
+			new RegExp(REDACTION_MARKER_PATTERN, 'g'),
+			'',
+		);
+
+		expect(withoutMarkers.replace(/\s+/g, ' ').trim()).toBe(VISIBLE_TEXT);
+	});
+
+	it.each(KEY_SHAPES)('captures a $name key whole via its marker', async ({ key }) => {
+		const html = revealPanel(key);
+
+		expect(await capturedVia(markerFor(html), html)).toBe(key);
+	});
+
+	// A key with entropy below the 4.5 gate is found by its provider pattern
+	// alone, so the pattern's own span is all that stands between it and the model.
+	it('redacts a low-entropy key that only the provider pattern finds', () => {
+		const key = `AQ.${'AbCdEfGhIj'.repeat(3)}Ab`;
+
+		expect(redactedSnapshot(minifiedRevealPanel(key))).not.toContain(key);
+	});
+
+	it.each(KEY_SHAPES)('leaves nothing of a $name key visible in minified markup', ({ key }) => {
+		expect(redactedSnapshot(minifiedRevealPanel(key))).not.toContain(key);
+	});
+
+	// Coverage is chosen over labelling: where an entropy span reaches further
+	// than a provider pattern's match, the wider span replaces first and the
+	// marker carries the generic type. Narrowing it back would re-expose the part
+	// of the key the pattern's fixed length does not cover.
+	it('labels an over-long key generically rather than leaving its tail visible', () => {
+		const key = `AIza${'SyC7mQ2xR9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1Bc'}`;
+		const snapshot = redactedSnapshot(revealPanel(key));
+
+		expect(snapshot).toContain('[REDACTED:secret:');
+		expect(snapshot).not.toContain(key.slice(-7));
+	});
+});

@@ -38,7 +38,15 @@ function addHit(hits: Map<string, SecretHit>, hit: SecretHit): void {
 	if (!hit.value) return;
 	// Deduplicate by replacement target. The same secret can appear in text,
 	// snapshot, and iframe/shadow copies during one probe.
-	hits.set(`${hit.type}:${hit.value}:${hit.ref ?? ''}`, hit);
+	const key = `${hit.type}:${hit.value}:${hit.ref ?? ''}`;
+	const existing = hits.get(key);
+	// Keep the narrowest capture span, not whichever copy came last.
+	if (existing && spanOf(existing).length <= spanOf(hit).length) return;
+	hits.set(key, hit);
+}
+
+function spanOf(hit: SecretHit): string {
+	return hit.captureValue ?? hit.value;
 }
 
 function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
@@ -46,8 +54,16 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 	const dom = new JSDOM(html, { virtualConsole });
 	const { document } = dom.window;
 
-	const bodyText = document.documentElement.textContent ?? '';
-	for (const hit of findRegexSecretHits(bodyText)) addHit(hits, hit);
+	// Markup with no whitespace between tags runs sibling text together in
+	// `textContent`, where a match can span text the model never sees as one
+	// token — and then nothing replaces it.
+	const texts = new Set([
+		document.documentElement.textContent ?? '',
+		elementText(document.documentElement),
+	]);
+	for (const text of texts) {
+		for (const hit of findRegexSecretHits(text)) addHit(hits, hit);
+	}
 
 	// Inputs/textareas that are password-shaped or whose label reads as a secret
 	// expose their values in the collected HTML; no entropy needed to flag them.

@@ -153,6 +153,11 @@ describe('redactString', () => {
 		);
 	});
 
+	it('redacts the dot-prefixed google key shape', () => {
+		const key = `AQ.${'Ab8RN6Jr7xQfP2mKdW9tZsLyVc4hEuNgT3iBoXaQwMzRkJvSpH'}`;
+		expect(redactString(`key=${key}`)).toBe('key=[REDACTED:google_api_key:1]');
+	});
+
 	it('does not redact common browser trace strings', () => {
 		const input = 'commit a1b2c3d4e5f60718293a4b5c6d7e8f9012345678 by alice';
 		expect(redactString(input)).toBe(input);
@@ -176,6 +181,16 @@ describe('redactString', () => {
 });
 
 describe('findRegexSecretHits', () => {
+	// A console often shows the same key twice — bare, and inside a curl or env
+	// snippet. The bare one is the span that can be stored as a credential.
+	it('prefers the narrowest span when a key appears in more than one context', () => {
+		const key = `AIza${'B'.repeat(35)}`;
+
+		expect(findRegexSecretHits(`id.${key} and bare ${key}`)).toEqual([
+			{ type: 'google_api_key', value: key },
+		]);
+	});
+
 	it('dedupes matches by type and value', () => {
 		expect(findRegexSecretHits(`${ANTHROPIC} ${ANTHROPIC}`)).toEqual([
 			{ type: 'anthropic_api_key', value: ANTHROPIC },

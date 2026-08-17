@@ -42,7 +42,8 @@ export const BUILTIN_PATTERNS: SecretPattern[] = [
 	{ slug: 'langsmith_api_key_v2', pattern: /lsv2_(?:pt|sk)_[a-f0-9]{40}_[a-f0-9]{16}/ },
 
 	// --- Cloud / infra ---
-	{ slug: 'google_api_key', pattern: /AIza[0-9A-Za-z_-]{35}/ },
+	// `AIza…` is the legacy shape; AI Studio now issues `AQ.`-prefixed keys.
+	{ slug: 'google_api_key', pattern: /AIza[0-9A-Za-z_-]{35}|AQ\.[0-9A-Za-z_-]{30,100}/ },
 	{ slug: 'google_oauth_client_secret', pattern: /GOCSPX-[A-Za-z0-9_-]{28,}/ },
 	{ slug: 'aws_access_key_id', pattern: /(?:AKIA|ASIA)[A-Z0-9]{16}/ },
 	{ slug: 'azure_ad_client_secret', pattern: /[A-Za-z0-9_-]{3,}~[A-Za-z0-9_-]{31,}/ },

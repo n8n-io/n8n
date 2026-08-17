@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
 import { createConnectedTool, pageIdField } from './helpers';
-import { createRedactionMarkerFormatter } from '../redaction/redact';
+import { containsRedactionMarker, createRedactionMarkerFormatter } from '../redaction/redact';
 import { analyzeHtmlSensitivity } from '../sensitivity/analyze-html';
 import type {
 	AffectedResource,
@@ -69,7 +69,7 @@ function browserCaptureSecret(
 				if (sensitivity.ok) {
 					const formatMarker = createRedactionMarkerFormatter(sensitivity.hits);
 					const markerMap = sensitivity.hits.reduce((result, hit) => {
-						result.set(formatMarker(hit), hit.value);
+						result.set(formatMarker(hit), hit.captureValue ?? hit.value);
 						return result;
 					}, new Map<string, string>());
 
@@ -82,6 +82,12 @@ function browserCaptureSecret(
 				}
 			} else {
 				value = await state.adapter.getElementValue(pageId, { ref: args.element.ref });
+			}
+			// A stored marker would only fail once the provider is called.
+			if (containsRedactionMarker(value)) {
+				throw new Error(
+					`The value read for "${args.field}" is a redaction marker, not a secret. Take a fresh snapshot and capture the element that holds the value.`,
+				);
 			}
 			context.secretsBuffer.capture(args.credentialsKey, args.field, value);
 			return formatCallToolResult({ ok: true, fieldsCaptured: [args.field] });

@@ -1,3 +1,5 @@
+import { expandToTokenSpan } from '../redaction/token-span';
+
 export const TESTID_ATTRS = ['data-testid', 'data-test-id', 'data-test', 'data-qa'] as const;
 
 export const SENSITIVE_TESTID_PATTERN =
@@ -146,7 +148,14 @@ export function shannonEntropy(value: string): number {
 	return entropy;
 }
 
+// Scored on the inner match, reported as the whole token: a shape this class
+// misses must not be split into fragments.
 export function highEntropyCandidates(text: string): string[] {
-	const candidates = text.match(/[A-Za-z0-9_/+=-]{20,}/g) ?? [];
-	return candidates.filter((candidate) => shannonEntropy(candidate) >= 4.5);
+	const spans = new Set<string>();
+	for (const match of text.matchAll(/[A-Za-z0-9_/+=-]{20,}/g)) {
+		if (shannonEntropy(match[0]) >= 4.5) {
+			spans.add(expandToTokenSpan(text, match.index, match[0].length));
+		}
+	}
+	return [...spans];
 }
