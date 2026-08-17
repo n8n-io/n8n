@@ -93,6 +93,9 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
 
 Based on `.github/pull_request_template.md`:
 
+Write the PR body in ASD-STE100 Simplified Technical English: use short
+sentences, the active voice, and one instruction for each sentence.
+
 ### Summary Section
 - Describe what the PR does
 - Include screenshots/videos for UI changes

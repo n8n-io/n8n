@@ -69,6 +69,7 @@ describe('GET /rest/consent/details', () => {
 			scopeTools: expect.objectContaining({
 				'workflow:read': expect.arrayContaining(['search_workflows']),
 			}),
+			isFirstParty: false,
 		});
 	});
 
@@ -111,6 +112,7 @@ describe('GET /rest/consent/details', () => {
 			resourceName: 'My Named Workflow',
 			redirectUri: 'https://example.com/callback',
 			scopes: [],
+			isFirstParty: false,
 		});
 	});
 

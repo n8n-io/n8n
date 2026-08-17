@@ -1,17 +1,28 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { PollerConfig } from '@n8n/config';
-import type { CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
+import type {
+	CreateExecutionPayload,
+	PollLeaseFence,
+	ScheduledTask,
+	WorkflowEntity,
+} from '@n8n/db';
 import {
 	ExecutionEntity,
 	ExecutionRepository,
 	PollerStateRepository,
+	ScheduledJobRepository,
+	ScheduledTaskRepository,
+	ScheduledTaskStatus,
 	TransactionRunner,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { POLL_TRIGGER_TASK_TYPE } from '@/scheduling/poll-trigger-node/poll-trigger-task';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
+
+import { createDueJobFactory, seedDueTask } from '../scheduling/shared/job-factory';
 
 describe('poll cursor atomicity', () => {
 	const nodeId = 'node-1';
@@ -20,6 +31,8 @@ describe('poll cursor atomicity', () => {
 	let executionPersistence: ExecutionPersistence;
 	let executionRepository: ExecutionRepository;
 	let pollerStateRepository: PollerStateRepository;
+	let scheduledJobRepository: ScheduledJobRepository;
+	let scheduledTaskRepository: ScheduledTaskRepository;
 	let transactionRunner: TransactionRunner;
 	let pollerConfig: PollerConfig;
 	let workflow: WorkflowEntity;
@@ -30,12 +43,20 @@ describe('poll cursor atomicity', () => {
 		executionPersistence = Container.get(ExecutionPersistence);
 		executionRepository = Container.get(ExecutionRepository);
 		pollerStateRepository = Container.get(PollerStateRepository);
+		scheduledJobRepository = Container.get(ScheduledJobRepository);
+		scheduledTaskRepository = Container.get(ScheduledTaskRepository);
 		transactionRunner = Container.get(TransactionRunner);
 		pollerConfig = Container.get(PollerConfig);
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['PollerState', 'ExecutionEntity', 'WorkflowEntity']);
+		await testDb.truncate([
+			'PollerState',
+			'ExecutionEntity',
+			'WorkflowEntity',
+			'ScheduledTask',
+			'ScheduledJob',
+		]);
 		workflow = await createWorkflow();
 		// Atomicity is flag-gated; enable it for these tests.
 		pollerConfig.durableCursorsEnabled = true;
@@ -68,12 +89,14 @@ describe('poll cursor atomicity', () => {
 	it('commits the cursor advance and the execution row together', async () => {
 		await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
 
-		const { executionId } = await pollCursorService.commitWithExecution({
+		const result = await pollCursorService.commitWithExecution({
 			workflowId: workflow.id,
 			nodeId,
 			cursor: { lastItemId: 'b' },
 			payload: buildPayload(),
 		});
+		if (result === null) throw new Error('expected a commit result');
+		const { executionId } = result;
 
 		expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
 			lastItemId: 'b',
@@ -227,6 +250,156 @@ describe('poll cursor atomicity', () => {
 			).rejects.toThrow('caller fails after work already ran');
 
 			expect(await executionRepository.findOneBy({ id: executionId })).toBeNull();
+		});
+	});
+
+	describe('fenced commits', () => {
+		let createDueJob: ReturnType<typeof createDueJobFactory>;
+
+		beforeEach(() => {
+			createDueJob = createDueJobFactory(
+				scheduledJobRepository,
+				POLL_TRIGGER_TASK_TYPE,
+				'poll-fence-job',
+			);
+		});
+
+		const seedRunningTask = async (
+			overrides: Partial<ScheduledTask> = {},
+		): Promise<ScheduledTask> => {
+			const job = await createDueJob();
+			const task = await seedDueTask(scheduledTaskRepository, POLL_TRIGGER_TASK_TYPE, job.id);
+			return await scheduledTaskRepository.save({
+				...task,
+				status: ScheduledTaskStatus.Running,
+				leaseEpoch: 1,
+				leaseExpiresAt: new Date(Date.now() + 60_000),
+				claimedBy: 'host-1',
+				...overrides,
+			});
+		};
+
+		it.each([
+			{
+				title: 'the fence lease epoch no longer matches the claimed task',
+				prepareFence: async (): Promise<PollLeaseFence> => {
+					const task = await seedRunningTask();
+					const fence: PollLeaseFence = { taskId: task.id, leaseEpoch: task.leaseEpoch };
+					await scheduledTaskRepository.update(task.id, { leaseEpoch: task.leaseEpoch + 1 });
+					return fence;
+				},
+			},
+			{
+				title: 'the fenced task row no longer exists',
+				prepareFence: async (): Promise<PollLeaseFence> => {
+					const task = await seedRunningTask();
+					const fence: PollLeaseFence = { taskId: task.id, leaseEpoch: task.leaseEpoch };
+					await scheduledTaskRepository.delete(task.id);
+					return fence;
+				},
+			},
+			{
+				title: 'the fenced task id never existed',
+				prepareFence: (): PollLeaseFence => ({ taskId: '999999999', leaseEpoch: 1 }),
+			},
+			{
+				// Marking a task failed does not bump its lease epoch, so the status
+				// alone must stop the late commit.
+				title: 'the fenced task was marked failed, with its lease epoch unchanged',
+				prepareFence: async (): Promise<PollLeaseFence> => {
+					const task = await seedRunningTask();
+					const fence: PollLeaseFence = { taskId: task.id, leaseEpoch: task.leaseEpoch };
+					await scheduledTaskRepository.update(task.id, { status: ScheduledTaskStatus.Failed });
+					return fence;
+				},
+			},
+		])('does not commit when $title', async ({ prepareFence }) => {
+			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
+			const fence = await prepareFence();
+
+			const result = await pollCursorService.commitWithExecution({
+				workflowId: workflow.id,
+				nodeId,
+				cursor: { lastItemId: 'b' },
+				payload: buildPayload(),
+				fence,
+			});
+
+			expect(result).toBeNull();
+			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
+				lastItemId: 'a',
+			});
+			expect(await executionRepository.find({ select: ['id'] })).toEqual([]);
+		});
+
+		it.each([
+			{
+				title: 'the fence matches a task row still running',
+				buildFence: async (): Promise<PollLeaseFence> => {
+					const task = await seedRunningTask();
+					return { taskId: task.id, leaseEpoch: task.leaseEpoch };
+				},
+			},
+			{
+				title: 'the fenced task was already marked succeeded by its executor',
+				buildFence: async (): Promise<PollLeaseFence> => {
+					const task = await seedRunningTask({ status: ScheduledTaskStatus.Succeeded });
+					return { taskId: task.id, leaseEpoch: task.leaseEpoch };
+				},
+			},
+			{
+				title:
+					'the fence names a task unrelated to the cursor row being advanced, since the guard checks only the task id and lease epoch',
+				buildFence: async (): Promise<PollLeaseFence> => {
+					const unrelatedTask = await seedRunningTask();
+					return { taskId: unrelatedTask.id, leaseEpoch: unrelatedTask.leaseEpoch };
+				},
+			},
+			{
+				title: 'there is no fence at all, exactly as an unfenced call commits today',
+				buildFence: async (): Promise<PollLeaseFence | undefined> => {
+					await seedRunningTask();
+					return undefined;
+				},
+			},
+		])('commits when $title', async ({ buildFence }) => {
+			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
+			const fence = await buildFence();
+
+			const result = await pollCursorService.commitWithExecution({
+				workflowId: workflow.id,
+				nodeId,
+				cursor: { lastItemId: 'b' },
+				payload: buildPayload(),
+				fence,
+			});
+
+			expect(result).not.toBeNull();
+			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
+				lastItemId: 'b',
+			});
+			expect(await executionRepository.findOneBy({ id: result?.executionId })).toMatchObject({
+				status: 'new',
+				workflowId: workflow.id,
+			});
+		});
+
+		it('throws and stores nothing when the cursor row disappeared mid-poll, even with a live fence', async () => {
+			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
+			const task = await seedRunningTask();
+			const fence: PollLeaseFence = { taskId: task.id, leaseEpoch: task.leaseEpoch };
+			await pollerStateRepository.delete({ workflowId: workflow.id, nodeId });
+
+			await expect(
+				pollCursorService.commitWithExecution({
+					workflowId: workflow.id,
+					nodeId,
+					cursor: { lastItemId: 'b' },
+					payload: buildPayload(),
+					fence,
+				}),
+			).rejects.toThrow('Poller cursor row disappeared while its poll was running');
+			expect(await executionRepository.find({ select: ['id'] })).toEqual([]);
 		});
 	});
 });

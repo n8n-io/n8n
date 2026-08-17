@@ -1,6 +1,5 @@
 import type { WorkspaceFilesystem, WorkspaceSandbox } from '@n8n/agents/sandbox';
 import type { Logger } from '@n8n/backend-common';
-import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
@@ -18,6 +17,7 @@ function makeService(sandboxEnabled = true) {
 		status: 'running',
 	});
 	const runtimeService = mock<AgentSandboxRuntimeService>();
+	runtimeService.isEnabled.mockReturnValue(sandboxEnabled);
 	runtimeService.acquireSandbox.mockResolvedValue({
 		provider: 'daytona',
 		sandbox,
@@ -27,11 +27,7 @@ function makeService(sandboxEnabled = true) {
 	});
 
 	return {
-		service: new AgentWorkspaceService(
-			{ sandboxEnabled } as AgentsConfig,
-			mock<Logger>(),
-			runtimeService,
-		),
+		service: new AgentWorkspaceService(mock<Logger>(), runtimeService),
 		filesystem,
 		sandbox,
 		runtimeService,
