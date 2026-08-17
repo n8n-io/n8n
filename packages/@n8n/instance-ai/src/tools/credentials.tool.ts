@@ -13,6 +13,10 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import {
+	buildChatModelProviderHint,
+	isChatModelProviderCredentialType,
+} from './nodes/preferred-chat-model';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
 import {
 	extractServiceHost,
@@ -458,6 +462,23 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		type: input.type,
 	});
 
+	// An empty LLM-provider lookup is the moment the builder locks in a default
+	// provider — surface the LLM credentials the user does have so it prefers
+	// those (or asks) instead.
+	let chatModelProviderHint: string | undefined;
+	if (
+		input.type &&
+		storedCredentials.length === 0 &&
+		isChatModelProviderCredentialType(input.type)
+	) {
+		try {
+			const allStored = await context.credentialService.list({});
+			chatModelProviderHint = buildChatModelProviderHint(input.type, allStored);
+		} catch {
+			// Soft signal — the primary (empty) listing still returns.
+		}
+	}
+
 	// When the caller filters by type, prepend the synthetic n8n Connect
 	// managed entry if the AI Gateway covers that credential type. This is
 	// the LLM's primary awareness signal that a zero-config credential is
@@ -494,6 +515,14 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 
 	const truncatedWithoutNarrowing = hasMore && !input.name && !input.type;
 
+	// Mutually exclusive: the provider hint requires a type filter, the
+	// truncation hint requires none.
+	const hint =
+		chatModelProviderHint ??
+		(truncatedWithoutNarrowing
+			? `Showing ${page.length} of ${total} credentials. Pass \`name\` (substring) or \`type\` to narrow the search before concluding a user-named credential doesn't exist, or use \`offset\` to paginate.`
+			: undefined);
+
 	return {
 		credentials: page.map((c) =>
 			c.id === null
@@ -502,11 +531,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		),
 		total,
 		hasMore,
-		...(truncatedWithoutNarrowing
-			? {
-					hint: `Showing ${page.length} of ${total} credentials. Pass \`name\` (substring) or \`type\` to narrow the search before concluding a user-named credential doesn't exist, or use \`offset\` to paginate.`,
-				}
-			: {}),
+		...(hint ? { hint } : {}),
 	};
 }
 

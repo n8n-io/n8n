@@ -268,6 +268,31 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown {
 	return merged;
 }
 
+function mergeIntoObject(value: unknown[], extraArgs: unknown[][]): unknown {
+	const [others] = extraArgs;
+
+	if (!Array.isArray(others)) {
+		throw new ExpressionExtensionError(
+			'mergeIntoObject(): expected array arg, e.g. .mergeIntoObject([{ id: 1, otherValue: 3 }])',
+		);
+	}
+	const listLength = value.length > others.length ? value.length : others.length;
+	let merged = {};
+	for (let i = 0; i < listLength; i++) {
+		const baseIsObject = value[i] !== null && typeof value[i] === 'object';
+		const otherIsObject = others[i] !== null && typeof others[i] === 'object';
+		if (baseIsObject) {
+			merged = Object.assign(
+				merged,
+				mergeObjects(value[i] as Record<string, unknown>, otherIsObject ? [others[i]] : []),
+			);
+		} else if (otherIsObject) {
+			merged = Object.assign(merged, others[i] as Record<string, unknown>);
+		}
+	}
+	return merged;
+}
+
 function union(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
 	if (!Array.isArray(others)) {
@@ -496,6 +521,7 @@ merge.doc = {
 	name: 'merge',
 	description:
 		'Merges two Object-arrays into one object by merging the key-value pairs of each element.',
+	hidden: true,
 	examples: [
 		{
 			example:
@@ -513,6 +539,29 @@ merge.doc = {
 		},
 	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-merge',
+};
+
+mergeIntoObject.doc = {
+	name: 'mergeIntoObject',
+	description:
+		'Merges two Object-arrays into one object by merging the key-value pairs of each element. If the arrays have different lengths, elements from the longer array are kept.',
+	examples: [
+		{
+			example: "[{ name: 'Nathan' }, { age: 42 }].mergeIntoObject([{ city: 'Berlin' }])",
+			evaluated: "{ name: 'Nathan', age: 42, city: 'Berlin' }",
+		},
+	],
+	returnType: 'Object',
+	args: [
+		{
+			name: 'otherArray',
+			optional: false,
+			description: 'The array to merge into the base array',
+			type: 'Array',
+		},
+	],
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-mergeintoobject',
 };
 
 pluck.doc = {
@@ -704,6 +753,7 @@ export const arrayExtensions: ExtensionMap = {
 		chunk,
 		renameKeys,
 		merge,
+		mergeIntoObject,
 		union,
 		difference,
 		intersection,

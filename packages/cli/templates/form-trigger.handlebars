@@ -261,6 +261,12 @@
 				cursor: not-allowed;
 			}
 
+			#submit-hint {
+				margin-top: 8px;
+				font-size: var(--font-size-link);
+				color: var(--color-link);
+			}
+
 			#submit-btn:disabled:hover {
 				opacity: 1;
 			}
@@ -650,7 +656,7 @@
 
 					{{#if hasAuthenticatedSubmitter}}<p id='submit-error'></p>{{/if}}
 
-					<button id='submit-btn' type='submit' {{#if shellInner}}disabled title='Connect the required credentials first'{{/if}}>
+					<button id='submit-btn' type='submit' {{#if shellInner}}disabled title='Connect the required accounts first'{{/if}}>
 						<span><svg
 								xmlns='http://www.w3.org/2000/svg'
 								height='18px'
@@ -662,6 +668,11 @@
 							</svg></span>
 						{{ buttonLabel }}
 					</button>
+
+					{{#if shellInner}}
+						{{!-- Only inside the hosting shell, where the connect panel above supplies the accounts. --}}
+						<p id='submit-hint'>This form will run using your connected accounts.</p>
+					{{/if}}
 				</form>
 
 				<div class='card' id='submitted-form' style='display: none;'>
@@ -740,13 +751,13 @@
 				const isShellInner = {{#if shellInner}}true{{else}}false{{/if}};
 
 				// The submit-time credential gate refused this submission. Explain it and hand the
-				// form back with the answers intact. The panel names the credentials, so the banner
+				// form back with the answers intact. The panel names the accounts, so the banner
 				// only has to say what to do next.
 				function handleCredentialGate(credentials) {
 					updateError(
 						document.querySelector('#submit-error'),
 						'add',
-						'Not all required credentials are connected. ' +
+						'Not all required accounts are connected. ' +
 							(isShellInner
 								? 'Connect them above, then submit again.'
 								: 'Open this form in a new tab to connect them, then come back here and submit again.'),
@@ -1218,7 +1229,7 @@
 					{{/if}}
 				} else if (event.data.type === 'n8n-shell-credentials-not-ready') {
 					btn.disabled = true;
-					btn.setAttribute('title', 'Connect the required credentials first');
+					btn.setAttribute('title', 'Connect the required accounts first');
 				}
 			});
 		</script>
