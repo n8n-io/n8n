@@ -323,12 +323,12 @@ export class VenafiTlsProtectCloud implements INodeType {
 								keystorePassphrase = this.getNodeParameter('keystorePassphrase', i) as string;
 							}
 
-							const encryptedValues = (await encryptPassphrase.call(
+							const encryptedValues = await encryptPassphrase.call(
 								this,
 								certificateId,
 								privateKeyPassphrase,
 								keystorePassphrase,
-							)) as string;
+							);
 							body.encryptedPrivateKeyPassphrase = encryptedValues[0];
 							if (exportFormat === 'JKS') {
 								body.encryptedKeystorePassphrase = encryptedValues[1];
