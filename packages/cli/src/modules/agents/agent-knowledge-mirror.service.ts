@@ -138,8 +138,6 @@ export class AgentKnowledgeMirrorService {
 		const limit = validatedRequest.head_limit ?? DEFAULT_SEARCH_TEXT_LIMIT;
 
 		if (references.files.length === 0) {
-			const runtime = await this.acquireKnowledgeRuntime(projectId, agentId);
-			await this.ensureMirrorSynced(runtime, references.files);
 			return emptySearchKnowledgeResult(outputMode, limit);
 		}
 

@@ -21,6 +21,8 @@ import {
 
 @Service()
 export class AgentWorkspaceService {
+	private readonly pendingReconciliations = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
@@ -44,7 +46,30 @@ export class AgentWorkspaceService {
 			new Workspace({ filesystem: runtime.filesystem, sandbox: runtime.sandbox }),
 			runtime.workspaceRoot,
 		);
-		try {
+		this.reconcileToolResultsInBackground(
+			runtime.cacheKey,
+			projectId,
+			agentId,
+			principalHash,
+			workspace,
+		);
+		const getTools = workspace.getTools.bind(workspace);
+		workspace.getTools = () =>
+			getTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name));
+		return workspace;
+	}
+
+	private reconcileToolResultsInBackground(
+		cacheKey: string,
+		projectId: string,
+		agentId: string,
+		principalHash: AgentSandboxPrincipalHash,
+		workspace: Workspace,
+	): void {
+		if (this.pendingReconciliations.has(cacheKey)) return;
+		this.pendingReconciliations.add(cacheKey);
+
+		void (async () => {
 			const activeRunIds = await this.checkpointStorage.getActiveRunIdsForSandbox(
 				agentId,
 				principalHash,
@@ -56,16 +81,16 @@ export class AgentWorkspaceService {
 					this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds,
 				);
 			}
-		} catch (error) {
-			this.logger.warn('Failed to reconcile agent workspace tool results', {
-				projectId,
-				agentId,
-				error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
+		})()
+			.catch((error) => {
+				this.logger.warn('Failed to reconcile agent workspace tool results', {
+					projectId,
+					agentId,
+					error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
+				});
+			})
+			.finally(() => {
+				this.pendingReconciliations.delete(cacheKey);
 			});
-		}
-		const getTools = workspace.getTools.bind(workspace);
-		workspace.getTools = () =>
-			getTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name));
-		return workspace;
 	}
 }

@@ -17,6 +17,7 @@ const HASHED_PATH_SEGMENT_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const TOOL_RESULT_FILE_PATTERN = /^([A-Za-z0-9_-]{43})\.(result|error|message)\.json$/;
 const MAX_RECONCILIATION_CANDIDATES = 100;
 const TOOL_RESULT_CLEANUP_TIMEOUT_MS = 1_000;
+const TOOL_RESULT_RECONCILIATION_TIMEOUT_MS = 5_000;
 
 function hashPathSegment(value: string): string {
 	return createHash('sha256').update(value).digest('base64url');
@@ -73,35 +74,38 @@ export async function reconcileToolResultRuns(
 	protectedRunIds: Iterable<string>,
 	ttlMs: number,
 ): Promise<void> {
-	let entries: FileEntry[];
-	try {
-		entries = await filesystem.readdir(TOOL_RESULT_RUNS_DIRECTORY);
-	} catch {
-		return;
-	}
-
-	const protectedDirectories = new Set(
-		Array.from(protectedRunIds, (runId) => hashPathSegment(runId)),
-	);
-	const cutoff = Date.now() - ttlMs;
-	let examined = 0;
-
-	for (const entry of entries) {
-		if (examined >= MAX_RECONCILIATION_CANDIDATES) break;
-		if (entry.type !== 'directory' || !HASHED_PATH_SEGMENT_PATTERN.test(entry.name)) {
-			continue;
-		}
-		if (protectedDirectories.has(entry.name)) continue;
-		examined++;
-
-		const path = `${TOOL_RESULT_RUNS_DIRECTORY}/${entry.name}`;
+	const abortSignal = AbortSignal.timeout(TOOL_RESULT_RECONCILIATION_TIMEOUT_MS);
+	await raceWithAbort(async () => {
+		let entries: FileEntry[];
 		try {
-			const { modifiedAt } = await filesystem.stat(path);
-			const modifiedAtMs = modifiedAt.getTime();
-			if (!Number.isFinite(modifiedAtMs) || modifiedAtMs >= cutoff) continue;
-			await filesystem.rmdir(path, { recursive: true, force: true });
+			entries = await filesystem.readdir(TOOL_RESULT_RUNS_DIRECTORY, { abortSignal });
 		} catch {
-			// Reconciliation is best-effort and must not delay workspace acquisition.
+			return;
 		}
-	}
+
+		const protectedDirectories = new Set(
+			Array.from(protectedRunIds, (runId) => hashPathSegment(runId)),
+		);
+		const cutoff = Date.now() - ttlMs;
+		let examined = 0;
+
+		for (const entry of entries) {
+			if (examined >= MAX_RECONCILIATION_CANDIDATES) break;
+			if (entry.type !== 'directory' || !HASHED_PATH_SEGMENT_PATTERN.test(entry.name)) {
+				continue;
+			}
+			if (protectedDirectories.has(entry.name)) continue;
+			examined++;
+
+			const path = `${TOOL_RESULT_RUNS_DIRECTORY}/${entry.name}`;
+			try {
+				const { modifiedAt } = await filesystem.stat(path, { abortSignal });
+				const modifiedAtMs = modifiedAt.getTime();
+				if (!Number.isFinite(modifiedAtMs) || modifiedAtMs >= cutoff) continue;
+				await filesystem.rmdir(path, { recursive: true, force: true, abortSignal });
+			} catch {
+				if (abortSignal.aborted) return;
+			}
+		}
+	}, abortSignal);
 }

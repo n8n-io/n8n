@@ -80,9 +80,9 @@ export class AgentRuntimeCacheService {
 
 	private readonly runtimeInitializations = new Map<string, RuntimeInitialization>();
 
-	private readonly activeRuntimeLeases = new Map<RuntimeAgent, number>();
+	private readonly activeRuntimeLeases = new WeakMap<RuntimeAgent, number>();
 
-	private readonly runtimesPendingClose = new Map<RuntimeAgent, string>();
+	private readonly runtimesPendingClose = new WeakMap<RuntimeAgent, string>();
 
 	constructor(
 		private readonly logger: Logger,

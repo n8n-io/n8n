@@ -206,6 +206,19 @@ describe('AgentKnowledgeMirrorService', () => {
 		});
 	});
 
+	it('returns an empty search without acquiring a sandbox when no files exist', async () => {
+		const agentFileRepository = mock<AgentFileRepository>();
+		agentFileRepository.findByAgentId.mockResolvedValue([]);
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.existsBy.mockResolvedValue(true);
+		const service = makeService({ runtimeService, agentFileRepository, agentRepository });
+
+		const result = await service.searchKnowledge(projectId, agentId, { pattern: 'anything' });
+
+		expect(result).toEqual(expect.objectContaining({ matches: [], hasMore: false }));
+		expect(runtimeService.acquireKnowledgeSandbox).not.toHaveBeenCalled();
+	});
+
 	describe('mirror sync', () => {
 		function isManifestReadCommand(command: string): boolean {
 			return command.startsWith('cat ') && command.includes('/manifest');

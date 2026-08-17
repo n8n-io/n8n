@@ -76,15 +76,24 @@ describe('AgentWorkspaceService', () => {
 		]);
 	});
 
-	it('still acquires the workspace when orphan reconciliation fails', async () => {
+	it('returns the workspace without waiting for reconciliation and deduplicates concurrent sweeps', async () => {
 		const { service, checkpointStorage } = makeService();
-		checkpointStorage.getActiveRunIdsForSandbox.mockRejectedValue(
-			new Error('checkpoint unavailable'),
+		let resolveReconciliation!: (activeRunIds: Set<string>) => void;
+		checkpointStorage.getActiveRunIdsForSandbox.mockReturnValue(
+			new Promise((resolve) => {
+				resolveReconciliation = resolve;
+			}),
 		);
 
-		const workspace = await service.getAgentWorkspace(projectId, agentId, principalHash);
+		const firstWorkspace = await service.getAgentWorkspace(projectId, agentId, principalHash);
+		const secondWorkspace = await service.getAgentWorkspace(projectId, agentId, principalHash);
 
-		expect(workspace.filesystem?.basePath).toBe('/home/daytona/workspace');
+		expect(firstWorkspace.filesystem?.basePath).toBe('/home/daytona/workspace');
+		expect(secondWorkspace.filesystem?.basePath).toBe('/home/daytona/workspace');
+		expect(checkpointStorage.getActiveRunIdsForSandbox).toHaveBeenCalledOnce();
+
+		resolveReconciliation(new Set());
+		await Promise.resolve();
 	});
 
 	it('skips orphan reconciliation when checkpoint protection overflows', async () => {

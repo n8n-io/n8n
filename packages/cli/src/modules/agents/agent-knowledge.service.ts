@@ -91,6 +91,8 @@ export class AgentKnowledgeService {
 
 	async warmKnowledgeSandbox(agentId: string, projectId: string): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
+		if (!(await this.agentFileRepository.hasFilesForAgent(agentId))) return;
+
 		await this.agentSandboxRuntimeService.warmKnowledgeSandbox(projectId, agentId);
 	}
 
@@ -112,7 +114,11 @@ export class AgentKnowledgeService {
 					error: error instanceof Error ? error.message : error,
 				});
 			});
-		this.agentKnowledgeMirrorService.prewarmMirrorInBackground(projectId, agentId);
+		if (await this.agentFileRepository.hasFilesForAgent(agentId)) {
+			this.agentKnowledgeMirrorService.prewarmMirrorInBackground(projectId, agentId);
+		} else {
+			await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
+		}
 	}
 
 	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {

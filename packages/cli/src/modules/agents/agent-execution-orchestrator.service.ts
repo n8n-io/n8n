@@ -385,14 +385,23 @@ export class AgentExecutionOrchestratorService {
 
 		const { agent: agentInstance, toolRegistry } = runtime;
 		let executionId: string | undefined;
-		const recorder = this.createRecorder(toolRegistry, () => executionId, {
-			projectId,
-			agentId,
-			threadId,
-		});
-		const startedAt = recorder.startedAt;
-		const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
-		let executionSource = source;
+		let recorder: ExecutionRecorder;
+		let startedAt: Date;
+		let runType: AgentRunTelemetryType;
+		let executionSource: string | undefined;
+		try {
+			recorder = this.createRecorder(toolRegistry, () => executionId, {
+				projectId,
+				agentId,
+				threadId,
+			});
+			startedAt = recorder.startedAt;
+			runType = usePublishedVersion ? 'production' : 'test';
+			executionSource = source;
+		} catch (error) {
+			this.runtimeCacheService.releaseRuntimeLease(agentInstance);
+			throw error;
+		}
 
 		try {
 			// A resume request carries no `source` of its own — recover it from
