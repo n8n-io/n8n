@@ -15,7 +15,7 @@ const apiRequest = confluenceApiRequest as unknown as Mock;
 const createParams: Record<string, unknown> = {
 	resource: 'page',
 	operation: 'create',
-	space: '111',
+	space: { mode: 'list', value: '111' },
 	title: 'My Page',
 	bodyFormat: 'plainText',
 	bodyPlainText: 'Hello',

@@ -13,7 +13,7 @@ vi.mock('../../../transport', async (importOriginal) => ({
 const apiRequest = confluenceApiRequest as unknown as Mock;
 
 const baseParams: Record<string, unknown> = {
-	space: '111',
+	space: { mode: 'list', value: '111' },
 	title: 'My Page',
 	bodyFormat: 'plainText',
 	bodyPlainText: 'Hello',
@@ -47,13 +47,13 @@ describe('page:create', () => {
 	it.each([
 		[
 			'includes parentId when a parent page is set',
-			{ parentPage: '98304' },
+			{ parentPage: { mode: 'id', value: '98304' } },
 			{ parentId: '98304' },
 			{},
 		],
 		[
 			'sends root-level and drops the parent when Root Level is on',
-			{ parentPage: '98304', options: { rootLevel: true } },
+			{ parentPage: { mode: 'id', value: '98304' }, options: { rootLevel: true } },
 			{},
 			{ 'root-level': true },
 		],
@@ -73,7 +73,10 @@ describe('page:create', () => {
 		['coerces a non-string title from an expression', { title: 32 }, { title: '32' }, {}],
 		[
 			'combines Private, Root Level, and Create as Draft',
-			{ parentPage: '98304', options: { private: true, rootLevel: true, createAsDraft: true } },
+			{
+				parentPage: { mode: 'id', value: '98304' },
+				options: { private: true, rootLevel: true, createAsDraft: true },
+			},
 			{ status: 'draft' },
 			{ private: true, 'root-level': true },
 		],
@@ -87,7 +90,7 @@ describe('page:create', () => {
 	});
 
 	it.each([
-		['space', { ...baseParams, space: '' }, 'Space is required'],
+		['space', { ...baseParams, space: { mode: 'list', value: '' } }, 'Space is required'],
 		['title', { ...baseParams, title: '   ' }, 'Title is required'],
 	])('rejects a missing %s without calling the API', async (_field, params, message) => {
 		const ctx = mockExecuteCtx(params);

@@ -17,8 +17,15 @@ export function mockExecuteCtx(
 	const ctx = mockDeep<IExecuteFunctions>();
 	ctx.getInputData.mockReturnValue(Array.from({ length: items }, () => ({ json: {} })));
 	ctx.getNodeParameter.mockImplementation(
-		(name: string, _i?: number, fallback?: unknown) =>
-			(name in params ? params[name] : fallback) as never,
+		(name: string, _i?: number, fallback?: unknown, options?: { extractValue?: boolean }) => {
+			const value = name in params ? params[name] : fallback;
+			// Mimic extractValue unwrapping a resource locator to its value, so a
+			// call site that forgets to ask for extraction fails the assertions.
+			if (options?.extractValue && value && typeof value === 'object' && 'value' in value) {
+				return (value as { value: unknown }).value as never;
+			}
+			return value as never;
+		},
 	);
 	ctx.getNode.mockReturnValue(testNode);
 	ctx.helpers.returnJsonArray.mockImplementation((data) =>
