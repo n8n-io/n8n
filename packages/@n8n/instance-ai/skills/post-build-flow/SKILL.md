@@ -237,7 +237,9 @@ again.
    - Most common cause: a lookup/query node returned zero items (n8n stops
      downstream nodes on empty item lists). If the dead-end is a Data Table
      lookup, insert a matching test row with `data-tables(action="insert-rows")`,
-     re-run `verify-built-workflow`, and delete the test row afterwards.
+     re-run `verify-built-workflow`, and delete the test row afterwards. The same
+     holds for data you seed anywhere else to unblock a run — it is yours to
+     remove once the run is done (see "Cleaning up after a live test").
    - If you cannot seed the data source, report honestly: name which nodes
      were verified and which were not, and tell the user the unreached part
      needs a manual test. Do not start a live `executions(action="run")`
@@ -347,6 +349,41 @@ verification. If the live test fails, treat the workflow as unresolved and do
 not offer publishing. If the user declines or defers, state what remains
 untested, do not claim live end-to-end verification, and do not offer
 publishing.
+
+## Cleaning up after a live test
+
+A live run against real credentials leaves **real artifacts** — a row in their
+sheet, a message in their channel, a block on their page. Test data you created
+is your mess, not theirs.
+
+When a live test, or a verification you seeded data for, wrote/sent/changed
+anything in an external system:
+
+1. **Name what it left behind**, in the same message that reports the run: which
+   record, where, and how to recognise it ("a `[Test] …` to-do at the bottom of
+   the toggle"). Read it back from the effect node's output rather than guessing.
+2. **Offer to remove it yourself.** You can delete it the same way you wrote it —
+   the target has an API and you can reach it with a workflow. When no node or
+   tool does it directly, build a **one-off cleanup workflow**; that is exactly
+   what `one-off-operations` is for. Never present manual deletion as how this
+   gets resolved, and never claim you have no way to delete it — "I don't have a
+   delete tool for X" is false whenever X has a write API you just used. Noting
+   that the user *could* also remove it by hand is fine only alongside your own
+   offer.
+3. **Ask before deleting.** Removal is destructive, so it goes through the usual
+   approval gate. Never clean up silently — something labelled "test" may still
+   be data the user wants.
+4. **Don't stack test data.** Do not offer another live run against the same
+   target while an earlier test artifact is still sitting there. Clear it first,
+   or say plainly that the next run will add a second one.
+
+If the user declines, note that the item is still there and move on — don't
+re-ask.
+
+**Not every write is test data.** When the live run *was* the point — a one-off
+operation whose whole purpose is the effect (see `one-off-operations`) — what it
+wrote is the deliverable. There you offer to clean up the *workflow*, never the
+result.
 
 ## Claiming success
 
