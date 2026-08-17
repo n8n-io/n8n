@@ -44,7 +44,7 @@ function modeReporterNode(name: string, position: [number, number]) {
 	};
 }
 
-/** Filter node reproducing the reported condition: keep items only on a manual run. */
+/** Filter node that keeps an item only when `$execution.mode` resolves to 'test'. */
 function testModeFilterNode(name: string, position: [number, number]) {
 	return {
 		parameters: {
@@ -282,6 +282,7 @@ describe('$execution.mode inside a manually started run', () => {
 
 		const grandchildExecution = await getExecutionWithData(grandchildExecutionSummary.id);
 
+		expect(grandchildExecution.status).toBe('success');
 		expect(outputItems(grandchildExecution, 'Report Mode')[0].json.executionMode).toBe('test');
 		expect(outputItems(grandchildExecution, 'Only Test')).toHaveLength(1);
 	});
