@@ -1,27 +1,28 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { Mock, MockedObject } from 'vitest';
 
 import { Github } from '../Github.node';
 import * as GenericFunctions from '../GenericFunctions';
 
-jest.mock('../GenericFunctions', () => ({
-	...jest.requireActual('../GenericFunctions'),
-	githubApiRequest: jest.fn(),
-	getRepositoryPublicKey: jest.fn(),
-	encryptSecret: jest.fn(),
+vi.mock('../GenericFunctions', async () => ({
+	...(await vi.importActual('../GenericFunctions')),
+	githubApiRequest: vi.fn(),
+	getRepositoryPublicKey: vi.fn(),
+	encryptSecret: vi.fn(),
 }));
 
 describe('Github Node - Secret CreateOrUpdate Operation', () => {
 	let github: Github;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: MockedObject<IExecuteFunctions>;
 
 	beforeEach(() => {
 		github = new Github();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions = {
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-			getNode: jest.fn().mockReturnValue({
+			getNodeParameter: vi.fn(),
+			getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+			getNode: vi.fn().mockReturnValue({
 				id: 'test-node-id',
 				name: 'Github',
 				type: 'n8n-nodes-base.github',
@@ -30,23 +31,23 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 				parameters: {},
 			}),
 			helpers: {
-				assertBinaryData: jest.fn(),
-				getBinaryDataBuffer: jest.fn(),
-				requestWithAuthentication: jest.fn(),
-				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
-				constructExecutionMetaData: jest.fn((data) => data),
+				assertBinaryData: vi.fn(),
+				getBinaryDataBuffer: vi.fn(),
+				requestWithAuthentication: vi.fn(),
+				returnJsonArray: vi.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: vi.fn((data) => data),
 			},
-			getCredentials: jest.fn().mockResolvedValue({
+			getCredentials: vi.fn().mockResolvedValue({
 				accessToken: 'test-token',
 				server: 'https://api.github.com',
 			}),
-			continueOnFail: jest.fn().mockReturnValue(false),
-		} as unknown as jest.Mocked<IExecuteFunctions>;
+			continueOnFail: vi.fn().mockReturnValue(false),
+		} as unknown as MockedObject<IExecuteFunctions>;
 	});
 
 	describe('Secret CreateOrUpdate - Basic Flow', () => {
 		it('should create or update a repository secret successfully', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
 						resource: 'secret',
@@ -61,16 +62,16 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 			);
 
 			// Mock the public key retrieval
-			(GenericFunctions.getRepositoryPublicKey as jest.Mock).mockResolvedValue({
+			(GenericFunctions.getRepositoryPublicKey as Mock).mockResolvedValue({
 				key_id: 'test-key-id-123',
 				key: 'base64-encoded-public-key',
 			});
 
 			// Mock the encryption function
-			(GenericFunctions.encryptSecret as jest.Mock).mockResolvedValue('encrypted-secret-value');
+			(GenericFunctions.encryptSecret as Mock).mockResolvedValue('encrypted-secret-value');
 
 			// Mock the API request (GitHub returns empty for success)
-			(GenericFunctions.githubApiRequest as jest.Mock).mockResolvedValue({});
+			(GenericFunctions.githubApiRequest as Mock).mockResolvedValue({});
 
 			const result = await github.execute.call(mockExecuteFunctions);
 
@@ -103,12 +104,11 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 			expect(result[0]).toBeDefined();
 			expect(result[0].length).toBeGreaterThan(0);
 		});
-
 	});
 
 	describe('Secret CreateOrUpdate - Name Validation', () => {
 		const mockSecretParams = (secretName: string) => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
 						resource: 'secret',
@@ -122,12 +122,12 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 				},
 			);
 
-			(GenericFunctions.getRepositoryPublicKey as jest.Mock).mockResolvedValue({
+			(GenericFunctions.getRepositoryPublicKey as Mock).mockResolvedValue({
 				key_id: 'key-id',
 				key: 'public-key',
 			});
-			(GenericFunctions.encryptSecret as jest.Mock).mockResolvedValue('encrypted');
-			(GenericFunctions.githubApiRequest as jest.Mock).mockResolvedValue({});
+			(GenericFunctions.encryptSecret as Mock).mockResolvedValue('encrypted');
+			(GenericFunctions.githubApiRequest as Mock).mockResolvedValue({});
 		};
 
 		it.each([
@@ -164,7 +164,7 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 
 	describe('Secret CreateOrUpdate - Error Handling', () => {
 		it('should handle API errors gracefully', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
 						resource: 'secret',
@@ -178,15 +178,15 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 				},
 			);
 
-			(GenericFunctions.getRepositoryPublicKey as jest.Mock).mockResolvedValue({
+			(GenericFunctions.getRepositoryPublicKey as Mock).mockResolvedValue({
 				key_id: 'key-id',
 				key: 'public-key',
 			});
 
-			(GenericFunctions.encryptSecret as jest.Mock).mockResolvedValue('encrypted');
+			(GenericFunctions.encryptSecret as Mock).mockResolvedValue('encrypted');
 
 			// Simulate API error
-			(GenericFunctions.githubApiRequest as jest.Mock).mockRejectedValue(
+			(GenericFunctions.githubApiRequest as Mock).mockRejectedValue(
 				new Error('API Error: Unauthorized'),
 			);
 
@@ -194,7 +194,7 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 		});
 
 		it('should handle public key retrieval failure', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
 						resource: 'secret',
@@ -209,7 +209,7 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 			);
 
 			// Simulate public key retrieval failure
-			(GenericFunctions.getRepositoryPublicKey as jest.Mock).mockRejectedValue(
+			(GenericFunctions.getRepositoryPublicKey as Mock).mockRejectedValue(
 				new Error('Failed to get public key'),
 			);
 
