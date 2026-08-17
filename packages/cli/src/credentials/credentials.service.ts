@@ -161,6 +161,11 @@ type GetManyCredentialsOptions = {
 	};
 };
 
+type CredentialsWithCount<T = CredentialsEntity> = {
+	credentials: T[];
+	count: number;
+};
+
 type WorkflowCredentialResult = {
 	id: string;
 	name: string;
@@ -286,14 +291,11 @@ export class CredentialsService {
 	async getManyAndCount(
 		user: User,
 		options: GetManyOptions & { includeData: true },
-	): Promise<{
-		credentials: Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>;
-		count: number;
-	}>;
+	): Promise<CredentialsWithCount<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
 	async getManyAndCount(
 		user: User,
 		options?: GetManyOptions,
-	): Promise<{ credentials: CredentialsEntity[]; count: number }>;
+	): Promise<CredentialsWithCount>;
 	async getManyAndCount(
 		user: User,
 		{
@@ -304,10 +306,11 @@ export class CredentialsService {
 			includeGlobal = false,
 			filters = {},
 		}: GetManyOptions = {},
-	): Promise<{
-		credentials: Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[];
-		count: number;
-	}> {
+	): Promise<
+		CredentialsWithCount<
+			ICredentialsDecrypted<ICredentialDataDecryptedObject> | CredentialsEntity
+		>
+	> {
 		const { externalSecretsStore } = filters;
 		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
@@ -360,7 +363,7 @@ export class CredentialsService {
 			onlySharedWithMe,
 			filters,
 		}: GetManyCredentialsOptions,
-	): Promise<{ credentials: CredentialsEntity[]; count: number }> {
+	): Promise<CredentialsWithCount> {
 		const { dependency: dependencyFilter } = filters ?? {};
 		const typeFilter = this.extractTypeFilter(listQueryOptions);
 
@@ -424,7 +427,7 @@ export class CredentialsService {
 			onlySharedWithMe,
 			filters,
 		}: GetManyCredentialsOptions,
-	): Promise<{ credentials: CredentialsEntity[]; count: number }> {
+	): Promise<CredentialsWithCount> {
 		const { dependency: dependencyFilter } = filters ?? {};
 		const typeFilter = this.extractTypeFilter(listQueryOptions);
 
