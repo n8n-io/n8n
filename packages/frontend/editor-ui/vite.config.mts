@@ -19,6 +19,15 @@ const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
 const { NODE_ENV } = process.env;
 
+// Dev backend URL. N8N_PORT (the backend's own listen-port var) moves both
+// the injected BASE_PATH and the REST base URL, so one var configures a
+// second instance running next to the default one. `||` on purpose: an
+// explicitly empty env var must fall back like an unset one.
+const devBackendPort = Number(process.env.N8N_PORT || '5678');
+
+// The editor's own dev port; N8N_PORT above is where the backend lives.
+const editorPort = Number(process.env.N8N_EDITOR_PORT || '8080');
+
 const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const packagesDir = resolve(__dirname, '..', '..');
@@ -167,7 +176,7 @@ const plugins: UserConfig['plugins'] = [
 			return ctx.server
 				? html
 						.replace('%CONFIG_TAGS%', '')
-						.replaceAll('/{{BASE_PATH}}', `//localhost:${process.env.N8N_PORT ?? '5678'}`)
+						.replaceAll('/{{BASE_PATH}}', `//localhost:${devBackendPort}`)
 						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
 				: html;
 		},
@@ -225,44 +234,73 @@ const plugins: UserConfig['plugins'] = [
 
 const target = browserslistToEsbuild(browsers);
 
-export default mergeConfig(
-	defineConfig({
-		define: {
-			// This causes test to fail but is required for actually running it
-			// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
-			...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
-			BASE_PATH: `'${publicPath}'`,
-		},
-		plugins,
-		resolve: { alias },
-		base: publicPath,
-		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
-		css: {
-			preprocessorMaxWorkers: 2,
-			preprocessorOptions: {
-				scss: {
-					additionalData: [
-						'',
-						'@use "@/app/css/_variables.scss" as *;',
-						'@use "@n8n/design-system/css/mixins" as mixins;',
-					].join('\n'),
+export default defineConfig(({ command, mode }) => {
+	// `vite dev` only. command/mode identify the dev server precisely where
+	// process.env.NODE_ENV can't: a shell-exported NODE_ENV would leak the
+	// localhost URL into builds (or silently skip it in dev), while build,
+	// preview (serve/production) and vitest (serve/test) all resolve to a
+	// different command/mode pair. Builds must keep VUE_APP_URL_BASE_API
+	// unset so the app falls back to window.BASE_PATH.
+	if (command === 'serve' && mode === 'development') {
+		// Fail fast on a malformed port rather than an obscure vite crash.
+		for (const [name, port] of [
+			['N8N_PORT', devBackendPort],
+			['N8N_EDITOR_PORT', editorPort],
+		] as const) {
+			if (!Number.isInteger(port) || port < 1 || port > 65535) {
+				throw new Error(`${name} must be a port number, got: ${process.env[name]}`);
+			}
+		}
+		// Truthiness check, not ??=: an explicitly empty value counts as unset.
+		if (!process.env.VUE_APP_URL_BASE_API) {
+			process.env.VUE_APP_URL_BASE_API = `http://localhost:${devBackendPort}/`;
+		}
+	}
+
+	return mergeConfig(
+		{
+			server: {
+				host: '0.0.0.0',
+				port: editorPort,
+				strictPort: true,
+			},
+			define: {
+				// This causes test to fail but is required for actually running it
+				// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
+				...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
+				BASE_PATH: `'${publicPath}'`,
+			},
+			plugins,
+			resolve: { alias },
+			base: publicPath,
+			envPrefix: ['VUE', 'N8N_ENV_FEAT'],
+			css: {
+				preprocessorMaxWorkers: 2,
+				preprocessorOptions: {
+					scss: {
+						additionalData: [
+							'',
+							'@use "@/app/css/_variables.scss" as *;',
+							'@use "@n8n/design-system/css/mixins" as mixins;',
+						].join('\n'),
+					},
 				},
 			},
+			build: {
+				minify: !!release,
+				// Coverage builds emit INLINE maps so browser V8 coverage carries the
+				// map in the script source and monocart resolves offsets back to src.
+				sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
+				target,
+			},
+			optimizeDeps: {
+				exclude: ['wa-sqlite'],
+				rolldownOptions: {},
+			},
+			worker: {
+				format: 'es',
+			},
 		},
-		build: {
-			minify: !!release,
-			// Coverage builds emit INLINE maps so browser V8 coverage carries the
-			// map in the script source and monocart resolves offsets back to src.
-			sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
-			target,
-		},
-		optimizeDeps: {
-			exclude: ['wa-sqlite'],
-			rolldownOptions: {},
-		},
-		worker: {
-			format: 'es',
-		},
-	}),
-	vitestConfig,
-);
+		vitestConfig,
+	);
+});

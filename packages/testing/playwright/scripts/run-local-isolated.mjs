@@ -76,8 +76,9 @@ if (process.env.N8N_BASE_URL) {
 	backendUrl = `http://localhost:${port}`;
 }
 
-// Throwaway `~/.n8n`-equivalent. SQLite lives at `${userFolder}/database.sqlite`,
-// so this also isolates the DB from any local n8n install.
+// Throwaway home-dir stand-in. n8n creates `${userFolder}/.n8n/` inside it
+// (SQLite DB, encryption key), so this also isolates the DB from any local
+// n8n install.
 const userFolder = mkdtempSync(path.join(os.tmpdir(), 'n8n-test-isolated-'));
 
 // Caller-supplied n8n env (same convention as `pnpm test:local`).
