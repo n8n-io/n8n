@@ -28,6 +28,7 @@ if (window !== window.parent) {
 const workflowId = useWorkflowId();
 
 const {
+	isLoading,
 	initializeData,
 	initializeWorkflow,
 	currentWorkflowDocumentStore,
@@ -84,7 +85,12 @@ onBeforeUnmount(() => {
 
 <template>
 	<BaseLayout>
-		<RouterView v-if="currentWorkflowDocumentStore" />
+		<!-- Gate on isLoading as well as on the store: WorkflowDocumentStoreKey is shared by
+		every layout, so on a layout swap the store is still the outgoing layout's one, which
+		its cleanup() then nulls. isLoading is this layout's own and starts true, so NodeView
+		never mounts before this layout owns the store. Deliberately no LoadingView here —
+		an embedded preview must not paint a spinner the host page did not ask for. -->
+		<RouterView v-if="!isLoading && currentWorkflowDocumentStore" />
 		<template #footer>
 			<DemoFooter />
 		</template>
