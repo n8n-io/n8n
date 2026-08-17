@@ -1,5 +1,5 @@
 import type { AgentIntegrationSettings, ChatIntegrationDescriptor } from '@n8n/api-types';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 import type { Component, Ref } from 'vue';
