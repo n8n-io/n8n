@@ -47,6 +47,10 @@ export interface DialogContentProps {
 	 * Accessible description for the dialog (used when DialogDescription is not provided)
 	 */
 	ariaDescription?: string;
+	/**
+	 * Render above another open dialog
+	 */
+	stacked?: boolean;
 }
 
 export interface DialogContentEmits {
@@ -106,7 +110,7 @@ function handleInteractOutside(e: Event) {
 		:force-mount="forceMount"
 		:trap-focus="trapFocus"
 		:disable-outside-pointer-events="disableOutsidePointerEvents"
-		:class="[$style.content, sizeClass]"
+		:class="[$style.content, sizeClass, stacked && $style.stacked]"
 		@escape-key-down="emit('escapeKeyDown', $event)"
 		@interact-outside="handleInteractOutside"
 		@open-auto-focus="emit('openAutoFocus', $event)"
@@ -172,6 +176,10 @@ function handleInteractOutside(e: Event) {
 	&:focus {
 		outline: none;
 	}
+}
+
+.stacked {
+	z-index: 1952; // Higher than default .content z-index to ensure the dialog is always on top.
 }
 
 .content[data-state='open'] {

@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
 
+import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
 	AgentChatIntegration,
@@ -237,7 +238,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new BufferingTestIntegration());
 		registry.register(new StreamingTestIntegration());
 		registry.register(new FormattedBufferedTestIntegration());
-		registry.register(new SlackIntegration());
+		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 
@@ -1881,7 +1882,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 
 	beforeEach(() => {
 		const registry = new ChatIntegrationRegistry();
-		registry.register(new SlackIntegration());
+		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 

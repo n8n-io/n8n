@@ -1648,7 +1648,7 @@ export class McpAgentToolsService {
 	}
 
 	private async disconnectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
-		const { savedAgent: saved } = await this.integrationManagementService.disconnect({
+		const { savedAgent: saved, warning } = await this.integrationManagementService.disconnect({
 			agent,
 			user,
 			type: input.type,
@@ -1660,6 +1660,7 @@ export class McpAgentToolsService {
 			agentId: input.agentId,
 			integration: { type: input.type, credentialId: input.credentialId },
 			connected: false,
+			...(warning ? { warning } : {}),
 			published: saved.activeVersionId !== null,
 			activeVersionId: saved.activeVersionId,
 			configHash: getAgentConfigHash(this.configFromEntity(saved)),
@@ -1691,7 +1692,6 @@ export class McpAgentToolsService {
 			configHash: getAgentConfigHash(this.configFromEntity(saved)),
 		};
 		if (saved.activeVersionId === null) return { ...result, connected: false };
-
 		return {
 			...result,
 			connected: true,

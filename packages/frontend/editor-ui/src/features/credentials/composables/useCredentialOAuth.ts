@@ -19,6 +19,11 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getTrustedOAuthOrigins, hasOAuthTokenData, waitForOAuthCallback } from './oauthCallback';
 
+interface OAuthAuthorizationOptions {
+	abortOnPopupClose?: boolean;
+	preopenedPopup?: Window;
+}
+
 /**
  * Composable for OAuth credential type detection and authorization.
  * Used by NodeCredentials for the quick connect OAuth flow.
@@ -231,14 +236,14 @@ export function useCredentialOAuth() {
 	async function authorize(
 		credential: ICredentialsResponse,
 		signal?: AbortSignal,
-		preopenedPopup?: Window,
+		options: OAuthAuthorizationOptions = {},
 	): Promise<boolean> {
 		// window.open must run within the click's transient user activation:
 		// opening after the network round trips below gets the popup blocked on
 		// slow connections (Chrome expires activation after ~5s) and in stricter
 		// browsers (Safari) regardless of timing. Open a blank window now and
 		// navigate it once the authorization URL is known.
-		const popup = preopenedPopup ?? openOAuthPopup('about:blank', signal);
+		const popup = options.preopenedPopup ?? openOAuthPopup('about:blank', signal);
 		if (!popup) {
 			showPopupBlockedError();
 			return false;
@@ -273,6 +278,7 @@ export function useCredentialOAuth() {
 			verifyConnected: canVerifyConnected
 				? async () => await isConnected(credential.id)
 				: undefined,
+			abortOnPopupClose: options.abortOnPopupClose,
 		});
 
 		// Timeout and abort can race the backend committing the token: authorization
@@ -306,6 +312,32 @@ export function useCredentialOAuth() {
 		}
 
 		return outcome === 'success';
+	}
+
+	/**
+	 * Authorize a credential that was just created. Keeps it out of the store
+	 * until OAuth succeeds and removes it when authorization is not completed.
+	 */
+	async function authorizeNewCredential(
+		credential: ICredentialsResponse,
+		options: OAuthAuthorizationOptions = {},
+	): Promise<boolean> {
+		const controller = new AbortController();
+		oauthAbortController.value = controller;
+		let success = false;
+
+		try {
+			success = await authorize(credential, controller.signal, options);
+			if (success) {
+				credentialsStore.upsertCredential(credential);
+			}
+			return success;
+		} finally {
+			oauthAbortController.value = null;
+			if (!success) {
+				await credentialsStore.deleteCredential({ id: credential.id }).catch(() => {});
+			}
+		}
 	}
 
 	/**
@@ -373,7 +405,7 @@ export function useCredentialOAuth() {
 
 		pendingCredentialId.value = credential.id;
 
-		const success = await authorize(credential, controller.signal, popup);
+		const success = await authorize(credential, controller.signal, { preopenedPopup: popup });
 
 		oauthAbortController.value = null;
 		pendingCredentialId.value = null;
@@ -432,6 +464,7 @@ export function useCredentialOAuth() {
 		canOAuthCredentialQuickConnect,
 		hasManualCredentialInputFields,
 		authorize,
+		authorizeNewCredential,
 		createAndAuthorize,
 		cancelAuthorize,
 	};

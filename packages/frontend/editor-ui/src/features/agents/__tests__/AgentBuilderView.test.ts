@@ -2778,6 +2778,11 @@ describe('AgentBuilderView — three-column shell', () => {
 			skill,
 			versionId: 'v2',
 		});
+		getAgentMock.mockResolvedValueOnce(
+			makeAgentResponse({
+				skills: { skill_0Ab9ZkLm3Pq7Xy2N: skill },
+			}),
+		);
 
 		const wrapper = await renderView();
 		wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('add-skill');

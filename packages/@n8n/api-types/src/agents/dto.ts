@@ -235,6 +235,7 @@ export class AgentDisconnectIntegrationDto extends Z.class({
 	type: z.string().min(1),
 	// Empty string targets a draft integration entry (`credentialId: ''`).
 	credentialId: z.string(),
+	deleteExternalResource: z.boolean().optional(),
 }) {}
 
 export class PublishAgentDto extends Z.class({

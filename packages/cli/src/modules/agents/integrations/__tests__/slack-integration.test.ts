@@ -11,7 +11,7 @@ describe('SlackIntegration', () => {
 	let integration: SlackIntegration;
 
 	beforeEach(() => {
-		integration = new SlackIntegration();
+		integration = new SlackIntegration(mock<AgentRepository>());
 	});
 
 	it('advertises Slack messaging and reaction actions', () => {
