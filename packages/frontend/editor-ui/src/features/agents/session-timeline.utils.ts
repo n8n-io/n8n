@@ -42,10 +42,7 @@ function mcpErrorMessage(output: Record<string, unknown>): string {
 		try {
 			const parsed: unknown = JSON.parse(text);
 			if (typeof parsed === 'string' && parsed.length > 0) return parsed;
-			if (isRecord(parsed)) {
-				const fromJson = errorTextFromValue(parsed.error);
-				if (fromJson) return fromJson;
-			}
+\t\t\tif (isRecord(parsed)) {\n\t\t\t\tconst fromJson = errorTextFromValue(parsed.error) || errorTextFromValue(parsed);\n\t\t\t\tif (fromJson) return fromJson;\n\t\t\t}\n\t\t\treturn text;
 		} catch {
 			return text;
 		}
