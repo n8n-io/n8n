@@ -1235,11 +1235,10 @@ export class InstanceAiAdapterService {
 
 				const nodes = workflow.nodes ?? [];
 
-				// Use the explicitly requested trigger node when provided,
-				// otherwise auto-detect using known trigger type constants
-				// then fall back to naive string matching for unknown trigger types
+				// Use the explicitly requested trigger node when provided — the only way to
+				// pick a branch in a multi-trigger workflow — otherwise auto-detect.
 				const triggerNode = options?.triggerNodeName
-					? (nodes.find((n) => n.name === options.triggerNodeName) ?? findTriggerNode(nodes))
+					? resolveRequestedTriggerNode(nodes, options.triggerNodeName)
 					: findTriggerNode(nodes);
 
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
@@ -3635,7 +3634,7 @@ export async function extractNodeOutput(
 	};
 }
 
-/** Known trigger node types in priority order. */
+/** Trigger node types we know how to make runnable, preferred over any other. */
 const KNOWN_TRIGGER_TYPES = new Set([
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -3644,16 +3643,58 @@ const KNOWN_TRIGGER_TYPES = new Set([
 ]);
 
 /**
- * Find the trigger node: known types first (priority among multiple triggers),
- * then the canonical n8n-workflow detection — the same detection the
- * instance-ai simulation planner uses, so a trigger the planner simulates
- * (e.g. suffix-less cron/emailReadImap) is always found here too.
+ * Find the trigger node to start from: known types first, then the canonical
+ * n8n-workflow detection — the same detection the instance-ai simulation planner
+ * uses, so a trigger the planner simulates (e.g. suffix-less
+ * cron/emailReadImap) is always found here too.
+ *
+ * Among equally-eligible triggers, enabled ones win and then node order decides,
+ * so the pick stays predictable for the caller (a multi-trigger workflow should
+ * name its trigger explicitly rather than rely on this). Filtering out disabled
+ * triggers is what makes "disable the other trigger" a working way to choose a
+ * branch; without it, a disabled trigger was still selected and its branch ran.
  */
 function findTriggerNode(nodes: INode[]): INode | undefined {
-	const known = nodes.find((n) => KNOWN_TRIGGER_TYPES.has(n.type));
-	if (known) return known;
+	const byPreference = [
+		(n: INode) => KNOWN_TRIGGER_TYPES.has(n.type),
+		(n: INode) => isTriggerNodeType(n.type),
+	];
 
-	return nodes.find((n) => isTriggerNodeType(n.type));
+	for (const isEligible of byPreference) {
+		const enabled = nodes.find((n) => isEligible(n) && !n.disabled);
+		if (enabled) return enabled;
+	}
+
+	// Every trigger is disabled — still start from one rather than silently
+	// degrading to a manual whole-workflow run.
+	for (const isEligible of byPreference) {
+		const anyTrigger = nodes.find((n) => isEligible(n));
+		if (anyTrigger) return anyTrigger;
+	}
+
+	return undefined;
+}
+
+/**
+ * Resolve the caller-requested trigger. Unlike auto-detection this must never
+ * fall through to a different node: silently running another branch is how a
+ * typo turns into "the agent ran the wrong flow".
+ */
+function resolveRequestedTriggerNode(nodes: INode[], triggerNodeName: string): INode {
+	const requested = nodes.find((n) => n.name === triggerNodeName);
+	if (requested && isTriggerNodeType(requested.type)) return requested;
+
+	const available = nodes.filter((n) => isTriggerNodeType(n.type)).map((n) => `"${n.name}"`);
+	const reason = requested
+		? `"${triggerNodeName}" is not a trigger node`
+		: `Trigger node "${triggerNodeName}" not found in the workflow`;
+	throw new UserError(
+		`${reason}. ${
+			available.length > 0
+				? `Available trigger nodes: ${available.join(', ')}.`
+				: 'This workflow has no trigger nodes.'
+		}`,
+	);
 }
 
 /** Copy of `connections` minus every listed source→target edge (any type). */
