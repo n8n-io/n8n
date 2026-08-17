@@ -395,8 +395,6 @@ function suppressPanelTransitionsUntilStableRender() {
 }
 
 // --- Preview panel resize (when canvas is visible) ---
-// Cap the preview at 50% of the available thread area so the chat retains at
-// least the other half when side panels or app layout chrome are visible.
 const threadAreaRef = useTemplateRef<HTMLElement>('threadArea');
 const { width: threadAreaWidth } = useElementSize(threadAreaRef);
 const mainSidebarOccupiedWidth = computed(() =>
@@ -518,7 +516,7 @@ watch(
 
 		if (visible) {
 			isArtifactsPanelRevealed.value = false;
-			previewPanelWidth.value = Math.round(threadAreaWidth.value / 2);
+			previewPanelWidth.value = previewMaxWidth.value;
 		} else {
 			isAgentPreviewDockOpen.value = false;
 		}
@@ -530,7 +528,7 @@ watch(
 // reported the container size (otherwise the panel would render at 0px).
 watch(threadAreaWidth, (width) => {
 	if (width > 0 && previewPanelWidth.value === 0 && preview.isPreviewVisible.value) {
-		previewPanelWidth.value = Math.round(width / 2);
+		previewPanelWidth.value = previewMaxWidth.value;
 	}
 });
 
