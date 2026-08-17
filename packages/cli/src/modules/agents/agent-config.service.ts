@@ -11,9 +11,9 @@ import {
 	type ExportedAgentJsonConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { WorkflowRepository, type User } from '@n8n/db';
+import { TransactionRunner, WorkflowRepository, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -61,6 +61,7 @@ export class AgentConfigService {
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 		private readonly secureRuntime: AgentSecureRuntime,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	/**
@@ -182,9 +183,10 @@ export class AgentConfigService {
 		// Prepare the task definitions that arrived inline with the config (for
 		// example, an imported agent JSON) and have no row on this agent yet.
 		// Without this step, `removeMissingConfigRefs` drops their refs as
-		// orphans. The agent-save transaction writes the prepared rows.
+		// orphans. The agent-save transaction claims and writes the prepared
+		// rows.
 		const importedTasks = tasksProvided
-			? await this.prepareImportedTaskDefinitions(
+			? this.prepareImportedTaskDefinitions(
 					agentId,
 					validatedConfig.tasks ?? [],
 					new Set(existingTaskIds),
@@ -306,18 +308,16 @@ export class AgentConfigService {
 			user,
 		);
 
-		// One transaction saves the imported task rows and the agent, with the
-		// same all-or-nothing coupling as `AgentTaskService.createTasksBatch`.
-		// Thus the `agent_task_definition` table and the schema refs stay in
-		// agreement.
+		// One transaction claims the imported task rows and saves the agent,
+		// with the same all-or-nothing coupling as
+		// `AgentTaskService.createTasksBatch`. Thus the `agent_task_definition`
+		// table and the schema refs stay in agreement.
 		const saved =
 			importedTasks.length === 0
 				? await this.agentRepository.save(entity)
-				: await this.agentRepository.manager.transaction(async (em) => {
-						for (const task of importedTasks) {
-							await em.save(task);
-						}
-						return await em.save(entity);
+				: await this.txRunner.run({}, async (ctx) => {
+						await this.claimImportedTaskDefinitions(entity, validatedConfig, importedTasks, ctx);
+						return await this.agentRepository.saveAgent(entity, ctx);
 					});
 		this.eventService.emit('agent-saved', { agentId });
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
@@ -398,64 +398,74 @@ export class AgentConfigService {
 	/**
 	 * Prepare the task definitions that arrived inline on the config (an
 	 * imported agent JSON) and have no row for this agent yet. The agent-save
-	 * transaction persists the prepared rows. The method skips a task when its
-	 * inline body is incomplete or its cron expression is invalid.
-	 * `removeMissingConfigRefs` then drops the skipped ref as an orphan. The
-	 * task id is the only primary key of the table. When another agent already
-	 * owns an id, the method assigns a fresh id to both the row and the config
-	 * ref. This occurs when the export source lives on the same instance.
+	 * transaction claims and persists the prepared rows
+	 * (`claimImportedTaskDefinitions`). The method skips a task when its inline
+	 * body is incomplete or its cron expression is invalid.
+	 * `removeMissingConfigRefs` then drops the skipped ref as an orphan.
 	 */
-	private async prepareImportedTaskDefinitions(
+	private prepareImportedTaskDefinitions(
 		agentId: string,
 		tasks: NonNullable<ExportedAgentJsonConfig['tasks']>,
 		existingTaskIds: ReadonlySet<string>,
-	): Promise<AgentTask[]> {
-		const inlineTasks = tasks.flatMap((ref) => {
+	): AgentTask[] {
+		return tasks.flatMap((ref) => {
 			if (existingTaskIds.has(ref.id)) return [];
 			const { id, name, objective, cronExpression } = ref;
 			if (name === undefined || objective === undefined || cronExpression === undefined) return [];
-			return [{ ref, id, name, objective, cronExpression }];
-		});
-		if (inlineTasks.length === 0) return [];
-
-		const owningAgentIds = await this.agentTaskRepository.findOwningAgentIds(
-			inlineTasks.map((task) => task.id),
-		);
-
-		const takenIds = new Set([...existingTaskIds, ...tasks.map((ref) => ref.id)]);
-		const prepared: AgentTask[] = [];
-		for (const task of inlineTasks) {
-			if (!isValidCronExpression(task.cronExpression)) {
+			if (!isValidCronExpression(cronExpression)) {
 				this.logger.warn('Skipping imported agent task: invalid cron expression', {
-					taskId: task.id,
+					taskId: id,
 				});
-				continue;
+				return [];
 			}
+			return [this.agentTaskRepository.create({ id, agentId, name, objective, cronExpression })];
+		});
+	}
 
-			let taskId = task.id;
-			if (owningAgentIds.get(taskId) !== undefined && owningAgentIds.get(taskId) !== agentId) {
-				taskId = generateAgentResourceId('task', takenIds);
-				// The ref is part of the persisted config, so the new id carries
-				// through to the schema and the update response.
-				task.ref.id = taskId;
-				this.logger.warn('Imported agent task id already taken: assigned a new id', {
-					taskId: task.id,
-					newTaskId: taskId,
-				});
+	/**
+	 * Claim and insert the imported task rows inside the agent-save
+	 * transaction. The task id is the only primary key of the table, so a
+	 * claim fails when another agent owns the id. This occurs on every import
+	 * of an export whose source agent lives on the same instance, and when a
+	 * concurrent import claims the id first. On a failed claim, the method
+	 * mints a fresh id, rewrites the config refs, and claims again.
+	 */
+	private async claimImportedTaskDefinitions(
+		entity: Agent,
+		config: AgentJsonConfig,
+		importedTasks: AgentTask[],
+		ctx: OperationContext,
+	): Promise<void> {
+		const takenIds = new Set([
+			...(config.tasks ?? []).map((ref) => ref.id),
+			...importedTasks.map((task) => task.id),
+		]);
+
+		for (const task of importedTasks) {
+			const originalId = task.id;
+			let claimed = await this.agentTaskRepository.claimTaskDefinition(task, ctx);
+			for (let attempt = 0; !claimed && attempt < 5; attempt++) {
+				task.id = generateAgentResourceId('task', takenIds);
+				takenIds.add(task.id);
+				claimed = await this.agentTaskRepository.claimTaskDefinition(task, ctx);
 			}
-			takenIds.add(taskId);
+			if (!claimed) {
+				throw new UnexpectedError('Could not claim a unique id for an imported agent task');
+			}
+			if (task.id === originalId) continue;
 
-			prepared.push(
-				this.agentTaskRepository.create({
-					id: taskId,
-					agentId,
-					name: task.name,
-					objective: task.objective,
-					cronExpression: task.cronExpression,
-				}),
-			);
+			this.logger.warn('Imported agent task id already taken: assigned a new id', {
+				taskId: originalId,
+				newTaskId: task.id,
+			});
+			// The schema refs are already built at this point, so the new id
+			// must be written into both the persisted schema and the validated
+			// config that feeds the update response.
+			for (const refs of [entity.schema?.tasks, config.tasks]) {
+				const ref = refs?.find((entry) => entry.id === originalId);
+				if (ref) ref.id = task.id;
+			}
 		}
-		return prepared;
 	}
 
 	/**
@@ -463,15 +473,23 @@ export class AgentConfigService {
 	 * agent JSON) and are missing from the agent's `skills` column. Without
 	 * this step, `removeMissingConfigRefs` drops their refs as orphans. The
 	 * method skips a skill when its inline body is incomplete, when the body
-	 * fails skill validation, or when its name collides with a skill on the
-	 * agent. When the agent already has a skill under the same id, the method
-	 * keeps that skill and ignores the imported body.
+	 * fails skill validation, or when its name collides with a retained skill.
+	 * The collision scope contains only the skills that the update keeps:
+	 * skills without a ref in the incoming config are removed later in the
+	 * same update by `removeUnreferencedSkills`, so they must not block an
+	 * imported skill that reuses their name. When the agent already has a
+	 * skill under the same id, the method keeps that skill and ignores the
+	 * imported body.
 	 */
 	private recreateImportedSkillDefinitions(
 		entity: Agent,
 		refs: NonNullable<ExportedAgentJsonConfig['skills']>,
 	): void {
 		const skills = { ...(entity.skills ?? {}) };
+		const refIds = new Set(refs.map((ref) => ref.id));
+		const retainedSkills = Object.fromEntries(
+			Object.entries(skills).filter(([id]) => refIds.has(id)),
+		);
 		let changed = false;
 
 		for (const ref of refs) {
@@ -497,7 +515,7 @@ export class AgentConfigService {
 				this.logger.warn('Skipping imported agent skill: invalid body', { skillId: ref.id });
 				continue;
 			}
-			if (this.agentSkillsService.isSkillNameTaken(skills, body.name)) {
+			if (this.agentSkillsService.isSkillNameTaken(retainedSkills, body.name)) {
 				this.logger.warn('Skipping imported agent skill: name already in use', {
 					skillId: ref.id,
 				});
@@ -505,6 +523,7 @@ export class AgentConfigService {
 			}
 
 			skills[ref.id] = parsed.data;
+			retainedSkills[ref.id] = parsed.data;
 			changed = true;
 		}
 

@@ -1,10 +1,11 @@
+import { BaseRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
 import { AgentTask } from '../entities/agent-task.entity';
 
 @Service()
-export class AgentTaskRepository extends Repository<AgentTask> {
+export class AgentTaskRepository extends BaseRepository<AgentTask> {
 	constructor(dataSource: DataSource) {
 		super(AgentTask, dataSource.manager);
 	}
@@ -18,15 +19,34 @@ export class AgentTaskRepository extends Repository<AgentTask> {
 	}
 
 	/**
-	 * Return the owning agent for each of these task ids, across all agents.
-	 * The task id is the only primary key of the table. Writers that accept
-	 * external ids (config import) use this method to find ids that another
-	 * agent already owns.
+	 * Insert the task row when its id is free, inside the transaction that
+	 * `ctx` carries. The task id is the only primary key of the table, and
+	 * writers that accept external ids (config import) must not update a row
+	 * that another agent owns. The insert never raises on a conflict — a
+	 * raised error aborts a Postgres transaction — so the method reads the row
+	 * back and returns true only when this agent owns the id.
 	 */
-	async findOwningAgentIds(ids: string[]): Promise<Map<string, string>> {
-		if (ids.length === 0) return new Map();
+	async claimTaskDefinition(task: AgentTask, ctx: OperationContext): Promise<boolean> {
+		const manager = this.managerFor(ctx);
+		await manager
+			.createQueryBuilder()
+			.insert()
+			.into(AgentTask)
+			.values({
+				id: task.id,
+				agentId: task.agentId,
+				name: task.name,
+				objective: task.objective,
+				cronExpression: task.cronExpression,
+			})
+			.orIgnore()
+			.updateEntity(false)
+			.execute();
 
-		const rows = await this.find({ where: { id: In(ids) }, select: ['id', 'agentId'] });
-		return new Map(rows.map((row) => [row.id, row.agentId]));
+		const row = await manager.findOne(AgentTask, {
+			where: { id: task.id },
+			select: ['id', 'agentId'],
+		});
+		return row?.agentId === task.agentId;
 	}
 }

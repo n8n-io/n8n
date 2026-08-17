@@ -18,6 +18,8 @@ import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
+import type { TransactionRunner } from '@n8n/db';
+
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
@@ -72,22 +74,16 @@ function makeService() {
 		issues: [],
 	});
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	agentRepository.saveAgent.mockImplementation(async (agent) => agent);
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
-	// `manager` is a TypeORM getter, not auto-mocked; run transaction callbacks
-	// against a manager that records saves (imported task rows + agent).
-	const txManager = { save: vi.fn(async (entity: unknown) => entity) };
-	Object.defineProperty(agentRepository, 'manager', {
-		value: {
-			transaction: vi.fn(
-				async (cb: (manager: typeof txManager) => Promise<unknown>) => await cb(txManager),
-			),
-		},
-	});
+	// The runner executes the unit of work directly with an empty context.
+	const txRunner = mock<TransactionRunner>();
+	txRunner.run.mockImplementation(async (_ctx, fn) => await fn({}));
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
-	agentTaskRepository.findOwningAgentIds.mockResolvedValue(new Map());
+	agentTaskRepository.claimTaskDefinition.mockResolvedValue(true);
 	agentTaskRepository.create.mockImplementation((data) => data as never);
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentSkillsService.removeUnreferencedSkills.mockImplementation((agent, config) => {
@@ -110,12 +106,13 @@ function makeService() {
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
 		secureRuntime,
+		txRunner,
 	);
 
 	return {
 		service,
 		secureRuntime,
-		txManager,
+		txRunner,
 		agentRepository,
 		agentTaskRepository,
 		agentSkillsService,
@@ -825,7 +822,7 @@ describe('AgentConfigService', () => {
 		};
 
 		it('preserves a task when an exported config is imported into a fresh agent', async () => {
-			const { service, agentRepository, txManager } = makeService();
+			const { service, agentRepository, agentTaskRepository, txRunner } = makeService();
 
 			const targetAgentId = 'agent-imported';
 			agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -840,19 +837,19 @@ describe('AgentConfigService', () => {
 			};
 			await service.updateConfig(targetAgentId, projectId, exported, user, byUser);
 
-			// The task reference must survive the import instead of being dropped
-			// for lack of a matching definition, and the recreated row must be
-			// written in the same transaction as the agent.
-			expect(agentRepository.manager.transaction).toHaveBeenCalledTimes(1);
-			expect(txManager.save).toHaveBeenCalledWith(
+			// The task ref must survive the import, and the row must be claimed
+			// in the same transaction as the agent save.
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			expect(agentTaskRepository.claimTaskDefinition).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'weekly_review', agentId: targetAgentId }),
+				expect.anything(),
 			);
-			const saved = txManager.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveAgent.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.tasks).toEqual([taskReference]);
 		});
 
 		it('drops a task ref whose inline cron expression is invalid', async () => {
-			const { service, agentRepository, agentTaskRepository } = makeService();
+			const { service, agentRepository, agentTaskRepository, txRunner } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
 
 			await service.updateConfig(
@@ -866,22 +863,20 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			// No row is written and the ref is dropped as an orphan.
-			expect(agentTaskRepository.save).not.toHaveBeenCalled();
-			expect(agentRepository.manager.transaction).not.toHaveBeenCalled();
+			// No row is claimed and the ref is dropped as an orphan.
+			expect(agentTaskRepository.claimTaskDefinition).not.toHaveBeenCalled();
+			expect(txRunner.run).not.toHaveBeenCalled();
 			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.tasks).toEqual([]);
 		});
 
-		it('assigns a fresh id when the imported task id is already taken by another agent', async () => {
-			const { service, agentRepository, agentTaskRepository, txManager } = makeService();
+		it('assigns a fresh id when another agent owns the imported task id', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
-			// The task id is the only primary key of the table. A write under a
-			// taken id changes the other agent's row. Every same-instance import
+			// The task id is the only primary key of the table, so the claim
+			// fails when another agent owns the id. Every same-instance import
 			// hits this, because the source agent still owns the exported id.
-			agentTaskRepository.findOwningAgentIds.mockResolvedValue(
-				new Map([['weekly_review', 'agent-other']]),
-			);
+			agentTaskRepository.claimTaskDefinition.mockResolvedValueOnce(false).mockResolvedValue(true);
 
 			await service.updateConfig(
 				agentId,
@@ -891,21 +886,37 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const savedRow = txManager.save.mock.calls
-				.map(([entity]) => entity as { id?: string; name?: string; agentId?: string })
-				.find((entity) => entity.name === 'Weekly review');
-			expect(savedRow?.agentId).toBe(agentId);
-			expect(savedRow?.id).toMatch(/^task_/);
-			expect(savedRow?.id).not.toBe('weekly_review');
+			const claimedRow = agentTaskRepository.claimTaskDefinition.mock.calls.at(-1)?.[0];
+			expect(claimedRow?.agentId).toBe(agentId);
+			expect(claimedRow?.id).toMatch(/^task_/);
+			expect(claimedRow?.id).not.toBe('weekly_review');
 
-			const saved = txManager.save.mock.calls.at(-1)?.[0] as Agent;
-			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: savedRow?.id, enabled: true }]);
+			const saved = agentRepository.saveAgent.mock.calls.at(-1)?.[0];
+			expect(saved?.schema?.tasks).toEqual([{ type: 'task', id: claimedRow?.id, enabled: true }]);
+		});
+
+		it('rejects the update when no unique task id can be claimed', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
+			agentTaskRepository.claimTaskDefinition.mockResolvedValue(false);
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					{ ...baseConfig, tasks: [{ ...taskReference, ...taskDefinition }] },
+					user,
+					byUser,
+				),
+			).rejects.toThrow('Could not claim a unique id for an imported agent task');
+
+			expect(agentRepository.saveAgent).not.toHaveBeenCalled();
 		});
 
 		it('writes no task rows when the update fails after task recreation', async () => {
-			const { service, agentRepository, txManager } = makeService();
+			const { service, agentRepository, txRunner } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
-			txManager.save.mockRejectedValue(new Error('save failed'));
+			agentRepository.saveAgent.mockRejectedValue(new Error('save failed'));
 
 			await expect(
 				service.updateConfig(
@@ -917,9 +928,9 @@ describe('AgentConfigService', () => {
 				),
 			).rejects.toThrow('save failed');
 
-			// Task rows are written only inside the agent-save transaction, so a
+			// Task rows are claimed only inside the agent-save transaction, so a
 			// failed update cannot leave orphan definitions behind.
-			expect(agentRepository.manager.transaction).toHaveBeenCalledTimes(1);
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
 			expect(agentRepository.save).not.toHaveBeenCalled();
 		});
 	});
@@ -1032,6 +1043,42 @@ describe('AgentConfigService', () => {
 			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.skills).toEqual([]);
 			expect(saved.skills).toEqual({});
+		});
+
+		it('imports a skill whose name belongs to a skill that the same replacement removes', async () => {
+			const { service, agentRepository, agentSkillsService } = makeService();
+			// Realistic name check, so the test exercises the collision scope
+			// that the service passes in.
+			agentSkillsService.isSkillNameTaken.mockImplementation((existing, name) =>
+				Object.values(existing ?? {}).some(
+					(skill) => skill.name.trim().toLowerCase() === name.trim().toLowerCase(),
+				),
+			);
+			// The agent has a skill with the same name under another id. The
+			// incoming config does not reference that id, so the same update
+			// removes it.
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: {
+						...baseConfig,
+						skills: [{ type: 'skill', id: 'skill_outgoing' }],
+					} as AgentJsonConfig,
+					skills: { skill_outgoing: { ...skillBody } },
+				}),
+			);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, skills: [{ ...skillReference, ...skillBody }] },
+				user,
+				byUser,
+			);
+
+			// The outgoing skill must not block the import of its replacement.
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.skills).toEqual([skillReference]);
+			expect(saved.skills).toEqual({ [skillReference.id]: skillBody });
 		});
 	});
 

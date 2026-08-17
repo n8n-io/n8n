@@ -4,7 +4,7 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { User, type WorkflowRepository } from '@n8n/db';
+import { type TransactionRunner, User, type WorkflowRepository } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -234,6 +234,7 @@ describe('McpAgentToolsService', () => {
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
 			agentSecureRuntime,
+			mock<TransactionRunner>(),
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>

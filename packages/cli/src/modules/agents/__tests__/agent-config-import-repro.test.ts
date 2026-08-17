@@ -1,5 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { User, WorkflowRepository } from '@n8n/db';
+import type { TransactionRunner, User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -93,14 +93,10 @@ function makeHarness() {
 		issues: [],
 	});
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	agentRepository.saveAgent.mockImplementation(async (agent) => agent);
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
-	Object.defineProperty(agentRepository, 'manager', {
-		value: {
-			transaction: vi.fn(
-				async (cb: (manager: typeof txManager) => Promise<unknown>) => await cb(txManager),
-			),
-		},
-	});
+	const txRunner = mock<TransactionRunner>();
+	txRunner.run.mockImplementation(async (_ctx, fn) => await fn({}));
 	// Same-instance import: both credentials from the export exist and are
 	// accessible.
 	const credentials = ['PGUeriI2DQSuSuOo', 'WSJGoGnip2TCFpAL'].map(
@@ -109,23 +105,17 @@ function makeHarness() {
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue(credentials);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(credentials);
-	// Stateful task table stand-in: rows saved through the transaction are
-	// visible to subsequent findByAgentId calls, as with a real DB.
+	// Stateful task table stand-in: claimed rows are visible to subsequent
+	// findByAgentId calls, as with a real DB.
 	const taskRows: Array<{ id: string; agentId: string }> = [];
 	agentTaskRepository.findByAgentId.mockImplementation(
 		async (id) => taskRows.filter((row) => row.agentId === id) as never,
 	);
-	agentTaskRepository.findOwningAgentIds.mockResolvedValue(new Map());
+	agentTaskRepository.claimTaskDefinition.mockImplementation(async (task) => {
+		taskRows.push({ id: task.id, agentId: task.agentId });
+		return true;
+	});
 	agentTaskRepository.create.mockImplementation((data) => data as never);
-	const txManager = {
-		save: vi.fn(async (entity: unknown) => {
-			const record = entity as { id?: string; agentId?: string; schema?: unknown };
-			if (record.agentId !== undefined && record.schema === undefined) {
-				taskRows.push(record as { id: string; agentId: string });
-			}
-			return entity;
-		}),
-	};
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 
 	const service = new AgentConfigService(
@@ -141,9 +131,10 @@ function makeHarness() {
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
 		secureRuntime,
+		txRunner,
 	);
 
-	return { service, agentRepository, agentTaskRepository, txManager };
+	return { service, agentRepository, agentTaskRepository, txRunner };
 }
 
 function makeFreshAgent(): Agent {
@@ -164,14 +155,14 @@ function makeFreshAgent(): Agent {
 
 describe('agent JSON import reproduction (English Chatbot)', () => {
 	it('keeps the skill and task when the exported JSON is imported into a fresh agent', async () => {
-		const { service, agentRepository, txManager } = makeHarness();
+		const { service, agentRepository } = makeHarness();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeFreshAgent());
 
 		const result = await service.updateConfig('agent-imported', 'project-1', exportedJson, user, {
 			modifiedBy: 'user',
 		});
 
-		const saved = txManager.save.mock.calls.at(-1)?.[0] as Agent;
+		const saved = agentRepository.saveAgent.mock.calls.at(-1)?.[0] as Agent;
 		expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'skill_sAPb9pNjfMq1Xt6p' }]);
 		expect(saved.skills).toEqual({
 			skill_sAPb9pNjfMq1Xt6p: {
@@ -207,11 +198,11 @@ describe('agent JSON import reproduction (English Chatbot)', () => {
 	});
 
 	it('imports the task under a fresh id when the source agent on the same instance still owns it', async () => {
-		const { service, agentRepository, agentTaskRepository, txManager } = makeHarness();
+		const { service, agentRepository, agentTaskRepository } = makeHarness();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeFreshAgent());
-		agentTaskRepository.findOwningAgentIds.mockResolvedValue(
-			new Map([['task_zK4w9IbQSclYjQVm', 'agent-source']]),
-		);
+		// The source agent on the same instance still owns the exported task
+		// id, so the first claim fails and the import mints a fresh id.
+		agentTaskRepository.claimTaskDefinition.mockResolvedValueOnce(false).mockResolvedValue(true);
 
 		const result = await service.updateConfig('agent-imported', 'project-1', exportedJson, user, {
 			modifiedBy: 'user',
@@ -222,11 +213,9 @@ describe('agent JSON import reproduction (English Chatbot)', () => {
 		expect(task.id).not.toBe('task_zK4w9IbQSclYjQVm');
 		expect(task.enabled).toBe(true);
 
-		// The row was created under the fresh id with the imported body.
-		const savedRow = txManager.save.mock.calls
-			.map(([entity]) => entity as Record<string, unknown>)
-			.find((entity) => entity.objective !== undefined);
-		expect(savedRow).toMatchObject({
+		// The row was claimed under the fresh id with the imported body.
+		const claimedRow = agentTaskRepository.claimTaskDefinition.mock.calls.at(-1)?.[0];
+		expect(claimedRow).toMatchObject({
 			id: task.id,
 			agentId: 'agent-imported',
 			name: 'daily',

@@ -1174,6 +1174,11 @@ const headerActions = computed(() => {
 });
 
 async function exportAgentJson() {
+	// Snapshot the export target and its data before any await. The user can
+	// switch agents while a request is pending, and the export must not mix
+	// the old agent's tasks with the new agent's config and name.
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	if (!localConfig.value) return;
 
 	try {
@@ -1181,32 +1186,52 @@ async function exportAgentJson() {
 	} catch {
 		return;
 	}
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	if (!localConfig.value) return;
+
+	const configSnapshot = deepCopy(localConfig.value);
+	const skillsSnapshot = agent.value?.skills ?? {};
+	const toolsSnapshot = agent.value?.tools ?? {};
 
 	// Inline the task, skill, and custom tool definition bodies, so the
 	// download is self-contained. The config itself carries only bare refs.
 	// Skill bodies and tool code are on the agent resource. This function
 	// fetches the task bodies.
 	let tasks: AgentTaskDto[] = [];
-	if (localConfig.value.tasks?.length && !isUnsaved.value) {
+	if (configSnapshot.tasks?.length && !isUnsaved.value) {
 		try {
-			tasks = await getAgentTasks(rootStore.restApiContext, projectId.value, agentId.value);
+			tasks = await getAgentTasks(rootStore.restApiContext, targetProjectId, targetAgentId);
 		} catch (error) {
 			showError(error, locale.baseText('agents.builder.exportJson.tasksLoadError' as BaseTextKey));
 			return;
 		}
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	}
-	const exportedConfig = buildExportedAgentJson(localConfig.value, {
-		skills: agent.value?.skills ?? {},
-		tools: agent.value?.tools ?? {},
+	const { config: exportedConfig, missing } = buildExportedAgentJson(configSnapshot, {
+		skills: skillsSnapshot,
+		tools: toolsSnapshot,
 		tasks,
 	});
+	if (missing.length > 0) {
+		// The download still starts, but an import of this file drops the
+		// listed refs, so the user must know the export is incomplete.
+		showMessage({
+			title: locale.baseText('agents.builder.exportJson.incompleteWarning.title' as BaseTextKey),
+			message: locale.baseText(
+				'agents.builder.exportJson.incompleteWarning.message' as BaseTextKey,
+				{
+					interpolate: { ids: missing.map((entry) => entry.id).join(', ') },
+				},
+			),
+			type: 'warning',
+		});
+	}
 
 	const blob = new Blob([`${JSON.stringify(exportedConfig, null, 2)}\n`], {
 		type: 'application/json',
 	});
 	const url = URL.createObjectURL(blob);
-	const name = localConfig.value.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
+	const name = configSnapshot.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
 	const link = Object.assign(document.createElement('a'), {
 		href: url,
 		download: `${name}.json`,

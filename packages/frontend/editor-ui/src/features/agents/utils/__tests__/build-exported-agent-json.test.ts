@@ -31,11 +31,13 @@ const taskBody: AgentTaskDto = {
 
 describe('buildExportedAgentJson', () => {
 	it('inlines task, skill, and custom tool bodies from the builder data', () => {
-		const exported = buildExportedAgentJson(config, {
+		const { config: exported, missing } = buildExportedAgentJson(config, {
 			skills: { skill_summarize: skillBody },
 			tools: { my_tool: { code: 'export default tool' } },
 			tasks: [taskBody],
 		});
+
+		expect(missing).toEqual([]);
 
 		expect(exported.tasks?.[0]).toEqual({
 			type: 'task',
@@ -60,16 +62,39 @@ describe('buildExportedAgentJson', () => {
 		expect(exported.tools?.[1]).toEqual({ type: 'workflow', workflow: 'Lookup' });
 	});
 
-	it('leaves refs bare when no body is available', () => {
-		const exported = buildExportedAgentJson(config, { skills: {}, tools: {}, tasks: [] });
+	it('leaves refs bare and reports them as missing when no body is available', () => {
+		const { config: exported, missing } = buildExportedAgentJson(config, {
+			skills: {},
+			tools: {},
+			tasks: [],
+		});
 
 		expect(exported.tasks?.[0]).toEqual({ type: 'task', id: 'task_weekly', enabled: true });
 		expect(exported.skills?.[0]).toEqual({ type: 'skill', id: 'skill_summarize' });
 		expect(exported.tools?.[0]).toEqual({ type: 'custom', id: 'my_tool', requireApproval: true });
+		expect(missing).toEqual([
+			{ kind: 'task', id: 'task_weekly' },
+			{ kind: 'skill', id: 'skill_summarize' },
+			{ kind: 'tool', id: 'my_tool' },
+		]);
+	});
+
+	it('does not report non-custom tools as missing', () => {
+		const { missing } = buildExportedAgentJson(
+			{
+				...config,
+				tasks: undefined,
+				skills: undefined,
+				tools: [{ type: 'workflow', workflow: 'Lookup' }],
+			},
+			{ skills: {}, tools: {}, tasks: [] },
+		);
+
+		expect(missing).toEqual([]);
 	});
 
 	it('does not resolve skill or tool bodies through Object.prototype keys', () => {
-		const exported = buildExportedAgentJson(
+		const { config: exported } = buildExportedAgentJson(
 			{
 				...config,
 				skills: [{ type: 'skill', id: 'constructor' }],
@@ -83,10 +108,12 @@ describe('buildExportedAgentJson', () => {
 	});
 
 	it('keeps sections absent when the config omits them', () => {
-		const exported = buildExportedAgentJson(
+		const { config: exported, missing } = buildExportedAgentJson(
 			{ name: 'A', model: '', instructions: '' },
 			{ skills: {}, tools: {}, tasks: [] },
 		);
+
+		expect(missing).toEqual([]);
 
 		expect(exported.tasks).toBeUndefined();
 		expect(exported.skills).toBeUndefined();

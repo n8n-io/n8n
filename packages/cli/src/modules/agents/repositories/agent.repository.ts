@@ -1,6 +1,7 @@
 import type { ListAgentsQueryDto } from '@n8n/api-types';
+import { BaseRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, In, IsNull, type SelectQueryBuilder } from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
 
@@ -17,9 +18,14 @@ export type AgentSummaryFilters = {
 };
 
 @Service()
-export class AgentRepository extends Repository<Agent> {
+export class AgentRepository extends BaseRepository<Agent> {
 	constructor(dataSource: DataSource) {
 		super(Agent, dataSource.manager);
+	}
+
+	/** Save the agent inside the transaction that `ctx` carries. */
+	async saveAgent(entity: Agent, ctx: OperationContext): Promise<Agent> {
+		return await this.managerFor(ctx).save(entity);
 	}
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {
