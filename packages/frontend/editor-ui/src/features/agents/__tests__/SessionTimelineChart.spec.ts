@@ -102,6 +102,51 @@ describe('SessionTimelineChart', () => {
 		expect(blocks[2].element.getAttribute('data-selected')).toBe('true');
 	});
 
+	it('marks a failed tool block as failed', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'tool',
+					toolSuccess: false,
+					toolOutput: { error: 'boom' },
+				}),
+			],
+		});
+		const block = w.get('[data-test-id="timeline-block"]');
+		expect(block.attributes('data-failed')).toBe('true');
+		expect(block.classes()).toContain('failed');
+	});
+
+	it('marks a workflow soft-failure block as failed', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'workflow',
+					toolSuccess: true,
+					toolOutput: { status: 'error', error: 'boom' },
+				}),
+			],
+		});
+		const block = w.get('[data-test-id="timeline-block"]');
+		expect(block.attributes('data-failed')).toBe('true');
+		expect(block.classes()).toContain('failed');
+	});
+
+	it('does not mark a successful tool block as failed', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: { ok: true },
+				}),
+			],
+		});
+		const block = w.get('[data-test-id="timeline-block"]');
+		expect(block.attributes('data-failed')).toBeUndefined();
+		expect(block.classes()).not.toContain('failed');
+	});
+
 	it('renders the localized "Idle" pill text inside each idle segment', () => {
 		const w = mountChart({ idleRanges: [{ start: 1500, end: 2000 }] });
 		const idle = w.find('[data-test-id="timeline-idle"]');
