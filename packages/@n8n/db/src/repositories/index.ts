@@ -84,7 +84,9 @@ export {
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {
 	WorkflowReviewRequestRepository,
+	type ClosedUnreviewableRequest,
 	type InboxCursor,
+	type InboxVisibility,
 	type WorkflowReviewRequestForWorkflowRow,
 } from './workflow-review-request.repository';
 export {
@@ -94,6 +96,11 @@ export {
 } from './workflow-review-request-workflow.repository';
 export { WorkflowReviewRequestReviewerRepository } from './workflow-review-request-reviewer.repository';
 export { WorkflowReviewRequestAuthorRepository } from './workflow-review-request-author.repository';
+export {
+	WorkflowReviewActivityRepository,
+	type WorkflowReviewActivityFeedEntry,
+} from './workflow-review-activity.repository';
+export { WorkflowReviewActivityCommentRepository } from './workflow-review-activity-comment.repository';
 export {
 	WorkflowDependencyRepository,
 	WorkflowDependencies,

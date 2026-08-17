@@ -3,7 +3,7 @@ import {
 	expectNoNewTriggerExecution,
 	expectPollTriggerFires,
 	programPollResponse,
-	triggerExecutionIds,
+	fetchTriggerExecutionIds,
 } from './poll-trigger-helpers';
 import { makePollTriggerWorkflow } from './poll-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
@@ -41,7 +41,7 @@ test.describe(
 				{ errorAfterSeedPoll: { statusCode: 500 } },
 			);
 
-			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
+			const afterSeedPoll = await fetchTriggerExecutionIds(api, workflowId);
 			await api.fireScheduledJobsNow(workflowId, nodeId);
 			await expectNewTriggerExecution(api, workflowId, afterSeedPoll, { expectedStatus: 'error' });
 
@@ -50,7 +50,7 @@ test.describe(
 			expect(failureState.backoffUntil).not.toBeNull();
 			expect(new Date(failureState.backoffUntil as string).getTime()).toBeGreaterThan(Date.now());
 
-			const afterFailedPoll = await triggerExecutionIds(api, workflowId);
+			const afterFailedPoll = await fetchTriggerExecutionIds(api, workflowId);
 			await api.fireScheduledJobsNow(workflowId, nodeId);
 			await expectNoNewTriggerExecution(api, workflowId, afterFailedPoll, SKIP_CHECK_WINDOW_MS);
 			expect(await services.proxy.wasRequestMade({ method: 'GET', path }, 2)).toBe(true);

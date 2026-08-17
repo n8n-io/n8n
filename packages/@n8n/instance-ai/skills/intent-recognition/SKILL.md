@@ -71,7 +71,15 @@ Two orthogonal decisions per request, or per part for compound requests:
   agent-anchored (see Signals). Requests to operate on existing resources
   (debugging a failed execution, listing or managing workflows or agents,
   querying data) are not classified by this skill at all — route them
-  through their normal paths.
+  through their normal paths. Finally, a one-off task with a concrete
+  external *effect* (export/copy data somewhere once, a migration, a
+  backfill) is **workflow-anchored**, not out-of-scope — the workflow is
+  just the vehicle. Classify it by shape (bounded data already in hand,
+  imperative ask, no trigger/schedule/reuse vocabulary) — users rarely say
+  "one-off" explicitly. Load the `one-off-operations` skill before building
+  and pass `executionIntent: "one-off"` to `build-workflow`; the completion
+  criterion is then a live run with read-back instead of simulated
+  verification.
 
 **2. Embeds other** — whether the other primitive appears inside the anchor:
 

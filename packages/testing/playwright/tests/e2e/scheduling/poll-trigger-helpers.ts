@@ -160,12 +160,14 @@ export async function readNodeStaticData(
 	return parsed?.[`node:${nodeName}`] ?? null;
 }
 
-export async function clearStaticDataAndReactivate(
+// Wipes the static data and forces the poll that reads it back. The workflow stays
+// published: every scheduled poll re-reads the static data from the workflow row,
+// so a deactivate/reactivate cycle would add nothing but timing.
+export async function clearStaticDataAndPoll(
 	api: ApiHelpers,
 	workflowId: string,
+	nodeId: string,
 ): Promise<void> {
-	await api.workflows.deactivate(workflowId);
-	const workflow = await api.workflows.getWorkflow(workflowId);
-	const updated = await api.workflows.update(workflowId, workflow.versionId!, { staticData: {} });
-	await api.workflows.activate(workflowId, updated.versionId!);
+	await api.clearWorkflowStaticData(workflowId);
+	await api.fireScheduledJobsNow(workflowId, nodeId);
 }

@@ -1,5 +1,5 @@
 import {
-	clearStaticDataAndReactivate,
+	clearStaticDataAndPoll,
 	expectNewTriggerExecution,
 	expectPollTriggerFires,
 	readNodeStaticData,
@@ -65,7 +65,7 @@ test.describe(
 			);
 
 			const afterSeedPoll = await fetchTriggerExecutionIds(api, workflowId);
-			await clearStaticDataAndReactivate(api, workflowId);
+			await clearStaticDataAndPoll(api, workflowId, nodeId);
 
 			await expectNewTriggerExecution(api, workflowId, afterSeedPoll);
 			expect(await readNodeStaticData(api, workflowId, POLL_TRIGGER_NODE_NAME)).toEqual({

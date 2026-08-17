@@ -203,10 +203,11 @@ export class WorkflowExecutionService {
 		});
 
 		if (commitResult === null) {
-			this.logger.debug(
-				'Poll cursor commit skipped: the poll no longer holds its lease, or its cursor row is gone',
-				{ workflowId: workflowData.id, nodeName: node.name },
-			);
+			this.logger.debug('Poll cursor commit skipped: the poll no longer holds its lease', {
+				workflowId: workflowData.id,
+				nodeId: node.id,
+				nodeName: node.name,
+			});
 			responsePromise?.reject(
 				new OperationalError('Poll cursor commit skipped: the poll no longer holds its lease'),
 			);

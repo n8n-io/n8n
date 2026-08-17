@@ -153,6 +153,20 @@ describe('N8nClient packages', () => {
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeTags: false }));
 		});
+
+		it('includes the workflow version policy when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({
+				workflowIds: ['a'],
+				workflowVersionPolicy: 'published-strict',
+			});
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(
+				JSON.stringify({ workflowIds: ['a'], workflowVersionPolicy: 'published-strict' }),
+			);
+		});
 	});
 
 	describe('importPackage', () => {

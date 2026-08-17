@@ -1,24 +1,8 @@
-import { AI_GATEWAY_MANAGED_TAG, TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, GENERIC_AUTH_CREDENTIAL_TYPES } from '@n8n/api-types';
 import type { NodeJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../types';
-
-/**
- * The HTTP Request node's generic auth family: one credential type serves many
- * services, so the type alone never identifies a service. Kept out of
- * search-by-service results and out of cross-node credential reuse.
- */
-export const GENERIC_AUTH_CREDENTIAL_TYPES: ReadonlySet<string> = new Set([
-	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
-	'httpHeaderAuth',
-	'httpBearerAuth',
-	'httpQueryAuth',
-	'httpBasicAuth',
-	'httpDigestAuth',
-	'httpCustomAuth',
-	'oAuth1Api',
-	'oAuth2Api',
-]);
+export { GENERIC_AUTH_CREDENTIAL_TYPES };
 
 export interface AiGatewayCredential {
 	id: null;

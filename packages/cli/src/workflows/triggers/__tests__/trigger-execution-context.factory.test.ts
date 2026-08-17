@@ -1198,24 +1198,31 @@ describe('TriggerExecutionContextFactory', () => {
 			});
 
 			expect(scopedLogger.debug).toHaveBeenCalledWith(
-				expect.stringContaining('the poll no longer holds its lease, or its cursor row is gone'),
-				{ workflowId: 'wf-1', nodeId: 'node-1' },
+				expect.stringContaining('the poll no longer holds its lease'),
+				{ workflowId: 'wf-1', nodeId: 'node-1', nodeName: 'Poll Node' },
 			);
 		});
 
-		test('does not recommit a cursor on a later poll after its own commit was fenced out', async () => {
+		test('does not retry a fenced-out cursor advance, while a later poll still commits its own', async () => {
 			pollCursorService.commitCursorOnly.mockResolvedValue(false);
 
 			await context.__runPoll(async () => {
 				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
 				await context.__commitCursor();
-			});
-
-			await context.__runPoll(async () => {
 				await context.__commitCursor();
 			});
 
 			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledTimes(1);
+
+			await context.__runPoll(async () => {
+				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'b' });
+				await context.__commitCursor();
+			});
+
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledTimes(2);
+			expect(pollCursorService.commitCursorOnly).toHaveBeenLastCalledWith(
+				expect.objectContaining({ cursor: { lastItemId: 'b' } }),
+			);
 		});
 
 		test('threads a fence through to both the polled run and the cursor-only commit', async () => {

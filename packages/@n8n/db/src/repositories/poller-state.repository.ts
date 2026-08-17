@@ -1,6 +1,6 @@
 import { ScheduledTaskStatus } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { DataSource, type EntityManager, type ObjectLiteral } from '@n8n/typeorm';
+import { DataSource, In, type EntityManager, type ObjectLiteral } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -73,9 +73,20 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 	}
 
 	/**
-	 * Call inside the transaction that also inserts the poll's execution, so neither commits
-	 * without the other. Without a `fence`, a miss throws (the workflow/node was removed
-	 * mid-poll); with one, a miss returns `false` instead.
+	 * Advances the stored cursor.
+	 *
+	 * @param workflowId - Workflow the poll node belongs to.
+	 * @param nodeId - Poll trigger node whose cursor is advancing.
+	 * @param cursor - New cursor value to store.
+	 * @param ctx - Transaction to run the update in.
+	 * @param fence - Lease to check before writing. If given and no longer matching,
+	 *   the cursor is left untouched.
+	 * @returns `true` if the cursor was advanced, `false` if `fence` no longer matches.
+	 * @throws {UnexpectedError} when the row is missing, with or without a `fence`, since
+	 *   the only explanation left is that the workflow or node was deleted mid-poll.
+	 * @remarks Run this in the same transaction as the execution insert for the poll's result,
+	 * 	so the two commit or roll back together. If two polls of the same node overlap,
+	 * 	the last one to commit wins.
 	 */
 	async advanceCursor(
 		workflowId: string,
@@ -99,42 +110,33 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		}
 
 		const result = await qb.execute();
+		if (result.affected === 1) {
+			return true;
+		}
 
-		// `affected` is typed optional, though both supported drivers populate it; only
-		// an exact single-row match counts as success.
-		if (result.affected === 1) return true;
-
-		if (fence) return false;
+		// The guarded UPDATE alone cannot tell a rejected fence from a missing row, so
+		// the failure path re-reads the row to keep the two outcomes distinct.
+		if (fence && (await manager.existsBy(PollerState, { workflowId, nodeId }))) {
+			return false;
+		}
 
 		throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
 			extra: { workflowId, nodeId },
 		});
 	}
 
-	private buildFenceClause(
-		manager: EntityManager,
-		fence: PollLeaseFence,
-	): { sql: string; params: ObjectLiteral } {
-		const fenceExists = manager
-			.createQueryBuilder()
-			.subQuery()
-			.select('1')
-			.from(ScheduledTask, 'fenced_task')
-			.where('fenced_task.id = :fenceTaskId')
-			.andWhere('fenced_task.leaseEpoch = :fenceLeaseEpoch')
-			// `<> 'pending'`, not `= 'running'`: a fire-and-forget commit can land after
-			// the task already succeeded, and only a pending task's lease can be reclaimed.
-			.andWhere('fenced_task.status != :fenceExcludedStatus')
-			.getQuery();
-
-		return {
-			sql: `EXISTS ${fenceExists}`,
-			params: {
-				fenceTaskId: Number(fence.taskId),
-				fenceLeaseEpoch: fence.leaseEpoch,
-				fenceExcludedStatus: ScheduledTaskStatus.Pending,
-			},
-		};
+	/**
+	 * Removes all stored cursors of the given workflows and returns how many
+	 * rows were deleted. Used when durable pollers are refused for the instance:
+	 * with the gate closed, a node whose row is gone falls back to its
+	 * static-data cursor for good.
+	 */
+	async deleteWorkflowCursors(workflowIds: string[], ctx: OperationContext = {}): Promise<number> {
+		if (workflowIds.length === 0) return 0;
+		const result = await this.managerFor(ctx).delete(PollerState, {
+			workflowId: In(workflowIds),
+		});
+		return result.affected ?? 0;
 	}
 
 	/** The node's failure counters, or `null` if it has no stored row. */
@@ -193,5 +195,33 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		} as QueryDeepPartialEntity<PollerState>);
 
 		return result.affected === 1;
+	}
+
+	private buildFenceClause(
+		manager: EntityManager,
+		fence: PollLeaseFence,
+	): { sql: string; params: ObjectLiteral } {
+		const fenceExists = manager
+			.createQueryBuilder()
+			.subQuery()
+			.select('1')
+			.from(ScheduledTask, 'fenced_task')
+			.where('fenced_task.id = :fenceTaskId')
+			.andWhere('fenced_task.leaseEpoch = :fenceLeaseEpoch')
+			// A commit may only land while its poll still owns the task (`running`), or
+			// right after the task finished well (`succeeded`), since nothing waits on the
+			// commit and the status can flip first. Any other status means the poll lost
+			// the task, so a commit arriving now is late and must not land.
+			.andWhere('fenced_task.status IN (:...fenceAllowedStatuses)')
+			.getQuery();
+
+		return {
+			sql: `EXISTS ${fenceExists}`,
+			params: {
+				fenceTaskId: Number(fence.taskId),
+				fenceLeaseEpoch: fence.leaseEpoch,
+				fenceAllowedStatuses: [ScheduledTaskStatus.Running, ScheduledTaskStatus.Succeeded],
+			},
+		};
 	}
 }

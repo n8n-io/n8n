@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { GlobalConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
 import type { CronDefinition } from '@n8n/scheduler';

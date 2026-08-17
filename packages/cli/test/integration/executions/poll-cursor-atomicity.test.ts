@@ -1,4 +1,4 @@
-import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { PollerConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -20,9 +20,14 @@ import { createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { POLL_TRIGGER_TASK_TYPE } from '@/scheduling/poll-trigger-node/poll-trigger-task';
+import { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 
 import { createDueJobFactory, seedDueTask } from '../scheduling/shared/job-factory';
+
+// The duplicate-trigger-id gate is fail-closed until a boot scan runs; open it
+// so the config flag alone controls the paths under test.
+mockInstance(DurablePollerGateService, { allowed: true });
 
 describe('poll cursor atomicity', () => {
 	const nodeId = 'node-1';
@@ -302,6 +307,17 @@ describe('poll cursor atomicity', () => {
 				title: 'the fenced task id never existed',
 				prepareFence: (): PollLeaseFence => ({ taskId: '999999999', leaseEpoch: 1 }),
 			},
+			{
+				// Marking a task failed does not bump its lease epoch, so the status
+				// alone must stop the late commit.
+				title: 'the fenced task was marked failed, with its lease epoch unchanged',
+				prepareFence: async (): Promise<PollLeaseFence> => {
+					const task = await seedRunningTask();
+					const fence: PollLeaseFence = { taskId: task.id, leaseEpoch: task.leaseEpoch };
+					await scheduledTaskRepository.update(task.id, { status: ScheduledTaskStatus.Failed });
+					return fence;
+				},
+			},
 		])('does not commit when $title', async ({ prepareFence }) => {
 			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
 			const fence = await prepareFence();
@@ -373,21 +389,22 @@ describe('poll cursor atomicity', () => {
 			});
 		});
 
-		it('leaves no poller_state row behind when a first-ever poll is fenced out', async () => {
+		it('throws and stores nothing when the cursor row disappeared mid-poll, even with a live fence', async () => {
+			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
 			const task = await seedRunningTask();
 			const fence: PollLeaseFence = { taskId: task.id, leaseEpoch: task.leaseEpoch };
-			await scheduledTaskRepository.update(task.id, { leaseEpoch: task.leaseEpoch + 1 });
+			await pollerStateRepository.delete({ workflowId: workflow.id, nodeId });
 
-			const result = await pollCursorService.commitWithExecution({
-				workflowId: workflow.id,
-				nodeId,
-				cursor: { lastItemId: 'b' },
-				payload: buildPayload(),
-				fence,
-			});
-
-			expect(result).toBeNull();
-			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toBeNull();
+			await expect(
+				pollCursorService.commitWithExecution({
+					workflowId: workflow.id,
+					nodeId,
+					cursor: { lastItemId: 'b' },
+					payload: buildPayload(),
+					fence,
+				}),
+			).rejects.toThrow('Poller cursor row disappeared while its poll was running');
+			expect(await executionRepository.find({ select: ['id'] })).toEqual([]);
 		});
 	});
 });

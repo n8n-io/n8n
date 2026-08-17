@@ -23,7 +23,7 @@ const modalBus = createEventBus();
 const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 
 onMounted(() => {
-	const curlCommands = uiStore.modalStateById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<
+	const curlCommands = uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<
 		string,
 		string
 	>;
@@ -58,13 +58,14 @@ function onImportFailure(data: { invalidProtocol: boolean; protocol?: string }) 
 
 function onAfterImport() {
 	const nodeId = ndvStore.value.activeNode?.id as string;
-	const curlCommands =
-		(uiStore.modalStateById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<string, string>) ??
-		{};
-	curlCommands[nodeId] = curlCommand.value;
+	const curlCommands = uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as
+		| Record<string, string>
+		| undefined;
+	// Copied rather than mutated: what the store resolves is derived state, and for
+	// an untouched modal it comes from the shared initial-state catalogue.
 	uiStore.setModalData({
 		name: IMPORT_CURL_MODAL_KEY,
-		data: { curlCommands },
+		data: { curlCommands: { ...curlCommands, [nodeId]: curlCommand.value } },
 	});
 }
 

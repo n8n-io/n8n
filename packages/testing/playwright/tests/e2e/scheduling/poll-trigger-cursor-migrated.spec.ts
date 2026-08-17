@@ -1,5 +1,5 @@
 import {
-	clearStaticDataAndReactivate,
+	clearStaticDataAndPoll,
 	expectNewTriggerExecution,
 	expectNoNewTriggerExecution,
 	expectPollTriggerFires,
@@ -65,11 +65,8 @@ test.describe(
 			);
 
 			const afterSeedPoll = await fetchTriggerExecutionIds(api, workflowId);
-			await clearStaticDataAndReactivate(api, workflowId);
-			await api.fireScheduledJobsNow(workflowId, nodeId);
+			await clearStaticDataAndPoll(api, workflowId, nodeId);
 
-			// Covers both polls that run with the static data gone: the reactivation
-			// seed poll and the scheduled tick forced above.
 			await expectNoNewTriggerExecution(api, workflowId, afterSeedPoll);
 			expect(await readNodeStaticData(api, workflowId, POLL_TRIGGER_NODE_NAME)).toBeNull();
 			expect(await api.getPollerCursor(workflowId, nodeId)).toEqual({ lastItemId: 1 });
