@@ -5,42 +5,21 @@ import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import { setActivePinia } from 'pinia';
-import { nextTick } from 'vue';
-import { flushPromises } from '@vue/test-utils';
-
-// vuedraggable can't be dragged in jsdom. This stub keeps what the components rely on
-// — the item slot and the change event — and adds a button so a reorder can be
-// triggered from a test.
-vi.mock('vuedraggable', async () => {
-	const { defineComponent, h } = await import('vue');
-	return {
-		default: defineComponent({
-			props: { modelValue: { type: Array, required: true } },
-			emits: ['update:modelValue', 'change'],
-			setup(props, { emit, slots }) {
-				const moveLastToFirst = () => {
-					const oldIndex = props.modelValue.length - 1;
-					const next = [...props.modelValue];
-					next.unshift(...next.splice(oldIndex, 1));
-					emit('update:modelValue', next);
-					emit('change', { moved: { oldIndex, newIndex: 0 } });
-				};
-
-				return () =>
-					h('div', [
-						...props.modelValue.map((element, index) =>
-							h('div', { 'data-draggable': 'true' }, slots.item?.({ element, index })),
-						),
-						h('button', {
-							'data-test-id': 'stub-move-last-to-first',
-							onClick: moveLastToFirst,
-						}),
-					]);
-			},
-		}),
-	};
-});
+import { PiniaVuePlugin, setActivePinia } from 'pinia';
+import { computed, nextTick } from 'vue';
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
+import { i18nInstance } from '@n8n/i18n';
+import { N8nPlugin } from '@n8n/design-system';
+import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import FixedCollectionItemList from './FixedCollectionItemList.vue';
+import FixedCollectionItem from './FixedCollectionItem.vue';
+import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -111,6 +90,199 @@ describe('FixedCollectionParameterNew.vue', () => {
 
 	const renderComponent = createComponentRenderer(FixedCollectionParameterNew, {
 		props: baseProps,
+	});
+
+	describe('hideOptionalFields item identity after order changes', () => {
+		type FormFieldValue = INodeParameters & {
+			fieldLabel: string;
+			fieldType: string;
+			placeholder?: string;
+		};
+
+		const formFieldProps: Props = {
+			parameter: {
+				displayName: 'Form Fields',
+				name: 'formFields',
+				placeholder: 'Add Form Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+					sortable: true,
+					hideOptionalFields: true,
+					addOptionalFieldButtonText: 'Add Attributes',
+				},
+				default: {},
+				options: [
+					{
+						name: 'values',
+						displayName: 'Values',
+						values: [
+							{
+								displayName: 'Label',
+								name: 'fieldLabel',
+								type: 'string',
+								default: '',
+								required: true,
+							},
+							{
+								displayName: 'Field Type',
+								name: 'fieldType',
+								type: 'options',
+								default: 'text',
+								required: true,
+								options: [
+									{ name: 'Text', value: 'text' },
+									{ name: 'Number', value: 'number' },
+								],
+							},
+							{
+								displayName: 'Placeholder',
+								name: 'placeholder',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			path: 'parameters.formFields',
+			nodeValues: { parameters: { formFields: { values: [] } } },
+			values: { values: [] },
+			isReadOnly: false,
+			isNested: false,
+		};
+
+		const mountFormFields = (fieldName: string, values: FormFieldValue[]) => {
+			const localPinia = createTestingPinia({
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: SETTINGS_STORE_DEFAULT_STATE.settings,
+					},
+				},
+			});
+			setActivePinia(localPinia);
+
+			return mount(FixedCollectionParameterNew, {
+				props: {
+					...formFieldProps,
+					path: `parameters.${fieldName}`,
+					nodeValues: { parameters: { [fieldName]: { values } } },
+					values: { values },
+				},
+				global: {
+					plugins: [i18nInstance, PiniaVuePlugin, N8nPlugin, GlobalDirectivesPlugin, localPinia],
+					provide: {
+						[WorkflowDocumentStoreKey as symbol]: computed(() =>
+							useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)),
+						),
+					},
+				},
+			});
+		};
+
+		const renderedInputValuesByItem = (container: Element) =>
+			Array.from(container.querySelectorAll<HTMLElement>('[data-item-key]')).map((item) =>
+				Array.from(
+					item.querySelectorAll<HTMLInputElement>('input[data-test-id="parameter-input-field"]'),
+				).map((input) => input.value),
+			);
+
+		// Read item props because hiding optional fields can leave stale DOM during transitions.
+		const visibleFieldsByItem = (wrapper: VueWrapper) =>
+			wrapper
+				.findAllComponents(FixedCollectionItem)
+				.map((item) => [
+					(item.props('itemData') as FormFieldValue).fieldLabel,
+					item.props('visiblePropertyValues').map((value: INodeProperties) => value.name),
+				]);
+
+		it('keeps revealed optional fields with their own item after a reorder', async () => {
+			const fieldName = 'formFieldsAfterReorder';
+			const original: FormFieldValue[] = [
+				{ fieldLabel: 'Name', fieldType: 'text' },
+				{ fieldLabel: 'Phone', fieldType: 'text' },
+				{ fieldLabel: 'Email', fieldType: 'text', placeholder: 'you@example.com' },
+			];
+
+			const wrapper = mountFormFields(fieldName, original);
+			await flushPromises();
+
+			expect(renderedInputValuesByItem(wrapper.element)).toEqual([
+				['Name'],
+				['Phone'],
+				['Email', 'you@example.com'],
+			]);
+
+			wrapper.findComponent(FixedCollectionItemList).vm.$emit('dragChange', 'values', {
+				moved: { oldIndex: 2, newIndex: 0 },
+			});
+			await flushPromises();
+
+			const reorderEvent = wrapper
+				.emitted('valueChanged')
+				?.map(([event]) => event)
+				.find(
+					(event): event is { name: string; value: typeof original; type: 'optionsOrderChanged' } =>
+						(event as { type?: string }).type === 'optionsOrderChanged',
+				);
+			expect(reorderEvent).toEqual({
+				name: `parameters.${fieldName}.values`,
+				value: [original[2], original[0], original[1]],
+				type: 'optionsOrderChanged',
+			});
+
+			await wrapper.setProps({
+				nodeValues: {
+					parameters: { [fieldName]: { values: reorderEvent?.value ?? original } },
+				},
+				values: { values: reorderEvent?.value ?? original },
+			});
+			await flushPromises();
+
+			expect(visibleFieldsByItem(wrapper)).toEqual([
+				['Email', ['fieldLabel', 'fieldType', 'placeholder']],
+				['Name', ['fieldLabel', 'fieldType']],
+				['Phone', ['fieldLabel', 'fieldType']],
+			]);
+
+			wrapper.unmount();
+		});
+
+		it('keeps revealed optional fields with their own item after an earlier item is deleted', async () => {
+			const fieldName = 'formFieldsAfterDelete';
+			const original: FormFieldValue[] = [
+				{ fieldLabel: 'Name', fieldType: 'text' },
+				{ fieldLabel: 'Phone', fieldType: 'text' },
+				{ fieldLabel: 'Email', fieldType: 'text', placeholder: 'you@example.com' },
+			];
+
+			const wrapper = mountFormFields(fieldName, original);
+			await flushPromises();
+
+			expect(renderedInputValuesByItem(wrapper.element)).toEqual([
+				['Name'],
+				['Phone'],
+				['Email', 'you@example.com'],
+			]);
+
+			const deleteButton = wrapper.findAll('[data-test-id="fixed-collection-item-delete"]')[0];
+			expect(deleteButton.exists()).toBe(true);
+
+			await deleteButton.trigger('click');
+			await flushPromises();
+			await wrapper.setProps({
+				nodeValues: { parameters: { [fieldName]: { values: [original[1], original[2]] } } },
+				values: { values: [original[1], original[2]] },
+			});
+			await flushPromises();
+
+			expect(visibleFieldsByItem(wrapper)).toEqual([
+				['Phone', ['fieldLabel', 'fieldType']],
+				['Email', ['fieldLabel', 'fieldType', 'placeholder']],
+			]);
+
+			wrapper.unmount();
+		});
 	});
 
 	describe('Top-level multiple values', () => {
@@ -988,80 +1160,6 @@ describe('FixedCollectionParameterNew.vue', () => {
 				const parameterItems = container.querySelectorAll('[data-test-id="parameter-item"]');
 				expect(parameterItems.length).toBe(4);
 			});
-		});
-
-		it('keeps revealed optional fields with their own item after a reorder', async () => {
-			// Only the second item has a placeholder set, so only it reveals that attribute.
-			const original = [
-				{ fieldLabel: 'Name', fieldType: 'text' },
-				{ fieldLabel: 'Email', fieldType: 'text', placeholder: 'you@example.com' },
-			];
-			const reordered = [original[1], original[0]];
-
-			const propsFor = (values: typeof original): Props => ({
-				...hideOptionalFieldsProps,
-				nodeValues: { parameters: { formFields: { values } } },
-				values: { values },
-			});
-
-			const { container, getByTestId, rerender } = renderHideOptionalFields({
-				props: propsFor(original),
-			});
-			await flushPromises();
-
-			// Per form element, the values of the parameter inputs it renders.
-			const renderedItems = () =>
-				Array.from(container.querySelectorAll('[data-item-key]')).map((item) =>
-					Array.from(
-						item.querySelectorAll<HTMLInputElement>('input[data-test-id="parameter-input-field"]'),
-					).map((input) => input.value),
-				);
-
-			expect(renderedItems()).toEqual([['Name'], ['Email', 'you@example.com']]);
-
-			// Drag "Email" to the top, then let the parent feed the new order back.
-			await userEvent.click(getByTestId('stub-move-last-to-first'));
-			await flushPromises();
-			await rerender(propsFor(reordered));
-			await flushPromises();
-
-			expect(renderedItems()).toEqual([['Email', 'you@example.com'], ['Name']]);
-		});
-
-		it('keeps revealed optional fields with their own item after an earlier item is deleted', async () => {
-			const original = [
-				{ fieldLabel: 'Name', fieldType: 'text' },
-				{ fieldLabel: 'Email', fieldType: 'text', placeholder: 'you@example.com' },
-			];
-
-			const propsFor = (values: typeof original): Props => ({
-				...hideOptionalFieldsProps,
-				nodeValues: { parameters: { formFields: { values } } },
-				values: { values },
-			});
-
-			const { container, rerender } = renderHideOptionalFields({ props: propsFor(original) });
-			await flushPromises();
-
-			const renderedItems = () =>
-				Array.from(container.querySelectorAll('[data-item-key]')).map((item) =>
-					Array.from(
-						item.querySelectorAll<HTMLInputElement>('input[data-test-id="parameter-input-field"]'),
-					).map((input) => input.value),
-				);
-
-			expect(renderedItems()).toEqual([['Name'], ['Email', 'you@example.com']]);
-
-			// Deleting "Name" shifts "Email" down to index 0.
-			const deleteButtons = container.querySelectorAll<HTMLElement>(
-				'[data-test-id="fixed-collection-item-delete"]',
-			);
-			await userEvent.click(deleteButtons[0]);
-			await flushPromises();
-			await rerender(propsFor([original[1]]));
-			await flushPromises();
-
-			expect(renderedItems()).toEqual([['Email', 'you@example.com']]);
 		});
 	});
 });
