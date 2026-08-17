@@ -211,10 +211,10 @@ const headerIcon = computed((): IconName => {
 const isFailed = computed((): boolean => (props.item ? isFailedTimelineItem(props.item) : false));
 
 /**
- * Error message for a failed tool/workflow/node call. It surfaces a string or
- * nested `toolOutput.error.message` when available.
- * Built-in soft-failure payloads carry `toolSuccess: true`, so the failure
- * flag is derived in `isFailedTimelineItem`.
+ * Error message for a failed tool/workflow/node call. It surfaces a string,
+ * nested `toolOutput.error.message`, or MCP `structuredContent.error` / text
+ * content when available. Built-in soft-failure payloads carry
+ * `toolSuccess: true`, so the failure flag is derived in `isFailedTimelineItem`.
  */
 const errorMessage = computed((): string => {
 	const item = props.item;

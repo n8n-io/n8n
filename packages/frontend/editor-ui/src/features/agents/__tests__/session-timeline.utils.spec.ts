@@ -536,6 +536,73 @@ describe('timelineItemErrorMessage', () => {
 		).toBe('No message context');
 	});
 
+	it('extracts MCP structuredContent.error', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [{ type: 'text', text: '{"error":"Workflow not found"}' }],
+						structuredContent: { error: 'Workflow not found' },
+					},
+				}),
+			),
+		).toBe('Workflow not found');
+	});
+
+	it('extracts MCP structuredContent.error.message', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [{ type: 'text', text: 'ignored' }],
+						structuredContent: { error: { message: 'Tool execution failed' } },
+					},
+				}),
+			),
+		).toBe('Tool execution failed');
+	});
+
+	it('extracts MCP text content when structuredContent has no error', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [{ type: 'text', text: 'Access denied by user' }],
+					},
+				}),
+			),
+		).toBe('Access denied by user');
+	});
+
+	it('extracts MCP JSON text envelopes without dumping extra payload fields', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [
+							{
+								type: 'text',
+								text: JSON.stringify({ error: 'Selector not found', snapshot: '<huge>' }),
+							},
+						],
+					},
+				}),
+			),
+		).toBe('Selector not found');
+	});
+
 	it('returns empty string when no error message is present', () => {
 		expect(
 			timelineItemErrorMessage(item({ kind: 'tool', toolSuccess: false, toolOutput: {} })),
@@ -543,6 +610,15 @@ describe('timelineItemErrorMessage', () => {
 		expect(
 			timelineItemErrorMessage(
 				item({ kind: 'workflow', toolSuccess: true, toolOutput: { status: 'error' } }),
+			),
+		).toBe('');
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: { isError: true, content: [{ type: 'image', data: 'abc' }] },
+				}),
 			),
 		).toBe('');
 	});

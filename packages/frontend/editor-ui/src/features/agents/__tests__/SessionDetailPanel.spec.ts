@@ -258,6 +258,22 @@ describe('SessionDetailPanel — other kinds', () => {
 		expect(w.find('[data-test-id="tool-error-callout"]').text()).toContain('No message context');
 	});
 
+	it('shows an MCP structuredContent error message', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'github_create_issue',
+			toolSuccess: true,
+			toolOutput: {
+				isError: true,
+				content: [{ type: 'text', text: '{"error":"Repository not found"}' }],
+				structuredContent: { error: 'Repository not found' },
+			},
+		});
+		expect(w.find('[data-test-id="tool-error-callout"]').text()).toContain('Repository not found');
+	});
+
 	it('does not show a failure callout or header icon for a successful tool', () => {
 		const w = mountIt({
 			kind: 'tool',

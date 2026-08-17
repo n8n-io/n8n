@@ -19,6 +19,40 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null;
 }
 
+function errorTextFromValue(value: unknown): string {
+	if (typeof value === 'string' && value.length > 0) return value;
+	if (isRecord(value) && typeof value.message === 'string' && value.message.length > 0) {
+		return value.message;
+	}
+	return '';
+}
+
+/** MCP CallToolResult stores the message in structuredContent.error or text content. */
+function mcpErrorMessage(output: Record<string, unknown>): string {
+	if (isRecord(output.structuredContent)) {
+		const fromStructured = errorTextFromValue(output.structuredContent.error);
+		if (fromStructured) return fromStructured;
+	}
+
+	if (!Array.isArray(output.content)) return '';
+	for (const block of output.content) {
+		if (!isRecord(block) || block.type !== 'text' || typeof block.text !== 'string') continue;
+		const text = block.text.trim();
+		if (!text) continue;
+		try {
+			const parsed: unknown = JSON.parse(text);
+			if (typeof parsed === 'string' && parsed.length > 0) return parsed;
+			if (isRecord(parsed)) {
+				const fromJson = errorTextFromValue(parsed.error);
+				if (fromJson) return fromJson;
+			}
+		} catch {
+			return text;
+		}
+	}
+	return '';
+}
+
 /**
  * A tool/workflow/node call is "failed" when the runtime flagged it
  * (`toolSuccess === false`) — the case for thrown tool and node errors.
@@ -52,14 +86,7 @@ export function timelineItemErrorMessage(item: TimelineItem): string {
 	if (!isFailedTimelineItem(item)) return '';
 	const output = item.toolOutput;
 	if (!isRecord(output)) return '';
-	if (typeof output.error === 'string' && output.error.length > 0) return output.error;
-	if (
-		isRecord(output.error) &&
-		typeof output.error.message === 'string' &&
-		output.error.message.length > 0
-	)
-		return output.error.message;
-	return '';
+	return errorTextFromValue(output.error) || mcpErrorMessage(output);
 }
 
 export function computeIdleRanges(items: TimelineItem[]): IdleRange[] {
