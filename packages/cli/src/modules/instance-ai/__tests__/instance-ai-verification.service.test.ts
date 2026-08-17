@@ -427,6 +427,24 @@ describe('InstanceAiVerificationService', () => {
 			expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain('sk-proj-abcdef');
 		});
 
+		it('attributes the provider from the configured model id under the AI service proxy', async () => {
+			settingsService.isProxyEnabled.mockReturnValue(true);
+			settingsService.getConfiguredModelId.mockReturnValue('moonshotai/kimi-k3');
+			modelService.resolveAgentModelConfig.mockResolvedValue({
+				specificationVersion: 'v2',
+				provider: 'anthropic.messages',
+				modelId: 'kimi-k3',
+			} as never);
+			generateTextMock.mockRejectedValueOnce(new Error('Provider returned 401'));
+
+			await service.verifyModel(user, {});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_CONNECTION_FAILED,
+				expect.objectContaining({ provider: 'moonshotai' }),
+			);
+		});
+
 		it('attributes the provider for pre-built language-model configs', async () => {
 			modelService.resolveAgentModelConfig.mockResolvedValue({
 				specificationVersion: 'v2',

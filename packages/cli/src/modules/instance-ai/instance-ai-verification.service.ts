@@ -122,7 +122,13 @@ export class InstanceAiVerificationService {
 				: request.modelName
 					? await this.settingsService.resolveModelConfigForVerification(user, request.modelName)
 					: await this.modelService.resolveAgentModelConfig(user);
-			provider = modelProviderOf(modelConfig);
+			// Under the AI service proxy the resolved model is a pre-built LanguageModel
+			// whose `provider` reflects the proxy transport, not the configured model —
+			// attribute from the configured model id instead.
+			provider =
+				!connection && !request.modelName && this.settingsService.isProxyEnabled()
+					? this.settingsService.getConfiguredModelId().split('/', 1)[0] || null
+					: modelProviderOf(modelConfig);
 			const { createModel } = await import('@n8n/agents');
 			const { generateText } = await import('ai');
 			const startedAt = performance.now();
