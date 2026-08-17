@@ -76,6 +76,30 @@ export const pageRLC: INodeProperties = {
 
 export type ConfluenceBodyFormat = 'storage' | 'atlas_doc_format' | 'plainText';
 
+export const bodyFormatOption: INodeProperties = {
+	displayName: 'Body Format',
+	name: 'bodyFormat',
+	type: 'options',
+	options: [
+		{
+			name: 'Atlas Doc Format',
+			value: 'atlas_doc_format',
+			description: 'The ADF JSON representation',
+		},
+		{
+			name: 'Plain Text',
+			value: 'plainText',
+			description: 'Text extracted from the ADF body (dynamic macros carry no text)',
+		},
+		{
+			name: 'Storage',
+			value: 'storage',
+			description: 'The raw storage-format XHTML',
+		},
+	],
+	default: 'storage',
+};
+
 export const spaceRLC: INodeProperties = {
 	displayName: 'Space',
 	name: 'space',
