@@ -669,13 +669,18 @@ async function handleSetupTestTrigger(
 	// as already-resolved from the previous suspend cycle
 	state.currentRequestId = nanoid();
 
+	// The thread-bound project is authoritative for credential scoping; without
+	// it the frontend falls back to the user's personal project and offers
+	// credentials from outside the conversation's project.
+	const projectId = context.projectId ?? input.projectId;
+
 	return await ctx.suspend({
 		requestId: state.currentRequestId,
 		message: 'Configure credentials for your workflow',
 		severity: 'info' as const,
 		setupRequests: refreshedRequests,
 		workflowId: input.workflowId,
-		...(input.projectId ? { projectId: input.projectId } : {}),
+		...(projectId ? { projectId } : {}),
 	});
 }
 
@@ -898,13 +903,18 @@ async function handleSetup(
 
 		state.currentRequestId = nanoid();
 
+		// The thread-bound project is authoritative for credential scoping; without
+		// it the frontend falls back to the user's personal project and offers
+		// credentials from outside the conversation's project.
+		const projectId = context.projectId ?? input.projectId;
+
 		return await ctx.suspend({
 			requestId: state.currentRequestId,
 			message: 'Configure credentials for your workflow',
 			severity: 'info' as const,
 			setupRequests,
 			workflowId: input.workflowId,
-			...(input.projectId ? { projectId: input.projectId } : {}),
+			...(projectId ? { projectId } : {}),
 		});
 	}
 

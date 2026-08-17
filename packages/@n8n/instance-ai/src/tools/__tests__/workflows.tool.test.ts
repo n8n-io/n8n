@@ -1616,6 +1616,27 @@ describe('workflows tool', () => {
 			});
 		});
 
+		it('should scope the setup suspend to the thread-bound project even when the model omits projectId', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext({ projectId: 'project-team-1' });
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend.mock.calls[0][0]).toMatchObject({ projectId: 'project-team-1' });
+		});
+
 		it('should scope setup requests to nodes changed by the latest build', async () => {
 			(analyzeWorkflow as Mock).mockResolvedValue([
 				{
