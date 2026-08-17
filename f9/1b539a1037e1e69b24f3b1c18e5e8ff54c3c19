@@ -24,10 +24,12 @@ packages/cli/src/metrics/prometheus/poll-trigger-metrics.service.ts
 packages/core/src/execution-engine/__tests__/triggers-and-pollers.test.ts
   s_673cb9b7bf3383::t_e58d23fb92420d 1,16
   s_673cb9b7bf3383::t_7a97044551633d 155-212,214,216-220,222-235,237-256,258-268
+  s_27ba0c94221d07::t_9e8d357b4cc1ba 213,215,221,236,257
 packages/cli/src/workflows/triggers/poll-cursor.service.ts
   s_673cb9b7bf3383::t_c54683a02f757c 126-142,144-156
   s_673cb9b7bf3383::t_831168ee47647b 7-11,27,30-56
   s_673cb9b7bf3383::t_a624f30bc3589a 170-179
+  s_27ba0c94221d07::t_9e8d357b4cc1ba 57
 packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
   s_673cb9b7bf3383::t_da8991b1112648 1508-1524
 packages/@n8n/scheduler/src/observability/metrics.ts
@@ -59,6 +61,8 @@ packages/core/src/execution-engine/triggers-and-pollers.ts
   s_673cb9b7bf3383::t_d31be16fea3544 27-32
 packages/cli/src/metrics/prometheus/__tests__/poll-trigger-metrics.service.test.ts
   s_673cb9b7bf3383::t_198c589e313679 1-219
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_27ba0c94221d07::t_9e8d357b4cc1ba 18,59,87,122,156
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -66,6 +70,14 @@ packages/cli/src/metrics/prometheus/__tests__/poll-trigger-metrics.service.test.
   "base_commit_sha": "f91b539a1037e1e69b24f3b1c18e5e8ff54c3c19",
   "prompts": {},
   "sessions": {
+    "s_27ba0c94221d07": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e277bcb8-1b76-4dd5-9030-98030a727604",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
     "s_673cb9b7bf3383": {
       "agent_id": {
         "tool": "claude",
