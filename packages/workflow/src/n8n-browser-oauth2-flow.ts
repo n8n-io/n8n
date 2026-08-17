@@ -21,18 +21,21 @@ export type N8nBrowserOAuth2Outcome =
 	/** Not a browser navigation — the caller falls back to bearer-token auth. */
 	| 'not-applicable';
 
-/**
- * The request's own path, not `resourceUrl`'s: for dynamic webhook paths
- * (`/webhook/<id>/user/:id`), the resource URL still carries the literal param name,
- * while every real request (callback and clean follow-up GET alike) sits on the
- * resolved path (`/webhook/<id>/user/42`).
- */
-function requestPath(req: Request): string {
-	const path = req.originalUrl.split('?')[0];
+/** The path part of a same-origin URL, normalized to a single leading slash. */
+function pathOf(url: string): string {
+	const path = url.split('?')[0];
 	return `/${path.replace(/^\/+/, '')}`;
 }
 
-function cookieOptions(req: Request) {
+/**
+ * `path` must be where the browser will *read* the cookie, which is not always where
+ * it is set: a dynamic webhook's resource URL — and therefore its `redirect_uri` —
+ * is the templated path (`/webhook/<id>/user/:id`), so the callback hop lands on that
+ * literal path while the hop that consumes the cookie sits on the resolved one
+ * (`/webhook/<id>/user/42`). Scoping to the redirect target is what makes it
+ * round-trip; scoping to either request's own path does not.
+ */
+function cookieOptions(req: Request, path: string) {
 	// Derive `secure` from the request scheme (honouring x-forwarded-proto) rather than
 	// config, so the cookie is actually sent back on the follow-up GET over http in dev
 	// while staying Secure over https.
@@ -42,7 +45,7 @@ function cookieOptions(req: Request) {
 		httpOnly: true,
 		sameSite: 'lax' as const, // must be Lax: sent on our own top-level 302 → GET
 		secure: proto === 'https',
-		path: requestPath(req), // scope the token to this resolved path, so it round-trips
+		path,
 	};
 }
 
@@ -72,7 +75,7 @@ function returnToUrl(req: Request): string {
 	const params = new URLSearchParams(query ?? '');
 	for (const param of CALLBACK_PARAMS) params.delete(param);
 	const search = params.toString();
-	const safePath = requestPath(req);
+	const safePath = pathOf(req.originalUrl);
 	return search ? `${safePath}?${search}` : safePath;
 }
 
@@ -137,11 +140,12 @@ export const n8nBrowserOAuth2Flow = async (
 				// `code`/`state`, which would land in the webhook's query data. Stash the
 				// token in a one-hop cookie and bounce to the clean URL — the follow-up GET
 				// picks the cookie up below.
+				const location = result.metadata?.returnTo ?? returnToUrl(req);
 				res.cookie(BROWSER_OAUTH_COOKIE_NAME, result.token, {
-					...cookieOptions(req),
+					...cookieOptions(req, pathOf(location)),
 					maxAge: 60_000, // one redirect hop; short by design
 				});
-				return redirect(res, result.metadata?.returnTo ?? returnToUrl(req));
+				return redirect(res, location);
 			}
 			context.logger.warn('Webhook OAuth2 flow failed, restarting', { reason: result.reason });
 		} catch (error) {
@@ -149,7 +153,8 @@ export const n8nBrowserOAuth2Flow = async (
 		}
 		// Fall through to restart the flow.
 	} else if (cookieToken !== null) {
-		res.clearCookie(BROWSER_OAUTH_COOKIE_NAME, cookieOptions(req));
+		// Cleared at the path it was set for: this request *is* the redirect target.
+		res.clearCookie(BROWSER_OAUTH_COOKIE_NAME, cookieOptions(req, pathOf(req.originalUrl)));
 		const validation = await context.validateN8nOAuth2Token(cookieToken, resourceUrl);
 		if (validation.valid) {
 			return { status: 'ok', token: cookieToken };

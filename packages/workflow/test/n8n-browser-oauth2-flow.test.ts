@@ -95,19 +95,49 @@ describe('n8nBrowserOAuth2Flow', () => {
 		expect(response.writeHead).toHaveBeenCalledWith(302, { Location: '/webhook/abc?ref=email' });
 	});
 
-	it('scopes the cookie to the resolved request path, not the templated resourceUrl path', async () => {
+	// A dynamic webhook's resource URL is the templated path, so it is also the
+	// registered redirect_uri — the callback hop lands on the literal `:id` path while
+	// the hop that consumes the cookie sits on the resolved one. Scoping the cookie to
+	// either request's own path leaves it unreadable and the flow redirect-loops.
+	it('scopes the cookie to the redirect target, not the templated callback path', async () => {
 		const DYNAMIC_RESOURCE_URL = 'https://n8n.example.com/webhook/abc/user/:id?method=GET';
 		const { context, response } = buildContext({
 			query: { code: 'c1', state: 's1' },
-			originalUrl: '/webhook/abc/user/42?method=GET&code=c1&state=s1',
+			originalUrl: '/webhook/abc/user/:id?method=GET&code=c1&state=s1',
 		});
-		context.completeN8nOAuth2Flow.mockResolvedValue(VALID_COMPLETION);
+		context.completeN8nOAuth2Flow.mockResolvedValue({
+			...VALID_COMPLETION,
+			metadata: { returnTo: '/webhook/abc/user/42?ref=email' },
+		});
 
 		await n8nBrowserOAuth2Flow(context, DYNAMIC_RESOURCE_URL);
 
 		expect(response.cookie).toHaveBeenCalledWith(
 			'n8n-webhook-oauth',
 			'fresh-token',
+			expect.objectContaining({ path: '/webhook/abc/user/42' }),
+		);
+		expect(response.writeHead).toHaveBeenCalledWith(302, {
+			Location: '/webhook/abc/user/42?ref=email',
+		});
+	});
+
+	it('consumes the cookie at the resolved path on the follow-up GET', async () => {
+		const { context, response } = buildContext({
+			cookie: 'n8n-webhook-oauth=fresh-token',
+			originalUrl: '/webhook/abc/user/42?ref=email',
+		});
+		context.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: { id: 'u1' } as never });
+
+		const outcome = await n8nBrowserOAuth2Flow(
+			context,
+			'https://n8n.example.com/webhook/abc/user/:id?method=GET',
+		);
+
+		expect(outcome).toEqual({ status: 'ok', token: 'fresh-token' });
+		// Same path the callback hop set it for, so the clear actually removes it.
+		expect(response.clearCookie).toHaveBeenCalledWith(
+			'n8n-webhook-oauth',
 			expect.objectContaining({ path: '/webhook/abc/user/42' }),
 		);
 	});
