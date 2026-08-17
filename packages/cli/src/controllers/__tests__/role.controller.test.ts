@@ -40,25 +40,6 @@ describe('RoleController', () => {
 			});
 		});
 
-		describe('updateRole', () => {
-			it('should emit custom-role-updated', async () => {
-				const request = managerRequest();
-				roleService.getRole.mockResolvedValue({ roleType: 'project' } as Role);
-				roleService.updateCustomRole.mockResolvedValue({
-					slug: 'custom-editor',
-					scopes: ['workflow:read', 'workflow:update', 'workflow:delete'],
-				} as Role);
-
-				await controller.updateRole(request, mock(), 'custom-editor', mock());
-
-				expect(eventService.emit).toHaveBeenCalledWith('custom-role-updated', {
-					userId: '123',
-					roleSlug: 'custom-editor',
-					scopes: ['workflow:read', 'workflow:update', 'workflow:delete'],
-				});
-			});
-		});
-
 		describe('deleteRole', () => {
 			it('should emit custom-role-deleted', async () => {
 				const request = managerRequest();

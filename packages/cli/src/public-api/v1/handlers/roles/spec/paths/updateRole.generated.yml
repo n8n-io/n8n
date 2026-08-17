@@ -1,12 +1,18 @@
-operationId: createRole
+operationId: updateRole
 tags:
   - Role
-summary: Create a custom role
-description: Creates a custom role. Set `roleType` to `global` for an instance-wide role or `project` for a project role.
+summary: Update a custom role
+description: Replaces a custom role's display name, description, and scopes. System roles cannot be updated.
 x-required-scope: role:manage,role:manageProject
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: slug
+    in: path
 requestBody:
   content:
     application/json:
@@ -19,22 +25,18 @@ requestBody:
             maxLength: 100
           description:
             type: string
+            nullable: true
             maxLength: 500
-          roleType:
-            type: string
-            enum:
-              - project
-              - global
           scopes:
             type: array
             items:
               type: string
         required:
           - displayName
-          - roleType
+          - description
           - scopes
 responses:
-  '201':
+  '200':
     description: Operation successful.
     content:
       application/json:
@@ -46,3 +48,5 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
