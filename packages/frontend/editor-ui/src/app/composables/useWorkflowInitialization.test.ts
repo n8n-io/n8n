@@ -4,7 +4,9 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { render } from '@testing-library/vue';
 
+import * as workflowsApi from '@/app/api/workflows';
 import { useWorkflowInitialization } from './useWorkflowInitialization';
+import { DEFAULT_NEW_WORKFLOW_NAME, VIEWS } from '@/app/constants';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import type { IWorkflowDb } from '@/Interface';
 
@@ -199,6 +201,48 @@ describe('useWorkflowInitialization', () => {
 			await initializeWorkspaceForNewWorkflow();
 
 			expect(mockSetDocumentTitle).toHaveBeenCalledWith('New Workflow', 'IDLE');
+		});
+	});
+
+	// A preview embed is unauthenticated, so any session-dependent REST call on
+	// this path answers 401 and prints a console error. The demo route is under an
+	// error-level console gate, so the calls must not be made at all.
+	describe('preview mode on the demo route', () => {
+		function setPreviewMode(previewMode: boolean) {
+			setActivePinia(
+				createTestingPinia({
+					initialState: { settings: { settings: { previewMode } } },
+				}),
+			);
+		}
+
+		it('does not call the workflows/new endpoint', async () => {
+			mockRoute.name = VIEWS.DEMO;
+			setPreviewMode(true);
+
+			let initializeWorkflow!: () => Promise<void>;
+			renderWithComposable((init) => {
+				initializeWorkflow = init.initializeWorkflow;
+			});
+
+			await initializeWorkflow();
+
+			expect(workflowsApi.getNewWorkflowData).not.toHaveBeenCalled();
+			expect(mockWorkflowDocumentStore.setName).toHaveBeenCalledWith(DEFAULT_NEW_WORKFLOW_NAME);
+		});
+
+		it('still calls the workflows/new endpoint on an authenticated demo load', async () => {
+			mockRoute.name = VIEWS.DEMO;
+			setPreviewMode(false);
+
+			let initializeWorkflow!: () => Promise<void>;
+			renderWithComposable((init) => {
+				initializeWorkflow = init.initializeWorkflow;
+			});
+
+			await initializeWorkflow();
+
+			expect(workflowsApi.getNewWorkflowData).toHaveBeenCalled();
 		});
 	});
 });

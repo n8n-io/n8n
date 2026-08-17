@@ -7,7 +7,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // it returns store properties, but our hand-rolled mock does not.
 let stateLimit = 0 as number;
 let stateHasLoadedLicense = false;
+let stateIsPreviewMode = false;
 const stateGetLicenseInfo = vi.fn<() => Promise<void>>();
+
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({
+		get isPreviewMode() {
+			return stateIsPreviewMode;
+		},
+	}),
+}));
 
 vi.mock('@/features/settings/usage/usage.store', () => ({
 	useUsageStore: () => ({
@@ -29,6 +38,7 @@ describe('useEvaluationsLicense', () => {
 	beforeEach(async () => {
 		stateLimit = 0;
 		stateHasLoadedLicense = false;
+		stateIsPreviewMode = false;
 		stateGetLicenseInfo.mockReset();
 		stateGetLicenseInfo.mockResolvedValue(undefined);
 		// Reset modules to clear the module-cached licensePromise.
@@ -94,6 +104,18 @@ describe('useEvaluationsLicense', () => {
 			await ensureLicenseLoaded();
 			await ensureLicenseLoaded();
 			expect(stateGetLicenseInfo).toHaveBeenCalledTimes(1);
+		});
+
+		// A preview embed is unauthenticated, so `/rest/license` can only answer
+		// 401 and print a console error on a route that is console-gated.
+		it('does not call getLicenseInfo in preview mode', async () => {
+			stateIsPreviewMode = true;
+
+			const { ensureLicenseLoaded, isResolved } = await getComposable();
+			await ensureLicenseLoaded();
+
+			expect(stateGetLicenseInfo).not.toHaveBeenCalled();
+			expect(isResolved.value).toBe(false);
 		});
 
 		it('resets cache on error so next call retries', async () => {
