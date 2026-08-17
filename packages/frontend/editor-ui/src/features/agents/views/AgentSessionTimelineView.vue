@@ -9,6 +9,7 @@ import {
 	AGENT_SESSION_DETAIL_VIEW,
 	EXECUTIONS_SECTION_KEY,
 } from '@/features/agents/constants';
+import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type {
 	AgentExecution,
@@ -18,8 +19,7 @@ import type {
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
 import { useI18n } from '@n8n/i18n';
-import type { PathItem } from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
+import type { DropdownMenuItemProps, PathItem } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
@@ -29,6 +29,11 @@ const route = useRoute();
 const router = useRouter();
 const sessionsStore = useAgentSessionsStore();
 const projectsStore = useProjectsStore();
+const {
+	isEnabled: isLangSmithExportEnabled,
+	isExporting,
+	sendSession,
+} = useAgentSessionLangSmithExport();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
@@ -130,6 +135,7 @@ const totalTokens = computed(() => {
 	return thread.value.totalPromptTokens + thread.value.totalCompletionTokens;
 });
 
+const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
 const totalCost = computed(() => thread.value?.totalCost ?? 0);
 const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
 
@@ -203,8 +209,11 @@ function onSessionSelect(nextThreadId: string) {
 			:total-tokens="totalTokens"
 			:total-cost="totalCost"
 			:duration-label="durationLabel"
+			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
+			:langsmith-export-loading="isExporting"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
+			@langsmith-export="sendSession({ projectId, agentId, threadId })"
 			@close="closeTimeline"
 		/>
 

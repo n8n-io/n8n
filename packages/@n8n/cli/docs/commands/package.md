@@ -29,10 +29,18 @@ n8n-cli package export -w abc --include-tags=false -o export.n8np
 | `--include-variable-values` | `true` (default) or `false`. Whether values of variables referenced by the exported workflows are bundled into the package. When `false`, variables still travel as name/type files (and in the package requirements), just without their values. |
 | `--include-tags` | `true` (default) or `false`. Whether tags assigned to the exported workflows are bundled into the package. When `false`, no tag data is included in the package. |
 | `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail` aborts when any dependency is missing, `include-in-package` automatically adds missing static sub-workflows, and `reference-only` keeps them out of the package, listing them in the package requirements as workflows expected to already exist on the target. |
+| `--workflow-version-policy` | Which version of each workflow travels in the package: `latest` (default) exports the latest version whether or not it is published, `published-strict` exports the published version and aborts when any workflow has none, `prefer-published` falls back to the latest version where there is no published one, and `ignore-unpublished` leaves unpublished workflows out of the package entirely. |
 
 Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
 the API key to hold `workflow:export` when exporting workflows or folders, or
 `project:export` when exporting projects.
+
+A workflow has a latest version (what you see in the editor) and, once
+published, a published version; `--workflow-version-policy` picks which one
+travels. The chosen version decides which credentials, data tables, variables
+and sub-workflows are bundled alongside it, but the workflow's name, settings
+(including `errorWorkflow`) and tags are not versioned and always come from the
+latest version.
 
 Statically referenced sub-workflows are dependencies of the package. How
 missing ones are handled depends on

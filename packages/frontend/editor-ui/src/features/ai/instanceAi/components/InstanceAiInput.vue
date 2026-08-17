@@ -8,7 +8,7 @@ import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import { base64EncodedSize, type InstanceAiAttachment } from '@n8n/api-types';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 
@@ -181,6 +181,12 @@ const isBusy = computed(() =>
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
+// Fed to the composer so its size guard can account for what is already staged.
+// Summed per file after encoding — base64 pads each file individually, so encoding
+// a raw total would undercount and disagree with the backend's per-file measurement.
+const attachedEncodedBytes = computed(() =>
+	attachedFiles.value.reduce((sum, file) => sum + base64EncodedSize(file.size), 0),
+);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
@@ -477,6 +483,7 @@ const resizable = computed(() => {
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
 			:show-attach="!props.isPlanEditMode"
+			:attached-encoded-bytes="attachedEncodedBytes"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"

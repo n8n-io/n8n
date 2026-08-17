@@ -75,7 +75,7 @@
     "langsmith": "catalog:",
     "linkedom": "^0.18.9",
     "luxon": "catalog:",
-    "mammoth": "1.12.0",
+    "mammoth": "1.12.1",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
     "p-limit": "^3.1.0",

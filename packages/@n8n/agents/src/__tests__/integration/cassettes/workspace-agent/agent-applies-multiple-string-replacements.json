@@ -1,0 +1,852 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "<built_in_rules>\n- When a tool result is offloaded, inspect it with workspace_read_tool_result before answering. Continue through relevant JSON Pointers and nextOffset pages until you have enough evidence for the user request. Do not read the entire result when the remaining content cannot affect the answer.\n</built_in_rules>\n\nYou are a file editor. Use workspace_str_replace_file for exact replacements. Do not rewrite the whole file.\n\nFake sandbox for executing commands.\n\nIn-memory filesystem. All file paths are relative to /mem."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Perform these exact workspace edits:\nCall workspace_str_replace_file on /project/config.ts with replacements:\n- old_str=\"OLD_REGION\", new_str=\"EU_CENTRAL\"\n- old_str=\"OLD_OWNER\", new_str=\"API_TEAM\"\n- old_str=\"OLD_STATUS\", new_str=\"READY\"\nThen answer only: done."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "workspace_read_file",
+					"description": "Read the contents of a file from the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path to the file to read"
+							},
+							"encoding": {
+								"type": "string",
+								"enum": ["utf-8", "base64"],
+								"description": "File encoding (default: utf-8)"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_read_tool_result",
+					"description": "Inspect an oversized tool result stored in the workspace. Start with view=describe, then use view=json with relevant JSON Pointers and nextOffset values. Continue until you have enough evidence for the user request; do not assume the first page is complete when hasMore is true.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Exact path from an oversized tool-result envelope"
+							},
+							"view": {
+								"type": "string",
+								"enum": ["describe", "json"],
+								"description": "Inspect the selected value shape, or read a bounded JSON value"
+							},
+							"pointer": {
+								"type": "string",
+								"description": "RFC 6901 JSON Pointer. Omit or use an empty string for the root value."
+							},
+							"offset": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "String character or container child offset"
+							},
+							"maxChars": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 20000,
+								"description": "Maximum characters to return from a selected JSON string"
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 100,
+								"description": "Maximum object or array children to return"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_str_replace_file",
+					"description": "Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path to the file to edit"
+							},
+							"replacements": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"old_str": {
+											"type": "string",
+											"description": "Exact text to replace. Must match exactly and be unique."
+										},
+										"new_str": {
+											"type": "string",
+											"description": "Replacement text to write in place of old_str."
+										}
+									},
+									"required": ["old_str", "new_str"],
+									"additionalProperties": false
+								},
+								"minItems": 1,
+								"description": "Ordered exact string replacements applied atomically."
+							}
+						},
+						"required": ["path", "replacements"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_write_file",
+					"description": "Write content to a file in the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path to the file to write"
+							},
+							"content": {
+								"type": "string",
+								"description": "Content to write to the file"
+							},
+							"recursive": {
+								"type": "boolean",
+								"description": "Create parent directories if they do not exist"
+							}
+						},
+						"required": ["path", "content"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_list_files",
+					"description": "List files and directories in the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Directory path to list"
+							},
+							"recursive": {
+								"type": "boolean",
+								"description": "List files recursively"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_file_stat",
+					"description": "Get metadata about a file or directory",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path to the file or directory"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_mkdir",
+					"description": "Create a directory in the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path of the directory to create"
+							},
+							"recursive": {
+								"type": "boolean",
+								"description": "Create parent directories if needed"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_delete_file",
+					"description": "Delete a file or directory from the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path to the file or directory to delete"
+							},
+							"recursive": {
+								"type": "boolean",
+								"description": "Delete directories and their contents recursively"
+							},
+							"force": {
+								"type": "boolean",
+								"description": "Ignore errors if the file does not exist"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_append_file",
+					"description": "Append content to a file in the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path to the file to append to"
+							},
+							"content": {
+								"type": "string",
+								"description": "Content to append to the file"
+							}
+						},
+						"required": ["path", "content"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_copy_file",
+					"description": "Copy a file or directory in the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"src": {
+								"type": "string",
+								"description": "Source path of the file or directory to copy"
+							},
+							"dest": {
+								"type": "string",
+								"description": "Destination path for the copy"
+							},
+							"overwrite": {
+								"type": "boolean",
+								"description": "Overwrite the destination if it already exists"
+							}
+						},
+						"required": ["src", "dest"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_move_file",
+					"description": "Move or rename a file or directory in the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"src": {
+								"type": "string",
+								"description": "Source path of the file or directory to move"
+							},
+							"dest": {
+								"type": "string",
+								"description": "Destination path"
+							},
+							"overwrite": {
+								"type": "boolean",
+								"description": "Overwrite the destination if it already exists"
+							}
+						},
+						"required": ["src", "dest"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_rmdir",
+					"description": "Remove a directory from the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path of the directory to remove"
+							},
+							"recursive": {
+								"type": "boolean",
+								"description": "Remove the directory and its contents recursively"
+							},
+							"force": {
+								"type": "boolean",
+								"description": "Ignore errors if the directory does not exist"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_execute_command",
+					"description": "Execute a shell command in the sandbox",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"command": {
+								"type": "string",
+								"description": "The shell command to execute"
+							},
+							"cwd": {
+								"type": "string",
+								"description": "Working directory for the command"
+							},
+							"timeout": {
+								"type": "number",
+								"description": "Timeout in milliseconds"
+							}
+						},
+						"required": ["command"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_list_processes",
+					"description": "List all background processes spawned in the sandbox",
+					"input_schema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_kill_process",
+					"description": "Kill a background process in the sandbox by PID",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"pid": {
+								"type": "number",
+								"description": "PID of the process to kill"
+							}
+						},
+						"required": ["pid"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCwR5XZhp5jvX2s1Rjm\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01XhVqxxnCeQAd5i2ZdhvYKQ\",\"name\":\"workspace_str_replace_file\",\"input\":{\"path\":\"/project/config.ts\",\"replacements\":[{\"old_str\":\"OLD_REGION\",\"new_str\":\"EU_CENTRAL\"},{\"old_str\":\"OLD_OWNER\",\"new_str\":\"API_TEAM\"},{\"old_str\":\"OLD_STATUS\",\"new_str\":\"READY\"}]},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2890,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":152,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:56Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:56Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:55Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:56Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a2a55d686bea5ac3-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Thu, 13 Aug 2026 05:36:56 GMT",
+			"request-id": "req_011CdzCwQb1nPWokfQ8pNrEc",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-4baa4ce303d012f7e4a4c3b7b2183c8e-ff660adcd132d02b-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "<built_in_rules>\n- When a tool result is offloaded, inspect it with workspace_read_tool_result before answering. Continue through relevant JSON Pointers and nextOffset pages until you have enough evidence for the user request. Do not read the entire result when the remaining content cannot affect the answer.\n</built_in_rules>\n\nYou are a file editor. Use workspace_str_replace_file for exact replacements. Do not rewrite the whole file.\n\nFake sandbox for executing commands.\n\nIn-memory filesystem. All file paths are relative to /mem."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Perform these exact workspace edits:\nCall workspace_str_replace_file on /project/config.ts with replacements:\n- old_str=\"OLD_REGION\", new_str=\"EU_CENTRAL\"\n- old_str=\"OLD_OWNER\", new_str=\"API_TEAM\"\n- old_str=\"OLD_STATUS\", new_str=\"READY\"\nThen answer only: done."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01XhVqxxnCeQAd5i2ZdhvYKQ",
+							"name": "workspace_str_replace_file",
+							"input": {
+								"path": "/project/config.ts",
+								"replacements": [
+									{
+										"old_str": "OLD_REGION",
+										"new_str": "EU_CENTRAL"
+									},
+									{
+										"old_str": "OLD_OWNER",
+										"new_str": "API_TEAM"
+									},
+									{
+										"old_str": "OLD_STATUS",
+										"new_str": "READY"
+									}
+								]
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01XhVqxxnCeQAd5i2ZdhvYKQ",
+							"content": "{\"success\":true,\"result\":\"All 3 replacements applied successfully.\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "workspace_read_file",
+					"description": "Read the contents of a file from the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path to the file to read"
+							},
+							"encoding": {
+								"type": "string",
+								"enum": ["utf-8", "base64"],
+								"description": "File encoding (default: utf-8)"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_read_tool_result",
+					"description": "Inspect an oversized tool result stored in the workspace. Start with view=describe, then use view=json with relevant JSON Pointers and nextOffset values. Continue until you have enough evidence for the user request; do not assume the first page is complete when hasMore is true.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Exact path from an oversized tool-result envelope"
+							},
+							"view": {
+								"type": "string",
+								"enum": ["describe", "json"],
+								"description": "Inspect the selected value shape, or read a bounded JSON value"
+							},
+							"pointer": {
+								"type": "string",
+								"description": "RFC 6901 JSON Pointer. Omit or use an empty string for the root value."
+							},
+							"offset": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "String character or container child offset"
+							},
+							"maxChars": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 20000,
+								"description": "Maximum characters to return from a selected JSON string"
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 100,
+								"description": "Maximum object or array children to return"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_str_replace_file",
+					"description": "Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path to the file to edit"
+							},
+							"replacements": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"old_str": {
+											"type": "string",
+											"description": "Exact text to replace. Must match exactly and be unique."
+										},
+										"new_str": {
+											"type": "string",
+											"description": "Replacement text to write in place of old_str."
+										}
+									},
+									"required": ["old_str", "new_str"],
+									"additionalProperties": false
+								},
+								"minItems": 1,
+								"description": "Ordered exact string replacements applied atomically."
+							}
+						},
+						"required": ["path", "replacements"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_write_file",
+					"description": "Write content to a file in the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path to the file to write"
+							},
+							"content": {
+								"type": "string",
+								"description": "Content to write to the file"
+							},
+							"recursive": {
+								"type": "boolean",
+								"description": "Create parent directories if they do not exist"
+							}
+						},
+						"required": ["path", "content"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_list_files",
+					"description": "List files and directories in the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Directory path to list"
+							},
+							"recursive": {
+								"type": "boolean",
+								"description": "List files recursively"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_file_stat",
+					"description": "Get metadata about a file or directory",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path to the file or directory"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_mkdir",
+					"description": "Create a directory in the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path of the directory to create"
+							},
+							"recursive": {
+								"type": "boolean",
+								"description": "Create parent directories if needed"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_delete_file",
+					"description": "Delete a file or directory from the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path to the file or directory to delete"
+							},
+							"recursive": {
+								"type": "boolean",
+								"description": "Delete directories and their contents recursively"
+							},
+							"force": {
+								"type": "boolean",
+								"description": "Ignore errors if the file does not exist"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_append_file",
+					"description": "Append content to a file in the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path to the file to append to"
+							},
+							"content": {
+								"type": "string",
+								"description": "Content to append to the file"
+							}
+						},
+						"required": ["path", "content"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_copy_file",
+					"description": "Copy a file or directory in the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"src": {
+								"type": "string",
+								"description": "Source path of the file or directory to copy"
+							},
+							"dest": {
+								"type": "string",
+								"description": "Destination path for the copy"
+							},
+							"overwrite": {
+								"type": "boolean",
+								"description": "Overwrite the destination if it already exists"
+							}
+						},
+						"required": ["src", "dest"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_move_file",
+					"description": "Move or rename a file or directory in the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"src": {
+								"type": "string",
+								"description": "Source path of the file or directory to move"
+							},
+							"dest": {
+								"type": "string",
+								"description": "Destination path"
+							},
+							"overwrite": {
+								"type": "boolean",
+								"description": "Overwrite the destination if it already exists"
+							}
+						},
+						"required": ["src", "dest"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_rmdir",
+					"description": "Remove a directory from the workspace",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"path": {
+								"type": "string",
+								"description": "Path of the directory to remove"
+							},
+							"recursive": {
+								"type": "boolean",
+								"description": "Remove the directory and its contents recursively"
+							},
+							"force": {
+								"type": "boolean",
+								"description": "Ignore errors if the directory does not exist"
+							}
+						},
+						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_execute_command",
+					"description": "Execute a shell command in the sandbox",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"command": {
+								"type": "string",
+								"description": "The shell command to execute"
+							},
+							"cwd": {
+								"type": "string",
+								"description": "Working directory for the command"
+							},
+							"timeout": {
+								"type": "number",
+								"description": "Timeout in milliseconds"
+							}
+						},
+						"required": ["command"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_list_processes",
+					"description": "List all background processes spawned in the sandbox",
+					"input_schema": {
+						"type": "object",
+						"properties": {},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_kill_process",
+					"description": "Kill a background process in the sandbox by PID",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"pid": {
+								"type": "number",
+								"description": "PID of the process to kill"
+							}
+						},
+						"required": ["pid"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCwXAPkhyP5MqiH9wDC\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"done.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3065,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":5,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:57Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:57Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:56Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:57Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a2a55d7159665ac3-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Thu, 13 Aug 2026 05:36:57 GMT",
+			"request-id": "req_011CdzCwWi7SxsgDhiTHBtRX",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-05a73aaa082b6fbdddaaa27d7239940d-ac9f8ff46ec3d68d-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

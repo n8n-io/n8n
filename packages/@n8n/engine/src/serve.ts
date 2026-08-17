@@ -7,7 +7,7 @@ import { createDataSource, createStores } from './database';
 import {
 	ExecutionStartHandler,
 	OrchestrationWorker,
-	StepCompletedHandler,
+	StepSettledHandler,
 	StepReadyHandler,
 	StepWorker,
 } from './execution';
@@ -39,7 +39,7 @@ async function main(): Promise<void> {
 		orchestrationWorker = new OrchestrationWorker(
 			orchestrationQueue,
 			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepCompletedHandler(executionStore, stepStore, stepQueue),
+			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
 		);
 		// No executors here: the v1 one lives in `@n8n/node-engine-compatibility`,
 		// which depends on this package, so only an integrated host can supply it.

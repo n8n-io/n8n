@@ -57,6 +57,37 @@ describe('withDeterministicRouting', () => {
 		}
 	});
 
+	// One-off intent deliberately does NOT get its own readiness status — the
+	// readiness union is persisted and old readers hard-fail on unknown
+	// variants (see verification-obligation.ts). The intent rides on the
+	// outcome as a plain optional field instead.
+	it('keeps one-off builds on the ready readiness and passes the intent through', () => {
+		const outcome = withDeterministicRouting(makeOutcome({ executionIntent: 'one-off' }));
+
+		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+		expect(outcome.executionIntent).toBe('one-off');
+	});
+
+	it('keeps reusable and unspecified intents ready', () => {
+		for (const executionIntent of ['reusable', undefined] as const) {
+			const outcome = withDeterministicRouting(makeOutcome({ executionIntent }));
+
+			expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+		}
+	});
+
+	it('keeps impossible-to-verify verdicts for one-off builds', () => {
+		const outcome = withDeterministicRouting(
+			makeOutcome({ executionIntent: 'one-off', triggerNodes: [] }),
+		);
+
+		expect(outcome.verificationReadiness).toMatchObject({
+			status: 'not_verifiable',
+			reason: 'no-trigger-node',
+		});
+		expect(outcome.executionIntent).toBe('one-off');
+	});
+
 	it('keeps workflows with unresolved placeholders ready for verification', () => {
 		const outcome = withDeterministicRouting(
 			makeOutcome({
@@ -86,6 +117,35 @@ describe('withDeterministicRouting', () => {
 			status: 'required',
 			reason: 'mocked-credentials',
 			guidance: 'Route the workflow through setup so the user can add real credentials.',
+		});
+	});
+
+	it('does not require setup for mocked credentials on nodes the build did not change', () => {
+		const outcome = withDeterministicRouting(
+			makeOutcome({
+				mockedNodeNames: ['Send Email'],
+				mockedCredentialTypes: ['gmailOAuth2'],
+				mockedCredentialsByNode: { 'Send Email': ['gmailOAuth2'] },
+				changedNodeNames: ['Build Message'],
+			}),
+		);
+
+		expect(outcome.setupRequirement).toEqual({ status: 'not_required' });
+	});
+
+	it('requires setup for mocked credentials on nodes the build changed', () => {
+		const outcome = withDeterministicRouting(
+			makeOutcome({
+				mockedNodeNames: ['Send Email'],
+				mockedCredentialTypes: ['gmailOAuth2'],
+				mockedCredentialsByNode: { 'Send Email': ['gmailOAuth2'] },
+				changedNodeNames: ['Send Email'],
+			}),
+		);
+
+		expect(outcome.setupRequirement).toMatchObject({
+			status: 'required',
+			reason: 'mocked-credentials',
 		});
 	});
 

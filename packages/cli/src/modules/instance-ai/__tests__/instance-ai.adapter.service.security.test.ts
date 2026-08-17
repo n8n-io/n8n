@@ -57,12 +57,13 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { NodeTypes } from '@/node-types';
 import type { RoleService } from '@/services/role.service';
 import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
@@ -111,7 +112,7 @@ const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 const folderService = mock<FolderService>();
 const projectService = mock<ProjectService>();
 const tagService = mock<TagService>();
-const sourceControlPreferencesService = mock<SourceControlPreferencesService>();
+const instanceWriteAccess = mock<InstanceWriteAccessService>();
 const settingsService = mock<InstanceAiSettingsService>();
 const workflowHistoryService = mock<WorkflowHistoryService>();
 const enterpriseWorkflowService = mock<EnterpriseWorkflowService>();
@@ -152,7 +153,7 @@ const service = new InstanceAiAdapterService(
 	folderService,
 	projectService,
 	tagService,
-	sourceControlPreferencesService,
+	instanceWriteAccess,
 	settingsService,
 	workflowHistoryService,
 	enterpriseWorkflowService,
@@ -166,6 +167,7 @@ const service = new InstanceAiAdapterService(
 	mock<OutboundHttp>(),
 	mock<AiGatewayService>(),
 	mock<WorkflowTemplatesService>(),
+	mock<CollaborationService>(),
 );
 
 const user = mock<User>({
@@ -179,9 +181,7 @@ const user = mock<User>({
 beforeEach(() => {
 	vi.clearAllMocks();
 	license.isLicensed.mockReturnValue(true);
-	sourceControlPreferencesService.getPreferences.mockReturnValue({
-		branchReadOnly: false,
-	} as never);
+	instanceWriteAccess.isReadOnly.mockReturnValue(false);
 	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence);
 });
 

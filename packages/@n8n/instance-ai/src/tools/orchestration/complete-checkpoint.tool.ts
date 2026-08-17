@@ -51,6 +51,13 @@ function getWorkflowId(outcome: Record<string, unknown> | undefined): string | u
 	return typeof workflowId === 'string' && workflowId.length > 0 ? workflowId : undefined;
 }
 
+/** Nodes the build changed — pending setup on other (pre-existing) nodes must not gate the checkpoint. */
+function getChangedNodeNames(outcome: Record<string, unknown> | undefined): string[] | undefined {
+	const changedNodeNames = outcome?.changedNodeNames;
+	if (!Array.isArray(changedNodeNames)) return undefined;
+	return changedNodeNames.filter((name): name is string => typeof name === 'string');
+}
+
 async function rejectIfSetupStillRequired(
 	context: OrchestrationContext,
 	checkpointTaskId: string,
@@ -62,13 +69,19 @@ async function rejectIfSetupStillRequired(
 	if (!checkpoint || checkpoint.kind !== 'checkpoint') return { ok: true };
 	if (checkpoint.status !== 'running') return { ok: true };
 
-	const dependentWorkflowIds = graph.tasks
+	const dependentWorkflows = graph.tasks
 		.filter((task) => checkpoint.deps.includes(task.id))
 		.filter((task) => task.kind === 'build-workflow' && requiresWorkflowSetup(task.outcome))
-		.map((task) => getWorkflowId(task.outcome))
-		.filter((workflowId): workflowId is string => workflowId !== undefined);
+		.map((task) => ({
+			workflowId: getWorkflowId(task.outcome),
+			changedNodeNames: getChangedNodeNames(task.outcome),
+		}))
+		.filter(
+			(entry): entry is { workflowId: string; changedNodeNames: string[] | undefined } =>
+				entry.workflowId !== undefined,
+		);
 
-	if (dependentWorkflowIds.length === 0) return { ok: true };
+	if (dependentWorkflows.length === 0) return { ok: true };
 
 	const domainContext = context.domainContext;
 	if (!domainContext) {
@@ -82,7 +95,7 @@ async function rejectIfSetupStillRequired(
 
 	const skippedNotes: string[] = [];
 
-	for (const workflowId of dependentWorkflowIds) {
+	for (const { workflowId, changedNodeNames } of dependentWorkflows) {
 		try {
 			const setupRequests = await analyzeWorkflow(domainContext, workflowId);
 			// Credentials the user skipped can never be satisfied by another setup call, so
@@ -92,10 +105,15 @@ async function rejectIfSetupStillRequired(
 				workflowId,
 				getSkippedSetupSubjects(domainContext),
 			);
-			const pendingRequests = pending.filter((request) => request.needsAction);
+			// Nodes this build never touched don't gate the checkpoint either, and are not worth
+			// reporting: the user was never asked about them.
+			const blocks = (request: (typeof setupRequests)[number]) =>
+				request.needsAction === true &&
+				(!changedNodeNames || changedNodeNames.includes(request.node.name));
+			const pendingRequests = pending.filter(blocks);
 			// Passing the guard silently would let the checkpoint report a workflow as done with
 			// no mention that parts of it can't run — the one thing the user needs to hear.
-			const skipped = skippedByUser.filter((request) => request.needsAction);
+			const skipped = skippedByUser.filter(blocks);
 			if (skipped.length > 0) {
 				const described = skipped
 					.map((request) =>

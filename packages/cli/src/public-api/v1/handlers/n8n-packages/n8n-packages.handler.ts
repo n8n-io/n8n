@@ -36,6 +36,11 @@ type ExportPackageRequest = AuthenticatedRequest<
 		includeVariableValues?: boolean;
 		includeTags?: boolean;
 		missingWorkflowDependencyPolicy?: 'fail' | 'reference-only' | 'include-in-package';
+		workflowVersionPolicy?:
+			| 'published-strict'
+			| 'prefer-published'
+			| 'ignore-unpublished'
+			| 'latest';
 	}
 >;
 
@@ -150,6 +155,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					canExportVariableValues: apiKeyScopes.includes('variable:list'),
 					includeTags: payload.data.includeTags,
 					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
+					workflowVersionPolicy: payload.data.workflowVersionPolicy,
 				});
 
 				return await streamPackageExport(res, exportResult);

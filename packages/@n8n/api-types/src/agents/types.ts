@@ -46,6 +46,21 @@ export interface AgentIntegrationStatusResponse {
 	integrations: AgentIntegrationStatusEntry[];
 }
 
+export interface AgentDisconnectIntegrationResponse {
+	status: 'disconnected';
+	warning?: AgentIntegrationDisconnectWarning;
+}
+
+export interface AgentIntegrationDisconnectWarning {
+	integrationType: string;
+	code: string;
+	action?: {
+		type: 'open_url';
+		url: string;
+	};
+	details?: Record<string, string>;
+}
+
 export interface AgentSkillReference {
 	path: string;
 	content: string;
@@ -236,6 +251,10 @@ export interface AgentBuilderOpenSuspension {
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
+}
+
+export interface AgentSessionLangSmithExportResponse {
+	traceId: string;
 }
 
 /**

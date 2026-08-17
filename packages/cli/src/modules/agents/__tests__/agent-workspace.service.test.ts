@@ -48,7 +48,6 @@ describe('AgentWorkspaceService', () => {
 			'workspace_read_file',
 			'workspace_read_tool_result',
 			'workspace_str_replace_file',
-			'workspace_batch_str_replace_file',
 			'workspace_write_file',
 			'workspace_execute_command',
 		]);
