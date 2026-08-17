@@ -82,7 +82,7 @@ export class WorkflowPublicationOutboxConsumer {
 		this.pool = new WorkflowPublicationOutboxWorkerPool({
 			runPass: async () => await this.runWorkerPass(),
 			shouldRun: () => this.shouldKeepPolling(),
-			getConcurrency: () => this.workflowsConfig.workflowPublicationConcurrency,
+			concurrency: this.workflowsConfig.workflowPublicationConcurrency,
 			onWorkerError: (error) => this.errorReporter.error(error, { shouldBeLogged: true }),
 		});
 	}

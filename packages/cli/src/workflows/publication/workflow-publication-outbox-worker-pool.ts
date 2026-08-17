@@ -6,14 +6,14 @@ interface WorkerPoolOptions {
 	/** Whether the pool may (keep) spawning workers, checked before every spawn. */
 	shouldRun: () => boolean;
 	/** Maximum number of concurrent workers. */
-	getConcurrency: () => number;
+	concurrency: number;
 	/** The owner's error policy, invoked exactly once per failed pass, at the source. */
 	onWorkerError: (error: Error) => void;
 }
 
 /**
  * A capped pool of independent, concurrent runs of `runPass`. Owns the pool
- * mechanics only: topping up to `getConcurrency()` workers, containing each
+ * mechanics only: topping up to `concurrency` workers, containing each
  * pass's failure to its own slot, the follow-up pass for a wake-up that
  * arrives at capacity, and awaiting idleness. Everything domain-specific
  * belongs to the owner, injected via {@link WorkerPoolOptions}.
@@ -39,7 +39,7 @@ export class WorkflowPublicationOutboxWorkerPool {
 	topUp() {
 		if (!this.options.shouldRun()) return;
 
-		const concurrency = this.options.getConcurrency();
+		const { concurrency } = this.options;
 		if (this.activeWorkers.size >= concurrency) {
 			// The running workers' final claims may predate the record behind this
 			// wake-up; have the next worker to exit run a follow-up pass.
