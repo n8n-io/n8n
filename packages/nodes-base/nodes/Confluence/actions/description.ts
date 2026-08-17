@@ -2,8 +2,8 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { CONFLUENCE_CREDENTIAL_NAME } from '../transport';
 import * as page from './page';
+import { CONFLUENCE_CREDENTIAL_NAME } from '../transport';
 
 export const confluenceNodeDescription: INodeTypeDescription = {
 	displayName: 'Confluence',

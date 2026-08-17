@@ -58,9 +58,7 @@ describe('Confluence router', () => {
 			{},
 			{ 'body-format': 'storage' },
 		);
-		expect(result).toEqual([
-			[{ json: { id: '222', title: 'My Page' }, pairedItem: { item: 0 } }],
-		]);
+		expect(result).toEqual([[{ json: { id: '222', title: 'My Page' }, pairedItem: { item: 0 } }]]);
 	});
 
 	it('fans an array response out into one item per page', async () => {
