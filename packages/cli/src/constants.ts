@@ -106,6 +106,7 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'oAuth2Api',
 	'googleOAuth2Api',
 	'microsoftOAuth2Api',
+	'atlassianOAuth2Api',
 	'highLevelOAuth2Api',
 	'mcpOAuth2Api',
 	'snowflakeOAuth2Api',

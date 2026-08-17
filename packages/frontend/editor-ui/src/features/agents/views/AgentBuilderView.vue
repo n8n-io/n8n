@@ -37,6 +37,7 @@ import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrations
 import type {
 	AgentResource,
 	AgentContinueLoadedEvent,
+	AgentFixWithAssistantEvent,
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
@@ -56,7 +57,10 @@ import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
 } from '../composables/useProjectAgentsList';
-import { useInstanceAiAgentPreviewHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
+import {
+	useInstanceAiAgentPreviewHandoff,
+	type AgentPreviewHandoffParams,
+} from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import { addMissingAgentPersonalisation } from '@n8n/api-types';
 import {
 	AGENT_BUILDER_VIEW,
@@ -76,12 +80,15 @@ import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useIn
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 
 const props = withDefaults(
 	defineProps<{
 		artifactMode?: boolean;
 		artifactProjectId?: string;
 		artifactAgentId?: string;
+		/** Preview session to restore when this agent opens as an Instance AI artifact. */
+		artifactPreviewSessionId?: string;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
 		artifactEditingLocked?: boolean;
 		/** True when no agent row exists behind `artifactAgentId` yet — the builder
@@ -92,6 +99,7 @@ const props = withDefaults(
 		artifactMode: false,
 		artifactProjectId: undefined,
 		artifactAgentId: undefined,
+		artifactPreviewSessionId: undefined,
 		artifactEditingLocked: false,
 		artifactAgentPending: false,
 	},
@@ -103,6 +111,7 @@ const emit = defineEmits<{
 	'preview-open-change': [open: boolean];
 	/** The agent name was successfully saved. */
 	'name-saved': [name: string];
+	'assistant-handoff': [params: AgentPreviewHandoffParams];
 }>();
 
 const route = useRoute();
@@ -154,7 +163,11 @@ const agentId = computed(
 );
 const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
 
-const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
+const {
+	canUpdate: canEditAgent,
+	canDelete: canDeleteAgent,
+	canExecute: canExecuteAgent,
+} = useAgentPermissions(projectId);
 // Combines permission with the artifact-mode build lock: while the AI is
 // actively building/mutating this agent, editing is disabled even for a user
 // who otherwise has permission — mirrors the workflow artifact's read-only
@@ -171,19 +184,46 @@ watch(
 	{ immediate: true },
 );
 
-async function onSendPreviewToAssistant(executionId?: string) {
+async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
+	const session = sessionsStore.threads.find(({ id }) => id === threadId);
+	const sessionTitle = session?.title?.trim() || currentSessionTitle.value || undefined;
+	const sessionNumber = session?.sessionNumber;
 
-	await sendPreviewSessionToInstanceAi({
+	const params: AgentPreviewHandoffParams = {
 		projectId: projectId.value,
 		agentId: agentId.value,
 		threadId,
 		agentName: agentName.value || undefined,
 		agentIcon: localConfig.value?.personalisation?.icon,
-		sessionTitle: currentSessionTitle.value || undefined,
-		executionId,
-	});
+		sessionTitle,
+		...(event
+			? {
+					executionId: event.executionId,
+					initialDraft: buildAgentFixWithAssistantPrompt(
+						{
+							projectId: projectId.value,
+							agentId: agentId.value,
+							agentName: agentName.value || undefined,
+							threadId,
+							sessionTitle,
+							...(sessionNumber !== undefined ? { sessionNumber } : {}),
+							executionId: event.executionId,
+							failures: event.failures,
+						},
+						locale,
+					),
+				}
+			: {}),
+	};
+
+	if (isArtifactMode.value) {
+		emit('assistant-handoff', params);
+		return;
+	}
+
+	await sendPreviewSessionToInstanceAi(params);
 }
 
 /**
@@ -311,7 +351,7 @@ const projectName = computed<string | null>(() => {
 // or project, and applying the result would clobber the new selection's state.
 // Callers use this guard to drop such stale results.
 function isStaleAgentTarget(targetProjectId: string, targetAgentId: string): boolean {
-	return projectId.value !== targetProjectId || agentId.value !== targetAgentId;
+	return disposed || projectId.value !== targetProjectId || agentId.value !== targetAgentId;
 }
 
 // Drafts cases from the agent's own config. The generated dataset isn't
@@ -1494,7 +1534,11 @@ watch(
 	() => sessionsStore.loading,
 	(isLoading, wasLoading) => {
 		if (!wasLoading || isLoading) return;
-		if (!isPreviewDockOpen.value || effectiveSessionId.value) return;
+		if (!isPreviewDockOpen.value) return;
+		if (isArtifactMode.value && props.artifactPreviewSessionId) {
+			void ensureArtifactPreviewSessionAvailable(props.artifactPreviewSessionId);
+		}
+		if (effectiveSessionId.value) return;
 		bindPreviewSession();
 	},
 );
@@ -1502,6 +1546,62 @@ watch(
 watch(isPreviewDockOpen, (open) => {
 	if (open) bindPreviewSession();
 });
+
+function isNotFoundError(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'httpStatusCode' in error &&
+		error.httpStatusCode === 404
+	);
+}
+
+let latestArtifactPreviewValidationId = 0;
+async function ensureArtifactPreviewSessionAvailable(sessionId: string) {
+	const requestId = ++latestArtifactPreviewValidationId;
+	if (sessionsStore.loading || effectiveSessionId.value !== sessionId) return;
+	if (sessionsStore.threads.some((thread) => thread.id === sessionId)) return;
+
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	try {
+		const { thread } = await sessionsStore.getThreadDetail(
+			targetProjectId,
+			targetAgentId,
+			sessionId,
+		);
+		if (
+			requestId !== latestArtifactPreviewValidationId ||
+			isStaleAgentTarget(targetProjectId, targetAgentId) ||
+			effectiveSessionId.value !== sessionId
+		) {
+			return;
+		}
+		sessionsStore.upsertThread(thread);
+	} catch (error) {
+		if (
+			requestId !== latestArtifactPreviewValidationId ||
+			isStaleAgentTarget(targetProjectId, targetAgentId) ||
+			effectiveSessionId.value !== sessionId ||
+			!isNotFoundError(error)
+		) {
+			return;
+		}
+
+		activeChatSessionId.value = null;
+		bindPreviewSession();
+	}
+}
+
+watch(
+	[() => props.artifactPreviewSessionId, initialized],
+	([sessionId, isInitialized]) => {
+		if (!isArtifactMode.value || !isInitialized || !sessionId) return;
+		openArtifactPreview(sessionId);
+		void ensureArtifactPreviewSessionAvailable(sessionId);
+	},
+	{ immediate: true },
+);
 
 function exitContinueMode() {
 	clearContinueSessionParam();
@@ -1686,6 +1786,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:applied-skills="appliedSkills"
 					:connected-triggers="connectedTriggers"
 					:can-edit-agent="effectiveCanEditAgent"
+					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
 					:main-tab-options="visibleMainTabOptions"

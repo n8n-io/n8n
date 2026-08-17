@@ -3,6 +3,8 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { WorkflowEditorLockedError } from '../../errors/workflow-editor-locked.error';
+import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import type { InstanceAiContext } from '../../types';
 import {
 	analyzeWorkflow,
@@ -12,6 +14,7 @@ import {
 import { STRUCTURE_ONLY_NOTE } from '../workflows/summarize-workflow';
 import {
 	getWorkflowSourceFileBinding,
+	refreshWorkflowSourceFileBindingFromSave,
 	saveWorkflowSourceFileBinding,
 } from '../workflows/workflow-file-bindings';
 import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
@@ -650,6 +653,22 @@ describe('workflows tool', () => {
 				['wf1', 'v7'],
 			]);
 		});
+
+		/**
+		 * The code returned here is what the agent edits and builds back into the same
+		 * saved workflow, so it has to carry node ids or the rebuild re-identifies every
+		 * node (INS-970, INS-1120, INS-1179).
+		 */
+		it('should ask codegen to emit node ids for get-as-code', async () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, 'full');
+
+			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
+
+			expect(vi.mocked(generateWorkflowCode)).toHaveBeenCalledWith(
+				expect.objectContaining({ includeNodeIds: true }),
+			);
+		});
 	});
 
 	describe('workflow source binding refresh', () => {
@@ -791,6 +810,240 @@ describe('workflows tool', () => {
 				}),
 			);
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		describe('stale-save detection', () => {
+			const workflowDetail = (checksum: string) => ({
+				id: 'wf1',
+				name: 'Test WF',
+				versionId: 'v1',
+				checksum,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+				nodes: [],
+				connections: {},
+			});
+
+			it('expects the checksum the agent last read, so a concurrent save is caught', async () => {
+				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
+				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
+				(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
+					workflowDetail('checksum-saved'),
+				);
+				const tool = createWorkflowsTool(context, 'full');
+
+				await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
+				await executeTool(
+					tool,
+					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+					{} as never,
+				);
+
+				expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+					'wf1',
+					workflowPayload,
+					{ expectedChecksum: 'checksum-read' },
+				);
+			});
+
+			it('expects the checksum current when the agent read the workflow JSON to edit', async () => {
+				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
+				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
+				(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
+					workflowDetail('checksum-saved'),
+				);
+				const tool = createWorkflowsTool(context, 'full');
+
+				await executeTool(tool, { action: 'get-json', workflowId: 'wf1' }, {} as never);
+				await executeTool(
+					tool,
+					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+					{} as never,
+				);
+
+				expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+					'wf1',
+					workflowPayload,
+					{ expectedChecksum: 'checksum-read' },
+				);
+			});
+
+			it('does not expect a checksum after reading a past version', async () => {
+				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
+				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
+				(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
+					workflowDetail('checksum-saved'),
+				);
+				const tool = createWorkflowsTool(context, 'full');
+
+				await executeTool(
+					tool,
+					{ action: 'get-json', workflowId: 'wf1', versionId: 'v-old' },
+					{} as never,
+				);
+				await executeTool(
+					tool,
+					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+					{} as never,
+				);
+
+				expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+					'wf1',
+					workflowPayload,
+				);
+			});
+
+			it('expects the checksum read in an earlier turn of the same conversation', async () => {
+				// Each run builds its own context, so the expectation has to live on the thread.
+				const threads = new Map<string, { metadata: Record<string, unknown> }>();
+				const threadMemory = {
+					getThread: vi.fn(
+						async (threadId: string) => await Promise.resolve(threads.get(threadId) ?? null),
+					),
+					patchThread: vi.fn(
+						async ({
+							threadId,
+							update,
+						}: {
+							threadId: string;
+							update: (current: { metadata: Record<string, unknown> }) => {
+								metadata?: Record<string, unknown>;
+							} | null;
+						}) => {
+							const current = threads.get(threadId) ?? { metadata: {} };
+							const patch = update(current);
+							if (!patch) return null;
+							const next = { ...current, metadata: patch.metadata ?? current.metadata };
+							threads.set(threadId, next);
+							return await Promise.resolve(next);
+						},
+					),
+				};
+				const contextForTurn = () =>
+					createMockContext({
+						permissions: { updateWorkflow: 'always_allow' },
+						threadId: 'thread-1',
+						threadMemory,
+					});
+
+				const readTurn = contextForTurn();
+				(readTurn.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
+				await executeTool(
+					createWorkflowsTool(readTurn, 'full'),
+					{ action: 'get', workflowId: 'wf1' },
+					{} as never,
+				);
+
+				const updateTurn = contextForTurn();
+				(updateTurn.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
+				(updateTurn.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
+					workflowDetail('checksum-saved'),
+				);
+				await executeTool(
+					createWorkflowsTool(updateTurn, 'full'),
+					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+					{} as never,
+				);
+
+				expect(updateTurn.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+					'wf1',
+					workflowPayload,
+					{ expectedChecksum: 'checksum-read' },
+				);
+			});
+
+			it('advances the expectation to the checksum of its own save', async () => {
+				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
+				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
+				(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
+					workflowDetail('checksum-saved'),
+				);
+				const tool = createWorkflowsTool(context, 'full');
+
+				await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
+				await executeTool(
+					tool,
+					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+					{} as never,
+				);
+				await executeTool(
+					tool,
+					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+					{} as never,
+				);
+
+				expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenLastCalledWith(
+					'wf1',
+					workflowPayload,
+					{ expectedChecksum: 'checksum-saved' },
+				);
+			});
+
+			it('tracks saves made by other Instance AI paths, so they do not look stale', async () => {
+				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
+				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
+				(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
+					workflowDetail('checksum-saved'),
+				);
+				const tool = createWorkflowsTool(context, 'full');
+
+				await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
+				// e.g. the setup or apply-credentials flow saving in between
+				await refreshWorkflowSourceFileBindingFromSave(context, 'wf1', {
+					versionId: 'v-setup',
+					checksum: 'checksum-setup',
+				});
+				await executeTool(
+					tool,
+					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+					{} as never,
+				);
+
+				expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+					'wf1',
+					workflowPayload,
+					{ expectedChecksum: 'checksum-setup' },
+				);
+			});
+
+			it('tells the agent to re-read the workflow when its save is stale', async () => {
+				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
+				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
+				(context.workflowService.updateFromWorkflowJSON as Mock).mockRejectedValue(
+					new WorkflowSaveConflictError('wf1'),
+				);
+				const tool = createWorkflowsTool(context, 'full');
+
+				await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
+				const result = await executeTool(
+					tool,
+					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+					{} as never,
+				);
+
+				expect(result).toMatchObject({ success: false });
+				expect((result as { error: string }).error).toMatch(/modified outside this conversation/);
+				expect((result as { error: string }).error).toMatch(/action="get"/);
+			});
+		});
+
+		it('tells the agent what to do when a user is editing the workflow in the editor', async () => {
+			const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockRejectedValue(
+				new WorkflowEditorLockedError('wf1'),
+			);
+
+			const result = await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{} as never,
+			);
+
+			expect(result).toMatchObject({ success: false });
+			expect((result as { error: string }).error).toMatch(/being edited by a user/);
+			expect((result as { error: string }).error).toMatch(/retry/i);
 		});
 
 		it('should update without approval when the workflow was created in this run', async () => {
@@ -1365,6 +1618,195 @@ describe('workflows tool', () => {
 				setupRequests,
 				workflowId: 'wf1',
 			});
+		});
+
+		it('should scope setup requests to nodes changed by the latest build', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Google Sheets', type: 'n8n-nodes-base.googleSheets' },
+					credentialType: 'googleSheetsOAuth2Api',
+					needsAction: true,
+				},
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext({
+				runId: 'run-1',
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi
+							.fn()
+							.mockResolvedValue({ runId: 'run-1', changedNodeNames: ['Google Sheets'] }),
+					},
+				} as never,
+			});
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).toHaveBeenCalled();
+			expect(suspend.mock.calls[0][0].setupRequests).toEqual([
+				expect.objectContaining({ node: expect.objectContaining({ name: 'Google Sheets' }) }),
+			]);
+		});
+
+		it('should not suspend when only nodes outside the build scope need setup', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext({
+				runId: 'run-1',
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi
+							.fn()
+							.mockResolvedValue({ runId: 'run-1', changedNodeNames: ['Build Message'] }),
+					},
+				} as never,
+			});
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: true });
+			expect((result as { reason: string }).reason).toContain('"Slack"');
+			expect((result as { reason: string }).reason).toContain('includeAllNodes');
+		});
+
+		it('should cover every node when includeAllNodes is true', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: true,
+				},
+			]);
+
+			const getLatestBuildOutcomeForWorkflow = vi
+				.fn()
+				.mockResolvedValue({ runId: 'run-1', changedNodeNames: ['Build Message'] });
+			const context = createMockContext({
+				runId: 'run-1',
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'r1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: { getLatestBuildOutcomeForWorkflow },
+				} as never,
+			});
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1', includeAllNodes: true }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(getLatestBuildOutcomeForWorkflow).not.toHaveBeenCalled();
+			expect(suspend).toHaveBeenCalled();
+			expect(suspend.mock.calls[0][0].setupRequests).toEqual([
+				expect.objectContaining({ node: expect.objectContaining({ name: 'Slack' }) }),
+			]);
+		});
+
+		it('should not scope setup when the latest build belongs to an earlier run', async () => {
+			// A setup call outside the build's own run is user-initiated ("set up
+			// my workflow"), so it must cover the whole workflow.
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext({
+				runId: 'run-2',
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'run-2',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi
+							.fn()
+							.mockResolvedValue({ runId: 'run-1', changedNodeNames: ['Build Message'] }),
+					},
+				} as never,
+			});
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).toHaveBeenCalled();
+			expect(suspend.mock.calls[0][0].setupRequests).toEqual([
+				expect.objectContaining({ node: expect.objectContaining({ name: 'Slack' }) }),
+			]);
+		});
+
+		it('should not scope setup when the latest build outcome has no changed-node list', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext({
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'r1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue(undefined),
+					},
+				} as never,
+			});
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).toHaveBeenCalled();
+			expect(suspend.mock.calls[0][0].setupRequests).toEqual([
+				expect.objectContaining({ node: expect.objectContaining({ name: 'Slack' }) }),
+			]);
 		});
 
 		it('should reject a new plain generic credential on an HTTP Request node', async () => {

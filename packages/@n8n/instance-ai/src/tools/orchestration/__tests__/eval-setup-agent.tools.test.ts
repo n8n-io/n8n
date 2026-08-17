@@ -23,7 +23,9 @@ function makeContext(
 	domainContext.workflowService.getAsWorkflowJSON = vi
 		.fn()
 		.mockResolvedValue({ name: 'Eval setup', nodes: [], connections: {} });
-	domainContext.workflowService.updateFromWorkflowJSON = vi.fn().mockResolvedValue(undefined);
+	domainContext.workflowService.updateFromWorkflowJSON = vi
+		.fn()
+		.mockResolvedValue({ id: 'w1', name: 'Test', versionId: 'v1', nodes: [], connections: {} });
 	domainContext.workflowService.updateVersion = vi.fn().mockResolvedValue(undefined);
 
 	const ctx = mock<OrchestrationContext>();
