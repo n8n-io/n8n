@@ -39,6 +39,7 @@ import type {
 	SnapshotResult,
 	TypeOptions,
 	WaitOptions,
+	DisconnectDetails,
 } from '../types';
 import { generateId, toError } from '../utils';
 
@@ -87,13 +88,15 @@ export class PlaywrightAdapter {
 	private readonly externalRelay?: CDPRelayServer;
 	private readonly externalCdpEndpoint?: string;
 	private readonly cdpConnectHeaders?: Record<string, string>;
-	/** The embedder's extension-disconnect handler, chained in remote mode. */
-	private previousOnExtensionDisconnect?: (reason: ConnectionLostReason) => void;
+	/** Puts the embedder's relay handlers back; set while ours are installed. */
+	private restoreRelayHandlers?: () => void;
 	/** Pending activation: set by ensurePage(), consumed by context.on('page'). */
 	private pendingActivation?: { id: string; resolve: (page: Page) => void };
 
 	/** Called when the browser connection is unexpectedly lost. */
-	onDisconnect?: (reason: ConnectionLostReason) => void;
+	onDisconnect?: (reason: ConnectionLostReason, details?: DisconnectDetails) => void;
+
+	onBlocked?: (details: DisconnectDetails) => void;
 
 	constructor(config: ResolvedConfig, options?: PlaywrightAdapterOptions) {
 		this.resolvedConfig = config;
@@ -200,15 +203,23 @@ export class PlaywrightAdapter {
 			this.onDisconnect?.('browser_closed');
 		});
 
-		// Detect extension disconnection via the relay (already a typed reason).
-		// In remote mode the embedder may have installed its own handler,
-		// chain it so connection-state tracking keeps working.
-		this.previousOnExtensionDisconnect = relay.onExtensionDisconnect;
-		const previous = this.previousOnExtensionDisconnect;
-		relay.onExtensionDisconnect = (reason) => {
+		// In remote mode the relay outlives us, so chain onto the embedder's handlers
+		// and restore them on close. One closure so neither can be forgotten.
+		const previousDisconnect = relay.onExtensionDisconnect;
+		const previousBlocked = relay.onTabBlocked;
+		relay.onExtensionDisconnect = (reason, details) => {
 			log.debug('relay: extension disconnected, reason:', reason);
-			previous?.(reason);
-			this.onDisconnect?.(reason);
+			previousDisconnect?.(reason, details);
+			this.onDisconnect?.(reason, details);
+		};
+		relay.onTabBlocked = (details) => {
+			log.debug('relay: tab blocked by', details.blockingExtensionIds);
+			previousBlocked?.(details);
+			this.onBlocked?.(details);
+		};
+		this.restoreRelayHandlers = () => {
+			relay.onExtensionDisconnect = previousDisconnect;
+			relay.onTabBlocked = previousBlocked;
 		};
 
 		log.debug('launch complete, context ready for lazy activation');
@@ -227,10 +238,9 @@ export class PlaywrightAdapter {
 		}
 		if (this.relay) {
 			if (this.relay === this.externalRelay) {
-				// Externally managed relay: restore the embedder's handler and
-				// leave the relay running (its lifecycle is owned by the embedder).
-				this.relay.onExtensionDisconnect = this.previousOnExtensionDisconnect;
-				this.previousOnExtensionDisconnect = undefined;
+				// Externally managed relay: restore handlers, leave it running.
+				this.restoreRelayHandlers?.();
+				this.restoreRelayHandlers = undefined;
 			} else {
 				this.relay.stop();
 			}

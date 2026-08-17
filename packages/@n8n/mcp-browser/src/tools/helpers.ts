@@ -1,8 +1,8 @@
 import type { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
-import { ConnectionLostError } from '../errors';
 import { createLogger } from '../logger';
+import { buildErrorResponse, enrichResponse, resolvePageContext } from './response-envelope';
 import { redactCallToolResult } from '../redaction/redact';
 import type {
 	AffectedResource,
@@ -11,7 +11,6 @@ import type {
 	ToolContext,
 	ToolDefinition,
 } from '../types';
-import { buildErrorResponse, enrichResponse, resolvePageContext } from './response-envelope';
 
 const log = createLogger('connected-tool');
 
@@ -97,6 +96,7 @@ export function createConnectedTool<
 			const effectiveOptions: ConnectedToolOptions = args.snapshot
 				? { ...options, autoSnapshot: true, snapshotInteractive: args.snapshot === 'interactive' }
 				: (options ?? {});
+			connection.beginToolCall();
 			try {
 				const { state, pageId } = resolvePageContext(connection, args);
 
@@ -128,20 +128,13 @@ export function createConnectedTool<
 
 				return redactCallToolResult(result);
 			} catch (error) {
-				// Playwright throws TargetClosedError when browser/page dies mid-operation.
-				// Re-throw as our typed error so the AI gets a clear message + hint.
-				if (error instanceof Error && error.name === 'TargetClosedError') {
-					return redactCallToolResult(
-						await buildErrorResponse(
-							new ConnectionLostError('browser_closed'),
-							connection,
-							args,
-							effectiveOptions,
-						),
-					);
-				}
 				return redactCallToolResult(
-					await buildErrorResponse(error, connection, args, effectiveOptions),
+					await buildErrorResponse(
+						connection.explainFailure(error),
+						connection,
+						args,
+						effectiveOptions,
+					),
 				);
 			}
 		},

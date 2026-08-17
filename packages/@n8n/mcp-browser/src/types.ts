@@ -59,8 +59,19 @@ export interface PageInfo {
 	url: string;
 }
 
+export interface DisconnectDetails {
+	/** Other extensions owning a frame in the tab. Empty when none could be named. */
+	blockingExtensionIds: string[];
+}
+
 export interface Adapter {
-	onDisconnect?: (reason: ConnectionLostReason) => void;
+	onDisconnect?: (reason: ConnectionLostReason, details?: DisconnectDetails) => void;
+	/**
+	 * Another extension blocked automation; the session may still be alive.
+	 * Playwright adapter only. `agent-browser` never fires this and drops the
+	 * disconnect details, so there a block is reported without naming the extension.
+	 */
+	onBlocked?: (details: DisconnectDetails) => void;
 	launch(config: ConnectConfig): Promise<void>;
 	close(): Promise<void>;
 	// Tabs

@@ -141,6 +141,8 @@ export function createMockConnection(adapter?: MockAdapter) {
 			pages: [{ id: 'page1', title: 'Test Page', url: 'http://test.com' }],
 		}),
 		disconnect: vi.fn().mockResolvedValue(undefined),
+		beginToolCall: vi.fn(),
+		explainFailure: vi.fn((error: unknown) => error),
 		isConnected: true,
 	} as unknown as BrowserConnection;
 
