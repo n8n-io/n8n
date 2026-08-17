@@ -33,6 +33,7 @@ import type { KafkaCredentials } from '../../utils';
 import { KafkaTriggerV1 } from '../../v1/KafkaTriggerV1.node';
 import { consumeTopic, type KafkaConsumerHandle } from '../../v2/consumer/ConsumeTopic';
 import { createMessageParser } from '../../v2/consumer/MessageParser';
+import { assertTopicExists } from '../../v2/transport/admin';
 import { createKafkaClient } from '../../v2/transport/client';
 import { createKafkaConsumer } from '../../v2/transport/consumer';
 import { createLibraryLogger } from '../../v2/transport/LibraryLogger';
@@ -401,6 +402,41 @@ describe('library logging against a real broker', () => {
 			// Measured at ~19s against a broker that never answered, which is why the
 			// production close path bounds disconnect rather than awaiting it plain.
 			await withDeadline(consumer.disconnect(), 5000, 'disconnect').catch(() => undefined);
+		}
+	}, 60_000);
+});
+
+describe('a missing topic against a real broker', () => {
+	it('refuses activation, naming the topic', async () => {
+		const topic = uniqueTopic('never-created');
+
+		await expect(assertTopicExists(credentials, topic, logger)).rejects.toThrow(
+			`Kafka topic "${topic}" does not exist`,
+		);
+	});
+
+	it('lets an existing topic through', async () => {
+		const topic = uniqueTopic('exists');
+		await createTopic(topic);
+
+		await expect(assertTopicExists(credentials, topic, logger)).resolves.toBeUndefined();
+	});
+
+	it('is the only thing that catches it: subscribe and run both resolve', async () => {
+		// The behaviour the check exists for. Without it the trigger reaches "started"
+		// on a topic the broker does not have, and only a swallowed retry log says so.
+		const topic = uniqueTopic('silent-start');
+		const consumer = await createKafkaConsumer(credentials, {
+			groupId: `${topic}-group`,
+			fromBeginning: true,
+		});
+
+		try {
+			await consumer.connect();
+			await expect(consumer.subscribe({ topics: [topic] })).resolves.toBeUndefined();
+			await expect(consumer.run({ eachBatch: async () => {} })).resolves.toBeUndefined();
+		} finally {
+			await withDeadline(consumer.disconnect(), 30_000, 'disconnect').catch(() => undefined);
 		}
 	}, 60_000);
 });
