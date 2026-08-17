@@ -34,6 +34,7 @@ import type {
 import type { OperationContext } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { isStringArray } from '../utils/is-string-array';
+import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
 
 type ResourceType = 'folder' | 'workflow';
@@ -368,7 +369,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		// For union, we need to have the same columns, so add NULL as description for folders
 		const columnNames = [...Object.keys(workflowQueryParameters.select ?? {}), 'resource'];
 
-		const [sortByColumn, sortByDirection] = this.parseSortingParams(
+		const { column: sortByColumn, direction: sortByDirection } = parseListQuerySortBy(
 			options.sortBy ?? 'updatedAt:asc',
 		);
 
@@ -734,7 +735,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		// For union, we need to have the same columns, so add NULL as description for folders
 		const columnNames = [...Object.keys(workflowQueryParameters.select ?? {}), 'resource'];
 
-		const [sortByColumn, sortByDirection] = this.parseSortingParams(
+		const { column: sortByColumn, direction: sortByDirection } = parseListQuerySortBy(
 			options.sortBy ?? 'updatedAt:asc',
 		);
 
@@ -1437,13 +1438,8 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			return;
 		}
 
-		const [column, direction] = this.parseSortingParams(sortBy);
+		const { column, direction } = parseListQuerySortBy(sortBy);
 		this.applySortingByColumn(qb, column, direction);
-	}
-
-	private parseSortingParams(sortBy: string): [string, 'ASC' | 'DESC'] {
-		const [column, order] = sortBy.split(':');
-		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
 	}
 
 	private applySortingByColumn(

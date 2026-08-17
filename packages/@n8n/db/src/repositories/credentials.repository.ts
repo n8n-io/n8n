@@ -13,6 +13,14 @@ import { InstanceCredentialAssignmentRepository } from './instance-credential-as
 import { SharedCredentialsRepository } from './shared-credentials.repository';
 import type { ICredentialsDb, ListQuery } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
+import { parseListQuerySortBy } from '../utils/list-query-sort';
+
+const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
+
+type CredentialsListQueryOptions = ListQuery.Options & {
+	includeData?: boolean;
+	user?: User;
+};
 
 @Service()
 export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
@@ -114,15 +122,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		}
 	}
 
-	async findMany(
-		listQueryOptions?: ListQuery.Options & {
-			includeData?: boolean;
-			user?: User;
-			/** When provided, sets sort order for the query. */
-			order?: FindManyOptions<CredentialsEntity>['order'];
-		},
-		credentialIds?: string[],
-	) {
+	async findMany(listQueryOptions?: CredentialsListQueryOptions, credentialIds?: string[]) {
 		const findManyOptions = this.toFindManyOptions(listQueryOptions);
 
 		if (credentialIds) {
@@ -133,12 +133,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	}
 
 	async findManyAndCount(
-		listQueryOptions?: ListQuery.Options & {
-			includeData?: boolean;
-			user?: User;
-			/** When provided, sets sort order for the query. */
-			order?: FindManyOptions<CredentialsEntity>['order'];
-		},
+		listQueryOptions?: CredentialsListQueryOptions,
 		credentialIds?: string[],
 	): Promise<[CredentialsEntity[], number]> {
 		const findManyOptions = this.toFindManyOptions(listQueryOptions);
@@ -157,12 +152,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return findManyOptions;
 	}
 
-	private toFindManyOptions(
-		listQueryOptions?: ListQuery.Options & {
-			includeData?: boolean;
-			order?: FindManyOptions<CredentialsEntity>['order'];
-		},
-	) {
+	private toFindManyOptions(listQueryOptions?: CredentialsListQueryOptions) {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
 
 		type Select = Array<keyof CredentialsEntity>;
@@ -187,7 +177,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			} as FindManyOptions<CredentialsEntity>;
 		}
 
-		const { filter, select, take, skip, order } = listQueryOptions;
+		const { filter, select, take, skip, sortBy } = listQueryOptions;
 
 		if (typeof filter?.name === 'string' && filter?.name !== '') {
 			filter.name = Like(`%${filter.name}%`);
@@ -213,8 +203,11 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			findManyOptions.relations = defaultRelations;
 		}
 
-		if (order !== undefined) {
-			findManyOptions.order = order;
+		if (sortBy) {
+			const { column, direction } = parseListQuerySortBy(sortBy);
+			if (SORTABLE_COLUMNS.has(column)) {
+				findManyOptions.order = { [column]: direction };
+			}
 		}
 
 		if (listQueryOptions.includeData) {
@@ -228,9 +221,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return findManyOptions;
 	}
 
-	private handleSharedFilters(
-		listQueryOptions?: ListQuery.Options & { includeData?: boolean },
-	): void {
+	private handleSharedFilters(listQueryOptions?: CredentialsListQueryOptions): void {
 		if (!listQueryOptions?.filter) return;
 
 		const { filter } = listQueryOptions;
@@ -416,9 +407,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options & {
-			includeData?: boolean;
-			order?: FindManyOptions<CredentialsEntity>['order'];
+		options: CredentialsListQueryOptions & {
 			filters?: {
 				dependency?: CredentialDependencyFilter;
 			};
@@ -456,9 +445,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options & {
-			includeData?: boolean;
-			order?: FindManyOptions<CredentialsEntity>['order'];
+		options: CredentialsListQueryOptions & {
 			filters?: {
 				dependency?: CredentialDependencyFilter;
 			};
@@ -547,11 +534,11 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 				.leftJoinAndSelect('project.projectRelations', 'projectRelations');
 		}
 
-		// Apply sorting
-		if (options.order) {
-			Object.entries(options.order).forEach(([key, direction]) => {
-				qb.addOrderBy(`credential.${key}`, direction as 'ASC' | 'DESC');
-			});
+		if (options.sortBy) {
+			const { column, direction } = parseListQuerySortBy(options.sortBy);
+			if (SORTABLE_COLUMNS.has(column)) {
+				qb.addOrderBy(`credential.${column}`, direction);
+			}
 		}
 
 		// Apply pagination

@@ -15,7 +15,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import type { ListQuery } from '@/requests';
 
 import { toPublicApiCredentialResponse } from './credentials.mapper';
 import {
@@ -131,8 +130,8 @@ const credentialsHandlers: CredentialsHandlers = {
 					listQueryOptions: {
 						take: limit,
 						skip: offset,
-						order: { createdAt: 'DESC' },
-					} as ListQuery.Options & { order: { createdAt: 'DESC' } },
+						sortBy: 'createdAt:desc',
+					},
 				},
 			);
 
