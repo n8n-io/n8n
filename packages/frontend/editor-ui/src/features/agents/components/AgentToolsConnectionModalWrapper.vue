@@ -2,17 +2,28 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES } from '@n8n/api-types';
 import { NodeConnectionTypes, isCommunityPackageName } from 'n8n-workflow';
 import type { INode, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import { useRouter } from 'vue-router';
 
 import { getWorkflow } from '@/app/api/workflows';
+import { VIEWS } from '@/app/constants';
+import {
+	SAMPLE_SUBWORKFLOW_TRIGGER_ID,
+	SAMPLE_SUBWORKFLOW_WORKFLOW,
+} from '@/app/constants/samples';
+import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants/workflows';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
@@ -81,7 +92,11 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
+const router = useRouter();
 const toast = useToast();
+const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
+const sourceControlStore = useSourceControlStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const { availableToolTypes, availableWorkflows, loadWorkflows, resolveToolNodeType } =
 	useAgentToolCatalog();
@@ -90,6 +105,20 @@ const usersStore = useUsersStore();
 
 const searchQuery = ref('');
 const installingToolName = ref<string | null>(null);
+const isCreatingWorkflow = ref(false);
+
+const canCreateWorkflow = computed(() => {
+	if (!props.data.projectId || sourceControlStore.preferences.branchReadOnly) return false;
+
+	const projectScopes = projectsStore.myProjects.find(
+		(project) => project.id === props.data.projectId,
+	)?.scopes;
+	const projectPermission = getResourcePermissions(projectScopes).workflow.create;
+	const globalPermission = getResourcePermissions(usersStore.currentUser?.globalScopes).workflow
+		.create;
+
+	return Boolean(globalPermission ?? projectPermission);
+});
 
 interface WorkingToolEntry {
 	localId: string;
@@ -404,6 +433,50 @@ async function handleAddWorkflow(workflow: IWorkflowDb) {
 	openConfigForNewRef(workflowToNewToolRef(workflow));
 }
 
+async function handleCreateWorkflow() {
+	const projectId = props.data.projectId;
+	if (!projectId || !canCreateWorkflow.value || isCreatingWorkflow.value) return;
+
+	isCreatingWorkflow.value = true;
+	toolTelemetry.trackAddStarted('workflow');
+
+	try {
+		const sampleName = DEFAULT_NEW_WORKFLOW_NAME;
+		const matchingWorkflows = availableWorkflows.value.filter((workflow) =>
+			workflow.name?.startsWith(sampleName),
+		);
+		const newWorkflow = await workflowsStore.createNewWorkflow({
+			...SAMPLE_SUBWORKFLOW_WORKFLOW,
+			name: `${sampleName} ${matchingWorkflows.length + 1}`,
+			projectId,
+		});
+		const newRef = workflowToNewToolRef(newWorkflow);
+
+		openConfigForNewRef({
+			...newRef,
+			name: makeUniqueName(
+				newRef.name ?? newWorkflow.name,
+				getExistingToolNames(workingTools.value),
+			),
+		});
+
+		const { href } = router.resolve({
+			name: VIEWS.WORKFLOW,
+			params: {
+				workflowId: newWorkflow.id,
+				nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID,
+			},
+		});
+		window.open(href, '_blank');
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.tools.workflow.createFailed.title'), {
+			message: i18n.baseText('agents.tools.workflow.createFailed.message'),
+		});
+	} finally {
+		isCreatingWorkflow.value = false;
+	}
+}
+
 function openConfigForToolEntry(entry: WorkingToolEntry) {
 	const toolRef = entry.ref;
 	openConfigModal({
@@ -655,8 +728,11 @@ function handleRowActivate(item: ToolConnectionItem) {
 		:items="items"
 		:categories="CATEGORIES"
 		:detail-item="null"
+		:allow-workflow-creation="canCreateWorkflow"
+		:workflow-creation-loading="isCreatingWorkflow"
 		@update:search-query="searchQuery = $event"
 		@connect="handleRowActivate"
 		@open-detail="handleRowActivate"
+		@create-workflow="handleCreateWorkflow"
 	/>
 </template>

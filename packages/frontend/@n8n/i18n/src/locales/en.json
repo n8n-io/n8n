@@ -7486,6 +7486,8 @@
 	"agents.tools.added": "Tool added",
 	"agents.tools.workflow.incompatible.title": "Workflow is not compatible",
 	"agents.tools.workflow.incompatible.message": "Workflow \"{name}\" contains nodes that can't be used as an agent tool: {nodes}.",
+	"agents.tools.workflow.createFailed.title": "Couldn't create workflow",
+	"agents.tools.workflow.createFailed.message": "Try creating the workflow again.",
 	"agents.tools.workflow.fetchFailed.title": "Couldn't check workflow compatibility",
 	"agents.tools.workflow.fetchFailed.message": "Try connecting the workflow again.",
 	"agents.tools.install.unresolved.title": "Couldn't add the installed tool",
