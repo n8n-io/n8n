@@ -40,4 +40,16 @@ describe('workflowInputsSchema', () => {
 	test('rejects unknown extra keys', () => {
 		expect(workflowInputsSchema.safeParse({ chatInput: 'hi', extra: true }).success).toBe(false);
 	});
+
+	test('rejects unknown keys inside webhookData instead of dropping them', () => {
+		// A misspelled field used to be stripped, leaving body undefined. The webhook
+		// then ran with an empty body and the caller was told the execution started.
+		expect(
+			workflowInputsSchema.safeParse({ webhookData: { method: 'POST', bdy: { x: 1 } } }).success,
+		).toBe(false);
+		expect(
+			workflowInputsSchema.safeParse({ webhookData: { body: { x: 1 }, headerz: { a: 'b' } } })
+				.success,
+		).toBe(false);
+	});
 });

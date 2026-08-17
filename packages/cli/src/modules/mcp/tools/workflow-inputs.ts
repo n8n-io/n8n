@@ -21,6 +21,9 @@ export const webhookPayloadSchema = z
 			.optional()
 			.describe('HTTP headers (e.g., authorization, content-type)'),
 	})
+	// Strict so a misspelled field is rejected rather than dropped, which would
+	// otherwise start the workflow with an empty body and report success.
+	.strict()
 	.describe('Input data for webhook-based workflows');
 
 export const chatWorkflowInputSchema = z
