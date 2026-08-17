@@ -179,37 +179,42 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	});
 
 	describe('concurrent drains', () => {
-		test('coalesces overlapping drainPending calls onto a single pass', async () => {
+		test('overlapping drainPending calls never exceed the concurrency cap', async () => {
 			const record = makeRecord({ id: 1 });
-			let releaseClaim!: () => void;
-			const claimGate = new Promise<void>((resolve) => {
-				releaseClaim = resolve;
+			let releaseApply!: () => void;
+			let signalApplyStarted!: () => void;
+			const applyStarted = new Promise<void>((resolve) => {
+				signalApplyStarted = resolve;
 			});
-			outboxRepository.claimNextPendingRecord
-				.mockImplementationOnce(async () => {
-					await claimGate;
-					return record;
-				})
-				.mockResolvedValue(null);
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(record).mockResolvedValue(null);
+			applier.apply.mockImplementationOnce(async () => {
+				signalApplyStarted();
+				await new Promise<void>((resolve) => {
+					releaseApply = resolve;
+				});
+				return { type: 'completed', triggerStatuses: [] };
+			});
 			consumer.startPolling();
 
 			const first = consumer.drainPending();
+			await applyStarted;
 			const second = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(0);
 
-			releaseClaim();
-			const [firstProcessed, secondProcessed] = await Promise.all([first, second]);
+			// The cap is one worker, so the second call must not start another claim
+			// while the first worker is busy.
+			expect(outboxRepository.claimNextPendingRecord).toHaveBeenCalledTimes(1);
 
-			// Both callers share the one in-flight pass, so the record is claimed and
-			// applied exactly once even though drainPending was invoked twice.
+			releaseApply();
+			await Promise.all([first, second]);
+
 			expect(applier.apply).toHaveBeenCalledTimes(1);
 			expect(reporter.report).toHaveBeenCalledTimes(1);
-			expect(firstProcessed).toBe(1);
-			expect(secondProcessed).toBe(1);
 		});
 	});
 
 	describe('parallel drains', () => {
-		test('processes up to the configured concurrency in parallel and returns the total', async () => {
+		test('processes up to the configured concurrency in parallel', async () => {
 			consumer = createConsumer(true, true, 2);
 
 			// Distinct workflowIds so the per-workflow lifecycle lock never serializes them.
@@ -252,8 +257,129 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 			releases.get(2)!();
 			releases.get(3)!();
-			const processed = await drain;
-			expect(processed).toBe(3);
+			await drain;
+			expect(reporter.report).toHaveBeenCalledTimes(3);
+		});
+	});
+
+	describe('worker pool', () => {
+		test('a wake-up processes new records while another worker is stuck on a hung record', async () => {
+			consumer = createConsumer(true, true, 2);
+			const stuck = makeRecord({ id: 1, workflowId: 'wf-stuck' });
+			let signalStuckStarted!: () => void;
+			const stuckStarted = new Promise<void>((resolve) => {
+				signalStuckStarted = resolve;
+			});
+			applier.apply.mockImplementation(async (record) => {
+				if (record.workflowId === 'wf-stuck') {
+					signalStuckStarted();
+					return await new Promise(() => {});
+				}
+				return { type: 'completed', triggerStatuses: [] };
+			});
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(stuck).mockResolvedValue(null);
+			consumer.startPolling();
+
+			void consumer.drainPending();
+			await stuckStarted;
+
+			// A new record commits and its wake-up arrives while the first record hangs.
+			const fresh = makeRecord({ id: 2, workflowId: 'wf-2' });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(fresh).mockResolvedValue(null);
+			void consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(applier.apply).toHaveBeenCalledWith(fresh, expect.anything());
+			expect(reporter.report).toHaveBeenCalledWith(
+				fresh,
+				expect.objectContaining({ type: 'completed' }),
+			);
+		});
+
+		test('a wake-up arriving while all workers are busy triggers a follow-up pass', async () => {
+			const r1 = makeRecord({ id: 1, workflowId: 'wf-1' });
+			const r2 = makeRecord({ id: 2, workflowId: 'wf-2' });
+			outboxRepository.claimNextPendingRecord
+				.mockResolvedValueOnce(r1)
+				// The pass runs dry before r2 commits, mirroring a record that lands
+				// after the final claim's visibility horizon.
+				.mockResolvedValueOnce(null)
+				.mockResolvedValueOnce(r2)
+				.mockResolvedValue(null);
+			let releaseApply!: () => void;
+			let signalApplyStarted!: () => void;
+			const applyStarted = new Promise<void>((resolve) => {
+				signalApplyStarted = resolve;
+			});
+			applier.apply.mockImplementationOnce(async () => {
+				signalApplyStarted();
+				await new Promise<void>((resolve) => {
+					releaseApply = resolve;
+				});
+				return { type: 'completed', triggerStatuses: [] };
+			});
+			consumer.startPolling();
+
+			const first = consumer.drainPending();
+			await applyStarted;
+
+			// r2's wake-up arrives while the only worker is still busy.
+			const second = consumer.drainPending();
+			releaseApply();
+			await Promise.all([first, second]);
+
+			expect(applier.apply).toHaveBeenCalledTimes(2);
+			expect(applier.apply).toHaveBeenCalledWith(r2, expect.anything());
+		});
+
+		test('drainPending rejects with a wrapping error after the pool reported the failure', async () => {
+			const error = new Error('claim failed');
+			outboxRepository.claimNextPendingRecord.mockRejectedValueOnce(error);
+			consumer.startPolling();
+
+			// Awaiting callers (e.g. the reconciler) must still observe drain
+			// failures, or they would report success for records nobody claimed.
+			// The wrapper lets them fail their own operation; the underlying error
+			// is reported by the pool alone, exactly once. `shouldReport: false`
+			// pins that a caller's generic catch reporting the wrapper creates no
+			// second Sentry event (the ErrorReporter drops non-reportable errors).
+			await expect(consumer.drainPending()).rejects.toMatchObject({
+				message: expect.stringContaining('drain failed'),
+				cause: error,
+				shouldReport: false,
+			});
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
+		});
+
+		test('an idle pass starts no tracing span', async () => {
+			consumer.startPolling();
+
+			await consumer.drainPending();
+
+			expect(outboxRepository.claimNextPendingRecord).toHaveBeenCalledTimes(1);
+			expect(tracing.startSpan).not.toHaveBeenCalled();
+		});
+
+		test('the poll fallback keeps running while a worker is stuck on a hung record', async () => {
+			consumer = createConsumer(true, true, 2);
+			const stuck = makeRecord({ id: 1, workflowId: 'wf-stuck' });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(stuck).mockResolvedValue(null);
+			applier.apply.mockImplementationOnce(async () => await new Promise(() => {}));
+			consumer.startPolling();
+
+			// First cycle claims the record that hangs.
+			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+
+			const fresh = makeRecord({ id: 2, workflowId: 'wf-2' });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(fresh).mockResolvedValue(null);
+			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+
+			expect(applier.apply).toHaveBeenCalledWith(fresh, expect.anything());
+			expect(reporter.report).toHaveBeenCalledWith(
+				fresh,
+				expect.objectContaining({ type: 'completed' }),
+			);
 		});
 	});
 
@@ -361,7 +487,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 			// The drain settles without the stuck record; no terminal status is
 			// written for it (it stays in_progress for lease reclaim).
-			await expect(drain).resolves.toBe(0);
+			await drain;
 			expect(reporter.report).not.toHaveBeenCalled();
 			expect(errorReporter.error).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -373,8 +499,12 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			// A fresh drain still processes new records.
 			const next = makeRecord({ id: 2, workflowId: 'wf-2' });
 			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(next).mockResolvedValue(null);
-			await expect(consumer.drainPending()).resolves.toBe(1);
+			await consumer.drainPending();
 			expect(reporter.report).toHaveBeenCalledTimes(1);
+			expect(reporter.report).toHaveBeenCalledWith(
+				next,
+				expect.objectContaining({ type: 'completed' }),
+			);
 		});
 
 		test('a record that settles during the grace period still gets its terminal status', async () => {
@@ -395,7 +525,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			const drain = consumer.drainPending();
 			await vi.advanceTimersByTimeAsync(ABORT_AFTER_MS + 2000);
 
-			await expect(drain).resolves.toBe(1);
+			await drain;
 			expect(reporter.report).toHaveBeenCalledWith(
 				record,
 				expect.objectContaining({ type: 'completed' }),
@@ -416,7 +546,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			const drain = consumer.drainPending();
 			await vi.advanceTimersByTimeAsync(ABORT_AFTER_MS);
 
-			await expect(drain).resolves.toBe(1);
+			await drain;
 			expect(reporter.report).toHaveBeenCalledWith(
 				record,
 				expect.objectContaining({
@@ -482,7 +612,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			const drain = consumer.drainPending();
 			await vi.advanceTimersByTimeAsync(15_200);
 
-			await expect(drain).resolves.toBe(0);
+			await drain;
 			expect(errorReporter.error).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: expect.stringContaining('Abandoned workflow publication outbox record'),
@@ -576,6 +706,35 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 			expect(outboxRepository.claimNextPendingRecord).not.toHaveBeenCalled();
 			expect(vi.getTimerCount()).toBe(0);
+		});
+
+		test('never rejects on a drain failure, which is reported exactly once', async () => {
+			const error = new Error('claim failed');
+			outboxRepository.claimNextPendingRecord.mockRejectedValueOnce(error);
+
+			// Pubsub dispatch drops handler rejections, so a rejecting wakeUp would
+			// surface as an unhandled promise rejection.
+			await expect(consumer.wakeUp()).resolves.toBeUndefined();
+
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
+		});
+
+		test('overlapping wake-ups report a shared drain failure exactly once', async () => {
+			const error = new Error('claim failed');
+			let rejectClaim!: (reason: Error) => void;
+			const claimGate = new Promise<WorkflowPublicationOutbox | null>((_resolve, reject) => {
+				rejectClaim = reject;
+			});
+			outboxRepository.claimNextPendingRecord.mockImplementationOnce(async () => await claimGate);
+
+			const first = consumer.wakeUp();
+			const second = consumer.wakeUp();
+			rejectClaim(error);
+			await Promise.all([first, second]);
+
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
 		});
 	});
 
