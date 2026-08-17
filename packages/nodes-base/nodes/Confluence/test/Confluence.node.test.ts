@@ -7,10 +7,17 @@ import { Confluence } from '../Confluence.node';
 describe('Confluence Node', () => {
 	const node = new Confluence();
 
-	it('should ship gated: hidden, no properties, not usable as a tool', () => {
+	it('should ship gated: hidden and not usable as a tool', () => {
 		expect(node.description.hidden).toBe(true);
-		expect(node.description.properties).toEqual([]);
 		expect(node.description.usableAsTool).toBeUndefined();
+	});
+
+	it('should expose the page resource with the create operation', () => {
+		const resource = node.description.properties.find((p) => p.name === 'resource');
+		expect(resource?.options).toEqual([expect.objectContaining({ value: 'page' })]);
+
+		const operation = node.description.properties.find((p) => p.name === 'operation');
+		expect(operation?.options).toEqual([expect.objectContaining({ value: 'create' })]);
 	});
 
 	it('should reference the confluenceCloudOAuth2Api credential by name', () => {

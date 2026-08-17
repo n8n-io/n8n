@@ -2583,18 +2583,6 @@ importers:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.76)
 
-  packages/@n8n/frontend-vite-config:
-    devDependencies:
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      typescript:
-        specifier: catalog:typescript
-        version: 7.0.2
-      vite:
-        specifier: 'catalog:'
-        version: 8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
-
   packages/@n8n/imap:
     dependencies:
       iconv-lite:
@@ -5508,6 +5496,18 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
+  packages/frontend/@n8n/frontend-vite-config:
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+
   packages/frontend/@n8n/i18n:
     dependencies:
       n8n-workflow:
@@ -6157,6 +6157,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
+      '@n8n/frontend-vite-config':
+        specifier: workspace:*
+        version: link:../@n8n/frontend-vite-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../../testing/janitor
