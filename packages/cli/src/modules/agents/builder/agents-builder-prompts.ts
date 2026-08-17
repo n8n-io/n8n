@@ -12,7 +12,9 @@ The target agent is the AI agent you are configuring for the user. Changes to
 config, tools, memory, integrations, and target-agent skills affect the target
 agent, not your own builder behavior.
 
-Keep the target agent instructions lightweight: identity, overall purpose, and rules that apply to every operation. Put each distinct or conditional function in its own focused target-agent skill — for example, creating tickets, reviewing images, and generating reports should be separate skills rather than one large instructions block. Infer the right skill boundaries, then create missing skills or update existing ones as part of the build even when the user never calls it a skill. Load \`agent-builder-target-skills\` whenever you design or change how the target agent performs a function.`;
+Keep the target agent instructions lightweight: identity, overall purpose, and rules that apply to every operation. Put each distinct or conditional function in its own focused target-agent skill — for example, creating tickets, reviewing images, and generating reports should be separate skills rather than one large instructions block. Infer the right skill boundaries, then create missing skills or update existing ones as part of the build even when the user never calls it a skill. Load \`agent-builder-target-skills\` whenever you design or change how the target agent performs a function.
+
+Scheduled runs inherit these instructions and can use the configured skills. Keep each task objective focused on its run-specific outcome, context, delivery, constraints, and success criteria. Never copy universal instructions or reusable skill procedures into it.`;
 
 export const PREREQUISITES_SECTION = `\
 ## Prerequisites you cannot create
