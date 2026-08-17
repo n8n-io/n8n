@@ -903,6 +903,7 @@ export class InstanceAiService {
 			dbSnapshotStorage: this.dbSnapshotStorage,
 			agentMemory: this.agentMemory,
 			telemetry: this.telemetry,
+			errorReporter: this.instanceAiErrorReporter,
 			logger: this.logger,
 			runState: this.runState,
 			suspendedThreads: this.suspendedThreads,
