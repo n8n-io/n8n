@@ -1,21 +1,34 @@
 import type { CreateGitConnectionDto, UpdateGitConnectionDto } from '@n8n/api-types';
+import type { ProjectRepository } from '@n8n/db';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { GitConnection } from '../database/entities/git-connection.entity';
+import type { GitConnectionProjectRepository } from '../database/repositories/git-connection-project.repository';
 import type { GitConnectionRepository } from '../database/repositories/git-connection.repository';
 import type { GitConnectionsGitService } from '../git-connections-git.service';
 import { GitConnectionsService } from '../git-connections.service';
 
 describe('GitConnectionsService (credential state machine)', () => {
 	const repository = mock<GitConnectionRepository>();
+	const projectLinkRepository = mock<GitConnectionProjectRepository>();
+	const projectRepository = mock<ProjectRepository>();
 	const gitService = mock<GitConnectionsGitService>();
 	const cipher = mock<Cipher>();
 	const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/tmp/n8n' });
 
-	const service = new GitConnectionsService(repository, gitService, cipher, instanceSettings);
+	const service = new GitConnectionsService(
+		repository,
+		projectLinkRepository,
+		projectRepository,
+		gitService,
+		cipher,
+		instanceSettings,
+	);
 
 	const baseEntity = () => ({
 		id: '1',
@@ -189,6 +202,115 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await service.update('1', { name: 'renamed' } as UpdateGitConnectionDto);
 
 			expect(gitService.resetWorkingCopy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('project assignment', () => {
+		const teamProject = { id: 'p1', type: 'team' };
+		const personalProject = { id: 'p1', type: 'personal' };
+
+		beforeEach(() => {
+			repository.findOneBy.mockResolvedValue(sshEntity());
+			projectLinkRepository.create.mockImplementation((input) => input as never);
+			projectLinkRepository.save.mockImplementation(async (input) => input as never);
+		});
+
+		describe('assignProject', () => {
+			it('creates a link for a team project', async () => {
+				projectRepository.findOneBy.mockResolvedValue(teamProject as never);
+				projectLinkRepository.findByProjectId.mockResolvedValue(null);
+
+				const result = await service.assignProject('1', 'p1');
+
+				expect(projectLinkRepository.create).toHaveBeenCalledWith({
+					projectId: 'p1',
+					gitConnectionId: '1',
+				});
+				expect(result).toEqual({ projectId: 'p1', gitConnectionId: '1' });
+			});
+
+			it('is idempotent when the project is already linked to the same connection', async () => {
+				projectRepository.findOneBy.mockResolvedValue(teamProject as never);
+				projectLinkRepository.findByProjectId.mockResolvedValue({
+					projectId: 'p1',
+					gitConnectionId: '1',
+				} as never);
+
+				const result = await service.assignProject('1', 'p1');
+
+				expect(projectLinkRepository.save).not.toHaveBeenCalled();
+				expect(result).toEqual({ projectId: 'p1', gitConnectionId: '1' });
+			});
+
+			it('rejects reassigning a project linked to a different connection', async () => {
+				projectRepository.findOneBy.mockResolvedValue(teamProject as never);
+				projectLinkRepository.findByProjectId.mockResolvedValue({
+					projectId: 'p1',
+					gitConnectionId: 'other',
+				} as never);
+
+				await expect(service.assignProject('1', 'p1')).rejects.toThrow(ConflictError);
+				expect(projectLinkRepository.save).not.toHaveBeenCalled();
+			});
+
+			it('rejects an unknown project with 404', async () => {
+				projectRepository.findOneBy.mockResolvedValue(null);
+
+				await expect(service.assignProject('1', 'missing')).rejects.toThrow(NotFoundError);
+			});
+
+			it('rejects a personal project with 400', async () => {
+				projectRepository.findOneBy.mockResolvedValue(personalProject as never);
+
+				await expect(service.assignProject('1', 'p1')).rejects.toThrow(BadRequestError);
+			});
+
+			it('rejects when the connection does not exist', async () => {
+				repository.findOneBy.mockResolvedValue(null);
+
+				await expect(service.assignProject('missing', 'p1')).rejects.toThrow(NotFoundError);
+				expect(projectRepository.findOneBy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('unlinkProject', () => {
+			it('removes a link that belongs to this connection', async () => {
+				const link = { projectId: 'p1', gitConnectionId: '1' };
+				projectLinkRepository.findByProjectId.mockResolvedValue(link as never);
+
+				await service.unlinkProject('1', 'p1');
+
+				expect(projectLinkRepository.remove).toHaveBeenCalledWith(link);
+			});
+
+			it('is a no-op when the project is not linked', async () => {
+				projectLinkRepository.findByProjectId.mockResolvedValue(null);
+
+				await service.unlinkProject('1', 'p1');
+
+				expect(projectLinkRepository.remove).not.toHaveBeenCalled();
+			});
+
+			it('never removes a link owned by a different connection', async () => {
+				projectLinkRepository.findByProjectId.mockResolvedValue({
+					projectId: 'p1',
+					gitConnectionId: 'other',
+				} as never);
+
+				await service.unlinkProject('1', 'p1');
+
+				expect(projectLinkRepository.remove).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('listProjects', () => {
+			it('returns the linked project IDs', async () => {
+				projectLinkRepository.findProjectIdsByConnection.mockResolvedValue(['p1', 'p2']);
+
+				const result = await service.listProjects('1');
+
+				expect(result).toEqual({ projectIds: ['p1', 'p2'] });
+			});
 		});
 	});
 });

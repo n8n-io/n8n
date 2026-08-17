@@ -1,16 +1,22 @@
 import type {
 	CreateGitConnectionDto,
+	GitConnectionProjectListPublicDto,
+	GitConnectionProjectPublicDto,
 	GitConnectionPublicDto,
 	UpdateGitConnectionDto,
 } from '@n8n/api-types';
+import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import path from 'node:path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { GitConnectionProject } from './database/entities/git-connection-project.entity';
 import { GitConnection } from './database/entities/git-connection.entity';
+import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from './database/repositories/git-connection.repository';
 import { GitConnectionsGitService } from './git-connections-git.service';
 
@@ -18,6 +24,8 @@ import { GitConnectionsGitService } from './git-connections-git.service';
 export class GitConnectionsService {
 	constructor(
 		private readonly repository: GitConnectionRepository,
+		private readonly projectLinkRepository: GitConnectionProjectRepository,
+		private readonly projectRepository: ProjectRepository,
 		private readonly gitService: GitConnectionsGitService,
 		private readonly cipher: Cipher,
 		private readonly instanceSettings: InstanceSettings,
@@ -109,6 +117,50 @@ export class GitConnectionsService {
 		const connection = await this.getEntity(id);
 		await this.purge(id);
 		await this.repository.remove(connection);
+	}
+
+	async assignProject(id: string, projectId: string): Promise<GitConnectionProjectPublicDto> {
+		await this.getEntity(id);
+		await this.assertAssignableProject(projectId);
+
+		const existing = await this.projectLinkRepository.findByProjectId(projectId);
+		if (existing) {
+			// Re-assigning to the same connection is a no-op; moving a project that
+			// already belongs to a different connection must be an explicit unlink first.
+			if (existing.gitConnectionId === id) return this.toLinkPublic(existing);
+			throw new ConflictError('Project is already assigned to another Git connection');
+		}
+
+		const link = this.projectLinkRepository.create({ projectId, gitConnectionId: id });
+		return this.toLinkPublic(await this.projectLinkRepository.save(link));
+	}
+
+	async unlinkProject(id: string, projectId: string): Promise<void> {
+		await this.getEntity(id);
+		const existing = await this.projectLinkRepository.findByProjectId(projectId);
+		// Idempotent, and scoped to this connection: never remove a link that
+		// belongs to a different connection.
+		if (existing && existing.gitConnectionId === id) {
+			await this.projectLinkRepository.remove(existing);
+		}
+	}
+
+	async listProjects(id: string): Promise<GitConnectionProjectListPublicDto> {
+		await this.getEntity(id);
+		const projectIds = await this.projectLinkRepository.findProjectIdsByConnection(id);
+		return { projectIds };
+	}
+
+	private async assertAssignableProject(projectId: string) {
+		const project = await this.projectRepository.findOneBy({ id: projectId });
+		if (!project) throw new NotFoundError('Project not found');
+		if (project.type !== 'team') {
+			throw new BadRequestError('Only team projects can be assigned to a Git connection');
+		}
+	}
+
+	private toLinkPublic(link: GitConnectionProject): GitConnectionProjectPublicDto {
+		return { projectId: link.projectId, gitConnectionId: link.gitConnectionId };
 	}
 
 	private async applyNewAuthentication(

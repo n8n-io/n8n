@@ -1,7 +1,9 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { GitConnectionProjectRepository } from '@/modules/git-connections.ee/database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from '@/modules/git-connections.ee/database/repositories/git-connection.repository';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -136,5 +138,106 @@ describe('Git connections in Public API', () => {
 		});
 		expect(response.status).toBe(400);
 		expect(await Container.get(GitConnectionRepository).count()).toBe(0);
+	});
+
+	describe('project assignment', () => {
+		async function createConnection(name = 'Connection') {
+			const response = await testServer.publicApiAgentFor(owner).post('/git-connections').send({
+				name,
+				repositoryUrl: 'https://example.com/org/repo.git',
+				branchName: 'main',
+				connectionType: 'https',
+				username: 'git-user',
+				password: 'secret',
+			});
+			return response.body.id as string;
+		}
+
+		it('assigns, lists, and un-links a team project', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createConnection();
+			const project = await createTeamProject('Assignable', owner);
+
+			const assign = await agent.post(`/git-connections/${id}/projects/${project.id}`);
+			expect(assign.status, JSON.stringify(assign.body)).toBe(200);
+			expect(assign.body).toEqual({ projectId: project.id, gitConnectionId: id });
+
+			const list = await agent.get(`/git-connections/${id}/projects`);
+			expect(list.status).toBe(200);
+			expect(list.body).toEqual({ projectIds: [project.id] });
+
+			const unlink = await agent.delete(`/git-connections/${id}/projects/${project.id}`);
+			expect(unlink.status).toBe(204);
+
+			const listAfter = await agent.get(`/git-connections/${id}/projects`);
+			expect(listAfter.body).toEqual({ projectIds: [] });
+		});
+
+		it('treats re-assigning to the same connection as idempotent', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createConnection();
+			const project = await createTeamProject('Assignable', owner);
+
+			await agent.post(`/git-connections/${id}/projects/${project.id}`);
+			const again = await agent.post(`/git-connections/${id}/projects/${project.id}`);
+
+			expect(again.status).toBe(200);
+			expect(again.body).toEqual({ projectId: project.id, gitConnectionId: id });
+		});
+
+		it('rejects assigning a project already linked to another connection', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const first = await createConnection('First');
+			const second = await createConnection('Second');
+			const project = await createTeamProject('Assignable', owner);
+
+			await agent.post(`/git-connections/${first}/projects/${project.id}`);
+			const conflict = await agent.post(`/git-connections/${second}/projects/${project.id}`);
+
+			expect(conflict.status).toBe(409);
+		});
+
+		it('rejects a personal project', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createConnection();
+			const personalProject = await getPersonalProject(owner);
+
+			const response = await agent.post(`/git-connections/${id}/projects/${personalProject.id}`);
+			expect(response.status).toBe(400);
+		});
+
+		it('returns 404 for an unknown project', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createConnection();
+
+			const response = await agent.post(`/git-connections/${id}/projects/does-not-exist`);
+			expect(response.status).toBe(404);
+		});
+
+		it('removes the link when the connection is deleted', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createConnection();
+			const project = await createTeamProject('Assignable', owner);
+			await agent.post(`/git-connections/${id}/projects/${project.id}`);
+
+			await agent.delete(`/git-connections/${id}`);
+
+			expect(
+				await Container.get(GitConnectionProjectRepository).findByProjectId(project.id),
+			).toBeNull();
+		});
+
+		it('removes the link when the project is deleted', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createConnection();
+			const project = await createTeamProject('Assignable', owner);
+			await agent.post(`/git-connections/${id}/projects/${project.id}`);
+
+			await Container.get(ProjectRepository).delete({ id: project.id });
+
+			expect(
+				await Container.get(GitConnectionProjectRepository).findByProjectId(project.id),
+			).toBeNull();
+		});
 	});
 });
