@@ -47,13 +47,16 @@ const { config: localConfig, fetchConfig } = useAgentConfig();
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
 const threadId = computed(() => route.params.threadId as string);
+const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
+	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
+});
 
 // Populated by the timeline panel's `loaded` event so the header can render its
 // title/metrics/trigger without a second fetch of the same thread.
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
 const agent = ref<AgentResource | null>(null);
-const isPreviewOpen = useStorage('N8N_AGENT_PREVIEW_OPEN', false);
+const isPreviewOpen = useStorage(previewOpenStorageKey, false);
 const previewInitialized = ref(false);
 const {
 	activeChatSessionId,

@@ -150,12 +150,9 @@ const { openAgentConfirmationModal } = useAgentConfirmationModal();
 // singleton agent session/credential stores, so only one builder shell should
 // be mounted at a time.
 const isArtifactMode = computed(() => props.artifactMode);
-const persistedPreviewOpen = useStorage('N8N_AGENT_PREVIEW_OPEN', false);
 const isStandalonePreview = computed(
 	() => !isArtifactMode.value && route.name === AGENT_PREVIEW_VIEW,
 );
-const isPreviewDockOpen = computed(() => !isStandalonePreview.value && persistedPreviewOpen.value);
-const isPreviewActive = computed(() => isStandalonePreview.value || isPreviewDockOpen.value);
 const projectId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactProjectId : undefined) ??
@@ -167,6 +164,12 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
+const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
+	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
+});
+const persistedPreviewOpen = useStorage(previewOpenStorageKey, false);
+const isPreviewDockOpen = computed(() => !isStandalonePreview.value && persistedPreviewOpen.value);
+const isPreviewActive = computed(() => isStandalonePreview.value || isPreviewDockOpen.value);
 const agentBuilderHref = computed(function getAgentBuilderHref() {
 	return router.resolve({
 		name: AGENT_BUILDER_VIEW,
