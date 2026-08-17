@@ -1,4 +1,4 @@
-import { WorkflowPublicDto } from '../workflow-public.dto';
+import { WorkflowPublicDto, WorkflowPublishPublicDto } from '../workflow-public.dto';
 
 const baseWorkflow = {
 	id: '1',
@@ -125,6 +125,28 @@ describe('WorkflowPublicDto', () => {
 	test('rejects a missing required field', () => {
 		const { id: _id, ...withoutId } = baseWorkflow;
 		const result = WorkflowPublicDto.safeParse(withoutId);
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('WorkflowPublishPublicDto', () => {
+	const { shared: _shared, ...workflowWithoutShared } = baseWorkflow;
+
+	test('accepts a workflow with no shared field', () => {
+		const result = WorkflowPublishPublicDto.safeParse(workflowWithoutShared);
+		expect(result.success).toBe(true);
+	});
+
+	test('strips shared when present', () => {
+		const result = WorkflowPublishPublicDto.safeParse(baseWorkflow);
+
+		expect(result.success).toBe(true);
+		expect(result.data).not.toHaveProperty('shared');
+	});
+
+	test('still requires the rest of the workflow contract', () => {
+		const { id: _id, ...withoutId } = workflowWithoutShared;
+		const result = WorkflowPublishPublicDto.safeParse(withoutId);
 		expect(result.success).toBe(false);
 	});
 });
