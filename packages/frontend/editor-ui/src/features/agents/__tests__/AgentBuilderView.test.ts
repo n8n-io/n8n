@@ -1,5 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref, computed, reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -393,9 +393,27 @@ async function renderView({
 			stubs: commonStubs,
 		},
 	});
+	mountedWrappers.push(wrapper);
 	if (waitForAsyncSetup) await flushPromises();
 	return wrapper;
 }
+
+const mountedWrappers: Array<ReturnType<typeof mount>> = [];
+
+// Unmount every view mounted by the test and drain its async tail. Without
+// this, a still-mounted view's pending debounce timers and in-flight save
+// chains keep running into later tests, where they consume shared mock
+// `*Once` queues and emit bus events against the next test's component.
+afterEach(async () => {
+	for (const wrapper of mountedWrappers.splice(0)) {
+		try {
+			wrapper.unmount();
+		} catch {
+			// Already unmounted by the test itself.
+		}
+	}
+	await flushPromises();
+});
 
 async function startArtifactPreviewSend(
 	wrapper: Awaited<ReturnType<typeof renderView>>,
@@ -1584,11 +1602,17 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			.spyOn(useMCPStore(), 'toggleAgentMcpAccess')
 			.mockReturnValueOnce(mcpSave.promise);
 
+		// A failed initialize() only shows a toast, then renders the editor with a
+		// null agent — which silently drops the toggle below and surfaces three
+		// asserts later as an autosave spy with zero calls. Fail here instead,
+		// with the swallowed error visible in the spy's recorded calls.
+		expect(showErrorMock).not.toHaveBeenCalled();
+		const editorColumn = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editorColumn.props('agent')).toBeTruthy();
+
 		vi.useFakeTimers();
 		try {
-			wrapper
-				.findComponent({ name: 'AgentBuilderEditorColumn' })
-				.vm.$emit('toggle-mcp-access', true);
+			editorColumn.vm.$emit('toggle-mcp-access', true);
 			await nextTick();
 			await vi.advanceTimersByTimeAsync(500);
 			expect(toggleAgentMcpAccess).toHaveBeenCalledExactlyOnceWith('a2', true);
@@ -2071,11 +2095,15 @@ describe('AgentBuilderView — three-column shell', () => {
 			unchangedIds: [],
 		});
 
+		// See the sibling MCP test above: a failed initialize() drops the toggle
+		// silently, so guard the mount before emitting.
+		expect(showErrorMock).not.toHaveBeenCalled();
+		const editorColumn = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editorColumn.props('agent')).toBeTruthy();
+
 		vi.useFakeTimers();
 		try {
-			wrapper
-				.findComponent({ name: 'AgentBuilderEditorColumn' })
-				.vm.$emit('toggle-mcp-access', true);
+			editorColumn.vm.$emit('toggle-mcp-access', true);
 			await nextTick();
 
 			await wrapper.setProps({ artifactAgentId: 'a2' });
