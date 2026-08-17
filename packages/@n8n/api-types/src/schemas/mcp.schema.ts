@@ -34,6 +34,7 @@ export const MCP_INSTANCE_SCOPES = [
 	'dataTable:read',
 	'dataTable:write',
 	'project:read',
+	'project:write',
 	'tag:read',
 ] as const;
 

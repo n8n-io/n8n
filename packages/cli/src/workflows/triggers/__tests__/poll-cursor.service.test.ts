@@ -11,6 +11,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 
 describe('PollCursorService', () => {
@@ -19,7 +20,7 @@ describe('PollCursorService', () => {
 
 	let txRunner: MockProxy<TransactionRunner>;
 
-	const buildService = (durableCursorsEnabled = true) => {
+	const buildService = (durableCursorsEnabled = true, durablePollersAllowed = true) => {
 		txRunner = mock<TransactionRunner>();
 		txRunner.run.mockImplementation(
 			async <T>(ctx: OperationContext, fn: (ctx: OperationContext) => Promise<T>) => await fn(ctx),
@@ -30,6 +31,7 @@ describe('PollCursorService', () => {
 			txRunner,
 			executionPersistence,
 			mock<PollerConfig>({ durableCursorsEnabled }),
+			mock<DurablePollerGateService>({ allowed: durablePollersAllowed }),
 		);
 	};
 
@@ -47,9 +49,11 @@ describe('PollCursorService', () => {
 	});
 
 	describe('enabled', () => {
-		it('reports the configured flag', () => {
-			expect(buildService(true).enabled).toBe(true);
-			expect(buildService(false).enabled).toBe(false);
+		it('requires both the config flag and the duplicate-id gate', () => {
+			expect(buildService(true, true).enabled).toBe(true);
+			expect(buildService(true, false).enabled).toBe(false);
+			expect(buildService(false, true).enabled).toBe(false);
+			expect(buildService(false, false).enabled).toBe(false);
 		});
 	});
 
@@ -79,6 +83,20 @@ describe('PollCursorService', () => {
 
 		it('does not create a row when the flag is off and the node has never migrated', async () => {
 			const service = buildService(false);
+			pollerStateRepository.findCursor.mockResolvedValue(null);
+
+			await expect(service.resolveCursor('wf-1', 'node-1', {})).resolves.toEqual({
+				migrated: false,
+			});
+
+			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
+		});
+
+		// Pins the ticket's sticky-row remedy: with the gate refusing, a deleted
+		// `poller_state` row must never be recreated, even though the flag is on —
+		// otherwise deleting an offender's rows would not be terminal.
+		it('does not create a row when the flag is on but the gate refuses durable pollers', async () => {
+			const service = buildService(true, false);
 			pollerStateRepository.findCursor.mockResolvedValue(null);
 
 			await expect(service.resolveCursor('wf-1', 'node-1', {})).resolves.toEqual({

@@ -184,6 +184,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 		const credentialsStore = useCredentialsStore();
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
+		vi.spyOn(credentialsStore, 'fetchAllCredentialsForWorkflow').mockResolvedValue([]);
 		vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
 		// The card renders the NodeCredentials picker when the store has a usable
 		// credential of the type; default to one so the picker-based tests render it.
@@ -232,6 +233,25 @@ describe('InstanceAiCredentialSetup', () => {
 
 			await userEvent.click(getByTestId('instance-ai-credential-next'));
 			expect(getAllByTestId('credential-picker')).toHaveLength(1);
+		});
+
+		it('preloads only project-scoped credentials when a projectId is provided', async () => {
+			const credentialsStore = useCredentialsStore();
+			const requests = makeCredentialRequestsWithExisting(1);
+			renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+					projectId: 'project-team-1',
+				},
+			});
+			await nextTick();
+
+			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				projectId: 'project-team-1',
+			});
+			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
 		});
 
 		it('renders the setup button (modal path) for a plain type with no usable credentials', () => {
