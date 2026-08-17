@@ -134,6 +134,30 @@ export function validateJSON(json: string | undefined): any {
 }
 
 /**
+ * Validates a secret name against GitHub's naming rules, so an invalid name fails
+ * before the public key lookup and encryption rather than as an opaque API error.
+ * https://docs.github.com/en/actions/reference/workflows-and-actions/variables
+ *
+ * @param secretName - The secret name to validate
+ * @returns An error message, or undefined when the name is valid
+ */
+export function validateSecretName(secretName: string): string | undefined {
+	if (!secretName) {
+		return 'Secret name is required.';
+	}
+
+	if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(secretName)) {
+		return `Secret name "${secretName}" is invalid. Names may only contain alphanumeric characters and underscores, and must not start with a number.`;
+	}
+
+	if (/^GITHUB_/i.test(secretName)) {
+		return `Secret name "${secretName}" is invalid. Names must not start with the "GITHUB_" prefix.`;
+	}
+
+	return undefined;
+}
+
+/**
  * Encrypts a secret value using the repository's public key
  * GitHub requires secrets to be encrypted using libsodium sealed box
  *
