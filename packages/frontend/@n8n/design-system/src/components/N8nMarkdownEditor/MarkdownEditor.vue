@@ -249,7 +249,7 @@ defineExpose({
 		scroll-padding-top: calc(var(--height--lg) + var(--spacing--xs));
 	}
 
-	:global(.n8n-markdown .is-empty::before) {
+	:global(.n8n-markdown .is-editor-empty::before) {
 		content: attr(data-placeholder);
 		float: left;
 		height: 0;

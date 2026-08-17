@@ -1,4 +1,4 @@
-import { BaseRepository, type OperationContext } from '@n8n/db';
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
@@ -6,8 +6,8 @@ import { AgentTask } from '../entities/agent-task.entity';
 
 @Service()
 export class AgentTaskRepository extends BaseRepository<AgentTask> {
-	constructor(dataSource: DataSource) {
-		super(AgentTask, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentTask, dataSource.manager, transactionRunner);
 	}
 
 	async findByAgentId(agentId: string): Promise<AgentTask[]> {

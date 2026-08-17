@@ -52,6 +52,27 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
 }
 
+/**
+ * Builds the thread-level grant key for updating a specific workflow without HITL.
+ *
+ * Written automatically when the agent creates a workflow in this thread, so follow-up
+ * edits to that same artifact (same run or later runs in the session) skip the update
+ * approval prompt. Foreign workflows still require approval unless the admin policy is
+ * `always_allow`.
+ */
+export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
+	return `workflows:update:${workflowId}`;
+}
+
+/**
+ * Builds the thread-level "always allow" grant key for a data-tables action
+ * (e.g. `create`, `insert-rows`). Must match the frontend key
+ * `${toolName}:${action}` so UI auto-approve and persisted grants stay aligned.
+ */
+export function buildDataTablesSessionGrantKey(action: string): string {
+	return `data-tables:${action}`;
+}
+
 // --- Domain-access grants ("always allow" for web access) ---
 // These keys mirror the research tool's action names (`fetch-url`, `web-search`) the same
 // way `executions:run:<id>` mirrors the executions `run` action, so a persisted grant row
@@ -165,6 +186,23 @@ export type InstanceAiRunStatus = z.infer<typeof instanceAiRunStatusSchema>;
 
 export const instanceAiConfirmationSeveritySchema = z.enum(['destructive', 'warning', 'info']);
 export type InstanceAiConfirmationSeverity = z.infer<typeof instanceAiConfirmationSeveritySchema>;
+
+/**
+ * Shared resume envelope for plain-approval HITL tools.
+ *
+ * Matches the payload fields on the `approval` arm of `InstanceAiConfirmRequestDto`
+ * (minus `kind`) that `resumeSuspendedRun` forwards. Tools that only need
+ * `approved` still declare these optional keys so checkpointed JSON Schema
+ * (`additionalProperties: false`) accepts approve-with-comment / allow-always.
+ */
+export const instanceAiApprovalResumeSchema = z.object({
+	approved: z.boolean(),
+	userInput: z.string().optional(),
+	/** `'session'` grants the same tool/action without re-asking for the rest of the
+	 *  thread ("always allow"). Absent/`'once'` approves this single request only. */
+	scope: z.enum(['once', 'session']).optional(),
+});
+export type InstanceAiApprovalResumeData = z.infer<typeof instanceAiApprovalResumeSchema>;
 
 // ---------------------------------------------------------------------------
 // Agent status (frontend rendering state)
@@ -534,6 +572,25 @@ export const channelConfigSchema = z.object({
 });
 export type InstanceAiChannelConfig = z.infer<typeof channelConfigSchema>;
 
+export const mcpConnectServerSchema = z.object({
+	serverSlug: z.string(),
+	title: z.string(),
+	tagline: z.string().optional(),
+	credentialType: z.string(),
+});
+export type InstanceAiMcpConnectServer = z.infer<typeof mcpConnectServerSchema>;
+
+export const mcpConnectRequestSchema = z.object({
+	servers: z.array(mcpConnectServerSchema).min(1),
+});
+export type InstanceAiMcpConnectRequest = z.infer<typeof mcpConnectRequestSchema>;
+
+export const mcpConnectResumeSchema = z.object({
+	approved: z.boolean(),
+	connectedSlugs: z.array(z.string()).optional(),
+});
+export type InstanceAiMcpConnectResume = z.infer<typeof mcpConnectResumeSchema>;
+
 export const confirmationInputTypeSchema = z.enum([
 	'approval',
 	'text',
@@ -614,7 +671,12 @@ export const confirmationRequestPayloadSchema = z.object({
 		.array(workflowSetupNodeSchema)
 		.optional()
 		.describe('Per-node setup cards for workflow credential/parameter configuration'),
-	workflowId: z.string().optional().describe('Workflow ID for setup-workflow tool'),
+	workflowId: z
+		.string()
+		.optional()
+		.describe(
+			'Workflow ID for setup cards and per-workflow edit approvals (build-workflow / workflows update)',
+		),
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
@@ -623,6 +685,9 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'When present, renders agent chat-channel setup UI for this integration type and agent',
 		),
+	mcpConnectRequest: mcpConnectRequestSchema
+		.optional()
+		.describe('When present, renders the inline "Available tools" MCP connect card'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -656,6 +721,7 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
 	if (payload.channelConfig) return true;
+	if (payload.mcpConnectRequest) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -946,11 +1012,83 @@ export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesys
 // API types
 // ---------------------------------------------------------------------------
 
+/**
+ * Per-file attachment ceiling, in **base64-encoded** bytes.
+ *
+ * The provider measures an image against its encoded size, and `data` is base64
+ * (ASCII), so the string's length is exactly the quantity being limited. Stating
+ * this bound in decoded bytes would set it ~4/3 too high and admit payloads the
+ * provider then rejects — crashing the LLM call instead of failing validation.
+ *
+ * Shared so the frontend can warn pre-upload against the same value the backend
+ * enforces.
+ */
+export const MAX_ATTACHMENT_BASE64_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Budget for all attachments on a single message, in base64-encoded bytes. The
+ * provider rejects requests over 32 MB in total; half of that leaves room for the
+ * system prompt, replayed thread history, and tool schemas in the same request.
+ */
+export const MAX_TOTAL_ATTACHMENT_BASE64_BYTES = 16 * 1024 * 1024;
+
+/**
+ * Largest raw file that still fits once base64-encoded — i.e. the ceiling as a user
+ * experiences it, since `File.size` and the figure their OS shows are both decoded.
+ *
+ * Enforcement uses the encoded limit above (that is what the provider measures), but
+ * **user-facing copy must quote this**: telling someone with an 8 MB file that it
+ * "exceeds the 10 MB limit" is the same decoded-vs-encoded confusion this guard exists
+ * to prevent.
+ */
+export const MAX_ATTACHMENT_DECODED_BYTES = (MAX_ATTACHMENT_BASE64_BYTES / 4) * 3;
+
+/** Combined ceiling across one message's attachments, as raw file size. */
+export const MAX_TOTAL_ATTACHMENT_DECODED_BYTES = (MAX_TOTAL_ATTACHMENT_BASE64_BYTES / 4) * 3;
+
+function formatMegabyteLimit(bytes: number): string {
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** The per-file limit as a short label for user-facing copy, e.g. `7.5 MB`. */
+export function formatAttachmentSizeLimit(): string {
+	return formatMegabyteLimit(MAX_ATTACHMENT_DECODED_BYTES);
+}
+
+/** The combined per-message limit as a short label for user-facing copy, e.g. `12.0 MB`. */
+export function formatTotalAttachmentSizeLimit(): string {
+	return formatMegabyteLimit(MAX_TOTAL_ATTACHMENT_DECODED_BYTES);
+}
+
+/**
+ * Encoded size of `decodedBytes` once base64'd: 3 bytes become 4 characters,
+ * padded up to a multiple of 4.
+ */
+export function base64EncodedSize(decodedBytes: number): number {
+	return Math.ceil(decodedBytes / 3) * 4;
+}
+
+/**
+ * Whether a file of `decodedBytes` (i.e. `File.size`) would breach the per-file
+ * limit once encoded.
+ *
+ * Use this instead of comparing a raw byte count against the limit directly: the
+ * limit is denominated in encoded bytes, so a naive comparison passes files ~4/3
+ * too large and defers the failure to the provider.
+ */
+export function exceedsAttachmentSizeLimit(decodedBytes: number): boolean {
+	return base64EncodedSize(decodedBytes) > MAX_ATTACHMENT_BASE64_BYTES;
+}
+
 /** A binary file the user attached to a message (image, CSV, PDF, …). */
 export const instanceAiFileAttachmentSchema = z.object({
 	type: z.literal('file'),
-	// Base64 inflates ~4/3 — 14M chars covers ~10MB decoded.
-	data: z.string().max(14_000_000, { message: 'Attachment exceeds 10 MB limit' }),
+	// This message is the copy the user actually sees for a single oversized file:
+	// body validation runs before the controller, so it answers first and the
+	// controller's richer per-file message never renders on this path.
+	data: z.string().max(MAX_ATTACHMENT_BASE64_BYTES, {
+		message: `Attachment is too large (limit ${formatAttachmentSizeLimit()}). Attach a smaller file, or resize the image before sending.`,
+	}),
 	mimeType: z.string().max(100),
 	fileName: z.string().max(300),
 });
@@ -1163,6 +1301,7 @@ export interface InstanceAiConfirmation {
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
 	channelConfig?: InstanceAiChannelConfig;
+	mcpConnectRequest?: InstanceAiMcpConnectRequest;
 	expired?: boolean;
 }
 

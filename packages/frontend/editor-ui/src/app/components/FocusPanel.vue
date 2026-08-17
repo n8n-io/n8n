@@ -50,7 +50,7 @@ import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canv
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
-import { N8nIcon, N8nInfoTip, N8nInput, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nInfoTip, N8nInput, N8nSegmentControl, N8nText } from '@n8n/design-system';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 defineOptions({ name: 'FocusPanel' });
 
@@ -586,7 +586,7 @@ function onRenameNode(value: string) {
 					/>
 				</div>
 				<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
-				<N8nRadioButtons
+				<N8nSegmentControl
 					size="small"
 					:model-value="'expression'"
 					:disabled="true"

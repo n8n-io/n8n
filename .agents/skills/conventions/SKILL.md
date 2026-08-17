@@ -13,6 +13,10 @@ Use this skill when you need quick reminders on critical patterns.
 
 ## Critical Rules (Must Follow)
 
+**Technical writing (comments, PRs, issues, docs):**
+- Write in ASD-STE100 Simplified Technical English: short sentences, the
+  active voice, one instruction for each sentence
+
 **TypeScript:**
 - Never `any` → use `unknown`
 - Prefer `satisfies` over `as` (except tests)

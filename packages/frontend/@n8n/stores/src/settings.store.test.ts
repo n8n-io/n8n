@@ -23,6 +23,7 @@ const mockRootStore = {
 	setExecutionTimeout: vi.fn(),
 	setMaxExecutionTimeout: vi.fn(),
 	setInstanceId: vi.fn(),
+	setPublicApiPath: vi.fn(),
 	setOauthCallbackUrls: vi.fn(),
 	setJwksUri: vi.fn(),
 	setN8nMetadata: vi.fn(),
@@ -72,6 +73,12 @@ const mockSettings = mock<FrontendSettings>({
 	instanceId: '1234567890',
 	telemetry: {
 		enabled: false,
+	},
+	publicApi: {
+		enabled: true,
+		latestVersion: 1,
+		path: 'api',
+		swaggerUi: { enabled: true },
 	},
 });
 
@@ -337,6 +344,7 @@ describe('settings.store', () => {
 				expect(mockRootStore.setMaxExecutionTimeout).not.toHaveBeenCalled();
 				expect(mockRootStore.setN8nMetadata).not.toHaveBeenCalled();
 				expect(mockRootStore.setBinaryDataMode).not.toHaveBeenCalled();
+				expect(mockRootStore.setPublicApiPath).not.toHaveBeenCalled();
 
 				// side effects
 				expect(sessionStarted).not.toHaveBeenCalled();
@@ -391,6 +399,9 @@ describe('settings.store', () => {
 				expect(mockRootStore.setN8nMetadata).toHaveBeenCalled();
 				expect(mockRootStore.setDefaultLocale).toHaveBeenCalled();
 				expect(mockRootStore.setBinaryDataMode).toHaveBeenCalled();
+				expect(mockRootStore.setPublicApiPath).toHaveBeenCalledWith(
+					`${mockSettings.publicApi.path}/v${mockSettings.publicApi.latestVersion}`,
+				);
 
 				// side effects
 				expect(sessionStarted).toHaveBeenCalled();

@@ -1,30 +1,53 @@
-import type { WorkflowReviewActivityType } from '@n8n/api-types';
+import type {
+	WorkflowReviewClosedActivityData,
+	WorkflowReviewDecisionActivityData,
+	WorkflowReviewOpenedActivityData,
+	WorkflowReviewVersionUpdatedActivityData,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, In, LessThan } from '@n8n/typeorm';
-import type { IDataObject } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
 import { WorkflowReviewActivityComment } from '../entities/workflow-review-activity-comment.ee';
 import { WorkflowReviewActivity } from '../entities/workflow-review-activity.ee';
-import type { OperationContext } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type WorkflowReviewActivityFeedEntry = {
 	activity: WorkflowReviewActivity;
 	messages: WorkflowReviewActivityComment[];
 };
 
+/**
+ * Write-side counterpart of `WorkflowReviewActivityEntry`, reusing its data types so the read
+ * and write shapes cannot drift. Repository input only, never serialized, hence not in
+ * `@n8n/api-types`. `changes_requested` and `approved` share a member on purpose, so a
+ * conditional decision type still typechecks at the call site.
+ */
+export type WorkflowReviewActivityPayload =
+	| { type: 'review.opened'; data: WorkflowReviewOpenedActivityData }
+	| { type: 'comment.created' | 'workflow.published'; data: null }
+	| {
+			type: 'review.changes_requested' | 'review.approved';
+			data: WorkflowReviewDecisionActivityData;
+	  }
+	| { type: 'review.version_updated'; data: WorkflowReviewVersionUpdatedActivityData }
+	| { type: 'review.closed'; data: WorkflowReviewClosedActivityData };
+
 @Service()
 export class WorkflowReviewActivityRepository extends BaseRepository<WorkflowReviewActivity> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowReviewActivity, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowReviewActivity, dataSource.manager, transactionRunner);
 	}
 
 	async createActivity(
-		input: {
+		input: WorkflowReviewActivityPayload & {
 			workflowReviewRequestId: string;
-			type: WorkflowReviewActivityType;
-			data: IDataObject | null;
 			createdById: string | null;
+			/**
+			 * Scopes the entry to one workflow; omit for review-level entries. No caller sets it
+			 * yet — see the entity, whose FK cascades.
+			 */
+			workflowId?: string;
 		},
 		ctx: OperationContext,
 	): Promise<WorkflowReviewActivity> {

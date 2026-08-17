@@ -8,7 +8,7 @@ import type {
 	SsrfProtectionService,
 } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { AgentsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type {
 	TransactionRunner,
 	User,
@@ -41,25 +41,26 @@ import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
-import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSkillsService } from '../agent-skills.service';
 
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
 import { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentValidationService } from '../agent-validation.service';
+import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
@@ -112,7 +113,7 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 }
 
 function makeRuntimeReconstructionService(
-	modules: string[] = [],
+	_modules: string[] = [],
 ): AgentRuntimeReconstructionService {
 	const transport = mock<HttpTransport>();
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
@@ -130,10 +131,11 @@ function makeRuntimeReconstructionService(
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
-		{ modules } as unknown as AgentsConfig,
+		mock<AgentSandboxRuntimeService>(),
 		mock<AiService>(),
 		outboundHttp,
-		mock<AgentKnowledgeSandboxService>(),
+		mock<AgentWorkspaceService>(),
+		mock<AgentKnowledgeMirrorService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
 		mock<CredentialsFinderService>(),
@@ -192,7 +194,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 	let memoryBackend: Mocked<N8nMemoryImplementation>;
 	let n8nCheckpointStorage: Mocked<N8NCheckpointStorage>;
 	let agentExecutionService: Mocked<AgentExecutionService>;
-	let chatIntegrationService: Mocked<ChatIntegrationService>;
 	let agentKnowledgeService: Mocked<AgentKnowledgeService>;
 	let publisher: Mocked<Publisher>;
 	let globalConfig: Mocked<GlobalConfig>;
@@ -221,7 +222,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
 		n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 		agentExecutionService = mock<AgentExecutionService>();
-		chatIntegrationService = mock<ChatIntegrationService>();
 		agentKnowledgeService = mock<AgentKnowledgeService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
@@ -281,7 +281,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
-			chatIntegrationService,
 			runtimeCacheService,
 			chatIntegrationRegistry,
 			mock<EventService>(),
@@ -314,7 +313,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<AgentModificationTelemetryService>(),
 		);
-		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
+		agentTestChatService = new AgentTestChatService(
+			n8nMemory,
+			mock<AgentChatAttachmentService>(),
+			mock<AgentWorkspaceService>(),
+		);
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,

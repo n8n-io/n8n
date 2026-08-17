@@ -31,6 +31,10 @@ import {
 	summarizeWorkflowStructure,
 } from './workflows/summarize-workflow';
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
+import {
+	grantSessionWorkflowUpdate,
+	canSkipWorkflowUpdateHitl,
+} from './workflows/workflow-build-context';
 import { refreshWorkflowSourceFileBindingFromWorkflow } from './workflows/workflow-file-bindings';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
@@ -133,6 +137,12 @@ const setupAction = z.object({
 		.describe(
 			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
 		),
+	includeAllNodes: z
+		.boolean()
+		.optional()
+		.describe(
+			'By default, setup after a build covers only the nodes that build changed. Set to true to cover every node in the workflow — ONLY when the user explicitly asked to set up the whole workflow or a node the last build did not touch.',
+		),
 });
 
 const validateAction = z.object({
@@ -205,16 +215,22 @@ const updateVersionAction = z.object({
 
 // ── Suspend / resume schemas ────────────────────────────────────────────────
 
-const confirmationSuspendSchema = setupSuspendSchema.pick({
-	requestId: true,
-	message: true,
-	severity: true,
-});
+const confirmationSuspendSchema = setupSuspendSchema
+	.pick({
+		requestId: true,
+		message: true,
+		severity: true,
+		workflowId: true,
+	})
+	.partial({ workflowId: true });
 
 const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
-// Resume: union of standard confirmation (approved) and setup-specific fields.
-const resumeSchema = setupResumeSchema;
+// Resume: setup-specific fields plus optional session scope for generic approvals
+// (e.g. update "always allow" → persist `workflows:update:<id>`).
+const resumeSchema = setupResumeSchema.extend({
+	scope: z.enum(['once', 'session']).optional(),
+});
 
 interface WorkflowToolContext {
 	resumeData: z.infer<typeof resumeSchema> | undefined;
@@ -473,7 +489,9 @@ async function handleGetAsCode(
 	const { generateWorkflowCode } = await import('@n8n/workflow-sdk');
 	try {
 		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
-		const code = generateWorkflowCode(json);
+		// Emit node ids: this code is edited and built back into the same saved workflow,
+		// and carrying the ids through is what keeps node identity stable.
+		const code = generateWorkflowCode({ workflow: json, includeNodeIds: true });
 		// Historical reads must not advance the optimistic-concurrency lock.
 		if (!input.versionId) {
 			await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
@@ -746,6 +764,36 @@ async function handleSetupApply(
 	}
 }
 
+/**
+ * Node names the latest build for this workflow changed, read from the stored
+ * build outcome. Scoping only applies to the build-bound setup handoff — the
+ * setup call made in the same run as the build. A setup call in any later run
+ * is user-initiated (e.g. "set up my workflow"), so it covers the whole
+ * workflow even when an unchanged node is the one the user wants configured.
+ * Also undefined when there is no build outcome or it predates change tracking.
+ */
+async function resolveSetupScopeNodeNames(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<string[] | undefined> {
+	const workflowTaskService = context.workflowBuildContext?.workflowTaskService;
+	if (!workflowTaskService) return undefined;
+	try {
+		const outcome = await workflowTaskService.getLatestBuildOutcomeForWorkflow(workflowId);
+		if (!outcome?.runId || outcome.runId !== context.runId) return undefined;
+		return outcome.changedNodeNames;
+	} catch (error) {
+		// Fail open: an unscoped setup equals the long-standing behavior (shows
+		// more, never less), while failing closed would block user-initiated
+		// setup on a storage hiccup.
+		context.logger.warn('Failed to resolve setup scope from the latest build outcome', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
+}
+
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
@@ -763,11 +811,20 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
-		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+		const allSetupRequests = await analyzeWorkflow(context, input.workflowId);
+
+		// Setup after a build covers only the nodes that build changed —
+		// pre-existing, unrelated nodes must not surface in the setup card.
+		const scopeNodeNames = input.includeAllNodes
+			? undefined
+			: await resolveSetupScopeNodeNames(context, input.workflowId);
+		const setupRequests = scopeNodeNames
+			? allSetupRequests.filter((request) => scopeNodeNames.includes(request.node.name))
+			: allSetupRequests;
 
 		// Validated against the workflow's node URLs so a recipe can't set one of
 		// the workflow's own (action) endpoints as its probe testUrl.
-		const nodeUrls = setupRequests.map((request) => request.node.parameters?.url);
+		const nodeUrls = allSetupRequests.map((request) => request.node.parameters?.url);
 		const hintProblems = (input.credentialHints ?? []).flatMap((hint) =>
 			findSetupHintProblems(hint, { nodeUrls }).map((problem) =>
 				hint.nodeName ? `${hint.nodeName}: ${problem}` : problem,
@@ -808,6 +865,21 @@ async function handleSetup(
 		}
 
 		if (setupRequests.length === 0) {
+			const skippedNodeNames = scopeNodeNames
+				? allSetupRequests
+						.map((request) => request.node.name)
+						.filter((name) => !scopeNodeNames.includes(name))
+				: [];
+			if (skippedNodeNames.length > 0) {
+				return {
+					success: true,
+					reason:
+						`No nodes changed by the latest build require setup. Pre-existing node(s) ${skippedNodeNames
+							.map((name) => `"${name}"`)
+							.join(', ')} have pending setup, but this change did not touch them — ` +
+						'do not route the user to set them up now. Only if the user explicitly asks to set them up, call setup again with includeAllNodes: true.',
+				};
+			}
 			return { success: true, reason: 'No nodes require setup.' };
 		}
 
@@ -893,7 +965,10 @@ async function handleUpdate(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
+	// Skip HITL for session-created or always-allowed workflows; others still need approval.
+	const needsApproval =
+		context.permissions?.updateWorkflow !== 'always_allow' &&
+		!canSkipWorkflowUpdateHitl(context, input.workflowId);
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
@@ -901,11 +976,19 @@ async function handleUpdate(
 			requestId: nanoid(),
 			message: `Update workflow "${workflowName}" (ID: ${input.workflowId})?`,
 			severity: 'warning' as const,
+			// Carried on the confirmation so the UI can scope "always allow" per workflow
+			// even if tool-call args are incomplete on resume.
+			workflowId: input.workflowId,
 		});
 	}
 
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
+	}
+
+	// "Always allow" — persist so later edits of this workflow skip HITL.
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await grantSessionWorkflowUpdate(context, input.workflowId);
 	}
 
 	if (!isWorkflowJson(input.workflow)) {

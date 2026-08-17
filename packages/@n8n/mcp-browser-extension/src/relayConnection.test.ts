@@ -47,6 +47,12 @@ const chrome = {
 			set: vi.fn().mockResolvedValue(undefined),
 		},
 	},
+	runtime: {
+		id: 'ourextensionid',
+	},
+	webNavigation: {
+		getAllFrames: vi.fn().mockResolvedValue([]),
+	},
 };
 Object.assign(globalThis, { chrome });
 
@@ -109,6 +115,12 @@ function parseSent(ws: MockWebSocket, index = 0): unknown {
 	return JSON.parse(ws.sent[index]);
 }
 
+function findSent(ws: MockWebSocket, method: string) {
+	return ws.sent
+		.map((frame) => JSON.parse(frame) as { method?: string; params?: Record<string, unknown> })
+		.find((frame) => frame.method === method);
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -119,6 +131,9 @@ describe('RelayConnection', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// clearAllMocks leaves `mockResolvedValueOnce` queues intact, so an
+		// unconsumed frame tree would surface in whichever test runs next.
+		chrome.webNavigation.getAllFrames.mockReset().mockResolvedValue([]);
 
 		ws = new MockWebSocket();
 		relay = new RelayConnection(ws as unknown as WebSocket);
@@ -626,8 +641,10 @@ describe('RelayConnection', () => {
 		relay.onclose = onclose;
 
 		fireDebuggerDetach({ tabId: 42 }, 'target_closed');
-
+		// The tab leaves the registry at once; the close follows the frame-tree probe.
 		expect(relay.getControlledIds()).toEqual([]);
+		await tick();
+
 		expect(ws.closed).toBe(true);
 		expect(onclose).toHaveBeenCalled();
 	});
@@ -791,6 +808,124 @@ describe('RelayConnection', () => {
 					}),
 				}),
 			);
+		});
+	});
+
+	describe('attributing a lost session to another extension', () => {
+		const OFFENDING_ID = 'offendingextensionid';
+
+		const frames = (...urls: string[]) => urls.map((url, frameId) => ({ frameId, url }));
+
+		/** What a password manager opening its autofill menu looks like on the wire. */
+		const openAutofillMenu = (frameId = 'f1') =>
+			fireDebuggerEvent({ tabId: 42 }, 'Page.frameRequestedNavigation', {
+				frameId,
+				disposition: 'currentTab',
+				url: `chrome-extension://${OFFENDING_ID}/inline/menu/menu.html`,
+			});
+
+		it('names the extension whose frame is in the tab when the session dies', async () => {
+			await registerAndAttach(42);
+			openAutofillMenu();
+			// By now Chrome has revoked us, so the probe sees the frame as about:blank
+			// and cannot help — the frame events are the only record of the URL.
+			chrome.webNavigation.getAllFrames.mockResolvedValueOnce(frames('about:blank'));
+
+			fireDebuggerDetach({ tabId: 42 }, 'target_closed');
+			await tick();
+
+			expect(findSent(ws, 'tabClosed')?.params).toEqual(
+				expect.objectContaining({
+					id: targetIdForTab(42),
+					reason: 'blocked_by_extension',
+					blockingExtensionIds: [OFFENDING_ID],
+				}),
+			);
+		});
+
+		it('attributes a command that fails because the session was revoked', async () => {
+			await registerAndAttach(42);
+			openAutofillMenu();
+			chrome.debugger.sendCommand.mockRejectedValueOnce(
+				new Error('Detached while handling command.'),
+			);
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 7,
+					method: 'forwardCDPCommand',
+					params: { method: 'Input.insertText', params: { text: 'n8n-integration' } },
+				}),
+			});
+			await tick();
+
+			const response = ws.sent
+				.map((frame) => JSON.parse(frame) as { id?: number; error?: string })
+				.find((frame) => frame.id === 7);
+
+			expect(response?.error).toContain(OFFENDING_ID);
+		});
+
+		it('leaves an ordinary failure unattributed', async () => {
+			await registerAndAttach(42);
+			chrome.debugger.sendCommand.mockRejectedValueOnce(new Error('No node with given id'));
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 8,
+					method: 'forwardCDPCommand',
+					params: { method: 'DOM.focus', params: {} },
+				}),
+			});
+			await tick();
+
+			const response = ws.sent
+				.map((frame) => JSON.parse(frame) as { id?: number; error?: string })
+				.find((frame) => frame.id === 8);
+
+			expect(response?.error).toContain('No node with given id');
+			expect(chrome.webNavigation.getAllFrames).not.toHaveBeenCalled();
+		});
+
+		it('attributes a denial that happens at attach time', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			chrome.debugger.attach.mockRejectedValueOnce(new Error('Cannot attach to this target.'));
+			chrome.webNavigation.getAllFrames.mockResolvedValueOnce(
+				frames('https://example.com', `chrome-extension://${OFFENDING_ID}/inline/menu.html`),
+			);
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 9,
+					method: 'forwardCDPCommand',
+					params: { method: 'Runtime.evaluate', params: {} },
+				}),
+			});
+			await tick();
+
+			const response = ws.sent
+				.map((frame) => JSON.parse(frame) as { id?: number; error?: string })
+				.find((frame) => frame.id === 9);
+
+			expect(response?.error).toContain(OFFENDING_ID);
+		});
+
+		it('reports every tab detaching in the same turn before closing', async () => {
+			await registerAndAttach(42);
+			await registerAndAttach(43);
+
+			fireDebuggerDetach({ tabId: 42 }, 'target_closed');
+			fireDebuggerDetach({ tabId: 43 }, 'target_closed');
+			await tick();
+
+			// Closing on the first probe to resolve would drop the second frame.
+			const closed = ws.sent
+				.map((frame) => JSON.parse(frame) as { method?: string; params?: { id?: string } })
+				.filter((frame) => frame.method === 'tabClosed')
+				.map((frame) => frame.params?.id);
+			expect(closed).toEqual([targetIdForTab(42), targetIdForTab(43)]);
+			expect(ws.closed).toBe(true);
 		});
 	});
 
@@ -968,6 +1103,8 @@ describe('RelayConnection', () => {
 			await relay.addTab(42, 'Test', 'https://test.com');
 
 			fireDebuggerDetach({ tabId: 42 }, 'target_closed');
+			await tick();
+
 			expect(ws.closeReason).toBe('debugger_detached');
 		});
 
