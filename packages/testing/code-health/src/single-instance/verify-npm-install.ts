@@ -197,66 +197,70 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 	mkdirSync(tarballs, { recursive: true });
 	mkdirSync(scratch, { recursive: true });
 
-	console.log(`Packing ${toPack.length} workspace package(s) (targets: ${targets.length})...`);
-	const tarballByName: Record<string, string> = {};
-	for (const name of toPack) {
-		const entry = byName.get(name);
-		if (!entry) continue;
-		const before = new Set(readdirSync(tarballs));
-		execFileSync('pnpm', ['pack', '--pack-destination', tarballs], {
-			cwd: entry.dir,
-			stdio: ['ignore', 'ignore', 'inherit'],
-		});
-		const produced = readdirSync(tarballs).find((f) => !before.has(f) && f.endsWith('.tgz'));
-		if (!produced) throw new Error(`pnpm pack produced no tarball for ${name}`);
-		tarballByName[name] = join(tarballs, produced);
-	}
+	// An enforcing-mode finding is the only reason to keep the tree. A report-only run exits 0 so
+	// nothing downstream reads it, and a throw (pack failure, registry outage) leaves nothing worth
+	// inspecting — either way, keeping it just leaks a full node_modules into tmpdir per run.
+	let keepScratch = false;
+	try {
+		console.log(`Packing ${toPack.length} workspace package(s) (targets: ${targets.length})...`);
+		const tarballByName: Record<string, string> = {};
+		for (const name of toPack) {
+			const entry = byName.get(name);
+			if (!entry) continue;
+			const before = new Set(readdirSync(tarballs));
+			execFileSync('pnpm', ['pack', '--pack-destination', tarballs], {
+				cwd: entry.dir,
+				stdio: ['ignore', 'ignore', 'inherit'],
+			});
+			const produced = readdirSync(tarballs).find((f) => !before.has(f) && f.endsWith('.tgz'));
+			if (!produced) throw new Error(`pnpm pack produced no tarball for ${name}`);
+			tarballByName[name] = join(tarballs, produced);
+		}
 
-	// Scratch project: install targets as file: deps, force ALL packed workspace deps to their
-	// local tarballs. Third-party deps resolve from the real npm registry.
-	const fileDep = (n: string): [string, string] => [n, `file:${tarballByName[n]}`];
-	const overrides = Object.fromEntries(toPack.map(fileDep));
-	const deps = Object.fromEntries(targets.map(fileDep));
-	writeFileSync(
-		join(scratch, 'package.json'),
-		JSON.stringify(
-			{ name: 'single-instance-scratch', private: true, dependencies: deps, overrides },
-			null,
-			2,
-		),
-	);
-
-	console.log('Installing into scratch dir with npm...');
-	await installWithRetry(scratch);
-
-	const { duplicates, failures } = analyze(collectCopies(scratch));
-
-	console.log(`\nnpm-install closure — scratch: ${scratch}\n`);
-	const curatedTag = reportOnly ? 'CURATED DUP (report)' : 'FAIL';
-	for (const d of duplicates) {
-		const tag = d.isCurated ? (d.allowed ? 'ALLOWED DUP' : curatedTag) : 'dup (report)';
-		console.log(
-			`  ${d.name}: ${tag} — ${d.copies.length} copies (${d.copies.map((c) => `v${c.version}`).join(', ')})`,
+		// Scratch project: install targets as file: deps, force ALL packed workspace deps to their
+		// local tarballs. Third-party deps resolve from the real npm registry.
+		const fileDep = (n: string): [string, string] => [n, `file:${tarballByName[n]}`];
+		const overrides = Object.fromEntries(toPack.map(fileDep));
+		const deps = Object.fromEntries(targets.map(fileDep));
+		writeFileSync(
+			join(scratch, 'package.json'),
+			JSON.stringify(
+				{ name: 'single-instance-scratch', private: true, dependencies: deps, overrides },
+				null,
+				2,
+			),
 		);
-	}
 
-	// Report-only exits 0, so nothing downstream will look at the tree — keeping it would just
-	// leak a full node_modules into tmpdir on every run.
-	const keepScratch = failures.length > 0 && !reportOnly;
-	if (keepScratch) console.log(`\nScratch install kept for inspection: ${scratch}`);
-	else rmSync(work, { recursive: true, force: true });
+		console.log('Installing into scratch dir with npm...');
+		await installWithRetry(scratch);
 
-	if (failures.length > 0) {
-		for (const f of failures) {
-			annotate(
-				`${f.name}: ${f.copies.length} copies in the npm-install graph (${f.copies.map((c) => `v${c.version}`).join(', ')})`,
+		const { duplicates, failures } = analyze(collectCopies(scratch));
+
+		console.log(`\nnpm-install closure — scratch: ${scratch}\n`);
+		const curatedTag = reportOnly ? 'CURATED DUP (report)' : 'FAIL';
+		for (const d of duplicates) {
+			const tag = d.isCurated ? (d.allowed ? 'ALLOWED DUP' : curatedTag) : 'dup (report)';
+			console.log(
+				`  ${d.name}: ${tag} — ${d.copies.length} copies (${d.copies.map((c) => `v${c.version}`).join(', ')})`,
 			);
 		}
-		console.error(
-			`\n${reportOnly ? 'REPORT' : 'FAIL'}: ${failures.length} curated library duplicate(s) in the npm-install graph.`,
-		);
-		return reportOnly ? 0 : 1;
+
+		if (failures.length > 0) {
+			keepScratch = !reportOnly;
+			for (const f of failures) {
+				annotate(
+					`${f.name}: ${f.copies.length} copies in the npm-install graph (${f.copies.map((c) => `v${c.version}`).join(', ')})`,
+				);
+			}
+			console.error(
+				`\n${reportOnly ? 'REPORT' : 'FAIL'}: ${failures.length} curated library duplicate(s) in the npm-install graph.`,
+			);
+			return reportOnly ? 0 : 1;
+		}
+		console.log('\nOK: no curated duplicates in the npm-install graph.');
+		return 0;
+	} finally {
+		if (keepScratch) console.log(`\nScratch install kept for inspection: ${scratch}`);
+		else rmSync(work, { recursive: true, force: true });
 	}
-	console.log('\nOK: no curated duplicates in the npm-install graph.');
-	return 0;
 }
