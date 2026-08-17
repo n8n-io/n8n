@@ -1,8 +1,8 @@
 import { resolve } from 'path';
 import type { Alias } from 'vite';
 
-// The reusable half lives in `@n8n/frontend-vite-config`: modules need the same mapping for their
-// own vitest run, and a module cannot import from the shell it plugs into.
+// `@n8n/frontend-vite-config` holds the part that modules also use. Each module needs the same
+// map for its own vitest run. A module must not import from the shell.
 import { shellAliases } from '@n8n/frontend-vite-config';
 
 export const appAliases = (editorUiDir: string): Alias[] => [

@@ -4,18 +4,19 @@ import type { Alias } from 'vite';
 // Edit the two tables that follow. Keep the tables at the top of this file.
 
 /**
- * Workspace packages the frontend consumes from source rather than from `dist`, so that an edit in
- * one of them hot-reloads the editor without a rebuild. `dir` is relative to `packages/`.
+ * The frontend reads these workspace packages from source, not from `dist`. An edit in one of them
+ * hot-reloads the editor with no rebuild. `dir` is relative to `packages/`.
  *
- * Must stay in step with editor-ui's tsconfig `paths` and with `tsconfig.frontend-module.json`:
- * when those disagreed, vue-tsc typechecked a package from `src` while the bundle was built from
- * its `dist`. `editor-ui/vite/aliases.test.ts` fails when they diverge and names what to update.
+ * Keep this table in step with the `paths` in `editor-ui/tsconfig.json` and in
+ * `tsconfig.frontend-module.json`. When they disagreed, vue-tsc read a package from `src`, but the
+ * bundle used the `dist` of that package. `editor-ui/vite/aliases.test.ts` fails when they
+ * disagree. The test names the file to correct.
  *
- * It lives here rather than in editor-ui because every `packages/modules/<name>/frontend` needs the
- * same mapping for its own vitest run, and a module cannot import from the shell it plugs into.
+ * This table stays here, not in editor-ui. Each `packages/modules/<name>/frontend` needs the same
+ * map for its own vitest run. A module must not import from the shell.
  *
- * `entry: false` marks packages with no `src/index.ts`. Their `exports` map has no `.`, so a bare
- * import of them does not resolve at all and must not be aliased.
+ * `entry: false` marks a package with no `src/index.ts`. The `exports` map of such a package has no
+ * `.` key. A bare import of it does not resolve, so do not make an alias for it.
  */
 export const sourcePackages = [
 	{ name: '@n8n/api-types', dir: '@n8n/api-types' },
@@ -35,9 +36,11 @@ export const sourcePackages = [
 ];
 
 /**
- * Feature module packages, appended by `n8n-module-sdk create`. Kept separate from the table above
- * because only the shell may resolve them: a module aliasing its siblings would let an accidental
- * cross-module import resolve at test time, which is the boundary the module tsconfig base holds.
+ * `n8n-module-sdk create` adds a feature module package to this table. Only the shell resolves
+ * these packages, so they stay out of the table above.
+ *
+ * A module that aliases the other modules lets a cross-module import resolve in its own test run.
+ * The module tsconfig base holds that boundary.
  */
 export const modulePackages: Array<{ name: string; dir: string; entry?: boolean }> = [];
 
@@ -48,10 +51,12 @@ export const modulePackages: Array<{ name: string; dir: string; entry?: boolean 
 const escapeForRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
- * Each package gets a slash-delimited, anchored pair — `^@n8n/chat$` and `^@n8n/chat/(.+)$`. One
- * open-ended `^@n8n/chat(.+)$` would match `@n8n/chat-hub/…` as well, and would leave the bare
- * `@n8n/chat` unmatched — `(.+)` needs a character after the package name — falling through to
- * `dist`.
+ * Each package gets two anchored patterns: `^@n8n/chat$` and `^@n8n/chat/(.+)$`. The slash keeps
+ * them apart.
+ *
+ * One open pattern `^@n8n/chat(.+)$` also matches `@n8n/chat-hub/…`. It does not match the bare
+ * `@n8n/chat`, because `(.+)` needs one more character after the name. That bare import then
+ * resolves to `dist`.
  */
 const expand = (packagesDir: string, packages: typeof modulePackages): Alias[] =>
 	packages.flatMap(({ name, dir, entry = true }) => {
@@ -69,29 +74,32 @@ const expand = (packagesDir: string, packages: typeof modulePackages): Alias[] =
 export const frontendSourceAliases = (packagesDir: string): Alias[] =>
 	expand(packagesDir, sourcePackages);
 
-/** Shell-only — see `modulePackages`. */
+/** Only the shell uses this map. See `modulePackages`. */
 export const frontendModuleAliases = (packagesDir: string): Alias[] =>
 	expand(packagesDir, modulePackages);
 
 /**
- * Packages reached *transitively*: they are not a declared dependency of anyone, so they cannot sit
- * in the source-packages table.
+ * `n8n-workflow` imports `astVisit` from `@n8n/tournament` for its expression sandbox. Nothing
+ * declares `@n8n/tournament` as a dependency, so it cannot go in the table above.
  *
- * `n8n-workflow`'s expression-sandboxing imports `astVisit` from `@n8n/tournament`, whose dist is
- * CJS. Linked workspace packages skip optimizeDeps, so the dev server serves that file verbatim and
- * the browser fails to parse a named export out of it; the build survives because rolldown interops
- * CJS, but pays ~397 kB in defeated tree-shaking. Resolving to src avoids both.
+ * The `dist` of `@n8n/tournament` is CJS. Vite skips optimizeDeps for a linked workspace package,
+ * so the dev server sends that file as it is. The browser then fails to parse a named export from
+ * it.
+ *
+ * The production build works, because rolldown reads CJS. But the build loses tree-shaking and
+ * adds approximately 397 kB. An alias to `src` prevents both problems.
  */
 export const transitiveWorkspaceAliases = (packagesDir: string): Alias[] => [
 	{ find: '@n8n/tournament', replacement: resolve(packagesDir, '@n8n', 'tournament', 'src') },
 ];
 
 /**
- * Shell-only, deliberately out of `frontendAliases`: these replacements are bare specifiers
- * resolved from the consumer's own `node_modules`, and only editor-ui declares `lodash` and
- * `stream-browserify`. Shared with a module's vitest, a value import of `stream` anywhere in its
- * graph would fail to resolve — latent today only because `n8n-workflow` imports `stream` as a
- * type.
+ * Only the shell uses these rewrites, so they stay out of `frontendAliases`. Each one points to a
+ * bare specifier, which resolves from the `node_modules` of the consumer. Only editor-ui declares
+ * `lodash` and `stream-browserify`.
+ *
+ * If a module vitest run used this map, a value import of `stream` in its graph would not resolve.
+ * The problem is hidden today, because `n8n-workflow` imports `stream` as a type only.
  */
 export const vendorAliases = (): Alias[] => [
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
@@ -99,13 +107,13 @@ export const vendorAliases = (): Alias[] => [
 		replacement: `lodash/${name}`,
 	})),
 	{ find: /^lodash\.(.+)$/, replacement: 'lodash/$1' },
-	// `n8n-workflow` reaches Node's `stream` in a browser graph.
+	// `n8n-workflow` uses the `stream` module of Node in a browser graph.
 	{ find: 'stream', replacement: 'stream-browserify' },
 ];
 
 /**
- * Every entry rewrites to an absolute path under `packages/`, which is what makes the set safe to
- * share from any directory — `aliases.test.ts` holds that line.
+ * Each entry points to an absolute path under `packages/`. A consumer in any directory can use this
+ * set, because the paths are absolute. `aliases.test.ts` tests that rule.
  */
 export const frontendAliases = (packagesDir: string): Alias[] => [
 	...frontendSourceAliases(packagesDir),
@@ -113,7 +121,8 @@ export const frontendAliases = (packagesDir: string): Alias[] => [
 ];
 
 /**
- * Order is resolution order: vendor rewrites stay last, where they sat before this package existed.
+ * Vite uses the first match, so the order here is the resolution order. The vendor rewrites stay
+ * last, where they were before this package existed.
  */
 export const shellAliases = (packagesDir: string): Alias[] => [
 	...frontendAliases(packagesDir),

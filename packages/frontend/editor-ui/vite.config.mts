@@ -1,4 +1,5 @@
-// Every import here must resolve without a build step; dist-only deps go in `vitest.config.mts`.
+// Each import in this file must resolve with no build step.
+// Put an import that needs a `dist` in `vitest.config.mts`.
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, type UserConfig } from 'vite';

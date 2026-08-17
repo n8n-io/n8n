@@ -3,6 +3,6 @@ import { mergeConfig } from 'vitest/config';
 
 import viteConfig from './vite.config.mjs';
 
-// Separate from `vite.config.mts` because `@n8n/vitest-config` resolves to its `dist`, which only
-// `test` is guaranteed to have — it runs under turbo, which builds dependencies first.
+// This file is separate from `vite.config.mts`, because `@n8n/vitest-config` resolves to its
+// `dist`. Only `test` always has that `dist`, because turbo builds the dependencies before `test`.
 export default mergeConfig(viteConfig, vitestConfig);

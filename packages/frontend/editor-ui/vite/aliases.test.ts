@@ -7,14 +7,14 @@ import { frontendAliases, modulePackages, sourcePackages } from '@n8n/frontend-v
 
 import { editorUiAliases } from './aliases.mjs';
 
-// vitest runs with the package root as cwd; `import.meta.url` is not a file URL under jsdom.
+// vitest sets the cwd to the package root. Under jsdom, `import.meta.url` is not a file URL.
 const editorUiDir = process.cwd();
 const packagesDir = resolve(editorUiDir, '..', '..');
 const repoRoot = resolve(packagesDir, '..');
 
 const MODULE_TSCONFIG = join(repoRoot, 'packages', '@n8n', 'typescript-config');
 
-/** tsconfigs are JSONC. The frontend ones only ever carry whole-line `//` comments. */
+/** A tsconfig file is JSONC. The frontend ones carry only whole-line `//` comments. */
 const readTsconfig = (file: string) =>
 	JSON.parse(
 		readFileSync(file, 'utf8')
@@ -23,7 +23,7 @@ const readTsconfig = (file: string) =>
 			.join('\n'),
 	) as { compilerOptions?: { paths?: Record<string, string[]> } };
 
-/** Normalised so the terse `"@n8n/x*"` form and the explicit `"@n8n/x"` + `"@n8n/x/*"` pair compare equal. */
+/** This function makes the short `"@n8n/x*"` form equal to the `"@n8n/x"` plus `"@n8n/x/*"` pair. */
 const pathsByPackage = (file: string) => {
 	const paths = readTsconfig(file).compilerOptions?.paths ?? {};
 	const byPackage = new Map<string, string>();
@@ -40,8 +40,11 @@ const pathsByPackage = (file: string) => {
 };
 
 /**
- * Mirrors vite's resolve plugin: first match wins, rewrite via `String.replace`. An unmatched
- * specifier falls through to node resolution, which lands on the package's built `dist`.
+ * This function copies the resolve plugin of vite. The first match wins. The function then calls
+ * `String.replace`.
+ *
+ * If no pattern matches, node resolution takes the specifier. Node resolution finds the built
+ * `dist` of the package.
  */
 const resolveSpecifier = (specifier: string, aliases: Alias[]): string => {
 	const matched = aliases.find(({ find }) =>
@@ -54,7 +57,7 @@ const resolveSpecifier = (specifier: string, aliases: Alias[]): string => {
 
 	const target = specifier.replace(matched.find, matched.replacement);
 
-	// A directory target and its `index.ts` are the same module; only the spelling differs.
+	// A directory target and its `index.ts` are the same module. Only the text is different.
 	const asIndex = join(target, 'index.ts');
 	return relative(repoRoot, existsSync(asIndex) ? asIndex : target);
 };
@@ -63,7 +66,8 @@ describe('editor-ui vite aliases', () => {
 	const aliases = editorUiAliases(editorUiDir, packagesDir);
 	const editorUiPaths = pathsByPackage(join(editorUiDir, 'tsconfig.json'));
 
-	// Not hypothetical: four packages spent months typechecked from `src` while built from `dist`.
+	// This is a real failure. For months, four packages used `src` for the typecheck and `dist`
+	// for the build.
 	it.each([...sourcePackages, ...modulePackages])(
 		'resolves $name to the same src as tsconfig does',
 		({ name, dir }) => {
@@ -78,14 +82,16 @@ describe('editor-ui vite aliases', () => {
 	it('aliases every source package editor-ui typechecks from src', () => {
 		const aliased = new Set([...sourcePackages, ...modulePackages].map(({ name }) => name));
 		const pathed = [...editorUiPaths.keys()]
-			// editor-ui's own browser stub, not a package consumed from source.
+			// This is the browser stub of editor-ui. It is not a package that the frontend reads from
+			// source.
 			.filter((name) => name !== '@n8n/expression-runtime');
 
 		expect(pathed.filter((name) => !aliased.has(name))).toEqual([]);
 	});
 
 	it('agrees with the shared module tsconfig base', () => {
-		// Disagreement typechecks modules against a src the editor never bundles.
+		// If the two files disagree, the typecheck of a module uses a `src` that the editor never
+		// bundles.
 		const modulePaths = pathsByPackage(join(MODULE_TSCONFIG, 'tsconfig.frontend-module.json'));
 
 		for (const [name, srcDir] of modulePaths) {
@@ -94,8 +100,9 @@ describe('editor-ui vite aliases', () => {
 	});
 
 	it('resolves @n8n/tournament from source', () => {
-		// Transitive via `n8n-workflow`, so not a declared dependency and not in `sourcePackages`.
-		// Its dist is CJS: named-export parse failure in dev, ~397 kB of defeated tree-shaking.
+		// `n8n-workflow` brings in this package. Nothing declares it, so it is not in
+		// `sourcePackages`. Its `dist` is CJS. The dev server gives a parse error for a named export.
+		// The build loses tree-shaking and adds approximately 397 kB.
 		expect(resolveSpecifier('@n8n/tournament', aliases)).toBe(
 			'packages/@n8n/tournament/src/index.ts',
 		);
@@ -117,15 +124,16 @@ describe('editor-ui vite aliases', () => {
 	});
 
 	it('shares only aliases that resolve to workspace source', () => {
-		// Every `packages/modules/*/frontend` vitest spreads this set, and a module's `node_modules`
-		// is not the shell's — a rewrite to a bare specifier only editor-ui declares breaks there.
+		// Each `packages/modules/*/frontend` vitest run uses this set. The `node_modules` of a module
+		// is not the `node_modules` of the shell. A rewrite to a bare specifier that only editor-ui
+		// declares fails there.
 		const shared = frontendAliases(packagesDir).map(({ replacement }) => replacement);
 
 		expect(shared.filter((replacement) => !replacement.startsWith(packagesDir))).toEqual([]);
 	});
 
 	it('resolves a package and its subpaths independently of entry order', () => {
-		// An open-ended `^@n8n/chat(.+)$` would also match `@n8n/chat-hub/…`.
+		// One open pattern `^@n8n/chat(.+)$` also matches `@n8n/chat-hub/…`.
 		expect(resolveSpecifier('@n8n/chat-hub/api', aliases)).toBe('packages/@n8n/chat-hub/src/api');
 		expect(resolveSpecifier('@n8n/chat-hub/api', [...aliases].reverse())).toBe(
 			'packages/@n8n/chat-hub/src/api',

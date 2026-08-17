@@ -4,7 +4,7 @@
 		"types": ["node"],
 		"module": "ESNext",
 		"moduleResolution": "bundler",
-		// Consumed from source, so nothing should ever emit `.js` beside these files.
+		// The frontend reads this package from source. No command must emit a `.js` file here.
 		"noEmit": true
 	},
 	"include": ["**/*.ts"]
