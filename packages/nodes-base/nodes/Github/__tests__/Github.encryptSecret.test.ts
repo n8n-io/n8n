@@ -1,5 +1,8 @@
 import { encryptSecret } from '../GenericFunctions';
 
+// crypto_box_SEALBYTES: a 32-byte ephemeral public key plus a 16-byte MAC
+const SEALED_BOX_OVERHEAD = 48;
+
 describe('Github GenericFunctions - Secret Encryption', () => {
 	describe('encryptSecret', () => {
 		it('should encrypt a secret value using the public key', async () => {
@@ -10,13 +13,15 @@ describe('Github GenericFunctions - Secret Encryption', () => {
 
 			const encrypted = await encryptSecret(secretValue, testPublicKey);
 
-			// Verify result is base64 encoded
-			expect(encrypted).toBeDefined();
+			// Verify the result is canonical base64 that round-trips
 			expect(typeof encrypted).toBe('string');
-			expect(encrypted.length).toBeGreaterThan(0);
+			expect(encrypted).toMatch(/^[A-Za-z0-9+/]+={0,2}$/);
+			expect(Buffer.from(encrypted, 'base64').toString('base64')).toBe(encrypted);
 
-			// Verify it's valid base64
-			expect(() => Buffer.from(encrypted, 'base64')).not.toThrow();
+			// A libsodium sealed box adds a 32-byte ephemeral public key and a 16-byte MAC
+			expect(Buffer.from(encrypted, 'base64')).toHaveLength(
+				Buffer.byteLength(secretValue, 'utf8') + SEALED_BOX_OVERHEAD,
+			);
 		});
 
 		it('should produce different encrypted values for same input (due to random nonce)', async () => {
@@ -36,8 +41,8 @@ describe('Github GenericFunctions - Secret Encryption', () => {
 
 			const encrypted = await encryptSecret(secretValue, testPublicKey);
 
-			expect(encrypted).toBeDefined();
-			expect(typeof encrypted).toBe('string');
+			// An empty plaintext still produces the sealed-box header and MAC
+			expect(Buffer.from(encrypted, 'base64')).toHaveLength(SEALED_BOX_OVERHEAD);
 		});
 
 		it('should handle unicode characters in secret value', async () => {
@@ -46,8 +51,10 @@ describe('Github GenericFunctions - Secret Encryption', () => {
 
 			const encrypted = await encryptSecret(secretValue, testPublicKey);
 
-			expect(encrypted).toBeDefined();
-			expect(typeof encrypted).toBe('string');
+			// Length is derived from the UTF-8 byte count, not the JS string length
+			expect(Buffer.from(encrypted, 'base64')).toHaveLength(
+				Buffer.byteLength(secretValue, 'utf8') + SEALED_BOX_OVERHEAD,
+			);
 		});
 
 		it('should handle long secret values', async () => {
@@ -56,8 +63,9 @@ describe('Github GenericFunctions - Secret Encryption', () => {
 
 			const encrypted = await encryptSecret(secretValue, testPublicKey);
 
-			expect(encrypted).toBeDefined();
-			expect(typeof encrypted).toBe('string');
+			expect(Buffer.from(encrypted, 'base64')).toHaveLength(
+				secretValue.length + SEALED_BOX_OVERHEAD,
+			);
 		});
 
 		it('should handle special characters in secret value', async () => {
@@ -66,8 +74,9 @@ describe('Github GenericFunctions - Secret Encryption', () => {
 
 			const encrypted = await encryptSecret(secretValue, testPublicKey);
 
-			expect(encrypted).toBeDefined();
-			expect(typeof encrypted).toBe('string');
+			expect(Buffer.from(encrypted, 'base64')).toHaveLength(
+				Buffer.byteLength(secretValue, 'utf8') + SEALED_BOX_OVERHEAD,
+			);
 		});
 	});
 });
