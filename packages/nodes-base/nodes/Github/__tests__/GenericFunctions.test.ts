@@ -7,6 +7,7 @@ import {
 	githubApiRequestAllItems,
 	isBase64,
 	validateJSON,
+	validateSecretName,
 } from '../GenericFunctions';
 import type { Mock } from 'vitest';
 
@@ -177,5 +178,35 @@ describe('GenericFunctions', () => {
 
 			expect(result).toBeUndefined();
 		});
+	});
+
+	describe('validateSecretName', () => {
+		it.each(['MY_SECRET', 'my_secret', 'Secret2', '_LEADING_UNDERSCORE', 'GITHUBBER'])(
+			'should accept %s',
+			(secretName) => {
+				expect(validateSecretName(secretName)).toBeUndefined();
+			},
+		);
+
+		it.each([
+			['spaces', 'MY SECRET'],
+			['a leading digit', '1SECRET'],
+			['hyphens', 'MY-SECRET'],
+			['dots', 'MY.SECRET'],
+			['non-ASCII characters', 'SECRÈT'],
+		])('should reject a name with %s', (_label, secretName) => {
+			expect(validateSecretName(secretName)).toContain('is invalid');
+		});
+
+		it('should reject an empty name', () => {
+			expect(validateSecretName('')).toBe('Secret name is required.');
+		});
+
+		it.each(['GITHUB_TOKEN', 'github_token', 'GitHub_Anything'])(
+			'should reject the reserved prefix in %s',
+			(secretName) => {
+				expect(validateSecretName(secretName)).toContain('GITHUB_');
+			},
+		);
 	});
 });
