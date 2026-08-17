@@ -163,4 +163,8 @@ describe('DurablePollerGateService (integration)', () => {
 			{ workflow_ids: [offender.id], deleted_cursor_rows: 1 },
 		);
 	});
+
+	test('deleting cursors for no workflows touches nothing and reports zero rows', async () => {
+		await expect(pollerStateRepository.deleteWorkflowCursors([])).resolves.toBe(0);
+	});
 });

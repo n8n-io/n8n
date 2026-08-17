@@ -127,6 +127,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 	 * static-data cursor for good.
 	 */
 	async deleteWorkflowCursors(workflowIds: string[], ctx: OperationContext = {}): Promise<number> {
+		if (workflowIds.length === 0) return 0;
 		const result = await this.managerFor(ctx).delete(PollerState, {
 			workflowId: In(workflowIds),
 		});
