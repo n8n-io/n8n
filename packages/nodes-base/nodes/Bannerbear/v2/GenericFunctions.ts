@@ -86,6 +86,23 @@ export function flattenImageFiles(image: IDataObject): IDataObject {
 }
 
 /**
+ * Animations return `files` keyed by format (mp4, or mov when transparent).
+ */
+export function flattenAnimationFiles(animation: IDataObject): IDataObject {
+	const files = (animation.files ?? {}) as IDataObject;
+	const preferred = ['mp4', 'mov'];
+
+	for (const [format, url] of Object.entries(files)) {
+		animation[`${format}Url`] = url;
+	}
+
+	const primary = preferred.find((format) => files[format]) ?? Object.keys(files)[0];
+	animation.animationUrl = primary ? files[primary] : null;
+
+	return animation;
+}
+
+/**
  * Tool endpoints are async: they return 202 with a pending job. Poll until the
  * job settles, or return the pending job once the caller's budget runs out.
  */
