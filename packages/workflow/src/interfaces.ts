@@ -393,6 +393,7 @@ export interface ICredentialType {
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
+	__showManagedOAuthScopes?: boolean;
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,
