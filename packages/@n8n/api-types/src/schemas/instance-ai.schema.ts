@@ -1763,6 +1763,79 @@ export interface InstanceAiAdminSettingsResponse {
 	browserUseEnabled: boolean;
 }
 
+export type InstanceAiComponentSource = 'ui' | 'env' | 'none';
+export type InstanceAiWebSearchSource = InstanceAiComponentSource | 'disabled';
+
+export type InstanceAiSetupStateInput = Pick<
+	InstanceAiAdminSettingsResponse,
+	| 'modelEnvConfigured'
+	| 'modelCredentialId'
+	| 'modelName'
+	| 'sandboxEnabled'
+	| 'sandboxEnvConfigured'
+	| 'sandboxProvider'
+	| 'daytonaCredentialId'
+	| 'n8nSandboxCredentialId'
+	| 'searchCredentialId'
+	| 'searchEnvConfigured'
+	| 'searchDisabled'
+>;
+
+export interface InstanceAiSetupState {
+	modelSource: InstanceAiComponentSource;
+	sandboxSource: InstanceAiComponentSource;
+	sandboxType: InstanceAiSandboxProvider | null;
+	/** Credential assigned for the selected sandbox provider; a credential for the other provider does not count. */
+	sandboxCredentialId: string | null;
+	webSearchSource: InstanceAiWebSearchSource;
+	/** Model and sandbox configured, and web search decided (configured or explicitly disabled). */
+	setupCompleted: boolean;
+}
+
+/**
+ * How each AI Assistant setup component is configured, derived from the admin
+ * settings response. Single source of truth for the setup gate and the setup
+ * telemetry snapshot, on both backend and frontend. The response already
+ * resolves precedence (credential ids are null when env config wins), so env
+ * before ui here does not shadow a UI selection.
+ */
+export function deriveInstanceAiSetupState(
+	settings: InstanceAiSetupStateInput,
+): InstanceAiSetupState {
+	const modelSource: InstanceAiComponentSource = settings.modelEnvConfigured
+		? 'env'
+		: settings.modelCredentialId && settings.modelName
+			? 'ui'
+			: 'none';
+	const sandboxCredentialId =
+		settings.sandboxProvider === 'daytona'
+			? settings.daytonaCredentialId
+			: settings.n8nSandboxCredentialId;
+	const sandboxSource: InstanceAiComponentSource = !settings.sandboxEnabled
+		? 'none'
+		: settings.sandboxEnvConfigured
+			? 'env'
+			: sandboxCredentialId
+				? 'ui'
+				: 'none';
+	const webSearchSource: InstanceAiWebSearchSource = settings.searchCredentialId
+		? 'ui'
+		: settings.searchEnvConfigured
+			? 'env'
+			: settings.searchDisabled
+				? 'disabled'
+				: 'none';
+	return {
+		modelSource,
+		sandboxSource,
+		sandboxType: sandboxSource === 'none' ? null : settings.sandboxProvider,
+		sandboxCredentialId,
+		webSearchSource,
+		setupCompleted:
+			modelSource !== 'none' && sandboxSource !== 'none' && webSearchSource !== 'none',
+	};
+}
+
 /**
  * Inline provider-connection payload: the credential type plus its field
  * values. `null` clears the connection (and falls back to env config).

@@ -140,6 +140,9 @@ describe('TelemetryEventRelay', () => {
 			sandboxProvider: 'n8n-sandbox',
 			braveSearchApiKey: '',
 			searxngUrl: '',
+			model: 'anthropic/claude-sonnet-4',
+			modelApiKey: '',
+			modelUrl: '',
 		},
 		instanceSettingsLoader: getDefaultInstanceSettingsLoaderConfig(),
 	});
@@ -2930,6 +2933,8 @@ describe('TelemetryEventRelay', () => {
 						sandbox_provider: 'daytona',
 						search_brave_set: true,
 						search_searxng_set: false,
+						model_env_set: false,
+						model_id: 'anthropic/claude-sonnet-4',
 					},
 				}),
 			);

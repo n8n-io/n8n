@@ -12,6 +12,7 @@ import {
 	INSTANCE_AI_SEARCH_PROVIDERS,
 } from '../instanceAiConnection.constants';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
 import InstanceAiOnboardingIntro from './InstanceAiOnboardingIntro.vue';
 import InstanceAiOnboardingWizard from './InstanceAiOnboardingWizard.vue';
 import { useInstanceAiOnboarding, type InstanceAiOnboardingStep } from './useInstanceAiOnboarding';
@@ -118,6 +119,8 @@ async function turnOff(): Promise<void> {
 	});
 	await router.push({ name: VIEWS.HOMEPAGE });
 }
+
+useSetupPageViewTelemetry('onboarding');
 
 onMounted(async () => {
 	await Promise.all([store.fetch(), credentialsStore.fetchCredentialTypes(false)]);

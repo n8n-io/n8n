@@ -1,42 +1,45 @@
-import type { InstanceAiAdminSettingsResponse, InstanceAiProviderConnection } from '@n8n/api-types';
+import { deriveInstanceAiSetupState } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiProviderConnection,
+	InstanceAiWebSearchSource,
+} from '@n8n/api-types';
 
 export type InstanceAiSearchState = 'set' | 'env' | 'disabled' | 'notset';
+
+const SEARCH_STATE_BY_SOURCE: Record<InstanceAiWebSearchSource, InstanceAiSearchState> = {
+	ui: 'set',
+	env: 'env',
+	disabled: 'disabled',
+	none: 'notset',
+};
 
 export function deriveInstanceAiConfiguration(
 	settings: InstanceAiAdminSettingsResponse | null,
 	modelCredentials: InstanceAiProviderConnection[],
 	serviceCredentials: InstanceAiProviderConnection[],
 ) {
+	const state = settings ? deriveInstanceAiSetupState(settings) : null;
 	const modelCredential = modelCredentials.find(
 		(credential) => credential.id === settings?.modelCredentialId,
-	);
-	const modelConfigured = Boolean(
-		settings?.modelEnvConfigured || (settings?.modelCredentialId && settings.modelName),
-	);
-	const sandboxCredentialId =
-		settings?.sandboxProvider === 'daytona'
-			? settings.daytonaCredentialId
-			: settings?.n8nSandboxCredentialId;
-	const sandboxConfigured = Boolean(
-		settings?.sandboxEnabled && (sandboxCredentialId || settings.sandboxEnvConfigured),
 	);
 	const searchCredential = serviceCredentials.find(
 		(credential) => credential.id === settings?.searchCredentialId,
 	);
-	let searchState: InstanceAiSearchState = 'notset';
-	if (settings?.searchCredentialId) searchState = 'set';
-	else if (settings?.searchEnvConfigured) searchState = 'env';
-	else if (settings?.searchDisabled) searchState = 'disabled';
+	const modelConfigured = state !== null && state.modelSource !== 'none';
+	const sandboxConfigured = state !== null && state.sandboxSource !== 'none';
+	const searchState: InstanceAiSearchState = state
+		? SEARCH_STATE_BY_SOURCE[state.webSearchSource]
+		: 'notset';
 
-	const setupCompleted = modelConfigured && sandboxConfigured && searchState !== 'notset';
 	return {
 		modelCredential,
 		modelConfigured,
-		sandboxCredentialId,
+		sandboxCredentialId: state?.sandboxCredentialId ?? null,
 		sandboxConfigured,
 		searchCredential,
 		searchState,
-		setupCompleted,
+		setupCompleted: state?.setupCompleted ?? false,
 		hasSetupProgress: modelConfigured || sandboxConfigured || searchState !== 'notset',
 	};
 }

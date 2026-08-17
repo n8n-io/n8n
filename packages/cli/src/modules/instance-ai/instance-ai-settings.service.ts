@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	deriveInstanceAiSetupState,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
 } from '@n8n/api-types';
@@ -82,7 +83,7 @@ export interface InstanceAiSandboxStatus {
 }
 
 /** Credential types we support and their model provider mapping. */
-const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
+export const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	openAiApi: 'openai',
 	anthropicApi: 'anthropic',
 	googlePalmApi: 'google',
@@ -261,12 +262,12 @@ interface PreparedConnection {
 	encryptedData?: ICredentialsDb;
 }
 
-interface AdminModelSelection {
+export interface AdminModelSelection {
 	modelCredentialId: string | null;
 	modelName: string | null;
 }
 
-interface AdminCredentialSelection extends AdminModelSelection {
+export interface AdminCredentialSelection extends AdminModelSelection {
 	daytonaCredentialId: string | null;
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
@@ -600,9 +601,8 @@ export class InstanceAiSettingsService {
 						: settingsUpdate.sandboxProvider,
 		);
 		await this.runConnectionHooks([modelPrepared, searchPrepared, sandboxPrepared]);
-		const { previous, next, credentialSelection } = await this.dbLockService.withLockContext(
-			DbLock.INSTANCE_AI_SETTINGS,
-			async (ctx) => {
+		const { previous, next, credentialSelection, previousSelection } =
+			await this.dbLockService.withLockContext(DbLock.INSTANCE_AI_SETTINGS, async (ctx) => {
 				if (user && modelConnection !== undefined) {
 					modelCredentialId = await this.upsertConnection(
 						user,
@@ -767,11 +767,25 @@ export class InstanceAiSettingsService {
 						n8nSandboxCredentialId: nextN8nCredentialId,
 						searchCredentialId: nextSearchCredentialId,
 					} satisfies AdminCredentialSelection,
+					previousSelection: {
+						modelCredentialId: currentModelCredentialId,
+						modelName: current.modelName ?? null,
+						daytonaCredentialId: currentDaytonaCredentialId,
+						n8nSandboxCredentialId: currentN8nCredentialId,
+						searchCredentialId: currentSearchCredentialId,
+					} satisfies AdminCredentialSelection,
 				};
-			},
-		);
+			});
 		this.applyAdminSettings(next);
-		this.emitSettingsUpdated(previous, next);
+		this.emitSettingsUpdated(previous, next, {
+			previous: previousSelection,
+			next: credentialSelection,
+			connectionsUpdated: {
+				model: modelConnection !== undefined && modelConnection !== null,
+				sandbox: sandboxConnection !== undefined && sandboxConnection !== null,
+				search: searchConnection !== undefined && searchConnection !== null,
+			},
+		});
 
 		return this.buildAdminSettingsResponse(credentialSelection);
 	}
@@ -1313,21 +1327,7 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId,
 			searchCredentialId,
 		});
-		const modelConfigured = Boolean(
-			response.modelEnvConfigured || (response.modelCredentialId && response.modelName),
-		);
-		const sandboxCredentialId =
-			response.sandboxProvider === 'daytona'
-				? response.daytonaCredentialId
-				: response.n8nSandboxCredentialId;
-		const sandboxConfigured = Boolean(
-			response.sandboxEnabled && (response.sandboxEnvConfigured || sandboxCredentialId),
-		);
-		const searchDecided = Boolean(
-			response.searchEnvConfigured || response.searchCredentialId || response.searchDisabled,
-		);
-
-		return modelConfigured && sandboxConfigured && searchDecided;
+		return deriveInstanceAiSetupState(response).setupCompleted;
 	}
 
 	getConfiguredModelId(): string {
@@ -1830,12 +1830,18 @@ export class InstanceAiSettingsService {
 	private emitSettingsUpdated(
 		previous: PersistedAdminSettings,
 		current: PersistedAdminSettings,
+		credentialSelections?: {
+			previous: AdminCredentialSelection;
+			next: AdminCredentialSelection;
+			connectionsUpdated: { model: boolean; sandbox: boolean; search: boolean };
+		},
 	): void {
 		try {
 			this.eventService.emit('instance-ai-settings-updated', {
 				mcpSettingsChanged:
 					current.mcpServers !== previous.mcpServers ||
 					current.mcpAccessEnabled !== previous.mcpAccessEnabled,
+				credentialSelections,
 			});
 		} catch (error) {
 			Container.get(Logger)
