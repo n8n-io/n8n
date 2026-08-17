@@ -131,17 +131,20 @@ describe('Slack recorded integration replay', () => {
 					integrationType: 'slack',
 				}),
 			);
+			// The conversation anchors at the DM message's own ts: the reply posts
+			// inside that message's thread and the context targets it.
 			expect(ctx.latestContext()).toMatchObject({
 				platform: 'slack',
 				messageId: '1782379185.654229',
 				interactingUserId: 'U_USER',
 				target: {
-					threadId: 'slack:D_DM:',
+					threadId: 'slack:D_DM:1782379185.654229',
 					channelId: 'slack:D_DM',
 				},
 			});
 			expect(ctx.lastPost()?.body).toMatchObject({
 				channel: 'D_DM',
+				thread_ts: '1782379185.654229',
 				markdown_text: "I'm Assistant.",
 			});
 		} finally {

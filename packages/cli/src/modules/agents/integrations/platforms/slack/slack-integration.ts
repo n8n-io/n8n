@@ -115,6 +115,18 @@ export class SlackIntegration extends AgentChatIntegration {
 		await subscribeSlackThread(thread);
 	}
 
+	/**
+	 * A top-level Slack message (outbound post or inbound DM) travels through a
+	 * channel-level thread id with an empty thread_ts (`slack:C123:`). The
+	 * message's own ts anchors the thread where replies belong, so re-anchor
+	 * there.
+	 */
+	messageThreadId(message: { id: string; threadId: string }): string | undefined {
+		const [platform, channel, threadTs] = message.threadId.split(':');
+		if (platform !== 'slack' || !channel || threadTs) return undefined;
+		return `slack:${channel}:${message.id}`;
+	}
+
 	getPlatformAgentContext(chat: ChatInstance): PlatformAgentContext {
 		return getSlackPlatformAgentContext(chat);
 	}

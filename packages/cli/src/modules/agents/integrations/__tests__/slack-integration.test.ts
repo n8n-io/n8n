@@ -156,6 +156,29 @@ describe('SlackIntegration', () => {
 		});
 	});
 
+	describe('messageThreadId', () => {
+		it('anchors a top-level post at the sent message ts', () => {
+			expect(integration.messageThreadId({ id: '123.456', threadId: 'slack:C123:' })).toBe(
+				'slack:C123:123.456',
+			);
+			expect(integration.messageThreadId({ id: '123.456', threadId: 'slack:D123:' })).toBe(
+				'slack:D123:123.456',
+			);
+		});
+
+		it('returns undefined when the message was posted into an anchored thread', () => {
+			expect(
+				integration.messageThreadId({ id: '123.457', threadId: 'slack:C123:123.456' }),
+			).toBeUndefined();
+		});
+
+		it('returns undefined for non-Slack thread ids', () => {
+			expect(
+				integration.messageThreadId({ id: 'msg-1', threadId: 'telegram:12345' }),
+			).toBeUndefined();
+		});
+	});
+
 	describe('handleUnauthenticatedWebhook', () => {
 		it('echoes the challenge for a url_verification event', () => {
 			const result = integration.handleUnauthenticatedWebhook({

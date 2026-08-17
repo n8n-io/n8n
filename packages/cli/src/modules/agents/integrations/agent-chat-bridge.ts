@@ -231,12 +231,13 @@ export class AgentChatBridge {
 		this.chat.onNewMention(async (thread, message) => {
 			try {
 				if (!this.canUserAccess(message.author)) return;
+				const anchoredThread = this.anchorInboundThread(thread, message);
 				const shouldSubscribe =
 					this.integrationImpl?.shouldSubscribeToNewMention?.({ thread, message }) ?? true;
 				if (shouldSubscribe) {
-					await thread.subscribe();
+					await anchoredThread.subscribe();
 				}
-				await this.executeAndStream(thread, message, { isNewMention: true });
+				await this.executeAndStream(anchoredThread, message, { isNewMention: true });
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -245,7 +246,8 @@ export class AgentChatBridge {
 		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
 				if (!this.canUserAccess(message.author)) return;
-				await this.executeAndStream(thread, message, { isNewMention: false });
+				const anchoredThread = this.anchorInboundThread(thread, message);
+				await this.executeAndStream(anchoredThread, message, { isNewMention: false });
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -263,6 +265,21 @@ export class AgentChatBridge {
 
 	private canUserAccess(author: Author): boolean {
 		return this.integrationImpl?.isUserAllowed?.(author, this.integration) ?? true;
+	}
+
+	/**
+	 * Re-anchor an inbound conversation at the message's own thread on
+	 * platforms where a top-level message (e.g. a Slack DM) arrives through the
+	 * channel-level pseudo-thread. Replies then open a thread under that
+	 * message, and follow-ups resolve their session and context from that
+	 * thread only.
+	 */
+	private anchorInboundThread(thread: Thread, message: Message): Thread {
+		const anchored = this.integrationImpl?.messageThreadId?.({
+			id: message.id,
+			threadId: thread.id,
+		});
+		return anchored ? this.chat.thread(anchored) : thread;
 	}
 
 	// ---------------------------------------------------------------------------

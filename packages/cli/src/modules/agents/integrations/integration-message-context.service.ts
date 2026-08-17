@@ -42,10 +42,12 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 	/**
 	 * Point a derived chat-session thread id at the run that sent the outbound
 	 * message, so inbound follow-ups continue that session. No-op when the
-	 * derived id already is the origin. Last write wins.
+	 * derived id already is the origin or a binding exists — a thread's session
+	 * never changes once established (first write wins).
 	 */
 	async bindSession(derivedThreadId: string, origin: AgentSessionOrigin): Promise<void> {
 		if (derivedThreadId === origin.threadId) return;
+		if (await this.resolveSession(derivedThreadId)) return;
 		await this.writeMetadata(derivedThreadId, origin.resourceId, {
 			[CONTINUE_AS_METADATA_KEY]: origin,
 		});

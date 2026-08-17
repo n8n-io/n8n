@@ -44,16 +44,19 @@ describe('Slack channel integration scenarios', () => {
 					integrationType: 'slack',
 				}),
 			);
+			// The conversation anchors at the DM message's own ts: the reply posts
+			// inside that message's thread and the context targets it.
 			expect(ctx.latestContext()).toMatchObject({
 				messageId: '1719000100.000100',
 				interactingUserId: 'U_DM_USER',
 				target: {
-					threadId: 'slack:D_DM:',
+					threadId: 'slack:D_DM:1719000100.000100',
 					channelId: 'slack:D_DM',
 				},
 			});
 			expect(ctx.lastPost()?.body).toMatchObject({
 				channel: 'D_DM',
+				thread_ts: '1719000100.000100',
 				markdown_text: 'Got it',
 			});
 		} finally {
