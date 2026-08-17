@@ -7286,7 +7286,6 @@
 	"instanceAi.tools.workspace_write_file": "Writing file",
 	"instanceAi.tools.workspace_edit_file": "Editing file",
 	"instanceAi.tools.workspace_str_replace_file": "Editing file",
-	"instanceAi.tools.workspace_batch_str_replace_file": "Editing files",
 	"instanceAi.tools.workspace_append_file": "Appending file",
 	"instanceAi.tools.workspace_list_files": "Listing files",
 	"instanceAi.tools.workspace_delete": "Deleting file",
