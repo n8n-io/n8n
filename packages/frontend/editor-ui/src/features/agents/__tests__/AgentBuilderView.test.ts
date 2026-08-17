@@ -614,7 +614,9 @@ const commonStubs = {
 // (permission defaults, spy restoration, or mocks it alone exercises).
 function resetViewMocks() {
 	vi.clearAllMocks();
-	localStorage.removeItem('N8N_AGENT_PREVIEW_OPEN');
+	for (const key of Object.keys(localStorage)) {
+		if (key.startsWith('N8N_AGENT_PREVIEW_OPEN')) localStorage.removeItem(key);
+	}
 	routerPush.mockReset();
 	routerReplace.mockReset();
 	routerResolve.mockClear();
