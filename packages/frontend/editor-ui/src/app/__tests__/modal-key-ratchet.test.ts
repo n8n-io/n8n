@@ -2,18 +2,20 @@ import * as shellConstants from '@/app/constants/modals';
 import { SHELL_MODAL_INITIAL_STATE } from '@/app/stores/defaults/modals';
 
 /**
- * The shell's two modal-key surfaces may shrink, never grow (CAT-3688).
- * `eslint.config.mjs` bans the same shapes, but only at `warn` until CAT-3973
- * clears the backlog, so this test is what fails.
+ * The two modal-key surfaces of the shell can become smaller, but never larger
+ * (CAT-3688).
  *
- * Both lists are read from the modules at runtime, not parsed out of the source,
- * so any way of writing an entry counts the same way the app sees it.
+ * `eslint.config.mjs` bans the same shapes, but only at level `warn` until
+ * CAT-3973 removes the remaining entries. So this test is the gate that fails.
  *
- * The two lists below are that backlog. Delete a name as its modal moves out.
- * Both surfaces are done when both lists are empty.
+ * This test reads both lists from the modules at runtime. It does not parse the
+ * source text. So it counts an entry in the same way as the application.
+ *
+ * The two lists below are the CAT-3973 backlog. When a modal moves to its
+ * feature, delete its name from the list. Both lists are empty at the end.
  */
 
-/** Dialog result sentinels, not modal keys. They stay when the migration ends. */
+/** These are dialog result sentinels, not modal keys. They stay after the migration. */
 const RESULT_SENTINELS: string[] = ['MODAL_CANCEL', 'MODAL_CONFIRM', 'MODAL_CLOSE'];
 
 const ALLOWED_KEY_EXPORTS = [

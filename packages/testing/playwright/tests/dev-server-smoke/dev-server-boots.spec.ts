@@ -11,7 +11,7 @@ import { test } from '../../fixtures/base';
  * any error-level console message or uncaught page error is observed during the
  * load. They are intentionally light — UI behaviour is covered elsewhere.
  *
- * They also fail on `[modals]` warnings — see `MODAL_WARNING_RE`.
+ * These tests also fail on `[modals]` warnings. See `MODAL_WARNING_RE`.
  *
  * Must run against the Vite dev server (`N8N_EDITOR_URL` set), which is what the
  * `test:dev-server-smoke` script wires up.
@@ -27,12 +27,15 @@ const BENIGN_PATTERNS: Array<{ messageRe: RegExp; reason: string }> = [
 const isBenign = (text: string) => BENIGN_PATTERNS.some((p) => p.messageRe.test(text));
 
 /**
- * An unregistered modal key renders closed instead of throwing (CAT-3967), so a
- * lost registration fails silently. This warning is the only signal, and
- * `import.meta.env.DEV` strips it from the production bundle the e2e job builds.
- * Only this job runs the dev server, so only this job can see it.
+ * An unregistered modal key shows a closed modal. It does not throw an error
+ * (CAT-3967). So a lost registration does not fail any test.
  *
- * Other warnings stay non-fatal. The dev server emits many that are not defects.
+ * This warning is the only signal. `import.meta.env.DEV` removes the warning from
+ * the production bundle that the e2e job builds. Only this job starts the dev
+ * server, so only this job can find the warning.
+ *
+ * Other warnings are not fatal. The dev server writes many warnings that are not
+ * defects.
  */
 const MODAL_WARNING_RE = /\[modals\]/;
 

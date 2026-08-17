@@ -250,8 +250,10 @@ export default defineConfig(
 		},
 	},
 	{
-		// Modal-key ratchet, half 1 of 2 (CAT-3688). Raise to 'error' at CAT-3973 exit.
-		// This file does not touch workflowsStore, so the package-wide list loses nothing.
+		// This is half 1 of 2 of the modal-key ratchet (CAT-3688).
+		// Change the level to 'error' when CAT-3973 is complete.
+		// This file does not use workflowsStore. So this rule replaces the
+		// package-wide list safely.
 		files: ['src/app/constants/modals.ts'],
 		rules: {
 			'no-restricted-syntax': [
@@ -263,7 +265,8 @@ export default defineConfig(
 						"Modal keys do not live in the shell. Declare this key in its owning feature's constants file (src/features/<feature>/<feature>.constants.ts) and register the modal from that feature's modals.ts fragment — see src/features/core/auth/modals.ts. A modal the shell genuinely owns declares its key beside its fragment in src/app/modals.manifest.ts, not here. Only MODAL_CANCEL/MODAL_CONFIRM/MODAL_CLOSE stay: they are dialog result sentinels, not modal keys.",
 				},
 				{
-					// Matches `export { X } from '...'` and a bare `export { X }` list.
+					// This selector matches `export { X } from '...'` and also a bare
+					// `export { X }` list.
 					selector: 'ExportNamedDeclaration[specifiers.length>0]',
 					message:
 						'Do not re-export a modal key through the shell — it keeps @/app/constants alive as an import path for a key the shell no longer owns, which is the reacquisition this ratchet exists to stop. Import it from its owning feature or package directly.',
@@ -272,9 +275,10 @@ export default defineConfig(
 		},
 	},
 	{
-		// Modal-key ratchet, half 2 of 2 (CAT-3688). Matches direct members only, so each
-		// entry's nested state stays writable. `sneakyModal:` opens like `[KEY]:`, so
-		// `[computed=true]` was too narrow.
+		// This is half 2 of 2 of the modal-key ratchet (CAT-3688).
+		// The selector matches only the direct members, so you can still change the
+		// nested state of each entry. `sneakyModal:` opens the same as `[KEY]:`.
+		// So the selector `[computed=true]` was too narrow.
 		files: ['src/app/stores/defaults/modals.ts'],
 		rules: {
 			'no-restricted-syntax': [

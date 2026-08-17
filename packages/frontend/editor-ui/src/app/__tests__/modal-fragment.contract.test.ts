@@ -12,12 +12,14 @@ import { EXAMPLE_FEATURE_MODAL_KEY } from './fixtures/exampleFeature/exampleFeat
 import { EXAMPLE_FEATURE_MODALS } from './fixtures/exampleFeature/modals';
 
 /**
- * CAT-3688 AC #3 — a new modal needs no edit to `ui.store` or `app/constants`.
+ * CAT-3688 AC #3 — a new modal needs no change to `ui.store` or `app/constants`.
  *
- * The behavioural test drives a fixture modal to the screen. The structural test
- * makes sure the shell does not back it, so the first cannot pass for the wrong
- * reason. The fixture sits outside `src/features/` because `modals.manifest.ts`
- * reaches every real feature.
+ * The first test registers a fixture modal and opens it on the screen. The second
+ * test makes sure that the shell does not define the same key. Without the second
+ * test, the first test can pass because the shell defines the modal.
+ *
+ * The fixture is not in `src/features/`, because `modals.manifest.ts` imports
+ * every real feature.
  */
 
 const renderLoader = createComponentRenderer(DynamicModalLoader);
@@ -32,8 +34,9 @@ describe('adding a modal through a fragment', () => {
 	});
 
 	const registerFixtureFragment = () => {
-		// `registerEagerModals` and `registerModuleModals` run this loop over real
-		// fragments. `modals.manifest.test.ts` and `moduleInitializer.test.ts` cover them.
+		// `registerEagerModals` and `registerModuleModals` use this same loop on real
+		// fragments. `modals.manifest.test.ts` and `moduleInitializer.test.ts` test
+		// those two functions.
 		EXAMPLE_FEATURE_MODALS.forEach((modal) => modalRegistry.register(modal));
 	};
 
@@ -48,7 +51,7 @@ describe('adding a modal through a fragment', () => {
 		expect(modalRegistry.has(EXAMPLE_FEATURE_MODAL_KEY)).toBe(true);
 		expect(uiStore.modalsById[EXAMPLE_FEATURE_MODAL_KEY]).toEqual({ open: false });
 
-		// A second pinia would give the component a different ui.store.
+		// A second pinia gives the component a different ui.store.
 		renderLoader({ pinia });
 
 		expect(screen.queryByTestId('example-feature-modal')).not.toBeInTheDocument();
@@ -68,8 +71,8 @@ describe('adding a modal through a fragment', () => {
 	});
 
 	it('opens without tripping the unknown-key warning', () => {
-		// A warning here means the fixture opened through `openModal`'s
-		// self-registration, not through the fragment.
+		// If a warning occurs, the fixture opened through the self-registration in
+		// `openModal`, and not through the fragment.
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		registerFixtureFragment();

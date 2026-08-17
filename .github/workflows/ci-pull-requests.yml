@@ -102,7 +102,7 @@ jobs:
               packages/testing/containers/**
             dev-server-smoke:
               packages/frontend/editor-ui/vite.config.mts
-              # If wall-clock costs too much, narrow this glob. Do not drop the assertion.
+              # If this job becomes too slow, use a smaller glob. Do not delete the assertion.
               packages/frontend/editor-ui/src/**
               pnpm-workspace.yaml
               packages/@n8n/*/package.json
