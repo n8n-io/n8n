@@ -1,0 +1,13 @@
+import { use{{PascalName}}Store } from './{{name}}.store';
+
+describe('use{{PascalName}}Store', () => {
+	it('starts not ready and flips once marked', () => {
+		const store = use{{PascalName}}Store();
+
+		expect(store.isReady).toBe(false);
+
+		store.markReady();
+
+		expect(store.isReady).toBe(true);
+	});
+});

@@ -1,0 +1,136 @@
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { editLines, lineIndex, repoRoot, writeTemplates } from './scaffold.mjs';
+
+const TEMPLATE_DIR = fileURLToPath(new URL('templates/frontend', import.meta.url));
+
+const EDITOR_UI = join(repoRoot, 'packages', 'frontend', 'editor-ui');
+const MANIFEST = join(EDITOR_UI, 'src', 'app', 'modules.manifest.ts');
+const VITE_CONFIG = join(
+	repoRoot,
+	'packages',
+	'frontend',
+	'@n8n',
+	'frontend-vite-config',
+	'index.ts',
+);
+
+/** template file, then the path in the new package. */
+const files = (name) => [
+	['package.json.template', 'package.json'],
+	['tsconfig.json.template', 'tsconfig.json'],
+	['vite.config.ts.template', 'vite.config.ts'],
+	['eslint.config.mjs.template', 'eslint.config.mjs'],
+	['biome.jsonc.template', 'biome.jsonc'],
+	['README.md.template', 'README.md'],
+	['index.ts.template', 'src/index.ts'],
+	['module.ts.template', `src/${name}.module.ts`],
+	['store.ts.template', `src/${name}.store.ts`],
+	['store.test.ts.template', `src/${name}.store.test.ts`],
+	['setup.ts.template', 'src/__tests__/setup.ts'],
+];
+
+/**
+ * Writes `packages/modules/<name>/frontend` and makes the four registrations outside it. The shell
+ * cannot see a module until all four are in place:
+ *
+ *   1. `@n8n/frontend-vite-config/index.ts` gets an entry in `modulePackages`. The shell then
+ *      resolves the module to its `src`. The table is a hand-made list.
+ *   2. `editor-ui/package.json` gets the dependency. pnpm then links the package, and a bare
+ *      import of it also resolves outside Vite, for vue-tsc and for Node.
+ *   3. `editor-ui/tsconfig.json` gets the two `paths` entries. vue-tsc then reads the same source
+ *      that Vite reads. `editor-ui/vite/aliases.test.ts` fails when 1 and 3 disagree.
+ *   4. `editor-ui/src/app/modules.manifest.ts` gets the descriptor.
+ */
+export const createFrontend = ({ name, packageDir, substitutions }) => {
+	const packageName = `@n8n/frontend-module-${name}`;
+	const descriptorName = `${substitutions.PascalName}Module`;
+
+	writeTemplates(TEMPLATE_DIR, packageDir, files(name), substitutions);
+
+	const edits = [];
+	const record = (path, note) => edits.push({ path, note });
+
+	// 1. The Vite alias. The table is on one line while it holds no module, so an entry that goes
+	//    after that line is not part of the array. Open the array first in that condition.
+	if (
+		editLines(VITE_CONFIG, (lines) => {
+			if (lines.some((line) => line.includes(`'${packageName}'`))) return undefined;
+
+			const at = lineIndex(lines, /^export const modulePackages/, 'frontend-vite-config/index.ts');
+			const entry = `\t{ name: '${packageName}', dir: 'modules/${name}/frontend' },`;
+
+			if (/\[\];\s*$/.test(lines[at])) {
+				lines.splice(at, 1, lines[at].replace(/\[\];\s*$/, '['), entry, '];');
+			} else {
+				lines.splice(at + 1, 0, entry);
+			}
+			return lines;
+		})
+	) {
+		record(VITE_CONFIG, '@n8n/frontend-vite-config/index.ts (Vite alias)');
+	}
+
+	// 2. The dependency. The list is alphabetical, and `pnpm install` sorts it again. Put the entry
+	//    in its sorted place, or the next install moves it and makes a second diff.
+	if (
+		editLines(join(EDITOR_UI, 'package.json'), (lines) => {
+			if (lines.some((line) => line.includes(`"${packageName}"`))) return undefined;
+
+			const entry = `    "${packageName}": "workspace:*",`;
+			const start = lineIndex(lines, /^\s*"dependencies": \{/, 'editor-ui/package.json') + 1;
+			let at = start;
+			while (at < lines.length && !/^\s*\},?\s*$/.test(lines[at])) {
+				const [, dependency] = /^\s*"([^"]+)":/.exec(lines[at]) ?? [];
+				if (dependency && dependency > packageName) break;
+				at++;
+			}
+
+			lines.splice(at, 0, entry);
+			return lines;
+		})
+	) {
+		record(join(EDITOR_UI, 'package.json'), 'editor-ui/package.json (dependency)');
+	}
+
+	// 3. The tsconfig paths. Keep them next to the SDK, which every module depends on.
+	if (
+		editLines(join(EDITOR_UI, 'tsconfig.json'), (lines) => {
+			if (lines.some((line) => line.includes(`"${packageName}"`))) return undefined;
+
+			const at = lineIndex(lines, /^\s*"@n8n\/frontend-module-sdk":/, 'editor-ui/tsconfig.json');
+			lines.splice(
+				at + 1,
+				0,
+				`\t\t\t"${packageName}": ["../../modules/${name}/frontend/src/index.ts"],`,
+				`\t\t\t"${packageName}/*": ["../../modules/${name}/frontend/src/*"],`,
+			);
+			return lines;
+		})
+	) {
+		record(join(EDITOR_UI, 'tsconfig.json'), 'editor-ui/tsconfig.json (paths)');
+	}
+
+	// 4. The manifest.
+	if (
+		editLines(MANIFEST, (lines) => {
+			if (lines.some((line) => line.includes(`'${packageName}'`))) return undefined;
+
+			const closing = lineIndex(lines, /^\];/, 'modules.manifest.ts');
+			lines.splice(closing, 0, `\t${descriptorName},`);
+
+			let lastImport = 0;
+			lines.forEach((line, index) => {
+				if (line.startsWith('import ')) lastImport = index;
+			});
+			lines.splice(lastImport + 1, 0, `import { ${descriptorName} } from '${packageName}';`);
+
+			return lines;
+		})
+	) {
+		record(MANIFEST, 'editor-ui/src/app/modules.manifest.ts (registration)');
+	}
+
+	return { packageName, edits };
+};
