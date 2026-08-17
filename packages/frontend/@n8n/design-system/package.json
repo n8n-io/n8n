@@ -2,7 +2,32 @@
   "type": "module",
   "name": "@n8n/design-system",
   "version": "2.34.0",
-  "main": "src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./icons/lucide": {
+      "types": "./dist/icons/lucide/index.d.ts",
+      "import": "./dist/icons/lucide/index.js"
+    },
+    "./style.css": "./dist/style.css",
+    "./theme.css": "./dist/theme.css",
+    "./css/*": "./dist/css/*",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss"
+  ],
+  "files": [
+    "dist",
+    "assets/fonts",
+    "README.md"
+  ],
   "scripts": {
     "dev": "pnpm run --dir=../storybook dev",
     "clean": "rimraf dist .turbo",

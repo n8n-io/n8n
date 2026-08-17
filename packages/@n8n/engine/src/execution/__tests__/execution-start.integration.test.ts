@@ -21,7 +21,7 @@ import {
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
-import { StepCompletedHandler } from '../step-completed-handler';
+import { StepSettledHandler } from '../step-settled-handler';
 
 const graph: WorkflowGraph = {
 	nodes: [
@@ -61,7 +61,7 @@ describe('execution start (integration)', () => {
 		const worker = new OrchestrationWorker(
 			orchestrationQueue,
 			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepCompletedHandler(executionStore, stepStore, stepQueue),
+			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
 		);
 		worker.start();
 		const startExecution = new StartExecutionService(

@@ -393,6 +393,7 @@ export interface ICredentialType {
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
+	__showManagedOAuthScopes?: boolean;
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,
@@ -1160,6 +1161,12 @@ export type CredentialCheckStatus = {
 	status: 'missing' | 'configured' | 'resolver_missing';
 	authorizationUrl?: string;
 	revokeUrl?: string;
+	/**
+	 * Absolute URL of the credential type's provider icon. Resolved server-side
+	 * because consumers (e.g. the form hosting shell, rendered from nodes-base)
+	 * have no access to the credential registry.
+	 */
+	iconUrl?: string;
 };
 
 export type CredentialCheckResult = {

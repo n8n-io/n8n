@@ -1684,13 +1684,18 @@ export class InstanceAiAdapterService {
 						try {
 							const loaded = loadNodesAndCredentials.getNode(nodeName);
 							const nodeInstance = loaded.type;
-							const nodeDesc =
+							// Every version has to be checked, not just one: `testedBy` is often declared
+							// only on an older version, and the credential test is resolved across all
+							// versions too. Reading a single version hides tests that do exist.
+							const nodeDescriptions =
 								'nodeVersions' in nodeInstance
-									? Object.values(nodeInstance.nodeVersions).pop()?.description
-									: nodeInstance.description;
-							const hasTestedBy = nodeDesc?.credentials?.some(
-								(cred: { name: string; testedBy?: unknown }) =>
-									cred.name === credentialType && cred.testedBy,
+									? Object.values(nodeInstance.nodeVersions).map((version) => version.description)
+									: [nodeInstance.description];
+							const hasTestedBy = nodeDescriptions.some((nodeDesc) =>
+								nodeDesc?.credentials?.some(
+									(cred: { name: string; testedBy?: unknown }) =>
+										cred.name === credentialType && cred.testedBy,
+								),
 							);
 							if (hasTestedBy) return true;
 						} catch {

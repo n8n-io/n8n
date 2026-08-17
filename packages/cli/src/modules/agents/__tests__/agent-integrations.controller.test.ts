@@ -80,6 +80,7 @@ describe('AgentIntegrationsController integration management', () => {
 			} as never,
 			undefined as never,
 			agent.id,
+			integration as never,
 		);
 
 		expect(managementService.validateConfig).toHaveBeenCalledWith(integration);
@@ -89,6 +90,58 @@ describe('AgentIntegrationsController integration management', () => {
 			integration,
 		});
 		expect(result).toEqual({ status: 'connected' });
+	});
+
+	it('forwards a replacement so the swap happens in one operation', async () => {
+		const { controller, managementService, agentRepository } = makeController();
+		const integration = {
+			type: 'slack',
+			credentialId: 'credential-1',
+		} satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
+
+		await controller.connectIntegration(
+			{
+				params: { projectId: agent.projectId },
+				user,
+				body: { ...integration, replaces: { credentialId: 'credential-0' } },
+			} as never,
+			undefined as never,
+			agent.id,
+			{ ...integration, replaces: { credentialId: 'credential-0' } } as never,
+		);
+
+		expect(managementService.connect).toHaveBeenCalledWith({
+			agent,
+			user,
+			integration: { ...integration, replaces: { credentialId: 'credential-0' } },
+			replaces: { type: 'slack', credentialId: 'credential-0' },
+		});
+	});
+
+	it('passes platform settings through the envelope untouched', async () => {
+		const { controller, managementService, agentRepository } = makeController();
+		const integration = {
+			type: 'telegram',
+			credentialId: 'credential-1',
+			settings: { accessMode: 'private', allowedUsers: ['@alice'] },
+		} satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
+
+		await controller.connectIntegration(
+			{
+				params: { projectId: agent.projectId },
+				user,
+				body: integration,
+			} as never,
+			undefined as never,
+			agent.id,
+			integration as never,
+		);
+
+		expect(managementService.connect).toHaveBeenCalledWith({ agent, user, integration });
 	});
 
 	it('reports configured when the saved agent is unpublished', async () => {
@@ -112,6 +165,7 @@ describe('AgentIntegrationsController integration management', () => {
 			} as never,
 			undefined as never,
 			agent.id,
+			integration as never,
 		);
 
 		expect(result).toEqual({ status: 'configured' });
