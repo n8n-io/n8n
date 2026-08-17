@@ -1,0 +1,137 @@
+import * as shellConstants from '@/app/constants/modals';
+import { SHELL_MODAL_INITIAL_STATE } from '@/app/stores/defaults/modals';
+
+/**
+ * The shell's two modal-key surfaces may shrink, never grow (CAT-3688).
+ * `eslint.config.mjs` bans the same shapes, but only at `warn` until CAT-3973
+ * clears the backlog, so this test is what fails.
+ *
+ * Both lists are read from the modules at runtime, not parsed out of the source,
+ * so any way of writing an entry counts the same way the app sees it.
+ *
+ * The two lists below are that backlog. Delete a name as its modal moves out.
+ * Both surfaces are done when both lists are empty.
+ */
+
+/** Dialog result sentinels, not modal keys. They stay when the migration ends. */
+const RESULT_SENTINELS: string[] = ['MODAL_CANCEL', 'MODAL_CONFIRM', 'MODAL_CLOSE'];
+
+const ALLOWED_KEY_EXPORTS = [
+	'ABOUT_MODAL_KEY',
+	'ADD_EXECUTION_TO_DATASET_MODAL_KEY',
+	'AI_BUILDER_DIFF_MODAL_KEY',
+	'AI_GATEWAY_TOP_UP_MODAL_KEY',
+	'BINARY_DATA_VIEW_MODAL_KEY',
+	'CHAT_EMBED_MODAL_KEY',
+	'CREDENTIAL_RESOLVER_EDIT_MODAL_KEY',
+	'DELETE_SECRETS_PROVIDER_MODAL_KEY',
+	'DUPLICATE_MODAL_KEY',
+	'EXPERIMENT_TEMPLATE_RECO_V2_KEY',
+	'EXPERIMENT_TEMPLATE_RECO_V3_KEY',
+	'EXTERNAL_SECRETS_PROVIDER_MODAL_KEY',
+	'FROM_AI_PARAMETERS_MODAL_KEY',
+	'IMPORT_CURL_MODAL_KEY',
+	'IMPORT_WORKFLOW_URL_MODAL_KEY',
+	'LOG_STREAM_MODAL_KEY',
+	'MIGRATE_WORKFLOW_MODAL_KEY',
+	'NEW_ASSISTANT_SESSION_MODAL',
+	'NPS_SURVEY_MODAL_KEY',
+	'SECRETS_PROVIDER_CONNECTION_MODAL_KEY',
+	'SETUP_CREDENTIALS_MODAL_KEY',
+	'STOP_MANY_EXECUTIONS_MODAL_KEY',
+	'TRIAL_INTRO_MODAL_KEY',
+	'VERSIONS_MODAL_KEY',
+	'WHATS_NEW_MODAL_KEY',
+	'WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY',
+	'WORKFLOW_ACTIVE_MODAL_KEY',
+	'WORKFLOW_DESCRIPTION_MODAL_KEY',
+	'WORKFLOW_DIFF_MODAL_KEY',
+	'WORKFLOW_EXTRACTION_NAME_MODAL_KEY',
+	'WORKFLOW_HISTORY_DIFF_MODAL_KEY',
+	'WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY',
+	'WORKFLOW_HISTORY_PUBLISH_MODAL_KEY',
+	'WORKFLOW_HISTORY_VERSION_UNPUBLISH',
+	'WORKFLOW_PUBLISH_MODAL_KEY',
+	'WORKFLOW_SETTINGS_MODAL_KEY',
+	'WORKFLOW_SHARE_MODAL_KEY',
+];
+
+const ALLOWED_CATALOGUE_KEYS = [
+	'about',
+	'activation',
+	'addExecutionToDataset',
+	'aiBuilderDiff',
+	'aiGatewayTopUp',
+	'annotationTagsManager',
+	'binaryDataView',
+	'chatEmbed',
+	'communityPackageInstall',
+	'communityPackageManageConfirm',
+	'communityPlusEnrollment',
+	'createOrEditApiKey',
+	'credentialResolverEdit',
+	'debugPaywall',
+	'deleteFolder',
+	'deleteSecretsProvider',
+	'deleteUser',
+	'duplicate',
+	'editCredential',
+	'externalSecretsProvider',
+	'fromAiParameters',
+	'importCurl',
+	'importWorkflowUrl',
+	'inviteUser',
+	'migrateWorkflow',
+	'moveFolder',
+	'newAssistantSession',
+	'npsSurvey',
+	'personalization',
+	'projectMoveResourceModal',
+	'secretsProviderConnection',
+	'selectCredential',
+	'settings',
+	'settingsLogStream',
+	'setupCredentials',
+	'sourceControlPull',
+	'sourceControlPullResult',
+	'sourceControlPush',
+	'stopManyExecutions',
+	'tagsManager',
+	'templateRecoV2',
+	'templateRecoV3',
+	'trialIntroModal',
+	'variableModal',
+	'versions',
+	'whatsNew',
+	'workflowActivationConflictingWebhook',
+	'workflowDescription',
+	'workflowDiff',
+	'workflowExtractionName',
+	'workflowHistoryDiff',
+	'workflowHistoryNameVersion',
+	'workflowHistoryPublish',
+	'workflowHistoryVersionUnpublish',
+	'workflowPublish',
+	'workflowShare',
+];
+
+const shellKeyExports = () =>
+	Object.keys(shellConstants)
+		.filter((name) => !RESULT_SENTINELS.includes(name))
+		.sort();
+
+describe('modal-key ratchet', () => {
+	it('does not let the shell reacquire a modal key constant', () => {
+		expect(
+			shellKeyExports(),
+			"Declare the key in its owning feature's constants file and register the modal from that feature's modals.ts fragment — see src/features/core/auth/modals.ts. If a key left the shell, delete it from ALLOWED_KEY_EXPORTS in this file.",
+		).toEqual(ALLOWED_KEY_EXPORTS);
+	});
+
+	it('does not let the shell reacquire a modal definition', () => {
+		expect(
+			Object.keys(SHELL_MODAL_INITIAL_STATE).sort(),
+			'Give the modal a ModalDefinition in its feature fragment so it registers through modalRegistry, and delete its <ModalRoot> from Modals.vue in the same change. If a modal left the shell, delete its key from ALLOWED_CATALOGUE_KEYS in this file.',
+		).toEqual(ALLOWED_CATALOGUE_KEYS);
+	});
+});

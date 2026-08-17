@@ -4,15 +4,12 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import DynamicModalLoader from '@/app/components/DynamicModalLoader.vue';
+import * as shellConstants from '@/app/constants/modals';
+import { SHELL_MODAL_INITIAL_STATE } from '@/app/stores/defaults/modals';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import { EXAMPLE_FEATURE_MODAL_KEY } from './fixtures/exampleFeature/exampleFeature.constants';
 import { EXAMPLE_FEATURE_MODALS } from './fixtures/exampleFeature/modals';
-
-// eslint-disable-next-line import-x/extensions
-import shellConstantsSource from '@/app/constants/modals.ts?raw';
-// eslint-disable-next-line import-x/extensions
-import shellCatalogueSource from '@/app/stores/defaults/modals.ts?raw';
 
 /**
  * CAT-3688 AC #3 — a new modal needs no edit to `ui.store` or `app/constants`.
@@ -83,16 +80,8 @@ describe('adding a modal through a fragment', () => {
 		warn.mockRestore();
 	});
 
-	it('is defined in neither shell file', () => {
-		expect(shellConstantsSource).not.toContain('EXAMPLE_FEATURE_MODAL_KEY');
-		expect(shellConstantsSource).not.toContain(EXAMPLE_FEATURE_MODAL_KEY);
-		expect(shellCatalogueSource).not.toContain('EXAMPLE_FEATURE_MODAL_KEY');
-		expect(shellCatalogueSource).not.toContain(EXAMPLE_FEATURE_MODAL_KEY);
-	});
-
-	it('reads the shell files it claims to check', () => {
-		// A broken `?raw` path makes the test above pass on an empty string.
-		expect(shellConstantsSource).toContain('MODAL_CONFIRM');
-		expect(shellCatalogueSource).toContain('SHELL_MODAL_INITIAL_STATE');
+	it('is defined in neither shell surface', () => {
+		expect(Object.keys(shellConstants)).not.toContain('EXAMPLE_FEATURE_MODAL_KEY');
+		expect(Object.keys(SHELL_MODAL_INITIAL_STATE)).not.toContain(EXAMPLE_FEATURE_MODAL_KEY);
 	});
 });
