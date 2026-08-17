@@ -789,6 +789,7 @@ overrides:
   brace-expansion@5: 5.0.9
   '@tootallnate/once@2': 2.0.1
   '@vue/server-renderer@3.5.26': 3.5.40
+  '@vue/shared@3.5.26': 3.5.40
   '@opentelemetry/exporter-prometheus@<=0.217.0': 0.217.0
   '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
   langsmith: 0.6.0
@@ -1128,7 +1129,7 @@ importers:
         version: 1.0.27(@langchain/core@1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(cheerio@1.1.0)(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(d4d69bb701b08e92536f507cd2608666)
+        version: 1.1.27(39726096b3fd28dc4909d84391eb99ef)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -2700,8 +2701,8 @@ importers:
         specifier: 'catalog:'
         version: 3.7.2
       mammoth:
-        specifier: 1.12.0
-        version: 1.12.0
+        specifier: 1.12.1
+        version: 1.12.1
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -3209,7 +3210,7 @@ importers:
         version: 1.0.1(@langchain/core@1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(ff1df20be70f541448eb6f5cafd5a6b6)
+        version: 1.1.27(7f480e1fce181cb485639704c1151d24)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -3388,8 +3389,8 @@ importers:
         specifier: 4.18.1
         version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
       mammoth:
-        specifier: 1.12.0
-        version: 1.12.0
+        specifier: 1.12.1
+        version: 1.12.1
       mime-types:
         specifier: 'catalog:'
         version: 3.0.2
@@ -13778,9 +13779,6 @@ packages:
   '@vue/server-renderer@3.5.40':
     resolution: {integrity: sha512-XNJym9WpevhTVt1HuwOrCRJ5Q+9z4BjTMrDtjTrvx74SmUll8spNTw6whWJa9mEkO4PKn5TihI/bm/8ds2QVJw==}
 
-  '@vue/shared@3.5.26':
-    resolution: {integrity: sha512-7Z6/y3uFI5PRoKeorTOSXKcDj0MSasfNNltcslbFrPpcw6aXRUALq4IfJlaTRspiWIUOEZbrpM+iQGmCOiWe4A==}
-
   '@vue/shared@3.5.40':
     resolution: {integrity: sha512-WxnBtruIqOoV3rA4jeKDWzrYI5h7Cp4+pjwDi8kWGHz+IslhiN+wguLVVhtv2l8VoU02rzDCVfDjgCl1lNpZVg==}
 
@@ -18475,8 +18473,8 @@ packages:
     resolution: {integrity: sha512-+zopwDy7DNknmwPQplem5lAZX/eCOzSvSNNcSKm5eVwTkOBzoktEfXsa9L23J/GIRhxRsaxzkPEhrJEpE2F4Gg==}
     engines: {node: '>= 10'}
 
-  mammoth@1.12.0:
-    resolution: {integrity: sha512-cwnK1RIcRdDMi2HRx2EXGYlxqIEh0Oo3bLhorgnsVJi2UkbX1+jKxuBNR9PC5+JaX7EkmJxFPmo6mjLpqShI2w==}
+  mammoth@1.12.1:
+    resolution: {integrity: sha512-nCH9KKjWi3jQ+i8bUKs7k1yrXtSEGpWgF8IYkzsFMcbn+5S6l4bZEBbyx2hOQErFiXPuAs9RPa6qjXVxhyx/8g==}
     engines: {node: '>=12.0.0'}
     hasBin: true
 
@@ -26986,7 +26984,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.1.27(d4d69bb701b08e92536f507cd2608666)':
+  '@langchain/community@1.1.27(39726096b3fd28dc4909d84391eb99ef)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.60.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.4.2)(encoding@0.1.13)(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(utf-8-validate@5.0.10)(zod@3.25.76)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -27027,7 +27025,7 @@ snapshots:
       jsdom: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       jsonwebtoken: 9.0.3
       lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
-      mammoth: 1.12.0
+      mammoth: 1.12.1
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5
       pg: 8.21.0(pg-native@3.8.0)
@@ -27041,7 +27039,7 @@ snapshots:
       - '@smithy/hash-node'
       - peggy
 
-  '@langchain/community@1.1.27(ff1df20be70f541448eb6f5cafd5a6b6)':
+  '@langchain/community@1.1.27(7f480e1fce181cb485639704c1151d24)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.60.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.4.2)(encoding@0.1.13)(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(utf-8-validate@5.0.10)(zod@3.25.76)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -27091,7 +27089,7 @@ snapshots:
       jsdom: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       jsonwebtoken: 9.0.3
       lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
-      mammoth: 1.12.0
+      mammoth: 1.12.1
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5
@@ -31657,7 +31655,7 @@ snapshots:
   '@vue/compiler-core@3.5.26':
     dependencies:
       '@babel/parser': 7.29.2
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       entities: 7.0.1
       estree-walker: 2.0.2
       source-map-js: 1.2.1
@@ -31673,7 +31671,7 @@ snapshots:
   '@vue/compiler-dom@3.5.26':
     dependencies:
       '@vue/compiler-core': 3.5.26
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
 
   '@vue/compiler-dom@3.5.40':
     dependencies:
@@ -31686,7 +31684,7 @@ snapshots:
       '@vue/compiler-core': 3.5.26
       '@vue/compiler-dom': 3.5.26
       '@vue/compiler-ssr': 3.5.26
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       estree-walker: 2.0.2
       magic-string: 0.30.21
       postcss: 8.5.10
@@ -31695,7 +31693,7 @@ snapshots:
   '@vue/compiler-ssr@3.5.26':
     dependencies:
       '@vue/compiler-dom': 3.5.26
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
 
   '@vue/compiler-ssr@3.5.40':
     dependencies:
@@ -31714,7 +31712,7 @@ snapshots:
       '@volar/language-core': 2.4.12
       '@vue/compiler-dom': 3.5.26
       '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       alien-signals: 0.2.2
       minimatch: 9.0.9
       muggle-string: 0.4.1
@@ -31727,7 +31725,7 @@ snapshots:
       '@volar/language-core': 2.4.12
       '@vue/compiler-dom': 3.5.26
       '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       alien-signals: 0.4.14
       minimatch: 9.0.9
       muggle-string: 0.4.1
@@ -31740,7 +31738,7 @@ snapshots:
       '@volar/language-core': 2.4.12
       '@vue/compiler-dom': 3.5.26
       '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       alien-signals: 1.0.4
       minimatch: 9.0.9
       muggle-string: 0.4.1
@@ -31753,7 +31751,7 @@ snapshots:
       '@volar/language-core': 2.4.12
       '@vue/compiler-dom': 3.5.26
       '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       alien-signals: 1.0.4
       minimatch: 9.0.9
       muggle-string: 0.4.1
@@ -31766,7 +31764,7 @@ snapshots:
       '@volar/language-core': 2.4.12
       '@vue/compiler-dom': 3.5.26
       '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       alien-signals: 1.0.4
       minimatch: 9.0.9
       muggle-string: 0.4.1
@@ -31777,7 +31775,7 @@ snapshots:
 
   '@vue/reactivity@3.5.26':
     dependencies:
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
 
   '@vue/reactivity@3.5.40':
     dependencies:
@@ -31786,7 +31784,7 @@ snapshots:
   '@vue/runtime-core@3.5.26':
     dependencies:
       '@vue/reactivity': 3.5.26
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
 
   '@vue/runtime-core@3.5.40':
     dependencies:
@@ -31797,7 +31795,7 @@ snapshots:
     dependencies:
       '@vue/reactivity': 3.5.26
       '@vue/runtime-core': 3.5.26
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
       csstype: 3.2.3
 
   '@vue/runtime-dom@3.5.40':
@@ -31812,8 +31810,6 @@ snapshots:
       '@vue/compiler-ssr': 3.5.40
       '@vue/runtime-dom': 3.5.40
       '@vue/shared': 3.5.40
-
-  '@vue/shared@3.5.26': {}
 
   '@vue/shared@3.5.40': {}
 
@@ -37238,7 +37234,7 @@ snapshots:
       - supports-color
     optional: true
 
-  mammoth@1.12.0:
+  mammoth@1.12.1:
     dependencies:
       '@xmldom/xmldom': 0.8.14
       argparse: 1.0.10
@@ -42728,7 +42724,7 @@ snapshots:
       '@vue/compiler-sfc': 3.5.26
       '@vue/runtime-dom': 3.5.26
       '@vue/server-renderer': 3.5.40
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
     optionalDependencies:
       typescript: '@typescript/typescript6@6.0.2'
 
@@ -42738,7 +42734,7 @@ snapshots:
       '@vue/compiler-sfc': 3.5.26
       '@vue/runtime-dom': 3.5.26
       '@vue/server-renderer': 3.5.40
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
     optionalDependencies:
       typescript: 6.0.2
 
@@ -42748,7 +42744,7 @@ snapshots:
       '@vue/compiler-sfc': 3.5.26
       '@vue/runtime-dom': 3.5.26
       '@vue/server-renderer': 3.5.40
-      '@vue/shared': 3.5.26
+      '@vue/shared': 3.5.40
     optionalDependencies:
       typescript: 7.0.2
 
