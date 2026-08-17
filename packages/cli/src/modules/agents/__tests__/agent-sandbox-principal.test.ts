@@ -22,9 +22,8 @@ describe('hashAgentSandboxPrincipal', () => {
 					type: 'workflow-execution',
 					workflowId: 'workflow-1',
 					executionId: 'execution-1',
-					itemId: 'item-1',
 				},
-				'MlfyoFE-Jy7el-JY60-5FlNWLZMn23wFkEG8p9UHgZw',
+				'5PiyOW90m1b3G7sUBU89WQEDdW7jT8E2rnaqMtRilc4',
 			],
 			[{ type: 'scheduled-task', taskId: 'task-1' }, 'zNDZ3KUSonoPGuBjyiJ1huc8pr8psw4zGbu7t5vlJFA'],
 		];

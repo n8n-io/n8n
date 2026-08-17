@@ -31,7 +31,6 @@ import {
 	encodeAgentSandboxHostMetadata,
 	type AgentSandboxPrincipalHash,
 } from './agent-sandbox-principal';
-import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import {
 	buildAgentConfigurationTelemetry,
 	buildAgentConfigurationTelemetryFromConfig,
@@ -51,7 +50,6 @@ import { describeStructuredOutputError } from './utils/structured-output-error';
 
 interface WorkflowSandboxScope {
 	principalHash: AgentSandboxPrincipalHash;
-	executionScoped: boolean;
 }
 
 function getFinalWorkflowResponse(messageRecord: MessageRecord): string {
@@ -89,7 +87,6 @@ export class AgentWorkflowExecutionService {
 		private readonly agentRunTracingService: AgentRunTracingService,
 		private readonly executionLevelTracer: ExecutionLevelTracer,
 		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
-		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -479,32 +476,18 @@ export class AgentWorkflowExecutionService {
 		workflowContext?: ExecuteAgentWorkflowContext,
 		sandboxScope?: WorkflowSandboxScope,
 	): Promise<ExecuteAgentData> {
-		try {
-			return await this.executeForWorkflowInternal(
-				agentId,
-				message,
-				executionId,
-				threadId,
-				projectId,
-				telemetryUserId,
-				useDraftVersion,
-				outputSchema,
-				workflowContext,
-				sandboxScope,
-			);
-		} finally {
-			if (sandboxScope?.executionScoped && this.agentSandboxRuntimeService.isEnabled()) {
-				try {
-					await this.agentSandboxRuntimeService.destroyWorkspaceSandbox(
-						projectId,
-						agentId,
-						sandboxScope.principalHash,
-					);
-				} catch {
-					// Workspace cleanup is best-effort and must not replace the workflow outcome.
-				}
-			}
-		}
+		return await this.executeForWorkflowInternal(
+			agentId,
+			message,
+			executionId,
+			threadId,
+			projectId,
+			telemetryUserId,
+			useDraftVersion,
+			outputSchema,
+			workflowContext,
+			sandboxScope,
+		);
 	}
 
 	private async executeForWorkflowInternal(

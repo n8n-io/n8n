@@ -1345,9 +1345,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				type: 'workflow-execution',
 				workflowId: 'workflow-1',
 				executionId: EXEC_ID,
-				itemId: THREAD_ID,
 			}),
-			executionScoped: true,
 		};
 		const sessionSandboxScope = {
 			principalHash: hashAgentSandboxPrincipal({
@@ -1355,7 +1353,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 				workflowId: 'workflow-1',
 				sessionId: THREAD_ID,
 			}),
-			executionScoped: false,
 		};
 
 		beforeEach(() => {

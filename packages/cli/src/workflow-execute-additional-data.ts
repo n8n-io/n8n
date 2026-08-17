@@ -418,19 +418,22 @@ export async function executeAgent(
 
 	const { hashAgentSandboxPrincipal } = await import('@/modules/agents/agent-sandbox-principal.js');
 	const useDraftVersion = isManualOrChatExecution(executionMode);
-	const sandboxPrincipalHash =
+	const sandboxScope =
 		workflowContext?.hasCallerSessionId === true
-			? hashAgentSandboxPrincipal({
-					type: 'workflow-session',
-					workflowId: additionalData.workflowId,
-					sessionId: threadId,
-				})
-			: hashAgentSandboxPrincipal({
-					type: 'workflow-execution',
-					workflowId: additionalData.workflowId,
-					executionId,
-					itemId: threadId,
-				});
+			? {
+					principalHash: hashAgentSandboxPrincipal({
+						type: 'workflow-session',
+						workflowId: additionalData.workflowId,
+						sessionId: threadId,
+					}),
+				}
+			: {
+					principalHash: hashAgentSandboxPrincipal({
+						type: 'workflow-execution',
+						workflowId: additionalData.workflowId,
+						executionId,
+					}),
+				};
 
 	const result = await agentWorkflowExecutionService.executeForWorkflow(
 		source.agentId,
@@ -442,10 +445,7 @@ export async function executeAgent(
 		useDraftVersion,
 		outputSchema,
 		workflowContext,
-		{
-			principalHash: sandboxPrincipalHash,
-			executionScoped: workflowContext?.hasCallerSessionId !== true,
-		},
+		sandboxScope,
 	);
 
 	// Callers see the session id they supplied (or the derived per-call id), so

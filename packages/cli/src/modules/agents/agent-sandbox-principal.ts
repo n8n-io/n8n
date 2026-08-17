@@ -15,7 +15,6 @@ export type AgentSandboxPrincipal =
 			type: 'workflow-execution';
 			workflowId: string;
 			executionId: string;
-			itemId: string;
 	  }
 	| { type: 'scheduled-task'; taskId: string };
 
@@ -89,12 +88,7 @@ export function hashAgentSandboxPrincipal(
 			canonicalPrincipal = [principal.type, principal.workflowId, principal.sessionId];
 			break;
 		case 'workflow-execution':
-			canonicalPrincipal = [
-				principal.type,
-				principal.workflowId,
-				principal.executionId,
-				principal.itemId,
-			];
+			canonicalPrincipal = [principal.type, principal.workflowId, principal.executionId];
 			break;
 		case 'scheduled-task':
 			canonicalPrincipal = [principal.type, principal.taskId];

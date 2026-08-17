@@ -40,7 +40,15 @@ const LABEL_SANDBOX_KIND = 'n8n-agent-sandbox-kind';
 const LABEL_PRINCIPAL_HASH = 'n8n-agent-principal-hash';
 
 const DEFAULT_SANDBOX_IMAGE = 'daytonaio/sandbox:0.5.0';
-const AUTO_STOP_INTERVAL_MINUTES = 5;
+const WORKSPACE_AUTO_STOP_INTERVAL_MINUTES = 5;
+const KNOWLEDGE_AUTO_STOP_INTERVAL_MINUTES = 15;
+const KNOWLEDGE_AUTO_ARCHIVE_INTERVAL_MINUTES = 60;
+const KNOWLEDGE_AUTO_DELETE_INTERVAL_MINUTES = 7 * 24 * 60;
+
+type DaytonaSandboxLifecycle = Pick<
+	DaytonaSandboxConfig,
+	'ephemeral' | 'autoStopInterval' | 'autoArchiveInterval' | 'autoDeleteInterval'
+>;
 
 export interface AgentSandboxRuntime {
 	provider: SandboxProvider;
@@ -178,6 +186,10 @@ export class AgentSandboxRuntimeService {
 			sandboxId,
 			buildWorkspaceLabels(projectId, agentId, principalHash),
 			`${provider}:workspace:${sandboxId}`,
+			{
+				ephemeral: true,
+				autoStopInterval: WORKSPACE_AUTO_STOP_INTERVAL_MINUTES,
+			},
 		);
 	}
 
@@ -196,6 +208,14 @@ export class AgentSandboxRuntimeService {
 			sandboxId,
 			buildKnowledgeLabels(projectId, agentId),
 			`${provider}:knowledge:${sandboxId}`,
+			{
+				ephemeral: this.agentsConfig.sandboxEphemeral,
+				autoStopInterval: KNOWLEDGE_AUTO_STOP_INTERVAL_MINUTES,
+				autoArchiveInterval: KNOWLEDGE_AUTO_ARCHIVE_INTERVAL_MINUTES,
+				...(this.agentsConfig.sandboxEphemeral
+					? {}
+					: { autoDeleteInterval: KNOWLEDGE_AUTO_DELETE_INTERVAL_MINUTES }),
+			},
 		);
 	}
 
@@ -207,6 +227,7 @@ export class AgentSandboxRuntimeService {
 		n8nSandboxId: string,
 		labels: Record<string, string>,
 		cacheKey: string,
+		daytonaLifecycle: DaytonaSandboxLifecycle,
 	): Promise<AgentSandboxRuntime> {
 		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
 
@@ -219,6 +240,7 @@ export class AgentSandboxRuntimeService {
 				n8nSandboxId,
 				labels,
 				cacheKey,
+				daytonaLifecycle,
 			).finally(() => {
 				this.pendingSandboxAcquisitions.delete(cacheKey);
 			});
@@ -303,6 +325,7 @@ export class AgentSandboxRuntimeService {
 		n8nSandboxId: string,
 		labels: Record<string, string>,
 		cacheKey: string,
+		daytonaLifecycle: DaytonaSandboxLifecycle,
 	): Promise<AgentSandboxRuntime> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -311,7 +334,7 @@ export class AgentSandboxRuntimeService {
 
 		const config =
 			provider === 'daytona'
-				? await this.resolveDaytonaSandboxConfig(projectId, daytonaName, labels)
+				? await this.resolveDaytonaSandboxConfig(projectId, daytonaName, labels, daytonaLifecycle)
 				: await this.resolveN8nSandboxConfig(n8nSandboxId);
 		return await this.startSandbox(config, projectId, agentId, cacheKey);
 	}
@@ -349,6 +372,7 @@ export class AgentSandboxRuntimeService {
 		projectId: string,
 		sandboxId: string,
 		labels: Record<string, string>,
+		lifecycle: DaytonaSandboxLifecycle = {},
 	): Promise<DaytonaSandboxConfig> {
 		const directImage = this.agentsConfig.sandboxImage || DEFAULT_SANDBOX_IMAGE;
 		const snapshot = this.agentsConfig.sandboxSnapshot.trim() || undefined;
@@ -360,8 +384,7 @@ export class AgentSandboxRuntimeService {
 			labels,
 			timeout: this.agentsConfig.sandboxTimeout,
 			createTimeoutSeconds: Math.ceil(this.agentsConfig.sandboxTimeout / 1000),
-			ephemeral: this.agentsConfig.sandboxEphemeral,
-			autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
+			...lifecycle,
 		};
 
 		if (!this.aiService.isProxyEnabled()) {

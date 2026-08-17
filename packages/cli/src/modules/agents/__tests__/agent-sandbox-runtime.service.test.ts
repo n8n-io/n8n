@@ -188,10 +188,14 @@ describe('AgentSandboxRuntimeService', () => {
 				image: 'daytonaio/sandbox:0.5.0',
 				snapshot: 'n8n/agent-knowledge:1.2.3',
 				ephemeral: true,
-				autoStopInterval: 5,
+				autoStopInterval: 15,
+				autoArchiveInterval: 60,
 			}),
 			expect.anything(),
 		);
+		expect(
+			(createSandboxMock.mock.calls[0][0] as DaytonaSandboxConfig).autoDeleteInterval,
+		).toBeUndefined();
 		expect(sandbox._start).toHaveBeenCalled();
 		expect(createFilesystemMock).toHaveBeenCalledWith(sandbox);
 	});
@@ -240,6 +244,18 @@ describe('AgentSandboxRuntimeService', () => {
 			'n8n-agent-sandbox-kind': 'workspace',
 			'n8n-agent-principal-hash': principalHash,
 		});
+		expect(
+			configs.map(({ ephemeral, autoStopInterval, autoArchiveInterval, autoDeleteInterval }) => [
+				ephemeral,
+				autoStopInterval,
+				autoArchiveInterval,
+				autoDeleteInterval,
+			]),
+		).toEqual([
+			[true, 5, undefined, undefined],
+			[true, 5, undefined, undefined],
+			[false, 15, 60, 10_080],
+		]);
 	});
 
 	it('single-flights the same workspace identity without coalescing different principals', async () => {
