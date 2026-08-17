@@ -544,16 +544,20 @@ describe('CredentialsRepository', () => {
 			const projectRoles = await roleService.rolesWithScope('project', scopes);
 			const credentialRoles = await roleService.rolesWithScope('credential', scopes);
 
+			// Both approaches need an explicit order: without one, Postgres is free to
+			// return the rows in any order, and the two queries use different plans.
 			const oldOptions = {
 				filter: { projectId: teamProject.id, name: 'Test' },
 				take: 2,
 				skip: 0,
+				order: { id: 'ASC' as const },
 			};
 
 			const newOptions = {
 				filter: { name: 'Test' },
 				take: 2,
 				skip: 0,
+				order: { id: 'ASC' as const },
 			};
 
 			// ACT - Old Approach
@@ -574,7 +578,7 @@ describe('CredentialsRepository', () => {
 			expect(newResult.count).toBe(oldResult[1]);
 			expect(newResult.credentials).toHaveLength(oldResult[0].length);
 
-			// Check same credentials in same order (sorting should be consistent)
+			// Check same credentials in same order
 			const oldIds = oldResult[0].map((c) => c.id);
 			const newIds = newResult.credentials.map((c) => c.id);
 			expect(newIds).toEqual(oldIds);

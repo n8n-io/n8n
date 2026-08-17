@@ -701,4 +701,14 @@ describe('buildAgentOptions', () => {
 		expect(options.keepAlive).toBe(true);
 		expect(options.servername).toBe('api.example.com');
 	});
+
+	// SNI takes a hostname, never an IP literal (RFC 6066 §3).
+	it.each([
+		['IPv4', 'https://185.90.154.8/v1'],
+		['IPv6', 'https://[2001:db8::1]/v1'],
+	])('sets no servername when the host is an %s literal', (_label, url) => {
+		const options = buildAgentOptions({ method: 'GET', url });
+
+		expect(options.servername).toBeUndefined();
+	});
 });

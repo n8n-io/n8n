@@ -66,6 +66,7 @@ const {
 	isConnected: isIntegrationConnected,
 	isConfigured: isIntegrationConfigured,
 	connect,
+	disconnect,
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const submitted = ref(false);
@@ -129,10 +130,13 @@ const fallbackRuntime = createAgentChannelRuntime(getAgentChannelPlatform('unkno
 });
 const currentPlatform = computed(() => getAgentChannelPlatform(props.integrationType));
 const currentRuntime = computed(() => runtimes[props.integrationType] ?? fallbackRuntime);
-const channelActionInFlight = computed(
-	() => connectionInFlight.value || currentRuntime.value.loading.value,
-);
 const channelViewRef = ref<AgentChannelViewExpose>();
+const channelActionInFlight = computed(
+	() =>
+		connectionInFlight.value ||
+		currentRuntime.value.loading.value ||
+		channelViewRef.value?.loading === true,
+);
 const integrationLabel = computed(() => currentIntegration.value.label);
 
 const connectedDescription = computed(() => {
@@ -180,9 +184,19 @@ function notifyAgentUpdated() {
 	agentsEventBus.emit('agentUpdated', { agentId: props.agentId, source: 'channel-setup-card' });
 }
 
-function skipSetup() {
-	if (channelActionInFlight.value) return;
-	finish(false);
+async function skipSetup() {
+	if (isBlocked() || channelActionInFlight.value) return;
+
+	connectionInFlight.value = true;
+	try {
+		await disconnect(props.integrationType, '');
+		notifyAgentUpdated();
+		finish(false);
+	} catch {
+		// Keep setup pending so the user can retry instead of leaving a draft channel behind.
+	} finally {
+		connectionInFlight.value = false;
+	}
 }
 
 async function saveChannelConfig() {
@@ -318,7 +332,6 @@ watch(
 				:agent-id="agentId"
 				:force-new-credential="true"
 				:simple-setup="true"
-				:credential-replacement-pending="false"
 				:runtime="currentRuntime"
 				@create="createCredential"
 				@edit="editCredential"

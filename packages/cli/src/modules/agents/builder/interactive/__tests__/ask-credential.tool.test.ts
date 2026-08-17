@@ -27,13 +27,15 @@ function makeProvider(creds: CredentialListItem[]): CredentialProvider {
 
 let track: Mock;
 
-function askCredentialTool(deps: Omit<AskCredentialToolDeps, 'track'>) {
-	const merged: AskCredentialToolDeps = { ...deps, track };
+function askCredentialTool(deps: Omit<AskCredentialToolDeps, 'track' | 'projectId'>) {
+	const merged: AskCredentialToolDeps = { projectId: 'project-1', ...deps, track };
 	return buildAskCredentialTool(merged);
 }
 
-function askEmbeddingCredentialTool(deps: Omit<AskEmbeddingCredentialToolDeps, 'track'>) {
-	const merged: AskEmbeddingCredentialToolDeps = { ...deps, track };
+function askEmbeddingCredentialTool(
+	deps: Omit<AskEmbeddingCredentialToolDeps, 'track' | 'projectId'>,
+) {
+	const merged: AskEmbeddingCredentialToolDeps = { projectId: 'project-1', ...deps, track };
 	return buildAskEmbeddingCredentialTool(merged);
 }
 
@@ -61,6 +63,35 @@ describe('ask_credential tool', () => {
 			credentials: {
 				slackApi: { id: 'c1', name: 'My Slack' },
 			},
+		});
+	});
+
+	it('suspends instead of auto-resolving when the sole credential is a generic auth type', async () => {
+		// One credential type serves every service, so the user must pick it —
+		// otherwise their only bearer token is attached to an arbitrary endpoint.
+		const credentialProvider = makeProvider([
+			{ id: 'c1', name: 'Bearer Auth account', type: 'httpBearerAuth' },
+		]);
+		const tool = askCredentialTool({ credentialProvider });
+		const ctx = makeCtx();
+
+		await tool.handler!(
+			{ purpose: 'Authenticate the MCP server', credentialType: 'httpBearerAuth' },
+			ctx as never,
+		);
+
+		expect(ctx.suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				credentialRequests: [
+					expect.objectContaining({
+						credentialType: 'httpBearerAuth',
+						existingCredentials: [{ id: 'c1', name: 'Bearer Auth account' }],
+					}),
+				],
+			}),
+		);
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL, {
+			credential_type: 'httpBearerAuth',
 		});
 	});
 
@@ -160,6 +191,7 @@ describe('ask_credential tool', () => {
 					},
 				],
 				credentialFlow: { stage: 'generic' },
+				projectId: 'project-1',
 			}),
 		);
 		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL, {

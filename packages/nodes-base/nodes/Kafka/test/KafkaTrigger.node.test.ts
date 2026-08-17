@@ -24,6 +24,7 @@ import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { KafkaTrigger } from '../KafkaTrigger.node';
 import { KafkaTriggerV1 } from '../v1/KafkaTriggerV1.node';
+import { KafkaTriggerV2 } from '../v2/KafkaTriggerV2.node';
 import type { Mock, Mocked } from 'vitest';
 
 vi.mock('kafkajs');
@@ -2528,24 +2529,31 @@ describe('KafkaTrigger Node', () => {
 
 describe('KafkaTrigger (versioned entry point)', () => {
 	const kafkaTrigger = new KafkaTrigger();
-	const expectedDescription = new KafkaTriggerV1(baseDescription).description;
-	const versions = [1, 1.1, 1.2, 1.3];
+	const expectedV1Description = new KafkaTriggerV1(baseDescription).description;
+	const expectedV2Description = new KafkaTriggerV2(baseDescription).description;
+	const v1Versions = [1, 1.1, 1.2, 1.3];
+	const allVersions = [...v1Versions, 2];
 
-	it('maps exactly versions 1, 1.1, 1.2, and 1.3 to KafkaTriggerV1', () => {
+	it('maps exactly versions 1, 1.1, 1.2, 1.3 to KafkaTriggerV1 and 2 to KafkaTriggerV2', () => {
 		expect(
 			Object.keys(kafkaTrigger.nodeVersions)
 				.map(Number)
 				.sort((a, b) => a - b),
-		).toEqual(versions);
-		for (const version of versions) {
+		).toEqual(allVersions);
+		for (const version of v1Versions) {
 			expect(kafkaTrigger.nodeVersions[version]).toBeInstanceOf(KafkaTriggerV1);
+		}
+		expect(kafkaTrigger.nodeVersions[2]).toBeInstanceOf(KafkaTriggerV2);
+	});
+
+	it('resolves each v1.x version to a consistent, correctly-merged description', () => {
+		for (const version of v1Versions) {
+			expect(kafkaTrigger.nodeVersions[version].description).toEqual(expectedV1Description);
 		}
 	});
 
-	it('resolves each version to a consistent, correctly-merged description', () => {
-		for (const version of versions) {
-			expect(kafkaTrigger.nodeVersions[version].description).toEqual(expectedDescription);
-		}
+	it('resolves version 2 to a consistent, correctly-merged description', () => {
+		expect(kafkaTrigger.nodeVersions[2].description).toEqual(expectedV2Description);
 	});
 
 	it('defaults new workflows to version 1.3', () => {

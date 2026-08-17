@@ -1,6 +1,7 @@
 import { ExpressionError } from 'n8n-workflow';
 import {
 	completeExpressionSyntax,
+	getExternalSecretPreview,
 	shouldConvertToExpression,
 	removeExpressionPrefix,
 	stringifyExpressionResult,
@@ -9,6 +10,65 @@ import {
 import { executionRetryMessage } from '@/features/execution/executions/executions.utils';
 
 describe('Utils: Expressions', () => {
+	describe('getExternalSecretPreview()', () => {
+		const secrets = {
+			vault: {
+				key: '*********',
+				'json/path': '*********',
+			},
+		};
+
+		it.each([
+			'={{ $secrets.vault.key }}',
+			"={{ JSON.parse($secrets.vault['json/path']).password }}",
+			'={{ JSON.parse($secrets . vault ["json/path"]).password }}',
+			'={{ $secrets.vault.key + $secrets.vault["json/path"] }}',
+			'={{ $secrets[\'vault\']["key"] }}',
+		])('should defer an existing secret in "%s"', (expression) => {
+			expect(getExternalSecretPreview(expression, secrets)).toEqual({
+				text: '[evaluated during execution]',
+				exists: true,
+			});
+		});
+
+		it.each([
+			'={{ $secrets.invalidVault.key }}',
+			'={{ $secrets.vault.nameWithTypo }}',
+			'={{ $secrets.vault.key + $secrets.vault.nameWithTypo }}',
+			'={{ $secrets.invalidVault[$vars.key] }}',
+		])('should report a secret that does not exist in "%s"', (expression) => {
+			expect(getExternalSecretPreview(expression, secrets)).toEqual({
+				text: '[secret not found]',
+				exists: false,
+			});
+		});
+
+		it.each([
+			'={{ $secrets.vault.key.nameWithTypo }}',
+			'={{ $secrets.vault.key?.nameWithTypo }}',
+			'={{ $secrets[provider].key }}',
+			'={{ $secrets.vault[$vars.secret] }}',
+		])('should not judge a secret path it cannot read in "%s"', (expression) => {
+			expect(getExternalSecretPreview(expression, secrets)).toBeUndefined();
+		});
+
+		it.each(['={{ $json.password }}', 'plain $secrets.vault.key'])(
+			'should ignore non-expression secret references in "%s"',
+			(expression) => {
+				expect(getExternalSecretPreview(expression, secrets)).toBeUndefined();
+			},
+		);
+
+		it.each([undefined, {}, { vault: {} }])(
+			'should not claim a missing secret when metadata is %s',
+			(unavailableSecrets) => {
+				expect(
+					getExternalSecretPreview('={{ $secrets.vault.key }}', unavailableSecrets),
+				).toBeUndefined();
+			},
+		);
+	});
+
 	describe('stringifyExpressionResult()', () => {
 		it('should return empty string for non-critical errors', () => {
 			expect(
