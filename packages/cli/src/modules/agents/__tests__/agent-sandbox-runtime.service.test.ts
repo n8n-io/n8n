@@ -14,10 +14,8 @@ import type { AiService } from '../../../services/ai.service';
 import type { SandboxSettingsService } from '../../../services/sandbox-settings.service';
 
 import type { Agent } from '../entities/agent.entity';
-import {
-	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
-	AgentSandboxRuntimeService,
-} from '../agent-sandbox-runtime.service';
+import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 const { createSandboxMock, createFilesystemMock } = vi.hoisted(() => ({
@@ -34,13 +32,22 @@ vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
 const instanceId = 'instance-1';
 const projectId = 'project-1';
 const agentId = 'agent-1';
+const principalHash = hashAgentSandboxPrincipal({
+	type: 'integration-user',
+	connectionId: 'connection/raw:id',
+	platform: 'slack',
+	platformUserId: 'U/raw:123',
+});
+const otherPrincipalHash = hashAgentSandboxPrincipal({
+	type: 'n8n-user',
+	userId: 'user/123:raw',
+});
+const workspaceSandboxId = 'ed4a5e7b-acf0-5f78-b2b3-8fc4182d3c0c';
+const otherWorkspaceSandboxId = '4197eecc-3092-54b8-9196-a4fecccea156';
+const knowledgeSandboxId = 'a54b9053-9f50-51e5-b971-e02942ff7b6b';
 
 type TestWorkspaceSandbox = WorkspaceSandbox &
 	Required<Pick<WorkspaceSandbox, '_start' | 'destroy' | 'executeCommand'>>;
-
-function buildExpectedSandboxName(): string {
-	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}${instanceId}-${projectId}-${agentId}`.toLowerCase();
-}
 
 function makeAiService(overrides: Partial<AiService> = {}): AiService {
 	const aiService = mock<AiService>();
@@ -145,7 +152,7 @@ describe('AgentSandboxRuntimeService', () => {
 		createFilesystemMock.mockReturnValue(mock<WorkspaceFilesystem>());
 	});
 
-	it('creates and starts a deterministic direct-mode Daytona sandbox', async () => {
+	it('creates and starts the deterministic direct-mode Daytona knowledge sandbox', async () => {
 		const aiService = makeAiService();
 		const sandboxSettingsService = makeSandboxSettingsService();
 		const service = makeService({
@@ -156,9 +163,9 @@ describe('AgentSandboxRuntimeService', () => {
 			aiService,
 			sandboxSettingsService,
 		});
-		const expectedName = buildExpectedSandboxName();
+		const expectedName = `agent-kb-${knowledgeSandboxId}`;
 
-		await service.warmSandbox(projectId, agentId);
+		await service.warmKnowledgeSandbox(projectId, agentId);
 
 		expect(aiService.getClient).not.toHaveBeenCalled();
 		expect(sandboxSettingsService.resolveDaytonaConfig).toHaveBeenCalled();
@@ -174,21 +181,26 @@ describe('AgentSandboxRuntimeService', () => {
 					'n8n-agents-knowledgebase': 'true',
 					'n8n-project-id': projectId,
 					'n8n-agent-id': agentId,
+					'n8n-agent-sandbox-kind': 'knowledge',
 				},
 				timeout: 300_000,
 				createTimeoutSeconds: 300,
 				image: 'daytonaio/sandbox:0.5.0',
 				snapshot: 'n8n/agent-knowledge:1.2.3',
 				ephemeral: true,
-				autoStopInterval: 5,
+				autoStopInterval: 15,
+				autoArchiveInterval: 60,
 			}),
 			expect.anything(),
 		);
+		expect(
+			(createSandboxMock.mock.calls[0][0] as DaytonaSandboxConfig).autoDeleteInterval,
+		).toBeUndefined();
 		expect(sandbox._start).toHaveBeenCalled();
 		expect(createFilesystemMock).toHaveBeenCalledWith(sandbox);
 	});
 
-	it('single-flights concurrent acquisition for the same project and agent', async () => {
+	it('single-flights concurrent knowledge acquisition for the same project and agent', async () => {
 		let resolveCreation: (value: WorkspaceSandbox) => void;
 		createSandboxMock.mockReturnValue(
 			new Promise((resolve) => {
@@ -197,29 +209,91 @@ describe('AgentSandboxRuntimeService', () => {
 		);
 		const service = makeService();
 
-		const first = service.warmSandbox(projectId, agentId);
-		const second = service.warmSandbox(projectId, agentId);
+		const first = service.warmKnowledgeSandbox(projectId, agentId);
+		const second = service.warmKnowledgeSandbox(projectId, agentId);
 		await vi.waitFor(() => expect(createSandboxMock).toHaveBeenCalledTimes(1));
 		resolveCreation!(sandbox);
 		await Promise.all([first, second]);
 	});
 
-	it('uses a stable UUID for the n8n sandbox', async () => {
-		const expectedId = 'eaa9416e-fd18-5dd5-bb92-5e8fc51eb5d0';
+	it('uses deterministic, isolated Daytona identities and labels', async () => {
+		const service = makeService();
+
+		await service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+		await service.acquireWorkspaceSandbox(projectId, agentId, otherPrincipalHash);
+		await service.acquireKnowledgeSandbox(projectId, agentId);
+
+		const configs = createSandboxMock.mock.calls.map(([config]) => config as DaytonaSandboxConfig);
+		expect(configs.map(({ id, name }) => ({ id, name }))).toEqual([
+			{
+				id: `agent-ws-${workspaceSandboxId}`,
+				name: `agent-ws-${workspaceSandboxId}`,
+			},
+			{
+				id: `agent-ws-${otherWorkspaceSandboxId}`,
+				name: `agent-ws-${otherWorkspaceSandboxId}`,
+			},
+			{
+				id: `agent-kb-${knowledgeSandboxId}`,
+				name: `agent-kb-${knowledgeSandboxId}`,
+			},
+		]);
+		expect(configs[0].labels).toEqual({
+			'n8n-project-id': projectId,
+			'n8n-agent-id': agentId,
+			'n8n-agent-sandbox-kind': 'workspace',
+			'n8n-agent-principal-hash': principalHash,
+		});
+		expect(
+			configs.map(({ ephemeral, autoStopInterval, autoArchiveInterval, autoDeleteInterval }) => [
+				ephemeral,
+				autoStopInterval,
+				autoArchiveInterval,
+				autoDeleteInterval,
+			]),
+		).toEqual([
+			[true, 5, undefined, undefined],
+			[true, 5, undefined, undefined],
+			[false, 15, 60, 10_080],
+		]);
+	});
+
+	it('single-flights the same workspace identity without coalescing different principals', async () => {
+		const resolveCreations: Array<(value: WorkspaceSandbox) => void> = [];
+		createSandboxMock.mockImplementation(
+			async () =>
+				await new Promise((resolve) => {
+					resolveCreations.push(resolve);
+				}),
+		);
+		const service = makeService();
+
+		const first = service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+		const duplicate = service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+		const distinct = service.acquireWorkspaceSandbox(projectId, agentId, otherPrincipalHash);
+		await vi.waitFor(() => expect(createSandboxMock).toHaveBeenCalledTimes(2));
+		for (const resolveCreation of resolveCreations) resolveCreation(sandbox);
+		await Promise.all([first, duplicate, distinct]);
+	});
+
+	it('uses distinct deterministic workspace and knowledge IDs for the n8n sandbox', async () => {
 		const service = makeService({
 			sandboxSettingsService: makeSandboxSettingsService('n8n-sandbox'),
 		});
 
-		await service.warmSandbox(projectId, agentId);
+		await service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+		await service.acquireKnowledgeSandbox(projectId, agentId);
 
-		expect(createSandboxMock).toHaveBeenCalledWith(
+		expect(createSandboxMock.mock.calls.map(([config]) => config.id)).toEqual([
+			workspaceSandboxId,
+			knowledgeSandboxId,
+		]);
+		expect(createSandboxMock.mock.calls[1][0]).toEqual(
 			expect.objectContaining({
 				provider: 'n8n-sandbox',
-				id: expectedId,
 				serviceUrl: 'https://sandbox.example',
 				apiKey: 'sandbox-key',
 			}),
-			expect.anything(),
 		);
 	});
 
@@ -228,7 +302,7 @@ describe('AgentSandboxRuntimeService', () => {
 		settingsService.resolveN8nSandboxConfig.mockResolvedValue({});
 		const service = makeService({ sandboxSettingsService: settingsService });
 
-		await expect(service.warmSandbox(projectId, agentId)).rejects.toThrow(
+		await expect(service.warmKnowledgeSandbox(projectId, agentId)).rejects.toThrow(
 			/N8N_SANDBOX_SERVICE_URL/,
 		);
 		expect(createSandboxMock).not.toHaveBeenCalled();
@@ -249,7 +323,7 @@ describe('AgentSandboxRuntimeService', () => {
 			aiService,
 		});
 
-		await service.warmSandbox(projectId, agentId);
+		await service.warmKnowledgeSandbox(projectId, agentId);
 
 		const config = createSandboxMock.mock.calls[0][0] as DaytonaSandboxConfig;
 		expect(config.daytonaApiUrl).toBe('https://sandbox-proxy.example');
@@ -270,7 +344,7 @@ describe('AgentSandboxRuntimeService', () => {
 			aiService: makeProxyAiService(),
 		});
 
-		await expect(service.warmSandbox(projectId, agentId)).rejects.toThrow(
+		await expect(service.warmKnowledgeSandbox(projectId, agentId)).rejects.toThrow(
 			/requires a snapshot.*N8N_AGENTS_AI_SANDBOX_SNAPSHOT/s,
 		);
 		expect(createSandboxMock).not.toHaveBeenCalled();
@@ -283,41 +357,36 @@ describe('AgentSandboxRuntimeService', () => {
 			aiService: makeProxyAiService(),
 		});
 
-		await expect(service.warmSandbox(projectId, agentId)).rejects.toThrow('snapshot missing');
+		await expect(service.warmKnowledgeSandbox(projectId, agentId)).rejects.toThrow(
+			'snapshot missing',
+		);
 		const config = createSandboxMock.mock.calls[0][0] as DaytonaSandboxConfig;
 		expect(config.snapshot).toBe('n8n/agent-knowledge:missing');
 		expect(config.image).toBeUndefined();
 	});
 
-	it('best-effort destroys both provider sandboxes by their deterministic identities', async () => {
-		const daytonaSandbox = makeSandbox('daytona', buildExpectedSandboxName());
-		daytonaSandbox.destroy.mockRejectedValue(new Error('remote unavailable'));
-		const n8nSandbox = makeSandbox('n8n-sandbox', 'eaa9416e-fd18-5dd5-bb92-5e8fc51eb5d0');
-		createSandboxMock.mockImplementation(async (config) =>
-			config.provider === 'daytona' ? daytonaSandbox : n8nSandbox,
-		);
-		const service = makeService({ configOverrides: { sandboxEnabled: false } });
+	it('best-effort destroys workspace and knowledge sandboxes by only their exact identities', async () => {
+		const destroyedIds: string[] = [];
+		createSandboxMock.mockImplementation(async (config) => {
+			const target = makeSandbox(config.provider, config.id);
+			target.destroy.mockImplementation(async () => {
+				destroyedIds.push(config.id);
+				if (config.id === `agent-kb-${knowledgeSandboxId}`) {
+					throw new Error('remote unavailable');
+				}
+			});
+			return target;
+		});
+		const service = makeService();
 
-		await service.destroySandbox(projectId, agentId);
+		await service.destroyWorkspaceSandbox(projectId, agentId, principalHash);
+		await service.destroyKnowledgeSandbox(projectId, agentId);
 
-		expect(createSandboxMock).toHaveBeenNthCalledWith(
-			1,
-			expect.objectContaining({
-				provider: 'daytona',
-				id: buildExpectedSandboxName(),
-				name: buildExpectedSandboxName(),
-			}),
-			expect.anything(),
-		);
-		expect(createSandboxMock).toHaveBeenNthCalledWith(
-			2,
-			expect.objectContaining({
-				provider: 'n8n-sandbox',
-				id: 'eaa9416e-fd18-5dd5-bb92-5e8fc51eb5d0',
-			}),
-			expect.anything(),
-		);
-		expect(daytonaSandbox.destroy).toHaveBeenCalled();
-		expect(n8nSandbox.destroy).toHaveBeenCalled();
+		expect(destroyedIds).toEqual([
+			`agent-ws-${workspaceSandboxId}`,
+			workspaceSandboxId,
+			`agent-kb-${knowledgeSandboxId}`,
+			knowledgeSandboxId,
+		]);
 	});
 });

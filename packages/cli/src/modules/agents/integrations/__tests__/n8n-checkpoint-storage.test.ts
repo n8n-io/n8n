@@ -5,9 +5,16 @@ import type { AgentsConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import {
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+} from '../../agent-sandbox-principal';
 import type { AgentCheckpoint } from '../../entities/agent-checkpoint.entity';
 import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
-import { N8NCheckpointStorage } from '../n8n-checkpoint-storage';
+import {
+	CHECKPOINT_RECONCILIATION_OVERFLOW,
+	N8NCheckpointStorage,
+} from '../n8n-checkpoint-storage';
 
 const suspendedState: SerializableAgentState = {
 	status: 'suspended',
@@ -22,6 +29,7 @@ const suspendedState: SerializableAgentState = {
 		},
 	},
 };
+const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 
 function makeService() {
 	const repository = mock<AgentCheckpointRepository>();
@@ -176,5 +184,65 @@ describe('N8NCheckpointStorage', () => {
 		await service.getStorage('agent-1').delete('run-1');
 
 		expect(repository.expireByRunIdAndAgentId).toHaveBeenCalledWith('run-1', 'agent-1');
+	});
+
+	it('returns every persisted active run for the principal workspace', async () => {
+		const { service, repository } = makeService();
+		const otherPrincipalHash = hashAgentSandboxPrincipal({
+			type: 'n8n-user',
+			userId: 'user-2',
+		});
+		const stateFor = (
+			status: SerializableAgentState['status'],
+			hash = principalHash,
+		): SerializableAgentState => ({
+			...suspendedState,
+			status,
+			persistence: {
+				...suspendedState.persistence!,
+				hostMetadata: encodeAgentSandboxHostMetadata({
+					projectId: 'project-1',
+					principalHash: hash,
+				}),
+			},
+		});
+		const checkpoint = (
+			runId: string,
+			state: string | null,
+			overrides: Partial<AgentCheckpoint> = {},
+		) =>
+			({
+				runId,
+				agentId: 'agent-1',
+				expired: false,
+				state,
+				updatedAt: new Date(),
+				...overrides,
+			}) as AgentCheckpoint;
+		repository.findForSandboxReconciliation.mockResolvedValue([
+			checkpoint('run-running', JSON.stringify(stateFor('running'))),
+			checkpoint('run-suspended', JSON.stringify(stateFor('suspended'))),
+			checkpoint('run-cancelled', JSON.stringify(stateFor('cancelled'))),
+			checkpoint('run-other-principal', JSON.stringify(stateFor('running', otherPrincipalHash))),
+			checkpoint('run-old', JSON.stringify(stateFor('suspended')), { updatedAt: new Date(0) }),
+			checkpoint('run-expired', JSON.stringify(stateFor('running')), { expired: true }),
+			checkpoint('run-malformed', '{'),
+			checkpoint('run-empty', null),
+		]);
+
+		await expect(service.getActiveRunIdsForSandbox('agent-1', principalHash)).resolves.toEqual(
+			new Set(['run-running', 'run-suspended', 'run-old']),
+		);
+	});
+
+	it('reports overflow instead of returning a partial set of protected runs', async () => {
+		const { service, repository } = makeService();
+		repository.findForSandboxReconciliation.mockResolvedValue(
+			Array.from({ length: 101 }, (_, index) => ({ runId: `run-${index}` }) as AgentCheckpoint),
+		);
+
+		await expect(service.getActiveRunIdsForSandbox('agent-1', principalHash)).resolves.toBe(
+			CHECKPOINT_RECONCILIATION_OVERFLOW,
+		);
 	});
 });

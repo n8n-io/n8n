@@ -5,6 +5,7 @@ import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -13,6 +14,11 @@ import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TtlMap } from '@/utils/ttl-map';
 
+import {
+	hashAgentSandboxPrincipal,
+	type AgentSandboxPrincipalHash,
+} from './agent-sandbox-principal';
+import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
@@ -30,10 +36,11 @@ export interface GetRuntimeParams {
 	/**
 	 * The calling n8n user. When present, the runtime is built with node/workflow
 	 * tools filtered down to what this user can access, and the cache key is
-	 * scoped to the user so different users never share a runtime. Absent for
+	 * scoped to the caller so different users never share a runtime. Absent for
 	 * published/integration runs, which keep today's project-scoped runtime.
 	 */
 	user?: User;
+	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 }
 
 export interface AgentRuntime {
@@ -53,8 +60,8 @@ interface RuntimeInitialization {
 export class AgentRuntimeCacheService {
 	/**
 	 * Cached agent runtimes.  Keys follow the pattern:
-	 *   Draft:     `{agentId}:draft[:{integrationType}][:user:{userId}]`
-	 *   Published: `{agentId}:published[:{integrationType}]`
+	 *   Draft:     `{agentId}:draft[:{integrationType}][:{callerScope}]`
+	 *   Published: `{agentId}:published[:{integrationType}][:{callerScope}]`
 	 *
 	 * TTL = 30 minutes — entries are evicted when the agent is idle so that
 	 * memory is freed without requiring an explicit shutdown step.
@@ -62,17 +69,20 @@ export class AgentRuntimeCacheService {
 	 * Separating draft and published with explicit prefixes prevents a draft
 	 * runtime from being mistakenly returned to a published-agent execution.
 	 *
-	 * The `:user:{userId}` suffix only ever appears on draft keys — published
-	 * runs never carry a `user` (see `GetRuntimeParams.user`), since they have
-	 * no interactive n8n session to gate tools against. A draft runtime's tool
-	 * list is filtered per-user at build time (see
-	 * `AgentRuntimeReconstructionService.reconstructFromAgentEntity`), so two
-	 * different users hitting the same draft agent must never resolve to the
-	 * same cache entry — that would leak one user's tool access to the other.
+	 * With sandbox support enabled, caller scope is the workspace principal.
+	 * Without it, draft runtimes retain equivalent per-user isolation via a hash.
 	 */
-	private readonly runtimes = new TtlMap<string, AgentRuntime>(30 * Time.minutes.toMilliseconds);
+	private readonly runtimes = new TtlMap<string, AgentRuntime>(
+		30 * Time.minutes.toMilliseconds,
+		undefined,
+		(runtime) => this.closeAgentResources(runtime.agent, runtime.agentId),
+	);
 
 	private readonly runtimeInitializations = new Map<string, RuntimeInitialization>();
+
+	private readonly activeRuntimeLeases = new WeakMap<RuntimeAgent, number>();
+
+	private readonly runtimesPendingClose = new WeakMap<RuntimeAgent, string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -81,20 +91,21 @@ export class AgentRuntimeCacheService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 		private readonly credentialsService: CredentialsService,
+		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 	) {}
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
-		if (params.usePublishedVersion) {
-			const parts = [params.agentId, 'published'];
-			if (params.integrationType) parts.push(params.integrationType);
-			return parts.join(':');
-		}
-		const parts = [params.agentId, 'draft'];
+		const sandboxEnabled = this.agentSandboxRuntimeService.isEnabled();
+		const parts = [params.agentId, params.usePublishedVersion ? 'published' : 'draft'];
 		if (params.integrationType) parts.push(params.integrationType);
 		// Per-user runtimes have node/workflow tools filtered by that user's
 		// access — keying by user id keeps them from colliding with each other
 		// or with the unscoped (no-user) runtime.
-		if (params.user) parts.push(`user:${params.user.id}`);
+		if (sandboxEnabled && params.sandboxPrincipalHash) {
+			parts.push(`sandbox:${params.sandboxPrincipalHash}`);
+		} else if (!params.usePublishedVersion && params.user) {
+			parts.push(`user:${hashAgentSandboxPrincipal({ type: 'n8n-user', userId: params.user.id })}`);
+		}
 		return parts.join(':');
 	}
 
@@ -160,7 +171,12 @@ export class AgentRuntimeCacheService {
 	 * which disposes the runtime and disconnects any attached MCP clients.
 	 * Errors are logged but never thrown.
 	 */
-	private closeAgentResources(agent: { close(): Promise<void> }, agentId: string): void {
+	private closeAgentResources(agent: RuntimeAgent, agentId: string): void {
+		if (this.activeRuntimeLeases.has(agent)) {
+			this.runtimesPendingClose.set(agent, agentId);
+			return;
+		}
+
 		agent.close().catch((error) => {
 			this.logger.warn('[AgentRuntimeCacheService] Failed to close agent resources on eviction', {
 				agentId,
@@ -169,17 +185,45 @@ export class AgentRuntimeCacheService {
 		});
 	}
 
+	private acquireRuntimeLease(runtime: AgentRuntime): AgentRuntime {
+		const { agent } = runtime;
+		this.activeRuntimeLeases.set(agent, (this.activeRuntimeLeases.get(agent) ?? 0) + 1);
+		return runtime;
+	}
+
+	releaseRuntimeLease(agent: RuntimeAgent): void {
+		const activeLeases = this.activeRuntimeLeases.get(agent);
+		if (activeLeases === undefined) return;
+		if (activeLeases > 1) {
+			this.activeRuntimeLeases.set(agent, activeLeases - 1);
+			return;
+		}
+
+		this.activeRuntimeLeases.delete(agent);
+		const agentId = this.runtimesPendingClose.get(agent);
+		if (agentId !== undefined) {
+			this.runtimesPendingClose.delete(agent);
+			this.closeAgentResources(agent, agentId);
+		}
+	}
+
 	/**
-	 * Return a cached runtime, or reconstruct one from the DB.
+	 * Return a leased cached runtime, or reconstruct one from the DB.
+	 * Callers must release the lease in a `finally` block.
 	 */
 	async getRuntime(params: GetRuntimeParams): Promise<AgentRuntime> {
+		if (this.agentSandboxRuntimeService.isEnabled() && !params.sandboxPrincipalHash) {
+			throw new UserError(
+				'Agent workspace scope is missing and the runtime cannot be reconstructed',
+			);
+		}
 		const cacheKey = this.computeRuntimeCacheKey(params);
 
 		const cached = this.runtimes.get(cacheKey);
-		if (cached) return cached;
+		if (cached) return this.acquireRuntimeLease(cached);
 
 		const initialization = this.runtimeInitializations.get(cacheKey);
-		if (initialization) return await initialization.promise;
+		if (initialization) return this.acquireRuntimeLease(await initialization.promise);
 
 		const token = Symbol(cacheKey);
 		const runtimeInitialization: RuntimeInitialization = {
@@ -204,11 +248,12 @@ export class AgentRuntimeCacheService {
 		});
 		this.runtimeInitializations.set(cacheKey, runtimeInitialization);
 
-		return await runtimeInitialization.promise;
+		return this.acquireRuntimeLease(await runtimeInitialization.promise);
 	}
 
 	private async reconstructRuntime(params: GetRuntimeParams): Promise<AgentRuntime> {
-		const { agentId, projectId, integrationType, usePublishedVersion, user } = params;
+		const { agentId, projectId, integrationType, usePublishedVersion, user, sandboxPrincipalHash } =
+			params;
 
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
@@ -228,16 +273,17 @@ export class AgentRuntimeCacheService {
 			projectId,
 			user,
 		);
-		const { agent: agentInstance, toolRegistry } =
-			await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
-				agentData,
-				credentialProvider,
-				usePublishedVersion ? 'production' : 'test',
-				integrationType,
-				user,
-				undefined,
-				usePublishedVersion ? 'integrated' : 'manual',
-			);
+		const reconstruction = this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
+			agentData,
+			credentialProvider,
+			usePublishedVersion ? 'production' : 'test',
+			integrationType,
+			user,
+			undefined,
+			usePublishedVersion ? 'integrated' : 'manual',
+			sandboxPrincipalHash,
+		);
+		const { agent: agentInstance, toolRegistry } = await reconstruction;
 
 		return {
 			agent: agentInstance,

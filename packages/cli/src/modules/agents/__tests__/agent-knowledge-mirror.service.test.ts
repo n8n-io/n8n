@@ -93,7 +93,7 @@ function makeRuntimeService(
 	runtime: AgentSandboxRuntime,
 ): ReturnType<typeof mock<AgentSandboxRuntimeService>> {
 	const service = mock<AgentSandboxRuntimeService>();
-	service.acquireSandbox.mockResolvedValue(runtime);
+	service.acquireKnowledgeSandbox.mockResolvedValue(runtime);
 	service.executeSandboxCommand.mockImplementation(
 		async (sandbox, command, timeout) =>
 			await (sandbox.executeCommand?.(command, [], { timeout }) ??
@@ -206,6 +206,19 @@ describe('AgentKnowledgeMirrorService', () => {
 		});
 	});
 
+	it('returns an empty search without acquiring a sandbox when no files exist', async () => {
+		const agentFileRepository = mock<AgentFileRepository>();
+		agentFileRepository.findByAgentId.mockResolvedValue([]);
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.existsBy.mockResolvedValue(true);
+		const service = makeService({ runtimeService, agentFileRepository, agentRepository });
+
+		const result = await service.searchKnowledge(projectId, agentId, { pattern: 'anything' });
+
+		expect(result).toEqual(expect.objectContaining({ matches: [], hasMore: false }));
+		expect(runtimeService.acquireKnowledgeSandbox).not.toHaveBeenCalled();
+	});
+
 	describe('mirror sync', () => {
 		function isManifestReadCommand(command: string): boolean {
 			return command.startsWith('cat ') && command.includes('/manifest');
@@ -259,6 +272,8 @@ describe('AgentKnowledgeMirrorService', () => {
 			let commands = sandbox.executeCommand.mock.calls.map(([command]) => command);
 			expect(commands.filter(isManifestReadCommand)).toHaveLength(1);
 			expect(commands.filter(isMirrorSyncCommand)).toHaveLength(1);
+			expect(runtimeService.acquireKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
+			expect(runtimeService.acquireWorkspaceSandbox).not.toHaveBeenCalled();
 			expect(agentKnowledgeFileStore.readAsBuffer).toHaveBeenCalledTimes(2);
 			const stagingDir = filesystem.mkdir.mock.calls[0][0];
 			expect(stagingDir).toContain(`${knowledgePaths.stagingDir}/`);
@@ -297,6 +312,19 @@ describe('AgentKnowledgeMirrorService', () => {
 			expect(syncCommands[0]).toContain(`${knowledgePaths.stagingDir}/`);
 			expect(syncCommands[0]).toContain('/doc1.txt');
 			expect(syncCommands[0]).toContain('file-1-replacement\tdoc1.txt');
+		});
+
+		it('reads mirrored knowledge through the knowledge sandbox', async () => {
+			sandbox.executeCommand.mockImplementation(async (command) =>
+				makeCommandResult(isManifestReadCommand(command) ? 'file-id\tfile.txt\n' : '0\t1\thello\n'),
+			);
+			const agentFileRepository = mock<AgentFileRepository>();
+			agentFileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
+			const service = makeMirrorService({ fileRepository: agentFileRepository });
+
+			const result = await service.readKnowledge(projectId, agentId, { file: 'file.txt' });
+
+			expect(result.ranges[0].text).toBe('1|hello');
 		});
 
 		it('runs a queued mirror sync with a newer file snapshot after an in-flight sync', async () => {
@@ -357,10 +385,10 @@ describe('AgentKnowledgeMirrorService', () => {
 		});
 
 		it.each([
-			{ provider: 'daytona', deterministicId: 'agent-instance-1-project-1-agent-1' },
+			{ provider: 'daytona', deterministicId: 'agent-kb-a54b9053-9f50-51e5-b971-e02942ff7b6b' },
 			{
 				provider: 'n8n-sandbox',
-				deterministicId: 'eaa9416e-fd18-5dd5-bb92-5e8fc51eb5d0',
+				deterministicId: 'a54b9053-9f50-51e5-b971-e02942ff7b6b',
 			},
 		] satisfies Array<{ provider: SandboxProvider; deterministicId: string }>)(
 			'resyncs the mirror when a $provider sandbox is recreated under the same ID',
@@ -369,7 +397,7 @@ describe('AgentKnowledgeMirrorService', () => {
 				const replacementSandbox = makeSandbox(provider, deterministicId);
 				const staleFilesystem = mock<WorkspaceFilesystem>();
 				const replacementFilesystem = mock<WorkspaceFilesystem>();
-				runtimeService.acquireSandbox
+				runtimeService.acquireKnowledgeSandbox
 					.mockResolvedValueOnce(makeRuntime(staleSandbox, staleFilesystem))
 					.mockResolvedValueOnce(makeRuntime(replacementSandbox, replacementFilesystem));
 				const agentFileRepository = mock<AgentFileRepository>();

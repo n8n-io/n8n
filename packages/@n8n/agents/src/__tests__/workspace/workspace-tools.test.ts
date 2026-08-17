@@ -123,7 +123,7 @@ describe('createWorkspaceTools', () => {
 
 		it('read_tool_result describes and pages a nested result through escaped pointers', async () => {
 			const hash = 'a'.repeat(43);
-			const path = `tool-results/threads/${hash}/${hash}/${hash}.result.json`;
+			const path = `tool-results/runs/${hash}/${hash}.result.json`;
 			const escapedKey = 'folder/name~version';
 			const largeString = '"\\\n'.repeat(12_000);
 			const storedResult = {

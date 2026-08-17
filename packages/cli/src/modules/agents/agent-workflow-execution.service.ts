@@ -28,6 +28,10 @@ import { AgentExecutionService, type StartExecutionParams } from './agent-execut
 import { AgentRunTracingService } from './agent-run-tracing.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import {
+	encodeAgentSandboxHostMetadata,
+	type AgentSandboxPrincipalHash,
+} from './agent-sandbox-principal';
+import {
 	buildAgentConfigurationTelemetry,
 	buildAgentConfigurationTelemetryFromConfig,
 } from './agent-telemetry';
@@ -43,6 +47,10 @@ import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { streamAgentChunks } from './utils/agent-stream';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { describeStructuredOutputError } from './utils/structured-output-error';
+
+interface WorkflowSandboxScope {
+	principalHash: AgentSandboxPrincipalHash;
+}
 
 function getFinalWorkflowResponse(messageRecord: MessageRecord): string {
 	let lastToolCallIndex = -1;
@@ -137,6 +145,7 @@ export class AgentWorkflowExecutionService {
 		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
+		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -155,6 +164,11 @@ export class AgentWorkflowExecutionService {
 					agentEntity,
 					credentialProvider,
 					runType,
+					undefined,
+					undefined,
+					undefined,
+					'manual',
+					sandboxPrincipalHash,
 				);
 			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
 		} catch (e) {
@@ -235,6 +249,7 @@ export class AgentWorkflowExecutionService {
 			nodeName?: string;
 		};
 		recordingParams?: StartExecutionParams;
+		sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
 	}): Promise<WorkflowAgentRunOutcome> {
 		const {
 			agentInstance,
@@ -246,6 +261,7 @@ export class AgentWorkflowExecutionService {
 			outputSchema,
 			tracing,
 			recordingParams,
+			sandboxScope,
 		} = params;
 
 		let agentExecutionId: string | undefined;
@@ -301,7 +317,11 @@ export class AgentWorkflowExecutionService {
 					// caller-supplied session id actually continue the conversation.
 					// The previous key — the execution id — changed every run and hid
 					// all prior messages of the thread from the model.
-					persistence: { resourceId: threadId, threadId },
+					persistence: {
+						resourceId: threadId,
+						threadId,
+						...(sandboxScope ? { hostMetadata: encodeAgentSandboxHostMetadata(sandboxScope) } : {}),
+					},
 					executionCounter: createAgentExecutionCounter(this.telemetry, {
 						agentId: telemetryAgentId,
 						userId: telemetryUserId,
@@ -454,6 +474,33 @@ export class AgentWorkflowExecutionService {
 		useDraftVersion?: boolean,
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
+		sandboxScope?: WorkflowSandboxScope,
+	): Promise<ExecuteAgentData> {
+		return await this.executeForWorkflowInternal(
+			agentId,
+			message,
+			executionId,
+			threadId,
+			projectId,
+			telemetryUserId,
+			useDraftVersion,
+			outputSchema,
+			workflowContext,
+			sandboxScope,
+		);
+	}
+
+	private async executeForWorkflowInternal(
+		agentId: string,
+		message: string,
+		executionId: string,
+		threadId: string,
+		projectId: string,
+		telemetryUserId?: string,
+		useDraftVersion?: boolean,
+		outputSchema?: JSONSchema7,
+		workflowContext?: ExecuteAgentWorkflowContext,
+		sandboxScope?: WorkflowSandboxScope,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -477,6 +524,7 @@ export class AgentWorkflowExecutionService {
 			runType,
 			outputSchema,
 			extraTools?.length ? extraTools : undefined,
+			sandboxScope?.principalHash,
 		);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
@@ -510,6 +558,14 @@ export class AgentWorkflowExecutionService {
 					configuration: telemetryConfiguration,
 				},
 			},
+			...(sandboxScope
+				? {
+						sandboxScope: {
+							projectId,
+							principalHash: sandboxScope.principalHash,
+						},
+					}
+				: {}),
 		});
 
 		if (run.agentExecutionId) {

@@ -37,6 +37,7 @@ import {
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
+import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentWorkflowExecutionService } from '@/modules/agents/agent-workflow-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -1339,6 +1340,20 @@ describe('WorkflowExecuteAdditionalData', () => {
 		const MESSAGE = 'hello';
 		const EXEC_ID = 'exec-id';
 		const THREAD_ID = 'thread-id';
+		const executionSandboxScope = {
+			principalHash: hashAgentSandboxPrincipal({
+				type: 'workflow-execution',
+				workflowId: 'workflow-1',
+				executionId: EXEC_ID,
+			}),
+		};
+		const sessionSandboxScope = {
+			principalHash: hashAgentSandboxPrincipal({
+				type: 'workflow-session',
+				workflowId: 'workflow-1',
+				sessionId: THREAD_ID,
+			}),
+		};
 
 		beforeEach(() => {
 			vi.clearAllMocks();
@@ -1428,6 +1443,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				true,
 				undefined,
 				undefined,
+				executionSandboxScope,
 			);
 		});
 
@@ -1463,6 +1479,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				true,
 				outputSchema,
 				undefined,
+				executionSandboxScope,
 			);
 		});
 
@@ -1476,6 +1493,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				workflowId: 'workflow-1',
 				workflowName: 'My workflow',
 				callingNodeName: 'Message an Agent',
+				hasCallerSessionId: true,
 				nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }],
 				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
 			};
@@ -1501,6 +1519,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				true,
 				undefined,
 				workflowContext,
+				sessionSandboxScope,
 			);
 		});
 
@@ -1534,6 +1553,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				true,
 				undefined,
 				undefined,
+				executionSandboxScope,
 			);
 		});
 
@@ -1596,6 +1616,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				false,
 				undefined,
 				undefined,
+				executionSandboxScope,
 			);
 		});
 
@@ -1628,6 +1649,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					true,
 					undefined,
 					undefined,
+					executionSandboxScope,
 				);
 			},
 		);
@@ -1662,6 +1684,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				false,
 				undefined,
 				undefined,
+				executionSandboxScope,
 			);
 		});
 	});

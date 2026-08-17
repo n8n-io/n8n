@@ -284,7 +284,7 @@ export class ProjectService {
 					});
 				}
 
-				await agentKnowledgeService.destroySandbox(project.id, agent.id);
+				await agentKnowledgeService.destroyKnowledgeSandbox(project.id, agent.id);
 				await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
 			}
 		}

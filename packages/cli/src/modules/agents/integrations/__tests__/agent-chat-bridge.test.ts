@@ -19,6 +19,8 @@ import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 
+import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
+
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
 interface FakeThread {
@@ -668,6 +670,12 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenNthCalledWith(
 				1,
 				expect.objectContaining({
+					sandboxPrincipalHash: hashAgentSandboxPrincipal({
+						type: 'integration-user',
+						connectionId: 'cred-1',
+						platform: 'test-streaming',
+						platformUserId: 'u1',
+					}),
 					memory: expect.objectContaining({
 						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
 						resourceId: 'integration:test-streaming:u1',

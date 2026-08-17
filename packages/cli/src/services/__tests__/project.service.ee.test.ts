@@ -649,8 +649,14 @@ describe('ProjectService', () => {
 			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[1]).toBeLessThan(
 				projectRepository.remove.mock.invocationCallOrder[0],
 			);
-			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-1');
-			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-2');
+			expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(
+				project.id,
+				'agent-1',
+			);
+			expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(
+				project.id,
+				'agent-2',
+			);
 			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
 			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-2');
 		});
@@ -766,7 +772,10 @@ describe('ProjectService', () => {
 
 			await expect(projectService.deleteProject(user, project.id)).resolves.toBeUndefined();
 
-			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-1');
+			expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(
+				project.id,
+				'agent-1',
+			);
 			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
 			expect(projectRepository.remove).toHaveBeenCalledWith(project);
 		});

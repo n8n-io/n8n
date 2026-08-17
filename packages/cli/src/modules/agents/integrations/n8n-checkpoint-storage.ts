@@ -12,6 +12,10 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
+import {
+	decodeAgentSandboxHostMetadata,
+	type AgentSandboxPrincipalHash,
+} from '../agent-sandbox-principal';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 
 /** File parts are checkpointed reference-only (a `Uint8Array` would not survive JSON round-tripping). */
@@ -36,6 +40,9 @@ type CheckpointStatus =
 			status: 'active';
 			checkpoint: SerializableAgentState;
 	  };
+
+const MAX_SANDBOX_RECONCILIATION_CHECKPOINTS = 100;
+export const CHECKPOINT_RECONCILIATION_OVERFLOW = Symbol('checkpoint-reconciliation-overflow');
 
 @Service()
 export class N8NCheckpointStorage {
@@ -64,6 +71,33 @@ export class N8NCheckpointStorage {
 				await this.claimForResume(key, state, agentId),
 			delete: async (key) => await this.delete(key, agentId),
 		};
+	}
+
+	async getActiveRunIdsForSandbox(
+		agentId: string,
+		principalHash: AgentSandboxPrincipalHash,
+	): Promise<Set<string> | typeof CHECKPOINT_RECONCILIATION_OVERFLOW> {
+		const checkpoints = await this.agentCheckpointRepository.findForSandboxReconciliation(agentId);
+		if (checkpoints.length > MAX_SANDBOX_RECONCILIATION_CHECKPOINTS) {
+			return CHECKPOINT_RECONCILIATION_OVERFLOW;
+		}
+
+		const runIds = new Set<string>();
+
+		for (const checkpoint of checkpoints) {
+			if (checkpoint.expired || checkpoint.state === null) continue;
+
+			try {
+				const state = jsonParse<SerializableAgentState>(checkpoint.state);
+				if (state.status !== 'running' && state.status !== 'suspended') continue;
+				const scope = decodeAgentSandboxHostMetadata(state.persistence?.hostMetadata);
+				if (scope?.principalHash === principalHash) runIds.add(checkpoint.runId);
+			} catch {
+				// A malformed checkpoint must not block workspace acquisition.
+			}
+		}
+
+		return runIds;
 	}
 
 	init() {

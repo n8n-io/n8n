@@ -525,7 +525,10 @@ export class AgentKnowledgeMirrorService {
 		projectId: string,
 		agentId: string,
 	): Promise<AgentKnowledgeMirrorRuntime> {
-		const runtime = await this.agentSandboxRuntimeService.acquireSandbox(projectId, agentId);
+		const runtime = await this.agentSandboxRuntimeService.acquireKnowledgeSandbox(
+			projectId,
+			agentId,
+		);
 		return { ...runtime, paths: getAgentKnowledgePaths(runtime.provider) };
 	}
 }

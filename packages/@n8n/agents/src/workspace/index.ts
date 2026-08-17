@@ -1,6 +1,10 @@
 export { Workspace } from './workspace';
 export { createScopedWorkspace } from './scoped-workspace';
-export { getToolResultThreadDirectory } from './tool-result-storage';
+export {
+	getToolResultRunDirectory,
+	reconcileToolResultRuns,
+	removeToolResultRun,
+} from './tool-result-storage';
 
 export { BaseFilesystem } from './filesystem/base-filesystem';
 
