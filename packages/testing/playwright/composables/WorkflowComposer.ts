@@ -16,7 +16,7 @@ export class WorkflowComposer {
 		notificationMessage: string,
 		options: { timeout?: number } = {},
 	) {
-		const { timeout = 3000 } = options;
+		const { timeout = 5000 } = options;
 		const responsePromise = this.n8n.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows/') &&
