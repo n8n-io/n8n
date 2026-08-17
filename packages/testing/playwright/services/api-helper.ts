@@ -261,6 +261,15 @@ export class ApiHelpers {
 		return data.cursor;
 	}
 
+	async countTaskRunners(): Promise<number> {
+		const response = await this.request.get('/rest/e2e/task-runners/count');
+		if (!response.ok()) {
+			throw new TestError(`Failed to count task runners: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as { data: { count: number } };
+		return data.count;
+	}
+
 	async clearWorkflowStaticData(workflowId: string): Promise<void> {
 		const response = await this.request.post('/rest/e2e/workflow-static-data/clear', {
 			data: { workflowId },

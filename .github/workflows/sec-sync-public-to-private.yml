@@ -6,7 +6,7 @@
 # Scheduled runs only sync if private is not ahead of public.
 # Manual runs always sync (for conflict recovery after failed cherry-pick).
 #
-# The bundle/* integration branches are kept current by sec-rebase-bundle-branches.yml.
+# The bundle/* integration branches are kept current by sec-sync-bundle-branches.yml.
 
 name: 'Security: Sync from Public'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('Security: Sync from Public (force={0})', inputs.force) || '' }}"

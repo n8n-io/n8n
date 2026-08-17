@@ -52,6 +52,16 @@ jobs:
     with:
       ref: ${{ github.sha }}
 
+  # Scoped to the packages this push touched, so it stays cheap enough to run on every commit.
+  verify-single-instance-npm:
+    name: Verify single-instance deps (npm-install)
+    uses: ./.github/workflows/test-single-instance-npm.yml
+    permissions:
+      contents: read
+    with:
+      scope: changed
+      base-ref: ${{ github.event.before }}
+
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
