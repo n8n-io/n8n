@@ -226,10 +226,14 @@ onMounted(async () => {
 
 	// Ensure the credentials store is populated so NodeCredentials can show
 	// existing credentials in the dropdown. The Instance AI page may not have
-	// fetched them yet.
+	// fetched them yet. Scope to the thread's project — an unscoped fetch fills
+	// the store with credentials from other projects (e.g. personal) that the
+	// picker would then offer.
 	try {
 		await Promise.all([
-			credentialsStore.fetchAllCredentials(),
+			props.projectId
+				? credentialsStore.fetchAllCredentialsForWorkflow({ projectId: props.projectId })
+				: credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
 		]);
 	} catch (error) {
