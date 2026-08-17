@@ -748,6 +748,7 @@ describe('InstanceAiCredentialSetup', () => {
 			settingsStore = useInstanceAiSettingsStore();
 			vi.spyOn(settingsStore, 'fetchBrowserStatus').mockResolvedValue(undefined);
 			settingsStore.browserConnected = false;
+			settingsStore.browserStatusLoaded = true;
 
 			// The choice only shows with no usable credentials in the store —
 			// override the suite-level default of one.
@@ -768,7 +769,43 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getByTestId('setup-choice-manual')).toBeTruthy();
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'Instance AI Browser Use credential setup choice shown',
-				expect.objectContaining({ credential_type: 'type1' }),
+				expect.objectContaining({
+					credential_type: 'type1',
+					browser_connection_state: 'disconnected',
+				}),
+			);
+		});
+
+		it('reports the connected state on the shown event', () => {
+			experiment.enabled = true;
+			settingsStore.browserConnected = true;
+
+			renderCard(makeCredentialRequests(1));
+
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				'Instance AI Browser Use credential setup choice shown',
+				expect.objectContaining({ browser_connection_state: 'connected' }),
+			);
+		});
+
+		it('holds the shown event back until the browser status has loaded', async () => {
+			experiment.enabled = true;
+			settingsStore.browserStatusLoaded = false;
+
+			renderCard(makeCredentialRequests(1));
+
+			expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
+				'Instance AI Browser Use credential setup choice shown',
+				expect.anything(),
+			);
+
+			settingsStore.browserConnected = true;
+			settingsStore.browserStatusLoaded = true;
+			await nextTick();
+
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				'Instance AI Browser Use credential setup choice shown',
+				expect.objectContaining({ browser_connection_state: 'connected' }),
 			);
 		});
 
@@ -847,6 +884,7 @@ describe('InstanceAiCredentialSetup', () => {
 					credential_type: 'type1',
 					choice: 'ai',
 					credential_setup_attempt_id: confirmedAttemptId,
+					browser_connection_state: 'connected',
 				}),
 			);
 		});
@@ -864,6 +902,10 @@ describe('InstanceAiCredentialSetup', () => {
 
 			expect(openModalSpy).toHaveBeenCalledWith(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
 			expect(confirmSpy).not.toHaveBeenCalled();
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				'Instance AI Browser Use User clicked credential setup option',
+				expect.objectContaining({ choice: 'ai', browser_connection_state: 'disconnected' }),
+			);
 
 			// Simulate the browser connecting (push updates the store).
 			settingsStore.browserConnected = true;
