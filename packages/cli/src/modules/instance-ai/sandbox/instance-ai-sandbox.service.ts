@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { SandboxAcquisitionError } from '@n8n/agents/sandbox';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
@@ -417,6 +418,10 @@ export class InstanceAiSandboxService {
 				await workspace.destroy();
 			} catch {
 				// Best-effort cleanup when the sandbox cannot start
+			}
+			if (error instanceof SandboxAcquisitionError) {
+				// Acquisition failures are transient infra conditions, not code bugs.
+				throw new OperationalError(error.message, { cause: error });
 			}
 			throw error;
 		}

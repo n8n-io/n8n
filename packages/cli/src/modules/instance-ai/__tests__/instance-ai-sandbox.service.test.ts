@@ -1,4 +1,5 @@
 import type { Mock } from 'vitest';
+import { SandboxAcquisitionError } from '@n8n/agents/sandbox';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
@@ -408,6 +409,32 @@ describe('InstanceAiSandboxService', () => {
 	});
 
 	describe('workspace lifecycle', () => {
+		it('wraps sandbox acquisition failures in OperationalError after cleanup', async () => {
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+			});
+
+			const acquisitionError = new SandboxAcquisitionError(
+				'Failed to acquire Daytona sandbox: Bad Gateway',
+				'DaytonaError:502',
+			);
+			const workspace = {
+				init: vi.fn(async () => {
+					throw acquisitionError;
+				}),
+				destroy: vi.fn(async () => {}),
+			};
+			(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+			(createWorkspace as Mock).mockReturnValue(workspace);
+
+			await expect(
+				service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
+			).rejects.toSatisfy(
+				(error: unknown) => error instanceof OperationalError && error.cause === acquisitionError,
+			);
+			expect(workspace.destroy).toHaveBeenCalledTimes(1);
+		});
+
 		it('serializes workspace creation for concurrent calls on the same thread', async () => {
 			const { service } = createSandboxService({
 				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },

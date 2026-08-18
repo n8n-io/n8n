@@ -18,6 +18,7 @@ export {
 	type SandboxCommandTarget,
 } from './run-in-sandbox';
 export { loadDaytona } from './lazy-daytona';
+export { SandboxAcquisitionError, SandboxNameConflictError } from './errors';
 export { createFilesystem, createSandbox } from './create-workspace';
 export type {
 	CommandResult,
