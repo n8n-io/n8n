@@ -6,12 +6,20 @@ import { z } from 'zod';
 import { CredentialResolverError } from '@n8n/decorators';
 import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 
+/**
+ * The `source` values this identifier accepts, declared once so the schemas below and
+ * {@link N8N_IDENTITY_SOURCES} cannot disagree: adding a value here reaches both.
+ */
+const MANUAL_EXECUTION_SOURCE = 'manual-execution';
+const REQUEST_BOUND_SOURCES = ['chat-hub-injected', 'cookie-source'] as const;
+const N8N_OAUTH_SOURCE = 'n8n-oauth';
+
 const ManualExecutionMetadataSchema = z.object({
-	source: z.literal('manual-execution'),
+	source: z.literal(MANUAL_EXECUTION_SOURCE),
 });
 
 const RequestBoundMetadataSchema = z.object({
-	source: z.enum(['chat-hub-injected', 'cookie-source']),
+	source: z.enum(REQUEST_BOUND_SOURCES),
 	method: z.string(),
 	endpoint: z.string(),
 	browserId: z.string().optional(),
@@ -28,7 +36,7 @@ const OAuthResourceGrantSchema = z.object({
 }) satisfies z.ZodType<OAuthResourceGrant, z.ZodTypeDef, unknown>;
 
 const N8nOAuthMetadataSchema = z.object({
-	source: z.literal('n8n-oauth'),
+	source: z.literal(N8N_OAUTH_SOURCE),
 	resource: z.string(),
 	/** Absent for contexts sealed before grants existed, and for long-lived resources. */
 	grant: OAuthResourceGrantSchema.optional(),
@@ -42,14 +50,15 @@ export const N8NIdentifierMetadataSchema = z.discriminatedUnion('source', [
 ]);
 
 /**
- * Every `source` the union above accepts. Kept in step with it by
- * `n8n-identifier.test.ts`, which fails if the schema gains a source this list lacks.
+ * Every `source` the union above accepts, built from the same constants the schemas
+ * use, so a new value cannot reach the schema without reaching this list. A new
+ * metadata *shape* still has to be added here by hand — `n8n-identifier.test.ts`
+ * fails if the union grows a branch.
  */
 export const N8N_IDENTITY_SOURCES: readonly string[] = [
-	'manual-execution',
-	'chat-hub-injected',
-	'cookie-source',
-	'n8n-oauth',
+	MANUAL_EXECUTION_SOURCE,
+	...REQUEST_BOUND_SOURCES,
+	N8N_OAUTH_SOURCE,
 ];
 
 /**

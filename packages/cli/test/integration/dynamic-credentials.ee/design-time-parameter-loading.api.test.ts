@@ -101,12 +101,16 @@ const GOOGLE_SHEETS = { name: 'n8n-nodes-base.googleSheets', version: 4.7 };
 const DRIVE_HOST = 'https://www.googleapis.com';
 const DRIVE_FILES_PATH = '/drive/v3/files';
 const PER_USER_ACCESS_TOKEN = 'per-user-access-token';
-/** The OAuth2 resolver keys on a subject the external IdP names, not on an n8n user. */
-const EXTERNAL_RESOLVER_ID = 'external-resolver';
+/**
+ * The OAuth2 resolver keys on a subject the external IdP names, not on an n8n user.
+ * Ids are 16-char nanoids in production, and Postgres enforces that column width.
+ */
+const EXTERNAL_RESOLVER_ID = 'external-oauth';
 const EXTERNAL_RESOLVER_TYPE = 'credential-resolver.oauth2-1.0';
 
 let member: User;
 let otherMember: User;
+let viewer: User;
 let teamProject: Project;
 
 beforeAll(async () => {
@@ -125,9 +129,12 @@ beforeEach(async () => {
 
 	member = await createMember();
 	otherMember = await createMember();
+	viewer = await createMember();
 	// End-user credentials live in team projects only.
 	teamProject = await createTeamProject(undefined, member);
 	await linkUserToProject(otherMember, teamProject, 'project:editor');
+	// A viewer can read the credential but not connect an account to it.
+	await linkUserToProject(viewer, teamProject, 'project:viewer');
 
 	const resolverRepository = Container.get(DynamicCredentialResolverRepository);
 	const config = await Container.get(Cipher).encryptV2({});
@@ -273,6 +280,19 @@ describe('design-time parameter loading with end-user credentials', () => {
 
 		expect(response.statusCode).toBe(500);
 		expect(response.body.message).toContain('resolves credentials per external user');
+		expect(driveScope.isDone()).toBe(false);
+	});
+
+	test('refuses a user who may read the credential but not connect it', async () => {
+		// Resolution would key on this user's own connection, which they are not allowed
+		// to hold — so say that, rather than listing anything.
+		const credential = await createEndUserCredential();
+		const driveScope = mockDriveListing();
+
+		const response = await listResources(viewer, credential);
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toContain('permission to connect');
 		expect(driveScope.isDone()).toBe(false);
 	});
 
