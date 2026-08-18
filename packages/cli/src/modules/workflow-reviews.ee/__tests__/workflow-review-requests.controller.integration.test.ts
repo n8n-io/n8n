@@ -2620,6 +2620,10 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-later' });
 		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-published');
 		const request = await seedRequest(workflow.id, 'version-pinned', owner);
+		await reviewerRepository.addReviewers(
+			{ workflowReviewRequestId: request.id, userIds: [member.id] },
+			{},
+		);
 
 		await memberAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
@@ -2642,6 +2646,43 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 
 		const [child] = await workflowRepository.findByRequestId(request.id, {});
 		expect(child?.baselineVersionId).toBe('version-published');
+	});
+
+	test('returns no baseline for a closed review that was never approved', async () => {
+		const workflow = await createWorkflow({ name: 'Reviewed workflow' }, teamProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-published' });
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
+		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-published');
+		const request = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Please review',
+				createdById: owner.id,
+				state: 'closed',
+				decision: 'pending',
+			},
+			{},
+		);
+		await workflowRepository.createWorkflowRow(
+			{
+				workflowReviewRequestId: request.id,
+				workflowId: workflow.id,
+				workflowVersionId: 'version-pinned',
+			},
+			{},
+		);
+		await authorRepository.addAuthor(
+			{ workflowReviewRequestId: request.id, userId: owner.id },
+			{},
+		);
+
+		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'closed',
+			decision: 'pending',
+		});
+		expect(response.body.data.workflows[0].baselineVersion).toBeNull();
 	});
 
 	test('has nothing to compare against when the workflow was never published', async () => {

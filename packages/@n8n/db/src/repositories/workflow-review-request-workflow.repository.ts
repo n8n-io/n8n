@@ -17,7 +17,6 @@ export type WorkflowReviewRequestWorkflowDetailRow = {
 	workflowId: string;
 	workflowName: string;
 	workflowVersionId: string | null;
-	/** Frozen at approval; null while open or when never published / pre-ship. */
 	baselineVersionId: string | null;
 };
 

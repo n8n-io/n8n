@@ -155,17 +155,21 @@ export class WorkflowReviewInboxService {
 	}
 
 	/**
-	 * Both diff sides for one child row. Open reviews use the live published
-	 * pointer (so a publish during review moves the baseline). Closed reviews
-	 * use the baseline frozen at approval; closed + null means unavailable —
-	 * never fall back to the live pointer (that would show a misleading diff).
+	 * Both diff sides for one child row. Open reviews resolve the live published
+	 * pointer, so a publish during review moves what reviewers diff against.
+	 * Closed reviews never re-resolve it — they read the stored baseline, which is
+	 * set only by approval. A closed review therefore yields null unless it was
+	 * approved, and null means "no baseline to diff against", never "fall back to
+	 * the live pointer" (that would show a diff nobody approved).
 	 */
 	private async toWorkflowDetail(
 		row: WorkflowReviewRequestWorkflowDetailRow,
 		isClosed: boolean,
 	): Promise<WorkflowReviewRequestWorkflowDetail> {
-		// Approve is the only writer of baselineVersionId and it closes the request,
-		// so open rows always have null — branch on isClosed only.
+		// Null here is deliberate and covers two closed cases the API cannot tell
+		// apart: never published, and closed without an approval (auto-close on
+		// archive/transfer leaves the decision as-is). Callers distinguish the last
+		// one via `state` + `decision`.
 		const baselineVersionId = isClosed
 			? row.baselineVersionId
 			: await this.workflowPublishedVersionRepository.getPublishedVersionId(row.workflowId);

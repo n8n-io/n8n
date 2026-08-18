@@ -370,5 +370,32 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.workflows[0]?.baselineVersion).toBeNull();
 			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
 		});
+
+		it('returns no baseline for a closed review that was never approved', async () => {
+			accessService.findReadableRequestOrFail.mockResolvedValue({
+				request: reviewRequest({ state: 'closed', decision: 'pending' }),
+				readableWorkflowRows: [
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						baselineVersionId: null,
+					},
+				],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: true,
+			});
+			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-live-now');
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.state).toBe('closed');
+			expect(detail.decision).toBe('pending');
+			expect(detail.workflows[0]?.baselineVersion).toBeNull();
+			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
+		});
 	});
 });
