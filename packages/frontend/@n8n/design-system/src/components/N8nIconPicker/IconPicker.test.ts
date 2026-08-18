@@ -136,11 +136,31 @@ describe('IconPicker', () => {
 		expect(icons).toHaveLength(4); // smile, star, heart, palette from mock
 	});
 
-	it('opens the configured default tab when it differs from the model type', async () => {
+	it('opens the tab that matches the selected item type', async () => {
 		const { getByTestId, findAllByTestId } = render(IconPicker, {
 			props: {
-				modelValue: { type: 'icon', value: 'smile' },
-				buttonTooltip: 'Select an icon',
+				modelValue: { type: 'emoji', value: '😀' },
+				buttonTooltip: 'Select an emoji',
+				defaultTab: 'icons',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nButton', 'N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		const tabEmojisElement = getTabElement(getByTestId('tab-emojis'));
+		expect(tabEmojisElement?.className).toContain('activeTab');
+		expect(await findAllByTestId('icon-picker-emoji')).not.toHaveLength(0);
+	});
+
+	it('opens the configured default tab when there is no selected item', async () => {
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				buttonTooltip: 'Select an item',
 				defaultTab: 'emojis',
 			},
 			global: {
@@ -333,6 +353,9 @@ describe('IconPicker', () => {
 
 		const firstOption = document.getElementById('icon-picker-option-1-0');
 		expect(firstOption).toHaveAttribute('data-active', 'true');
+		expect(firstOption).toHaveAttribute('tabindex', '-1');
+
+		expect(searchInput.closest('[class*="searchWithActiveItem"]')).not.toBeNull();
 
 		await fireEvent.keyDown(searchInput, { key: 'ArrowRight' });
 		const nextOption = document.querySelector('[data-active="true"]');
@@ -347,6 +370,66 @@ describe('IconPicker', () => {
 			value: 'smile',
 			color: undefined,
 		});
+	});
+
+	it('clears the active item when navigating above the grid or leaving search', async function () {
+		const { findAllByTestId, getByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+		await findAllByTestId('icon-picker-icon');
+
+		const searchInput = getByTestId('icon-picker-search');
+		await fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
+		expect(document.querySelector('[data-active="true"]')).not.toBeNull();
+
+		await fireEvent.keyDown(searchInput, { key: 'ArrowUp' });
+		expect(document.querySelector('[data-active="true"]')).toBeNull();
+		expect(searchInput).not.toHaveAttribute('aria-activedescendant');
+		expect(searchInput.closest('[class*="searchWithActiveItem"]')).toBeNull();
+
+		await fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
+		await fireEvent.blur(searchInput);
+		expect(document.querySelector('[data-active="true"]')).toBeNull();
+		expect(searchInput).not.toHaveAttribute('aria-activedescendant');
+	});
+
+	it('reopens on the tab that matches the selected item', async function () {
+		const view = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an item',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(view.getByTestId('icon-picker-button'));
+		const emojiTab = getTabElement(view.getByTestId('tab-emojis'));
+		await fireEvent.click(emojiTab ?? view.getByTestId('tab-emojis'));
+		const emojis = await view.findAllByTestId('icon-picker-emoji');
+		await fireEvent.click(emojis[0]);
+
+		await view.rerender({
+			modelValue: { type: 'emoji', value: '😀' },
+			buttonTooltip: 'Select an item',
+		});
+		await fireEvent.click(view.getByTestId('icon-picker-button'));
+
+		const activeEmojiTab = getTabElement(view.getByTestId('tab-emojis'));
+		expect(activeEmojiTab?.className).toContain('activeTab');
 	});
 
 	it('filters icons by search query', async () => {

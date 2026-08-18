@@ -70,7 +70,7 @@ type Props = {
 	buttonSize?: ButtonSize;
 	/** Additional CSS class(es) for the trigger button */
 	buttonClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
-	/** The default tab to show when the picker is opened */
+	/** The tab to show when there is no selected value. */
 	defaultTab?: TabType;
 };
 
@@ -86,7 +86,7 @@ const props = withDefaults(defineProps<Props>(), {
 	defaultTab: 'icons',
 });
 
-const model = defineModel<IconOrEmoji>({ default: { type: 'icon', value: 'smile' } });
+const model = defineModel<IconOrEmoji>();
 
 const lucideData = ref<Record<string, LucideIconMeta> | null>(null);
 const rawEmojiSections = ref<EmojiSection[]>([]);
@@ -95,7 +95,8 @@ const iconsLoading = ref(false);
 const emojisLoaded = ref(false);
 const emojisLoading = ref(false);
 const popupVisible = ref(false);
-const selectedTab = ref<TabType>(props.defaultTab);
+
+const selectedTab = ref<TabType>(getDefaultTab());
 const searchQuery = ref('');
 
 const supportedEmojiSections = computed<EmojiSection[]>(() => {
@@ -113,6 +114,13 @@ const availableLucideData = computed<Record<string, LucideIconMeta> | null>(() =
 		Object.entries(lucideData.value).filter(([name]) => !ICON_PICKER_BLOCKLIST.has(name)),
 	);
 });
+
+/** Use the selected value type before the configured default tab. */
+function getDefaultTab(): TabType {
+	if (props.iconsOnly) return 'icons';
+	if (model.value) return model.value.type === 'emoji' ? 'emojis' : 'icons';
+	return props.defaultTab;
+}
 
 /** Load Icons/Emojis seperately so we don't block the thread. Both load on hover so render is instant. */
 async function loadIconData() {
@@ -147,10 +155,10 @@ const tabs = computed<Array<{ value: string; label: string }>>(() => [
 
 const selectedCategory = ref<string | null>(null);
 const selectedColor = ref<string | undefined>(
-	props.showColorPicker && model.value.type === 'icon' ? model.value.color : undefined,
+	props.showColorPicker && model.value?.type === 'icon' ? model.value.color : undefined,
 );
 const buttonIconName = computed<IconName>(() =>
-	model.value.type === 'icon' ? (model.value.value as IconName) : 'smile',
+	model.value?.type === 'icon' ? (model.value.value as IconName) : 'smile',
 );
 const selectedSkinTone = ref<number>(
 	parseInt(localStorage.getItem(SKIN_TONE_STORAGE_KEY) ?? '0', 10) || 0,
@@ -196,7 +204,8 @@ const renderedRowCount = ref(INITIAL_ROW_COUNT);
 const visibleRows = computed(function getVisibleRows() {
 	return activeRows.value.slice(0, renderedRowCount.value);
 });
-let activeCoordinate: PickerCoordinate | null = null;
+const activeCoordinate = ref<PickerCoordinate | null>(null);
+const hasActiveItem = computed(() => activeCoordinate.value !== null);
 let activeDescendantOwner: HTMLElement | null = null;
 let renderFrame: number | undefined;
 
@@ -239,18 +248,18 @@ function handleTabsPointerOver(event: PointerEvent) {
 	}
 }
 
-const selectIcon = (value: IconOrEmoji) => {
+function selectIcon(value: IconOrEmoji) {
 	model.value = value;
 	popupVisible.value = false;
-};
+}
 
 async function handlePopupOpen() {
-	activeCoordinate = null;
-	selectedTab.value = props.iconsOnly ? 'icons' : props.defaultTab;
+	activeCoordinate.value = null;
+	selectedTab.value = getDefaultTab();
 	searchQuery.value = '';
 	selectedCategory.value = null;
 	selectedColor.value =
-		props.showColorPicker && model.value.type === 'icon' ? model.value.color : undefined;
+		props.showColorPicker && model.value?.type === 'icon' ? model.value.color : undefined;
 	loadActiveTabData();
 	startProgressiveRender();
 	await nextTick();
@@ -315,7 +324,7 @@ watch(selectedTab, async () => {
 });
 
 watch(activeRows, function handleActiveRowsChange() {
-	activeCoordinate = null;
+	activeCoordinate.value = null;
 	clearActiveElement();
 	hideItemTooltip();
 	if (popupVisible.value) startProgressiveRender();
@@ -346,8 +355,10 @@ const selectRandomEmoji = () => {
 function clearActiveElement() {
 	activeElement?.removeAttribute('data-active');
 	activeDescendantOwner?.removeAttribute('aria-activedescendant');
+	activeCoordinate.value = null;
 	activeElement = null;
 	activeDescendantOwner = null;
+	hideItemTooltip();
 }
 
 function updateActiveElement(item: HTMLElement) {
@@ -363,7 +374,7 @@ function activatePickerItem(coordinate: PickerCoordinate, owner: HTMLElement) {
 	const scrollArea = item?.closest<HTMLElement>('[data-icon-picker-scroll-area]');
 	if (!item || !scrollArea) return;
 
-	activeCoordinate = coordinate;
+	activeCoordinate.value = coordinate;
 	activeDescendantOwner = owner;
 	owner.setAttribute('aria-activedescendant', itemId);
 	updateActiveElement(item);
@@ -376,14 +387,14 @@ function activatePickerItem(coordinate: PickerCoordinate, owner: HTMLElement) {
 }
 
 function selectActiveItem() {
-	if (!activeCoordinate) return;
+	if (!activeCoordinate.value) return;
 
-	const row = activeRows.value[activeCoordinate.row];
+	const row = activeRows.value[activeCoordinate.value.row];
 	if (row?.type === 'icon-row') {
-		const name = row.iconNames[activeCoordinate.column];
+		const name = row.iconNames[activeCoordinate.value.column];
 		if (name) selectIcon({ type: 'icon', value: name, color: selectedColor.value });
 	} else if (row?.type === 'emoji-row') {
-		const emoji = row.emojis[activeCoordinate.column];
+		const emoji = row.emojis[activeCoordinate.value.column];
 		if (emoji) selectIcon({ type: 'emoji', value: emoji.display });
 	}
 }
@@ -393,7 +404,7 @@ function handlePickerKeydown(event: KeyboardEvent) {
 	if (!(target instanceof HTMLElement)) return;
 	if (!target.closest('[data-test-id="icon-picker-search"]')) return;
 
-	if (event.key === 'Enter' && activeCoordinate) {
+	if (event.key === 'Enter' && activeCoordinate.value) {
 		event.preventDefault();
 		selectActiveItem();
 		return;
@@ -407,7 +418,7 @@ function handlePickerKeydown(event: KeyboardEvent) {
 
 	/** Rows are progressively rendered, so we must start on first item regardless of arrow direction */
 	event.preventDefault();
-	if (!activeCoordinate) {
+	if (!activeCoordinate.value) {
 		const coordinate = coordinates[0];
 		if (coordinate) activatePickerItem(coordinate, target);
 		return;
@@ -416,17 +427,25 @@ function handlePickerKeydown(event: KeyboardEvent) {
 	const direction = getPickerDirection(event.key);
 	if (!direction) return;
 
-	const nextCoordinate = getAdjacentPickerCoordinate(activeRows.value, activeCoordinate, direction);
-	if (nextCoordinate) activatePickerItem(nextCoordinate, target);
+	const nextCoordinate = getAdjacentPickerCoordinate(
+		activeRows.value,
+		activeCoordinate.value,
+		direction,
+	);
+	if (nextCoordinate) {
+		activatePickerItem(nextCoordinate, target);
+	} else if (direction === 'up') {
+		clearActiveElement();
+	}
 }
 
 /** Show tooltip on keyup so holding down arrow keys doesn't queue lots of events */
 function handlePickerKeyup(event: KeyboardEvent) {
 	if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-	if (!activeCoordinate) return;
+	if (!activeCoordinate.value) return;
 
 	const item = popupRef.value?.querySelector<HTMLElement>(
-		`#${getPickerOptionId(activeCoordinate)}`,
+		`#${getPickerOptionId(activeCoordinate.value)}`,
 	);
 	if (item) showItemTooltipForElement(item, item.getAttribute('aria-label') ?? '');
 }
@@ -457,7 +476,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 						{{ props.buttonTooltip ?? t('iconPicker.button.defaultToolTip') }}
 					</template>
 					<N8nIconButton
-						v-if="model.type === 'icon'"
+						v-if="!model || model.type === 'icon'"
 						:class="[$style['icon-button'], buttonClass]"
 						:icon="buttonIconName"
 						:size="buttonSize"
@@ -469,7 +488,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 						aria-haspopup="true"
 						data-test-id="icon-picker-button"
 						:style="
-							model.type === 'icon' && model.color ? { color: `var(${model.color})` } : undefined
+							model?.type === 'icon' && model.color ? { color: `var(${model.color})` } : undefined
 						"
 						@click.stop="popupVisible = !popupVisible"
 					/>
@@ -519,6 +538,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 					<N8nInput
 						ref="searchInputRef"
 						v-model="searchQuery"
+						:class="{ [$style.searchWithActiveItem]: hasActiveItem }"
 						:placeholder="t('iconPicker.search.placeholder')"
 						clearable
 						size="medium"
@@ -527,6 +547,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 						aria-controls="icon-picker-options"
 						:aria-expanded="popupVisible"
 						data-test-id="icon-picker-search"
+						@blur="clearActiveElement"
 					>
 						<template #prefix>
 							<N8nIcon icon="search" :size="14" />
@@ -808,7 +829,14 @@ function handlePickerKeyup(event: KeyboardEvent) {
 	.iconGridRow,
 	.emojiGridRow {
 		display: grid;
-		grid-template-columns: repeat(14, minmax(0, 1fr));
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+	}
+
+	.searchWithActiveItem > div:focus-within {
+		outline: none;
+		box-shadow:
+			var(--input--shadow),
+			inset var(--input--border--shadow);
 	}
 
 	[data-active='true'] {

@@ -13,7 +13,7 @@ function iconMeta(): LucideIconMeta {
 }
 
 describe('useIconPickerVirtualRows', () => {
-	it('builds browse rows with headers and 14-icon chunks', () => {
+	it('builds browse rows with headers and 12-icon chunks', () => {
 		const rows = buildIconBrowseRows([
 			{
 				key: 'design',
@@ -42,13 +42,11 @@ describe('useIconPickerVirtualRows', () => {
 				'icon-10',
 				'icon-11',
 				'icon-12',
-				'icon-13',
-				'icon-14',
 			],
 		});
 		expect(rows[2]).toMatchObject({
 			type: 'icon-row',
-			iconNames: ['icon-15', 'icon-16'],
+			iconNames: ['icon-13', 'icon-14', 'icon-15', 'icon-16'],
 		});
 	});
 
@@ -73,13 +71,11 @@ describe('useIconPickerVirtualRows', () => {
 				'search-icon-10',
 				'search-icon-11',
 				'search-icon-12',
-				'search-icon-13',
-				'search-icon-14',
 			],
 		});
 		expect(rows[1]).toMatchObject({
 			type: 'icon-row',
-			iconNames: ['search-icon-15'],
+			iconNames: ['search-icon-13', 'search-icon-14', 'search-icon-15'],
 		});
 	});
 

@@ -82,7 +82,6 @@ const EmojiTemplate = createTemplate({ type: 'emoji', value: '🔥' });
 export const WithEmoji = EmojiTemplate.bind({});
 WithEmoji.args = {
 	buttonTooltip: 'Select an emoji',
-	defaultTab: 'emojis',
 };
 
 const IconsOnlyTemplate = createTemplate({ type: 'icon', value: 'smile' });
