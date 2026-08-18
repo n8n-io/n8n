@@ -45,73 +45,52 @@ export function mergeNodeSets(
 	return [...existing, ...incoming.filter((s) => !seen.has(setSignature(s)))];
 }
 
-// Schema caps (instanceAiNodeSetSchema / instanceAiNodesAttachmentSchema, #36039).
-// The safeParse test in this file is the real drift-guard — no need to poke zod internals.
-const MAX_SETS = 50;
+// Schema cap (instanceAiNodeSetSchema, #36039). The safeParse test in this file
+// is the real drift-guard — no need to poke zod internals.
 const MAX_NODES_PER_SET = 50;
 
-export function partitionSelectionIntoSets(
+/**
+ * One "add to chat" action = one set: everything the user picked, regardless of
+ * connectivity. Ordered input→output by walking selected `main` connections from
+ * each parentless member, so chains stay contiguous and disconnected members
+ * (e.g. a sub-node picked without its parent) follow after.
+ */
+export function orderSelectionIntoSet(
 	selectedNodeNames: string[],
 	connections: IConnections,
-): NodeSet[] {
+): NodeSet {
 	const selected = new Set(selectedNodeNames);
 	const byDestination = mapConnectionsByDestination(connections);
-	const seen = new Set<string>();
-	const sets: NodeSet[] = [];
 
-	// Neighbors within the selection only (both endpoints selected). `main`-only
-	// drives the input→output ordering below; `ALL` also folds sub-nodes (chat
-	// models, memory, tools) into their parent's set instead of stranding them.
 	const selectedChildren = (name: string) =>
 		getChildNodes(connections, name, 'main', 1).filter((n) => selected.has(n));
 	const selectedParents = (name: string) =>
 		getParentNodes(byDestination, name, 'main', 1).filter((n) => selected.has(n));
-	const selectedNeighborsAllTypes = (name: string) =>
-		[
-			...getChildNodes(connections, name, 'ALL', 1),
-			...getParentNodes(byDestination, name, 'ALL', 1),
-		].filter((n) => selected.has(n));
 
-	for (const start of selectedNodeNames) {
-		if (seen.has(start)) continue;
-
-		// Collect the connected component (undirected, any connection type) among
-		// selected nodes, so a sub-node lands in the same set as its parent.
-		const component = new Set<string>();
-		const stack = [start];
-		while (stack.length) {
-			const cur = stack.pop() as string;
-			if (component.has(cur)) continue;
-			component.add(cur);
-			for (const n of selectedNeighborsAllTypes(cur)) {
-				if (!component.has(n)) stack.push(n);
-			}
-		}
-		component.forEach((n) => seen.add(n));
-
-		// Order input→output: BFS from members with no selected parent.
-		const roots = [...component].filter((n) => selectedParents(n).length === 0);
-		const order: string[] = [];
-		const queued = new Set<string>();
-		const queue = roots.length ? [...roots] : [[...component][0]];
-		queue.forEach((n) => queued.add(n));
+	const order: string[] = [];
+	const visited = new Set<string>();
+	const visit = (start: string) => {
+		const queue = [start];
+		visited.add(start);
 		while (queue.length) {
 			const cur = queue.shift() as string;
 			order.push(cur);
 			for (const child of selectedChildren(cur)) {
-				if (component.has(child) && !queued.has(child)) {
-					queued.add(child);
+				if (!visited.has(child)) {
+					visited.add(child);
 					queue.push(child);
 				}
 			}
 		}
-		// Any members unreachable via children (rare non-linear shapes) appended deterministically.
-		for (const n of [...component].sort()) if (!order.includes(n)) order.push(n);
+	};
 
-		sets.push({ nodeNames: order });
+	for (const n of selectedNodeNames) {
+		if (!visited.has(n) && selectedParents(n).length === 0) visit(n);
 	}
+	// Members without a parentless entry point (cycles) appended deterministically.
+	for (const n of [...selectedNodeNames].sort()) if (!visited.has(n)) visit(n);
 
-	return sets;
+	return { nodeNames: order };
 }
 
 export function resolveSetNeighbors(
@@ -162,33 +141,23 @@ export function buildNodesAttachment(
 	if (selectedNames.length === 0) return null;
 
 	let truncated = false;
-	let sets = partitionSelectionIntoSets(selectedNames, workflow.connections);
-
-	if (sets.length > MAX_SETS) {
-		sets = sets.slice(0, MAX_SETS);
+	let names = orderSelectionIntoSet(selectedNames, workflow.connections).nodeNames;
+	if (names.length > MAX_NODES_PER_SET) {
+		names = names.slice(0, MAX_NODES_PER_SET);
 		truncated = true;
 	}
 
 	const ref = (name: string) => ({ id: nameToId.get(name) ?? name, name });
-
-	const serialized: InstanceAiNodesAttachment['sets'] = sets.map((set) => {
-		let names = set.nodeNames;
-		if (names.length > MAX_NODES_PER_SET) {
-			names = names.slice(0, MAX_NODES_PER_SET);
-			truncated = true;
-		}
-		const { inputName, outputName } = resolveSetNeighbors(
-			{ nodeNames: names },
-			workflow.connections,
-		);
-		const group = resolveSetCanvasGroup({ nodeNames: names }, workflow);
-		return {
+	const { inputName, outputName } = resolveSetNeighbors({ nodeNames: names }, workflow.connections);
+	const group = resolveSetCanvasGroup({ nodeNames: names }, workflow);
+	const serialized: InstanceAiNodesAttachment['sets'] = [
+		{
 			nodes: names.map(ref),
 			...(inputName && nameToId.has(inputName) ? { inputNode: ref(inputName) } : {}),
 			...(outputName && nameToId.has(outputName) ? { outputNode: ref(outputName) } : {}),
 			...group,
-		};
-	});
+		},
+	];
 
 	return { attachment: { type: 'nodes', workflowId, sets: serialized }, truncated };
 }
