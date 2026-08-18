@@ -65,6 +65,9 @@ const restoreLine = (root, key, pattern, line) => {
 
 const SDK_PATHS = /^\s*"@n8n\/frontend-module-sdk":/;
 
+/** `InstanceAi` gives `instance-ai`, the id a descriptor of that name comes from. */
+const toKebab = (pascalName) => pascalName.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+
 describe('createFrontend', () => {
 	let root;
 
@@ -258,20 +261,34 @@ describe('createFrontend', () => {
 	describe('descriptor name collision', () => {
 		// The manifest binds one name per module, and the name comes from the id. Two imports of one
 		// name do not compile, so the id has to give a name that the manifest does not hold yet.
-		it.each(['data-table', 'insights', 'agents', 'otel', 'workflow-reviews'])(
-			'refuses %s, which the shell already binds',
-			(name) => {
-				expect(() => scaffold(root, name)).toThrow(
-					/modules\.manifest\.ts already imports \w+Module from '@\/features\//,
-				);
-			},
-		);
+		// `data-table` and `agents` are the two the roadmap extracts in wave 2.
+		it.each(['data-table', 'agents'])('refuses %s, which the shell already binds', (name) => {
+			expect(() => scaffold(root, name)).toThrow(
+				/modules\.manifest\.ts already imports \w+Module from '@\/features\//,
+			);
+		});
+
+		it('refuses every in-shell feature an id can name', () => {
+			// The list comes from the manifest, not from a copy of it here: a new in-shell feature must
+			// not become a collision that no test covers. A binding no id can give is skipped, because
+			// no id gives it — `MCPModule` needs the id `mcp`, and `mcp` gives `McpModule`.
+			const bindings = [...read(root, 'manifest').matchAll(/import \{ (\w+)Module \} from '@\//g)];
+			const reachable = bindings
+				.map(([, binding]) => ({ binding, id: toKebab(binding) }))
+				.filter(({ binding, id }) => isModuleId(id) && substitutionsFor(id).PascalName === binding)
+				.map(({ id }) => id);
+
+			expect(reachable.length).toBeGreaterThanOrEqual(7);
+			for (const id of reachable) {
+				expect(() => scaffold(root, id)).toThrow(ScaffoldError);
+			}
+		});
 
 		it('writes nothing when it refuses', () => {
 			const boundElsewhere = /import \{ (\w+)Module \} from '@\/features\//.exec(
 				read(root, 'manifest'),
 			)[1];
-			const name = boundElsewhere.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+			const name = toKebab(boundElsewhere);
 			const before = readAll(root);
 
 			expect(() => scaffold(root, name)).toThrow(ScaffoldError);
