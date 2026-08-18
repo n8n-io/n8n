@@ -121,11 +121,9 @@ const nullableObjectPublicSchema = z.custom<Record<string, unknown> | null>(
 	{ message: 'Must be an object or null' },
 );
 
-/**
- * Adds `nullable: true`, which `.openapi()` refuses to accept: it types its argument against the
- * keys OpenAPI 3.0 and 3.1 share, and 3.1 dropped `nullable`. We emit 3.0, where it is the correct
- * spelling. The cast covers only this one key — callers are still type-checked on everything else.
- */
+// We generate OpenAPI 3.0, which marks a nullable field with `nullable: true`. OpenAPI 3.1 removed
+// that keyword, and `.openapi()` accepts only the fields both versions define, so it rejects
+// `nullable` outright. This adds it back.
 function alsoNullable(metadata: ZodOpenAPIMetadata): ZodOpenAPIMetadata {
 	return { ...metadata, nullable: true } as ZodOpenAPIMetadata;
 }
@@ -135,8 +133,6 @@ const settingsPublicSchema = nullableObjectPublicSchema.openapi(
 		type: 'object',
 		description: 'Execution and behaviour settings for the workflow',
 		properties: {
-			// 'DEFAULT' means "use the instance setting". Stored workflows hold it, so it belongs in the
-			// docs, but the hand-written spec these four were copied from leaves it out.
 			saveExecutionProgress: {
 				oneOf: [{ type: 'boolean' }, { type: 'string', enum: ['DEFAULT'] }],
 			},
