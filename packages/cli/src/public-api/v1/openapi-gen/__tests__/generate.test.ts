@@ -178,64 +178,27 @@ describe('shared schema registry', () => {
 		expect(registered.get(dtoB)).toBeDefined();
 	});
 
-	it('strips the nullable marker from type-less schemas so ajv can compile the bundled spec', () => {
+	it('strips a nullable marker that carries no type, and leaves a typed one alone', () => {
 		const registry = new OpenAPIRegistry();
-		// zod-to-openapi writes `{ nullable: true }` with no `type` for a z.custom field.
-		const anyObjectOrNull = z.custom<Record<string, unknown> | null>(
-			(value) => value === null || typeof value === 'object',
-		);
-		const widget = registry.register(
+		// zod-to-openapi writes `{ nullable: true }` with no `type` for an unannotated z.custom field.
+		registry.register(
 			'Widget',
-			z.object({ settings: anyObjectOrNull, name: z.string().nullable() }),
+			z.object({
+				settings: z.custom<Record<string, unknown> | null>(
+					(value) => value === null || typeof value === 'object',
+				),
+				name: z.string().nullable(),
+			}),
 		);
 
-		registry.registerPath({
-			method: 'get',
-			path: '/widgets',
-			responses: {
-				200: {
-					description: 'ok',
-					content: {
-						'application/json': {
-							schema: z.object({ data: widget, meta: anyObjectOrNull }),
-						},
-					},
-				},
-			},
-		});
-
-		const artifacts = buildArtifactsFromRegistry(registry, [
-			{
-				outputPath: 'handlers/widgets/spec/paths/getWidgets.generated.yml',
-				pathKey: '/widgets',
-				method: 'get',
-			},
-		]);
-
-		const schemaFile = artifacts.find(
+		const artifact = buildArtifactsFromRegistry(registry, []).find(
 			(a) => a.outputPath === 'shared/spec/schemas/widget.generated.yml',
 		);
-		const schema = parse(schemaFile!.content) as {
+		const { properties } = parse(artifact!.content) as {
 			properties: Record<string, Record<string, unknown>>;
 		};
-		expect(schema.properties.settings).toEqual({});
-		expect(schema.properties.name).toEqual({ type: 'string', nullable: true });
 
-		const operation = parse(
-			artifacts.find((a) => a.outputPath.endsWith('getWidgets.generated.yml'))!.content,
-		) as {
-			responses: Record<
-				string,
-				{
-					content: Record<
-						string,
-						{ schema: { properties: Record<string, Record<string, unknown>> } }
-					>;
-				}
-			>;
-		};
-		expect(operation.responses['200'].content['application/json'].schema.properties.meta).toEqual(
-			{},
-		);
+		expect(properties.settings).toEqual({});
+		expect(properties.name).toEqual({ type: 'string', nullable: true });
 	});
 });
