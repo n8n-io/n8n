@@ -18,6 +18,7 @@ import {
 	resolveCredentials,
 } from './resolve-credentials';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
+import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
 	combineWarnings,
@@ -195,7 +196,11 @@ const triggerNodeOutputSchema = z.object({
 const verificationReadinessOutputSchema = workflowVerificationReadinessSchema;
 
 const setupRequirementOutputSchema = z.discriminatedUnion('status', [
-	z.object({ status: z.literal('not_required') }),
+	z.object({
+		status: z.literal('not_required'),
+		reason: z.literal('skipped-by-user').optional(),
+		guidance: z.string().optional(),
+	}),
 	z.object({
 		status: z.literal('required'),
 		reason: z.enum(['mocked-credentials', 'unresolved-placeholders', 'workflow-needs-setup']),
@@ -252,7 +257,7 @@ const ONE_OFF_OPERATIONS_GUIDANCE =
 	'This one-off build is not complete yet. Follow the one-off instructions in `instructions` now (do NOT load the one-off-operations skill — they are the same instructions). Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.';
 
 const POST_BUILD_FLOW_GUIDANCE =
-	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
+	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after `executions(action="list")` and `executions(action="get")` confirm that it succeeded and ran the required path; the user\'s statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
 
 // Inlined into successful build results; the skills stay registered for tag-driven follow-up turns.
 const inlineSkillInstructionsCache = new Map<string, string>();
@@ -941,9 +946,22 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					operation: 'create' | 'update',
 				) => {
 					const setupRequests = await analyzeWorkflow(context, saved.id);
-					const workflowNeedsSetup = setupRequests.some(
-						(request) => request.needsAction && isInSetupScope(request.node.name),
-					);
+					// Two independent filters over the same list: `isInSetupScope` drops nodes this
+					// build never touched, the skip partition drops cards the user declined. A node
+					// only re-arms the setup follow-up when it survives both.
+					const { pending: pendingSetupRequests, skippedByUser: skippedSetupRequests } =
+						partitionSkippedSetupRequests(
+							setupRequests,
+							saved.id,
+							getSkippedSetupSubjects(context),
+						);
+					const needsSetupInScope = (request: (typeof setupRequests)[number]) =>
+						request.needsAction === true && isInSetupScope(request.node.name);
+					const workflowNeedsSetup = pendingSetupRequests.some(needsSetupInScope);
+					// Only the user's skip explains the silence — an out-of-scope node is not
+					// something they declined, and has its own reporting on the setup path.
+					const onlySkippedSetupRemains =
+						!workflowNeedsSetup && skippedSetupRequests.some(needsSetupInScope);
 					const { nodeSimulationPlan, simulationFixtures, waitGateScripts } =
 						await planVerificationSimulation({
 							workflow: json,
@@ -1023,6 +1041,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							? mockResult.resolvedCredentialsByNode
 							: undefined,
 						workflowNeedsSetup,
+						onlySkippedSetupRemains,
 						nodeSimulationPlan,
 						simulationFixtures,
 						waitGateScripts,

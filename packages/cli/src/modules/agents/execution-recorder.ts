@@ -203,6 +203,61 @@ function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | u
 	return isRecord(sanitized) ? sanitized : undefined;
 }
 
+export interface ToolCallDetails {
+	toolName: string;
+	displayName?: string;
+	kind: 'tool' | 'workflow' | 'node';
+	input: unknown;
+	node?: {
+		type: string;
+		typeVersion?: number;
+		parameters?: Record<string, unknown>;
+	};
+	workflow?: {
+		id?: string;
+		name?: string;
+		triggerType?: string;
+	};
+}
+
+/** Build the sanitized, resolved tool configuration shown in preview approvals. */
+export function buildToolCallDetails(
+	registry: ToolRegistry,
+	toolName: string,
+	input: unknown,
+): ToolCallDetails {
+	const entry = registry.get(toolName);
+	const kind = entry?.kind ?? 'tool';
+	const details: ToolCallDetails = {
+		toolName,
+		kind,
+		input: sanitizeExecutionLogValue(input),
+	};
+
+	if (entry?.nodeDisplayName) details.displayName = entry.nodeDisplayName;
+
+	if (kind === 'node' && entry?.nodeType) {
+		details.node = {
+			type: entry.nodeType,
+			...(entry.nodeTypeVersion !== undefined && { typeVersion: entry.nodeTypeVersion }),
+			...(entry.nodeParameters !== undefined && {
+				parameters: sanitizeExecutionLogRecord(
+					resolveTemplatesInValue(entry.nodeParameters, isRecord(input) ? input : {}),
+				),
+			}),
+		};
+	} else if (kind === 'workflow') {
+		details.workflow = {
+			...(entry?.workflowId !== undefined && { id: entry.workflowId }),
+			...(entry?.workflowName !== undefined && { name: entry.workflowName }),
+			...(entry?.triggerType !== undefined && { triggerType: entry.triggerType }),
+		};
+		if (entry?.workflowName) details.displayName = entry.workflowName;
+	}
+
+	return details;
+}
+
 export interface RecordedUsage {
 	promptTokens: number;
 	completionTokens: number;
@@ -238,7 +293,20 @@ export type TimelineEvent =
 			nodeParameters?: Record<string, unknown>;
 			childTrace?: PersistedChildTrace;
 	  }
-	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
+	| {
+			type: 'suspension';
+			toolName: string;
+			toolCallId: string;
+			timestamp: number;
+			input?: unknown;
+			suspendPayload?: unknown;
+	  }
+	| {
+			type: 'hitl-response';
+			toolCallId: string;
+			response: unknown;
+			timestamp: number;
+	  };
 
 /**
  * Collects execution data from agent stream chunks.
@@ -299,6 +367,18 @@ export class ExecutionRecorder {
 	private readonly startTime = Date.now();
 
 	private childTraceChars = new Map<string, number>();
+
+	/** Record the human response that caused a suspended tool call to resume. */
+	recordHitlResponse(toolCallId: string, response: unknown): void {
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		this.appendCompletedEvent({
+			type: 'hitl-response',
+			toolCallId,
+			response: sanitizeExecutionLogValue(response),
+			timestamp: Date.now(),
+		});
+	}
 
 	/** Feed a stream chunk into the recorder. */
 	record(chunk: StreamChunk): void {
@@ -387,6 +467,12 @@ export class ExecutionRecorder {
 					toolName: chunk.toolName ?? '',
 					toolCallId: chunk.toolCallId ?? '',
 					timestamp: Date.now(),
+					...(chunk.input !== undefined && {
+						input: sanitizeExecutionLogValue(chunk.input),
+					}),
+					...(chunk.suspendPayload !== undefined && {
+						suspendPayload: sanitizeExecutionLogValue(chunk.suspendPayload),
+					}),
 				});
 				break;
 			case 'error': {

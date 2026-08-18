@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, ref, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nInput, N8nPopover, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nInput, N8nPopover, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
+	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type ToolConnectionItem,
 	type ToolCredentialRef,
@@ -40,8 +41,6 @@ const selectedCredentialIds = computed(() =>
 	props.credentials.map((c) => c.credentialId).filter((id): id is string => Boolean(id)),
 );
 
-const isConnected = computed(() => selectedCredentialIds.value.length > 0);
-
 const availableCredentials = computed(() => {
 	if (!adapter) return [];
 	return props.credentials.flatMap((cred) =>
@@ -51,6 +50,16 @@ const availableCredentials = computed(() => {
 			authType: cred.authType,
 		})),
 	);
+});
+
+const statusLabel = computed(() => {
+	if (props.item.status === 'connected') {
+		return i18n.baseText('tools.connection.action.connected');
+	}
+	if (props.item.status === 'disconnected') {
+		return i18n.baseText('tools.connection.action.reconnect');
+	}
+	return '';
 });
 
 const filteredCredentials = computed(() => {
@@ -98,8 +107,16 @@ function editCredential(credentialId: string) {
 </script>
 
 <template>
+	<span
+		v-if="item.status === 'connecting'"
+		:class="$style.statusMarker"
+		data-test-id="tool-credential-picker-trigger-connecting"
+	>
+		<N8nSpinner size="small" />
+		{{ i18n.baseText('tools.connection.action.connecting') }}
+	</span>
 	<N8nPopover
-		v-if="isConnected || availableCredentials.length > 0"
+		v-else-if="hasToolConnection(item.status) || availableCredentials.length > 0"
 		v-model:open="isOpen"
 		side="bottom"
 		align="end"
@@ -110,14 +127,24 @@ function editCredential(credentialId: string) {
 		data-test-id="tool-credential-picker"
 	>
 		<template #trigger>
+			<N8nButton
+				v-if="item.status === 'disconnected'"
+				variant="outline"
+				size="small"
+				data-test-id="tool-credential-picker-trigger-disconnected"
+			>
+				<span :class="[$style.statusDot, $style.statusDotDisconnected]" aria-hidden="true" />
+				<span>{{ statusLabel }}</span>
+				<N8nIcon icon="chevron-down" :size="12" />
+			</N8nButton>
 			<button
-				v-if="isConnected"
+				v-else-if="hasToolConnection(item.status)"
 				type="button"
-				:class="$style.connectedPill"
-				data-test-id="tool-credential-picker-trigger-connected"
+				:class="$style.statusPill"
+				:data-test-id="`tool-credential-picker-trigger-${item.status}`"
 			>
 				<span :class="$style.statusDot" aria-hidden="true" />
-				<span>{{ i18n.baseText('tools.connection.action.connected') }}</span>
+				<span>{{ statusLabel }}</span>
 				<N8nIcon icon="chevron-down" :size="12" />
 			</button>
 			<N8nButton
@@ -207,17 +234,21 @@ function editCredential(credentialId: string) {
 	margin-left: var(--spacing--4xs);
 }
 
-.connectedPill {
+.statusMarker,
+.statusPill {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
+	white-space: nowrap;
+}
+
+.statusPill {
 	background: none;
 	border: 0;
-	padding: var(--spacing--4xs) var(--spacing--3xs);
 	cursor: pointer;
-	white-space: nowrap;
 }
 
 .statusDot {
@@ -226,6 +257,10 @@ function editCredential(credentialId: string) {
 	border-radius: 50%;
 	background: var(--color--success);
 	flex-shrink: 0;
+}
+
+.statusDotDisconnected {
+	background: var(--color--danger);
 }
 
 .searchWrapper {

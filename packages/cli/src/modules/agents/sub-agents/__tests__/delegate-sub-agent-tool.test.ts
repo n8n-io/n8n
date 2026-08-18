@@ -14,6 +14,10 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+} from '../../agent-sandbox-principal';
+import {
 	createN8nDelegateSubAgentTool,
 	formatSubAgentToolOutput,
 } from '../delegate-sub-agent-tool';
@@ -168,7 +172,8 @@ describe('createN8nDelegateSubAgentTool', () => {
 		);
 	});
 
-	it('forwards the parent persistence thread id and resource id to the runner', async () => {
+	it('forwards the parent persistence scope to the runner', async () => {
+		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: { 'agent-2': source },
@@ -181,7 +186,11 @@ describe('createN8nDelegateSubAgentTool', () => {
 			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
 			{
 				runId: 'parent-run-1',
-				persistence: { threadId: 'parent-thread-1', resourceId: 'resource-1' },
+				persistence: {
+					threadId: 'parent-thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+				},
 			},
 		);
 
@@ -189,6 +198,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			expect.objectContaining({
 				parentThreadId: 'parent-thread-1',
 				parentResourceId: 'resource-1',
+				parentSandboxPrincipalHash: principalHash,
 			}),
 			expect.any(Object),
 		);
