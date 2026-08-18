@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { reactivePick } from '@vueuse/core';
+import { reactiveOmit, reactivePick } from '@vueuse/core';
+import { computed, nextTick, ref, useAttrs, useCssModule, useTemplateRef, watch } from 'vue';
+
+import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
+import N8nTooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
+import { useI18n } from '@n8n/design-system/composables/useI18n';
+import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
+
+import type { PaginationEmits, PaginationProps, PaginationSlots } from './Pagination.types';
 import {
 	PaginationRoot,
 	PaginationList,
@@ -7,323 +15,412 @@ import {
 	PaginationPrev,
 	PaginationNext,
 	PaginationEllipsis,
-	useForwardPropsEmits,
-} from 'reka-ui';
-import { computed, useCssModule, ref, watch } from 'vue';
-
-import type {
-	PaginationEmits,
-	PaginationProps,
-	PaginationSlots,
-	PaginationSizes,
-	PaginationVariants,
-} from './Pagination.types';
-import Icon from '../../../components/N8nIcon/Icon.vue';
-import N8nSelect from '../Select/Select.vue';
+	useForwardProps,
+} from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
+
+const attrs = useAttrs();
+const rootClass = computed(() => attrs.class);
+const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
 
 const $style = useCssModule();
 
 const props = withDefaults(defineProps<PaginationProps>(), {
-	variant: 'default',
-	size: 'small',
-	background: false,
-	layout: 'prev, pager, next',
+	size: 'medium',
 	pageSizes: () => [10, 20, 30, 40, 50, 100],
+	showTotal: true,
+	showSizes: true,
+	showJumper: false,
 	hideOnSinglePage: false,
-	prevIcon: 'chevron-left',
-	nextIcon: 'chevron-right',
 	defaultPage: 1,
+	defaultItemsPerPage: 10,
 	disabled: false,
 	siblingCount: 1,
-	showEdges: false,
+	showEdges: true,
 });
 
 const emit = defineEmits<PaginationEmits>();
-const slots = defineSlots<PaginationSlots>();
+defineSlots<PaginationSlots>();
 
-// Prop mapping: Element+ → Reka UI
-const page = computed(
-	() => props.currentPage ?? props.page ?? props.defaultCurrentPage ?? props.defaultPage,
-);
-const itemsPerPage = ref(props.pageSize ?? props.itemsPerPage ?? props.defaultPageSize ?? 10);
+const { t } = useI18n();
 
-// Watch for external pageSize/itemsPerPage changes and sync
+const rootProps = useForwardProps(reactivePick(props, 'disabled', 'showEdges', 'siblingCount'));
+
+function resolveItemsPerPageDefault(value: unknown): number {
+	return typeof value === 'number' && Number.isFinite(value) ? value : 10;
+}
+
+// Local state only for uncontrolled mode; supplied props stay authoritative until the parent updates them
+const isPageControlled = computed(() => props.page !== undefined);
+const uncontrolledPage = ref(props.defaultPage);
+const currentPage = computed(() => {
+	if (props.page !== undefined) return props.page;
+	return uncontrolledPage.value;
+});
+
+const isItemsPerPageControlled = computed(() => props.itemsPerPage !== undefined);
+const uncontrolledItemsPerPage = ref(resolveItemsPerPageDefault(props.defaultItemsPerPage));
+const currentItemsPerPage = computed(() => {
+	if (props.itemsPerPage !== undefined) return props.itemsPerPage;
+	return uncontrolledItemsPerPage.value;
+});
+
+const jumperValue = ref(String(currentPage.value));
+const jumperInputRef = useTemplateRef<HTMLInputElement>('jumperInput');
+
+watch(currentPage, (page) => {
+	jumperValue.value = String(page);
+});
+
+function syncJumperInputWidth() {
+	const input = jumperInputRef.value;
+	if (!input) return;
+
+	input.style.width = '0px';
+	input.style.width = `${Math.max(input.scrollWidth, 1) + 1}px`;
+}
+
+watch(jumperValue, async (value) => {
+	const digitsOnly = value.replace(/\D/g, '');
+	if (digitsOnly !== value) {
+		jumperValue.value = digitsOnly;
+		return;
+	}
+
+	await nextTick();
+	syncJumperInputWidth();
+});
+
 watch(
-	() => props.pageSize ?? props.itemsPerPage,
-	(newSize: number | undefined) => {
-		if (newSize !== undefined && newSize !== itemsPerPage.value) {
-			itemsPerPage.value = newSize;
-		}
+	() => props.showJumper,
+	async (show) => {
+		if (!show) return;
+		await nextTick();
+		syncJumperInputWidth();
 	},
+	{ immediate: true },
 );
 
-// pagerCount is odd number in Element+ (e.g., 7 means show 7 buttons total: prev + 5 pages + next)
-// siblingCount in Reka UI means pages on each side of current page
-// pagerCount 7 = 1 current + 2*siblingCount + prev + next, so siblingCount = (7-1)/2 = 3
-// But actually pagerCount includes only the page numbers, not prev/next buttons
-// pagerCount 7 means: [1] [ellipsis] [5] [6] [7] [8] [9] [ellipsis] [10]
-// So if pagerCount is 7, we want to show current + 3 on each side = siblingCount of 3
-const siblingCount = computed(() => {
-	if (props.pagerCount !== undefined) {
-		// pagerCount is total page buttons shown, including current
-		// For odd pagerCount, siblingCount = (pagerCount - 1) / 2
-		return Math.floor((props.pagerCount - 1) / 2);
+function resolvedPageCount() {
+	if (!props.total || !currentItemsPerPage.value) return 1;
+	return Math.ceil(props.total / currentItemsPerPage.value);
+}
+
+function shouldHide() {
+	return props.hideOnSinglePage && resolvedPageCount() <= 1;
+}
+
+function isPrevDisabled(page: number) {
+	return props.disabled || page <= 1;
+}
+
+function isNextDisabled(page: number, pageCount: number) {
+	return props.disabled || page >= pageCount;
+}
+
+function pageSizeItems() {
+	return props.pageSizes.map((s) => ({
+		value: String(s),
+		label: t('pagination.pageSizeOption', { size: s }),
+	}));
+}
+
+function handlePageUpdate(newPage: number) {
+	if (props.disabled) return;
+	if (!isPageControlled.value) {
+		uncontrolledPage.value = newPage;
 	}
-	return props.siblingCount ?? 1;
-});
-
-// Calculate total pages
-const pageCount = computed(() => {
-	if (props.pageCount !== undefined) return props.pageCount;
-	if (!props.total || !itemsPerPage.value) return 1;
-	return Math.ceil(props.total / itemsPerPage.value);
-});
-
-// Calculate total items for Reka UI (when using pageCount, we need to synthesize total)
-// pageCount takes precedence over total per DS-323 requirement
-const totalItems = computed(() => {
-	if (props.pageCount !== undefined) {
-		// Synthesize total from pageCount * itemsPerPage
-		return props.pageCount * itemsPerPage.value;
-	}
-	if (props.total !== undefined) return props.total;
-	return 0;
-});
-
-// Hide component when only one page
-const shouldHide = computed(() => props.hideOnSinglePage && pageCount.value <= 1);
-
-// Layout parsing
-const layoutParts = computed(() => props.layout?.split(',').map((s) => s.trim()) ?? []);
-const showPrev = computed(() => layoutParts.value.includes('prev'));
-const showNext = computed(() => layoutParts.value.includes('next'));
-const showPager = computed(() => layoutParts.value.includes('pager'));
-
-// Deduplicated layout parts - group prev/pager/next into single 'pager-group' entry
-// The pager group renders at the position of the first pager-related part encountered
-const deduplicatedLayoutParts = computed(() => {
-	const pagerParts = new Set(['prev', 'pager', 'next']);
-	const result: string[] = [];
-	let pagerGroupAdded = false;
-
-	for (const part of layoutParts.value) {
-		if (pagerParts.has(part)) {
-			if (!pagerGroupAdded) {
-				result.push('pager-group');
-				pagerGroupAdded = true;
-			}
-			// Skip subsequent pager parts
-		} else {
-			result.push(part);
-		}
-	}
-	return result;
-});
-
-// Forward props to Reka UI
-const rootProps = useForwardPropsEmits(reactivePick(props, 'disabled', 'showEdges'), emit);
-
-// Internal page size state for v-model:page-size
-const internalPageSize = ref(itemsPerPage.value);
-
-// Track previous page for directional events
-const prevPage = ref(page.value);
-
-// Handle page updates
-const handlePageUpdate = (newPage: number) => {
-	// Emit directional events based on page change
-	if (newPage < prevPage.value) {
-		emit('prev-click', newPage);
-	} else if (newPage > prevPage.value) {
-		emit('next-click', newPage);
-	}
-
-	prevPage.value = newPage;
-
 	emit('update:page', newPage);
-	emit('update:currentPage', newPage);
-	emit('current-change', newPage);
-};
+}
 
-// Handle page size updates
-const handlePageSizeUpdate = (newSize: number | string) => {
+function handleItemsPerPageUpdate(newSize: number | string) {
+	if (props.disabled) return;
+
 	const size = typeof newSize === 'string' ? parseInt(newSize, 10) : newSize;
-	internalPageSize.value = size;
-	emit('update:pageSize', size);
-	emit('size-change', size);
-
-	// Reset to first page when page size changes
-	handlePageUpdate(1);
-};
-
-// Styles
-const variants: Record<PaginationVariants, string> = {
-	default: $style.default,
-	ghost: $style.ghost,
-};
-const variant = computed(() => variants[props.variant]);
-
-const sizes: Record<PaginationSizes, string> = {
-	small: $style.small,
-	medium: $style.medium,
-};
-const size = computed(() => sizes[props.size]);
-
-// Background class
-const backgroundClass = computed(() => (props.background ? $style.background : ''));
-
-// Page size selector items
-const pageSizeItems = computed(() =>
-	props.pageSizes.map((s) => ({ value: String(s), label: `${s} / page` })),
-);
-
-// Total text
-const totalText = computed(() => {
-	if (props.total === undefined) return '';
-	return `Total ${props.total}`;
-});
-
-// Jumper state
-const jumperValue = ref<string>('');
-const handleJumperSubmit = () => {
-	const targetPage = parseInt(jumperValue.value, 10);
-	if (!isNaN(targetPage) && targetPage >= 1 && targetPage <= pageCount.value) {
-		handlePageUpdate(targetPage);
-		jumperValue.value = '';
+	if (!isItemsPerPageControlled.value) {
+		uncontrolledItemsPerPage.value = size;
 	}
-};
+	emit('update:itemsPerPage', size);
+	handlePageUpdate(1);
+}
+
+function commitJumperValue() {
+	if (props.disabled) return;
+
+	const parsed = parseInt(jumperValue.value, 10);
+	if (Number.isNaN(parsed)) {
+		jumperValue.value = String(currentPage.value);
+		return;
+	}
+
+	const targetPage = Math.min(Math.max(parsed, 1), resolvedPageCount());
+
+	if (targetPage === currentPage.value) {
+		jumperValue.value = String(currentPage.value);
+		return;
+	}
+
+	handlePageUpdate(targetPage);
+
+	if (isPageControlled.value) {
+		jumperValue.value = String(currentPage.value);
+	}
+}
+
+function onJumperKeydown(event: KeyboardEvent) {
+	if (event.key !== 'Enter') return;
+	if (!(event.target instanceof HTMLInputElement)) return;
+	event.target.blur();
+}
+
+function onJumperFocus(event: FocusEvent) {
+	if (!(event.target instanceof HTMLInputElement)) return;
+	const input = event.target;
+	input.select();
+
+	// Click-focus: mouseup after focus collapses select() to a caret. Block the next one.
+	const listeners = {
+		onMouseUp: (mouseEvent: MouseEvent) => {
+			mouseEvent.preventDefault();
+			input.select();
+			input.removeEventListener('mouseup', listeners.onMouseUp);
+			input.removeEventListener('blur', listeners.onBlur);
+		},
+		onBlur: () => {
+			input.removeEventListener('mouseup', listeners.onMouseUp);
+			input.removeEventListener('blur', listeners.onBlur);
+		},
+	};
+	input.addEventListener('mouseup', listeners.onMouseUp);
+	input.addEventListener('blur', listeners.onBlur);
+}
+
+function handlePagerKeydown(event: KeyboardEvent) {
+	if (props.disabled) return;
+	if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+
+	const list = event.currentTarget;
+	if (!(list instanceof HTMLElement)) return;
+
+	const buttons = Array.from(list.querySelectorAll<HTMLElement>('button:not(:disabled)'));
+	if (buttons.length === 0) return;
+
+	const active = document.activeElement;
+	const currentIndex = buttons.findIndex((button) => button === active || button.contains(active));
+	if (currentIndex === -1) return;
+
+	const nextIndex =
+		event.key === 'ArrowRight'
+			? Math.min(currentIndex + 1, buttons.length - 1)
+			: Math.max(currentIndex - 1, 0);
+
+	if (nextIndex === currentIndex) return;
+
+	event.preventDefault();
+	buttons[nextIndex]?.focus();
+}
 </script>
 
 <template>
 	<div
-		v-if="!shouldHide"
-		:class="['n8n-pagination', $style.paginationContainer, variant, size, backgroundClass]"
-		v-bind="$attrs"
+		v-if="!shouldHide()"
+		:class="[
+			'n8n-pagination',
+			$style.paginationContainer,
+			$style[size],
+			{ [$style.isDisabled]: disabled },
+			rootClass,
+		]"
+		data-test-id="pagination"
+		v-bind="rootAttrs"
 	>
-		<!-- Render layout parts in order specified by layout prop -->
-		<template v-for="part in deduplicatedLayoutParts" :key="part">
-			<!-- Total count -->
-			<div v-if="part === 'total'" :class="$style.total">
-				{{ totalText }}
-			</div>
+		<div v-if="showTotal" :class="$style.total" data-test-id="pagination-total">
+			{{ t('pagination.total', { total }) }}
+		</div>
 
-			<!-- Page size selector -->
-			<N8nSelect
-				v-else-if="part === 'sizes'"
-				:model-value="String(internalPageSize)"
-				:items="pageSizeItems"
-				:size="props.size === 'small' ? 'xsmall' : 'small'"
-				:variant="props.variant === 'ghost' ? 'ghost' : 'default'"
-				:disabled="disabled"
-				:class="$style.pageSizeSelect"
-				@update:model-value="handlePageSizeUpdate"
-			/>
-
-			<!-- Pager (prev, pages, next) -->
-			<PaginationRoot
-				v-else-if="part === 'pager-group'"
-				v-bind="rootProps"
-				:page="page"
-				:items-per-page="itemsPerPage"
-				:total="totalItems"
-				:sibling-count="siblingCount"
-				:show-edges="showEdges"
-				@update:page="handlePageUpdate"
+		<PaginationRoot
+			v-slot="{ page: rootPage, pageCount: rootPageCount }"
+			v-bind="rootProps"
+			:page="currentPage"
+			:items-per-page="currentItemsPerPage"
+			:total="total"
+			@update:page="handlePageUpdate"
+		>
+			<PaginationList
+				v-slot="{ items }"
+				:class="$style.paginationList"
+				data-test-id="pagination-list"
+				@keydown="handlePagerKeydown"
 			>
-				<PaginationList v-slot="{ items }" :class="$style.paginationList">
-					<!-- Previous button -->
-					<PaginationPrev v-if="showPrev" v-slot="slotProps" :class="$style.paginationButton">
-						<slot name="prev" v-bind="slotProps">
-							<span v-if="prevText">{{ prevText }}</span>
-							<Icon v-else :icon="prevIcon" />
+				<N8nTooltip
+					:content="t('pagination.previousPage')"
+					:disabled="!!$slots.prev || isPrevDisabled(rootPage)"
+				>
+					<PaginationPrev as-child>
+						<slot name="prev" :disabled="isPrevDisabled(rootPage)">
+							<N8nButton
+								variant="ghost"
+								icon-only
+								icon="chevron-left"
+								:size="size"
+								:disabled="isPrevDisabled(rootPage)"
+								:aria-label="t('pagination.previousPage')"
+								data-test-id="pagination-prev"
+							/>
 						</slot>
 					</PaginationPrev>
+				</N8nTooltip>
 
-					<!-- Page items -->
-					<template v-if="showPager">
-						<template
-							v-for="(item, index) in items"
-							:key="item.type === 'ellipsis' ? `ellipsis-${index}` : item.value"
-						>
-							<!-- Ellipsis button -->
-							<PaginationEllipsis
-								v-if="item.type === 'ellipsis'"
-								:index="index"
-								:class="[$style.paginationEllipsis, $style.paginationButton]"
-							>
-								<span aria-hidden="true">&#8230;</span>
-							</PaginationEllipsis>
-							<PaginationListItem v-else :value="item.value" :class="$style.paginationItem">
-								{{ item.value }}
-							</PaginationListItem>
-						</template>
-					</template>
+				<template
+					v-for="(item, index) in items"
+					:key="item.type === 'ellipsis' ? `ellipsis-${index}` : item.value"
+				>
+					<PaginationEllipsis
+						v-if="item.type === 'ellipsis'"
+						:index="index"
+						:class="$style.paginationEllipsis"
+						data-test-id="pagination-ellipsis"
+					>
+						<span aria-hidden="true">&#8230;</span>
+					</PaginationEllipsis>
+					<PaginationListItem
+						v-else
+						:value="item.value"
+						:class="$style.paginationItem"
+						data-test-id="pagination-item"
+					>
+						{{ item.value }}
+					</PaginationListItem>
+				</template>
 
-					<!-- Next button -->
-					<PaginationNext v-if="showNext" v-slot="slotProps" :class="$style.paginationButton">
-						<slot name="next" v-bind="slotProps">
-							<span v-if="nextText">{{ nextText }}</span>
-							<Icon v-else :icon="nextIcon" />
+				<N8nTooltip
+					:content="t('pagination.nextPage')"
+					:disabled="!!$slots.next || isNextDisabled(rootPage, rootPageCount)"
+				>
+					<PaginationNext as-child>
+						<slot name="next" :disabled="isNextDisabled(rootPage, rootPageCount)">
+							<N8nButton
+								variant="ghost"
+								icon-only
+								icon="chevron-right"
+								:size="size"
+								:disabled="isNextDisabled(rootPage, rootPageCount)"
+								:aria-label="t('pagination.nextPage')"
+								data-test-id="pagination-next"
+							/>
 						</slot>
 					</PaginationNext>
-				</PaginationList>
-			</PaginationRoot>
+				</N8nTooltip>
+			</PaginationList>
+		</PaginationRoot>
 
-			<!-- Page jumper -->
-			<div v-else-if="part === 'jumper'" :class="$style.jumper">
-				<span :class="$style.jumperText">Go to</span>
-				<input
-					v-model="jumperValue"
-					type="number"
-					:min="1"
-					:max="pageCount"
-					:class="$style.jumperInput"
-					:disabled="disabled"
-					@keyup.enter="handleJumperSubmit"
-				/>
-			</div>
-		</template>
+		<N8nSelect
+			v-if="showSizes"
+			:class="$style.pageSizes"
+			:model-value="String(currentItemsPerPage)"
+			:items="pageSizeItems()"
+			:size="size"
+			:disabled="disabled"
+			:aria-label="t('pagination.pageSize')"
+			data-test-id="pagination-sizes"
+			@update:model-value="handleItemsPerPageUpdate"
+		/>
+
+		<div v-if="showJumper" :class="$style.jumper" data-test-id="pagination-jumper">
+			<span :class="$style.jumperPrefix">{{ t('pagination.goTo') }}</span>
+			<input
+				ref="jumperInput"
+				v-model="jumperValue"
+				type="text"
+				inputmode="numeric"
+				pattern="[0-9]*"
+				autocomplete="off"
+				:class="$style.jumperInput"
+				:disabled="disabled"
+				:aria-label="t('pagination.goToPage')"
+				data-test-id="pagination-jumper-input"
+				@focus="onJumperFocus"
+				@blur="commitJumperValue"
+				@keydown="onJumperKeydown"
+			/>
+		</div>
 	</div>
 </template>
 
-<style module>
+<style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
+
 .paginationContainer {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--shade-1);
 }
 
-.default {
-	/* Default styling */
-}
+.medium {
+	.paginationItem,
+	.paginationEllipsis {
+		height: var(--height--md);
+		min-width: var(--height--md);
+	}
 
-.ghost {
-	/* Ghost variant */
+	.total {
+		font-size: var(--font-size--sm);
+	}
+
+	.jumper {
+		--jumper-height: var(--height--md);
+		--jumper-inset: var(--spacing--xs);
+		--jumper-font-size: var(--font-size--sm);
+		--jumper-radius: var(--radius--3xs);
+	}
+
+	// Temporary: Select medium is 36px; match jumper / --height--md (32px)
+	.pageSizes {
+		height: var(--height--md);
+		min-height: var(--height--md);
+	}
 }
 
 .small {
 	font-size: var(--font-size--2xs);
+
+	.paginationItem,
+	.paginationEllipsis {
+		height: var(--height--sm);
+		min-width: var(--height--sm);
+		font-size: var(--font-size--2xs);
+	}
+
+	.total {
+		font-size: var(--font-size--xs);
+	}
+
+	.jumper {
+		--jumper-height: var(--height--sm);
+		--jumper-inset: var(--spacing--2xs);
+		--jumper-font-size: var(--font-size--xs);
+		--jumper-radius: var(--radius--3xs);
+	}
+
+	// Temporary: match jumper / --height--sm until Select size tokens align
+	.pageSizes {
+		height: var(--height--sm);
+		min-height: var(--height--sm);
+	}
 }
 
-.medium {
-	font-size: var(--font-size--xs);
-}
+.isDisabled {
+	pointer-events: none;
 
-.background {
-	/* Applied when background prop is true */
+	.paginationEllipsis {
+		opacity: 0.5;
+	}
 }
 
 .total {
-	color: var(--color--text--tint-1);
-	margin-right: var(--spacing--2xs);
-}
-
-.pageSizeSelect {
-	margin-right: var(--spacing--2xs);
+	color: var(--text-color--subtler);
+	white-space: nowrap;
 }
 
 .paginationList {
@@ -332,149 +429,94 @@ const handleJumperSubmit = () => {
 	gap: var(--spacing--4xs);
 }
 
-/* Prev/Next buttons - minimal style like Element+ */
-.paginationButton {
+.jumper {
 	display: inline-flex;
 	align-items: center;
-	justify-content: center;
-	min-width: var(--spacing--lg);
-	height: var(--spacing--lg);
-	padding: 0 var(--spacing--3xs);
-	border-radius: var(--radius);
+	margin-inline-start: calc(var(--spacing--2xs) - var(--spacing--xs));
+	min-height: var(--jumper-height, var(--height--md));
+	border-radius: var(--jumper-radius, var(--radius--3xs));
+	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	box-shadow: inset 0 0 0 1px var(--border-color);
+	font-size: var(--jumper-font-size, var(--font-size--sm));
+
+	@include focus.focus-within-ring;
+
+	&:hover:not(:focus-within):not(:has(:disabled)) {
+		box-shadow: inset 0 0 0 1px var(--border-color--strong);
+	}
+
+	&:focus-within {
+		box-shadow: inset 0 0 0 1px var(--focus--border-color);
+	}
+
+	&:has(:disabled) {
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+}
+
+.jumperPrefix {
+	padding-inline-start: var(--jumper-inset, var(--spacing--xs));
+	color: var(--text-color--subtler);
+}
+
+.jumperInput {
+	min-height: var(--jumper-height, var(--height--md));
+	padding-inline: var(--jumper-inset, var(--spacing--xs));
 	border: none;
-	background-color: transparent;
-	color: var(--color--text--tint-1);
-	cursor: pointer;
-	user-select: none;
-	transition: color 0.2s;
+	background: transparent;
+	outline: none;
+	overflow: hidden;
+	font-variant-numeric: tabular-nums;
 
-	&:hover:not([data-disabled]) {
-		color: var(--color--primary);
-	}
-
-	&[data-disabled] {
+	&:disabled {
 		cursor: not-allowed;
-		color: var(--color--text--tint-2);
+		color: var(--color--text--tint-1);
 	}
 }
 
-/* Page number buttons - minimal style like Element+ */
-.paginationItem {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: var(--spacing--lg);
-	height: var(--spacing--lg);
-	padding: 0 var(--spacing--3xs);
-	border-radius: var(--radius);
-	border: 1px solid transparent;
-	background-color: transparent;
-	color: var(--color--text--shade-1);
-	cursor: pointer;
-	user-select: none;
-	transition: all 0.2s;
-	font-weight: var(--font-weight--regular);
-
-	&:hover:not([data-selected]):not([data-disabled]) {
-		color: var(--color--primary);
-	}
-
-	&[data-selected] {
-		border-color: var(--color--primary);
-		color: var(--color--primary);
-		font-weight: var(--font-weight--bold);
-		cursor: default;
-	}
-
-	&[data-disabled] {
-		cursor: not-allowed;
-		opacity: 0.5;
-	}
-}
-
-/* Background variant - filled style */
-.background .paginationItem {
-	background-color: var(--color--background--light-2);
-	border-color: var(--color--foreground);
-
-	&[data-selected] {
-		background-color: var(--color--primary);
-		border-color: var(--color--primary);
-		color: white;
-	}
-}
-
-/* Ellipsis - minimal style */
+.paginationItem,
 .paginationEllipsis {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-width: var(--spacing--lg);
-	height: var(--spacing--lg);
-	color: var(--color--text--tint-1);
-	user-select: none;
-	border: none;
-	background: transparent;
-
-	&:not([disabled]) {
-		cursor: pointer;
-
-		&:hover {
-			color: var(--color--primary);
-		}
-	}
-}
-
-.jumper {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	margin-left: var(--spacing--2xs);
-}
-
-.jumperText {
-	color: var(--color--text--tint-1);
-}
-
-.jumperInput {
-	width: 50px;
-	height: var(--spacing--lg);
 	padding: 0 var(--spacing--3xs);
-	border-radius: var(--radius);
-	border: var(--border);
-	background-color: var(--color--background--light-3);
-	color: var(--color--text--shade-1);
-	font-size: var(--font-size--2xs);
-	text-align: center;
+	border: none;
+	border-radius: var(--radius--3xs);
+	background-color: transparent;
+	user-select: none;
+}
+
+.paginationItem {
+	cursor: pointer;
+	font-weight: var(--font-weight--regular);
+	box-shadow: inset 0 0 0 1px transparent;
+
+	&:hover:not([data-selected]):not(:disabled) {
+		background-color: var(--background--hover);
+	}
+
+	&[data-selected] {
+		background-color: var(--background--active);
+		cursor: default;
+	}
 
 	&:focus {
 		outline: none;
-		border-color: var(--color--primary);
-		box-shadow: 0 0 0 2px var(--color--secondary);
+	}
+
+	&:focus-visible {
+		@include focus.focus-ring;
+		box-shadow: inset 0 0 0 1px var(--focus--border-color);
 	}
 
 	&:disabled {
 		cursor: not-allowed;
 		opacity: 0.5;
-		background-color: var(--color--background--light-2);
-	}
-
-	/* Hide number input spinners */
-	&::-webkit-outer-spin-button,
-	&::-webkit-inner-spin-button {
-		-webkit-appearance: none;
-		margin: 0;
-	}
-
-	&[type='number'] {
-		-moz-appearance: textfield;
 	}
 }
 
-.medium .paginationButton,
-.medium .paginationItem,
-.medium .jumperInput {
-	height: 36px;
-	min-width: 36px;
+.paginationEllipsis {
+	pointer-events: none;
 }
 </style>

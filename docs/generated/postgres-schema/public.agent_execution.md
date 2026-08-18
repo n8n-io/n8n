@@ -10,6 +10,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | duration | integer | 0 | false |  |  |  |
 | error | text |  | true |  |  |  |
+| failureSummary | json |  | true |  |  | Execution failure projection as {count, latest} for session list queries |
 | hitlStatus | varchar(16) |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | model | varchar(255) |  | true |  |  |  |
@@ -64,6 +65,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   integer duration
   text error
+  json failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
