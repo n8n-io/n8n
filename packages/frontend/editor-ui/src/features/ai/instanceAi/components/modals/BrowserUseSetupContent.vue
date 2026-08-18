@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useEventListener } from '@vueuse/core';
-import { N8nButton, N8nCallout, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nHeading, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { isBrowserUseSupportedForBrowser } from '@/experiments/instanceAiBrowserUse';
@@ -73,7 +73,7 @@ watch(
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('instanceAi.browserUse.connected'),
-			message: i18n.baseText('instanceAi.browserUse.connected.description'),
+			message: i18n.baseText('instanceAi.browserUse.connected.toastMessage'),
 		});
 		emit('close');
 	},
@@ -159,11 +159,6 @@ useEventListener(window, 'focus', reprobeExtension);
 			<div v-else-if="statusChecked" :class="$style.step">
 				<BrowserUseConnectStep :auto-connect="props.autoConnect" />
 			</div>
-
-			<div v-if="!isExtensionMissing" :class="$style.waitingRow">
-				<N8nIcon icon="spinner" color="primary" spin size="small" />
-				<span>{{ i18n.baseText('instanceAi.browserUse.step.extension.waiting') }}</span>
-			</div>
 		</template>
 	</div>
 </template>
@@ -227,17 +222,5 @@ useEventListener(window, 'focus', reprobeExtension);
 
 .statusDotConnected {
 	background: var(--color--success);
-}
-
-.waitingRow {
-	display: flex;
-	font-size: var(--font-size--2xs);
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	background: var(--color--background--light-2);
-	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight--bold);
-	border-radius: var(--radius);
 }
 </style>

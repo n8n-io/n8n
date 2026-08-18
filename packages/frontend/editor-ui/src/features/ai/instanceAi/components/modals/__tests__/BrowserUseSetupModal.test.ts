@@ -241,7 +241,7 @@ describe('BrowserUseSetupModal', () => {
 			expect(showMessageMock).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'instanceAi.browserUse.connected',
-				message: 'instanceAi.browserUse.connected.description',
+				message: 'instanceAi.browserUse.connected.toastMessage',
 			});
 		});
 
