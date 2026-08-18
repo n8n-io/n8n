@@ -14,8 +14,12 @@ export class ScaffoldError extends Error {}
 /**
  * One spelling must do all the work. The name is the directory, the last part of the name of the
  * package, the infix of each file and the id of the backend module.
+ *
+ * Each word must start with a letter. A digit after a hyphen makes two ids that give one Pascal
+ * name and one camel name: `mcp-2` and `mcp2` both give `Mcp2`. The descriptor binding in the
+ * manifest and the id of the Pinia store come from those names, so the two ids collide.
  */
-export const isModuleId = (name) => /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(name);
+export const isModuleId = (name) => /^[a-z][a-z0-9]*(-[a-z][a-z0-9]*)*$/.test(name);
 
 const capitalize = (word) => word[0].toUpperCase() + word.slice(1);
 

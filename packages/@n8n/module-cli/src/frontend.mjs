@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { editLines, lineIndex, repoRoot, writeTemplates } from './scaffold.mjs';
+import { editLines, lineIndex, repoRoot, ScaffoldError, writeTemplates } from './scaffold.mjs';
 
 const TEMPLATE_DIR = fileURLToPath(new URL('templates/frontend', import.meta.url));
 
@@ -15,6 +16,25 @@ export const registrationFiles = (root) => {
 		editorUiTsconfig: join(editorUi, 'tsconfig.json'),
 		manifest: join(editorUi, 'src', 'app', 'modules.manifest.ts'),
 	};
+};
+
+/** The module each name in the manifest comes from, or `undefined` for a name it does not import. */
+const bindingSource = (manifest, binding) => {
+	for (const line of manifest.split('\n')) {
+		const [, names, from] = /^import\s*\{([^}]*)\}\s*from\s*'([^']+)';/.exec(line) ?? [];
+		if (!names) continue;
+
+		const bound = names.split(',').map((name) =>
+			name
+				.trim()
+				.split(/\s+as\s+/)
+				.pop()
+				.trim(),
+		);
+		if (bound.includes(binding)) return from;
+	}
+
+	return undefined;
 };
 
 /** template file, then the path in the new package. */
@@ -48,6 +68,17 @@ export const createFrontend = ({ name, packageDir, substitutions, root = repoRoo
 	const packageName = `@n8n/frontend-module-${name}`;
 	const descriptorName = `${substitutions.PascalName}Module`;
 	const target = registrationFiles(root);
+
+	// The descriptor comes from the module id, and more than one id can give one name: `data-table`
+	// gives the `DataTableModule` that `@/features/core/dataTable` already binds. Two imports of one
+	// name do not compile, so stop before the first file is written.
+	const boundIn = bindingSource(readFileSync(target.manifest, 'utf8'), descriptorName);
+	if (boundIn && boundIn !== packageName) {
+		throw new ScaffoldError(
+			`modules.manifest.ts already imports ${descriptorName} from '${boundIn}'.\n` +
+				`Use a module id that gives another name, or remove that registration first.`,
+		);
+	}
 
 	writeTemplates(TEMPLATE_DIR, packageDir, files(name), substitutions);
 

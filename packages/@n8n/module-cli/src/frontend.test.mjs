@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 import { createFrontend, registrationFiles } from './frontend.mjs';
-import { repoRoot, ScaffoldError, substitutionsFor } from './scaffold.mjs';
+import { isModuleId, repoRoot, ScaffoldError, substitutionsFor } from './scaffold.mjs';
 
 const NAME = 'my-feature';
 const PACKAGE = '@n8n/frontend-module-my-feature';
@@ -252,6 +252,55 @@ describe('createFrontend', () => {
 			expect(existsSync(join(root, 'packages', 'modules', NAME, 'frontend', 'package.json'))).toBe(
 				true,
 			);
+		});
+	});
+
+	describe('descriptor name collision', () => {
+		// The manifest binds one name per module, and the name comes from the id. Two imports of one
+		// name do not compile, so the id has to give a name that the manifest does not hold yet.
+		it.each(['data-table', 'insights', 'agents', 'otel', 'workflow-reviews'])(
+			'refuses %s, which the shell already binds',
+			(name) => {
+				expect(() => scaffold(root, name)).toThrow(
+					/modules\.manifest\.ts already imports \w+Module from '@\/features\//,
+				);
+			},
+		);
+
+		it('writes nothing when it refuses', () => {
+			const boundElsewhere = /import \{ (\w+)Module \} from '@\/features\//.exec(
+				read(root, 'manifest'),
+			)[1];
+			const name = boundElsewhere.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+			const before = readAll(root);
+
+			expect(() => scaffold(root, name)).toThrow(ScaffoldError);
+
+			expect(existsSync(join(root, 'packages', 'modules', name))).toBe(false);
+			expect(readAll(root)).toEqual(before);
+		});
+
+		it('accepts a module the shell binds from this package, so a rerun still works', () => {
+			scaffold(root);
+
+			const { edits } = scaffold(root);
+
+			expect(edits).toEqual([]);
+		});
+
+		it('rejects an id whose name a sibling id would share', () => {
+			// `mcp-2` and `mcp2` both give `Mcp2`, for the descriptor and for the id of the store.
+			expect(isModuleId('mcp-2')).toBe(false);
+			expect(isModuleId('mcp2')).toBe(true);
+			expect(substitutionsFor('mcp2').PascalName).toBe('Mcp2');
+		});
+
+		it('gives a distinct descriptor name to every id it accepts', () => {
+			const ids = ['a', 'ab', 'a-b', 'mcp2', 'mcp2-x', 'data-table', 'datatable', 'my-feature'];
+			const descriptors = ids.map((id) => `${substitutionsFor(id).PascalName}Module`);
+
+			expect(ids.every((id) => isModuleId(id))).toBe(true);
+			expect(new Set(descriptors).size).toBe(ids.length);
 		});
 	});
 });

@@ -24,7 +24,8 @@ const scaffold = async (args) => {
 
 	if (!isModuleId(name)) {
 		throw new ScaffoldError(
-			`"${name}" is not kebab-case. Use lowercase words separated by single hyphens.`,
+			`"${name}" is not kebab-case. Use lowercase words separated by single hyphens, and start ` +
+				'each word with a letter.',
 		);
 	}
 
