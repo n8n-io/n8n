@@ -15,7 +15,6 @@ export type ResponseDtoClass = Pick<ZodClass, 'parse'>;
 
 export type SuccessStatus = 200 | 201 | 202 | 204;
 
-/** A non-2xx status a route declares, optionally with the schema and wording of its body. */
 export interface ErrorResponse {
 	status: number;
 	dto?: ResponseDtoClass;

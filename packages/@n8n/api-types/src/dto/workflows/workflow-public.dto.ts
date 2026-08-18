@@ -110,8 +110,6 @@ export const workflowPublicSchema = z.object({
 
 export class WorkflowPublicDto extends Z.class(workflowPublicSchema.shape) {}
 
-// Publishing re-reads the workflow without its `shared` relation, so that field has never been part
-// of the publish response.
 export const workflowPublishPublicSchema = workflowPublicSchema.omit({ shared: true });
 
 export class WorkflowPublishPublicDto extends Z.class(workflowPublishPublicSchema.shape) {}

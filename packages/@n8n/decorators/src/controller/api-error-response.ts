@@ -6,10 +6,6 @@ import type { Controller, ResponseDtoClass } from './types';
 /**
  * Declares a non-2xx status code a route can return, beyond the ones already inferred
  * from other decorators. Stack multiple `@ApiErrorResponse` calls to declare more than one.
- *
- * Pass `dto` to publish the error body's schema. Without it the spec documents the status code
- * alone, which is all a plain `{ message }` body needs. `description` overrides the wording the
- * shared response file would have supplied.
  */
 export const ApiErrorResponse =
 	(status: number, dto?: ResponseDtoClass, description?: string): MethodDecorator =>
