@@ -1196,11 +1196,15 @@ describe('publishAsSystem()', () => {
 		const storedBefore = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
 		const nodes = systemNodes();
 
-		const { versionId } = await workflowService.publishAsSystem(workflow.id, {
+		const result = await workflowService.publishAsSystem(workflow.id, {
 			nodes,
 			connections: {},
 			nodeGroups: [],
 		});
+
+		expect(result.published).toBe(true);
+		if (!result.published) throw new Error('unreachable');
+		const { versionId } = result;
 
 		const versionRow = await Container.get(WorkflowHistoryRepository).findOneOrFail({
 			where: { versionId },
@@ -1267,6 +1271,43 @@ describe('publishAsSystem()', () => {
 		).rejects.toThrow('active');
 
 		expect(await outboxRepository.findBy({ workflowId: missingId })).toEqual([]);
+		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
+	});
+
+	it('refuses to publish when the active version moved after the read', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+		const interloperVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: interloperVersionId });
+		const publishHistoryBefore = await workflowPublishHistoryRepository.findBy({
+			workflowId: workflow.id,
+		});
+
+		const saveVersion = workflowHistoryService.saveVersion.bind(workflowHistoryService);
+		vi.spyOn(workflowHistoryService, 'saveVersion').mockImplementationOnce(async (...args) => {
+			const result = await saveVersion(...args);
+			// A concurrent publish lands between publishAsSystem's read and its write.
+			await workflowRepository.update(
+				{ id: workflow.id },
+				{ activeVersionId: interloperVersionId },
+			);
+			return result;
+		});
+
+		const result = await workflowService.publishAsSystem(workflow.id, {
+			nodes: systemNodes(),
+			connections: {},
+			nodeGroups: [],
+		});
+
+		expect(result).toEqual({ published: false, reason: 'superseded' });
+		const after = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
+		expect(after.activeVersionId).toBe(interloperVersionId);
+		// The guard is the transaction's first write, so a lost race writes nothing.
+		expect(await workflowPublishHistoryRepository.findBy({ workflowId: workflow.id })).toEqual(
+			publishHistoryBefore,
+		);
+		expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
 		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
 	});
 });
