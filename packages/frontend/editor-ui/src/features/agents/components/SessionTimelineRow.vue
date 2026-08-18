@@ -101,7 +101,6 @@ const label = computed((): string => {
 			return '';
 	}
 });
-
 </script>
 
 <template>
