@@ -18,6 +18,7 @@ import type {
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestForWorkflowRow,
+	WorkflowReviewActivityRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	WorkflowRepository,
@@ -40,7 +41,6 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
-
 const user = mock<User>({ id: 'user-1' });
 
 /** Build a real `User` with `isPending` computed, as TypeORM does after load. */
@@ -72,6 +72,7 @@ describe('WorkflowReviewRequestService', () => {
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
+	const activityRepository = mock<WorkflowReviewActivityRepository>();
 	const userRepository = mock<UserRepository>();
 	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const roleService = mock<RoleService>();
@@ -96,6 +97,7 @@ describe('WorkflowReviewRequestService', () => {
 		workflowRepository,
 		authorRepository,
 		reviewerRepository,
+		activityRepository,
 		userRepository,
 		eligibilityService,
 		roleService,
@@ -265,7 +267,11 @@ describe('WorkflowReviewRequestService', () => {
 			mockSuccessfulCreatePath();
 			workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: true });
 
-			await expect(service.create(user, dto)).rejects.toThrow(BadRequestError);
+			const creation = service.create(user, dto);
+			await expect(creation).rejects.toThrow(BadRequestError);
+			await expect(creation).rejects.toThrow(
+				"The workflow 'wf-1' is archived and cannot be submitted for review",
+			);
 
 			expect(dbLockService.withLockContext).toHaveBeenCalled();
 			expect(requestRepository.createRequest).not.toHaveBeenCalled();
@@ -570,6 +576,7 @@ describe('WorkflowReviewRequestService', () => {
 			id: 'req-1',
 			state: 'open',
 			decision: 'pending',
+			description: null,
 			updatedById: 'user-2',
 			workflowVersionId: 'ver-1',
 			createdAt: new Date('2024-01-01T00:00:00.000Z'),
@@ -625,6 +632,7 @@ describe('WorkflowReviewRequestService', () => {
 					id: 'req-1',
 					state: 'open',
 					decision: 'changes_requested',
+					description: null,
 					workflowVersionId: 'ver-1',
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
@@ -700,7 +708,6 @@ describe('WorkflowReviewRequestService', () => {
 			});
 		});
 
-		// R1 (P3): enriching row by row made this list an N+1 — see LIGO-607_review.md
 		it('enriches many rows with one lookup per derived field', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 			requestRepository.findRequestsForWorkflow.mockResolvedValue([

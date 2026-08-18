@@ -27,6 +27,12 @@ import type { AgentRunTelemetryType } from '@/interfaces';
 
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
+import {
+	decodeAgentSandboxHostMetadata,
+	encodeAgentSandboxHostMetadata,
+	isAgentSandboxPrincipalHash,
+	type AgentSandboxPrincipalHash,
+} from '../agent-sandbox-principal';
 import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
@@ -167,6 +173,11 @@ export class SubAgentForegroundRunner {
 		const threadId = operation.type === 'run' ? uuid() : operation.threadId;
 		const resourceId =
 			operation.type === 'run' ? (operation.request.parentResourceId ?? threadId) : threadId;
+		const sandboxPrincipalHash = await this.resolveSandboxPrincipalHash(
+			operation,
+			runtimeSource.source.sourceId,
+			context.projectId,
+		);
 		const reconstructionService = await getReconstructionService();
 		const childConfig =
 			context.instrumentation?.transformDelegatedAgentConfig?.(runtimeSource.source.config, {
@@ -186,6 +197,7 @@ export class SubAgentForegroundRunner {
 			parentAgentIdForDelegation: context.parentAgentId,
 			user: context.user,
 			instrumentation: context.instrumentation,
+			...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),
 		});
 
 		const telemetry = deriveSubAgentTelemetry(context.telemetry);
@@ -219,6 +231,14 @@ export class SubAgentForegroundRunner {
 								resourceId,
 								threadId,
 								delegated: true,
+								...(sandboxPrincipalHash !== undefined
+									? {
+											hostMetadata: encodeAgentSandboxHostMetadata({
+												projectId: context.projectId,
+												principalHash: sandboxPrincipalHash,
+											}),
+										}
+									: {}),
 							},
 						})
 					: await agent.resume('stream', operation.request.resumeData, {
@@ -226,6 +246,12 @@ export class SubAgentForegroundRunner {
 							runId: operation.request.childRunId,
 							toolCallId: operation.request.childToolCallId,
 						});
+			if (operation.type === 'resume') {
+				recorder.recordHitlResponse(
+					operation.request.childToolCallId,
+					operation.request.resumeData,
+				);
+			}
 			try {
 				const currentExecutionId = await this.agentExecutionService.startExecutionRecording(
 					{
@@ -320,6 +346,32 @@ export class SubAgentForegroundRunner {
 				});
 			});
 		}
+	}
+
+	private async resolveSandboxPrincipalHash(
+		operation: ForegroundOperation,
+		childAgentId: string,
+		projectId: string,
+	): Promise<AgentSandboxPrincipalHash | undefined> {
+		if (operation.type === 'run') {
+			const value = operation.request.parentSandboxPrincipalHash;
+			if (value === undefined) return undefined;
+			if (!isAgentSandboxPrincipalHash(value)) {
+				throw new UserError('Configured sub-agent workspace scope is invalid');
+			}
+			return value;
+		}
+
+		const checkpoint = await this.checkpointStorage.load(
+			operation.request.childRunId,
+			childAgentId,
+		);
+		const scope = decodeAgentSandboxHostMetadata(checkpoint?.persistence?.hostMetadata);
+		if (!scope) return undefined;
+		if (scope.projectId !== projectId) {
+			throw new UserError('Configured sub-agent workspace scope is invalid');
+		}
+		return scope.principalHash;
 	}
 
 	private async recordSubAgentExecution(params: {

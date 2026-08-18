@@ -12,6 +12,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { triggerResourceGate } from '../resource-gate';
 import {
+	FORM_TRIGGER_CONSENT_HINTS,
 	FORM_TRIGGER_SCOPES,
 	resourceUrlToWebhookPath,
 	trimSlashes,
@@ -91,6 +92,7 @@ export class FormTriggerResourceResolver implements ProtectedResourceResolver {
 				getAllowedRedirectUris: async () => [resourceUrl],
 				scopes: FORM_TRIGGER_SCOPES,
 				displayName: workflow.name,
+				uiHints: FORM_TRIGGER_CONSENT_HINTS,
 				...triggerResourceGate(this.workflowFinderService, {
 					audiences,
 					executeAccessWorkflowId: requireExecute ? workflow.id : undefined,
