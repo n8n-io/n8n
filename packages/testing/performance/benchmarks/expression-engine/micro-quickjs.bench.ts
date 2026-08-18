@@ -20,7 +20,9 @@ import {
 
 // Top-level await — vitest bench doesn't support beforeAll
 const evaluator = new ExpressionEvaluator({
-	createBridge: () => new QuickJsBridge({ timeout: 5000 }),
+	// Higher than the vm micro bench: QuickJS (WASM) is slower and CodSpeed
+	// instrumentation adds overhead, so the small micro cases need headroom.
+	createBridge: () => new QuickJsBridge({ timeout: 60_000 }),
 	maxCodeCacheSize: 1024,
 	hooks: {
 		before: [ThisSanitizer],
