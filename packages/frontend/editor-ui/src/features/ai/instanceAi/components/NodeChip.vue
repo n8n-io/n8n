@@ -23,7 +23,7 @@ const emit = defineEmits<{ remove: []; 'toggle-expand': []; 'enter-panel': [] }>
 // stopPropagation prevents the canvas/logs panel's own document-level
 // Arrow/Enter/Escape shortcuts from also firing (see shouldIgnoreCanvasShortcut).
 function handleKeydown(event: KeyboardEvent) {
-	const isExpandable = props.expanded != null;
+	const isExpandable = props.expanded !== null && props.expanded !== undefined;
 
 	if (event.key === 'Enter' && isExpandable) {
 		event.preventDefault();
