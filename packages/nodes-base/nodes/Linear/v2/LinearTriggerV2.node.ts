@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from 'crypto';
+
 import {
 	type IHookFunctions,
 	type IWebhookFunctions,
@@ -193,6 +195,7 @@ export class LinearTriggerV2 implements INodeType {
 									id
 									url
 									enabled
+									secret
 									team {
 										id
 										name
@@ -208,7 +211,13 @@ export class LinearTriggerV2 implements INodeType {
 				} = (await linearApiRequest.call(this, body)) as {
 					data: {
 						webhooks: {
-							nodes: Array<{ id: string; url: string; enabled: boolean; team: { id: string } }>;
+							nodes: Array<{
+								id: string;
+								url: string;
+								enabled: boolean;
+								secret: string;
+								team: { id: string };
+							}>;
 						};
 					};
 				};
@@ -216,6 +225,7 @@ export class LinearTriggerV2 implements INodeType {
 				for (const node of nodes) {
 					if (node.url === webhookUrl && node.team.id === teamId && node.enabled) {
 						webhookData.webhookId = node.id as string;
+						webhookData.webhookSecret = node.secret;
 						return true;
 					}
 				}
@@ -240,6 +250,7 @@ export class LinearTriggerV2 implements INodeType {
 								webhook {
 									id
 									enabled
+									secret
 								}
 							}
 						}`,
@@ -254,14 +265,14 @@ export class LinearTriggerV2 implements INodeType {
 					data: {
 						webhookCreate: {
 							success,
-							webhook: { id },
+							webhook: { id, secret },
 						},
 					},
 				} = (await linearApiRequest.call(this, body)) as {
 					data: {
 						webhookCreate: {
 							success: boolean;
-							webhook: { id: string; enabled: boolean };
+							webhook: { id: string; enabled: boolean; secret: string };
 						};
 					};
 				};
@@ -270,6 +281,7 @@ export class LinearTriggerV2 implements INodeType {
 					return false;
 				}
 				webhookData.webhookId = id as string;
+				webhookData.webhookSecret = secret;
 
 				return true;
 			},
@@ -296,6 +308,7 @@ export class LinearTriggerV2 implements INodeType {
 						return false;
 					}
 					delete webhookData.webhookId;
+					delete webhookData.webhookSecret;
 				}
 				return true;
 			},
@@ -303,6 +316,22 @@ export class LinearTriggerV2 implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const webhookData = this.getWorkflowStaticData('node');
+		const secret = webhookData.webhookSecret as string | undefined;
+
+		// Verify Linear-Signature (HMAC-SHA256 of the raw body) when we hold the webhook's secret.
+		// No timestamp check: Linear retries carry the original timestamp, so a window would drop them.
+		if (secret) {
+			const signature = this.getHeaderData()['linear-signature'];
+			const { rawBody } = this.getRequestObject();
+			const computed = createHmac('sha256', secret).update(rawBody).digest();
+			const received = typeof signature === 'string' ? Buffer.from(signature, 'hex') : null;
+
+			if (!received || received.length !== 32 || !timingSafeEqual(computed, received)) {
+				return {};
+			}
+		}
+
 		const bodyData = this.getBodyData();
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],
