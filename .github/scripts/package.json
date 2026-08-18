@@ -1,5 +1,10 @@
 {
   "name": "workflow-scripts",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=11.22.0"
+  },
+  "packageManager": "pnpm@11.22.0",
   "scripts": {
     "test": "node --test --experimental-test-module-mocks ./*.test.mjs ./quality/*.test.mjs ./slack/*.test.mjs ./stale/*.test.mjs ../../scripts/licenses/*.test.mjs ../../scripts/mutation-health/*.test.mjs",
     "generate-sbom": "FETCH_LICENSE=true cdxgen -t pnpm --no-install-deps --profile license-compliance --spec-version 1.6 -o ../../sbom-source.cdx.json ../../compiled/",
@@ -14,6 +19,7 @@
     "@octokit/core": "7.0.6",
     "conventional-changelog": "7.2.0",
     "debug": "4.4.3",
+    "json-with-bigint": "3.5.11",
     "glob": "13.0.6",
     "minimatch": "10.2.4",
     "semver": "7.7.4",
@@ -22,11 +28,5 @@
   },
   "devDependencies": {
     "conventional-changelog-angular": "8.3.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "brace-expansion@5": "5.0.9",
-      "fast-uri@3": "3.1.4"
-    }
   }
 }

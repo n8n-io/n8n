@@ -138,43 +138,6 @@ if (process.env.CI !== 'true') {
 }
 // Run FE trim script
 await $`cd ${config.rootDir} && node .github/scripts/trim-fe-packageJson.js`;
-echo(chalk.yellow('INFO: Performing selective patch cleanup...'));
-
-const packageJsonPath = path.join(config.rootDir, 'package.json');
-
-if (await fs.pathExists(packageJsonPath)) {
-	try {
-		// 1. Read the package.json file
-		const packageJsonContent = await fs.readFile(packageJsonPath, 'utf8');
-		let packageJson = JSON.parse(packageJsonContent);
-
-		// 2. Modify the patchedDependencies directly in JavaScript
-		if (packageJson.pnpm && packageJson.pnpm.patchedDependencies) {
-			const filteredPatches = {};
-			for (const [key, value] of Object.entries(packageJson.pnpm.patchedDependencies)) {
-				// Check if the key (patch name) starts with any of the allowed patches
-				const shouldKeep = PATCHES_TO_KEEP.some((patchPrefix) => key.startsWith(patchPrefix));
-				if (shouldKeep) {
-					filteredPatches[key] = value;
-				}
-			}
-			packageJson.pnpm.patchedDependencies = filteredPatches;
-		}
-
-		// 3. Write the modified package.json back
-		await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf8');
-
-		echo(chalk.green('✅ Kept backend patches: ' + PATCHES_TO_KEEP.join(', ')));
-		echo(
-			chalk.gray(
-				`Removed FE/dev patches that are not in the list of backend patches to keep: ${PATCHES_TO_KEEP.join(', ')}`,
-			),
-		);
-	} catch (error) {
-		echo(chalk.red(`ERROR: Failed to cleanup patches in package.json: ${error.message}`));
-		process.exit(1);
-	}
-}
 
 echo(chalk.yellow(`INFO: Creating pruned production deployment in '${config.compiledAppDir}'...`));
 startTimer('package_deploy');
@@ -247,6 +210,8 @@ const runtimeAssetGlobs = [
 	'*/@n8n/instance-ai/knowledge-base/*',
 	'*/dist/node-definitions/*',
 ];
+
+echo(chalk.yellow('INFO: Verifying Runtime assets'));
 for (const glob of runtimeAssetGlobs) {
 	const found = await $`find ${config.compiledAppDir} -type f -path ${glob}`.nothrow();
 	if (found.stdout.split('\n').filter(Boolean).length === 0) {
