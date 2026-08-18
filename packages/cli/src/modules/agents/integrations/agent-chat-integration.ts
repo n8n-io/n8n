@@ -1,4 +1,9 @@
-import { AgentIntegrationConfig, type RichCardComponentType } from '@n8n/api-types';
+import {
+	AgentIntegrationConfig,
+	type AgentIntegrationDisconnectWarning,
+	type RichCardComponentType,
+} from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Thread, Author, Message } from 'chat';
 import type { Logger } from 'n8n-workflow';
@@ -30,6 +35,14 @@ export interface AgentChatIntegrationContext {
 	ingressEnabled: boolean;
 	/** Returns the inbound webhook URL this n8n instance exposes for the given platform. */
 	webhookUrlFor: (platform: string) => string;
+}
+
+export interface AgentIntegrationRemovalContext {
+	agentId: string;
+	projectId: string;
+	credentialId: string;
+	user: User;
+	deleteExternalResource?: boolean;
 }
 
 /** Response shape returned by `handleUnauthenticatedWebhook`. */
@@ -259,7 +272,7 @@ export abstract class AgentChatIntegration {
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
 
-	/** Validate platform-specific configuration before credentials or persistence are touched. */
+	/** Validate platform settings before credentials or persistence are touched. */
 	validateConfig?(integration: AgentIntegrationConfig): void;
 
 	/**
@@ -316,8 +329,16 @@ export abstract class AgentChatIntegration {
 	onBeforeDisconnect?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/**
-	 * Prepare a thread created or selected by an outbound send. Platforms can
-	 * use this to receive follow-up messages in that thread.
+	 * Cleanup performed only when a user explicitly removes a persisted
+	 * integration. This is deliberately separate from runtime disconnect hooks.
+	 */
+	onRemove?(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<AgentIntegrationDisconnectWarning | undefined>;
+
+	/**
+	 * Prepare a thread created or selected by an outbound send. Slack uses this
+	 * to subscribe the bot so follow-up messages reach the agent.
 	 */
 	prepareSentThread?(thread: Thread<unknown, unknown>): Promise<void>;
 

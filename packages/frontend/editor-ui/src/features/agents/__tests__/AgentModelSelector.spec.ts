@@ -46,6 +46,7 @@ const aiGatewayState = vi.hoisted(() => ({
 	balance: { value: undefined as number | undefined },
 	fetchWallet: vi.fn(),
 	fetchConfig: vi.fn(),
+	creditsLabelKey: { value: 'generic.freeCredits' as 'generic.freeCredits' | 'generic.n8nCredits' },
 }));
 const baseText = vi.hoisted(() =>
 	vi.fn((key: string, options?: { interpolate?: Record<string, string | number> }) => {
@@ -56,6 +57,7 @@ const baseText = vi.hoisted(() =>
 				'agents.modelSelector.connectTo': 'Connect to {provider}',
 				'agents.modelSelector.models': 'Models',
 				'generic.freeCredits': 'Free credits',
+				'generic.n8nCredits': 'n8n credits',
 				'agents.modelSelector.credentialsMissing': 'Credentials missing',
 				'agents.modelSelector.noMatch': 'No match',
 				'agents.modelSelector.noModels': 'No models',
@@ -139,6 +141,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		isCredentialTypeSupported: (type: string) => aiGatewayState.supportedTypes.has(type),
 		canServeCredentialType: (type: string) => aiGatewayState.supportedTypes.has(type),
 		balance: aiGatewayState.balance,
+		creditsLabelKey: aiGatewayState.creditsLabelKey,
 		fetchWallet: aiGatewayState.fetchWallet,
 		fetchConfig: aiGatewayState.fetchConfig,
 	}),
@@ -232,6 +235,7 @@ describe('AgentModelSelector', () => {
 		aiGatewayState.isEnabled.value = false;
 		aiGatewayState.supportedTypes = new Set<string>();
 		aiGatewayState.balance.value = undefined;
+		aiGatewayState.creditsLabelKey.value = 'generic.freeCredits';
 		aiGatewayState.fetchWallet.mockReset();
 		aiGatewayState.fetchConfig.mockReset();
 	});
@@ -266,6 +270,19 @@ describe('AgentModelSelector', () => {
 		expect(getProviderItem(wrapper, 'anthropic')?.data?.actionPill).toEqual({
 			text: 'Free credits',
 			type: 'default',
+		});
+	});
+
+	it('shows the n8n credits pill on covered providers after a top-up', async () => {
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+		aiGatewayState.creditsLabelKey.value = 'generic.n8nCredits';
+
+		const wrapper = await mountSelector({ anthropic: null });
+
+		expect(getProviderItem(wrapper, 'anthropic')?.data?.actionPill).toEqual({
+			text: 'n8n credits',
+			type: 'info',
 		});
 	});
 

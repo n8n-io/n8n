@@ -40,6 +40,9 @@ export type WorkflowSetupStep =
 export interface WorkflowSetupApplyPayload {
 	nodeCredentials?: Record<string, Record<string, string>>;
 	nodeParameters?: Record<string, INodeParameters>;
+	/** Nodes the user skipped. Sent so the backend can tell a dismissed card apart from one
+	 *  that just isn't filled in yet, and stop asking for it later in the conversation. */
+	skippedNodes?: string[];
 }
 
 export type TerminalState = 'applying' | 'applied' | 'partial' | 'deferred';

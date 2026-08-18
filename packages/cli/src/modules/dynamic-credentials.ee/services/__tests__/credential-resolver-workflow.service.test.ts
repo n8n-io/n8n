@@ -709,6 +709,62 @@ describe('CredentialResolverWorkflowService', () => {
 				);
 			});
 
+			it('skips credentials on disabled nodes', async () => {
+				mockWorkflowsById({
+					'workflow-1': createMockWorkflow({
+						id: 'workflow-1',
+						nodes: [
+							nodeWithCredential('cred-active'),
+							nodeWithCredential('cred-disabled', { id: 'disabled-node', disabled: true }),
+						],
+						settings: { credentialResolverId: 'resolver-1' },
+					}),
+				});
+				mockFindReturning([
+					createMockCredential({ id: 'cred-active' }),
+					createMockCredential({ id: 'cred-disabled' }),
+				]);
+
+				const result = await service.getWorkflowStatus('workflow-1', credentialContext);
+
+				expect(result.map((s) => s.credentialId)).toEqual(['cred-active']);
+			});
+
+			it('returns no credentials when every account belongs to a disabled node', async () => {
+				mockWorkflowsById({
+					'workflow-1': createMockWorkflow({
+						id: 'workflow-1',
+						nodes: [nodeWithCredential('cred-disabled', { id: 'disabled-node', disabled: true })],
+						settings: { credentialResolverId: 'resolver-1' },
+					}),
+				});
+				mockFindReturning([createMockCredential({ id: 'cred-disabled' })]);
+
+				const result = await service.getWorkflowStatus('workflow-1', credentialContext);
+
+				expect(result).toEqual([]);
+				expect(mockCredentialRepository.find).not.toHaveBeenCalled();
+			});
+
+			it('still includes a credential that also appears on an enabled node', async () => {
+				mockWorkflowsById({
+					'workflow-1': createMockWorkflow({
+						id: 'workflow-1',
+						nodes: [
+							nodeWithCredential('cred-shared', { id: 'enabled-node' }),
+							nodeWithCredential('cred-shared', { id: 'disabled-node', disabled: true }),
+						],
+						settings: { credentialResolverId: 'resolver-1' },
+					}),
+				});
+				mockFindReturning([createMockCredential({ id: 'cred-shared' })]);
+
+				const result = await service.getWorkflowStatus('workflow-1', credentialContext);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].credentialId).toBe('cred-shared');
+			});
+
 			it('skips disabled sub-workflow nodes', async () => {
 				mockWorkflowsById({
 					'workflow-1': createMockWorkflow({

@@ -433,7 +433,24 @@ export async function executeAgent(
 		);
 	}
 
+	const { hashAgentSandboxPrincipal } = await import('@/modules/agents/agent-sandbox-principal.js');
 	const useDraftVersion = isManualOrChatExecution(executionMode);
+	const sandboxScope =
+		workflowContext?.hasCallerSessionId === true
+			? {
+					principalHash: hashAgentSandboxPrincipal({
+						type: 'workflow-session',
+						workflowId: additionalData.workflowId,
+						sessionId: threadId,
+					}),
+				}
+			: {
+					principalHash: hashAgentSandboxPrincipal({
+						type: 'workflow-execution',
+						workflowId: additionalData.workflowId,
+						executionId,
+					}),
+				};
 
 	const result = await agentWorkflowExecutionService.executeForWorkflow(
 		source.agentId,
@@ -445,6 +462,7 @@ export async function executeAgent(
 		useDraftVersion,
 		outputSchema,
 		workflowContext,
+		sandboxScope,
 		...streamObserverArguments,
 	);
 
