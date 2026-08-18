@@ -1,3 +1,4 @@
+import { DeleteExecutionsDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -908,13 +909,13 @@ describe('ExecutionService', () => {
 	});
 
 	describe('delete', () => {
-		const deleteRequest = (body: ExecutionRequest.Delete['body']) =>
-			({ body, user: mock<User>({ id: 'user-1' }) }) as unknown as ExecutionRequest.Delete;
+		const user = mock<User>({ id: 'user-1' });
 
-		it('should coerce the `deleteBefore` body param into a Date', async () => {
-			await executionService.delete(deleteRequest({ deleteBefore: '2026-01-01T00:00:00.000Z' }), [
-				'wf-1',
-			]);
+		it('should pass the coerced `deleteBefore` down to persistence and the event', async () => {
+			// the DTO does the coercion, since a JSON body cannot carry a `Date`
+			const payload = DeleteExecutionsDto.parse({ deleteBefore: '2026-01-01T00:00:00.000Z' });
+
+			await executionService.delete(user, payload, ['wf-1']);
 
 			expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -923,24 +924,15 @@ describe('ExecutionService', () => {
 			);
 
 			// the log-streaming relay calls `.toISOString()` on this
-			const [[event]] = eventService.emit.mock.calls;
+			const [[event, eventPayload]] = eventService.emit.mock.calls;
 			expect(event).toBe('execution-deleted');
-			expect(eventService.emit.mock.calls[0][1]).toEqual(
+			expect(eventPayload).toEqual(
 				expect.objectContaining({ deleteBefore: new Date('2026-01-01T00:00:00.000Z') }),
 			);
 		});
 
-		it('should reject an unparseable `deleteBefore` without deleting', async () => {
-			await expect(
-				executionService.delete(deleteRequest({ deleteBefore: 'not-a-date' }), ['wf-1']),
-			).rejects.toThrow(BadRequestError);
-
-			expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
-			expect(eventService.emit).not.toHaveBeenCalled();
-		});
-
 		it('should leave `deleteBefore` unset when deleting by ids', async () => {
-			await executionService.delete(deleteRequest({ ids: ['1', '2'] }), ['wf-1']);
+			await executionService.delete(user, DeleteExecutionsDto.parse({ ids: ['1', '2'] }), ['wf-1']);
 
 			expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith(
 				expect.objectContaining({

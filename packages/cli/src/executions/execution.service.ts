@@ -1,3 +1,4 @@
+import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -414,15 +415,8 @@ export class ExecutionService {
 		return response;
 	}
 
-	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
-		const { deleteBefore: deleteBeforeRaw, ids, filters: requestFiltersRaw } = req.body;
-
-		// JSON has no date type, so the body always carries a string here - coerce
-		// once, so downstream consumers can rely on a real `Date`.
-		const deleteBefore = deleteBeforeRaw ? new Date(deleteBeforeRaw) : undefined;
-		if (deleteBefore && Number.isNaN(deleteBefore.getTime())) {
-			throw new BadRequestError('Parameter "deleteBefore" is not a valid date');
-		}
+	async delete(user: User, payload: DeleteExecutionsDto, sharedWorkflowIds: string[]) {
+		const { deleteBefore, ids, filters: requestFiltersRaw } = payload;
 
 		let requestFilters: IGetExecutionsQueryFilter | undefined;
 		if (requestFiltersRaw) {
@@ -450,11 +444,11 @@ export class ExecutionService {
 
 		this.eventService.emit('execution-deleted', {
 			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role,
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
 			},
 			executionIds: ids ?? [],
 			deleteBefore,
