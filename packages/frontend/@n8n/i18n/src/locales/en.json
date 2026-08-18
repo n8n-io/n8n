@@ -2991,6 +2991,7 @@
 	"instanceRoles.description.insights.view": "View instance-level insights",
 	"instanceRoles.warning.manageMembers": "A user with this permission can give themselves or an account they invite permissions they don't currently hold. {link}",
 	"instanceRoles.warning.manageRoles": "A user with this permission can edit their own custom role to add permissions they weren't originally granted. {link}",
+	"instanceRoles.warning.manageProjectRoles": "A user with this permission can edit a custom project role they hold themselves to grant themselves permissions they weren't originally granted in that project. {link}",
 	"instanceRoles.warning.viewDocs": "View docs",
 	"roles.instance.newRole": "New instance role",
 	"roles.instance.editRole": "Custom instance role",
