@@ -707,9 +707,9 @@ describe('isErroredToolCallTimelineItem', () => {
 		['non-record output', { toolOutput: 'failed' }],
 		['in-flight call', { toolSuccess: undefined, toolOutput: undefined }],
 	] satisfies Array<[string, Partial<TimelineItem>]>)('does not flag %s', (_label, partial) => {
-		expect(isErroredToolCallTimelineItem(item({ kind: 'tool', toolSuccess: true, ...partial }))).toBe(
-			false,
-		);
+		expect(
+			isErroredToolCallTimelineItem(item({ kind: 'tool', toolSuccess: true, ...partial })),
+		).toBe(false);
 	});
 
 	it('does not flag user/agent/suspension kinds', () => {
