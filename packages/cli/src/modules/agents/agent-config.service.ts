@@ -41,7 +41,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 import {
 	findHttpRequestToolUrlFromAiViolations,
@@ -328,13 +328,14 @@ export class AgentConfigService {
 		// One transaction claims the imported task rows and saves the agent,
 		// with the same all-or-nothing coupling as
 		// `AgentTaskService.createTasksBatch`. Thus the `agent_task_definition`
-		// table and the schema refs stay in agreement.
+		// table and the schema refs stay in agreement. Both paths write through
+		// the draft revision fence.
 		const saved =
 			importedTasks.length === 0
-				? await this.agentRepository.save(entity)
+				? await saveAgentDraftFenced(this.agentRepository, entity)
 				: await this.txRunner.run({}, async (ctx) => {
 						await this.claimImportedTaskDefinitions(entity, validatedConfig, importedTasks, ctx);
-						return await this.agentRepository.saveAgent(entity, ctx);
+						return await saveAgentDraftFenced(this.agentRepository, entity, ctx);
 					});
 		this.eventService.emit('agent-saved', { agentId });
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });

@@ -1,3 +1,7 @@
+import {
+	OFFICIAL_OPENAI_HOSTNAMES,
+	shouldIncludeOpenAiModel,
+} from '@n8n/ai-utilities/model-discovery';
 import type {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -7,7 +11,6 @@ import type {
 import type { Assistant } from 'openai/resources/beta/assistants';
 import type { Model } from 'openai/resources/models';
 
-import { shouldIncludeModel } from '../helpers/modelFiltering';
 import { apiRequest } from '../transport';
 
 export async function fileSearch(
@@ -78,8 +81,11 @@ export async function modelSearch(
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials<{ url: string }>('openAiApi');
 	const url = credentials.url && new URL(credentials.url);
-	const isCustomAPI = !!(url && !['api.openai.com', 'ai-assistant.n8n.io'].includes(url.hostname));
-	return await getModelSearch((model) => shouldIncludeModel(model.id, isCustomAPI))(this, filter);
+	const isCustomAPI = !!(url && !OFFICIAL_OPENAI_HOSTNAMES.includes(url.hostname));
+	return await getModelSearch((model) => shouldIncludeOpenAiModel(model.id, isCustomAPI))(
+		this,
+		filter,
+	);
 }
 
 export async function videoModelSearch(

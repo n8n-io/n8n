@@ -92,8 +92,7 @@ function makeHarness() {
 		status: 'valid',
 		issues: [],
 	});
-	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
-	agentRepository.saveAgent.mockImplementation(async (agent) => agent);
+	agentRepository.saveDraftFenced.mockResolvedValue(true);
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	const txRunner = mock<TransactionRunner>();
 	txRunner.run.mockImplementation(async (_ctx, fn) => await fn({}));
@@ -162,7 +161,7 @@ describe('agent JSON import reproduction (English Chatbot)', () => {
 			modifiedBy: 'user',
 		});
 
-		const saved = agentRepository.saveAgent.mock.calls.at(-1)?.[0] as Agent;
+		const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 		expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'skill_sAPb9pNjfMq1Xt6p' }]);
 		expect(saved.skills).toEqual({
 			skill_sAPb9pNjfMq1Xt6p: {

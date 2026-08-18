@@ -73,8 +73,7 @@ function makeService() {
 		status: 'valid',
 		issues: [],
 	});
-	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
-	agentRepository.saveAgent.mockImplementation(async (agent) => agent);
+	agentRepository.saveDraftFenced.mockResolvedValue(true);
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	// The runner executes the unit of work directly with an empty context.
 	const txRunner = mock<TransactionRunner>();
@@ -266,7 +265,7 @@ describe('AgentConfigService', () => {
 				'HTTP Request tool "Fetch page" cannot use $fromAI in tools.0.node.nodeParameters.url. Enter a fixed URL.',
 			);
 			expect(agent.schema).toBe(baseConfig);
-			expect(agentRepository.save).not.toHaveBeenCalled();
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		});
 
 		it('persists an explicit web-search disable and clears native provider tools', async () => {
@@ -294,7 +293,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.config?.webSearch).toEqual({ enabled: false });
 			expect(saved.schema?.providerTools).toEqual({});
 			// The returned (composed) config reflects the persisted state so the tool
@@ -351,7 +350,7 @@ describe('AgentConfigService', () => {
 				user,
 				byUser,
 			);
-			let saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			let saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema).toEqual(
 				expect.objectContaining({
 					instructions: 'Updated instructions',
@@ -370,7 +369,7 @@ describe('AgentConfigService', () => {
 				user,
 				byUser,
 			);
-			saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.integrations).toEqual([]);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
@@ -396,7 +395,7 @@ describe('AgentConfigService', () => {
 				{ clearOmittedOptionalFields: true, ...byUser },
 			);
 
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			// Provided fields keep their submitted value; omitted ones are removed
 			// instead of retaining the stored value.
 			expect(saved.schema?.memory).toEqual({ enabled: false, storage: 'n8n' });
@@ -423,7 +422,7 @@ describe('AgentConfigService', () => {
 				projectId,
 			});
 			expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect((saved.schema as AgentJsonConfig).credential).toBe('user-cred');
 		});
 
@@ -461,7 +460,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.tools).toEqual([
 				{
 					type: 'workflow',
@@ -530,7 +529,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls[0][0];
 			expect(saved.schema?.tools).toEqual([{ type: 'custom', id: 'tool_1' }]);
 			expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'skill-1' }]);
 			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
@@ -587,7 +586,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls[0][0];
 			const savedConfig = saved.schema as AgentJsonConfig;
 			expect(savedConfig.credential).toBe('');
 			expect(savedConfig.memory?.observationalMemory?.observerModel?.credential).toBe('');
@@ -639,7 +638,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls[0][0];
 			expect(saved.schema?.personalisation).toEqual({
 				icon: 'mail',
 				gradient: {
@@ -679,7 +678,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls[0][0];
 			expect(saved.schema?.personalisation).toEqual({
 				icon: 'mail',
 				gradient: {
@@ -722,7 +721,7 @@ describe('AgentConfigService', () => {
 				{ clearOmittedOptionalFields: true, ...byUser },
 			);
 
-			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls[0][0];
 			expect(saved.schema?.personalisation).toEqual({
 				icon: 'mail',
 				gradient: DEFAULT_AGENT_PERSONALISATION.gradient,
@@ -759,7 +758,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			expect((agentRepository.save.mock.calls[0][0] as Agent).schema?.subAgents).toEqual({
+			expect(agentRepository.saveDraftFenced.mock.calls[0][0].schema?.subAgents).toEqual({
 				maxChildren: 3,
 				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 			});
@@ -821,7 +820,7 @@ describe('AgentConfigService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(
 				makeAgent({ tools: storedCustomTool }),
 			);
-			agentRepository.save.mockRejectedValue(new Error('db down'));
+			agentRepository.saveDraftFenced.mockRejectedValue(new Error('db down'));
 
 			await expect(
 				service.updateConfig(
@@ -838,6 +837,21 @@ describe('AgentConfigService', () => {
 
 			expect(agentRepository.claimSetupCompleted).not.toHaveBeenCalled();
 			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		it('surfaces a lost revision fence as a retryable conflict without side effects', async () => {
+			const { service, agentRepository, telemetry, eventService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			// A concurrent publish/unpublish/edit bumped `revision` between this
+			// request's load and its save.
+			agentRepository.saveDraftFenced.mockResolvedValue(false);
+
+			await expect(
+				service.updateConfig(agentId, projectId, baseConfig, user, byUser),
+			).rejects.toThrow('Agent was modified concurrently; please retry');
+
+			expect(telemetry.track).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 
@@ -879,7 +893,7 @@ describe('AgentConfigService', () => {
 				expect.objectContaining({ id: 'weekly_review', agentId: targetAgentId }),
 				expect.anything(),
 			);
-			const saved = agentRepository.saveAgent.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.tasks).toEqual([taskReference]);
 		});
 
@@ -901,7 +915,7 @@ describe('AgentConfigService', () => {
 			// No row is claimed and the ref is dropped as an orphan.
 			expect(agentTaskRepository.claimTaskDefinition).not.toHaveBeenCalled();
 			expect(txRunner.run).not.toHaveBeenCalled();
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.tasks).toEqual([]);
 		});
 
@@ -926,7 +940,7 @@ describe('AgentConfigService', () => {
 			expect(claimedRow?.id).toMatch(/^task_/);
 			expect(claimedRow?.id).not.toBe('weekly_review');
 
-			const saved = agentRepository.saveAgent.mock.calls.at(-1)?.[0];
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0];
 			expect(saved?.schema?.tasks).toEqual([{ type: 'task', id: claimedRow?.id, enabled: true }]);
 		});
 
@@ -945,13 +959,13 @@ describe('AgentConfigService', () => {
 				),
 			).rejects.toThrow('Could not claim a unique id for an imported agent task');
 
-			expect(agentRepository.saveAgent).not.toHaveBeenCalled();
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		});
 
 		it('writes no task rows when the update fails after task recreation', async () => {
-			const { service, agentRepository, txRunner } = makeService();
+			const { service, agentRepository, agentTaskRepository, txRunner } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
-			agentRepository.saveAgent.mockRejectedValue(new Error('save failed'));
+			agentRepository.saveDraftFenced.mockRejectedValue(new Error('save failed'));
 
 			await expect(
 				service.updateConfig(
@@ -966,7 +980,7 @@ describe('AgentConfigService', () => {
 			// Task rows are claimed only inside the agent-save transaction, so a
 			// failed update cannot leave orphan definitions behind.
 			expect(txRunner.run).toHaveBeenCalledTimes(1);
-			expect(agentRepository.save).not.toHaveBeenCalled();
+			expect(agentTaskRepository.claimTaskDefinition).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -991,7 +1005,7 @@ describe('AgentConfigService', () => {
 			const exported = { ...baseConfig, skills: [{ ...skillReference, ...skillBody }] };
 			await service.updateConfig(targetAgentId, projectId, exported, user, byUser);
 
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.skills).toEqual([skillReference]);
 			expect(saved.skills).toEqual({ [skillReference.id]: skillBody });
 		});
@@ -1011,7 +1025,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.skills).toEqual([]);
 			expect(saved.skills).toEqual({});
 		});
@@ -1038,7 +1052,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.skills).toEqual([skillReference]);
 			expect(saved.skills).toEqual({ [skillReference.id]: existingBody });
 		});
@@ -1057,7 +1071,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'constructor' }]);
 			expect(saved.skills).toEqual({ constructor: skillBody });
 		});
@@ -1075,7 +1089,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.skills).toEqual([]);
 			expect(saved.skills).toEqual({});
 		});
@@ -1111,7 +1125,7 @@ describe('AgentConfigService', () => {
 			);
 
 			// The outgoing skill must not block the import of its replacement.
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.skills).toEqual([skillReference]);
 			expect(saved.skills).toEqual({ [skillReference.id]: skillBody });
 		});
@@ -1139,7 +1153,7 @@ describe('AgentConfigService', () => {
 			await service.updateConfig(targetAgentId, projectId, exported, user, byUser);
 
 			expect(secureRuntime.describeToolSecurely).toHaveBeenCalledWith(toolCode);
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.tools).toEqual([toolReference]);
 			expect(saved.tools).toEqual({ [toolReference.id]: storedTool });
 		});
@@ -1157,7 +1171,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.tools).toEqual([]);
 			expect(saved.tools).toEqual({});
 		});
@@ -1175,7 +1189,7 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.tools).toEqual([]);
 			expect(saved.tools).toEqual({});
 		});
@@ -1336,7 +1350,7 @@ describe('AgentConfigService', () => {
 		it('emits nothing when the save fails', async () => {
 			const { service, agentRepository, telemetry } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-			agentRepository.save.mockRejectedValue(new Error('db down'));
+			agentRepository.saveDraftFenced.mockRejectedValue(new Error('db down'));
 
 			await expect(
 				service.updateConfig(
