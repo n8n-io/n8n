@@ -162,8 +162,8 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 			.subQuery()
 			.select('latestExecution.status')
 			.from(AgentExecution, 'latestExecution')
-			.where('latestExecution."threadId" = thread.id')
-			.orderBy('latestExecution."createdAt"', 'DESC')
+			.where('latestExecution.threadId = thread.id')
+			.orderBy('latestExecution.createdAt', 'DESC')
 			.addOrderBy('latestExecution.id', 'DESC')
 			.limit(1)
 			.getQuery();
@@ -174,8 +174,8 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 			.subQuery()
 			.select('1')
 			.from(AgentExecution, 'failedExecution')
-			.where('failedExecution."threadId" = thread.id')
-			.andWhere('failedExecution."failureSummary" IS NOT NULL')
+			.where('failedExecution.threadId = thread.id')
+			.andWhere('failedExecution.failureSummary IS NOT NULL')
 			.getQuery();
 	}
 
@@ -187,9 +187,9 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 			.subQuery()
 			.select('sourceExecution.source')
 			.from(AgentExecution, 'sourceExecution')
-			.where('sourceExecution."threadId" = thread.id')
+			.where('sourceExecution.threadId = thread.id')
 			.andWhere('sourceExecution.source IS NOT NULL')
-			.orderBy('sourceExecution."createdAt"', 'ASC')
+			.orderBy('sourceExecution.createdAt', 'ASC')
 			.addOrderBy('sourceExecution.id', 'ASC')
 			.limit(1)
 			.getQuery();
