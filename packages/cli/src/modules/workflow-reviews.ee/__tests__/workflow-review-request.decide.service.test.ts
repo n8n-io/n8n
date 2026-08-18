@@ -231,10 +231,21 @@ describe('WorkflowReviewRequestService.decide', () => {
 	});
 
 	describe('author eligibility', () => {
-		it('throws ForbiddenError for an author without an admin override, even when assigned', async () => {
+		it('allows an assigned reviewer to decide even when they authored a version', async () => {
 			mockSuccessfulDecidePath();
 			authorRepository.isAuthor.mockResolvedValue(true);
 			reviewerRepository.isReviewer.mockResolvedValue(true);
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			const result = await service.decide(memberUser(), requestId, approveDto);
+
+			expect(result.decision).toBe('approved');
+		});
+
+		it('throws ForbiddenError for a non-assigned author without an admin override', async () => {
+			mockSuccessfulDecidePath();
+			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(false);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 
 			await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
@@ -244,11 +255,12 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
-		// The missing note is a payload problem, and an author is not entitled to hear about it:
-		// they may not decide at all, whatever they sent.
+		// The missing note is a payload problem, and a non-reviewer author is not entitled to
+		// hear about it: they may not decide at all, whatever they sent.
 		it('tells an author they may not decide even when their note is missing too', async () => {
 			mockSuccessfulDecidePath();
 			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(false);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 
 			await expect(
@@ -256,22 +268,32 @@ describe('WorkflowReviewRequestService.decide', () => {
 			).rejects.toThrow(ForbiddenError);
 		});
 
-		it('rejects a caller who became an author while waiting for the lock', async () => {
+		it('still allows an assigned reviewer who became an author while waiting for the lock', async () => {
 			mockSuccessfulDecidePath();
 			// Not an author before the lock, but a version sync won the lock first and
 			// added them to the author set before the critical section runs.
 			authorRepository.isAuthor.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 
-			await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
-				ForbiddenError,
-			);
+			const result = await service.decide(memberUser(), requestId, approveDto);
 
-			// The re-check must run against the lock's transaction, not a fresh read.
+			expect(result.decision).toBe('approved');
 			expect(authorRepository.isAuthor).toHaveBeenNthCalledWith(
 				2,
 				expect.objectContaining({ workflowReviewRequestId: requestId }),
 				ctx,
+			);
+			expect(requestRepository.saveRequest).toHaveBeenCalled();
+		});
+
+		it('rejects a caller unassigned while waiting for the lock', async () => {
+			mockSuccessfulDecidePath();
+			reviewerRepository.isReviewer.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+			authorRepository.isAuthor.mockResolvedValue(false);
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
+				NotFoundError,
 			);
 			expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		});
@@ -309,6 +331,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		it('throws ForbiddenError for an author who is only a project admin elsewhere', async () => {
 			mockSuccessfulDecidePath();
 			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(false);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['other-proj']);
 
 			await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(

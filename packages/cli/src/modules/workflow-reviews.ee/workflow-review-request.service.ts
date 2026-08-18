@@ -714,7 +714,7 @@ export class WorkflowReviewRequestService {
 			request.projectId,
 		);
 
-		// Fast path: reject a known author / non-assignee before queueing on the lock.
+		// Fast path: reject ineligible callers before queueing on the lock.
 		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor(
 			{ workflowReviewRequestId, userId: user.id },
 			{},
@@ -754,10 +754,9 @@ export class WorkflowReviewRequestService {
 				}
 				this.assertRequestUpdatable(current);
 
-				// Re-check authorship here — a sync that won the lock first has
-				// added its syncer to the author set since the pre-lock check, and that
-				// syncer must not be able to decide. Assignment can also change; keep
-				// the same gate under the lock.
+				// Re-check authorship and assignment under the lock. A concurrent
+				// sync may add the caller as an author; assigned reviewers stay
+				// eligible. Assignment can also change.
 				const isAuthorNow = await this.workflowReviewRequestAuthorRepository.isAuthor(
 					{ workflowReviewRequestId, userId: user.id },
 					ctx,
@@ -938,10 +937,10 @@ export class WorkflowReviewRequestService {
 	}
 
 	/**
-	 * Only assigned reviewers (or admins) may decide. Authors / version syncers
-	 * are always blocked unless an admin override applies — being assigned does
-	 * not lift that. Called before and again inside the decision lock, since the
-	 * author set can change while the caller waits for the lock. The override is
+	 * Assigned reviewers (or admins) may decide, including after they submit or
+	 * sync a version. Non-reviewer authors stay blocked unless an admin override
+	 * applies. Called before and again inside the decision lock, since the author
+	 * and assignee sets can change while the caller waits. The override is
 	 * resolved once, pre-lock: the lock guards author/assignee rows, not role
 	 * membership — like every other authorization check in `decide`, roles are
 	 * evaluated up front.
@@ -951,7 +950,7 @@ export class WorkflowReviewRequestService {
 		isAssignedReviewer: boolean,
 		hasAdminOverride: boolean,
 	): void {
-		if (hasAdminOverride) {
+		if (hasAdminOverride || isAssignedReviewer) {
 			return;
 		}
 
@@ -959,9 +958,7 @@ export class WorkflowReviewRequestService {
 			throw new ForbiddenError('Authors cannot decide on their own review request');
 		}
 
-		if (!isAssignedReviewer) {
-			throw new NotFoundError('Could not find workflow');
-		}
+		throw new NotFoundError('Could not find workflow');
 	}
 
 	/**
