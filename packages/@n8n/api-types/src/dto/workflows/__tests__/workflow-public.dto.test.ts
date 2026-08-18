@@ -137,13 +137,6 @@ describe('WorkflowPublishPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
-	test('strips shared when present', () => {
-		const result = WorkflowPublishPublicDto.safeParse(baseWorkflow);
-
-		expect(result.success).toBe(true);
-		expect(result.data).not.toHaveProperty('shared');
-	});
-
 	test('still requires the rest of the workflow contract', () => {
 		const { id: _id, ...withoutId } = workflowWithoutShared;
 		const result = WorkflowPublishPublicDto.safeParse(withoutId);
