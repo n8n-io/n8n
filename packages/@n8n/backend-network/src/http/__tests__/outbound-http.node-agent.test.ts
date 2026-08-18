@@ -75,6 +75,40 @@ describe('getNodeAgent', () => {
 });
 
 // ---------------------------------------------------------------------------
+// getNodeAgent — connection-reuse options propagate across all routing paths
+//
+// Callers may pass connection-management options (e.g. `keepAlive`,
+// `maxSockets`) to enable connection reuse. Regardless of how the request is
+// routed, those options must reach the constructed agent — otherwise a proxied
+// deployment would silently drop them.
+// ---------------------------------------------------------------------------
+
+describe('getNodeAgent connection-reuse options', () => {
+	// keep-alive/maxSockets are connection-management options, so Node's Agent (and
+	// the proxy agents that extend it) expose them as instance properties.
+	function getReuseOptions(agent: http.Agent | https.Agent): {
+		keepAlive: unknown;
+		maxSockets: unknown;
+	} {
+		const a = agent as { keepAlive?: unknown; maxSockets?: unknown };
+		return { keepAlive: a.keepAlive, maxSockets: a.maxSockets };
+	}
+
+	it.each([
+		['direct (proxy: false)', { proxy: false } as const],
+		['env proxy', { proxy: 'env' } as const],
+		['explicit proxy URL', { proxy: 'http://proxy.internal:3128' } as const],
+	])('forwards keepAlive/maxSockets on the %s path', (_label, transportOptions) => {
+		const { httpAgent, httpsAgent } = makeFacade()
+			.transport(transportOptions)
+			.getNodeAgent({ keepAlive: true, maxSockets: 50 });
+
+		expect(getReuseOptions(httpAgent)).toEqual({ keepAlive: true, maxSockets: 50 });
+		expect(getReuseOptions(httpsAgent)).toEqual({ keepAlive: true, maxSockets: 50 });
+	});
+});
+
+// ---------------------------------------------------------------------------
 // getNodeAgent — SSRF lookup injection
 // ---------------------------------------------------------------------------
 
