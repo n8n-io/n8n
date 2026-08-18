@@ -148,11 +148,11 @@ export function renderObserverTranscript(
 			);
 			if (toolCall.state === 'resolved') {
 				lines.push(
-					`[${timestamp}] tool_result ${toolCall.toolName} output=${serializeForObserver(toolCall.output, options)}`,
+					`[${timestamp}] tool_result ${toolCall.toolName} output=${wrapUntrustedObserverData(serializeForObserver(toolCall.output, options), toolCall.toolName)}`,
 				);
 			} else if (toolCall.state === 'rejected') {
 				lines.push(
-					`[${timestamp}] tool_result ${toolCall.toolName} error=${serializeErrorForObserver(toolCall.error, options)}`,
+					`[${timestamp}] tool_result ${toolCall.toolName} error=${wrapUntrustedObserverData(serializeErrorForObserver(toolCall.error, options), toolCall.toolName)}`,
 				);
 			}
 		}
@@ -350,6 +350,20 @@ function safeJsonStringify(value: unknown): string {
 	} catch {
 		return JSON.stringify('[unserializable]');
 	}
+}
+
+function escapeXmlAttribute(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/"/g, '&quot;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+}
+
+export function wrapUntrustedObserverData(content: string, source: string): string {
+	const safeSource = escapeXmlAttribute(source);
+	const safeContent = content.replace(/<\/untrusted_tool_data/gi, '&lt;/untrusted_tool_data');
+	return `<untrusted_tool_data source="${safeSource}">${safeContent}</untrusted_tool_data>`;
 }
 
 async function advanceObserverCursor(
