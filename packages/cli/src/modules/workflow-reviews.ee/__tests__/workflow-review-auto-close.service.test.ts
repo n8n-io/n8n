@@ -52,7 +52,7 @@ describe('WorkflowReviewAutoCloseService', () => {
 	it('closes an open request on archive, leaving the decision and audit fields intact', async () => {
 		const request = openRequest({ decision: 'changes_requested', updatedById: 'user-2' });
 		requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-			{ request, workflowIds: ['wf-1'] },
+			{ request, links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
 		]);
 
 		await service.afterWorkflowArchived('wf-1');
@@ -72,8 +72,8 @@ describe('WorkflowReviewAutoCloseService', () => {
 		const first = openRequest({ id: 'req-1' });
 		const second = openRequest({ id: 'req-2' });
 		requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-			{ request: first, workflowIds: ['wf-1'] },
-			{ request: second, workflowIds: ['wf-2'] },
+			{ request: first, links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
+			{ request: second, links: [{ workflowId: 'wf-2', workflowVersionId: 'wfv-2' }] },
 		]);
 
 		await service.afterWorkflowsTransferred(['wf-1', 'wf-2', 'wf-3']);
@@ -92,7 +92,7 @@ describe('WorkflowReviewAutoCloseService', () => {
 	it('closes an open request before its workflow is deleted', async () => {
 		const request = openRequest();
 		requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-			{ request, workflowIds: ['wf-1'] },
+			{ request, links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
 		]);
 
 		await service.beforeWorkflowDeleted('wf-1');
@@ -270,7 +270,7 @@ describe('WorkflowReviewAutoCloseService', () => {
 
 	it('a failed broadcast is only warned about, never thrown', async () => {
 		requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-			{ request: openRequest(), workflowIds: ['wf-1'] },
+			{ request: openRequest(), links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
 		]);
 		collaborationService.broadcastWorkflowReviewStateChanged.mockRejectedValue(
 			new Error('push down'),
