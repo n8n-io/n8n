@@ -157,11 +157,9 @@ responses:
                         createdAt:
                           type: string
                           format: date-time
-                          readOnly: true
                         updatedAt:
                           type: string
                           format: date-time
-                          readOnly: true
                   connections:
                     type: object
                     description: Connections between nodes, keyed by source node name
@@ -329,7 +327,6 @@ responses:
                   meta:
                     type: object
                     description: Workflow metadata such as template information
-                    readOnly: true
                     properties:
                       onboardingId:
                         type: string
@@ -471,11 +468,9 @@ responses:
                             createdAt:
                               type: string
                               format: date-time
-                              readOnly: true
                             updatedAt:
                               type: string
                               format: date-time
-                              readOnly: true
                       connections:
                         type: object
                         description: Connections between nodes, keyed by source node name

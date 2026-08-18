@@ -63,8 +63,8 @@ const nodesPublicSchema = z
 						},
 					},
 				},
-				createdAt: { type: 'string', format: 'date-time', readOnly: true },
-				updatedAt: { type: 'string', format: 'date-time', readOnly: true },
+				createdAt: { type: 'string', format: 'date-time' },
+				updatedAt: { type: 'string', format: 'date-time' },
 			},
 		},
 	});
@@ -250,7 +250,6 @@ const pinDataPublicSchema = nullableObjectPublicSchema.openapi(
 const metaPublicSchema = nullableObjectPublicSchema.openapi(
 	alsoNullable({
 		type: 'object',
-		readOnly: true,
 		description: 'Workflow metadata such as template information',
 		properties: {
 			onboardingId: { type: 'string' },
