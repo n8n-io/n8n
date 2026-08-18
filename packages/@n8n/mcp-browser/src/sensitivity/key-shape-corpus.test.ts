@@ -126,6 +126,14 @@ describe('current provider key shapes', () => {
 		expect(residue(minifiedRevealPanel(key))).toBe(textWithoutKey(minifiedRevealPanel));
 	});
 
+	// Both renderings must be masked, not just whichever the merge kept.
+	it('leaves nothing visible when two tokens share a fragment', () => {
+		const fragment = 'Zt7vLpQ9mKdW4xR2bNfH3jEuXaGoT5wPqYs1BcRmZxQ';
+		const panel = (key: string) => revealPanel(`alpha.${key}</div><div>bravo.${key}`);
+
+		expect(residue(panel(fragment))).not.toContain(fragment);
+	});
+
 	// An open-ended provider pattern covers the whole key, so the marker keeps the
 	// specific type rather than being subsumed by a wider entropy span.
 	it('labels an over-long key with its provider type', () => {

@@ -111,10 +111,24 @@ export function collectHit(hits: Map<string, SecretHit>, hit: SecretHit): void {
 	hits.set(key, existing ? narrowerCapture(existing, hit) : hit);
 }
 
+/**
+ * An occurrence inside an undelimitable run says nothing about how far the token
+ * reaches, so a delimited span always beats a blocked one.
+ *
+ * Two delimited sightings can still disagree, either because one is wrapped
+ * (`session.<key>`) or because two tokens share a fragment (`alpha.<key>` and
+ * `bravo.<key>`). Picking one span would leave the other sighting unreplaced, so
+ * fall back to the match: it is the only text common to both, and therefore the
+ * part that has to be replaced in every one of them.
+ */
 export function narrowerCapture(existing: SecretHit, incoming: SecretHit): SecretHit {
 	if (incoming.captureBlocked) return existing;
 	if (existing.captureBlocked) return incoming;
-	return captureSpanOf(incoming).length < captureSpanOf(existing).length ? incoming : existing;
+	if (captureSpanOf(existing) === captureSpanOf(incoming)) return existing;
+
+	const shared: SecretHit = { type: existing.type, value: existing.match ?? existing.value };
+	if (existing.ref) shared.ref = existing.ref;
+	return shared;
 }
 
 type Replacement = readonly [value: string, marker: string];

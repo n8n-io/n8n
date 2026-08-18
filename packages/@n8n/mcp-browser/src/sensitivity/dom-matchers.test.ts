@@ -10,6 +10,16 @@ import {
 } from './dom-matchers';
 
 describe('highEntropyCandidates', () => {
+	// Two tokens can share a high-entropy fragment. Picking one token's span would
+	// leave the other — and the shared fragment inside it — untouched.
+	it('falls back to the shared fragment when two tokens disagree', () => {
+		const fragment = 'Zt7vLpQ9mKdW4xR2bNfH3jEuXaGoT5wPqYs1BcRmZxQ';
+
+		const hits = highEntropyCandidates(`first alpha.${fragment} second bravo.${fragment} end`);
+
+		expect(hits.map((hit) => hit.value)).toEqual([fragment]);
+	});
+
 	// The same key shown bare and inside a wrapper is one secret. Keeping both
 	// spans would offer the model a marker that captures the wrapper text.
 	it('merges a bare key with a wrapped rendering of it', () => {
