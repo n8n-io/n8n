@@ -528,8 +528,50 @@ describe('workflows tool', () => {
 				{} as never,
 			);
 
-			expect(result.note).toContain('span multiple projects');
+			expect(result.note).toContain('span 2 projects');
 			expect(result.note).toContain('never infer it by subtracting');
+		});
+
+		// Attribution rides on the query shape, so an instance-wide list still tags every
+		// row even when they all turn out to belong to one project. Saying that result
+		// spans projects would be a claim the rows do not support.
+		it('does not claim a single-project result spans projects', async () => {
+			const context = createMockContext();
+			(context.workflowService.list as Mock).mockResolvedValue({
+				workflows: [
+					{
+						id: 'wf1',
+						name: 'My workflow',
+						versionId: 'v1',
+						activeVersionId: null,
+						isArchived: false,
+						createdAt: '2024-01-01',
+						updatedAt: '2024-01-01',
+						project: { id: 'p1', name: 'Personal' },
+					},
+					{
+						id: 'wf2',
+						name: 'My workflow 2',
+						versionId: 'v2',
+						activeVersionId: null,
+						isArchived: false,
+						createdAt: '2024-01-01',
+						updatedAt: '2024-01-01',
+						project: { id: 'p1', name: 'Personal' },
+					},
+				],
+				total: 2,
+				totalInScope: 2,
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool<{ note?: string }>(
+				tool,
+				{ action: 'list', scope: 'instance' },
+				{} as never,
+			);
+
+			expect(result.note).toBeUndefined();
 		});
 
 		it('adds no note when the unfiltered list is complete', async () => {

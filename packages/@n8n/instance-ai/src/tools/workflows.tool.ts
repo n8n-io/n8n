@@ -435,12 +435,16 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 			`Showing ${workflows.length} of ${total} matching workflows — raise \`limit\` to see the rest.`,
 		);
 	}
-	// An instance-wide list spans projects, so membership has to be read off each
-	// workflow's `project`. Comparing this total against a per-project one to infer
-	// where the extras live only ever works for two projects, and silently not for three.
-	if (workflows.some((workflow) => workflow.project !== undefined)) {
+	// Attribution is attached whenever the query was not narrowed to one project, so
+	// count the projects actually present rather than trusting the field's presence —
+	// an instance-wide list can still return a single project's workflows, and saying
+	// it spans projects would be a claim the rows do not support. Only a genuine
+	// multi-project result invites the mistake this warns about: reading membership
+	// off count differences works for two projects and silently fails for three.
+	const projectCount = new Set(workflows.flatMap((workflow) => workflow.project?.id ?? [])).size;
+	if (projectCount > 1) {
 		notes.push(
-			"Results span multiple projects — each workflow carries its owning `project`. Read membership from that field; never infer it by subtracting one scope's count from another. To list a single project, pass its `projectId`.",
+			`Results span ${projectCount} projects — each workflow carries its owning \`project\`. Read membership from that field; never infer it by subtracting one scope's count from another. To list a single project, pass its \`projectId\`.`,
 		);
 	}
 
