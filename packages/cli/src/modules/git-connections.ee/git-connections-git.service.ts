@@ -28,22 +28,29 @@ export class GitConnectionsGitService {
 
 	validateRepositoryUrl(repositoryUrl: string, connectionType: GitConnectionType) {
 		if (connectionType === 'https') {
-			let url: URL;
-			try {
-				url = new URL(repositoryUrl);
-			} catch {
-				throw new BadRequestError('Repository URL must be a valid HTTP or HTTPS URL');
-			}
-			if (!['http:', 'https:'].includes(url.protocol)) {
-				throw new BadRequestError('HTTPS connections require an HTTP or HTTPS repository URL');
-			}
-			if (url.username || url.password) {
-				throw new BadRequestError('Repository URL must not contain credentials');
-			}
-			return;
+			this.validateHttpsRepositoryUrl(repositoryUrl);
+		} else {
+			this.validateSshRepositoryUrl(repositoryUrl);
 		}
+	}
 
-		this.validateSshRepositoryUrl(repositoryUrl);
+	/**
+	 * Accept only `http(s)://` URLs without embedded credentials. Credentials must
+	 * come through the encrypted fields, not the stored/returned `repositoryUrl`.
+	 */
+	private validateHttpsRepositoryUrl(repositoryUrl: string) {
+		let url: URL;
+		try {
+			url = new URL(repositoryUrl);
+		} catch {
+			throw new BadRequestError('Repository URL must be a valid HTTP or HTTPS URL');
+		}
+		if (!['http:', 'https:'].includes(url.protocol)) {
+			throw new BadRequestError('HTTPS connections require an HTTP or HTTPS repository URL');
+		}
+		if (url.username || url.password) {
+			throw new BadRequestError('Repository URL must not contain credentials');
+		}
 	}
 
 	/**
