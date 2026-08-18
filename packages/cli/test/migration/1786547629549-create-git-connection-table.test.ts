@@ -29,24 +29,53 @@ describe('CreateGitConnectionTable migration', () => {
 		await Container.get(DbConnection).close();
 	});
 
+	type ConnectionOverrides = {
+		connectionType?: string;
+		publicKey?: string | null;
+		encryptedPrivateKey?: string | null;
+		encryptedUsername?: string | null;
+		encryptedPassword?: string | null;
+		keyGeneratorType?: string | null;
+	};
+
+	// Credential columns default to a valid set for the connectionType so rows pass
+	// the ssh/https auth CHECK constraints unless a test deliberately overrides them.
+	function credentialDefaults(connectionType: string) {
+		if (connectionType === 'ssh') {
+			return {
+				publicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5',
+				encryptedPrivateKey: 'encrypted-private-key',
+				encryptedUsername: null,
+				encryptedPassword: null,
+				keyGeneratorType: 'ed25519',
+			};
+		}
+		return {
+			publicKey: null,
+			encryptedPrivateKey: null,
+			encryptedUsername: 'encrypted-username',
+			encryptedPassword: 'encrypted-password',
+			keyGeneratorType: null,
+		};
+	}
+
 	async function insertConnection(
 		context: TestMigrationContext,
-		overrides: {
-			connectionType?: string;
-			keyGeneratorType?: string | null;
-		} = {},
+		overrides: ConnectionOverrides = {},
 	) {
 		const table = context.escape.tableName('git_connection');
 		const now = new Date();
+		const connectionType = overrides.connectionType ?? 'https';
 		await context.runQuery(
-			`INSERT INTO ${table} ("id", "name", "repositoryUrl", "connectionType", "keyGeneratorType", "createdAt", "updatedAt")
-			 VALUES (:id, :name, :repositoryUrl, :connectionType, :keyGeneratorType, :createdAt, :updatedAt)`,
+			`INSERT INTO ${table} ("id", "name", "repositoryUrl", "connectionType", "publicKey", "encryptedPrivateKey", "encryptedUsername", "encryptedPassword", "keyGeneratorType", "createdAt", "updatedAt")
+			 VALUES (:id, :name, :repositoryUrl, :connectionType, :publicKey, :encryptedPrivateKey, :encryptedUsername, :encryptedPassword, :keyGeneratorType, :createdAt, :updatedAt)`,
 			{
 				id: randomUUID(),
 				name: 'Deployments',
 				repositoryUrl: 'https://example.com/org/repo.git',
-				connectionType: overrides.connectionType ?? 'https',
-				keyGeneratorType: overrides.keyGeneratorType ?? null,
+				connectionType,
+				...credentialDefaults(connectionType),
+				...overrides,
 				createdAt: now,
 				updatedAt: now,
 			},
@@ -89,6 +118,47 @@ describe('CreateGitConnectionTable migration', () => {
 			await expect(
 				insertConnection(context, { connectionType: 'https', keyGeneratorType: null }),
 			).resolves.not.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('accepts an SSH connection whose key material is not set yet', async () => {
+			const context = createTestMigrationContext(dataSource);
+			await expect(
+				insertConnection(context, {
+					connectionType: 'ssh',
+					publicKey: null,
+					encryptedPrivateKey: null,
+					keyGeneratorType: null,
+				}),
+			).resolves.not.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('accepts an HTTPS connection whose credentials are not set yet', async () => {
+			const context = createTestMigrationContext(dataSource);
+			await expect(
+				insertConnection(context, {
+					connectionType: 'https',
+					encryptedUsername: null,
+					encryptedPassword: null,
+				}),
+			).resolves.not.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('rejects an SSH connection that also carries HTTPS credentials via the auth CHECK constraint', async () => {
+			const context = createTestMigrationContext(dataSource);
+			await expect(
+				insertConnection(context, { connectionType: 'ssh', encryptedUsername: 'leaked' }),
+			).rejects.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('rejects an HTTPS connection that also carries SSH key material via the auth CHECK constraint', async () => {
+			const context = createTestMigrationContext(dataSource);
+			await expect(
+				insertConnection(context, { connectionType: 'https', publicKey: 'ssh-ed25519 AAAA' }),
+			).rejects.toThrow();
 			await context.queryRunner.release();
 		});
 	});

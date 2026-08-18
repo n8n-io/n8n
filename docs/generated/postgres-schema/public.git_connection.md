@@ -23,7 +23,9 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_git_connection_connectionType | CHECK | CHECK ((("connectionType")::text = ANY ((ARRAY['ssh'::character varying, 'https'::character varying])::text[]))) |
+| CHK_git_connection_https_auth | CHECK | CHECK (((("connectionType")::text <> 'https'::text) OR (("publicKey" IS NULL) AND ("encryptedPrivateKey" IS NULL) AND ("keyGeneratorType" IS NULL)))) |
 | CHK_git_connection_keyGeneratorType | CHECK | CHECK ((("keyGeneratorType")::text = ANY ((ARRAY['ed25519'::character varying, 'rsa'::character varying])::text[]))) |
+| CHK_git_connection_ssh_auth | CHECK | CHECK (((("connectionType")::text <> 'ssh'::text) OR (("encryptedUsername" IS NULL) AND ("encryptedPassword" IS NULL)))) |
 | PK_92966b7ba4ce2cf61a62017a6ff | PRIMARY KEY | PRIMARY KEY (id) |
 | git_connection_connectionType_not_null | n | NOT NULL "connectionType" |
 | git_connection_createdAt_not_null | n | NOT NULL "createdAt" |

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "repositoryUrl" text NOT NULL, "branchName" varchar(255), "connectionType" varchar(16) NOT NULL, "publicKey" text, "encryptedPrivateKey" text, "encryptedUsername" text, "encryptedPassword" text, "keyGeneratorType" varchar(16), "baseCommit" varchar(64), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_git_connection_connectionType" CHECK ("connectionType" IN ('ssh', 'https')), CONSTRAINT "CHK_git_connection_keyGeneratorType" CHECK ("keyGeneratorType" IN ('ed25519', 'rsa')))
+CREATE TABLE "git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "repositoryUrl" text NOT NULL, "branchName" varchar(255), "connectionType" varchar(16) NOT NULL, "publicKey" text, "encryptedPrivateKey" text, "encryptedUsername" text, "encryptedPassword" text, "keyGeneratorType" varchar(16), "baseCommit" varchar(64), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_git_connection_ssh_auth" CHECK ("connectionType" <> 'ssh' OR ("encryptedUsername" IS NULL AND "encryptedPassword" IS NULL)), CONSTRAINT "CHK_git_connection_https_auth" CHECK ("connectionType" <> 'https' OR ("publicKey" IS NULL AND "encryptedPrivateKey" IS NULL AND "keyGeneratorType" IS NULL)), CONSTRAINT "CHK_git_connection_connectionType" CHECK ("connectionType" IN ('ssh', 'https')), CONSTRAINT "CHK_git_connection_keyGeneratorType" CHECK ("keyGeneratorType" IN ('ed25519', 'rsa')))
 ```
 
 </details>
@@ -33,6 +33,8 @@ CREATE TABLE "git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" var
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("connectionType" <> 'ssh' OR ("encryptedUsername" IS NULL AND "encryptedPassword" IS NULL)) |
+| - | CHECK | CHECK ("connectionType" <> 'https' OR ("publicKey" IS NULL AND "encryptedPrivateKey" IS NULL AND "keyGeneratorType" IS NULL)) |
 | - | CHECK | CHECK ("connectionType" IN ('ssh', 'https')) |
 | - | CHECK | CHECK ("keyGeneratorType" IN ('ed25519', 'rsa')) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
