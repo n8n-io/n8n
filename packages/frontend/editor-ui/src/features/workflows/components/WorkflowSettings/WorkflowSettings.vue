@@ -913,6 +913,9 @@ onMounted(async () => {
 		workflowSettingsData.callerPolicy = defaultValues.value
 			.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 	}
+	if (settingsStore.isExecuteWorkflowNodeExcluded) {
+		workflowSettingsData.callerPolicy = 'none';
+	}
 	if (workflowSettingsData.executionTimeout === undefined) {
 		workflowSettingsData.executionTimeout = rootStore.executionTimeout;
 	}
@@ -1156,10 +1159,15 @@ onBeforeUnmount(() => {
 						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nSelect
 								v-model="workflowSettings.callerPolicy"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:disabled="
+									readOnlyEnv ||
+									!workflowPermissions.update ||
+									settingsStore.isExecuteWorkflowNodeExcluded
+								"
 								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
 								:limit-popper-width="true"
+								data-test-id="workflow-caller-policy-select"
 							>
 								<N8nOption
 									v-for="option of workflowCallerPolicyOptions"
