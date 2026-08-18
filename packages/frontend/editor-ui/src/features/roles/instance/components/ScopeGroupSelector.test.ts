@@ -117,6 +117,13 @@ describe('ScopeGroupSelector', () => {
 			expect(getByTestId('scope-escalation-warning-role')).toBeTruthy();
 		});
 
+		it('renders the project-roles warning when only role:manageProject is selected', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: ['role:read', 'role:manageProject'] },
+			});
+			expect(getByTestId('scope-escalation-warning-role')).toBeTruthy();
+		});
+
 		it('does not render a warning for a non-escalating scope', () => {
 			const { queryByTestId } = renderComponent(ScopeGroupSelector, {
 				props: { modelValue: ['tag:read'] },

@@ -212,8 +212,16 @@ describe('getEscalationWarningKey', () => {
 		);
 	});
 
-	it('does not warn for "Manage project roles" alone (role:manageProject without role:manage)', () => {
-		expect(getEscalationWarningKey('role', ['role:read', 'role:manageProject'])).toBeUndefined();
+	it('returns the project-roles warning for "Manage project roles" alone (role:manageProject without role:manage)', () => {
+		expect(getEscalationWarningKey('role', ['role:read', 'role:manageProject'])).toBe(
+			'instanceRoles.warning.manageProjectRoles',
+		);
+	});
+
+	it('prefers the roles warning over the project-roles warning when both scopes are present', () => {
+		expect(
+			getEscalationWarningKey('role', ['role:read', 'role:manage', 'role:manageProject']),
+		).toBe('instanceRoles.warning.manageRoles');
 	});
 
 	it('returns undefined for a non-escalating resource', () => {

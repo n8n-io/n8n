@@ -266,20 +266,32 @@ export function toggleOptionInGroup(
 	return [...next];
 }
 
-/** Resource groups whose scopes enable privilege escalation, with the warning to show. */
+/**
+ * Resource groups whose scopes enable privilege escalation, with the warning to show.
+ * Entries are checked in order; the first matching scope's message wins.
+ */
 export const ESCALATION_WARNING_SCOPES: Partial<
-	Record<InstanceResource, { scopes: Scope[]; messageKey: BaseTextKey }>
+	Record<InstanceResource, Array<{ scopes: Scope[]; messageKey: BaseTextKey }>>
 > = {
-	user: {
-		scopes: [...GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.Manage],
-		messageKey: 'instanceRoles.warning.manageMembers',
-	},
-	role: {
-		// Only full instance-role management ("Manage all roles") enables self-escalation;
-		// managing project roles alone cannot edit the holder's own instance role.
-		scopes: ['role:manage'],
-		messageKey: 'instanceRoles.warning.manageRoles',
-	},
+	user: [
+		{
+			scopes: [...GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.Manage],
+			messageKey: 'instanceRoles.warning.manageMembers',
+		},
+	],
+	role: [
+		{
+			// Full instance-role management: can edit the holder's own instance role.
+			scopes: ['role:manage'],
+			messageKey: 'instanceRoles.warning.manageRoles',
+		},
+		{
+			// Project-role management alone: can edit the scopes of any custom
+			// project role, including one the holder is themselves assigned in a project.
+			scopes: ['role:manageProject'],
+			messageKey: 'instanceRoles.warning.manageProjectRoles',
+		},
+	],
 };
 
 /** Warning i18n key for a resource group given the current scopes, or undefined. */
@@ -287,8 +299,8 @@ export function getEscalationWarningKey(
 	resource: InstanceResource,
 	scopes: readonly string[],
 ): BaseTextKey | undefined {
-	const cfg = ESCALATION_WARNING_SCOPES[resource];
-	return cfg?.scopes.some((s) => scopes.includes(s)) ? cfg.messageKey : undefined;
+	const cfgs = ESCALATION_WARNING_SCOPES[resource];
+	return cfgs?.find((cfg) => cfg.scopes.some((s) => scopes.includes(s)))?.messageKey;
 }
 
 /** Total number of permission options shown in the instance role editor. */
