@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { useDebounce } from '@n8n/composables/useDebounce';
 import { N8nBadge, N8nButton, N8nOption, N8nPopover, N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ElDatePicker } from 'element-plus';
-import { computed, onBeforeUnmount, reactive, watch } from 'vue';
+import { computed } from 'vue';
 
 import {
 	defaultAgentSessionFilters,
@@ -14,22 +13,13 @@ import {
 
 const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
 
-const props = withDefaults(
-	defineProps<{
-		modelValue: AgentSessionFilters;
-		teleported?: boolean;
-	}>(),
-	{ teleported: true },
-);
+const props = defineProps<{ modelValue: AgentSessionFilters }>();
 
 const emit = defineEmits<{
 	filterChanged: [value: AgentSessionFilters];
 }>();
 
 const i18n = useI18n();
-const { debounce } = useDebounce();
-const filter = reactive<AgentSessionFilters>({ ...props.modelValue });
-const debouncedEmit = debounce(emit, { debounceTime: 500 });
 
 const statuses: Array<{ id: AgentSessionStatus | 'all'; name: string }> = [
 	{ id: 'all', name: i18n.baseText('agentSessions.filters.anyStatus') },
@@ -57,38 +47,20 @@ const origins: Array<{ id: AgentSessionOrigin | 'all'; name: string }> = [
 const activeFilterCount = computed(
 	() =>
 		[
-			filter.status !== 'all',
-			filter.origin !== 'all',
-			Boolean(filter.startDate),
-			Boolean(filter.endDate),
+			props.modelValue.status !== 'all',
+			props.modelValue.origin !== 'all',
+			Boolean(props.modelValue.startDate),
+			Boolean(props.modelValue.endDate),
 		].filter(Boolean).length,
 );
 
-watch(
-	() => props.modelValue,
-	(value) => Object.assign(filter, value),
-	{ deep: true },
-);
-
-watch(
-	filter,
-	(value) => {
-		const snapshot = { ...value };
-		if (value.startDate || value.endDate) {
-			debouncedEmit('filterChanged', snapshot);
-		} else {
-			debouncedEmit.cancel();
-			emit('filterChanged', snapshot);
-		}
-	},
-	{ deep: true },
-);
-
-function reset() {
-	Object.assign(filter, defaultAgentSessionFilters());
+function updateFilter(value: Partial<AgentSessionFilters>) {
+	emit('filterChanged', { ...props.modelValue, ...value });
 }
 
-onBeforeUnmount(() => debouncedEmit.cancel());
+function reset() {
+	emit('filterChanged', defaultAgentSessionFilters());
+}
 </script>
 
 <template>
@@ -131,9 +103,9 @@ onBeforeUnmount(() => debouncedEmit.cancel());
 					}}</label>
 					<N8nSelect
 						id="agent-sessions-filter-status"
-						v-model="filter.status"
-						:teleported="props.teleported"
+						:model-value="props.modelValue.status"
 						data-test-id="agent-sessions-filter-status"
+						@update:model-value="updateFilter({ status: $event })"
 					>
 						<N8nOption
 							v-for="status in statuses"
@@ -150,9 +122,9 @@ onBeforeUnmount(() => debouncedEmit.cancel());
 					}}</label>
 					<N8nSelect
 						id="agent-sessions-filter-origin"
-						v-model="filter.origin"
-						:teleported="props.teleported"
+						:model-value="props.modelValue.origin"
 						data-test-id="agent-sessions-filter-origin"
+						@update:model-value="updateFilter({ origin: $event })"
 					>
 						<N8nOption
 							v-for="origin in origins"
@@ -170,22 +142,22 @@ onBeforeUnmount(() => debouncedEmit.cancel());
 					<div :class="$style.dates">
 						<ElDatePicker
 							id="agent-sessions-filter-start-date"
-							v-model="filter.startDate"
+							:model-value="props.modelValue.startDate"
 							type="datetime"
-							:teleported="props.teleported"
 							:format="DATE_TIME_MASK"
 							:placeholder="i18n.baseText('agentSessions.filters.earliest')"
 							data-test-id="agent-sessions-filter-start-date"
+							@change="updateFilter({ startDate: $event ?? '' })"
 						/>
 						<span :class="$style.divider">{{ i18n.baseText('agentSessions.filters.to') }}</span>
 						<ElDatePicker
 							id="agent-sessions-filter-end-date"
-							v-model="filter.endDate"
+							:model-value="props.modelValue.endDate"
 							type="datetime"
-							:teleported="props.teleported"
 							:format="DATE_TIME_MASK"
 							:placeholder="i18n.baseText('agentSessions.filters.latest')"
 							data-test-id="agent-sessions-filter-end-date"
+							@change="updateFilter({ endDate: $event ?? '' })"
 						/>
 					</div>
 				</div>

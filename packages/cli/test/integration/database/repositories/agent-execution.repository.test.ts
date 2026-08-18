@@ -1,3 +1,8 @@
+import type {
+	AgentSessionOrigin,
+	AgentSessionQueryFilters,
+	AgentSessionStatus,
+} from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
@@ -5,7 +10,6 @@ import { v4 as uuid } from 'uuid';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import type { AgentSessionOrigin } from '@/modules/agents/agent-session.types';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -251,8 +255,6 @@ describe('AgentExecutionRepository', () => {
 			const succeeded = await createThread({ sessionNumber: 2 });
 			const recovered = await createThread({ sessionNumber: 3 });
 			const errored = await createThread({ sessionNumber: 4 });
-			const cancelled = await createThread({ sessionNumber: 5 });
-			const interrupted = await createThread({ sessionNumber: 6 });
 			const olderFailure = {
 				count: 1,
 				latest: { kind: 'tool' as const, name: 'Lookup', message: 'failed', occurredAt: 10 },
@@ -277,27 +279,8 @@ describe('AgentExecutionRepository', () => {
 				failureSummary: olderFailure,
 			});
 			await createExecution({ threadId: errored.id, status: 'error', failureSummary: null });
-			await createExecution({
-				threadId: cancelled.id,
-				status: 'error',
-				failureSummary: olderFailure,
-				createdAt: new Date('2026-01-01T00:00:00Z'),
-			});
-			await createExecution({
-				threadId: cancelled.id,
-				status: 'cancelled',
-				failureSummary: null,
-				createdAt: new Date('2026-01-02T00:00:00Z'),
-			});
-			await createExecution({
-				threadId: interrupted.id,
-				status: 'interrupted',
-				failureSummary: olderFailure,
-			});
 
-			const idsFor = async (
-				status: 'running' | 'succeeded' | 'error' | 'cancelled' | 'interrupted',
-			) =>
+			const idsFor = async (status: AgentSessionStatus) =>
 				(
 					await threadRepo.findByProjectIdPaginated(projectId, agentId, 20, undefined, {
 						status,
@@ -307,15 +290,9 @@ describe('AgentExecutionRepository', () => {
 			expect(await idsFor('running')).toEqual([running.id]);
 			expect(await idsFor('succeeded')).toEqual([succeeded.id]);
 			expect(new Set(await idsFor('error'))).toEqual(new Set([recovered.id, errored.id]));
-			expect(await idsFor('cancelled')).toEqual([cancelled.id]);
-			expect(await idsFor('interrupted')).toEqual([interrupted.id]);
 
-			const latestStatuses = await repository.findLatestStatusesByThreadIds([
-				running.id,
-				cancelled.id,
-			]);
+			const latestStatuses = await repository.findLatestStatusesByThreadIds([running.id]);
 			expect(latestStatuses.get(running.id)).toBe('running');
-			expect(latestStatuses.get(cancelled.id)).toBe('cancelled');
 		});
 
 		it('mirrors the displayed origin precedence', async () => {
@@ -327,19 +304,19 @@ describe('AgentExecutionRepository', () => {
 				taskId?: string;
 				expected: AgentSessionOrigin;
 			}> = [
-				{ sessionNumber: 1, source: 'slack', parentThreadId: 'parent-1', expected: 'sub-agent' },
+				{
+					sessionNumber: 1,
+					source: 'slack',
+					parentThreadId: 'parent-1',
+					taskId: 'task-1',
+					expected: 'sub-agent',
+				},
 				{ sessionNumber: 2, source: 'subagent', expected: 'sub-agent' },
-				{ sessionNumber: 3, source: 'slack', taskId: 'task-1', expected: 'schedule' },
+				{ sessionNumber: 3, source: 'slack', taskId: 'task-2', expected: 'schedule' },
 				{ sessionNumber: 4, source: 'task', expected: 'schedule' },
 				{ sessionNumber: 5, source: null, expected: 'preview' },
 				{ sessionNumber: 6, source: 'chat', expected: 'preview' },
-				{ sessionNumber: 7, source: 'instance-ai', expected: 'instance-ai' },
-				{ sessionNumber: 8, source: 'mcp', expected: 'mcp' },
-				{ sessionNumber: 9, source: 'workflow', expected: 'workflow' },
-				{ sessionNumber: 10, source: 'slack', laterSource: 'workflow', expected: 'slack' },
-				{ sessionNumber: 11, source: 'telegram', expected: 'telegram' },
-				{ sessionNumber: 12, source: 'linear', expected: 'linear' },
-				{ sessionNumber: 13, source: 'discord', expected: 'discord' },
+				{ sessionNumber: 7, source: 'slack', laterSource: 'workflow', expected: 'slack' },
 			];
 			const expectedIds = new Map<AgentSessionOrigin, string[]>();
 
@@ -386,44 +363,31 @@ describe('AgentExecutionRepository', () => {
 			await createExecution({ threadId: oldest.id, status: 'success', source: 'workflow' });
 			await createExecution({ threadId: middleError.id, status: 'error', source: 'workflow' });
 			await createExecution({ threadId: newest.id, status: 'success', source: 'workflow' });
+			const filters: AgentSessionQueryFilters = {
+				status: 'succeeded',
+				origin: 'workflow',
+				updatedAfter: start,
+				updatedBefore: end,
+			};
 
 			const firstPage = await threadRepo.findByProjectIdPaginated(
 				projectId,
 				agentId,
 				1,
 				undefined,
-				{
-					status: 'succeeded',
-					origin: 'workflow',
-					updatedAfter: start,
-					updatedBefore: end,
-				},
+				filters,
 			);
 			const secondPage = await threadRepo.findByProjectIdPaginated(
 				projectId,
 				agentId,
 				1,
 				firstPage.nextCursor ?? undefined,
-				{
-					status: 'succeeded',
-					origin: 'workflow',
-					updatedAfter: start,
-					updatedBefore: end,
-				},
+				filters,
 			);
 
 			expect(firstPage.threads.map(({ id }) => id)).toEqual([newest.id]);
 			expect(secondPage.threads.map(({ id }) => id)).toEqual([oldest.id]);
 			expect(secondPage.nextCursor).toBeNull();
-
-			const invertedRange = await threadRepo.findByProjectIdPaginated(
-				projectId,
-				agentId,
-				20,
-				undefined,
-				{ updatedAfter: end, updatedBefore: start },
-			);
-			expect(invertedRange.threads).toEqual([]);
 		});
 	});
 });

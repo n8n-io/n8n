@@ -37,15 +37,18 @@ vi.mock('element-plus', () => ({
 describe('AgentSessionsFilter', () => {
 	it('emits composed status and origin filters and updates the active count', async () => {
 		const wrapper = mount(AgentSessionsFilter, {
-			props: { modelValue: defaultAgentSessionFilters(), teleported: false },
+			props: { modelValue: defaultAgentSessionFilters() },
 		});
 
 		await wrapper.get('[data-test-id="agent-sessions-filter-status"]').setValue('error');
+		await wrapper.setProps({
+			modelValue: { ...defaultAgentSessionFilters(), status: 'error' },
+		});
 		await wrapper.get('[data-test-id="agent-sessions-filter-origin"]').setValue('slack');
 
-		expect(wrapper.emitted('filterChanged')?.at(-1)).toEqual([
-			{ status: 'error', origin: 'slack', startDate: '', endDate: '' },
-		]);
+		const filters = { status: 'error', origin: 'slack', startDate: '', endDate: '' } as const;
+		expect(wrapper.emitted('filterChanged')?.at(-1)).toEqual([filters]);
+		await wrapper.setProps({ modelValue: filters });
 		expect(wrapper.get('[data-test-id="agent-sessions-filter-badge"]').text()).toBe('2');
 	});
 
@@ -58,7 +61,6 @@ describe('AgentSessionsFilter', () => {
 					startDate: new Date('2026-01-01T00:00:00Z'),
 					endDate: new Date('2026-01-02T00:00:00Z'),
 				},
-				teleported: false,
 			},
 		});
 

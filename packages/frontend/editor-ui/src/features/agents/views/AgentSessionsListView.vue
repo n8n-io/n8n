@@ -16,7 +16,14 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nIcon, N8nTableBase, N8nText } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nCheckbox,
+	N8nIcon,
+	N8nTableBase,
+	N8nText,
+} from '@n8n/design-system';
 import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
@@ -237,6 +244,11 @@ async function loadMore() {
 	}
 }
 
+function onAutoRefreshChange(enabled: boolean) {
+	if (enabled) sessionsStore.startAutoRefresh();
+	else sessionsStore.stopAutoRefresh();
+}
+
 async function onFiltersChange(value: AgentSessionFilters) {
 	try {
 		await sessionsStore.setFilters(projectId.value, agentId.value, value);
@@ -249,6 +261,12 @@ async function onFiltersChange(value: AgentSessionFilters) {
 <template>
 	<div :class="[$style.wrapper, { [$style.embedded]: props.embedded }]">
 		<div :class="$style.filters">
+			<N8nCheckbox
+				v-model="sessionsStore.autoRefresh"
+				data-test-id="agent-sessions-auto-refresh-checkbox"
+				:label="i18n.baseText('executionsList.autoRefresh')"
+				@update:model-value="onAutoRefreshChange"
+			/>
 			<AgentSessionsFilter :model-value="sessionsStore.filters" @filter-changed="onFiltersChange" />
 		</div>
 		<div :class="$style.tableContainer">
@@ -410,7 +428,8 @@ async function onFiltersChange(value: AgentSessionFilters) {
 
 .filters {
 	display: flex;
-	justify-content: flex-end;
+	align-items: center;
+	justify-content: space-between;
 }
 
 .titleCell {

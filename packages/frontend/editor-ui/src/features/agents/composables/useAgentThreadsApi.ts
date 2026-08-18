@@ -1,4 +1,8 @@
-import type { AgentSessionLangSmithExportResponse } from '@n8n/api-types';
+import type {
+	AgentSessionLangSmithExportResponse,
+	AgentSessionOrigin,
+	AgentSessionStatus,
+} from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -30,18 +34,7 @@ export interface AgentExecutionThread {
 export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 export type AgentExecutionFailureKind = 'execution' | 'tool' | 'node' | 'workflow';
-export type AgentSessionStatus = 'running' | 'succeeded' | 'error' | 'cancelled' | 'interrupted';
-export type AgentSessionOrigin =
-	| 'preview'
-	| 'instance-ai'
-	| 'mcp'
-	| 'sub-agent'
-	| 'schedule'
-	| 'workflow'
-	| 'slack'
-	| 'telegram'
-	| 'linear'
-	| 'discord';
+export type { AgentSessionOrigin, AgentSessionStatus };
 
 export interface AgentSessionFilters {
 	status: AgentSessionStatus | 'all';

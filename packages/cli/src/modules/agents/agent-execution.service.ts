@@ -1,3 +1,4 @@
+import type { AgentSessionQueryFilters, AgentSessionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
@@ -18,7 +19,6 @@ import { AgentExecution, type AgentExecutionStatus } from './entities/agent-exec
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
-import type { AgentSessionFilters, AgentSessionStatus } from './agent-session.types';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
 import {
@@ -504,7 +504,7 @@ export class AgentExecutionService {
 		agentId: string,
 		limit: number,
 		cursor?: string,
-		filters: AgentSessionFilters = {},
+		filters: AgentSessionQueryFilters = {},
 	): Promise<{ threads: ThreadListItem[]; nextCursor: string | null }> {
 		const page = await this.agentExecutionThreadRepository.findByProjectIdPaginated(
 			projectId,

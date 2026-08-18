@@ -1,9 +1,9 @@
+import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
-import type { AgentSessionFilters, AgentSessionOrigin } from '../agent-session.types';
 
 const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
 
@@ -105,7 +105,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentId: string,
 		limit: number,
 		cursor?: string,
-		filters: AgentSessionFilters = {},
+		filters: AgentSessionQueryFilters = {},
 	): Promise<AgentExecutionThreadPage> {
 		const query = this.createQueryBuilder('thread')
 			.where('thread.projectId = :projectId', { projectId })

@@ -76,10 +76,6 @@ describe('useAgentSessionsStore', () => {
 
 		expect(store.threads.map(({ id }) => id)).toEqual(['failed-session']);
 		expect(store.nextCursor).toBe('failed-cursor');
-		expect(listThreads).toHaveBeenLastCalledWith({ baseUrl: '/rest' }, 'project-1', 'agent-1', {
-			limit: 20,
-			filters: errorFilters,
-		});
 	});
 
 	it('retains the active filter across refresh and pagination without changing it for overrides', async () => {

@@ -21,6 +21,7 @@ const {
 		threads: [] as unknown[],
 		loading: false,
 		nextCursor: null as string | null,
+		autoRefresh: true,
 		filters: { status: 'all', origin: 'all', startDate: '', endDate: '' },
 	},
 	fetchThreads: vi.fn(),
@@ -77,10 +78,10 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
 	N8nCheckbox: {
-		props: ['modelValue'],
+		props: ['modelValue', 'label'],
 		emits: ['update:modelValue'],
 		template:
-			'<label><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" /><slot name="label" /></label>',
+			'<label><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />{{ label }}</label>',
 	},
 	N8nIcon: { template: '<span :data-icon="icon" />', props: ['icon', 'size'] },
 	N8nIconButton: {
@@ -103,6 +104,12 @@ vi.mock('../agentSessions.store', () => ({
 		},
 		get nextCursor() {
 			return storeState.nextCursor;
+		},
+		get autoRefresh() {
+			return storeState.autoRefresh;
+		},
+		set autoRefresh(value: boolean) {
+			storeState.autoRefresh = value;
 		},
 		get filters() {
 			return storeState.filters;
