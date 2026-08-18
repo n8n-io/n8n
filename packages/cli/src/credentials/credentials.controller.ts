@@ -6,12 +6,7 @@ import {
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import {
-	SharedCredentials,
-	ProjectRelationRepository,
-	SharedCredentialsRepository,
-	AuthenticatedRequest,
-} from '@n8n/db';
+import { SharedCredentialsRepository, AuthenticatedRequest } from '@n8n/db';
 import {
 	Delete,
 	Get,
@@ -25,12 +20,10 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
-import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { In } from '@n8n/typeorm';
+import { hasGlobalScope } from '@n8n/permissions';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
@@ -43,11 +36,8 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { listQueryMiddleware } from '@/middlewares';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
-import { UserManagementMailer } from '@/user-management/email';
-import * as utils from '@/utils';
 
 @RestController('/credentials')
 export class CredentialsController {
@@ -58,12 +48,9 @@ export class CredentialsController {
 		private readonly namingService: NamingService,
 		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
-		private readonly userManagementMailer: UserManagementMailer,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
 		private readonly credentialsFinderService: CredentialsFinderService,
-		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
@@ -502,79 +489,12 @@ export class CredentialsController {
 			throw new ForbiddenError();
 		}
 
-		const currentProjectIds = credential.shared
-			.filter((sc) => sc.role === 'credential:user')
-			.map((sc) => sc.projectId);
-		const newProjectIds = shareWithIds;
+		const diff = this.enterpriseCredentialsService.getSharedWithProjectsDiff(
+			credential,
+			shareWithIds,
+		);
 
-		const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);
-		const toUnshare = utils.rightDiff([newProjectIds, (id) => id], [currentProjectIds, (id) => id]);
-
-		if (toShare.length > 0) {
-			const canShare = await userHasScopes(req.user, ['credential:share'], false, {
-				credentialId,
-			});
-			if (!canShare) {
-				throw new ForbiddenError();
-			}
-		}
-
-		if (toUnshare.length > 0) {
-			const canUnshare = await userHasScopes(req.user, ['credential:unshare'], false, {
-				credentialId,
-			});
-			if (!canUnshare) {
-				throw new ForbiddenError();
-			}
-		}
-
-		let amountRemoved: number | null = null;
-		let newShareeIds: string[] = [];
-
-		const { manager: dbManager } = this.sharedCredentialsRepository;
-		await dbManager.transaction(async (trx) => {
-			const deleteResult = await trx.delete(SharedCredentials, {
-				credentialsId: credentialId,
-				projectId: In(toUnshare),
-			});
-			await this.enterpriseCredentialsService.shareWithProjects(
-				req.user,
-				credential.id,
-				toShare,
-				trx,
-			);
-
-			if (deleteResult.affected) {
-				amountRemoved = deleteResult.affected;
-				await this.connectionStatusProxy.cleanupOrphanedEntriesForProjects(
-					credentialId,
-					toUnshare,
-					trx,
-				);
-			}
-
-			newShareeIds = toShare;
-		});
-
-		this.eventService.emit('credentials-shared', {
-			user: req.user,
-			credentialType: credential.type,
-			credentialId: credential.id,
-			userIdSharer: req.user.id,
-			userIdsShareesAdded: newShareeIds,
-			shareesRemoved: amountRemoved,
-		});
-
-		const projectsRelations = await this.projectRelationRepository.findBy({
-			projectId: In(newShareeIds),
-			role: { slug: PROJECT_OWNER_ROLE_SLUG },
-		});
-
-		await this.userManagementMailer.notifyCredentialsShared({
-			sharer: req.user,
-			newShareeIds: projectsRelations.map((pr) => pr.userId),
-			credentialsName: credential.name,
-		});
+		await this.enterpriseCredentialsService.setSharedWithProjects(req.user, credential, diff);
 	}
 
 	@Put('/:credentialId/transfer')

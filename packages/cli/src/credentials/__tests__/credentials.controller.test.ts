@@ -32,12 +32,12 @@ import * as validation from '../validation';
 const originalValidateExternalSecretsPermissions = validation.validateExternalSecretsPermissions;
 
 describe('CredentialsController', () => {
-	type ControllerEventService = ConstructorParameters<typeof CredentialsController>[9];
+	type ControllerEventService = ConstructorParameters<typeof CredentialsController>[7];
 	const eventService = mock<ControllerEventService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const licenseState = mock<LicenseState>();
-	const credentialsOverwrites = mock<ConstructorParameters<typeof CredentialsController>[12]>();
+	const credentialsOverwrites = mock<ConstructorParameters<typeof CredentialsController>[9]>();
 
 	// Mock the credentialsRepository with a working create method
 	const credentialsRepository = mock<CredentialsRepository>();
@@ -88,12 +88,9 @@ describe('CredentialsController', () => {
 		mock(),
 		licenseState,
 		mock(),
-		mock(),
 		sharedCredentialsRepository,
-		mock(),
 		eventService,
 		credentialsFinderService,
-		mock(), // connectionStatusProxy
 		credentialsOverwrites,
 	);
 

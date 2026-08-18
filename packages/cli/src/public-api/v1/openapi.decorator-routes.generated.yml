@@ -3,6 +3,9 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /credentials/{credentialId}/share:
+    put:
+      $ref: ./handlers/credentials/spec/paths/shareCredential.generated.yml
   /role-mapping-rules:
     post:
       $ref: ./handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml

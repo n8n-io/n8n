@@ -74,7 +74,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 /**
