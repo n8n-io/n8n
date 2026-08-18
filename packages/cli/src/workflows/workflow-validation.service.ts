@@ -402,10 +402,7 @@ export class WorkflowValidationService {
 		const { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity } = triggers;
 
 		if (workflowResolverId === this.dynamicCredentialsProxy.getSystemResolverId()) {
-			// System resolver: every trigger must establish the n8n user identity. The form
-			// trigger is only listed while the form OAuth2 flag is enabled — without it a
-			// form establishes no identity, so listing it would advertise a fix that
-			// doesn't work.
+			// System resolver: every trigger must establish the n8n user identity.
 			if (allTriggersProvideN8nIdentity) return undefined;
 
 			const triggersList = this.getN8nUserAuthTriggersList();
@@ -418,7 +415,7 @@ export class WorkflowValidationService {
 	}
 
 	/**
-	 * Describes which triggers the system resolver currently accepts, for the
+	 * Describes which triggers the system resolver accepts, for the
 	 * publish-error copy. Mirrors `classifyTriggerIdentities`.
 	 */
 	private getN8nUserAuthTriggersList(): string {
