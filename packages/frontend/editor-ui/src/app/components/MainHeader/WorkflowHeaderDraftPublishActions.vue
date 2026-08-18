@@ -134,7 +134,6 @@ const showSubmitForReviewDialog = ref(false);
 const showReviewSubmittedDialog = ref(false);
 const submittedReviewRequestId = ref<string>();
 const showUpdateReviewDialog = ref(false);
-const isRetryingPublish = ref(false);
 
 watch(
 	() => props.id,
@@ -234,7 +233,10 @@ const canActOnReview = computed(
 	() => !!hasPublishPermission.value && !collaborationReadOnly.value && !props.isArchived,
 );
 
-const canOpenReview = computed(() => !!hasPublishPermission.value);
+// Backend-computed involvement rule (admin, author, or assigned reviewer):
+// publish permission alone no longer opens a review, and a link the detail
+// endpoint would 404 must not render.
+const canOpenReview = computed(() => latestReviewRequest.value?.viewerCanOpen ?? false);
 
 /**
  * Cancel autosave if scheduled or wait for it to finish if in progress
@@ -346,29 +348,6 @@ const onOpenReviewFromBanner = async () => {
 		query:
 			review.state === 'closed' ? { [REVIEW_INBOX_QUERY_PARAM.state]: review.state } : undefined,
 	});
-};
-
-/**
- * Publish the approved pinned version — not the working copy, which may already
- * have moved on and was never reviewed.
- */
-const onRetryPublishFromBanner = async () => {
-	const pinnedVersionId = latestReviewRequest.value?.workflowVersionId;
-	if (!pinnedVersionId || isRetryingPublish.value) return;
-
-	isRetryingPublish.value = true;
-	try {
-		// Errors are surfaced by the shared activation error handling; the banner
-		// stays put because the review status is unchanged on failure.
-		const { success } = await workflowActivate.publishWorkflow(props.id, pinnedVersionId);
-		if (success) {
-			// The active-version watcher covers the usual case, but a retry that
-			// lands on an unchanged active version must still clear the banner.
-			await refetchReviewStatus();
-		}
-	} finally {
-		isRetryingPublish.value = false;
-	}
 };
 
 const onPublishButtonClick = async () => {
@@ -804,12 +783,9 @@ onBeforeUnmount(() => {
 				:review="latestReviewRequest"
 				:saved-version-id="savedVersionId"
 				:can-submit-changes="canActOnReview"
-				:can-retry-publish="canActOnReview"
 				:can-open-review="canOpenReview"
-				:is-publishing="isRetryingPublish"
 				@open-review="onOpenReviewFromBanner"
 				@submit-changes="onSubmitChangesFromBanner"
-				@retry-publish="onRetryPublishFromBanner"
 			/>
 		</div>
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">

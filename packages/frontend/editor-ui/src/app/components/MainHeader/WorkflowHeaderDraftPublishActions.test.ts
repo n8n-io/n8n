@@ -591,7 +591,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						createdAt: '2026-07-20T10:00:00.000Z',
 						updatedAt: '2026-07-20T10:00:00.000Z',
 						decisionBy: null,
-						approvedVersionPublicationState: null,
+						viewerCanOpen: true,
 						...overrides,
 					},
 				],
@@ -1282,19 +1282,12 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						createdAt: '2026-07-20T10:00:00.000Z',
 						updatedAt: '2026-07-20T10:00:00.000Z',
 						decisionBy: null,
-						approvedVersionPublicationState: null,
+						viewerCanOpen: true,
 						...overrides,
 					},
 				],
 			});
 		};
-
-		const seedApprovedUnpublishedReview = () =>
-			seedLatestReview({
-				state: 'closed',
-				decision: 'approved',
-				approvedVersionPublicationState: 'not_published',
-			});
 
 		const renderWithBanner = async () => {
 			const result = renderComponent();
@@ -1387,16 +1380,17 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			{
 				name: 'the workflow is archived',
 				props: { isArchived: true },
-				// Publish rights survive archiving, so the review is still reachable
+				// Involvement survives archiving, so the review is still reachable
 				canOpenReview: true,
 			},
 			{
-				name: 'the user cannot publish',
+				// Publish permission no longer decides openability: the backend's
+				// involvement flag does, and this viewer is involved.
+				name: 'the user cannot publish but is involved in the review',
 				props: {
 					workflowPermissions: { ...defaultWorkflowProps.workflowPermissions, publish: false },
 				},
-				// the detail route would 404
-				canOpenReview: false,
+				canOpenReview: true,
 			},
 		])(
 			'keeps the status readable but disables writes when $name',
@@ -1418,20 +1412,22 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			},
 		);
 
-		it.each([
-			{
-				name: 'an open review, leaving the inbox on its default tab',
-				seed: () => seedLatestReview(),
-				query: undefined,
-			},
-			{
-				name: 'a closed review, selecting the closed inbox tab',
-				seed: seedApprovedUnpublishedReview,
-				query: { state: 'closed' },
-			},
-		])('opens $name', async ({ seed, query }) => {
+		// The backend says who may open a review; a publisher outside the
+		// involvement rule gets no button the detail route would 404 on.
+		it('hides Open review when the viewer may not open it, whatever their permissions', async () => {
 			setWorkflowReviewGates();
-			seed();
+			seedLatestReview({ viewerCanOpen: false });
+
+			const { pill, getByTestId, queryByTestId } = await renderWithBanner();
+			await userEvent.click(pill);
+
+			expect(getByTestId('workflow-review-status-popover')).toBeInTheDocument();
+			expect(queryByTestId('workflow-review-open-review-button')).not.toBeInTheDocument();
+		});
+
+		it('opens an open review on the inbox default tab', async () => {
+			setWorkflowReviewGates();
+			seedLatestReview();
 
 			const { pill, getByTestId } = await renderWithBanner();
 			await userEvent.click(pill);
@@ -1440,45 +1436,28 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockRouterPush).toHaveBeenCalledWith({
 				name: WORKFLOW_REVIEW_REQUESTS_VIEW,
 				params: { reviewRequestId: 'req-1' },
-				query,
+				query: undefined,
 			});
 		});
 
-		it('retries publishing the approved pinned version, then refreshes the status', async () => {
+		// Approval closed the review, so recovery belongs to the regular Publish
+		// button; the banner has no closed state anymore.
+		it('renders no pill for a closed approved review', async () => {
 			setWorkflowReviewGates();
-			setupEnabledPublishButton();
-			seedApprovedUnpublishedReview();
+			seedLatestReview({
+				state: 'closed',
+				decision: 'approved',
+			});
 
-			const { pill, getByTestId } = await renderWithBanner();
-			vi.mocked(fetchWorkflowReviewRequests).mockClear();
-
-			await userEvent.click(pill);
-			await userEvent.click(getByTestId('workflow-review-retry-publish-button'));
-
-			// The pinned approved version, not the newer working copy ('version-1')
-			expect(mockPublishWorkflow).toHaveBeenCalledWith(defaultWorkflowProps.id, 'version-0');
+			const { queryByTestId } = renderComponent();
 			await waitFor(() => expect(fetchWorkflowReviewRequests).toHaveBeenCalled());
-		});
 
-		it('keeps the banner and skips the refresh when the retry fails', async () => {
-			setWorkflowReviewGates();
-			setupEnabledPublishButton();
-			seedApprovedUnpublishedReview();
-			mockPublishWorkflow.mockResolvedValue({ success: false, errorHandled: true });
-
-			const { pill, getByTestId, findByTestId } = await renderWithBanner();
-			vi.mocked(fetchWorkflowReviewRequests).mockClear();
-
-			await userEvent.click(pill);
-			await userEvent.click(getByTestId('workflow-review-retry-publish-button'));
-
-			expect(await findByTestId('workflow-review-status-pill')).toBeInTheDocument();
-			expect(fetchWorkflowReviewRequests).not.toHaveBeenCalled();
+			expect(queryByTestId('workflow-review-status-pill')).not.toBeInTheDocument();
 		});
 
 		it('refetches the status when the active version changes, without duplicating the mount fetch', async () => {
 			setWorkflowReviewGates();
-			seedApprovedUnpublishedReview();
+			seedLatestReview();
 			vi.mocked(fetchWorkflowReviewRequests).mockClear();
 
 			await renderWithBanner();
