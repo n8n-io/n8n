@@ -206,6 +206,16 @@ export default defineConfig(
 		},
 	},
 	{
+		// Permanent: the engine-v2 module is the composition root for the engine's own
+		// Postgres data plane. It constructs and owns a second DataSource, separate from
+		// n8n's. TypeORM here is the engine's persistence adapter, not an n8n-persistence
+		// leak, so this is not part of the shrink-only ratchet below.
+		files: ['./src/modules/engine-v2/**/*.ts'],
+		rules: {
+			'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
+		},
+	},
+	{
 		// Ratchet allowlist: known @n8n/typeorm leaks pending migration to @n8n/db.
 		// NEVER add to this list — a new leak must fail CI. Entries are removed as each file migrates.
 		files: [
