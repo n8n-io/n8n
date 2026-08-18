@@ -10,7 +10,12 @@ import type {
 	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { deepCopy, isINodeProperties, isINodePropertyCollection } from 'n8n-workflow';
+import {
+	deepCopy,
+	isINodeProperties,
+	isINodePropertyCollection,
+	isINodePropertyCollectionList,
+} from 'n8n-workflow';
 
 import get from 'lodash/get';
 
@@ -232,7 +237,15 @@ async function optionSelected(optionName: string) {
 			// Multiple values are allowed
 			if (option.type === 'fixedCollection') {
 				// fixedCollection stores values as objects with nested arrays
-				value = get(props.nodeValues, [props.path, optionName], {});
+				const existing = get(props.nodeValues, [props.path, optionName], {}) as INodeParameters;
+				if (Object.keys(existing).length === 0 && isINodePropertyCollectionList(option.options)) {
+					// Initialize empty array slots so nested "Add" controls work immediately
+					value = Object.fromEntries(
+						option.options.map((collectionOption) => [collectionOption.name, []]),
+					);
+				} else {
+					value = existing;
+				}
 			} else {
 				// Other types store values as arrays
 				const defaultValue = option.default;
