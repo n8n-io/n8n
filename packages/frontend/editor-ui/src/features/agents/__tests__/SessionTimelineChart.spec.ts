@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import SessionTimelineChart from '../components/SessionTimelineChart.vue';
@@ -114,6 +113,51 @@ describe('SessionTimelineChart', () => {
 		const blocks = w.findAll('[data-test-id="timeline-block"]');
 		expect(blocks[0].element.getAttribute('data-selected')).not.toBe('true');
 		expect(blocks[2].element.getAttribute('data-selected')).toBe('true');
+	});
+
+	it('marks a generic tool soft-failure block as failed', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: { success: false, error: 'boom' },
+				}),
+			],
+		});
+		const block = w.get('[data-test-id="timeline-block"]');
+		expect(block.attributes('data-error')).toBe('true');
+		expect(block.classes()).toContain('error');
+	});
+
+	it('marks a workflow soft-failure block as failed', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'workflow',
+					toolSuccess: true,
+					toolOutput: { status: 'error', error: 'boom' },
+				}),
+			],
+		});
+		const block = w.get('[data-test-id="timeline-block"]');
+		expect(block.attributes('data-error')).toBe('true');
+		expect(block.classes()).toContain('error');
+	});
+
+	it('does not mark a successful tool block as failed', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: { ok: true },
+				}),
+			],
+		});
+		const block = w.get('[data-test-id="timeline-block"]');
+		expect(block.attributes('data-error')).toBeUndefined();
+		expect(block.classes()).not.toContain('error');
 	});
 
 	it('renders the localized "Idle" pill text inside each idle segment', () => {
