@@ -63,6 +63,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 6 |  | table |
 | [folder_tag](folder_tag.md) | 2 |  | table |
+| [git_connection](git_connection.md) | 13 |  | table |
 | [insights_by_period](insights_by_period.md) | 6 |  | table |
 | [insights_metadata](insights_metadata.md) | 5 |  | table |
 | [insights_raw](insights_raw.md) | 5 |  | table |
@@ -893,6 +894,21 @@ erDiagram
 "folder_tag" {
   varchar_36_ folderId PK
   varchar_36_ tagId PK
+}
+"git_connection" {
+  varchar_64_ baseCommit
+  varchar_255_ branchName
+  varchar_16_ connectionType
+  datetime_3_ createdAt
+  TEXT encryptedPassword
+  TEXT encryptedPrivateKey
+  TEXT encryptedUsername
+  varchar_36_ id PK
+  varchar_16_ keyGeneratorType
+  varchar_128_ name
+  TEXT publicKey
+  TEXT repositoryUrl
+  datetime_3_ updatedAt
 }
 "insights_by_period" {
   INTEGER id
