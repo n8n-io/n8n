@@ -1342,6 +1342,21 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 	};
 }
 
+/**
+ * True while a genuine target switch still owes the autosave-loop reset.
+ * Set synchronously when a switching `initialize()` begins; cleared only by
+ * `resetAutosaveLoops()`, so a same-target preserveState init that supersedes
+ * the switching init inherits the obligation instead of dropping it.
+ */
+let autosaveResetPending = false;
+
+function resetAutosaveLoops() {
+	configAutosave.reset();
+	skillAutosave.reset();
+	mcpAutosave.reset();
+	autosaveResetPending = false;
+}
+
 async function initialize({ preserveState = false }: { preserveState?: boolean } = {}) {
 	const sessionsFetchRequestId = ++latestSessionsFetchRequestId;
 	const targetProjectId = projectId.value;
@@ -1361,6 +1376,13 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 	pendingExternalRefresh.value = false;
 	try {
 		if (preserveState) {
+			// A same-ID pending → persisted hydration can supersede a genuine
+			// A→B switch whose drain is still in flight. That switch's reset is
+			// still owed — without it B inherits A's indicator and the flush
+			// below would rethrow A's lastSaveError and abort B's init. The
+			// loops only hold A's residue here (B can't schedule edits while
+			// `initialized` is false), so resetting first is safe.
+			if (autosaveResetPending) resetAutosaveLoops();
 			// Same-agent hydration (pending → persisted): flush queued
 			// config/skill/MCP snapshots before fetching so settle doesn't
 			// drop a pending debounce. When AI-locked, flush cancels stale
@@ -1368,14 +1390,28 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			await flushAutosave();
 			await settleAutosave();
 		} else {
+			// The reset obligation belongs to the target switch, not this init
+			// instance: a same-target preserveState init that supersedes us
+			// picks it up via this flag. Only `resetAutosaveLoops` clears it.
+			autosaveResetPending = true;
 			// Persist a pending MCP toggle before the new agent can replace its
 			// snapshot. Other pending edits remain governed by their existing
 			// switch/revert behavior.
-			await Promise.all([
-				configAutosave.settleAutosave(),
-				skillAutosave.settleAutosave(),
-				mcpAutosave.flushAutosave(),
-			]);
+			try {
+				await Promise.all([
+					configAutosave.settleAutosave(),
+					skillAutosave.settleAutosave(),
+					mcpAutosave.flushAutosave(),
+				]);
+			} finally {
+				// Genuine A→B switch: always detach A's autosave loop from
+				// `saveStatus`/`lastSaveError`, even when the drain throws —
+				// otherwise B inherits A's indicator and A's lastSaveError
+				// would abort B's later flush/publish. A stale init must not
+				// reset: a newer genuine switch owns its own reset, and a newer
+				// same-target hydration takes this one over via the flag.
+				if (isCurrentInitialization()) resetAutosaveLoops();
+			}
 		}
 		if (!isCurrentInitialization()) return;
 		if (!preserveState) {

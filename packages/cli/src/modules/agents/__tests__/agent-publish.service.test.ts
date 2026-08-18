@@ -3,6 +3,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -53,6 +54,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		skills: {},
 		integrations: [],
 		setupCompletedAt: null,
+		revision: 0,
 		...overrides,
 	} as unknown as Agent;
 }
@@ -123,6 +125,8 @@ function makeService() {
 	});
 
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
+	agentRepository.setActiveVersionFenced.mockResolvedValue(true);
+	agentRepository.saveDraftFenced.mockResolvedValue(true);
 	agentHistoryRepository.saveVersion.mockResolvedValue(makeHistory());
 	customToolsService.snapshotConfiguredTools.mockReturnValue(null);
 	chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
@@ -506,7 +510,13 @@ describe('AgentPublishService', () => {
 		expect(agent.activeVersionId).toBe('v1');
 		expect(agent.activeVersion).toBe(target);
 		expect(agent.versionId).not.toBe('draft-v2');
-		expect(trx.save).toHaveBeenCalledWith(agent);
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(
+			agent.id,
+			0,
+			{ activeVersionId: 'v1', versionId: agent.versionId },
+			trx,
+		);
+		expect(trx.save).not.toHaveBeenCalled();
 	});
 
 	it('reports activating an older version as a republish, not the explicit publish the caller asked for', async () => {
@@ -752,5 +762,119 @@ describe('AgentPublishService', () => {
 				isActive: false,
 			}),
 		]);
+	});
+
+	it('loses the fence and conflicts when a concurrent edit bumped revision before publish', async () => {
+		const { service, agentRepository, agentHistoryRepository, telemetry, trx } = makeService();
+		const agent = makeAgent({ revision: 5 });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentRepository.setActiveVersionFenced.mockResolvedValue(false);
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+			'Agent was modified concurrently while publishing; please retry',
+		);
+
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(
+			agentId,
+			5,
+			expect.objectContaining({ activeVersionId: versionId, versionId }),
+			trx,
+		);
+		expect(agentHistoryRepository.saveVersion).toHaveBeenCalled();
+		expect(trx.save).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBeNull();
+		expect(agent.activeVersion).toBeNull();
+		expect(agent.versionId).toBe(versionId);
+		expect(agent.revision).toBe(5);
+	});
+
+	it('conflicts when a second publish races the same agent', async () => {
+		const { service, agentRepository, agentHistoryRepository, telemetry } = makeService();
+		const agent = makeAgent({ revision: 1 });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(
+			makeHistory({ versionId: 'v1' }),
+		);
+		agentRepository.setActiveVersionFenced.mockResolvedValue(false);
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser, 'v1')).rejects.toThrow(
+			'Agent was modified concurrently while publishing; please retry',
+		);
+
+		// Republishing an existing snapshot skips the draft save, so the only
+		// write attempted is the fenced UPDATE — which lost. The in-memory
+		// entity must stay on the pre-publish active version.
+		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBeNull();
+		expect(agent.versionId).toBe(versionId);
+		expect(agent.revision).toBe(1);
+	});
+
+	it('conflicts when a concurrent publish already inserted the same draft version snapshot', async () => {
+		const { service, agentRepository, agentHistoryRepository, telemetry } = makeService();
+		const agent = makeAgent({ revision: 2 });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		// Both racers share the draft's versionId as the history primary key,
+		// so the loser collides on the insert before reaching the fence.
+		agentHistoryRepository.saveVersion.mockRejectedValue(
+			new QueryFailedError(
+				'insert',
+				undefined,
+				Object.assign(new Error('duplicate key'), { code: '23505' }),
+			),
+		);
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+			'Agent was modified concurrently while publishing; please retry',
+		);
+
+		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBeNull();
+		expect(agent.revision).toBe(2);
+	});
+
+	it('propagates non-unique-constraint failures from the draft snapshot insert as-is', async () => {
+		const { service, agentRepository, agentHistoryRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.saveVersion.mockRejectedValue(new Error('db down'));
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow('db down');
+	});
+
+	it('unpublish conflicts on a stale revision and skips telemetry', async () => {
+		const { service, agentRepository, telemetry, subAgentCleanupService } = makeService();
+		const agent = makeAgent({ activeVersionId: 'v1', revision: 3 });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentRepository.setActiveVersionFenced.mockResolvedValue(false);
+
+		await expect(service.unpublishAgent(agentId, projectId, user, 'user')).rejects.toThrow(
+			'Agent was modified concurrently while unpublishing; please retry',
+		);
+
+		// Losing the fence means the active version is left untouched and no
+		// unpublish side effects or telemetry run.
+		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(subAgentCleanupService.removeSubAgentFromParents).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBe('v1');
+	});
+
+	it('passes the loaded revision as the fence expectation on publish', async () => {
+		const { service, agentRepository, trx } = makeService();
+		const agent = makeAgent({ revision: 7 });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		await service.publishAgent(agentId, projectId, user, byUser);
+
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(
+			agentId,
+			7,
+			expect.objectContaining({ activeVersionId: versionId, versionId }),
+			trx,
+		);
+		expect(agent.revision).toBe(8);
+		expect(agent.activeVersionId).toBe(versionId);
 	});
 });

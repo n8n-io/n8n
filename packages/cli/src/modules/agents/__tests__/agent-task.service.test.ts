@@ -180,6 +180,7 @@ describe('AgentTaskService', () => {
 			makeTask(data),
 		);
 		agentRepository = mock<AgentRepository>();
+		agentRepository.saveDraftFenced.mockResolvedValue(true);
 		// `manager` is a TypeORM getter, not auto-mocked; run transaction callbacks
 		// against a manager that records save/remove.
 		txManager = {
@@ -236,7 +237,8 @@ describe('AgentTaskService', () => {
 			expect(agent.schema?.tasks).toEqual([
 				{ type: 'task', id: expect.stringMatching(/^task_/), enabled: true },
 			]);
-			expect(txManager.save).toHaveBeenCalledTimes(2);
+			expect(txManager.save).toHaveBeenCalledTimes(1);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, txManager);
 		});
 
 		it('rejects an invalid cron without creating', async () => {
@@ -316,9 +318,10 @@ describe('AgentTaskService', () => {
 				{ type: 'task', id: dtos[0].id, enabled: true },
 				{ type: 'task', id: dtos[1].id, enabled: true },
 			]);
-			// 2 task saves + 1 agent save, all inside the same transaction call.
+			// 2 task saves + 1 fenced agent save, all inside the same transaction call.
 			expect(agentRepository.manager.transaction).toHaveBeenCalledTimes(1);
-			expect(txManager.save).toHaveBeenCalledTimes(3);
+			expect(txManager.save).toHaveBeenCalledTimes(2);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, txManager);
 		});
 
 		it('rejects an empty batch before loading or writing anything', async () => {

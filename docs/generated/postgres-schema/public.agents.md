@@ -11,6 +11,7 @@
 | integrations | json | '[]'::json | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(255) |  | false |  | [public.project](public.project.md) |  |
+| revision | integer | 0 | false |  |  |  |
 | schema | json |  | true |  |  |  |
 | setupCompletedAt | timestamp(3) with time zone |  | true |  |  | When this agent first reached a complete, publishable setup |
 | skills | json | '{}'::json | false |  |  |  |
@@ -31,6 +32,7 @@
 | agents_integrations_not_null | n | NOT NULL integrations |
 | agents_name_not_null | n | NOT NULL name |
 | agents_projectId_not_null | n | NOT NULL "projectId" |
+| agents_revision_not_null | n | NOT NULL revision |
 | agents_skills_not_null | n | NOT NULL skills |
 | agents_tools_not_null | n | NOT NULL tools |
 | agents_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -76,6 +78,7 @@ erDiagram
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt
   json skills
