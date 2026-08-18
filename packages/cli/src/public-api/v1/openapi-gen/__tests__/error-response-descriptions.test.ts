@@ -4,10 +4,7 @@ import { parse } from 'yaml';
 
 import { ERROR_RESPONSE_DESCRIPTIONS, ERROR_RESPONSE_REFS } from '../decorator-routes';
 
-/**
- * `ERROR_RESPONSE_DESCRIPTIONS` restates what each shared response file says, because a response
- * that documents a body cannot `$ref` the file. This asserts the copy has not drifted.
- */
+// Keeps the hardcoded descriptions in step with the files they were copied from.
 const REFS_DIR = path.resolve(__dirname, '../../handlers/workflows/spec/paths');
 
 describe('ERROR_RESPONSE_DESCRIPTIONS', () => {

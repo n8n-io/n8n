@@ -1458,8 +1458,6 @@ describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
 		expect(await workflowRepository.isActive(workflow.id)).toBe(true);
 	});
 
-	// Publishing re-reads the workflow without its `shared` relation, so the response has never
-	// carried that field. Unpublishing runs a query that does load it — see the sibling suite.
 	test('should not return the shared field', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
@@ -1664,8 +1662,6 @@ describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) =>
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
 
-	// The counterpart of the publish suite's `shared` guard: unpublishing reads the workflow through
-	// a query that loads the relation, so the field is part of this response.
 	test('should return the shared field', async () => {
 		const workflow = await createActiveWorkflow({}, member);
 
