@@ -28,13 +28,72 @@ export function isSubAgentTimelineItem(item: TimelineItem): boolean {
 	return item.kind === 'tool' && isDelegateSubAgentTool(item.toolName);
 }
 
+function errorTextFromValue(value: unknown): string {
+	if (typeof value === 'string' && value.length > 0) return value;
+	if (isRecord(value) && typeof value.message === 'string' && value.message.length > 0) {
+		return value.message;
+	}
+	return '';
+}
+
+/** MCP CallToolResult stores the message in structuredContent.error or text content. */
+function mcpErrorMessage(output: Record<string, unknown>): string {
+	if (isRecord(output.structuredContent)) {
+		const fromStructured = errorTextFromValue(output.structuredContent.error);
+		if (fromStructured) return fromStructured;
+	}
+
+	if (!Array.isArray(output.content)) return '';
+	for (const block of output.content) {
+		if (!isRecord(block) || block.type !== 'text' || typeof block.text !== 'string') continue;
+		const text = block.text.trim();
+		if (!text) continue;
+		try {
+			const parsed: unknown = JSON.parse(text);
+			if (typeof parsed === 'string' && parsed.length > 0) return parsed;
+			if (isRecord(parsed)) {
+				const fromJson = errorTextFromValue(parsed.error);
+				if (fromJson) return fromJson;
+			}
+		} catch {
+			return text;
+		}
+	}
+	return '';
+}
+
+/**
+ * A tool/workflow/node call is failed when the runtime recorded an error
+ * outcome, or when a built-in tool returned a soft-failure payload instead
+ * of throwing. In-flight calls without output are not failed.
+ */
 export function isErroredToolCallTimelineItem(item: TimelineItem): boolean {
-	if (item.kind !== 'tool' && item.kind !== 'node' && item.kind !== 'workflow') return false;
+	if (item.kind !== 'tool' && item.kind !== 'workflow' && item.kind !== 'node') return false;
+	if (item.toolOutcome === 'error') return true;
+	if (item.toolOutcome === undefined && item.toolSuccess === false) return true;
+	if (!isRecord(item.toolOutput)) return false;
+
+	const { error, status, success, ok, isError } = item.toolOutput;
+	const hasErrorMessage =
+		(typeof error === 'string' && error.length > 0) ||
+		(isRecord(error) && typeof error.message === 'string' && error.message.length > 0);
+
 	return (
-		item.toolOutcome === 'error' ||
-		(item.toolOutcome === undefined && item.toolSuccess === false) ||
-		(item.kind === 'workflow' && isRecord(item.toolOutput) && item.toolOutput.status === 'error')
+		hasErrorMessage ||
+		status === 'error' ||
+		status === 'failed' ||
+		success === false ||
+		ok === false ||
+		isError === true
 	);
+}
+
+/** Extracts a human-readable error message from a failed item's tool output. */
+export function timelineItemErrorMessage(item: TimelineItem): string {
+	if (!isErroredToolCallTimelineItem(item)) return '';
+	const output = item.toolOutput;
+	if (!isRecord(output)) return '';
+	return errorTextFromValue(output.error) || mcpErrorMessage(output);
 }
 
 export function hitlTimelineNameKey(item: TimelineItem): BaseTextKey | undefined {
