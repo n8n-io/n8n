@@ -130,7 +130,7 @@ export class GitConnectionsGitService {
 		await rm(nextRepositoryFolder, { recursive: true, force: true });
 
 		try {
-			await this.withGit(connection, credentials, rootFolder, async (git) => {
+			await this.withGit({ connection, credentials, baseDir: rootFolder }, async (git) => {
 				const remoteRefs = await git.listRemote([
 					'--heads',
 					connection.repositoryUrl,
@@ -179,10 +179,23 @@ export class GitConnectionsGitService {
 		await rm(rootFolder, { recursive: true, force: true });
 	}
 
+	/**
+	 * Run a git operation with credentials wired in and torn down afterwards.
+	 * Auth is configured per connection type: HTTPS goes through a credential
+	 * helper, SSH writes the private key to a temporary file referenced via
+	 * `GIT_SSH_COMMAND`. The `finally` block removes that temporary key material
+	 * so it never outlives the operation, regardless of success or failure.
+	 */
 	private async withGit<T>(
-		connection: GitConnection,
-		credentials: PlainCredentials,
-		baseDir: string,
+		{
+			connection,
+			credentials,
+			baseDir,
+		}: {
+			connection: GitConnection;
+			credentials: PlainCredentials;
+			baseDir: string;
+		},
 		operation: (git: SimpleGit) => Promise<T>,
 	) {
 		await mkdir(baseDir, { recursive: true });
