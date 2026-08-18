@@ -141,7 +141,7 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 			.string()
 			.min(2)
 			.describe(
-				'JSON Pointer (RFC 6901) path to the parameter to set, e.g. "/jsonSchema" or "/options/systemMessage". Must start with "/". Intermediate objects are created on demand. Array indices are NOT supported — to change a value inside an array, set the whole array. Use this instead of `updateNodeParameters` when you only need to set one nested key — the payload stays small regardless of the rest of the parameters object.',
+				'JSON Pointer (RFC 6901) path, e.g. "/options/systemMessage" or "/assignments/assignments/0/value". Numeric segments index into arrays (index must already exist). Prefer over `updateNodeParameters` for a single nested key.',
 			),
 		value: z
 			.unknown()
@@ -462,53 +462,128 @@ const sanitizeUnsafeKeys = (value: unknown): unknown => {
 };
 
 /**
- * Decode a JSON Pointer path (RFC 6901) into safe property segments.
- * Returns null if the path is malformed, empty, contains an empty segment,
- * or contains an unsafe segment. The leading "/" is required.
- * Array indices are not supported: numeric segments are treated as object keys,
- * and descent into an array (or any non-object) fails at apply time.
+ * Decode a JSON Pointer path (RFC 6901) into safe segments, or null if malformed/unsafe.
+ * A numeric segment indexes an array (must reference an existing element) or keys an object — see `setAtPointer`.
  */
 const parseJsonPointer = (path: string): string[] | null => {
-	if (!path.startsWith('/')) return null;
+	if (!path.startsWith('/')) {
+		return null;
+	}
+
 	const tail = path.slice(1);
-	if (tail.length === 0) return null;
+	if (tail.length === 0) {
+		return null;
+	}
+
 	const rawSegments = tail.split('/');
 	const segments: string[] = [];
+
+	// RFC 6901: every '~' must be followed by '0' or '1'. Bare '~' or '~2' is malformed.
+	const invalidEscapeSequenceRegex = /~(?:[^01]|$)/;
+
 	for (const raw of rawSegments) {
-		// RFC 6901: every '~' must be followed by '0' or '1'. Bare '~' or '~2' is malformed.
-		if (/~(?:[^01]|$)/.test(raw)) return null;
+		if (invalidEscapeSequenceRegex.test(raw)) {
+			return null;
+		}
+
+		// Unescape RFC 6901 JSON Pointer tokens: '~1' -> '/' and '~0' -> '~'.
+		// reject empty segments or segments that are not considered safe object property names
 		const seg = raw.replace(/~1/g, '/').replace(/~0/g, '~');
-		if (seg.length === 0 || !isSafeObjectProperty(seg)) return null;
+		if (seg.length === 0 || !isSafeObjectProperty(seg)) {
+			return null;
+		}
+
 		segments.push(seg);
 	}
 	return segments;
 };
 
+const isArrayIndexSegment = (segment: string): boolean => /^(0|[1-9]\d*)$/.test(segment);
+
+/**
+ * Read/write a single segment on a cursor that may be a plain object or an array.
+ * Returns an error message for an out-of-bounds or non-numeric array segment,
+ * otherwise returns `{ value }` (the current value at that segment, possibly
+ * undefined) — writing is done separately by the caller via `writeSegment`.
+ */
+const readSegment = (
+	cursor: Record<string, unknown> | unknown[],
+	key: string,
+	pathSoFar: string,
+): { value: unknown } | { error: string } => {
+	if (!Array.isArray(cursor)) {
+		return { value: cursor[key] };
+	}
+
+	if (!isArrayIndexSegment(key)) {
+		return { error: `cannot use '${key}' as an array index at '/${pathSoFar}'` };
+	}
+
+	const index = Number(key);
+	if (index >= cursor.length) {
+		return {
+			error: `array index ${index} out of bounds (length ${cursor.length}) at '/${pathSoFar}'`,
+		};
+	}
+
+	return { value: cursor[index] };
+};
+
+const writeSegment = (
+	cursor: Record<string, unknown> | unknown[],
+	key: string,
+	value: unknown,
+): void => {
+	if (Array.isArray(cursor)) {
+		cursor[Number(key)] = value;
+		return;
+	}
+	cursor[key] = value;
+};
+
 /**
  * Set `value` at `segments` inside `root`, creating intermediate objects on demand.
- * Returns an error message if an intermediate segment exists but is not a plain object,
- * otherwise mutates `root` in place and returns null.
+ * Numeric segments index into arrays (must reference an existing element, no auto-extension).
+ * Mutates `root` in place; returns an error message on failure, else null.
  */
 const setAtPointer = (
 	root: Record<string, unknown>,
 	segments: string[],
 	value: unknown,
 ): string | null => {
-	let cursor: Record<string, unknown> = root;
+	let cursor: Record<string, unknown> | unknown[] = root;
 	for (let i = 0; i < segments.length - 1; i++) {
 		const key = segments[i];
-		const next = cursor[key];
-		if (next === undefined) {
+		const pathSoFar = segments.slice(0, i + 1).join('/');
+		const read = readSegment(cursor, key, pathSoFar);
+		if ('error' in read) {
+			return read.error;
+		}
+
+		if (read.value === undefined && !Array.isArray(cursor)) {
 			const child: Record<string, unknown> = {};
-			cursor[key] = child;
+			writeSegment(cursor, key, child);
 			cursor = child;
-		} else if (isPlainObject(next)) {
-			cursor = next;
+		} else if (isPlainObject(read.value) || Array.isArray(read.value)) {
+			cursor = read.value;
 		} else {
-			return `cannot descend into non-object at '/${segments.slice(0, i + 1).join('/')}'`;
+			return `cannot descend into non-object at '/${pathSoFar}'`;
 		}
 	}
-	cursor[segments[segments.length - 1]] = sanitizeUnsafeKeys(value);
+
+	const lastKey = segments[segments.length - 1];
+	if (Array.isArray(cursor)) {
+		if (!isArrayIndexSegment(lastKey)) {
+			return `cannot use '${lastKey}' as an array index at '/${segments.join('/')}'`;
+		}
+
+		const index = Number(lastKey);
+		if (index >= cursor.length) {
+			return `array index ${index} out of bounds (length ${cursor.length}) at '/${segments.join('/')}'`;
+		}
+	}
+
+	writeSegment(cursor, lastKey, sanitizeUnsafeKeys(value));
 	return null;
 };
 
