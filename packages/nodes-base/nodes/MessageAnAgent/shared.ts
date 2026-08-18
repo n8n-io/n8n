@@ -190,6 +190,13 @@ export const commonProperties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Enable Streaming',
+				name: 'enableStreaming',
+				type: 'boolean',
+				default: true,
+				description: "Whether to stream the agent's response as it generates text",
+			},
+			{
 				displayName: 'Invoke Agent',
 				name: 'invokeMode',
 				type: 'options',
@@ -438,6 +445,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const advanced = this.getNodeParameter('advanced', i, {}) as {
 				sessionId?: string;
 				allowOtherNodesData?: boolean;
+				enableStreaming?: boolean;
 			};
 			const sessionIdOverride = advanced.sessionId?.trim();
 			const allowOtherNodesData =
@@ -464,6 +472,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					...source,
 					sessionId: sessionIdOverride || undefined,
 					outputSchema,
+					...(advanced.enableStreaming === false ? { enableStreaming: false } : {}),
 					inputDataScope: runOnceForAll ? 'all' : 'item',
 					exposeWorkflowData: allowOtherNodesData,
 				},

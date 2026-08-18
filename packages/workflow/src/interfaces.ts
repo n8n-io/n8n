@@ -2289,6 +2289,11 @@ export type ExecuteAgentInfo = ExecuteAgentSource & {
 	 */
 	outputSchema?: JSONSchema7;
 	/**
+	 * Whether to forward generated text to a streaming workflow response. Defaults
+	 * to true when omitted. This does not affect execution progress events.
+	 */
+	enableStreaming?: boolean;
+	/**
 	 * Which slice of the calling node's input the agent's `fetch_input_data`
 	 * tool should expose: the single current item (`'item'`, default) or all
 	 * input items (`'all'`, used when the node invokes the agent once for the

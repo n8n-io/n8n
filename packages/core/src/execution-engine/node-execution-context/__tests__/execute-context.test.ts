@@ -592,6 +592,42 @@ describe('ExecuteContext', () => {
 			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
 		});
 
+		it('omits the response chunk callback when agent streaming is disabled', async () => {
+			const hooks = new ExecutionLifecycleHooks('manual', 'exec-1', mock<IWorkflowBase>());
+			hooks.addHandler('sendChunk', vi.fn());
+			const executeAgentMock = vi.fn().mockResolvedValue({ response: 'ok' });
+			const streamingAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				hooks,
+				rootExecutionMode: undefined,
+				streamingEnabled: true,
+			});
+			streamingAdditionalData.executeAgent =
+				executeAgentMock as IWorkflowExecuteAdditionalData['executeAgent'];
+			const streamingContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				streamingAdditionalData,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await streamingContext.executeAgent(
+				{ agentId: 'agent-1', enableStreaming: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			const invocationContext = executeAgentMock.mock.calls[0]?.[8] as InvocationContext;
+			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
+		});
+
 		it('passes all input items when inputDataScope is all', async () => {
 			agentAdditionalData.executeAgent = vi
 				.fn()

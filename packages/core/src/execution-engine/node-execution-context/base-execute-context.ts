@@ -263,7 +263,9 @@ export class BaseExecuteContext extends NodeExecutionContext {
 
 		const executeAgent: ExecuteAgentWithInvocationContext = this.additionalData.executeAgent;
 		const sendResponseChunk =
-			agentInfo.outputSchema === undefined && this.isStreaming()
+			agentInfo.enableStreaming !== false &&
+			agentInfo.outputSchema === undefined &&
+			this.isStreaming()
 				? async (type: 'begin' | 'item' | 'end' | 'error', content?: string) =>
 						await this.sendChunk(type, itemIndex, content)
 				: undefined;

@@ -1578,6 +1578,52 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 		});
 
+		it('keeps editor progress when response streaming is disabled', async () => {
+			const sendDataToUI = vi.fn();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+				sendDataToUI,
+			});
+
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'webhook',
+				undefined,
+				undefined,
+				{
+					nodeId: 'node-1',
+					nodeName: 'Message an Agent',
+					runIndex: 2,
+					itemIndex: 3,
+				},
+			);
+
+			const streamObserver = agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[10];
+			expect(streamObserver).toEqual(expect.any(Function));
+
+			await streamObserver?.({
+				type: 'capability-start',
+				toolCallId: 'tc-1',
+				capability: { kind: 'skill', id: 'skill-1', name: 'Research' },
+			});
+
+			expect(sendDataToUI).toHaveBeenCalledWith(
+				'agentNodeProgress',
+				expect.objectContaining({
+					executionId: EXEC_ID,
+					toolCallId: 'tc-1',
+					capability: { kind: 'skill', id: 'skill-1', name: 'Research' },
+					status: 'running',
+				}),
+			);
+		});
+
 		it('backfills projectId from the workflow owner when missing', async () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				userId: 'user-1',
