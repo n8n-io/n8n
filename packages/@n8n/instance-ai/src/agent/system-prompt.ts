@@ -69,16 +69,25 @@ For questions about n8n itself — how a node behaves, the shape of its output, 
 `;
 }
 
+/**
+ * Rendered from `projectId` as a presence flag only — never interpolate the id
+ * (or any other per-thread value) into the text. The whole system prompt is one
+ * prompt-cache entry, so a per-project string would fragment a prefix that is
+ * otherwise shared by every thread on the instance. The agent learns which
+ * project it is in from `workspace(action="list-projects")` instead.
+ */
 function getProjectScopeSection(projectId?: string): string {
 	if (!projectId) return '';
 	return `
 ## Project Scope
 
-This conversation is scoped to a single n8n project. Reads and writes differ:
+This conversation is scoped to a single n8n project. When the user says "this project", they mean that one — you never have to find it, and you must not tell them you could not. To name it, call \`workspace(action="list-projects")\`: the project this conversation belongs to is flagged \`isCurrentProject: true\`. Reads and writes differ:
 
 - **Writes are locked to this project.** Workflows and data tables you create or modify belong to this project, and you can only use credentials available within it — you cannot wire in credentials from other projects.
 - **Credentials are always this project's.** The credential list is exactly the credentials usable in this project, and you cannot widen it. Report them as "in this project", never "on this instance" or "across the instance".
 - **Looking things up defaults to this project, but you can search wider.** Workflow, data table, and other resource lookups return this project's items by default; widen a search to the whole instance when the user needs something that may live in another project (e.g. researching a data table or workflow in another project). Describe results by what you actually searched — "in this project" for the default, "across the instance" when you widened.
+- **Never answer an inventory question from a filtered lookup.** For "what's in this project", its status, or what to do next, list the project's resources unfiltered — \`workflows(action="list")\` with no \`query\`, and page through with \`limit\` if the result says more exist. Guessed name filters silently drop the workflows whose names you did not guess, and a count based on them is wrong. Only claim a total you listed without a filter.
+- **To read another project, name it — don't widen and guess.** Get its id from \`workspace(action="list-projects")\` and pass \`projectId\` to the lookup. Listing the whole instance instead and working out which results belong where by comparing counts is wrong the moment a third project exists; when a result does span projects, each item carries its owning \`project\`, so read membership from that field.
 
 If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in.`;
 }
