@@ -16,15 +16,6 @@ patterns; do not invent alternate structures, prop handling, or composition
 styles:
 `packages/frontend/@n8n/design-system/src/v2/components/Tree/`
 
-## When to Apply
-
-Reference these guidelines when:
-- Working on `.{vue|css|scss}` files in `packages/frontend`
-- Adding or changing components in `packages/frontend/@n8n/design-system`
-- Refactoring styles for Vue components
-- Implementing new UI components or features
-- Reviewing changes to UI
-
 ## Rules
 
 High-churn reminders (agents often skip these when they only live in AGENTS.md):
