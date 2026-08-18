@@ -313,7 +313,8 @@ describe('buildTranscriptFromEvents', () => {
 			expect(interactions[1]).toMatchObject({
 				kind: 'setup-wizard',
 				completedNodes: [{ nodeName: 'Schedule', parametersSet: ['cron'] }],
-				skippedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
+				// Recorded before the split, so the pre-split `skippedNodes` key still parses.
+				nodesStillNeedingSetup: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
 			});
 		});
 

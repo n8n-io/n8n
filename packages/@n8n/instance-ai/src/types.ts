@@ -1104,6 +1104,9 @@ export interface InstanceAiContext {
 	/** Persist a thread-level "always allow" grant for the given key. Invoked by a tool when it
 	 *  resumes from a `scope: 'session'` approval. No-op in contexts without persistence. */
 	grantSessionToolApproval?: (key: string) => Promise<void>;
+	/** Drop a thread-level grant. Only for decisions meant to be reversible inside a thread —
+	 *  e.g. a skipped credential setup the user later asks to complete. */
+	revokeSessionToolApproval?: (key: string) => Promise<void>;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them

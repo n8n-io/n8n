@@ -293,6 +293,30 @@ describe('executions tool', () => {
 			});
 		});
 
+		it('forwards the requested trigger node so a multi-trigger workflow runs the right branch', async () => {
+			const context = createMockContext({
+				permissions: { runWorkflow: 'always_allow' },
+				aiCreatedWorkflowIds: new Set(['wf-1']),
+			});
+			(context.executionService.run as Mock).mockResolvedValue({
+				executionId: 'exec-1',
+				status: 'success',
+			});
+
+			const tool = createExecutionsTool(context);
+			await executeTool(
+				tool,
+				{ action: 'run' as const, workflowId: 'wf-1', triggerNodeName: 'Weekly 5pm' },
+				createAgentCtx() as never,
+			);
+
+			expect(context.executionService.run).toHaveBeenCalledWith(
+				'wf-1',
+				undefined,
+				expect.objectContaining({ triggerNodeName: 'Weekly 5pm' }),
+			);
+		});
+
 		describe('session grant (always allow)', () => {
 			it('runs without HITL when the workflow has a session grant', async () => {
 				const context = createMockContext({

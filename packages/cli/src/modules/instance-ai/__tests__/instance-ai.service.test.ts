@@ -842,6 +842,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		dbSnapshotStorage: {},
 		agentMemory: {},
 		telemetry: service.telemetry,
+		errorReporter: service.instanceAiErrorReporter,
 		logger: service.logger,
 		runState: service.runState,
 		suspendedThreads: service.suspendedThreads,

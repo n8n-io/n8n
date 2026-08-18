@@ -520,7 +520,14 @@ const interpretPlan: SeedStepInterpreter = (call) => {
 // rendering as the live `workflows` result).
 const interpretSetupWizard: SeedStepInterpreter = (call) => {
 	const { output } = call;
-	if (!output || !(Array.isArray(output.completedNodes) || Array.isArray(output.skippedNodes))) {
+	// `skippedNodes` is the pre-split key, kept so seeded fixtures recorded then still parse.
+	const setupOutcomeKeys = [
+		'completedNodes',
+		'nodesStillNeedingSetup',
+		'skippedByUser',
+		'skippedNodes',
+	];
+	if (!output || !setupOutcomeKeys.some((key) => Array.isArray(output[key]))) {
 		return null;
 	}
 	return extractSetupWizardOutcome(output);
