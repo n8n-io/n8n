@@ -37,7 +37,7 @@ describe('StartExecutionService', () => {
 		const result = await service.start({
 			workflowId: 'wf-1',
 			graph: sampleGraph,
-			triggerPayload: { hello: 'world' },
+			triggerOutputs: [[{ json: { hello: 'world' } }]],
 		});
 
 		expect(result.executionId).toBe('exec-id-1');
@@ -47,7 +47,7 @@ describe('StartExecutionService', () => {
 			status: 'queued',
 			mode: 'production',
 			graph: sampleGraph,
-			triggerPayload: { hello: 'world' },
+			triggerOutputs: [[{ json: { hello: 'world' } }]],
 		});
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'execution:enqueued',
@@ -55,7 +55,7 @@ describe('StartExecutionService', () => {
 		});
 	});
 
-	it('defaults mode to production and triggerPayload to null', async () => {
+	it('defaults mode to production and triggerOutputs to null', async () => {
 		const admittance: AdmittanceService = {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
@@ -66,7 +66,7 @@ describe('StartExecutionService', () => {
 		await service.start({ workflowId: 'wf-1', graph: sampleGraph });
 
 		expect(store.createExecution).toHaveBeenCalledWith(
-			expect.objectContaining({ mode: 'production', triggerPayload: null }),
+			expect.objectContaining({ mode: 'production', triggerOutputs: null }),
 		);
 	});
 

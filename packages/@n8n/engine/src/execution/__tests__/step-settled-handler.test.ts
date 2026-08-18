@@ -53,7 +53,7 @@ function makeExecutionStore(
 		status: 'running',
 		mode: 'production',
 		graph,
-		triggerPayload: null,
+		triggerOutputs: null,
 		...overrides,
 	};
 	return {

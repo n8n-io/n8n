@@ -2,6 +2,7 @@ import { UnexpectedError } from '../common';
 import { findTriggerNode } from '../graph';
 import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
+import { DEFAULT_TRIGGER_OUTPUTS } from './execution.types';
 import type { StepStore } from './step-store';
 
 /**
@@ -37,17 +38,16 @@ export class ExecutionStartHandler {
 			throw new UnexpectedError(`Execution ${event.executionId} has no trigger node in its graph`);
 		}
 
-		// The trigger's output was captured at execution start; record it as
-		// already completed so successors can treat it as a satisfied predecessor.
+		// The trigger's outputs were captured at execution start; record them as
+		// already completed so successors read them like any predecessor's slots.
+		// No payload means no slots at all: every successor edge reads undefined
+		// and is treated as dead, same as any other step that produced nothing.
 		// The claim above makes this the only writer, so the row cannot exist yet.
-		// NOTE: trigger payloads are not really supported yet — the raw payload is
-		// not item-shaped, so the v1 shim coerces it to zero items. Proper trigger
-		// handling will decide its shape.
 		const [triggerStep] = await this.stepStore.createSteps(event.executionId, [
 			{
 				nodeId: trigger.id,
 				status: 'completed',
-				outputs: [execution.triggerPayload ?? {}],
+				outputs: execution.triggerOutputs ?? DEFAULT_TRIGGER_OUTPUTS,
 			},
 		]);
 		if (!triggerStep) {

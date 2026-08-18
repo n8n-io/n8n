@@ -34,7 +34,7 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'running',
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
-			triggerPayload: null,
+			triggerOutputs: null,
 			finishedAt: null,
 		});
 		await repo.save(execution);

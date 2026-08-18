@@ -2,7 +2,7 @@ import { UnimplementedError } from '../common';
 import type { WorkflowGraph } from './workflow-graph';
 import { getDescendantNodeIds } from './workflow-graph-queries';
 
-const MAX_SLOT_INDEX = 100;
+export const MAX_SLOT_INDEX = 100;
 
 /** Thrown when a graph fails a structural rule and can never execute. */
 export class GraphValidationError extends Error {
