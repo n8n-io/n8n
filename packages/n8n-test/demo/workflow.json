@@ -1,0 +1,87 @@
+{
+	"name": "My workflow 24",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-80, 0],
+			"id": "184f7793-5296-4543-b849-a500f01d0fe6",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"url": "https://test-endpoint.com/test",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.4,
+			"position": [176, 0],
+			"id": "48591eb0-7e94-4ffa-a04a-ba126008c59a",
+			"name": "Http request"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "f18b054f-257d-4666-bd61-6e009bfebad4",
+							"name": "test-output",
+							"value": "={{ $json.data }}",
+							"type": "string"
+						},
+						{
+							"id": "ad44c0d0-9954-46b2-8633-a94c5cf78de8",
+							"name": "test",
+							"value": "output-field",
+							"type": "string"
+						},
+						{
+							"id": "7f2a9c1e-4b3d-4d21-9a67-0c5b8de1f302",
+							"name": "invokedBy",
+							"value": "={{ $('When clicking ‘Execute workflow’').item.json.invokedBy ?? 'nobody' }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 0],
+			"id": "2d32c443-b9af-421d-834b-0ea13648d84d",
+			"name": "Edit Fields"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Http request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Http request": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"id": "GHX3W9oI10GFOzD5",
+	"tags": []
+}
