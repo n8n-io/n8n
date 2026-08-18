@@ -396,6 +396,9 @@ describe('CommunityPackagesService', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
 
+			// First check exists (pre-download backup); later checks don't (already backed up).
+			vi.mocked(access).mockResolvedValueOnce(undefined).mockRejectedValue(new Error('ENOENT'));
+
 			vi.mocked(execFile).mockImplementation(execMockForThisBlock);
 			vi.mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
 				if (args[0] === 'pack') {
@@ -566,6 +569,8 @@ describe('CommunityPackagesService', () => {
 
 		test('should remove the package.json dependency when a fresh install fails', async () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			// No pre-existing directory here, unlike the shared beforeEach's update scenario.
+			vi.mocked(access).mockReset().mockRejectedValue(new Error('ENOENT'));
 
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
 			vi.mocked(readFile)
@@ -598,6 +603,7 @@ describe('CommunityPackagesService', () => {
 				'The specified package could not be loaded',
 			);
 
+			// Nothing to back up, so cleanup only deletes — no rename.
 			expect(rename).not.toHaveBeenCalled();
 			expect(writeFile).toHaveBeenNthCalledWith(
 				3,
@@ -664,14 +670,16 @@ describe('CommunityPackagesService', () => {
 			);
 
 			// ASSERT:
+			// Only the pre-download backup rename — success needs no restore.
+			expect(rename).toHaveBeenCalledTimes(1);
 			expect(rename).toHaveBeenCalledWith(testBlockPackageDir, backupDirectory);
-			expect(rm).toHaveBeenCalledTimes(3);
-			expect(rm).toHaveBeenNthCalledWith(1, testBlockPackageDir, { recursive: true, force: true });
+
+			expect(rm).toHaveBeenCalledTimes(2);
 			expect(rm).toHaveBeenNthCalledWith(
-				2,
+				1,
 				path.join(nodesDownloadDir, 'n8n-nodes-test-latest.tgz'),
 			);
-			expect(rm).toHaveBeenNthCalledWith(3, backupDirectory, { recursive: true, force: true });
+			expect(rm).toHaveBeenNthCalledWith(2, backupDirectory, { recursive: true, force: true });
 
 			// Check executeNpmCommand was called for npm commands
 			expect(executeNpmCommand).toHaveBeenCalledTimes(2);
@@ -777,6 +785,31 @@ describe('CommunityPackagesService', () => {
 			});
 			expect(installedPackageRepository.remove).toHaveBeenCalledWith(installedPackage);
 			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('restoreFailedPackageInstallation', () => {
+		test('restores the package directory before updating the package.json manifest, so a crash mid-restore leaves the directory intact', async () => {
+			const packageName = 'n8n-nodes-test';
+			const backupDirectory = `${nodesDownloadDir}/node_modules/${packageName}.backup-123`;
+			const callOrder: string[] = [];
+
+			vi.mocked(rm).mockResolvedValue(undefined);
+			vi.mocked(rename).mockImplementation(async () => {
+				callOrder.push('rename');
+			});
+			vi.spyOn(communityPackagesService, 'updatePackageJsonDependency').mockImplementation(
+				async () => {
+					callOrder.push('updatePackageJsonDependency');
+				},
+			);
+
+			await (communityPackagesService as any).restoreFailedPackageInstallation(packageName, {
+				backupDirectory,
+				previousVersion: '1.0.0',
+			});
+
+			expect(callOrder).toEqual(['rename', 'updatePackageJsonDependency']);
 		});
 	});
 

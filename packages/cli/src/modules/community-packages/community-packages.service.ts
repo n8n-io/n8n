@@ -595,6 +595,13 @@ export class CommunityPackagesService {
 		return backupDirectory;
 	}
 
+	/** Discards whatever is at `packageDirectory` and puts the backup back in its place, if any. */
+	private async restorePackageDirectoryFromBackup(packageName: string, backupDirectory?: string) {
+		await this.deletePackageDirectory(packageName);
+		if (!backupDirectory) return;
+		await rename(backupDirectory, this.resolvePackageDirectory(packageName));
+	}
+
 	private async restoreFailedPackageInstallation(
 		packageName: string,
 		options: { backupDirectory?: string; previousVersion?: string; reloadPackage?: boolean },
@@ -602,7 +609,7 @@ export class CommunityPackagesService {
 		const { backupDirectory, previousVersion, reloadPackage = false } = options;
 
 		try {
-			await this.deletePackageDirectory(packageName);
+			await this.restorePackageDirectoryFromBackup(packageName, backupDirectory);
 
 			if (previousVersion) {
 				await this.updatePackageJsonDependency(packageName, previousVersion);
@@ -610,11 +617,7 @@ export class CommunityPackagesService {
 				await this.removePackageJsonDependency(packageName);
 			}
 
-			if (!backupDirectory) return;
-
-			await rename(backupDirectory, this.resolvePackageDirectory(packageName));
-
-			if (!reloadPackage) return;
+			if (!backupDirectory || !reloadPackage) return;
 
 			await this.loadNodesAndCredentials.unloadPackage(packageName);
 			await this.loadNodesAndCredentials.loadPackage(packageName);
@@ -636,58 +639,86 @@ export class CommunityPackagesService {
 		const registry = this.getNpmRegistry();
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 
-		// (Re)create the packageDir
-		await this.deletePackageDirectory(packageName);
-		await mkdir(packageDirectory, { recursive: true });
-
-		// TODO: make sure that this works for scoped packages as well
-		// if (packageName.startsWith('@') && packageName.includes('/')) {}
-		const tarOutput = await executeNpmCommand(
-			['pack', `${packageName}@${packageVersion}`, '--quiet'],
-			{ cwd: this.downloadFolder, registry, authToken },
-		);
-
-		const tarballName = tarOutput?.trim();
+		// Keep the previous install safe until the new one is fully built, so a failed
+		// pack/tar/npm-install never leaves the package permanently absent.
+		const backupDirectory = (await this.packageDirectoryExists(packageName))
+			? await this.backupPackageDirectory(packageName)
+			: undefined;
 
 		try {
-			await asyncExecFile(
-				'tar',
-				['-xzf', tarballName, '-C', packageDirectory, '--strip-components=1'],
-				{ cwd: this.downloadFolder },
+			await mkdir(packageDirectory, { recursive: true });
+
+			// TODO: make sure that this works for scoped packages as well
+			// if (packageName.startsWith('@') && packageName.includes('/')) {}
+			const tarOutput = await executeNpmCommand(
+				['pack', `${packageName}@${packageVersion}`, '--quiet'],
+				{ cwd: this.downloadFolder, registry, authToken },
 			);
 
-			// Strip dev, optional, and peer dependencies before running `npm install`
-			const packageJsonPath = `${packageDirectory}/package.json`;
-			const packageJsonContent = await readFile(packageJsonPath, 'utf-8');
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const {
-				devDependencies,
-				peerDependencies,
-				optionalDependencies,
-				...packageJson
-			}: {
-				version: string;
-				devDependencies: Record<string, string>;
-				peerDependencies: Record<string, string>;
-				optionalDependencies: Record<string, string>;
-			} = JSON.parse(packageJsonContent);
-			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
+			const tarballName = tarOutput?.trim();
 
-			await executeNpmCommand(
-				[
-					'install',
-					'--audit=false',
-					'--fund=false',
-					'--bin-links=false',
-					'--install-strategy=shallow',
-					'--ignore-scripts=true',
-					'--package-lock=false',
-				],
-				{ cwd: packageDirectory, registry, authToken },
-			);
-			await this.updatePackageJsonDependency(packageName, packageJson.version);
-		} finally {
-			await rm(join(this.downloadFolder, tarballName));
+			try {
+				await asyncExecFile(
+					'tar',
+					['-xzf', tarballName, '-C', packageDirectory, '--strip-components=1'],
+					{ cwd: this.downloadFolder },
+				);
+
+				// Strip dev, optional, and peer dependencies before running `npm install`
+				const packageJsonPath = `${packageDirectory}/package.json`;
+				const packageJsonContent = await readFile(packageJsonPath, 'utf-8');
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const {
+					devDependencies,
+					peerDependencies,
+					optionalDependencies,
+					...packageJson
+				}: {
+					version: string;
+					devDependencies: Record<string, string>;
+					peerDependencies: Record<string, string>;
+					optionalDependencies: Record<string, string>;
+				} = JSON.parse(packageJsonContent);
+				await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
+
+				await executeNpmCommand(
+					[
+						'install',
+						'--audit=false',
+						'--fund=false',
+						'--bin-links=false',
+						'--install-strategy=shallow',
+						'--ignore-scripts=true',
+						'--package-lock=false',
+					],
+					{ cwd: packageDirectory, registry, authToken },
+				);
+				await this.updatePackageJsonDependency(packageName, packageJson.version);
+			} finally {
+				await rm(join(this.downloadFolder, tarballName));
+			}
+		} catch (error) {
+			try {
+				await this.restorePackageDirectoryFromBackup(packageName, backupDirectory);
+			} catch (restoreError) {
+				this.logger.warn('Failed to restore community package directory after failed download', {
+					error: ensureError(restoreError),
+					packageName,
+				});
+			}
+			throw error;
+		}
+
+		if (backupDirectory) {
+			try {
+				await rm(backupDirectory, { recursive: true, force: true });
+			} catch (error) {
+				this.logger.warn('Failed to remove community package backup directory', {
+					error: ensureError(error),
+					packageName,
+					backupDirectory,
+				});
+			}
 		}
 
 		return packageDirectory;
