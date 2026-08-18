@@ -1,5 +1,5 @@
 import { computed, ref, watch } from 'vue';
-import { useLocalStorage } from '@vueuse/core';
+import { useEventListener } from '@vueuse/core';
 import type { IconName } from '@n8n/design-system';
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import { LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY } from '@/app/constants/localStorage';
@@ -216,43 +216,31 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 
 	const workflowRefreshKey = ref(0);
 
-	// AI-built workflows still awaiting their one-shot layout tidy. Kept in
-	// localStorage so a reload mid-build doesn't lose the marker; consumed by
-	// InstanceAiWorkflowPreview once the agent goes idle.
-	const pendingTidyWorkflowIds = useLocalStorage<string[]>(
-		LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY,
-		[],
-	);
+	// One storage key per workflow so mark/clear is a single set/remove, never a shared-array merge.
+	function pendingTidyStorageKey(workflowId: string): string {
+		return `${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:${workflowId}`;
+	}
 
-	const pendingTidyWorkflowId = computed(() => {
-		const active = activeWorkflowId.value;
-		return active && pendingTidyWorkflowIds.value.includes(active) ? active : null;
+	// Dependency to make pendingTidyWorkflowId reactive; the marker itself lives only in localStorage.
+	const pendingTidyTick = ref(0);
+
+	useEventListener(window, 'storage', (event: StorageEvent) => {
+		if (event.key?.startsWith(`${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:`)) {
+			pendingTidyTick.value++;
+		}
 	});
 
-	// Reads straight from localStorage instead of the cached `pendingTidyWorkflowIds`
-	// ref: two tabs finishing builds for different workflows close together would
-	// otherwise both read the same stale cached array and the second tab's write
-	// would silently drop the first tab's marker.
-	function readPendingTidyWorkflowIds(): string[] {
-		try {
-			const raw = window.localStorage.getItem(LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY);
-			const parsed: unknown = raw ? JSON.parse(raw) : [];
-			return Array.isArray(parsed) ? (parsed as string[]) : [];
-		} catch {
-			return [];
-		}
-	}
-
-	function writePendingTidyWorkflowIds(ids: string[]) {
-		window.localStorage.setItem(LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY, JSON.stringify(ids));
-		pendingTidyWorkflowIds.value = ids;
-	}
+	const pendingTidyWorkflowId = computed(() => {
+		pendingTidyTick.value;
+		const active = activeWorkflowId.value;
+		return active && window.localStorage.getItem(pendingTidyStorageKey(active)) !== null
+			? active
+			: null;
+	});
 
 	function markPendingTidy(workflowId: string) {
-		const current = readPendingTidyWorkflowIds();
-		if (!current.includes(workflowId)) {
-			writePendingTidyWorkflowIds([...current, workflowId]);
-		}
+		window.localStorage.setItem(pendingTidyStorageKey(workflowId), '1');
+		pendingTidyTick.value++;
 	}
 
 	function clearPendingTidy() {
@@ -261,8 +249,8 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 			return;
 		}
 
-		const current = readPendingTidyWorkflowIds();
-		writePendingTidyWorkflowIds(current.filter((id) => id !== active));
+		window.localStorage.removeItem(pendingTidyStorageKey(active));
+		pendingTidyTick.value++;
 	}
 
 	const latestBuildResult = computed(() => {

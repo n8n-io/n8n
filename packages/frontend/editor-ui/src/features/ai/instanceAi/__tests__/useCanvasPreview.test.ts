@@ -526,16 +526,12 @@ describe('useCanvasPreview', () => {
 			expect(ctx.pendingTidyWorkflowId.value).toBeNull();
 		});
 
-		test('preserves a marker another tab wrote after this instance initialized', async () => {
+		test('marking one workflow never touches another workflow marker key', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-mine');
 
-			// Simulate a different tab finishing its own build and writing its
-			// marker directly to storage — this instance's cached ref (read once
-			// at init, currently `[]`) has no way to know about it, since a
-			// same-window localStorage write doesn't dispatch a `storage` event
-			// back to the writer.
-			localStorage.setItem(LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY, JSON.stringify(['wf-other']));
+			// Simulate a different tab having already marked its own workflow.
+			localStorage.setItem(`${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:wf-other`, '1');
 
 			ctx.thread.messages = [
 				makeMessage({
@@ -552,10 +548,23 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
-			const stored: string[] = JSON.parse(
-				localStorage.getItem(LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY) ?? '[]',
+			expect(localStorage.getItem(`${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:wf-other`)).toBe('1');
+			expect(localStorage.getItem(`${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:wf-mine`)).toBe('1');
+		});
+
+		test('reacts to a marker written by another tab via the storage event', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-mine');
+			ctx.selectTab('wf-mine');
+			expect(ctx.pendingTidyWorkflowId.value).toBeNull();
+
+			localStorage.setItem(`${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:wf-mine`, '1');
+			window.dispatchEvent(
+				new StorageEvent('storage', { key: `${LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY}:wf-mine` }),
 			);
-			expect(stored).toEqual(expect.arrayContaining(['wf-other', 'wf-mine']));
+			await nextTick();
+
+			expect(ctx.pendingTidyWorkflowId.value).toBe('wf-mine');
 		});
 
 		test('clearPendingTidy clears the marker', async () => {
