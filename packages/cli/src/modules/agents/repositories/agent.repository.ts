@@ -26,7 +26,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 		super(Agent, dataSource.manager, transactionRunner);
 	}
 
-
 	async findByProjectId(projectId: string): Promise<Agent[]> {
 		return await this.find({
 			where: { projectId },
