@@ -1,7 +1,6 @@
 import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import { Z } from '@n8n/api-types';
 import { UnexpectedError } from 'n8n-workflow';
-import { parse } from 'yaml';
 import { z } from 'zod';
 
 import {
@@ -176,29 +175,5 @@ describe('shared schema registry', () => {
 
 		expect(registered.get(dtoA)).toBeDefined();
 		expect(registered.get(dtoB)).toBeDefined();
-	});
-
-	it('strips a nullable marker that carries no type, and leaves a typed one alone', () => {
-		const registry = new OpenAPIRegistry();
-		// zod-to-openapi writes `{ nullable: true }` with no `type` for an unannotated z.custom field.
-		registry.register(
-			'Widget',
-			z.object({
-				settings: z.custom<Record<string, unknown> | null>(
-					(value) => value === null || typeof value === 'object',
-				),
-				name: z.string().nullable(),
-			}),
-		);
-
-		const artifact = buildArtifactsFromRegistry(registry, []).find(
-			(a) => a.outputPath === 'shared/spec/schemas/widget.generated.yml',
-		);
-		const { properties } = parse(artifact!.content) as {
-			properties: Record<string, Record<string, unknown>>;
-		};
-
-		expect(properties.settings).toEqual({});
-		expect(properties.name).toEqual({ type: 'string', nullable: true });
 	});
 });

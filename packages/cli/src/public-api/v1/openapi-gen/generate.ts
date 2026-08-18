@@ -69,23 +69,6 @@ function rewriteComponentRefs(node: unknown, toRef: (componentName: string) => s
 	});
 }
 
-function stripBareNullable(node: unknown): void {
-	if (Array.isArray(node)) {
-		node.forEach(stripBareNullable);
-		return;
-	}
-
-	if (node === null || typeof node !== 'object') {
-		return;
-	}
-
-	const record = node as Record<string, unknown>;
-	if (record.nullable === true && record.type === undefined) {
-		delete record.nullable;
-	}
-	Object.values(record).forEach(stripBareNullable);
-}
-
 interface OperationTarget {
 	outputPath: string;
 	pathKey: string;
@@ -105,7 +88,6 @@ export function buildArtifactsFromRegistry(
 		openapi: '3.0.0',
 		info: { title: 'throwaway', version: '0.0.0' },
 	});
-	stripBareNullable(document);
 
 	const artifacts: GeneratedArtifact[] = [];
 
