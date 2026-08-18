@@ -31,7 +31,7 @@ describe('search-workflows MCP tool', () => {
 	 */
 	const mockFolderFinder = (folderIds: string[] = []) =>
 		mockInstance(FolderFinderService, {
-			findFolderFilterIds: vi.fn().mockResolvedValue(folderIds),
+			findFolderFilterIdsWithoutAccessCheck: vi.fn().mockResolvedValue(folderIds),
 		});
 
 	const folderFinderService = mockFolderFinder();
@@ -326,7 +326,10 @@ describe('search-workflows MCP tool', () => {
 				folderId: 'folder-1',
 			});
 
-			expect(folderFinder.findFolderFilterIds).toHaveBeenCalledWith('folder-1', true);
+			expect(folderFinder.findFolderFilterIdsWithoutAccessCheck).toHaveBeenCalledWith(
+				'folder-1',
+				true,
+			);
 			const [, optionsArg] = (workflowService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.filter.parentFolderIds).toEqual(['folder-1', 'folder-1-child']);
 			expect(optionsArg.filter.parentFolderId).toBeUndefined();
@@ -341,7 +344,10 @@ describe('search-workflows MCP tool', () => {
 				includeSubfolders: false,
 			});
 
-			expect(folderFinder.findFolderFilterIds).toHaveBeenCalledWith('folder-1', false);
+			expect(folderFinder.findFolderFilterIdsWithoutAccessCheck).toHaveBeenCalledWith(
+				'folder-1',
+				false,
+			);
 			const [, optionsArg] = (workflowService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.filter.parentFolderIds).toEqual(['folder-1']);
 			expect(optionsArg.filter.parentFolderId).toBeUndefined();
@@ -355,7 +361,7 @@ describe('search-workflows MCP tool', () => {
 				folderId: PROJECT_ROOT,
 			});
 
-			expect(folderFinder.findFolderFilterIds).not.toHaveBeenCalled();
+			expect(folderFinder.findFolderFilterIdsWithoutAccessCheck).not.toHaveBeenCalled();
 			const [, optionsArg] = (workflowService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.filter.parentFolderId).toBe(PROJECT_ROOT);
 		});

@@ -30,20 +30,33 @@ export class FolderFinderService {
 	}
 
 	/**
-	 * Resolves a folder id to itself plus, optionally, its descendant ids —
-	 * deliberately without the project-level access check the `*ForUser` methods
-	 * apply.
+	 * Resolves a folder id to itself plus, optionally, its descendant ids, with
+	 * **no access check** — unlike every `*ForUser` method on this class.
 	 *
-	 * Only for narrowing a query that enforces its own access control: the ids go
-	 * into a `WHERE` clause and are never returned, so the caller's ACL still
-	 * decides what the user sees. This mirrors the workflow list endpoint, which
-	 * filters by `parentFolderId` with no folder permission check and gates only
-	 * the *returning* of folder rows behind `folder:list`.
+	 * Contract for callers: the returned ids may only be used to *narrow* a query
+	 * that already restricts rows to what the user may read, and must never be
+	 * returned to the caller or used to decide whether a folder may be touched.
+	 * Under that contract the absent check discloses nothing, because the calling
+	 * query still decides every visible row. Anything that hands folder data back
+	 * belongs on {@link findFoldersByIdsForUser} or
+	 * {@link findFolderSubtreesForUser} instead.
+	 *
+	 * The absent check is required, not merely tolerated. It mirrors the workflow
+	 * list endpoint, which filters by `parentFolderId` with no folder permission at
+	 * all and gates only the *returning* of folder rows behind `folder:list`. A
+	 * per-user check here would also break the round trip the filter exists for: a
+	 * workflow shared into someone's personal project keeps the parent folder of
+	 * its *home* project, so a member who may read the workflow — and who was just
+	 * handed its `parentFolderId` — usually has no relation to the project holding
+	 * that folder.
 	 *
 	 * Returns an empty array for a folder that does not exist, so callers can tell
 	 * an unknown id apart from a folder holding nothing.
 	 */
-	async findFolderFilterIds(folderId: string, includeDescendants: boolean): Promise<string[]> {
+	async findFolderFilterIdsWithoutAccessCheck(
+		folderId: string,
+		includeDescendants: boolean,
+	): Promise<string[]> {
 		const existing = await this.findExistingFolderIds([folderId]);
 		if (!existing.has(folderId)) return [];
 		if (!includeDescendants) return [folderId];

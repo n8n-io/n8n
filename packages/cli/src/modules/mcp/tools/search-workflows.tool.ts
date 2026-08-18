@@ -222,7 +222,14 @@ async function resolveFolderFilter(
 	// matches workflows with no parent folder.
 	if (folderId === PROJECT_ROOT) return { parentFolderId: PROJECT_ROOT };
 
-	const folderIds = await folderFinderService.findFolderFilterIds(folderId, includeSubfolders);
+	// Resolved without a folder permission check on purpose: these ids only narrow
+	// the workflow query below, which keeps enforcing workflow access on its own, so
+	// a member can still filter by the parentFolderId this tool reported for a
+	// workflow shared out of a project they do not belong to.
+	const folderIds = await folderFinderService.findFolderFilterIdsWithoutAccessCheck(
+		folderId,
+		includeSubfolders,
+	);
 	if (folderIds.length === 0) throw new FolderNotFoundError(folderId);
 
 	return { parentFolderIds: folderIds };
