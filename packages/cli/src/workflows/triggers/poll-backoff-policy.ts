@@ -37,7 +37,7 @@ function takeUnseenCauses(errors: UnknownRecord[], seen: Set<UnknownRecord>): Un
 	for (const error of errors) {
 		for (const key of CAUSE_KEYS) {
 			const cause = error[key];
-			if (isRecord(cause) && seen.has(cause)) {
+			if (isRecord(cause) && !seen.has(cause)) {
 				seen.add(cause);
 				unseen.push(cause);
 			}

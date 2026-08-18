@@ -553,9 +553,17 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		};
 	}
 
-	/** Current time on the database clock, used to check this instance's clock for skew. */
-	async readDbTime(): Promise<Date> {
-		const [row]: Array<{ dbNow: Date | string }> = await this.query(
+	/**
+	 * Current time on the database clock, used to check this instance's clock for skew.
+	 *
+	 * A caller already inside a transaction must pass its `manager`: reading off the
+	 * data source would take a second pooled connection while the first one is held,
+	 * which deadlocks once the pool is saturated. On Postgres the value is then the
+	 * transaction's start time, consistent with the `CURRENT_TIMESTAMP` its own writes
+	 * record.
+	 */
+	async readDbTime(manager?: EntityManager): Promise<Date> {
+		const [row]: Array<{ dbNow: Date | string }> = await (manager ?? this.manager).query(
 			`SELECT ${dbNowLiteral(this.isPostgres)} AS "dbNow"`,
 		);
 		return parseDbTime(row.dbNow);
