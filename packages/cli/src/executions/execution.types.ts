@@ -18,7 +18,8 @@ export declare namespace ExecutionRequest {
 
 	namespace BodyParams {
 		type DeleteFilter = {
-			deleteBefore?: Date;
+			/** ISO-8601 timestamp - a JSON body can never carry a `Date`. */
+			deleteBefore?: string;
 			filters?: IDataObject;
 			ids?: string[];
 		};

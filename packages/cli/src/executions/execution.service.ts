@@ -415,7 +415,15 @@ export class ExecutionService {
 	}
 
 	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
-		const { deleteBefore, ids, filters: requestFiltersRaw } = req.body;
+		const { deleteBefore: deleteBeforeRaw, ids, filters: requestFiltersRaw } = req.body;
+
+		// JSON has no date type, so the body always carries a string here - coerce
+		// once, so downstream consumers can rely on a real `Date`.
+		const deleteBefore = deleteBeforeRaw ? new Date(deleteBeforeRaw) : undefined;
+		if (deleteBefore && Number.isNaN(deleteBefore.getTime())) {
+			throw new BadRequestError('Parameter "deleteBefore" is not a valid date');
+		}
+
 		let requestFilters: IGetExecutionsQueryFilter | undefined;
 		if (requestFiltersRaw) {
 			try {
