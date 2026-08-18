@@ -443,7 +443,6 @@ const handleTooltipClose = () => {
 	.item * {
 		color: var(--color--text);
 		font-size: var(--font-size--sm);
-		line-height: var(--line-height--xs);
 	}
 
 	.item {

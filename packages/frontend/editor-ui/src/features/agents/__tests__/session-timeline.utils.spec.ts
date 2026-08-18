@@ -8,7 +8,9 @@ import {
 	formatDuration,
 	IDLE_THRESHOLD_MS,
 	flattenExecutionsToTimelineItems,
+	itemStatusFilterKey,
 	matchesSearch,
+	matchesTimelineFilters,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -77,6 +79,37 @@ describe('itemFilterKey', () => {
 		expect(itemFilterKey(item({ kind: 'tool', toolName: 'http' }))).toBe('tool');
 		expect(itemFilterKey(item({ kind: 'tool', toolName: 'search' }))).toBe('tool');
 		expect(itemFilterKey(item({ kind: 'tool' }))).toBe('tool');
+	});
+});
+
+describe('timeline status filters', () => {
+	const approved = item({ kind: 'hitl-response', hitlResponseStatus: 'approved' });
+	const declined = item({ kind: 'hitl-response', hitlResponseStatus: 'declined' });
+	const errored = item({ kind: 'tool', toolOutcome: 'error' });
+	const handledWorkflowError = item({
+		kind: 'workflow',
+		toolOutcome: 'success',
+		toolOutput: { executionId: 'exec-1', status: 'error' },
+	});
+
+	it('derives only the statuses exposed by the filter menu', () => {
+		expect(itemStatusFilterKey(approved)).toBe('approved');
+		expect(itemStatusFilterKey(declined)).toBe('declined');
+		expect(itemStatusFilterKey(errored)).toBe('error');
+		expect(itemStatusFilterKey(handledWorkflowError)).toBe('error');
+		expect(
+			itemStatusFilterKey(item({ kind: 'hitl-response', hitlResponseStatus: 'responded' })),
+		).toBeUndefined();
+		expect(itemStatusFilterKey(item({ kind: 'tool', toolOutcome: 'success' }))).toBeUndefined();
+	});
+
+	it('matches items by either event kind or status', () => {
+		expect(matchesTimelineFilters(approved, new Set(['approved']))).toBe(true);
+		expect(matchesTimelineFilters(approved, new Set(['hitl-response']))).toBe(true);
+		expect(matchesTimelineFilters(approved, new Set(['declined']))).toBe(false);
+		expect(matchesTimelineFilters(errored, new Set(['error']))).toBe(true);
+		expect(matchesTimelineFilters(errored, new Set(['tool']))).toBe(true);
+		expect(matchesTimelineFilters(handledWorkflowError, new Set(['error']))).toBe(true);
 	});
 });
 
@@ -204,6 +237,33 @@ function withTimeline(
 	return exec({ timeline: events, ...overrides });
 }
 
+function toolCallEvent(overrides: Record<string, unknown> = {}): AgentExecutionTimelineEvent {
+	return {
+		type: 'tool-call',
+		kind: 'tool',
+		name: 'protected_action',
+		toolCallId: 'tc-1',
+		startTime: 100,
+		endTime: 0,
+		success: false,
+		...overrides,
+	};
+}
+
+function suspensionEvent(overrides: Record<string, unknown> = {}): AgentExecutionTimelineEvent {
+	return {
+		type: 'suspension',
+		toolName: 'protected_action',
+		toolCallId: 'tc-1',
+		timestamp: 110,
+		...overrides,
+	};
+}
+
+function hitlResponseEvent(overrides: Record<string, unknown> = {}): AgentExecutionTimelineEvent {
+	return { type: 'hitl-response', toolCallId: 'tc-1', timestamp: 190, ...overrides };
+}
+
 describe('flattenExecutionsToTimelineItems', () => {
 	const attachment = { id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 };
 
@@ -232,43 +292,197 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(items).toHaveLength(0);
 	});
 
-	it('marks the resumed record of a suspended tool call as user feedback', () => {
+	it('maps a generic HITL flow to tool call, request, and user response items', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline(
 				[
-					{
-						type: 'tool-call',
-						kind: 'tool',
+					toolCallEvent({
 						name: 'chat_action',
-						toolCallId: 'tc-1',
 						input: { action: 'respond' },
-						startTime: 100,
-					},
-					{ type: 'suspension', toolName: 'chat_action', toolCallId: 'tc-1', timestamp: 110 },
+					}),
+					suspensionEvent({ toolName: 'chat_action' }),
 				],
 				{ id: 'e-suspended', hitlStatus: 'suspended' },
 			),
 			withTimeline(
 				[
-					{
-						type: 'tool-call',
-						kind: 'tool',
+					hitlResponseEvent({
+						response: { approved: false },
+					}),
+					toolCallEvent({
 						name: 'chat_action',
-						toolCallId: 'tc-1',
-						output: { type: 'button', value: 'approve' },
+						output: { actionRecorded: true },
 						startTime: 200,
-					},
+						endTime: 200,
+						success: true,
+					}),
 				],
 				{ id: 'e-resumed', hitlStatus: 'resumed' },
 			),
 		]);
 
-		const toolItems = items.filter((item) => item.kind === 'tool');
-		expect(toolItems).toHaveLength(2);
-		// The original card-creating call is a normal tool call…
-		expect(toolItems[0].isUserFeedback).toBeUndefined();
-		// …the post-suspension record carries the user's answer.
-		expect(toolItems[1].isUserFeedback).toBe(true);
+		expect(items.map((item) => item.kind)).toEqual(['tool', 'suspension', 'hitl-response']);
+		expect(items[0]).toMatchObject({
+			toolInput: { action: 'respond' },
+			toolOutput: { actionRecorded: true },
+			toolOutcome: 'success',
+		});
+		expect(items[1]).toMatchObject({
+			hitlRequestType: 'interaction',
+			hitlRequest: { action: 'respond' },
+		});
+		expect(items[2]).toMatchObject({
+			hitlResponseStatus: 'responded',
+			hitlResponse: { approved: false },
+		});
+	});
+
+	it.each(['tool', 'node', 'workflow'] as const)(
+		'maps a legacy declined %s call to a normal tool, approval request, and declined response',
+		(kind) => {
+			const items = flattenExecutionsToTimelineItems([
+				withTimeline(
+					[
+						toolCallEvent({
+							kind,
+							toolCallId: 'tc-declined',
+							input: { recordId: '1' },
+						}),
+						suspensionEvent({
+							toolCallId: 'tc-declined',
+						}),
+					],
+					{ id: 'e-suspended', hitlStatus: 'suspended' },
+				),
+				withTimeline(
+					[
+						toolCallEvent({
+							kind,
+							toolCallId: 'tc-declined',
+							output: {
+								declined: true,
+								message: 'Tool "protected_action" was not approved',
+							},
+							startTime: 200,
+							endTime: 200,
+							success: true,
+						}),
+					],
+					{ id: 'e-resumed', hitlStatus: 'resumed' },
+				),
+			]);
+
+			expect(items.map((item) => item.kind)).toEqual([kind, 'suspension', 'hitl-response']);
+			expect(items[0]).toMatchObject({
+				toolInput: { recordId: '1' },
+				toolOutput: undefined,
+				toolOutcome: undefined,
+			});
+			expect(items[1]).toMatchObject({
+				hitlRequestType: 'approval',
+				hitlRequest: {
+					type: 'approval',
+					toolName: 'protected_action',
+					args: { recordId: '1' },
+				},
+			});
+			expect(items[2]).toMatchObject({
+				kind: 'hitl-response',
+				hitlResponseStatus: 'declined',
+				hitlResponse: {
+					declined: true,
+					message: 'Tool "protected_action" was not approved',
+				},
+			});
+		},
+	);
+
+	it('uses the persisted approval request and maps its result to an approved response', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					toolCallEvent({
+						toolCallId: 'tc-approved',
+					}),
+					suspensionEvent({
+						toolCallId: 'tc-approved',
+						suspendPayload: {
+							type: 'approval',
+							toolName: 'protected_action',
+							displayName: 'Protected action',
+							args: { recordId: '1' },
+						},
+					}),
+				],
+				{ id: 'e-suspended', hitlStatus: 'suspended' },
+			),
+			withTimeline(
+				[
+					hitlResponseEvent({
+						toolCallId: 'tc-approved',
+						response: { approved: true },
+					}),
+					toolCallEvent({
+						toolCallId: 'tc-approved',
+						output: { updated: true },
+						startTime: 200,
+						endTime: 200,
+						success: true,
+					}),
+				],
+				{ id: 'e-resumed', hitlStatus: 'resumed' },
+			),
+		]);
+
+		expect(items.map((item) => item.kind)).toEqual(['tool', 'suspension', 'hitl-response']);
+		expect(items[1]).toMatchObject({
+			hitlRequestType: 'approval',
+			hitlToolDisplayName: 'Protected action',
+			hitlRequest: {
+				type: 'approval',
+				toolName: 'protected_action',
+				displayName: 'Protected action',
+				args: { recordId: '1' },
+			},
+		});
+		expect(items[0]).toMatchObject({
+			toolOutput: { updated: true },
+			toolOutcome: 'success',
+		});
+		expect(items[2]).toMatchObject({
+			hitlResponseStatus: 'approved',
+			hitlResponse: { approved: true },
+			hitlToolDisplayName: 'Protected action',
+		});
+	});
+
+	it('keeps a pending approval as a two-item tool and request sequence', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent({
+					kind: 'node',
+					name: 'check_ledger',
+					toolCallId: 'tc-pending',
+					input: {},
+					nodeDisplayName: 'Check ledger',
+				}),
+				suspensionEvent({
+					toolName: 'check_ledger',
+					toolCallId: 'tc-pending',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'check_ledger',
+						args: {},
+					},
+				}),
+			]),
+		]);
+
+		expect(items.map((item) => item.kind)).toEqual(['node', 'suspension']);
+		expect(items[1]).toMatchObject({
+			hitlRequestType: 'approval',
+			nodeDisplayName: 'Check ledger',
+		});
 	});
 
 	it('emits a user item from userMessage using execution startedAt', () => {
@@ -315,6 +529,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 			workflowTriggerType: 'manual',
 			timestamp: 1000,
 			endTimestamp: 1500,
+			toolOutcome: 'success',
 			toolSuccess: true,
 		});
 	});
@@ -342,6 +557,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 			endTimestamp: 1000,
 			toolInput: { method: 'GET' },
 			toolOutput: undefined,
+			toolOutcome: undefined,
 			toolSuccess: undefined,
 		});
 		expect(tool?.workflowId).toBeUndefined();
