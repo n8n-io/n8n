@@ -302,6 +302,12 @@ const setupAction = z.object({
 			}),
 		)
 		.describe('List of credentials to set up'),
+	requireUserSelection: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set true only for standalone setup when the user explicitly asks to create a new, separate, or different credential, or explicitly asks to see the setup card or choose a credential even if one already exists. Keeps the card open for an explicit user choice instead of automatically accepting a sole existing credential. Omit otherwise.',
+		),
 	credentialFlow: z
 		.object({
 			stage: z.enum(['generic', 'finalize']),
@@ -428,6 +434,7 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 	credentialRequests: z.array(credentialRequestSchema).optional(),
 	projectId: z.string().optional(),
+	requireUserSelection: z.boolean().optional(),
 	credentialFlow: z.object({ stage: z.enum(['generic', 'finalize']) }).optional(),
 });
 
@@ -689,6 +696,7 @@ async function handleSetup(
 			severity: 'info' as const,
 			credentialRequests,
 			...(context.projectId ? { projectId: context.projectId } : {}),
+			...(input.requireUserSelection === true ? { requireUserSelection: true } : {}),
 			...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
 		});
 	}

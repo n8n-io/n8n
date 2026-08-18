@@ -182,6 +182,7 @@ erDiagram
   varchar_32_ id
   varchar_128_ name
   text objective
+  varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_task_run_lock" {
