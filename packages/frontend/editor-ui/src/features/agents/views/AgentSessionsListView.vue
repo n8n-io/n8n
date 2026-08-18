@@ -7,9 +7,11 @@ import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type {
-	AgentExecutionStatus,
 	AgentExecutionThread,
+	AgentSessionFilters,
+	AgentSessionStatus,
 } from '@/features/agents/composables/useAgentThreadsApi';
+import AgentSessionsFilter from '@/features/agents/components/AgentSessionsFilter.vue';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -48,6 +50,10 @@ let managesStoreLifecycle = false;
 
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
+const hasActiveFilters = computed(() => {
+	const { status, origin, startDate, endDate } = sessionsStore.filters;
+	return status !== 'all' || origin !== 'all' || Boolean(startDate) || Boolean(endDate);
+});
 
 function onVisibilityChange() {
 	// Refresh as soon as the user returns to the tab — auto-refresh is
@@ -95,21 +101,21 @@ function formatDuration(ms: number): string {
 	return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
 }
 
-function statusColor(status: AgentExecutionStatus): 'success' | 'danger' | 'warning' | 'text-base' {
-	if (status === 'success') return 'success';
+function statusColor(status: AgentSessionStatus): 'success' | 'danger' | 'warning' | 'text-base' {
+	if (status === 'succeeded') return 'success';
 	if (status === 'error') return 'danger';
 	if (status === 'running') return 'text-base';
 	return 'warning';
 }
 
-function statusLabel(status: AgentExecutionStatus): string {
+function statusLabel(status: AgentSessionStatus): string {
 	switch (status) {
 		case 'running':
 			return i18n.baseText('agentSessions.status.running');
-		case 'success':
-			return i18n.baseText('agentSessions.success');
+		case 'succeeded':
+			return i18n.baseText('agentSessions.status.succeeded');
 		case 'error':
-			return i18n.baseText('agentSessions.timeline.error');
+			return i18n.baseText('agentSessions.status.error');
 		case 'cancelled':
 			return i18n.baseText('agentSessions.status.cancelled');
 		case 'interrupted':
@@ -230,10 +236,21 @@ async function loadMore() {
 		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 	}
 }
+
+async function onFiltersChange(value: AgentSessionFilters) {
+	try {
+		await sessionsStore.setFilters(projectId.value, agentId.value, value);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
+	}
+}
 </script>
 
 <template>
 	<div :class="[$style.wrapper, { [$style.embedded]: props.embedded }]">
+		<div :class="$style.filters">
+			<AgentSessionsFilter :model-value="sessionsStore.filters" @filter-changed="onFiltersChange" />
+		</div>
 		<div :class="$style.tableContainer">
 			<N8nTableBase :class="$style.sessionsTable">
 				<tbody>
@@ -311,7 +328,11 @@ async function loadMore() {
 						<td :colspan="5" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
 								<span data-test-id="agent-sessions-empty">
-									{{ i18n.baseText('agentSessions.empty') }}
+									{{
+										i18n.baseText(
+											hasActiveFilters ? 'agentSessions.emptyWithFilters' : 'agentSessions.empty',
+										)
+									}}
 								</span>
 							</template>
 						</td>
@@ -385,6 +406,11 @@ async function loadMore() {
 	td:last-child {
 		padding-right: var(--spacing--sm);
 	}
+}
+
+.filters {
+	display: flex;
+	justify-content: flex-end;
 }
 
 .titleCell {

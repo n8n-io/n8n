@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { AgentSessionOrigin } from '@/modules/agents/agent-session.types';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -241,6 +242,188 @@ describe('AgentExecutionRepository', () => {
 					executionId: latest.id,
 				},
 			});
+		});
+	});
+
+	describe('session filters', () => {
+		it('filters all composite statuses using the latest execution and recovered failures', async () => {
+			const running = await createThread({ sessionNumber: 1 });
+			const succeeded = await createThread({ sessionNumber: 2 });
+			const recovered = await createThread({ sessionNumber: 3 });
+			const errored = await createThread({ sessionNumber: 4 });
+			const cancelled = await createThread({ sessionNumber: 5 });
+			const interrupted = await createThread({ sessionNumber: 6 });
+			const olderFailure = {
+				count: 1,
+				latest: { kind: 'tool' as const, name: 'Lookup', message: 'failed', occurredAt: 10 },
+			};
+
+			await createExecution({
+				threadId: running.id,
+				status: 'error',
+				failureSummary: olderFailure,
+				createdAt: new Date('2026-01-01T00:00:00Z'),
+			});
+			await createExecution({
+				threadId: running.id,
+				status: 'running',
+				failureSummary: null,
+				createdAt: new Date('2026-01-02T00:00:00Z'),
+			});
+			await createExecution({ threadId: succeeded.id, status: 'success', failureSummary: null });
+			await createExecution({
+				threadId: recovered.id,
+				status: 'success',
+				failureSummary: olderFailure,
+			});
+			await createExecution({ threadId: errored.id, status: 'error', failureSummary: null });
+			await createExecution({
+				threadId: cancelled.id,
+				status: 'error',
+				failureSummary: olderFailure,
+				createdAt: new Date('2026-01-01T00:00:00Z'),
+			});
+			await createExecution({
+				threadId: cancelled.id,
+				status: 'cancelled',
+				failureSummary: null,
+				createdAt: new Date('2026-01-02T00:00:00Z'),
+			});
+			await createExecution({
+				threadId: interrupted.id,
+				status: 'interrupted',
+				failureSummary: olderFailure,
+			});
+
+			const idsFor = async (
+				status: 'running' | 'succeeded' | 'error' | 'cancelled' | 'interrupted',
+			) =>
+				(
+					await threadRepo.findByProjectIdPaginated(projectId, agentId, 20, undefined, {
+						status,
+					})
+				).threads.map(({ id }) => id);
+
+			expect(await idsFor('running')).toEqual([running.id]);
+			expect(await idsFor('succeeded')).toEqual([succeeded.id]);
+			expect(new Set(await idsFor('error'))).toEqual(new Set([recovered.id, errored.id]));
+			expect(await idsFor('cancelled')).toEqual([cancelled.id]);
+			expect(await idsFor('interrupted')).toEqual([interrupted.id]);
+
+			const latestStatuses = await repository.findLatestStatusesByThreadIds([
+				running.id,
+				cancelled.id,
+			]);
+			expect(latestStatuses.get(running.id)).toBe('running');
+			expect(latestStatuses.get(cancelled.id)).toBe('cancelled');
+		});
+
+		it('mirrors the displayed origin precedence', async () => {
+			const origins: Array<{
+				sessionNumber: number;
+				source: string | null;
+				laterSource?: string;
+				parentThreadId?: string;
+				taskId?: string;
+				expected: AgentSessionOrigin;
+			}> = [
+				{ sessionNumber: 1, source: 'slack', parentThreadId: 'parent-1', expected: 'sub-agent' },
+				{ sessionNumber: 2, source: 'subagent', expected: 'sub-agent' },
+				{ sessionNumber: 3, source: 'slack', taskId: 'task-1', expected: 'schedule' },
+				{ sessionNumber: 4, source: 'task', expected: 'schedule' },
+				{ sessionNumber: 5, source: null, expected: 'preview' },
+				{ sessionNumber: 6, source: 'chat', expected: 'preview' },
+				{ sessionNumber: 7, source: 'instance-ai', expected: 'instance-ai' },
+				{ sessionNumber: 8, source: 'mcp', expected: 'mcp' },
+				{ sessionNumber: 9, source: 'workflow', expected: 'workflow' },
+				{ sessionNumber: 10, source: 'slack', laterSource: 'workflow', expected: 'slack' },
+				{ sessionNumber: 11, source: 'telegram', expected: 'telegram' },
+				{ sessionNumber: 12, source: 'linear', expected: 'linear' },
+				{ sessionNumber: 13, source: 'discord', expected: 'discord' },
+			];
+			const expectedIds = new Map<AgentSessionOrigin, string[]>();
+
+			for (const origin of origins) {
+				const thread = await createThread({
+					sessionNumber: origin.sessionNumber,
+					parentThreadId: origin.parentThreadId,
+					taskId: origin.taskId,
+				});
+				await createExecution({
+					threadId: thread.id,
+					source: origin.source,
+					createdAt: new Date('2026-01-01T00:00:00Z'),
+				});
+				if (origin.laterSource) {
+					await createExecution({
+						threadId: thread.id,
+						source: origin.laterSource,
+						createdAt: new Date('2026-01-02T00:00:00Z'),
+					});
+				}
+				expectedIds.set(origin.expected, [...(expectedIds.get(origin.expected) ?? []), thread.id]);
+			}
+
+			for (const [origin, ids] of expectedIds) {
+				const result = await threadRepo.findByProjectIdPaginated(
+					projectId,
+					agentId,
+					20,
+					undefined,
+					{ origin },
+				);
+				expect(new Set(result.threads.map(({ id }) => id))).toEqual(new Set(ids));
+			}
+		});
+
+		it('applies inclusive date and status filters before cursor pagination', async () => {
+			const start = new Date('2026-01-01T00:00:00Z');
+			const middle = new Date('2026-01-02T00:00:00Z');
+			const end = new Date('2026-01-03T00:00:00Z');
+			const oldest = await createThread({ sessionNumber: 1, updatedAt: start });
+			const middleError = await createThread({ sessionNumber: 2, updatedAt: middle });
+			const newest = await createThread({ sessionNumber: 3, updatedAt: end });
+			await createExecution({ threadId: oldest.id, status: 'success', source: 'workflow' });
+			await createExecution({ threadId: middleError.id, status: 'error', source: 'workflow' });
+			await createExecution({ threadId: newest.id, status: 'success', source: 'workflow' });
+
+			const firstPage = await threadRepo.findByProjectIdPaginated(
+				projectId,
+				agentId,
+				1,
+				undefined,
+				{
+					status: 'succeeded',
+					origin: 'workflow',
+					updatedAfter: start,
+					updatedBefore: end,
+				},
+			);
+			const secondPage = await threadRepo.findByProjectIdPaginated(
+				projectId,
+				agentId,
+				1,
+				firstPage.nextCursor ?? undefined,
+				{
+					status: 'succeeded',
+					origin: 'workflow',
+					updatedAfter: start,
+					updatedBefore: end,
+				},
+			);
+
+			expect(firstPage.threads.map(({ id }) => id)).toEqual([newest.id]);
+			expect(secondPage.threads.map(({ id }) => id)).toEqual([oldest.id]);
+			expect(secondPage.nextCursor).toBeNull();
+
+			const invertedRange = await threadRepo.findByProjectIdPaginated(
+				projectId,
+				agentId,
+				20,
+				undefined,
+				{ updatedAfter: end, updatedBefore: start },
+			);
+			expect(invertedRange.threads).toEqual([]);
 		});
 	});
 });

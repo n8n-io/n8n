@@ -14,12 +14,14 @@ const {
 	refreshThreads,
 	loadMore,
 	deleteThread,
+	setFilters,
 } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	storeState: {
 		threads: [] as unknown[],
 		loading: false,
 		nextCursor: null as string | null,
+		filters: { status: 'all', origin: 'all', startDate: '', endDate: '' },
 	},
 	fetchThreads: vi.fn(),
 	startAutoRefresh: vi.fn(),
@@ -27,6 +29,7 @@ const {
 	refreshThreads: vi.fn(),
 	loadMore: vi.fn(),
 	deleteThread: vi.fn(),
+	setFilters: vi.fn(),
 }));
 
 let documentAddEventListenerSpy: ReturnType<typeof vi.spyOn>;
@@ -48,11 +51,12 @@ vi.mock('@n8n/i18n', () => ({
 					'agentSessions.origin.schedule': 'Schedule',
 					'agentSessions.origin.workflow': 'Workflow',
 					'agentSessions.empty': 'No agent sessions',
-					'agentSessions.success': 'Succeeded',
+					'agentSessions.emptyWithFilters': 'No sessions match these filters',
+					'agentSessions.status.running': 'Running',
+					'agentSessions.status.succeeded': 'Succeeded',
+					'agentSessions.status.error': 'Error',
 					'agentSessions.status.cancelled': 'Canceled',
 					'agentSessions.status.interrupted': 'Interrupted',
-					'agentSessions.status.running': 'Running',
-					'agentSessions.timeline.error': 'Error',
 				}[key] ?? key
 			);
 		},
@@ -72,6 +76,12 @@ vi.mock('@n8n/design-system', () => ({
 		emits: ['select'],
 	},
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
+	N8nCheckbox: {
+		props: ['modelValue'],
+		emits: ['update:modelValue'],
+		template:
+			'<label><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" /><slot name="label" /></label>',
+	},
 	N8nIcon: { template: '<span :data-icon="icon" />', props: ['icon', 'size'] },
 	N8nIconButton: {
 		template: '<button v-bind="$attrs"><slot /></button>',
@@ -94,13 +104,26 @@ vi.mock('../agentSessions.store', () => ({
 		get nextCursor() {
 			return storeState.nextCursor;
 		},
+		get filters() {
+			return storeState.filters;
+		},
 		fetchThreads,
 		startAutoRefresh,
 		stopAutoRefresh,
 		refreshThreads,
 		loadMore,
 		deleteThread,
+		setFilters,
 	}),
+}));
+
+vi.mock('../components/AgentSessionsFilter.vue', () => ({
+	default: {
+		name: 'AgentSessionsFilter',
+		emits: ['filterChanged'],
+		template:
+			"<button data-test-id=\"agent-sessions-filter\" @click=\"$emit('filterChanged', { status: 'error', origin: 'all', startDate: '', endDate: '' })\" />",
+	},
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
@@ -160,7 +183,7 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		updatedAt: '2026-07-20T10:05:00.000Z',
 		firstMessage: null,
 		failureSummary: null,
-		status: 'success',
+		status: 'succeeded',
 		...overrides,
 	};
 }
@@ -168,13 +191,16 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 async function mountView({
 	threads = [makeThread()],
 	manageStoreLifecycle = true,
+	filters = { status: 'all', origin: 'all', startDate: '', endDate: '' },
 }: {
 	threads?: AgentExecutionThread[];
 	manageStoreLifecycle?: boolean;
+	filters?: typeof storeState.filters;
 } = {}) {
 	storeState.threads = threads;
 	storeState.loading = false;
 	storeState.nextCursor = null;
+	storeState.filters = filters;
 
 	return mount(AgentSessionsListView, {
 		props: {
@@ -191,6 +217,8 @@ describe('AgentSessionsListView', () => {
 	beforeEach(() => {
 		fetchThreads.mockReset();
 		fetchThreads.mockResolvedValue(undefined);
+		setFilters.mockReset();
+		setFilters.mockResolvedValue(undefined);
 		documentAddEventListenerSpy = vi.spyOn(document, 'addEventListener');
 		documentRemoveEventListenerSpy = vi.spyOn(document, 'removeEventListener');
 		vi.clearAllMocks();
@@ -230,7 +258,7 @@ describe('AgentSessionsListView', () => {
 	});
 
 	it.each([
-		['success', 'Succeeded', 'success', true],
+		['succeeded', 'Succeeded', 'success', true],
 		['error', 'Error', 'danger', true],
 		['cancelled', 'Canceled', 'warning', true],
 		['interrupted', 'Interrupted', 'warning', true],
@@ -245,6 +273,30 @@ describe('AgentSessionsListView', () => {
 		expect(indicator.attributes('data-color')).toBe(color);
 		expect(wrapper.find('[data-testid="agent-session-status-duration"]').exists()).toBe(
 			showsDuration,
+		);
+	});
+
+	it('requests filtered results when the filter changes', async () => {
+		const wrapper = await mountView();
+
+		await wrapper.get('[data-test-id="agent-sessions-filter"]').trigger('click');
+
+		expect(setFilters).toHaveBeenCalledWith('project-1', 'agent-1', {
+			status: 'error',
+			origin: 'all',
+			startDate: '',
+			endDate: '',
+		});
+	});
+
+	it('shows the filtered empty state when no sessions match', async () => {
+		const wrapper = await mountView({
+			threads: [],
+			filters: { status: 'error', origin: 'all', startDate: '', endDate: '' },
+		});
+
+		expect(wrapper.get('[data-test-id="agent-sessions-empty"]').text()).toBe(
+			'No sessions match these filters',
 		);
 	});
 

@@ -2,11 +2,13 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
+	defaultAgentSessionFilters,
 	listThreads,
 	getThreadDetail as getThreadDetailApi,
 	deleteThread as deleteThreadApi,
 	exportThreadToLangSmith as exportThreadToLangSmithApi,
 	type AgentExecutionThread,
+	type AgentSessionFilters,
 	type ThreadDetail,
 } from './composables/useAgentThreadsApi';
 
@@ -18,36 +20,39 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	const nextCursor = ref<string | null>(null);
 	const loading = ref(false);
 	const autoRefresh = ref(true);
+	const filters = ref<AgentSessionFilters>(defaultAgentSessionFilters());
 
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 	let currentProjectId: string | null = null;
 	let currentAgentId: string | null = null;
 	let autoRefreshActive = false;
 
-	// Tracks the most recently requested (project, agent) pair. Concurrent
+	// Tracks the most recently requested project, agent, and filter set. Concurrent
 	// `fetchThreads` calls — typically when the user switches agents quickly —
 	// would otherwise race, and an older response could overwrite the newer
 	// agent's threads.
-	function keyFor(projectId: string, agentId: string) {
-		return `${projectId}:${agentId}`;
+	function keyFor(projectId: string, agentId: string, value: AgentSessionFilters) {
+		return `${projectId}:${agentId}:${JSON.stringify(value)}`;
 	}
 	let latestKey: string | null = null;
 
-	async function fetchThreads(projectId: string, agentId: string) {
+	async function fetchThreads(
+		projectId: string,
+		agentId: string,
+		options: { filters?: AgentSessionFilters } = {},
+	) {
 		currentProjectId = projectId;
 		currentAgentId = agentId;
-		const key = keyFor(projectId, agentId);
+		const requestedFilters = options.filters ?? filters.value;
+		const key = keyFor(projectId, agentId, requestedFilters);
 		latestKey = key;
 		loading.value = true;
 		try {
 			const rootStore = useRootStore();
-			const page = await listThreads(
-				rootStore.restApiContext,
-				projectId,
-				agentId,
-				ITEMS_PER_PAGE,
-				undefined,
-			);
+			const page = await listThreads(rootStore.restApiContext, projectId, agentId, {
+				limit: ITEMS_PER_PAGE,
+				filters: requestedFilters,
+			});
 			if (latestKey !== key) return;
 			threads.value = page.threads;
 			nextCursor.value = page.nextCursor;
@@ -69,17 +74,14 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	 *     the cursor returned by a fresh first-page fetch would rewind us.
 	 */
 	async function refreshThreads(projectId: string, agentId: string) {
-		const key = keyFor(projectId, agentId);
+		const key = keyFor(projectId, agentId, filters.value);
 		if (latestKey !== null && latestKey !== key) return;
 		try {
 			const rootStore = useRootStore();
-			const page = await listThreads(
-				rootStore.restApiContext,
-				projectId,
-				agentId,
-				ITEMS_PER_PAGE,
-				undefined,
-			);
+			const page = await listThreads(rootStore.restApiContext, projectId, agentId, {
+				limit: ITEMS_PER_PAGE,
+				filters: filters.value,
+			});
 			if (latestKey !== key) return;
 			const seen = new Set(page.threads.map((t) => t.id));
 			const tail = threads.value.filter((t) => !seen.has(t.id));
@@ -96,20 +98,18 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 
 	async function loadMore(projectId: string, agentId: string) {
 		if (!nextCursor.value || loading.value) return;
-		const key = keyFor(projectId, agentId);
+		const key = keyFor(projectId, agentId, filters.value);
 		// Don't paginate against a stale agent — the cursor belongs to the
 		// previous list.
 		if (latestKey !== null && latestKey !== key) return;
 		loading.value = true;
 		try {
 			const rootStore = useRootStore();
-			const page = await listThreads(
-				rootStore.restApiContext,
-				projectId,
-				agentId,
-				ITEMS_PER_PAGE,
-				nextCursor.value,
-			);
+			const page = await listThreads(rootStore.restApiContext, projectId, agentId, {
+				limit: ITEMS_PER_PAGE,
+				cursor: nextCursor.value,
+				filters: filters.value,
+			});
 			if (latestKey !== key) return;
 			// Dedupe by id when appending: the server's cursor can be
 			// inclusive of the boundary, returning the last item of the
@@ -154,6 +154,14 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		return await exportThreadToLangSmithApi(rootStore.restApiContext, projectId, agentId, threadId);
 	}
 
+	async function setFilters(projectId: string, agentId: string, value: AgentSessionFilters) {
+		if (JSON.stringify(filters.value) === JSON.stringify(value)) return;
+		filters.value = { ...value };
+		threads.value = [];
+		nextCursor.value = null;
+		await fetchThreads(projectId, agentId);
+	}
+
 	function scheduleAutoRefresh() {
 		if (!autoRefreshActive || !autoRefresh.value || !currentProjectId || !currentAgentId) return;
 		refreshTimer = setTimeout(async () => {
@@ -188,6 +196,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		currentProjectId = null;
 		currentAgentId = null;
 		latestKey = null;
+		filters.value = defaultAgentSessionFilters();
 	}
 
 	return {
@@ -195,6 +204,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		nextCursor,
 		loading,
 		autoRefresh,
+		filters,
 		fetchThreads,
 		refreshThreads,
 		loadMore,
@@ -202,6 +212,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		upsertThread,
 		deleteThread,
 		exportThreadToLangSmith,
+		setFilters,
 		startAutoRefresh,
 		stopAutoRefresh,
 		reset,
