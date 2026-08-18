@@ -82,6 +82,7 @@ describe('WorkflowReviewAccessService', () => {
 				workflowName: 'My workflow',
 				workflowVersionId: pinnedVersionId,
 				baselineVersionId: null,
+				requestState: 'open',
 			},
 		]);
 	}
@@ -226,6 +227,7 @@ describe('WorkflowReviewAccessService', () => {
 					workflowName: 'My workflow',
 					workflowVersionId: 'ver-pinned',
 					baselineVersionId: null,
+					requestState: 'open',
 				},
 			]);
 			expect(result.pinnedWorkflowId).toBe(workflowId);
@@ -245,12 +247,14 @@ describe('WorkflowReviewAccessService', () => {
 					workflowName: 'My workflow',
 					workflowVersionId: 'ver-pinned',
 					baselineVersionId: null,
+					requestState: 'open',
 				},
 				{
 					workflowId: 'wf-2',
 					workflowName: 'Other workflow',
 					workflowVersionId: 'ver-other',
 					baselineVersionId: null,
+					requestState: 'open',
 				},
 			]);
 			workflowFinderService.findWorkflowForUser.mockImplementation(async (id) =>
@@ -265,6 +269,7 @@ describe('WorkflowReviewAccessService', () => {
 					workflowName: 'Other workflow',
 					workflowVersionId: 'ver-other',
 					baselineVersionId: null,
+					requestState: 'open',
 				},
 			]);
 			// Eligibility still resolves against the pinned row, which they cannot read

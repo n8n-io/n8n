@@ -5,6 +5,10 @@ import { BaseRepository } from './base-repository';
 import { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
+import {
+	WorkflowReviewRequest,
+	type WorkflowReviewRequestState,
+} from '../entities/workflow-review-request.ee';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 /** The review's linked workflow as shown in cross-request lists (inbox). */
@@ -18,6 +22,11 @@ export type WorkflowReviewRequestWorkflowDetailRow = {
 	workflowName: string;
 	workflowVersionId: string | null;
 	baselineVersionId: string | null;
+	/**
+	 * The parent request's state. It comes from this same query, so it always matches
+	 * the `baselineVersionId` beside it — the detail read needs both to pick a baseline.
+	 */
+	requestState: WorkflowReviewRequestState;
 };
 
 @Service()
@@ -142,10 +151,15 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 			// The inner join is safe: `workflowId` FKs onto `workflow_entity` with
 			// `ON DELETE CASCADE`, so a child row never outlives its workflow.
 			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = wrw.workflowId')
+			// The state is joined in rather than read separately, because an approval writes
+			// the baseline and closes the request together: two queries can catch one half
+			// of that and miss the other.
+			.innerJoin(WorkflowReviewRequest, 'request', 'request.id = wrw.workflowReviewRequestId')
 			.select('wrw.workflowId', 'workflowId')
 			.addSelect('workflow.name', 'workflowName')
 			.addSelect('wrw.workflowVersionId', 'workflowVersionId')
 			.addSelect('wrw.baselineVersionId', 'baselineVersionId')
+			.addSelect('request.state', 'requestState')
 			.where('wrw.workflowReviewRequestId = :requestId', { requestId })
 			.orderBy('wrw.id', 'ASC')
 			.getRawMany<{
@@ -153,6 +167,7 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 				workflowName: string;
 				workflowVersionId: string | null;
 				baselineVersionId: string | null;
+				requestState: WorkflowReviewRequestState;
 			}>();
 
 		return rows.map((row) => ({
@@ -160,6 +175,7 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 			workflowName: row.workflowName,
 			workflowVersionId: row.workflowVersionId ?? null,
 			baselineVersionId: row.baselineVersionId ?? null,
+			requestState: row.requestState,
 		}));
 	}
 }

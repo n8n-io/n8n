@@ -8,6 +8,7 @@ import type {
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
+	WorkflowReviewRequestState,
 	WorkflowReviewRequestWorkflowDetailRow,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
@@ -119,8 +120,17 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		pinnedVersionId: string | null = 'ver-pinned',
 		workflowName = 'My workflow',
 		baselineVersionId: string | null = null,
+		requestState: WorkflowReviewRequestState = 'open',
 	) {
-		mockGate([{ workflowId, workflowName, workflowVersionId: pinnedVersionId, baselineVersionId }]);
+		mockGate([
+			{
+				workflowId,
+				workflowName,
+				workflowVersionId: pinnedVersionId,
+				baselineVersionId,
+				requestState,
+			},
+		]);
 	}
 
 	describe('when reviews are unavailable', () => {
@@ -399,6 +409,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 						workflowName: 'My workflow',
 						workflowVersionId: 'ver-pinned',
 						baselineVersionId: 'ver-frozen',
+						requestState: 'closed',
 					},
 				],
 				pinnedWorkflowId: workflowId,
@@ -415,9 +426,8 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
 		});
 
-		it('uses the frozen baseline when an approval commits between the request and row reads', async () => {
-			// The request row is fetched before the child rows, so a read straddling
-			// the approval commit sees `open` alongside an already-frozen baseline.
+		it('uses a frozen baseline whatever state accompanies it', async () => {
+			// Only an approval ever writes a baseline, so a frozen one can be trusted alone.
 			accessService.findReadableRequestOrFail.mockResolvedValue({
 				request: reviewRequest({ state: 'open', decision: 'pending' }),
 				readableWorkflowRows: [
@@ -426,6 +436,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 						workflowName: 'My workflow',
 						workflowVersionId: 'ver-pinned',
 						baselineVersionId: 'ver-frozen',
+						requestState: 'open',
 					},
 				],
 				pinnedWorkflowId: workflowId,
@@ -451,12 +462,42 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 						workflowName: 'My workflow',
 						workflowVersionId: 'ver-pinned',
 						baselineVersionId: null,
+						requestState: 'closed',
 					},
 				],
 				pinnedWorkflowId: workflowId,
 				canReadPinnedWorkflow: true,
 			});
 			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-live-now');
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.workflows[0]?.baselineVersion).toBeNull();
+			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
+		});
+
+		it('keeps a captured null null when the request row was read before the approval', async () => {
+			// The request is fetched before its rows, so an approval landing in between
+			// leaves the request looking open. The row's own state has to win: a frozen null
+			// baseline would otherwise read as "still open" and resolve the live version.
+			accessService.findReadableRequestOrFail.mockResolvedValue({
+				request: reviewRequest({ state: 'open', decision: 'pending' }),
+				readableWorkflowRows: [
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						baselineVersionId: null,
+						requestState: 'closed',
+					},
+				],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: true,
+			});
+			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-pinned');
 			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
 				historyVersion(versionId),
 			);
@@ -476,6 +517,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 						workflowName: 'My workflow',
 						workflowVersionId: 'ver-pinned',
 						baselineVersionId: null,
+						requestState: 'closed',
 					},
 				],
 				pinnedWorkflowId: workflowId,

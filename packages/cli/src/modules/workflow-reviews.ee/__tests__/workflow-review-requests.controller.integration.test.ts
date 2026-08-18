@@ -3285,6 +3285,31 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		expect(child?.baselineVersionId).toBe('version-published');
 	});
 
+	test('keeps a null approval baseline null once auto-publish moves the pointer', async () => {
+		const workflow = await createWorkflow({ name: 'Reviewed workflow' }, teamProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
+		// Never published, so the approval freezes a null baseline.
+		const request = await seedRequest(workflow.id, 'version-pinned', owner);
+		await reviewerRepository.addReviewers(
+			{ workflowReviewRequestId: request.id, userIds: [member.id] },
+			{},
+		);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		// Auto-publish leaves the live version pointing at the pinned one, so reading it
+		// live would diff that version against itself.
+		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-pinned');
+
+		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+		expect(response.body.data.state).toBe('closed');
+		expect(response.body.data.workflows[0].baselineVersion).toBeNull();
+	});
+
 	test('returns no baseline for a closed review that was never approved', async () => {
 		const workflow = await createWorkflow({ name: 'Reviewed workflow' }, teamProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-published' });

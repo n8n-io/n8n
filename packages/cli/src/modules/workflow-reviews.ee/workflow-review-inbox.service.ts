@@ -192,11 +192,7 @@ export class WorkflowReviewInboxService {
 		const { request, readableWorkflowRows } = access;
 
 		const [workflows, participantsByRequestId, eligibility] = await Promise.all([
-			Promise.all(
-				readableWorkflowRows.map(
-					async (row) => await this.toWorkflowDetail(row, request.state === 'closed'),
-				),
-			),
+			Promise.all(readableWorkflowRows.map(async (row) => await this.toWorkflowDetail(row))),
 			this.resolveParticipants(request),
 			// Resolved against the pinned (pre-read-filter) row, matching the row
 			// decide() authorizes against — not against what the caller can read.
@@ -228,30 +224,31 @@ export class WorkflowReviewInboxService {
 	}
 
 	/**
-	 * Both diff sides for one child row. Open reviews resolve the live published
-	 * pointer, so a publish during review moves what reviewers diff against.
-	 * Closed reviews never re-resolve it — they read the stored baseline, which is
-	 * set only by approval. A closed review therefore yields null unless it was
-	 * approved, and null means "no baseline to diff against", never "fall back to
-	 * the live pointer" (that would show a diff nobody approved). A row that
-	 * already carries a baseline reads it regardless of the state we were told.
+	 * Both sides of the diff for one child row: the version under review, and the
+	 * baseline to compare it against.
+	 *
+	 * While a review is open the baseline is the live published version, so a publish
+	 * during the review moves what reviewers see. Approval freezes it onto the row, and
+	 * a closed review reads only that frozen value.
+	 *
+	 * A closed review without one returns null, meaning "nothing to compare against".
+	 * It never falls back to the live version, which would show a diff nobody approved.
 	 */
 	private async toWorkflowDetail(
 		row: WorkflowReviewRequestWorkflowDetailRow,
-		isClosed: boolean,
 	): Promise<WorkflowReviewRequestWorkflowDetail> {
-		// A stored baseline is written only by approval, so it wins even when
-		// `isClosed` is false: the request row is read before the child rows, so an
-		// approval committing in between yields a stale `open` state on a row that
-		// already has its baseline.
+		// State and baseline come from the same row, so they cannot disagree. That
+		// matters here: approving a never-published workflow freezes a null baseline,
+		// which looks exactly like "nothing frozen yet", and only the state tells the
+		// two apart.
 		//
-		// Null is deliberate and covers two closed cases the API cannot tell apart:
-		// never published, and closed without an approval (auto-close on
-		// archive/transfer leaves the decision as-is). Callers distinguish the last
-		// one via `state` + `decision`.
+		// A frozen baseline always wins, whatever state sits next to it, because only
+		// approval writes one. Null on a closed review can mean never published,
+		// approved while unpublished, or closed without an approval — callers tell those
+		// apart via `state` + `decision`.
 		const baselineVersionId =
 			row.baselineVersionId ??
-			(isClosed
+			(row.requestState === 'closed'
 				? null
 				: await this.workflowPublishedVersionRepository.getPublishedVersionId(row.workflowId));
 
