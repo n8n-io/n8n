@@ -220,6 +220,41 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('updateConfig', () => {
+		it('rejects saving an HTTP Request URL controlled by $fromAI', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					{
+						...baseConfig,
+						tools: [
+							{
+								type: 'node',
+								name: 'Fetch page',
+								node: {
+									nodeType: 'n8n-nodes-base.httpRequestTool',
+									nodeTypeVersion: 4.5,
+									nodeParameters: {
+										url: "={{ $fromAI('url', 'The URL to inspect', 'string') }}",
+									},
+								},
+							},
+						],
+					},
+					user,
+					byUser,
+				),
+			).rejects.toThrow(
+				'HTTP Request tool "Fetch page" cannot use $fromAI in tools.0.node.nodeParameters.url. Enter a fixed URL.',
+			);
+			expect(agent.schema).toBe(baseConfig);
+			expect(agentRepository.save).not.toHaveBeenCalled();
+		});
+
 		it('persists an explicit web-search disable and clears native provider tools', async () => {
 			// Regression: previously the disable was stripped on write and resurrected
 			// on read, so the config hash never changed and the builder looped.

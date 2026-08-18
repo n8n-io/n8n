@@ -67,12 +67,17 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	function withFingerprint(
 		config: AgentJsonConfig | null,
 		triggers: string[],
-		emit: (configVersion: string) => void,
+		emit: (configVersion: string, configuredTriggers: string[]) => void,
+		additionalConfiguredTriggers: string[] = [],
 	) {
 		void (async () => {
 			try {
-				const fp = await buildAgentConfigFingerprint(config, triggers);
-				emit(fp.config_version);
+				const fp = await buildAgentConfigFingerprint(
+					config,
+					triggers,
+					additionalConfiguredTriggers,
+				);
+				emit(fp.config_version, fp.triggers);
 			} catch {
 				// Swallow — telemetry is best-effort.
 			}
@@ -81,15 +86,20 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 
 	function trackTriggerAdded(payload: { triggerType: string; triggers: string[] }) {
 		const s = snapshot();
-		withFingerprint(s.config, payload.triggers, (configVersion) => {
-			agentTelemetry.trackAddedTrigger({
-				agentId: s.agentId,
-				triggerType: payload.triggerType,
-				triggers: payload.triggers,
-				configVersion,
-				status: s.status,
-			});
-		});
+		withFingerprint(
+			s.config,
+			payload.triggers,
+			(configVersion, configuredTriggers) => {
+				agentTelemetry.trackAddedTrigger({
+					agentId: s.agentId,
+					triggerType: payload.triggerType,
+					triggers: configuredTriggers,
+					configVersion,
+					status: s.status,
+				});
+			},
+			[payload.triggerType],
+		);
 	}
 
 	/**
