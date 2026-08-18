@@ -392,7 +392,7 @@ describe('SourceControlGitService', () => {
 			);
 			expect(mockGitInstance.env).toHaveBeenCalledWith(
 				'GIT_SSH_COMMAND',
-				'ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o UserKnownHostsFile=".ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "private-key"',
+				"ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o UserKnownHostsFile='.ssh/known_hosts' -o StrictHostKeyChecking=accept-new -i 'private-key'",
 			);
 			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
 		});
@@ -624,11 +624,11 @@ describe('SourceControlGitService', () => {
 				// Assert - verify paths with spaces are properly quoted
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
-					expect.stringContaining('"C:/Users/Test User/.n8n/ssh_private_key_temp"'), // Quoted path with spaces
+					expect.stringContaining("'C:/Users/Test User/.n8n/ssh_private_key_temp'"), // Quoted path with spaces
 				);
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
-					expect.stringContaining('"C:/Users/Test User/.n8n/.ssh/known_hosts"'), // Quoted known_hosts path
+					expect.stringContaining("'C:/Users/Test User/.n8n/.ssh/known_hosts'"), // Quoted known_hosts path
 				);
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
@@ -640,7 +640,7 @@ describe('SourceControlGitService', () => {
 				);
 			});
 
-			it('should escape double quotes in paths to prevent command injection', async () => {
+			it('should single-quote paths to prevent command injection', async () => {
 				// Arrange
 				const mockPreferencesService = mock<SourceControlPreferencesService>();
 				const pathWithQuotes = 'C:/Users/Test"User/.n8n/ssh_private_key_temp';
@@ -665,14 +665,17 @@ describe('SourceControlGitService', () => {
 				// Act
 				await gitService.setGitCommand('/git/folder', sshFolder);
 
-				// Assert - verify the SSH command was properly escaped
+				// Assert - the double quote is kept literal inside single quotes, so it
+				// cannot terminate the argument and inject a command.
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
-					expect.stringContaining('Test\\"User'), // Escaped quote
+					expect.stringContaining("-i 'C:/Users/Test\"User/.n8n/ssh_private_key_temp'"),
 				);
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
-					expect.not.stringContaining('Test"User'), // No unescaped quote in final command
+					expect.stringContaining(
+						"-o UserKnownHostsFile='C:/Users/Test\"User/.n8n/.ssh/known_hosts'",
+					),
 				);
 			});
 		});
