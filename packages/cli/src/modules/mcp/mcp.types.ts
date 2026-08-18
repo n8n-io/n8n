@@ -152,8 +152,9 @@ export type UserConnectedToMCPEventPayload = {
 };
 
 export type ExecuteWorkflowsInputMeta = {
-	type: 'webhook' | 'chat' | 'schedule' | 'form';
-	parameter_count: number;
+	type?: 'webhook' | 'chat' | 'form';
+	parameter_count?: number;
+	triggerNodeName?: string;
 };
 
 export type WorkflowNotFoundReason =
@@ -164,7 +165,8 @@ export type WorkflowNotFoundReason =
 	| 'workflow_not_active'
 	| 'unsupported_trigger'
 	| 'execution_not_found'
-	| 'invalid_pin_data';
+	| 'invalid_pin_data'
+	| 'invalid_inputs';
 
 export type UserCalledMCPToolEventPayload = {
 	user_id?: string;

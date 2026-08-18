@@ -28,6 +28,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 // Static agents-module imports are safe here: the ModuleRegistry gate decides
 // availability at runtime.
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
+import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
 import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-composition';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -326,6 +327,8 @@ export class EvalAgentExecutionService {
 						);
 					},
 				},
+				'manual',
+				hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }),
 			));
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
