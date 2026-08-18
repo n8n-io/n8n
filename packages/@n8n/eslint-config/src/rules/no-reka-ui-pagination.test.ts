@@ -4,9 +4,9 @@ import { NoRekaUiPaginationRule } from './no-reka-ui-pagination.js';
 const ruleTester = new RuleTester();
 
 const wrapperPath =
-	'/repo/packages/frontend/@n8n/design-system/src/v2/components/Pagination/reka-ui.ts';
+	'/repo/packages/frontend/@n8n/design-system/src/components/N8nPagination/reka-ui.ts';
 const wrapperWindowsPath =
-	'C:\\repo\\packages\\frontend\\@n8n\\design-system\\src\\v2\\components\\Pagination\\Pagination.vue';
+	'C:\\repo\\packages\\frontend\\@n8n\\design-system\\src\\components\\N8nPagination\\Pagination.vue';
 
 const error = (name: string) => ({
 	messageId: 'noRekaUiPagination' as const,

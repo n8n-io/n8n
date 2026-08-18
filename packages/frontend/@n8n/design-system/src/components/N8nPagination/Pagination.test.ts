@@ -3,7 +3,7 @@ import { render, waitFor } from '@testing-library/vue';
 
 import Pagination from './Pagination.vue';
 
-describe('v2/components/Pagination', () => {
+describe('components/N8nPagination', () => {
 	describe('rendering', () => {
 		it('should render prev, next, total, and sizes by default without jumper', () => {
 			const wrapper = render(Pagination, {

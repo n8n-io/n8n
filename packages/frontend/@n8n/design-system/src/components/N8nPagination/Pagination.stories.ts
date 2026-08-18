@@ -5,7 +5,7 @@ import { computed, ref } from 'vue';
 import Pagination from './Pagination.vue';
 
 export default {
-	title: 'Experimental/Pagination',
+	title: 'Core/Pagination',
 	component: Pagination,
 	tags: ['autodocs'],
 	argTypes: {
