@@ -88,6 +88,10 @@ export function isErroredToolCallTimelineItem(item: TimelineItem): boolean {
 	);
 }
 
+export function isErroredTimelineItem(item: TimelineItem): boolean {
+	return item.kind === 'execution-error' || isErroredToolCallTimelineItem(item);
+}
+
 /** Extracts a human-readable error message from a failed item's tool output. */
 export function timelineItemErrorMessage(item: TimelineItem): string {
 	if (!isErroredToolCallTimelineItem(item)) return '';
@@ -104,6 +108,23 @@ export function hitlTimelineNameKey(item: TimelineItem): BaseTextKey | undefined
 }
 
 type TimelineI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
+
+export function executionErrorLabel(item: TimelineItem, i18n: TimelineI18n): string {
+	return i18n.baseText(
+		item.executionStatus === 'interrupted'
+			? 'agentSessions.timeline.executionInterrupted'
+			: 'agentSessions.timeline.executionFailed',
+	);
+}
+
+export function executionErrorMessage(item: TimelineItem, i18n: TimelineI18n): string {
+	if (item.content) return item.content;
+	return i18n.baseText(
+		item.executionStatus === 'interrupted'
+			? 'agentSessions.timeline.executionInterruptedFallback'
+			: 'agentSessions.timeline.executionFailedFallback',
+	);
+}
 
 export function linkedToolDisplayName(item: TimelineItem, i18n: TimelineI18n): string {
 	return (
@@ -144,7 +165,7 @@ export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | und
 			theme: 'default',
 		};
 	}
-	if (isErroredToolCallTimelineItem(item)) {
+	if (isErroredTimelineItem(item)) {
 		return { kind: 'tool-error', labelKey: 'agentSessions.timeline.error', theme: 'danger' };
 	}
 	return undefined;
@@ -173,7 +194,7 @@ export function itemFilterKey(item: TimelineItem): string {
 }
 
 export function itemStatusFilterKey(item: TimelineItem): TimelineStatusFilterKey | undefined {
-	if (isErroredToolCallTimelineItem(item)) return 'error';
+	if (isErroredTimelineItem(item)) return 'error';
 	if (
 		item.kind === 'hitl-response' &&
 		(item.hitlResponseStatus === 'approved' || item.hitlResponseStatus === 'declined')
@@ -213,6 +234,9 @@ export function timelineItemSearchText(
 	const parts: Array<string | undefined> = [];
 
 	parts.push(labelForKey(itemFilterKey(item)));
+	if (item.kind === 'execution-error' && item.executionStatus === 'interrupted') {
+		parts.push(labelForKey('execution-interrupted'));
+	}
 	if (item.kind === 'suspension') {
 		parts.push(
 			labelForKey(item.hitlRequestType === 'approval' ? 'approval-requested' : 'hitl-requested'),
@@ -224,7 +248,7 @@ export function timelineItemSearchText(
 	if (item.hitlResponseStatus) {
 		parts.push(labelForKey(item.hitlResponseStatus));
 	}
-	if (isErroredToolCallTimelineItem(item)) {
+	if (isErroredTimelineItem(item)) {
 		parts.push(labelForKey('error'));
 	}
 
@@ -294,6 +318,7 @@ const COLOR_MAP: Record<EventKind, string> = {
 	tool: 'var(--color--success)',
 	node: 'var(--color--text)',
 	workflow: 'var(--color--primary)',
+	'execution-error': 'var(--color--danger)',
 	suspension: 'var(--color--warning)',
 	'hitl-response': 'var(--color--blue-400)',
 };
@@ -308,6 +333,7 @@ const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
 	tool: 'var(--color--green-600)',
 	node: 'var(--color--neutral-600)',
 	workflow: 'var(--color--orange-600)',
+	'execution-error': 'var(--color--red-400)',
 	suspension: 'var(--color--yellow-600)',
 	'hitl-response': 'var(--color--blue-600)',
 };
@@ -617,6 +643,16 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				hitlContext.hasExplicitResponse = true;
 				items.push(hitlResponseItem(hitlContext, exec.id, event.response, event.timestamp ?? 0));
 			}
+		}
+		if (exec.status === 'error' || exec.status === 'interrupted') {
+			const terminalTimestamp = exec.stoppedAt ?? exec.startedAt ?? exec.createdAt;
+			items.push({
+				kind: 'execution-error',
+				executionId: exec.id,
+				executionStatus: exec.status,
+				content: exec.error ?? undefined,
+				timestamp: terminalTimestamp ? new Date(terminalTimestamp).getTime() : 0,
+			});
 		}
 	}
 	return items;
