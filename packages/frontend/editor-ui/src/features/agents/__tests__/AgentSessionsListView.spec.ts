@@ -34,17 +34,28 @@ let documentRemoveEventListenerSpy: ReturnType<typeof vi.spyOn>;
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
-		baseText: (key: string) =>
-			({
-				'agentSessions.viewTrace': 'View session trace',
-				'agentSessions.origin.preview': 'Preview',
-				'agentSessions.origin.instanceAi': 'AI Assistant',
-				'agentSessions.origin.mcp': 'MCP',
-				'agentSessions.origin.subAgent': 'Sub-agent',
-				'agentSessions.origin.schedule': 'Schedule',
-				'agentSessions.origin.workflow': 'Workflow',
-				'agentSessions.empty': 'No agent sessions',
-			})[key] ?? key,
+		baseText: (key: string, options?: { interpolate?: Record<string, string | number> }) => {
+			if (key === 'executionDetails.runningTimeFinished') {
+				return `in ${options?.interpolate?.time}`;
+			}
+			return (
+				{
+					'agentSessions.viewTrace': 'View session trace',
+					'agentSessions.origin.preview': 'Preview',
+					'agentSessions.origin.instanceAi': 'AI Assistant',
+					'agentSessions.origin.mcp': 'MCP',
+					'agentSessions.origin.subAgent': 'Sub-agent',
+					'agentSessions.origin.schedule': 'Schedule',
+					'agentSessions.origin.workflow': 'Workflow',
+					'agentSessions.empty': 'No agent sessions',
+					'agentSessions.success': 'Succeeded',
+					'agentSessions.status.cancelled': 'Canceled',
+					'agentSessions.status.interrupted': 'Interrupted',
+					'agentSessions.status.running': 'Running',
+					'agentSessions.timeline.error': 'Error',
+				}[key] ?? key
+			);
+		},
 	}),
 }));
 
@@ -66,7 +77,10 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<button v-bind="$attrs"><slot /></button>',
 	},
 	N8nTableBase: { template: '<table><slot /></table>' },
-	N8nTooltip: { template: '<div><slot /></div>' },
+	N8nText: {
+		props: ['color'],
+		template: '<span :data-color="color"><slot /></span>',
+	},
 }));
 
 vi.mock('../agentSessions.store', () => ({
@@ -145,6 +159,8 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		createdAt: '2026-07-20T10:00:00.000Z',
 		updatedAt: '2026-07-20T10:05:00.000Z',
 		firstMessage: null,
+		failureSummary: null,
+		status: 'success',
 		...overrides,
 	};
 }
@@ -205,12 +221,31 @@ describe('AgentSessionsListView', () => {
 
 		expect(traceButton.element.tagName).toBe('BUTTON');
 		expect(traceButton.attributes('type')).toBe('button');
-		expect(traceButton.text()).toBe('My session');
+		expect(wrapper.get('[data-test-id="agent-session-title"]').text()).toBe('My session');
 
 		routerPush.mockClear();
 		await traceButton.trigger('click');
 
 		expect(routerPush).toHaveBeenCalledExactlyOnceWith(expectedRoute);
+	});
+
+	it.each([
+		['success', 'Succeeded', 'success', true],
+		['error', 'Error', 'danger', true],
+		['cancelled', 'Canceled', 'warning', true],
+		['interrupted', 'Interrupted', 'warning', true],
+		['running', 'Running', 'text-base', false],
+	] as const)('renders the %s session state', async (status, label, color, showsDuration) => {
+		const wrapper = await mountView({
+			threads: [makeThread({ status })],
+		});
+		const indicator = wrapper.get('[data-testid="agent-session-status-indicator"]');
+
+		expect(indicator.text()).toBe(label);
+		expect(indicator.attributes('data-color')).toBe(color);
+		expect(wrapper.find('[data-testid="agent-session-status-duration"]').exists()).toBe(
+			showsDuration,
+		);
 	});
 
 	it('opens the parent trace in the current tab by default', async () => {

@@ -196,6 +196,25 @@ describe('SessionTimelineTable', () => {
 		expect(w.get('[data-test-id="timeline-tool-error-badge"]').text()).toBe('Error');
 	});
 
+	it('renders a fatal execution as an error row', () => {
+		const w = mountTable({
+			items: [
+				{
+					kind: 'execution-error',
+					executionId: 'e1',
+					executionStatus: 'error',
+					timestamp: 1000,
+					content: 'Model request failed',
+				},
+			],
+			selectedIndex: null,
+			visibleKinds: new Set<string>(),
+		});
+
+		expect(w.get('[data-test-id="timeline-row"]').text()).toContain('Model request failed');
+		expect(w.get('[data-test-id="timeline-execution-error-badge"]').text()).toBe('Error');
+	});
+
 	it.each([
 		['approved', 'Approved'],
 		['declined', 'Declined'],

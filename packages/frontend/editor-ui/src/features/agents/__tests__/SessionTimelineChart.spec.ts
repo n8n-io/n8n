@@ -96,6 +96,23 @@ describe('SessionTimelineChart', () => {
 		expect(blocks[1].attributes('style')).not.toMatch(/opacity:\s*0\.15/);
 	});
 
+	it('renders a synthetic execution error as a danger block', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'execution-error',
+					executionStatus: 'error',
+					content: 'Model request failed',
+					timestamp: 1000,
+				}),
+			],
+		});
+		const block = w.get('[data-test-id="timeline-block"]');
+
+		expect(block.attributes('data-error')).toBe('true');
+		expect(block.attributes('style')).toContain('var(--color--red-400)');
+	});
+
 	it('renders idle blobs interleaved with events in chronological order', () => {
 		const w = mountChart({ idleRanges: [{ start: 1500, end: 2000 }] });
 		expect(w.findAll('[data-test-id="timeline-idle"]')).toHaveLength(1);
@@ -127,7 +144,6 @@ describe('SessionTimelineChart', () => {
 		});
 		const block = w.get('[data-test-id="timeline-block"]');
 		expect(block.attributes('data-error')).toBe('true');
-		expect(block.classes()).toContain('error');
 	});
 
 	it('marks a workflow soft-failure block as failed', () => {
@@ -142,7 +158,6 @@ describe('SessionTimelineChart', () => {
 		});
 		const block = w.get('[data-test-id="timeline-block"]');
 		expect(block.attributes('data-error')).toBe('true');
-		expect(block.classes()).toContain('error');
 	});
 
 	it('does not mark a successful tool block as failed', () => {
@@ -157,7 +172,6 @@ describe('SessionTimelineChart', () => {
 		});
 		const block = w.get('[data-test-id="timeline-block"]');
 		expect(block.attributes('data-error')).toBeUndefined();
-		expect(block.classes()).not.toContain('error');
 	});
 
 	it('renders the localized "Idle" pill text inside each idle segment', () => {

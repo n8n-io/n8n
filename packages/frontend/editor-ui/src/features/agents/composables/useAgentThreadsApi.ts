@@ -23,10 +23,29 @@ export interface AgentExecutionThread {
 	firstMessage?: string | null;
 	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
 	source?: string | null;
+	failureSummary?: ThreadFailureSummary | null;
+	status?: AgentExecutionStatus | null;
 }
 
 export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
+export type AgentExecutionFailureKind = 'execution' | 'tool' | 'node' | 'workflow';
+
+export interface AgentExecutionFailure {
+	kind: AgentExecutionFailureKind;
+	name: string | null;
+	message: string | null;
+	occurredAt: number;
+}
+
+export interface AgentExecutionFailureSummary {
+	count: number;
+	latest: AgentExecutionFailure;
+}
+
+export interface ThreadFailureSummary extends AgentExecutionFailureSummary {
+	latest: AgentExecutionFailure & { executionId: string };
+}
 
 /**
  * Raw timeline event shape as persisted on the agent_execution row.
@@ -62,6 +81,7 @@ export interface AgentExecution {
 	cost: number | null;
 	timeline: AgentExecutionTimelineEvent[] | null;
 	error: string | null;
+	failureSummary: AgentExecutionFailureSummary | null;
 	hitlStatus: AgentExecutionHitlStatus | null;
 	source: string | null;
 }

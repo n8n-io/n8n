@@ -104,6 +104,7 @@ erDiagram
   datetime_3_ createdAt
   INTEGER duration
   TEXT error
+  TEXT failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model

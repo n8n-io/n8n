@@ -95,6 +95,9 @@ const triggerIcon = computed((): IconName => {
 const triggerLabel = computed((): string => {
 	const source = triggerSource.value;
 	if (!source) return '';
+	if (source === 'chat' || source === 'n8n_chat') {
+		return i18n.baseText('agentSessions.origin.preview');
+	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 

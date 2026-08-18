@@ -210,4 +210,37 @@ describe('AgentExecutionRepository', () => {
 			expect(result.has(thread.id)).toBe(false);
 		});
 	});
+
+	describe('failure summaries', () => {
+		it('aggregates counts and the latest failure per thread', async () => {
+			const thread = await createThread();
+			await createExecution({
+				threadId: thread.id,
+				failureSummary: {
+					count: 1,
+					latest: { kind: 'tool', name: 'Lookup', message: 'failed', occurredAt: 10 },
+				},
+			});
+			const latest = await createExecution({
+				threadId: thread.id,
+				failureSummary: {
+					count: 2,
+					latest: { kind: 'execution', name: null, message: 'stopped', occurredAt: 20 },
+				},
+			});
+
+			const result = await repository.findFailureSummariesByThreadIds([thread.id]);
+
+			expect(result.get(thread.id)).toEqual({
+				count: 3,
+				latest: {
+					kind: 'execution',
+					name: null,
+					message: 'stopped',
+					occurredAt: 20,
+					executionId: latest.id,
+				},
+			});
+		});
+	});
 });

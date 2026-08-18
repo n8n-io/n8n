@@ -101,6 +101,10 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
+		case 'execution-error':
+			return i18n.baseText('agentSessions.timeline.executionFailed');
+		case 'execution-interrupted':
+			return i18n.baseText('agentSessions.timeline.executionInterrupted');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.hitlRequest');
 		case 'hitl-response':
@@ -135,7 +139,9 @@ const filterOptions = computed<FilterOption[]>(() => {
 	const kindCounts = new Map<EventKind, number>();
 	const statusCounts = new Map<TimelineStatusFilterKey, number>();
 	for (const item of items.value) {
-		kindCounts.set(item.kind, (kindCounts.get(item.kind) ?? 0) + 1);
+		if (item.kind !== 'execution-error') {
+			kindCounts.set(item.kind, (kindCounts.get(item.kind) ?? 0) + 1);
+		}
 		const statusKey = itemStatusFilterKey(item);
 		if (statusKey) {
 			statusCounts.set(statusKey, (statusCounts.get(statusKey) ?? 0) + 1);
