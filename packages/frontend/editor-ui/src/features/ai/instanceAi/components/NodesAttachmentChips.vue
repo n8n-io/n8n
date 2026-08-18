@@ -390,6 +390,8 @@ const totalNodeCount = computed(() =>
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	// overflow:hidden clips the bottom ~1px of descenders when line-height == font-size
+	line-height: var(--line-height--md);
 }
 
 .panelRemove {
