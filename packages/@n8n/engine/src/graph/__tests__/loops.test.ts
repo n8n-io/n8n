@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { deriveLoops } from '../loops';
-import { validateLoops } from '../validate-executable-graph';
+import { deriveLoops, validateLoops } from '../loops';
 import type { GraphEdge, StepType, WorkflowGraph } from '../workflow-graph';
 
 /** Nodes are inferred from edges; `batch:` names the batch-typed ones. */
