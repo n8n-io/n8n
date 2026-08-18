@@ -2,17 +2,28 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES } from '@n8n/api-types';
 import { NodeConnectionTypes, isCommunityPackageName } from 'n8n-workflow';
 import type { INode, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import { useRouter } from 'vue-router';
 
 import { getWorkflow } from '@/app/api/workflows';
+import { VIEWS } from '@/app/constants';
+import {
+	SAMPLE_SUBWORKFLOW_TRIGGER_ID,
+	SAMPLE_SUBWORKFLOW_WORKFLOW,
+} from '@/app/constants/samples';
+import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants/workflows';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
@@ -22,12 +33,13 @@ import {
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
-import type {
-	NodeConnectionItem,
-	ToolCategoryKey,
-	ToolConnectionItem,
-	ToolCredentialRef,
-	WorkflowConnectionItem,
+import {
+	hasToolConnection,
+	type NodeConnectionItem,
+	type ToolCategoryKey,
+	type ToolConnectionItem,
+	type ToolCredentialRef,
+	type WorkflowConnectionItem,
 } from '@/features/shared/toolsConnection/types';
 
 import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
@@ -82,7 +94,11 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
+const router = useRouter();
 const toast = useToast();
+const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
+const sourceControlStore = useSourceControlStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const {
 	availableToolTypes,
@@ -96,6 +112,20 @@ const usersStore = useUsersStore();
 
 const searchQuery = ref('');
 const installingToolName = ref<string | null>(null);
+const isCreatingWorkflow = ref(false);
+
+const canCreateWorkflow = computed(() => {
+	if (!props.data.projectId || sourceControlStore.preferences.branchReadOnly) return false;
+
+	const projectScopes = projectsStore.myProjects.find(
+		(project) => project.id === props.data.projectId,
+	)?.scopes;
+	const projectPermission = getResourcePermissions(projectScopes).workflow.create;
+	const globalPermission = getResourcePermissions(usersStore.currentUser?.globalScopes).workflow
+		.create;
+
+	return Boolean(globalPermission ?? projectPermission);
+});
 
 interface WorkingToolEntry {
 	localId: string;
@@ -410,6 +440,50 @@ async function handleAddWorkflow(workflow: IWorkflowDb) {
 	openConfigForNewRef(workflowToNewToolRef(workflow));
 }
 
+async function handleCreateWorkflow() {
+	const projectId = props.data.projectId;
+	if (!projectId || !canCreateWorkflow.value || isCreatingWorkflow.value) return;
+
+	isCreatingWorkflow.value = true;
+	toolTelemetry.trackAddStarted('workflow');
+
+	try {
+		const sampleName = DEFAULT_NEW_WORKFLOW_NAME;
+		const matchingWorkflows = availableWorkflows.value.filter((workflow) =>
+			workflow.name?.startsWith(sampleName),
+		);
+		const newWorkflow = await workflowsStore.createNewWorkflow({
+			...SAMPLE_SUBWORKFLOW_WORKFLOW,
+			name: `${sampleName} ${matchingWorkflows.length + 1}`,
+			projectId,
+		});
+		const newRef = workflowToNewToolRef(newWorkflow);
+
+		openConfigForNewRef({
+			...newRef,
+			name: makeUniqueName(
+				newRef.name ?? newWorkflow.name,
+				getExistingToolNames(workingTools.value),
+			),
+		});
+
+		const { href } = router.resolve({
+			name: VIEWS.WORKFLOW,
+			params: {
+				workflowId: newWorkflow.id,
+				nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID,
+			},
+		});
+		window.open(href, '_blank');
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.tools.workflow.createFailed.title'), {
+			message: i18n.baseText('agents.tools.workflow.createFailed.message'),
+		});
+	} finally {
+		isCreatingWorkflow.value = false;
+	}
+}
+
 function openConfigForToolEntry(entry: WorkingToolEntry) {
 	const toolRef = entry.ref;
 	openConfigModal({
@@ -486,7 +560,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 			workflowId: workflowRef.workflowId ?? workflowRef.workflow,
 			title: workflowRef.name ?? workflowRef.workflow,
 			description: workflowRef.description,
-			isConnected: true,
+			status: 'connected',
 			credentials: [],
 		};
 		return item;
@@ -507,7 +581,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		title: node.name,
 		description: credentialSubtitle(node) ?? nodeType.description,
 		longDescription: nodeType.description,
-		isConnected: true,
+		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 		verified: isVerifiedCommunityTool(nodeType),
@@ -527,7 +601,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 		title: entry.server.name,
 		description: credentialSubtitle(node) ?? nodeType.description,
 		longDescription: nodeType.description,
-		isConnected: true,
+		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 	};
@@ -544,7 +618,7 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 		title: nodeType.displayName.replace(/ Tool$/, ''),
 		description: nodeType.description,
 		longDescription: nodeType.description,
-		isConnected: false,
+		status: 'none',
 		iconSource: toToolIconSource(nodeType),
 		credentials: [],
 		verified: isVerifiedCommunityTool(nodeType),
@@ -562,7 +636,7 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 		workflowId: workflow.id,
 		title: workflow.name,
 		description: workflow.description ?? undefined,
-		isConnected: false,
+		status: 'none',
 		credentials: [],
 	};
 }
@@ -578,7 +652,7 @@ function disabledWorkflowItem(
 		workflowId: workflow.id,
 		title: workflow.name,
 		description: workflow.description ?? undefined,
-		isConnected: false,
+		status: 'none',
 		credentials: [],
 		disabled: true,
 		disabledReason: disabledWorkflowReasonText(reason),
@@ -652,8 +726,8 @@ function handleRowActivate(item: ToolConnectionItem) {
 	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
 	// the row's own tooltip already explains why, so activating does nothing.
 	if (item.disabled) return;
-
-	if (item.isConnected) {
+	if (item.status === 'connecting') return;
+	if (hasToolConnection(item.status)) {
 		if (item.id.startsWith('mcp:')) {
 			const localId = item.id.slice('mcp:'.length);
 			const entry = workingMcpServerEntries.value.find((e) => e.localId === localId);
@@ -695,8 +769,11 @@ function handleRowActivate(item: ToolConnectionItem) {
 		:items="items"
 		:categories="CATEGORIES"
 		:detail-item="null"
+		:allow-workflow-creation="canCreateWorkflow"
+		:workflow-creation-loading="isCreatingWorkflow"
 		@update:search-query="searchQuery = $event"
 		@connect="handleRowActivate"
 		@open-detail="handleRowActivate"
+		@create-workflow="handleCreateWorkflow"
 	/>
 </template>

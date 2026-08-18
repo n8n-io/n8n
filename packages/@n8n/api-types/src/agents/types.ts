@@ -223,6 +223,8 @@ export interface AgentPersistedMessageContentPart {
 	toolName?: string;
 	toolCallId?: string;
 	input?: unknown;
+	/** HITL payload associated with this tool call, when it suspended. */
+	suspendPayload?: unknown;
 	state?: string;
 	output?: unknown;
 	canceled?: boolean;
@@ -287,6 +289,10 @@ export interface AgentBuilderOpenSuspension {
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
+}
+
+export interface AgentSessionLangSmithExportResponse {
+	traceId: string;
 }
 
 /**

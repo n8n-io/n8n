@@ -36,6 +36,7 @@ import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
+import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
 
 type AgentValidationScope = 'runtime' | 'publish';
 
@@ -275,6 +276,16 @@ export class AgentValidationService {
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
 		if (scope === 'publish') {
+			for (const violation of findHttpRequestToolUrlFromAiViolations(config.tools)) {
+				issues.push(
+					issue('invalid_value', violation.path, {
+						kind: 'tool',
+						id: violation.toolName,
+						index: violation.toolIndex,
+						toolType: 'node',
+					}),
+				);
+			}
 			this.collectTaskIssues(config, ctx.tasks, issues);
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
