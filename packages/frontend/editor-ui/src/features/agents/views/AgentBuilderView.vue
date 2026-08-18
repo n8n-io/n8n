@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useStorage } from '@vueuse/core';
-import { useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -740,14 +740,13 @@ interface McpAvailabilitySnapshot {
 const persistFlights = new Map<string, Promise<void>>();
 const persistedAgentsByTarget = new Map<string, AgentResource>();
 
-function clearRoutePendingState() {
-	if (!isRouteAgentPending.value) return;
-	const { [INSTANCE_AI_PENDING_AGENT_ID_STATE]: _, ...state } = history.state as Record<
-		string,
-		unknown
-	>;
+function clearRoutePendingState(targetAgentId: string) {
+	if (isArtifactMode.value) return;
+	const historyState = history.state as Record<string, unknown>;
+	if (historyState[INSTANCE_AI_PENDING_AGENT_ID_STATE] !== targetAgentId) return;
+	const { [INSTANCE_AI_PENDING_AGENT_ID_STATE]: _, ...state } = historyState;
 	history.replaceState(state, '');
-	routePendingAgentId.value = null;
+	if (routePendingAgentId.value === targetAgentId) routePendingAgentId.value = null;
 }
 
 async function ensureAgentPersisted(): Promise<void> {
@@ -759,7 +758,7 @@ async function ensureAgentPersisted(): Promise<void> {
 	if (persistedAgent) {
 		isUnsaved.value = false;
 		agent.value = persistedAgent;
-		clearRoutePendingState();
+		clearRoutePendingState(targetAgentId);
 		emit('persisted', persistedAgent);
 		return;
 	}
@@ -774,12 +773,12 @@ async function ensureAgentPersisted(): Promise<void> {
 			);
 			persistedAgentsByTarget.set(targetKey, created);
 			upsertProjectAgentsListCache(targetProjectId, created);
+			clearRoutePendingState(targetAgentId);
 			if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 			isUnsaved.value = false;
 			agent.value = created;
-			clearRoutePendingState();
 			// Lets an artifact host replace its pending metadata. Route-backed drafts
-			// clear their history marker above instead.
+			// clear their history marker after the create succeeds instead.
 			emit('persisted', created);
 		})();
 		persistFlights.set(targetKey, flight);
@@ -953,6 +952,21 @@ async function flushAutosave() {
 		mcpAutosave.flushAutosave(),
 	]);
 }
+
+async function flushPendingRouteDraftBeforeNavigation() {
+	if (!isRouteAgentPending.value || !isUnsaved.value) return;
+	await flushAutosave();
+}
+
+onBeforeRouteLeave(flushPendingRouteDraftBeforeNavigation);
+onBeforeRouteUpdate(async (to) => {
+	const nextProjectId = Array.isArray(to.params.projectId)
+		? to.params.projectId[0]
+		: to.params.projectId;
+	const nextAgentId = Array.isArray(to.params.agentId) ? to.params.agentId[0] : to.params.agentId;
+	if (nextProjectId === projectId.value && nextAgentId === agentId.value) return;
+	await flushPendingRouteDraftBeforeNavigation();
+});
 
 async function beforePreviewSend() {
 	// Autosave failures already use their config/skill/MCP-specific error toasts.
