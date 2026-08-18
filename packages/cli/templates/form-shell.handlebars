@@ -258,6 +258,8 @@
 				}
 			}
 
+			if (frame) frame.addEventListener('load', refresh);
+
 			var shellEl = document.querySelector('.shell');
 			var SUBMITTER_EMAIL = shellEl ? shellEl.getAttribute('data-submitter-email') || '' : '';
 			var CONNECTED_MENU_HTML =

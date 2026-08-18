@@ -1201,10 +1201,10 @@ export async function formWebhook(
 
 		// Connect-before-submit: when the workflow needs the submitter's own
 		// (private) credentials, establish their identity from the OAuth2 token and
-		// check readiness server-side. If anything is still missing — and we're not
-		// already rendering the inner iframe — wrap the form in the hosting shell
-		// (form + connect panel, submit disabled). No-op unless OAuth2 form auth and
-		// the dynamic-credentials module are both active.
+		// check readiness server-side. As long as the trigger requires any end-user
+		// account — and we're not already rendering the inner iframe — wrap the form
+		// in the hosting shell (form + connect panel). No-op unless OAuth2 form auth
+		// and the dynamic-credentials module are both active.
 		if (
 			authentication === 'n8nUserAuth' &&
 			authedUser &&
@@ -1218,7 +1218,12 @@ export async function formWebhook(
 			if (resourceUrl) {
 				await context.establishTriggerIdentity(oAuth2Token, resourceUrl);
 				const credentialStatus = await context.checkTriggerCredentialStatus();
-				if (credentialStatus && !credentialStatus.readyToExecute) {
+				// Gate on "needs end-user accounts", NOT on readiness: a fully connected
+				// submitter must keep the panel — which accounts the form uses, which
+				// identity, and Disconnect — otherwise it would vanish on the reload right
+				// after connecting. Forms with no end-user accounts fall through to the
+				// plain render below, unchanged.
+				if (credentialStatus?.credentials.length) {
 					// Hand the OAuth2 token to the same-site iframe GET via the one-hop
 					// cookie the OAuth2 flow already uses, so the inner form authenticates
 					// without re-running the provider redirect inside the frame.
