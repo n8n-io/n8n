@@ -132,6 +132,28 @@ describe('useAgentSessionsStore', () => {
 		expect(store.nextCursor).toBe('refreshed-cursor');
 	});
 
+	it('keeps a page loaded while a background refresh is in flight', async () => {
+		const firstPageIds = Array.from({ length: 20 }, (_, index) => `session-${index + 1}`);
+		const refreshedPage = Promise.withResolvers<ThreadsPage>();
+		const nextPage = Promise.withResolvers<ThreadsPage>();
+		listThreads
+			.mockResolvedValueOnce(page(firstPageIds, 'cursor-1'))
+			.mockReturnValueOnce(refreshedPage.promise)
+			.mockReturnValueOnce(nextPage.promise);
+		const store = useAgentSessionsStore();
+		await store.fetchThreads('project-1', 'agent-1');
+
+		const refreshRequest = store.refreshThreads('project-1', 'agent-1');
+		const loadMoreRequest = store.loadMore('project-1', 'agent-1');
+		nextPage.resolve(page(['session-21'], 'cursor-2'));
+		await loadMoreRequest;
+		refreshedPage.resolve(page(firstPageIds, 'cursor-1'));
+		await refreshRequest;
+
+		expect(store.threads.map(({ id }) => id)).toEqual([...firstPageIds, 'session-21']);
+		expect(store.nextCursor).toBe('cursor-2');
+	});
+
 	it('ignores a stale response from an earlier filter', async () => {
 		const errorPage = Promise.withResolvers<ThreadsPage>();
 		const runningPage = Promise.withResolvers<ThreadsPage>();

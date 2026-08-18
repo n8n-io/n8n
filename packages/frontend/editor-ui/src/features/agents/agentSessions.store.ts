@@ -73,6 +73,8 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		const requestedFilters = filters.value;
 		const key = keyFor(projectId, agentId, requestedFilters);
 		if (latestKey !== null && latestKey !== key) return;
+		const threadCount = threads.value.length;
+		const cursor = nextCursor.value;
 		try {
 			const rootStore = useRootStore();
 			const limit = Math.max(threads.value.length, ITEMS_PER_PAGE);
@@ -93,6 +95,8 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 				refreshed.push(...page.threads.filter(({ id }) => !seen.has(id)));
 				for (const { id } of page.threads) seen.add(id);
 			}
+			if (loading.value || threads.value.length !== threadCount || nextCursor.value !== cursor)
+				return;
 			threads.value = refreshed;
 			nextCursor.value = page.nextCursor;
 		} catch {
