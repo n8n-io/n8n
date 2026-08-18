@@ -79,10 +79,11 @@ describe('useAgentSessionsStore', () => {
 	});
 
 	it('retains the active filter across refresh and pagination without changing it for overrides', async () => {
+		const firstPageIds = Array.from({ length: 20 }, (_, index) => `failed-${index + 1}`);
 		listThreads
-			.mockResolvedValueOnce(page(['failed-1'], 'cursor-1'))
-			.mockResolvedValueOnce(page(['failed-1'], 'cursor-1'))
-			.mockResolvedValueOnce(page(['failed-2'], null))
+			.mockResolvedValueOnce(page(firstPageIds, 'cursor-1'))
+			.mockResolvedValueOnce(page(firstPageIds, 'cursor-1'))
+			.mockResolvedValueOnce(page(['failed-21'], null))
 			.mockResolvedValueOnce(page(['all-session'], null));
 		const store = useAgentSessionsStore();
 
