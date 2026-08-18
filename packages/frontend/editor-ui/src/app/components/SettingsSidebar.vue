@@ -17,7 +17,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 
-const { settingsItems } = useSettingsItems();
+const { settingsItems, handleSettingsItemSelect } = useSettingsItems();
 const { fetchWallet, isEnabled } = useAiGateway();
 
 onMounted(() => {
@@ -34,7 +34,12 @@ onMounted(() => {
 			<N8nText bold>{{ i18n.baseText('settings') }}</N8nText>
 		</div>
 		<div :class="$style.items">
-			<N8nMenuItem v-for="item in settingsItems" :key="item.id" :item="item" />
+			<N8nMenuItem
+				v-for="item in settingsItems"
+				:key="item.id"
+				:item="item"
+				@click="handleSettingsItemSelect(item.id)"
+			/>
 		</div>
 		<div :class="$style.versionContainer">
 			<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
