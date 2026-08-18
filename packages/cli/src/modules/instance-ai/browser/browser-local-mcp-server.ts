@@ -9,10 +9,10 @@ import {
 	mcpToolCallResultSchema,
 	mcpToolSchema,
 } from '@n8n/api-types';
-import { zodToDraft202012 } from '@n8n/ai-utilities/json-schema';
 import type { Logger } from '@n8n/backend-common';
 import type { DomainAccessTracker, LocalMcpServer } from '@n8n/instance-ai';
 import type { BrowserToolkit, ToolContext, ToolDefinition } from '@n8n/mcp-browser';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export interface BrowserDomainGate {
 	tracker: DomainAccessTracker;
@@ -38,7 +38,7 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 			const candidate = {
 				name: tool.name,
 				description: tool.description,
-				inputSchema: zodToDraft202012(tool.inputSchema),
+				inputSchema: zodToJsonSchema(tool.inputSchema),
 				annotations: { category: 'browser' },
 			};
 			const parsed = mcpToolSchema.safeParse(candidate);
