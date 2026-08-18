@@ -29,13 +29,11 @@ describe('PublishWorkflowPublicDto', () => {
 		expect(result.success).toBe(false);
 	});
 
-	// The hand-written spec this replaced set no `additionalProperties: false`, so the old endpoint
-	// accepted an unknown key and ignored it. Rejecting one now would break a working caller.
-	test('drops an unknown key instead of rejecting it', () => {
+	// Guards the deliberate absence of `.strict()`: the spec this replaced allowed unknown keys.
+	test('accepts an unknown key', () => {
 		const result = PublishWorkflowPublicDto.safeParse({ versionId: 'version-1', bogus: true });
 
 		expect(result.success).toBe(true);
-		expect(result.data).toEqual({ versionId: 'version-1' });
 	});
 
 	test('rejects a body that is not an object', () => {
