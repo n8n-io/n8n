@@ -346,6 +346,33 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
 		});
 
+		it('uses the frozen baseline when an approval commits between the request and row reads', async () => {
+			// The request row is fetched before the child rows, so a read straddling
+			// the approval commit sees `open` alongside an already-frozen baseline.
+			accessService.findReadableRequestOrFail.mockResolvedValue({
+				request: reviewRequest({ state: 'open', decision: 'pending' }),
+				readableWorkflowRows: [
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						baselineVersionId: 'ver-frozen',
+					},
+				],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: true,
+			});
+			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-pinned');
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.workflows[0]?.baselineVersion).toMatchObject({ versionId: 'ver-frozen' });
+			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
+		});
+
 		it('returns no baseline for a closed review when none was captured', async () => {
 			accessService.findReadableRequestOrFail.mockResolvedValue({
 				request: reviewRequest({ state: 'closed', decision: 'approved' }),

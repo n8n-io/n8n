@@ -160,19 +160,27 @@ export class WorkflowReviewInboxService {
 	 * Closed reviews never re-resolve it — they read the stored baseline, which is
 	 * set only by approval. A closed review therefore yields null unless it was
 	 * approved, and null means "no baseline to diff against", never "fall back to
-	 * the live pointer" (that would show a diff nobody approved).
+	 * the live pointer" (that would show a diff nobody approved). A row that
+	 * already carries a baseline reads it regardless of the state we were told.
 	 */
 	private async toWorkflowDetail(
 		row: WorkflowReviewRequestWorkflowDetailRow,
 		isClosed: boolean,
 	): Promise<WorkflowReviewRequestWorkflowDetail> {
-		// Null here is deliberate and covers two closed cases the API cannot tell
-		// apart: never published, and closed without an approval (auto-close on
+		// A stored baseline is written only by approval, so it wins even when
+		// `isClosed` is false: the request row is read before the child rows, so an
+		// approval committing in between yields a stale `open` state on a row that
+		// already has its baseline.
+		//
+		// Null is deliberate and covers two closed cases the API cannot tell apart:
+		// never published, and closed without an approval (auto-close on
 		// archive/transfer leaves the decision as-is). Callers distinguish the last
 		// one via `state` + `decision`.
-		const baselineVersionId = isClosed
-			? row.baselineVersionId
-			: await this.workflowPublishedVersionRepository.getPublishedVersionId(row.workflowId);
+		const baselineVersionId =
+			row.baselineVersionId ??
+			(isClosed
+				? null
+				: await this.workflowPublishedVersionRepository.getPublishedVersionId(row.workflowId));
 
 		const [pinnedVersion, baselineVersion] = await Promise.all([
 			this.findVersionSnapshot(row.workflowId, row.workflowVersionId),
