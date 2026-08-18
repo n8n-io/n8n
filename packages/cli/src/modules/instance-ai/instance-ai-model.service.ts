@@ -2,6 +2,7 @@ import {
 	UNLIMITED_CREDITS,
 	isMoonshotaiKimiK3ModelId,
 	type InstanceAiCredits,
+	type ProxyContext,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
@@ -56,8 +57,11 @@ export class InstanceAiModelService {
 	 *
 	 * Call this instead of `settingsService.resolveModelConfig` directly so
 	 * the eval endpoint gets the same working model the chat endpoint uses.
+	 *
+	 * `proxyContext` is forwarded as `x-n8n-run-id` / `x-n8n-thread-id` on every
+	 * proxied model call when set (run-less callers like verification omit it).
 	 */
-	async resolveAgentModelConfig(user: User): Promise<ModelConfig> {
+	async resolveAgentModelConfig(user: User, proxyContext?: ProxyContext): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
 			const client = await this.aiService.getClient();
 			const proxyBaseUrl = client.getApiProxyBaseUrl();
@@ -67,7 +71,7 @@ export class InstanceAiModelService {
 					{ userMessageId: nanoid() },
 				);
 			});
-			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager);
+			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext);
 		}
 		const httpProxyModel = await this.resolveHttpProxyModel(user);
 		if (httpProxyModel) return httpProxyModel;
@@ -86,6 +90,7 @@ export class InstanceAiModelService {
 		user: User,
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
+		proxyContext?: ProxyContext,
 	): Promise<ModelConfig> {
 		const configuredModelId = this.settingsService.getConfiguredModelId();
 		const isExactKimi = isMoonshotaiKimiK3ModelId(configuredModelId);
@@ -97,6 +102,7 @@ export class InstanceAiModelService {
 			feature: 'instance-ai',
 			n8nVersion: N8N_VERSION,
 			outboundHttp: this.outboundHttp,
+			...proxyContext,
 		});
 	}
 

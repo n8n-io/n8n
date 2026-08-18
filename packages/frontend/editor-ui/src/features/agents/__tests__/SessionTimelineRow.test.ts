@@ -36,6 +36,10 @@ const STUBS = {
 		template:
 			'<span :data-icon="icon" :data-testid="icon ? `icon-${icon}` : undefined"><slot /></span>',
 	},
+	N8nBadge: {
+		props: ['theme', 'size'],
+		template: '<span data-test-id="timeline-tool-error-badge"><slot /></span>',
+	},
 	SessionTimelinePill: {
 		props: ['kind'],
 		template: '<span :data-testid="pill" :data-kind="kind" />',
@@ -69,7 +73,7 @@ describe('SessionTimelineRow', () => {
 				toolOutput: { success: false, error: 'boom' },
 			}),
 		);
-		expect(wrapper.find('[data-testid="timeline-failed-icon"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(true);
 	}, 30_000);
 
 	it('renders the failure icon for a workflow soft-failure (success true, status error)', async () => {
@@ -80,23 +84,23 @@ describe('SessionTimelineRow', () => {
 				toolOutput: { status: 'error', error: 'node X failed' },
 			}),
 		);
-		expect(wrapper.find('[data-testid="timeline-failed-icon"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(true);
 	});
 
 	it('does not render the failure icon for a successful tool call', async () => {
 		const wrapper = await renderComponent(
 			item({ kind: 'tool', toolSuccess: true, toolOutput: { ok: true } }),
 		);
-		expect(wrapper.find('[data-testid="timeline-failed-icon"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
 	});
 
 	it('does not render the failure icon for an in-flight tool call', async () => {
 		const wrapper = await renderComponent(item({ kind: 'tool', toolSuccess: undefined }));
-		expect(wrapper.find('[data-testid="timeline-failed-icon"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
 	});
 
 	it('does not render the failure icon for non-tool kinds', async () => {
 		const wrapper = await renderComponent(item({ kind: 'user', toolSuccess: false }));
-		expect(wrapper.find('[data-testid="timeline-failed-icon"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
 	});
 });

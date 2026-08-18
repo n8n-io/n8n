@@ -175,7 +175,7 @@ watch(
 	{ immediate: true },
 );
 
-defineExpose({ credentialId, validationError: null });
+defineExpose({ credentialId, validationError: null, loading: setupLoading });
 </script>
 
 <template>
@@ -184,16 +184,18 @@ defineExpose({ credentialId, validationError: null });
 			<template #default="{ step }">
 				<div :class="$style.stepContent">
 					<div v-if="step.id === 'create-token'" :class="$style.createTokenContainer">
-						<N8nButton
-							href="https://api.slack.com/apps"
-							target="_blank"
-							variant="subtle"
-							size="medium"
-							icon="slack"
-							data-testid="slack-app-configuration-token-link"
-						>
-							{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
-						</N8nButton>
+						<div :class="$style.dashboardRow">
+							<N8nButton
+								href="https://api.slack.com/apps"
+								target="_blank"
+								variant="subtle"
+								size="medium"
+								icon="slack"
+								data-testid="slack-app-configuration-token-link"
+							>
+								{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
+							</N8nButton>
+						</div>
 						<AgentChannelSlackSetupSnapshots />
 					</div>
 
@@ -400,6 +402,12 @@ defineExpose({ credentialId, validationError: null });
 	gap: var(--spacing--sm);
 	width: 100%;
 	min-width: 0;
+}
+
+.dashboardRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .manualPanel {

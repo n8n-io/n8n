@@ -10,19 +10,19 @@ packages:
 
 catalog:
   '@ai-sdk/amazon-bedrock': ^5.0.31
-  '@ai-sdk/anthropic': ^4.0.27
+  '@ai-sdk/anthropic': ^4.0.32
   '@ai-sdk/azure': ^4.0.21
   '@ai-sdk/cohere': ^4.0.12
   '@ai-sdk/deepseek': ^3.0.13
-  '@ai-sdk/gateway': ^4.0.37
+  '@ai-sdk/gateway': ^4.0.42
   '@ai-sdk/google': ^4.0.24
   '@ai-sdk/google-vertex': ^5.0.47
   '@ai-sdk/groq': ^4.0.13
   '@ai-sdk/mistral': ^4.0.14
   '@ai-sdk/openai': ^4.0.20
   '@ai-sdk/openai-compatible': ^3.0.14
-  '@ai-sdk/otel': ^1.0.48
-  '@ai-sdk/provider-utils': ^5.0.18
+  '@ai-sdk/otel': ^1.0.54
+  '@ai-sdk/provider-utils': ^5.0.22
   '@ai-sdk/xai': ^4.0.18
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
@@ -128,7 +128,7 @@ catalog:
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0
-  ai: ^7.0.48
+  ai: ^7.0.54
   axios: 1.18.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
@@ -160,7 +160,7 @@ catalog:
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
-  isolated-vm: ^6.1.2
+  isolated-vm: ^7.0.0
   js-base64: 3.7.8
   js-tiktoken: 1.0.21
   json-schema: 0.4.0
@@ -296,3 +296,5 @@ minimumReleaseAgeExclude:
   # installing before the 3-day minimumReleaseAge so agents/evals aren't stuck on
   # the unknown-model 4096 max_tokens default.
   - '@ai-sdk/anthropic'
+  # Security patch (Aikido) newer than the minimumReleaseAge window; allow it in.
+  - '@xmldom/xmldom'

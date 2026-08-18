@@ -16,11 +16,14 @@ vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn
 import { braveSearch, searxngSearch } from '@n8n/ai-utilities';
 import { createModel } from '@n8n/agents';
 import { createSandbox, createWorkspace } from '@n8n/instance-ai';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { generateText } from 'ai';
 
 import type { InstanceAiModelService } from '../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiVerificationService } from '../instance-ai-verification.service';
+
+import type { Telemetry } from '@/telemetry';
 
 describe('InstanceAiVerificationService', () => {
 	const globalConfig = mock<GlobalConfig>({
@@ -35,6 +38,7 @@ describe('InstanceAiVerificationService', () => {
 		} as unknown as InstanceAiConfig,
 	});
 	const logger = mock<Logger>();
+	const telemetry = mock<Telemetry>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const modelService = mock<InstanceAiModelService>();
 	const outboundHttp = mock<OutboundHttp>();
@@ -72,6 +76,7 @@ describe('InstanceAiVerificationService', () => {
 			settingsService,
 			modelService,
 			outboundHttp,
+			telemetry,
 		);
 	});
 
@@ -386,6 +391,113 @@ describe('InstanceAiVerificationService', () => {
 				'Instance AI search verification failed',
 				expect.objectContaining({ error: expect.any(String), failure: 'unreachable' }),
 			);
+		});
+	});
+
+	describe('connection failed telemetry', () => {
+		it('reports a failed model verification with the provider and classified failure', async () => {
+			generateTextMock.mockRejectedValueOnce(new Error('Provider returned 401'));
+
+			await service.verifyModel(user, {});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_CONNECTION_FAILED,
+				{
+					component: 'model',
+					provider: 'openai',
+					failure: 'unauthorized',
+					error_message: 'Provider returned 401',
+				},
+			);
+		});
+
+		it('scrubs credential-shaped values from the reported error message', async () => {
+			generateTextMock.mockRejectedValueOnce(
+				new Error('Incorrect API key provided: sk-proj-abcdef1234567890abcdef'),
+			);
+
+			await service.verifyModel(user, {});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_CONNECTION_FAILED,
+				expect.objectContaining({
+					error_message: expect.stringContaining('[REDACTED]'),
+				}),
+			);
+			expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain('sk-proj-abcdef');
+		});
+
+		it('attributes the provider from the configured model id under the AI service proxy', async () => {
+			settingsService.isProxyEnabled.mockReturnValue(true);
+			settingsService.getConfiguredModelId.mockReturnValue('moonshotai/kimi-k3');
+			modelService.resolveAgentModelConfig.mockResolvedValue({
+				specificationVersion: 'v2',
+				provider: 'anthropic.messages',
+				modelId: 'kimi-k3',
+			} as never);
+			generateTextMock.mockRejectedValueOnce(new Error('Provider returned 401'));
+
+			await service.verifyModel(user, {});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_CONNECTION_FAILED,
+				expect.objectContaining({ provider: 'moonshotai' }),
+			);
+		});
+
+		it('attributes the provider for pre-built language-model configs', async () => {
+			modelService.resolveAgentModelConfig.mockResolvedValue({
+				specificationVersion: 'v2',
+				provider: 'anthropic.messages',
+				modelId: 'claude-sonnet-4',
+			} as never);
+			generateTextMock.mockRejectedValueOnce(new Error('Provider returned 401'));
+
+			await service.verifyModel(user, {});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_CONNECTION_FAILED,
+				expect.objectContaining({ provider: 'anthropic' }),
+			);
+		});
+
+		it('strips URL query strings from the reported error message', async () => {
+			generateTextMock.mockRejectedValueOnce(
+				new Error('request to https://api.example.com/v1?key=secret-key failed'),
+			);
+
+			await service.verifyModel(user, {});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_CONNECTION_FAILED,
+				expect.objectContaining({
+					error_message: 'request to https://api.example.com/v1 failed',
+				}),
+			);
+			expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain('secret-key');
+		});
+
+		it('reports failed search verification as the web_search component', async () => {
+			settingsService.resolveSearchConfig.mockResolvedValue({ braveApiKey: 'saved-key' });
+			braveSearchMock.mockRejectedValue(new Error('network request failed'));
+
+			await service.verifySearch({});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_CONNECTION_FAILED,
+				{
+					component: 'web_search',
+					provider: 'brave',
+					failure: 'unreachable',
+					error_message: 'network request failed',
+				},
+			);
+		});
+
+		it('does not report telemetry for successful verifications', async () => {
+			await expect(service.verifyModel(user, {})).resolves.toMatchObject({ ok: true });
+
+			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 	});
 });

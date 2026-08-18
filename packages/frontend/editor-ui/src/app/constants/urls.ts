@@ -25,6 +25,8 @@ export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n
 	? 'https://stage-app.n8n.cloud/account/change-plan'
 	: 'https://app.n8n.cloud/account/change-plan';
 
+export const CLOUD_N8N_CONNECT_TOP_UP_PATH = '/manage/connect';
+
 /**
  * Urls used to route users to the right template repository
  */

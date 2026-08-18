@@ -2,15 +2,17 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { truncate } from '@n8n/utils/string/truncate';
 import { useI18n } from '@n8n/i18n';
-import { N8nHoverCard, N8nIconButton, N8nIcon } from '@n8n/design-system';
+import { N8nBadge, N8nHoverCard, N8nIconButton } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import {
 	formatDuration,
-	isFailedTimelineItem,
+	hitlTimelineName,
+	isErroredToolCallTimelineItem,
 	isSubAgentTimelineItem,
-	itemFilterKey,
+	matchesTimelineFilters,
+	timelineItemStatus,
 } from '../session-timeline.utils';
 import { chartBlockStyleForItem } from '../session-timeline.styles';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
@@ -43,6 +45,10 @@ const canScrollLeft = ref(false);
 const canScrollRight = ref(false);
 const activePopover = ref<PopoverTarget | null>(null);
 const popoverOpen = ref(false);
+const activePopoverStatus = computed(() => {
+	const segment = activePopover.value?.segment;
+	return segment?.kind === 'event' ? timelineItemStatus(segment.item) : undefined;
+});
 
 const INSTANT_MS = 100;
 const POPOVER_SHOW_DELAY_MS = 300;
@@ -73,8 +79,7 @@ const segments = computed<Segment[]>(() => {
 });
 
 function isDimmed(item: TimelineItem): boolean {
-	if (props.visibleKinds.size === 0) return false;
-	return !props.visibleKinds.has(itemFilterKey(item));
+	return !matchesTimelineFilters(item, props.visibleKinds);
 }
 
 function cellStyle(seg: Segment): Record<string, string> {
@@ -96,10 +101,6 @@ function popoverPillKind(item: TimelineItem) {
 	return isSubAgentTimelineItem(item) ? 'subagent' : item.kind;
 }
 
-function isFailed(item: TimelineItem): boolean {
-	return isFailedTimelineItem(item);
-}
-
 function popoverLabel(item: TimelineItem): string {
 	if (isSubAgentTimelineItem(item)) return i18n.baseText('agentSessions.timeline.subAgent');
 	switch (item.kind) {
@@ -114,7 +115,13 @@ function popoverLabel(item: TimelineItem): string {
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspension');
+			return i18n.baseText(
+				item.hitlRequestType === 'approval'
+					? 'agentSessions.timeline.approvalRequested'
+					: 'agentSessions.timeline.hitlRequested',
+			);
+		case 'hitl-response':
+			return i18n.baseText('agentSessions.timeline.hitlResponse');
 		default:
 			return '';
 	}
@@ -136,10 +143,16 @@ function popoverName(item: TimelineItem): string {
 		case 'node':
 			return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
+		case 'hitl-response':
+			return hitlTimelineName(item, i18n);
 		default:
 			return '';
 	}
+}
+
+function statusLabel(item: TimelineItem): string | undefined {
+	const status = timelineItemStatus(item);
+	return status ? i18n.baseText(status.labelKey) : undefined;
 }
 
 /**
@@ -162,6 +175,12 @@ function idleDuration(range: IdleRange): string {
 function popoverTime(item: TimelineItem): string {
 	if (!item.timestamp) return '';
 	return convertToDisplayDate(new Date(item.timestamp).toISOString()).time;
+}
+
+function blockAriaLabel(item: TimelineItem): string {
+	return [popoverLabel(item), popoverName(item), statusLabel(item)]
+		.filter((part): part is string => Boolean(part))
+		.join(', ');
 }
 
 function onClick(index: number, item: TimelineItem): void {
@@ -319,22 +338,24 @@ onBeforeUnmount(() => {
 						<span :class="$style.popoverMeta">{{ idleDuration(activePopover.segment.range) }}</span>
 					</div>
 					<div v-else-if="activePopover" :class="$style.popoverInner">
-						<N8nIcon
-							v-if="isFailed(activePopover.segment.item)"
-							icon="circle-x"
-							size="xsmall"
-							:class="$style.popoverFailedIcon"
-							data-testid="timeline-block-failed-icon"
-						/>
-						<span v-if="isFailed(activePopover.segment.item)" :class="$style.popoverFailedLabel">
-							{{ i18n.baseText('agentSessions.timeline.failed') }}
-						</span>
 						<SessionTimelinePill
 							:kind="popoverPillKind(activePopover.segment.item)"
 							:label="popoverLabel(activePopover.segment.item)"
 							show-label
 						/>
 						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
+						<N8nBadge
+							v-if="activePopoverStatus"
+							:theme="activePopoverStatus.theme"
+							size="xsmall"
+							:data-test-id="
+								activePopoverStatus.kind === 'hitl-response'
+									? 'timeline-popover-hitl-response-badge'
+									: 'timeline-popover-tool-error-badge'
+							"
+						>
+							{{ i18n.baseText(activePopoverStatus.labelKey) }}
+						</N8nBadge>
 						<span v-if="popoverDuration(activePopover.segment.item)" :class="$style.popoverMeta">
 							{{ popoverDuration(activePopover.segment.item) }}
 						</span>
@@ -363,13 +384,14 @@ onBeforeUnmount(() => {
 					type="button"
 					data-test-id="timeline-block"
 					:data-timeline-index="seg.index"
+					:data-error="isErroredToolCallTimelineItem(seg.item) ? 'true' : undefined"
+					:aria-label="blockAriaLabel(seg.item)"
 					:class="[
 						$style.block,
 						props.selectedIndex === seg.index && $style.selected,
-						isFailed(seg.item) && $style.failed,
+						isErroredToolCallTimelineItem(seg.item) && $style.error,
 					]"
 					:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
-					:data-failed="isFailed(seg.item) ? 'true' : undefined"
 					:style="eventStyle(seg.item)"
 					@mouseenter="showPopover(seg, $event)"
 					@mouseleave="hidePopover($event)"
@@ -477,35 +499,21 @@ onBeforeUnmount(() => {
 }
 
 .selected {
-	outline: 2px solid var(--session-timeline-chart-block-color);
-	outline-offset: 1px;
+	outline: var(--focus--border-width) solid var(--session-timeline-chart-block-color);
+	outline-offset: var(--spacing--5xs);
 	/* Lift above neighbouring idle stripes so the highlight outline doesn't
 	   get covered by the adjacent .idle background. */
 	z-index: 2;
 }
 
-/*
- * Failed tool/workflow/node calls keep their kind colour but get a danger
- * ring via box-shadow so it composes with the `.selected` outline rather
- * than competing with it (outline + box-shadow render independently).
- */
-.failed {
-	box-shadow: 0 0 0 2px var(--color--danger);
+.error {
+	outline: var(--focus--border-width) solid var(--border-color--danger);
+	outline-offset: var(--spacing--5xs);
+	z-index: 1;
 }
 
-.failed.selected {
-	box-shadow: 0 0 0 2px var(--color--danger);
-}
-
-.popoverFailedIcon {
-	color: var(--color--danger);
-	flex-shrink: 0;
-}
-
-.popoverFailedLabel {
-	color: var(--color--danger);
-	font-weight: var(--font-weight--bold);
-	white-space: nowrap;
+.selected.error {
+	z-index: 2;
 }
 
 /*
