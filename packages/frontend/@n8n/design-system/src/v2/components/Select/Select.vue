@@ -579,7 +579,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 		<SelectPortal>
 			<SelectContent
 				data-test-id="select-content"
-				:class="[$style.selectContent, contentClass]"
+				:class="[$style.selectContent, size, contentClass]"
 				:position="position"
 				:side="side"
 				:side-offset="sideOffset"
@@ -833,13 +833,15 @@ function resolveDisplayValue(value: unknown): string | undefined {
 }
 
 .selectContent {
+	--select-viewport--padding: var(--spacing--4xs);
+
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
 	width: max-content;
 	min-width: max(var(--reka-select-trigger-width, 0px), var(--spacing--4xl));
 	max-height: min(var(--reka-select-content-available-height, 50vh), calc(var(--height--5xl) * 3));
-	border-radius: var(--radius--xs);
+	border-radius: var(--input--radius);
 	background-color: var(--background--surface);
 	--shadow-color--outline: var(--border-color);
 	box-shadow: var(--shadow--md), var(--shadow--outline);
@@ -856,8 +858,6 @@ function resolveDisplayValue(value: unknown): string | undefined {
 }
 
 .selectViewport {
-	--select-viewport--padding: var(--spacing--4xs);
-
 	display: flex;
 	flex-direction: column;
 	padding: var(--select-viewport--padding);
@@ -866,8 +866,8 @@ function resolveDisplayValue(value: unknown): string | undefined {
 .empty {
 	padding: var(--spacing--2xs);
 	color: var(--text-color--subtler);
-	font-size: var(--font-size--xs);
-	line-height: var(--line-height--md);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
 	text-align: center;
 }
 
@@ -879,8 +879,8 @@ function resolveDisplayValue(value: unknown): string | undefined {
 .searchInput {
 	width: 100%;
 	--input--height: var(--height--xl);
-	--input--radius--top-left: var(--radius--xs);
-	--input--radius--top-right: var(--radius--xs);
+	--input--radius--top-left: var(--input--radius);
+	--input--radius--top-right: var(--input--radius);
 	--input--radius--bottom-right: 0;
 	--input--radius--bottom-left: 0;
 	--input--color--background: transparent;
@@ -914,9 +914,9 @@ function resolveDisplayValue(value: unknown): string | undefined {
 }
 
 .selectItem {
-	font-size: var(--font-size--xs);
-	line-height: var(--line-height--md);
-	border-radius: var(--radius--2xs);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
+	border-radius: var(--input--radius);
 	display: flex;
 	align-items: center;
 	min-height: var(--spacing--xl);

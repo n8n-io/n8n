@@ -357,6 +357,10 @@ function handlePagerKeydown(event: KeyboardEvent) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+
+	.pageSizes {
+		width: max-content;
+	}
 }
 
 .medium {
@@ -375,12 +379,6 @@ function handlePagerKeydown(event: KeyboardEvent) {
 		--jumper-inset: var(--spacing--xs);
 		--jumper-font-size: var(--font-size--sm);
 		--jumper-radius: var(--radius--3xs);
-	}
-
-	// Temporary: Select medium is 36px; match jumper / --height--md (32px)
-	.pageSizes {
-		height: var(--height--md);
-		min-height: var(--height--md);
 	}
 }
 
@@ -403,12 +401,6 @@ function handlePagerKeydown(event: KeyboardEvent) {
 		--jumper-inset: var(--spacing--2xs);
 		--jumper-font-size: var(--font-size--xs);
 		--jumper-radius: var(--radius--3xs);
-	}
-
-	// Temporary: match jumper / --height--sm until Select size tokens align
-	.pageSizes {
-		height: var(--height--sm);
-		min-height: var(--height--sm);
 	}
 }
 
