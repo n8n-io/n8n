@@ -1,5 +1,4 @@
 import { AgentBrowserAdapter } from './agent-browser';
-import { OPT_OUT_SCRIPT } from './extension-opt-out';
 import { PageNotFoundError, UnsupportedOperationError } from '../errors';
 import { configureLogger } from '../logger';
 import type { ResolvedConfig } from '../types';
@@ -285,94 +284,63 @@ describe('AgentBrowserAdapter', () => {
 	// =========================================================================
 
 	describe('type', () => {
-		function stubOptOut(): void {
-			stubRun({ success: true });
-		}
-
 		beforeEach(async () => {
 			await withActiveTab();
 		});
 
-		it('applies the extension opt-out before typing', async () => {
-			stubOptOut();
-			stubRun({ success: true });
-
-			await adapter.type('t1', { ref: 'e1' }, 'hello');
-
-			const [command, flag, encoded] = getRunArgs(0);
-			expect([command, flag]).toEqual(['eval', '-b']);
-			expect(Buffer.from(encoded, 'base64').toString()).toBe(OPT_OUT_SCRIPT);
-		});
-
-		it('still types when the opt-out eval fails', async () => {
-			execFileAsyncMock.mockRejectedValueOnce(new Error('eval blocked'));
-			stubRun({ success: true });
-
-			await adapter.type('t1', { ref: 'e1' }, 'hello');
-
-			expect(getRunArgs(1)).toEqual(['type', '@e1', 'hello']);
-		});
-
 		it('uses type command by default', async () => {
-			stubOptOut();
 			stubRun({ success: true });
 			await adapter.type('t1', { ref: 'e1' }, 'hello');
-			expect(getRunArgs(1)).toEqual(['type', '@e1', 'hello']);
+			expect(getRunArgs(0)).toEqual(['type', '@e1', 'hello']);
 		});
 
 		it('uses fill command when clear is true', async () => {
-			stubOptOut();
 			stubRun({ success: true });
 			await adapter.type('t1', { ref: 'e1' }, 'hello', { clear: true });
-			expect(getRunArgs(1)).toEqual(['fill', '@e1', 'hello']);
+			expect(getRunArgs(0)).toEqual(['fill', '@e1', 'hello']);
 		});
 
 		it('issues a press Enter after typing when submit is true', async () => {
-			stubOptOut();
 			stubRun({ success: true }); // type
 			stubRun({ success: true }); // press Enter
 			await adapter.type('t1', { ref: 'e1' }, 'hello', { submit: true });
-			expect(getRunArgs(1)).toEqual(['type', '@e1', 'hello']);
-			expect(getRunArgs(2)).toEqual(['press', 'Enter']);
+			expect(getRunArgs(0)).toEqual(['type', '@e1', 'hello']);
+			expect(getRunArgs(1)).toEqual(['press', 'Enter']);
 		});
 
 		it('splits a single leading dash into a separate type call', async () => {
-			stubOptOut();
 			stubRun({ success: true }); // type '-'
 			stubRun({ success: true }); // type '5'
 			await adapter.type('t1', { ref: 'e1' }, '-5');
-			expect(getRunArgs(1)).toEqual(['type', '@e1', '-']);
-			expect(getRunArgs(2)).toEqual(['type', '@e1', '5']);
+			expect(getRunArgs(0)).toEqual(['type', '@e1', '-']);
+			expect(getRunArgs(1)).toEqual(['type', '@e1', '5']);
 		});
 
 		it('peels each leading dash individually for multi-dash text', async () => {
-			stubOptOut();
 			stubRun({ success: true }); // type '-'
 			stubRun({ success: true }); // type '-'
 			stubRun({ success: true }); // type 'help'
 			await adapter.type('t1', { ref: 'e1' }, '--help');
+			expect(getRunArgs(0)).toEqual(['type', '@e1', '-']);
 			expect(getRunArgs(1)).toEqual(['type', '@e1', '-']);
-			expect(getRunArgs(2)).toEqual(['type', '@e1', '-']);
-			expect(getRunArgs(3)).toEqual(['type', '@e1', 'help']);
+			expect(getRunArgs(2)).toEqual(['type', '@e1', 'help']);
 		});
 
 		it('uses fill for the first chunk when clear is true and text starts with -', async () => {
-			stubOptOut();
 			stubRun({ success: true }); // fill '-'
 			stubRun({ success: true }); // type '5'
 			await adapter.type('t1', { ref: 'e1' }, '-5', { clear: true });
-			expect(getRunArgs(1)).toEqual(['fill', '@e1', '-']);
-			expect(getRunArgs(2)).toEqual(['type', '@e1', '5']);
+			expect(getRunArgs(0)).toEqual(['fill', '@e1', '-']);
+			expect(getRunArgs(1)).toEqual(['type', '@e1', '5']);
 		});
 
 		it('handles text that is only dashes', async () => {
-			stubOptOut();
 			stubRun({ success: true }); // type '-'
 			stubRun({ success: true }); // type '-'
 			await adapter.type('t1', { ref: 'e1' }, '--');
-			expect(execFileAsyncMock).toHaveBeenCalledTimes(3);
+			expect(execFileAsyncMock).toHaveBeenCalledTimes(2);
+			expect(getRunArgs(0)).toEqual(['type', '@e1', '-']);
 			expect(getRunArgs(1)).toEqual(['type', '@e1', '-']);
-			expect(getRunArgs(2)).toEqual(['type', '@e1', '-']);
 		});
 	});
 
@@ -686,11 +654,10 @@ describe('AgentBrowserAdapter', () => {
 		});
 
 		it('type passes normal text as a single call', async () => {
-			stubRun({ success: true }); // extension opt-out eval
 			stubRun({ success: true });
 			await adapter.type('t1', { ref: 'e1' }, 'hello');
-			expect(execFileAsyncMock).toHaveBeenCalledTimes(2);
-			expect(getRunArgs(1)).toEqual(['type', '@e1', 'hello']);
+			expect(execFileAsyncMock).toHaveBeenCalledTimes(1);
+			expect(getRunArgs(0)).toEqual(['type', '@e1', 'hello']);
 		});
 	});
 

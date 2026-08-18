@@ -20,7 +20,6 @@ import {
 } from '../errors';
 import { buildExtensionConnectUrl } from '../extension-connect';
 import { createLogger } from '../logger';
-import { applyExtensionOptOut } from './extension-opt-out';
 import { HTML_PROBE_SCRIPT, parseHtmlProbeResult } from '../sensitivity/html-probe';
 import type {
 	ClickOptions,
@@ -46,25 +45,6 @@ import { generateId, toError } from '../utils';
 
 const log = createLogger('playwright');
 
-/** Opting out is best-effort; never let it hold an action longer than this. */
-const OPT_OUT_TIMEOUT_MS = 5_000;
-
-/** Resolves with the work, or on the deadline — whichever comes first. Never rejects. */
-async function withTimeout(work: Promise<unknown>, label: string): Promise<void> {
-	let timer: NodeJS.Timeout | undefined;
-	const deadline = new Promise<void>((resolve) => {
-		timer = setTimeout(() => {
-			log.debug(`${label}: timed out`);
-			resolve();
-		}, OPT_OUT_TIMEOUT_MS);
-	});
-	try {
-		await Promise.race([work.catch(() => {}), deadline]);
-	} finally {
-		clearTimeout(timer);
-	}
-}
-
 // ---------------------------------------------------------------------------
 // Per-page state tracked by the adapter
 // ---------------------------------------------------------------------------
@@ -77,8 +57,6 @@ interface PageState {
 	networkBuffer: NetworkEntry[];
 	pendingDialog?: Dialog;
 	pendingFileChooser?: FileChooser;
-	/** Opt-out passes still in flight for this page's documents and frames. */
-	optOutPasses: Set<Promise<void>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,8 +84,6 @@ export class PlaywrightAdapter {
 	private browser?: Browser;
 	private context?: BrowserContext;
 	private pageStates = new Map<string, PageState>();
-	/** False when the init script could not be installed, so documents need stamping per use. */
-	private optOutArmed = false;
 	private relay?: CDPRelayServer;
 	private readonly externalRelay?: CDPRelayServer;
 	private readonly externalCdpEndpoint?: string;
@@ -200,11 +176,6 @@ export class PlaywrightAdapter {
 		log.debug('browser contexts:', contexts.length);
 		const context = contexts[0] ?? (await this.browser.newContext({ colorScheme: null }));
 		this.context = context;
-
-		// Awaited here so it is armed before anything can navigate.
-		this.optOutArmed = await applyExtensionOptOut(
-			async (script) => await context.addInitScript(script),
-		);
 
 		// Two-tier model: pages are created lazily via ensurePage().
 		// When ensurePage() triggers activateTab(), it sets pendingActivation
@@ -440,15 +411,8 @@ export class PlaywrightAdapter {
 		text: string,
 		options?: TypeOptions,
 	): Promise<void> {
-		const state = await this.ensurePage(pageId);
+		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
-
-		// Without an init script only this pass protects the document, and the page may have
-		// navigated since the last one.
-		if (!this.optOutArmed) {
-			this.startOptOutPass(state, async (script) => await state.page.evaluate(script));
-			await this.awaitOptOut(state);
-		}
 
 		if (options?.clear) {
 			await locator.clear();
@@ -971,7 +935,6 @@ export class PlaywrightAdapter {
 		const existing = this.pageStates.get(pageId);
 		if (existing) {
 			log.debug('ensurePage: page already tracked:', pageId);
-			await this.awaitOptOut(existing);
 			return existing;
 		}
 
@@ -1015,28 +978,7 @@ export class PlaywrightAdapter {
 		log.debug('ensurePage: page ready:', pageId);
 		// The context.on('page') listener should have tracked it with the right ID
 		const state = this.pageStates.get(pageId) ?? this.trackPage(page, pageId);
-		await this.awaitOptOut(state);
 		return state;
-	}
-
-	/**
-	 * Starts an opt-out pass and tracks it until it settles. Passes run concurrently: a frame
-	 * that navigates should be stamped as soon as it can be, not behind every earlier pass.
-	 */
-	private startOptOutPass(state: PageState, deliver: (script: string) => Promise<unknown>): void {
-		const pass = withTimeout(applyExtensionOptOut(deliver), 'opt-out pass').finally(() => {
-			state.optOutPasses.delete(pass);
-		});
-		state.optOutPasses.add(pass);
-	}
-
-	/**
-	 * Waits for the passes in flight right now. Bounded at one deadline however many frames have
-	 * navigated: passes run concurrently and each carries its own, and this snapshots the set so
-	 * a page that keeps navigating frames cannot extend an action already waiting.
-	 */
-	private async awaitOptOut(state: PageState): Promise<void> {
-		await Promise.all([...state.optOutPasses]);
 	}
 
 	private findPageState(page: Page): PageState | undefined {
@@ -1055,19 +997,7 @@ export class PlaywrightAdapter {
 			consoleBuffer: [],
 			errorBuffer: [],
 			networkBuffer: [],
-			optOutPasses: new Set(),
 		};
-		// The init script only covers documents opened after we armed it, so a tab that was
-		// already loaded when we attached needs one explicit pass.
-		this.startOptOutPass(state, async (script) => await page.evaluate(script));
-
-		// A same-origin or srcdoc child frame runs the init script only against its initial
-		// about:blank document and then reuses that window, so its real document never gets it.
-		// Cross-origin frames get a fresh window and are covered either way.
-		page.on('framenavigated', (frame) => {
-			if (frame === page.mainFrame()) return;
-			this.startOptOutPass(state, async (script) => await frame.evaluate(script));
-		});
 
 		// Console listener
 		page.on('console', (msg) => {

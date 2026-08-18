@@ -12,7 +12,6 @@ import {
 	type ConnectionLostReason,
 } from '../errors';
 import { createLogger } from '../logger';
-import { applyExtensionOptOut } from './extension-opt-out';
 import { HTML_PROBE_SCRIPT, parseHtmlProbeResult } from '../sensitivity/html-probe';
 import type {
 	Adapter,
@@ -355,7 +354,6 @@ export class AgentBrowserAdapter implements Adapter {
 		options?: TypeOptions,
 	): Promise<void> {
 		await this.switchToTab(pageId);
-		await applyExtensionOptOut(async (script) => await this.evaluate(pageId, script));
 		const ref = this.resolveTarget(target);
 		const baseCmd = options?.clear ? 'fill' : 'type';
 

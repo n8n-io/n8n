@@ -1,4 +1,3 @@
-import { OPT_OUT_SCRIPT } from './extension-opt-out';
 import { PlaywrightAdapter } from './playwright';
 import type { CDPRelayServer } from '../cdp-relay';
 import { configureLogger } from '../logger';
@@ -12,11 +11,9 @@ vi.mock('playwright-core', () => ({
 	chromium: { connectOverCDP },
 }));
 
-const addInitScript = vi.fn().mockResolvedValue(undefined);
-
 function fakeBrowser() {
 	return {
-		contexts: () => [{ on: vi.fn(), addInitScript }],
+		contexts: () => [{ on: vi.fn() }],
 		newContext: vi.fn(),
 		on: vi.fn(),
 	};
@@ -70,13 +67,5 @@ describe('PlaywrightAdapter remote mode', () => {
 			headers: undefined,
 			noDefaults: true,
 		});
-	});
-
-	it('arms the extension opt-out on the remote context', async () => {
-		const adapter = new PlaywrightAdapter(config, { relay: fakeRelay() });
-
-		await adapter.launch({ browser: 'chrome' });
-
-		expect(addInitScript).toHaveBeenCalledWith(OPT_OUT_SCRIPT);
 	});
 });
