@@ -163,7 +163,10 @@ export async function useQuickJsEngine(): Promise<void> {
 		engine: 'quickjs',
 		poolSize: 1,
 		maxCodeCacheSize: 1024,
-		bridgeTimeout: 60_000,
+		// QuickJS (WASM) is several times slower than isolated-vm; under CodSpeed
+		// instrumentation the remaining pattern benchmarks need extra headroom
+		// beyond the vm engine's 60s.
+		bridgeTimeout: 120_000,
 		bridgeMemoryLimit: 128,
 	});
 }

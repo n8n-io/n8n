@@ -36,4 +36,6 @@ definePatternBenchmarks(
 	makeSmallData(),
 	makeMediumData(),
 	makeLargeData(),
+	// Skip the 10k-item map: too slow on QuickJS under CodSpeed instrumentation.
+	{ includeLargeArray: false },
 );
