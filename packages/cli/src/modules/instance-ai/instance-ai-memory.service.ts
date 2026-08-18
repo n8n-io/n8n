@@ -84,6 +84,62 @@ function messageCreatedAtMs(message: AgentDbMessage): number {
 	return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+/** Span of a returned message page — the only trees a read needs to hydrate. */
+interface HistoryWindow {
+	since?: Date;
+	until?: Date;
+}
+
+/**
+ * Bounds tree hydration to the page being rendered. Trees older than the page
+ * have no message to pair with and `parseStoredMessages` renders them as
+ * messages of their own, so leaving them in costs a full-history read *and*
+ * puts turns on screen the page did not ask for.
+ *
+ * The newest page keeps an open upper bound: an in-flight run's message rows
+ * are not written until its turn commits, so clipping there would hide the turn
+ * the user is watching. Older pages stop at their newest message — anything
+ * after it belongs to a newer page.
+ *
+ * An empty page carries no bounds at all. A thread whose only activity is a
+ * first, still-running turn has no message rows yet, and must still render.
+ */
+function historyWindow(messages: AgentDbMessage[], page: number): HistoryWindow {
+	if (messages.length === 0) return {};
+	const since = new Date(messageCreatedAtMs(messages[0]));
+	if (page === 0) return { since };
+	return { since, until: new Date(messageCreatedAtMs(messages[messages.length - 1])) };
+}
+
+/**
+ * Widens a windowed run set to whole message groups. A group's runs fold into
+ * one tree, and a background run can outlive the turn that spawned it, so a
+ * window that catches one run of a group has to pull in its siblings — folding
+ * a group from half its facts yields a tree missing the other half's work.
+ */
+function expandRunIdsToGroups(
+	runIds: string[],
+	runStarts: Array<{ runId: string; messageGroupId?: string }>,
+): string[] {
+	const groupByRun = new Map<string, string>();
+	const runsByGroup = new Map<string, string[]>();
+	for (const { runId, messageGroupId } of runStarts) {
+		if (!messageGroupId) continue;
+		groupByRun.set(runId, messageGroupId);
+		const siblings = runsByGroup.get(messageGroupId);
+		if (siblings) siblings.push(runId);
+		else runsByGroup.set(messageGroupId, [runId]);
+	}
+
+	const expanded = new Set(runIds);
+	for (const runId of runIds) {
+		const groupId = groupByRun.get(runId);
+		if (!groupId) continue;
+		for (const sibling of runsByGroup.get(groupId) ?? []) expanded.add(sibling);
+	}
+	return [...expanded];
+}
+
 function collectInFlightCheckpointMessages(checkpoints: InstanceAiCheckpoint[]): AgentDbMessage[] {
 	const merged: AgentDbMessage[] = [];
 	const seen = new Set<string>();
@@ -369,14 +425,19 @@ export class InstanceAiMemoryService {
 			page: options?.page ?? 0,
 		});
 
+		// Hydrate trees only for the page we are about to render.
+		const pageWindow = historyWindow(result.messages, options?.page ?? 0);
+
 		const loadStoredSnapshots = async (): Promise<AgentTreeSnapshot[]> => {
-			let snapshots = await this.dbSnapshotStorage.getAll(threadId).catch((error) => {
-				this.logger.warn('Failed to load agent tree snapshots', {
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
+			let snapshots = await this.dbSnapshotStorage
+				.getForWindow(threadId, pageWindow)
+				.catch((error) => {
+					this.logger.warn('Failed to load agent tree snapshots', {
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					return [] as AgentTreeSnapshot[];
 				});
-				return [] as AgentTreeSnapshot[];
-			});
 			// Exclude snapshots for active runs — they have no matching assistant
 			// message in memory yet and would misalign the positional
 			// snapshot-to-message matching in parseStoredMessages.
@@ -400,6 +461,7 @@ export class InstanceAiMemoryService {
 					threadId,
 					loadStoredSnapshots,
 					collectSuspendedHostRunIds(activeCheckpoints),
+					pageWindow,
 					options?.excludeRunIds,
 					options?.excludeMessageGroupIds,
 				)
@@ -432,18 +494,38 @@ export class InstanceAiMemoryService {
 	 * flag-off and rollback path) but are neither read nor loaded here; the
 	 * lazy loader runs only when the thread has no log rows or the read
 	 * fails/derives nothing.
+	 *
+	 * Only the runs behind the requested page are read and folded (INS-693), so
+	 * a long thread costs the same per read as a short one. Run-start facts are
+	 * read for the whole thread — one row per run, no group can be resolved
+	 * without them — but their payloads are the only ones parsed outside the
+	 * window.
 	 */
 	private async foldSnapshotsFromLog(
 		threadId: string,
 		loadStoredSnapshots: () => Promise<AgentTreeSnapshot[]>,
 		suspendedRunIds: ReadonlySet<string>,
+		pageWindow: HistoryWindow,
 		excludeRunIds?: string[],
 		excludeMessageGroupIds?: string[],
 	): Promise<AgentTreeSnapshot[]> {
 		const start = Date.now();
 		let rows;
 		try {
-			rows = await this.eventLogRepository.getForThread(threadId);
+			// Pre-log thread (instance ran before the flag): no run has a start
+			// fact, so stored snapshots still render. Production flips the flag
+			// together with the backfill migration (INS-851), so this branch is a
+			// dev-instance safety, not a design. Checked on run starts rather than
+			// on the windowed rows, which are also empty for a thread whose log
+			// simply has nothing inside the page.
+			const runStarts = await this.eventLogRepository.getRunStarts(threadId);
+			if (runStarts.length === 0) return await loadStoredSnapshots();
+
+			const windowedRunIds = await this.eventLogRepository.findRunIdsInWindow(threadId, pageWindow);
+			rows = await this.eventLogRepository.getForThreadRuns(
+				threadId,
+				expandRunIdsToGroups(windowedRunIds, runStarts),
+			);
 		} catch (error) {
 			this.logger.warn('Failed to read Instance AI event log for history', {
 				threadId,
@@ -451,9 +533,6 @@ export class InstanceAiMemoryService {
 			});
 			return await loadStoredSnapshots();
 		}
-		// Pre-log thread (instance ran before the flag): stored snapshots still
-		// render. Production flips the flag together with the backfill migration
-		// (INS-851), so this branch is a dev-instance safety, not a design.
 		if (rows.length === 0) return await loadStoredSnapshots();
 
 		// Multi-main backstop (INS-913): the caller's exclusions come from
