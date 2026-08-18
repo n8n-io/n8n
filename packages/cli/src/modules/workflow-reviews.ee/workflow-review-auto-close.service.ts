@@ -128,7 +128,7 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 						);
 
 					const affected = new Set<string>();
-					for (const { request, workflowIds: linkedWorkflowIds } of openRequests) {
+					for (const { request, links } of openRequests) {
 						request.state = 'closed';
 						// A system close has no closing user; the decision stays as-is.
 						request.closedById = null;
@@ -148,7 +148,7 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 							ctx,
 						);
 
-						for (const linkedWorkflowId of linkedWorkflowIds) affected.add(linkedWorkflowId);
+						for (const link of links) affected.add(link.workflowId);
 					}
 
 					return [...affected];

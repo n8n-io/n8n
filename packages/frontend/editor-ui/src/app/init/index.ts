@@ -35,6 +35,7 @@ import { h } from 'vue';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 export const state = {
@@ -264,6 +265,7 @@ function registerAuthenticationHooks() {
 	const settingsStore = useSettingsStore();
 	const ssoStore = useSSOStore();
 	const favoritesStore = useFavoritesStore();
+	const workflowReviewStatusStore = useWorkflowReviewStatusStore();
 
 	usersStore.registerLoginHook(async (user) => {
 		await settingsStore.getSettings();
@@ -309,6 +311,7 @@ function registerAuthenticationHooks() {
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 		favoritesStore.reset();
+		workflowReviewStatusStore.reset();
 		// So a soft-redirect re-login (no page reload) re-fetches per-user data.
 		authenticatedFeaturesInitialized = false;
 	});

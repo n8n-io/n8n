@@ -301,25 +301,36 @@ describe('WorkflowReviewRequestRepository', () => {
 			});
 		});
 
-		it('maps each request to the linked workflows it was matched by', async () => {
+		it('maps each request to the linked workflows it was matched by, with their pins', async () => {
 			queryBuilder.getRawAndEntities.mockResolvedValue({
 				entities: [
 					mock<WorkflowReviewRequest>({ id: 'req-1' }),
 					mock<WorkflowReviewRequest>({ id: 'req-2' }),
 				],
 				raw: [
-					{ request_id: 'req-1', linkedWorkflowId: 'workflow-1' },
-					{ request_id: 'req-1', linkedWorkflowId: 'workflow-2' },
-					{ request_id: 'req-2', linkedWorkflowId: 'workflow-2' },
+					{ request_id: 'req-1', linkedWorkflowId: 'workflow-1', linkedWorkflowVersionId: 'ver-1' },
+					{ request_id: 'req-1', linkedWorkflowId: 'workflow-2', linkedWorkflowVersionId: null },
+					{ request_id: 'req-2', linkedWorkflowId: 'workflow-2', linkedWorkflowVersionId: 'ver-2' },
 				],
 			});
 
 			const result = await repo.findOpenRequestsForWorkflows(['workflow-1', 'workflow-2'], {});
 
+			expect(queryBuilder.addSelect).toHaveBeenCalledWith(
+				'requestWorkflow.workflowVersionId',
+				'linkedWorkflowVersionId',
+			);
 			expect(result).toHaveLength(2);
-			expect(result[0]).toMatchObject({ workflowIds: ['workflow-1', 'workflow-2'] });
+			expect(result[0]).toMatchObject({
+				links: [
+					{ workflowId: 'workflow-1', workflowVersionId: 'ver-1' },
+					{ workflowId: 'workflow-2', workflowVersionId: null },
+				],
+			});
 			expect(result[0].request.id).toBe('req-1');
-			expect(result[1]).toMatchObject({ workflowIds: ['workflow-2'] });
+			expect(result[1]).toMatchObject({
+				links: [{ workflowId: 'workflow-2', workflowVersionId: 'ver-2' }],
+			});
 			expect(result[1].request.id).toBe('req-2');
 		});
 

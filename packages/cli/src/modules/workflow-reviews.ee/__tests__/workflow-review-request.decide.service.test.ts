@@ -9,7 +9,6 @@ import type {
 	UserRepository,
 	WorkflowEntity,
 	WorkflowHistoryRepository,
-	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -24,6 +23,11 @@ import type {
 import { DbLock } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
+import { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
+import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
+import { WorkflowReviewRequestService } from '../workflow-review-request.service';
+
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -34,10 +38,6 @@ import type { WorkflowReviewPolicyService } from '@/services/workflow-review-pol
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
-
-import { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
-import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
-import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
 const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:member' } });
 const requesterUser = mock<User>({
@@ -61,7 +61,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 	const workflowEntityRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
@@ -74,6 +73,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
 	const workflowService = mock<WorkflowService>();
+	const accessService = mock<WorkflowReviewAccessService>();
 	const logger = mock<Logger>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
@@ -86,7 +86,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 		workflowHistoryRepository,
 		workflowEntityRepository,
 		sharedWorkflowRepository,
-		publishHistoryRepository,
 		requestRepository,
 		workflowRepository,
 		authorRepository,
@@ -105,6 +104,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		dbLockService,
 		collaborationService,
 		workflowService,
+		accessService,
 	);
 
 	const openRequest = (overrides: Partial<WorkflowReviewRequest> = {}) =>
@@ -147,6 +147,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		accessService.resolveOpenableRequestIds.mockResolvedValue(new Set());
 		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });

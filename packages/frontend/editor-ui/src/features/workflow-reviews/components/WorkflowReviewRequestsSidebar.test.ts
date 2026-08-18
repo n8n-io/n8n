@@ -113,14 +113,14 @@ describe('WorkflowReviewRequestsSidebar', () => {
 
 	describe('cards', () => {
 		it.each([
-			{ state: 'open' as const, decision: 'pending' as const, label: 'Waiting for review' },
+			{ state: 'open' as const, decision: 'pending' as const, label: 'Open • Waiting for review' },
 			{
 				state: 'open' as const,
 				decision: 'changes_requested' as const,
-				label: 'Changes requested',
+				label: 'Open • Changes requested',
 			},
-			{ state: 'closed' as const, decision: 'approved' as const, label: 'Approved' },
-			{ state: 'closed' as const, decision: 'pending' as const, label: 'Closed' },
+			{ state: 'closed' as const, decision: 'approved' as const, label: 'Closed • Approved' },
+			{ state: 'closed' as const, decision: 'pending' as const, label: 'Closed • No decision' },
 		])('maps $state + $decision to the "$label" status indicator', ({ state, decision, label }) => {
 			const props =
 				state === 'closed'

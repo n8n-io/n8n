@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
 import { N8nAvatar, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
-import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { VIEWS } from '@/app/constants';
 import { formatUserDisplayName } from '../workflowReviews.utils';
+import { getWorkflowReviewStatusDisplay } from '../workflowReviewStatus.utils';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
 
 const props = defineProps<{
@@ -23,15 +24,9 @@ const otherAuthors = computed(() =>
 	props.review.authors.filter((author) => author.id !== props.review.requester?.id),
 );
 
-const statusSummary = computed(() => {
-	const { state, decision } = props.review;
-	return i18n.baseText('workflowReviews.detail.metadata.state.combinedLabel', {
-		interpolate: {
-			state: i18n.baseText(`workflowReviews.status.${state}` as BaseTextKey),
-			status: i18n.baseText(`workflowReviews.decision.${decision}` as BaseTextKey),
-		},
-	});
-});
+const statusSummary = computed(
+	() => getWorkflowReviewStatusDisplay(i18n, props.review.state, props.review.decision).label,
+);
 </script>
 
 <template>
@@ -43,7 +38,7 @@ const statusSummary = computed(() => {
 				</N8nText>
 			</template>
 			<div :class="$style.status">
-				<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" />
+				<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" decorative />
 				<N8nText size="medium">{{ statusSummary }}</N8nText>
 			</div>
 		</N8nCard>
