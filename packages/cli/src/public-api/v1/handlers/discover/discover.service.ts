@@ -12,6 +12,7 @@ import {
 	scopesInRequirement,
 	toOpenApiPathTemplate,
 } from '../../../public-api-route-resolver';
+import { buildRequestBodyJsonSchema } from '../../openapi-gen/decorator-routes';
 import { extractScopeFromEovHandlerChain } from '../../shared/public-api-scope-lookup';
 
 import '../../controllers';
@@ -151,6 +152,7 @@ function buildDecoratorEndpoints(): EndpointInfo[] {
 		operationId: route.handlerName,
 		tag: route.tags?.[0] ?? 'Other',
 		scope: route.apiKeyScope ?? null,
+		requestSchema: buildRequestBodyJsonSchema(route),
 	}));
 }
 
