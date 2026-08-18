@@ -24,6 +24,10 @@ import {
 	AgentExecutionRepository,
 	type RunningAgentExecution,
 } from './repositories/agent-execution.repository';
+import {
+	computeExecutionFailureSummary,
+	type ThreadFailureSummary,
+} from './utils/execution-failure-summary';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -70,6 +74,7 @@ export interface ThreadListItem extends Omit<AgentExecutionThread, 'generateId' 
 	firstMessage: string | null;
 	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
 	source: string | null;
+	failureSummary: ThreadFailureSummary | null;
 }
 
 const TIMELINE_SNAPSHOT_RETRY_DELAY_MS = 1_000;
@@ -123,6 +128,7 @@ export class AgentExecutionService {
 				timeline: null,
 				storedAt: 'db',
 				error: null,
+				failureSummary: null,
 				hitlStatus: null,
 				source: params.source ?? null,
 				attachments: params.attachments?.length ? params.attachments : null,
@@ -147,6 +153,13 @@ export class AgentExecutionService {
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
 		const { record, hitlStatus } = params;
 		const status = executionStatus(record);
+		const stoppedAt = new Date(record.startTime + record.duration);
+		const failureSummary = computeExecutionFailureSummary({
+			timeline: record.timeline,
+			status,
+			error: record.error,
+			stoppedAt: stoppedAt.getTime(),
+		});
 		let storedAt: AgentExecution['storedAt'] =
 			record.timeline.length > 0 ? this.storageConfig.modeTag : 'db';
 
@@ -166,7 +179,7 @@ export class AgentExecutionService {
 
 			const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
 				status,
-				stoppedAt: new Date(record.startTime + record.duration),
+				stoppedAt,
 				duration: record.duration,
 				model: record.model,
 				promptTokens: record.usage?.promptTokens ?? null,
@@ -176,6 +189,7 @@ export class AgentExecutionService {
 				timeline: storedAt === 'db' && record.timeline.length > 0 ? record.timeline : null,
 				storedAt,
 				error: record.error,
+				failureSummary,
 				hitlStatus: hitlStatus ?? null,
 			});
 			if (!finalized) return executionId;
@@ -200,6 +214,7 @@ export class AgentExecutionService {
 	async finalizeInterruptedExecution(execution: RunningAgentExecution): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
+		const error = 'Agent execution was interrupted by a process restart.';
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
@@ -209,7 +224,13 @@ export class AgentExecutionService {
 			duration,
 			timeline: timeline.length > 0 ? timeline : null,
 			storedAt: 'db',
-			error: 'Agent execution was interrupted by a process restart.',
+			error,
+			failureSummary: computeExecutionFailureSummary({
+				timeline,
+				status: 'interrupted',
+				error,
+				stoppedAt: stoppedAt.getTime(),
+			}),
 		});
 		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;
@@ -494,9 +515,10 @@ export class AgentExecutionService {
 		}
 
 		const threadIds = page.threads.map((t) => t.id);
-		const [messageMap, sourceMap] = await Promise.all([
+		const [messageMap, sourceMap, failureSummaryMap] = await Promise.all([
 			this.agentExecutionRepository.findFirstUserMessageByThreadIds(threadIds),
 			this.agentExecutionRepository.findFirstSourceByThreadIds(threadIds),
+			this.agentExecutionRepository.findFailureSummariesByThreadIds(threadIds),
 		]);
 
 		return {
@@ -505,6 +527,7 @@ export class AgentExecutionService {
 				...t,
 				firstMessage: messageMap.get(t.id) ?? null,
 				source: sourceMap.get(t.id) ?? null,
+				failureSummary: failureSummaryMap.get(t.id) ?? null,
 			})),
 		};
 	}

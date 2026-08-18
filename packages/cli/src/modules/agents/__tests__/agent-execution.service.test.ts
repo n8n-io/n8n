@@ -294,7 +294,7 @@ describe('AgentExecutionService', () => {
 						output: {},
 						startTime: 0,
 						endTime: 123,
-						success: true,
+						success: false,
 					},
 				],
 			});
@@ -316,7 +316,19 @@ describe('AgentExecutionService', () => {
 
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				'execution-1',
-				expect.objectContaining({ timeline: null, storedAt: 'fs' }),
+				expect.objectContaining({
+					timeline: null,
+					storedAt: 'fs',
+					failureSummary: {
+						count: 1,
+						latest: {
+							kind: 'tool',
+							name: 'lookup',
+							message: null,
+							occurredAt: 123,
+						},
+					},
+				}),
 			);
 			expect(agentExecutionLogStore.write).toHaveBeenCalledWith(
 				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-1' },
@@ -385,6 +397,7 @@ describe('AgentExecutionService', () => {
 					status: 'success',
 					timeline: record.timeline,
 					storedAt: 'db',
+					failureSummary: null,
 				}),
 			);
 		});
@@ -738,6 +751,7 @@ describe('AgentExecutionService', () => {
 					status: 'cancelled',
 					timeline: record.timeline,
 					storedAt: 'db',
+					failureSummary: null,
 				}),
 			);
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
@@ -786,9 +800,51 @@ describe('AgentExecutionService', () => {
 					timeline: partial,
 					storedAt: 'db',
 					error: expect.stringContaining('interrupted'),
+					failureSummary: {
+						count: 1,
+						latest: {
+							kind: 'execution',
+							name: null,
+							message: expect.stringContaining('interrupted'),
+							occurredAt: expect.any(Number),
+						},
+					},
 				}),
 			);
 			expect(agentExecutionLogStore.write).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getThreads', () => {
+		it('adds aggregated failure summaries to listed threads', async () => {
+			const failedThread = makeThread({ id: 'thread-failed' });
+			const cleanThread = makeThread({ id: 'thread-clean' });
+			const failureSummary = {
+				count: 2,
+				latest: {
+					kind: 'tool' as const,
+					name: 'lookup',
+					message: 'request failed',
+					occurredAt: 20,
+					executionId: 'execution-2',
+				},
+			};
+			agentExecutionThreadRepository.findByProjectIdPaginated.mockResolvedValue({
+				threads: [failedThread, cleanThread],
+				nextCursor: null,
+			});
+			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(new Map());
+			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(new Map());
+			agentExecutionRepository.findFailureSummariesByThreadIds.mockResolvedValue(
+				new Map([[failedThread.id, failureSummary]]),
+			);
+
+			const result = await service.getThreads('project-1', 'agent-1', 20);
+
+			expect(result.threads).toEqual([
+				expect.objectContaining({ id: failedThread.id, failureSummary }),
+				expect.objectContaining({ id: cleanThread.id, failureSummary: null }),
+			]);
 		});
 	});
 

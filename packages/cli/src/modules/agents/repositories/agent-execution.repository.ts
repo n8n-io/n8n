@@ -3,6 +3,7 @@ import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
+import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
 
 export type RunningAgentExecution = Pick<
 	AgentExecution,
@@ -11,7 +12,7 @@ export type RunningAgentExecution = Pick<
 
 type AgentExecutionFinalizationValues = Pick<
 	AgentExecution,
-	'status' | 'stoppedAt' | 'duration' | 'timeline' | 'storedAt' | 'error'
+	'status' | 'stoppedAt' | 'duration' | 'timeline' | 'storedAt' | 'error' | 'failureSummary'
 > &
 	Partial<
 		Pick<
@@ -120,6 +121,36 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			.getRawMany<{ threadId: string; source: string }>();
 
 		return new Map(rows.map((r) => [r.threadId, r.source]));
+	}
+
+	async findFailureSummariesByThreadIds(
+		threadIds: string[],
+	): Promise<Map<string, ThreadFailureSummary>> {
+		if (threadIds.length === 0) return new Map();
+
+		const executions = await this.createQueryBuilder('e')
+			.select(['e.id', 'e.threadId', 'e.failureSummary'])
+			.where('e."threadId" IN (:...threadIds)', { threadIds })
+			.andWhere('e."failureSummary" IS NOT NULL')
+			.getMany();
+		const summaries = new Map<string, ThreadFailureSummary>();
+
+		for (const execution of executions) {
+			const summary = execution.failureSummary;
+			if (!summary) continue;
+
+			const latest = { ...summary.latest, executionId: execution.id };
+			const current = summaries.get(execution.threadId);
+			if (!current) {
+				summaries.set(execution.threadId, { count: summary.count, latest });
+				continue;
+			}
+
+			current.count += summary.count;
+			if (latest.occurredAt >= current.latest.occurredAt) current.latest = latest;
+		}
+
+		return summaries;
 	}
 
 	/**

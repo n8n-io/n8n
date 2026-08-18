@@ -86,6 +86,7 @@ describe('timeline status filters', () => {
 	const approved = item({ kind: 'hitl-response', hitlResponseStatus: 'approved' });
 	const declined = item({ kind: 'hitl-response', hitlResponseStatus: 'declined' });
 	const errored = item({ kind: 'tool', toolOutcome: 'error' });
+	const executionError = item({ kind: 'execution-error', executionStatus: 'error' });
 	const handledWorkflowError = item({
 		kind: 'workflow',
 		toolOutcome: 'success',
@@ -97,6 +98,7 @@ describe('timeline status filters', () => {
 		expect(itemStatusFilterKey(declined)).toBe('declined');
 		expect(itemStatusFilterKey(errored)).toBe('error');
 		expect(itemStatusFilterKey(handledWorkflowError)).toBe('error');
+		expect(itemStatusFilterKey(executionError)).toBe('error');
 		expect(
 			itemStatusFilterKey(item({ kind: 'hitl-response', hitlResponseStatus: 'responded' })),
 		).toBeUndefined();
@@ -110,6 +112,7 @@ describe('timeline status filters', () => {
 		expect(matchesTimelineFilters(errored, new Set(['error']))).toBe(true);
 		expect(matchesTimelineFilters(errored, new Set(['tool']))).toBe(true);
 		expect(matchesTimelineFilters(handledWorkflowError, new Set(['error']))).toBe(true);
+		expect(matchesTimelineFilters(executionError, new Set(['error']))).toBe(true);
 	});
 });
 
@@ -224,6 +227,7 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		cost: null,
 		timeline: null,
 		error: null,
+		failureSummary: null,
 		hitlStatus: null,
 		source: null,
 		...overrides,
@@ -291,6 +295,36 @@ describe('flattenExecutionsToTimelineItems', () => {
 		const items = flattenExecutionsToTimelineItems([exec()]);
 		expect(items).toHaveLength(0);
 	});
+
+	it.each([
+		['error', 'Model failed'],
+		['interrupted', 'Agent execution was interrupted'],
+	] as const)('adds a selectable synthetic item for an %s execution', (status, error) => {
+		const items = flattenExecutionsToTimelineItems([
+			exec({
+				status,
+				error,
+				stoppedAt: '2026-04-24T10:00:05Z',
+			}),
+		]);
+
+		expect(items).toEqual([
+			{
+				kind: 'execution-error',
+				executionId: 'e-1',
+				executionStatus: status,
+				content: error,
+				timestamp: Date.parse('2026-04-24T10:00:05Z'),
+			},
+		]);
+	});
+
+	it.each(['success', 'cancelled'] as const)(
+		'does not add a synthetic item for a %s execution',
+		(status) => {
+			expect(flattenExecutionsToTimelineItems([exec({ status })])).toEqual([]);
+		},
+	);
 
 	it('maps a generic HITL flow to tool call, request, and user response items', () => {
 		const items = flattenExecutionsToTimelineItems([

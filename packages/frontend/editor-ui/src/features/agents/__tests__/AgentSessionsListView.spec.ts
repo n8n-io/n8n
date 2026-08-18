@@ -34,17 +34,25 @@ let documentRemoveEventListenerSpy: ReturnType<typeof vi.spyOn>;
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
-		baseText: (key: string) =>
-			({
-				'agentSessions.viewTrace': 'View session trace',
-				'agentSessions.origin.preview': 'Preview',
-				'agentSessions.origin.instanceAi': 'AI Assistant',
-				'agentSessions.origin.mcp': 'MCP',
-				'agentSessions.origin.subAgent': 'Sub-agent',
-				'agentSessions.origin.schedule': 'Schedule',
-				'agentSessions.origin.workflow': 'Workflow',
-				'agentSessions.empty': 'No agent sessions',
-			})[key] ?? key,
+		baseText: (key: string, options?: { interpolate?: Record<string, string | number> }) => {
+			if (key === 'executionDetails.runningTimeFinished') {
+				return `in ${options?.interpolate?.time}`;
+			}
+			return (
+				{
+					'agentSessions.viewTrace': 'View session trace',
+					'agentSessions.origin.preview': 'Preview',
+					'agentSessions.origin.instanceAi': 'AI Assistant',
+					'agentSessions.origin.mcp': 'MCP',
+					'agentSessions.origin.subAgent': 'Sub-agent',
+					'agentSessions.origin.schedule': 'Schedule',
+					'agentSessions.origin.workflow': 'Workflow',
+					'agentSessions.empty': 'No agent sessions',
+					'agentSessions.success': 'Succeeded',
+					'agentSessions.timeline.error': 'Error',
+				}[key] ?? key
+			);
+		},
 	}),
 }));
 
@@ -65,8 +73,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nIconButton: {
 		template: '<button v-bind="$attrs"><slot /></button>',
 	},
-	N8nTableBase: { template: '<table><slot /></table>' },
-	N8nTooltip: { template: '<div><slot /></div>' },
+	N8nText: { template: '<span><slot /></span>' },
 }));
 
 vi.mock('../agentSessions.store', () => ({
@@ -145,6 +152,7 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		createdAt: '2026-07-20T10:00:00.000Z',
 		updatedAt: '2026-07-20T10:05:00.000Z',
 		firstMessage: null,
+		failureSummary: null,
 		...overrides,
 	};
 }
@@ -205,12 +213,36 @@ describe('AgentSessionsListView', () => {
 
 		expect(traceButton.element.tagName).toBe('BUTTON');
 		expect(traceButton.attributes('type')).toBe('button');
-		expect(traceButton.text()).toBe('My session');
+		expect(wrapper.get('[data-test-id="agent-session-title"]').text()).toBe('My session');
+		expect(wrapper.get('[data-testid="agent-session-success-indicator"]').text()).toBe('Succeeded');
+		expect(wrapper.get('[data-testid="agent-session-status-duration"]').text()).toBe('in 2s');
 
 		routerPush.mockClear();
 		await traceButton.trigger('click');
 
 		expect(routerPush).toHaveBeenCalledExactlyOnceWith(expectedRoute);
+	});
+
+	it('shows an error status for sessions with failures', async () => {
+		const wrapper = await mountView({
+			threads: [
+				makeThread({
+					failureSummary: {
+						count: 2,
+						latest: {
+							kind: 'tool',
+							name: 'HTTP request',
+							message: 'Connection refused',
+							occurredAt: 100,
+							executionId: 'execution-1',
+						},
+					},
+				}),
+			],
+		});
+
+		expect(wrapper.get('[data-testid="agent-session-failure-indicator"]').text()).toBe('Error');
+		expect(wrapper.get('[data-testid="agent-session-status-duration"]').text()).toBe('in 2s');
 	});
 
 	it('opens the parent trace in the current tab by default', async () => {
