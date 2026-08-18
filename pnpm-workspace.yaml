@@ -3,7 +3,7 @@ strictPeerDependencies: false
 preferWorkspacePackages: true
 autoInstallPeers: true
 linkWorkspacePackages: deep
-hoist: false
+hoist: true
 hoistWorkspacePackages: false
 
 pmOnFail: warn
@@ -33,6 +33,9 @@ packages:
   - packages/modules/**
   - packages/extensions/**
   - packages/testing/**
+
+hoistPattern:
+  - '@vue/compiler-sfc'
 
 catalog:
   '@ai-sdk/amazon-bedrock': ^5.0.31
@@ -270,7 +273,7 @@ catalogs:
     '@testing-library/jest-dom': ^6.6.3
     '@testing-library/user-event': ^14.6.1
     '@testing-library/vue': ^8.1.0
-    '@vitejs/plugin-vue': ^5.2.4
+    '@vitejs/plugin-vue': ^6.0.8
     '@vue/test-utils': ^2.4.6
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^14.3.0
