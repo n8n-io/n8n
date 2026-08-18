@@ -46,8 +46,6 @@ High-churn reminders (agents often skip these when they only live in AGENTS.md):
 
 ### Props, types & API
 
-- **Root props** — Spread root props the way Tree does (`v-bind` of forwarded /
-  omitted attrs). Never attach each root prop one-by-one.
 - **Third-party types** — Extend types exported by Reka UI (or the headless
   library). Never redefine or duplicate those types locally.
 - **Controlled / uncontrolled** — Stateful values must support both modes:
@@ -112,7 +110,7 @@ High-churn reminders (agents often skip these when they only live in AGENTS.md):
 - [ ] Customization via slots (typed `defineSlots`, default fallback, forwarding
       like Tree) rather than prop-only render APIs
 - [ ] Shared logic reused from `@n8n/utils` when available
-- [ ] Root props spread; third-party types extended, not duplicated
+- [ ] Third-party types extended, not duplicated
 - [ ] Stateful values support controlled (`modelValue`) and uncontrolled
       (`defaultValue`); Storybook has a Controlled/Uncontrolled story
 - [ ] Size default is `'default'`; state modifiers use SMACSS `is*` names
