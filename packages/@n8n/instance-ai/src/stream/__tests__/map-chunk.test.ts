@@ -310,6 +310,7 @@ describe('mapAgentChunkToEvent', () => {
 							suggestedName: 'Slack API',
 						},
 					],
+					requireUserSelection: true,
 					projectId: 'project-1',
 					inputType: 'plan-review',
 					questions: [
@@ -363,6 +364,7 @@ describe('mapAgentChunkToEvent', () => {
 						suggestedName: 'Slack API',
 					},
 				],
+				requireUserSelection: true,
 				projectId: 'project-1',
 				inputType: 'plan-review',
 				domainAccess: { url: 'https://example.com/api', host: 'example.com' },
@@ -398,6 +400,24 @@ describe('mapAgentChunkToEvent', () => {
 			},
 		});
 	});
+
+	it.each([false, 'true', 1])(
+		'drops a non-true credential selection requirement (%s)',
+		(requireUserSelection) => {
+			const event = map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'setup-credentials',
+				suspendPayload: {
+					requestId: 'request-1',
+					requireUserSelection,
+				},
+			});
+
+			expect(event).toMatchObject({ type: 'confirmation-request' });
+			expect(event).not.toHaveProperty('payload.requireUserSelection');
+		},
+	);
 
 	it('defaults optional suspension values and filters invalid structured payloads', () => {
 		const result = map({
