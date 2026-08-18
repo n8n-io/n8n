@@ -22,6 +22,7 @@ requestBody:
           branchName:
             type: string
             minLength: 1
+            maxLength: 255
 responses:
   '200':
     description: Operation successful.
