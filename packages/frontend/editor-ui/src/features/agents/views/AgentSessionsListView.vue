@@ -11,7 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nIcon, N8nTableBase, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
@@ -210,7 +210,7 @@ async function loadMore() {
 <template>
 	<div :class="[$style.wrapper, { [$style.embedded]: props.embedded }]">
 		<div :class="$style.tableContainer">
-			<table :class="$style.sessionsTable">
+			<N8nTableBase :class="$style.sessionsTable">
 				<tbody>
 					<tr
 						v-for="thread in sessionsStore.threads"
@@ -314,7 +314,7 @@ async function loadMore() {
 						</td>
 					</tr>
 				</tbody>
-			</table>
+			</N8nTableBase>
 		</div>
 	</div>
 </template>
@@ -349,6 +349,7 @@ async function loadMore() {
 
 .sessionsTable {
 	width: 100%;
+	height: auto;
 	border-collapse: separate;
 	border-spacing: 0;
 	font-size: var(--font-size--sm);
@@ -357,6 +358,7 @@ async function loadMore() {
 	td {
 		height: var(--height--3xl);
 		padding: 0 var(--spacing--xs);
+		border-bottom: 0;
 		vertical-align: middle;
 	}
 
@@ -458,7 +460,7 @@ async function loadMore() {
 	gap: var(--spacing--4xs);
 }
 
-.clickableRow {
+.sessionsTable .clickableRow {
 	background-color: var(--execution-card--color--background);
 	cursor: pointer;
 
@@ -480,17 +482,17 @@ async function loadMore() {
 	}
 }
 
-.errorRow {
+.sessionsTable .errorRow {
 	.titleCell {
 		border-left-color: var(--execution-card--border-color--error);
 	}
 }
 
-.skeletonRow {
+.sessionsTable .skeletonRow {
 	background-color: var(--execution-card--color--background);
 }
 
-.lastRow {
+.sessionsTable .lastRow {
 	background-color: transparent;
 
 	td {

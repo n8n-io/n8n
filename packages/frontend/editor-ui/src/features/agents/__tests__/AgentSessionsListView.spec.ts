@@ -73,6 +73,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nIconButton: {
 		template: '<button v-bind="$attrs"><slot /></button>',
 	},
+	N8nTableBase: { template: '<table><slot /></table>' },
 	N8nText: { template: '<span><slot /></span>' },
 }));
 
