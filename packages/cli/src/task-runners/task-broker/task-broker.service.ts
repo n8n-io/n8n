@@ -48,6 +48,13 @@ const MAX_REQUEST_TIMEOUT_REFRESHES = 3;
 
 const MAX_CONSECUTIVE_ACCEPT_TIMEOUTS = 3;
 
+/**
+ * How long a runner must have been silent before it may be reported unresponsive.
+ * Well above the runner's 250ms offer refresh interval, so the short gap between
+ * a task completing and the next offer does not count as silence.
+ */
+const MIN_SILENCE_DURATION_MS = 2_000;
+
 export interface TaskRequest {
 	requestId: string;
 	requesterId: string;
@@ -100,7 +107,13 @@ export class TaskBroker {
 		{ accept: RequesterAcceptCallback; reject: TaskRejectCallback }
 	> = new Map();
 
-	private consecutiveAcceptTimeouts: Map<TaskRunner['id'], number> = new Map();
+	private consecutiveAcceptTimeouts: Map<
+		TaskRunner['id'],
+		{ count: number; lastTimeoutAt: number }
+	> = new Map();
+
+	/** When each runner was first observed silent, cleared on any message from it. */
+	private silentRunnersSince: Map<TaskRunner['id'], number> = new Map();
 
 	private pendingTaskOffers: TaskOffer[] = [];
 
@@ -215,6 +228,7 @@ export class TaskBroker {
 	deregisterRunner(runnerId: string, error: Error) {
 		this.knownRunners.delete(runnerId);
 		this.consecutiveAcceptTimeouts.delete(runnerId);
+		this.silentRunnersSince.delete(runnerId);
 
 		this.discardOffersFrom(runnerId);
 
@@ -263,6 +277,10 @@ export class TaskBroker {
 		if (!runner) {
 			return;
 		}
+
+		// Any message from the runner disproves the silence a report would be based on.
+		this.silentRunnersSince.delete(runnerId);
+
 		switch (message.type) {
 			case 'runner:taskaccepted':
 				this.handleRunnerAccept(message.taskId);
@@ -286,6 +304,8 @@ export class TaskBroker {
 				});
 				break;
 			case 'runner:taskdone':
+				// A completed task proves the channel is alive, like an acknowledgement does.
+				this.consecutiveAcceptTimeouts.delete(runnerId);
 				await this.taskDoneHandler(message.taskId, message.data);
 				break;
 			case 'runner:taskerror':
@@ -768,15 +788,25 @@ export class TaskBroker {
 
 	/**
 	 * Counts consecutive acknowledgement timeouts per runner.
-	 * Any application-level reply (accept, reject, defer) proves the channel is alive and resets the count.
+	 * Timeouts firing within one acceptance window of the previous one are counted as a
+	 * single timeout, since acceptances pending during the same stall prove only one
+	 * missed acknowledgement.
+	 * Any application-level reply (accept, reject, defer, task completion) proves the
+	 * channel is alive and resets the count.
 	 * At the threshold, the runner is reported unresponsive exactly once,
 	 * so its transport can be torn down and the runner restarted.
 	 */
 	private flagRunnerIfUnresponsive(runnerId: TaskRunner['id']) {
-		const failures = (this.consecutiveAcceptTimeouts.get(runnerId) ?? 0) + 1;
+		const now = Date.now();
+		const previous = this.consecutiveAcceptTimeouts.get(runnerId);
+		const acceptWindowMs = this.taskRunnersConfig.taskAcceptTimeout * Time.seconds.toMilliseconds;
+
+		if (previous && now - previous.lastTimeoutAt < acceptWindowMs) return;
+
+		const failures = (previous?.count ?? 0) + 1;
 
 		if (failures < MAX_CONSECUTIVE_ACCEPT_TIMEOUTS) {
-			this.consecutiveAcceptTimeouts.set(runnerId, failures);
+			this.consecutiveAcceptTimeouts.set(runnerId, { count: failures, lastTimeoutAt: now });
 		} else {
 			this.consecutiveAcceptTimeouts.delete(runnerId);
 			this.reportUnresponsive(
@@ -788,23 +818,38 @@ export class TaskBroker {
 
 	/**
 	 * Reports as unresponsive every reachable runner for `taskType` with no sign of life:
-	 * no pending offer, no in-flight task, no acceptance in progress.
+	 * no pending offer, no in-flight task, no acceptance in progress, no message received.
 	 *
-	 * A healthy runner with spare capacity keeps offers pending,
-	 * so a request expiring next to a silent runner means the runner's offer loop has stalled
-	 * and its transport should be torn down so the runner can be restarted.
+	 * A healthy runner with spare capacity keeps offers pending, but is briefly offerless
+	 * between a task completing and the next offer, so one instantaneous sample can catch
+	 * a healthy runner. A runner is only reported once observed silent at two request
+	 * expiries spanning at least the minimum silence duration, which only a runner whose
+	 * offer loop has stalled can reach.
 	 *
 	 * A no-op when no runner is registered, which is normal while a runner is still starting up.
 	 */
 	private flagSilentRunners(taskType: string) {
 		this.expireTasks();
 
+		const now = Date.now();
+
 		[...this.knownRunners.values()]
 			.filter(({ runner }) => runner.taskTypes.includes(taskType))
 			.filter(({ isRunnerReachable }) => isRunnerReachable())
-			.filter(({ runner }) => this.isSilent(runner.id))
 			.forEach(({ runner }) => {
-				this.reportUnresponsive(runner.id, 'sent no task offers while a task request expired');
+				if (!this.isSilent(runner.id)) {
+					this.silentRunnersSince.delete(runner.id);
+					return;
+				}
+
+				const silentSince = this.silentRunnersSince.get(runner.id);
+
+				if (silentSince === undefined) {
+					this.silentRunnersSince.set(runner.id, now);
+				} else if (now - silentSince >= MIN_SILENCE_DURATION_MS) {
+					this.silentRunnersSince.delete(runner.id);
+					this.reportUnresponsive(runner.id, 'sent no task offers while task requests expired');
+				}
 			});
 	}
 
@@ -812,11 +857,21 @@ export class TaskBroker {
 	 * Reports a runner as unresponsive, so its transport can be torn down and, in internal
 	 * mode, its process force-restarted.
 	 *
-	 * Reports a runner that is no longer registered too: concurrent acceptances can reach the
-	 * timeout threshold after the transport deregistered the runner, and a process that
-	 * outlived its transport is exactly what still needs restarting.
+	 * Skipped while the runner has in-flight tasks: tearing it down would fail tasks that
+	 * may still complete, and a runner that is truly stuck is still recovered once those
+	 * tasks hit their own execution timeout.
+	 *
+	 * Reports a runner that is no longer registered too, since a process that outlived
+	 * its transport is exactly what still needs restarting.
 	 */
 	private reportUnresponsive(runnerId: TaskRunner['id'], cause: string) {
+		if (this.getInFlightTaskIds(runnerId).length > 0) {
+			this.logger.warn(
+				`Runner (${runnerId}) ${cause}, but it still has tasks in flight, so not reporting it as unresponsive`,
+			);
+			return;
+		}
+
 		this.logger.warn(`Runner (${runnerId}) ${cause}, reporting it as unresponsive`);
 		this.taskRunnerLifecycleEvents.emit('runner:unresponsive', { runnerId });
 	}
