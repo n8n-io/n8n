@@ -1,5 +1,6 @@
 import {
 	GROUP_DESCRIPTION_MAX_LENGTH,
+	makeGetNodeTypeForGrouping,
 	normalizeGroupDescription,
 	validateNodeSelectionForExtraction,
 	validateNodeSelectionForGrouping,
@@ -10,6 +11,7 @@ import {
 	STICKY_NODE_TYPE,
 	type IConnections,
 	type INode,
+	type INodeTypes,
 	type INodeTypeDescription,
 } from '../src';
 
@@ -579,6 +581,26 @@ describe('normalizeGroupDescription', () => {
 		['null', null],
 	])('drops a non-string value (%s)', (_label, value) => {
 		expect(normalizeGroupDescription(value)).toBeUndefined();
+	});
+});
+
+describe('makeGetNodeTypeForGrouping', () => {
+	it('returns a node type description for known node types and null for unknown ones', () => {
+		const description = makeNodeType();
+		const nodeTypes: INodeTypes = {
+			getByName: () => {
+				throw new Error('Unknown node type');
+			},
+			getByNameAndVersion: (nodeType) => {
+				if (nodeType === description.name) return { description };
+				throw new Error('Unknown node type');
+			},
+			getKnownTypes: () => ({}),
+		};
+		const getNodeType = makeGetNodeTypeForGrouping(nodeTypes);
+
+		expect(getNodeType(makeNode({ type: description.name }))).toBe(description);
+		expect(getNodeType(makeNode({ type: 'n8n-nodes-base.unknown' }))).toBeNull();
 	});
 });
 

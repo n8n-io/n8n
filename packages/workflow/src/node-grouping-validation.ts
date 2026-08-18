@@ -13,6 +13,7 @@ import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
 	type INodeTypeDescription,
+	type INodeTypes,
 	type IWorkflowGroup,
 	type NodeConnectionType,
 } from './interfaces';
@@ -20,6 +21,8 @@ import { isTriggerNode } from './node-helpers';
 
 type NodeIo = NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration;
 type IODirection = 'inputs' | 'outputs';
+
+export type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
 
 /** Character cap on a node group description; keeps it within 3 lines in the collapsed panel. */
 export const GROUP_DESCRIPTION_MAX_LENGTH = 145;
@@ -102,6 +105,20 @@ export const NODE_GROUPING_RULES = {
 		violation: 'contains nodes that already belong to another group',
 	},
 } as const;
+
+/**
+ * Builds the `getNodeType` callback that the grouping validator needs. Returns
+ * `null` for unknown node types so validation degrades gracefully.
+ */
+export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeForGrouping {
+	return (node: INode) => {
+		try {
+			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		} catch {
+			return null;
+		}
+	};
+}
 
 export function validateNodeSelectionForExtraction<TNode extends INode>(
 	input: NodeGroupingValidationInput<TNode>,
