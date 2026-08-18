@@ -181,6 +181,68 @@ describe('executeResumableStream', () => {
 		expect(result.error).toBe(error);
 	});
 
+	it('reports the terminal finish reason of a completed run', async () => {
+		const result = await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					textChunk('Working...'),
+					{ type: 'finish', finishReason: 'max-iterations' },
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus: createEventBus(),
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(result.status).toBe('completed');
+		expect(result.finishReason).toBe('max-iterations');
+	});
+
+	it('reports the finish reason of the resumed stream, not the suspended one', async () => {
+		const resume = vi.fn().mockResolvedValue({
+			runId: 'agent-run-2',
+			stream: readableFromChunks([
+				textChunk('Done.'),
+				{ type: 'finish', finishReason: 'max-iterations' },
+			]),
+		});
+
+		const result = await executeResumableStream({
+			agent: { resume },
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					suspensionChunk({
+						toolCallId: 'tool-call-1',
+						toolName: 'pause-for-user',
+						suspendPayload: { requestId: 'request-1', message: 'Please confirm' },
+					}),
+					{ type: 'finish', finishReason: 'tool-calls' },
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus: createEventBus(),
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'auto', waitForConfirmation: vi.fn().mockResolvedValue({ approved: true }) },
+		});
+
+		expect(result.status).toBe('completed');
+		expect(result.finishReason).toBe('max-iterations');
+	});
+
 	it('publishes only the quota error when a follow-on error chunk arrives', async () => {
 		const eventBus = createEventBus();
 		const quotaError = Object.assign(new Error('Have reached end of quota'), {

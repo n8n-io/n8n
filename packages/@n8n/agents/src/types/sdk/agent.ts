@@ -22,14 +22,21 @@ import type { JSONObject, JSONValue } from '../utils/json';
 
 export type SmoothStreamOptions = NonNullable<Parameters<typeof smoothStream>[0]>;
 
-export type FinishReason =
-	| 'stop'
-	| 'max-iterations'
-	| 'length'
-	| 'content-filter'
-	| 'tool-calls'
-	| 'error'
-	| 'other';
+export const FINISH_REASONS = [
+	'stop',
+	'max-iterations',
+	'length',
+	'content-filter',
+	'tool-calls',
+	'error',
+	'other',
+] as const;
+
+export type FinishReason = (typeof FINISH_REASONS)[number];
+
+export function isFinishReason(value: unknown): value is FinishReason {
+	return typeof value === 'string' && FINISH_REASONS.some((reason) => reason === value);
+}
 
 export type TokenUsage<T extends Record<string, unknown> = Record<string, unknown>> = {
 	promptTokens: number;

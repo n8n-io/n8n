@@ -61,6 +61,7 @@ export type {
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
 } from './sdk/agent';
+export { FINISH_REASONS, isFinishReason } from './sdk/agent';
 
 export type { SerializedMessageList } from './runtime/message-list';
 
