@@ -49,6 +49,9 @@ interface ServiceConnectionDefinition {
 	isConnected: boolean;
 }
 
+// Needed to properly handle `isOpen`
+defineOptions({ inheritAttrs: false });
+
 const props = defineProps<{
 	modalName: string;
 }>();
