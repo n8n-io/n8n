@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 	showError: vi.fn(),
 	syncThread: vi.fn(),
 	updateThreadMetadata: vi.fn(),
-	moduleSettings: { agents: { proxyEnabled: true } },
+	instanceAiAvailable: true,
 }));
 
 vi.mock('vue-router', () => ({
@@ -25,8 +25,12 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mocks.showError }),
 }));
-vi.mock('@n8n/stores/settings.store', () => ({
-	useSettingsStore: () => ({ moduleSettings: mocks.moduleSettings }),
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
+	useInstanceAiAvailable: () => ({
+		get value() {
+			return mocks.instanceAiAvailable;
+		},
+	}),
 }));
 vi.mock('@/features/ai/instanceAi/instanceAi.store', () => ({
 	useInstanceAiStore: () => ({
@@ -41,13 +45,13 @@ describe('NewAgentView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.route.query = { projectId: 'project-1' };
-		mocks.moduleSettings.agents.proxyEnabled = true;
+		mocks.instanceAiAvailable = true;
 		history.replaceState({}, '');
 		localStorage.clear();
 	});
 
-	it('opens an unpersisted agent in the manual builder when the AI proxy is unavailable', async () => {
-		mocks.moduleSettings.agents.proxyEnabled = false;
+	it('opens an unpersisted agent in the manual builder when Instance AI is unavailable', async () => {
+		mocks.instanceAiAvailable = false;
 
 		mount(NewAgentView);
 		await flushPromises();
@@ -61,7 +65,7 @@ describe('NewAgentView', () => {
 		});
 	});
 
-	it('opens an unsaved agent artifact when the AI proxy is available', async () => {
+	it('opens an unsaved agent artifact when Instance AI is available', async () => {
 		mount(NewAgentView);
 		await flushPromises();
 

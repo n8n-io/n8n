@@ -3,7 +3,6 @@ import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { useToast } from '@n8n/composables/useToast';
@@ -12,6 +11,7 @@ import {
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 } from '@/features/ai/instanceAi/constants';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { stashPendingAgentAttachment } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { AGENTS_LIST_VIEW, AGENT_BUILDER_VIEW, PROJECT_AGENTS } from '../constants';
@@ -23,7 +23,7 @@ const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const toast = useToast();
-const settingsStore = useSettingsStore();
+const instanceAiAvailable = useInstanceAiAvailable();
 const instanceAiStore = useInstanceAiStore();
 
 /**
@@ -51,7 +51,7 @@ onMounted(async () => {
 			? clickedAgentId
 			: generateNanoId();
 	try {
-		if (settingsStore.moduleSettings.agents?.proxyEnabled !== true) {
+		if (!instanceAiAvailable.value) {
 			await router.replace({
 				name: AGENT_BUILDER_VIEW,
 				params: { projectId, agentId },
