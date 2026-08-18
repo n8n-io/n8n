@@ -46,6 +46,9 @@ import { generateId, toError } from '../utils';
 
 const log = createLogger('playwright');
 
+/** Opting out is best-effort; never let it hold an action longer than this. */
+const OPT_OUT_TIMEOUT_MS = 5_000;
+
 // ---------------------------------------------------------------------------
 // Per-page state tracked by the adapter
 // ---------------------------------------------------------------------------
@@ -58,6 +61,8 @@ interface PageState {
 	networkBuffer: NetworkEntry[];
 	pendingDialog?: Dialog;
 	pendingFileChooser?: FileChooser;
+	/** Resolves once the documents seen so far have had the extension opt-out applied. */
+	optOutReady: Promise<unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -85,6 +90,8 @@ export class PlaywrightAdapter {
 	private browser?: Browser;
 	private context?: BrowserContext;
 	private pageStates = new Map<string, PageState>();
+	/** False when the init script could not be installed, so documents need stamping per use. */
+	private optOutArmed = false;
 	private relay?: CDPRelayServer;
 	private readonly externalRelay?: CDPRelayServer;
 	private readonly externalCdpEndpoint?: string;
@@ -175,7 +182,13 @@ export class PlaywrightAdapter {
 		});
 		const contexts = this.browser.contexts();
 		log.debug('browser contexts:', contexts.length);
-		this.context = contexts[0] ?? (await this.browser.newContext({ colorScheme: null }));
+		const context = contexts[0] ?? (await this.browser.newContext({ colorScheme: null }));
+		this.context = context;
+
+		// Awaited here so it is armed before anything can navigate.
+		this.optOutArmed = await applyExtensionOptOut(
+			async (script) => await context.addInitScript(script),
+		);
 
 		// Two-tier model: pages are created lazily via ensurePage().
 		// When ensurePage() triggers activateTab(), it sets pendingActivation
@@ -411,10 +424,14 @@ export class PlaywrightAdapter {
 		text: string,
 		options?: TypeOptions,
 	): Promise<void> {
-		const { page } = await this.ensurePage(pageId);
+		const state = await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 
-		await applyExtensionOptOut(async (script) => await page.evaluate(script));
+		// Without an init script only this pass protects the document, and the page may have
+		// navigated since the last one.
+		if (!this.optOutArmed) {
+			await this.stampOptOut(state, async (script) => await state.page.evaluate(script));
+		}
 
 		if (options?.clear) {
 			await locator.clear();
@@ -937,6 +954,7 @@ export class PlaywrightAdapter {
 		const existing = this.pageStates.get(pageId);
 		if (existing) {
 			log.debug('ensurePage: page already tracked:', pageId);
+			await existing.optOutReady;
 			return existing;
 		}
 
@@ -979,7 +997,33 @@ export class PlaywrightAdapter {
 
 		log.debug('ensurePage: page ready:', pageId);
 		// The context.on('page') listener should have tracked it with the right ID
-		return this.pageStates.get(pageId) ?? this.trackPage(page, pageId);
+		const state = this.pageStates.get(pageId) ?? this.trackPage(page, pageId);
+		await state.optOutReady;
+		return state;
+	}
+
+	/**
+	 * Queues an opt-out pass behind the page's previous one. Bounded because callers await this
+	 * before every action, so a stalled evaluate would otherwise wedge the page for good.
+	 */
+	private async stampOptOut(
+		state: PageState,
+		deliver: (script: string) => Promise<unknown>,
+	): Promise<void> {
+		const previous = state.optOutReady;
+		await previous.catch(() => {});
+		let timer: NodeJS.Timeout | undefined;
+		const timeout = new Promise<void>((resolve) => {
+			timer = setTimeout(() => {
+				log.debug('stampOptOut: timed out');
+				resolve();
+			}, OPT_OUT_TIMEOUT_MS);
+		});
+		try {
+			await Promise.race([applyExtensionOptOut(deliver), timeout]);
+		} finally {
+			clearTimeout(timer);
+		}
 	}
 
 	private findPageState(page: Page): PageState | undefined {
@@ -998,7 +1042,19 @@ export class PlaywrightAdapter {
 			consoleBuffer: [],
 			errorBuffer: [],
 			networkBuffer: [],
+			// The init script only covers documents opened after we armed it, so a tab that was
+			// already loaded when we attached needs one explicit pass.
+			optOutReady: Promise.resolve(),
 		};
+		state.optOutReady = this.stampOptOut(state, async (script) => await page.evaluate(script));
+
+		// A same-origin or srcdoc child frame runs the init script only against its initial
+		// about:blank document and then reuses that window, so its real document never gets it.
+		// Cross-origin frames get a fresh window and are covered either way.
+		page.on('framenavigated', (frame) => {
+			if (frame === page.mainFrame()) return;
+			state.optOutReady = this.stampOptOut(state, async (script) => await frame.evaluate(script));
+		});
 
 		// Console listener
 		page.on('console', (msg) => {

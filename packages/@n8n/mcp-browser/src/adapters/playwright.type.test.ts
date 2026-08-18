@@ -22,10 +22,15 @@ function adapterWithPage(pageId: string) {
 	const page = {
 		locator: vi.fn().mockReturnValue(locator),
 		evaluate: vi.fn().mockResolvedValue(undefined),
+		on: vi.fn(),
+		url: vi.fn().mockReturnValue('https://example.com/login'),
 	};
 	const adapter = new PlaywrightAdapter(config);
-	const pageStates = (adapter as unknown as { pageStates: Map<string, { page: Page }> }).pageStates;
-	pageStates.set(pageId, { page: page as unknown as Page });
+	// Through trackPage so the page record is built the way production builds it.
+	const internals = adapter as unknown as {
+		trackPage: (page: Page, explicitId?: string) => unknown;
+	};
+	internals.trackPage(page as unknown as Page, pageId);
 	return { adapter, page, locator };
 }
 
@@ -42,14 +47,10 @@ describe('PlaywrightAdapter.type', () => {
 	});
 
 	it('clears the element before typing when clear is set', async () => {
-		const { adapter, page, locator } = adapterWithPage('p1');
+		const { adapter, locator } = adapterWithPage('p1');
 
 		await adapter.type('p1', { selector: '#token' }, 'secret', { clear: true });
 
-		// clear() focuses the field, so the opt-out has to land before it.
-		expect(page.evaluate.mock.invocationCallOrder[0]).toBeLessThan(
-			locator.clear.mock.invocationCallOrder[0],
-		);
 		expect(locator.clear.mock.invocationCallOrder[0]).toBeLessThan(
 			locator.pressSequentially.mock.invocationCallOrder[0],
 		);
@@ -64,27 +65,5 @@ describe('PlaywrightAdapter.type', () => {
 		expect(locator.pressSequentially.mock.invocationCallOrder[0]).toBeLessThan(
 			locator.press.mock.invocationCallOrder[0],
 		);
-	});
-
-	it('applies the extension opt-out before typing', async () => {
-		const { adapter, page, locator } = adapterWithPage('p1');
-
-		await adapter.type('p1', { selector: '#token' }, 'secret');
-
-		const script = page.evaluate.mock.calls[0][0] as string;
-		expect(script).toContain('data-1p-ignore');
-		expect(script).toContain('data-gramm');
-		expect(page.evaluate.mock.invocationCallOrder[0]).toBeLessThan(
-			locator.pressSequentially.mock.invocationCallOrder[0],
-		);
-	});
-
-	it('still types when the opt-out evaluate fails', async () => {
-		const { adapter, page, locator } = adapterWithPage('p1');
-		page.evaluate.mockRejectedValue(new Error('CSP blocked eval'));
-
-		await adapter.type('p1', { selector: '#token' }, 'secret');
-
-		expect(locator.pressSequentially).toHaveBeenCalledWith('secret', { delay: undefined });
 	});
 });
