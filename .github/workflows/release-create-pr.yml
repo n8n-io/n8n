@@ -38,9 +38,7 @@ on:
           - experimental
           - premajor
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   create-release-pr:
@@ -137,6 +135,9 @@ jobs:
           body: ${{ steps.generate-body.outputs.content }}
 
   approve-and-automerge:
+    permissions:
+      contents: write
+      pull-requests: write
     needs: [create-release-pr]
     if: |
       needs.create-release-pr.outputs.pull-request-number != ''

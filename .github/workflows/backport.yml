@@ -12,12 +12,13 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   backport:
+    permissions:
+      contents: write
+      pull-requests: write
     # Runs on: PR merge, a "Backport to ..." label added to a merged PR, or manual dispatch
     if: |
       github.event_name == 'workflow_dispatch' ||
@@ -88,6 +89,9 @@ jobs:
             }
 
   prepare-auto-merge:
+    permissions:
+      contents: write
+      pull-requests: write
     needs: [backport]
     if: needs.backport.outputs.created_pull_numbers != ''
     runs-on: ubuntu-slim
@@ -114,6 +118,9 @@ jobs:
           echo "pr_numbers_json=$mergeable_json" >> "$GITHUB_OUTPUT"
 
   auto-merge-successful-backports:
+    permissions:
+      contents: write
+      pull-requests: write
     needs: [prepare-auto-merge]
     if: needs.prepare-auto-merge.outputs.pr_numbers_json != '[]'
     strategy:
