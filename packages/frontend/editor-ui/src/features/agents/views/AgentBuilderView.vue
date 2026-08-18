@@ -13,6 +13,7 @@ import {
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
 } from '@n8n/api-types';
+import { escapeHtml } from '@n8n/frontend-utils/htmlUtils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -84,6 +85,7 @@ import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useIn
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { agentValidationIssueLine } from '../utils/agentValidationIssues';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 
 const props = withDefaults(
@@ -296,6 +298,52 @@ const {
 	invalidate: invalidateConfigValidation,
 	refresh: refreshConfigValidation,
 } = useAgentConfigValidation();
+
+/** Longer lists get cut off by the toast, and 5 lines already point at the work. */
+const MAX_TOASTED_VALIDATION_ISSUES = 5;
+/**
+ * The disabled Publish button and the outlined cards say something is wrong but
+ * not what, and issues against the agent's own fields (instructions, model,
+ * credential) have no card to outline at all. Name them in a toast instead.
+ * While the AIA is building (`artifactEditingLocked`), skip the toast.
+ */
+let toastedValidationIssues = '';
+watch([configValidation, () => props.artifactEditingLocked], ([result, locked]) => {
+	// `null` is unknown, not valid — `invalidateConfigValidation()` sets it on
+	// every local edit, so it must not read as the issues having changed.
+	if (!result) return;
+	if (result.status === 'valid') {
+		toastedValidationIssues = '';
+		return;
+	}
+	if (locked) return;
+
+	const fingerprint = `${agentId.value}:${JSON.stringify(result.issues)}`;
+	if (fingerprint === toastedValidationIssues) return;
+	toastedValidationIssues = fingerprint;
+
+	const lines = result.issues
+		.slice(0, MAX_TOASTED_VALIDATION_ISSUES)
+		// Issue copy interpolates ids from the config, so escape before the toast
+		// renders the list as HTML.
+		.map((issue) => `<li>${escapeHtml(agentValidationIssueLine(issue, locale))}</li>`);
+	const remaining = result.issues.length - lines.length;
+	if (remaining > 0) {
+		lines.push(
+			`<li>${locale.baseText('agents.builder.validation.toast.more' as BaseTextKey, {
+				adjustToNumber: remaining,
+				interpolate: { count: String(remaining) },
+			})}</li>`,
+		);
+	}
+
+	showMessage({
+		type: 'error',
+		title: locale.baseText('agents.builder.validation.toast.title' as BaseTextKey),
+		message: `<ul>${lines.join('')}</ul>`,
+	});
+});
+
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */

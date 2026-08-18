@@ -7,7 +7,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
@@ -16,6 +16,7 @@ import { getAgentTasks } from '../composables/useAgentApi';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import { AGENT_SUB_AGENTS_MODAL_KEY, AGENT_TASK_MODAL_KEY } from '../constants';
+import { agentValidationIssueMessage } from '../utils/agentValidationIssues';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import type { ToolMenuItem, ToolOpenTarget, ToolRow } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
@@ -134,53 +135,8 @@ const taskRows = computed<TaskRow[]>(() => {
 		.filter((task): task is TaskRow => task !== null);
 });
 
-// `as BaseTextKey`: these keys are new (see en.json) and not yet reflected in
-// @n8n/i18n's built type declarations — matches the same workaround already
-// used for `agents.builder.preview.disabledTooltip` in AgentBuilderHeader.vue.
-const GENERIC_ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
-	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
-	invalid_value: 'agents.builder.validation.issue.invalidValue' as BaseTextKey,
-	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
-	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
-	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
-	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
-	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
-};
-
-/** Kind-specific overrides, keyed `<kind>.<code>` or `tool.<toolType>.<code>`. */
-const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
-	'subAgent.missing_reference':
-		'agents.builder.validation.issue.subAgent.missingReference' as BaseTextKey,
-	'subAgent.incompatible_reference':
-		'agents.builder.validation.issue.subAgent.incompatibleReference' as BaseTextKey,
-	'skill.missing_reference':
-		'agents.builder.validation.issue.skill.missingReference' as BaseTextKey,
-	'task.invalid_value': 'agents.builder.validation.issue.task.invalidValue' as BaseTextKey,
-	'tool.workflow.missing_reference':
-		'agents.builder.validation.issue.tool.workflow.missingReference' as BaseTextKey,
-	'tool.workflow.incompatible_reference':
-		'agents.builder.validation.issue.tool.workflow.incompatibleReference' as BaseTextKey,
-	'tool.custom.missing_reference':
-		'agents.builder.validation.issue.tool.custom.missingReference' as BaseTextKey,
-	'tool.node.missing_reference':
-		'agents.builder.validation.issue.tool.node.missingReference' as BaseTextKey,
-	'mcpServer.incompatible_credential':
-		'agents.builder.validation.issue.mcpServer.incompatibleCredential' as BaseTextKey,
-};
-
-function issueMessage(issue: AgentConfigValidationIssue): string {
-	const { kind, toolType, id } = issue.capability;
-	const key =
-		(kind === 'tool' && toolType
-			? SPECIFIC_ISSUE_KEYS[`tool.${toolType}.${issue.code}`]
-			: undefined) ??
-		SPECIFIC_ISSUE_KEYS[`${kind}.${issue.code}`] ??
-		GENERIC_ISSUE_KEYS[issue.code];
-	return i18n.baseText(key, { interpolate: { id: id ?? '' } });
-}
-
 function issueMessages(issues: AgentConfigValidationIssue[]): string[] {
-	return [...new Set(issues.map(issueMessage))];
+	return [...new Set(issues.map((issue) => agentValidationIssueMessage(issue, i18n)))];
 }
 
 function issuesFor(kind: AgentConfigValidationIssue['capability']['kind']) {

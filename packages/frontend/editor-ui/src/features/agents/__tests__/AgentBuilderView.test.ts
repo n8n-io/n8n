@@ -1950,6 +1950,126 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(getAgentConfigValidationMock).toHaveBeenCalledTimes(2);
 		expect(result).toBe(false);
 	});
+
+	it('names each validation issue in an error toast', async () => {
+		getAgentConfigValidationMock.mockResolvedValue({
+			status: 'invalid',
+			issues: [
+				{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } },
+				{
+					code: 'missing_credential',
+					path: 'integrations.0.credentialId',
+					capability: { kind: 'channel', id: 'slack', index: 0 },
+				},
+			],
+		});
+		showMessageMock.mockReset();
+
+		await renderView();
+
+		// The disabled Publish button and the outlined channel card never say what
+		// is wrong, and the missing model has no card at all.
+		expect(showMessageMock).toHaveBeenCalledTimes(1);
+		expect(showMessageMock).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'agents.builder.validation.toast.title',
+			message:
+				'<ul>' +
+				'<li>agents.builder.validation.issue.agent.modelMissing</li>' +
+				'<li>agents.builder.validation.capability.channel slack: agents.builder.validation.issue.missingCredential</li>' +
+				'</ul>',
+		});
+	});
+
+	it('re-toasts only when the issue set changes', async () => {
+		const issues = [{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } }];
+		getAgentConfigValidationMock
+			.mockResolvedValueOnce({ status: 'invalid', issues })
+			// A separate object holding the same issues: the result is fresh, the
+			// news is not, so a revalidation after an autosave must stay quiet.
+			.mockResolvedValueOnce({ status: 'invalid', issues: [...issues] })
+			.mockResolvedValueOnce({
+				status: 'invalid',
+				issues: [
+					...issues,
+					{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } },
+				],
+			});
+		showMessageMock.mockReset();
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			refreshValidationBeforePublish: () => Promise<boolean>;
+		};
+
+		expect(showMessageMock).toHaveBeenCalledTimes(1);
+
+		await vm.refreshValidationBeforePublish();
+		expect(showMessageMock).toHaveBeenCalledTimes(1);
+
+		await vm.refreshValidationBeforePublish();
+		expect(showMessageMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('shows no toast while the configuration is valid', async () => {
+		showMessageMock.mockReset();
+
+		await renderView();
+
+		expect(showMessageMock).not.toHaveBeenCalled();
+	});
+
+	it('suppresses the toast while the AI is building the agent', async () => {
+		getAgentConfigValidationMock.mockResolvedValue({
+			status: 'invalid',
+			issues: [{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } }],
+		});
+		showMessageMock.mockReset();
+
+		await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p1',
+				artifactAgentId: 'a1',
+				artifactEditingLocked: true,
+			},
+		});
+
+		// The config is invalid for much of a build; each assistant write can
+		// change the issue set, so naming them mid-build is just noise.
+		expect(showMessageMock).not.toHaveBeenCalled();
+	});
+
+	it('names lingering errors when the AI finishes building', async () => {
+		getAgentConfigValidationMock.mockResolvedValue({
+			status: 'invalid',
+			issues: [{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } }],
+		});
+		showMessageMock.mockReset();
+
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p1',
+				artifactAgentId: 'a1',
+				artifactEditingLocked: true,
+			},
+		});
+		expect(showMessageMock).not.toHaveBeenCalled();
+
+		// Unlock alone must toast: Publish is disabled while invalid, so there is
+		// no click that would revalidate and re-fire the validation watcher.
+		await wrapper.setProps({ artifactEditingLocked: false });
+		await nextTick();
+
+		expect(showMessageMock).toHaveBeenCalledTimes(1);
+		expect(showMessageMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'error',
+				title: 'agents.builder.validation.toast.title',
+			}),
+		);
+	});
 });
 
 describe('AgentBuilderView — three-column shell', () => {

@@ -2,12 +2,13 @@
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { agentsEventBus } from '../agents.eventBus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
+import { agentValidationIssueMessage } from '../utils/agentValidationIssues';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 
 const props = withDefaults(
@@ -60,23 +61,11 @@ function channelIcon(integrationIcon?: string): IconName {
 	return 'zap';
 }
 
-const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
-	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
-	invalid_value: 'agents.builder.validation.issue.invalidValue' as BaseTextKey,
-	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
-	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
-	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
-	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
-	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
-};
-
 const channelIssueMessages = computed(() => {
 	const messages = new Map<string, string[]>();
 	for (const issue of props.validationIssues) {
 		if (issue.capability.kind !== 'channel' || !issue.capability.id) continue;
-		const message = i18n.baseText(ISSUE_KEYS[issue.code], {
-			interpolate: { id: issue.capability.id },
-		});
+		const message = agentValidationIssueMessage(issue, i18n);
 		messages.set(issue.capability.id, [
 			...new Set([...(messages.get(issue.capability.id) ?? []), message]),
 		]);
