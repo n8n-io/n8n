@@ -25,3 +25,14 @@ export class SandboxNameConflictError extends SandboxAcquisitionError {
 		super(message, 'unresolved-name-conflict', options);
 	}
 }
+
+/**
+ * An existing sandbox that carries workspace state did not reach 'started' within the
+ * acquisition budget. The sandbox is kept — deleting it would lose the thread's files —
+ * and the turn fails; a later attempt reattaches once the sandbox recovers.
+ */
+export class SandboxNotReadyError extends SandboxAcquisitionError {
+	constructor(message: string, options?: { cause?: unknown }) {
+		super(message, 'sandbox-not-ready', options);
+	}
+}

@@ -685,9 +685,9 @@ describe('DaytonaSandbox (creation strategies)', () => {
 		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-replacement');
 	});
 
-	it('deletes a sandbox stuck in a transitional state and creates a fresh one', async () => {
+	it('deletes a sandbox stuck provisioning and creates a fresh one', async () => {
 		const logger = makeLogger();
-		const wedged = makeMockSandbox('remote-wedged', 'starting');
+		const wedged = makeMockSandbox('remote-wedged', 'building_snapshot');
 		wedged.waitUntilStarted.mockRejectedValue(
 			new DaytonaTimeoutError('Sandbox failed to become ready within the timeout period'),
 		);
@@ -713,31 +713,68 @@ describe('DaytonaSandbox (creation strategies)', () => {
 		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-fresh');
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Daytona sandbox is stuck in a transitional state; deleting it so a fresh one can be created',
-			expect.objectContaining({ sandboxName: 'sandbox-name', state: 'starting' }),
+			expect.objectContaining({ sandboxName: 'sandbox-name', state: 'building_snapshot' }),
 		);
 	});
 
-	it('keeps a stopped sandbox whose resume times out and reconciles via the conflict path', async () => {
+	it.each(['restoring', 'starting', 'resizing'])(
+		'keeps a %s sandbox whose wait times out and fails with a classified error',
+		async (state) => {
+			const stateful = makeMockSandbox(`remote-${state}`, state);
+			stateful.waitUntilStarted.mockRejectedValue(new DaytonaTimeoutError('never became ready'));
+			queuedGetResults.push(stateful);
+
+			const sandbox = new DaytonaSandbox({
+				id: 'sandbox-id',
+				name: 'sandbox-name',
+				apiKey: 'api-key',
+				snapshot: 'n8n/instance-ai:1.123.0',
+			});
+
+			await expect(sandbox.start()).rejects.toMatchObject({
+				name: 'SandboxNotReadyError',
+				failureClass: 'sandbox-not-ready',
+			});
+			expect(stateful.delete).not.toHaveBeenCalled();
+			expect(clientLog[0].create).not.toHaveBeenCalled();
+		},
+	);
+
+	it('keeps a stopped sandbox whose resume times out and fails with a classified error', async () => {
 		const stopped = makeMockSandbox('remote-stopped', 'stopped');
 		stopped.start.mockRejectedValue(new DaytonaTimeoutError('resume timed out'));
 		queuedGetResults.push(stopped);
-		queuedCreateResults.push(
-			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
-		);
-		queuedGetResults.push(makeMockSandbox('remote-started-later'));
 
 		const sandbox = new DaytonaSandbox({
 			id: 'sandbox-id',
 			name: 'sandbox-name',
 			apiKey: 'api-key',
 			snapshot: 'n8n/instance-ai:1.123.0',
-			createRetryBackoffBaseMs: 1,
+		});
+
+		await expect(sandbox.start()).rejects.toMatchObject({ name: 'SandboxNotReadyError' });
+		expect(stopped.delete).not.toHaveBeenCalled();
+		expect(clientLog[0].create).not.toHaveBeenCalled();
+	});
+
+	it('caps the create timeout at the remaining acquisition budget', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(makeMockSandbox('remote-created'));
+
+		const sandbox = new DaytonaSandbox({
+			id: 'sandbox-id',
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			snapshot: 'n8n/instance-ai:1.123.0',
+			timeout: 100_000,
+			createTimeoutSeconds: 300,
 		});
 
 		await sandbox.start();
 
-		expect(stopped.delete).not.toHaveBeenCalled();
-		expect(sandbox.getInfo().metadata?.remoteSandboxId).toBe('remote-started-later');
+		const createOptions = clientLog[0].create.mock.calls[0][1] as { timeout: number };
+		expect(createOptions.timeout).toBeLessThanOrEqual(100);
+		expect(createOptions.timeout).toBeGreaterThan(90);
 	});
 
 	it('fails fast with a distinct error when the conflicting sandbox is never visible', async () => {

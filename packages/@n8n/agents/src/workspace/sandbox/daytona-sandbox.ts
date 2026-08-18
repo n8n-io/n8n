@@ -20,7 +20,7 @@ import type {
 } from '../types';
 import { BaseSandbox } from './base-sandbox';
 import { DaytonaAuthManager } from './daytona-auth-manager';
-import { SandboxAcquisitionError, SandboxNameConflictError } from './errors';
+import { SandboxAcquisitionError, SandboxNameConflictError, SandboxNotReadyError } from './errors';
 import { loadDaytona } from './lazy-daytona';
 import type { ErrorReporter, Logger } from './logger';
 
@@ -69,16 +69,28 @@ const RECOVERABLE_SANDBOX_STATES = new Set<SandboxState>([
 	SANDBOX_STATE_ARCHIVED,
 ]);
 
-const WAIT_FOR_STARTED_SANDBOX_STATES = new Set<SandboxState>([
+/**
+ * Transitional states of a sandbox being provisioned for the first time. No user workspace
+ * state exists yet, so one that never becomes ready can be safely deleted and recreated.
+ */
+const PROVISIONING_SANDBOX_STATES = new Set<SandboxState>([
 	SANDBOX_STATE_CREATING,
-	SANDBOX_STATE_RESTORING,
-	SANDBOX_STATE_STARTING,
 	SANDBOX_STATE_PENDING_BUILD,
 	SANDBOX_STATE_PULLING_SNAPSHOT,
+	SANDBOX_STATE_BUILDING_SNAPSHOT,
+]);
+
+/**
+ * Transitional states of a sandbox that already carries workspace state (resuming from
+ * stopped, restoring from archive, resizing, snapshotting, forking). Never deleted on a
+ * wait timeout — losing the wait must not lose the thread's files.
+ */
+const STATEFUL_TRANSITION_SANDBOX_STATES = new Set<SandboxState>([
+	SANDBOX_STATE_RESTORING,
+	SANDBOX_STATE_STARTING,
 	SANDBOX_STATE_FORKING,
 	SANDBOX_STATE_RESIZING,
 	SANDBOX_STATE_SNAPSHOTTING,
-	SANDBOX_STATE_BUILDING_SNAPSHOT,
 ]);
 
 const WAIT_FOR_RECOVERABLE_SANDBOX_STATES = new Set<SandboxState>([
@@ -593,7 +605,11 @@ export class DaytonaSandbox extends BaseSandbox {
 				return { status: 'pending' };
 			}
 			if (REMOVING_SANDBOX_STATES.has(state)) return { status: 'pending' };
-			if (RECOVERABLE_SANDBOX_STATES.has(state) || WAIT_FOR_STARTED_SANDBOX_STATES.has(state)) {
+			if (
+				RECOVERABLE_SANDBOX_STATES.has(state) ||
+				PROVISIONING_SANDBOX_STATES.has(state) ||
+				STATEFUL_TRANSITION_SANDBOX_STATES.has(state)
+			) {
 				if (!(await this.bringToStarted(sandbox, state, deadline))) return { status: 'pending' };
 			} else if (
 				WAIT_FOR_RECOVERABLE_SANDBOX_STATES.has(state) ||
@@ -612,10 +628,13 @@ export class DaytonaSandbox extends BaseSandbox {
 	/**
 	 * Drive an existing sandbox toward 'started': resume a stopped/archived one, or wait out a
 	 * transitional state. A single wait is capped at half the remaining acquisition budget so a
-	 * sandbox that never becomes ready can't consume the whole timeout — the rest of the budget
-	 * is left for replacing it. On a wait timeout the sandbox is treated as wedged and deleted
-	 * so the caller can create a fresh one; a resume timeout keeps the sandbox (its disk state
-	 * is intact and the conflict-reconcile path keeps waiting on the now-transitional state).
+	 * sandbox that never becomes ready can't consume the whole timeout. On a wait timeout:
+	 *  - a provisioning sandbox ({@link PROVISIONING_SANDBOX_STATES}: no workspace state yet)
+	 *    is treated as wedged and deleted so the caller can create a fresh one with the rest
+	 *    of the budget;
+	 *  - a sandbox that carries workspace state (resuming, or one of
+	 *    {@link STATEFUL_TRANSITION_SANDBOX_STATES}) is kept and the acquisition fails with a
+	 *    classified error instead — deleting it would lose the thread's files.
 	 */
 	private async bringToStarted(
 		sandbox: Sandbox,
@@ -638,20 +657,22 @@ export class DaytonaSandbox extends BaseSandbox {
 		} catch (error) {
 			const { DaytonaTimeoutError } = loadDaytona();
 			if (!(error instanceof DaytonaTimeoutError)) throw error;
-			if (resuming) {
-				this.options.logger?.warn('Daytona sandbox did not resume in time; still reconciling', {
-					sandboxName: this.sandboxName,
-					state,
-					waitSeconds,
-				});
+			if (PROVISIONING_SANDBOX_STATES.has(state)) {
+				this.options.logger?.warn(
+					'Daytona sandbox is stuck in a transitional state; deleting it so a fresh one can be created',
+					{ sandboxName: this.sandboxName, state, waitSeconds },
+				);
+				await sandbox.delete(this.operationTimeoutSeconds(deadline));
 				return false;
 			}
 			this.options.logger?.warn(
-				'Daytona sandbox is stuck in a transitional state; deleting it so a fresh one can be created',
+				'Daytona sandbox did not become ready in time; keeping it and failing the acquisition',
 				{ sandboxName: this.sandboxName, state, waitSeconds },
 			);
-			await sandbox.delete(this.operationTimeoutSeconds(deadline));
-			return false;
+			throw new SandboxNotReadyError(
+				`Daytona sandbox "${this.sandboxName}" did not become ready within the acquisition budget (state: ${state})`,
+				{ cause: error },
+			);
 		}
 	}
 
@@ -691,6 +712,8 @@ export class DaytonaSandbox extends BaseSandbox {
 					attempt: attempt + 1,
 				});
 				await this.waitBeforeAcquisitionRetry(attempt, deadline);
+				// Backoff may have consumed the budget — don't start an attempt we can't finish.
+				if (Date.now() >= deadline) throw error;
 			}
 		}
 	}
@@ -701,10 +724,13 @@ export class DaytonaSandbox extends BaseSandbox {
 
 		for (const candidate of candidates) {
 			try {
-				return await this.withTransientRetry('create', deadline, async () =>
-					this.options.createTimeoutSeconds
-						? await client.create(candidate.params, { timeout: this.options.createTimeoutSeconds })
-						: await client.create(candidate.params),
+				return await this.withTransientRetry(
+					'create',
+					deadline,
+					async () =>
+						await client.create(candidate.params, {
+							timeout: this.createTimeoutSeconds(deadline),
+						}),
 				);
 			} catch (error) {
 				// A name conflict is strategy-independent; let the caller reattach by name.
@@ -742,6 +768,13 @@ export class DaytonaSandbox extends BaseSandbox {
 	private operationTimeoutSeconds(deadline?: number): number {
 		if (deadline === undefined) return Math.ceil(this.timeout / 1000);
 		return Math.max(0.001, (deadline - Date.now()) / 1000);
+	}
+
+	/** Configured create timeout, capped by the remaining acquisition budget. */
+	private createTimeoutSeconds(deadline: number): number {
+		const remaining = this.operationTimeoutSeconds(deadline);
+		const configured = this.options.createTimeoutSeconds;
+		return configured ? Math.min(configured, remaining) : remaining;
 	}
 
 	private createSandboxParams(): Array<{
