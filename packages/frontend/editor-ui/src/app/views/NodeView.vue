@@ -1291,13 +1291,6 @@ function removeExecutionOpenedEventBindings() {
 }
 
 async function onStopExecution() {
-	// The NDV stop button routes here in every running state. While the run
-	// waits for a test webhook there is no execution to stop yet — cancel
-	// the webhook wait instead.
-	if (isExecutionWaitingForWebhook.value) {
-		await stopWaitingForWebhook();
-		return;
-	}
 	isStoppingExecution.value = true;
 	await stopCurrentExecution();
 	isStoppingExecution.value = false;

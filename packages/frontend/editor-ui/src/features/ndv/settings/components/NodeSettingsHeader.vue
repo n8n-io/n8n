@@ -27,7 +27,7 @@ const props = defineProps<Props>();
 const i18n = useI18n();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const node = computed(() => workflowDocumentStore.value.getNodeByName(props.nodeName) ?? null);
-const { isExecuting } = useNodeExecution(node);
+const { isExecuting, stopExecution } = useNodeExecution(node);
 
 const emit = defineEmits<{
 	execute: [];
@@ -56,7 +56,7 @@ const emit = defineEmits<{
 			size="small"
 			:class="$style.stop"
 			:title="i18n.baseText('nodeView.stopCurrentExecution')"
-			@click="emit('stop-execution')"
+			@click="stopExecution"
 		/>
 		<NodeExecuteButton
 			v-if="!hideExecute"
