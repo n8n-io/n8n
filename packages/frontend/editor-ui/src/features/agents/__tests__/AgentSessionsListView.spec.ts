@@ -222,6 +222,7 @@ async function mountView({
 
 describe('AgentSessionsListView', () => {
 	beforeEach(() => {
+		storeState.autoRefresh = true;
 		fetchThreads.mockReset();
 		fetchThreads.mockResolvedValue(undefined);
 		setFilters.mockReset();
@@ -325,7 +326,7 @@ describe('AgentSessionsListView', () => {
 		});
 	});
 
-	it('fetches, polls, and manages the visibility listener by default', async () => {
+	it('fetches, polls, and refreshes visible tabs only while auto refresh is enabled', async () => {
 		const wrapper = await mountView();
 		await flushPromises();
 
@@ -335,6 +336,13 @@ describe('AgentSessionsListView', () => {
 			(call: unknown[]) => call[0] === 'visibilitychange',
 		);
 		expect(visibilityListenerCall).toBeDefined();
+		const visibilityListener = visibilityListenerCall?.[1] as EventListener;
+		visibilityListener(new Event('visibilitychange'));
+		expect(refreshThreads).toHaveBeenCalledExactlyOnceWith('project-1', 'agent-1');
+
+		storeState.autoRefresh = false;
+		visibilityListener(new Event('visibilitychange'));
+		expect(refreshThreads).toHaveBeenCalledTimes(1);
 
 		wrapper.unmount();
 

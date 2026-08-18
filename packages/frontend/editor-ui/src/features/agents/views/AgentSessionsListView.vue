@@ -67,7 +67,7 @@ function onVisibilityChange() {
 	// throttled while the document is hidden, so a silent merge-refresh on
 	// return closes the gap before the next interval tick without flashing
 	// the load-more button or dropping paginated pages.
-	if (document.visibilityState !== 'visible') return;
+	if (document.visibilityState !== 'visible' || !sessionsStore.autoRefresh) return;
 	if (!projectId.value || !agentId.value) return;
 	void sessionsStore.refreshThreads(projectId.value, agentId.value);
 }
