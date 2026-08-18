@@ -1,7 +1,4 @@
 import type { Tool } from '@langchain/core/tools';
-import { zodToDraft202012 } from '@n8n/ai-utilities/json-schema';
-import { McpServerConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import type {
@@ -10,6 +7,9 @@ import type {
 	JSONRPCMessage,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { zodToDraft202012 } from '@n8n/ai-utilities/json-schema';
+import { McpServerConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import type * as express from 'express';
 import type { IncomingMessage } from 'http';

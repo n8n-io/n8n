@@ -1,5 +1,5 @@
-import { zodToDraft202012 } from '@n8n/ai-utilities/json-schema';
 import type { StandardSchemaWithJSON } from '@modelcontextprotocol/server';
+import { zodToDraft202012 } from '@n8n/ai-utilities/json-schema';
 import { z } from 'zod';
 
 /**
