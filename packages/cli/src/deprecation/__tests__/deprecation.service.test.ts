@@ -63,6 +63,8 @@ describe('DeprecationService', () => {
 		['EXECUTIONS_DATA_PRUNE_TIMEOUT', '1', true],
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
+		['N8N_EXPRESSION_ENGINE', 'legacy', true],
+		['N8N_EXPRESSION_ENGINE', 'vm', false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});
