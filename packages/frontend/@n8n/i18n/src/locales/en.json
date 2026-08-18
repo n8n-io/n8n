@@ -5159,6 +5159,7 @@
 	"settings.ai.confirm.message.builderDisabled": "Disabling data sending will reduce the effectiveness of AI features. Are you sure you want to proceed?",
 	"settings.ai.confirm.message.builderEnabled": "Disabling data sending will turn off the AI Workflow Builder and reduce the effectiveness of AI features. Are you sure you want to proceed?",
 	"settings.ai.confirm.confirmButtonText": "Yes, disable",
+	"settings.n8nCredits": "n8n credits",
 	"settings.n8nConnect": "n8n Connect",
 	"settings.n8nConnect.title": "n8n Connect",
 	"settings.n8nConnect.description": "The easy way to manage AI usage and cost",
