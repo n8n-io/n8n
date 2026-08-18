@@ -189,7 +189,7 @@ const connectedClientsTotal = computed(
 );
 
 const onConnectClient = () => {
-	mcp.trackConnectClientClicked();
+	mcp.trackConnectClientClicked('settings');
 	mcpStore.openConnectPopover();
 };
 

@@ -1,5 +1,6 @@
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { getMcpClientBrand, getMcpClientType } from '@n8n/api-types';
 
 export function useMcp() {
 	const telemetry = useTelemetry();
@@ -25,16 +26,25 @@ export function useMcp() {
 		telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, { enabled, source });
 	};
 
-	const trackConnectClientClicked = () => {
-		telemetry.track(TELEMETRY_EVENT.MCP.USER_CLICKED_CONNECT_CLIENT_FROM_MCP_SETTINGS, {});
+	const trackConnectClientClicked = (source: 'settings') => {
+		telemetry.track(TELEMETRY_EVENT.MCP.USER_CLICKED_CONNECT_CLIENT, { source });
 	};
 
+	const trackViewedAllClients = () => {
+		telemetry.track(TELEMETRY_EVENT.MCP.USER_VIEWED_ALL_MCP_CLIENTS, {});
+	};
+
+	// Brand and type come from the client's self-registered name, so the revoke
+	// can be segmented the same way the connect dialog's client slug is.
 	const trackClientAccessRevoked = ({
 		clientId,
+		clientName,
 		revokedForOther,
-	}: { clientId: string; revokedForOther: boolean }) => {
+	}: { clientId: string; clientName: string; revokedForOther: boolean }) => {
 		telemetry.track(TELEMETRY_EVENT.MCP.USER_REVOKED_MCP_CLIENT_ACCESS, {
 			client_id: clientId,
+			client_brand: getMcpClientBrand(clientName),
+			client_type: getMcpClientType(clientName),
 			revoked_for_other: revokedForOther,
 		});
 	};
@@ -45,6 +55,7 @@ export function useMcp() {
 		trackUserToggledMcpAccess,
 		trackAutoExposeToggled,
 		trackConnectClientClicked,
+		trackViewedAllClients,
 		trackClientAccessRevoked,
 	};
 }

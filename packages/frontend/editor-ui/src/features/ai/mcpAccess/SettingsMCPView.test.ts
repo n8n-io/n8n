@@ -223,7 +223,7 @@ describe('SettingsMCPView', () => {
 			await userEvent.click(getByTestId('mcp-connect-client-button'));
 
 			expect(mcpStore.openConnectPopover).toHaveBeenCalled();
-			expect(trackConnectClientClickedSpy).toHaveBeenCalled();
+			expect(trackConnectClientClickedSpy).toHaveBeenCalledWith('settings');
 		});
 	});
 

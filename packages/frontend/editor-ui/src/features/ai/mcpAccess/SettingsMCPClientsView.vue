@@ -6,7 +6,6 @@ import { N8nSettingsLayout, N8nSettingsPageHeader } from '@n8n/design-system';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import type { OAuthClientFilters } from '@/features/ai/mcpAccess/clients.utils';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
@@ -22,7 +21,6 @@ import { useUsersStore } from '@n8n/stores/users.store';
 
 const i18n = useI18n();
 const toast = useToast();
-const telemetry = useTelemetry();
 const mcp = useMcp();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
@@ -51,7 +49,7 @@ const onOwnershipChange = async (ownership: 'mine' | 'all') => {
 		oAuthClientsLoading.value = true;
 		await mcpStore.setOAuthClientsOwnership(ownership);
 		if (ownership === 'all') {
-			telemetry.track('User viewed all MCP clients');
+			mcp.trackViewedAllClients();
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
@@ -94,6 +92,7 @@ const onRevokeConfirm = async () => {
 		await mcpStore.removeOAuthClient(client.id, client.owner?.id);
 		mcp.trackClientAccessRevoked({
 			clientId: client.id,
+			clientName: client.name,
 			revokedForOther: isRevokingForOther(client),
 		});
 		toast.showMessage({
