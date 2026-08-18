@@ -699,7 +699,7 @@ describe('createDelegateSubAgentTool', () => {
 		expect(executionCounter.incrementTokenCount).toHaveBeenCalledWith(42);
 	});
 
-	it('forwards the parent persistence thread id and resource id', async () => {
+	it('forwards the parent persistence scope', async () => {
 		const runSubAgent = vi
 			.fn<DelegateSubAgentRunner>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
@@ -707,13 +707,18 @@ describe('createDelegateSubAgentTool', () => {
 
 		await tool.handler?.(input, {
 			runId: 'parent-run-1',
-			persistence: { threadId: 'parent-thread-1', resourceId: 'resource-1' },
+			persistence: {
+				threadId: 'parent-thread-1',
+				resourceId: 'resource-1',
+				hostMetadata: { tenant: 'tenant-1', scope: { id: 'scope-1' } },
+			},
 		});
 
 		expect(runSubAgent).toHaveBeenCalledWith(
 			expect.objectContaining({
 				parentThreadId: 'parent-thread-1',
 				parentResourceId: 'resource-1',
+				parentHostMetadata: { tenant: 'tenant-1', scope: { id: 'scope-1' } },
 			}),
 			expect.objectContaining({
 				runInlineSubAgent: expect.any(Function),

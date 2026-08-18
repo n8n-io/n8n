@@ -559,6 +559,23 @@ describe('useInstanceAiSettingsStore', () => {
 			});
 		});
 
+		it('shows Computer Use as connecting while daemon pairing is in progress', () => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				cloudManaged: false,
+			});
+			setUserPreference(store, { localGatewayDisabled: false });
+			store.isDaemonConnecting = true;
+
+			expect(store.connections[0]).toMatchObject({
+				type: 'computer-use',
+				status: 'connecting',
+				subtitle: 'instanceAi.connections.row.status.connecting',
+			});
+		});
+
 		it('shows Computer Use as connected and adds Browser Use row when browser category is present', async () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,

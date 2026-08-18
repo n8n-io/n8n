@@ -254,6 +254,7 @@ describe('GlobalConfig', () => {
 				queueMetricsInterval: 20,
 				includeSchedulerMetrics: false,
 				schedulerMetricsInterval: 20,
+				includePollTriggerMetrics: false,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
@@ -728,15 +729,6 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.tracingRecordOutputs).toBe(false);
-	});
-
-	it('should parse N8N_AGENTS_AI_SANDBOX_EPHEMERAL from env variables', () => {
-		process.env = {
-			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
-		};
-		const config = Container.get(GlobalConfig);
-
-		expect(config.agents.sandboxEphemeral).toBe(true);
 	});
 
 	it('should parse N8N_AGENTS_AI_SANDBOX_SNAPSHOT from env variables', () => {

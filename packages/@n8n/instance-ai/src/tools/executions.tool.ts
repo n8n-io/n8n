@@ -54,6 +54,17 @@ const runAction = z.object({
 				'For event-based triggers (e.g. Linear, GitHub, Slack), pass inputData matching ' +
 				'the shape the trigger would emit (e.g. { action: "create", data: { ... } }).',
 		),
+	triggerNodeName: z
+		.string()
+		.optional()
+		.describe(
+			'Name of the trigger node to start the run from. REQUIRED when the workflow has ' +
+				'more than one trigger: without it a single trigger is auto-detected and the other ' +
+				"triggers' branches never run. To run each branch, call run once per trigger. " +
+				"Trigger names come from build-workflow's `triggerNodes` or " +
+				'workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
+				'workflow to reach a branch — use this instead.',
+		),
 	timeout: z
 		.number()
 		.int()
@@ -290,6 +301,7 @@ async function handleRun(
 	// Approved or always_allow — execute
 	return await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,
+		triggerNodeName: input.triggerNodeName,
 		abortSignal,
 	});
 }
