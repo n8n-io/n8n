@@ -99,7 +99,7 @@ function makeSettingsStore(overrides: Record<string, unknown> = {}) {
 function makeMcpStore(overrides: Record<string, unknown> = {}) {
 	return {
 		connections: [],
-		fetchConnections: vi.fn(),
+		fetchConnectionsLazy: vi.fn(),
 		disconnect: vi.fn(),
 		...overrides,
 	};

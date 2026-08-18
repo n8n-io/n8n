@@ -112,7 +112,7 @@ function makeMcpStore(overrides: Record<string, unknown> = {}) {
 		catalog: [BRAVE_CATALOG_ENTRY],
 		connections: [] as Array<Record<string, unknown>>,
 		fetchCatalogLazy: vi.fn(),
-		fetchConnections: vi.fn(),
+		fetchConnectionsLazy: vi.fn(),
 		disconnect: vi.fn(),
 		...overrides,
 	});
