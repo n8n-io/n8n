@@ -16,7 +16,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 15 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
-| [agent_execution](agent_execution.md) | 20 |  | table |
+| [agent_execution](agent_execution.md) | 21 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
@@ -63,6 +63,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 6 |  | table |
 | [folder_tag](folder_tag.md) | 2 |  | table |
+| [git_connection](git_connection.md) | 13 |  | table |
 | [insights_by_period](insights_by_period.md) | 6 |  | table |
 | [insights_metadata](insights_metadata.md) | 5 |  | table |
 | [insights_raw](insights_raw.md) | 5 |  | table |
@@ -428,6 +429,7 @@ erDiagram
   datetime_3_ createdAt
   INTEGER duration
   TEXT error
+  TEXT failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
@@ -892,6 +894,21 @@ erDiagram
 "folder_tag" {
   varchar_36_ folderId PK
   varchar_36_ tagId PK
+}
+"git_connection" {
+  varchar_64_ baseCommit
+  varchar_255_ branchName
+  varchar_16_ connectionType
+  datetime_3_ createdAt
+  TEXT encryptedPassword
+  TEXT encryptedPrivateKey
+  TEXT encryptedUsername
+  varchar_36_ id PK
+  varchar_16_ keyGeneratorType
+  varchar_128_ name
+  TEXT publicKey
+  TEXT repositoryUrl
+  datetime_3_ updatedAt
 }
 "insights_by_period" {
   INTEGER id

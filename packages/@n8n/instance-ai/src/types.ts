@@ -69,6 +69,13 @@ export interface WorkflowSummary {
 	createdAt: string;
 	updatedAt: string;
 	tags?: string[];
+	/**
+	 * Owning project. Present only when the listing can span more than one
+	 * project — a list narrowed to a single project would repeat it on every row.
+	 * Without it, a cross-project listing gives no way to tell which project a
+	 * workflow belongs to.
+	 */
+	project?: { id: string; name: string };
 }
 
 export interface WorkflowDetail extends WorkflowSummary {
@@ -283,13 +290,34 @@ export interface WorkflowVersionDetail extends WorkflowVersionSummary {
 
 export type WorkflowListStatus = 'active' | 'archived' | 'all';
 
+export interface WorkflowListResult {
+	/** The page of workflows, capped by `limit`. */
+	workflows: WorkflowSummary[];
+	/** Total workflows matching every requested filter, ignoring `limit`. */
+	total: number;
+	/**
+	 * Total workflows in scope with the `query` name filter removed — what an
+	 * unfiltered list of the same status and scope would return. Equals `total`
+	 * when no `query` was given. Lets callers tell a name-filtered subset apart
+	 * from the full inventory.
+	 */
+	totalInScope: number;
+}
+
 export interface InstanceAiWorkflowService {
 	list(options?: {
 		query?: string;
 		limit?: number;
 		status?: WorkflowListStatus;
 		scope?: 'project' | 'instance';
-	}): Promise<WorkflowSummary[]>;
+		/**
+		 * Restrict the listing to one project, overriding `scope`. A read-only
+		 * narrowing of what the caller can already reach: the adapter passes it as a
+		 * filter on top of the user's own read permissions, so it can never widen
+		 * access. Writes stay locked to the thread's bound project regardless.
+		 */
+		projectId?: string;
+	}): Promise<WorkflowListResult>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
 	 *  Pass a versionId to get a past version's graph instead of the current draft. */

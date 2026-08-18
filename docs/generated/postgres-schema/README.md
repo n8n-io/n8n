@@ -16,7 +16,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_rating](public.agent_eval_rating.md) | 8 |  | BASE TABLE |
 | [public.agent_eval_result](public.agent_eval_result.md) | 15 |  | BASE TABLE |
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
-| [public.agent_execution](public.agent_execution.md) | 20 |  | BASE TABLE |
+| [public.agent_execution](public.agent_execution.md) | 21 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
@@ -63,6 +63,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 6 |  | BASE TABLE |
 | [public.folder_tag](public.folder_tag.md) | 2 |  | BASE TABLE |
+| [public.git_connection](public.git_connection.md) | 13 |  | BASE TABLE |
 | [public.insights_by_period](public.insights_by_period.md) | 6 |  | BASE TABLE |
 | [public.insights_metadata](public.insights_metadata.md) | 5 |  | BASE TABLE |
 | [public.insights_raw](public.insights_raw.md) | 5 |  | BASE TABLE |
@@ -441,6 +442,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   integer duration
   text error
+  json failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
@@ -905,6 +907,21 @@ erDiagram
 "public.folder_tag" {
   varchar_36_ folderId FK
   varchar_36_ tagId FK
+}
+"public.git_connection" {
+  varchar_64_ baseCommit
+  varchar_255_ branchName
+  varchar_16_ connectionType
+  timestamp_3__with_time_zone createdAt
+  text encryptedPassword
+  text encryptedPrivateKey
+  text encryptedUsername
+  varchar_36_ id
+  varchar_16_ keyGeneratorType
+  varchar_128_ name
+  text publicKey
+  text repositoryUrl
+  timestamp_3__with_time_zone updatedAt
 }
 "public.insights_by_period" {
   integer id

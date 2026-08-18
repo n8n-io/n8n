@@ -13,6 +13,7 @@ export {
 } from './workflow-graph-queries';
 export {
 	GraphValidationError,
+	MAX_SLOT_INDEX,
 	validateExecutableGraph,
 	validateLoops,
 } from './validate-executable-graph';
