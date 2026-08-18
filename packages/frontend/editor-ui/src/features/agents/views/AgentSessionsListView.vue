@@ -275,7 +275,8 @@ async function onFiltersChange(value: AgentSessionFilters) {
 					<tr
 						v-for="thread in sessionsStore.threads"
 						:key="thread.id"
-						:class="[$style.clickableRow, thread.status === 'error' && $style.errorRow]"
+						:class="$style.clickableRow"
+						:data-status="thread.status"
 						data-test-id="agent-session-list-item"
 						@click="onViewTrace({ agentId, threadId: thread.id })"
 					>
@@ -531,21 +532,28 @@ async function onFiltersChange(value: AgentSessionFilters) {
 
 	.titleCell {
 		border-left: var(--spacing--4xs) var(--border-style)
-			var(--execution-card--border-color--success);
+			var(--execution-card--border-color--unknown);
 	}
 
 	.actionCell {
 		text-align: right;
 	}
 
+	&[data-status='succeeded'] .titleCell {
+		border-left-color: var(--execution-card--border-color--success);
+	}
+
+	&[data-status='error'] .titleCell {
+		border-left-color: var(--execution-card--border-color--error);
+	}
+
+	&[data-status='cancelled'] .titleCell,
+	&[data-status='interrupted'] .titleCell {
+		border-left-color: var(--border-color--warning);
+	}
+
 	&:hover {
 		background-color: var(--execution-card--color--background--hover);
-	}
-}
-
-.sessionsTable .errorRow {
-	.titleCell {
-		border-left-color: var(--execution-card--border-color--error);
 	}
 }
 
