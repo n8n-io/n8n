@@ -18,21 +18,32 @@ export type HealNodeIdsResult =
  * Returns a corrected copy of `nodes` in which every node has a unique,
  * non-empty id, or `{ changed: false }` when the input needs no correction.
  *
- * - Nodes sharing a name and an id — or sharing a name and both lacking an id
- *   — are collapsed to the last occurrence: the one the runtime's name-keyed
- *   node map executes. Giving each its own id instead would leave the
- *   duplicate name in place, which structure validation rejects on the next
- *   save, while the extra node stays dead at runtime. Connections are
- *   name-keyed, so the survivor keeps them.
- * - After the collapse, a missing or empty id is filled with a fresh uuid.
- * - Nodes sharing an id under distinct names keep the id on one of them — the
- *   trigger-like node when exactly one sharer is trigger-like, else the first
- *   — and the rest get fresh uuids. Keeping the contested id alive preserves
- *   what is keyed on it elsewhere: `nodeGroups.nodeIds` references,
- *   `poller_state` rows, and `processed_data` dedup contexts.
+ * Case by case — letters are node names, brackets hold the id, `-` means no id:
  *
- * Same-name nodes with *distinct* ids are left alone: that is a name defect,
- * not an id defect, and it is owned by structure validation.
+ * 1. Missing or empty id:
+ *    `[A(-)]` → `[A(new)]`
+ *    Filled with a fresh uuid.
+ *
+ * 2. Same name, same id — or same name, both without an id:
+ *    `[A(x), A(x)]` → `[A(x)]`, `[A(-), A(-)]` → `[A(new)]`
+ *    Collapsed to the last occurrence: the runtime's node map is name-keyed
+ *    and last-write-wins, so that is the node that executed before healing —
+ *    behavior is unchanged, and connections (also name-keyed) stay on the
+ *    survivor. Giving each its own id instead would keep the duplicate name,
+ *    which structure validation rejects on the next save, while the extra
+ *    node stays dead at runtime.
+ *
+ * 3. Distinct names, same id:
+ *    `[A(x), B(x)]` → `[A(x), B(new)]`
+ *    `[A(x), T(x)]` → `[A(new), T(x)]` when T is the only trigger-like sharer
+ *    Exactly one node keeps the contested id — the trigger-like sharer if
+ *    there is exactly one, else the first — because other subsystems key on
+ *    it: `nodeGroups.nodeIds` references, `poller_state` rows, and
+ *    `processed_data` dedup contexts. The rest get fresh uuids.
+ *
+ * 4. Same name, distinct real ids:
+ *    `[A(x), A(y)]` → unchanged
+ *    A name defect, not an id defect — owned by structure validation.
  *
  * Healing a healed output is a no-op (`{ changed: false }`). This matters
  * because the caller publishes the corrected copy, and that publish enqueues
