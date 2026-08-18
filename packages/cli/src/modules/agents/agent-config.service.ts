@@ -35,7 +35,11 @@ import { AgentRepository } from './repositories/agent.repository';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
+import {
+	findHttpRequestToolUrlFromAiViolations,
+	validateNodeToolConfigs,
+	validateNodeToolExpressions,
+} from './utils/node-tool-validation';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
 @Service()
@@ -100,6 +104,19 @@ export class AgentConfigService {
 			return {
 				valid: false,
 				error: `Invalid $fromAI expression in node tool config: ${message}`,
+			};
+		}
+
+		const urlViolations = findHttpRequestToolUrlFromAiViolations(config.tools);
+		if (urlViolations.length > 0) {
+			return {
+				valid: false,
+				error: urlViolations
+					.map(
+						({ toolName, path }) =>
+							`HTTP Request tool "${toolName}" cannot use $fromAI in ${path}. Enter a fixed URL.`,
+					)
+					.join('\n'),
 			};
 		}
 

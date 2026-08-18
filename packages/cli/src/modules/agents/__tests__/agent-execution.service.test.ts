@@ -8,7 +8,6 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
-import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from '../execution-recorder';
@@ -67,7 +66,6 @@ describe('AgentExecutionService', () => {
 	let errorReporter: Mocked<ErrorReporter>;
 	let agentChatAttachmentService: Mocked<AgentChatAttachmentService>;
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
-	let agentWorkspaceService: Mocked<AgentWorkspaceService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -85,8 +83,6 @@ describe('AgentExecutionService', () => {
 		errorReporter = mock<ErrorReporter>();
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 		executionUpdateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
-		agentWorkspaceService = mock<AgentWorkspaceService>();
-		agentWorkspaceService.cleanupThreadWorkspace.mockResolvedValue();
 
 		service = new AgentExecutionService(
 			mockLogger(),
@@ -99,7 +95,6 @@ describe('AgentExecutionService', () => {
 			storageConfig,
 			errorReporter,
 			executionUpdateBroadcaster,
-			agentWorkspaceService,
 		);
 	});
 
@@ -286,7 +281,6 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
-				agentWorkspaceService,
 			);
 
 			const record = makeMessageRecord({
@@ -351,7 +345,6 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
-				agentWorkspaceService,
 			);
 
 			const record = makeMessageRecord({
@@ -765,7 +758,6 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
-				agentWorkspaceService,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
@@ -926,7 +918,7 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('deleteThread', () => {
-		it('performs workspace cleanup when deleting an execution thread', async () => {
+		it('deletes thread memory, attachments, and the execution thread', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
 				id: 'thread-1',
 				agentId: 'agent-1',
@@ -947,11 +939,6 @@ describe('AgentExecutionService', () => {
 			expect(agentChatAttachmentService.deleteByThread).toHaveBeenCalledWith('thread-1', {
 				projectId: 'project-1',
 			});
-			expect(agentWorkspaceService.cleanupThreadWorkspace).toHaveBeenCalledWith(
-				'project-1',
-				'agent-1',
-				'thread-1',
-			);
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
 		});
 

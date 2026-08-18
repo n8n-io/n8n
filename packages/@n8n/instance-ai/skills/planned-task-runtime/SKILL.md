@@ -135,8 +135,9 @@ succeeds and any verified workflow dependency outcome has
 `workflows(action="setup")` with that workflowId before `complete-checkpoint`;
 the inline setup card appears automatically in the AI Assistant panel, so do not
 tell the user to open the editor, use the canvas, or click a Setup button. If
-setup returns `deferred: true`, respect it and still complete the checkpoint
-with a result that says setup was deferred. Do not call
+setup returns `deferred: true`, or reports `skippedByUser`, respect it and still
+complete the checkpoint with a result that says setup was deferred — never call
+setup again for a credential the user skipped. Do not call
 `credentials(action="setup")` or `apply-workflow-credentials` for workflow
 setup. Then call `complete-checkpoint(taskId, status, result)` **exactly once**
 to report the outcome (`status: "succeeded"` on pass, `"failed"` on a verification
