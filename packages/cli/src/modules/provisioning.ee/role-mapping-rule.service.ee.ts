@@ -275,7 +275,15 @@ export class RoleMappingRuleService {
 		return result.affected ?? 0;
 	}
 
-	async move(id: string, targetIndex: number, user: UserLike): Promise<RoleMappingRuleResponse> {
+	async move({
+		id,
+		targetIndex,
+		user,
+	}: {
+		id: string;
+		targetIndex: number;
+		user: UserLike;
+	}): Promise<RoleMappingRuleResponse> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
 		}

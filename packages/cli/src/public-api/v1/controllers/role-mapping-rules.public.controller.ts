@@ -122,11 +122,11 @@ export class RoleMappingRulesPublicController {
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
 
-		const rule = await this.roleMappingRuleService.move(
-			roleMappingRuleId,
-			body.targetIndex,
-			req.user,
-		);
+		const rule = await this.roleMappingRuleService.move({
+			id: roleMappingRuleId,
+			targetIndex: body.targetIndex,
+			user: req.user,
+		});
 
 		return toRoleMappingRulePublicDto(rule);
 	}
