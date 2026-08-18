@@ -93,6 +93,132 @@ describe('DynamicNodeParametersService', () => {
 		});
 	});
 
+	describe('expression isolate lifecycle', () => {
+		let acquireSpy: jest.SpyInstance;
+		let releaseSpy: jest.SpyInstance;
+
+		beforeEach(() => {
+			acquireSpy = jest.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			releaseSpy = jest.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
+		});
+
+		afterEach(() => {
+			jest.restoreAllMocks();
+		});
+
+		it('should acquire and release isolate around getOptionsViaMethodName', async () => {
+			const loadOptionsMethod = jest.fn().mockResolvedValue([{ name: 'opt', value: 'v' }]);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { loadOptions: { getOptions: loadOptionsMethod } },
+				}),
+			);
+
+			await service.getOptionsViaMethodName(
+				'getOptions',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should release isolate even when the inner method throws', async () => {
+			const loadOptionsMethod = jest.fn().mockRejectedValue(new Error('boom'));
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { loadOptions: { getOptions: loadOptionsMethod } },
+				}),
+			);
+
+			await expect(
+				service.getOptionsViaMethodName(
+					'getOptions',
+					'',
+					mock<IWorkflowExecuteAdditionalData>(),
+					{ name: 'TestNode', version: 1 },
+					mock<INodeParameters>(),
+				),
+			).rejects.toThrow('boom');
+
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should acquire and release isolate around getResourceLocatorResults', async () => {
+			const listSearchMethod = jest
+				.fn()
+				.mockResolvedValue({ results: [{ name: 'r', value: 'v' }] });
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { listSearch: { searchModels: listSearchMethod } },
+				}),
+			);
+
+			await service.getResourceLocatorResults(
+				'searchModels',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should acquire and release isolate around getResourceMappingFields', async () => {
+			const resourceMappingMethod = jest.fn().mockResolvedValue({
+				fields: [{ id: '1', displayName: 'F', defaultMatch: false, required: true, display: true }],
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { resourceMapping: { getFields: resourceMappingMethod } },
+				}),
+			);
+
+			await service.getResourceMappingFields(
+				'getFields',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should acquire and release isolate around getActionResult', async () => {
+			const actionHandler = jest.fn().mockResolvedValue({ key: 'value' });
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { actionHandler: { handle: actionHandler } },
+				}),
+			);
+
+			await service.getActionResult(
+				'handle',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+				undefined,
+			);
+
+			expect(acquireSpy).toHaveBeenCalledTimes(1);
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('getOptionsViaLoadOptionsByPath', () => {
 		it('should throw BadRequestError when no loadOptions routing exists at the parameter path', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
