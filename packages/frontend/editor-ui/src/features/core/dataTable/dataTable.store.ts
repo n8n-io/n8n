@@ -84,6 +84,14 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		},
 		sortBy?: DataTableListSortBy,
 	) => {
+		// The global aggregate route (projectId === '') needs dataTable:list; skip it
+		// silently rather than surfacing a 403 for a role that legitimately lacks it.
+		if (projectId === '' && !canViewDataTables.value) {
+			dataTables.value = [];
+			totalCount.value = 0;
+			return;
+		}
+
 		const response = await fetchDataTablesApi(
 			rootStore.restApiContext,
 			projectId,

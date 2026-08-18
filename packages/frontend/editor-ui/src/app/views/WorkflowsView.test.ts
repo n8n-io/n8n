@@ -745,39 +745,36 @@ describe('Simplified Layout', () => {
 		expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
 	});
 
-	it('does not fetch data tables for empty-state detection when the user lacks dataTable:list', async () => {
-		const credentialsStore = mockedStore(useCredentialsStore);
-		const dataTableStore = mockedStore(useDataTableStore);
-		const localSettingsStore = mockedStore(useSettingsStore);
-		projectPages = useProjectPages();
-		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
-		foldersStore.totalWorkflowCount = 0;
-		credentialsStore.fetchAllCredentials.mockResolvedValue([]);
-		localSettingsStore.isDataTableFeatureEnabled = true;
-		dataTableStore.canViewDataTables = false;
-		mockShowError.mockClear();
-
-		renderComponent({ pinia });
-		await waitAllPromises();
-
-		expect(dataTableStore.fetchDataTables).not.toHaveBeenCalled();
-		expect(mockShowError).not.toHaveBeenCalled();
-	});
-
-	it('fetches data tables for empty-state detection when the user has dataTable:list', async () => {
+	it('fetches data tables for empty-state detection when the feature is enabled', async () => {
 		const dataTableStore = mockedStore(useDataTableStore);
 		const localSettingsStore = mockedStore(useSettingsStore);
 		projectPages = useProjectPages();
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		foldersStore.totalWorkflowCount = 0;
 		localSettingsStore.isDataTableFeatureEnabled = true;
-		dataTableStore.canViewDataTables = true;
 		dataTableStore.fetchDataTables.mockResolvedValue(undefined);
 
 		renderComponent({ pinia });
 		await waitAllPromises();
 
+		// Whether the user actually has dataTable:list is the store's concern (it
+		// silently no-ops the request itself, see dataTable.store.test.ts) — this
+		// component only needs to gate on the feature flag and delegate the rest.
 		expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith('', 1, 1);
+	});
+
+	it('does not fetch data tables for empty-state detection when the feature is disabled', async () => {
+		const dataTableStore = mockedStore(useDataTableStore);
+		const localSettingsStore = mockedStore(useSettingsStore);
+		projectPages = useProjectPages();
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		foldersStore.totalWorkflowCount = 0;
+		localSettingsStore.isDataTableFeatureEnabled = false;
+
+		renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(dataTableStore.fetchDataTables).not.toHaveBeenCalled();
 	});
 
 	it('should call getSimplifiedLayoutVisibility with route and loading state', async () => {

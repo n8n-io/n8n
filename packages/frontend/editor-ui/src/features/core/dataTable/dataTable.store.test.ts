@@ -121,6 +121,37 @@ describe('dataTable.store', () => {
 			expect(dataTableStore.dataTables).toEqual(mockResponse.data);
 			expect(dataTableStore.totalCount).toBe(50);
 		});
+
+		it('should skip the request and clear state when the user cannot list data tables globally', async () => {
+			vi.mocked(hasPermission).mockReturnValueOnce(false);
+			const spy = vi.spyOn(dataTableApi, 'fetchDataTablesApi');
+			dataTableStore.dataTables = mockResponse.data;
+			dataTableStore.totalCount = 50;
+
+			await dataTableStore.fetchDataTables('', 1, 25);
+
+			expect(spy).not.toHaveBeenCalled();
+			expect(dataTableStore.dataTables).toEqual([]);
+			expect(dataTableStore.totalCount).toBe(0);
+		});
+
+		it('should still fetch the project-scoped list even when the user lacks the global scope', async () => {
+			// The guard only applies to the global route (projectId === ''); a project-scoped
+			// call must never even consult canViewDataTables. No hasPermission override here —
+			// if the guard started reading it for this path, the default `() => true` mock
+			// would hide that, but the test above already proves the guard fetches this scope.
+			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue(mockResponse);
+
+			await dataTableStore.fetchDataTables('project-1', 1, 25);
+
+			expect(dataTableApi.fetchDataTablesApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'project-1',
+				{ skip: 0, take: 25 },
+				undefined,
+				undefined,
+			);
+		});
 	});
 
 	describe('createDataTable', () => {
