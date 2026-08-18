@@ -103,7 +103,14 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 		};
 	}
 
-	return computed(() => {
+	const hasDisconnectedMcpConnection = computed(
+		() =>
+			isMcpFeatureEnabled.value &&
+			settingsStore.settings?.mcpAccessEnabled === true &&
+			mcpStore.connections.some(({ status }) => status === 'disconnected'),
+	);
+
+	const menuItems = computed(() => {
 		const items: InputMenuItem[] = [
 			{
 				id: 'attach-files',
@@ -227,4 +234,6 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 
 		return items;
 	});
+
+	return { menuItems, hasDisconnectedMcpConnection };
 }

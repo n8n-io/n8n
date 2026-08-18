@@ -18,7 +18,9 @@ import {
 const props = withDefaults(defineProps<{ disabled?: boolean }>(), { disabled: false });
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
-const menuItems = useInstanceAiInputMenuItems(() => emit('attachFiles'));
+const { menuItems, hasDisconnectedMcpConnection } = useInstanceAiInputMenuItems(() =>
+	emit('attachFiles'),
+);
 
 const STATUS_LABEL_KEYS = {
 	connected: 'instanceAi.connections.row.status.connected',
@@ -54,13 +56,20 @@ async function handleSelect(id: string) {
 			@select="handleSelect"
 		>
 			<template #trigger>
-				<N8nIconButton
-					icon="plus"
-					variant="outline"
-					size="medium"
-					:disabled="props.disabled"
-					:aria-label="i18n.baseText('instanceAi.inputMenu.open')"
-				/>
+				<span :class="$style.trigger">
+					<N8nIconButton
+						icon="plus"
+						variant="outline"
+						size="medium"
+						:disabled="props.disabled"
+						:aria-label="i18n.baseText('instanceAi.inputMenu.open')"
+					/>
+					<span
+						v-if="hasDisconnectedMcpConnection"
+						:class="$style.triggerStatusDot"
+						aria-hidden="true"
+					/>
+				</span>
 			</template>
 
 			<template #item-leading="{ item, ui }">
@@ -105,6 +114,24 @@ async function handleSelect(id: string) {
 .triggerTooltip {
 	max-width: none;
 	white-space: nowrap;
+}
+
+.trigger {
+	position: relative;
+	display: inline-flex;
+}
+
+.triggerStatusDot {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: 50%;
+	background: var(--color--danger);
+	box-shadow: 0 0 0 var(--spacing--5xs) var(--background--surface);
+	transform: translate(50%, -50%);
+	pointer-events: none;
 }
 
 .itemLabel {
