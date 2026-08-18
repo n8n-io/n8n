@@ -15,6 +15,14 @@ import { erpNextApiRequest, erpNextApiRequestAllItems } from './GenericFunctions
 import type { DocumentProperties } from './utils';
 import { processNames, toSQL } from './utils';
 
+const decodeDocType = (docType: string) => {
+	try {
+		return decodeURI(docType);
+	} catch {
+		return docType;
+	}
+};
+
 export class ERPNext implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ERPNext',
@@ -116,7 +124,7 @@ export class ERPNext implements INodeType {
 					'GET',
 					'/api/method/frappe.desk.form.load.getdoctype',
 					{},
-					{ doctype: decodeURI(docType) },
+					{ doctype: decodeDocType(docType) },
 				);
 
 				if (!response || typeof response !== 'object' || !Array.isArray(response.docs)) {

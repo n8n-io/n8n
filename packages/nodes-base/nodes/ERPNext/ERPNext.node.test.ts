@@ -10,9 +10,9 @@ vi.mock('./GenericFunctions', () => ({
 
 const getDocFields = new ERPNext().methods.loadOptions.getDocFields;
 
-const createContext = (typeVersion: number) =>
+const createContext = (typeVersion: number, docType = 'Sales%20Invoice') =>
 	({
-		getCurrentNodeParameter: vi.fn().mockReturnValue('Sales%20Invoice'),
+		getCurrentNodeParameter: vi.fn().mockReturnValue(docType),
 		getNode: vi.fn().mockReturnValue({ typeVersion }),
 	}) as unknown as ILoadOptionsFunctions;
 
@@ -62,6 +62,19 @@ describe('ERPNext getDocFields', () => {
 			{ name: 'Customer', value: 'customer' },
 			{ name: 'Item Code', value: 'item_code' },
 		]);
+	});
+
+	it('preserves expression values with malformed percent sequences in version 1.1', async () => {
+		vi.mocked(erpNextApiRequest).mockResolvedValue({ docs: [] });
+
+		await expect(getDocFields.call(createContext(1.1, '100%'))).resolves.toEqual([]);
+
+		expect(erpNextApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/api/method/frappe.desk.form.load.getdoctype',
+			{},
+			{ doctype: '100%' },
+		);
 	});
 
 	it('ignores malformed documents and fields in version 1.1 responses', async () => {
