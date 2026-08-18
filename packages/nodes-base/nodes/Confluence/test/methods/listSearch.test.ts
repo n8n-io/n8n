@@ -2,7 +2,7 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { clearSpaceKeyCache } from '../../actions/common';
-import { getPages, searchSpaces } from '../../methods/listSearch';
+import { getPages, searchSpaces, searchSpacesWithAll } from '../../methods/listSearch';
 import { confluenceApiRequest } from '../../transport';
 
 vi.mock('../../transport', () => ({
@@ -262,6 +262,19 @@ describe('Confluence listSearch.searchSpaces', () => {
 		const result = await searchSpaces.call(ctx, 'doc');
 
 		expect(result.results).toEqual([{ name: 'Docs (DOCS)', value: '1' }]);
+	});
+
+	it('prepends All Spaces only on the unfiltered first page of the WithAll variant', async () => {
+		apiRequest.mockResolvedValue({ results: [{ id: 1, name: 'Docs', key: 'DOCS' }] });
+
+		const first = await searchSpacesWithAll.call(ctx);
+		expect(first.results[0]).toEqual({ name: 'All Spaces', value: '' });
+
+		const filtered = await searchSpacesWithAll.call(ctx, 'docs');
+		expect(filtered.results[0]).toEqual({ name: 'Docs (DOCS)', value: '1' });
+
+		const paged = await searchSpacesWithAll.call(ctx, undefined, 'abc');
+		expect(paged.results[0]).toEqual({ name: 'Docs (DOCS)', value: '1' });
 	});
 
 	it('keeps fetching pages while a typed filter has no match yet', async () => {
