@@ -43,13 +43,6 @@ import { TransportFactory } from './transport/TransportFactory';
  */
 const ELICITATION_TIMEOUT_MS = 300_000;
 
-/**
- * Describes a session's tools for tools/list. Both the direct handler and the SSE
- * relay path build the listing here so the two cannot drift.
- *
- * `removeAdditionalStrategy: 'strict'` leaves a plain object open to extra keys
- * (it reads `unknownKeys !== 'strict'`), which is what clients have always seen.
- */
 function toolDescriptors(tools: Tool[]) {
 	return tools.map((tool) => ({
 		name: tool.name,

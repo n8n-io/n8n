@@ -38,9 +38,6 @@ describe('McpServer', () => {
 		mcpServer = McpServer.instance(mockLogger);
 	});
 
-	// A tool schema that declares draft-07 is rejected outright by strict MCP
-	// clients (Claude Desktop), which silently leaves the connector with no tools.
-	// MCP requires every client to support 2020-12, so that is what we advertise.
 	describe('tools/list schema dialect', () => {
 		const sessionId = 'dialect-session';
 

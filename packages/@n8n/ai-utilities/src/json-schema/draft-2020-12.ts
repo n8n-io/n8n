@@ -88,11 +88,8 @@ function migrate(schema: unknown): unknown {
 	} else if (items !== undefined) {
 		result.items = migrate(items);
 	}
-	// A lone `additionalItems` is inoperative in draft-07, so carrying it over
-	// would newly constrain the document.
 
 	if (isRecord(dependencies)) {
-		// 2020-12 split the keyword by the shape of its value.
 		for (const [property, dependency] of Object.entries(dependencies)) {
 			const target = Array.isArray(dependency) ? 'dependentRequired' : 'dependentSchemas';
 			const bucket = isRecord(result[target]) ? result[target] : {};
@@ -103,8 +100,6 @@ function migrate(schema: unknown): unknown {
 		}
 	}
 
-	// draft-04 spelled an exclusive bound as a flag on `minimum`/`maximum`; 2020-12
-	// only accepts the numeric form, so the flag has to be folded into the value.
 	applyBound(result, 'minimum', 'exclusiveMinimum', exclusiveMinimum);
 	applyBound(result, 'maximum', 'exclusiveMaximum', exclusiveMaximum);
 
@@ -116,16 +111,8 @@ function migrate(schema: unknown): unknown {
  * dialect MCP recommends and requires every client to support. draft-07 is the
  * only dialect `zod-to-json-schema` can emit, so that is the path in use here.
  *
- * A 2019-09 input is passed through rather than converted: `$recursiveRef` and
- * `$recursiveAnchor` have no mechanical translation to `$dynamicRef`/
- * `$dynamicAnchor`, and guessing at one would be worse than leaving it visible.
- *
- * Output matches `z.toJSONSchema(schema, { target: 'draft-2020-12' })`: same
- * `$schema` URI, same `prefixItems`/`items` split, same key order.
- *
- * `definitions` becomes `$defs` only at the root, because that is the only place
- * it is a keyword; nested occurrences are plain objects that `$ref`s point into
- * by JSON pointer, so renaming them would break those pointers.
+ * Output matches `z.toJSONSchema(schema, { target: 'draft-2020-12' })` from Zod v4,
+ * when we migrate to Zod v4, we can remove this and use the built-in toJSONSchema() instead.
  */
 export function toDraft202012(schema: unknown): Record<string, unknown> {
 	const migrated = migrate(schema);

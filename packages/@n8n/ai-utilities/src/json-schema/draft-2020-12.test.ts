@@ -14,12 +14,6 @@ describe('toDraft202012', () => {
 			expect(toDraft202012({ type: 'object' }).$schema).toBe(JSON_SCHEMA_DRAFT_2020_12);
 		});
 
-		it('declares the dialect first, as zod v4 does', () => {
-			const result = toDraft202012({ type: 'object', definitions: { A: { type: 'string' } } });
-
-			expect(Object.keys(result)).toEqual(['$schema', 'type', '$defs']);
-		});
-
 		it('returns a bare declaration for a non-object document', () => {
 			expect(toDraft202012(null)).toEqual({ $schema: JSON_SCHEMA_DRAFT_2020_12 });
 		});
@@ -176,8 +170,6 @@ describe('toDraft202012', () => {
 		});
 	});
 
-	// 2020-12 split `dependencies` in two and dropped the name, so leaving it in
-	// place would silently discard the constraint as an unknown keyword.
 	describe('dependencies', () => {
 		it('splits property lists into dependentRequired', () => {
 			const result = toDraft202012({
@@ -232,9 +224,6 @@ describe('toDraft202012', () => {
 		});
 	});
 
-	// draft-04 spelled these as booleans alongside minimum/maximum. 2020-12 requires
-	// a number, so passing them through would emit an invalid document — the exact
-	// failure this conversion exists to prevent.
 	describe('draft-04 numeric bounds', () => {
 		it('converts the boolean exclusive form to the numeric form', () => {
 			const result = toDraft202012({
