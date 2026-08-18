@@ -1,0 +1,30 @@
+packages/workflow/test/workflow-data-proxy.test.ts
+  s_ff8ba147c9dd94::t_80f6e249d6d391 9
+  s_ff8ba147c9dd94::t_bce4c0aee3834c 1339-1416
+packages/workflow/src/workflow-data-proxy.ts
+  s_5c28558b5e8d58::t_f9537b8cd1b786 34-39,60-67,1056-1064,1086-1088,1090-1091
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ed67e2ea3a1ac8fccff37f21bd591788d3ea4da7",
+  "prompts": {},
+  "sessions": {
+    "s_5c28558b5e8d58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ebdd8402-ff44-4aa2-a4cd-54dcb8c3a3e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_ff8ba147c9dd94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "896d44e1-2395-4d86-ad68-fa2789e50b79",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
