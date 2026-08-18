@@ -1,3 +1,6 @@
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { NodeConnectionTypes, type INodeTypeDescription, type INodeTypes } from 'n8n-workflow';
+
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
@@ -46,6 +49,57 @@ const generatedWorkflow = {
 	],
 	connections: {},
 };
+
+function makeWorkflowNode(
+	id: string,
+	name: string,
+	type = 'n8n-nodes-base.set',
+): WorkflowJSON['nodes'][number] {
+	return {
+		id,
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	};
+}
+
+function makeNodeType(overrides: Partial<INodeTypeDescription> = {}): INodeTypeDescription {
+	return {
+		displayName: overrides.displayName ?? 'Set',
+		name: overrides.name ?? 'n8n-nodes-base.set',
+		group: overrides.group ?? ['transform'],
+		version: overrides.version ?? 1,
+		description: overrides.description ?? '',
+		defaults: overrides.defaults ?? { name: 'Set' },
+		inputs: overrides.inputs ?? [NodeConnectionTypes.Main],
+		outputs: overrides.outputs ?? [NodeConnectionTypes.Main],
+		properties: overrides.properties ?? [],
+		...overrides,
+	};
+}
+
+function makeNodeTypesProvider(): INodeTypes {
+	const descriptions: Record<string, INodeTypeDescription> = {
+		'n8n-nodes-base.set': makeNodeType(),
+		'n8n-nodes-base.manualTrigger': makeNodeType({
+			name: 'n8n-nodes-base.manualTrigger',
+			group: ['trigger'],
+		}),
+	};
+	const getByNameAndVersion = (nodeType: string) => {
+		const description = descriptions[nodeType];
+		if (!description) throw new Error('Unknown node type');
+		return { description };
+	};
+
+	return {
+		getByName: getByNameAndVersion,
+		getByNameAndVersion,
+		getKnownTypes: () => ({}),
+	};
+}
 
 vi.mock('../workflow-source-compiler', () => ({
 	compileWorkflowSource: vi.fn(),
@@ -288,6 +342,73 @@ describe('createBuildWorkflowTool', () => {
 			workflowVersionId: 'v-1',
 			sourceHash: hashWorkflowSource(source),
 		});
+	});
+
+	it('drops an invalid node group and still saves the workflow', async () => {
+		const workflow: WorkflowJSON = {
+			name: 'Grouped workflow',
+			nodes: [makeWorkflowNode('trigger', 'Manual Trigger', 'n8n-nodes-base.manualTrigger')],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Trigger group', nodeIds: ['trigger'] }],
+		};
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow,
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({
+			source: 'workflow source with groups',
+			overrides: { nodeTypesProvider: makeNodeTypesProvider() },
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Grouped workflow',
+		});
+
+		const savedWorkflow = vi.mocked(context.workflowService.createFromWorkflowJSON).mock
+			.calls[0][0];
+		expect(result.success).toBe(true);
+		expect(savedWorkflow.nodeGroups).toEqual([]);
+		expect(result.warnings?.join('\n')).toContain('[NODE_GROUP_DROPPED]');
+		expect(result.warnings?.join('\n')).toContain('Trigger group');
+	});
+
+	it('validates node groups after blank node IDs are normalized', async () => {
+		const workflow: WorkflowJSON = {
+			name: 'Grouped workflow',
+			nodes: [makeWorkflowNode('', 'A'), makeWorkflowNode('', 'B')],
+			connections: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+			nodeGroups: [{ id: 'g1', name: 'Healed group', nodeIds: ['', ''] }],
+		};
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow,
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({
+			source: 'workflow source with blank ids',
+			overrides: { nodeTypesProvider: makeNodeTypesProvider() },
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Grouped workflow',
+		});
+
+		const savedWorkflow = vi.mocked(context.workflowService.createFromWorkflowJSON).mock
+			.calls[0][0];
+		expect(result.success).toBe(true);
+		expect(savedWorkflow.nodeGroups).toHaveLength(1);
+		expect(savedWorkflow.nodeGroups?.[0]?.nodeIds).toEqual(
+			savedWorkflow.nodes.map((node) => node.id),
+		);
+		expect(savedWorkflow.nodeGroups?.[0]?.nodeIds).not.toContain('');
+		expect(result.warnings?.join('\n') ?? '').not.toContain('NODE_GROUP_DROPPED');
 	});
 
 	it('hands one-off builds to the one-off-operations skill with optional verification', async () => {

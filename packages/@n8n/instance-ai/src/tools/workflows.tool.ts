@@ -19,6 +19,7 @@ import {
 	TEMPLATABLE_PLAIN_AUTH_TYPES,
 } from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
+import { dropInvalidNodeGroups } from './workflows/node-group-validation';
 import {
 	getObservedWorkflowChecksum,
 	rememberCurrentWorkflowChecksum,
@@ -52,9 +53,10 @@ import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import {
 	grantSessionWorkflowUpdate,
 	canSkipWorkflowUpdateHitl,
+	formatWarning,
 } from './workflows/workflow-build-context';
 import { refreshWorkflowSourceFileBindingFromWorkflow } from './workflows/workflow-file-bindings';
-import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { ensureUniqueNodeIds, getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -1278,6 +1280,9 @@ async function handleUpdate(
 		};
 	}
 
+	ensureUniqueNodeIds(input.workflow);
+	const droppedGroups = dropInvalidNodeGroups(input.workflow, context);
+
 	// Guard against overwriting a save this conversation never saw (canvas
 	// autosave, another user, another thread). Absent when the agent never read
 	// the workflow here — then there is nothing to pin the save to.
@@ -1295,7 +1300,13 @@ async function handleUpdate(
 		if (saved.checksum) {
 			await rememberObservedWorkflowChecksum(context, input.workflowId, saved.checksum);
 		}
-		return { success: true, workflowId: input.workflowId };
+		return {
+			success: true,
+			workflowId: input.workflowId,
+			...(droppedGroups.length > 0
+				? { warnings: droppedGroups.map((w) => formatWarning(w.code, w.message)) }
+				: {}),
+		};
 	} catch (error) {
 		if (error instanceof WorkflowSaveConflictError) {
 			return {

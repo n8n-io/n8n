@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
-import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import { generateWorkflowCode, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { NodeConnectionTypes, type INodeTypeDescription, type INodeTypes } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
@@ -104,6 +105,57 @@ function createMockContext(
 		permissions: {},
 		...overrides,
 	} as unknown as InstanceAiContext;
+}
+
+function makeWorkflowNode(
+	id: string,
+	name: string,
+	type = 'n8n-nodes-base.set',
+): WorkflowJSON['nodes'][number] {
+	return {
+		id,
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	};
+}
+
+function makeNodeType(overrides: Partial<INodeTypeDescription> = {}): INodeTypeDescription {
+	return {
+		displayName: overrides.displayName ?? 'Set',
+		name: overrides.name ?? 'n8n-nodes-base.set',
+		group: overrides.group ?? ['transform'],
+		version: overrides.version ?? 1,
+		description: overrides.description ?? '',
+		defaults: overrides.defaults ?? { name: 'Set' },
+		inputs: overrides.inputs ?? [NodeConnectionTypes.Main],
+		outputs: overrides.outputs ?? [NodeConnectionTypes.Main],
+		properties: overrides.properties ?? [],
+		...overrides,
+	};
+}
+
+function makeNodeTypesProvider(): INodeTypes {
+	const descriptions: Record<string, INodeTypeDescription> = {
+		'n8n-nodes-base.set': makeNodeType(),
+		'n8n-nodes-base.manualTrigger': makeNodeType({
+			name: 'n8n-nodes-base.manualTrigger',
+			group: ['trigger'],
+		}),
+	};
+	const getByNameAndVersion = (nodeType: string) => {
+		const description = descriptions[nodeType];
+		if (!description) throw new Error('Unknown node type');
+		return { description };
+	};
+
+	return {
+		getByName: getByNameAndVersion,
+		getByNameAndVersion,
+		getKnownTypes: () => ({}),
+	};
 }
 
 function getInputSchema(tool: unknown): { safeParse: (input: unknown) => { success: boolean } } {
@@ -979,6 +1031,107 @@ describe('workflows tool', () => {
 				}),
 			);
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('drops an invalid node group, saves the workflow, and returns a coded warning', async () => {
+			const invalidGroupWorkflow: WorkflowJSON = {
+				name: 'Updated WF',
+				nodes: [makeWorkflowNode('trigger', 'Manual Trigger', 'n8n-nodes-base.manualTrigger')],
+				connections: {},
+				nodeGroups: [{ id: 'g1', name: 'Trigger group', nodeIds: ['trigger'] }],
+			};
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'always_allow' },
+				nodeTypesProvider: makeNodeTypesProvider(),
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v-updated',
+				checksum: 'checksum-updated',
+			});
+
+			const result = await executeTool<{ success: boolean; warnings?: string[] }>(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: invalidGroupWorkflow },
+				{} as never,
+			);
+
+			const savedWorkflow = (context.workflowService.updateFromWorkflowJSON as Mock).mock
+				.calls[0][1] as WorkflowJSON;
+			expect(result.success).toBe(true);
+			expect(savedWorkflow.nodeGroups).toEqual([]);
+			expect(result.warnings?.join('\n')).toContain('[NODE_GROUP_DROPPED]');
+			expect(result.warnings?.join('\n')).toContain('Trigger group');
+		});
+
+		it('saves a valid node group unchanged without returning warnings', async () => {
+			const validGroupWorkflow: WorkflowJSON = {
+				name: 'Updated WF',
+				nodes: [makeWorkflowNode('a', 'A'), makeWorkflowNode('b', 'B')],
+				connections: {
+					A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				nodeGroups: [{ id: 'g1', name: 'Valid group', nodeIds: ['a', 'b'] }],
+			};
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'always_allow' },
+				nodeTypesProvider: makeNodeTypesProvider(),
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v-updated',
+				checksum: 'checksum-updated',
+			});
+
+			const result = await executeTool<{ success: boolean; warnings?: string[] }>(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: validGroupWorkflow },
+				{} as never,
+			);
+
+			const savedWorkflow = (context.workflowService.updateFromWorkflowJSON as Mock).mock
+				.calls[0][1] as WorkflowJSON;
+			expect(result.success).toBe(true);
+			expect(savedWorkflow.nodeGroups).toEqual([
+				{ id: 'g1', name: 'Valid group', nodeIds: ['a', 'b'] },
+			]);
+			expect(result.warnings).toBeUndefined();
+		});
+
+		it('normalizes blank and duplicate node IDs before validating node groups', async () => {
+			const workflowWithUnstableIds: WorkflowJSON = {
+				name: 'Updated WF',
+				nodes: [makeWorkflowNode('', 'A'), makeWorkflowNode('', 'B')],
+				connections: {
+					A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				nodeGroups: [{ id: 'g1', name: 'Healed group', nodeIds: ['', ''] }],
+			};
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'always_allow' },
+				nodeTypesProvider: makeNodeTypesProvider(),
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v-updated',
+				checksum: 'checksum-updated',
+			});
+
+			const result = await executeTool<{ success: boolean; warnings?: string[] }>(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowWithUnstableIds },
+				{} as never,
+			);
+
+			const savedWorkflow = (context.workflowService.updateFromWorkflowJSON as Mock).mock
+				.calls[0][1] as WorkflowJSON;
+			expect(result.success).toBe(true);
+			expect(savedWorkflow.nodeGroups).toHaveLength(1);
+			expect(savedWorkflow.nodeGroups?.[0]?.nodeIds).toEqual(
+				savedWorkflow.nodes.map((node) => node.id),
+			);
+			expect(savedWorkflow.nodeGroups?.[0]?.nodeIds).not.toContain('');
+			expect(result.warnings).toBeUndefined();
 		});
 
 		describe('stale-save detection', () => {

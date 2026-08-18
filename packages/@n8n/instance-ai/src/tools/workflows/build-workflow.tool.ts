@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 
 import { computeChatModelValidationIssues } from './chat-model-validation';
+import { dropInvalidNodeGroups } from './node-group-validation';
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
@@ -1021,6 +1022,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 				await preserveExistingNodePositions(json, targetWorkflowId, context);
+				informational.push(...dropInvalidNodeGroups(json, context));
 
 				if (await hasLostAllSavedNodeIds(json, targetWorkflowId, context)) {
 					context.logger.debug('Build kept none of the saved node ids', {
