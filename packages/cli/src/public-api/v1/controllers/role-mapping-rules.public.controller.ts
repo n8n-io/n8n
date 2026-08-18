@@ -21,11 +21,13 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { RoleMappingRuleResponse } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
-import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
+import {
+	encodeNextCursor,
+	resolveOffsetPagination,
+} from '@/public-api/v1/shared/services/pagination.service';
 
 function toRoleMappingRulePublicDto(rule: RoleMappingRuleResponse): RoleMappingRulePublicDto {
 	return {
@@ -62,22 +64,7 @@ export class RoleMappingRulesPublicController {
 	): Promise<RoleMappingRuleListPublicDto> {
 		this.assertProvisioningLicensed();
 
-		let offset = 0;
-		let { limit } = query;
-
-		if (query.cursor) {
-			try {
-				const decoded = decodeCursor(query.cursor);
-				if (!('offset' in decoded)) {
-					throw new BadRequestError('An invalid cursor was provided');
-				}
-				offset = decoded.offset;
-				limit = decoded.limit;
-			} catch (error) {
-				if (error instanceof BadRequestError) throw error;
-				throw new BadRequestError('An invalid cursor was provided');
-			}
-		}
+		const { offset, limit } = resolveOffsetPagination(query);
 
 		const { count, items } = await this.roleMappingRuleService.list({
 			skip: offset,
