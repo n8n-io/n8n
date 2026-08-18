@@ -43,7 +43,7 @@ const preConnectedSlugs = ref<Set<string> | null>(null);
 
 void mcpStore.fetchCatalogLazy();
 void (async () => {
-	await mcpStore.fetchConnections();
+	await mcpStore.fetchConnectionsLazy();
 	preConnectedSlugs.value = new Set(mcpStore.connections.map((c) => c.serverSlug));
 })();
 void (async () => {

@@ -66,7 +66,7 @@ const isVisible = computed(() => {
 void store.fetch();
 
 if (isMcpFeatureEnabled.value) {
-	void mcpStore.fetchConnections();
+	void mcpStore.fetchConnectionsLazy();
 }
 
 const ICON_MAP: Record<SingletonConnectionType, IconName> = {
