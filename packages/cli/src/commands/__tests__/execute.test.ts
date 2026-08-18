@@ -61,6 +61,10 @@ const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
 deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
 deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
 
+afterEach(() => {
+	vi.restoreAllMocks();
+});
+
 test('should start a task runner', async () => {
 	// arrange
 
@@ -142,7 +146,6 @@ test('should not init the expression engine for commands that do not need it', a
 	// assert
 
 	expect(initSpy).not.toHaveBeenCalled();
-	initSpy.mockRestore();
 });
 
 test('should exit with a crash when expression engine init fails', async () => {
@@ -169,6 +172,4 @@ test('should exit with a crash when expression engine init fails', async () => {
 
 	expect(initSpy).toHaveBeenCalledTimes(1);
 	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));
-	initSpy.mockRestore();
-	exitSpy.mockRestore();
 });
