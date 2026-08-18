@@ -140,13 +140,6 @@ export class SourceControlGitService {
 				unsafe: { allowUnsafeCredentialHelper: true },
 			};
 
-			const proxyConfig = config.find((entry) => entry.startsWith('http.proxy='));
-			if (proxyConfig) {
-				this.logger.debug('Proxy configuration added', {
-					proxyUrl: proxyConfig.slice('http.proxy='.length),
-				});
-			}
-
 			this.git = simpleGit(httpsGitOptions).env('GIT_TERMINAL_PROMPT', '0');
 		} else if (preferences.connectionType === 'ssh') {
 			const privateKeyPath = await this.sourceControlPreferencesService.getPrivateKeyPath();

@@ -202,13 +202,6 @@ export class GitConnectionsGitService {
 			if (credentials.type === 'https') {
 				const config = buildHttpsGitConfig(connection.repositoryUrl, credentials);
 
-				const proxyConfig = config.find((entry) => entry.startsWith('http.proxy='));
-				if (proxyConfig) {
-					this.logger.debug('Proxy configuration added', {
-						proxyUrl: proxyConfig.slice('http.proxy='.length),
-					});
-				}
-
 				git = simpleGit({
 					...options,
 					config,
