@@ -189,9 +189,11 @@ export class WorkflowReviewAccessService {
 			return new Set(requests.map((request) => request.id));
 		}
 
+		// Set membership, not `includes`: this runs once per request in the batch.
+		const adminProjectIds = new Set(visibility.adminProjectIds);
 		const openable = new Set(
 			requests
-				.filter((request) => visibility.adminProjectIds.includes(request.projectId))
+				.filter((request) => adminProjectIds.has(request.projectId))
 				.map((request) => request.id),
 		);
 

@@ -38,7 +38,7 @@ const statusSummary = computed(
 				</N8nText>
 			</template>
 			<div :class="$style.status">
-				<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" />
+				<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" decorative />
 				<N8nText size="medium">{{ statusSummary }}</N8nText>
 			</div>
 		</N8nCard>

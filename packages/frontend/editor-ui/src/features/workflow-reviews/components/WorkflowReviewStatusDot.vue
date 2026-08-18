@@ -10,8 +10,13 @@ const props = withDefaults(
 		state: WorkflowReviewRequestState;
 		decision: WorkflowReviewRequestDecision;
 		size?: 'small' | 'medium';
+		/**
+		 * Set where the parent already renders the status in text. The dot then
+		 * carries no accessible name, so the status is announced once, not twice.
+		 */
+		decorative?: boolean;
 	}>(),
-	{ size: 'medium' },
+	{ size: 'medium', decorative: false },
 );
 
 const i18n = useI18n();
@@ -21,10 +26,9 @@ const status = computed(() => getWorkflowReviewStatusDisplay(i18n, props.state, 
 
 <template>
 	<div
-		role="img"
 		:class="[$style.dot, $style[status.colorClass], size === 'small' && $style.small]"
 		data-test-id="workflow-review-request-status-dot"
-		:aria-label="status.label"
+		v-bind="decorative ? { 'aria-hidden': 'true' } : { role: 'img', 'aria-label': status.label }"
 	/>
 </template>
 

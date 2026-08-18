@@ -51,6 +51,7 @@ const reviewRoute = computed(() => ({
 				:state="status.summary.state"
 				:decision="status.summary.decision"
 				size="small"
+				decorative
 			/>
 			<N8nText size="small" color="text-base">{{ label }}</N8nText>
 		</component>

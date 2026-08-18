@@ -389,6 +389,37 @@ describe('reviewStatus.store', () => {
 			expect(store.reviewStatus('workflow-1')).toEqual(status);
 		});
 
+		it('clears cached statuses on reset, so a new session starts empty', async () => {
+			const store = useWorkflowReviewStatusStore();
+			fetchStatusesMock.mockResolvedValue(responseOf({ 'workflow-1': cardStatus() }));
+			await store.fetchReviewStatuses(['workflow-1']);
+			expect(store.reviewStatus('workflow-1')).not.toBeNull();
+
+			store.reset();
+
+			expect(store.reviewStatus('workflow-1')).toBeNull();
+		});
+
+		it('drops a response still in flight when reset happens, so it cannot write after logout', async () => {
+			const store = useWorkflowReviewStatusStore();
+
+			let resolveInFlight!: (value: WorkflowReviewStatusesResponse) => void;
+			fetchStatusesMock.mockReturnValueOnce(
+				new Promise<WorkflowReviewStatusesResponse>((resolve) => {
+					resolveInFlight = resolve;
+				}),
+			);
+			const inFlight = store.fetchReviewStatuses(['workflow-1']);
+
+			store.reset();
+
+			// The previous session's response lands after the reset and must be ignored.
+			resolveInFlight(responseOf({ 'workflow-1': cardStatus() }));
+			await inFlight;
+
+			expect(store.reviewStatus('workflow-1')).toBeNull();
+		});
+
 		it('drops an out-of-order response so an older batch cannot restore stale status', async () => {
 			const store = useWorkflowReviewStatusStore();
 

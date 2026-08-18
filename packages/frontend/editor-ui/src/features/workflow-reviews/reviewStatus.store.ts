@@ -147,6 +147,21 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 		};
 	};
 
+	/**
+	 * Drops every cached status on logout, so a soft re-login (no page reload)
+	 * cannot show the previous user's badges while the new batch is in flight.
+	 */
+	const reset = () => {
+		latestReviewByWorkflowId.value = {};
+		reviewStatusByWorkflowId.value = {};
+		for (const workflowId of Object.keys(latestSequenceByWorkflowId)) {
+			latestSequenceByWorkflowId[workflowId] += 1;
+		}
+		for (const workflowId of Object.keys(reviewStatusSequenceByWorkflowId)) {
+			reviewStatusSequenceByWorkflowId[workflowId] += 1;
+		}
+	};
+
 	return {
 		// all writes must go through fetchStatus/setOpenReview so the sequence
 		// protocol stays the only write path.
@@ -158,5 +173,6 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 		setOpenReview,
 		reviewStatus,
 		fetchReviewStatuses,
+		reset,
 	};
 });
