@@ -5943,9 +5943,6 @@ importers:
       array.prototype.tosorted:
         specifier: 1.1.4
         version: 1.1.4
-      autoprefixer:
-        specifier: catalog:frontend
-        version: 10.4.19(postcss@8.5.10)
       axios:
         specifier: 1.18.0
         version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
@@ -6211,6 +6208,9 @@ importers:
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
+      autoprefixer:
+        specifier: catalog:frontend
+        version: 10.4.19(postcss@8.5.10)
       browserslist:
         specifier: 4.28.1
         version: 4.28.1
