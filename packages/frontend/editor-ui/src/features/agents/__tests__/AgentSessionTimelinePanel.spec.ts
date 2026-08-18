@@ -5,6 +5,7 @@ import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
 import { reactive } from 'vue';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import type { ThreadDetail } from '../composables/useAgentThreadsApi';
+import type { FilterOption } from '../session-timeline.types';
 
 const getThreadDetail = vi.fn();
 const showError = vi.fn();
@@ -44,7 +45,11 @@ const stubs = {
 		template:
 			'<div data-test-id="table-stub" :data-selected-index="selectedIndex ?? undefined" :data-item-count="items.length" />',
 	},
-	SessionEventFilter: { template: '<div data-test-id="filter-stub" />' },
+	SessionEventFilter: {
+		name: 'SessionEventFilter',
+		props: ['available'],
+		template: '<div data-test-id="filter-stub" />',
+	},
 	SessionDetailPanel: { template: '<div data-test-id="detail-stub" />' },
 	N8nInput: { template: '<input data-test-id="search-stub" />' },
 	N8nIcon: { template: '<i />' },
@@ -79,8 +84,29 @@ const keyboardExecution = {
 		},
 	],
 	error: null,
+	failureSummary: null,
 	hitlStatus: null,
 	source: null,
+} satisfies ThreadDetail['executions'][number];
+
+const errorFilterExecution = {
+	...keyboardExecution,
+	status: 'error',
+	userMessage: null,
+	error: 'A tool failed',
+	timeline: [
+		{
+			type: 'tool-call',
+			kind: 'tool',
+			name: 'failed_tool',
+			toolCallId: 'failed-call',
+			input: {},
+			output: { error: 'A tool failed' },
+			startTime: 100,
+			endTime: 200,
+			success: false,
+		},
+	],
 } satisfies ThreadDetail['executions'][number];
 
 function dispatchKeyboardEvent(type: 'keydown' | 'keyup', key: string) {
@@ -153,6 +179,35 @@ describe('AgentSessionTimelinePanel', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-test-id="table-stub"]').exists()).toBe(true);
+	});
+
+	it('offers status pills only for statuses present in the session', async () => {
+		getThreadDetail.mockResolvedValueOnce({
+			...detail,
+			executions: [errorFilterExecution],
+		});
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		const options = wrapper
+			.getComponent({ name: 'SessionEventFilter' })
+			.props('available') as FilterOption[];
+		expect(
+			options
+				.filter((option) => option.presentation === 'badge')
+				.map(({ key, count }) => [key, count]),
+		).toEqual([['error', 2]]);
+	});
+
+	it('omits status pills when the session has no matching statuses', async () => {
+		getThreadDetail.mockResolvedValueOnce({ ...detail, executions: [keyboardExecution] });
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		const options = wrapper
+			.getComponent({ name: 'SessionEventFilter' })
+			.props('available') as FilterOption[];
+		expect(options.every((option) => option.presentation === 'swatch')).toBe(true);
 	});
 
 	it('reloads when the threadId prop changes', async () => {

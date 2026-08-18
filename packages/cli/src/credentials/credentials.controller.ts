@@ -449,20 +449,6 @@ export class CredentialsController {
 			includeInstanceCredentials: true,
 		});
 
-		this.eventService.emit('credentials-deleted', {
-			user: req.user,
-			credentialType: credential.type,
-			credentialId: credential.id,
-		});
-
-		if (credential.isResolvable) {
-			this.eventService.emit('private-credential-deleted', {
-				user: req.user,
-				credentialType: credential.type,
-				credentialId: credential.id,
-			});
-		}
-
 		return true;
 	}
 

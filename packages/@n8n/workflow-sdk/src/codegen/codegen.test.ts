@@ -138,6 +138,37 @@ describe('generateWorkflowCode', () => {
 		expect(code).toContain("slackApi: newCredential('My Slack', 'cred-123')");
 	});
 
+	it('should generate a placeholder for an AI Gateway managed credential', () => {
+		const json: WorkflowJSON = {
+			id: 'managed-credential-test',
+			name: 'Managed Credentials Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.2,
+					position: [0, 0],
+					parameters: {},
+					credentials: {
+						slackApi: {
+							id: null,
+							name: 'n8n Connect',
+							__aiGatewayManaged: true,
+						},
+					},
+				},
+			],
+			connections: {},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).toContain("slackApi: newCredential('n8n Connect')");
+		expect(code).not.toContain('id: null');
+		expect(code).not.toContain('__aiGatewayManaged');
+	});
+
 	it('should generate code for sticky notes', () => {
 		const json: WorkflowJSON = {
 			id: 'sticky-test',
@@ -427,6 +458,13 @@ describe('generateWorkflowCode with AI subnodes', () => {
 					parameters: {
 						model: 'gpt-4',
 					},
+					credentials: {
+						openAiApi: {
+							id: null,
+							name: 'n8n Connect',
+							__aiGatewayManaged: true,
+						},
+					},
 				},
 			],
 			connections: {
@@ -450,6 +488,9 @@ describe('generateWorkflowCode with AI subnodes', () => {
 		// Should reference the variable in subnodes config
 		expect(code).toContain('subnodes:');
 		expect(code).toMatch(/model: \w+/); // Variable reference, not inline call
+		expect(code).toContain("openAiApi: newCredential('n8n Connect')");
+		expect(code).not.toContain('id: null');
+		expect(code).not.toContain('__aiGatewayManaged');
 	});
 
 	it('should generate subnode config for AI agent with multiple subnodes', () => {

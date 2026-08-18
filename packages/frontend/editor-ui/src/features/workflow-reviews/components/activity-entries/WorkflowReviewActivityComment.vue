@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
-import { formatUserDisplayName } from '../../workflowReviews.utils';
+import { formatActorName } from '../../workflowReviews.utils';
 
 defineProps<{
 	entry: Extract<WorkflowReviewActivityEntry, { type: 'comment.created' }>;
@@ -14,9 +14,10 @@ defineProps<{
 const i18n = useI18n();
 
 function authorName(message: WorkflowReviewActivityMessage): string {
-	return message.createdBy
-		? formatUserDisplayName(message.createdBy)
-		: i18n.baseText('workflowReviews.detail.activity.unknownAuthor');
+	return formatActorName(
+		message.createdBy,
+		i18n.baseText('workflowReviews.detail.activity.unknownAuthor'),
+	);
 }
 </script>
 
@@ -24,7 +25,8 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 	<div :class="$style.entry">
 		<div v-for="message in entry.messages" :key="message.id" :class="$style.message">
 			<N8nAvatar
-				size="small"
+				size="xxsmall"
+				:class="$style.avatar"
 				:first-name="message.createdBy?.firstName"
 				:last-name="message.createdBy?.lastName"
 			/>
@@ -38,10 +40,11 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 					>
 						{{ authorName(message) }}
 					</N8nText>
-					<N8nText size="xsmall" color="text-light">
+					<N8nText size="small" color="text-light">
 						<time
 							:datetime="message.createdAt"
 							data-test-id="workflow-review-activity-comment-time"
+							:class="$style.timeStamp"
 						>
 							<TimeAgo :date="message.createdAt" />
 						</time>
@@ -71,16 +74,23 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 </template>
 
 <style lang="scss" module>
+@use '../activity-card' as *;
+
+/* A comment is prose, so it gets the same card as a decision that carries a note. */
 .entry {
+	@include activity-card;
+
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
 }
 
 .message {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--2xs);
+	@include activity-row;
+}
+
+.avatar {
+	@include activity-avatar;
 }
 
 .content {
@@ -91,14 +101,15 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 }
 
 .header {
-	display: flex;
-	align-items: baseline;
-	gap: var(--spacing--2xs);
+	@include activity-headline;
 }
 
-/* Figma asks for 20px on 14px text; no line-height token gives that ratio. */
 .line {
-	line-height: 20px;
+	line-height: var(--review-activity--line-height);
+}
+
+.timeStamp {
+	padding-left: var(--spacing--3xs);
 }
 
 .body {

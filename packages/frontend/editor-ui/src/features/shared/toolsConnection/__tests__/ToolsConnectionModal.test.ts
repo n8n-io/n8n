@@ -91,6 +91,7 @@ function renderWith(
 		categories: ToolCategoryKey[];
 		detailItem: ToolConnectionItem | null;
 		detailMode: 'detail' | 'settings';
+		allowWorkflowCreation: boolean;
 	}>,
 ) {
 	return renderModal({
@@ -100,6 +101,7 @@ function renderWith(
 			categories: props.categories ?? ALL_CATEGORIES,
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
+			allowWorkflowCreation: props.allowWorkflowCreation,
 		},
 		pinia: createTestingPinia(),
 	});
@@ -147,6 +149,25 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('Notion onboarding flow')).toBeNull();
 	});
 
+	it('treats every status except none as having a connection', () => {
+		const items: ToolConnectionItem[] = [
+			{ ...connectedMcpFixture, id: 'connected', title: 'Operational', status: 'connected' },
+			{ ...connectedMcpFixture, id: 'connecting', title: 'In progress', status: 'connecting' },
+			{ ...connectedMcpFixture, id: 'disconnected', title: 'Unavailable', status: 'disconnected' },
+			{ ...connectedMcpFixture, id: 'none', title: 'Never added', status: 'none' },
+		];
+		const { getByTestId, queryByText } = renderWith({
+			items,
+			categories: ['connected', 'mcp'],
+		});
+
+		expect(getByTestId('tab-connected')).toHaveTextContent('(3)');
+		expect(queryByText('Operational')).toBeTruthy();
+		expect(queryByText('In progress')).toBeTruthy();
+		expect(queryByText('Unavailable')).toBeTruthy();
+		expect(queryByText('Never added')).toBeNull();
+	});
+
 	it('gathers every item under the all tab, connected ones included', () => {
 		const { getByTestId, queryByText } = renderWith({
 			categories: ['all', ...ALL_CATEGORIES],
@@ -175,8 +196,28 @@ describe('ToolsConnectionModal', () => {
 		expect(getByTestId('tools-connection-empty')).toBeTruthy();
 	});
 
+	it('offers workflow creation when the workflows category is empty', async () => {
+		const { emitted, getByTestId, queryByTestId } = renderWith({
+			items: [],
+			categories: ['mcp', 'workflows'],
+			allowWorkflowCreation: true,
+		});
+
+		expect(queryByTestId('tools-connection-create-workflow')).toBeNull();
+
+		await fireEvent.click(getByTestId('tab-workflows'));
+		expect(getByTestId('tools-connection-empty')).toBeTruthy();
+
+		await fireEvent.click(getByTestId('tools-connection-create-workflow'));
+		expect(emitted()['create-workflow']).toEqual([[]]);
+	});
+
 	it('renders the detail view when a detailItem is set', () => {
-		const unconnectedMcp = { ...connectedMcpFixture, isConnected: false, settings: undefined };
+		const unconnectedMcp = {
+			...connectedMcpFixture,
+			status: 'none' as const,
+			settings: undefined,
+		};
 		const { queryByTestId, queryByText, queryAllByTestId } = renderWith({
 			detailItem: unconnectedMcp,
 		});
@@ -249,7 +290,7 @@ describe('ToolsConnectionModal', () => {
 	});
 
 	it('states a count on every tab, zero included', () => {
-		const items = realisticItems.filter((item) => !item.isConnected);
+		const items = realisticItems.filter((item) => item.status !== 'connected');
 		const { getByTestId } = renderWith({ items, categories: ALL_CATEGORIES });
 
 		expect(getByTestId('tab-ai').textContent).toContain('(2)');
@@ -360,7 +401,11 @@ describe('ToolsConnectionModal', () => {
 	});
 
 	it('emits update:detailItem(null) when the back button is clicked', async () => {
-		const unconnectedMcp = { ...connectedMcpFixture, isConnected: false, settings: undefined };
+		const unconnectedMcp = {
+			...connectedMcpFixture,
+			status: 'none' as const,
+			settings: undefined,
+		};
 		const { getByTestId, emitted } = renderWith({ detailItem: unconnectedMcp });
 
 		await fireEvent.click(getByTestId('tools-connection-detail-back'));

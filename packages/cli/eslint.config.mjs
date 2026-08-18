@@ -117,8 +117,6 @@ export default defineConfig(
 		// migration to the `@PublicApiController` + service pattern (API-70). NEVER add to this
 		// list — a new violation must fail CI. Entries are removed as each file migrates.
 		files: [
-			'./src/public-api/v1/handlers/credentials/credentials.handler.ts',
-			'./src/public-api/v1/handlers/credentials/credentials.service.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.service.ts',
 			'./src/public-api/v1/handlers/discover/discover.handler.ts',
