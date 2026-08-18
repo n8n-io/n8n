@@ -32,7 +32,8 @@ export function bodyProperties(operations: string[]): INodeProperties[] {
 				{
 					name: 'Storage',
 					value: 'storage',
-					description: 'Confluence storage-format XHTML, e.g. <h2>Title</h2><p>Text</p>',
+					description:
+						'Confluence storage-format XHTML, e.g. &lt;h2&gt;Title&lt;/h2&gt;&lt;p&gt;Text&lt;/p&gt;',
 				},
 			],
 		},
