@@ -3,12 +3,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { effectScope } from 'vue';
 import { flushPromises } from '@vue/test-utils';
-import type { InstanceAiMcpConnectionResponse } from '@n8n/api-types';
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
-import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
+import { InstanceAiMcpConnection, useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useMcpServerConnect } from './useMcpServerConnect';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -53,14 +52,14 @@ function emitCredentialCreated(id: string, type = 'linearMcpOAuth2Api'): void {
 	}
 }
 
-const makeConnection = (overrides: Partial<InstanceAiMcpConnectionResponse> = {}) =>
+const makeConnection = (overrides: Partial<InstanceAiMcpConnection> = {}) =>
 	({
 		id: 'conn-1',
 		serverSlug: 'linear',
 		credentialId: 'cred-1',
 		credentialType: 'linearMcpOAuth2Api',
 		...overrides,
-	}) as InstanceAiMcpConnectionResponse;
+	}) as InstanceAiMcpConnection;
 
 const linear = { slug: 'linear', credentialType: 'linearMcpOAuth2Api' };
 

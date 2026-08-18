@@ -9,6 +9,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ToolCredentialPicker from '@/features/shared/toolsConnection/ToolCredentialPicker.vue';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	hasToolConnection,
 	type McpServerConnectionItem,
 	type ToolCredentialRef,
 } from '@/features/shared/toolsConnection/types';
@@ -42,7 +43,7 @@ const preConnectedSlugs = ref<Set<string> | null>(null);
 
 void mcpStore.fetchCatalogLazy();
 void (async () => {
-	await mcpStore.fetchConnections();
+	await mcpStore.fetchConnectionsLazy();
 	preConnectedSlugs.value = new Set(mcpStore.connections.map((c) => c.serverSlug));
 })();
 void (async () => {
@@ -82,7 +83,7 @@ const rows = computed<CardRow[]>(() =>
 				id: connection?.id ?? server.serverSlug,
 				kind: 'mcp-server',
 				title: entry?.title ?? server.title,
-				isConnected: Boolean(connection),
+				status: connection?.status ?? 'none',
 				credentials: [
 					{ authType: credentialType, credentialId: connection?.credentialId, required: true },
 				],
@@ -93,13 +94,17 @@ const rows = computed<CardRow[]>(() =>
 );
 
 const isActionable = computed(() => !props.readOnly && !props.expired);
-const anyConnected = computed(() => rows.value.some((row) => row.item.isConnected));
+const anyConnected = computed(() => rows.value.some(hasConnection));
+
+function hasConnection(row: CardRow): boolean {
+	return hasToolConnection(row.item.status);
+}
 
 function finish(approved: boolean) {
 	if (!isActionable.value) return;
 	emit('resolve', {
 		approved,
-		connectedSlugs: rows.value.filter((row) => row.item.isConnected).map((row) => row.serverSlug),
+		connectedSlugs: rows.value.filter(hasConnection).map((row) => row.serverSlug),
 	});
 }
 
@@ -108,8 +113,10 @@ watch(
 	[isActionable, rows, preConnectedSlugs],
 	([actionable, currentRows, preConnected]) => {
 		if (!actionable || autoFinished.value || !preConnected) return;
-		const connectedHere = currentRows.some((row) => !preConnected.has(row.serverSlug));
-		if (connectedHere && currentRows.every((row) => row.item.isConnected)) {
+		const connectedHere = currentRows.some(
+			(row) => !preConnected.has(row.serverSlug) && hasConnection(row),
+		);
+		if (connectedHere && currentRows.every(hasConnection)) {
 			autoFinished.value = true;
 			finish(true);
 		}
@@ -118,7 +125,7 @@ watch(
 );
 
 function showsCredentialPicker(row: CardRow): boolean {
-	return row.item.isConnected || isActionable.value;
+	return hasConnection(row) || isActionable.value;
 }
 
 async function runConnect(attempt: () => Promise<unknown>) {
@@ -158,7 +165,7 @@ function handleBrowseAll() {
 }
 
 function openSettings(row: CardRow) {
-	if (!row.item.isConnected) return;
+	if (!hasConnection(row)) return;
 	mcpTelemetry.trackSettingsOpened(row.serverSlug);
 	uiStore.openModalWithData({
 		name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
@@ -191,7 +198,7 @@ function openSettings(row: CardRow) {
 				:subtitle="row.subtitle"
 				:icon="row.icon"
 				size="default"
-				:clickable="row.item.isConnected"
+				:clickable="hasConnection(row)"
 				@open-settings="openSettings(row)"
 			>
 				<template #action>
