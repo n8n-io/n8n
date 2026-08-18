@@ -21,14 +21,13 @@ const quoteShellArg = (value: string) => `'${value.replace(/'/g, "'\"'\"'")}'`;
 
 /**
  * Build the `config` entries for an HTTPS Git client: an inline credential
- * helper that supplies the username/password to Git, plus an `http.proxy`
- * entry when a proxy is resolved for the repository URL.
+ * helper supplying the username/password, plus an `http.proxy` entry when a
+ * proxy is resolved for the repository URL.
  *
- * NOTE: the helper echoes the credentials for whatever host/path Git asks
- * about — it is not restricted to `repositoryUrl`. `credential.useHttpPath=true`
- * only widens the lookup key (host + path) Git uses when consulting the helper;
- * it does not scope which requests receive the credentials. Isolation relies on
- * each connection running Git in its own process with its own config.
+ * NOTE: the helper echoes the credentials for whatever host/path Git asks about,
+ * not just `repositoryUrl` (`credential.useHttpPath=true` widens the lookup key
+ * but doesn't scope it). Isolation relies on each connection running Git in its
+ * own process with its own config.
  */
 export function buildHttpsGitConfig(
 	repositoryUrl: string,
