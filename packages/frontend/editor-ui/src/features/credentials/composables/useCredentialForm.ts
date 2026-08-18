@@ -175,10 +175,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		credentialTypeName.value ? getParentTypes(credentialTypeName.value) : [],
 	);
 
-	const nodesWithAccess = computed(() =>
-		credentialTypeName.value ? credentialsStore.getNodesWithAccess(credentialTypeName.value) : [],
-	);
-
 	// --- OAuth / managed derivations ---------------------------------------
 	const isOAuthType = computed(
 		() =>
@@ -316,12 +312,9 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		});
 		if (hasUntestableExpressions) return false;
 
-		const nodesThatCanTest = nodesWithAccess.value.filter((node) =>
-			node.credentials?.some(
-				(credential) => credential.name === credentialTypeName.value && credential.testedBy,
-			),
-		);
-		return !!nodesThatCanTest.length || (!!credentialType.value && !!credentialType.value.test);
+		if (!credentialTypeName.value) return false;
+
+		return credentialsStore.isCredentialTypeTestable(credentialTypeName.value);
 	});
 
 	const credentialPermissions = computed(
@@ -658,7 +651,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		credentialType,
 		mergedProperties,
 		parentTypes,
-		nodesWithAccess,
 		isOAuthType,
 		isOAuthConnected,
 		isManagedOAuthMode,

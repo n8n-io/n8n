@@ -44,14 +44,6 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Login to DHI Registry (for pulling the runtime base)
-        uses: ./.github/actions/docker-registry-login
-        with:
-          login-ghcr: 'false'
-          login-dhi: 'true'
-          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
-          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
-
       - name: Login to Docker registries (for pushing)
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
         uses: ./.github/actions/docker-registry-login

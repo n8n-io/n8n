@@ -11,10 +11,10 @@ import {
 	CONFIRM_PASSWORD_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
-} from '@/app/constants';
+} from '@/features/core/auth/auth.constants';
 
 /**
- * The four modal keys `Modals.vue` renders on unauthenticated routes. `<AppModals />`
+ * The four auth modal keys reachable on unauthenticated routes. `<AppModals />`
  * is not auth-gated, so these mount before any registration has run.
  */
 const AUTH_ROUTE_MODAL_KEYS = [

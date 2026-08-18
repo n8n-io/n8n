@@ -19,7 +19,7 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -42,6 +42,13 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
+
+/**
+ * A node type that classifies as a trigger. `properties` must be a real array:
+ * `getEnabledTriggerNodes` builds a `Workflow`, which reads it.
+ */
+const triggerNodeType = () =>
+	({ description: { properties: [] }, trigger: async () => ({}) }) as unknown as INodeType;
 
 let globalConfig: GlobalConfig;
 let workflowRepository: WorkflowRepository;
@@ -105,6 +112,10 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	workflowPublishGuard.assertCanPublish.mockResolvedValue(undefined);
+	// Leaks into `_detectWebhookConflicts` in later tests otherwise, which builds a real Workflow.
+	nodeTypes.getByNameAndVersion.mockReset();
+	workflowValidationService.validateTriggerNodeIds.mockReset();
+	workflowValidationService.validateTriggerNodeIds.mockReturnValue({ isValid: true });
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
@@ -786,9 +797,103 @@ describe('workflow publication outbox', () => {
 				'Cannot delete a published workflow. Unpublish it before deleting.',
 			);
 		});
+
+		test('should reject the publish before any write when trigger node ids are not unique', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			workflowValidationService.validateTriggerNodeIds.mockReturnValue({
+				isValid: false,
+				error: 'Cannot publish workflow: triggers "Cron", "Webhook" share the node ID "node-1".',
+			});
+
+			await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
+				'share the node ID',
+			);
+
+			// The gate sits before the transaction, so neither half of it may have run.
+			const updated = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(updated?.activeVersionId).toBeNull();
+			expect(updated?.active).toBe(false);
+
+			const outboxCount = await outboxRepository.count();
+			expect(outboxCount).toBe(0);
+		});
+
+		test('should check the trigger nodes of the version being published, not the current draft', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			const newVersionId = uuid();
+			await createWorkflowHistoryItem(workflow.id, {
+				versionId: newVersionId,
+				nodes: [
+					{
+						id: 'node-in-new-version',
+						name: 'Cron',
+						parameters: {},
+						position: [0, 0],
+						type: 'n8n-nodes-base.cron',
+						typeVersion: 1,
+					},
+				],
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(triggerNodeType());
+
+			await workflowService.activateWorkflow(owner, workflow.id, { versionId: newVersionId });
+
+			expect(workflowValidationService.validateTriggerNodeIds).toHaveBeenCalledWith([
+				expect.objectContaining({ id: 'node-in-new-version' }),
+			]);
+		});
+
+		test('should skip disabled trigger nodes, which publication never records a row for', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			const newVersionId = uuid();
+			await createWorkflowHistoryItem(workflow.id, {
+				versionId: newVersionId,
+				nodes: [
+					{
+						id: 'shared-id',
+						name: 'Cron',
+						parameters: {},
+						position: [0, 0],
+						type: 'n8n-nodes-base.cron',
+						typeVersion: 1,
+					},
+					{
+						id: 'shared-id',
+						name: 'Disabled Cron',
+						parameters: {},
+						position: [0, 0],
+						type: 'n8n-nodes-base.cron',
+						typeVersion: 1,
+						disabled: true,
+					},
+				],
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(triggerNodeType());
+
+			await workflowService.activateWorkflow(owner, workflow.id, { versionId: newVersionId });
+
+			expect(workflowValidationService.validateTriggerNodeIds).toHaveBeenCalledWith([
+				expect.objectContaining({ name: 'Cron' }),
+			]);
+		});
 	});
 
 	describe('when feature flag is disabled', () => {
+		test('should not run the trigger node id check', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			expect(workflowValidationService.validateTriggerNodeIds).not.toHaveBeenCalled();
+		});
+
 		test('should not enqueue an outbox record on activation', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);

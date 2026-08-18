@@ -1,15 +1,26 @@
 import {
+	ProjectRelationRepository,
+	ProjectRepository,
+	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
+	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
+	type InboxVisibility,
 	type User,
 	type WorkflowReviewRequest,
 	type WorkflowReviewRequestWorkflowDetailRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import {
+	GLOBAL_ADMIN_ROLE_SLUG,
+	GLOBAL_OWNER_ROLE_SLUG,
+	PROJECT_ADMIN_ROLE_SLUG,
+	hasGlobalScope,
+} from '@n8n/permissions';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 export interface ReadableWorkflowReviewRequest {
@@ -29,29 +40,73 @@ export class WorkflowReviewAccessService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly projectService: ProjectService,
+		private readonly roleService: RoleService,
+		private readonly projectRepository: ProjectRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
+		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
+		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 	) {}
 
 	/**
-	 * Project IDs for inbox queries. `null` means "all projects, unfiltered" —
-	 * correct for users with `workflow:publish` scoped globally. Requesters always
-	 * see their own reviews regardless (repository OR-matches `requesterId`), so no
-	 * personal-project fallback is needed.
+	 * Who may see which reviews. Global admins and owners see everything. Project
+	 * admins see everything in their projects, so the decide override never applies
+	 * to a review its holder cannot see. Everyone else sees only reviews they take
+	 * part in, as author or assigned reviewer. Either way they must still be able to
+	 * read one of the workflows the review covers.
+	 *
+	 * Built-in role slugs only, matching the eligibility service's admin override.
 	 */
-	async resolveAccessibleProjectIds(user: User): Promise<string[] | null> {
-		if (hasGlobalScope(user, 'workflow:publish')) {
-			return null;
+	async resolveInboxVisibility(user: User): Promise<InboxVisibility> {
+		if (user.role.slug === GLOBAL_ADMIN_ROLE_SLUG || user.role.slug === GLOBAL_OWNER_ROLE_SLUG) {
+			return { scope: 'all' };
 		}
 
-		return await this.projectService.getProjectIdsWithScope(user, ['workflow:publish']);
+		const [adminProjectIds, readableProjectIds, readableWorkflowRoles] = await Promise.all([
+			this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, [
+				PROJECT_ADMIN_ROLE_SLUG,
+			]),
+			this.resolveReadableProjectIds(user),
+			this.roleService.rolesWithScope('workflow', ['workflow:read']),
+		]);
+
+		return {
+			scope: 'involved',
+			userId: user.id,
+			adminProjectIds,
+			readableProjectIds,
+			readableWorkflowRoles,
+		};
 	}
 
 	/**
-	 * Visibility starts from the inbox rule (requester OR `workflow:publish` in the
-	 * review's project OR globally), then narrows per workflow to what the caller can
-	 * currently read — see {@link filterReadableWorkflowRows}. Throws `NotFoundError`
-	 * rather than a 403 so a review's existence never leaks.
+	 * `workflow:read` is the bar for the inbox, and every role granting
+	 * `workflow:publish` grants read too, so publishers are covered.
+	 *
+	 * A custom global role with read sees every project, so return `null` for those
+	 * callers instead of binding one parameter per project on every inbox query.
+	 */
+	private async resolveReadableProjectIds(user: User): Promise<string[] | null> {
+		if (hasGlobalScope(user, ['workflow:read'], { mode: 'allOf' })) {
+			return null;
+		}
+
+		const [teamProjectIds, personalProject] = await Promise.all([
+			this.projectService.getProjectIdsWithScope(user, ['workflow:read']),
+			// `getProjectIdsWithScope` covers team projects only, but workflows shared
+			// directly to the caller hang off their personal project.
+			this.projectRepository.getPersonalProjectForUser(user.id),
+		]);
+
+		return personalProject ? [...teamProjectIds, personalProject.id] : teamProjectIds;
+	}
+
+	/**
+	 * Visibility starts from the inbox rule (see {@link resolveInboxVisibility}),
+	 * then narrows per workflow to what the caller can currently read — see
+	 * {@link filterReadableWorkflowRows}. Throws `NotFoundError` rather than a 403
+	 * so a review's existence never leaks.
 	 */
 	async findReadableRequestOrFail(
 		user: User,
@@ -70,14 +125,9 @@ export class WorkflowReviewAccessService {
 				request.id,
 			);
 		const readableWorkflowRows = await this.filterReadableWorkflowRows(user, workflowRows);
-		// Someone who reached this review through its project has nothing to see once they can
-		// read none of the workflows it covers. The requester is exempt: they created it and
-		// their inbox lists it, so keeping the record leaks nothing.
-		if (
-			request.createdById !== user.id &&
-			workflowRows.length > 0 &&
-			readableWorkflowRows.length === 0
-		) {
+		// Nothing left to show once the caller can read none of the covered workflows.
+		// This applies to requesters too: seeing a review means reading what it covers.
+		if (workflowRows.length > 0 && readableWorkflowRows.length === 0) {
 			throw new NotFoundError('Could not find review request');
 		}
 
@@ -93,25 +143,41 @@ export class WorkflowReviewAccessService {
 		};
 	}
 
+	/**
+	 * Mirrors the repository's inbox visibility for one review: project admin, or
+	 * takes part in it. The other half of that rule, reading a covered workflow, is
+	 * checked by {@link filterReadableWorkflowRows} in the caller. Keeping both
+	 * halves is what stops a listed row from 404ing when opened.
+	 */
 	private async canAccessRequest(user: User, request: WorkflowReviewRequest): Promise<boolean> {
-		if (request.createdById === user.id) {
+		const visibility = await this.resolveInboxVisibility(user);
+		if (visibility.scope === 'all') {
 			return true;
 		}
 
-		const projectIds = await this.resolveAccessibleProjectIds(user);
-		return projectIds === null || projectIds.includes(request.projectId);
+		if (visibility.adminProjectIds.includes(request.projectId)) {
+			return true;
+		}
+
+		// No separate requester check: `create` writes the requester's author row in the
+		// same transaction as the review, and nothing ever removes one.
+		const participant = { workflowReviewRequestId: request.id, userId: user.id };
+		const [isAuthor, isReviewer] = await Promise.all([
+			this.workflowReviewRequestAuthorRepository.isAuthor(participant, {}),
+			this.workflowReviewRequestReviewerRepository.isReviewer(participant, {}),
+		]);
+
+		return isAuthor || isReviewer;
 	}
 
 	/**
-	 * A review's `projectId` is fixed at creation and nothing closes open reviews when a
-	 * workflow is transferred, so the stored project does not prove the caller may still
-	 * read a covered workflow. Re-check every row against the workflow's *current* owner
-	 * before returning its content.
+	 * A review's `projectId` is set once at creation and transferring a workflow does
+	 * not close the review, so the stored project proves nothing about current access.
+	 * Check every row against the workflow's owner today before returning its content.
 	 *
-	 * This applies to the requester too. They held publish rights when they opened the
-	 * review, but may have lost them since — and because the baseline is resolved at read
-	 * time, an exemption would leave them reading versions published after they lost
-	 * access.
+	 * Requesters are checked too. They could publish when they opened the review but
+	 * may have lost that since, and exempting them would let them read versions
+	 * published after they lost access.
 	 */
 	private async filterReadableWorkflowRows(
 		user: User,

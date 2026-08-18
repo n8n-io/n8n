@@ -210,6 +210,12 @@ export interface TestCaseCredential {
 	type: string;
 	/** Display name; defaults to the template's name, auto-suffixed on duplicates. */
 	name?: string;
+	/** Defaults to true. false models a credential that was already broken before
+	 *  the conversation started (expired/revoked/scope-changed) — left off the
+	 *  connection-test bypass list, so its real test runs and fails. Distinct from
+	 *  a credential set up on a card mid-conversation (UserProxyLlm), which always
+	 *  passes. */
+	valid?: boolean;
 }
 
 export interface WorkflowTestCase {
@@ -245,6 +251,11 @@ export interface WorkflowTestCase {
 	 * field build with an empty view (everything mocks).
 	 */
 	credentials?: TestCaseCredential[];
+	/** Opts into the credential-setup BROWSER lane and picks what it talks to:
+	 *  a shipped fixture id (hermetic lookalike) or `local` (the REAL provider
+	 *  site in the developer's own Chrome). Omitted → no browser lane; absence
+	 *  never means real internet. */
+	credentialFixture?: string;
 	/** History restored before the live turn, in one slot so the modes can't
 	 *  overlap: `mode: 'inline'` carries the messages (and the workflows/tables
 	 *  they reference) in the case body; `mode: 'replay'` reconstructs them from a

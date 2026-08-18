@@ -535,6 +535,20 @@ describe('WorkflowService', () => {
 			expect(WorkflowHelpers.validateWorkflowNodeGroups).not.toHaveBeenCalled();
 		});
 
+		test('skips structure validation on a metadata-only edit so legacy graphs stay editable', async () => {
+			setupExistingWorkflow();
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{ name: 'Renamed workflow' } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(WorkflowHelpers.validateWorkflowStructure).not.toHaveBeenCalled();
+		});
+
 		test('backfills existing nodeGroups into the saved history version when omitted', async () => {
 			const existingNodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
 			const existingWorkflow = setupExistingWorkflow();
@@ -1131,11 +1145,13 @@ describe('WorkflowService', () => {
 				_validateNodes: () => void;
 				_validateDynamicCredentials: () => Promise<void>;
 				_validateSubWorkflowReferences: () => Promise<void>;
+				_validateTriggerNodeIds: () => void;
 			};
 			vi.spyOn(internals, '_detectWebhookConflicts').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateNodes').mockReturnValue(undefined);
 			vi.spyOn(internals, '_validateDynamicCredentials').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateSubWorkflowReferences').mockResolvedValue(undefined);
+			vi.spyOn(internals, '_validateTriggerNodeIds').mockReturnValue(undefined);
 		});
 
 		test.each([
@@ -1373,6 +1389,7 @@ describe('WorkflowService', () => {
 			expect(outboxRepositoryMock.enqueue).toHaveBeenCalledWith(
 				WORKFLOW_ID,
 				TARGET_VERSION_ID,
+				'publish',
 				trx,
 			);
 			// publish-history records (deactivated for the previous version, activated for the

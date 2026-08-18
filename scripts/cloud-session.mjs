@@ -13,8 +13,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 
 const REPO = 'n8n-io/n8n';
 const DEVCONTAINER = '.devcontainer/codespaces/devcontainer.json';
-const MACHINE = process.env.CODESPACE_MACHINE ?? 'premiumLinux'; // 8-core/32GB
-const FALLBACK_MACHINE = 'standardLinux32gb'; // 4-core/16GB, until org policy allows bigger
+const MACHINE = 'premiumLinux'; // 8-core/32GB — the only size we use
 
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8' }).trim();
 const ghTty = (...args) => spawnSync('gh', args, { stdio: 'inherit' });
@@ -39,21 +38,32 @@ function requestCodespaceScope() {
 }
 
 function ensureCodespace() {
-	let cs = findCodespace();
-	if (!cs) {
-		console.log(`No codespace on ${REPO} — creating one (first build takes a while)…`);
-		const create = (machine) =>
-			gh('codespace', 'create', '-R', REPO, '--devcontainer-path', DEVCONTAINER, '-m', machine);
-		let name;
-		try {
-			name = create(MACHINE);
-		} catch {
-			console.log(`Machine type ${MACHINE} unavailable — falling back to ${FALLBACK_MACHINE}`);
-			name = create(FALLBACK_MACHINE);
-		}
-		cs = { name };
+	const existing = findCodespace();
+	if (existing) return existing.name;
+
+	console.log(`No codespace on ${REPO} — creating one (first build takes a while)…`);
+	// Run interactive. The devcontainer requests access to the private skills repo,
+	// so gh prints an authorization URL and waits. A captured run cannot answer it.
+	const { status } = ghTty(
+		'codespace',
+		'create',
+		'-R',
+		REPO,
+		'--devcontainer-path',
+		DEVCONTAINER,
+		'-m',
+		MACHINE,
+	);
+	if (status !== 0) {
+		console.error('Codespace create failed. Authorize the permissions prompt above, then retry.');
+		process.exit(1);
 	}
-	return cs.name;
+	const created = findCodespace();
+	if (!created) {
+		console.error('Created a codespace but could not find it — run `pnpm session ls`.');
+		process.exit(1);
+	}
+	return created.name;
 }
 
 // The preludes go inside tmux's '…' argument: do not use single quotes in them.
@@ -63,15 +73,26 @@ const SECRETS = '. /usr/local/lib/codespaces-env.sh 2>/dev/null || true';
 // Worktrees share the pnpm store but not the turbo cache; a shared TURBO_CACHE_DIR
 // (seeded from the main checkout) keeps new-worktree builds at cache-hit speed.
 const CACHE = 'export TURBO_CACHE_DIR=/workspaces/.turbo-cache; [ -d "$TURBO_CACHE_DIR" ] || cp -r /workspaces/n8n/.turbo/cache "$TURBO_CACHE_DIR" 2>/dev/null || mkdir -p "$TURBO_CACHE_DIR"';
+// On a freshly created codespace, post-start.mjs installs the skills plugin via a
+// network clone that takes tens of seconds. If `claude` boots first it builds its
+// skill registry before the plugin exists on disk, and /reload-plugins can't
+// recover it in-process — so the first session silently loses every quality skill.
+// Run the idempotent install here to block until the plugin is on disk (a fast
+// no-op once cached). Mirrors the env vars post-start.mjs sets for the private
+// HTTPS clone; failures are tolerated so a plugin hiccup never blocks the session.
+const MARKETPLACE = 'n8n-io/n8n-claude-skills';
+const PLUGIN = 'quality@n8n-claude-skills';
+const ENSURE_PLUGIN = `export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1 CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1; claude plugin marketplace add ${MARKETPLACE} >/dev/null 2>&1 || true; claude plugin install ${PLUGIN} >/dev/null 2>&1 || true`;
 
 function remoteCommand(session, extraArgs) {
 	const claude = `claude ${extraArgs}`.trim();
-	if (session === 'agent') return `${SECRETS}; ${CACHE}; cd /workspaces/n8n && ${claude}`;
+	if (session === 'agent') return `${SECRETS}; ${CACHE}; ${ENSURE_PLUGIN}; cd /workspaces/n8n && ${claude}`;
 	const wt = `/workspaces/wt-${session}`;
 	const branch = `session/${session}`;
 	return [
 		SECRETS,
 		CACHE,
+		ENSURE_PLUGIN,
 		`if [ ! -d "${wt}" ]; then echo "Setting up worktree ${wt}…"`,
 		`git -C /workspaces/n8n worktree add "${wt}" -b "${branch}" 2>/dev/null || git -C /workspaces/n8n worktree add "${wt}" "${branch}"`,
 		`(cd "${wt}" && pnpm install); fi`,

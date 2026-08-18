@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { InstanceAiConfig } from '@n8n/config';
+import type { AgentsConfig, InstanceAiConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
@@ -8,10 +8,15 @@ import { SandboxSettingsService } from '../sandbox-settings.service';
 
 describe('SandboxSettingsService', () => {
 	const globalConfig = mock<{
+		agents: AgentsConfig;
 		instanceAi: InstanceAiConfig;
 		deployment: { type: string };
 	}>({
+		agents: {
+			sandboxEnabled: false,
+		} as AgentsConfig,
 		instanceAi: {
+			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			n8nSandboxServiceUrl: 'http://sandbox-api:8080',
 			n8nSandboxServiceApiKey: '',
@@ -27,7 +32,9 @@ describe('SandboxSettingsService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		globalConfig.agents.sandboxEnabled = false;
 		Object.assign(globalConfig.instanceAi, {
+			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			n8nSandboxServiceUrl: 'http://sandbox-api:8080',
 			n8nSandboxServiceApiKey: '',

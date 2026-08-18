@@ -7,13 +7,7 @@ import {
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import {
-	ExecutionRepository,
-	FolderRepository,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	User,
-} from '@n8n/db';
+import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
 	mcpAppToolMeta,
@@ -38,6 +32,8 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { FolderFinderService } from '@/services/folder-finder.service';
+import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -62,11 +58,13 @@ import type {
 	ToolDefinition,
 } from './mcp.types';
 import { shapeToStandardSchema } from './tool-schema.util';
+import { createCreateFolderTool } from './tools/create-folder.tool';
 import {
 	createAddDataTableColumnTool,
 	createAddDataTableRowsTool,
 	createCreateDataTableTool,
 	createDeleteDataTableColumnTool,
+	createGetDataTableRowsTool,
 	createRenameDataTableColumnTool,
 	createRenameDataTableTool,
 	createSearchDataTablesTool,
@@ -76,9 +74,11 @@ import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
+import { createGetWorkflowVersionsDiffTool } from './tools/get-workflow-versions-diff.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
+import { createMoveWorkflowsToFolderTool } from './tools/move-workflows-to-folder.tool';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
@@ -87,6 +87,7 @@ import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
+import { createUpdateFolderTool } from './tools/update-folder.tool';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL } from './tools/workflow-builder/constants';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
@@ -202,7 +203,7 @@ export class McpService {
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly projectRepository: ProjectRepository,
-		private readonly folderRepository: FolderRepository,
+		private readonly folderFinderService: FolderFinderService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
@@ -219,6 +220,7 @@ export class McpService {
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly eventService: EventService,
+		private readonly folderService: FolderService,
 	) {}
 
 	/**
@@ -491,6 +493,14 @@ export class McpService {
 		);
 		registerIfAllowed(workflowVersionTool);
 
+		const workflowVersionsDiffTool = createGetWorkflowVersionsDiffTool(
+			user,
+			this.workflowFinderService,
+			this.workflowHistoryService,
+			this.telemetry,
+		);
+		registerIfAllowed(workflowVersionsDiffTool);
+
 		const publishWorkflowTool = createPublishWorkflowTool(
 			user,
 			this.workflowFinderService,
@@ -581,6 +591,9 @@ export class McpService {
 
 		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
 		registerIfAllowed(addDataTableRowsTool);
+
+		const getDataTableRowsTool = createGetDataTableRowsTool(user, dataTableOps, this.telemetry);
+		registerIfAllowed(getDataTableRowsTool);
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
@@ -708,13 +721,43 @@ export class McpService {
 		);
 		registerIfAllowed(searchProjectsTool);
 
-		const searchFoldersTool = createSearchFoldersTool(
-			user,
-			this.folderRepository,
-			this.projectService,
-			this.telemetry,
-		);
-		registerIfAllowed(searchFoldersTool);
+		// Folder tools require the folders feature; unlicensed instances never
+		// see them (the consent screen filters them the same way), matching the
+		// license gate on the REST and public API folder endpoints.
+		if (this.licenseState.isFoldersLicensed()) {
+			const searchFoldersTool = createSearchFoldersTool(
+				user,
+				this.folderService,
+				this.projectService,
+				this.telemetry,
+			);
+			registerIfAllowed(searchFoldersTool);
+
+			const createFolderTool = createCreateFolderTool(
+				user,
+				this.folderService,
+				this.projectService,
+				this.telemetry,
+			);
+			registerIfAllowed(createFolderTool);
+
+			const updateFolderTool = createUpdateFolderTool(
+				user,
+				this.folderService,
+				this.projectService,
+				this.telemetry,
+			);
+			registerIfAllowed(updateFolderTool);
+
+			const moveWorkflowsToFolderTool = createMoveWorkflowsToFolderTool(
+				user,
+				this.workflowFinderService,
+				this.workflowService,
+				this.folderFinderService,
+				this.telemetry,
+			);
+			registerIfAllowed(moveWorkflowsToFolderTool);
+		}
 
 		const archiveTool = createArchiveWorkflowTool(
 			user,

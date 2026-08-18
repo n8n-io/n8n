@@ -27,7 +27,7 @@ export class ScheduleTrigger implements INodeType {
 		icon: 'node:schedule-trigger',
 		iconColor: 'black',
 		group: ['trigger', 'schedule'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Triggers the workflow on a given schedule',
 		eventTriggerDescription: '',
 		activationMessage:
@@ -426,6 +426,41 @@ export class ScheduleTrigger implements INodeType {
 						],
 					},
 				],
+			},
+			{
+				displayName: 'If Execution Is Missed',
+				name: 'misfirePolicy',
+				type: 'options',
+				default: 'skip',
+				options: [
+					{ name: 'Run the Most Recent Missed Execution Per Rule', value: 'coalesce' },
+					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce_owner' },
+					{ name: "Don't Run Missed Executions", value: 'skip' },
+				],
+				hint: 'Applies once an execution is later than the grace period set below',
+				isNodeSetting: true,
+				noDataExpression: true, // read at activation, so an expression would never be resolved
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.4 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Missed Execution Grace Period (Seconds)',
+				name: 'misfireGraceSeconds',
+				type: 'number',
+				default: 0, // `0` means "use the instance settings"
+				typeOptions: { minValue: 0, numberPrecision: 0 },
+				description:
+					'How late an execution may start before it counts as missed. Set to 0 to use the instance setting.',
+				isNodeSetting: true,
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.4 } }],
+					},
+				},
 			},
 			{
 				// Temporary escape hatch for the durable-scheduler rollout (preview to
