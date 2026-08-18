@@ -26,6 +26,7 @@ vi.mock('vue-router', () => ({
 }));
 
 import { useAddNodesToChat } from '../useAddNodesToChat';
+import { INSTANCE_AI_THREAD_VIEW } from '../../constants';
 import type { BuilderWorkflow } from '../../utils/buildNodesAttachment';
 
 const wf: BuilderWorkflow = {
@@ -55,6 +56,42 @@ describe('useAddNodesToChat', () => {
 		expect(stageNodeSets).toHaveBeenCalledWith('w1', expect.any(Array));
 		expect(stash).not.toHaveBeenCalled();
 		expect(openThreadForDraft).not.toHaveBeenCalled();
+		expect(routerPush).not.toHaveBeenCalled();
+	});
+
+	it('Context B mints a thread, stashes the draft for it, and navigates there', async () => {
+		openThreadForDraft.mockResolvedValue('t1');
+		const { addSelectedNodesToChat } = useAddNodesToChat();
+		await addSelectedNodesToChat({
+			workflowId: 'w1',
+			selectedNodeIds: ['n1'],
+			workflow: wf,
+			isInsideThread: false,
+			workflowName: 'My workflow',
+		});
+		expect(openThreadForDraft).toHaveBeenCalledWith({
+			id: 'w1',
+			name: 'My workflow',
+			snapshot: undefined,
+		});
+		expect(stash).toHaveBeenCalledWith('t1', expect.any(Array), 'w1');
+		expect(routerPush).toHaveBeenCalledWith({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 't1' },
+		});
+		expect(stageNodeSets).not.toHaveBeenCalled();
+	});
+
+	it('Context B aborts without stashing or navigating when thread provisioning fails', async () => {
+		openThreadForDraft.mockResolvedValue(null);
+		const { addSelectedNodesToChat } = useAddNodesToChat();
+		await addSelectedNodesToChat({
+			workflowId: 'w1',
+			selectedNodeIds: ['n1'],
+			workflow: wf,
+			isInsideThread: false,
+		});
+		expect(stash).not.toHaveBeenCalled();
 		expect(routerPush).not.toHaveBeenCalled();
 	});
 

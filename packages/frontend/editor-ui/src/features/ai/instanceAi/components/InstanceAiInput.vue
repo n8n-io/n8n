@@ -169,7 +169,7 @@ function clearTextIfMatches(text: string) {
 }
 
 function isDirty() {
-	return inputText.value.trim().length > 0 || attachedFiles.value.length > 0;
+	return inputText.value.trim().length > 0 || hasAttachments.value;
 }
 
 defineExpose({
@@ -188,7 +188,9 @@ const isBusy = computed(() =>
 );
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
-const hasAttachments = computed(() => attachedFiles.value.length > 0);
+const hasAttachments = computed(
+	() => attachedFiles.value.length > 0 || attachedResources.value.length > 0,
+);
 // Fed to the composer so its size guard can account for what is already staged.
 // Summed per file after encoding — base64 pads each file individually, so encoding
 // a raw total would undercount and disagree with the backend's per-file measurement.
@@ -304,10 +306,15 @@ function canSubmitMessage(message: string, attachmentCount = 0) {
 	return (message.length > 0 || attachmentCount > 0) && !isBusy.value && !isGatedBySetup.value;
 }
 
-function restoreSubmittedDraft(message: string, files: File[]) {
+function restoreSubmittedDraft(
+	message: string,
+	files: File[],
+	resources: InstanceAiResourceAttachment[],
+) {
 	if (isDirty()) return false;
 	inputText.value = message;
 	attachedFiles.value = [...files];
+	attachedResources.value = [...resources];
 	return true;
 }
 
@@ -323,10 +330,13 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 	}
 
 	const submittedFiles = [...attachedFiles.value];
+	const submittedResources = [...attachedResources.value];
 	emitSubmittedMessage(
 		message,
 		attachments,
-		submittedFiles.length > 0 ? () => restoreSubmittedDraft(message, submittedFiles) : undefined,
+		submittedFiles.length > 0 || submittedResources.length > 0
+			? () => restoreSubmittedDraft(message, submittedFiles, submittedResources)
+			: undefined,
 	);
 	resetDraftComposer();
 }

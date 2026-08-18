@@ -127,6 +127,11 @@ const chips = computed<ChipVM[]>(() => {
 
 function removeSet(index: number) {
 	const sets = props.attachment.sets.filter((_, i) => i !== index);
+	// Later sets shift down one — keep the open panel pointing at the same set.
+	if (expandedSetIndex.value !== null) {
+		if (expandedSetIndex.value === index) expandedSetIndex.value = null;
+		else if (expandedSetIndex.value > index) expandedSetIndex.value -= 1;
+	}
 	if (!sets.length) {
 		emit('remove-all');
 		return;
@@ -141,7 +146,11 @@ function removeNode(setIndex: number, nodeIndex: number) {
 		removeSet(setIndex);
 		return;
 	}
-	const sets = props.attachment.sets.map((s, i) => (i === setIndex ? { ...s, nodes } : s));
+	// The edited set's head/tail may have changed, so the original chain
+	// neighbors no longer apply — send just "these nodes" as context.
+	const sets = props.attachment.sets.map((s, i) =>
+		i === setIndex ? { ...s, nodes, inputNode: undefined, outputNode: undefined } : s,
+	);
 	emit('update:attachment', { ...props.attachment, sets });
 }
 
@@ -309,6 +318,7 @@ const totalNodeCount = computed(() =>
 							:class="$style.panelRemove"
 							data-testid="nodes-chip-panel-remove"
 							tabindex="-1"
+							:aria-label="i18n.baseText('generic.delete')"
 							@click.stop="removeNode(chip.setIndex, nodeIndex)"
 						>
 							<N8nIcon icon="x" size="xsmall" />
@@ -355,7 +365,7 @@ const totalNodeCount = computed(() =>
 	padding: var(--spacing--3xs);
 	border: var(--border);
 	border-radius: var(--radius);
-	background: var(--color--background--light-3);
+	background: var(--background--surface);
 	box-shadow: var(--shadow--sm);
 	min-width: 160px;
 }

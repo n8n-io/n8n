@@ -70,6 +70,37 @@ describe('InstanceAiInput — staged node attachments', () => {
 		store.stageNodeSets('w1', [{ nodes: [{ id: 'n2', name: 'B' }] }]);
 		await waitFor(() => expect(queryAllByTestId('nodes-chip-node')).toHaveLength(2));
 	});
+
+	it('enables send with staged chips and empty text, and restores chips on failed send', async () => {
+		const { container, emitted, findAllByTestId, queryAllByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+
+		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
+		await findAllByTestId('nodes-chip-node');
+
+		// The composer uses `data-test-id`, while this file's queries are configured
+		// for the chips' `data-testid` — grab the send button directly.
+		const sendButton = container.querySelector<HTMLButtonElement>(
+			'[data-test-id="instance-ai-send-button"]',
+		);
+		if (!sendButton) throw new Error('send button not rendered');
+		expect(sendButton).toBeEnabled();
+		await userEvent.click(sendButton);
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		const [message, attachments, restoreDraft] = emitted().submit[0] as [
+			string,
+			unknown[],
+			() => boolean,
+		];
+		expect(message).toBe('');
+		expect(attachments).toEqual([expect.objectContaining({ type: 'nodes', workflowId: 'w1' })]);
+		expect(queryAllByTestId('nodes-chip-node')).toHaveLength(0);
+
+		// A failed send hands the chips back via the restore callback.
+		expect(restoreDraft()).toBe(true);
+		await findAllByTestId('nodes-chip-node');
+	});
 });
 
 const renderAttachmentPreview = createComponentRenderer(AttachmentPreview);

@@ -7373,7 +7373,7 @@
 	"instanceAi.nodeContext.collapse": "Collapse",
 	"instanceAi.nodeContext.expand": "Expand",
 	"instanceAi.nodeContext.truncated.title": "Some nodes were left out",
-	"instanceAi.nodeContext.truncated.message": "The selection was too large, so only the first sets were added to the chat.",
+	"instanceAi.nodeContext.truncated.message": "The selection was too large, so only some of the nodes were added to chat.",
 	"agents.home.untitledAgent": "Untitled Agent",
 	"agents.relativeTime.justNow": "just now",
 	"agents.relativeTime.secondsAgo": "{count}s ago",

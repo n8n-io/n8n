@@ -233,6 +233,10 @@ export function stashPendingDraftAttachment(
 	localStorage.setItem(pendingDraftAttachmentKey(threadId), JSON.stringify(attachment));
 }
 
+export function clearPendingDraftAttachment(threadId: string): void {
+	localStorage.removeItem(pendingDraftAttachmentKey(threadId));
+}
+
 export function consumePendingDraftAttachment(threadId: string): InstanceAiNodesAttachment | null {
 	const raw = localStorage.getItem(pendingDraftAttachmentKey(threadId));
 	if (!raw) return null;
@@ -248,6 +252,7 @@ export function clearPendingThreadHandoff(threadId: string): void {
 	clearPendingHandoffContext(threadId);
 	clearPendingComposerDraft(threadId);
 	clearPendingAgentAttachment(threadId);
+	clearPendingDraftAttachment(threadId);
 }
 
 /** Resolve the personal project a launched thread binds to, loading it on first use. */

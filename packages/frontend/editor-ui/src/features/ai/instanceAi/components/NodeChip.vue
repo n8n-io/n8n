@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { isNodeChipRemovalKey } from '../constants';
@@ -18,6 +19,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ remove: []; 'toggle-expand': []; 'enter-panel': [] }>();
+
+const i18n = useI18n();
 
 // The chip itself is the tab stop; inner buttons are tabindex="-1".
 // stopPropagation prevents the canvas/logs panel's own document-level
@@ -74,6 +77,11 @@ function handleKeydown(event: KeyboardEvent) {
 			:class="$style.iconBtn"
 			data-testid="nodes-chip-expand"
 			tabindex="-1"
+			:aria-label="
+				i18n.baseText(
+					expanded ? 'instanceAi.nodeContext.collapse' : 'instanceAi.nodeContext.expand',
+				)
+			"
 			@click.stop="emit('toggle-expand')"
 		>
 			<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" size="xsmall" />
@@ -83,6 +91,7 @@ function handleKeydown(event: KeyboardEvent) {
 			:class="$style.iconBtn"
 			data-testid="nodes-chip-remove"
 			tabindex="-1"
+			:aria-label="i18n.baseText('generic.delete')"
 			@click.stop="emit('remove')"
 		>
 			<N8nIcon icon="x" size="xsmall" />
