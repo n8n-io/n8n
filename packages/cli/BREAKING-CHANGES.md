@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 2.37.0
+
+### What changed?
+
+The default resource for new Perplexity node instances at typeVersion 2 changed from `chat` to `agent`. New nodes added to a workflow will land on the Agent resource, which routes to the Agent API. Existing saved workflows persist the resource value chosen at edit time and are not affected.
+
+### When is action necessary?
+
+If you programmatically create Perplexity nodes at typeVersion 2 and rely on the resource defaulting to `chat`. Set `parameters.resource` explicitly to `'chat'` in that case, and plan to migrate to the Agent resource before 2026-09-27, when the underlying Chat Completions API stops responding.
+
 # 2.0.0
 
 ### What changed?

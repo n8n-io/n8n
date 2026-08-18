@@ -65,12 +65,13 @@ export class Perplexity implements INodeType {
 						name: 'Agent',
 						value: 'agent',
 						description:
-							'Create responses using the Agent API with third-party models, presets, tools, and structured outputs',
+							'Recommended. Create responses using the Agent API with third-party models, presets, tools, and structured outputs',
 					},
 					{
 						name: 'Chat',
 						value: 'chat',
-						description: 'Send messages using Sonar models with built-in web search',
+						description:
+							'Send messages using Sonar models with built-in web search. Support ends on 2026-09-27; switch to the Agent resource',
 					},
 					{
 						name: 'Embedding',
@@ -83,10 +84,24 @@ export class Perplexity implements INodeType {
 						description: 'Get raw, ranked web search results',
 					},
 				],
-				default: 'chat',
+				default: 'agent',
 				displayOptions: {
 					show: {
 						'@version': [2],
+					},
+				},
+			},
+			// V2: deprecation notice shown when Chat resource is selected
+			{
+				displayName:
+					'The Chat resource is being upgraded to Agent and its support ends on 2026-09-27. Switch Resource to Agent. See the migration guide at https://docs.perplexity.ai/docs/agent-api/migrate-from-sonar/overview.',
+				name: 'chatDeprecationNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'@version': [2],
+						resource: ['chat'],
 					},
 				},
 			},
