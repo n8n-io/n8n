@@ -1,6 +1,17 @@
+import '../../openapi-extend';
+
 import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
 import { z } from 'zod';
 
+import {
+	connectionsOpenApi,
+	metaOpenApi,
+	nodeGroupsOpenApi,
+	nodesOpenApi,
+	pinDataOpenApi,
+	settingsOpenApi,
+	staticDataOpenApi,
+} from './workflow-public.openapi';
 import { Z } from '../../zod-class';
 import { tagPublicSchema } from '../tag/tag-public.dto';
 
@@ -8,23 +19,38 @@ import { tagPublicSchema } from '../tag/tag-public.dto';
 // whether each one is the right basic type (a list or an object), not what's
 // inside it. Checking more than that could reject real, already-saved
 // workflows that were created before this check existed.
-const nodesPublicSchema = z.custom<INode[]>((value) => Array.isArray(value), {
-	message: 'Nodes must be an array',
-});
+//
+// `.openapi()` only describes the field in the published spec. It does not change what the check
+// above accepts, so the docs can be exact while validation stays permissive.
+const nodesPublicSchema = z
+	.custom<INode[]>((value) => Array.isArray(value), { message: 'Nodes must be an array' })
+	.openapi(nodesOpenApi);
 
-const connectionsPublicSchema = z.custom<IConnections>(
-	(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
-	{ message: 'Connections must be an object' },
-);
+const connectionsPublicSchema = z
+	.custom<IConnections>(
+		(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
+		{ message: 'Connections must be an object' },
+	)
+	.openapi(connectionsOpenApi);
 
-const nodeGroupsPublicSchema = z.custom<IWorkflowGroup[]>((value) => Array.isArray(value), {
-	message: 'Node groups must be an array',
-});
+const nodeGroupsPublicSchema = z
+	.custom<IWorkflowGroup[]>((value) => Array.isArray(value), {
+		message: 'Node groups must be an array',
+	})
+	.openapi(nodeGroupsOpenApi);
 
 const nullableObjectPublicSchema = z.custom<Record<string, unknown> | null>(
 	(value) => value === null || (typeof value === 'object' && !Array.isArray(value)),
 	{ message: 'Must be an object or null' },
 );
+
+const settingsPublicSchema = nullableObjectPublicSchema.openapi(settingsOpenApi);
+
+const staticDataPublicSchema = nullableObjectPublicSchema.openapi(staticDataOpenApi);
+
+const pinDataPublicSchema = nullableObjectPublicSchema.openapi(pinDataOpenApi);
+
+const metaPublicSchema = nullableObjectPublicSchema.openapi(metaOpenApi);
 
 const projectIconPublicSchema = z
 	.object({
@@ -99,10 +125,10 @@ export const workflowPublicSchema = z.object({
 	nodes: nodesPublicSchema,
 	connections: connectionsPublicSchema,
 	nodeGroups: nodeGroupsPublicSchema,
-	settings: nullableObjectPublicSchema,
-	staticData: nullableObjectPublicSchema,
-	pinData: nullableObjectPublicSchema.optional(),
-	meta: nullableObjectPublicSchema,
+	settings: settingsPublicSchema,
+	staticData: staticDataPublicSchema,
+	pinData: pinDataPublicSchema.optional(),
+	meta: metaPublicSchema,
 	tags: z.array(tagPublicSchema).optional(),
 	shared: z.array(sharedWorkflowPublicSchema),
 	activeVersion: activeWorkflowVersionPublicSchema.nullable(),
