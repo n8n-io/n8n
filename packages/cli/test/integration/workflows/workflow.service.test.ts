@@ -1287,11 +1287,16 @@ describe('publishAsSystem()', () => {
 		const publishHistoryBefore = await workflowPublishHistoryRepository.findBy({
 			workflowId: workflow.id,
 		});
+		const versionRowsBefore = await Container.get(WorkflowHistoryRepository).countBy({
+			workflowId: workflow.id,
+		});
 
-		const saveVersion = workflowHistoryService.saveVersion.bind(workflowHistoryService);
-		vi.spyOn(workflowHistoryService, 'saveVersion').mockImplementationOnce(async (...args) => {
-			const result = await saveVersion(...args);
-			// A concurrent publish lands between publishAsSystem's read and its write.
+		const findOne = workflowRepository.findOne.bind(workflowRepository);
+		vi.spyOn(workflowRepository, 'findOne').mockImplementationOnce(async (options) => {
+			const result = await findOne(options);
+			// A concurrent publish lands between publishAsSystem's read and its
+			// transaction. (It must land before the transaction opens: sqlite's
+			// single writer would serialize it after the commit otherwise.)
 			await workflowRepository.update(
 				{ id: workflow.id },
 				{ activeVersionId: interloperVersionId },
@@ -1308,10 +1313,14 @@ describe('publishAsSystem()', () => {
 		expect(result).toEqual({ published: false, reason: 'superseded' });
 		const after = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
 		expect(after.activeVersionId).toBe(interloperVersionId);
-		// The guard is the transaction's first write, so a lost race writes nothing.
+		// A lost race writes nothing — including the system-authored version row,
+		// which would otherwise linger as a phantom entry in version history.
 		expect(await workflowPublishHistoryRepository.findBy({ workflowId: workflow.id })).toEqual(
 			publishHistoryBefore,
 		);
+		expect(
+			await Container.get(WorkflowHistoryRepository).countBy({ workflowId: workflow.id }),
+		).toBe(versionRowsBefore);
 		expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
 		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
 	});
