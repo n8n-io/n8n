@@ -11,6 +11,10 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { AiUsageService } from './ai-usage.service';
+import { UrlService } from './url.service';
+import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
+
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
@@ -32,10 +36,6 @@ import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
-
-import { AiUsageService } from './ai-usage.service';
-import { UrlService } from './url.service';
-import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 const DYNAMIC_BANNER_FILTERS_CACHE_TTL = 30 * Time.seconds.toMilliseconds;
 
@@ -220,6 +220,7 @@ export class FrontendService {
 			executionTimeout: this.globalConfig.executions.timeout,
 			maxExecutionTimeout: this.globalConfig.executions.maxTimeout,
 			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
+			excludeNodes: this.globalConfig.nodes.exclude,
 			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
