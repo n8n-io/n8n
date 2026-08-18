@@ -20,16 +20,31 @@ import type {
 	IMongoParametricCredentials,
 } from './mongoDb.types';
 
+export function sanitizeMongoUriInMessage(error: unknown, connectionString: string): string {
+	const message = error instanceof Error ? error.message : String(error);
+
+	if (connectionString) {
+		const scheme = /^mongodb(?:\+srv)?:\/\//i.exec(connectionString)?.[0] ?? '';
+		const sanitizedMessage = message.replaceAll(connectionString, `${scheme}[REDACTED]`);
+		if (sanitizedMessage !== message) return sanitizedMessage;
+	}
+
+	return message.replace(/mongodb(\+srv)?:\/\/(?=[^\s]*@)[^\s]+/gi, 'mongodb$1://[REDACTED]');
+}
+
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
  *
  * @param {ICredentialDataDecryptedObject} credentials MongoDB credentials to use, unless conn string is overridden
  */
 export function buildParameterizedConnString(credentials: IMongoParametricCredentials): string {
+	const user = (credentials.user ?? '').trim();
+	const host = (credentials.host ?? '').trim();
+
 	if (credentials.port) {
-		return `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
+		return `mongodb://${user}:${credentials.password}@${host}:${credentials.port}`;
 	} else {
-		return `mongodb+srv://${credentials.user}:${credentials.password}@${credentials.host}`;
+		return `mongodb+srv://${user}:${credentials.password}@${host}`;
 	}
 }
 
