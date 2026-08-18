@@ -58,11 +58,23 @@ import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
+// `list` and `setup` share this field, and the schema sanitizer requires one
+// description per shared field, so it has to cover both uses.
+const PROJECT_ID_FIELD_DESCRIPTION =
+	'Project ID, obtainable from `workspace(action="list-projects")`. For `list`: read that one project instead of the default scope — use it for "what is in project X" rather than listing the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write. For `setup`: scope credential creation to that project.';
+
 const listAction = z.object({
 	action: z
 		.literal('list')
-		.describe('List workflows accessible to the current user. Use for workflow inspection.'),
-	query: z.string().optional().describe('Filter workflows by name'),
+		.describe(
+			'List workflows accessible to the current user. Use for workflow inspection. Call it without `query` to get the complete inventory in scope — the result reports how many workflows a filter or the limit left out.',
+		),
+	query: z
+		.string()
+		.optional()
+		.describe(
+			'Substring filter on the workflow NAME only — it does not match node types, descriptions, or what a workflow does. Omit it whenever you need the actual inventory (what exists here, project status, what to do next): a name-filtered list is not the set of workflows in scope. Use it only when the user named a workflow, or to locate one you already know exists.',
+		),
 	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
 	status: z
 		.enum(['active', 'archived', 'all'])
@@ -76,6 +88,7 @@ const listAction = z.object({
 		.describe(
 			"Which project(s) to search. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.",
 		),
+	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
 });
 
 const getAction = z.object({
@@ -133,7 +146,7 @@ const setupAction = z.object({
 			'Open the inline AI Assistant workflow setup card for credential and parameter configuration. Use for setup routing after a build.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
-	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
 	credentialHints: z
 		.array(
 			setupHintField.extend({
@@ -431,13 +444,46 @@ async function resolveWorkflowName(
 }
 
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
-	const workflows = await context.workflowService.list({
+	const { workflows, total, totalInScope } = await context.workflowService.list({
 		limit: input.limit,
 		query: input.query,
 		...(input.status ? { status: input.status } : {}),
 		...(input.scope ? { scope: input.scope } : {}),
+		...(input.projectId ? { projectId: input.projectId } : {}),
 	});
-	return { workflows };
+
+	// A partial list must never read as the complete inventory: guessed name
+	// filters used to silently hide the rest of a project's workflows.
+	const notes: string[] = [];
+	if (input.query !== undefined && totalInScope > total) {
+		notes.push(
+			`Name filter "${input.query}" matched ${total} of ${totalInScope} workflows in scope — ${totalInScope - total} are hidden. This is NOT the full set: re-run without \`query\` before answering anything about what exists here.`,
+		);
+	}
+	if (total > workflows.length) {
+		notes.push(
+			`Showing ${workflows.length} of ${total} matching workflows — raise \`limit\` to see the rest.`,
+		);
+	}
+	// Attribution is attached whenever the query was not narrowed to one project, so
+	// count the projects actually present rather than trusting the field's presence —
+	// an instance-wide list can still return a single project's workflows, and saying
+	// it spans projects would be a claim the rows do not support. Only a genuine
+	// multi-project result invites the mistake this warns about: reading membership
+	// off count differences works for two projects and silently fails for three.
+	const projectCount = new Set(workflows.flatMap((workflow) => workflow.project?.id ?? [])).size;
+	if (projectCount > 1) {
+		notes.push(
+			`Results span ${projectCount} projects — each workflow carries its owning \`project\`. Read membership from that field; never infer it by subtracting one scope's count from another. To list a single project, pass its \`projectId\`.`,
+		);
+	}
+
+	return {
+		workflows,
+		total,
+		totalInScope,
+		...(notes.length > 0 ? { note: notes.join(' ') } : {}),
+	};
 }
 
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
@@ -478,7 +524,7 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 		const message = error instanceof Error ? error.message : 'Failed to fetch workflow';
 		const available = await context.workflowService
 			.list({ limit: 25 })
-			.then((items) => items.map((w) => ({ id: w.id, name: w.name })))
+			.then(({ workflows }) => workflows.map((w) => ({ id: w.id, name: w.name })))
 			.catch(() => [] as Array<{ id: string; name: string }>);
 		return {
 			workflowId: input.workflowId,

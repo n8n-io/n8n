@@ -143,7 +143,17 @@ interface WorkspaceToolContext {
 
 async function handleListProjects(context: InstanceAiContext) {
 	const projects = await context.workspaceService!.listProjects();
-	return { projects };
+	// Flag the conversation's own project here rather than naming it in the system
+	// prompt: the prompt is a shared prompt-cache prefix, a tool result is not.
+	const boundProjectId = context.projectId;
+	if (boundProjectId === undefined) return { projects };
+
+	return {
+		projects: projects.map((project) => ({
+			...project,
+			...(project.id === boundProjectId ? { isCurrentProject: true } : {}),
+		})),
+	};
 }
 
 async function handleListTags(context: InstanceAiContext) {
