@@ -116,7 +116,7 @@ export class ERPNext implements INodeType {
 					'GET',
 					'/api/method/frappe.desk.form.load.getdoctype',
 					{},
-					{ doctype: docType },
+					{ doctype: decodeURI(docType) },
 				);
 
 				if (!response || typeof response !== 'object' || !Array.isArray(response.docs)) {

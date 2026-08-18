@@ -12,7 +12,7 @@ const getDocFields = new ERPNext().methods.loadOptions.getDocFields;
 
 const createContext = (typeVersion: number) =>
 	({
-		getCurrentNodeParameter: vi.fn().mockReturnValue('Sales Invoice'),
+		getCurrentNodeParameter: vi.fn().mockReturnValue('Sales%20Invoice'),
 		getNode: vi.fn().mockReturnValue({ typeVersion }),
 	}) as unknown as ILoadOptionsFunctions;
 
@@ -33,7 +33,7 @@ describe('ERPNext getDocFields', () => {
 
 		expect(erpNextApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/api/resource/DocType/Sales Invoice',
+			'/api/resource/DocType/Sales%20Invoice',
 			{},
 		);
 		expect(result).toEqual([
