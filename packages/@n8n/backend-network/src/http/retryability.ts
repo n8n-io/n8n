@@ -177,13 +177,13 @@ function findRetryAfterMs(chain: UnknownRecord[], now: Date): number | undefined
 
 /** The `Retry-After` value from a `get()` style or plain headers object. */
 function readRetryAfterHeader(headers: unknown): string | undefined {
-	if (typeof headers !== 'object' || headers === null) {
+	if (!isRecord(headers)) {
 		return undefined;
 	}
 
-	const get = (headers as { get?: unknown }).get;
+	const get = headers.get;
 	if (typeof get === 'function') {
-		const value: unknown = (get as (name: string) => unknown).call(headers, 'retry-after');
+		const value: unknown = get.call(headers, 'retry-after');
 		return typeof value === 'string' ? value : undefined;
 	}
 
