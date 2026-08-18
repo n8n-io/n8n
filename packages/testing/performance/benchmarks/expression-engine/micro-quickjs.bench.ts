@@ -16,7 +16,7 @@ import {
 	DollarSignValidator,
 	PrototypeSanitizer,
 	ThisSanitizer,
-} from 'n8n-workflow/src/expression-sandboxing';
+} from 'n8n-workflow/expression-sandboxing';
 
 // Top-level await — vitest bench doesn't support beforeAll
 const evaluator = new ExpressionEvaluator({
