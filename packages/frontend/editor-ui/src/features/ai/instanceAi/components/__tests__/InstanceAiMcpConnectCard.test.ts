@@ -104,6 +104,7 @@ const BRAVE_CONNECTION = {
 	serverSlug: 'brave',
 	credentialId: 'cred-1',
 	credentialType: 'braveMcpOAuth2Api',
+	status: 'connected' as const,
 };
 
 function makeMcpStore(overrides: Record<string, unknown> = {}) {
@@ -111,7 +112,7 @@ function makeMcpStore(overrides: Record<string, unknown> = {}) {
 		catalog: [BRAVE_CATALOG_ENTRY],
 		connections: [] as Array<Record<string, unknown>>,
 		fetchCatalogLazy: vi.fn(),
-		fetchConnections: vi.fn(),
+		fetchConnectionsLazy: vi.fn(),
 		disconnect: vi.fn(),
 		...overrides,
 	});

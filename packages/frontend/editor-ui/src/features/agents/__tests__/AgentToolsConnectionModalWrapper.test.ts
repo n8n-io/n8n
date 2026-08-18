@@ -428,9 +428,10 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		await flushPromises();
 
 		const items = getItems();
-		const connected = items.filter((item) => item.isConnected);
+		const connected = items.filter((item) => item.status === 'connected');
 		const availableSlack = items.filter(
-			(item) => !item.isConnected && item.kind === 'node' && item.id === `nodeType:${SLACK.name}`,
+			(item) =>
+				item.status === 'none' && item.kind === 'node' && item.id === `nodeType:${SLACK.name}`,
 		);
 
 		expect(connected).toHaveLength(1);
@@ -492,7 +493,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		render([toolRef(SLACK.name)], onConfirm);
 		await flushPromises();
 
-		const connected = getItems().find((item) => item.isConnected);
+		const connected = getItems().find((item) => item.status === 'connected');
 		emitConnect(connected!);
 
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -507,7 +508,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		render([toolRef(SLACK.name)], onConfirm);
 		await flushPromises();
 
-		const connected = getItems().find((item) => item.isConnected);
+		const connected = getItems().find((item) => item.status === 'connected');
 		emitConnect(connected!);
 
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];

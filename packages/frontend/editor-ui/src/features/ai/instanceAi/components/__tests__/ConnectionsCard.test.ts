@@ -99,7 +99,7 @@ function makeSettingsStore(overrides: Record<string, unknown> = {}) {
 function makeMcpStore(overrides: Record<string, unknown> = {}) {
 	return {
 		connections: [],
-		fetchConnections: vi.fn(),
+		fetchConnectionsLazy: vi.fn(),
 		disconnect: vi.fn(),
 		...overrides,
 	};
@@ -109,9 +109,13 @@ const renderComponent = createComponentRenderer(ConnectionsCard, {
 	global: {
 		stubs: {
 			ConnectionRow: {
-				props: ['name', 'actions'],
+				props: ['name', 'actions', 'status'],
 				template: `
-					<div data-test-stub="connection-row">
+					<div
+						data-test-stub="connection-row"
+						:data-test-id="\`connection-row-\${name}\`"
+						:data-status="status"
+					>
 						<span>{{ name }}</span>
 						<button
 							v-if="actions?.includes('settings')"
@@ -233,6 +237,7 @@ describe('ConnectionsCard', () => {
 						serverTitle: 'Linear',
 						serverIcons: [],
 						credentialName: 'Linear OAuth2',
+						status: 'connected',
 					},
 				],
 			}),
@@ -244,6 +249,31 @@ describe('ConnectionsCard', () => {
 		expect(telemetryMock.trackSettingsOpened).toHaveBeenCalledWith('linear');
 		expect(telemetryMock.trackToolsListOpened).not.toHaveBeenCalled();
 		expect(uiStoreMock.openModalWithData).toHaveBeenCalledTimes(1);
+	});
+
+	it('passes the MCP connection status to its row', () => {
+		mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		settingsStoreMock.mockReturnValue(
+			makeSettingsStore({ connections: [], settings: { mcpAccessEnabled: true } }),
+		);
+		mcpStoreMock.mockReturnValue(
+			makeMcpStore({
+				connections: [
+					{
+						id: 'conn-1',
+						serverSlug: 'linear',
+						serverTitle: 'Linear',
+						serverIcons: [],
+						credentialName: 'Linear OAuth2',
+						status: 'disconnected',
+					},
+				],
+			}),
+		);
+
+		const { getByTestId } = renderComponent();
+
+		expect(getByTestId('connection-row-Linear')).toHaveAttribute('data-status', 'disconnected');
 	});
 
 	describe('card visibility', () => {

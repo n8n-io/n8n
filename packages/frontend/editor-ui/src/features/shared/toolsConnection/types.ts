@@ -18,12 +18,23 @@ export interface ToolCredentialRef {
 	required?: boolean;
 }
 
+/**
+ * `none` means no connection has been created. `disconnected` is reserved for
+ * an existing connection that is currently unavailable.
+ */
+export type ToolConnectionStatus = 'none' | 'connecting' | 'connected' | 'disconnected';
+
+/** Whether a connection exists or is currently being established. */
+export function hasToolConnection(status: ToolConnectionStatus): boolean {
+	return status !== 'none';
+}
+
 export interface BaseConnectionItem {
 	id: string;
 	title: string;
 	description?: string;
 	iconSource?: ToolIconSource;
-	isConnected: boolean;
+	status: ToolConnectionStatus;
 	credentials?: ToolCredentialRef[];
 	longDescription?: string;
 	/** Tab this item belongs to. Falls back to `CATEGORY_BY_KIND` when unset. */

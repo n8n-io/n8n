@@ -48,6 +48,14 @@ describe('ConnectionRow', () => {
 		);
 	});
 
+	it('renders a spinner for the connecting status', () => {
+		const { getByTestId } = renderComponent({
+			props: { ...baseProps, status: 'connecting' as const },
+		});
+
+		expect(getByTestId('instance-ai-connection-row-status')).toHaveClass('n8n-spinner');
+	});
+
 	it('renders no status indicator for a row with no status', () => {
 		const { queryByTestId } = renderComponent({ props: baseProps });
 

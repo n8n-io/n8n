@@ -19,6 +19,7 @@ import ToolDetailView from './ToolDetailView.vue';
 import ToolSettingsView from './ToolSettingsView.vue';
 import {
 	CATEGORY_BY_KIND,
+	hasToolConnection,
 	type FlattenedRow,
 	type ToolCategoryKey,
 	type ToolConnectionItem,
@@ -132,9 +133,11 @@ function categoryOf(item: ToolConnectionItem): ToolCategoryKey {
 
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
 	if (category === 'all') return props.items;
-	if (category === 'connected') return props.items.filter((item) => item.isConnected);
+	if (category === 'connected') return props.items.filter((item) => hasToolConnection(item.status));
 	return props.items.filter(
-		(item) => categoryOf(item) === category && (hasConnectedTab.value ? !item.isConnected : true),
+		(item) =>
+			categoryOf(item) === category &&
+			(hasConnectedTab.value ? !hasToolConnection(item.status) : true),
 	);
 }
 

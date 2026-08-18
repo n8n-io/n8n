@@ -33,12 +33,13 @@ import {
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
-import type {
-	NodeConnectionItem,
-	ToolCategoryKey,
-	ToolConnectionItem,
-	ToolCredentialRef,
-	WorkflowConnectionItem,
+import {
+	hasToolConnection,
+	type NodeConnectionItem,
+	type ToolCategoryKey,
+	type ToolConnectionItem,
+	type ToolCredentialRef,
+	type WorkflowConnectionItem,
 } from '@/features/shared/toolsConnection/types';
 
 import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
@@ -553,7 +554,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 			workflowId: workflowRef.workflowId ?? workflowRef.workflow,
 			title: workflowRef.name ?? workflowRef.workflow,
 			description: workflowRef.description,
-			isConnected: true,
+			status: 'connected',
 			credentials: [],
 		};
 		return item;
@@ -574,7 +575,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		title: node.name,
 		description: credentialSubtitle(node) ?? nodeType.description,
 		longDescription: nodeType.description,
-		isConnected: true,
+		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 		verified: isVerifiedCommunityTool(nodeType),
@@ -594,7 +595,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 		title: entry.server.name,
 		description: credentialSubtitle(node) ?? nodeType.description,
 		longDescription: nodeType.description,
-		isConnected: true,
+		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 	};
@@ -611,7 +612,7 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 		title: nodeType.displayName.replace(/ Tool$/, ''),
 		description: nodeType.description,
 		longDescription: nodeType.description,
-		isConnected: false,
+		status: 'none',
 		iconSource: toToolIconSource(nodeType),
 		credentials: [],
 		verified: isVerifiedCommunityTool(nodeType),
@@ -629,7 +630,7 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 		workflowId: workflow.id,
 		title: workflow.name,
 		description: workflow.description ?? undefined,
-		isConnected: false,
+		status: 'none',
 		credentials: [],
 	};
 }
@@ -686,7 +687,8 @@ const items = computed<ToolConnectionItem[]>(() => {
 });
 
 function handleRowActivate(item: ToolConnectionItem) {
-	if (item.isConnected) {
+	if (item.status === 'connecting') return;
+	if (hasToolConnection(item.status)) {
 		if (item.id.startsWith('mcp:')) {
 			const localId = item.id.slice('mcp:'.length);
 			const entry = workingMcpServerEntries.value.find((e) => e.localId === localId);
