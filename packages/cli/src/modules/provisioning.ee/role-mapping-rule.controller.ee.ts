@@ -75,16 +75,7 @@ export class RoleMappingRuleController {
 			return res.status(403).json({ message: 'Provisioning is not licensed' });
 		}
 
-		const result = await this.roleMappingRuleService.move(id, body.targetIndex);
-
-		this.eventService.emit('role-mapping-rule-updated', {
-			user: { id: req.user.id, email: req.user.email },
-			ruleId: result.id,
-			ruleType: result.type,
-			patchedFields: ['order'],
-		});
-
-		return result;
+		return await this.roleMappingRuleService.move(id, body.targetIndex, req.user);
 	}
 
 	@Patch('/:id')

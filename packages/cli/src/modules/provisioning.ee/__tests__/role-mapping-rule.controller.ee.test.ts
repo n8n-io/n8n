@@ -188,7 +188,11 @@ describe('RoleMappingRuleController', () => {
 			const result = await controller.move(req, res, moveBody, ruleId);
 
 			expect(result).toEqual(moved);
-			expect(roleMappingRuleService.move).toHaveBeenCalledWith(ruleId, moveBody.targetIndex);
+			expect(roleMappingRuleService.move).toHaveBeenCalledWith(
+				ruleId,
+				moveBody.targetIndex,
+				req.user,
+			);
 		});
 	});
 
