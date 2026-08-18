@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import type { StartExecutionRequest, StartExecutionResult } from '@n8n/engine';
-import { OperationalError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 /**
  * Starts an execution on the engine 2.0 data plane.
@@ -32,7 +32,7 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {
 		if (!this.provider) {
-			throw new OperationalError(
+			throw new UserError(
 				'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
 			);
 		}

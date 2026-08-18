@@ -1,4 +1,5 @@
 import type { StartExecutionRequest } from '@n8n/engine';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { EngineDataPlaneProvider } from '../engine-data-plane-proxy.service';
@@ -17,6 +18,7 @@ describe('EngineDataPlaneProxyService', () => {
 	});
 
 	it('explains how to enable the engine when no provider is registered', async () => {
+		await expect(proxy.startExecution(request)).rejects.toThrow(UserError);
 		await expect(proxy.startExecution(request)).rejects.toThrow('N8N_ENABLED_MODULES');
 	});
 

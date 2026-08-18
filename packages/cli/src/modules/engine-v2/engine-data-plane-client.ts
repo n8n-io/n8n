@@ -47,9 +47,7 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 	}
 
 	private toError(statusCode: number, body: unknown): Error {
-		// A non-engine failure (a proxy, a crash) may not carry the engine's shape.
-		const { error, reason } =
-			typeof body === 'object' && body !== null ? (body as Partial<EngineErrorResponse>) : {};
+		const { error, reason } = this.parseErrorResponse(body);
 		const detail = reason ?? error;
 		const suffix = detail ? `: ${detail}` : '';
 
@@ -63,5 +61,15 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 			default:
 				return new OperationalError(`Engine responded with ${statusCode}${suffix}`);
 		}
+	}
+
+	/**
+	 * Reads the engine's error body. A non-engine failure — a proxy, a crash —
+	 * may not carry that shape, so every field stays optional.
+	 */
+	private parseErrorResponse(body: unknown): Partial<EngineErrorResponse> {
+		if (typeof body !== 'object' || body === null) return {};
+
+		return body as Partial<EngineErrorResponse>;
 	}
 }
