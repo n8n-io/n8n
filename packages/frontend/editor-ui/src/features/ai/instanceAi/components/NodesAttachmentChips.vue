@@ -18,11 +18,9 @@ import { isNodeChipRemovalKey } from '../constants';
 // this only governs the single-lone-set explode/bundle decision.
 const SINGLE_SET_NODE_EXPANSION_THRESHOLD = 4;
 
-type NodesAttachment = InstanceAiNodesAttachment;
-
-const props = defineProps<{ attachment: NodesAttachment; isRemovable?: boolean }>();
+const props = defineProps<{ attachment: InstanceAiNodesAttachment; isRemovable?: boolean }>();
 const emit = defineEmits<{
-	'update:attachment': [attachment: NodesAttachment];
+	'update:attachment': [attachment: InstanceAiNodesAttachment];
 	'remove-all': [];
 }>();
 
@@ -258,28 +256,18 @@ const totalNodeCount = computed(() =>
 
 <template>
 	<div ref="containerRef" :class="$style.container">
-		<span
+		<NodeChip
 			v-if="isCollapsed"
-			:class="$style.summaryChip"
-			data-testid="nodes-chips-collapsed-summary"
-		>
-			<N8nIcon icon="layers" size="xsmall" />
-			<span :class="$style.summaryName">
-				{{
-					i18n.baseText('instanceAi.nodeContext.nodesBundle', {
-						interpolate: { count: totalNodeCount },
-					})
-				}}
-			</span>
-			<button
-				v-if="isRemovable"
-				:class="$style.summaryRemove"
-				data-testid="nodes-chips-collapsed-remove"
-				@click.stop="emit('remove-all')"
-			>
-				<N8nIcon icon="x" size="xsmall" />
-			</button>
-		</span>
+			testid="nodes-chips-collapsed-summary"
+			:label="
+				i18n.baseText('instanceAi.nodeContext.nodesBundle', {
+					interpolate: { count: totalNodeCount },
+				})
+			"
+			icon="layers"
+			:removable="isRemovable"
+			@remove="emit('remove-all')"
+		/>
 		<template v-else>
 			<span
 				v-for="chip in chips"
@@ -356,37 +344,6 @@ const totalNodeCount = computed(() =>
 .chipAnchor {
 	position: relative;
 	display: inline-flex;
-}
-
-.summaryChip {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	max-width: 220px;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border-width, 1px) solid var(--border-color--success);
-	border-radius: var(--radius);
-	background: var(--background--success);
-	font-size: var(--font-size--2xs);
-	color: var(--text-color--success);
-}
-
-.summaryName {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.summaryRemove {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	border: none;
-	background: none;
-	padding: 0;
-	cursor: pointer;
-	color: inherit; // match the summary chip's success text color
 }
 
 .panel {

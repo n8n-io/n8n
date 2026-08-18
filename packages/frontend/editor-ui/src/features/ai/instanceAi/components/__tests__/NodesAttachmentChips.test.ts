@@ -115,7 +115,8 @@ describe('NodesAttachmentChips', () => {
 			props: { attachment: att(sets), isRemovable: true },
 		});
 		await fireEvent.click(getByTestId('nodes-chips-collapse'));
-		await fireEvent.click(getByTestId('nodes-chips-collapsed-remove'));
+		// The summary is a NodeChip, so its remove button carries the shared testid.
+		await fireEvent.click(getByTestId('nodes-chip-remove'));
 		expect(emitted()['remove-all']).toBeTruthy();
 	});
 

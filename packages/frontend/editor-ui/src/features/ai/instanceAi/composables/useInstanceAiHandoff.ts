@@ -235,16 +235,12 @@ export function stashPendingDraftAttachment(
 
 export function consumePendingDraftAttachment(threadId: string): InstanceAiNodesAttachment | null {
 	const raw = localStorage.getItem(pendingDraftAttachmentKey(threadId));
-
-	if (!raw) {
-    return null;
-  }
+	if (!raw) return null;
 	localStorage.removeItem(pendingDraftAttachmentKey(threadId));
 
 	const parsed = instanceAiNodesAttachmentSchema.safeParse(
 		jsonParse(raw, { fallbackValue: undefined }),
 	);
-  
 	return parsed.success ? parsed.data : null;
 }
 
@@ -475,11 +471,6 @@ export function useInstanceAiHandoff() {
 	}
 
 	/**
-	 * Mint a thread for a draft the caller will stash and navigate to itself (canvas
-	 * "add to chat" on a standalone editor). Same as startThread's same-tab branch
-	 * minus sendMessage/navigation — the caller sends nothing until the user does.
-	 */
-	/**
 	 * Mint an empty thread the caller stages a draft into. When `workflow` is given,
 	 * also open the workflow in the thread's preview pane (same machinery as the
 	 * editor's "open in assistant" button): an empty greeting message carries the
@@ -501,7 +492,10 @@ export function useInstanceAiHandoff() {
 			try {
 				await instanceAiStore.syncThread(threadId, projectId, launch);
 			} catch {
-				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				toast.showError(
+					new Error(i18n.baseText('instanceAi.handoff.openFailed.message')),
+					i18n.baseText('instanceAi.handoff.openFailed.title'),
+				);
 				return null;
 			}
 			if (workflow) {

@@ -612,9 +612,7 @@ function buildBuilderWorkflow(): BuilderWorkflow {
 	return {
 		nodes: s.allNodes.map((n) => ({ id: n.id, name: n.name, type: n.type })),
 		connections: s.connectionsBySourceNode,
-		groupsById: new Map(
-			s.allGroups.map((g) => [g.id, { id: g.id, name: g.name, nodeIds: g.nodeIds }]),
-		),
+		groupsById: new Map(s.allGroups.map((g) => [g.id, { id: g.id, name: g.name }])),
 		nodeIdToGroupId: s.nodeIdToGroupId,
 	};
 }

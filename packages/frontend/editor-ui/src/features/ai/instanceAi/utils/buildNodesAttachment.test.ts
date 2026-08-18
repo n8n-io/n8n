@@ -97,7 +97,7 @@ describe('resolveSetNeighbors', () => {
 describe('resolveSetCanvasGroup', () => {
 	it('returns the group when the whole set shares one', () => {
 		const w = wf({
-			groupsById: new Map([['g1', { id: 'g1', name: 'My Group 1', nodeIds: ['n1', 'n2'] }]]),
+			groupsById: new Map([['g1', { id: 'g1', name: 'My Group 1' }]]),
 			nodeIdToGroupId: new Map([
 				['n1', 'g1'],
 				['n2', 'g1'],
@@ -118,7 +118,7 @@ describe('resolveSetCanvasGroup', () => {
 
 	it('returns {} for a lone grouped node so it keeps its own name, not the group label', () => {
 		const w = wf({
-			groupsById: new Map([['g1', { id: 'g1', name: 'My Group 1', nodeIds: ['n1', 'n2'] }]]),
+			groupsById: new Map([['g1', { id: 'g1', name: 'My Group 1' }]]),
 			nodeIdToGroupId: new Map([
 				['n1', 'g1'],
 				['n2', 'g1'],
@@ -174,7 +174,7 @@ describe('buildNodesAttachment', () => {
 				{ id: 'n2', name: 'Find Slack User', type: 't' },
 			],
 			connections: chain(['Extract Fields', 'Find Slack User']),
-			groupsById: new Map([['g1', { id: 'g1', name: 'Prepare ticket', nodeIds: ['n1', 'n2'] }]]),
+			groupsById: new Map([['g1', { id: 'g1', name: 'Prepare ticket' }]]),
 			nodeIdToGroupId: new Map([
 				['n1', 'g1'],
 				['n2', 'g1'],

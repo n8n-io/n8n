@@ -16,7 +16,7 @@ export interface BuilderWorkflow {
 	/** `workflow.connections`, keyed by source node NAME. */
 	connections: IConnections;
 	/** `id -> { id, name }` for canvas groups; empty if none. */
-	groupsById: Map<string, { id: string; name: string; nodeIds: string[] }>;
+	groupsById: Map<string, { id: string; name: string }>;
 	/** `nodeId -> groupId` reverse index. */
 	nodeIdToGroupId: Map<string, string>;
 }
