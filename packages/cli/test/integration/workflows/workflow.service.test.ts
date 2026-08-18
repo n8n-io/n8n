@@ -12,9 +12,11 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	SharedWorkflowRepository,
 	type WorkflowEntity,
+	WorkflowHistoryRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationOutboxStatus,
 	WorkflowRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -33,6 +35,7 @@ import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
+import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
@@ -63,6 +66,7 @@ const workflowValidationService = mockInstance(WorkflowValidationService);
 const nodeTypes = mockInstance(NodeTypes);
 const webhookServiceMock = mockInstance(WebhookService);
 const workflowPublishGuard = mock<WorkflowPublishGuardProxy>();
+const workflowPublicationNotifier = mock<WorkflowPublicationNotifier>();
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
@@ -100,7 +104,7 @@ beforeAll(async () => {
 		mock(), // licenseState
 		Container.get(ProjectRepository), // projectRepository
 		mock(), // redactionEnforcementService
-		mock(), // workflowPublicationNotifier
+		workflowPublicationNotifier,
 		mock(), // scheduleTriggerJobRegistrar
 		mock(), // pollTriggerJobRegistrar
 		workflowPublishedVersionRepository,
@@ -1164,5 +1168,101 @@ describe('getMany()', () => {
 			const workflowIds = result.workflows.map((w) => w.id).sort();
 			expect(workflowIds).toEqual([teamWorkflow1.id, teamWorkflow2.id].sort());
 		});
+	});
+});
+
+describe('publishAsSystem()', () => {
+	const systemNodes = (): INode[] => [
+		{
+			id: uuid(),
+			name: 'Trigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		},
+	];
+
+	beforeEach(() => {
+		workflowPublicationNotifier.requestDrain.mockClear();
+	});
+
+	it('publishes a system-authored version without a user', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+		const previousActiveVersionId = workflow.activeVersionId as string;
+		const nodes = systemNodes();
+
+		const { versionId } = await workflowService.publishAsSystem(workflow.id, {
+			nodes,
+			connections: {},
+			nodeGroups: [],
+		});
+
+		const versionRow = await Container.get(WorkflowHistoryRepository).findOneOrFail({
+			where: { versionId },
+		});
+		expect(versionRow.workflowId).toBe(workflow.id);
+		expect(versionRow.authors).toBe('n8n');
+		expect(versionRow.nodes).toEqual(nodes);
+
+		const updated = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
+		expect(updated.activeVersionId).toBe(versionId);
+		expect(updated.active).toBe(true);
+		// The draft plane stays untouched: same draft version, nodes, and updatedAt.
+		expect(updated.versionId).toBe(workflow.versionId);
+		expect(updated.nodes).toEqual(workflow.nodes);
+		// Second precision: sqlite's datetime column truncates milliseconds.
+		expect(Math.floor(updated.updatedAt.getTime() / 1000)).toBe(
+			Math.floor(workflow.updatedAt.getTime() / 1000),
+		);
+
+		const activated = await workflowPublishHistoryRepository.findBy({
+			workflowId: workflow.id,
+			versionId,
+			event: 'activated',
+		});
+		expect(activated).toEqual([expect.objectContaining({ userId: null })]);
+		const deactivated = await workflowPublishHistoryRepository.findBy({
+			workflowId: workflow.id,
+			versionId: previousActiveVersionId,
+			event: 'deactivated',
+		});
+		expect(deactivated).toEqual([expect.objectContaining({ userId: null })]);
+
+		const outboxRecord = await outboxRepository.findOneOrFail({
+			where: { workflowId: workflow.id },
+		});
+		expect(outboxRecord.publishedVersionId).toBe(versionId);
+		expect(outboxRecord.status).toBe(WorkflowPublicationOutboxStatus.Pending);
+		expect(workflowPublicationNotifier.requestDrain).toHaveBeenCalled();
+	});
+
+	it('rejects a workflow without an active version and writes nothing', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		await expect(
+			workflowService.publishAsSystem(workflow.id, {
+				nodes: systemNodes(),
+				connections: {},
+				nodeGroups: [],
+			}),
+		).rejects.toThrow('active');
+
+		const untouched = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
+		expect(untouched.activeVersionId).toBeNull();
+		expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
+		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
+	});
+
+	it('rejects a missing workflow', async () => {
+		await expect(
+			workflowService.publishAsSystem(uuid(), {
+				nodes: systemNodes(),
+				connections: {},
+				nodeGroups: [],
+			}),
+		).rejects.toThrow('active');
 	});
 });

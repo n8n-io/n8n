@@ -25,7 +25,13 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
+import {
+	PROJECT_ROOT,
+	UnexpectedError,
+	Workflow,
+	assert,
+	calculateWorkflowChecksum,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
@@ -874,7 +880,7 @@ export class WorkflowService {
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			await this._publishViaOutbox(
-				user,
+				user.id,
 				workflowId,
 				versionIdToActivate,
 				previousActiveVersionId,
@@ -1104,6 +1110,51 @@ export class WorkflowService {
 		}
 
 		await this._teardownActiveVersion(workflow, deactivatedVersionId, null);
+	}
+
+	/**
+	 * Publishes a new system-authored version of an already-active workflow,
+	 * without a user: inserts the `workflow_history` row (author `'n8n'`),
+	 * advances `activeVersionId`, records publish history with a null user, and
+	 * enqueues the outbox record. The draft plane — `workflow_entity.nodes`,
+	 * `versionId`, `updatedAt` — stays untouched.
+	 *
+	 * Publication-service plane only; the caller owns flag and leader concerns.
+	 * Skips user-facing activation validation and lifecycle hooks: the workflow
+	 * is already active, and the content comes from internal correction code,
+	 * which may legitimately fail user-facing checks (e.g. duplicate node
+	 * names).
+	 */
+	async publishAsSystem(
+		workflowId: string,
+		versionData: {
+			nodes: WorkflowEntity['nodes'];
+			connections: WorkflowEntity['connections'];
+			nodeGroups?: WorkflowEntity['nodeGroups'];
+		},
+	): Promise<{ versionId: string }> {
+		const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
+		if (!workflow?.active || workflow.activeVersionId === null) {
+			throw new UnexpectedError(
+				'Cannot publish a system-authored version: the workflow has no active version',
+				{ extra: { workflowId } },
+			);
+		}
+
+		const versionId = uuid();
+		// `saveVersion` swallows insert errors; a missing row surfaces below as a
+		// foreign-key violation when `activeVersionId` is advanced onto it.
+		await this.workflowHistoryService.saveVersion('n8n', { versionId, ...versionData }, workflowId);
+
+		await this._publishViaOutbox(
+			null,
+			workflowId,
+			versionId,
+			workflow.activeVersionId,
+			workflow.updatedAt,
+		);
+
+		return { versionId };
 	}
 
 	/**
@@ -1563,7 +1614,7 @@ export class WorkflowService {
 	 * manager here.
 	 */
 	private async _publishViaOutbox(
-		user: User,
+		userId: string | null,
 		workflowId: string,
 		versionIdToActivate: string,
 		previousActiveVersionId: string | null,
@@ -1587,7 +1638,7 @@ export class WorkflowService {
 						workflowId,
 						versionId: previousActiveVersionId,
 						event: 'deactivated',
-						userId: user.id,
+						userId,
 					},
 					trx,
 				);
@@ -1598,7 +1649,7 @@ export class WorkflowService {
 					workflowId,
 					versionId: versionIdToActivate,
 					event: 'activated',
-					userId: user.id,
+					userId,
 				},
 				trx,
 			);
