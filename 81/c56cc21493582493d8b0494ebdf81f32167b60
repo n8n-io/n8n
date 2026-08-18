@@ -1,0 +1,24 @@
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/aws-secrets-manager.test.ts
+  s_450867363891b7::t_3a48913ac54a5c 108-112
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.node-agent.test.ts
+  s_450867363891b7::t_996dfab424ce94 78-110
+packages/cli/src/modules/external-secrets.ee/providers/aws-secrets-manager.ts
+  s_450867363891b7::t_a3162ff062dc68 139,147
+  s_450867363891b7::t_ea6581c7d3f98c 140-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "81c56cc21493582493d8b0494ebdf81f32167b60",
+  "prompts": {},
+  "sessions": {
+    "s_450867363891b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a16a25e-9412-485f-b1d0-4f7f4288257b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
