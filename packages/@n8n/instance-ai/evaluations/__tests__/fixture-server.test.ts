@@ -129,9 +129,12 @@ describe('provider fixtures', () => {
 				}
 			}
 
-			for (const fixture of await loadProviderFixtures()) {
+			const fixtures = await loadProviderFixtures();
+			let checked = 0;
+			for (const fixture of fixtures) {
 				const request = types.get(fixture.manifest.credentialType);
 				if (!request?.baseURL) continue;
+				checked += 1;
 				const interpolated = /\{\{\s*\$credentials\??\.(\w+)\s*\}\}/.exec(request.baseURL);
 
 				if (!interpolated) {
@@ -146,6 +149,11 @@ describe('provider fixtures', () => {
 					`${suffix}${request.url ?? ''}`,
 				);
 			}
+
+			// Every shipped fixture must have been compared. Without this, a rename
+			// or a change to the serialized shape makes every iteration `continue`
+			// and the check passes having verified nothing.
+			expect(checked, 'fixtures cross-checked against their credential type').toBe(fixtures.length);
 		},
 	);
 
@@ -397,6 +405,24 @@ describe('openai fixture served to a real browser', () => {
 		await page.close();
 	});
 
+	it('renders a name containing markup as text, not as markup', async () => {
+		// The name is free-form agent input. Interpolated into the row's HTML it
+		// would corrupt the table the truncation assertions read.
+		const page = await fx.ctx.newPage();
+		await page.goto('https://platform.openai.com/api-keys');
+		await page.getByRole('button', { name: 'Create new secret key' }).click();
+		await page.getByPlaceholder('My Test Key').fill('<b>bold</b> & co');
+		await page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'Create secret key', exact: true })
+			.click();
+		await page.waitForFunction("document.getElementById('key-value')?.value !== ''");
+
+		expect(await page.locator('#key-rows tr').first().textContent()).toContain('<b>bold</b> & co');
+		expect(await page.locator('#key-rows b').count()).toBe(0);
+		await page.close();
+	});
+
 	it('exposes an accessibility outline with the landmarks the agent needs', async () => {
 		const page = await fx.ctx.newPage();
 		await page.goto('https://platform.openai.com/api-keys');
@@ -457,6 +483,20 @@ describe('gemini fixture served to a real browser', () => {
 		await page.getByRole('button', { name: 'Create API key' }).click();
 		expect(await page.getByRole('dialog').count()).toBe(0);
 		expect(await page.getByLabel('Create a new key Close dialog').count()).toBe(1);
+		await page.close();
+	});
+
+	it('renders a name containing markup as text, not as markup', async () => {
+		const page = await openConsole();
+		await page.getByRole('button', { name: 'Create API key' }).click();
+		await page.getByLabel('Name your key').fill('<i>italic</i> & co');
+		await page.getByRole('button', { name: 'Create key', exact: true }).click();
+		await page.waitForFunction("document.getElementById('key-value')?.textContent !== ''");
+
+		expect(await page.locator('#key-rows tr').first().textContent()).toContain(
+			'<i>italic</i> & co',
+		);
+		expect(await page.locator('#key-rows i').count()).toBe(0);
 		await page.close();
 	});
 

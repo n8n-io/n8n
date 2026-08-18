@@ -220,7 +220,17 @@ async function signInBrowserToN8n(
 		logger.warn('  Browser not signed in to n8n: session cookie is not a name=value pair');
 		return;
 	}
-	await context.addCookies(cookies);
+	try {
+		await context.addCookies(cookies);
+	} catch (error: unknown) {
+		// Warn-and-continue, per this helper's contract: the run still works, it
+		// just starts on n8n's sign-in page. Throwing here would leak the browser
+		// and its profile — `cleanup` is not armed until after this call.
+		logger.warn(
+			`  Browser not signed in to n8n: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return;
+	}
 	logger.verbose(`  Browser signed in to n8n (${cookies.map((c) => c.url).join(', ')})`);
 }
 

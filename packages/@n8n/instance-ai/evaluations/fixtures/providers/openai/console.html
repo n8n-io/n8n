@@ -153,12 +153,10 @@
 				// 3 leading chars + last 4, as the real console truncates.
 				const row = document.createElement('tr');
 				row.innerHTML =
-					'<td>' +
-					(nameInput.value || 'Secret key') +
-					// Independent of the key, as the real console's tracking id is —
-					// a value derived from the key would put a run of it in the page
-					// for no reason.
-					'</td><td>Active</td><td>key_' +
+					// Tracking id independent of the key, as the real console's is — a
+					// value derived from it would put a run of the key in the page for
+					// no reason.
+					'<td class="key-name"></td><td>Active</td><td>key_' +
 					Math.random().toString(36).slice(2, 18) +
 					'</td><td>' +
 					key.slice(0, 3) +
@@ -166,6 +164,10 @@
 					key.slice(-4) +
 					'</td><td>just now</td><td>—</td><td>Eval Owner</td><td>All</td><td>$0.00</td>' +
 					'<td><button type="button">Edit</button><button type="button">Delete</button></td>';
+				// textContent, not markup: the name is free-form agent input, and a
+				// value containing `<` or `&` would otherwise corrupt the row the
+				// truncation assertions read.
+				row.querySelector('.key-name').textContent = nameInput.value || 'Secret key';
 				document.getElementById('key-rows').prepend(row);
 				const count = document.getElementById('result-count');
 				count.textContent = `${Number(count.textContent.split(' ')[0]) + 1} results`;

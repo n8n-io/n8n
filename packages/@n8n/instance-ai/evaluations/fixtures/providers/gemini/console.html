@@ -196,14 +196,14 @@
 				row.innerHTML =
 					'<td><button type="button">...' +
 					key.slice(-4) +
-					'</button><span>' +
-					(nameInput.value || 'Gemini API Key') +
-					'</span></td>' +
+					'</button><span class="key-name"></span></td>' +
 					'<td><button type="button">Default Gemini Project</button><span>gen-lang-client-0228122468</span></td>' +
 					'<td>just now</td>' +
 					'<td><button type="button">Set up billing</button><span>Free tier</span></td>' +
 					'<td><button type="button">Copy API key</button><button type="button">View spend</button>' +
 					'<button type="button">View usage</button><button type="button">View more actions</button></td>';
+				// textContent, not markup — see the openai fixture.
+				row.querySelector('.key-name').textContent = nameInput.value || 'Gemini API Key';
 				document.getElementById('key-rows').prepend(row);
 			});
 
