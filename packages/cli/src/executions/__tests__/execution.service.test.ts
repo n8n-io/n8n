@@ -1,3 +1,4 @@
+import { DeleteExecutionsDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -29,6 +30,7 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
+import type { EventService } from '@/events/event.service';
 import type { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
@@ -50,6 +52,7 @@ describe('ExecutionService', () => {
 	const executionRedactionServiceProxy = mock<ExecutionRedactionServiceProxy>();
 	const executionStopService = mock<ExecutionStopService>();
 	const ownershipService = mock<OwnershipService>();
+	const eventService = mock<EventService>();
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -68,7 +71,7 @@ describe('ExecutionService', () => {
 		mock(),
 		mock(),
 		mock(),
-		mock(),
+		eventService,
 		executionRedactionServiceProxy,
 		executionStopService,
 		ownershipService,
@@ -902,6 +905,40 @@ describe('ExecutionService', () => {
 				undefined,
 			);
 			expect(activeExecutions.getActiveExecutions).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('delete', () => {
+		const user = mock<User>({ id: 'user-1' });
+
+		it('should pass the coerced `deleteBefore` down to persistence and the event', async () => {
+			// the DTO does the coercion, since a JSON body cannot carry a `Date`
+			const payload = DeleteExecutionsDto.parse({ deleteBefore: '2026-01-01T00:00:00.000Z' });
+
+			await executionService.delete(user, payload, ['wf-1']);
+
+			expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					deleteConditions: { deleteBefore: new Date('2026-01-01T00:00:00.000Z'), ids: undefined },
+				}),
+			);
+
+			// the log-streaming relay calls `.toISOString()` on this
+			const [[event, eventPayload]] = eventService.emit.mock.calls;
+			expect(event).toBe('execution-deleted');
+			expect(eventPayload).toEqual(
+				expect.objectContaining({ deleteBefore: new Date('2026-01-01T00:00:00.000Z') }),
+			);
+		});
+
+		it('should leave `deleteBefore` unset when deleting by ids', async () => {
+			await executionService.delete(user, DeleteExecutionsDto.parse({ ids: ['1', '2'] }), ['wf-1']);
+
+			expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					deleteConditions: { deleteBefore: undefined, ids: ['1', '2'] },
+				}),
+			);
 		});
 	});
 
