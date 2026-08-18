@@ -31,6 +31,8 @@ const props = defineProps<{
 	savedVersionId?: string;
 	/** Whether the user may push the latest version into the open review. */
 	canSubmitChanges: boolean;
+	/** Why publishing is blocked, or '' when it is not. Mirrors the Publish tooltip. */
+	submitBlockedReason?: string;
 	/**
 	 * Whether the user may open the review detail — the backend-computed
 	 * `viewerCanOpen`, never a permission approximation.
@@ -128,14 +130,18 @@ const status = computed<BannerStatus | null>(() => {
 const isSubmitChangesEnabled = computed(() => props.canSubmitChanges && hasDivergentVersion.value);
 
 /**
- * Changes-requested keeps its Submit changes button even in sync, so say why it is
- * disabled — the support copy tells the author to submit. R2 (P3), see LIGO-607_review.md.
+ * Changes-requested keeps its Submit changes button even when disabled, so say why:
+ * an unpublishable workflow first, since that blocks submitting at all, then the
+ * in-sync case where the support copy tells the author to submit. R2 (P3), see
+ * LIGO-607_review.md.
  */
-const submitChangesHint = computed(() =>
-	props.canSubmitChanges && !hasDivergentVersion.value
+const submitChangesHint = computed(() => {
+	if (props.submitBlockedReason) return props.submitBlockedReason;
+
+	return props.canSubmitChanges && !hasDivergentVersion.value
 		? i18n.baseText('workflowReviews.editorBanner.submitChanges.savedVersionHint')
-		: '',
-);
+		: '';
+});
 
 /** A popover with no action left is still worth showing for its copy. */
 const hasActions = computed(() => props.canOpenReview || !!status.value?.action);

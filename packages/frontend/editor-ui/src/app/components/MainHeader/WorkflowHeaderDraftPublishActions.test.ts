@@ -14,6 +14,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY, EnterpriseEditionFeature } from '@/app/constants';
+import { MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { STORES } from '@n8n/stores';
 import type { INodeUi } from '@/Interface';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
@@ -1411,6 +1412,40 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
 			},
 		);
+
+		it.each([
+			{ name: 'the last node was deleted', nodes: [] },
+			{ name: 'no node is a trigger', nodes: [{ ...triggerNode, type: 'n8n-nodes-base.set' }] },
+			{ name: 'the only trigger is disabled', nodes: [{ ...triggerNode, disabled: true }] },
+			{
+				name: 'the only trigger cannot be activated',
+				nodes: [{ ...triggerNode, type: MANUAL_TRIGGER_NODE_TYPE }],
+			},
+		])('disables Submit changes with Publish when $name', async ({ nodes }) => {
+			setWorkflowReviewGates();
+			seedLatestReview();
+			workflowDocumentStore.setNodes(nodes);
+
+			const { findByTestId, getByTestId } = renderComponent({ props: defaultWorkflowProps });
+			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+		});
+
+		// The parity has to hold in the enabled direction too, or the assertions above
+		// would pass just as well against a permanently disabled button.
+		it('enables Submit changes with Publish for a publishable workflow', async () => {
+			setWorkflowReviewGates();
+			seedLatestReview();
+			setupEnabledPublishButton();
+
+			const { findByTestId, getByTestId } = renderComponent({ props: defaultWorkflowProps });
+			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeEnabled();
+			expect(getByTestId('workflow-review-submit-changes-button')).toBeEnabled();
+		});
 
 		// The backend says who may open a review; a publisher outside the
 		// involvement rule gets no button the detail route would 404 on.

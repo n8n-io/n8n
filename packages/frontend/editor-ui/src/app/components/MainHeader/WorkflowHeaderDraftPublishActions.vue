@@ -172,6 +172,20 @@ const nodesWithValidationIssues = computed(
 
 const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
+const isWorkflowPublishable = computed(() => containsTrigger.value && !hasNodeIssues.value);
+
+/** Why publishing is blocked, or '' when it is not. Same copy as the Publish tooltip. */
+const publishBlockedReason = computed(() => {
+	if (isWorkflowPublishable.value) return '';
+
+	return !containsTrigger.value
+		? i18n.baseText('workflows.publishModal.noTriggerMessage')
+		: i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
+				interpolate: { count: nodesWithValidationIssues.value.length },
+				adjustToNumber: nodesWithValidationIssues.value.length,
+			});
+});
+
 type WorkflowPublishState =
 	| 'not-published-not-eligible' // No trigger nodes or has errors
 	| 'not-published-eligible' // Can be published for first time
@@ -202,8 +216,7 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 
 	// Not published states
 	if (!hasBeenPublished) {
-		const canPublish = containsTrigger.value && !hasNodeIssues.value;
-		return canPublish ? 'not-published-eligible' : 'not-published-not-eligible';
+		return isWorkflowPublishable.value ? 'not-published-eligible' : 'not-published-not-eligible';
 	}
 
 	// Published states
@@ -226,11 +239,16 @@ const hasUnpublishPermission = computed(() => props.workflowPermissions.unpublis
 const isPersonalSpace = computed(() => projectStore.currentProject?.type === ProjectTypes.Personal);
 
 /**
- * Submitting changes and retrying a publish both need publish rights and write
- * access. An archived workflow keeps the status readable but rejects both writes.
+ * Submitting changes needs publish rights and write access. An archived workflow
+ * keeps the status readable but rejects writes. It also clears the same
+ * publishability bar as the Publish button, so the two cannot drift apart.
  */
 const canActOnReview = computed(
-	() => !!hasPublishPermission.value && !collaborationReadOnly.value && !props.isArchived,
+	() =>
+		!!hasPublishPermission.value &&
+		!collaborationReadOnly.value &&
+		!props.isArchived &&
+		isWorkflowPublishable.value,
 );
 
 // Backend-computed involvement rule (admin, author, or assigned reviewer):
@@ -410,7 +428,7 @@ const publishButtonConfig = computed(() => {
 	if (props.isNewWorkflow) {
 		return {
 			text: i18n.baseText('workflows.publish'),
-			enabled: containsTrigger.value && !hasNodeIssues.value,
+			enabled: isWorkflowPublishable.value,
 			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
@@ -783,6 +801,7 @@ onBeforeUnmount(() => {
 				:review="latestReviewRequest"
 				:saved-version-id="savedVersionId"
 				:can-submit-changes="canActOnReview"
+				:submit-blocked-reason="publishBlockedReason"
 				:can-open-review="canOpenReview"
 				@open-review="onOpenReviewFromBanner"
 				@submit-changes="onSubmitChangesFromBanner"

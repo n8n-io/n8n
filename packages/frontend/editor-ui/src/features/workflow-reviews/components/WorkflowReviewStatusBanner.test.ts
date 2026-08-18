@@ -192,6 +192,22 @@ describe('WorkflowReviewStatusBanner', () => {
 			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
 		});
 
+		it('explains why Submit changes is disabled for an unpublishable workflow', async () => {
+			const { getByTestId, findByText } = await openPopover({
+				review: review({ decision: 'changes_requested', decisionBy: actor }),
+				savedVersionId: 'newer-version',
+				canSubmitChanges: false,
+				submitBlockedReason: 'This workflow has no trigger node',
+			});
+
+			const button = getByTestId('workflow-review-submit-changes-button');
+			expect(button).toBeDisabled();
+
+			await userEvent.hover(button);
+
+			expect(await findByText('This workflow has no trigger node')).toBeInTheDocument();
+		});
+
 		it('treats an unknown saved version as in sync', async () => {
 			const { queryByTestId } = await openPopover({ savedVersionId: undefined });
 
