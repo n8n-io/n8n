@@ -7847,6 +7847,8 @@
 	"agents.builder.tasks.schedule.onDay": "on day",
 	"agents.builder.tasks.schedule.minuteLabel": "at minute",
 	"agents.builder.tasks.schedule.cron.placeholder": "0 9 * * *",
+	"agents.builder.tasks.schedule.in": "in",
+	"agents.builder.tasks.schedule.timezone.placeholder": "Select timezone",
 	"agents.builder.tasks.schedule.nextOccurrence": "Next run {occurrence}",
 	"agents.builder.tasks.cancel": "Cancel",
 	"agents.builder.tasks.save": "Save schedule",
