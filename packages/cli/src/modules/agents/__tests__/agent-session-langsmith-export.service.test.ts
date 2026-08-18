@@ -306,6 +306,36 @@ describe('AgentSessionLangSmithExportService', () => {
 		expect(changedResult.traceId).not.toBe(firstResult.traceId);
 	});
 
+	it('exports HITL response timeline events', async () => {
+		const { service, agentExecutionService, threadRepository } = setup();
+		agentExecutionService.getThreadDetail.mockResolvedValue({
+			thread: makeThread(),
+			executions: [
+				makeExecution({
+					timeline: [
+						{
+							type: 'hitl-response',
+							toolCallId: 'tool-approval',
+							response: { approved: false, reason: 'Needs changes' },
+							timestamp: Date.parse('2026-08-14T09:00:00.500Z'),
+						},
+					],
+				}),
+			],
+		});
+		threadRepository.findByParentThreadId.mockResolvedValue([]);
+
+		await service.exportSession(input);
+
+		const hitlRun = createRunMock.mock.calls
+			.map(([run]) => run)
+			.find(({ name }) => name === 'HITL response');
+		expect(hitlRun).toMatchObject({
+			inputs: { toolCallId: 'tool-approval' },
+			outputs: { approved: false, reason: 'Needs changes' },
+		});
+	});
+
 	it('rejects before loading data when the AI proxy is disabled', async () => {
 		const { service, agentExecutionService } = setup({ proxyEnabled: false });
 

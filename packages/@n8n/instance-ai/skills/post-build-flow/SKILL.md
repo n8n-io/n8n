@@ -235,6 +235,19 @@ have the source file, load `workflow-builder`, declare representative `output`
 fixtures on the controlling upstream node, rebuild the same workflow, and verify
 again.
 
+**Never edit a saved workflow to reach a branch.** Disabling or deleting nodes to
+steer a test mutates the user's workflow and leaves it broken for as long as the
+test runs — if it is published, its triggers fire against the broken version.
+For a workflow with more than one trigger (`triggerNodes` has multiple entries):
+
+- When the user asked for a live run, pass `triggerNodeName` to
+  `executions(action="run")` — one run per trigger — and report each branch's
+  result. Naming no trigger runs only the auto-detected one.
+- `verify-built-workflow` always exercises the auto-detected trigger, so it
+  covers one branch. Say which trigger was verified and which branches were not,
+  and offer the user a live run for the rest. Do not force coverage by editing
+  the workflow.
+
 ## After build-workflow succeeds
 
 1. Read `workflowId`, `workItemId`, `triggerNodes`, `verificationReadiness`,
