@@ -5,6 +5,7 @@ import type {
 } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
 import type { StartExecutionRequest } from '@n8n/engine';
+import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
@@ -22,6 +23,13 @@ describe('EngineDataPlaneClient', () => {
 	const respondWith = (statusCode: number, body: unknown) => {
 		vi.mocked(http.request).mockResolvedValue({ statusCode, body, headers: {} });
 	};
+
+	/** Returns the error `startExecution` threw, so tests can assert its class too. */
+	const startExecutionError = async (): Promise<unknown> =>
+		await client.startExecution(request).then(
+			() => expect.unreachable('startExecution should have rejected'),
+			(error: unknown) => error,
+		);
 
 	beforeEach(() => {
 		http = mock<HttpRequestClient>();
@@ -62,31 +70,55 @@ describe('EngineDataPlaneClient', () => {
 		});
 
 		it.each([
-			[400, { error: 'invalid_graph', reason: 'cycle detected' }, 'cycle detected'],
-			[429, { error: 'admittance_rejected', reason: 'at capacity' }, 'at capacity'],
-			[501, { error: 'unimplemented', reason: 'wait steps' }, 'wait steps'],
-		])('surfaces the engine reason for %i responses', async (statusCode, body, reason) => {
+			{
+				case: 'a rejected graph',
+				statusCode: 400,
+				body: { error: 'invalid_graph', reason: 'cycle detected' },
+				errorClass: UserError,
+				message: 'Engine rejected the workflow: cycle detected',
+			},
+			{
+				case: 'a refused admission',
+				statusCode: 429,
+				body: { error: 'admittance_rejected', reason: 'at capacity' },
+				errorClass: OperationalError,
+				message: 'Engine did not admit the execution: at capacity',
+			},
+			{
+				case: 'an unsupported workflow',
+				statusCode: 501,
+				body: { error: 'unimplemented', reason: 'wait steps' },
+				errorClass: UserError,
+				message: 'Engine does not support this workflow yet: wait steps',
+			},
+			{
+				case: 'an error code with no reason',
+				statusCode: 400,
+				body: { error: 'invalid_request' },
+				errorClass: UserError,
+				message: 'Engine rejected the workflow: invalid_request',
+			},
+			{
+				case: 'an unexpected engine failure',
+				statusCode: 500,
+				body: { error: 'boom' },
+				errorClass: OperationalError,
+				message: 'Engine responded with 500: boom',
+			},
+			{
+				case: 'a body that is not the engine error shape',
+				statusCode: 502,
+				body: '<html>bad gateway</html>',
+				errorClass: OperationalError,
+				message: 'Engine responded with 502: HTTP 502',
+			},
+		])('maps $case to $errorClass.name', async ({ statusCode, body, errorClass, message }) => {
 			respondWith(statusCode, body);
 
-			await expect(client.startExecution(request)).rejects.toThrow(reason);
-		});
+			const error = await startExecutionError();
 
-		it('falls back to the error code when there is no reason', async () => {
-			respondWith(400, { error: 'invalid_request' });
-
-			await expect(client.startExecution(request)).rejects.toThrow('invalid_request');
-		});
-
-		it('reports the status when the engine fails unexpectedly', async () => {
-			respondWith(500, { error: 'boom' });
-
-			await expect(client.startExecution(request)).rejects.toThrow('500');
-		});
-
-		it('still throws when the body is not the engine error shape', async () => {
-			respondWith(502, '<html>bad gateway</html>');
-
-			await expect(client.startExecution(request)).rejects.toThrow('502');
+			expect(error).toBeInstanceOf(errorClass);
+			expect(error).toHaveProperty('message', message);
 		});
 	});
 });
