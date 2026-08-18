@@ -53,10 +53,6 @@ High-churn reminders (agents often skip these when they only live in AGENTS.md):
   via `defaultValue` (and matching pairs like `expanded` / `defaultExpanded`
   when needed). Prefer Reka’s built-in dual API when wrapping Reka; otherwise
   mirror Tree / RadioGroup. Document both props in the component spec.
-- **Size prop** — Default size value must be named `'default'`. Options look like
-  `'small' | 'default' | 'medium'` (etc.). Never treat another size (e.g.
-  `'medium'`) as the implicit default.
-- **State modifiers** — SMACSS state naming (`isDisabled`, `isActive`, `isOpen`).
 - **Computed** — Avoid `computed` unless there is clear, non-trivial value
   (expensive derivation reused in multiple places). Prefer inline expressions or
   simple methods.
@@ -113,7 +109,6 @@ High-churn reminders (agents often skip these when they only live in AGENTS.md):
 - [ ] Third-party types extended, not duplicated
 - [ ] Stateful values support controlled (`modelValue`) and uncontrolled
       (`defaultValue`); Storybook has a Controlled/Uncontrolled story
-- [ ] Size default is `'default'`; state modifiers use SMACSS `is*` names
 - [ ] No `as` / `!`; `computed` only when justified
 - [ ] Semantic CSS tokens; no `:global` in DS components; no redundant base CSS;
       shared focus styles
