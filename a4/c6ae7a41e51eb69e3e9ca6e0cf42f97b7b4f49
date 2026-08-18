@@ -1,0 +1,64 @@
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 141-142
+packages/nodes-base/nodes/Kafka/test/mocks/confluent-kafka.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 110-123,130,144-159
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 30-39
+packages/nodes-base/nodes/Kafka/v2/transport/client.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 38
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 682,685-686,710-714,717-722
+.github/scripts/package.json
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 28
+packages/nodes-base/nodes/Kafka/v2/transport/producer.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 3,17
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 195-196,198
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 288-290
+packages/@n8n/agents/src/utils/parse.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 40-44,60-65,67-68
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 1940,1969,1972-1973,2019,2023,2025-2031
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 73
+packages/cli/test/migration/1785843640527-create-workflow-review-activity-tables-and-baseline.test.ts
+  s_ffb7ac8df0495d::t_1466d30b86b3cd 475
+  s_ffb7ac8df0495d::t_30f66599fbfe06 221-229
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 934-941
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 1-7,16,22-55,61,70,75,173-174,191,194-200,238-294
+packages/nodes-base/nodes/Kafka/v2/KafkaV2.node.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 39-44,285-300
+packages/nodes-base/nodes/Kafka/test/v2/KafkaV2.node.test.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 185,202,233,249,261-286
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 2172,2181,2188-2211,2221,2233,2249-2296,2305,2314,2377,2386,2412,2423
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_4c3a3a7c531ee0::t_b897b9f37e4185 1-13,17-18,24,71-81,91-94,109-151,158,257-311,313,317,320-331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a4c6ae7a41e51eb69e3e9ca6e0cf42f97b7b4f49",
+  "prompts": {},
+  "sessions": {
+    "s_4c3a3a7c531ee0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e687f596-d1ab-4eb6-ad52-9192ae9bb164",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_ffb7ac8df0495d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ee688f2-038b-4dd8-b18a-b5a89d24c066",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

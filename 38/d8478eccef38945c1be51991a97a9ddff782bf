@@ -1,0 +1,21 @@
+packages/nodes-base/credentials/test/JiraSoftwareCloudOAuth2Api.credentials.test.ts
+  s_2dd11acf1bf19d::t_4ddbc718a00166 1,4,12-60,66-72,104-174
+packages/nodes-base/credentials/test/ConfluenceCloudOAuth2Api.credentials.test.ts
+  s_2dd11acf1bf19d::t_ff51aeb45b1079 1-3,8-56,62-79,83,102-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "38d8478eccef38945c1be51991a97a9ddff782bf",
+  "prompts": {},
+  "sessions": {
+    "s_2dd11acf1bf19d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e4031ed-9151-4cc4-abed-6d95597b73f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

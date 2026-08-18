@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvalCases.utils.test.ts
+  s_98cf123401c046::t_0a3e5de0255f91 59-67,199-205
+packages/frontend/editor-ui/src/features/core/dataTable/dataTable.store.ts
+  s_98cf123401c046::t_337e8760a81638 351-365
+  s_98cf123401c046::t_d2813f970aad57 478
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalCaseEditor.test.ts
+  s_98cf123401c046::t_e3667aaddf9fb6 98-117
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvals.store.test.ts
+  s_98cf123401c046::t_1f3df08a4d8290 22-30,44,110-111
+  s_98cf123401c046::t_22f32ec07574f5 201,250-252,254-262,264-280
+  s_98cf123401c046::t_112e5c979cef1f 253,263
+packages/frontend/editor-ui/src/features/agents/composables/useAgentEvalRunProgress.ts
+  s_98cf123401c046::t_0709e0b4f59dfb 139-142
+  s_98cf123401c046::t_90195b435390fc 143,151
+packages/frontend/editor-ui/src/features/agents/utils/agentEvalCases.utils.ts
+  s_98cf123401c046::t_4b43539f9601ca 37-48
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalCaseEditor.vue
+  s_98cf123401c046::t_112e5c979cef1f 76
+  s_98cf123401c046::t_2f7a9178054b39 134
+  s_98cf123401c046::t_c99d27623f73cf 65-72
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_98cf123401c046::t_2ffb651d9ebf29 32-37,39
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalsSection.vue
+  s_98cf123401c046::t_69de6e70b40020 42-45,47-48,57-58,60,70-71
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_98cf123401c046::t_f58f0cf17948a7 7851
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalCasesCard.test.ts
+  s_98cf123401c046::t_e3667aaddf9fb6 14-22,47,110,163-177
+packages/frontend/editor-ui/src/features/agents/agentEvals.store.ts
+  s_98cf123401c046::t_ff59080923de1d 65-67,252,255,278,281,300-301
+  s_98cf123401c046::t_ea5c0934eb1978 197-220,226,229
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalCasesCard.vue
+  s_98cf123401c046::t_68cc890292e975 80-84
+  s_98cf123401c046::t_30d593c6610250 302-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "39508ccd6427df0bdac9c56eaf16514ca2c4a264",
+  "prompts": {},
+  "sessions": {
+    "s_98cf123401c046": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bd44f34-8e05-442d-aa1b-26697eaed220",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

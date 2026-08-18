@@ -1,0 +1,56 @@
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_59804710ac246a::t_43e3d60eb90eec 1026-1028,1040-1045
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_59804710ac246a::t_29de7fff551351 49-51
+  s_59804710ac246a::t_eda93f1ad0b423 191
+  s_59804710ac246a::t_27a5a2670485d7 584-588,595
+  s_59804710ac246a::t_3474e2d0815505 628,630-632
+  s_59804710ac246a::t_6acbd2bde06456 685
+  s_59804710ac246a::t_f7be1722dff310 723-735,738-747,754
+  s_59804710ac246a::t_d41dfb8d07845e 736-737
+  s_59804710ac246a::t_5141a5fa74d062 2
+  s_59804710ac246a::t_308ad0ca640dbf 132
+  s_59804710ac246a::t_e1eb5e2d5ddfe8 10
+  s_59804710ac246a::t_8b363ac2122493 155
+  s_59804710ac246a::t_d0ca270e9c247a 214-223
+  s_59804710ac246a::t_7256d795b9aff0 436
+  s_59804710ac246a::t_832ae2e5e5333a 433-434,440-445,454
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_59804710ac246a::t_efa0c03b2ce3cf 479-540
+  s_59804710ac246a::t_78fc4ba067cee4 259-321
+  s_59804710ac246a::t_bfcd9535a03569 664-720
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_59804710ac246a::t_38c219e20345bb 47-52
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_59804710ac246a::t_ef37c9fdb116f8 1123
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_59804710ac246a::t_bfdc54fe2b5a6c 612
+  s_59804710ac246a::t_09c641882ae859 689,698
+  s_59804710ac246a::t_e76a789120a48e 641-642
+  s_59804710ac246a::t_f5df66fd12d80f 656-661,671
+packages/cli/src/modules/agents/entities/agent-task-snapshot.entity.ts
+  s_59804710ac246a::t_ac4fe61cb7edc1 1-5
+  s_59804710ac246a::t_93f12745529d8a 50,53-60
+packages/cli/src/modules/agents/repositories/agent-task-snapshot.repository.ts
+  s_59804710ac246a::t_157d5866a7330d 8
+packages/cli/src/modules/agents/entities/agent-task.entity.ts
+  s_59804710ac246a::t_ac2828d7cb7ad6 53
+  s_59804710ac246a::t_2cc78dbed43600 56-63
+  s_59804710ac246a::t_b55f232178fe9f 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d643f491398d5e474311a3c642defa038f09632a",
+  "prompts": {},
+  "sessions": {
+    "s_59804710ac246a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "630a9d8b-7a73-4d8a-96ac-3588b471e46f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

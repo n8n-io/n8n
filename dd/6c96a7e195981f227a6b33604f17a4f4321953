@@ -1,0 +1,23 @@
+packages/cli/src/__tests__/credentials-overwrites.test.ts
+  s_3494f01f496a9c::t_60b503ffa0b1cd 1258-1274
+  s_3494f01f496a9c::t_69cf51d4812220 1238-1239,1243-1247
+  s_3494f01f496a9c::t_a03fe6da5fc988 1213-1217
+packages/cli/src/credentials-overwrites.ts
+  s_3494f01f496a9c::t_562fff29ec6721 241-251,256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "dd6c96a7e195981f227a6b33604f17a4f4321953",
+  "prompts": {},
+  "sessions": {
+    "s_3494f01f496a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e75d83b-5671-46b5-825f-358514b27b6f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_36273918181d20::t_dd0a83c075dfed 1269
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.ts
+  s_36273918181d20::t_0de1c916c98508 199
+  s_36273918181d20::t_a5a4d016871d98 197-198,200-203
+  s_36273918181d20::t_945da9530aa0c3 324-335,368-369,376
+  s_36273918181d20::t_e1bdb0a9317f01 227-229,234,236-246,256,262,267
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_36273918181d20::t_812c716095881a 1028-1043,1051
+  s_36273918181d20::t_cd45927d20f955 1163
+  s_36273918181d20::t_1c1f51e7f76360 1073,1088,1101,1109,1117
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_36273918181d20::t_dd2342f1a83721 1132-1133
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialOAuth.test.ts
+  s_36273918181d20::t_08d06e1e278830 501,510,513,522,525,534
+  s_36273918181d20::t_207b8e4714688e 989-997,999-1011
+  s_36273918181d20::t_29a6d7d9bf4ef2 395-399
+  s_36273918181d20::t_4a7a82e3fe0738 849-850
+  s_36273918181d20::t_535c8f3f2c559c 463-470,476-485
+  s_36273918181d20::t_42dc169b9864cb 813-817
+  s_36273918181d20::t_6a7ff6500746d2 439
+  s_36273918181d20::t_0de1c916c98508 471-475,521,535,998
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fff67a8cfb6c59e692944c454046c84d14bde967",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_36273918181d20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "256ba1fe-e9fb-4850-95cd-6a054ba84250",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
