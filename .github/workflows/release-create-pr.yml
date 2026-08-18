@@ -89,8 +89,16 @@ jobs:
           corepack enable
 
       - name: Bump package versions
+        # Assign first: a command substitution nested in another command's
+        # arguments (e.g. `echo "X=$(node …)"`) discards the script's exit code.
+        shell: bash
         run: |
-          echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> "$GITHUB_ENV"
+          NEXT_RELEASE="$(node .github/scripts/bump-versions.mjs)"
+          if [ -z "$NEXT_RELEASE" ]; then
+            echo "::error::bump-versions.mjs produced no version"
+            exit 1
+          fi
+          echo "NEXT_RELEASE=$NEXT_RELEASE" >> "$GITHUB_ENV"
         env:
           RELEASE_TYPE: ${{ inputs.release-type }}
 

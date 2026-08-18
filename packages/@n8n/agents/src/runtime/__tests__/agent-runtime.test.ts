@@ -765,6 +765,73 @@ describe('AgentRuntime — empty stop turn retry', () => {
 });
 
 // ---------------------------------------------------------------------------
+// reasoning-only turn
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — reasoning-only turn', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	/**
+	 * The provider streamed thinking and then the stream ended without a
+	 * terminal chunk, so the SDK synthesizes the finish from its defaults: a
+	 * reasoning-only message, `other`, and no usage. Nothing the user can see
+	 * and nothing the loop can act on.
+	 */
+	function makeStreamReasoningOnly() {
+		return {
+			stream: makeChunkStream([{ type: 'reasoning-delta', id: 'r-1', text: 'thinking...' }]),
+			finishReason: Promise.resolve('other'),
+			usage: Promise.resolve({
+				inputTokens: undefined,
+				outputTokens: undefined,
+				totalTokens: undefined,
+			}),
+			response: Promise.resolve({
+				messages: [{ role: 'assistant', content: [{ type: 'reasoning', text: 'thinking...' }] }],
+			}),
+			toolCalls: Promise.resolve([]),
+		};
+	}
+
+	it('retries a reasoning-only turn instead of ending the run', async () => {
+		streamText
+			.mockReturnValueOnce(makeStreamReasoningOnly())
+			.mockReturnValueOnce(makeStreamSuccess('Recovered'));
+
+		const { runtime } = createRuntime();
+		const result = await runtime.stream('make my workflow smarter');
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const text = chunks
+			.filter((chunk): chunk is StreamChunk & { type: 'text-delta' } => chunk.type === 'text-delta')
+			.map((chunk) => chunk.delta)
+			.join('');
+		expect(text).toBe('Recovered');
+	});
+
+	it('reports an error rather than finishing silently when every attempt is reasoning-only', async () => {
+		streamText.mockImplementation(() => makeStreamReasoningOnly());
+
+		const { runtime } = createRuntime();
+		const result = await runtime.stream('make my workflow smarter');
+		const chunks = await collectChunks(result.stream);
+
+		const finish = chunks.find(
+			(chunk): chunk is StreamChunk & { type: 'finish' } => chunk.type === 'finish',
+		);
+		expect(finish?.finishReason).toBe('error');
+		const error = chunks.find(
+			(chunk): chunk is StreamChunk & { type: 'error' } => chunk.type === 'error',
+		);
+		expect(String((error?.error as Error).message)).toContain('no output');
+	});
+});
+
+// ---------------------------------------------------------------------------
 // generate() — graceful error contract
 // ---------------------------------------------------------------------------
 

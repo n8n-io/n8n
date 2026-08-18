@@ -34,11 +34,15 @@ const props = withDefaults(
 		detailItem?: ToolConnectionItem | null;
 		detailMode?: 'detail' | 'settings';
 		hideBackButton?: boolean;
+		allowWorkflowCreation?: boolean;
+		workflowCreationLoading?: boolean;
 	}>(),
 	{
 		open: false,
 		detailItem: null,
 		detailMode: 'detail',
+		allowWorkflowCreation: false,
+		workflowCreationLoading: false,
 	},
 );
 
@@ -54,6 +58,7 @@ const emit = defineEmits<{
 	'new-credential-connect': [item: ToolConnectionItem];
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
+	'create-workflow': [];
 }>();
 
 const i18n = useI18n();
@@ -324,6 +329,32 @@ function handleOpenChange(value: boolean) {
 					@update:model-value="selectCategory"
 				/>
 
+				<button
+					v-if="activeCategory === 'workflows' && allowWorkflowCreation"
+					type="button"
+					:class="$style.createWorkflowRow"
+					:disabled="workflowCreationLoading"
+					:aria-busy="workflowCreationLoading"
+					data-test-id="tools-connection-create-workflow"
+					@click="emit('create-workflow')"
+				>
+					<span :class="$style.createWorkflowIcon" aria-hidden="true">
+						<N8nIcon
+							:icon="workflowCreationLoading ? 'loader-circle' : 'plus'"
+							:size="20"
+							:spin="workflowCreationLoading"
+						/>
+					</span>
+					<span :class="$style.createWorkflowText">
+						<N8nText tag="span" bold>
+							{{ i18n.baseText('generic.create.workflow') }}
+						</N8nText>
+						<N8nText tag="span" size="small" color="text-light">
+							{{ i18n.baseText('projectRoles.workflow:create.tooltip') }}
+						</N8nText>
+					</span>
+				</button>
+
 				<div v-if="isListEmpty" :class="$style.empty" data-test-id="tools-connection-empty">
 					<N8nText color="text-light">{{ emptyMessage }}</N8nText>
 				</div>
@@ -377,6 +408,52 @@ function handleOpenChange(value: boolean) {
 .tabs {
 	border-bottom: 1px solid var(--border-color);
 	flex-shrink: 0;
+}
+
+.createWorkflowRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	width: 100%;
+	min-height: 58px;
+	padding: var(--spacing--2xs);
+	border: 0;
+	border-radius: var(--radius--2xs);
+	background: none;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+	flex-shrink: 0;
+
+	&:hover:not(:disabled) {
+		background: var(--color--background--light-1);
+	}
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		outline-offset: 2px;
+	}
+
+	&:disabled {
+		cursor: default;
+	}
+}
+
+.createWorkflowIcon {
+	flex-shrink: 0;
+	width: 32px;
+	height: 32px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color--primary);
+}
+
+.createWorkflowText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
 }
 
 // Runs past the dialog's own bottom padding so the list ends at the dialog
