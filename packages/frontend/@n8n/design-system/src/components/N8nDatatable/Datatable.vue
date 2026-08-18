@@ -1,14 +1,14 @@
 <script lang="ts" setup generic="Item extends DatatableRow">
 import { computed, ref } from 'vue';
 
+import type { DatatableProps } from './Datatable.types';
 import { useI18n } from '../../composables/useI18n';
 import type { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
 import { getValueByPath } from '../../utils';
+import N8nPagination from '../../v2/components/Pagination/Pagination.vue';
 import N8nOption from '../N8nOption';
-import N8nPagination from '../N8nPagination';
 import N8nSelect from '../N8nSelect';
 import N8nTableBase from '../TableBase';
-import type { DatatableProps } from './Datatable.types';
 
 const ALL_ROWS = -1;
 
@@ -107,13 +107,12 @@ function getThStyle(column: DatatableColumn) {
 		<div class="pagination">
 			<N8nPagination
 				v-if="totalPages > 1"
-				background
-				:pager-count="5"
-				:page-size="rowsPerPage"
-				layout="prev, pager, next"
+				:page="currentPage"
+				:items-per-page="rowsPerPage"
 				:total="totalRows"
-				:current-page="currentPage"
-				@update:current-page="onUpdateCurrentPage"
+				:show-total="false"
+				:show-sizes="false"
+				@update:page="onUpdateCurrentPage"
 			/>
 
 			<div class="pageSizeSelector">
