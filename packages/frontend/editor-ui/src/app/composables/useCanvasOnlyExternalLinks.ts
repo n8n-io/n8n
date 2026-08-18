@@ -1,25 +1,22 @@
+import { useEventListener } from '@vueuse/core';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { toValue, type MaybeRefOrGetter } from 'vue';
 
 import { openSafeUrl } from '@/app/utils/htmlUtils';
-
-function isActionLink(anchor: HTMLAnchorElement): boolean {
-	return Boolean(anchor.dataset.key || anchor.dataset.action);
-}
 
 function shouldOpenInNewTab(href: string | null): boolean {
 	return href !== null && href !== '' && !href.startsWith('#') && !href.startsWith('javascript:');
 }
 
 /**
- * In canvas-only embeds, open tutorial/documentation links inside the node
- * details view in a new tab so they do not navigate the iframe.
+ * Makes any link clicked inside the Node Details View open in a new tab, if
+ * N8N_CANVAS_ONLY is enabled.
  */
 export function useCanvasOnlyExternalLinks(root: MaybeRefOrGetter<HTMLElement | null | undefined>) {
 	const settingsStore = useSettingsStore();
 
 	const onClick = (event: MouseEvent) => {
-		if (!settingsStore.isCanvasOnly || event.defaultPrevented) {
+		if (event.defaultPrevented) {
 			return;
 		}
 
@@ -33,7 +30,7 @@ export function useCanvasOnlyExternalLinks(root: MaybeRefOrGetter<HTMLElement | 
 		}
 
 		const anchor = target.closest('a');
-		if (!anchor || isActionLink(anchor) || !shouldOpenInNewTab(anchor.getAttribute('href'))) {
+		if (!anchor || !shouldOpenInNewTab(anchor.getAttribute('href'))) {
 			return;
 		}
 
@@ -41,16 +38,10 @@ export function useCanvasOnlyExternalLinks(root: MaybeRefOrGetter<HTMLElement | 
 		openSafeUrl(anchor.href);
 	};
 
-	watch(
-		[() => settingsStore.isCanvasOnly, () => toValue(root)],
-		([canvasOnly, el], _, onCleanup) => {
-			if (!canvasOnly || !el) {
-				return;
-			}
-
-			el.addEventListener('click', onClick, true);
-			onCleanup(() => el.removeEventListener('click', onClick, true));
-		},
-		{ immediate: true },
+	useEventListener(
+		() => (settingsStore.isCanvasOnly ? toValue(root) : undefined),
+		'click',
+		onClick,
+		{ capture: true },
 	);
 }
