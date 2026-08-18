@@ -39,9 +39,6 @@ const approvalCardText = [
 	'Approval required',
 	'The agent wants to run this tool: Send Telegram message',
 	'Tool: Send Telegram message',
-	'Input: {',
-	'  "text": "Ship it?"',
-	'}',
 ].join('\n');
 
 function approvalSuspensionStream(): StreamChunk[] {

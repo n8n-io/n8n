@@ -163,4 +163,38 @@ describe('withDeterministicRouting', () => {
 		});
 		expect('workflowNeedsSetup' in outcome).toBe(false);
 	});
+
+	it('does not route setup when the only pending credentials were skipped by the user', () => {
+		// Mocked credentials and placeholders both normally force setup — a skipped credential
+		// still produces both, so the gate has to sit in front of them.
+		const outcome = withDeterministicRouting({
+			...makeOutcome({
+				mockedNodeNames: ['Post to Slack'],
+				mockedCredentialTypes: ['slackApi'],
+				mockedCredentialsByNode: { 'Post to Slack': ['slackApi'] },
+				hasUnresolvedPlaceholders: true,
+			}),
+			onlySkippedSetupRemains: true,
+		});
+
+		expect(outcome.setupRequirement).toMatchObject({
+			status: 'not_required',
+			reason: 'skipped-by-user',
+		});
+		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
+		expect('onlySkippedSetupRemains' in outcome).toBe(false);
+	});
+
+	it('still routes setup when a non-skipped credential is pending too', () => {
+		const outcome = withDeterministicRouting({
+			...makeOutcome({
+				mockedNodeNames: ['Post to Slack', 'Log to Sheet'],
+				mockedCredentialTypes: ['slackApi', 'googleSheetsOAuth2Api'],
+			}),
+			workflowNeedsSetup: true,
+			onlySkippedSetupRemains: false,
+		});
+
+		expect(outcome.setupRequirement).toMatchObject({ status: 'required' });
+	});
 });
