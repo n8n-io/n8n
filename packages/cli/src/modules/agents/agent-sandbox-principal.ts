@@ -10,6 +10,7 @@ export type AgentSandboxPrincipal =
 			platform: string;
 			platformUserId: string;
 	  }
+	| { type: 'project-session'; projectId: string; sessionId: string }
 	| { type: 'workflow-session'; workflowId: string; sessionId: string }
 	| {
 			type: 'workflow-execution';
@@ -83,6 +84,9 @@ export function hashAgentSandboxPrincipal(
 				principal.platform,
 				principal.platformUserId,
 			];
+			break;
+		case 'project-session':
+			canonicalPrincipal = [principal.type, principal.projectId, principal.sessionId];
 			break;
 		case 'workflow-session':
 			canonicalPrincipal = [principal.type, principal.workflowId, principal.sessionId];

@@ -1340,6 +1340,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 		const MESSAGE = 'hello';
 		const EXEC_ID = 'exec-id';
 		const THREAD_ID = 'thread-id';
+		const PROJECT_THREAD_ID = `workflow:project-project-1:${THREAD_ID}`;
+		const LEGACY_THREAD_ID = `wf:workflow-1:${THREAD_ID}`;
 		const executionSandboxScope = {
 			principalHash: hashAgentSandboxPrincipal({
 				type: 'workflow-execution',
@@ -1347,13 +1349,28 @@ describe('WorkflowExecuteAdditionalData', () => {
 				executionId: EXEC_ID,
 			}),
 		};
-		const sessionSandboxScope = {
+		const projectSessionSandboxScope = {
+			principalHash: hashAgentSandboxPrincipal({
+				type: 'project-session',
+				projectId: 'project-1',
+				sessionId: THREAD_ID,
+			}),
+		};
+		const legacySessionSandboxScope = {
 			principalHash: hashAgentSandboxPrincipal({
 				type: 'workflow-session',
 				workflowId: 'workflow-1',
 				sessionId: THREAD_ID,
 			}),
 		};
+		const callerWorkflowContext = (workflowId: string): ExecuteAgentWorkflowContext => ({
+			workflowId,
+			workflowName: 'My workflow',
+			callingNodeName: 'Message an Agent',
+			hasCallerSessionId: true,
+			nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }],
+			runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+		});
 
 		beforeEach(() => {
 			vi.clearAllMocks();
@@ -1362,6 +1379,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 			Container.set(OwnershipService, ownershipService);
 			agentWorkflowExecutionService.executeForWorkflow.mockResolvedValue(
 				mock<Awaited<ReturnType<typeof agentWorkflowExecutionService.executeForWorkflow>>>(),
+			);
+			agentWorkflowExecutionService.resolveWorkflowSessionThreadId.mockImplementation(
+				async ({ projectThreadId }) => projectThreadId,
 			);
 		});
 
@@ -1382,7 +1402,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				inlineAgent,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				PROJECT_THREAD_ID,
 				'project-1',
 				'user-1',
 				'production',
@@ -1407,7 +1427,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				inlineAgent,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				PROJECT_THREAD_ID,
 				'project-1',
 				'user-1',
 				'test',
@@ -1437,7 +1457,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				PROJECT_THREAD_ID,
 				'project-1',
 				'user-1',
 				true,
@@ -1473,7 +1493,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				PROJECT_THREAD_ID,
 				'project-1',
 				'user-1',
 				true,
@@ -1513,13 +1533,169 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				PROJECT_THREAD_ID,
 				'project-1',
 				'user-1',
 				true,
 				undefined,
 				workflowContext,
-				sessionSandboxScope,
+				projectSessionSandboxScope,
+			);
+		});
+
+		it('shares a caller session across workflows in the same project', async () => {
+			const firstAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+			const secondAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-2',
+			});
+
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				firstAdditionalData,
+				'manual',
+				undefined,
+				callerWorkflowContext('workflow-1'),
+			);
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				secondAdditionalData,
+				'manual',
+				undefined,
+				callerWorkflowContext('workflow-2'),
+			);
+
+			expect(
+				agentWorkflowExecutionService.executeForWorkflow.mock.calls.map((call) => call[3]),
+			).toEqual([PROJECT_THREAD_ID, PROJECT_THREAD_ID]);
+			expect(agentWorkflowExecutionService.resolveWorkflowSessionThreadId).toHaveBeenNthCalledWith(
+				2,
+				{
+					agentId: AGENT_ID,
+					projectId: 'project-1',
+					legacyThreadId: `wf:workflow-2:${THREAD_ID}`,
+					projectThreadId: PROJECT_THREAD_ID,
+				},
+			);
+		});
+
+		it('isolates the same caller session ID between projects', async () => {
+			const firstAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+			const secondAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-2',
+				workflowId: 'workflow-2',
+			});
+
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				firstAdditionalData,
+				'manual',
+				undefined,
+				callerWorkflowContext('workflow-1'),
+			);
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				secondAdditionalData,
+				'manual',
+				undefined,
+				callerWorkflowContext('workflow-2'),
+			);
+
+			expect(
+				agentWorkflowExecutionService.executeForWorkflow.mock.calls.map((call) => call[3]),
+			).toEqual([PROJECT_THREAD_ID, `workflow:project-project-2:${THREAD_ID}`]);
+		});
+
+		it('keeps the caller-facing session ID unchanged', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+			agentWorkflowExecutionService.executeForWorkflow.mockResolvedValueOnce(
+				mock<Awaited<ReturnType<typeof agentWorkflowExecutionService.executeForWorkflow>>>({
+					session: {
+						agentId: AGENT_ID,
+						projectId: 'project-1',
+						sessionId: PROJECT_THREAD_ID,
+						threadId: PROJECT_THREAD_ID,
+					},
+				}),
+			);
+
+			const result = await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'manual',
+				undefined,
+				callerWorkflowContext('workflow-1'),
+			);
+
+			expect(result.session).toEqual({
+				agentId: AGENT_ID,
+				projectId: 'project-1',
+				sessionId: THREAD_ID,
+				threadId: PROJECT_THREAD_ID,
+			});
+		});
+
+		it('keeps an existing workflow-scoped session on its legacy thread', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+			agentWorkflowExecutionService.resolveWorkflowSessionThreadId.mockResolvedValueOnce(
+				LEGACY_THREAD_ID,
+			);
+
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'manual',
+				undefined,
+				callerWorkflowContext('workflow-1'),
+			);
+
+			expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledWith(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				LEGACY_THREAD_ID,
+				'project-1',
+				'user-1',
+				true,
+				undefined,
+				callerWorkflowContext('workflow-1'),
+				legacySessionSandboxScope,
 			);
 		});
 
@@ -1547,7 +1723,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				PROJECT_THREAD_ID,
 				'project-1',
 				'user-1',
 				true,
@@ -1610,7 +1786,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				PROJECT_THREAD_ID,
 				'project-1',
 				undefined,
 				false,
@@ -1643,7 +1819,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					AGENT_ID,
 					MESSAGE,
 					EXEC_ID,
-					`wf:workflow-1:${THREAD_ID}`,
+					PROJECT_THREAD_ID,
 					'project-1',
 					'user-1',
 					true,
@@ -1678,7 +1854,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				AGENT_ID,
 				MESSAGE,
 				EXEC_ID,
-				`wf:workflow-1:${THREAD_ID}`,
+				PROJECT_THREAD_ID,
 				'project-1',
 				'user-1',
 				false,
