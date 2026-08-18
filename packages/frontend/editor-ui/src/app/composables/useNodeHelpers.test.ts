@@ -880,6 +880,9 @@ describe('useNodeHelpers()', () => {
 			// incompatible-trigger issue is copy about the workflow, so it doesn't read
 			// anything off the trigger's node type.
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn(() => notionNodeType);
+			mockedStore(useSettingsStore).settings.envFeatureFlags = {
+				N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2: 'false',
+			};
 		});
 
 		afterEach(() => {

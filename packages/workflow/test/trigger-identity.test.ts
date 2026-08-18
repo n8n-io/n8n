@@ -172,5 +172,15 @@ describe('classifyTriggerIdentity', () => {
 				providesExternalIdentity: false,
 			});
 		});
+
+		it.each([CHAT_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE])(
+			'provides the external identity for %s with a context establishment hook',
+			(type) => {
+				expect(classifyTriggerIdentity(type, hooksParameters)).toEqual({
+					providesN8nIdentity: false,
+					providesExternalIdentity: true,
+				});
+			},
+		);
 	});
 });

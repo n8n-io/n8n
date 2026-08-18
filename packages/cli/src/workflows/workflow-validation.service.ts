@@ -403,7 +403,9 @@ export class WorkflowValidationService {
 		const { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity } = triggers;
 
 		if (workflowResolverId === this.dynamicCredentialsProxy.getSystemResolverId()) {
-			// System resolver: every trigger must establish the n8n user identity. Chat and MCP only qualify in their identity-carrying configurations; form is only listed while the form OAuth2 flag is enabled, since without it a form establishes no identity.
+			// System resolver: every trigger must establish the n8n user identity. Chat and MCP only
+			// qualify in their identity-carrying configurations; form is only listed while the form
+			// OAuth2 flag is enabled, since without it a form establishes no identity.
 			if (allTriggersProvideN8nIdentity) return undefined;
 
 			const triggersList = this.getN8nUserAuthTriggersList();
@@ -422,9 +424,9 @@ export class WorkflowValidationService {
 	 * flag is enabled. Mirrors `classifyTriggerIdentity`.
 	 */
 	private getN8nUserAuthTriggersList(): string {
-		const formTrigger = isFormOAuth2Enabled() ? 'form or ' : '';
+		const authTriggers = isFormOAuth2Enabled() ? 'MCP, form, or webhook' : 'MCP or webhook';
 
-		return `manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP or ${formTrigger}webhook triggers with n8n user authentication`;
+		return `manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and ${authTriggers} triggers with n8n user authentication`;
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
