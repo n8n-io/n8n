@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { LicenseState } from '@n8n/backend-common';
 import type {
+	InboxVisibility,
 	User,
 	UserRepository,
 	WorkflowPublishedVersionRepository,
@@ -12,6 +13,7 @@ import { WorkflowReviewRequestRepository, WorkflowReviewRequestWorkflowRepositor
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
@@ -22,6 +24,7 @@ import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 describe('WorkflowReviewInboxService', () => {
 	const workflowReviewPolicyService = mockInstance(WorkflowReviewPolicyService);
 	const accessService = mock<WorkflowReviewAccessService>();
+	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowReviewRequestRepository = mockInstance(WorkflowReviewRequestRepository);
@@ -49,6 +52,7 @@ describe('WorkflowReviewInboxService', () => {
 		service = new WorkflowReviewInboxService(
 			new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 			accessService,
+			workflowFinderService,
 			workflowHistoryService,
 			publishedVersionRepository,
 			workflowReviewRequestRepository,
@@ -60,13 +64,21 @@ describe('WorkflowReviewInboxService', () => {
 		);
 	});
 
+	const involvedVisibility: InboxVisibility = {
+		scope: 'involved',
+		userId: 'user-1',
+		adminProjectIds: [],
+		readableProjectIds: ['proj-1'],
+		readableWorkflowRoles: ['workflow:owner', 'workflow:editor'],
+	};
+
 	describe('listForInbox', () => {
-		function mockAccessibleProjects(projectIds: string[] = ['proj-1']) {
-			accessService.resolveAccessibleProjectIds.mockResolvedValueOnce(projectIds);
+		function mockVisibility(visibility: InboxVisibility = involvedVisibility) {
+			accessService.resolveInboxVisibility.mockResolvedValueOnce(visibility);
 		}
 
 		it('returns paginated data with hasMore and nextCursor', async () => {
-			mockAccessibleProjects();
+			mockVisibility();
 			const rows = [
 				mock<WorkflowReviewRequest>({
 					id: 'req-2',
@@ -95,8 +107,7 @@ describe('WorkflowReviewInboxService', () => {
 			const result = await service.listForInbox(user, { limit: 1 });
 
 			expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith({
-				projectIds: ['proj-1'],
-				requesterId: 'user-1',
+				visibility: involvedVisibility,
 				state: 'open',
 				limit: 2,
 				cursor: undefined,
@@ -116,7 +127,7 @@ describe('WorkflowReviewInboxService', () => {
 		});
 
 		it('decodes the incoming cursor into a keyset boundary', async () => {
-			mockAccessibleProjects();
+			mockVisibility();
 			workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([]);
 			workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
 				new Map(),
@@ -133,12 +144,55 @@ describe('WorkflowReviewInboxService', () => {
 		});
 
 		it('rejects a malformed cursor', async () => {
-			mockAccessibleProjects();
+			mockVisibility();
 			const cursor = Buffer.from('not-a-valid-cursor', 'utf8').toString('base64url');
 
 			await expect(service.listForInbox(user, { limit: 15, cursor })).rejects.toThrow(
 				'Invalid pagination cursor',
 			);
+		});
+
+		describe('category', () => {
+			beforeEach(() => {
+				workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([]);
+				workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
+					new Map(),
+				);
+			});
+
+			it.each(['authored', 'waiting'] as const)(
+				'passes category %s through with the requesting user',
+				async (category) => {
+					mockVisibility();
+
+					await service.listForInbox(user, { limit: 15, category });
+
+					expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+						expect.objectContaining({ category: { userId: 'user-1', category } }),
+					);
+				},
+			);
+
+			it('derives the user from the request, never from the query', async () => {
+				mockVisibility();
+				const otherUser = mock<User>({ id: 'user-2', role: { slug: 'global:member', scopes: [] } });
+
+				await service.listForInbox(otherUser, { limit: 15, category: 'authored' });
+
+				expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+					expect.objectContaining({ category: { userId: 'user-2', category: 'authored' } }),
+				);
+			});
+
+			it('leaves the query unfiltered when the category is omitted', async () => {
+				mockVisibility();
+
+				await service.listForInbox(user, { limit: 15 });
+
+				expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+					expect.objectContaining({ category: undefined }),
+				);
+			});
 		});
 	});
 	describe('participants on inbox items', () => {
@@ -162,7 +216,7 @@ describe('WorkflowReviewInboxService', () => {
 		}
 
 		beforeEach(() => {
-			accessService.resolveAccessibleProjectIds.mockResolvedValue(['proj-1']);
+			accessService.resolveInboxVisibility.mockResolvedValue(involvedVisibility);
 			workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([inboxRow]);
 			workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
 				new Map(),
@@ -222,6 +276,118 @@ describe('WorkflowReviewInboxService', () => {
 			const [item] = (await service.listForInbox(user, { limit: 15 })).data;
 
 			expect(item?.authors).toEqual([]);
+		});
+	});
+
+	describe('getStatusesForWorkflows', () => {
+		const openRequest = (id: string, projectId = 'proj-1') =>
+			mock<WorkflowReviewRequest>({
+				id,
+				projectId,
+				state: 'open',
+				decision: 'pending',
+				createdAt: new Date('2024-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2024-01-02T00:00:00.000Z'),
+			});
+
+		beforeEach(() => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+			workflowReviewRequestRepository.findOpenRequestsForWorkflows.mockResolvedValue([]);
+			accessService.resolveOpenableRequestIds.mockResolvedValue(new Set());
+		});
+
+		it('returns every requested id as null when nothing is readable, without querying reviews for them', async () => {
+			workflowReviewRequestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
+				{ request: openRequest('req-x'), links: [] },
+			]);
+
+			const { data } = await service.getStatusesForWorkflows(user, {
+				workflowIds: ['wf-1', 'wf-2'],
+			});
+
+			expect(data).toEqual({ 'wf-1': null, 'wf-2': null });
+			// Only the readable subset is ever sent to the review repository
+			expect(
+				workflowReviewRequestRepository.findOpenRequestsForWorkflows,
+			).toHaveBeenCalledExactlyOnceWith([], {});
+		});
+
+		it('returns the open review summary for a readable workflow, openable or not', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['wf-1', 'wf-2']),
+			);
+			workflowReviewRequestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
+				{
+					request: openRequest('req-1'),
+					links: [{ workflowId: 'wf-1', workflowVersionId: 'ver-1' }],
+				},
+			]);
+
+			const { data } = await service.getStatusesForWorkflows(user, {
+				workflowIds: ['wf-1', 'wf-2'],
+			});
+
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf-1', 'wf-2'],
+				user,
+				['workflow:read'],
+			);
+			expect(data['wf-1']).toEqual({
+				summary: {
+					id: 'req-1',
+					state: 'open',
+					decision: 'pending',
+					workflowVersionId: 'ver-1',
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				},
+				viewerCanOpen: false,
+			});
+			expect(data['wf-2']).toBeNull();
+		});
+
+		it('marks the review openable through the shared access rule', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+			workflowReviewRequestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
+				{
+					request: openRequest('req-1', 'proj-9'),
+					links: [{ workflowId: 'wf-1', workflowVersionId: 'ver-1' }],
+				},
+			]);
+			accessService.resolveOpenableRequestIds.mockResolvedValue(new Set(['req-1']));
+
+			const { data } = await service.getStatusesForWorkflows(user, { workflowIds: ['wf-1'] });
+
+			expect(accessService.resolveOpenableRequestIds).toHaveBeenCalledWith(user, [
+				{ id: 'req-1', projectId: 'proj-9' },
+			]);
+			expect(data['wf-1']).toMatchObject({ viewerCanOpen: true });
+		});
+
+		it('hides an open review whose pin was pruned', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+			workflowReviewRequestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
+				{ request: openRequest('req-1'), links: [{ workflowId: 'wf-1', workflowVersionId: null }] },
+			]);
+
+			const { data } = await service.getStatusesForWorkflows(user, { workflowIds: ['wf-1'] });
+
+			expect(data['wf-1']).toBeNull();
+		});
+
+		it('deduplicates requested ids before the readable lookup', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+
+			const { data } = await service.getStatusesForWorkflows(user, {
+				workflowIds: ['wf-1', 'wf-1'],
+			});
+
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf-1'],
+				user,
+				['workflow:read'],
+			);
+			expect(data).toEqual({ 'wf-1': null });
 		});
 	});
 });

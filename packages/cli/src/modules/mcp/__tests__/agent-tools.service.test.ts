@@ -207,7 +207,7 @@ describe('McpAgentToolsService', () => {
 		const agentTaskRepository = mock<AgentTaskRepository>();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		agentRepository.save.mockImplementation(async (entity) => entity as Agent);
+		agentRepository.saveDraftFenced.mockResolvedValue(true);
 		localCredentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 		localCredentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 		localCredentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
@@ -1872,6 +1872,21 @@ describe('McpAgentToolsService', () => {
 				connected: false,
 				published: false,
 				activeVersionId: null,
+			});
+		});
+
+		it('forwards a replacement so the swap happens in one operation', async () => {
+			await callTool('update_agent_integration', {
+				...input,
+				replacesCredentialId: 'cred-0',
+			});
+
+			expect(integrationManagementService.connect).toHaveBeenCalledWith({
+				agent: expect.objectContaining({ id: 'agent-1' }),
+				user,
+				integration: { type: 'slack', credentialId: 'cred-1' },
+				replaces: { type: 'slack', credentialId: 'cred-0' },
+				modifiedBy: 'mcp',
 			});
 		});
 

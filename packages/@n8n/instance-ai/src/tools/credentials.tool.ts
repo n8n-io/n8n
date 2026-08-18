@@ -13,6 +13,10 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import {
+	buildChatModelProviderHint,
+	isChatModelProviderCredentialType,
+} from './nodes/preferred-chat-model';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
 import {
 	extractServiceHost,
@@ -298,6 +302,12 @@ const setupAction = z.object({
 			}),
 		)
 		.describe('List of credentials to set up'),
+	requireUserSelection: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set true only for standalone setup when the user explicitly asks to create a new, separate, or different credential, or explicitly asks to see the setup card or choose a credential even if one already exists. Keeps the card open for an explicit user choice instead of automatically accepting a sole existing credential. Omit otherwise.',
+		),
 	credentialFlow: z
 		.object({
 			stage: z.enum(['generic', 'finalize']),
@@ -424,6 +434,7 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 	credentialRequests: z.array(credentialRequestSchema).optional(),
 	projectId: z.string().optional(),
+	requireUserSelection: z.boolean().optional(),
 	credentialFlow: z.object({ stage: z.enum(['generic', 'finalize']) }).optional(),
 });
 
@@ -457,6 +468,23 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 	const storedCredentials = await context.credentialService.list({
 		type: input.type,
 	});
+
+	// An empty LLM-provider lookup is the moment the builder locks in a default
+	// provider — surface the LLM credentials the user does have so it prefers
+	// those (or asks) instead.
+	let chatModelProviderHint: string | undefined;
+	if (
+		input.type &&
+		storedCredentials.length === 0 &&
+		isChatModelProviderCredentialType(input.type)
+	) {
+		try {
+			const allStored = await context.credentialService.list({});
+			chatModelProviderHint = buildChatModelProviderHint(input.type, allStored);
+		} catch {
+			// Soft signal — the primary (empty) listing still returns.
+		}
+	}
 
 	// When the caller filters by type, prepend the synthetic n8n Connect
 	// managed entry if the AI Gateway covers that credential type. This is
@@ -494,6 +522,14 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 
 	const truncatedWithoutNarrowing = hasMore && !input.name && !input.type;
 
+	// Mutually exclusive: the provider hint requires a type filter, the
+	// truncation hint requires none.
+	const hint =
+		chatModelProviderHint ??
+		(truncatedWithoutNarrowing
+			? `Showing ${page.length} of ${total} credentials. Pass \`name\` (substring) or \`type\` to narrow the search before concluding a user-named credential doesn't exist, or use \`offset\` to paginate.`
+			: undefined);
+
 	return {
 		credentials: page.map((c) =>
 			c.id === null
@@ -502,11 +538,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		),
 		total,
 		hasMore,
-		...(truncatedWithoutNarrowing
-			? {
-					hint: `Showing ${page.length} of ${total} credentials. Pass \`name\` (substring) or \`type\` to narrow the search before concluding a user-named credential doesn't exist, or use \`offset\` to paginate.`,
-				}
-			: {}),
+		...(hint ? { hint } : {}),
 	};
 }
 
@@ -664,6 +696,7 @@ async function handleSetup(
 			severity: 'info' as const,
 			credentialRequests,
 			...(context.projectId ? { projectId: context.projectId } : {}),
+			...(input.requireUserSelection === true ? { requireUserSelection: true } : {}),
 			...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
 		});
 	}

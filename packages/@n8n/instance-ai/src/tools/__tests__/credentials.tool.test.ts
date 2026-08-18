@@ -85,6 +85,19 @@ describe('credentials tool', () => {
 			expect(getDescription(tool)).toContain('set up new credentials');
 		});
 
+		it('should require requireUserSelection to be a boolean when provided', () => {
+			const tool = createCredentialsTool(createMockContext());
+			const schema = getInputSchema(tool);
+			const setupInput = {
+				action: 'setup',
+				credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
+			};
+
+			expect(schema.safeParse({ ...setupInput, requireUserSelection: true }).success).toBe(true);
+			expect(schema.safeParse({ ...setupInput, requireUserSelection: false }).success).toBe(true);
+			expect(schema.safeParse({ ...setupInput, requireUserSelection: 'true' }).success).toBe(false);
+		});
+
 		it('should describe only explicitly allowed actions', () => {
 			const tool = createCredentialsTool(createMockContext(), {
 				allowedActions: builderCredentialActions,
@@ -403,6 +416,104 @@ describe('credentials tool', () => {
 		});
 	});
 
+	// ── list steering toward existing LLM-provider credentials ─────────────
+
+	describe('list action — existing LLM-provider credential hint', () => {
+		const gemini: CredentialSummary = {
+			id: 'g1',
+			name: 'Google Gemini account',
+			type: 'googlePalmApi',
+		};
+		const slack: CredentialSummary = { id: 's1', name: 'Slack token', type: 'slackApi' };
+
+		function makeContextWithStored(stored: CredentialSummary[]) {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockImplementation((options?: { type?: string }) =>
+				options?.type ? stored.filter((c) => c.type === options.type) : stored,
+			);
+			return context;
+		}
+
+		it('hints at stored LLM credentials when a filtered LLM-type lookup finds none', async () => {
+			const context = makeContextWithStored([gemini, slack]);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'openAiApi' },
+				noSuspendCtx(),
+			);
+
+			expect(result.credentials).toEqual([]);
+			expect(result.hint).toContain('"Google Gemini account" (googlePalmApi, id: g1)');
+		});
+
+		it('does not hint when a stored credential of the requested type exists', async () => {
+			const openAi: CredentialSummary = { id: 'o1', name: 'My OpenAI', type: 'openAiApi' };
+			const context = makeContextWithStored([openAi, gemini]);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'openAiApi' },
+				noSuspendCtx(),
+			);
+
+			expect(result.hint).toBeUndefined();
+			expect(context.credentialService.list).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not hint or re-list for an empty non-LLM type lookup', async () => {
+			const context = makeContextWithStored([gemini]);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'notionApi' },
+				noSuspendCtx(),
+			);
+
+			expect(result.hint).toBeUndefined();
+			expect(context.credentialService.list).toHaveBeenCalledTimes(1);
+		});
+
+		it('still hints when the requested type only has the synthetic n8n Connect entry', async () => {
+			const context = makeContextWithStored([gemini]);
+			(
+				context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'openAiApi' },
+				noSuspendCtx(),
+			);
+
+			expect(result.credentials).toEqual([
+				expect.objectContaining({ id: null, type: 'openAiApi', __aiGatewayManaged: true }),
+			]);
+			expect(result.hint).toContain('googlePalmApi');
+		});
+
+		it('returns the empty listing without a hint when the unfiltered lookup fails', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockImplementation((options?: { type?: string }) => {
+				if (!options?.type) throw new Error('boom');
+				return [];
+			});
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'openAiApi' },
+				noSuspendCtx(),
+			);
+
+			expect(result).toEqual({ credentials: [], total: 0, hasMore: false });
+		});
+	});
+
 	// ── get ─────────────────────────────────────────────────────────────────
 
 	describe('get action', () => {
@@ -712,6 +823,45 @@ describe('credentials tool', () => {
 					],
 				}),
 			);
+			expect(suspendFn.mock.calls[0][0]).not.toHaveProperty('requireUserSelection');
+		});
+
+		it('should propagate requireUserSelection when explicitly enabled', async () => {
+			const context = createMockContext();
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+
+			await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'openRouterApi', reason: 'Set up a new account' }],
+					requireUserSelection: true,
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn.mock.calls[0][0]).toEqual(
+				expect.objectContaining({ requireUserSelection: true }),
+			);
+		});
+
+		it('should omit requireUserSelection when explicitly disabled', async () => {
+			const context = createMockContext();
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+
+			await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi', reason: 'Set up Slack' }],
+					requireUserSelection: false,
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn.mock.calls[0][0]).not.toHaveProperty('requireUserSelection');
 		});
 
 		it('should include suggestedName in credentialRequests when provided', async () => {

@@ -62,6 +62,77 @@ describe('getUserFacingErrorMessage', () => {
 			'Something went wrong before I could finish that response. Please try again.',
 		);
 	});
+
+	describe('provider attachment rejections', () => {
+		const oversizedImage =
+			'messages.0.content.1.image: image exceeds 10 MB maximum: 12058221 bytes > 10485760 bytes';
+
+		// Real shapes the provider returns when it refuses an attachment outright.
+		it.each([
+			oversizedImage,
+			'messages.0.content.1.image.source.base64.data: At least one of the image dimensions exceed max allowed size for many-image requests',
+			'Could not process image. The image is too large.',
+		])('points the user at the attachment for: %s', (providerMessage) => {
+			const message = getUserFacingErrorMessage(new Error(providerMessage));
+			expect(message.toLowerCase()).toContain('attached file');
+			expect(message).not.toContain('Something went wrong');
+		});
+
+		it('does not tell the user to retry, since a retry replays the same attachment', () => {
+			expect(getUserFacingErrorMessage(new Error(oversizedImage)).toLowerCase()).not.toContain(
+				'try again',
+			);
+		});
+
+		it('quotes the raw-file limit the user can compare against their file', () => {
+			expect(getUserFacingErrorMessage(new Error(oversizedImage))).toContain('7.5 MB');
+		});
+
+		// A refused PDF or CSV told to satisfy a pixel limit sends the user the wrong way.
+		it('describes the attachment generically rather than assuming an image', () => {
+			const message = getUserFacingErrorMessage(new Error(oversizedImage));
+			expect(message).toContain('file');
+			expect(message).not.toMatch(/attached images/);
+		});
+
+		// The provider's text is usually unreachable at this point, so a removal driven
+		// only by "this turn had attachments and produced nothing" must not invent a cause.
+		it('omits the size hint when the error does not say the file was too large', () => {
+			const message = getUserFacingErrorMessage(new Error('No output generated.'), undefined, {
+				attachmentRemoved: true,
+			});
+			expect(message.toLowerCase()).toContain('left it out');
+			expect(message).not.toContain('7.5 MB');
+			expect(message).not.toContain('8000x8000');
+		});
+
+		it('leaves unrelated provider errors on the generic message', () => {
+			expect(getUserFacingErrorMessage(new Error('messages: too many total tokens'))).toBe(
+				'Something went wrong before I could finish that response. Please try again.',
+			);
+			expect(getUserFacingErrorMessage(new Error('image generation is not supported'))).toBe(
+				'Something went wrong before I could finish that response. Please try again.',
+			);
+		});
+
+		// When history could not be rewritten the attachment is still there, so the
+		// thread stays broken — promising it was removed would be a lie.
+		it('claims the attachment was dropped only when it actually was', () => {
+			const recovered = getUserFacingErrorMessage(new Error(oversizedImage), undefined, {
+				attachmentRemoved: true,
+			});
+			expect(recovered.toLowerCase()).toContain('left it out');
+			expect(recovered).toContain('7.5 MB');
+		});
+
+		it('tells the user to start a new chat when the attachment could not be removed', () => {
+			const stranded = getUserFacingErrorMessage(new Error(oversizedImage), undefined, {
+				attachmentRemoved: false,
+			});
+			expect(stranded.toLowerCase()).not.toContain('left it out');
+			expect(stranded.toLowerCase()).toContain('new chat');
+		});
+	});
 });
 
 function createNoOutputGeneratedError(): Error {

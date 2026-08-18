@@ -70,6 +70,13 @@ For repairs, prefer editing the workspace file directly with file tools
 (`workspace_str_replace_file`) and calling `build-workflow` again with the same
 `filePath`.
 
+When a repair adds a node into an existing chain (an ensure-the-target-exists
+step, a dedupe, a notification), check what the downstream node reads before
+wiring it in-line — workflow rule 7 applies: an inserted write/create node
+replaces the payload flowing into the next node with its own API response.
+Branch it in parallel, reorder it upstream of the data producer, or make the
+downstream node reference the data node explicitly.
+
 ## Escalation
 
 If the service or workflow shape is clear, never stop before the first
@@ -279,7 +286,8 @@ When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
 
 - The workflow is verified by structured tool evidence.
-- Setup is required and `workflows(action="setup")` has been routed or deferred.
+- Setup is required and `workflows(action="setup")` has been routed or deferred,
+  or the only setup left is for credentials the user skipped earlier.
 - A remediation guard says `shouldEdit: false`.
 - You are blocked after one repair attempt per unique failure signature.
 
@@ -476,7 +484,8 @@ unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
 every reported error and warning before calling `build-workflow`.
 
-- Code nodes need not always be necessary. You can use other n8n nodes to do the same thing.
+- Avoid code node where possible, use n8n nodes that help do the same thing.
+  If it makes it simpler, go ahead and use code node.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
   literals; do runtime joining, aggregation, or transforms in a Code node or
@@ -492,6 +501,15 @@ every reported error and warning before calling `build-workflow`.
   configs and from `sticky()` options alike. Positions are auto-calculated, and
   the saved workflow's own layout is restored on save, so nothing you drop here
   is lost. Leaving some in place is worse than dropping all of them.
+- When editing a pre-loaded workflow, keep every `config.id` value **exactly** as
+  `get-as-code` produced it, on the node it came with. `id` is the node's
+  permanent identity in n8n — execution logs, poll cursors, deduplication state
+  and the version diff are all keyed on it. Rename a node freely; the `id` stays.
+  Move it, rewire it, change its parameters — the `id` stays. Never invent, edit,
+  renumber or reuse an `id`, and never copy one from a template, another workflow
+  or another node. **Omit `id` entirely for any node you are adding** — one is
+  assigned on save. Deleting a node means deleting its `id` line with it. This is
+  the opposite of `position`: drop every `position`, keep every `id`.
 - Use `placeholder('hint')` directly as the parameter value. Do not wrap
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one
@@ -624,6 +642,15 @@ Follow these rules strictly when generating workflows:
    match time units broadly (day/days, week/weeks…), and give every classifier
    an explicit fallback bucket — a one-phrasing regex silently misroutes every
    other phrasing.
+7. Inserting a node into an existing connection A→B changes what B receives:
+   `$json` and auto-mapped fields in B now read the inserted node's output, not
+   A's. Write/create/send nodes output their **API response** (ids, metadata,
+   `ok` flags), never the data that flowed into them — so inserting one
+   in-line (e.g. an ensure-the-target-exists step before a write) silently
+   replaces the payload with metadata. Keep the data path intact instead:
+   branch the inserted node in parallel from the data producer, reorder it
+   upstream of the data producer, or have B reference `$('Data Node')`
+   explicitly.
 
 ## Tool Naming Rules
 

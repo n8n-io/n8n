@@ -29,7 +29,9 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	async loadExecution(id: string): Promise<ExecutionRecord> {
-		const row = await this.repo.findOneBy({ id });
+		// NOTE: `findOne({ where })`, not `findOneBy`: the latter's overload exceeds
+		// TypeScript's instantiation depth on the recursive `triggerOutputs` column type.
+		const row = await this.repo.findOne({ where: { id } });
 		if (!row) throw new ExecutionNotFoundError(id);
 		return row;
 	}

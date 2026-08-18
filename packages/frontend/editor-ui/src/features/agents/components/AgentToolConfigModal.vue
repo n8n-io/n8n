@@ -11,10 +11,12 @@ import {
 	N8nDialogHeader,
 	N8nIcon,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import type { INode } from 'n8n-workflow';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { extractFromAICalls, type INode } from 'n8n-workflow';
 import { FocusScope } from 'reka-ui';
 
+import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type {
 	AgentJsonMcpServerConfig,
@@ -41,6 +43,7 @@ interface ToolModalData {
 	existingToolNames?: string[];
 	projectId?: string;
 	agentId?: string;
+	validationIssues?: AgentConfigValidationIssue[];
 	/** Inline agents pass false: approval needs suspend/resume, which workflow executions don't support. */
 	supportsToolApproval?: boolean;
 	onConfirm: (updatedRef: AgentJsonToolRef) => void;
@@ -74,6 +77,8 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const httpRequestUrlErrorKey =
+	'agents.builder.validation.issue.httpRequestUrlFromAi' as BaseTextKey;
 const uiStore = useUIStore();
 const isCredentialModalOpen = computed(
 	() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open === true,
@@ -88,6 +93,15 @@ const isOpen = computed({
 
 function isMcpServerModalData(data: AgentToolConfigModalData): data is McpServerModalData {
 	return data.kind === 'mcpServer';
+}
+
+function containsFromAiCall(value: unknown): boolean {
+	if (typeof value !== 'string') return false;
+	try {
+		return extractFromAICalls(value).length > 0;
+	} catch {
+		return false;
+	}
 }
 
 const isMcpTool = computed(() => isMcpServerModalData(props.data));
@@ -149,11 +163,6 @@ const customToolTitle = computed(() => {
 const canRender = computed(
 	() => isCustomTool.value || isWorkflowTool.value || initialNode.value !== null,
 );
-const canSave = computed(() => {
-	if (isCustomTool.value) return true;
-	if (isMcpTool.value) return isValid.value && mcpApprovalValid.value;
-	return isValid.value;
-});
 const supportsApproval = computed(() => props.data.supportsToolApproval !== false);
 const showApprovalSetting = computed(
 	() => supportsApproval.value && !isMcpTool.value && toolModalData.value !== null,
@@ -184,6 +193,43 @@ watch(
 );
 
 const currentNode = computed(() => draftNode.value ?? initialNode.value);
+const hasHttpRequestUrlIssue = computed(() => {
+	const data = toolModalData.value;
+	if (data?.toolRef.type !== 'node') return false;
+	if (
+		!data.validationIssues?.some(
+			(issue) => issue.code === 'invalid_value' && issue.path.endsWith('.node.nodeParameters.url'),
+		)
+	) {
+		return false;
+	}
+
+	const url = currentNode.value?.parameters.url;
+	return containsFromAiCall(url);
+});
+const canSave = computed(() => {
+	if (isCustomTool.value) return true;
+	if (isMcpTool.value) return isValid.value && mcpApprovalValid.value;
+	return isValid.value && !hasHttpRequestUrlIssue.value;
+});
+const fromAiDisabledParameters = computed(() => {
+	const toolRef = toolModalData.value?.toolRef;
+	if (
+		toolRef?.type === 'node' &&
+		(toolRef.node.nodeType === HTTP_REQUEST_NODE_TYPE ||
+			toolRef.node.nodeType === HTTP_REQUEST_TOOL_NODE_TYPE)
+	) {
+		return ['url'];
+	}
+	return [];
+});
+const nodeParameterIssues = computed<Record<string, string[]>>(() => {
+	const issues: Record<string, string[]> = {};
+	if (hasHttpRequestUrlIssue.value) {
+		issues.url = [i18n.baseText(httpRequestUrlErrorKey)];
+	}
+	return issues;
+});
 
 const headerKind = computed<'node' | 'workflow' | 'custom' | 'mcp'>(() => {
 	if (isCustomTool.value) return 'custom';
@@ -386,6 +432,8 @@ function handleNodeUpdate(node: INode) {
 							:initial-node="initialNode"
 							:existing-tool-names="data.existingToolNames"
 							:project-id="data.projectId"
+							:from-ai-disabled-parameters="fromAiDisabledParameters"
+							:parameter-issues="nodeParameterIssues"
 							content-test-id="node-tool-settings-content"
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"

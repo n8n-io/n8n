@@ -1,3 +1,4 @@
+import { isZodSchema, zodToJsonSchema } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
 import { executeTool } from '../__tests__/tool-test-utils';
@@ -13,6 +14,7 @@ const notion: McpRegistryServerSummary = {
 	slug: 'notion',
 	title: 'Notion',
 	description: 'Work with Notion pages and databases',
+	credentialType: 'notionMcpOAuth2Api',
 	tools: ['create_page', 'search_pages'],
 };
 
@@ -20,6 +22,7 @@ const linear: McpRegistryServerSummary = {
 	slug: 'linear',
 	title: 'Linear',
 	description: 'Track issues in Linear',
+	credentialType: 'linearMcpOAuth2Api',
 	tools: ['create_issue'],
 };
 
@@ -33,8 +36,8 @@ function makeContext(
 	return context;
 }
 
-function makeService(servers: McpRegistryServerSummary[]): InstanceAiMcpService {
-	return { search: vi.fn().mockResolvedValue(servers) };
+function withConnections(...slugs: string[]): Partial<InstanceAiMcpService> {
+	return { listConnections: vi.fn().mockResolvedValue(slugs.map((slug) => ({ slug }))) };
 }
 
 function makeServers(count: number): McpRegistryServerSummary[] {
@@ -42,13 +45,41 @@ function makeServers(count: number): McpRegistryServerSummary[] {
 		slug: `server-${index}`,
 		title: `Server ${index}`,
 		description: 'An API service',
+		credentialType: `server${index}McpOAuth2Api`,
 		tools: [`tool_${index}`],
 	}));
 }
 
+function makeService(
+	servers: McpRegistryServerSummary[],
+	overrides: Partial<InstanceAiMcpService> = {},
+): InstanceAiMcpService {
+	return {
+		search: vi.fn().mockResolvedValue(servers),
+		getServers: vi
+			.fn()
+			.mockImplementation((slugs: string[]) =>
+				servers.filter((server) => slugs.includes(server.slug)),
+			),
+		listConnections: vi.fn().mockResolvedValue([]),
+		...overrides,
+	};
+}
+
 interface SearchOutput {
-	results: McpRegistryServerSummary[];
+	results: Array<Omit<McpRegistryServerSummary, 'credentialType'>>;
 	hint?: string;
+}
+
+interface ConnectOutput {
+	connectedSlugs: string[];
+	message: string;
+}
+
+interface SuspendPayload {
+	requestId: string;
+	message: string;
+	mcpConnectRequest: { servers: Array<{ serverSlug: string; title: string; tagline?: string }> };
 }
 
 async function search(
@@ -75,13 +106,71 @@ async function connected(services?: ConnectedMcpService[]): Promise<ConnectedOut
 	return await executeTool<ConnectedOutput>(tool, { action: 'connected' });
 }
 
+function suspendingContext() {
+	const suspend = vi.fn().mockResolvedValue(undefined);
+	return { ctx: { resumeData: undefined, suspend }, suspend };
+}
+
+type JsonSchema = NonNullable<ReturnType<typeof zodToJsonSchema>>;
+
+function inputJsonSchema(): JsonSchema {
+	const { inputSchema } = createMcpServersTool(makeContext(makeService([])));
+	if (!isZodSchema(inputSchema)) throw new Error('expected a Zod input schema');
+	const jsonSchema = zodToJsonSchema(inputSchema);
+	if (!jsonSchema) throw new Error('expected the input schema to convert');
+	return jsonSchema;
+}
+
+function property(schema: JsonSchema, name: string): JsonSchema {
+	const value = schema.properties?.[name];
+	if (typeof value !== 'object') throw new Error(`expected an object schema for "${name}"`);
+	return value;
+}
+
 function toolDescription(): string {
 	return createMcpServersTool(makeContext(makeService([]))).description;
 }
 
 describe('mcp-servers tool', () => {
-	// This guidance used to live in the system prompt. `mcp-servers` is never
-	// deferred, so its description reaches every request without a second copy.
+	describe('input schema', () => {
+		it('is a top-level object rather than a bare union', () => {
+			const schema = inputJsonSchema();
+
+			expect(schema.type).toBe('object');
+			expect(schema.anyOf).toBeUndefined();
+			expect(schema.oneOf).toBeUndefined();
+		});
+
+		it('offers every action and every per-action field', () => {
+			const schema = inputJsonSchema();
+
+			expect(property(schema, 'action').enum).toEqual([
+				'connected',
+				'details',
+				'search',
+				'connect',
+			]);
+			expect(Object.keys(schema.properties ?? {})).toEqual(
+				expect.arrayContaining(['action', 'slug', 'queries', 'serverSlugs', 'reason']),
+			);
+		});
+
+		it('requires only the action, leaving the rest to the handler', () => {
+			expect(inputJsonSchema().required).toEqual(['action']);
+		});
+
+		it('keeps the per-action guidance the model needs to pick an action', () => {
+			const schema = inputJsonSchema();
+
+			expect(property(schema, 'action').description).toContain('Search the available MCP servers');
+			expect(property(schema, 'action').description).toContain(
+				'connect a third party service returned by `search`',
+			);
+			expect(property(schema, 'queries').description).toContain('"search"');
+			expect(property(schema, 'serverSlugs').description).toContain('at most 3');
+		});
+	});
+
 	describe('description', () => {
 		it('names who changes a connection, so a missing server is not read as expiry', () => {
 			const description = toolDescription();
@@ -207,78 +296,258 @@ describe('mcp-servers tool', () => {
 		});
 	});
 
-	it('passes the queries through and returns the matching servers', async () => {
-		const mcpService = makeService([notion, linear]);
-		const tool = createMcpServersTool(makeContext(mcpService));
+	describe('search', () => {
+		it('passes the queries through and returns the matching servers', async () => {
+			const mcpService = makeService([notion, linear]);
+			const tool = createMcpServersTool(makeContext(mcpService));
 
-		const output = await executeTool<SearchOutput>(tool, {
-			action: 'search',
-			queries: ['notion', 'linear'],
+			const output = await executeTool<SearchOutput>(tool, {
+				action: 'search',
+				queries: ['notion', 'linear'],
+			});
+
+			expect(mcpService.search).toHaveBeenCalledWith(['notion', 'linear']);
+			expect(output.results).toEqual([
+				{
+					slug: 'notion',
+					title: 'Notion',
+					description: notion.description,
+					tools: notion.tools,
+				},
+				{
+					slug: 'linear',
+					title: 'Linear',
+					description: linear.description,
+					tools: linear.tools,
+				},
+			]);
 		});
 
-		expect(mcpService.search).toHaveBeenCalledWith(['notion', 'linear']);
-		expect(output.results.map((result) => result.slug)).toEqual(['notion', 'linear']);
+		it('caps the results and says it truncated', async () => {
+			const output = await search(makeServers(8), ['api']);
+
+			expect(output.results).toHaveLength(5);
+			expect(output.hint).toContain('narrower query');
+		});
+
+		it('does not claim truncation when everything fits', async () => {
+			const output = await search(makeServers(5), ['api']);
+
+			expect(output.hint).not.toContain('narrower query');
+		});
+
+		it('returns no results when nothing matches', async () => {
+			const tool = createMcpServersTool(makeContext(makeService([])));
+
+			const output = await executeTool<SearchOutput>(tool, {
+				action: 'search',
+				queries: ['nothing-like-this'],
+			});
+
+			expect(output.results).toEqual([]);
+		});
+
+		it('points at the connect action when something is not connected yet', async () => {
+			const output = await search([notion]);
+
+			expect(output.hint).toContain('action: "connect"');
+		});
+
+		it('omits the hint when nothing was found', async () => {
+			const output = await search([]);
+
+			expect(output.hint).toBeUndefined();
+		});
+
+		it('rejects an empty query list', async () => {
+			const tool = createMcpServersTool(makeContext(makeService([notion])));
+
+			await expect(executeTool(tool, { action: 'search', queries: [] })).rejects.toThrow();
+		});
+
+		it('rejects a search with no queries at all', async () => {
+			const mcpService = makeService([notion]);
+			const tool = createMcpServersTool(makeContext(mcpService));
+
+			await expect(executeTool(tool, { action: 'search' })).rejects.toThrow();
+			expect(mcpService.search).not.toHaveBeenCalled();
+		});
+
+		it('fails loudly when the host did not wire the MCP service', async () => {
+			const tool = createMcpServersTool(makeContext(undefined));
+
+			await expect(executeTool(tool, { action: 'search', queries: ['notion'] })).rejects.toThrow(
+				'Tool connections are not available on this instance.',
+			);
+		});
+
+		it('propagates registry failures', async () => {
+			const mcpService = makeService([], {
+				search: vi.fn().mockRejectedValue(new Error('registry unavailable')),
+			});
+			const tool = createMcpServersTool(makeContext(mcpService));
+
+			await expect(executeTool(tool, { action: 'search', queries: ['notion'] })).rejects.toThrow(
+				'registry unavailable',
+			);
+		});
 	});
 
-	it('returns no results when nothing matches', async () => {
-		const output = await search([]);
+	describe('connect', () => {
+		it('suspends with the unconnected servers and the reason', async () => {
+			const tool = createMcpServersTool(makeContext(makeService([notion])));
+			const { ctx, suspend } = suspendingContext();
 
-		expect(output.results).toEqual([]);
-	});
+			await executeTool(
+				tool,
+				{ action: 'connect', serverSlugs: ['notion'], reason: 'To read your Notion pages' },
+				ctx,
+			);
 
-	it('passes each server through with its tool names', async () => {
-		const output = await search([notion, linear]);
+			const payload = suspend.mock.calls[0][0] as SuspendPayload;
+			expect(payload.message).toBe('To read your Notion pages');
+			expect(payload.requestId).toBeTruthy();
+			expect(payload.mcpConnectRequest).toEqual({
+				servers: [
+					{
+						serverSlug: 'notion',
+						title: 'Notion',
+						credentialType: 'notionMcpOAuth2Api',
+						tagline: 'Work with Notion pages and databases',
+					},
+				],
+			});
+		});
 
-		expect(output.results).toEqual([notion, linear]);
-	});
+		it('offers an already-connected server too, so its credential can be switched', async () => {
+			const mcpService = makeService([notion, linear], withConnections('linear'));
+			const tool = createMcpServersTool(makeContext(mcpService));
+			const { ctx, suspend } = suspendingContext();
 
-	it('caps the results and says it truncated', async () => {
-		const output = await search(makeServers(8), ['api']);
+			await executeTool(
+				tool,
+				{ action: 'connect', serverSlugs: ['notion', 'linear'], reason: 'Because' },
+				ctx,
+			);
 
-		expect(output.results).toHaveLength(5);
-		expect(output.hint).toContain('narrower query');
-	});
+			const payload = suspend.mock.calls[0][0] as SuspendPayload;
+			expect(payload.mcpConnectRequest.servers.map((s) => s.serverSlug)).toEqual([
+				'notion',
+				'linear',
+			]);
+		});
 
-	it('does not claim truncation when everything fits', async () => {
-		const output = await search(makeServers(5), ['api']);
+		it('tells the agent to search first when no slug resolves', async () => {
+			const tool = createMcpServersTool(makeContext(makeService([notion])));
+			const { ctx, suspend } = suspendingContext();
 
-		expect(output.hint).not.toContain('narrower query');
-	});
+			const output = await executeTool<ConnectOutput>(
+				tool,
+				{ action: 'connect', serverSlugs: ['made-up'], reason: 'Because' },
+				ctx,
+			);
 
-	it('hints how to connect whenever something was found', async () => {
-		const output = await search([notion]);
+			expect(suspend).not.toHaveBeenCalled();
+			expect(output.connectedSlugs).toEqual([]);
+			expect(output.message).toContain('made-up');
+			expect(output.message).toContain('action: "search"');
+		});
 
-		expect(output.hint).toContain('"Connections"');
-	});
+		it('rejects more than three suggestions', async () => {
+			const tool = createMcpServersTool(makeContext(makeService([notion])));
 
-	it('omits the hint when nothing was found', async () => {
-		const output = await search([]);
+			await expect(
+				executeTool(
+					tool,
+					{ action: 'connect', serverSlugs: ['a', 'b', 'c', 'd'], reason: 'Because' },
+					suspendingContext().ctx,
+				),
+			).rejects.toThrow();
+		});
 
-		expect(output.hint).toBeUndefined();
-	});
+		it('rejects a connect that omits the slugs or the reason', async () => {
+			const tool = createMcpServersTool(makeContext(makeService([notion])));
+			const { ctx, suspend } = suspendingContext();
 
-	it('rejects an empty query list', async () => {
-		const tool = createMcpServersTool(makeContext(makeService([notion])));
+			await expect(
+				executeTool(tool, { action: 'connect', reason: 'Because' }, ctx),
+			).rejects.toThrow();
+			await expect(
+				executeTool(tool, { action: 'connect', serverSlugs: ['notion'] }, ctx),
+			).rejects.toThrow();
+			expect(suspend).not.toHaveBeenCalled();
+		});
 
-		await expect(executeTool(tool, { action: 'search', queries: [] })).rejects.toThrow();
-	});
+		it('reports only the slugs the server confirms are connected', async () => {
+			const mcpService = makeService([notion], withConnections('notion'));
+			const tool = createMcpServersTool(makeContext(mcpService));
 
-	it('fails loudly when the host did not wire the MCP service', async () => {
-		const tool = createMcpServersTool(makeContext(undefined));
+			const output = await executeTool<ConnectOutput>(
+				tool,
+				{ action: 'connect', serverSlugs: ['notion'], reason: 'Because' },
+				{ resumeData: { approved: true, connectedSlugs: ['notion'] } },
+			);
 
-		await expect(executeTool(tool, { action: 'search', queries: ['notion'] })).rejects.toThrow(
-			'MCP server search is not available on this instance.',
-		);
-	});
+			expect(output.connectedSlugs).toEqual(['notion']);
+			expect(output.message).toContain('search_tools');
+			expect(output.message).toContain('available now');
+		});
 
-	it('propagates registry failures', async () => {
-		const mcpService: InstanceAiMcpService = {
-			search: vi.fn().mockRejectedValue(new Error('registry unavailable')),
-		};
-		const tool = createMcpServersTool(makeContext(mcpService));
+		it('ignores a client claim the server cannot confirm', async () => {
+			const mcpService = makeService([notion], withConnections());
+			const tool = createMcpServersTool(makeContext(mcpService));
 
-		await expect(executeTool(tool, { action: 'search', queries: ['notion'] })).rejects.toThrow(
-			'registry unavailable',
-		);
+			const output = await executeTool<ConnectOutput>(
+				tool,
+				{ action: 'connect', serverSlugs: ['notion'], reason: 'Because' },
+				{ resumeData: { approved: true, connectedSlugs: ['notion'] } },
+			);
+
+			expect(output.connectedSlugs).toEqual([]);
+			expect(output.message).toContain('No connection was created');
+		});
+
+		it('reports a skip when the user declined to connect', async () => {
+			const mcpService = makeService([notion], withConnections());
+			const tool = createMcpServersTool(makeContext(mcpService));
+
+			const output = await executeTool<ConnectOutput>(
+				tool,
+				{ action: 'connect', serverSlugs: ['notion'], reason: 'Because' },
+				{ resumeData: { approved: false } },
+			);
+
+			expect(output.connectedSlugs).toEqual([]);
+			expect(output.message).toContain('chose not to connect');
+			expect(output.message).not.toContain('card');
+			expect(output.message).toContain('for this request');
+			expect(output.message).toContain('next turn');
+		});
+
+		it('still reports a connection made before the user skipped the rest', async () => {
+			const mcpService = makeService([notion], withConnections('notion'));
+			const tool = createMcpServersTool(makeContext(mcpService));
+
+			const output = await executeTool<ConnectOutput>(
+				tool,
+				{ action: 'connect', serverSlugs: ['notion'], reason: 'Because' },
+				{ resumeData: { approved: false, connectedSlugs: ['notion'] } },
+			);
+
+			expect(output.connectedSlugs).toEqual(['notion']);
+		});
+
+		it('does not credit the card for a server connected before it appeared', async () => {
+			const mcpService = makeService([notion, linear], withConnections('linear'));
+			const tool = createMcpServersTool(makeContext(mcpService));
+
+			const output = await executeTool<ConnectOutput>(
+				tool,
+				{ action: 'connect', serverSlugs: ['notion', 'linear'], reason: 'Because' },
+				{ resumeData: { approved: false, connectedSlugs: [] } },
+			);
+
+			expect(output.connectedSlugs).toEqual([]);
+		});
 	});
 });

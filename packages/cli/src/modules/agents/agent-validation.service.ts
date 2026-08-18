@@ -12,6 +12,7 @@ import {
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
 	type AgentIntegrationConfig,
+	type AgentTaskConfig,
 	type AgentJsonConfig,
 	type AgentJsonNodeToolConfig,
 	type AgentJsonWorkflowToolConfig,
@@ -36,6 +37,7 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { detectTriggerNode, validateCompatibility } from './tools/workflow-tool-factory';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
+import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
 
 type AgentValidationScope = 'runtime' | 'publish';
 
@@ -44,7 +46,7 @@ type FindCredential = (
 ) => Promise<Awaited<ReturnType<CredentialProvider['list']>>[number] | undefined>;
 
 type CustomToolEntries = Record<string, { code: string; descriptor: ToolDescriptor }>;
-type TaskBody = { name: string; objective: string; cronExpression: string };
+type TaskBody = AgentTaskConfig;
 
 interface ConfigurationValidationContext {
 	agentId: string;
@@ -274,6 +276,16 @@ export class AgentValidationService {
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
 		if (scope === 'publish') {
+			for (const violation of findHttpRequestToolUrlFromAiViolations(config.tools)) {
+				issues.push(
+					issue('invalid_value', violation.path, {
+						kind: 'tool',
+						id: violation.toolName,
+						index: violation.toolIndex,
+						toolType: 'node',
+					}),
+				);
+			}
 			this.collectTaskIssues(config, ctx.tasks, issues);
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}

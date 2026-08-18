@@ -30,7 +30,7 @@ export { InMemoryWorkQueue } from './queue';
 export type {
 	ExecutionEnqueuedEvent,
 	OrchestrationMessage,
-	StepCompletedEvent,
+	StepSettledEvent,
 	StepMessage,
 	StepReadyEvent,
 	WorkQueue,
@@ -41,9 +41,9 @@ export {
 	ExecutionStartHandler,
 	OrchestrationWorker,
 	StartExecutionService,
-	StepCompletedHandler,
 	StepNotFoundError,
 	StepReadyHandler,
+	StepSettledHandler,
 	StepWorker,
 } from './execution';
 export type {
@@ -60,6 +60,7 @@ export type {
 	StepSlots,
 	StepStatus,
 	StepStore,
+	TriggerOutputs,
 } from './execution';
 
 export {

@@ -1460,4 +1460,55 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toMatch(/Slack/);
 		});
 	});
+
+	describe('validateTriggerNodeIds', () => {
+		const triggerNode = (name: string, id?: string): INode =>
+			({
+				name,
+				id,
+				type: 'n8n-nodes-base.cron',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			}) as INode;
+
+		it('accepts trigger nodes that each carry a distinct id', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', 'node-1'),
+				triggerNode('Webhook', 'node-2'),
+			]);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('accepts a workflow with no trigger nodes', () => {
+			const result = service.validateTriggerNodeIds([]);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('rejects trigger nodes that share an id, naming each node and the id', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', 'node-1'),
+				triggerNode('Webhook', 'node-1'),
+			]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('Cannot publish workflow');
+			expect(result.error).toContain('"Cron"');
+			expect(result.error).toContain('"Webhook"');
+			expect(result.error).toContain('"node-1"');
+		});
+
+		it('rejects a trigger node that carries no id', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', 'node-1'),
+				triggerNode('Webhook', undefined),
+			]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('Cannot publish workflow');
+			expect(result.error).toContain('"Webhook"');
+		});
+	});
 });

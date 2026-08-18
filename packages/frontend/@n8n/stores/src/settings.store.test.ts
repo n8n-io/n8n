@@ -23,6 +23,7 @@ const mockRootStore = {
 	setExecutionTimeout: vi.fn(),
 	setMaxExecutionTimeout: vi.fn(),
 	setInstanceId: vi.fn(),
+	setPublicApiPath: vi.fn(),
 	setOauthCallbackUrls: vi.fn(),
 	setJwksUri: vi.fn(),
 	setN8nMetadata: vi.fn(),
@@ -72,6 +73,12 @@ const mockSettings = mock<FrontendSettings>({
 	instanceId: '1234567890',
 	telemetry: {
 		enabled: false,
+	},
+	publicApi: {
+		enabled: true,
+		latestVersion: 1,
+		path: 'api',
+		swaggerUi: { enabled: true },
 	},
 });
 
@@ -136,6 +143,74 @@ describe('settings.store', () => {
 			await settingsStore.getSettings();
 
 			expect(settingsStore.isAutosaveEnabled).toBe(true);
+		});
+	});
+
+	describe('isExecuteWorkflowNodeExcluded', () => {
+		it('should return true when executeWorkflow is in excludeNodes', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				excludeNodes: ['n8n-nodes-base.executeWorkflow'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(true);
+		});
+
+		it('should return false when executeWorkflow is not excluded', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				excludeNodes: ['n8n-nodes-base.executeCommand'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(false);
+		});
+
+		it('should return false when only executeWorkflowTrigger is excluded', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				excludeNodes: ['n8n-nodes-base.executeWorkflowTrigger'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(false);
+		});
+	});
+
+	describe('isSubworkflowConversionDisabled', () => {
+		it.each([
+			[['n8n-nodes-base.executeWorkflow']],
+			[['n8n-nodes-base.executeWorkflowTrigger']],
+			[['n8n-nodes-base.executeWorkflow', 'n8n-nodes-base.executeWorkflowTrigger']],
+		])('should return true when %j is excluded', async (excludeNodes) => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				excludeNodes,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isSubworkflowConversionDisabled).toBe(true);
+		});
+
+		it('should return false when both sub-workflow nodes are available', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				excludeNodes: ['n8n-nodes-base.executeCommand'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isSubworkflowConversionDisabled).toBe(false);
 		});
 	});
 
@@ -337,6 +412,7 @@ describe('settings.store', () => {
 				expect(mockRootStore.setMaxExecutionTimeout).not.toHaveBeenCalled();
 				expect(mockRootStore.setN8nMetadata).not.toHaveBeenCalled();
 				expect(mockRootStore.setBinaryDataMode).not.toHaveBeenCalled();
+				expect(mockRootStore.setPublicApiPath).not.toHaveBeenCalled();
 
 				// side effects
 				expect(sessionStarted).not.toHaveBeenCalled();
@@ -391,6 +467,9 @@ describe('settings.store', () => {
 				expect(mockRootStore.setN8nMetadata).toHaveBeenCalled();
 				expect(mockRootStore.setDefaultLocale).toHaveBeenCalled();
 				expect(mockRootStore.setBinaryDataMode).toHaveBeenCalled();
+				expect(mockRootStore.setPublicApiPath).toHaveBeenCalledWith(
+					`${mockSettings.publicApi.path}/v${mockSettings.publicApi.latestVersion}`,
+				);
 
 				// side effects
 				expect(sessionStarted).toHaveBeenCalled();
