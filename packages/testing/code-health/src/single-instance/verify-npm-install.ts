@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { setTimeout } from 'node:timers/promises';
 
 import { analyze, collectCopies } from './collect-copies.js';
 import type { PackageJsonInfo } from '../utils/package-json-scanner.js';
@@ -21,6 +22,35 @@ const CLOSURE_SECTIONS = new Set(['dependencies', 'peerDependencies', 'optionalD
 /** True when a changed file can shift dependency resolution repo-wide, forcing a full check. */
 export function filesTriggerFullRun(files: string[]): boolean {
 	return files.some((f) => ROOT_TRIGGERS.some((t) => f === t || f.startsWith(t)));
+}
+
+/**
+ * Surface a finding in the Actions UI. Report-only runs exit 0, and nobody opens the log of a
+ * green check — without an annotation the finding is indistinguishable from silence.
+ */
+function annotate(message: string): void {
+	if (process.env.GITHUB_ACTIONS) console.log(`::warning::${message}`);
+}
+
+/**
+ * The scratch install is the one network-bound step, and a registry blip must not read as a
+ * dependency finding. Retries only the install; a persistent failure still throws.
+ */
+async function installWithRetry(scratch: string, attempts = 3): Promise<void> {
+	for (let attempt = 1; ; attempt++) {
+		try {
+			execFileSync(
+				'npm',
+				['install', '--no-audit', '--no-fund', '--ignore-scripts', '--no-package-lock'],
+				{ cwd: scratch, stdio: ['ignore', 'inherit', 'inherit'] },
+			);
+			return;
+		} catch (error) {
+			if (attempt >= attempts) throw error;
+			console.error(`npm install failed (attempt ${attempt}/${attempts}); retrying...`);
+			await setTimeout(attempt * 5_000);
+		}
+	}
 }
 
 interface WorkspacePkg {
@@ -114,7 +144,8 @@ export function closureOf(targets: string[], byName: Map<string, WorkspacePkg>):
 	return [...seen];
 }
 
-function resolveTargets(
+/** Targets to verify: `null` means "nothing to do", `[]` means the args were unusable. */
+export function resolveTargets(
 	args: string[],
 	byName: Map<string, WorkspacePkg>,
 	rootDir: string,
@@ -141,11 +172,14 @@ function resolveTargets(
  * `workspace:` like publishing does), installs into a scratch dir with npm, then verifies.
  */
 export async function runVerifyNpmInstall(args: string[], rootDir: string): Promise<number> {
+	const reportOnly = args.includes('--report-only');
 	const byName = await loadWorkspace(rootDir);
 	const targets = resolveTargets(args, byName, rootDir);
 	if (targets === null) return 0;
 	if (targets.length === 0) {
-		console.error('Usage: verify-npm-install (--all | --changed=<ref> | <pkgName>...)');
+		console.error(
+			'Usage: verify-npm-install (--all | --changed=<ref> | <pkgName>...) [--report-only]',
+		);
 		return 2;
 	}
 	const unknown = targets.filter((t) => !byName.has(t));
@@ -163,64 +197,70 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 	mkdirSync(tarballs, { recursive: true });
 	mkdirSync(scratch, { recursive: true });
 
-	console.log(`Packing ${toPack.length} workspace package(s) (targets: ${targets.length})...`);
-	const tarballByName: Record<string, string> = {};
-	for (const name of toPack) {
-		const entry = byName.get(name);
-		if (!entry) continue;
-		const before = new Set(readdirSync(tarballs));
-		execFileSync('pnpm', ['pack', '--pack-destination', tarballs], {
-			cwd: entry.dir,
-			stdio: ['ignore', 'ignore', 'inherit'],
-		});
-		const produced = readdirSync(tarballs).find((f) => !before.has(f) && f.endsWith('.tgz'));
-		if (!produced) throw new Error(`pnpm pack produced no tarball for ${name}`);
-		tarballByName[name] = join(tarballs, produced);
-	}
+	// An enforcing-mode finding is the only reason to keep the tree. A report-only run exits 0 so
+	// nothing downstream reads it, and a throw (pack failure, registry outage) leaves nothing worth
+	// inspecting — either way, keeping it just leaks a full node_modules into tmpdir per run.
+	let keepScratch = false;
+	try {
+		console.log(`Packing ${toPack.length} workspace package(s) (targets: ${targets.length})...`);
+		const tarballByName: Record<string, string> = {};
+		for (const name of toPack) {
+			const entry = byName.get(name);
+			if (!entry) continue;
+			const before = new Set(readdirSync(tarballs));
+			execFileSync('pnpm', ['pack', '--pack-destination', tarballs], {
+				cwd: entry.dir,
+				stdio: ['ignore', 'ignore', 'inherit'],
+			});
+			const produced = readdirSync(tarballs).find((f) => !before.has(f) && f.endsWith('.tgz'));
+			if (!produced) throw new Error(`pnpm pack produced no tarball for ${name}`);
+			tarballByName[name] = join(tarballs, produced);
+		}
 
-	// Scratch project: install targets as file: deps, force ALL packed workspace deps to their
-	// local tarballs. Third-party deps resolve from the real npm registry.
-	const fileDep = (n: string): [string, string] => [n, `file:${tarballByName[n]}`];
-	const overrides = Object.fromEntries(toPack.map(fileDep));
-	const deps = Object.fromEntries(targets.map(fileDep));
-	writeFileSync(
-		join(scratch, 'package.json'),
-		JSON.stringify(
-			{ name: 'single-instance-scratch', private: true, dependencies: deps, overrides },
-			null,
-			2,
-		),
-	);
-
-	console.log('Installing into scratch dir with npm...');
-	execFileSync(
-		'npm',
-		['install', '--no-audit', '--no-fund', '--ignore-scripts', '--no-package-lock'],
-		{
-			cwd: scratch,
-			stdio: ['ignore', 'inherit', 'inherit'],
-		},
-	);
-
-	const { duplicates, failures } = analyze(collectCopies(scratch));
-
-	console.log(`\nnpm-install closure — scratch: ${scratch}\n`);
-	for (const d of duplicates) {
-		const tag = d.isCurated ? (d.allowed ? 'ALLOWED DUP' : 'FAIL') : 'dup (report)';
-		console.log(
-			`  ${d.name}: ${tag} — ${d.copies.length} copies (${d.copies.map((c) => `v${c.version}`).join(', ')})`,
+		// Scratch project: install targets as file: deps, force ALL packed workspace deps to their
+		// local tarballs. Third-party deps resolve from the real npm registry.
+		const fileDep = (n: string): [string, string] => [n, `file:${tarballByName[n]}`];
+		const overrides = Object.fromEntries(toPack.map(fileDep));
+		const deps = Object.fromEntries(targets.map(fileDep));
+		writeFileSync(
+			join(scratch, 'package.json'),
+			JSON.stringify(
+				{ name: 'single-instance-scratch', private: true, dependencies: deps, overrides },
+				null,
+				2,
+			),
 		);
-	}
 
-	if (failures.length === 0) rmSync(work, { recursive: true, force: true });
-	else console.log(`\nScratch install kept for inspection: ${scratch}`);
+		console.log('Installing into scratch dir with npm...');
+		await installWithRetry(scratch);
 
-	if (failures.length > 0) {
-		console.error(
-			`\nFAIL: ${failures.length} curated library duplicate(s) in the npm-install graph.`,
-		);
-		return 1;
+		const { duplicates, failures } = analyze(collectCopies(scratch));
+
+		console.log(`\nnpm-install closure — scratch: ${scratch}\n`);
+		const curatedTag = reportOnly ? 'CURATED DUP (report)' : 'FAIL';
+		for (const d of duplicates) {
+			const tag = d.isCurated ? (d.allowed ? 'ALLOWED DUP' : curatedTag) : 'dup (report)';
+			console.log(
+				`  ${d.name}: ${tag} — ${d.copies.length} copies (${d.copies.map((c) => `v${c.version}`).join(', ')})`,
+			);
+		}
+
+		if (failures.length > 0) {
+			keepScratch = !reportOnly;
+			for (const f of failures) {
+				annotate(
+					`${f.name}: ${f.copies.length} copies in the npm-install graph (${f.copies.map((c) => `v${c.version}`).join(', ')})`,
+				);
+			}
+			console.error(
+				`\n${reportOnly ? 'REPORT' : 'FAIL'}: ${failures.length} curated library duplicate(s) in the npm-install graph.`,
+			);
+			return reportOnly ? 0 : 1;
+		}
+		console.log('\nOK: no curated duplicates in the npm-install graph.');
+		return 0;
+	} finally {
+		if (keepScratch) console.log(`\nScratch install kept for inspection: ${scratch}`);
+		else rmSync(work, { recursive: true, force: true });
 	}
-	console.log('\nOK: no curated duplicates in the npm-install graph.');
-	return 0;
 }

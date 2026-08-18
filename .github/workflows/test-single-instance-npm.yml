@@ -34,13 +34,19 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    continue-on-error: ${{ !inputs.blocking }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
+    env:
+      # Advisory runs downgrade findings to `::warning::` annotations and exit 0, so the known
+      # third-party splits don't leave a permanently red job that everyone learns to ignore.
+      # This deliberately replaces `continue-on-error`, which also swallowed the failures we do
+      # want — a usage error, a rejected input, or a crash that verified nothing.
+      REPORT_ONLY: ${{ !inputs.blocking && '--report-only' || '' }}
     steps:
       # Every rejected combination below otherwise degrades into a run that verifies nothing and
-      # still exits 0 — silently, since this job is advisory by default.
+      # still exits 0. These fail the job even in advisory mode — `--report-only` downgrades
+      # findings, not misconfiguration.
       - name: Validate inputs
         env:
           SCOPE: ${{ inputs.scope }}
@@ -88,8 +94,14 @@ jobs:
         if: inputs.scope == 'changed'
         env:
           BASE_REF: ${{ inputs.base-ref }}
-        run: pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --changed="$BASE_REF"
+        run: |
+          # REPORT_ONLY is a single flag or empty. Quoting it would pass an empty argument, which
+          # the CLI reads as an (unknown) package name and rejects.
+          # shellcheck disable=SC2086
+          pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --changed="$BASE_REF" $REPORT_ONLY
 
       - name: Verify npm-install closure (all packages)
         if: inputs.scope == 'all'
-        run: pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --all
+        run: |
+          # shellcheck disable=SC2086 # see the scoped step above
+          pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --all $REPORT_ONLY
