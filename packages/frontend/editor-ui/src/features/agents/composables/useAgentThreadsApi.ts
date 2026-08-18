@@ -1,3 +1,4 @@
+import type { AgentSessionLangSmithExportResponse } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -114,5 +115,18 @@ export const deleteThread = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/threads/${threadId}`,
+	);
+};
+
+export const exportThreadToLangSmith = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<AgentSessionLangSmithExportResponse> => {
+	return await makeRestApiRequest<AgentSessionLangSmithExportResponse>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/threads/${threadId}/langsmith-export`,
 	);
 };

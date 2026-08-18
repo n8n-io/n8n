@@ -16,7 +16,6 @@ export { N8nSelect2, N8nSelect2Item } from './v2/components/Select';
 export type * from './v2/components/Select';
 export { default as N8nCheckbox } from './v2/components/Checkbox/Checkbox.vue';
 export type * from './v2/components/Checkbox/Checkbox.types';
-export { default as N8nPagination2 } from './v2/components/Pagination/Pagination.vue';
 export type * from './v2/components/Pagination/Pagination.types';
 export { default as N8nLoading2 } from './v2/components/Loading/Loading.vue';
 export type * from './v2/components/Loading/Loading.types';

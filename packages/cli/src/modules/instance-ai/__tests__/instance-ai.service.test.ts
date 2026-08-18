@@ -842,6 +842,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		dbSnapshotStorage: {},
 		agentMemory: {},
 		telemetry: service.telemetry,
+		errorReporter: service.instanceAiErrorReporter,
 		logger: service.logger,
 		runState: service.runState,
 		suspendedThreads: service.suspendedThreads,
@@ -953,7 +954,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				isConfigEvalsEnabled: Mock;
 				isMcpConnectionsEnabled: Mock;
 			};
-			sourceControlPreferencesService: { getPreferences: Mock };
+			instanceWriteAccess: { isReadOnly: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
@@ -1001,9 +1002,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			isConfigEvalsEnabled: vi.fn().mockResolvedValue(true),
 			isMcpConnectionsEnabled: vi.fn().mockResolvedValue(false),
 		};
-		service.sourceControlPreferencesService = {
-			getPreferences: vi.fn(() => ({ branchReadOnly: false })),
-		};
+		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),

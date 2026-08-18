@@ -40,41 +40,7 @@ describe('RoleController', () => {
 			});
 		});
 
-		describe('updateRole', () => {
-			it('should emit custom-role-updated', async () => {
-				const request = managerRequest();
-				roleService.getRole.mockResolvedValue({ roleType: 'project' } as Role);
-				roleService.updateCustomRole.mockResolvedValue({
-					slug: 'custom-editor',
-					scopes: ['workflow:read', 'workflow:update', 'workflow:delete'],
-				} as Role);
-
-				await controller.updateRole(request, mock(), 'custom-editor', mock());
-
-				expect(eventService.emit).toHaveBeenCalledWith('custom-role-updated', {
-					userId: '123',
-					roleSlug: 'custom-editor',
-					scopes: ['workflow:read', 'workflow:update', 'workflow:delete'],
-				});
-			});
-		});
-
 		describe('deleteRole', () => {
-			it('should emit custom-role-deleted', async () => {
-				const request = managerRequest();
-				roleService.getRole.mockResolvedValue({ roleType: 'project' } as Role);
-				roleService.removeCustomRole.mockResolvedValue({
-					slug: 'custom-editor',
-				} as Role);
-
-				await controller.deleteRole(request, mock(), 'custom-editor', mock());
-
-				expect(eventService.emit).toHaveBeenCalledWith('custom-role-deleted', {
-					userId: '123',
-					roleSlug: 'custom-editor',
-				});
-			});
-
 			it('should pass the reassignment role through to the service for an entitled caller', async () => {
 				const request = mock<AuthenticatedRequest>({
 					user: {
@@ -95,10 +61,11 @@ describe('RoleController', () => {
 					reassignRoleSlug: 'global:member',
 				});
 
-				expect(roleService.removeCustomRole).toHaveBeenCalledWith(
-					'global:custom-editor',
-					'global:member',
-				);
+				expect(roleService.removeCustomRole).toHaveBeenCalledWith({
+					slug: 'global:custom-editor',
+					reassignRoleSlug: 'global:member',
+					userId: '123',
+				});
 			});
 
 			it('should ignore the reassignment role when the caller lacks user:changeRole', async () => {
@@ -118,10 +85,11 @@ describe('RoleController', () => {
 					reassignRoleSlug: 'global:member',
 				});
 
-				expect(roleService.removeCustomRole).toHaveBeenCalledWith(
-					'global:custom-editor',
-					undefined,
-				);
+				expect(roleService.removeCustomRole).toHaveBeenCalledWith({
+					slug: 'global:custom-editor',
+					reassignRoleSlug: undefined,
+					userId: '123',
+				});
 			});
 
 			it('should ignore the reassignment role when the caller holds the role being deleted', async () => {
@@ -144,10 +112,11 @@ describe('RoleController', () => {
 					reassignRoleSlug: 'global:member',
 				});
 
-				expect(roleService.removeCustomRole).toHaveBeenCalledWith(
-					'global:custom-editor',
-					undefined,
-				);
+				expect(roleService.removeCustomRole).toHaveBeenCalledWith({
+					slug: 'global:custom-editor',
+					reassignRoleSlug: undefined,
+					userId: '123',
+				});
 			});
 
 			it('should ignore the reassignment role for project roles', async () => {
@@ -170,10 +139,11 @@ describe('RoleController', () => {
 					reassignRoleSlug: 'project:admin',
 				});
 
-				expect(roleService.removeCustomRole).toHaveBeenCalledWith(
-					'project:custom-editor',
-					undefined,
-				);
+				expect(roleService.removeCustomRole).toHaveBeenCalledWith({
+					slug: 'project:custom-editor',
+					reassignRoleSlug: undefined,
+					userId: '123',
+				});
 			});
 		});
 	});

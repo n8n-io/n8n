@@ -1,8 +1,8 @@
 import type {
 	createDataSource,
-	JsonObject,
 	OrchestrationMessage,
 	StepMessage,
+	TriggerOutputs,
 	WorkflowGraph,
 } from '@n8n/engine';
 import {
@@ -12,8 +12,8 @@ import {
 	InMemoryWorkQueue,
 	OrchestrationWorker,
 	StartExecutionService,
-	StepCompletedHandler,
 	StepReadyHandler,
+	StepSettledHandler,
 	StepWorker,
 	WorkflowExecution,
 	WorkflowStepExecution,
@@ -95,7 +95,7 @@ export function setWorkflow(assignments: Assignment[]) {
 type EngineDataSource = ReturnType<typeof createDataSource>;
 
 export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
-	return async function runWorkflow(graph: WorkflowGraph, triggerPayload: JsonObject | null) {
+	return async function runWorkflow(graph: WorkflowGraph, triggerOutputs: TriggerOutputs | null) {
 		const dataSource = getDataSource();
 		const { executionStore, stepStore } = createStores(dataSource);
 		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
@@ -119,7 +119,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		const orchestrationWorker = new OrchestrationWorker(
 			orchestrationQueue,
 			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepCompletedHandler(executionStore, stepStore, stepQueue),
+			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
 		);
 		const stepWorker = new StepWorker(
 			stepQueue,
@@ -134,7 +134,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 			new AllowAllAdmittance(),
 			executionStore,
 			orchestrationQueue,
-		).start({ workflowId: 'wf-m1', graph, triggerPayload });
+		).start({ workflowId: 'wf-m1', graph, triggerOutputs });
 
 		try {
 			await Promise.race([

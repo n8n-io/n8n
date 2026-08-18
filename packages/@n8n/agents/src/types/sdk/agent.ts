@@ -18,18 +18,25 @@ import type {
 } from '../runtime/event';
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
-import type { JSONValue } from '../utils/json';
+import type { JSONObject, JSONValue } from '../utils/json';
 
 export type SmoothStreamOptions = NonNullable<Parameters<typeof smoothStream>[0]>;
 
-export type FinishReason =
-	| 'stop'
-	| 'max-iterations'
-	| 'length'
-	| 'content-filter'
-	| 'tool-calls'
-	| 'error'
-	| 'other';
+export const FINISH_REASONS = [
+	'stop',
+	'max-iterations',
+	'length',
+	'content-filter',
+	'tool-calls',
+	'error',
+	'other',
+] as const;
+
+export type FinishReason = (typeof FINISH_REASONS)[number];
+
+export function isFinishReason(value: unknown): value is FinishReason {
+	return typeof value === 'string' && FINISH_REASONS.some((reason) => reason === value);
+}
 
 export type TokenUsage<T extends Record<string, unknown> = Record<string, unknown>> = {
 	promptTokens: number;
@@ -432,6 +439,7 @@ export interface SerializableAgentState {
 export type AgentPersistenceOptions = {
 	threadId: string;
 	resourceId: string;
+	hostMetadata?: JSONObject;
 	/** Internal child runs must only be resumed through their suspended parent. */
 	delegated?: true;
 	/**
