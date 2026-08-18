@@ -54,6 +54,13 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
+      # Confluent publishes prebuilds up to Node 24 only.
+      - name: Verify Kafka native binding installed
+        if: startsWith(inputs.nodeVersion, '24.')
+        env:
+          NODES_BASE_PACKAGE_JSON: packages/nodes-base/package.json
+        run: node .github/scripts/docker/kafka-native-smoke-check.mjs
+
       # cli is the only backend package wired into janitor scoping today, so
       # the workspace bulk run excludes it and a dedicated step invokes the
       # scoped variant. This avoids turbo silently no-op'ing `test:unit:changed`

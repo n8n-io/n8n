@@ -816,6 +816,9 @@ overrides:
   '@zone-eu/mailsplit@<5.4.15': 5.4.15
 
 patchedDependencies:
+  '@confluentinc/kafka-javascript@1.9.1':
+    hash: c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003
+    path: patches/@confluentinc__kafka-javascript@1.9.1.patch
   '@langchain/google-common@2.1.24':
     hash: b50436a6c7b0a82d54472dff331ba1b42ab8b816995f83295eef2ee4b482a87d
     path: patches/@langchain__google-common@2.1.24.patch
@@ -6439,7 +6442,7 @@ importers:
         version: 3.808.0
       '@confluentinc/kafka-javascript':
         specifier: 'catalog:'
-        version: 1.9.1(encoding@0.1.13)
+        version: 1.9.1(patch_hash=c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003)(encoding@0.1.13)
       '@e965/xlsx':
         specifier: 'catalog:'
         version: 0.20.3
@@ -26037,7 +26040,7 @@ snapshots:
     dependencies:
       commander: 13.1.0
 
-  '@confluentinc/kafka-javascript@1.9.1(encoding@0.1.13)':
+  '@confluentinc/kafka-javascript@1.9.1(patch_hash=c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003)(encoding@0.1.13)':
     dependencies:
       '@mapbox/node-pre-gyp': 2.0.3(encoding@0.1.13)
       bindings: 1.5.0
