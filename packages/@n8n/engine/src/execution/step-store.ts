@@ -1,5 +1,5 @@
 import type { JsonValue } from '../common';
-import type { StepKey, StepSlots, StepStatus } from './execution.types';
+import type { StepKey, StepKeyId, StepSlots, StepStatus } from './execution.types';
 
 /**
  * A new step to persist. `id` and timestamps are assigned by the store.
@@ -119,21 +119,24 @@ export interface StepStore {
 	cancelQueuedSteps(executionId: string): Promise<void>;
 
 	/**
-	 * Step rows of the given keys within an execution, keyed by `stepKey`. A
+	 * Step rows of the given keys within an execution, keyed by `stepKeyId`. A
 	 * key with no row yet is absent from the result — absence always means
 	 * "not planned yet", never "forgotten".
 	 *
 	 * Full rows, outputs included — for gathering a ready step's inputs from its
-	 * direct predecessors. Planning reads `loadStepSummaries` instead.
+	 * direct predecessors. Planning reads `loadStepSummariesByKeys` instead.
 	 */
-	loadSteps(executionId: string, keys: StepKey[]): Promise<Record<string, StepRecord>>;
+	loadStepsByKeys(executionId: string, keys: StepKey[]): Promise<Record<StepKeyId, StepRecord>>;
 
 	/**
-	 * Planning view of the given keys' rows, keyed by `stepKey`; absent as in
-	 * `loadSteps`. The per-slot booleans are computed in the database, so
+	 * Planning view of the given keys' rows, keyed by `stepKeyId`; absent as in
+	 * `loadStepsByKeys`. The per-slot booleans are computed in the database, so
 	 * planning never pulls the potentially large outputs over the wire.
 	 */
-	loadStepSummaries(executionId: string, keys: StepKey[]): Promise<Record<string, StepSummary>>;
+	loadStepSummariesByKeys(
+		executionId: string,
+		keys: StepKey[],
+	): Promise<Record<StepKeyId, StepSummary>>;
 
 	/**
 	 * The node's highest-iteration row, or `null` when it has none. For a

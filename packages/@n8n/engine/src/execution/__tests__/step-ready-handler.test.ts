@@ -4,14 +4,14 @@ import type { ExternalDependencies, IStepExecutor } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
-import { stepKey, type StepSlots, type StepStatus } from '../execution.types';
+import { stepKeyId, type StepSlots, type StepStatus } from '../execution.types';
 import { StepReadyHandler } from '../step-ready-handler';
 import type { StepRecord, StepStore } from '../step-store';
 
-/** Key for a `loadSteps` result at iteration 0, as the handler requests them. */
-const at = (nodeId: string) => stepKey({ nodeId, iteration: 0 });
+/** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
+const at = (nodeId: string) => stepKeyId({ nodeId, iteration: 0 });
 
-/** A predecessor row as `loadSteps` returns it, keyed at iteration 0. */
+/** A predecessor row as `loadStepsByKeys` returns it, keyed at iteration 0. */
 function stepRow(nodeId: string, status: StepStatus, outputs: StepSlots | null = null): StepRecord {
 	return {
 		id: `step-${nodeId}`,
@@ -73,10 +73,10 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		completeStep: vi.fn().mockResolvedValue(true),
 		failStep: vi.fn().mockResolvedValue(true),
 		cancelQueuedSteps: vi.fn(),
-		loadSteps: vi
+		loadStepsByKeys: vi
 			.fn()
 			.mockResolvedValue({ [at('trigger')]: stepRow('trigger', 'completed', [{}]) }),
-		loadStepSummaries: vi.fn().mockResolvedValue({}),
+		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStep: vi.fn().mockResolvedValue(null),
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
@@ -99,7 +99,7 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore(
 			{},
 			{
-				loadSteps: vi.fn().mockResolvedValue({
+				loadStepsByKeys: vi.fn().mockResolvedValue({
 					[at('trigger')]: stepRow('trigger', 'completed', [{ body: { hello: 'world' } }]),
 				}),
 			},
@@ -117,7 +117,7 @@ describe('StepReadyHandler', () => {
 
 		expect(stepStore.claimStep).toHaveBeenCalledWith('step-a');
 		// 'a' sits behind the trigger; its input slot 0 is the trigger's output slot 0
-		expect(stepStore.loadSteps).toHaveBeenCalledWith('exec-1', [
+		expect(stepStore.loadStepsByKeys).toHaveBeenCalledWith('exec-1', [
 			{ nodeId: 'trigger', iteration: 0 },
 		]);
 		expect(executor.execute).toHaveBeenCalledWith({
@@ -145,7 +145,7 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-b', nodeId: 'b' },
 			{
-				loadSteps: vi
+				loadStepsByKeys: vi
 					.fn()
 					.mockResolvedValue({ [at('a')]: stepRow('a', 'completed', [[{ json: { from: 'a' } }]]) }),
 			},
@@ -156,7 +156,9 @@ describe('StepReadyHandler', () => {
 
 		await handler.handle({ ...event, stepId: 'step-b' });
 
-		expect(stepStore.loadSteps).toHaveBeenCalledWith('exec-1', [{ nodeId: 'a', iteration: 0 }]);
+		expect(stepStore.loadStepsByKeys).toHaveBeenCalledWith('exec-1', [
+			{ nodeId: 'a', iteration: 0 },
+		]);
 		expect(executor.execute).toHaveBeenCalledWith(
 			expect.objectContaining({ inputs: [[{ json: { from: 'a' } }]] }),
 		);
@@ -176,7 +178,7 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
 			{
-				loadSteps: vi.fn().mockResolvedValue({
+				loadStepsByKeys: vi.fn().mockResolvedValue({
 					[at('a')]: stepRow('a', 'completed', [[{ json: { from: 'a' } }]]),
 					[at('b')]: stepRow('b', 'completed', [[{ json: { from: 'b' } }]]),
 				}),
@@ -193,8 +195,8 @@ describe('StepReadyHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-m' });
 
 		// one round trip for all predecessors
-		expect(stepStore.loadSteps).toHaveBeenCalledTimes(1);
-		expect(stepStore.loadSteps).toHaveBeenCalledWith('exec-1', [
+		expect(stepStore.loadStepsByKeys).toHaveBeenCalledTimes(1);
+		expect(stepStore.loadStepsByKeys).toHaveBeenCalledWith('exec-1', [
 			{ nodeId: 'a', iteration: 0 },
 			{ nodeId: 'b', iteration: 0 },
 		]);
@@ -216,7 +218,7 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
 			{
-				loadSteps: vi.fn().mockResolvedValue({
+				loadStepsByKeys: vi.fn().mockResolvedValue({
 					[at('a')]: stepRow('a', 'completed', [[{ json: { from: 'a' } }]]),
 					[at('b')]: stepRow('b', 'completed', [[{ json: { from: 'b' } }]]),
 				}),
@@ -251,7 +253,7 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
 			{
-				loadSteps: vi
+				loadStepsByKeys: vi
 					.fn()
 					.mockResolvedValue({ [at('a')]: stepRow('a', 'completed', [[{ json: { from: 'a' } }]]) }),
 			},
@@ -266,7 +268,9 @@ describe('StepReadyHandler', () => {
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
-		expect(stepStore.loadSteps).toHaveBeenCalledWith('exec-1', [{ nodeId: 'a', iteration: 0 }]);
+		expect(stepStore.loadStepsByKeys).toHaveBeenCalledWith('exec-1', [
+			{ nodeId: 'a', iteration: 0 },
+		]);
 		expect(executor.execute).toHaveBeenCalledWith(
 			expect.objectContaining({
 				inputs: [[{ json: { from: 'a' } }], [{ json: { from: 'a' } }]],
@@ -319,7 +323,7 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-b', nodeId: 'b' },
 			{
-				loadSteps: vi
+				loadStepsByKeys: vi
 					.fn()
 					.mockResolvedValue({ [at('a')]: stepRow('a', 'completed', [[{ json: { from: 'a' } }]]) }),
 			},
@@ -344,7 +348,7 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-b', nodeId: 'b' },
 			{
-				loadSteps: vi.fn().mockResolvedValue({
+				loadStepsByKeys: vi.fn().mockResolvedValue({
 					[at('a')]: stepRow('a', 'completed', [[{ json: { slot: 0 } }], [{ json: { slot: 1 } }]]),
 				}),
 			},
@@ -384,7 +388,7 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
 			{
-				loadSteps: vi.fn().mockResolvedValue({
+				loadStepsByKeys: vi.fn().mockResolvedValue({
 					[at('b')]: stepRow('b', 'completed', [[{ json: { from: 'b' } }]]),
 					[at('c')]: stepRow('c', 'skipped'),
 				}),
@@ -420,7 +424,7 @@ describe('StepReadyHandler', () => {
 		// a step is planned only once every predecessor settled, so anything else
 		// means the planner and the store disagree — running on a fabricated
 		// empty input would mask that
-		const stepStore = makeStepStore({}, { loadSteps: vi.fn().mockResolvedValue(rows()) });
+		const stepStore = makeStepStore({}, { loadStepsByKeys: vi.fn().mockResolvedValue(rows()) });
 		const executor = makeExecutor();
 		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, makeQueue(), {
 			v1StepExecutor: executor,

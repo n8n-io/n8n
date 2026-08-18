@@ -29,7 +29,7 @@ describe('createEngineStepDataLoader', () => {
 		} as unknown as ExecutionStore;
 		const stepStore = {
 			// the trigger's completed row carries its payload as output slot 0
-			loadSteps: vi.fn().mockResolvedValue({
+			loadStepsByKeys: vi.fn().mockResolvedValue({
 				't@0': {
 					nodeId: 't',
 					iteration: 0,
@@ -50,7 +50,7 @@ describe('createEngineStepDataLoader', () => {
 		const stepData = await loadStepData(context);
 
 		expect(executionStore.loadExecution).toHaveBeenCalledWith('exec-1');
-		expect(stepStore.loadSteps).toHaveBeenCalledWith('exec-1', [
+		expect(stepStore.loadStepsByKeys).toHaveBeenCalledWith('exec-1', [
 			{ nodeId: 't', iteration: 0 },
 			{ nodeId: 'a', iteration: 0 },
 			{ nodeId: 'b', iteration: 0 },

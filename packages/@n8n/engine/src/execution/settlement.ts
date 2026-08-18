@@ -1,5 +1,5 @@
 import { getSuccessorNodeIds, type GraphEdge, type WorkflowGraph } from '../graph';
-import { stepKey, isSettledStatus, type StepKey } from './execution.types';
+import { stepKeyId, isSettledStatus, type StepKey, type StepKeyId } from './execution.types';
 import type { StepSummary } from './step-store';
 
 /**
@@ -41,18 +41,18 @@ export interface SuccessorDecisions {
 /**
  * Decides the direct successors of the settled step (rules 2–4). `steps`
  * holds the existing rows for those successors and their predecessors, keyed
- * by `stepKey`, including the settled step itself.
+ * by `stepKeyId`, including the settled step itself.
  */
 export function decideSuccessors(
 	graph: WorkflowGraph,
 	settled: StepKey,
-	steps: Record<string, StepSummary>,
+	steps: Record<StepKeyId, StepSummary>,
 ): SuccessorDecisions {
 	const decisions: SuccessorDecisions = { toQueue: [], toSkip: [] };
 	for (const successorNodeId of getSuccessorNodeIds(graph, settled.nodeId)) {
 		const successor: StepKey = { nodeId: successorNodeId, iteration: settled.iteration };
 		// An existing row was decided by an earlier settlement, which announced it.
-		if (steps[stepKey(successor)]) continue;
+		if (steps[stepKeyId(successor)]) continue;
 		const fate = decideNodeFate(graph, successor, steps);
 		if (fate === 'queued') decisions.toQueue.push(successor);
 		else if (fate === 'skipped') decisions.toSkip.push(successor);
@@ -64,13 +64,13 @@ export function decideSuccessors(
 function decideNodeFate(
 	graph: WorkflowGraph,
 	candidate: StepKey,
-	steps: Record<string, StepSummary>,
+	steps: Record<StepKeyId, StepSummary>,
 ): 'queued' | 'skipped' | 'undecidable' {
 	// Back-edges aside: loop iteration is CAT-2875.
 	const incoming = graph.edges.filter((edge) => edge.to === candidate.nodeId && !edge.isBackEdge);
 	const predecessors = [...new Set(incoming.map((edge) => edge.from))];
 	const settled = predecessors.every((nodeId) => {
-		const row = steps[stepKey({ nodeId, iteration: candidate.iteration })];
+		const row = steps[stepKeyId({ nodeId, iteration: candidate.iteration })];
 		return row !== undefined && isSettledStatus(row.status);
 	});
 	if (!settled) return 'undecidable';
@@ -83,8 +83,8 @@ function decideNodeFate(
 function isLiveEdge(
 	edge: GraphEdge,
 	iteration: number,
-	steps: Record<string, StepSummary>,
+	steps: Record<StepKeyId, StepSummary>,
 ): boolean {
-	const source = steps[stepKey({ nodeId: edge.from, iteration })];
+	const source = steps[stepKeyId({ nodeId: edge.from, iteration })];
 	return source?.status === 'completed' && Boolean(source.filledOutputSlots[edge.outputIndex]);
 }

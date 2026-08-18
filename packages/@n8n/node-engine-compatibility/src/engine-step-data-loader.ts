@@ -22,7 +22,7 @@ export function createEngineStepDataLoader(
 		// TODO(CAT-2875): Expressions inside loop bodies resolve run-indexed.
 		// iteration 0 is every row there is until the engine executes loops.
 		const keys = execution.graph.nodes.map((node) => ({ nodeId: node.id, iteration: 0 }));
-		const stored = await stepStore.loadSteps(context.executionId, keys);
+		const stored = await stepStore.loadStepsByKeys(context.executionId, keys);
 
 		const outputsByNodeId: Record<string, StepSlots> = {};
 		for (const row of Object.values(stored)) {

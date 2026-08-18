@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
-import { stepKey, type StepKey, type StepStatus } from '../execution.types';
+import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
 import type { NewStepRecord, StepRecord, StepStore, StepSummary } from '../step-store';
 
@@ -80,7 +80,7 @@ function makeStepStore(
 		error: null,
 		...step,
 	};
-	const summariesByKey = Object.fromEntries(summaries.map((s) => [stepKey(s), s]));
+	const summariesByKey = Object.fromEntries(summaries.map((s) => [stepKeyId(s), s]));
 	return {
 		// ids derived from the node, so assertions can name the step they expect
 		createSteps: vi.fn().mockImplementation(async (_: string, records: NewStepRecord[]) => {
@@ -93,16 +93,16 @@ function makeStepStore(
 		failStep: vi.fn(),
 		cancelQueuedSteps: vi.fn(),
 		// like the store: only requested keys that have rows appear
-		loadStepSummaries: vi.fn().mockImplementation(async (_: string, keys: StepKey[]) => {
+		loadStepSummariesByKeys: vi.fn().mockImplementation(async (_: string, keys: StepKey[]) => {
 			await Promise.resolve();
 			return Object.fromEntries(
 				keys
-					.map(stepKey)
+					.map(stepKeyId)
 					.filter((key) => summariesByKey[key])
 					.map((key) => [key, summariesByKey[key]]),
 			);
 		}),
-		loadSteps: vi.fn().mockResolvedValue({}),
+		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStep: vi.fn().mockResolvedValue(null),
 		// far from settled, so finish tests opt in explicitly
 		countSettledSteps: vi.fn().mockResolvedValue(0),
@@ -195,7 +195,7 @@ describe('StepSettledHandler', () => {
 
 		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
 		expect(stepStore.cancelQueuedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
-		expect(stepStore.loadStepSummaries).not.toHaveBeenCalled();
+		expect(stepStore.loadStepSummariesByKeys).not.toHaveBeenCalled();
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
@@ -211,7 +211,7 @@ describe('StepSettledHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-b' });
 
 		// b's only successor is m; m reads from both b and c
-		expect(stepStore.loadStepSummaries).toHaveBeenCalledExactlyOnceWith('exec-1', [
+		expect(stepStore.loadStepSummariesByKeys).toHaveBeenCalledExactlyOnceWith('exec-1', [
 			{ nodeId: 'm', iteration: 0 },
 			{ nodeId: 'b', iteration: 0 },
 			{ nodeId: 'c', iteration: 0 },

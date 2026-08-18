@@ -7,7 +7,7 @@ import {
 } from '../graph';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import { stepKey, type StepKey } from './execution.types';
+import { stepKeyId, type StepKey, type StepKeyId } from './execution.types';
 import { decideSuccessors } from './settlement';
 import type { StepRecord, StepStore, StepSummary } from './step-store';
 import { validateStepContext } from './validate-step-context';
@@ -77,7 +77,7 @@ export class StepSettledHandler {
 	private async planSuccessors(
 		execution: ExecutionRecord,
 		step: StepRecord,
-		steps: Record<string, StepSummary>,
+		steps: Record<StepKeyId, StepSummary>,
 	): Promise<number> {
 		const { toQueue, toSkip } = decideSuccessors(execution.graph, step, steps);
 		if (toQueue.length === 0 && toSkip.length === 0) return 0;
@@ -93,7 +93,7 @@ export class StepSettledHandler {
 			...toSkip.map((key) => ({ ...key, status: 'skipped' as const })),
 		]);
 
-		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue.map(stepKey)));
+		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue.map(stepKeyId)));
 	}
 
 	/**
@@ -104,7 +104,7 @@ export class StepSettledHandler {
 	private async loadDecisionSteps(
 		execution: ExecutionRecord,
 		step: StepRecord,
-	): Promise<Record<string, StepSummary>> {
+	): Promise<Record<StepKeyId, StepSummary>> {
 		const successors = getSuccessorNodeIds(execution.graph, step.nodeId);
 		const nodeIds = [
 			...new Set([
@@ -115,7 +115,7 @@ export class StepSettledHandler {
 		// Forward edges stay within a pass, so every row read sits at the
 		// settled row's iteration.
 		const keys = nodeIds.map((nodeId) => ({ nodeId, iteration: step.iteration }));
-		return await this.stepStore.loadStepSummaries(execution.id, keys);
+		return await this.stepStore.loadStepSummariesByKeys(execution.id, keys);
 	}
 
 	/**
@@ -126,11 +126,11 @@ export class StepSettledHandler {
 	private async announceCreatedSteps(
 		executionId: string,
 		created: Array<{ id: string } & StepKey>,
-		queuedKeys: Set<string>,
+		queuedKeys: Set<StepKeyId>,
 	): Promise<number> {
 		let queued = 0;
 		for (const { id: stepId, ...key } of created) {
-			if (queuedKeys.has(stepKey(key))) {
+			if (queuedKeys.has(stepKeyId(key))) {
 				queued += 1;
 				await this.stepQueue.publish({ type: 'step:ready', executionId, stepId });
 			} else {

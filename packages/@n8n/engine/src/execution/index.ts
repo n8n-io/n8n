@@ -3,11 +3,12 @@ export type {
 	StartExecutionRequest,
 	StartExecutionResult,
 } from './start-execution.service';
-export { stepKey } from './execution.types';
+export { stepKeyId } from './execution.types';
 export type {
 	ExecutionMode,
 	ExecutionStatus,
 	StepKey,
+	StepKeyId,
 	StepSlots,
 	StepStatus,
 	TriggerOutputs,

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { GraphEdge, WorkflowGraph } from '../../graph';
 import { getDescendantNodeIds } from '../../graph';
-import { stepKey, type StepKey, type StepStatus } from '../execution.types';
+import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
 import { decideSuccessors } from '../settlement';
 import type { StepSummary } from '../step-store';
 
@@ -15,7 +15,7 @@ function summary(
 }
 
 function makeSteps(...summaries: StepSummary[]): Record<string, StepSummary> {
-	return Object.fromEntries(summaries.map((s) => [stepKey(s), s]));
+	return Object.fromEntries(summaries.map((s) => [stepKeyId(s), s]));
 }
 
 /** Every row in these tests sits at iteration 0; loops are CAT-2875 part 2. */
@@ -112,13 +112,13 @@ describe('decideSuccessors', () => {
 			toSkip: [keyFor('b')],
 		});
 
-		steps[stepKey(keyFor('b'))] = summary('b', 'skipped');
+		steps[stepKeyId(keyFor('b'))] = summary('b', 'skipped');
 		expect(decideSuccessors(graph, keyFor('b'), steps)).toEqual({
 			toQueue: [],
 			toSkip: [keyFor('c')],
 		});
 
-		steps[stepKey(keyFor('c'))] = summary('c', 'skipped');
+		steps[stepKeyId(keyFor('c'))] = summary('c', 'skipped');
 		expect(decideSuccessors(graph, keyFor('c'), steps)).toEqual({
 			toQueue: [],
 			toSkip: [keyFor('d')],
@@ -144,7 +144,7 @@ describe('decideSuccessors', () => {
 
 		expect(decideSuccessors(graph, keyFor('b'), steps)).toEqual({ toQueue: [], toSkip: [] });
 
-		steps[stepKey(keyFor('c'))] = summary('c', 'skipped');
+		steps[stepKeyId(keyFor('c'))] = summary('c', 'skipped');
 		expect(decideSuccessors(graph, keyFor('c'), steps)).toEqual({
 			toQueue: [],
 			toSkip: [keyFor('d')],
@@ -276,16 +276,16 @@ function simulateExecution(
 			settledEvents.shift();
 			const { toQueue, toSkip } = decideSuccessors(graph, keyFor(nodeId), steps);
 			for (const { nodeId: id } of toQueue) {
-				steps[stepKey(keyFor(id))] = summary(id, 'queued');
+				steps[stepKeyId(keyFor(id))] = summary(id, 'queued');
 				queuedNodes.push(id);
 			}
 			for (const { nodeId: id } of toSkip) {
-				steps[stepKey(keyFor(id))] = summary(id, 'skipped');
+				steps[stepKeyId(keyFor(id))] = summary(id, 'skipped');
 				settledEvents.push(id);
 			}
 		} else {
 			const [nodeId] = queuedNodes.splice(randomInt(rand, queuedNodes.length), 1);
-			steps[stepKey(keyFor(nodeId))] = summary(nodeId, 'completed', outputs[nodeId]);
+			steps[stepKeyId(keyFor(nodeId))] = summary(nodeId, 'completed', outputs[nodeId]);
 			settledEvents.push(nodeId);
 		}
 	}
@@ -328,7 +328,7 @@ describe('the event loop over decideSuccessors matches the reference evaluator',
 
 			const reachable = ['trigger', ...getDescendantNodeIds(graph, 'trigger')];
 			const actual = Object.fromEntries(
-				reachable.map((id) => [id, terminal[stepKey(keyFor(id))]?.status ?? 'missing']),
+				reachable.map((id) => [id, terminal[stepKeyId(keyFor(id))]?.status ?? 'missing']),
 			);
 			// rule 1 (the finish predicate): every reachable node settled, and
 			// with exactly the fate the spec assigns

@@ -57,6 +57,9 @@ export interface StepKey {
 	iteration: number;
 }
 
-export function stepKey({ nodeId, iteration }: StepKey): string {
+/** A step key in the string form that keys instance-keyed lookups. */
+export type StepKeyId = string;
+
+export function stepKeyId({ nodeId, iteration }: StepKey): StepKeyId {
 	return `${nodeId}@${iteration}`;
 }

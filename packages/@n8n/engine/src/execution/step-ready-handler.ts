@@ -3,7 +3,7 @@ import type { ExternalDependencies, IStepExecutor } from '../dependencies';
 import type { GraphEdge, GraphNode } from '../graph';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import { stepKey, isSettledStatus, type StepSlots } from './execution.types';
+import { stepKeyId, isSettledStatus, type StepKeyId, type StepSlots } from './execution.types';
 import type { StepError, StepRecord, StepStore } from './step-store';
 import { validateStepContext } from './validate-step-context';
 
@@ -117,7 +117,7 @@ export class StepReadyHandler {
 		validateIncomingEdges(incomingEdges, step);
 
 		const predecessorNodeIds = [...new Set(incomingEdges.map((edge) => edge.from))];
-		const predecessorSteps = await this.stepStore.loadSteps(
+		const predecessorSteps = await this.stepStore.loadStepsByKeys(
 			execution.id,
 			predecessorNodeIds.map((nodeId) => ({ nodeId, iteration: step.iteration })),
 		);
@@ -179,9 +179,9 @@ function validateIncomingEdges(incomingEdges: GraphEdge[], step: StepRecord): vo
 function readEdgeValue(
 	edge: GraphEdge,
 	step: StepRecord,
-	predecessorSteps: Record<string, StepRecord>,
+	predecessorSteps: Record<StepKeyId, StepRecord>,
 ): JsonValue {
-	const row = predecessorSteps[stepKey({ nodeId: edge.from, iteration: step.iteration })];
+	const row = predecessorSteps[stepKeyId({ nodeId: edge.from, iteration: step.iteration })];
 	if (!row || !isSettledStatus(row.status)) {
 		// A step is planned only once every predecessor settled, so running on
 		// a fabricated empty input would mask a planner/store inconsistency.

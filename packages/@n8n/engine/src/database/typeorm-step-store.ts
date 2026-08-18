@@ -5,8 +5,9 @@ import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
-	stepKey,
+	stepKeyId,
 	type StepKey,
+	type StepKeyId,
 	type StepSlots,
 	type StepStatus,
 } from '../execution/execution.types';
@@ -190,7 +191,10 @@ export class TypeOrmStepStore implements StepStore {
 		return result.affected === 1;
 	}
 
-	async loadSteps(executionId: string, keys: StepKey[]): Promise<Record<string, StepRecord>> {
+	async loadStepsByKeys(
+		executionId: string,
+		keys: StepKey[],
+	): Promise<Record<StepKeyId, StepRecord>> {
 		if (keys.length === 0) return {};
 
 		const { fragment, parameters } = stepKeyFilter(keys);
@@ -199,13 +203,13 @@ export class TypeOrmStepStore implements StepStore {
 			.where('step.execution_id = :executionId', { executionId })
 			.andWhere(fragment, parameters)
 			.getMany();
-		return Object.fromEntries(rows.map((row) => [stepKey(row), row]));
+		return Object.fromEntries(rows.map((row) => [stepKeyId(row), row]));
 	}
 
-	async loadStepSummaries(
+	async loadStepSummariesByKeys(
 		executionId: string,
 		keys: StepKey[],
-	): Promise<Record<string, StepSummary>> {
+	): Promise<Record<StepKeyId, StepSummary>> {
 		if (keys.length === 0) return {};
 
 		// The per-slot booleans are computed inside the query, so the potentially
@@ -236,7 +240,7 @@ export class TypeOrmStepStore implements StepStore {
 			.andWhere(fragment, parameters)
 			.getRawMany();
 
-		return Object.fromEntries(rows.map((row) => [stepKey(row), row]));
+		return Object.fromEntries(rows.map((row) => [stepKeyId(row), row]));
 	}
 
 	async loadLatestStep(executionId: string, nodeId: string): Promise<StepRecord | null> {

@@ -434,7 +434,7 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(step.error).toBeNull();
 	});
 
-	it('TypeOrmStepStore.loadSteps returns rows keyed by step key, omitting absent keys', async () => {
+	it('TypeOrmStepStore.loadStepsByKeys returns rows keyed by step key, omitting absent keys', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id: aId } = await seedStep({
@@ -455,7 +455,7 @@ describe('workflow_step_execution table (integration)', () => {
 		const otherExecutionId = await createExecution();
 		await createStep(store, otherExecutionId, { nodeId: 'a', iteration: 0, status: 'queued' });
 
-		const steps = await store.loadSteps(
+		const steps = await store.loadStepsByKeys(
 			executionId,
 			['a', 'b', 'c', 'd'].map((nodeId) => ({ nodeId, iteration: 0 })),
 		);
@@ -472,7 +472,7 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(steps['c@0']).toMatchObject({ status: 'queued', outputs: null });
 	});
 
-	it('TypeOrmStepStore.loadStepSummaries reports per-slot liveness without payloads', async () => {
+	it('TypeOrmStepStore.loadStepSummariesByKeys reports per-slot liveness without payloads', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id: aId } = await seedStep({
@@ -494,7 +494,7 @@ describe('workflow_step_execution table (integration)', () => {
 		const otherExecutionId = await createExecution();
 		await createStep(store, otherExecutionId, { nodeId: 'a', iteration: 0, status: 'queued' });
 
-		const summaries = await store.loadStepSummaries(
+		const summaries = await store.loadStepSummariesByKeys(
 			executionId,
 			['a', 'b', 'c', 'd'].map((nodeId) => ({ nodeId, iteration: 0 })),
 		);
@@ -517,14 +517,16 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(summaries['c@0']).toMatchObject({ status: 'queued', filledOutputSlots: [] });
 	});
 
-	it('TypeOrmStepStore.loadStepSummaries is a no-op for no keys', async () => {
+	it('TypeOrmStepStore.loadStepSummariesByKeys is a no-op for no keys', async () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		expect(await store.loadStepSummaries('00000000-0000-7000-8000-000000000000', [])).toEqual({});
+		expect(await store.loadStepSummariesByKeys('00000000-0000-7000-8000-000000000000', [])).toEqual(
+			{},
+		);
 	});
 
-	it('TypeOrmStepStore.loadSteps is a no-op for no keys', async () => {
+	it('TypeOrmStepStore.loadStepsByKeys is a no-op for no keys', async () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		expect(await store.loadSteps('00000000-0000-7000-8000-000000000000', [])).toEqual({});
+		expect(await store.loadStepsByKeys('00000000-0000-7000-8000-000000000000', [])).toEqual({});
 	});
 
 	it('TypeOrmStepStore.countSettledSteps counts terminal rows only, per execution', async () => {
@@ -631,7 +633,7 @@ describe('workflow_step_execution table (integration)', () => {
 		}
 	});
 
-	it('TypeOrmStepStore.loadSteps and loadStepSummaries distinguish iterations of one node', async () => {
+	it('TypeOrmStepStore.loadStepsByKeys and loadStepSummariesByKeys distinguish iterations of one node', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		await store.createSteps(executionId, [
@@ -639,7 +641,7 @@ describe('workflow_step_execution table (integration)', () => {
 			{ nodeId: 'b', iteration: 1, status: 'queued' },
 		]);
 
-		const steps = await store.loadSteps(executionId, [
+		const steps = await store.loadStepsByKeys(executionId, [
 			{ nodeId: 'b', iteration: 0 },
 			{ nodeId: 'b', iteration: 1 },
 			{ nodeId: 'b', iteration: 2 },
@@ -648,7 +650,7 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(steps['b@0']).toMatchObject({ status: 'completed' });
 		expect(steps['b@1']).toMatchObject({ status: 'queued' });
 
-		const summaries = await store.loadStepSummaries(executionId, [
+		const summaries = await store.loadStepSummariesByKeys(executionId, [
 			{ nodeId: 'b', iteration: 0 },
 			{ nodeId: 'b', iteration: 1 },
 		]);
