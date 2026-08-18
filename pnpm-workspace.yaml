@@ -5,6 +5,7 @@ autoInstallPeers: true
 linkWorkspacePackages: deep
 hoist: true
 hoistWorkspacePackages: false
+allowUnusedPatches: true
 
 pmOnFail: warn
 fund: false
