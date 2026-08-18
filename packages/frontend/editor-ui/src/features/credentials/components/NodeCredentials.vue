@@ -29,11 +29,7 @@ import {
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import {
-	AI_GATEWAY_TOP_UP_MODAL_KEY,
-	ChatHubToolContextKey,
-	CREDENTIAL_ONLY_NODE_PREFIX,
-} from '@/app/constants';
+import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -62,6 +58,7 @@ import CredentialIcon from './CredentialIcon.vue';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 
 import {
 	N8nActionPill,
@@ -166,6 +163,7 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 	useCredentialOAuth();
 
 const aiGateway = useAiGateway();
+const { openTopUp } = useAiGatewayTopUp();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 const balancePill = computed(() => {
@@ -895,13 +893,9 @@ function getIssues(credentialTypeName: string): string[] {
 
 function onTopUp(credentialType: string): void {
 	if (props.readonly) return;
-	telemetry.track('User clicked ai gateway top up', {
+	void openTopUp({
 		source: 'credential_selector',
-		credential_type: credentialType,
-	});
-	uiStore.openModalWithData({
-		name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-		data: { credentialType },
+		credentialType,
 	});
 }
 

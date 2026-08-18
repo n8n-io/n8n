@@ -207,7 +207,7 @@ describe('McpAgentToolsService', () => {
 		const agentTaskRepository = mock<AgentTaskRepository>();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		agentRepository.save.mockImplementation(async (entity) => entity as Agent);
+		agentRepository.saveDraftFenced.mockResolvedValue(true);
 		localCredentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 		localCredentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 		localCredentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);

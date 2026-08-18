@@ -27,8 +27,10 @@ import {
 	executionErrorLabel,
 	executionErrorMessage,
 	hitlTimelineName,
+	isErroredToolCallTimelineItem,
 	isSubAgentTimelineItem,
 	linkedToolDisplayName,
+	timelineItemErrorMessage,
 	timelineItemStatus,
 } from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
@@ -201,23 +203,22 @@ const headerIcon = computed((): IconName => {
 	return 'clock';
 });
 
-const nodeErrorMessage = computed((): string => {
+const isFailed = computed((): boolean =>
+	props.item ? isErroredToolCallTimelineItem(props.item) : false,
+);
+
+/**
+ * Error message for a failed tool/workflow/node call. It surfaces a string,
+ * nested `toolOutput.error.message`, or MCP `structuredContent.error` / text
+ * content when available. Soft-failure payloads are detected in
+ * `isErroredToolCallTimelineItem`.
+ */
+const errorMessage = computed((): string => {
 	const item = props.item;
-	if (
-		!item ||
-		item.kind !== 'node' ||
-		(item.toolOutcome !== 'error' &&
-			!(item.toolOutcome === undefined && item.toolSuccess === false))
-	) {
-		return '';
-	}
-	const prefix = i18n.baseText('agentSessions.timeline.nodeError');
-	const output = item.toolOutput;
-	if (output && typeof output === 'object' && 'error' in output) {
-		const err = (output as { error: unknown }).error;
-		if (typeof err === 'string' && err.length > 0) return `${prefix}: ${err}`;
-	}
-	return prefix;
+	if (!item || !isFailed.value) return '';
+	const prefix = i18n.baseText('agentSessions.timeline.toolError');
+	const message = timelineItemErrorMessage(item);
+	return message ? `${prefix}: ${message}` : prefix;
 });
 
 const workflowFormOutput = computed((): { formUrl: string; message: string } | null => {
@@ -311,6 +312,14 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'workflow'">
+						<N8nCallout
+							v-if="isFailed"
+							theme="danger"
+							data-test-id="workflow-error-callout"
+							:class="$style.errorCallout"
+						>
+							{{ errorMessage }}
+						</N8nCallout>
 						<WorkflowExecutionLogViewer
 							v-if="item.workflowExecutionId && item.workflowId"
 							:key="`${item.workflowId}:${item.workflowExecutionId}`"
@@ -350,6 +359,14 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'tool'">
+						<N8nCallout
+							v-if="isFailed"
+							theme="danger"
+							data-test-id="tool-error-callout"
+							:class="$style.errorCallout"
+						>
+							{{ errorMessage }}
+						</N8nCallout>
 						<template v-if="actionCard">
 							<RichInteractionCard :input="actionCard" :output="ensureParsed(item.toolOutput)" />
 						</template>
@@ -368,8 +385,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'node'">
-						<N8nCallout v-if="nodeErrorMessage" theme="danger" data-test-id="node-error-callout">
-							{{ nodeErrorMessage }}
+						<N8nCallout v-if="errorMessage" theme="danger" data-test-id="node-error-callout">
+							{{ errorMessage }}
 						</N8nCallout>
 						<ToolIoView
 							:name="(item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)) || 'node'"
@@ -436,6 +453,10 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.errorCallout {
+	margin-bottom: var(--spacing--2xs);
 }
 
 .container {
