@@ -79,10 +79,12 @@ export class CredentialResolverWorkflowService {
 	}
 
 	/**
-	 * Checks the status of all resolvable credentials in a workflow and its sub-workflows.
-	 * Traverses Execute Sub-workflow and AI Workflow Tool references recursively, deduplicating
-	 * both workflows (cycles / self-references / diamond references) and credentials, then tests
-	 * credential availability by attempting to retrieve secrets using the provided identity token.
+	 * Checks the status of all resolvable credentials on enabled nodes in a workflow and its
+	 * sub-workflows. Disabled nodes are skipped — they never run, so their accounts must not
+	 * gate form shells or submit. Traverses Execute Sub-workflow and AI Workflow Tool references
+	 * recursively, deduplicating both workflows (cycles / self-references / diamond references)
+	 * and credentials, then tests credential availability by attempting to retrieve secrets
+	 * using the provided identity token.
 	 *
 	 * @param workflowId - The (root) workflow ID to check
 	 * @param credentialContext - Identity context used for credential authorization
@@ -148,8 +150,10 @@ export class CredentialResolverWorkflowService {
 
 	/**
 	 * Recursively walks a workflow and its sub-workflows, recording every resolvable-credential id
-	 * mapped to the effective resolver of the workflow it was first found in. The `visited` set
-	 * prevents processing the same workflow twice (cycles, self-references, diamond references).
+	 * on an enabled node, mapped to the effective resolver of the workflow it was found in.
+	 * Disabled nodes are skipped so their accounts never appear in the status result. The
+	 * `visited` set prevents processing the same workflow twice (cycles, self-references,
+	 * diamond references).
 	 */
 	private async collectResolvableCredentials(
 		workflowId: string,
@@ -188,6 +192,9 @@ export class CredentialResolverWorkflowService {
 		const resolverId = this.dynamicCredentialsProxy.getEffectiveResolverId(workflow.settings);
 
 		for (const node of workflow.nodes ?? []) {
+			if (node.disabled) {
+				continue;
+			}
 			for (const credentialName in node.credentials ?? {}) {
 				const credentialId = node.credentials?.[credentialName]?.id;
 				if (!credentialId) {
