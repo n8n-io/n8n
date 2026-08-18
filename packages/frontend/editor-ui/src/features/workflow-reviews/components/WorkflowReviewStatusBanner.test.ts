@@ -231,8 +231,6 @@ describe('WorkflowReviewStatusBanner', () => {
 			expect(queryByTestId('workflow-review-submit-changes-button')).not.toBeInTheDocument();
 		});
 
-		// R2 (P3): the changes-requested copy tells the author to submit, so the
-		// disabled button has to say what unblocks it — see LIGO-607_review.md
 		it('explains why Submit changes is disabled while in sync', async () => {
 			const { getByTestId, findByText } = await openPopover({
 				review: review({ decision: 'changes_requested', decisionBy: actor }),
@@ -246,7 +244,6 @@ describe('WorkflowReviewStatusBanner', () => {
 			).toBeInTheDocument();
 		});
 
-		// R3 (P3): the detail route 404s without publish rights — see LIGO-607_review.md
 		it('hides Open review when the detail route is unreachable', async () => {
 			const { queryByTestId, getByTestId } = await openPopover({ canOpenReview: false });
 

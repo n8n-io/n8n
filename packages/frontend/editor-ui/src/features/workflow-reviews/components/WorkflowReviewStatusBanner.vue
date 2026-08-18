@@ -147,10 +147,6 @@ const status = computed<BannerStatus | null>(() => {
 /** Nothing to submit while the review already covers the saved version. */
 const isSubmitChangesEnabled = computed(() => props.canSubmitChanges && hasDivergentVersion.value);
 
-/**
- * Changes-requested keeps its Submit changes button even in sync, so say why it is
- * disabled — the support copy tells the author to submit. R2 (P3), see LIGO-607_review.md.
- */
 const submitChangesHint = computed(() =>
 	props.canSubmitChanges && !hasDivergentVersion.value
 		? i18n.baseText('workflowReviews.editorBanner.submitChanges.savedVersionHint')
