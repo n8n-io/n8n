@@ -8,6 +8,9 @@ paths:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
     post:
       $ref: ./handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
+  /role-mapping-rules/{roleMappingRuleId}/move:
+    post:
+      $ref: ./handlers/role-mapping-rules/spec/paths/moveRoleMappingRule.generated.yml
   /roles:
     get:
       $ref: ./handlers/roles/spec/paths/getAllRoles.generated.yml
