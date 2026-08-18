@@ -433,6 +433,12 @@ export interface WorkflowContext {
  * Configuration options for creating a node
  */
 export interface NodeConfig<TParams = IDataObject> {
+	/**
+	 * Stable n8n node id. Keep it verbatim when editing an existing node — execution
+	 * logs, poll cursors, dedupe state and the version diff are all keyed on it, and a
+	 * rename does not change it. Omit it for a node you are adding; one is assigned on save.
+	 */
+	id?: string;
 	parameters?: TParams;
 	credentials?: Record<
 		string,
@@ -465,6 +471,8 @@ export interface NodeConfig<TParams = IDataObject> {
  * Configuration for sticky notes
  */
 export interface StickyNoteConfig {
+	/** Stable n8n node id — see {@link NodeConfig.id}. */
+	id?: string;
 	color?: number;
 	position?: [number, number];
 	width?: number;
@@ -659,6 +667,27 @@ export function isNodeInstance(value: unknown): value is NodeInstance<string, st
 	// After 'in' checks, safely access the to property
 	const toProp = (value as Record<string, unknown>).to;
 	return typeof toProp === 'function';
+}
+
+/**
+ * A sticky note that was asked to wrap a set of nodes.
+ *
+ * Only the anchor node IDs are recorded at construction time: node positions do not
+ * exist yet when `sticky()` runs, so the box is resolved during serialization from
+ * wherever the anchors ended up. IDs rather than names, because a node can be
+ * auto-renamed on its way into the workflow.
+ */
+export interface AnchoredStickyNote {
+	readonly stickyAnchorIds: readonly string[];
+}
+
+/** Type guard for {@link AnchoredStickyNote}. */
+export function isAnchoredStickyNote(value: object): value is AnchoredStickyNote {
+	return (
+		'stickyAnchorIds' in value &&
+		Array.isArray(value.stickyAnchorIds) &&
+		value.stickyAnchorIds.every((id) => typeof id === 'string')
+	);
 }
 
 // =============================================================================

@@ -11,6 +11,7 @@ const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
 const AGENT_PROVIDER_NAMES: Record<string, string> = {
 	'aws-bedrock': 'AWS Bedrock',
 	'azure-openai': 'Azure OpenAI',
+	'google-vertex-anthropic': 'Google Vertex Anthropic',
 };
 
 /** Cost per million tokens. */

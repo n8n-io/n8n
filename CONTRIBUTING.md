@@ -224,9 +224,10 @@ pnpm exec dotenvx run -f .env.local -- pnpm dev:be
 
 ## Development cycle
 
-While iterating on n8n modules code, you can run `pnpm dev`. It will then
-automatically build your code, restart the backend and refresh the frontend
-(editor-ui) on every change you make.
+While iterating on n8n modules code, run `pnpm dev:be` for the backend and
+`pnpm dev:fe:editor` for the editor UI. They build your code, restart the
+backend, and refresh the frontend on each change you make. The root `pnpm dev`
+does not exist: it prints a notice and exits with code 0.
 Given the size of the code base and the number of modules, we recommend only watching the modules you're
 actively working on.
 
@@ -337,7 +338,7 @@ packages/cli$ N8N_USER_FOLDER=~/.n8n4/ pnpm run dev
 When developing custom nodes or credentials, you can enable hot reload to automatically detect changes without restarting the server by setting
 
 ```bash
-N8N_DEV_RELOAD=true pnpm dev
+N8N_DEV_RELOAD=true pnpm dev:be
 ```
 
 **Performance considerations:**
@@ -417,7 +418,8 @@ For manual testing of the event bus with syslog (TCP or UDP), see [packages/cli/
 
 ### Performance Considerations
 
-The full development mode (`pnpm dev`) runs multiple processes in parallel:
+Full development mode (`pnpm dev:be` with `pnpm dev:fe:editor`) runs multiple
+processes in parallel:
 
 1. **TypeScript compilation** for each package
 2. **File watchers** monitoring source files

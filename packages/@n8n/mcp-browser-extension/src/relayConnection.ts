@@ -7,6 +7,7 @@
  * All communication with the relay uses these CDP target IDs.
  */
 
+import { ForeignFrames } from './foreignFrames';
 import { createLogger } from './logger';
 import type { TabManagementSettings } from './types';
 
@@ -76,6 +77,9 @@ export class RelayConnection {
 	private readonly pendingAttaches = new Map<string, Promise<void>>();
 	/** Set of chrome tab IDs created by the AI agent */
 	private readonly agentCreatedChromeTabIds = new Set<number>();
+	/** Detach reports still waiting on a frame-tree probe. */
+	private pendingDetachReports = 0;
+	private readonly foreignFrames = new ForeignFrames();
 	/** The primary tab ID (first registered), used as default target */
 	private primaryId: string | undefined;
 	/** Cached Target.setAutoAttach params — reapplied to newly attached tabs for iframe support. */
@@ -169,6 +173,7 @@ export class RelayConnection {
 		this.tabs.delete(id);
 		this.chromeTabIdToId.delete(chromeTabId);
 		this.agentCreatedChromeTabIds.delete(chromeTabId);
+		this.foreignFrames.forget(chromeTabId);
 
 		// Update primary
 		if (id === this.primaryId) {
@@ -179,9 +184,7 @@ export class RelayConnection {
 		log.debug(`removeTab: ${id} (chromeTabId=${chromeTabId})`);
 		this.sendMessage({ method: 'tabClosed', params: { id } });
 
-		if (this.tabs.size === 0) {
-			this.close('extension_disconnected');
-		}
+		this.closeIfIdle('extension_disconnected');
 	}
 
 	setSettings(settings: TabManagementSettings): void {
@@ -211,6 +214,11 @@ export class RelayConnection {
 
 	markAsAgentCreated(chromeTabId: number): void {
 		this.agentCreatedChromeTabIds.add(chromeTabId);
+	}
+
+	/** Close once the last tab is gone, but not before in-flight detaches have reported. */
+	private closeIfIdle(reason: string): void {
+		if (this.tabs.size === 0 && this.pendingDetachReports === 0) this.close(reason);
 	}
 
 	close(message: string): void {
@@ -255,6 +263,7 @@ export class RelayConnection {
 		this.chromeTabIdToId.clear();
 		this.pendingAttaches.clear();
 		this.agentCreatedChromeTabIds.clear();
+		this.foreignFrames.clear();
 		this.onclose?.();
 	}
 
@@ -412,6 +421,8 @@ export class RelayConnection {
 			}
 		}
 
+		this.foreignFrames.track(source.tabId, method, params);
+
 		this.sendMessage({
 			method: 'forwardCDPEvent',
 			params: { method, params, id },
@@ -419,16 +430,17 @@ export class RelayConnection {
 	}
 
 	private onDebuggerDetach(source: chrome.debugger.Debuggee, reason: string): void {
-		if (!source.tabId) return;
-		const id = this.chromeTabIdToId.get(source.tabId);
+		const chromeTabId = source.tabId;
+		if (!chromeTabId) return;
+		const id = this.chromeTabIdToId.get(chromeTabId);
 		if (!id) return;
 
 		const entry = this.tabs.get(id);
 		if (entry) entry.attached = false;
 
 		this.tabs.delete(id);
-		this.chromeTabIdToId.delete(source.tabId);
-		this.agentCreatedChromeTabIds.delete(source.tabId);
+		this.chromeTabIdToId.delete(chromeTabId);
+		this.agentCreatedChromeTabIds.delete(chromeTabId);
 
 		if (id === this.primaryId) {
 			const remaining = [...this.tabs.keys()];
@@ -436,11 +448,32 @@ export class RelayConnection {
 		}
 
 		log.debug(`debuggerDetach: ${id} reason=${reason}`);
-		this.sendMessage({ method: 'tabClosed', params: { id } });
+		// Chrome's reason never names an extension, and only a frame that is live now
+		// can have caused this detach.
+		void this.reportDetached(chromeTabId, id).catch((e) =>
+			log.debug('failed to report detach:', e),
+		);
+	}
 
-		if (this.tabs.size === 0) {
-			this.close('debugger_detached');
+	private async reportDetached(chromeTabId: number, id: string): Promise<void> {
+		this.pendingDetachReports++;
+		try {
+			const blockingExtensionIds = await this.foreignFrames.owners(chromeTabId);
+
+			this.sendMessage({
+				method: 'tabClosed',
+				params:
+					blockingExtensionIds.length > 0
+						? { id, reason: 'blocked_by_extension', blockingExtensionIds }
+						: { id },
+			});
+		} finally {
+			this.foreignFrames.forget(chromeTabId);
+			this.pendingDetachReports--;
 		}
+
+		// Closing drops frames still queued behind us.
+		this.closeIfIdle('debugger_detached');
 	}
 
 	// =========================================================================
@@ -541,7 +574,7 @@ export class RelayConnection {
 		log.debug(`CDP: ${method as string} → targetId=${id} (chromeTabId=${entry.chromeTabId})`);
 
 		// Lazy attach on first CDP command
-		await this.ensureAttached(id);
+		await this.explainDenials(entry.chromeTabId, async () => await this.ensureAttached(id));
 
 		const debuggee = { tabId: entry.chromeTabId };
 
@@ -573,30 +606,48 @@ export class RelayConnection {
 				chrome.debugger.onEvent.addListener(handler);
 			});
 
-			const result = await chrome.debugger.sendCommand(
-				debuggee,
-				method as string,
-				cmdParams as object | undefined,
+			const result = await this.explainDenials(
+				entry.chromeTabId,
+				async () =>
+					await chrome.debugger.sendCommand(
+						debuggee,
+						method as string,
+						cmdParams as object | undefined,
+					),
 			);
 			await contextReady;
 			return result;
 		}
 
-		const result = await Promise.race([
-			chrome.debugger.sendCommand(debuggee, method as string, cmdParams as object | undefined),
-			new Promise<never>((_resolve, reject) => {
-				setTimeout(() => {
-					reject(
-						new Error(
-							`CDP command '${method as string}' timed out after ${CDP_COMMAND_TIMEOUT_MS}ms (${id})`,
-						),
-					);
-				}, CDP_COMMAND_TIMEOUT_MS);
-			}),
-		]);
+		const result = await this.explainDenials(
+			entry.chromeTabId,
+			async () =>
+				await Promise.race([
+					chrome.debugger.sendCommand(debuggee, method as string, cmdParams as object | undefined),
+					new Promise<never>((_resolve, reject) => {
+						setTimeout(() => {
+							reject(
+								new Error(
+									`CDP command '${method as string}' timed out after ${CDP_COMMAND_TIMEOUT_MS}ms (${id})`,
+								),
+							);
+						}, CDP_COMMAND_TIMEOUT_MS);
+					}),
+				]),
+		);
 
 		log.debug(`CDP response: ${method as string} → ${id} OK`);
 		return result;
+	}
+
+	/** Names the extension behind a denial. Wraps attach too — that is denied first. */
+	private async explainDenials<T>(chromeTabId: number, run: () => Promise<T>): Promise<T> {
+		try {
+			return await run();
+		} catch (error) {
+			if (!ForeignFrames.isDenial(error)) throw error;
+			throw await this.foreignFrames.describeDenial(chromeTabId, error);
+		}
 	}
 
 	private async handleCreateTab(params: Record<string, unknown>): Promise<unknown> {
@@ -669,6 +720,7 @@ export class RelayConnection {
 		this.tabs.delete(id);
 		this.chromeTabIdToId.delete(entry.chromeTabId);
 		this.agentCreatedChromeTabIds.delete(entry.chromeTabId);
+		this.foreignFrames.forget(entry.chromeTabId);
 
 		// Close the tab
 		await chrome.tabs.remove(entry.chromeTabId);
@@ -679,9 +731,7 @@ export class RelayConnection {
 			this.primaryId = remaining.length > 0 ? remaining[0] : undefined;
 		}
 
-		if (this.tabs.size === 0) {
-			this.close('extension_disconnected');
-		}
+		this.closeIfIdle('extension_disconnected');
 
 		return { closed: true, id };
 	}
@@ -691,7 +741,8 @@ export class RelayConnection {
 		if (!id) throw new Error('id is required');
 
 		log.debug(`attachTab: ${id}`);
-		await this.ensureAttached(id);
+		const { entry } = this.resolveTab(id);
+		await this.explainDenials(entry.chromeTabId, async () => await this.ensureAttached(id));
 		log.debug(`attachTab: ${id} done`);
 		return { attached: true, id };
 	}

@@ -48,8 +48,12 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 	'openAgentPreview',
 	undefined,
 );
-const pendingComposerContext = inject<Ref<InstanceAiHandoffContext | null> | undefined>(
+const pendingComposerContext = inject<Readonly<Ref<InstanceAiHandoffContext | null>> | undefined>(
 	'pendingComposerContext',
+	undefined,
+);
+const dismissPendingComposerContext = inject<((key: string) => boolean) | undefined>(
+	'dismissPendingComposerContext',
 	undefined,
 );
 
@@ -184,8 +188,9 @@ const contextEntries = computed<ContextEntry[]>(() => {
 
 async function dismissContext(key: string) {
 	const pending = pendingComposerContext?.value;
-	if (pendingComposerContext && pending && handoffContextKey(pending) === key) {
-		pendingComposerContext.value = null;
+	if (pending && handoffContextKey(pending) === key) {
+		dismissPendingComposerContext?.(key);
+		return;
 	}
 	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
 	dismissedKeys.add(key);
