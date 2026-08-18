@@ -129,12 +129,6 @@ const status = computed<BannerStatus | null>(() => {
 /** Nothing to submit while the review already covers the saved version. */
 const isSubmitChangesEnabled = computed(() => props.canSubmitChanges && hasDivergentVersion.value);
 
-/**
- * Changes-requested keeps its Submit changes button even when disabled, so say why:
- * an unpublishable workflow first, since that blocks submitting at all, then the
- * in-sync case where the support copy tells the author to submit. R2 (P3), see
- * LIGO-607_review.md.
- */
 const submitChangesHint = computed(() => {
 	if (props.submitBlockedReason) return props.submitBlockedReason;
 

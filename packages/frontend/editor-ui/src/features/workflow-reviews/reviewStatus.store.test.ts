@@ -136,8 +136,6 @@ describe('reviewStatus.store', () => {
 		expect(store.hasOpenReview('workflow-1')).toBe(true);
 	});
 
-	// R1 (P2): the mutation response has no description, so the creating dialog
-	// supplies what it submitted — see LIGO-979_review.md.
 	it('keeps the description the caller submitted with a freshly created review', () => {
 		const store = useWorkflowReviewStatusStore();
 
