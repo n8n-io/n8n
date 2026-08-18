@@ -374,6 +374,19 @@ describe('validateLoops', () => {
 		);
 
 		expect(() => validateLoops(graph)).toThrow(/done \(0\) and loop \(1\)/);
+
+		// same shape, exit on slot -1: `validateLoops` also runs standalone, where
+		// nothing has checked slot sanity yet
+		const negativeSlot = makeGraph(
+			[
+				{ from: 'trigger', to: 'B' },
+				{ from: 'B', to: 'x', outputIndex: 1 },
+				{ from: 'x', to: 'B', isBackEdge: true },
+				{ from: 'B', to: 'd', outputIndex: -1 },
+			],
+			{ batch: ['B'] },
+		);
+		expect(() => validateLoops(negativeSlot)).toThrow(/done \(0\) and loop \(1\)/);
 	});
 
 	it('rejects a dangling body branch (rule 5, sequentiality)', () => {

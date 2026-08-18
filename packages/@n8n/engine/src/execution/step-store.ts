@@ -71,9 +71,10 @@ export interface StepStore {
 	 * Persist new step records for one execution, batched so planning a fan-out
 	 * costs a single round trip. Returns the rows actually created.
 	 *
-	 * If a step for a given `(executionId, nodeId)` already exists, it is skipped
-	 * and not returned. This allows multiple planners to race to enqueue the same
-	 * node without erroring or duplicating work. We return the actually created rows
+	 * If a step for a given `(executionId, nodeId, iteration)` already exists, it
+	 * is skipped and not returned. This allows multiple planners to race to enqueue
+	 * the same step without erroring or duplicating work. A further iteration of
+	 * the same node is a new row, not a duplicate. We return the actually created rows
 	 * so the caller knows which step creations it needs to publish.
 	 *
 	 * Creates nothing once any step in the execution has failed (serialized with

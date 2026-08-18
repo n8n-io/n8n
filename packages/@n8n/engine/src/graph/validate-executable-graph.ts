@@ -193,7 +193,7 @@ export function validateLoops(graph: WorkflowGraph): void {
 					`Edge ${name(edge.from)} -> ${name(edge.to)} feeds input slot ${edge.inputIndex} of a batch node, which has only slot 0`,
 				);
 			}
-			if (edge.from === batchNodeId && edge.outputIndex > 1) {
+			if (edge.from === batchNodeId && edge.outputIndex !== 0 && edge.outputIndex !== 1) {
 				throw new GraphValidationError(
 					`Edge ${name(edge.from)} -> ${name(edge.to)} leaves output slot ${edge.outputIndex} of a batch node, which has only done (0) and loop (1)`,
 				);
