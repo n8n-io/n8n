@@ -150,6 +150,13 @@ describe('variable-length provider shapes', () => {
 		);
 	});
 
+	// Real legacy openai keys run past the 48 characters the pattern used to count.
+	it('redacts a real-length legacy openai key completely', () => {
+		const key = `sk-${'aB3xY9zQ7wE2rT5yU8iO1pL4kJ6hG0fDaB3xY9zQ7wE2rT5yU8i'}`;
+
+		expect(redactString(`key ${key} end`)).toBe('key [REDACTED:openai_legacy_api_key:1] end');
+	});
+
 	// A console that lists a key truncated beside the full one must not let the
 	// short rendering decide what gets stored.
 	it('keeps a truncated rendering separate from the full key', () => {
