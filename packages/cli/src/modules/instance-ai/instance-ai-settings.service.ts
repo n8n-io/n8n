@@ -1381,6 +1381,10 @@ export class InstanceAiSettingsService {
 		return deriveInstanceAiSetupState(response).setupCompleted;
 	}
 
+	getConfiguredModelId(): string {
+		return this.config.model.trim();
+	}
+
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
 	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);
