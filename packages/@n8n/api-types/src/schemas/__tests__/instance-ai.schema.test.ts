@@ -25,6 +25,8 @@ import {
 	findUnbackedSeedWorkflowTools,
 	InstanceAiEvalRestoreThreadRequest,
 	instanceAiEvalSeedAgentSchema,
+	instanceAiAttachmentSchema,
+	instanceAiResourceAttachmentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
 	isInstanceAiSandboxProvider,
 	isKnownInstanceAiErrorCode,
@@ -772,5 +774,117 @@ describe('total attachment budget', () => {
 
 	it('leaves room for more than one max-size file', () => {
 		expect(MAX_TOTAL_ATTACHMENT_DECODED_BYTES).toBeGreaterThan(MAX_ATTACHMENT_DECODED_BYTES);
+	});
+});
+
+describe('instanceAiAttachmentSchema — nodes attachment', () => {
+	const nodesAttachment = (overrides: Record<string, unknown> = {}) => ({
+		type: 'nodes',
+		workflowId: 'wf-1',
+		sets: [{ nodes: [{ id: 'n1', name: 'HTTP Request' }] }],
+		...overrides,
+	});
+
+	it('accepts a single set with one loose node and no optional fields', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment());
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a chain set with inputNode, outputNode, and canvasGroupId', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{
+						nodes: [
+							{ id: 'n1', name: 'HTTP Request' },
+							{ id: 'n2', name: 'Set' },
+							{ id: 'n3', name: 'IF' },
+						],
+						inputNode: { id: 'n0', name: 'Webhook' },
+						outputNode: { id: 'n4', name: 'Slack' },
+						canvasGroupId: 'g1',
+						canvasGroupName: 'My Group 1',
+					},
+				],
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts two sets at once', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{ nodes: [{ id: 'n1' }] },
+					{ nodes: [{ id: 'n2' }, { id: 'n3' }], inputNode: { id: 'n1' } },
+				],
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a missing workflowId', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ workflowId: undefined }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects an empty sets array', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets: [] }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a set with an empty nodes array', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets: [{ nodes: [] }] }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects more than 50 sets', () => {
+		const sets = Array.from({ length: 51 }, (_, i) => ({ nodes: [{ id: `n${i}` }] }));
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects more than 50 nodes in a single set', () => {
+		const nodes = Array.from({ length: 51 }, (_, i) => ({ id: `n${i}` }));
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets: [{ nodes }] }));
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts node refs without a name', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{
+						nodes: [{ id: 'n1' }],
+						inputNode: { id: 'n0' },
+						outputNode: { id: 'n2' },
+					},
+				],
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('still accepts file, workflow, and agent attachments unchanged', () => {
+		expect(
+			instanceAiAttachmentSchema.safeParse({
+				type: 'file',
+				data: 'YQ==',
+				mimeType: 'text/plain',
+				fileName: 'a.txt',
+			}).success,
+		).toBe(true);
+		expect(instanceAiAttachmentSchema.safeParse({ type: 'workflow', id: 'wf-1' }).success).toBe(
+			true,
+		);
+		expect(
+			instanceAiAttachmentSchema.safeParse({ type: 'agent', id: 'agent-1', projectId: 'proj-1' })
+				.success,
+		).toBe(true);
+	});
+
+	it('is also accepted by instanceAiResourceAttachmentSchema', () => {
+		const result = instanceAiResourceAttachmentSchema.safeParse(nodesAttachment());
+		expect(result.success).toBe(true);
 	});
 });

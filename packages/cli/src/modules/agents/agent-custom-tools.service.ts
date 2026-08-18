@@ -20,7 +20,7 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import { isUnconfiguredAgent } from './utils/agent-capabilities';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -72,7 +72,7 @@ export class AgentCustomToolsService {
 
 		markAgentDraftDirty(entity);
 		this.runtimeCacheService.clearRuntimes(agentId);
-		const saved = await this.agentRepository.save(entity);
+		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
 		if (options.recordTelemetry !== false) {
 			this.modificationTelemetry.record({
 				agent: saved,
@@ -124,7 +124,7 @@ export class AgentCustomToolsService {
 
 		markAgentDraftDirty(entity);
 		this.runtimeCacheService.clearRuntimes(agentId);
-		const saved = await this.agentRepository.save(entity);
+		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
 		this.modificationTelemetry.record({
 			agent: saved,
 			projectId,
