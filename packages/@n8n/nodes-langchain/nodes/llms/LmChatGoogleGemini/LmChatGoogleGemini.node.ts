@@ -77,7 +77,7 @@ const modelRLC: INodeProperties = {
 			property: 'model',
 		},
 	},
-	default: 'models/gemini-2.5-flash',
+	default: 'models/gemini-3.1-flash-lite',
 	builderHint: {
 		propertyHint:
 			'Default to the latest flagship Gemini (models/gemini-3.1-pro-preview). Use models/gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
@@ -136,7 +136,7 @@ export class LmChatGoogleGemini implements INodeType {
 			},
 			{
 				...modelRLC,
-				default: 'models/gemini-3-flash-preview',
+				default: 'models/gemini-3.1-flash-lite',
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.1 } }],

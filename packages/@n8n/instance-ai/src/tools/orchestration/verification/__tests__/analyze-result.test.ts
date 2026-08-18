@@ -77,3 +77,68 @@ describe('analyzeVerificationResult — halted wait gates', () => {
 		expect(analysis.coverageNote).toContain('Partial coverage');
 	});
 });
+
+describe('analyzeVerificationResult — chat model failures', () => {
+	it('routes model-not-found errors on chat-model-related nodes to targeted repair guidance', () => {
+		const analysis = analyzeVerificationResult({
+			result: {
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'The model "models/gemini-2.5-flash" was not found',
+				lastNodeExecuted: 'AI Agent',
+				nodeErrors: [
+					{
+						nodeName: 'AI Agent',
+						message: 'The model "models/gemini-2.5-flash" was not found',
+					},
+				],
+			} as unknown as ExecutionRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+			chatModelRelatedNodeNames: new Set(['OpenAI Chat Model', 'AI Agent']),
+		});
+
+		expect(analysis.success).toBe(false);
+		expect(analysis.remediation?.reason).toBe('chat_model_failure');
+		expect(analysis.remediation?.shouldEdit).toBe(true);
+		expect(analysis.remediation?.guidance).toContain('explore-resources');
+	});
+
+	it('does not classify a model-shaped HTTP Request failure as a chat-model failure', () => {
+		const analysis = analyzeVerificationResult({
+			result: {
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'Resource not found',
+				lastNodeExecuted: 'HTTP Request',
+				nodeErrors: [{ nodeName: 'HTTP Request', message: 'Resource not found' }],
+			} as unknown as ExecutionRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+			chatModelRelatedNodeNames: new Set(['OpenAI Chat Model', 'AI Agent']),
+		});
+
+		expect(analysis.remediation?.reason).toBe('runtime_failure');
+	});
+
+	it('adds n8n credits guidance for quota failures', () => {
+		const analysis = analyzeVerificationResult({
+			result: {
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'You exceeded your current quota, please check your plan and billing details',
+			} as unknown as ExecutionRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.remediation?.category).toBe('needs_setup');
+		expect(analysis.remediation?.guidance).toContain('n8n credits');
+	});
+});

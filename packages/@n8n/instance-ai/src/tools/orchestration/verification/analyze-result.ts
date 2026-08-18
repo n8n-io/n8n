@@ -11,6 +11,10 @@ import type {
 	WorkflowBuildOutcome,
 	WorkflowLoopState,
 } from '../../../workflow-loop/workflow-loop-state';
+import {
+	buildChatModelFailureGuidance,
+	classifyChatModelFailure,
+} from '../../workflows/chat-model-validation';
 
 type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
 
@@ -133,10 +137,31 @@ function messageMatchesAny(normalized: string, keywords: readonly string[]): boo
 	return keywords.some((keyword) => normalized.includes(keyword));
 }
 
+function isChatModelScopedFailure(
+	nodeErrors: ExecutionNodeError[],
+	errorMessage: string | undefined,
+	lastNodeExecuted: string | undefined,
+	chatModelRelatedNodeNames: ReadonlySet<string> | undefined,
+): boolean {
+	if (!chatModelRelatedNodeNames || chatModelRelatedNodeNames.size === 0) return false;
+	if (nodeErrors.some((nodeError) => chatModelRelatedNodeNames.has(nodeError.nodeName))) {
+		return true;
+	}
+	if (lastNodeExecuted && chatModelRelatedNodeNames.has(lastNodeExecuted)) return true;
+	if (!errorMessage) return false;
+	for (const nodeName of chatModelRelatedNodeNames) {
+		if (errorMessage.includes(nodeName)) return true;
+	}
+	return false;
+}
+
 function classifyVerificationFailure(
 	error: string | undefined,
 	status: string | undefined,
 	buildOutcome: WorkflowBuildOutcome,
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+	chatModelRelatedNodeNames: ReadonlySet<string> | undefined,
 ): RemediationMetadata {
 	if (status === 'waiting') {
 		const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
@@ -168,6 +193,9 @@ function classifyVerificationFailure(
 	}
 
 	if (messageMatchesAny(normalized, CREDENTIAL_FAILURE_KEYWORDS)) {
+		const quotaGuidance = normalized.includes('quota')
+			? " If the user's own key or free tier is exhausted, switch the chat-model node to n8n credits or another provider they can run."
+			: '';
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,
@@ -176,7 +204,7 @@ function classifyVerificationFailure(
 				: 'credential_or_setup_failure',
 			guidance: hasMockedCredentialContext
 				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to workflows(action="setup").'
-				: 'Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflows(action="setup").',
+				: `Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflows(action="setup").${quotaGuidance}`,
 		});
 	}
 
@@ -187,6 +215,20 @@ function classifyVerificationFailure(
 			reason: 'external_service_or_timeout',
 			guidance:
 				'Workflow submitted successfully, but verification is blocked by an external service or timeout. Stop code edits and explain the blocker to the user.',
+		});
+	}
+
+	const modelFailureKind = classifyChatModelFailure(error);
+	if (
+		modelFailureKind !== undefined &&
+		error &&
+		isChatModelScopedFailure(nodeErrors, error, lastNodeExecuted, chatModelRelatedNodeNames)
+	) {
+		return createRemediation({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'chat_model_failure',
+			guidance: buildChatModelFailureGuidance(modelFailureKind, error),
 		});
 	}
 
@@ -297,8 +339,22 @@ export function analyzeVerificationResult(args: {
 	haltedGateNames?: string[];
 	stateBefore: WorkflowLoopState | undefined;
 	runId: string;
+	/**
+	 * Chat-model nodes plus parents they feed via `ai_languageModel`. Model
+	 * failure keywords are only applied when the failure is scoped to these
+	 * nodes — never globally.
+	 */
+	chatModelRelatedNodeNames?: ReadonlySet<string>;
 }): VerificationAnalysis {
-	const { result, buildOutcome, simulatedNodes, haltedGateNames, stateBefore, runId } = args;
+	const {
+		result,
+		buildOutcome,
+		simulatedNodes,
+		haltedGateNames,
+		stateBefore,
+		runId,
+		chatModelRelatedNodeNames,
+	} = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
 		result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
@@ -321,6 +377,9 @@ export function analyzeVerificationResult(args: {
 				// Only escalate a clean status; 'waiting' must keep its needs_setup routing.
 				nodeErrors.length > 0 && result.status === 'success' ? 'error' : result.status,
 				buildOutcome,
+				nodeErrors,
+				result.lastNodeExecuted,
+				chatModelRelatedNodeNames,
 			);
 	const budgetRemediation =
 		failureRemediation?.shouldEdit === true
