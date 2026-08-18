@@ -14,7 +14,7 @@ import {
 } from './agent-chat-attachment.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
-import { AgentExecution } from './entities/agent-execution.entity';
+import { AgentExecution, type AgentExecutionStatus } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
@@ -75,6 +75,7 @@ export interface ThreadListItem extends Omit<AgentExecutionThread, 'generateId' 
 	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
 	source: string | null;
 	failureSummary: ThreadFailureSummary | null;
+	status: AgentExecutionStatus | null;
 }
 
 const TIMELINE_SNAPSHOT_RETRY_DELAY_MS = 1_000;
@@ -515,10 +516,11 @@ export class AgentExecutionService {
 		}
 
 		const threadIds = page.threads.map((t) => t.id);
-		const [messageMap, sourceMap, failureSummaryMap] = await Promise.all([
+		const [messageMap, sourceMap, failureSummaryMap, latestStatusMap] = await Promise.all([
 			this.agentExecutionRepository.findFirstUserMessageByThreadIds(threadIds),
 			this.agentExecutionRepository.findFirstSourceByThreadIds(threadIds),
 			this.agentExecutionRepository.findFailureSummariesByThreadIds(threadIds),
+			this.agentExecutionRepository.findLatestStatusesByThreadIds(threadIds),
 		]);
 
 		return {
@@ -528,6 +530,7 @@ export class AgentExecutionService {
 				firstMessage: messageMap.get(t.id) ?? null,
 				source: sourceMap.get(t.id) ?? null,
 				failureSummary: failureSummaryMap.get(t.id) ?? null,
+				status: sessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
 			})),
 		};
 	}
@@ -605,6 +608,14 @@ export class AgentExecutionService {
 	private toBlobRefs<T extends { storedAt: AgentExecution['storedAt'] }>(refs: T[]) {
 		return refs.filter((r): r is T & { storedAt: StorageLocation } => r.storedAt !== 'db');
 	}
+}
+
+function sessionStatus(
+	latestStatus: AgentExecutionStatus | undefined,
+	hasFailureSummary: boolean,
+): AgentExecutionStatus | null {
+	if (!latestStatus) return null;
+	return latestStatus === 'success' && hasFailureSummary ? 'error' : latestStatus;
 }
 
 function cleanUserMessage(message: string | null, agentName: string): string | null {

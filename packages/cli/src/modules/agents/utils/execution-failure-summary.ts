@@ -32,8 +32,12 @@ function isDeclinedToolOutput(output: unknown): boolean {
 	return isRecord(output) && output.declined === true;
 }
 
-function isWorkflowSoftFailure(event: Extract<TimelineEvent, { type: 'tool-call' }>): boolean {
-	return event.kind === 'workflow' && isRecord(event.output) && event.output.status === 'error';
+function isSoftFailure(event: Extract<TimelineEvent, { type: 'tool-call' }>): boolean {
+	if (!isRecord(event.output)) return false;
+	return (
+		(event.kind === 'workflow' && event.output.status === 'error') ||
+		(event.name === 'delegate_subagent' && event.output.status === 'failed')
+	);
 }
 
 export function computeExecutionFailureSummary({
@@ -60,7 +64,7 @@ export function computeExecutionFailureSummary({
 			event.type !== 'tool-call' ||
 			event.endTime === 0 ||
 			isDeclinedToolOutput(event.output) ||
-			(event.success && !isWorkflowSoftFailure(event))
+			(event.success && !isSoftFailure(event))
 		) {
 			continue;
 		}

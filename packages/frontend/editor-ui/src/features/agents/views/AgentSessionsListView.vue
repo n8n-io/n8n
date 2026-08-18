@@ -6,7 +6,10 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
-import type { AgentExecutionThread } from '@/features/agents/composables/useAgentThreadsApi';
+import type {
+	AgentExecutionStatus,
+	AgentExecutionThread,
+} from '@/features/agents/composables/useAgentThreadsApi';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -90,6 +93,28 @@ function formatDuration(ms: number): string {
 	if (ms < 1000) return `${ms}ms`;
 	const seconds = ms / 1000;
 	return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
+}
+
+function statusColor(status: AgentExecutionStatus): 'success' | 'danger' | 'warning' | 'text-base' {
+	if (status === 'success') return 'success';
+	if (status === 'error') return 'danger';
+	if (status === 'running') return 'text-base';
+	return 'warning';
+}
+
+function statusLabel(status: AgentExecutionStatus): string {
+	switch (status) {
+		case 'running':
+			return i18n.baseText('agentSessions.status.running');
+		case 'success':
+			return i18n.baseText('agentSessions.success');
+		case 'error':
+			return i18n.baseText('agentSessions.timeline.error');
+		case 'cancelled':
+			return i18n.baseText('agentSessions.status.cancelled');
+		case 'interrupted':
+			return i18n.baseText('agentSessions.status.interrupted');
+	}
 }
 
 function originPresentation(thread: AgentExecutionThread): OriginPresentation {
@@ -215,7 +240,7 @@ async function loadMore() {
 					<tr
 						v-for="thread in sessionsStore.threads"
 						:key="thread.id"
-						:class="[$style.clickableRow, thread.failureSummary && $style.errorRow]"
+						:class="[$style.clickableRow, thread.status === 'error' && $style.errorRow]"
 						data-test-id="agent-session-list-item"
 						@click="onViewTrace({ agentId, threadId: thread.id })"
 					>
@@ -225,25 +250,16 @@ async function loadMore() {
 									<span :class="$style.sessionTitle" data-test-id="agent-session-title">
 										{{ threadTitleOf(thread) }}
 									</span>
-									<span :class="$style.statusRow">
+									<span v-if="thread.status" :class="$style.statusRow">
 										<N8nText
-											:color="thread.failureSummary ? 'danger' : undefined"
+											:color="statusColor(thread.status)"
 											size="small"
-											:data-testid="
-												thread.failureSummary
-													? 'agent-session-failure-indicator'
-													: 'agent-session-success-indicator'
-											"
+											data-testid="agent-session-status-indicator"
 										>
-											{{
-												i18n.baseText(
-													thread.failureSummary
-														? 'agentSessions.timeline.error'
-														: 'agentSessions.success',
-												)
-											}}
+											{{ statusLabel(thread.status) }}
 										</N8nText>
 										<N8nText
+											v-if="thread.status !== 'running'"
 											color="text-base"
 											size="small"
 											data-testid="agent-session-status-duration"

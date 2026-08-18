@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { AgentExecution } from '../entities/agent-execution.entity';
+import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
 
 export type RunningAgentExecution = Pick<
@@ -121,6 +121,25 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			.getRawMany<{ threadId: string; source: string }>();
 
 		return new Map(rows.map((r) => [r.threadId, r.source]));
+	}
+
+	async findLatestStatusesByThreadIds(
+		threadIds: string[],
+	): Promise<Map<string, AgentExecutionStatus>> {
+		if (threadIds.length === 0) return new Map();
+
+		const tableName = this.metadata.tablePath;
+		const rows = await this.createQueryBuilder('e')
+			.select(['e."threadId" AS "threadId"', 'e."status" AS "status"'])
+			.where('e."threadId" IN (:...threadIds)', { threadIds })
+			.andWhere(
+				`e.id = (SELECT e2.id FROM ${tableName} e2 ` +
+					'WHERE e2."threadId" = e."threadId" ' +
+					'ORDER BY e2."createdAt" DESC, e2.id DESC LIMIT 1)',
+			)
+			.getRawMany<{ threadId: string; status: AgentExecutionStatus }>();
+
+		return new Map(rows.map((row) => [row.threadId, row.status]));
 	}
 
 	async findFailureSummariesByThreadIds(

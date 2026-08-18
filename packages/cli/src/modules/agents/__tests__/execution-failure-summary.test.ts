@@ -21,27 +21,40 @@ function failedCall(
 
 describe('computeExecutionFailureSummary', () => {
 	it.each([
-		['tool', {}, 'fallback_name'],
-		['node', { nodeDisplayName: 'Lookup customer' }, 'Lookup customer'],
-		['workflow', { workflowName: 'Enrich account' }, 'Enrich account'],
-	] as const)('projects a completed failed %s call', (kind, overrides, expectedName) => {
-		const summary = computeExecutionFailureSummary({
-			timeline: [failedCall(kind, overrides)],
-			status: 'success',
-			error: null,
-			stoppedAt: 30,
-		});
-
-		expect(summary).toEqual({
-			count: 1,
-			latest: {
-				kind,
-				name: expectedName,
-				message: 'request failed',
-				occurredAt: 20,
+		['tool', {}, 'fallback_name', 'request failed'],
+		['node', { nodeDisplayName: 'Lookup customer' }, 'Lookup customer', 'request failed'],
+		['workflow', { workflowName: 'Enrich account' }, 'Enrich account', 'request failed'],
+		[
+			'tool',
+			{
+				name: 'delegate_subagent',
+				success: true,
+				output: { status: 'failed', error: 'child failed' },
 			},
-		});
-	});
+			'delegate_subagent',
+			'child failed',
+		],
+	] as const)(
+		'projects a completed failed %s call',
+		(kind, overrides, expectedName, expectedMessage) => {
+			const summary = computeExecutionFailureSummary({
+				timeline: [failedCall(kind, overrides)],
+				status: 'success',
+				error: null,
+				stoppedAt: 30,
+			});
+
+			expect(summary).toEqual({
+				count: 1,
+				latest: {
+					kind,
+					name: expectedName,
+					message: expectedMessage,
+					occurredAt: 20,
+				},
+			});
+		},
+	);
 
 	it('counts workflow and execution failure scopes once and keeps the latest truncated message', () => {
 		const summary = computeExecutionFailureSummary({

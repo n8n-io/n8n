@@ -816,9 +816,11 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('getThreads', () => {
-		it('adds aggregated failure summaries to listed threads', async () => {
+		it('returns latest run statuses with recovered failures marked as errors', async () => {
 			const failedThread = makeThread({ id: 'thread-failed' });
 			const cleanThread = makeThread({ id: 'thread-clean' });
+			const runningThread = makeThread({ id: 'thread-running' });
+			const emptyThread = makeThread({ id: 'thread-empty' });
 			const failureSummary = {
 				count: 2,
 				latest: {
@@ -830,7 +832,7 @@ describe('AgentExecutionService', () => {
 				},
 			};
 			agentExecutionThreadRepository.findByProjectIdPaginated.mockResolvedValue({
-				threads: [failedThread, cleanThread],
+				threads: [failedThread, cleanThread, runningThread, emptyThread],
 				nextCursor: null,
 			});
 			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(new Map());
@@ -838,12 +840,21 @@ describe('AgentExecutionService', () => {
 			agentExecutionRepository.findFailureSummariesByThreadIds.mockResolvedValue(
 				new Map([[failedThread.id, failureSummary]]),
 			);
+			agentExecutionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
+				new Map([
+					[failedThread.id, 'success'],
+					[cleanThread.id, 'success'],
+					[runningThread.id, 'running'],
+				]),
+			);
 
 			const result = await service.getThreads('project-1', 'agent-1', 20);
 
 			expect(result.threads).toEqual([
-				expect.objectContaining({ id: failedThread.id, failureSummary }),
-				expect.objectContaining({ id: cleanThread.id, failureSummary: null }),
+				expect.objectContaining({ id: failedThread.id, failureSummary, status: 'error' }),
+				expect.objectContaining({ id: cleanThread.id, failureSummary: null, status: 'success' }),
+				expect.objectContaining({ id: runningThread.id, failureSummary: null, status: 'running' }),
+				expect.objectContaining({ id: emptyThread.id, failureSummary: null, status: null }),
 			]);
 		});
 	});
