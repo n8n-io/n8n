@@ -22,6 +22,14 @@ export function formatWorkflowLoopGuidance(
 		case 'continue_building':
 			return `BUILD FAILED: ${action.reason}. Fix the workflow source file: ${formatSourceFileInstruction(action.sourceFilePath)}.`;
 		case 'done': {
+			if (action.setupSkippedByUser) {
+				return (
+					'Workflow verified successfully. The credentials it still needs are ones the user ' +
+					'skipped earlier in this conversation, so do NOT open the setup card again. Tell them ' +
+					'which parts stay unconfigured and what that means when the workflow runs, and offer ' +
+					'to set them up whenever they want.'
+				);
+			}
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
 					'Workflow verified successfully with temporary mock data. ' +

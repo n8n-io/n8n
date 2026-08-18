@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
@@ -234,6 +234,7 @@ const {
 	showValidationWarning,
 	isResolvable,
 	connectedByMe,
+	connectedAccountIdentifier,
 	useCustomOAuth,
 	activeNodeType,
 	credentialTypeName,
@@ -438,6 +439,15 @@ onMounted(async () => {
 	}
 });
 
+// The missing-required-fields warning latches on open/save/close attempts;
+// release it as soon as the form satisfies the requirements so the OAuth
+// connect banner reappears without needing a save first.
+watch(requiredPropertiesFilled, (filled) => {
+	if (filled) {
+		showValidationWarning.value = false;
+	}
+});
+
 async function beforeClose() {
 	let keepEditing = false;
 
@@ -596,6 +606,7 @@ async function onResolvableChange(value: boolean) {
 	// doesn't apply to the new mode, and `oauthTokenData` (mirrored true for a connected
 	// end-user credential) would otherwise be read as "connected" once static.
 	connectedByMe.value = false;
+	connectedAccountIdentifier.value = undefined;
 	credentialData.value = {
 		...credentialData.value,
 		oauthTokenData: null as unknown as CredentialInformation,
@@ -1030,6 +1041,22 @@ async function oAuthCredentialAuthorize() {
 
 	credentialsStore.pendingOAuthRefresh = true;
 
+	// window.open must run within the click's transient user activation:
+	// opening after the save/authorize round trips below gets the popup blocked
+	// on slow connections (Chrome expires activation after ~5s) and in stricter
+	// browsers (Safari) regardless of timing. Open a blank window now and
+	// navigate it once the authorization URL is known.
+	const params =
+		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
+	const oauthPopup = window.open('about:blank', 'OAuth Authorization', params);
+	if (!oauthPopup) {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.title'),
+		);
+		return;
+	}
+
 	// Editors persist any blueprint changes before connecting. Connect-only users
 	// (e.g. on a private credential they can't edit) have nothing to save, so
 	// connecting through saveCredential would be a no-op that returns null and
@@ -1037,6 +1064,7 @@ async function oAuthCredentialAuthorize() {
 	const canEditBlueprint = credentialPermissions.value.update || credentialPermissions.value.create;
 	const credential = canEditBlueprint ? await saveCredential() : currentCredential.value;
 	if (!credential) {
+		oauthPopup.close();
 		return;
 	}
 
@@ -1058,6 +1086,7 @@ async function oAuthCredentialAuthorize() {
 			}
 		}
 	} catch (error) {
+		oauthPopup.close();
 		toast.showError(
 			error,
 			i18n.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title'),
@@ -1072,6 +1101,7 @@ async function oAuthCredentialAuthorize() {
 	}
 
 	if (url === undefined || url === '') {
+		oauthPopup.close();
 		toast.showError(
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
@@ -1084,6 +1114,7 @@ async function oAuthCredentialAuthorize() {
 	try {
 		const parsedUrl = new URL(url);
 		if (!allowedOAuthUrlProtocols.includes(parsedUrl.protocol)) {
+			oauthPopup.close();
 			toast.showError(
 				new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 				i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
@@ -1091,6 +1122,7 @@ async function oAuthCredentialAuthorize() {
 			return;
 		}
 	} catch {
+		oauthPopup.close();
 		toast.showError(
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
@@ -1098,9 +1130,7 @@ async function oAuthCredentialAuthorize() {
 		return;
 	}
 
-	const params =
-		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
-	const oauthPopup = window.open(url, 'OAuth Authorization', params);
+	oauthPopup.location.href = url;
 
 	// Token presence in credential data can only confirm the flow when there was
 	// no token yet (a reconnect's old token would read as an immediate false
@@ -1141,25 +1171,25 @@ async function oAuthCredentialAuthorize() {
 
 			connectedByMe.value = true;
 
-			void credentialsStore.fetchAllCredentials().then(() => {
+			void credentialsStore.fetchAllCredentials().then((credentials) => {
 				nodeHelpers.updateNodesCredentialsIssues();
+				// The account just connected is only known server-side, so pick it up
+				// from the refresh rather than guessing at who the user is. Read this
+				// request's own response, not the store: any other credentials fetch
+				// that resolves later replaces the whole store map with its own view.
+				connectedAccountIdentifier.value = credentials.find(
+					(credential) => credential.id === credentialId.value,
+				)?.connectedAccountIdentifier;
 			});
 
 			// Close the window
-			if (oauthPopup) {
-				oauthPopup.close();
-			}
+			oauthPopup.close();
 
 			if (closeOnSave.value) {
 				closeDialog();
 			}
 		}
 	};
-
-	if (!oauthPopup) {
-		handleOAuthResult(false);
-		return;
-	}
 
 	// Supersede any previous pending flow so a re-click doesn't leave a second
 	// set of listeners alive; unmounting the modal aborts too (onBeforeUnmount).
@@ -1213,6 +1243,7 @@ async function onDisconnectMyConnection(): Promise<void> {
 		} else {
 			await credentialsStore.disconnectOauthToken({ id: credentialId.value });
 		}
+		connectedAccountIdentifier.value = undefined;
 		credentialData.value = {
 			...credentialData.value,
 			oauthTokenData: null as unknown as CredentialInformation,
@@ -1258,6 +1289,7 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 		// this session (or carried over from the loaded credential) makes the banner
 		// misreport "connected" for a mode that was never actually saved.
 		connectedByMe.value = false;
+		connectedAccountIdentifier.value = undefined;
 		credentialData.value = {
 			...credentialData.value,
 			oauthTokenData: null as unknown as CredentialInformation,
@@ -1423,7 +1455,9 @@ const { width } = useElementSize(credNameRef);
 							:is-private-credentials-enabled="isPrivateCredentialsEnabled && !isInstanceCredential"
 							:is-resolvable="isResolvable"
 							:connected-by-me="connectedByMe"
+							:connected-account-identifier="connectedAccountIdentifier"
 							:is-new-credential="isNewCredential"
+							:new-credential-project-type="homeProject?.type"
 							:managed-oauth-available="managedOAuthAvailable"
 							:use-custom-oauth="useCustomOAuth"
 							:is-quick-connect-mode="isQuickConnectMode"

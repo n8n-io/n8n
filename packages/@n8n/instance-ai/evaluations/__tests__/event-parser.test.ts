@@ -832,7 +832,7 @@ describe('seededTurnCounters', () => {
 		const [counter] = seededTurnCounters([
 			seededTurn([
 				{ kind: 'agent-text', text: 'hello' },
-				{ kind: 'setup-wizard', completedNodes: [], skippedNodes: [] },
+				{ kind: 'setup-wizard', completedNodes: [], nodesStillNeedingSetup: [] },
 			]),
 		]);
 		expect(counter.toolCallCount).toBe(1); // setup-wizard is a tool call; agent-text is not

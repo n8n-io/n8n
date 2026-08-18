@@ -1,5 +1,8 @@
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	instanceAiApprovalResumeSchema,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -122,10 +125,9 @@ const questionsSuspend = z.object({
 
 const suspendSchema = z.union([confirmationSuspend, questionsSuspend]);
 
-const confirmResumeSchema = z.object({ approved: z.boolean() });
+const confirmResumeSchema = instanceAiApprovalResumeSchema;
 
-const questionsResumeSchema = z.object({
-	approved: z.boolean(),
+const questionsResumeSchema = instanceAiApprovalResumeSchema.extend({
 	answers: z
 		.array(
 			z.object({

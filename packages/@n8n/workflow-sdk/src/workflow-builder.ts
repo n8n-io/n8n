@@ -639,6 +639,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 * Node IDs are generated using SHA-256 hash of `${workflowId}:${nodeType}:${nodeName}`,
 	 * formatted as a valid UUID v4 structure.
 	 *
+	 * Precedence: an id declared in the source (`config.id`) is authoritative and is never
+	 * regenerated — it is the node's stable identity in n8n. Otherwise `existingIdsByName`
+	 * is consulted, and only then is a deterministic id derived.
+	 *
 	 * @param existingIdsByName - reuse these IDs (keyed by node name) instead of regenerating.
 	 */
 	regenerateNodeIds(existingIdsByName?: Map<string, string>): void {
@@ -653,6 +657,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			const instance = graphNode.instance;
 			staleIdToKeyMap.set(instance.id, mapKey);
 			const newId =
+				instance.config?.id ??
 				existingIdsByName?.get(mapKey) ??
 				generateDeterministicNodeId(this.id, instance.type, mapKey);
 

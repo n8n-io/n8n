@@ -1,5 +1,6 @@
 import {
 	createTeamProject,
+	getPersonalProject,
 	linkUserToProject,
 	mockInstance,
 	randomCredentialPayload,
@@ -8,6 +9,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { Cipher } from 'n8n-core';
 
 import {
 	SYSTEM_RESOLVER_ID,
@@ -25,7 +27,7 @@ import {
 	saveCredential,
 	shareCredentialWithProjects,
 } from '../shared/db/credentials';
-import { createAdmin, createMember } from '../shared/db/users';
+import { createAdmin, createMember, createOwner } from '../shared/db/users';
 import * as utils from '../shared/utils';
 import { setupTestServer } from '../shared/utils';
 
@@ -94,6 +96,16 @@ const seedUserEntry = async (credentialId: string, userId: string) => {
 	);
 };
 
+/** Seeds a connection the way the OAuth callback does: an encrypted token blob. */
+const seedConnectedUserEntry = async (
+	credentialId: string,
+	userId: string,
+	oauthTokenData: Record<string, unknown>,
+) => {
+	const encrypted = await Container.get(Cipher).encryptV2(JSON.stringify({ oauthTokenData }));
+	await storage.setCredentialData(credentialId, userId, SYSTEM_RESOLVER_ID, encrypted, {});
+};
+
 const saveResolvableCredential = async () =>
 	await saveCredential(randomCredentialPayload({ isResolvable: true }), {
 		project: teamProject,
@@ -116,6 +128,7 @@ type CredentialResponseFields = {
 	id: string;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;
+	connectedAccountIdentifier?: string;
 	data?: { oauthTokenData?: unknown };
 };
 
@@ -144,6 +157,44 @@ describe('GET /credentials — connectedByMe', () => {
 		);
 		expect(cred).toBeDefined();
 		expect(cred?.connectedByMe).toBe(false);
+	});
+
+	test('reports the provider account my own connection authenticates as', async () => {
+		const resolvable = await saveResolvableCredential();
+		await seedConnectedUserEntry(resolvable.id, memberA.id, { email: 'connected@gmail.com' });
+
+		const response = await testServer.authAgentFor(memberA).get('/credentials').expect(200);
+
+		const cred = (response.body.data as CredentialResponseFields[]).find(
+			(c) => c.id === resolvable.id,
+		);
+		expect(cred?.connectedAccountIdentifier).toBe('connected@gmail.com');
+	});
+
+	test('never reports the connected account of another user', async () => {
+		const resolvable = await saveResolvableCredential();
+		await seedConnectedUserEntry(resolvable.id, memberA.id, { email: 'connected@gmail.com' });
+		await seedConnectedUserEntry(resolvable.id, memberB.id, { email: 'other@gmail.com' });
+
+		const response = await testServer.authAgentFor(memberB).get('/credentials').expect(200);
+
+		const cred = (response.body.data as CredentialResponseFields[]).find(
+			(c) => c.id === resolvable.id,
+		);
+		expect(cred?.connectedAccountIdentifier).toBe('other@gmail.com');
+	});
+
+	test('reports a connection without an account when the token carries no identity', async () => {
+		const resolvable = await saveResolvableCredential();
+		await seedConnectedUserEntry(resolvable.id, memberA.id, { access_token: 'tok' });
+
+		const response = await testServer.authAgentFor(memberA).get('/credentials').expect(200);
+
+		const cred = (response.body.data as CredentialResponseFields[]).find(
+			(c) => c.id === resolvable.id,
+		);
+		expect(cred?.connectedByMe).toBe(true);
+		expect(cred?.connectedAccountIdentifier).toBeUndefined();
 	});
 
 	test('omits connectedByMe for static credentials', async () => {
@@ -253,6 +304,21 @@ describe('GET /credentials/:id — per-user oauthTokenData', () => {
 
 		expect(bodyB.connectedByMe).toBe(false);
 		expect(bodyB.data?.oauthTokenData).toBeUndefined();
+	});
+
+	test('reports the connected account the credential modal reads on open', async () => {
+		const resolvable = await saveResolvableCredential();
+		await seedConnectedUserEntry(resolvable.id, memberA.id, { email: 'connected@gmail.com' });
+
+		const response = await testServer
+			.authAgentFor(memberA)
+			.get(`/credentials/${resolvable.id}`)
+			.query({ includeData: true })
+			.expect(200);
+
+		expect((response.body.data as CredentialResponseFields).connectedAccountIdentifier).toBe(
+			'connected@gmail.com',
+		);
 	});
 
 	test('preserves static oauthTokenData behavior (shared across all readers)', async () => {
@@ -590,12 +656,31 @@ describe('POST /credentials — end-user credential creation is role-restricted'
 			.expect(200);
 	});
 
-	test('member can create an end-user credential in their personal project', async () => {
+	test('member cannot create an end-user credential in their personal project', async () => {
 		await testServer
 			.authAgentFor(memberB)
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), isResolvable: true })
-			.expect(200);
+			.expect(403);
+	});
+
+	test('instance owner cannot create an end-user credential in their personal project', async () => {
+		const owner = await createOwner();
+		await testServer
+			.authAgentFor(owner)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: true })
+			.expect(403);
+	});
+
+	test('instance owner cannot create an end-user credential in another personal project by id', async () => {
+		const owner = await createOwner();
+		const personalProject = await getPersonalProject(memberB);
+		await testServer
+			.authAgentFor(owner)
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isResolvable: true, projectId: personalProject.id })
+			.expect(403);
 	});
 });
 
@@ -659,6 +744,35 @@ describe('PATCH /credentials/:id — switching to end-user is role-restricted', 
 			})
 			.expect(200);
 	});
+
+	test('member cannot switch their personal credential to end-user', async () => {
+		const staticCred = await saveCredential(randomCredentialPayload(), {
+			user: memberB,
+			role: 'credential:owner',
+		});
+		await testServer
+			.authAgentFor(memberB)
+			.patch(`/credentials/${staticCred.id}`)
+			.send({ name: staticCred.name, type: staticCred.type, data: {}, isResolvable: true })
+			.expect(403);
+	});
+
+	test('member can switch an existing personal end-user credential back to fixed', async () => {
+		const resolvableCred = await saveCredential(randomCredentialPayload({ isResolvable: true }), {
+			user: memberB,
+			role: 'credential:owner',
+		});
+		await testServer
+			.authAgentFor(memberB)
+			.patch(`/credentials/${resolvableCred.id}`)
+			.send({
+				name: resolvableCred.name,
+				type: resolvableCred.type,
+				data: {},
+				isResolvable: false,
+			})
+			.expect(200);
+	});
 });
 
 describe('PUT /credentials/:id/transfer — end-user credentials are role-restricted', () => {
@@ -700,6 +814,17 @@ describe('PUT /credentials/:id/transfer — end-user credentials are role-restri
 			.send({ destinationProjectId: teamProject.id })
 			.expect(200);
 	});
+
+	test('project admin cannot transfer an end-user credential into their personal project', async () => {
+		const resolvable = await saveResolvableCredential();
+		const personalProject = await getPersonalProject(memberA);
+
+		await testServer
+			.authAgentFor(memberA)
+			.put(`/credentials/${resolvable.id}/transfer`)
+			.send({ destinationProjectId: personalProject.id })
+			.expect(403);
+	});
 });
 
 describe('DELETE /credentials/:id — end-user credentials are role-restricted', () => {
@@ -716,5 +841,13 @@ describe('DELETE /credentials/:id — end-user credentials are role-restricted',
 	test('project admin can delete an end-user credential', async () => {
 		const resolvableCred = await saveResolvableCredential();
 		await testServer.authAgentFor(memberA).delete(`/credentials/${resolvableCred.id}`).expect(200);
+	});
+
+	test('member can delete an existing end-user credential in their personal project', async () => {
+		const resolvableCred = await saveCredential(randomCredentialPayload({ isResolvable: true }), {
+			user: memberB,
+			role: 'credential:owner',
+		});
+		await testServer.authAgentFor(memberB).delete(`/credentials/${resolvableCred.id}`).expect(200);
 	});
 });

@@ -33,7 +33,7 @@ import {
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { isUnconfiguredAgent } from './utils/agent-capabilities';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { taskRunMemoryResourceId } from './utils/agent-memory-scope';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 
@@ -163,7 +163,7 @@ export class AgentTaskService {
 			for (const task of tasks) {
 				await em.save(task);
 			}
-			await em.save(agent);
+			await saveAgentDraftFenced(this.agentRepository, agent, em);
 		});
 
 		this.modificationTelemetry.record({
@@ -244,7 +244,7 @@ export class AgentTaskService {
 		const saved = await this.agentRepository.manager.transaction(async (em) => {
 			const savedTask = await em.save(task);
 			markAgentDraftDirty(agent);
-			await em.save(agent);
+			await saveAgentDraftFenced(this.agentRepository, agent, em);
 			return savedTask;
 		});
 
@@ -288,7 +288,7 @@ export class AgentTaskService {
 
 		await this.agentRepository.manager.transaction(async (em) => {
 			await em.remove(task);
-			await em.save(agent);
+			await saveAgentDraftFenced(this.agentRepository, agent, em);
 		});
 
 		this.modificationTelemetry.record({

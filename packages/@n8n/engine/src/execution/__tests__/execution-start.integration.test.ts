@@ -1,5 +1,6 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
@@ -20,7 +21,7 @@ import {
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
-import { StepCompletedHandler } from '../step-completed-handler';
+import { StepSettledHandler } from '../step-settled-handler';
 
 const graph: WorkflowGraph = {
 	nodes: [
@@ -35,7 +36,7 @@ describe('execution start (integration)', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer('postgres:18-alpine').start();
+		container = await new PostgreSqlContainer(postgresVersions.primary).start();
 		dataSource = createDataSource(container.getConnectionUri());
 		await dataSource.initialize();
 		await dataSource.runMigrations();
@@ -60,7 +61,7 @@ describe('execution start (integration)', () => {
 		const worker = new OrchestrationWorker(
 			orchestrationQueue,
 			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepCompletedHandler(executionStore, stepStore, stepQueue),
+			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
 		);
 		worker.start();
 		const startExecution = new StartExecutionService(
@@ -83,13 +84,15 @@ describe('execution start (integration)', () => {
 		const { executionId } = await startExecution.start({
 			workflowId: 'wf-1',
 			graph,
-			triggerPayload: null,
+			triggerOutputs: [[{ json: { hello: 'world' } }]],
 		});
 		await ready;
 
+		// `findOne({ where })`, not `findOneByOrFail`: the latter's overload exceeds
+		// TypeScript's instantiation depth on the recursive `triggerOutputs` column type.
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
-			.findOneByOrFail({ id: executionId });
+			.findOneOrFail({ where: { id: executionId } });
 		expect(row.status).toBe('running');
 
 		const steps = await dataSource
@@ -98,6 +101,7 @@ describe('execution start (integration)', () => {
 		const triggerStep = steps.find((s) => s.nodeId === 'trigger');
 		const firstStep = steps.find((s) => s.nodeId === 'step-a');
 		expect(triggerStep?.status).toBe('completed');
+		expect(triggerStep?.outputs).toEqual([[{ json: { hello: 'world' } }]]);
 		expect(firstStep?.status).toBe('queued');
 
 		// step:ready references the durable step-record id, not the node id.
@@ -118,7 +122,7 @@ describe('execution start (integration)', () => {
 			status: 'queued',
 			mode: 'production',
 			graph,
-			triggerPayload: null,
+			triggerOutputs: null,
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.
@@ -126,9 +130,11 @@ describe('execution start (integration)', () => {
 		await handler.handle(event);
 		await handler.handle(event);
 
+		// `findOne({ where })`, not `findOneByOrFail`: the latter's overload exceeds
+		// TypeScript's instantiation depth on the recursive `triggerOutputs` column type.
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
-			.findOneByOrFail({ id: executionId });
+			.findOneOrFail({ where: { id: executionId } });
 		expect(row.status).toBe('running');
 
 		const steps = await dataSource

@@ -92,6 +92,25 @@ describe('workspace tool', () => {
 			expect(context.workspaceService!.listProjects).toHaveBeenCalled();
 			expect(result).toEqual({ projects });
 		});
+
+		it('flags the project the conversation is scoped to', async () => {
+			const projects = [
+				{ id: 'p1', name: 'Project 1', type: 'team' as const },
+				{ id: 'p2', name: 'Project 2', type: 'team' as const },
+			];
+			const context = createMockContext({ projectId: 'p2' });
+			(context.workspaceService!.listProjects as Mock).mockResolvedValue(projects);
+
+			const tool = createWorkspaceTool(context);
+			const result = await executeTool(tool, { action: 'list-projects' }, {} as never);
+
+			expect(result).toEqual({
+				projects: [
+					{ id: 'p1', name: 'Project 1', type: 'team' },
+					{ id: 'p2', name: 'Project 2', type: 'team', isCurrentProject: true },
+				],
+			});
+		});
 	});
 
 	describe('list-tags', () => {

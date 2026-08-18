@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '@/app/constants/modals';
+import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/instanceAiBrowserCredentialSetup';
@@ -226,10 +226,14 @@ onMounted(async () => {
 
 	// Ensure the credentials store is populated so NodeCredentials can show
 	// existing credentials in the dropdown. The Instance AI page may not have
-	// fetched them yet.
+	// fetched them yet. Scope to the thread's project — an unscoped fetch fills
+	// the store with credentials from other projects (e.g. personal) that the
+	// picker would then offer.
 	try {
 		await Promise.all([
-			credentialsStore.fetchAllCredentials(),
+			props.projectId
+				? credentialsStore.fetchAllCredentialsForWorkflow({ projectId: props.projectId })
+				: credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
 		]);
 	} catch (error) {
@@ -502,22 +506,31 @@ async function handleLater() {
 	await deferWholeCard();
 }
 
+const browserConnectionState = computed(() =>
+	settingsStore.browserConnected ? 'connected' : 'disconnected',
+);
+
 function trackSetupChoiceClicked(choice: CredentialSetupChoice | 'skip', attemptId?: string) {
 	telemetry.track('Instance AI Browser Use User clicked credential setup option', {
 		credential_type: currentRequest.value?.credentialType,
 		choice,
+		browser_connection_state: browserConnectionState.value,
 		...(attemptId ? { credential_setup_attempt_id: attemptId } : {}),
 	});
 }
 
 const shownChoiceTypes = new Set<string>();
 watch(
-	() => (showSetupChoice.value ? currentRequest.value?.credentialType : undefined),
+	() =>
+		showSetupChoice.value && settingsStore.browserStatusLoaded
+			? currentRequest.value?.credentialType
+			: undefined,
 	(credentialType) => {
 		if (!credentialType || shownChoiceTypes.has(credentialType)) return;
 		shownChoiceTypes.add(credentialType);
 		telemetry.track('Instance AI Browser Use credential setup choice shown', {
 			credential_type: credentialType,
+			browser_connection_state: browserConnectionState.value,
 		});
 	},
 	{ immediate: true },

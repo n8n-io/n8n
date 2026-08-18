@@ -79,7 +79,7 @@ export { default as N8nNodeCreatorNode } from './N8nNodeCreatorNode';
 export { default as N8nNodeIcon } from './N8nNodeIcon';
 export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
-export { default as N8nPagination } from './N8nPagination';
+export { default as N8nPagination } from '../v2/components/Pagination/Pagination.vue';
 export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
 export { default as N8nSettingsLayout } from './N8nSettingsLayout';
@@ -109,7 +109,12 @@ export {
 export { default as N8nChatMessage } from './N8nChatMessage';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
-export { default as N8nRadioButtons } from './N8nRadioButtons';
+export { default as N8nSegmentControl } from './N8nSegmentControl';
+export type {
+	SegmentControlProps,
+	SegmentControlSize,
+	SegmentOption,
+} from './N8nSegmentControl';
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';

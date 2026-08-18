@@ -1,9 +1,9 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.35.0",
+  "version": "2.36.0",
   "private": true,
   "engines": {
-    "node": ">=22.22",
+    "node": ">=24.0.0",
     "pnpm": ">=10.22.0"
   },
   "packageManager": "pnpm@10.32.1",
@@ -22,6 +22,7 @@
     "build:docker:test": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && turbo run test:container:standard --filter=n8n-playwright",
     "typecheck": "turbo typecheck",
     "dev": "node scripts/dev-command-removed-notice.mjs",
+    "dev:up": "node scripts/dev-up.mjs",
     "dev:be": "turbo run dev --env-mode=loose --log-prefix=none --filter=n8n",
     "dev:ai": "turbo run dev --concurrency=150 --env-mode=loose --filter=@n8n/n8n-nodes-langchain --filter=n8n --filter=n8n-core",
     "dev:fe": "run-p start dev:fe:editor",
@@ -50,7 +51,6 @@
     "boundaries:baseline": "node scripts/check-boundaries.mjs --write",
     "sync:skill-links": "node scripts/sync-agent-skill-links.mjs",
     "check:skill-links": "node scripts/sync-agent-skill-links.mjs --check",
-    "check:zod-peer-deps": "node scripts/check-zod-peer-deps.mjs",
     "check:workspace-private-deps": "node scripts/check-workspace-private-deps.mjs",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
@@ -105,7 +105,6 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@confluentinc/kafka-javascript",
       "@vscode/ripgrep",
       "isolated-vm",
       "sqlite3"
@@ -146,7 +145,7 @@
       "nodemailer": "8.0.10",
       "validator": "13.15.26",
       "zod": "3.25.76",
-      "js-yaml": "4.3.0",
+      "js-yaml": "4.3.1",
       "body-parser": "2.3.0",
       "glob@10": "10.5.0",
       "glob@7": "7.2.3",
@@ -165,7 +164,7 @@
       "lodash": "4.18.1",
       "minimatch@<=5.1.8": "5.1.8",
       "minimatch@10": "10.2.3",
-      "@hono/node-server": "1.19.13",
+      "@hono/node-server": "1.19.15",
       "follow-redirects": "1.16.0",
       "express-rate-limit": "8.2.2",
       "underscore": "1.13.8",
@@ -177,9 +176,10 @@
       "picomatch@4": "4.0.4",
       "avsc": "5.7.9",
       "brace-expansion@<2.1.4": "2.1.4",
-      "@xmldom/xmldom": "0.8.13",
+      "@xmldom/xmldom": "0.8.14",
       "yaml@<=2.8.3": "2.8.3",
       "axios": "catalog:",
+      "fast-xml-builder": "1.2.1",
       "fast-xml-parser": "5.7.2",
       "postcss@<=8.5.9": "8.5.10",
       "@anthropic-ai/sdk@<=0.91.1": "0.91.1",
@@ -192,6 +192,8 @@
       "ip-address@10": "10.1.1",
       "brace-expansion@5": "5.0.9",
       "@tootallnate/once@2": "2.0.1",
+      "@vue/server-renderer@3.5.26": "3.5.40",
+      "@vue/shared@3.5.26": "3.5.40",
       "@opentelemetry/exporter-prometheus@<=0.217.0": "0.217.0",
       "@opentelemetry/sdk-node@<=0.217.0": "0.217.0",
       "langsmith": "0.6.0",
@@ -211,7 +213,9 @@
       "node-gyp>undici": "catalog:undici-v7",
       "@babel/traverse": "^7.23.2",
       "@vitest/browser@<4.1.10": "4.1.10",
-      "immutable": "5.1.8"
+      "immutable": "5.1.8",
+      "nanoid@<3.3.18": "catalog:",
+      "@zone-eu/mailsplit@<5.4.15": "5.4.15"
     },
     "patchedDependencies": {
       "axios": "patches/axios.patch",
