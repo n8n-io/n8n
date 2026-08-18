@@ -69,16 +69,6 @@ function rewriteComponentRefs(node: unknown, toRef: (componentName: string) => s
 	});
 }
 
-/**
- * A fuse, not routine cleanup. An unannotated `z.custom` field becomes `nullable: true` with no
- * `type`, and the Ajv JSON schema validator rejects that pair once two routes share the schema —
- * express-openapi-validator then fails to start and every legacy route answers 500. Dropping the
- * marker keeps the API serving, because a schema with no `type` already accepts null.
- *
- * Nothing reaches this today: every `z.custom` in a public DTO carries an `.openapi()` annotation
- * that supplies a `type`. If a new one does not, this keeps the instance alive and
- * `openapi-gen/__tests__/schema-detail.test.ts` fails on the resulting empty `{}` schema.
- */
 function stripBareNullable(node: unknown): void {
 	if (Array.isArray(node)) {
 		node.forEach(stripBareNullable);
