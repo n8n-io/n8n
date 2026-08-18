@@ -1,3 +1,4 @@
+import type { CreateRoleMappingRuleDto } from '@n8n/api-types';
 import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import { RoleMappingRuleRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -15,7 +16,7 @@ describe('Role mapping rules in Public API', () => {
 		enabledFeatures: ['feat:saml'],
 	});
 
-	const validInstancePayload = {
+	const validInstancePayload: CreateRoleMappingRuleDto = {
 		expression: 'claims.group === "admins"',
 		role: 'global:member',
 		type: 'instance' as const,
@@ -212,7 +213,8 @@ describe('Role mapping rules in Public API', () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/role-mapping-rules');
 
 			expect(response.status).toBe(200);
-			expect(response.body).toEqual({ data: [], nextCursor: null });
+			expect(response.body.nextCursor).toBeNull();
+			expect(response.body.data).toEqual([]);
 		});
 
 		it('returns the configured rules with the full public field set', async () => {
@@ -287,7 +289,7 @@ describe('Role mapping rules in Public API', () => {
 			expect(firstPage.status).toBe(200);
 			expect(firstPage.body.data).toHaveLength(1);
 			expect(firstPage.body.data[0].order).toBe(0);
-			expect(firstPage.body.nextCursor).toBeTruthy();
+			expect(firstPage.body.nextCursor).toEqual(expect.any(String));
 
 			const secondPage = await agent
 				.get('/role-mapping-rules')
