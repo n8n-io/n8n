@@ -10,24 +10,14 @@ import {
 	SSH_SERVER_ALIVE_INTERVAL_SECONDS,
 } from './constants';
 
-/**
- * Pure, stateless helpers for constructing Git credential/SSH plumbing.
- * This module is the source of truth for git plumbing; source-control imports
- * from here as we incrementally consolidate git logic into git-connections.
- */
-
-/** Single-quote a value for safe inclusion in a POSIX shell command. */
+/** Quote a value for use as one POSIX shell argument. */
 const quoteShellArg = (value: string) => `'${value.replace(/'/g, "'\"'\"'")}'`;
 
 /**
- * Build the `config` entries for an HTTPS Git client: an inline credential
- * helper supplying the username/password, plus an `http.proxy` entry when a
- * proxy is resolved for the repository URL.
+ * Build the Git configuration for an HTTPS connection.
  *
- * NOTE: the helper echoes the credentials for whatever host/path Git asks about,
- * not just `repositoryUrl` (`credential.useHttpPath=true` widens the lookup key
- * but doesn't scope it). Isolation relies on each connection running Git in its
- * own process with its own config.
+ * The credential helper serves every request from this Git process. Each
+ * connection uses a separate process and configuration.
  */
 export function buildHttpsGitConfig(
 	repositoryUrl: string,
@@ -46,30 +36,16 @@ export function buildHttpsGitConfig(
 	return config;
 }
 
-/**
- * Build the `GIT_SSH_COMMAND` that points SSH at n8n's own private key and
- * known_hosts file. Paths are POSIX-normalized (works cross-platform) and
- * double-quotes are escaped to prevent command injection.
- * StrictHostKeyChecking=accept-new accepts and pins the host key on first
- * connection, then verifies it on subsequent connections (MITM protection).
- * ConnectTimeout and the ServerAlive options bound how long a stalled connection
- * can hang before SSH gives up.
- */
+/** Build the shell-safe SSH command used for Git connections. */
 export function buildSshCommand(paths: { privateKeyPath: string; knownHostsPath: string }): string {
-	const escape = (value: string) => value.split(/[/\\]/).join('/').replace(/"/g, '\\"');
+	const normalizeAndQuote = (value: string) => quoteShellArg(value.split(/[/\\]/).join('/'));
 	const timeouts = `-o ConnectTimeout=${SSH_CONNECT_TIMEOUT_SECONDS} -o ServerAliveInterval=${SSH_SERVER_ALIVE_INTERVAL_SECONDS} -o ServerAliveCountMax=${SSH_SERVER_ALIVE_COUNT_MAX}`;
-	return `ssh ${timeouts} -o UserKnownHostsFile="${escape(paths.knownHostsPath)}" -o StrictHostKeyChecking=accept-new -i "${escape(paths.privateKeyPath)}"`;
+	return `ssh ${timeouts} -o UserKnownHostsFile=${normalizeAndQuote(paths.knownHostsPath)} -o StrictHostKeyChecking=accept-new -i ${normalizeAndQuote(paths.privateKeyPath)}`;
 }
 
-/**
- * Generate an SSH key pair (ed25519 or rsa) in OpenSSH format. `comment` is the
- * label embedded in the key (visible when the public key is added as a deploy
- * key), so each caller passes its own.
- */
+/** Generate an OpenSSH key pair with the supplied key comment. */
 export async function generateSshKeyPair(keyType: GitKeyGeneratorType, comment: string) {
-	// sshpk is CommonJS (`export =`): under nodenext, a native dynamic import only
-	// hoists some named exports onto the namespace (parsePrivateKey is missed), so
-	// read the real module.exports off `.default`.
+	// Read the CommonJS default export because parsePrivateKey is not a named export.
 	const { default: sshpk } = await import('sshpk');
 	const generated =
 		keyType === 'ed25519'

@@ -92,7 +92,7 @@ describe('git-connections-git.utils', () => {
 			});
 
 			expect(command).toBe(
-				'ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o UserKnownHostsFile="/data/.ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "/data/.ssh/private-key"',
+				"ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o UserKnownHostsFile='/data/.ssh/known_hosts' -o StrictHostKeyChecking=accept-new -i '/data/.ssh/private-key'",
 			);
 		});
 
@@ -103,7 +103,7 @@ describe('git-connections-git.utils', () => {
 			});
 
 			expect(command).toBe(
-				'ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o UserKnownHostsFile="C:/n8n/.ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "C:/n8n/.ssh/private-key"',
+				"ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o UserKnownHostsFile='C:/n8n/.ssh/known_hosts' -o StrictHostKeyChecking=accept-new -i 'C:/n8n/.ssh/private-key'",
 			);
 		});
 
@@ -118,13 +118,14 @@ describe('git-connections-git.utils', () => {
 			expect(command).toContain('-o ServerAliveCountMax=3');
 		});
 
-		it('should escape double quotes in paths to prevent command injection', () => {
+		it('should quote shell metacharacters in paths', () => {
 			const command = buildSshCommand({
-				privateKeyPath: '/data/"; rm -rf /"/private-key',
-				knownHostsPath: '/data/known_hosts',
+				privateKeyPath: "/data/$(archive)/owner's/private-key",
+				knownHostsPath: '/data/`archive`/known_hosts',
 			});
 
-			expect(command).toContain('-i "/data/\\"; rm -rf /\\"/private-key"');
+			expect(command).toContain("-i '/data/$(archive)/owner'\"'\"'s/private-key'");
+			expect(command).toContain("-o UserKnownHostsFile='/data/`archive`/known_hosts'");
 		});
 	});
 
