@@ -42,7 +42,7 @@ const reviewRoute = computed(() => ({
 <template>
 	<N8nTooltip :content="tooltip" placement="top" :show-after="300">
 		<component
-			:is="status.viewerCanOpen ? RouterLink : 'div'"
+			:is="status.viewerCanOpen ? RouterLink : 'span'"
 			v-bind="status.viewerCanOpen ? { to: reviewRoute } : {}"
 			:class="[$style.badge, status.viewerCanOpen && $style.link]"
 			data-test-id="workflow-review-status-badge"
