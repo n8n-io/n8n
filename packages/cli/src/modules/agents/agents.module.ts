@@ -156,12 +156,13 @@ export class AgentsModule implements ModuleInterface {
 	async settings() {
 		const config = Container.get(AgentsConfig);
 		const { AiService } = await import('@/services/ai.service.js');
+		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
 			enabled: true,
 			modules: [...config.modules],
-			knowledgeBaseEnabled: config.sandboxEnabled,
+			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
 			proxyEnabled,
 		};
 	}

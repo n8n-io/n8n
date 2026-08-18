@@ -8,7 +8,11 @@ import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
-import type { InstanceAiAttachment, InstanceAiResourceAttachment } from '@n8n/api-types';
+import {
+	base64EncodedSize,
+	InstanceAiAttachment,
+	InstanceAiResourceAttachment,
+} from '@n8n/api-types';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -89,7 +93,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	submit: [message: string, attachments?: InstanceAiAttachment[]];
+	submit: [message: string, attachments?: InstanceAiAttachment[], restoreDraft?: () => boolean];
 	stop: [];
 	'cancel-plan-edit': [];
 	'dismiss-context-chip': [];
@@ -160,10 +164,20 @@ function setText(text: string) {
 	inputText.value = text;
 }
 
+function clearTextIfMatches(text: string) {
+	if (inputText.value === text) inputText.value = '';
+}
+
+function isDirty() {
+	return inputText.value.trim().length > 0 || attachedFiles.value.length > 0;
+}
+
 defineExpose({
 	focus,
 	appendText,
 	setText,
+	clearTextIfMatches,
+	isDirty,
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	insertSuggestion: handleSuggestionInsert,
 	submitSuggestion,
@@ -175,6 +189,12 @@ const isBusy = computed(() =>
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
+// Fed to the composer so its size guard can account for what is already staged.
+// Summed per file after encoding — base64 pads each file individually, so encoding
+// a raw total would undercount and disagree with the backend's per-file measurement.
+const attachedEncodedBytes = computed(() =>
+	attachedFiles.value.reduce((sum, file) => sum + base64EncodedSize(file.size), 0),
+);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
@@ -261,8 +281,16 @@ watch(
 	},
 );
 
-function emitSubmittedMessage(message: string, attachments?: InstanceAiAttachment[]) {
+function emitSubmittedMessage(
+	message: string,
+	attachments?: InstanceAiAttachment[],
+	restoreDraft?: () => boolean,
+) {
 	previewPrompt.value = null;
+	if (restoreDraft) {
+		emit('submit', message, attachments, restoreDraft);
+		return;
+	}
 	emit('submit', message, attachments);
 }
 
@@ -276,6 +304,13 @@ function canSubmitMessage(message: string, attachmentCount = 0) {
 	return (message.length > 0 || attachmentCount > 0) && !isBusy.value && !isGatedBySetup.value;
 }
 
+function restoreSubmittedDraft(message: string, files: File[]) {
+	if (isDirty()) return false;
+	inputText.value = message;
+	attachedFiles.value = [...files];
+	return true;
+}
+
 function submitComposerMessage(message: string, attachments?: InstanceAiAttachment[]) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
 		return;
@@ -286,7 +321,13 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 	if (attachments?.some((a) => a.type === 'nodes')) {
 		instanceAiStore.requestClearCanvasSelection();
 	}
-	emitSubmittedMessage(message, attachments);
+
+	const submittedFiles = [...attachedFiles.value];
+	emitSubmittedMessage(
+		message,
+		attachments,
+		submittedFiles.length > 0 ? () => restoreSubmittedDraft(message, submittedFiles) : undefined,
+	);
 	resetDraftComposer();
 }
 
@@ -486,6 +527,7 @@ const resizable = computed(() => {
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
 			:show-attach="!props.isPlanEditMode"
+			:attached-encoded-bytes="attachedEncodedBytes"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"

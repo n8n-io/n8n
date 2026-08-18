@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { useRoute, useRouter, type LocationQueryRaw, type RouteLocationRaw } from 'vue-router';
+import { useStorage } from '@vueuse/core';
+import { useRoute, useRouter } from 'vue-router';
 import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -9,8 +10,9 @@ import {
 	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+	addMissingAgentPersonalisation,
+	type AgentFileDto,
 } from '@n8n/api-types';
-import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -37,6 +39,7 @@ import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrations
 import type {
 	AgentResource,
 	AgentContinueLoadedEvent,
+	AgentFixWithAssistantEvent,
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
@@ -56,8 +59,10 @@ import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
 } from '../composables/useProjectAgentsList';
-import { useInstanceAiAgentPreviewHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
-import { addMissingAgentPersonalisation } from '@n8n/api-types';
+import {
+	useInstanceAiAgentPreviewHandoff,
+	type AgentPreviewHandoffParams,
+} from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -65,23 +70,29 @@ import {
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
+	NEW_SESSION_PARAM,
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
+import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
+import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 
 const props = withDefaults(
 	defineProps<{
 		artifactMode?: boolean;
 		artifactProjectId?: string;
 		artifactAgentId?: string;
+		/** Preview session to restore when this agent opens as an Instance AI artifact. */
+		artifactPreviewSessionId?: string;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
 		artifactEditingLocked?: boolean;
 		/** True when no agent row exists behind `artifactAgentId` yet — the builder
@@ -92,6 +103,7 @@ const props = withDefaults(
 		artifactMode: false,
 		artifactProjectId: undefined,
 		artifactAgentId: undefined,
+		artifactPreviewSessionId: undefined,
 		artifactEditingLocked: false,
 		artifactAgentPending: false,
 	},
@@ -103,6 +115,7 @@ const emit = defineEmits<{
 	'preview-open-change': [open: boolean];
 	/** The agent name was successfully saved. */
 	'name-saved': [name: string];
+	'assistant-handoff': [params: AgentPreviewHandoffParams];
 }>();
 
 const route = useRoute();
@@ -137,9 +150,8 @@ const { openAgentConfirmationModal } = useAgentConfirmationModal();
 // singleton agent session/credential stores, so only one builder shell should
 // be mounted at a time.
 const isArtifactMode = computed(() => props.artifactMode);
-const isArtifactPreviewDockOpen = ref(false);
-const isPreviewDockOpen = computed(() =>
-	isArtifactMode.value ? isArtifactPreviewDockOpen.value : route.name === AGENT_PREVIEW_VIEW,
+const isStandalonePreview = computed(
+	() => !isArtifactMode.value && route.name === AGENT_PREVIEW_VIEW,
 );
 const projectId = computed(
 	() =>
@@ -152,9 +164,28 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
+const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
+	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
+});
+const persistedPreviewOpen = useStorage(previewOpenStorageKey, false);
+const isPreviewDockOpen = computed(() => !isStandalonePreview.value && persistedPreviewOpen.value);
+const isPreviewActive = computed(() => isStandalonePreview.value || isPreviewDockOpen.value);
+const agentBuilderHref = computed(function getAgentBuilderHref() {
+	return router.resolve({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: {
+			[CONTINUE_SESSION_ID_PARAM]: effectiveSessionId.value,
+		},
+	}).href;
+});
 const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
 
-const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
+const {
+	canUpdate: canEditAgent,
+	canDelete: canDeleteAgent,
+	canExecute: canExecuteAgent,
+} = useAgentPermissions(projectId);
 // Combines permission with the artifact-mode build lock: while the AI is
 // actively building/mutating this agent, editing is disabled even for a user
 // who otherwise has permission — mirrors the workflow artifact's read-only
@@ -171,19 +202,46 @@ watch(
 	{ immediate: true },
 );
 
-async function onSendPreviewToAssistant(executionId?: string) {
+async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
+	const session = sessionsStore.threads.find(({ id }) => id === threadId);
+	const sessionTitle = session?.title?.trim() || currentSessionTitle.value || undefined;
+	const sessionNumber = session?.sessionNumber;
 
-	await sendPreviewSessionToInstanceAi({
+	const params: AgentPreviewHandoffParams = {
 		projectId: projectId.value,
 		agentId: agentId.value,
 		threadId,
 		agentName: agentName.value || undefined,
 		agentIcon: localConfig.value?.personalisation?.icon,
-		sessionTitle: currentSessionTitle.value || undefined,
-		executionId,
-	});
+		sessionTitle,
+		...(event
+			? {
+					executionId: event.executionId,
+					initialDraft: buildAgentFixWithAssistantPrompt(
+						{
+							projectId: projectId.value,
+							agentId: agentId.value,
+							agentName: agentName.value || undefined,
+							threadId,
+							sessionTitle,
+							...(sessionNumber !== undefined ? { sessionNumber } : {}),
+							executionId: event.executionId,
+							failures: event.failures,
+						},
+						locale,
+					),
+				}
+			: {}),
+	};
+
+	if (isArtifactMode.value) {
+		emit('assistant-handoff', params);
+		return;
+	}
+
+	await sendPreviewSessionToInstanceAi(params);
 }
 
 /**
@@ -223,6 +281,7 @@ const {
 	currentSessionHasMessages,
 	currentSessionTitle,
 	currentSessionIsEphemeral,
+	sessionMenu,
 	setSessionInUrl,
 	clearContinueSessionParam,
 	onSessionPick,
@@ -311,7 +370,7 @@ const projectName = computed<string | null>(() => {
 // or project, and applying the result would clobber the new selection's state.
 // Callers use this guard to drop such stale results.
 function isStaleAgentTarget(targetProjectId: string, targetAgentId: string): boolean {
-	return projectId.value !== targetProjectId || agentId.value !== targetAgentId;
+	return disposed || projectId.value !== targetProjectId || agentId.value !== targetAgentId;
 }
 
 // Drafts cases from the agent's own config. The generated dataset isn't
@@ -495,28 +554,10 @@ function sessionIdForPreview(): string | undefined {
 	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id;
 }
 
-function previewRoute(sessionId?: string): RouteLocationRaw {
-	const {
-		[CONTINUE_SESSION_ID_PARAM]: _dropped,
-		prompt: _prompt,
-		...rest
-	} = route.query as LocationQueryRaw;
-	const query: LocationQueryRaw = { ...rest };
-	if (sessionId) {
-		query[CONTINUE_SESSION_ID_PARAM] = sessionId;
-	}
-
-	return {
-		name: AGENT_PREVIEW_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value },
-		query,
-	};
-}
-
 async function openPreview(preferredSessionId?: string) {
 	const sessionId = preferredSessionId ?? sessionIdForPreview();
 	activeChatSessionId.value = sessionId ?? null;
-	await router.push(previewRoute(sessionId));
+	persistedPreviewOpen.value = true;
 }
 
 function openArtifactPreview(preferredSessionId?: string) {
@@ -525,21 +566,12 @@ function openArtifactPreview(preferredSessionId?: string) {
 	} else {
 		bindPreviewSession();
 	}
-	isArtifactPreviewDockOpen.value = true;
-}
-
-function openSessionTarget(target: RouteLocationRaw) {
-	if (isArtifactMode.value) {
-		window.open(router.resolve(target).href, '_blank');
-		return;
-	}
-
-	void router.push(target);
+	persistedPreviewOpen.value = true;
 }
 
 function viewPreviewTrace() {
 	if (!currentSessionHasMessages.value || !effectiveSessionId.value) return;
-	openSessionTarget({
+	void router.push({
 		name: AGENT_SESSION_DETAIL_VIEW,
 		params: {
 			projectId: projectId.value,
@@ -584,13 +616,13 @@ function closePreviewRoute() {
 	});
 }
 
-function closePreviewDock() {
-	if (isArtifactMode.value) {
-		isArtifactPreviewDockOpen.value = false;
-		return;
-	}
+function returnToBuilderFromPreview() {
+	void router.push(agentBuilderHref.value);
+}
 
-	closePreviewRoute();
+function closePreviewDock() {
+	persistedPreviewOpen.value = false;
+	if (!isArtifactMode.value) closePreviewRoute();
 }
 
 function onPublished(updated: AgentResource) {
@@ -1005,6 +1037,7 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
+	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill }) => {
 		// The persisted validation result no longer reflects the working copy —
@@ -1431,7 +1464,11 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			}
 		})();
 
-		if (isPreviewDockOpen.value) bindPreviewSession();
+		if (isStandalonePreview.value && route.query[NEW_SESSION_PARAM] === 'true') {
+			onNewChat();
+		} else if (isPreviewActive.value) {
+			bindPreviewSession();
+		}
 
 		if (!isArtifactMode.value && (route.query.prompt || route.query.expandBuildChat)) {
 			void router.replace({
@@ -1461,7 +1498,7 @@ watch(
 			return;
 		}
 
-		isArtifactPreviewDockOpen.value = false;
+		persistedPreviewOpen.value = false;
 		activeChatSessionId.value = null;
 	},
 );
@@ -1493,15 +1530,80 @@ onBeforeUnmount(() => {
 watch(
 	() => sessionsStore.loading,
 	(isLoading, wasLoading) => {
-		if (!wasLoading || isLoading) return;
-		if (!isPreviewDockOpen.value || effectiveSessionId.value) return;
+		if (!wasLoading || isLoading || !initialized.value) return;
+		if (!isPreviewActive.value) return;
+		if (isArtifactMode.value && props.artifactPreviewSessionId) {
+			void ensureArtifactPreviewSessionAvailable(props.artifactPreviewSessionId);
+		}
+		if (effectiveSessionId.value) return;
 		bindPreviewSession();
 	},
 );
 
-watch(isPreviewDockOpen, (open) => {
-	if (open) bindPreviewSession();
-});
+watch(
+	[isPreviewActive, initialized],
+	([open, isInitialized]) => {
+		if (open) persistedPreviewOpen.value = true;
+		if (open && isInitialized && !sessionsStore.loading) bindPreviewSession();
+	},
+	{ immediate: true },
+);
+
+function isNotFoundError(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'httpStatusCode' in error &&
+		error.httpStatusCode === 404
+	);
+}
+
+let latestArtifactPreviewValidationId = 0;
+async function ensureArtifactPreviewSessionAvailable(sessionId: string) {
+	const requestId = ++latestArtifactPreviewValidationId;
+	if (sessionsStore.loading || effectiveSessionId.value !== sessionId) return;
+	if (sessionsStore.threads.some((thread) => thread.id === sessionId)) return;
+
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	try {
+		const { thread } = await sessionsStore.getThreadDetail(
+			targetProjectId,
+			targetAgentId,
+			sessionId,
+		);
+		if (
+			requestId !== latestArtifactPreviewValidationId ||
+			isStaleAgentTarget(targetProjectId, targetAgentId) ||
+			effectiveSessionId.value !== sessionId
+		) {
+			return;
+		}
+		sessionsStore.upsertThread(thread);
+	} catch (error) {
+		if (
+			requestId !== latestArtifactPreviewValidationId ||
+			isStaleAgentTarget(targetProjectId, targetAgentId) ||
+			effectiveSessionId.value !== sessionId ||
+			!isNotFoundError(error)
+		) {
+			return;
+		}
+
+		activeChatSessionId.value = null;
+		bindPreviewSession();
+	}
+}
+
+watch(
+	[() => props.artifactPreviewSessionId, initialized],
+	([sessionId, isInitialized]) => {
+		if (!isArtifactMode.value || !isInitialized || !sessionId) return;
+		openArtifactPreview(sessionId);
+		void ensureArtifactPreviewSessionAvailable(sessionId);
+	},
+	{ immediate: true },
+);
 
 function exitContinueMode() {
 	clearContinueSessionParam();
@@ -1599,7 +1701,7 @@ function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
 		// Stale deep-link (or a cross-page navigation that left an unknown id
 		// in the URL): bind immediately so we never wait on a raced
 		// `router.replace` + `nextTick` that can leave the chat blank.
-		if (!isPreviewDockOpen.value) return;
+		if (!isPreviewActive.value) return;
 		const latest = sessionsStore.threads?.[0];
 		if (latest) {
 			setSessionInUrl(latest.id);
@@ -1611,18 +1713,30 @@ function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
 
 function onSwitchAgent(nextAgentId: string) {
 	if (!nextAgentId || nextAgentId === agentId.value) return;
-	const keepPreviewOpen = !isArtifactMode.value && isPreviewDockOpen.value;
 	void router.push({
-		name: keepPreviewOpen ? AGENT_PREVIEW_VIEW : AGENT_BUILDER_VIEW,
+		name: isStandalonePreview.value ? AGENT_PREVIEW_VIEW : AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: nextAgentId },
-		query: keepPreviewOpen ? {} : route.query,
+		query: isStandalonePreview.value ? {} : route.query,
 	});
 }
 </script>
 
 <template>
 	<div :class="$style.root">
+		<AgentPreviewHeader
+			v-if="isStandalonePreview"
+			:agent-name="agent?.name ?? agentName"
+			:agent-href="agentBuilderHref"
+			:session-title="currentSessionTitle"
+			:session-options="sessionMenu"
+			:has-trace="currentSessionHasMessages && Boolean(effectiveSessionId)"
+			@back="returnToBuilderFromPreview"
+			@new-session="startNewPreviewSession"
+			@session-select="onSessionPick"
+			@view-trace="viewPreviewTrace"
+		/>
 		<AgentBuilderHeader
+			v-else
 			:agent="agent"
 			:project-id="projectId"
 			:agent-id="agentId"
@@ -1645,7 +1759,16 @@ function onSwitchAgent(nextAgentId: string) {
 			@switch-agent="onSwitchAgent"
 			@toggle-version-history="onToggleVersionHistory"
 		/>
-		<div ref="builderContainer" :class="$style.builder">
+		<div
+			ref="builderContainer"
+			:class="[
+				$style.builder,
+				{
+					[$style.previewOpen]: isPreviewDockOpen,
+					[$style.standalonePreview]: isStandalonePreview,
+				},
+			]"
+		>
 			<div
 				v-if="!isPreviewDockOpen && !isArtifactMode && instanceAiAvailable"
 				:class="$style.aiButtonWrapper"
@@ -1671,9 +1794,25 @@ function onSwitchAgent(nextAgentId: string) {
 				<N8nIcon icon="spinner" spin />
 			</div>
 			<template v-else>
+				<AgentPreviewChatPage
+					v-if="isStandalonePreview"
+					:initialized="initialized"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent="agent"
+					:local-config="localConfig"
+					:connected-triggers="connectedTriggers"
+					:effective-session-id="effectiveSessionId"
+					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:before-send="beforePreviewSend"
+					@continue-loaded="onContinueLoaded"
+					@send-to-assistant="onSendPreviewToAssistant"
+				/>
+
 				<AgentBuilderEditorColumn
-					:class="$style.editorColumn"
+					v-else
 					v-model:active-main-tab="activeMainTab"
+					:class="$style.editorColumn"
 					:local-config="localConfig"
 					:agent="agent"
 					:project-id="projectId"
@@ -1686,6 +1825,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:applied-skills="appliedSkills"
 					:connected-triggers="connectedTriggers"
 					:can-edit-agent="effectiveCanEditAgent"
+					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
 					:main-tab-options="visibleMainTabOptions"
@@ -1717,7 +1857,7 @@ function onSwitchAgent(nextAgentId: string) {
 				/>
 
 				<AgentVersionHistoryPanel
-					v-if="isVersionHistoryOpen"
+					v-if="!isStandalonePreview && isVersionHistoryOpen"
 					ref="versionHistoryPanel"
 					:project-id="projectId"
 					:agent-id="agentId"
@@ -1731,38 +1871,34 @@ function onSwitchAgent(nextAgentId: string) {
 					@unpublished="onUnpublished"
 				/>
 
-				<Transition
-					enter-active-class="preview-dock-enter-active"
-					leave-active-class="preview-dock-leave-active"
-				>
-					<AgentPreviewDock
-						v-if="isPreviewDockOpen"
-						:session-title="currentSessionTitle"
-						:has-session="currentSessionHasMessages"
-						:initialized="initialized"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:agent="agent"
-						:local-config="localConfig"
-						:connected-triggers="connectedTriggers"
-						:effective-session-id="effectiveSessionId"
-						:can-send-to-assistant="canSendPreviewToInstanceAi"
-						:before-send="beforePreviewSend"
-						@view-trace="viewPreviewTrace"
-						@new-session="startNewPreviewSession"
-						@close="closePreviewDock"
-						@continue-loaded="onContinueLoaded"
-						@send-to-assistant="onSendPreviewToAssistant"
-					/>
-				</Transition>
+				<AgentPreviewDock
+					v-if="!isStandalonePreview"
+					:is-open="isPreviewDockOpen"
+					:session-title="currentSessionTitle"
+					:session-options="sessionMenu"
+					:has-session="currentSessionHasMessages"
+					:initialized="initialized"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent="agent"
+					:local-config="localConfig"
+					:connected-triggers="connectedTriggers"
+					:effective-session-id="effectiveSessionId"
+					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:before-send="beforePreviewSend"
+					@view-trace="viewPreviewTrace"
+					@new-session="startNewPreviewSession"
+					@session-select="onSessionPick"
+					@close="closePreviewDock"
+					@continue-loaded="onContinueLoaded"
+					@send-to-assistant="onSendPreviewToAssistant"
+				/>
 			</template>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/motion.scss' as motion;
-
 .root {
 	display: flex;
 	flex-direction: column;
@@ -1776,8 +1912,28 @@ function onSwitchAgent(nextAgentId: string) {
 	height: 100%;
 	min-height: 0;
 	overflow: hidden;
+	padding-right: 0;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+
+	&.previewOpen {
+		padding-right: var(--agent-preview-chat-column-width, 30rem);
+		transition: padding-right var(--duration--snappy) var(--easing--ease-out);
+	}
+
+	&.previewOpen:has([data-preview-layout='floating']),
+	&.previewOpen:has([data-preview-layout='fullpage']) {
+		padding-right: 0;
+		transition: none;
+	}
+
+	&.previewOpen:has([data-preview-layout='fullpage']) .editorColumn {
+		display: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
 }
 
 .loading {
@@ -1839,18 +1995,8 @@ function onSwitchAgent(nextAgentId: string) {
 	min-width: 0;
 }
 
-:global(.preview-dock-enter-active) {
-	--animation--fade-in-right--duration: var(--duration--snappy);
-	--animation--fade-in-right--translate: 100%;
-
-	@include motion.fade-in-right;
-}
-
-:global(.preview-dock-leave-active) {
-	--animation--fade-out-right--duration: var(--duration--snappy);
-	--animation--fade-out-right--translate: 100%;
-
-	@include motion.fade-out-right;
+.standalonePreview {
+	padding-right: 0;
 }
 
 .aiButtonWrapper {

@@ -18,7 +18,7 @@ import type {
 } from '../runtime/event';
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
-import type { JSONValue } from '../utils/json';
+import type { JSONObject, JSONValue } from '../utils/json';
 
 export type SmoothStreamOptions = NonNullable<Parameters<typeof smoothStream>[0]>;
 
@@ -179,6 +179,12 @@ export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
+	/**
+	 * Cap on completion tokens for each model call (`max_tokens` /
+	 * `maxOutputTokens`). When unset, provider/model defaults from
+	 * `resolveDefaultMaxOutputTokens` apply.
+	 */
+	maxOutputTokens?: number;
 	/** AI SDK `smoothStream` transform. Enabled by default; pass `false` to disable. */
 	smoothStream?: SmoothStreamOptions | false;
 	/**
@@ -426,6 +432,7 @@ export interface SerializableAgentState {
 export type AgentPersistenceOptions = {
 	threadId: string;
 	resourceId: string;
+	hostMetadata?: JSONObject;
 	/** Internal child runs must only be resumed through their suspended parent. */
 	delegated?: true;
 	/**

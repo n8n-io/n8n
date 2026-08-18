@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { describe, it, vi, beforeEach, expect } from 'vitest';
 import type { INode } from 'n8n-workflow';
-import { useAiGatewayStore } from './aiGateway.store';
+import { useAiGatewayStore, usesFreeCreditsLabel } from './aiGateway.store';
 
 const mockGetGatewayConfig = vi.fn();
 const mockGetGatewayWallet = vi.fn();
@@ -124,14 +124,19 @@ describe('aiGateway.store', () => {
 	});
 
 	describe('fetchWallet()', () => {
-		it('should update balance and budget', async () => {
-			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
+		it('should update balance, budget, and hasEverToppedUp', async () => {
+			mockGetGatewayWallet.mockResolvedValue({
+				balance: 7,
+				budget: 10,
+				hasEverToppedUp: true,
+			});
 			const store = useAiGatewayStore();
 
 			await store.fetchWallet();
 
 			expect(store.balance).toBe(7);
 			expect(store.budget).toBe(10);
+			expect(store.hasEverToppedUp).toBe(true);
 			expect(store.fetchError).toBeNull();
 		});
 
@@ -156,6 +161,57 @@ describe('aiGateway.store', () => {
 
 			expect(store.fetchError).toBeNull();
 			expect(store.balance).toBe(3);
+		});
+
+		it('shares an in-flight wallet fetch', async () => {
+			let resolveWallet!: (value: {
+				balance: number;
+				budget: number;
+				hasEverToppedUp: boolean;
+			}) => void;
+			mockGetGatewayWallet.mockReturnValue(
+				new Promise((resolve) => {
+					resolveWallet = resolve;
+				}),
+			);
+			const store = useAiGatewayStore();
+
+			const first = store.fetchWallet();
+			const second = store.fetchWallet();
+			resolveWallet({ balance: 1, budget: 2, hasEverToppedUp: false });
+			await Promise.all([first, second]);
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+			expect(store.balance).toBe(1);
+		});
+	});
+
+	describe('usesFreeCreditsLabel()', () => {
+		it.each([
+			{ hasEverToppedUp: false, balance: 1.26, expected: true },
+			{ hasEverToppedUp: true, balance: 1.26, expected: false },
+			{ hasEverToppedUp: false, balance: 0, expected: false },
+			{ hasEverToppedUp: true, balance: 0, expected: false },
+			{ hasEverToppedUp: undefined, balance: undefined, expected: true },
+		])(
+			'hasEverToppedUp=$hasEverToppedUp balance=$balance → $expected',
+			({ hasEverToppedUp, balance, expected }) => {
+				expect(usesFreeCreditsLabel(hasEverToppedUp, balance)).toBe(expected);
+			},
+		);
+
+		it('drives creditsLabelKey from the fetched wallet', async () => {
+			mockGetGatewayWallet.mockResolvedValue({
+				balance: 5,
+				budget: 10,
+				hasEverToppedUp: true,
+			});
+			const store = useAiGatewayStore();
+			expect(store.creditsLabelKey).toBe('generic.freeCredits');
+
+			await store.fetchWallet();
+
+			expect(store.creditsLabelKey).toBe('generic.n8nCredits');
 		});
 	});
 

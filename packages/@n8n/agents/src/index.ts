@@ -25,7 +25,9 @@ export type {
 	Provider,
 	ThinkingConfig,
 	ThinkingConfigFor,
+	AnthropicThinkingEffort,
 	AnthropicThinkingConfig,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
@@ -418,7 +420,12 @@ export type {
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
 export { BaseSandbox } from './workspace';
-export { createWorkspaceTools } from './workspace';
+export {
+	CORE_WORKSPACE_TOOL_NAMES,
+	createScopedWorkspace,
+	createWorkspaceTools,
+	reconcileToolResultRuns,
+} from './workspace';
 export { SandboxProcessManager, ProcessHandle } from './workspace';
 
 export type {

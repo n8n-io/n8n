@@ -918,7 +918,7 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('deleteThread', () => {
-		it('cleans SDK memory before deleting the execution thread', async () => {
+		it('deletes thread memory, attachments, and the execution thread', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
 				id: 'thread-1',
 				agentId: 'agent-1',

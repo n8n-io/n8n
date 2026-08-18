@@ -102,8 +102,11 @@ jobs:
               packages/testing/containers/**
             dev-server-smoke:
               packages/frontend/editor-ui/vite.config.mts
+              # If this job becomes too slow, use a smaller glob. Do not delete the assertion.
+              packages/frontend/editor-ui/src/**
               pnpm-workspace.yaml
               packages/@n8n/*/package.json
+              packages/frontend/@n8n/frontend-vite-config/**
               packages/testing/playwright/tests/dev-server-smoke/**
               packages/testing/playwright/playwright.config.ts
               packages/testing/playwright/playwright-projects.ts

@@ -22,7 +22,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { isApiEnabled } from '@/public-api';
+import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -300,7 +300,7 @@ export class FrontendService {
 				maxSize: this.globalConfig.dataTable.maxSize,
 			},
 			publicApi: {
-				enabled: isApiEnabled(),
+				enabled: isApiKeyAuthEnabled(),
 				latestVersion: 1,
 				path: this.globalConfig.publicApi.path,
 				swaggerUi: {
@@ -765,11 +765,12 @@ export class FrontendService {
 	private overwriteCredentialsProperties() {
 		const { credentials } = this.loadNodesAndCredentials.types;
 		const credentialsOverwrites = this.credentialsOverwrites.getAll();
-		const { skipTypes } = this.globalConfig.credentials.overwrite;
+		const { showScopes = [], skipTypes } = this.globalConfig.credentials.overwrite;
 		for (const credential of credentials) {
 			// Clear any existing overwritten properties to prevent stale data
 			delete credential.__overwrittenProperties;
 			delete credential.__skipManagedCreation;
+			delete credential.__showManagedOAuthScopes;
 
 			const overwrittenProperties = [];
 			this.credentialTypes
@@ -792,6 +793,10 @@ export class FrontendService {
 			// (overwrite is conditional on stored data; users should provide their own credentials)
 			if (skipTypes.includes(credential.name)) {
 				credential.__skipManagedCreation = true;
+			}
+
+			if (showScopes.includes(credential.name)) {
+				credential.__showManagedOAuthScopes = true;
 			}
 
 			// Inject the per-instance JWKS URI as the default of any `jwksUri`

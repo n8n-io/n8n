@@ -118,6 +118,33 @@ describe('Publisher', () => {
 			);
 		});
 
+		it('should not debounce `agent-chat-integration-changed`', async () => {
+			// Each message is a discrete connect/disconnect delta, so coalescing them
+			// drops one: a channel replacement publishes both back to back, and peers
+			// would act only on the trailing connect and keep the old runtime alive.
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				executionsConfig,
+				globalConfig,
+			);
+			const msg = mock<PubSub.Command>({ command: 'agent-chat-integration-changed' });
+
+			await publisher.publishCommand(msg);
+
+			expect(client.publish).toHaveBeenCalledWith(
+				'n8n:n8n.commands',
+				JSON.stringify({
+					...msg,
+					_isMockObject: true,
+					senderId: hostId,
+					selfSend: false,
+					debounce: false,
+				}),
+			);
+		});
+
 		it('should not debounce `remove-triggers-and-pollers`', async () => {
 			const publisher = new Publisher(
 				logger,
