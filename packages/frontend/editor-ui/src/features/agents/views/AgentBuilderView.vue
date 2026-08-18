@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { useRoute, useRouter, type LocationQueryRaw, type RouteLocationRaw } from 'vue-router';
+import { useStorage } from '@vueuse/core';
+import { useRoute, useRouter } from 'vue-router';
 import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -9,8 +10,9 @@ import {
 	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+	addMissingAgentPersonalisation,
+	type AgentFileDto,
 } from '@n8n/api-types';
-import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -61,7 +63,6 @@ import {
 	useInstanceAiAgentPreviewHandoff,
 	type AgentPreviewHandoffParams,
 } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
-import { addMissingAgentPersonalisation } from '@n8n/api-types';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -69,11 +70,14 @@ import {
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
+	NEW_SESSION_PARAM,
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
+import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
+import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
@@ -147,9 +151,8 @@ const { openAgentConfirmationModal } = useAgentConfirmationModal();
 // singleton agent session/credential stores, so only one builder shell should
 // be mounted at a time.
 const isArtifactMode = computed(() => props.artifactMode);
-const isArtifactPreviewDockOpen = ref(false);
-const isPreviewDockOpen = computed(() =>
-	isArtifactMode.value ? isArtifactPreviewDockOpen.value : route.name === AGENT_PREVIEW_VIEW,
+const isStandalonePreview = computed(
+	() => !isArtifactMode.value && route.name === AGENT_PREVIEW_VIEW,
 );
 const projectId = computed(
 	() =>
@@ -173,6 +176,21 @@ const isRouteAgentPending = computed(() => {
 	return routePendingAgentId.value === agentId.value;
 });
 const isAgentPending = computed(() => props.artifactAgentPending || isRouteAgentPending.value);
+const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
+	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
+});
+const persistedPreviewOpen = useStorage(previewOpenStorageKey, false);
+const isPreviewDockOpen = computed(() => !isStandalonePreview.value && persistedPreviewOpen.value);
+const isPreviewActive = computed(() => isStandalonePreview.value || isPreviewDockOpen.value);
+const agentBuilderHref = computed(function getAgentBuilderHref() {
+	return router.resolve({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: {
+			[CONTINUE_SESSION_ID_PARAM]: effectiveSessionId.value,
+		},
+	}).href;
+});
 const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
 
 const {
@@ -275,6 +293,7 @@ const {
 	currentSessionHasMessages,
 	currentSessionTitle,
 	currentSessionIsEphemeral,
+	sessionMenu,
 	setSessionInUrl,
 	clearContinueSessionParam,
 	onSessionPick,
@@ -547,28 +566,10 @@ function sessionIdForPreview(): string | undefined {
 	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id;
 }
 
-function previewRoute(sessionId?: string): RouteLocationRaw {
-	const {
-		[CONTINUE_SESSION_ID_PARAM]: _dropped,
-		prompt: _prompt,
-		...rest
-	} = route.query as LocationQueryRaw;
-	const query: LocationQueryRaw = { ...rest };
-	if (sessionId) {
-		query[CONTINUE_SESSION_ID_PARAM] = sessionId;
-	}
-
-	return {
-		name: AGENT_PREVIEW_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value },
-		query,
-	};
-}
-
 async function openPreview(preferredSessionId?: string) {
 	const sessionId = preferredSessionId ?? sessionIdForPreview();
 	activeChatSessionId.value = sessionId ?? null;
-	await router.push(previewRoute(sessionId));
+	persistedPreviewOpen.value = true;
 }
 
 function openArtifactPreview(preferredSessionId?: string) {
@@ -577,21 +578,12 @@ function openArtifactPreview(preferredSessionId?: string) {
 	} else {
 		bindPreviewSession();
 	}
-	isArtifactPreviewDockOpen.value = true;
-}
-
-function openSessionTarget(target: RouteLocationRaw) {
-	if (isArtifactMode.value) {
-		window.open(router.resolve(target).href, '_blank');
-		return;
-	}
-
-	void router.push(target);
+	persistedPreviewOpen.value = true;
 }
 
 function viewPreviewTrace() {
 	if (!currentSessionHasMessages.value || !effectiveSessionId.value) return;
-	openSessionTarget({
+	void router.push({
 		name: AGENT_SESSION_DETAIL_VIEW,
 		params: {
 			projectId: projectId.value,
@@ -636,13 +628,13 @@ function closePreviewRoute() {
 	});
 }
 
-function closePreviewDock() {
-	if (isArtifactMode.value) {
-		isArtifactPreviewDockOpen.value = false;
-		return;
-	}
+function returnToBuilderFromPreview() {
+	void router.push(agentBuilderHref.value);
+}
 
-	closePreviewRoute();
+function closePreviewDock() {
+	persistedPreviewOpen.value = false;
+	if (!isArtifactMode.value) closePreviewRoute();
 }
 
 function onPublished(updated: AgentResource) {
@@ -1069,6 +1061,7 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
+	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill }) => {
 		// The persisted validation result no longer reflects the working copy —
@@ -1373,6 +1366,21 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 	};
 }
 
+/**
+ * True while a genuine target switch still owes the autosave-loop reset.
+ * Set synchronously when a switching `initialize()` begins; cleared only by
+ * `resetAutosaveLoops()`, so a same-target preserveState init that supersedes
+ * the switching init inherits the obligation instead of dropping it.
+ */
+let autosaveResetPending = false;
+
+function resetAutosaveLoops() {
+	configAutosave.reset();
+	skillAutosave.reset();
+	mcpAutosave.reset();
+	autosaveResetPending = false;
+}
+
 async function initialize({ preserveState = false }: { preserveState?: boolean } = {}) {
 	const sessionsFetchRequestId = ++latestSessionsFetchRequestId;
 	const targetProjectId = projectId.value;
@@ -1392,6 +1400,13 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 	pendingExternalRefresh.value = false;
 	try {
 		if (preserveState) {
+			// A same-ID pending → persisted hydration can supersede a genuine
+			// A→B switch whose drain is still in flight. That switch's reset is
+			// still owed — without it B inherits A's indicator and the flush
+			// below would rethrow A's lastSaveError and abort B's init. The
+			// loops only hold A's residue here (B can't schedule edits while
+			// `initialized` is false), so resetting first is safe.
+			if (autosaveResetPending) resetAutosaveLoops();
 			// Same-agent hydration (pending → persisted): flush queued
 			// config/skill/MCP snapshots before fetching so settle doesn't
 			// drop a pending debounce. When AI-locked, flush cancels stale
@@ -1399,14 +1414,28 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			await flushAutosave();
 			await settleAutosave();
 		} else {
+			// The reset obligation belongs to the target switch, not this init
+			// instance: a same-target preserveState init that supersedes us
+			// picks it up via this flag. Only `resetAutosaveLoops` clears it.
+			autosaveResetPending = true;
 			// Persist a pending MCP toggle before the new agent can replace its
 			// snapshot. Other pending edits remain governed by their existing
 			// switch/revert behavior.
-			await Promise.all([
-				configAutosave.settleAutosave(),
-				skillAutosave.settleAutosave(),
-				mcpAutosave.flushAutosave(),
-			]);
+			try {
+				await Promise.all([
+					configAutosave.settleAutosave(),
+					skillAutosave.settleAutosave(),
+					mcpAutosave.flushAutosave(),
+				]);
+			} finally {
+				// Genuine A→B switch: always detach A's autosave loop from
+				// `saveStatus`/`lastSaveError`, even when the drain throws —
+				// otherwise B inherits A's indicator and A's lastSaveError
+				// would abort B's later flush/publish. A stale init must not
+				// reset: a newer genuine switch owns its own reset, and a newer
+				// same-target hydration takes this one over via the flag.
+				if (isCurrentInitialization()) resetAutosaveLoops();
+			}
 		}
 		if (!isCurrentInitialization()) return;
 		if (!preserveState) {
@@ -1495,7 +1524,11 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			}
 		})();
 
-		if (isPreviewDockOpen.value) bindPreviewSession();
+		if (isStandalonePreview.value && route.query[NEW_SESSION_PARAM] === 'true') {
+			onNewChat();
+		} else if (isPreviewActive.value) {
+			bindPreviewSession();
+		}
 
 		if (!isArtifactMode.value && (route.query.prompt || route.query.expandBuildChat)) {
 			void router.replace({
@@ -1525,7 +1558,7 @@ watch(
 			return;
 		}
 
-		isArtifactPreviewDockOpen.value = false;
+		persistedPreviewOpen.value = false;
 		activeChatSessionId.value = null;
 	},
 );
@@ -1557,8 +1590,8 @@ onBeforeUnmount(() => {
 watch(
 	() => sessionsStore.loading,
 	(isLoading, wasLoading) => {
-		if (!wasLoading || isLoading) return;
-		if (!isPreviewDockOpen.value) return;
+		if (!wasLoading || isLoading || !initialized.value) return;
+		if (!isPreviewActive.value) return;
 		if (isArtifactMode.value && props.artifactPreviewSessionId) {
 			void ensureArtifactPreviewSessionAvailable(props.artifactPreviewSessionId);
 		}
@@ -1567,9 +1600,14 @@ watch(
 	},
 );
 
-watch(isPreviewDockOpen, (open) => {
-	if (open) bindPreviewSession();
-});
+watch(
+	[isPreviewActive, initialized],
+	([open, isInitialized]) => {
+		if (open) persistedPreviewOpen.value = true;
+		if (open && isInitialized && !sessionsStore.loading) bindPreviewSession();
+	},
+	{ immediate: true },
+);
 
 function isNotFoundError(error: unknown): boolean {
 	return (
@@ -1723,7 +1761,7 @@ function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
 		// Stale deep-link (or a cross-page navigation that left an unknown id
 		// in the URL): bind immediately so we never wait on a raced
 		// `router.replace` + `nextTick` that can leave the chat blank.
-		if (!isPreviewDockOpen.value) return;
+		if (!isPreviewActive.value) return;
 		const latest = sessionsStore.threads?.[0];
 		if (latest) {
 			setSessionInUrl(latest.id);
@@ -1735,18 +1773,30 @@ function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
 
 function onSwitchAgent(nextAgentId: string) {
 	if (!nextAgentId || nextAgentId === agentId.value) return;
-	const keepPreviewOpen = !isArtifactMode.value && isPreviewDockOpen.value;
 	void router.push({
-		name: keepPreviewOpen ? AGENT_PREVIEW_VIEW : AGENT_BUILDER_VIEW,
+		name: isStandalonePreview.value ? AGENT_PREVIEW_VIEW : AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: nextAgentId },
-		query: keepPreviewOpen ? {} : route.query,
+		query: isStandalonePreview.value ? {} : route.query,
 	});
 }
 </script>
 
 <template>
 	<div :class="$style.root">
+		<AgentPreviewHeader
+			v-if="isStandalonePreview"
+			:agent-name="agent?.name ?? agentName"
+			:agent-href="agentBuilderHref"
+			:session-title="currentSessionTitle"
+			:session-options="sessionMenu"
+			:has-trace="currentSessionHasMessages && Boolean(effectiveSessionId)"
+			@back="returnToBuilderFromPreview"
+			@new-session="startNewPreviewSession"
+			@session-select="onSessionPick"
+			@view-trace="viewPreviewTrace"
+		/>
 		<AgentBuilderHeader
+			v-else
 			:agent="agent"
 			:project-id="projectId"
 			:agent-id="agentId"
@@ -1769,7 +1819,16 @@ function onSwitchAgent(nextAgentId: string) {
 			@switch-agent="onSwitchAgent"
 			@toggle-version-history="onToggleVersionHistory"
 		/>
-		<div ref="builderContainer" :class="$style.builder">
+		<div
+			ref="builderContainer"
+			:class="[
+				$style.builder,
+				{
+					[$style.previewOpen]: isPreviewDockOpen,
+					[$style.standalonePreview]: isStandalonePreview,
+				},
+			]"
+		>
 			<div
 				v-if="!isPreviewDockOpen && !isArtifactMode && instanceAiAvailable"
 				:class="$style.aiButtonWrapper"
@@ -1795,9 +1854,25 @@ function onSwitchAgent(nextAgentId: string) {
 				<N8nIcon icon="spinner" spin />
 			</div>
 			<template v-else>
+				<AgentPreviewChatPage
+					v-if="isStandalonePreview"
+					:initialized="initialized"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent="agent"
+					:local-config="localConfig"
+					:connected-triggers="connectedTriggers"
+					:effective-session-id="effectiveSessionId"
+					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:before-send="beforePreviewSend"
+					@continue-loaded="onContinueLoaded"
+					@send-to-assistant="onSendPreviewToAssistant"
+				/>
+
 				<AgentBuilderEditorColumn
-					:class="$style.editorColumn"
+					v-else
 					v-model:active-main-tab="activeMainTab"
+					:class="$style.editorColumn"
 					:local-config="localConfig"
 					:agent="agent"
 					:project-id="projectId"
@@ -1842,7 +1917,7 @@ function onSwitchAgent(nextAgentId: string) {
 				/>
 
 				<AgentVersionHistoryPanel
-					v-if="isVersionHistoryOpen"
+					v-if="!isStandalonePreview && isVersionHistoryOpen"
 					ref="versionHistoryPanel"
 					:project-id="projectId"
 					:agent-id="agentId"
@@ -1856,38 +1931,34 @@ function onSwitchAgent(nextAgentId: string) {
 					@unpublished="onUnpublished"
 				/>
 
-				<Transition
-					enter-active-class="preview-dock-enter-active"
-					leave-active-class="preview-dock-leave-active"
-				>
-					<AgentPreviewDock
-						v-if="isPreviewDockOpen"
-						:session-title="currentSessionTitle"
-						:has-session="currentSessionHasMessages"
-						:initialized="initialized"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:agent="agent"
-						:local-config="localConfig"
-						:connected-triggers="connectedTriggers"
-						:effective-session-id="effectiveSessionId"
-						:can-send-to-assistant="canSendPreviewToInstanceAi"
-						:before-send="beforePreviewSend"
-						@view-trace="viewPreviewTrace"
-						@new-session="startNewPreviewSession"
-						@close="closePreviewDock"
-						@continue-loaded="onContinueLoaded"
-						@send-to-assistant="onSendPreviewToAssistant"
-					/>
-				</Transition>
+				<AgentPreviewDock
+					v-if="!isStandalonePreview"
+					:is-open="isPreviewDockOpen"
+					:session-title="currentSessionTitle"
+					:session-options="sessionMenu"
+					:has-session="currentSessionHasMessages"
+					:initialized="initialized"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent="agent"
+					:local-config="localConfig"
+					:connected-triggers="connectedTriggers"
+					:effective-session-id="effectiveSessionId"
+					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:before-send="beforePreviewSend"
+					@view-trace="viewPreviewTrace"
+					@new-session="startNewPreviewSession"
+					@session-select="onSessionPick"
+					@close="closePreviewDock"
+					@continue-loaded="onContinueLoaded"
+					@send-to-assistant="onSendPreviewToAssistant"
+				/>
 			</template>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/motion.scss' as motion;
-
 .root {
 	display: flex;
 	flex-direction: column;
@@ -1901,8 +1972,28 @@ function onSwitchAgent(nextAgentId: string) {
 	height: 100%;
 	min-height: 0;
 	overflow: hidden;
+	padding-right: 0;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+
+	&.previewOpen {
+		padding-right: var(--agent-preview-chat-column-width, 30rem);
+		transition: padding-right var(--duration--snappy) var(--easing--ease-out);
+	}
+
+	&.previewOpen:has([data-preview-layout='floating']),
+	&.previewOpen:has([data-preview-layout='fullpage']) {
+		padding-right: 0;
+		transition: none;
+	}
+
+	&.previewOpen:has([data-preview-layout='fullpage']) .editorColumn {
+		display: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
 }
 
 .loading {
@@ -1964,18 +2055,8 @@ function onSwitchAgent(nextAgentId: string) {
 	min-width: 0;
 }
 
-:global(.preview-dock-enter-active) {
-	--animation--fade-in-right--duration: var(--duration--snappy);
-	--animation--fade-in-right--translate: 100%;
-
-	@include motion.fade-in-right;
-}
-
-:global(.preview-dock-leave-active) {
-	--animation--fade-out-right--duration: var(--duration--snappy);
-	--animation--fade-out-right--translate: 100%;
-
-	@include motion.fade-out-right;
+.standalonePreview {
+	padding-right: 0;
 }
 
 .aiButtonWrapper {

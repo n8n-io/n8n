@@ -40,3 +40,14 @@ export function isSettledStatus(status: StepStatus): boolean {
  * the same thing — a step that ran and produced zero items is still live.
  */
 export type StepSlots = JsonValue[];
+
+/**
+ * The trigger step's outputs, supplied by whoever starts the execution: one
+ * entry per output slot, `null` for a slot the trigger didn't fire. Same shape
+ * and same opacity as any other step's `StepSlots` — a v1 host puts JSON-shaped
+ * `INodeExecutionData[]` in each slot.
+ */
+export type TriggerOutputs = StepSlots;
+
+/** Slots recorded for a trigger that fired without a payload: no slots at all. */
+export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];

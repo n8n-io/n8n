@@ -17,6 +17,9 @@
 		"PUT /roles/{slug}": {
 			"status": "gap"
 		},
+		"DELETE /roles/{slug}": {
+			"status": "gap"
+		},
 		"POST /role-mapping-rules": {
 			"status": "gap"
 		},

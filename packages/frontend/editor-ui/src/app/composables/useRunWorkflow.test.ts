@@ -17,7 +17,10 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useChat } from '@n8n/chat/composables';
 import type { INodeUi, IStartRunData } from '@/Interface';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type {
+	IExecutionResponse,
+	IExecutionsStopData,
+} from '@/features/execution/executions/executions.types';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -1430,6 +1433,31 @@ describe('useRunWorkflow({ router })', () => {
 	});
 
 	describe('stopCurrentExecution()', () => {
+		it('waits for the pending execution id instead of dropping the stop request', async () => {
+			const runWorkflowComposable = useRunWorkflow({ router });
+			const { useExecutionsStore } = await import(
+				'@/features/execution/executions/executions.store'
+			);
+			const executionsStore = useExecutionsStore();
+			const stopSpy = vi
+				.spyOn(executionsStore, 'stopCurrentExecution')
+				.mockResolvedValue({ mode: 'manual', status: 'canceled' } as IExecutionsStopData);
+			vi.spyOn(workflowsStore, 'getExecution').mockResolvedValue({
+				status: 'canceled',
+			} as IExecutionResponse);
+
+			// Run accepted, backend id not yet known.
+			executionStateStore.setActiveExecutionId(null);
+
+			const stopPromise = runWorkflowComposable.stopCurrentExecution();
+			expect(stopSpy).not.toHaveBeenCalled();
+
+			executionStateStore.setActiveExecutionId('exec-late');
+			await stopPromise;
+
+			expect(stopSpy).toHaveBeenCalledWith('exec-late');
+		});
+
 		it('stamps id and clears activeExecutionId before setWorkflowExecutionData when execution finished before stop', async () => {
 			const runWorkflowComposable = useRunWorkflow({ router });
 			const finishedExecution: IExecutionResponse = {

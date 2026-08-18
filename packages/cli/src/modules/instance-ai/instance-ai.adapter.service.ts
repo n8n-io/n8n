@@ -1,6 +1,27 @@
-import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
+import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
+import {
+	CONFIG_EVALUATIONS_FLAG,
+	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	upsertEvaluationConfigSchema,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+} from '@n8n/api-types';
+import type { AiGatewayConfigDto } from '@n8n/api-types';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
+import {
+	AiBuilderTemporaryWorkflowRepository,
+	ExecutionRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowEntity,
+	WorkflowRepository,
+} from '@n8n/db';
+import { Container, Service } from '@n8n/di';
 import type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -46,7 +67,6 @@ import type {
 	McpRegistryServerSummary,
 	ModelConfig,
 } from '@n8n/instance-ai';
-import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	BuilderTemplatesService,
 	builderTemplatesOptionsFromEnv,
@@ -56,44 +76,10 @@ import {
 	WorkflowNotFoundError,
 	WorkflowEditorLockedError,
 } from '@n8n/instance-ai';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import {
-	CONFIG_EVALUATIONS_FLAG,
-	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
-	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
-	upsertEvaluationConfigSchema,
-	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
-} from '@n8n/api-types';
-import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
-import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
-import { nanoid } from 'nanoid';
-
-import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
-import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { InstanceAiMcpRegistryService } from './mcp';
-import { WorkflowTemplatesService } from './workflow-templates.service';
-import {
-	buildInstanceAiRunPinDataPlan,
-	pruneUnreachedVerificationPinData,
-	sdkPinDataToRuntime,
-} from './instance-ai-run-pin-data';
-import { listNodeDiscriminators } from './node-definition-resolver';
-import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
-import {
-	AiBuilderTemporaryWorkflowRepository,
-	ExecutionRepository,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	WorkflowEntity,
-	WorkflowRepository,
-} from '@n8n/db';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { InstanceSettings } from 'n8n-core';
 import {
 	type ICredentialsDecrypted,
 	type INode,
@@ -125,49 +111,63 @@ import {
 	createRunExecutionData,
 	calculateWorkflowChecksum,
 } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
-import { PostHogClient } from '@/posthog';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeTypes } from '@/node-types';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
-import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
 import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { NodeCatalogService } from '@/node-catalog';
+import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
-import type { AiGatewayConfigDto } from '@n8n/api-types';
+import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { InstanceSettings } from 'n8n-core';
 import { TagService } from '@/services/tag.service';
+import { Telemetry } from '@/telemetry';
+import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
+import { WorkflowRunner } from '@/workflow-runner';
+import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import { Telemetry } from '@/telemetry';
-import { WorkflowRunner } from '@/workflow-runner';
+
+import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
+import {
+	buildInstanceAiRunPinDataPlan,
+	pruneUnreachedVerificationPinData,
+	sdkPinDataToRuntime,
+} from './instance-ai-run-pin-data';
+import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiMcpRegistryService } from './mcp';
+import { listNodeDiscriminators } from './node-definition-resolver';
+import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
+import { WorkflowTemplatesService } from './workflow-templates.service';
 
 type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
@@ -649,30 +649,59 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
-				const filter = {
+				// An explicit projectId targets one project; otherwise the thread's own
+				// project unless the caller widened to the whole instance. Either way it
+				// goes in as a *filter* on `getMany`, which resolves readability from the
+				// user's own project/workflow roles — so this can only narrow the set the
+				// caller could already read, never widen it. Writes keep using
+				// `resolveBoundProjectId` and stay locked to the bound project.
+				const targetProjectId =
+					options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
+				const scopeFilter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
+					...(targetProjectId ? { projectId: targetProjectId } : {}),
+				};
+				const filter = {
+					...scopeFilter,
 					...(options?.query ? { query: options.query } : {}),
-					...(options?.scope !== 'instance' && boundProjectId ? { projectId: boundProjectId } : {}),
 				};
 
-				const { workflows } = await workflowService.getMany(user, {
+				const { workflows, count } = await workflowService.getMany(user, {
 					take: options?.limit ?? 50,
 					filter,
 				});
 
-				return workflows
-					.filter((wf): wf is WorkflowEntity => 'versionId' in wf)
-					.map(
-						(wf): WorkflowSummary => ({
-							id: wf.id,
-							name: wf.name,
-							versionId: wf.versionId,
-							activeVersionId: wf.activeVersionId ?? null,
-							isArchived: wf.isArchived,
-							createdAt: wf.createdAt.toISOString(),
-							updatedAt: wf.updatedAt.toISOString(),
+				// Count the same scope without the name filter so callers can tell a
+				// filtered subset apart from the full inventory. Only worth a second
+				// query when a filter was actually applied, and `take` must stay >= 1:
+				// the repository skips pagination for a falsy take and would load every row.
+				const totalInScope = options?.query
+					? (await workflowService.getMany(user, { take: 1, filter: scopeFilter })).count
+					: count;
+
+				// Only when the listing can span projects — on a single-project listing it
+				// would repeat the same project on every row.
+				const attributeProjects = targetProjectId === undefined;
+
+				return {
+					workflows: workflows
+						.filter((wf): wf is WorkflowEntity => 'versionId' in wf)
+						.map((wf): WorkflowSummary => {
+							const project = attributeProjects ? readHomeProject(wf) : undefined;
+							return {
+								id: wf.id,
+								name: wf.name,
+								versionId: wf.versionId,
+								activeVersionId: wf.activeVersionId ?? null,
+								isArchived: wf.isArchived,
+								createdAt: wf.createdAt.toISOString(),
+								updatedAt: wf.updatedAt.toISOString(),
+								...(project ? { project } : {}),
+							};
 						}),
-					);
+					total: count,
+					totalInScope,
+				};
 			},
 
 			async get(workflowId: string) {
@@ -3849,6 +3878,23 @@ function sdkNodeGroupsToRuntime(
 	nodeGroups: WorkflowJSON['nodeGroups'],
 ): NonNullable<WorkflowJSON['nodeGroups']> {
 	return nodeGroups ?? [];
+}
+
+/**
+ * Read the owning project off a listed workflow. `getMany` populates
+ * `homeProject` via `addOwnedByAndSharedWith` when the default select is used, but
+ * it is absent from the `WorkflowEntity` type, so read it defensively — a row
+ * without it simply carries no attribution.
+ */
+function readHomeProject(workflow: object): { id: string; name: string } | undefined {
+	const home = Reflect.get(workflow, 'homeProject');
+	if (typeof home !== 'object' || home === null) return undefined;
+
+	const id = Reflect.get(home, 'id');
+	const name = Reflect.get(home, 'name');
+	if (typeof id !== 'string' || typeof name !== 'string') return undefined;
+
+	return { id, name };
 }
 
 function hasCredentialId(value: unknown): boolean {

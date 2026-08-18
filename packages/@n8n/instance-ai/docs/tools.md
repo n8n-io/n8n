@@ -180,13 +180,31 @@ List workflows accessible to the current user.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `query` | string | no | — | Filter workflows by name |
+| `query` | string | no | — | Substring filter on the workflow name only — omit for inventory questions |
 | `limit` | number | no | 50 | Max results (1–100) |
 | `status` | `"active" \| "archived" \| "all"` | no | `"active"` | Which workflows to list |
+| `scope` | `"project" \| "instance"` | no | `"project"` | Which project(s) to search |
+| `projectId` | string | no | — | Read one specific project, overriding `scope` |
 
-**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt }] }`
+**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt, project? }], total, totalInScope, note? }`
 
 `activeVersionId` is `null` when the workflow is unpublished.
+
+`total` is how many workflows match every filter; `totalInScope` is how many the
+same status and scope hold with `query` dropped. When a name filter or `limit`
+left workflows out, `note` says so — a filtered page must never be read as the
+project's full inventory.
+
+`project` (`{ id, name }`) is the owning project, present only when the listing
+can span more than one — i.e. neither `projectId` nor a bound project narrowed it
+to one. It is what makes membership readable in a cross-project listing instead
+of guessable by comparing per-scope counts.
+
+`projectId` is a read-only narrowing: the adapter passes it as a filter on a query
+that still resolves readability from the caller's own project and workflow roles,
+so it cannot reach a project the user can't read (`scope: "instance"` already
+returns that whole readable set). Writes ignore it and stay locked to the thread's
+bound project.
 
 ### `get-workflow`
 
@@ -608,7 +626,7 @@ require `workspaceService.listFolders`.
 
 | Tool | Description |
 |------|-------------|
-| `list-projects` | List projects accessible to the user |
+| `list-projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
 | `tag-workflow` | Apply tags to a workflow |
 | `list-tags` | List available tags |
 | `cleanup-test-executions` | Remove test execution data |

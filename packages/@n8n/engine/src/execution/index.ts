@@ -3,7 +3,13 @@ export type {
 	StartExecutionRequest,
 	StartExecutionResult,
 } from './start-execution.service';
-export type { ExecutionMode, ExecutionStatus, StepSlots, StepStatus } from './execution.types';
+export type {
+	ExecutionMode,
+	ExecutionStatus,
+	StepSlots,
+	StepStatus,
+	TriggerOutputs,
+} from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
 export type { ExecutionRecord, ExecutionStore, NewExecutionRecord } from './execution-store';
 export { StepNotFoundError } from './step-store';
