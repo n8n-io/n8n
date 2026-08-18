@@ -318,19 +318,55 @@ export function useWorkflowUpdate() {
 		}
 	}
 
-	function updateNodeGroups(nodeGroups: WorkflowDataUpdate['nodeGroups']): void {
+	/**
+	 * Incoming node id -> stored node id, resolved the same way `categorizeNodes`
+	 * matches nodes. The SDK regenerates node ids between streamed chunks while
+	 * the store keeps the id it already had, so group members arrive pointing at
+	 * ids the store has never seen.
+	 */
+	function mapIncomingNodeIds(incomingNodes: WorkflowDataUpdate['nodes']): Map<string, string> {
+		const storedNodes = workflowDocumentStore.value.allNodes;
+		const storedIds = new Set(storedNodes.map((node) => node.id));
+		const storedIdsByNameType = new Map(
+			storedNodes.map((node) => [`${node.type}::${node.name}`, node.id]),
+		);
+
+		const remapped = new Map<string, string>();
+		for (const node of incomingNodes ?? []) {
+			const storedId = storedIds.has(node.id)
+				? node.id
+				: storedIdsByNameType.get(`${node.type}::${node.name}`);
+
+			if (storedId) {
+				remapped.set(node.id, storedId);
+			}
+		}
+
+		return remapped;
+	}
+
+	function updateNodeGroups(
+		nodeGroups: WorkflowDataUpdate['nodeGroups'],
+		incomingNodes: WorkflowDataUpdate['nodes'],
+	): void {
 		// Undefined means "no group data in this update", which must NOT be read
 		// as "the user deleted every group".
 		if (!nodeGroups) {
 			return;
 		}
 
-		const nodeIds = new Set(workflowDocumentStore.value.allNodes.map((node) => node.id));
+		const storedIdByIncomingId = mapIncomingNodeIds(incomingNodes);
+
 		// A group whose nodes haven't all arrived yet would render an incomplete
 		// frame; a later chunk brings it back once its members exist.
-		const applicable = nodeGroups.filter(
-			(group) => group.nodeIds.length > 0 && group.nodeIds.every((id) => nodeIds.has(id)),
-		);
+		const applicable = nodeGroups.flatMap((group) => {
+			const nodeIds = group.nodeIds.map((id) => storedIdByIncomingId.get(id));
+			if (nodeIds.length === 0 || nodeIds.some((id) => id === undefined)) {
+				return [];
+			}
+
+			return [{ ...group, nodeIds: nodeIds as string[] }];
+		});
 
 		const keptNames = new Set(applicable.map((group) => group.name));
 		for (const group of workflowDocumentStore.value.allGroups) {
@@ -400,7 +436,7 @@ export function useWorkflowUpdate() {
 			builderStore.setBuilderMadeEdits(true);
 
 			// Must update the node groups before tidying the WF up, or the layout might become messy
-			updateNodeGroups(workflowData.nodeGroups);
+			updateNodeGroups(workflowData.nodeGroups, workflowData.nodes);
 
 			tidyUpNodes();
 

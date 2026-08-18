@@ -882,6 +882,30 @@ describe('useWorkflowUpdate', () => {
 				expect(mockDocumentStore.deleteGroup).toHaveBeenCalledWith('stale');
 			});
 
+			it('should map group members through regenerated node ids', async () => {
+				const existing = createTestNode({ id: 'store-1', name: 'Node 1' }) as INodeUi;
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existing];
+				(mockDocumentStore as { allGroups: IWorkflowGroup[] }).allGroups = [
+					{ id: 'g1', name: 'Ingest', nodeIds: ['store-1'] },
+				];
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				// The SDK regenerates node ids between streamed chunks; the store keeps
+				// the id it already had, so incoming group members must be translated.
+				await updateWorkflow({
+					nodes: [createTestNode({ id: 'regenerated-1', name: 'Node 1' })],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Ingest', nodeIds: ['regenerated-1'] }],
+				});
+
+				expect(mockDocumentStore.deleteGroup).not.toHaveBeenCalled();
+				expect(mockDocumentStore.upsertGroups).toHaveBeenCalledWith(
+					[{ id: 'g1', name: 'Ingest', nodeIds: ['store-1'] }],
+					{ startCollapsed: true },
+				);
+			});
+
 			it('should leave existing groups untouched when the update carries no group data', async () => {
 				const node = createTestNode({ id: 'node-1', name: 'Node 1' }) as INodeUi;
 				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [node];
