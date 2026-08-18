@@ -443,7 +443,7 @@ patchedDependencies:
 
 allowBuilds:
   '@biomejs/biome': false
-  '@confluentinc/kafka-javascript': true
+  '@confluentinc/kafka-javascript': false
   '@jitsi/robotjs': false
   '@parcel/watcher': false
   '@sentry-internal/node-cpu-profiler': false
