@@ -100,6 +100,7 @@ export class CreateAgentTaskDto extends Z.class({
 	name: agentTaskSchema.shape.name,
 	objective: agentTaskSchema.shape.objective,
 	cronExpression: agentTaskSchema.shape.cronExpression,
+	timezone: agentTaskSchema.shape.timezone,
 	// Seeds the config ref's enabled flag; the task body itself has no enabled.
 	enabled: z.boolean().optional().default(true),
 }) {}
@@ -108,6 +109,8 @@ export class UpdateAgentTaskDto extends Z.class({
 	name: agentTaskSchema.shape.name.optional(),
 	objective: agentTaskSchema.shape.objective.optional(),
 	cronExpression: agentTaskSchema.shape.cronExpression.optional(),
+	// `null` explicitly resets the task to the instance timezone.
+	timezone: agentTaskSchema.shape.timezone,
 }) {}
 
 const updateAgentSkillShape = {

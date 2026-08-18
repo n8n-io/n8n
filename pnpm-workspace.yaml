@@ -24,6 +24,7 @@ catalog:
   '@ai-sdk/otel': ^1.0.54
   '@ai-sdk/provider-utils': ^5.0.22
   '@ai-sdk/xai': ^4.0.18
+  '@asteasolutions/zod-to-openapi': 7.3.4
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
   # Exact pin: the adapters share an internal protocol with `chat`, and a range
@@ -142,7 +143,7 @@ catalog:
   cross-env: ^7.0.3
   csv-parse: 6.2.1
   dotenv: 17.2.3
-  electron: 41.10.3
+  electron: 41.10.4
   esbuild: ^0.28.1
   eslint: 9.29.0
   eslint-plugin-n8n-nodes-base: ^1.16.7
@@ -199,7 +200,7 @@ catalog:
   qs: 6.15.2
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
-  sanitize-html: 2.17.4
+  sanitize-html: 2.17.5
   sass-embedded: ^1.98.0
   semver: 7.7.3
   simple-git: 3.36.0
@@ -220,7 +221,7 @@ catalog:
   vite-plugin-singlefile: 2.3.3
   vitest: ^4.1.9
   vitest-mock-extended: ^3.1.0
-  vm2: 3.11.5
+  vm2: 3.11.6
   xml2js: 0.6.2
   xss: 1.0.15
   yaml: 2.8.3
@@ -249,7 +250,7 @@ catalogs:
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^14.3.0
     element-plus: 2.4.3
-    highlight.js: 11.8.0
+    highlight.js: 11.12.0
     pinia: ^2.2.4
     unplugin-icons: ^23.0.1
     vite-svg-loader: 5.1.0

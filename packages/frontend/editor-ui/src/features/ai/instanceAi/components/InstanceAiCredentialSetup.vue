@@ -37,6 +37,7 @@ const props = defineProps<{
 	message: string;
 	projectId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
+	requireUserSelection?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -193,13 +194,15 @@ watch(
 /**
  * A generic auth type (bearer, header, query, basic, digest, custom, OAuth) never
  * identifies a service, so its credential must not be attached to whatever URL the
- * workflow points at unless the user says so. Whenever the card carries one, the
- * Continue button is the only path that may submit — every automatic path bails out.
+ * workflow points at unless the user says so. The agent can also require explicit
+ * confirmation for the card. In both cases, only Continue may submit the card.
  */
-const requiresExplicitContinue = computed(() =>
-	props.credentialRequests.some((request) =>
-		GENERIC_AUTH_CREDENTIAL_TYPES.has(request.credentialType),
-	),
+const requiresExplicitContinue = computed(
+	() =>
+		props.requireUserSelection === true ||
+		props.credentialRequests.some((request) =>
+			GENERIC_AUTH_CREDENTIAL_TYPES.has(request.credentialType),
+		),
 );
 
 // Auto-continue once every step is handled (selected or skipped) and at
@@ -506,22 +509,31 @@ async function handleLater() {
 	await deferWholeCard();
 }
 
+const browserConnectionState = computed(() =>
+	settingsStore.browserConnected ? 'connected' : 'disconnected',
+);
+
 function trackSetupChoiceClicked(choice: CredentialSetupChoice | 'skip', attemptId?: string) {
 	telemetry.track('Instance AI Browser Use User clicked credential setup option', {
 		credential_type: currentRequest.value?.credentialType,
 		choice,
+		browser_connection_state: browserConnectionState.value,
 		...(attemptId ? { credential_setup_attempt_id: attemptId } : {}),
 	});
 }
 
 const shownChoiceTypes = new Set<string>();
 watch(
-	() => (showSetupChoice.value ? currentRequest.value?.credentialType : undefined),
+	() =>
+		showSetupChoice.value && settingsStore.browserStatusLoaded
+			? currentRequest.value?.credentialType
+			: undefined,
 	(credentialType) => {
 		if (!credentialType || shownChoiceTypes.has(credentialType)) return;
 		shownChoiceTypes.add(credentialType);
 		telemetry.track('Instance AI Browser Use credential setup choice shown', {
 			credential_type: credentialType,
+			browser_connection_state: browserConnectionState.value,
 		});
 	},
 	{ immediate: true },

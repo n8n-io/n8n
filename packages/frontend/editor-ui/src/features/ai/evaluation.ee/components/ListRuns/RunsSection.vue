@@ -122,11 +122,11 @@ const handleRowClick = (row: TestRunRecord) => {
 		<N8nPagination
 			v-if="showPagination"
 			:class="$style.pagination"
-			layout="prev, pager, next"
-			:current-page="currentPage"
-			:page-size="pageSize"
+			v-model:page="currentPage"
+			:items-per-page="pageSize"
 			:total="runs.length"
-			@update:current-page="currentPage = $event"
+			:show-total="false"
+			:show-sizes="false"
 		/>
 	</div>
 </template>

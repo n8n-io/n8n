@@ -128,6 +128,7 @@ export {
 } from './workflows/manual-run.dto';
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
+export { TransferWorkflowPublicDto } from './workflows/transfer-workflow-public.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
@@ -200,7 +201,11 @@ export {
 	RoleGetPublicDto,
 } from './roles/role-public.dto';
 export { CreateRoleMappingRuleDto } from './roles/create-role-mapping-rule.dto';
-export { RoleMappingRulePublicDto } from './roles/role-mapping-rule-public.dto';
+export {
+	RoleMappingRulePublicDto,
+	RoleMappingRuleListPublicDto,
+	RoleMappingRuleListQueryPublicDto,
+} from './roles/role-mapping-rule-public.dto';
 export {
 	PatchRoleMappingRuleDto,
 	type PatchRoleMappingRuleInput,
@@ -314,6 +319,7 @@ export {
 	ExecutionRedactionQueryDtoSchema,
 	type ExecutionRedactionQueryDto,
 } from './executions/execution-redaction-query.dto';
+export { DeleteExecutionsDto } from './executions/delete-executions.dto';
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
