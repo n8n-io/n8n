@@ -1,9 +1,9 @@
-operationId: getWorkflow
+operationId: archiveWorkflow
 tags:
   - Workflow
-summary: Retrieve a workflow
-description: Retrieve a workflow.
-x-required-scope: workflow:read
+summary: Archive a workflow
+description: 'Soft-deletes a workflow by archiving it. Idempotent: archiving an already archived workflow returns 200 with the current workflow.'
+x-required-scope: workflow:delete
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
@@ -13,15 +13,6 @@ parameters:
     required: true
     name: workflowId
     in: path
-  - schema:
-      type: string
-      enum:
-        - 'true'
-        - 'false'
-      default: 'false'
-    required: false
-    name: excludePinnedData
-    in: query
 responses:
   '200':
     description: Operation successful.
@@ -29,8 +20,6 @@ responses:
       application/json:
         schema:
           $ref: ../../../../shared/spec/schemas/workflowPublicDto.generated.yml
-  '400':
-    $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':

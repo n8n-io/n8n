@@ -51,6 +51,9 @@ catalogs:
     '@ai-sdk/xai':
       specifier: ^4.0.18
       version: 4.0.18
+    '@asteasolutions/zod-to-openapi':
+      specifier: 7.3.4
+      version: 7.3.4
     '@azure/storage-blob':
       specifier: ^12.32.0
       version: 12.32.0
@@ -1374,6 +1377,9 @@ importers:
 
   packages/@n8n/api-types:
     dependencies:
+      '@asteasolutions/zod-to-openapi':
+        specifier: 'catalog:'
+        version: 7.3.4(zod@3.25.76)
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
@@ -4104,7 +4110,7 @@ importers:
         specifier: 12.0.2
         version: 12.0.2
       '@asteasolutions/zod-to-openapi':
-        specifier: 7.3.4
+        specifier: 'catalog:'
         version: 7.3.4(zod@3.25.76)
       '@aws-sdk/client-secrets-manager':
         specifier: 3.808.0

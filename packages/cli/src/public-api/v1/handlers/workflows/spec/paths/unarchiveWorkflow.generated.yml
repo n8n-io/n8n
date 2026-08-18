@@ -1,9 +1,9 @@
-operationId: getWorkflow
+operationId: unarchiveWorkflow
 tags:
   - Workflow
-summary: Retrieve a workflow
-description: Retrieve a workflow.
-x-required-scope: workflow:read
+summary: Unarchive a workflow
+description: Restores an archived workflow.
+x-required-scope: workflow:delete
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
@@ -13,15 +13,6 @@ parameters:
     required: true
     name: workflowId
     in: path
-  - schema:
-      type: string
-      enum:
-        - 'true'
-        - 'false'
-      default: 'false'
-    required: false
-    name: excludePinnedData
-    in: query
 responses:
   '200':
     description: Operation successful.
