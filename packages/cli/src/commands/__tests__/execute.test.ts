@@ -11,6 +11,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IRun } from 'n8n-workflow';
+import { Expression } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -124,4 +125,50 @@ test('should not seed the instance identity and should tolerate deployment key r
 	// assert
 
 	expect(deploymentKeyRepository.insertOrIgnore).not.toHaveBeenCalled();
+});
+
+test('should not init the expression engine for commands that do not need it', async () => {
+	// arrange
+
+	const initSpy = vi.spyOn(Expression, 'initExpressionEngine');
+
+	class ReadOnlyCommand2 extends BaseCommand {}
+	const cmd = new ReadOnlyCommand2();
+
+	// act
+
+	await cmd.init();
+
+	// assert
+
+	expect(initSpy).not.toHaveBeenCalled();
+	initSpy.mockRestore();
+});
+
+test('should exit with a crash when expression engine init fails', async () => {
+	// arrange
+
+	const initSpy = vi
+		.spyOn(Expression, 'initExpressionEngine')
+		.mockRejectedValue(new Error('isolated-vm failed to load'));
+	const exitSpy = vi
+		// @ts-expect-error Protected method
+		.spyOn(BaseCommand.prototype, 'exitWithCrash')
+		.mockResolvedValue(undefined);
+
+	class ExpressionCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+	}
+	const cmd = new ExpressionCommand();
+
+	// act
+
+	await cmd.init();
+
+	// assert
+
+	expect(initSpy).toHaveBeenCalledTimes(1);
+	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));
+	initSpy.mockRestore();
+	exitSpy.mockRestore();
 });

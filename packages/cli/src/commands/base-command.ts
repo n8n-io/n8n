@@ -88,6 +88,9 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init task runner. */
 	protected needsTaskRunner = false;
 
+	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
+	protected needsExpressionEngine = false;
+
 	/**
 	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
 	 * Only server processes hold the encryption key these are derived from.
@@ -226,17 +229,26 @@ export abstract class BaseCommand<F = never> {
 		await Container.get(TelemetryEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 
-		const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
-			this.globalConfig.expressionEngine;
-		await Expression.initExpressionEngine({
-			engine,
-			poolSize,
-			maxCodeCacheSize,
-			bridgeTimeout,
-			bridgeMemoryLimit,
-			idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
-			observability: Container.get(ExpressionObservabilityProvider),
-		});
+		if (this.needsExpressionEngine) {
+			const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
+				this.globalConfig.expressionEngine;
+			try {
+				await Expression.initExpressionEngine({
+					engine,
+					poolSize,
+					maxCodeCacheSize,
+					bridgeTimeout,
+					bridgeMemoryLimit,
+					idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
+					observability: Container.get(ExpressionObservabilityProvider),
+				});
+			} catch (error) {
+				await this.exitWithCrash(
+					'There was an error initializing the vm expression engine. Check that the isolated-vm package installed correctly, e.g. that native build scripts were not skipped.',
+					error,
+				);
+			}
+		}
 	}
 
 	protected async stopProcess() {
