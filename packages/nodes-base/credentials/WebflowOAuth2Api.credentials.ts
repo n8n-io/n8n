@@ -20,7 +20,7 @@ export class WebflowOAuth2Api implements ICredentialType {
 			displayName: 'Legacy',
 			name: 'legacy',
 			type: 'boolean',
-			default: true,
+			default: false,
 			description: 'If the legacy API should be used',
 		},
 		{
