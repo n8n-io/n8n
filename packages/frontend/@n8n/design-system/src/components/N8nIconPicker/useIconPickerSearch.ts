@@ -4,6 +4,7 @@ import { computed, type Ref } from 'vue';
 import type { EmojiSection, EmojiEntry } from './emojiData';
 import { ICON_CATEGORIES, OTHER_CATEGORY, getPrimaryCategoryKey } from './iconCategories';
 import type { LucideIconMeta } from './lucideIconData';
+import { emojiForTone } from './skinTone';
 
 export interface DisplayEmojiEntry extends EmojiEntry {
 	/** The emoji to display (with skin tone applied if applicable) */
@@ -112,15 +113,19 @@ export function useIconPickerSearch(
 				let emojis = section.emojis;
 				if (q) {
 					// Tokenize so multi-word queries ("grinning face", "thumbs up")
-					// match when every token is found in any keyword.
-					emojis = emojis.filter((e) =>
-						tokens.every((token) => e.k.some((kw) => kw.includes(token))),
-					);
+					// match when every token is found in the label or any keyword.
+					// Label words aren't stored as keywords, so match the label directly.
+					emojis = emojis.filter((e) => {
+						const label = e.l.toLowerCase();
+						return tokens.every(
+							(token) => label.includes(token) || (e.k?.some((kw) => kw.includes(token)) ?? false),
+						);
+					});
 				}
 				// Apply skin tone to display
 				const displayEmojis: DisplayEmojiEntry[] = emojis.map((e) => ({
 					...e,
-					display: tone > 0 && e.s ? e.s[tone - 1] : e.u,
+					display: emojiForTone(e, tone),
 				}));
 				return { key: section.key, labelKey: section.labelKey, emojis: displayEmojis };
 			})
