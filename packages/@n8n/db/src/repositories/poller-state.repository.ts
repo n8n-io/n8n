@@ -1,3 +1,4 @@
+import { DatabaseConfig } from '@n8n/config';
 import { ScheduledTaskStatus } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { DataSource, In, type EntityManager, type ObjectLiteral } from '@n8n/typeorm';
@@ -9,6 +10,7 @@ import { BaseRepository } from './base-repository';
 import type { PollerCursor } from '../entities/poller-state';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
+import { dbNowLiteral } from '../utils/dialect-time';
 
 export type { PollerCursor } from '../entities/poller-state';
 
@@ -21,8 +23,15 @@ export interface PollerFailureState {
 
 @Service()
 export class PollerStateRepository extends BaseRepository<PollerState> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	private readonly isPostgres: boolean;
+
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		config: DatabaseConfig,
+	) {
 		super(PollerState, dataSource.manager, transactionRunner);
+		this.isPostgres = config.type === 'postgresdb';
 	}
 
 	/** The node's stored cursor, or `null` if it has never polled. */
@@ -101,7 +110,10 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		const qb = manager
 			.createQueryBuilder()
 			.update(PollerState)
-			.set({ cursor, updatedAt: new Date() } as QueryDeepPartialEntity<PollerState>)
+			.set({
+				cursor,
+				updatedAt: () => dbNowLiteral(this.isPostgres),
+			} as QueryDeepPartialEntity<PollerState>)
 			.where({ workflowId, nodeId });
 
 		if (fence) {
@@ -174,7 +186,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 				// the other.
 				consecutiveErrors: () => '"consecutiveErrors" + 1',
 				backoffUntil,
-				updatedAt: new Date(),
+				updatedAt: () => dbNowLiteral(this.isPostgres),
 			} as QueryDeepPartialEntity<PollerState>)
 			.where('workflowId = :workflowId AND nodeId = :nodeId', { workflowId, nodeId })
 			.execute();
@@ -191,7 +203,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		const result = await this.managerFor(ctx).update(PollerState, { workflowId, nodeId }, {
 			consecutiveErrors: 0,
 			backoffUntil: null,
-			updatedAt: new Date(),
+			updatedAt: () => dbNowLiteral(this.isPostgres),
 		} as QueryDeepPartialEntity<PollerState>);
 
 		return result.affected === 1;

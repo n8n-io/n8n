@@ -63,10 +63,9 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		}
 
 		const now = new Date();
-		// peek runs before the tick's own try/catch, so this is the one call
-		// whose throw would otherwise escape execute() uncaught; kept even
-		// though the service itself never throws.
-		const state = await this.pollBackoffService.peek(workflowId, nodeId).catch(() => null);
+		const state = await this.pollBackoffService
+			.getFailureState(workflowId, nodeId)
+			.catch(() => null);
 		if (this.pollBackoffService.isBackingOff(state, now)) {
 			this.logger.debug('Poll is backing off; skipping this occurrence', {
 				taskId: task.id,
@@ -104,8 +103,6 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					pollFunctions,
 				);
 
-				// Checked once here rather than separately on the items and empty
-				// paths below, so they can't disagree on whether backoff cleared.
 				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
 
 				if (pollResponse !== null) {
@@ -162,19 +159,14 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// Routed to the error workflow instead of rethrown, which would retry and
 				// dead-letter without ever running it. __emitError commits no cursor, so
 				// the cursor holds and the next tick retries the same window.
-				// Re-read active state as the success paths do, so a poll outliving a
-				// deactivation cannot back off a node nobody schedules. A failed read counts
-				// as active: an unbacked-off retry loop is worse than a stale backoff row.
 				const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
 				if (isActive) {
-					// Fresh clock, not the tick's: a slow failing poll would otherwise
-					// anchor its deadline before poll() ran, landing already in the past.
 					await this.pollBackoffService.recordFailure({
 						workflowId,
 						nodeId,
 						error,
 						state,
-						now: new Date(),
+						now: new Date(), // Fresh clock, not the tick's
 					});
 				}
 				pollFunctions.__emitError(ensureError(error));

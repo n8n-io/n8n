@@ -23,16 +23,17 @@ export class PollBackoffService {
 		this.logger = this.logger.scoped('poll-trigger');
 	}
 
-	// A kill switch, not a per-row rule: disabling it freezes existing state instead of un-migrating it.
+	/** Turning this off freezes any stored state instead of clearing it. */
 	get enabled(): boolean {
 		return this.pollerConfig.durableCursorsEnabled;
 	}
 
 	/**
-	 * Never throws: `null` covers "no row", "flag off", and "the read
-	 * failed" alike, so a bad read can't turn a tick into a retry.
+	 * Reads the stored failure state.
+	 *
+	 * Never throws: `null` means no stored state, feature disabled, or a failed read.
 	 */
-	async peek(workflowId: string, nodeId: string): Promise<PollerFailureState | null> {
+	async getFailureState(workflowId: string, nodeId: string): Promise<PollerFailureState | null> {
 		if (!this.enabled) return null;
 
 		try {
@@ -43,9 +44,12 @@ export class PollBackoffService {
 		}
 	}
 
-	// Bounded by RETRY_AFTER_MAX_MS, not MAX_BACKOFF_MS: a Retry-After can
-	// legitimately ask for an hour off, so clamping at the 30-minute ceiling
-	// would discard that. Every path here fails open on a malformed deadline.
+	/**
+	 * Whether `state` still holds a future backoff deadline.
+	 *
+	 * A deadline beyond `RETRY_AFTER_MAX_MS` or otherwise malformed counts as no
+	 * backoff, so a bad value can never stall a poll indefinitely.
+	 */
 	isBackingOff(state: PollerFailureState | null, now: Date): boolean {
 		if (state === null || !(state.backoffUntil instanceof Date)) return false;
 
@@ -70,8 +74,7 @@ export class PollBackoffService {
 		const { workflowId, nodeId, error, state, now } = args;
 		if (!this.enabled) return;
 
-		// Computed independently of the UPDATE's own increment, so under
-		// overlapping failing polls this can differ from the stored count by one; harmless.
+		// May trail the stored count by one when polls overlap; harmless.
 		const consecutiveErrors = (state?.consecutiveErrors ?? 0) + 1;
 
 		try {
@@ -115,15 +118,13 @@ export class PollBackoffService {
 		state: PollerFailureState | null;
 	}): Promise<void> {
 		const { workflowId, nodeId, state } = args;
-		// Skips the write only when state is known clean; peek returns null for
-		// both "no row" and "a failed read", so treating null as clean here
-		// would let a bad read leave a real deadline standing.
+		// `null` may also mean the read failed, so only a known-clean state skips the write.
 		if (state !== null && state.consecutiveErrors === 0 && state.backoffUntil === null) return;
 
 		await this.reset(workflowId, nodeId);
 	}
 
-	/** Forgets past failures, so a newly provisioned node is not born inside an old backoff window. */
+	/** Forgets past failures, so a new node does not start inside an old backoff window. */
 	async reset(workflowId: string, nodeId: string): Promise<void> {
 		if (!this.enabled) return;
 
@@ -134,18 +135,18 @@ export class PollBackoffService {
 		}
 	}
 
-	// Logging and reporting must not throw either, since this already runs from a catch block.
+	/** Never throws: it already runs from a catch block. */
 	private reportFailure(error: unknown, workflowId: string, nodeId: string, message: string): void {
 		try {
 			this.logger.error(message, { workflowId, nodeId, error });
 		} catch {
-			// The real failure was already handled; reporting it must not add another.
+			// Reporting a failure must not cause another.
 		}
 
 		try {
 			this.errorReporter.error(error, { extra: { workflowId, nodeId } });
 		} catch {
-			// As above, and guarded separately so one failing does not skip the other.
+			// Guarded separately so one failing does not skip the other.
 		}
 	}
 }

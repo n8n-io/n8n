@@ -48,11 +48,11 @@ describe('PollBackoffService', () => {
 		});
 	});
 
-	describe('peek', () => {
+	describe('getFailureState', () => {
 		test('does not query when the flag is off', async () => {
 			const service = buildService(false);
 
-			await expect(service.peek('wf-1', 'node-1')).resolves.toBeNull();
+			await expect(service.getFailureState('wf-1', 'node-1')).resolves.toBeNull();
 
 			expect(pollerStateRepository.findFailureState).not.toHaveBeenCalled();
 		});
@@ -62,14 +62,14 @@ describe('PollBackoffService', () => {
 			pollerStateRepository.findFailureState.mockResolvedValue(state);
 			const service = buildService();
 
-			await expect(service.peek('wf-1', 'node-1')).resolves.toEqual(state);
+			await expect(service.getFailureState('wf-1', 'node-1')).resolves.toEqual(state);
 		});
 
 		test('returns null for a node with no stored row', async () => {
 			pollerStateRepository.findFailureState.mockResolvedValue(null);
 			const service = buildService();
 
-			await expect(service.peek('wf-1', 'node-1')).resolves.toBeNull();
+			await expect(service.getFailureState('wf-1', 'node-1')).resolves.toBeNull();
 		});
 
 		test('swallows a failing read and reports it, returning null instead of throwing', async () => {
@@ -77,7 +77,7 @@ describe('PollBackoffService', () => {
 			pollerStateRepository.findFailureState.mockRejectedValue(readError);
 			const service = buildService();
 
-			await expect(service.peek('wf-1', 'node-1')).resolves.toBeNull();
+			await expect(service.getFailureState('wf-1', 'node-1')).resolves.toBeNull();
 
 			expectErrorReported(readError);
 		});
@@ -292,7 +292,7 @@ describe('PollBackoffService', () => {
 			expect(pollerStateRepository.clearFailures).not.toHaveBeenCalled();
 		});
 
-		test('clears unconditionally, with no peeked state to check', async () => {
+		test('clears unconditionally, with no prior state to check', async () => {
 			const service = buildService();
 
 			await service.reset('wf-1', 'node-1');

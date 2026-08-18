@@ -73,8 +73,6 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		});
 
 		const inserted = summary.inserted.length > 0;
-		// A new job row means the node was just (re-)provisioned by a deliberate user action;
-		// reconciling existing rows on boot never inserts, so this never resets backoff on restart.
 		if (inserted) {
 			await this.pollBackoffService.reset(workflowId, node.id);
 		}

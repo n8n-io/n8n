@@ -134,7 +134,7 @@ describe('PollTriggerTaskHandler', () => {
 		triggersAndPollers.runPollFunction.mockResolvedValue(pollData);
 		workflowRepository.isActive.mockResolvedValue(true);
 
-		pollBackoffService.peek.mockResolvedValue(null);
+		pollBackoffService.getFailureState.mockResolvedValue(null);
 		pollBackoffService.isBackingOff.mockReturnValue(false);
 
 		acquireIsolate = vi
@@ -422,7 +422,7 @@ describe('PollTriggerTaskHandler', () => {
 				consecutiveErrors: 3,
 				backoffUntil: new Date(fixedNow.getTime() + 60_000),
 			};
-			pollBackoffService.peek.mockResolvedValue(state);
+			pollBackoffService.getFailureState.mockResolvedValue(state);
 			pollBackoffService.isBackingOff.mockReturnValue(true);
 
 			const decision = await handler.execute(buildTask(), report);
@@ -436,7 +436,7 @@ describe('PollTriggerTaskHandler', () => {
 
 		test('records a failure and no success when poll() throws', async () => {
 			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
-			pollBackoffService.peek.mockResolvedValue(state);
+			pollBackoffService.getFailureState.mockResolvedValue(state);
 			const error = new Error('poll source unreachable');
 			triggersAndPollers.runPollFunction.mockRejectedValue(error);
 
@@ -454,7 +454,7 @@ describe('PollTriggerTaskHandler', () => {
 
 		test('still clears the failure state when the poll succeeds but committing its cursor fails', async () => {
 			const state: PollerFailureState = { consecutiveErrors: 2, backoffUntil: null };
-			pollBackoffService.peek.mockResolvedValue(state);
+			pollBackoffService.getFailureState.mockResolvedValue(state);
 			triggersAndPollers.runPollFunction.mockResolvedValue(null);
 			pollFunctions.__commitCursor.mockRejectedValue(new Error('poller state write failed'));
 
@@ -472,7 +472,7 @@ describe('PollTriggerTaskHandler', () => {
 			['a poll returning no items', null],
 		])('clears the failure state after %s', async (_name, pollResult) => {
 			const state: PollerFailureState = { consecutiveErrors: 2, backoffUntil: null };
-			pollBackoffService.peek.mockResolvedValue(state);
+			pollBackoffService.getFailureState.mockResolvedValue(state);
 			triggersAndPollers.runPollFunction.mockResolvedValue(pollResult);
 
 			await handler.execute(buildTask(), report);
@@ -487,7 +487,7 @@ describe('PollTriggerTaskHandler', () => {
 
 		test('clears the failure state even when the workflow was deactivated during the poll', async () => {
 			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
-			pollBackoffService.peek.mockResolvedValue(state);
+			pollBackoffService.getFailureState.mockResolvedValue(state);
 			workflowRepository.isActive.mockResolvedValue(false);
 
 			await handler.execute(buildTask(), report);
@@ -501,7 +501,7 @@ describe('PollTriggerTaskHandler', () => {
 
 		test('does not record a failure for a workflow deactivated during a failing poll, but still hands off the error', async () => {
 			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
-			pollBackoffService.peek.mockResolvedValue(state);
+			pollBackoffService.getFailureState.mockResolvedValue(state);
 			const error = new Error('poll source unreachable');
 			triggersAndPollers.runPollFunction.mockRejectedValue(error);
 			workflowRepository.isActive.mockResolvedValue(false);
@@ -515,7 +515,7 @@ describe('PollTriggerTaskHandler', () => {
 
 		test('records a failure when the active-state read itself fails, rather than let a real failure go unbacked-off', async () => {
 			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
-			pollBackoffService.peek.mockResolvedValue(state);
+			pollBackoffService.getFailureState.mockResolvedValue(state);
 			const error = new Error('poll source unreachable');
 			triggersAndPollers.runPollFunction.mockRejectedValue(error);
 			workflowRepository.isActive.mockRejectedValue(new Error('database unavailable'));
@@ -543,17 +543,17 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
 		});
 
-		test('does not peek when the payload is invalid', async () => {
+		test('does not read the failure state when the payload is invalid', async () => {
 			const task = buildTask({ payload: { nodeId: 'node-1' } });
 
 			await expect(handler.execute(task, report)).rejects.toThrow();
 
-			expect(pollBackoffService.peek).not.toHaveBeenCalled();
+			expect(pollBackoffService.getFailureState).not.toHaveBeenCalled();
 		});
 
-		test('still runs the poll when peek throws', async () => {
+		test('still runs the poll when reading the failure state throws', async () => {
 			const error = new Error('poller state read failed');
-			pollBackoffService.peek.mockRejectedValue(error);
+			pollBackoffService.getFailureState.mockRejectedValue(error);
 
 			await handler.execute(buildTask(), report);
 
