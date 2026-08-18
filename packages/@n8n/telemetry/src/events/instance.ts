@@ -64,8 +64,20 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					sandbox_provider: z.string(),
 					search_brave_set: z.boolean(),
 					search_searxng_set: z.boolean(),
+					model_env_set: z
+						.boolean()
+						.describe(
+							'Model connection env vars are set (API key or base URL). UI-credential model state is on the "AI Assistant setup completed" and "User viewed AI Assistant setup page" events instead',
+						),
+					model_id: z
+						.string()
+						.describe(
+							"Configured model identifier incl. provider, e.g. 'anthropic/claude-sonnet-4'",
+						),
 				})
-				.describe('Which sandbox and search providers are configured, never key values'),
+				.describe(
+					'Which model, sandbox and search providers are configured via env vars, never key values',
+				),
 			metrics: z.object({
 				metrics_enabled: z.boolean(),
 				metrics_category_default: z.boolean(),
@@ -95,6 +107,19 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 				mcp_managed_by_env: z.boolean(),
 				community_packages_managed_by_env: z.boolean(),
 			}),
+		}),
+	},
+	INSTANCE_REFUSED_DURABLE_POLLERS: {
+		name: 'Instance refused durable pollers',
+		description:
+			'Boot scan found active workflows whose published version has duplicate or missing trigger node ids. Durable poll cursors and durable-scheduler poll triggers were disabled instance-wide and the offending workflows poller_state rows were deleted.',
+		properties: z.object({
+			workflow_ids: z
+				.array(z.string())
+				.describe('Active workflows whose published version failed the trigger node id check'),
+			deleted_cursor_rows: z
+				.number()
+				.describe('How many poller_state rows of the offending workflows were deleted'),
 		}),
 	},
 });

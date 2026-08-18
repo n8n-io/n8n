@@ -217,10 +217,25 @@ export class AgentChatResumeDto extends Z.class({
 	resumeData: z.unknown(),
 }) {}
 
+/**
+ * Envelope check for the connect body. The channel itself is validated against
+ * the per-platform integration schema, which is where `settings` is checked.
+ */
+export class AgentConnectIntegrationDto extends Z.class({
+	type: z.string().min(1),
+	credentialId: z.string().min(1),
+	/**
+	 * Credential of the same type this channel takes over from. Swapping in one
+	 * request keeps the agent from ever holding two live channels or none.
+	 */
+	replaces: z.object({ credentialId: z.string().min(1) }).optional(),
+}) {}
+
 export class AgentDisconnectIntegrationDto extends Z.class({
 	type: z.string().min(1),
 	// Empty string targets a draft integration entry (`credentialId: ''`).
 	credentialId: z.string(),
+	deleteExternalResource: z.boolean().optional(),
 }) {}
 
 export class PublishAgentDto extends Z.class({
@@ -229,10 +244,6 @@ export class PublishAgentDto extends Z.class({
 
 export class RevertAgentToVersionDto extends Z.class({
 	versionId: z.string().min(1),
-}) {}
-
-export class CreateSlackAgentAppDto extends Z.class({
-	appConfigurationToken: z.string().min(1),
 }) {}
 
 export class TestAgentVectorStoreDto extends Z.class({

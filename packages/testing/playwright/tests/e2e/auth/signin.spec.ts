@@ -8,7 +8,7 @@ test.describe(
 	},
 	() => {
 		test('should login and logout @auth:none', async ({ n8n }) => {
-			await n8n.goHome();
+			await n8n.goToRoot();
 
 			await n8n.signIn.goto();
 

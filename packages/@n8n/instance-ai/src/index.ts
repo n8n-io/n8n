@@ -3,6 +3,7 @@ import type * as SharedSandboxMod from '@n8n/agents/sandbox';
 
 import './source-map-filter';
 
+import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
 import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SystemPromptMod from './agent/system-prompt';
@@ -39,7 +40,6 @@ import type * as BuilderTemplatesServiceMod from './workspace/builder-templates-
 import type * as CreateWorkspaceMod from './workspace/create-workspace';
 import type * as LazyRuntimeWorkspaceMod from './workspace/lazy-runtime-workspace';
 import type * as SandboxSetupMod from './workspace/sandbox-setup';
-import type * as ScopedWorkspaceMod from './workspace/scoped-workspace';
 import type * as SnapshotManagerMod from './workspace/snapshot-manager';
 
 type LazyFunction = (...args: never[]) => unknown;
@@ -95,6 +95,9 @@ const loadAgentSnapshotEvent = lazyModule(
 const loadInstanceAgent = lazyModule(
 	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
 );
+const loadAiaModelDefaults = lazyModule(
+	() => require('./agent/aia-model-defaults') as typeof AiaModelDefaultsMod,
+);
 const loadApplyAgentThinking = lazyModule(
 	() => require('./agent/apply-agent-thinking') as typeof ApplyAgentThinkingMod,
 );
@@ -144,9 +147,6 @@ const loadLazyRuntimeWorkspace = lazyModule(
 const loadSandboxSetup = lazyModule(
 	() => require('./workspace/sandbox-setup') as typeof SandboxSetupMod,
 );
-const loadScopedWorkspace = lazyModule(
-	() => require('./workspace/scoped-workspace') as typeof ScopedWorkspaceMod,
-);
 const loadSnapshotManager = lazyModule(
 	() => require('./workspace/snapshot-manager') as typeof SnapshotManagerMod,
 );
@@ -186,7 +186,11 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export { parseModelHeadersJson } from './utils/parse-model-headers';
+export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
+export { WorkflowNotFoundError } from './errors/workflow-not-found.error';
+export { WorkflowEditorLockedError } from './errors/workflow-editor-locked.error';
 export {
 	LEGACY_PLANNED_TASK_KINDS,
 	PLANNED_TASK_KINDS,
@@ -305,6 +309,11 @@ export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = 
 
 export const applyAgentThinking: typeof ApplyAgentThinkingMod.applyAgentThinking = lazyFunction(
 	() => loadApplyAgentThinking().applyAgentThinking,
+);
+export const resolveAIAPromptCaching: typeof AiaModelDefaultsMod.resolveAIAPromptCaching =
+	lazyFunction(() => loadAiaModelDefaults().resolveAIAPromptCaching);
+export const resolveAIAReasoning: typeof AiaModelDefaultsMod.resolveAIAReasoning = lazyFunction(
+	() => loadAiaModelDefaults().resolveAIAReasoning,
 );
 
 export const getDateTimeSection: typeof SystemPromptMod.getDateTimeSection = lazyFunction(
@@ -451,9 +460,6 @@ export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );
 export type BuilderTemplatesService = BuilderTemplatesServiceMod.BuilderTemplatesService;
-export const createScopedWorkspace: typeof ScopedWorkspaceMod.createScopedWorkspace = lazyFunction(
-	() => loadScopedWorkspace().createScopedWorkspace,
-);
 export const BuilderTemplatesService: typeof BuilderTemplatesServiceMod.BuilderTemplatesService =
 	lazyClass(() => loadBuilderTemplatesService().BuilderTemplatesService);
 export const builderTemplatesOptionsFromEnv: typeof BuilderTemplatesServiceMod.builderTemplatesOptionsFromEnv =
@@ -618,6 +624,7 @@ export type {
 	LocalMcpServer,
 	McpServerConfig,
 	ModelConfig,
+	VertexAnthropicModelConfig,
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,
 	TaskStorage,
@@ -714,4 +721,13 @@ export const validateAttachmentMimeTypes: typeof ValidateAttachmentsMod.validate
 export type UnsupportedAttachmentError = ValidateAttachmentsMod.UnsupportedAttachmentError;
 export const UnsupportedAttachmentError: typeof ValidateAttachmentsMod.UnsupportedAttachmentError =
 	lazyClass(() => loadValidateAttachments().UnsupportedAttachmentError);
-export type { UnsupportedAttachmentDetail } from './parsers/validate-attachments';
+export const validateAttachmentSizes: typeof ValidateAttachmentsMod.validateAttachmentSizes =
+	lazyFunction(() => loadValidateAttachments().validateAttachmentSizes);
+export type OversizedAttachmentError = ValidateAttachmentsMod.OversizedAttachmentError;
+export const OversizedAttachmentError: typeof ValidateAttachmentsMod.OversizedAttachmentError =
+	lazyClass(() => loadValidateAttachments().OversizedAttachmentError);
+export type {
+	UnsupportedAttachmentDetail,
+	OversizedAttachmentDetail,
+	OversizedAttachmentReason,
+} from './parsers/validate-attachments';

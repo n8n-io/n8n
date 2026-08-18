@@ -25,11 +25,12 @@ export interface WorkflowMutationHooks {
 	beforeWorkflowDeleted(workflowId: string): Promise<void>;
 
 	/**
-	 * Called once the workflow row is gone, for cleanup that can only be done
+	 * Called once the workflow rows are gone, for cleanup that can only be done
 	 * after the delete cascades — rows orphaned by it, which by definition cannot
-	 * be found while the workflow still exists.
+	 * be found while the workflows still exist. One call covers a whole batch
+	 * (e.g. a folder cascade); the ids identify what triggered the cleanup.
 	 */
-	afterWorkflowDeleted(workflowId: string): Promise<void>;
+	afterWorkflowsDeleted(workflowIds: string[]): Promise<void>;
 }
 
 @Service()
@@ -52,7 +53,7 @@ export class WorkflowMutationHooksProxy implements WorkflowMutationHooks {
 		await this.provider?.beforeWorkflowDeleted(workflowId);
 	}
 
-	async afterWorkflowDeleted(workflowId: string): Promise<void> {
-		await this.provider?.afterWorkflowDeleted(workflowId);
+	async afterWorkflowsDeleted(workflowIds: string[]): Promise<void> {
+		await this.provider?.afterWorkflowsDeleted(workflowIds);
 	}
 }

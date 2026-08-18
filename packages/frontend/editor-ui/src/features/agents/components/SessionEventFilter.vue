@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nPopover } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nPopover } from '@n8n/design-system';
 import type { FilterOption } from '../session-timeline.types';
 import { swatchBackground } from '../session-timeline.styles';
 
@@ -48,8 +48,19 @@ function clearAll(): void {
 					:checked="props.selected.has(opt.key)"
 					@change="toggle(opt.key, ($event.target as HTMLInputElement).checked)"
 				/>
-				<span :class="$style.swatch" :style="{ backgroundColor: swatchBackground(opt.color) }" />
-				<span :class="$style.label">{{ opt.label }}</span>
+				<span v-if="opt.presentation === 'badge'" :class="$style.label">
+					<N8nBadge
+						:theme="opt.badgeTheme"
+						size="xsmall"
+						:data-test-id="`filter-status-pill-${opt.key}`"
+					>
+						{{ opt.label }}
+					</N8nBadge>
+				</span>
+				<template v-else>
+					<span :class="$style.swatch" :style="{ backgroundColor: swatchBackground(opt.color) }" />
+					<span :class="$style.label">{{ opt.label }}</span>
+				</template>
 				<span :class="$style.count">{{ opt.count }}</span>
 			</label>
 			<button

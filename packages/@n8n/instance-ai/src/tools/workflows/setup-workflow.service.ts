@@ -6,6 +6,7 @@
  * state machine, and this logic is testable independently.
  */
 import {
+	GENERIC_AUTH_CREDENTIAL_TYPES,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiCredentialSetupHint,
 } from '@n8n/api-types';
@@ -534,9 +535,10 @@ async function resolveCredentialState(
 	// Fall back to auto-applying the sole stored credential when n8n credits
 	// is not available. With multiple candidates, picking the first is a
 	// silent guess — surface the list so the setup wizard can prompt.
-	// Templated Custom Auth never auto-applies: even host-filtered candidates
-	// of the shared type need the user's click (a sole match arrives preselected).
-	if (!isAutoApplied && credentialType !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+	// Generic auth types never auto-apply: the type alone does not identify a
+	// service, so a sole bearer/header/etc. key must not be attached to an
+	// arbitrary URL without the user's click (a sole match arrives preselected).
+	if (!isAutoApplied && !GENERIC_AUTH_CREDENTIAL_TYPES.has(credentialType)) {
 		isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
 	}
 
@@ -730,7 +732,7 @@ async function buildRequestForCredentialType(
 	// rides along in credentialTestResult for display.
 	// A parameter request needs action if issues remain.
 	// A trigger-only request (no credential, no param issues) never blocks apply.
-	let needsAction = false;
+	let credentialNeedsAction = false;
 	if (credentialType) {
 		const existingOnNode = node.credentials?.[credentialType];
 		const boundId =
@@ -741,11 +743,11 @@ async function buildRequestForCredentialType(
 			isAiGatewayManagedCredential(existingOnNode) ||
 			(boundId !== undefined &&
 				existingCredentials.some((credential) => credential.id === boundId));
-		needsAction = !isSettled;
+		credentialNeedsAction = !isSettled;
 	}
-	if (hasParamIssues) {
-		needsAction = true;
-	}
+	// Tracked apart from `needsAction` because the two answer different questions: a node with a
+	// working credential and an unfilled parameter needs action, but not *about the credential*.
+	const needsAction = credentialNeedsAction || hasParamIssues;
 
 	return {
 		node: {
@@ -775,6 +777,7 @@ async function buildRequestForCredentialType(
 			? { editableParameters: nodeCtx.editableParameters }
 			: {}),
 		needsAction,
+		...(credentialNeedsAction ? { credentialNeedsAction } : {}),
 	};
 }
 
@@ -1138,9 +1141,9 @@ export async function applyNodeParameters(
  * `instance-ai-auto` mirrors the auto-apply rules in `buildSetupRequests`: Instance
  * AI defaults a credential unprompted only when the node had none and the user did
  * not have to choose — n8n Connect when the user has no stored credential of the
- * type (rule 3), or their sole stored credential (rule 2). Anything else — a
- * credential picked among several, or n8n Connect chosen despite having stored keys
- * — is a user-confirmed choice.
+ * type (rule 3), or their sole stored non-generic credential (rule 2). Anything
+ * else — a credential picked among several, a generic auth type, or n8n Connect
+ * chosen despite having stored keys — is a user-confirmed choice.
  */
 async function trackCredentialAssignment(
 	context: InstanceAiContext,
@@ -1160,8 +1163,11 @@ async function trackCredentialAssignment(
 			.list({ type: opts.credType, ...(opts.workflowId ? { workflowId: opts.workflowId } : {}) })
 			.catch(() => []);
 		// Gateway auto-applies when no stored key exists; a BYOK key auto-applies
-		// when it is the user's only one for the type.
-		if (isGateway ? stored.length === 0 : stored.length === 1) source = 'instance-ai-auto';
+		// when it is the user's only one for a service-scoped type. Generic auth
+		// never auto-applies — the type alone does not identify a service.
+		const soleByokAutoApplied =
+			!isGateway && stored.length === 1 && !GENERIC_AUTH_CREDENTIAL_TYPES.has(opts.credType);
+		if (isGateway ? stored.length === 0 : soleByokAutoApplied) source = 'instance-ai-auto';
 	}
 	context.trackTelemetry('Node credential assigned', {
 		credential_type: opts.credType,
@@ -1462,16 +1468,11 @@ export async function analyzeWorkflow(
 				req.isTrigger ||
 				(req.parameterIssues && Object.keys(req.parameterIssues).length > 0),
 		)
-		// Hide cards the user has nothing to do on: credentials already set,
-		// no parameter issues, not a trigger awaiting testing. Trigger steps
-		// are always kept — triggers require user testing regardless of
-		// credential state.
-		.filter(
-			(req) =>
-				options?.includeSettled === true ||
-				!!req.needsAction ||
-				(req.isTrigger && !!req.isTestable),
-		);
+		// Hide cards the user has nothing to do on: credentials already set
+		// and no parameter issues. Settled trigger requests are hidden too —
+		// no wizard step acts on them, so keeping them only renders an
+		// already-complete credential card as if it were pending work.
+		.filter((req) => options?.includeSettled === true || !!req.needsAction);
 
 	sortByExecutionOrder(
 		setupRequests,

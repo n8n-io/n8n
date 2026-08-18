@@ -58,7 +58,11 @@ export { listGoogleModels } from './providers/google';
 export { listGroqModels } from './providers/groq';
 export { listMistralModels } from './providers/mistral';
 export { listNvidiaModels } from './providers/nvidia';
-export { listOpenAiModels, shouldIncludeOpenAiModel } from './providers/openai';
+export {
+	isOpenAiCustomEndpoint,
+	listOpenAiModels,
+	shouldIncludeOpenAiModel,
+} from './providers/openai';
 export { listOpenRouterModels } from './providers/openrouter';
 export { listVercelModels } from './providers/vercel';
 export { listXaiModels } from './providers/xai';

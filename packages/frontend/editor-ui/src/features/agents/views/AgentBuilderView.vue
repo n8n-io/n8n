@@ -1,14 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { useRoute, useRouter, type LocationQueryRaw, type RouteLocationRaw } from 'vue-router';
-import {
-	N8nAssistantIcon,
-	N8nButton,
-	N8nIcon,
-	type ActionDropdownItem,
-	type DropdownMenuItemProps,
-	type PathItem,
-} from '@n8n/design-system';
+import { useStorage } from '@vueuse/core';
+import { useRoute, useRouter } from 'vue-router';
+import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
@@ -16,8 +10,9 @@ import {
 	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+	addMissingAgentPersonalisation,
+	type AgentFileDto,
 } from '@n8n/api-types';
-import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -43,6 +38,8 @@ import {
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import type {
 	AgentResource,
+	AgentContinueLoadedEvent,
+	AgentFixWithAssistantEvent,
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
@@ -62,34 +59,40 @@ import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
 } from '../composables/useProjectAgentsList';
-import { useInstanceAiAgentPreviewHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
-import { addMissingAgentPersonalisation } from '@n8n/api-types';
+import {
+	useInstanceAiAgentPreviewHandoff,
+	type AgentPreviewHandoffParams,
+} from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
-	PROJECT_AGENTS,
+	NEW_SESSION_PARAM,
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
-import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
+import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
-import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
+import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 
 const props = withDefaults(
 	defineProps<{
 		artifactMode?: boolean;
 		artifactProjectId?: string;
 		artifactAgentId?: string;
+		/** Preview session to restore when this agent opens as an Instance AI artifact. */
+		artifactPreviewSessionId?: string;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
 		artifactEditingLocked?: boolean;
 		/** True when no agent row exists behind `artifactAgentId` yet — the builder
@@ -100,6 +103,7 @@ const props = withDefaults(
 		artifactMode: false,
 		artifactProjectId: undefined,
 		artifactAgentId: undefined,
+		artifactPreviewSessionId: undefined,
 		artifactEditingLocked: false,
 		artifactAgentPending: false,
 	},
@@ -108,8 +112,10 @@ const props = withDefaults(
 const emit = defineEmits<{
 	/** The agent behind an unsaved artifact now exists. */
 	persisted: [agent: AgentResource];
+	'preview-open-change': [open: boolean];
 	/** The agent name was successfully saved. */
 	'name-saved': [name: string];
+	'assistant-handoff': [params: AgentPreviewHandoffParams];
 }>();
 
 const route = useRoute();
@@ -144,7 +150,9 @@ const { openAgentConfirmationModal } = useAgentConfirmationModal();
 // singleton agent session/credential stores, so only one builder shell should
 // be mounted at a time.
 const isArtifactMode = computed(() => props.artifactMode);
-const isPreviewMode = computed(() => !isArtifactMode.value && route.name === AGENT_PREVIEW_VIEW);
+const isStandalonePreview = computed(
+	() => !isArtifactMode.value && route.name === AGENT_PREVIEW_VIEW,
+);
 const projectId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactProjectId : undefined) ??
@@ -156,9 +164,28 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
+const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
+	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
+});
+const persistedPreviewOpen = useStorage(previewOpenStorageKey, false);
+const isPreviewDockOpen = computed(() => !isStandalonePreview.value && persistedPreviewOpen.value);
+const isPreviewActive = computed(() => isStandalonePreview.value || isPreviewDockOpen.value);
+const agentBuilderHref = computed(function getAgentBuilderHref() {
+	return router.resolve({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: {
+			[CONTINUE_SESSION_ID_PARAM]: effectiveSessionId.value,
+		},
+	}).href;
+});
 const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
 
-const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
+const {
+	canUpdate: canEditAgent,
+	canDelete: canDeleteAgent,
+	canExecute: canExecuteAgent,
+} = useAgentPermissions(projectId);
 // Combines permission with the artifact-mode build lock: while the AI is
 // actively building/mutating this agent, editing is disabled even for a user
 // who otherwise has permission — mirrors the workflow artifact's read-only
@@ -167,24 +194,54 @@ const effectiveCanEditAgent = computed(() => canEditAgent.value && !props.artifa
 
 const isVersionHistoryOpen = ref(false);
 
-// Whether the preview shows the session trace (true) instead of the chat
-// (false). Local toggle only — no URL sync; the standalone session route
-// covers shareable deep-links.
-const isPreviewTraceOpen = ref(false);
+watch(
+	isPreviewDockOpen,
+	(open) => {
+		emit('preview-open-change', open);
+	},
+	{ immediate: true },
+);
 
-async function onSendPreviewToAssistant(executionId?: string) {
+async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
+	const session = sessionsStore.threads.find(({ id }) => id === threadId);
+	const sessionTitle = session?.title?.trim() || currentSessionTitle.value || undefined;
+	const sessionNumber = session?.sessionNumber;
 
-	await sendPreviewSessionToInstanceAi({
+	const params: AgentPreviewHandoffParams = {
 		projectId: projectId.value,
 		agentId: agentId.value,
 		threadId,
 		agentName: agentName.value || undefined,
 		agentIcon: localConfig.value?.personalisation?.icon,
-		sessionTitle: currentSessionTitle.value || undefined,
-		executionId,
-	});
+		sessionTitle,
+		...(event
+			? {
+					executionId: event.executionId,
+					initialDraft: buildAgentFixWithAssistantPrompt(
+						{
+							projectId: projectId.value,
+							agentId: agentId.value,
+							agentName: agentName.value || undefined,
+							threadId,
+							sessionTitle,
+							...(sessionNumber !== undefined ? { sessionNumber } : {}),
+							executionId: event.executionId,
+							failures: event.failures,
+						},
+						locale,
+					),
+				}
+			: {}),
+	};
+
+	if (isArtifactMode.value) {
+		emit('assistant-handoff', params);
+		return;
+	}
+
+	await sendPreviewSessionToInstanceAi(params);
 }
 
 /**
@@ -195,6 +252,8 @@ async function onSendPreviewToAssistant(executionId?: string) {
  *   - render the preview chat before the route/config/session state has settled.
  */
 const initialized = ref(false);
+let disposed = false;
+let latestSessionsFetchRequestId = 0;
 /**
  * No agent row exists behind `agentId` yet. The id was minted by whoever opened
  * this artifact, so the config edits below can create the agent under it at the
@@ -221,20 +280,13 @@ const {
 	effectiveSessionId,
 	currentSessionHasMessages,
 	currentSessionTitle,
+	currentSessionIsEphemeral,
 	sessionMenu,
 	setSessionInUrl,
 	clearContinueSessionParam,
 	onSessionPick,
 	onNewChat,
-} = useAgentBuilderSession();
-
-const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
-	sessionMenu.value.map((item) => ({
-		id: item.id,
-		label: item.when ? `${item.label} · ${item.when}` : (item.label ?? item.title),
-		disabled: item.disabled,
-	})),
-);
+} = useAgentBuilderSession({ routeBacked: computed(() => !isArtifactMode.value) });
 
 // Config
 const { config, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
@@ -313,35 +365,12 @@ const projectName = computed<string | null>(() => {
 	return match?.name ?? null;
 });
 
-const projectRoute = computed<RouteLocationRaw>(() => ({
-	name: PROJECT_AGENTS,
-	params: { projectId: projectId.value },
-}));
-
-const agentRoute = computed<RouteLocationRaw>(() => ({
-	name: AGENT_BUILDER_VIEW,
-	params: { projectId: projectId.value, agentId: agentId.value },
-}));
-
-const previewBreadcrumbItems = computed<PathItem[]>(() => [
-	{
-		id: projectId.value,
-		label: projectName.value ?? locale.baseText('agents.builder.header.projectFallback'),
-		href: router.resolve(projectRoute.value).href,
-	},
-	{
-		id: agentId.value,
-		label: agent.value?.name ?? '…',
-		href: router.resolve(agentRoute.value).href,
-	},
-]);
-
 // A fetch/mutation captures its target agent + project at call time. By the
 // time an awaited call resolves the user may have switched to a different agent
 // or project, and applying the result would clobber the new selection's state.
 // Callers use this guard to drop such stale results.
 function isStaleAgentTarget(targetProjectId: string, targetAgentId: string): boolean {
-	return projectId.value !== targetProjectId || agentId.value !== targetAgentId;
+	return disposed || projectId.value !== targetProjectId || agentId.value !== targetAgentId;
 }
 
 // Drafts cases from the agent's own config. The generated dataset isn't
@@ -528,22 +557,32 @@ function sessionIdForPreview(): string | undefined {
 async function openPreview(preferredSessionId?: string) {
 	const sessionId = preferredSessionId ?? sessionIdForPreview();
 	activeChatSessionId.value = sessionId ?? null;
+	persistedPreviewOpen.value = true;
+}
 
-	const {
-		[CONTINUE_SESSION_ID_PARAM]: _dropped,
-		prompt: _prompt,
-		...rest
-	} = route.query as LocationQueryRaw;
-	const query: LocationQueryRaw = { ...rest };
-	if (sessionId) {
-		query[CONTINUE_SESSION_ID_PARAM] = sessionId;
+function openArtifactPreview(preferredSessionId?: string) {
+	if (preferredSessionId) {
+		onSessionPick(preferredSessionId);
+	} else {
+		bindPreviewSession();
 	}
+	persistedPreviewOpen.value = true;
+}
 
-	await router.push({
-		name: AGENT_PREVIEW_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value },
-		query,
+function viewPreviewTrace() {
+	if (!currentSessionHasMessages.value || !effectiveSessionId.value) return;
+	void router.push({
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			threadId: effectiveSessionId.value,
+		},
 	});
+}
+
+function startNewPreviewSession() {
+	onNewChat();
 }
 
 async function onOpenPreview() {
@@ -554,7 +593,11 @@ async function onOpenPreview() {
 	} catch {
 		return;
 	}
-	await openPreview();
+	if (isArtifactMode.value) {
+		openArtifactPreview();
+	} else {
+		await openPreview();
+	}
 	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW, { agent_id: agentId.value });
 }
 
@@ -565,12 +608,21 @@ function getBuilderQuery() {
 	return query;
 }
 
-function closePreview() {
+function closePreviewRoute() {
 	void router.push({
 		name: AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
 		query: getBuilderQuery(),
 	});
+}
+
+function returnToBuilderFromPreview() {
+	void router.push(agentBuilderHref.value);
+}
+
+function closePreviewDock() {
+	persistedPreviewOpen.value = false;
+	if (!isArtifactMode.value) closePreviewRoute();
 }
 
 function onPublished(updated: AgentResource) {
@@ -607,7 +659,7 @@ async function onReverted(updated: AgentResource) {
  * off — and only mint a fresh ephemeral session when there is no history.
  */
 function bindPreviewSession() {
-	if (continueSessionId.value || activeChatSessionId.value) return;
+	if (effectiveSessionId.value) return;
 	const latest = sessionsStore.threads?.[0];
 	if (latest) {
 		setSessionInUrl(latest.id);
@@ -617,7 +669,7 @@ function bindPreviewSession() {
 	// threads arrive, falling back to a fresh ephemeral session if the list
 	// comes back empty.
 	if (sessionsStore.loading) return;
-	setSessionInUrl(crypto.randomUUID());
+	onNewChat();
 }
 
 function warmAgentKnowledgeSandboxForPage() {
@@ -673,33 +725,47 @@ interface McpAvailabilitySnapshot {
  * one (the builder path adopts a same-project still-unconfigured row on an id
  * collision; REST create stays strict).
  */
-let persistPromise: Promise<void> | null = null;
+const persistFlights = new Map<string, Promise<void>>();
+const persistedAgentsByTarget = new Map<string, AgentResource>();
 async function ensureAgentPersisted(): Promise<void> {
 	if (!isUnsaved.value) return;
-	persistPromise ??= (async () => {
-		const targetProjectId = projectId.value;
-		const targetAgentId = agentId.value;
-		const created = await createAgent(
-			rootStore.restApiContext,
-			targetProjectId,
-			localConfig.value?.name ?? locale.baseText('agents.new.defaultName'),
-			{ id: targetAgentId },
-		);
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	const targetKey = `${targetProjectId}:${targetAgentId}`;
+	const persistedAgent = persistedAgentsByTarget.get(targetKey);
+	if (persistedAgent) {
 		isUnsaved.value = false;
-		if (!isStaleAgentTarget(targetProjectId, targetAgentId)) {
+		agent.value = persistedAgent;
+		emit('persisted', persistedAgent);
+		return;
+	}
+	let flight = persistFlights.get(targetKey);
+	if (!flight) {
+		flight = (async () => {
+			const created = await createAgent(
+				rootStore.restApiContext,
+				targetProjectId,
+				localConfig.value?.name ?? locale.baseText('agents.new.defaultName'),
+				{ id: targetAgentId },
+			);
+			persistedAgentsByTarget.set(targetKey, created);
+			upsertProjectAgentsListCache(targetProjectId, created);
+			if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+			isUnsaved.value = false;
 			agent.value = created;
-		}
-		upsertProjectAgentsListCache(targetProjectId, created);
-		// Lets the artifact host record that this agent is real now. Without it a
-		// reload would re-enter draft mode and overwrite the saved config with an
-		// empty one, since the pending marker itself cannot be deleted.
-		emit('persisted', created);
-	})().catch((error) => {
-		// Let the next edit retry rather than stranding the agent unsaved.
-		persistPromise = null;
-		throw error;
-	});
-	await persistPromise;
+			// Lets the artifact host record that this agent is real now. Without it a
+			// reload would re-enter draft mode and overwrite the saved config with an
+			// empty one, since the pending marker itself cannot be deleted.
+			emit('persisted', created);
+		})();
+		persistFlights.set(targetKey, flight);
+	}
+
+	try {
+		await flight;
+	} finally {
+		if (persistFlights.get(targetKey) === flight) persistFlights.delete(targetKey);
+	}
 }
 
 async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' | undefined> {
@@ -864,6 +930,17 @@ async function flushAutosave() {
 	]);
 }
 
+async function beforePreviewSend() {
+	// Autosave failures already use their config/skill/MCP-specific error toasts.
+	await flushAutosave();
+	try {
+		await ensureAgentPersisted();
+	} catch (error) {
+		showError(error, locale.baseText('agents.builder.preview.sendError'));
+		throw error;
+	}
+}
+
 // Makes the lock a write boundary rather than only a disabled UI state: drop
 // any autosave queued before the AI started mutating this agent.
 watch(
@@ -960,6 +1037,7 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
+	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill }) => {
 		// The persisted validation result no longer reflects the working copy —
@@ -1265,9 +1343,18 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 }
 
 async function initialize({ preserveState = false }: { preserveState?: boolean } = {}) {
+	const sessionsFetchRequestId = ++latestSessionsFetchRequestId;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	const targetArtifactPending = props.artifactAgentPending;
+	const isCurrentInitialization = () =>
+		!disposed && sessionsFetchRequestId === latestSessionsFetchRequestId;
 	clearTimeout(externalRefreshTimer);
 	// A refresh queued for the previous agent must not fire against this one.
-	if (!preserveState) initialized.value = false;
+	if (!preserveState) {
+		initialized.value = false;
+		sessionsStore.reset();
+	}
 	// A refresh queued before this (re)initialize is obsolete: it targeted the
 	// agent that was current when the event fired, and the fetches below return
 	// fresh data anyway. Only events arriving during this init need replaying.
@@ -1290,6 +1377,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 				mcpAutosave.flushAutosave(),
 			]);
 		}
+		if (!isCurrentInitialization()) return;
 		if (!preserveState) {
 			agent.value = null;
 			agentName.value = '';
@@ -1301,15 +1389,15 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			agentFilesLoading.value = false;
 			agentFilesUploading.value = false;
 			deletingAgentFileId.value = null;
-			repointConfig(projectId.value, agentId.value);
-			repointConfigValidation(projectId.value, agentId.value);
+			repointConfig(targetProjectId, targetAgentId);
+			repointConfigValidation(targetProjectId, targetAgentId);
 		}
 
 		// An agent that does not exist yet has nothing to fetch: stand up the same
 		// blank config the backend would have written, and let the first edit
 		// create it (see `ensureAgentPersisted`). The personalisation backfill is
 		// skipped too — it schedules a save, which would persist on mount alone.
-		isUnsaved.value = props.artifactAgentPending;
+		isUnsaved.value = targetArtifactPending;
 		if (isUnsaved.value) {
 			const draftConfig: AgentJsonConfig = {
 				name: locale.baseText('agents.new.defaultName'),
@@ -1327,40 +1415,60 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			agentName.value = agent.value.name;
 		} else {
 			await Promise.all([
-				fetchAgent(),
-				fetchConfig(projectId.value, agentId.value),
-				fetchAgentFiles(),
-				refreshConfigValidation(projectId.value, agentId.value),
+				fetchAgent(targetProjectId, targetAgentId),
+				fetchConfig(targetProjectId, targetAgentId),
+				fetchAgentFiles(targetProjectId, targetAgentId),
+				refreshConfigValidation(targetProjectId, targetAgentId),
 			]);
+			if (!isCurrentInitialization()) return;
 			persistMissingPersonalisationGradient();
 		}
+		if (!isCurrentInitialization()) return;
 		// Keep agent credential pickers aligned with the workflow editor: load only
 		// credentials the current user can use in this project context.
 		credentialsStore.setCredentials([]);
 		await Promise.all([
-			credentialsStore.fetchAllCredentialsForWorkflow({ projectId: projectId.value }),
+			credentialsStore.fetchAllCredentialsForWorkflow({ projectId: targetProjectId }),
 			credentialsStore.fetchCredentialTypes(false),
 		]).catch(() => undefined);
+		if (!isCurrentInitialization()) return;
+		// A stale initialize can resume after a newer one has already taken ownership of polling.
 		// Stop any in-flight auto-refresh from the previous agent before kicking
 		// off a new fetch — keeps the store tied to the current project/agent.
 		sessionsStore.stopAutoRefresh();
 		if (!isUnsaved.value) {
-			void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
-				sessionsStore.startAutoRefresh();
-			});
+			void sessionsStore
+				.fetchThreads(targetProjectId, targetAgentId)
+				.catch((error: unknown) => {
+					if (!isCurrentInitialization()) return;
+					showError(error, locale.baseText('agentSessions.showError.load'));
+				})
+				.finally(() => {
+					if (!isCurrentInitialization()) return;
+					sessionsStore.startAutoRefresh();
+				});
 		}
 		const connectedTriggersAtBaselineStart = connectedTriggers.value;
 		void (async () => {
 			// Non-fatal — on failure, leave connectedTriggers unchanged.
-			const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
+			const integrations = await ensureIntegrationsCatalog(targetProjectId).catch(() => []);
+			if (!isCurrentInitialization()) return;
 			const triggerTypes = integrations.map((i) => i.type);
 			const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
-			if (connected && connectedTriggers.value === connectedTriggersAtBaselineStart) {
+			if (
+				isCurrentInitialization() &&
+				connected &&
+				connectedTriggers.value === connectedTriggersAtBaselineStart
+			) {
 				connectedTriggers.value = connected;
 			}
 		})();
 
-		if (isPreviewMode.value) bindPreviewSession();
+		if (isStandalonePreview.value && route.query[NEW_SESSION_PARAM] === 'true') {
+			onNewChat();
+		} else if (isPreviewActive.value) {
+			bindPreviewSession();
+		}
 
 		if (!isArtifactMode.value && (route.query.prompt || route.query.expandBuildChat)) {
 			void router.replace({
@@ -1368,25 +1476,47 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			});
 		}
 	} catch (error: unknown) {
-		showError(error, locale.baseText('agents.builder.loadError'));
+		if (isCurrentInitialization()) {
+			showError(error, locale.baseText('agents.builder.loadError'));
+		}
 	} finally {
-		initialized.value = true;
-		void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
-		warmAgentKnowledgeSandboxForPage();
+		if (isCurrentInitialization()) {
+			initialized.value = true;
+			void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
+			warmAgentKnowledgeSandboxForPage();
+		}
 	}
 }
+
+watch(
+	[projectId, agentId],
+	([nextProjectId, nextAgentId], [previousProjectId, previousAgentId]) => {
+		if (
+			!isArtifactMode.value ||
+			(nextProjectId === previousProjectId && nextAgentId === previousAgentId)
+		) {
+			return;
+		}
+
+		persistedPreviewOpen.value = false;
+		activeChatSessionId.value = null;
+	},
+);
 
 // When a pending artifact becomes persisted under the same id, hydrate its
 // agent-scoped state without unmounting the editor or any in-flight setup UI.
 watch(
-	[agentId, () => props.artifactAgentPending],
-	([nextAgentId, pending], [previousAgentId]) => {
-		void initialize({ preserveState: nextAgentId === previousAgentId && !pending });
+	[projectId, agentId, () => props.artifactAgentPending],
+	([nextProjectId, nextAgentId, pending], [previousProjectId, previousAgentId]) => {
+		const sameTarget = nextProjectId === previousProjectId && nextAgentId === previousAgentId;
+		void initialize({ preserveState: sameTarget && !pending });
 	},
 	{ immediate: true },
 );
 
 onBeforeUnmount(() => {
+	disposed = true;
+	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
 	clearTimeout(externalRefreshTimer);
 	sessionsStore.stopAutoRefresh();
@@ -1400,26 +1530,80 @@ onBeforeUnmount(() => {
 watch(
 	() => sessionsStore.loading,
 	(isLoading, wasLoading) => {
-		if (!wasLoading || isLoading) return;
-		if (!isPreviewMode.value) return;
-		if (continueSessionId.value || activeChatSessionId.value) return;
+		if (!wasLoading || isLoading || !initialized.value) return;
+		if (!isPreviewActive.value) return;
+		if (isArtifactMode.value && props.artifactPreviewSessionId) {
+			void ensureArtifactPreviewSessionAvailable(props.artifactPreviewSessionId);
+		}
+		if (effectiveSessionId.value) return;
 		bindPreviewSession();
 	},
 );
 
-watch(isPreviewMode, (preview) => {
-	if (preview) {
-		bindPreviewSession();
-	} else {
-		isPreviewTraceOpen.value = false;
-	}
-});
+watch(
+	[isPreviewActive, initialized],
+	([open, isInitialized]) => {
+		if (open) persistedPreviewOpen.value = true;
+		if (open && isInitialized && !sessionsStore.loading) bindPreviewSession();
+	},
+	{ immediate: true },
+);
 
-// Leaving a session (switching sessions) should drop back to the chat rather
-// than carry the trace-open state across to a different session.
-watch(effectiveSessionId, () => {
-	isPreviewTraceOpen.value = false;
-});
+function isNotFoundError(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'httpStatusCode' in error &&
+		error.httpStatusCode === 404
+	);
+}
+
+let latestArtifactPreviewValidationId = 0;
+async function ensureArtifactPreviewSessionAvailable(sessionId: string) {
+	const requestId = ++latestArtifactPreviewValidationId;
+	if (sessionsStore.loading || effectiveSessionId.value !== sessionId) return;
+	if (sessionsStore.threads.some((thread) => thread.id === sessionId)) return;
+
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	try {
+		const { thread } = await sessionsStore.getThreadDetail(
+			targetProjectId,
+			targetAgentId,
+			sessionId,
+		);
+		if (
+			requestId !== latestArtifactPreviewValidationId ||
+			isStaleAgentTarget(targetProjectId, targetAgentId) ||
+			effectiveSessionId.value !== sessionId
+		) {
+			return;
+		}
+		sessionsStore.upsertThread(thread);
+	} catch (error) {
+		if (
+			requestId !== latestArtifactPreviewValidationId ||
+			isStaleAgentTarget(targetProjectId, targetAgentId) ||
+			effectiveSessionId.value !== sessionId ||
+			!isNotFoundError(error)
+		) {
+			return;
+		}
+
+		activeChatSessionId.value = null;
+		bindPreviewSession();
+	}
+}
+
+watch(
+	[() => props.artifactPreviewSessionId, initialized],
+	([sessionId, isInitialized]) => {
+		if (!isArtifactMode.value || !isInitialized || !sessionId) return;
+		openArtifactPreview(sessionId);
+		void ensureArtifactPreviewSessionAvailable(sessionId);
+	},
+	{ immediate: true },
+);
 
 function exitContinueMode() {
 	clearContinueSessionParam();
@@ -1493,7 +1677,9 @@ async function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
 	});
 }
 
-function onContinueLoaded(count: number) {
+function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
+	if (sessionId !== effectiveSessionId.value) return;
+
 	// Only kick away from a URL-supplied session when the URL points at a
 	// missing/stale thread. A real thread can legitimately have zero persisted
 	// chat messages if its execution failed before history was saved.
@@ -1503,53 +1689,51 @@ function onContinueLoaded(count: number) {
 		: false;
 
 	if (count === 0 && requestedSessionId && !knownThread) {
+		// A session switch re-keys the chat immediately, before its route replace
+		// necessarily lands. Ignore a load event until the route catches up.
+		if (requestedSessionId !== sessionId) return;
 		// Same-tab "New chat" already owns this ephemeral id via
 		// `activeChatSessionId` — drop the shareable URL param only.
-		if (activeChatSessionId.value === requestedSessionId) {
+		if (currentSessionIsEphemeral.value) {
 			exitContinueMode();
 			return;
 		}
 		// Stale deep-link (or a cross-page navigation that left an unknown id
 		// in the URL): bind immediately so we never wait on a raced
 		// `router.replace` + `nextTick` that can leave the chat blank.
-		if (!isPreviewMode.value) return;
+		if (!isPreviewActive.value) return;
 		const latest = sessionsStore.threads?.[0];
-		setSessionInUrl(latest?.id ?? crypto.randomUUID());
+		if (latest) {
+			setSessionInUrl(latest.id);
+		} else {
+			onNewChat();
+		}
 	}
 }
 
 function onSwitchAgent(nextAgentId: string) {
 	if (!nextAgentId || nextAgentId === agentId.value) return;
 	void router.push({
-		name: isPreviewMode.value ? AGENT_PREVIEW_VIEW : AGENT_BUILDER_VIEW,
+		name: isStandalonePreview.value ? AGENT_PREVIEW_VIEW : AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: nextAgentId },
-		query: isPreviewMode.value ? {} : route.query,
+		query: isStandalonePreview.value ? {} : route.query,
 	});
-}
-
-function onPreviewBreadcrumbSelect(item: PathItem) {
-	if (item.id === projectId.value) {
-		void router.push(projectRoute.value);
-	} else if (item.id === agentId.value) {
-		void router.push(agentRoute.value);
-	}
 }
 </script>
 
 <template>
 	<div :class="$style.root">
-		<AgentBuilderPreviewHeader
-			v-if="isPreviewMode"
-			:breadcrumb-items="previewBreadcrumbItems"
+		<AgentPreviewHeader
+			v-if="isStandalonePreview"
+			:agent-name="agent?.name ?? agentName"
+			:agent-href="agentBuilderHref"
 			:session-title="currentSessionTitle"
-			:has-session="currentSessionHasMessages"
-			:session-options="sessionOptions"
-			:trace-open="isPreviewTraceOpen"
-			@breadcrumb-select="onPreviewBreadcrumbSelect"
+			:session-options="sessionMenu"
+			:has-trace="currentSessionHasMessages && Boolean(effectiveSessionId)"
+			@back="returnToBuilderFromPreview"
+			@new-session="startNewPreviewSession"
 			@session-select="onSessionPick"
-			@new-chat="onNewChat"
-			@close-preview="closePreview"
-			@toggle-trace="isPreviewTraceOpen = !isPreviewTraceOpen"
+			@view-trace="viewPreviewTrace"
 		/>
 		<AgentBuilderHeader
 			v-else
@@ -1565,8 +1749,10 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			:editing-locked="props.artifactEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"
 			:before-publish="refreshValidationBeforePublish"
+			:is-preview-open="isPreviewDockOpen"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
+			@close-preview="closePreviewDock"
 			@published="onPublished"
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
@@ -1575,13 +1761,16 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 		/>
 		<div
 			ref="builderContainer"
-			:class="{
-				[$style.builder]: true,
-				[$style.previewBuilder]: isPreviewMode,
-			}"
+			:class="[
+				$style.builder,
+				{
+					[$style.previewOpen]: isPreviewDockOpen,
+					[$style.standalonePreview]: isStandalonePreview,
+				},
+			]"
 		>
 			<div
-				v-if="!isPreviewMode && !isArtifactMode && instanceAiAvailable"
+				v-if="!isPreviewDockOpen && !isArtifactMode && instanceAiAvailable"
 				:class="$style.aiButtonWrapper"
 			>
 				<N8nButton
@@ -1606,7 +1795,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			</div>
 			<template v-else>
 				<AgentPreviewChatPage
-					v-if="isPreviewMode && !isPreviewTraceOpen"
+					v-if="isStandalonePreview"
 					:initialized="initialized"
 					:project-id="projectId"
 					:agent-id="agentId"
@@ -1615,21 +1804,15 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
 					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:before-send="beforePreviewSend"
 					@continue-loaded="onContinueLoaded"
 					@send-to-assistant="onSendPreviewToAssistant"
 				/>
 
-				<AgentSessionTimelinePanel
-					v-else-if="isPreviewMode && isPreviewTraceOpen && effectiveSessionId"
-					:project-id="projectId"
-					:agent-id="agentId"
-					:thread-id="effectiveSessionId"
-				/>
-
 				<AgentBuilderEditorColumn
-					v-if="!isPreviewMode"
-					:class="$style.editorColumn"
+					v-else
 					v-model:active-main-tab="activeMainTab"
+					:class="$style.editorColumn"
 					:local-config="localConfig"
 					:agent="agent"
 					:project-id="projectId"
@@ -1642,6 +1825,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:applied-skills="appliedSkills"
 					:connected-triggers="connectedTriggers"
 					:can-edit-agent="effectiveCanEditAgent"
+					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
 					:main-tab-options="visibleMainTabOptions"
@@ -1673,7 +1857,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 				/>
 
 				<AgentVersionHistoryPanel
-					v-if="!isPreviewMode && isVersionHistoryOpen"
+					v-if="!isStandalonePreview && isVersionHistoryOpen"
 					ref="versionHistoryPanel"
 					:project-id="projectId"
 					:agent-id="agentId"
@@ -1685,6 +1869,29 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@reverted="onReverted"
 					@published="onPublished"
 					@unpublished="onUnpublished"
+				/>
+
+				<AgentPreviewDock
+					v-if="!isStandalonePreview"
+					:is-open="isPreviewDockOpen"
+					:session-title="currentSessionTitle"
+					:session-options="sessionMenu"
+					:has-session="currentSessionHasMessages"
+					:initialized="initialized"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent="agent"
+					:local-config="localConfig"
+					:connected-triggers="connectedTriggers"
+					:effective-session-id="effectiveSessionId"
+					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:before-send="beforePreviewSend"
+					@view-trace="viewPreviewTrace"
+					@new-session="startNewPreviewSession"
+					@session-select="onSessionPick"
+					@close="closePreviewDock"
+					@continue-loaded="onContinueLoaded"
+					@send-to-assistant="onSendPreviewToAssistant"
 				/>
 			</template>
 		</div>
@@ -1704,10 +1911,29 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 	display: flex;
 	height: 100%;
 	min-height: 0;
-	overflow-x: auto;
-	overflow-y: hidden;
+	overflow: hidden;
+	padding-right: 0;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+
+	&.previewOpen {
+		padding-right: var(--agent-preview-chat-column-width, 30rem);
+		transition: padding-right var(--duration--snappy) var(--easing--ease-out);
+	}
+
+	&.previewOpen:has([data-preview-layout='floating']),
+	&.previewOpen:has([data-preview-layout='fullpage']) {
+		padding-right: 0;
+		transition: none;
+	}
+
+	&.previewOpen:has([data-preview-layout='fullpage']) .editorColumn {
+		display: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
 }
 
 .loading {
@@ -1715,10 +1941,6 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-}
-
-.previewBuilder {
-	background-color: var(--background--surface);
 }
 
 .chatResizer {
@@ -1770,7 +1992,11 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 .editorColumn {
 	flex: 1 1 auto;
-	min-width: 35rem;
+	min-width: 0;
+}
+
+.standalonePreview {
+	padding-right: 0;
 }
 
 .aiButtonWrapper {

@@ -59,7 +59,7 @@ export interface TaskRunnerOpts extends BaseRunnerConfig {
 }
 
 export abstract class TaskRunner extends EventEmitter {
-	id: string = nanoid();
+	id: string;
 
 	ws: WebSocket;
 
@@ -111,6 +111,7 @@ export abstract class TaskRunner extends EventEmitter {
 	constructor(opts: TaskRunnerOpts) {
 		super();
 
+		this.id = opts.runnerId || nanoid();
 		this.taskType = opts.taskType;
 		this.name = opts.name ?? 'Node.js Task Runner SDK';
 		this.maxConcurrency = opts.maxConcurrency;
