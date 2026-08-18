@@ -48,6 +48,7 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
@@ -56,7 +57,7 @@ import {
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
@@ -106,7 +107,7 @@ class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 
 function buildRegistry(): ChatIntegrationRegistry {
 	const registry = new ChatIntegrationRegistry();
-	registry.register(new SlackIntegration());
+	registry.register(new SlackIntegration(mock<AgentRepository>()));
 	registry.register(new LinearIntegration(mock<Logger>(), mock<OutboundHttp>()));
 	return registry;
 }

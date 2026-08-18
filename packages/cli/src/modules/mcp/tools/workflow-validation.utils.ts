@@ -40,7 +40,41 @@ export type FoundWorkflow = NonNullable<
 export type GetMcpWorkflowOptions = {
 	includeActiveVersion?: boolean;
 	includeTags?: boolean;
+	includeParentFolder?: boolean;
 };
+
+/**
+ * Validates an already-fetched workflow for MCP operations: permission
+ * (present at all), archive, and MCP availability checks.
+ *
+ * @throws WorkflowAccessError with appropriate reason if validation fails
+ */
+export function validateMcpWorkflow<
+	T extends Pick<FoundWorkflow, 'id' | 'isArchived' | 'settings'>,
+>(workflow: T | null | undefined): T {
+	if (!workflow) {
+		throw new WorkflowAccessError(
+			"Workflow not found or you don't have permission to access it.",
+			'no_permission',
+		);
+	}
+
+	if (workflow.isArchived) {
+		throw new WorkflowAccessError(
+			`Workflow '${workflow.id}' is archived and cannot be accessed.`,
+			'workflow_archived',
+		);
+	}
+
+	if (!workflow.settings?.availableInMCP) {
+		throw new WorkflowAccessError(
+			'Workflow is not available in MCP. Enable MCP access from the workflow card in the workflows list, or from the workflow settings.',
+			'not_available_in_mcp',
+		);
+	}
+
+	return workflow;
+}
 
 /**
  * Validates and retrieves a workflow for MCP operations.
@@ -55,31 +89,12 @@ export async function getMcpWorkflow(
 	workflowFinderService: WorkflowFinderService,
 	options?: GetMcpWorkflowOptions,
 ): Promise<FoundWorkflow> {
-	const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, scopes, {
-		includeActiveVersion: options?.includeActiveVersion,
-		includeTags: options?.includeTags,
-	});
+	const workflow = await workflowFinderService.findWorkflowForUser(
+		workflowId,
+		user,
+		scopes,
+		options ?? {},
+	);
 
-	if (!workflow) {
-		throw new WorkflowAccessError(
-			"Workflow not found or you don't have permission to access it.",
-			'no_permission',
-		);
-	}
-
-	if (workflow.isArchived) {
-		throw new WorkflowAccessError(
-			`Workflow '${workflowId}' is archived and cannot be accessed.`,
-			'workflow_archived',
-		);
-	}
-
-	if (!workflow.settings?.availableInMCP) {
-		throw new WorkflowAccessError(
-			'Workflow is not available in MCP. Enable MCP access from the workflow card in the workflows list, or from the workflow settings.',
-			'not_available_in_mcp',
-		);
-	}
-
-	return workflow;
+	return validateMcpWorkflow(workflow);
 }

@@ -15,13 +15,14 @@ import {
 	N8nDropdownMenu,
 	N8nDropdownMenuItem,
 	N8nIcon,
+	N8nToggle,
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { AGENT_PREVIEW_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import { PROJECT_AGENTS } from '@/features/agents/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 import AgentPublishButton from './AgentPublishButton.vue';
@@ -38,6 +39,7 @@ const props = defineProps<{
 	beforeRevertToPublished?: () => Promise<void> | void;
 	isVersionHistoryOpen?: boolean;
 	artifactMode?: boolean;
+	isPreviewOpen?: boolean;
 	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
 	editingLocked?: boolean;
 	configValidationStatus?: 'valid' | 'invalid' | null;
@@ -47,6 +49,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'header-action': [item: string];
 	'open-preview': [];
+	'close-preview': [];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	reverted: [agent: AgentResource];
@@ -68,11 +71,6 @@ const projectRoute = computed<RouteLocationRaw>(() => ({
 	params: { projectId: props.projectId },
 }));
 
-const previewRoute = computed<RouteLocationRaw>(() => ({
-	name: AGENT_PREVIEW_VIEW,
-	params: { projectId: props.projectId, agentId: props.agentId },
-}));
-
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: props.projectId,
@@ -84,13 +82,11 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
-const isPreviewDisabled = computed(() => props.agent?.isRunnable !== true);
-// Standalone keeps href for Cmd/Ctrl-click new-tab. Artifact mode is embedded
-// in Instance AI — plain button so a left-click cannot fall through to a link.
-const previewHref = computed(() =>
-	props.artifactMode || isPreviewDisabled.value
-		? undefined
-		: router.resolve(previewRoute.value).href,
+const isPreviewDisabled = computed(() => !props.isPreviewOpen && props.agent?.isRunnable !== true);
+const previewLabel = computed(() =>
+	props.isPreviewOpen
+		? i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)
+		: i18n.baseText('agents.builder.preview.button' as BaseTextKey),
 );
 const previewDisabledTooltip = computed(() =>
 	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
@@ -127,22 +123,12 @@ function onBreadcrumbSelect(item: PathItem) {
 	void router.push(projectRoute.value);
 }
 
-function onPreviewClick(event: MouseEvent) {
-	if (isPreviewDisabled.value) {
-		event.preventDefault();
+function onPreviewClick() {
+	if (props.isPreviewOpen) {
+		emit('close-preview');
 		return;
 	}
-	if (
-		event.defaultPrevented ||
-		event.button !== 0 ||
-		event.metaKey ||
-		event.ctrlKey ||
-		event.shiftKey
-	) {
-		return;
-	}
-	event.preventDefault();
-	emit('open-preview');
+	if (!isPreviewDisabled.value) emit('open-preview');
 }
 
 // Disabled until the agent has at least one publish history row. The flag
@@ -209,17 +195,16 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				}}
 			</span>
 			<N8nTooltip :disabled="!isPreviewDisabled" :content="previewDisabledTooltip">
-				<N8nButton
+				<N8nToggle
+					:model-value="props.isPreviewOpen"
 					variant="ghost"
 					size="medium"
 					icon="play"
-					:href="previewHref"
+					:label="previewLabel"
 					:disabled="isPreviewDisabled"
 					data-testid="agent-header-preview-btn"
 					@click="onPreviewClick"
-				>
-					{{ i18n.baseText('agents.builder.preview.button' as BaseTextKey) }}
-				</N8nButton>
+				/>
 			</N8nTooltip>
 			<AgentPublishButton
 				:agent="agent"

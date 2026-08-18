@@ -12,7 +12,7 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 24.18.1
+        default: 26.5.1
       collectCoverage:
         required: false
         default: false
@@ -54,6 +54,13 @@ jobs:
         with:
           node-version: ${{ inputs.nodeVersion }}
 
+      # Confluent publishes prebuilds up to Node 24 only.
+      - name: Verify Kafka native binding installed
+        if: startsWith(inputs.nodeVersion, '24.')
+        env:
+          NODES_BASE_PACKAGE_JSON: packages/nodes-base/package.json
+        run: node .github/scripts/docker/kafka-native-smoke-check.mjs
+
       # cli is the only backend package wired into janitor scoping today, so
       # the workspace bulk run excludes it and a dedicated step invokes the
       # scoped variant. This avoids turbo silently no-op'ing `test:unit:changed`
@@ -66,7 +73,7 @@ jobs:
       # @n8n/vitest-config/node), peak forks ≈ 2 × 50% ≈ the core count, instead
       # of ~10 concurrent suites each spawning a core-sized pool and pegging CPU.
       - name: Test Unit (backend, except cli and nodes-base)
-        run: pnpm turbo test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
+        run: pnpm turbo test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/**' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
 
       - name: Test Unit (cli, scoped)
         if: ${{ !cancelled() }}
@@ -126,7 +133,7 @@ jobs:
       # run serially to avoid cross-package interference. Unit jobs above
       # don't need this because they isolate per-process.
       - name: Test Integration (backend, except cli)
-        run: pnpm turbo test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!n8n' --summarize
+        run: pnpm turbo test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/**' --filter='!n8n' --summarize
 
       - name: Test Integration (cli, scoped)
         if: ${{ !cancelled() }}

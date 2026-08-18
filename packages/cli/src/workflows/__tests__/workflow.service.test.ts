@@ -535,6 +535,20 @@ describe('WorkflowService', () => {
 			expect(WorkflowHelpers.validateWorkflowNodeGroups).not.toHaveBeenCalled();
 		});
 
+		test('skips structure validation on a metadata-only edit so legacy graphs stay editable', async () => {
+			setupExistingWorkflow();
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{ name: 'Renamed workflow' } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(WorkflowHelpers.validateWorkflowStructure).not.toHaveBeenCalled();
+		});
+
 		test('backfills existing nodeGroups into the saved history version when omitted', async () => {
 			const existingNodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
 			const existingWorkflow = setupExistingWorkflow();
@@ -1131,11 +1145,13 @@ describe('WorkflowService', () => {
 				_validateNodes: () => void;
 				_validateDynamicCredentials: () => Promise<void>;
 				_validateSubWorkflowReferences: () => Promise<void>;
+				_validateTriggerNodeIds: () => void;
 			};
 			vi.spyOn(internals, '_detectWebhookConflicts').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateNodes').mockReturnValue(undefined);
 			vi.spyOn(internals, '_validateDynamicCredentials').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateSubWorkflowReferences').mockResolvedValue(undefined);
+			vi.spyOn(internals, '_validateTriggerNodeIds').mockReturnValue(undefined);
 		});
 
 		test.each([
@@ -1373,6 +1389,7 @@ describe('WorkflowService', () => {
 			expect(outboxRepositoryMock.enqueue).toHaveBeenCalledWith(
 				WORKFLOW_ID,
 				TARGET_VERSION_ID,
+				'publish',
 				trx,
 			);
 			// publish-history records (deactivated for the previous version, activated for the
@@ -1847,21 +1864,21 @@ describe('WorkflowService', () => {
 		});
 
 		// It cleans up rows the cascade orphaned, which cannot be found until the row is gone.
-		test('runs the afterWorkflowDeleted lifecycle hook once the row is deleted', async () => {
+		test('runs the afterWorkflowsDeleted lifecycle hook once the row is deleted', async () => {
 			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
 
 			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
 
-			expect(workflowMutationHooksMock.afterWorkflowDeleted).toHaveBeenCalledExactlyOnceWith(
+			expect(workflowMutationHooksMock.afterWorkflowsDeleted).toHaveBeenCalledExactlyOnceWith([
 				WORKFLOW_ID,
-			);
+			]);
 			expect(
-				workflowMutationHooksMock.afterWorkflowDeleted.mock.invocationCallOrder[0],
+				workflowMutationHooksMock.afterWorkflowsDeleted.mock.invocationCallOrder[0],
 			).toBeGreaterThan(workflowRepositoryMock.delete.mock.invocationCallOrder[0]);
 		});
 
-		test('does not run the afterWorkflowDeleted lifecycle hook when the deletion is aborted', async () => {
+		test('does not run the afterWorkflowsDeleted lifecycle hook when the deletion is aborted', async () => {
 			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
 			workflowMutationHooksMock.beforeWorkflowDeleted.mockRejectedValue(new Error('db down'));
@@ -1870,7 +1887,7 @@ describe('WorkflowService', () => {
 				'db down',
 			);
 
-			expect(workflowMutationHooksMock.afterWorkflowDeleted).not.toHaveBeenCalled();
+			expect(workflowMutationHooksMock.afterWorkflowsDeleted).not.toHaveBeenCalled();
 		});
 
 		test('deletes the workflow executions before the workflow itself', async () => {
@@ -2016,6 +2033,42 @@ describe('WorkflowService', () => {
 			);
 			expect(updateCall?.[1]?.[2]).toEqual(expectedActor);
 			expect(afterUpdateCall?.[1]?.[2]).toEqual(expectedActor);
+		});
+
+		// Bulk import paths (e.g. the n8n-packages workflow importer) pass entities
+		// that may carry `isArchived` from the imported payload. Archiving must only
+		// happen through `archive()`, which runs its side effects (review auto-close,
+		// events) — so `update()` must never persist the flag. If this test breaks,
+		// those import paths silently gain an archive bypass.
+		test('does not persist isArchived from the update payload', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: WORKFLOW_ID,
+				isArchived: false,
+				versionId: 'v1',
+				nodes: [],
+				connections: {},
+				settings: {},
+				activeVersionId: undefined as unknown as string,
+				tags: [],
+			});
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+
+			const user = mock<User>({
+				id: 'user-1',
+				role: mock<Role>({ slug: 'global:admin' }),
+			});
+
+			await workflowService.update(
+				user,
+				{ nodes: [], connections: {}, isArchived: true } as unknown as WorkflowEntity,
+				WORKFLOW_ID,
+			);
+
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				expect.not.objectContaining({ isArchived: expect.anything() }),
+			);
 		});
 	});
 

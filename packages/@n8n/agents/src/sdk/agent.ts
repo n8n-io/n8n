@@ -1104,6 +1104,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			instructions,
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
+			...(this.workspaceInstance?.filesystem && this.workspaceInstance.filesystem.readOnly !== true
+				? { workspaceFilesystem: this.workspaceInstance.filesystem }
+				: {}),
 			toolSearch,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,

@@ -39,11 +39,14 @@ describe('AgentTestChatService', () => {
 		});
 	});
 
-	it('clears one user thread or every test-chat thread for an agent', async () => {
-		const { service, memory } = makeService();
+	it('clears one user thread without changing all-agent cleanup', async () => {
+		const { service, memory, attachmentService } = makeService();
 
 		await service.clearTestChatMessages(agentId, userId);
 		expect(memory.deleteThread).toHaveBeenCalledWith(`test-${agentId}:${userId}`);
+		expect(attachmentService.deleteByThread).toHaveBeenCalledWith(`test-${agentId}:${userId}`, {
+			agentId,
+		});
 
 		await service.clearAllTestChatMessages(agentId);
 		expect(memory.deleteThreadsByPrefix).toHaveBeenCalledWith(`test-${agentId}`);

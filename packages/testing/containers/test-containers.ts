@@ -20,9 +20,11 @@
  * N8N_DOCKER_IMAGE is also supported for backwards compatibility.
  */
 
+import postgresVersions from './postgres-versions.json';
+
 /** Default images - override via TEST_IMAGE_<KEY> env vars */
 const DEFAULT_IMAGES = {
-	postgres: 'postgres:18-alpine',
+	postgres: postgresVersions.primary,
 	redis: 'redis:alpine',
 	caddy: 'caddy:alpine',
 	n8n: 'n8nio/n8n:local',

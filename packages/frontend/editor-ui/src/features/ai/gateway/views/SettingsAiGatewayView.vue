@@ -15,17 +15,15 @@ import type { AiGatewayUsageEntry } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
-import { useUIStore } from '@/app/stores/ui.store';
-import { AI_GATEWAY_TOP_UP_MODAL_KEY, VIEWS } from '@/app/constants';
+import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
+import { VIEWS } from '@/app/constants';
 
 const i18n = useI18n();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
-const telemetry = useTelemetry();
 const aiGatewayStore = useAiGatewayStore();
-const uiStore = useUIStore();
+const { openTopUp } = useAiGatewayTopUp();
 
 const isLoading = ref(false);
 const isAppending = ref(false);
@@ -188,10 +186,7 @@ onMounted(async () => {
 				icon="hand-coins"
 				variant="solid"
 				data-test-id="ai-gateway-topup-button"
-				@click="
-					telemetry.track('User clicked ai gateway top up', { source: 'settings_page' });
-					uiStore.openModalWithData({ name: AI_GATEWAY_TOP_UP_MODAL_KEY, data: {} });
-				"
+				@click="openTopUp({ source: 'settings_page' })"
 			/>
 		</header>
 

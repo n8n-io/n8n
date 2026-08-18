@@ -157,6 +157,26 @@ export class ChatIntegrationService {
 		return type ? this.integrationRegistry.get(type) : undefined;
 	}
 
+	async validateBeforeConnect(
+		agentId: string,
+		integration: AgentIntegrationConfig,
+		projectId: string,
+	): Promise<void> {
+		const implementation = this.integrationRegistry.require(integration.type);
+		implementation.validateConfig?.(integration);
+		if (!implementation.onBeforeConnect) return;
+
+		const credential = await this.decryptCredentialForProject(integration.credentialId, projectId);
+		await implementation.onBeforeConnect({
+			agentId,
+			projectId,
+			credentialId: integration.credentialId,
+			credential,
+			ingressEnabled: true,
+			webhookUrlFor: (platform) => this.buildWebhookUrl(agentId, projectId, platform),
+		});
+	}
+
 	/**
 	 * Connect an agent to a chat platform via the Chat SDK.
 	 *
