@@ -10,6 +10,7 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import * as credentialsApi from '@/features/credentials/credentials.api';
 import { useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
 
@@ -536,6 +537,66 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
 		});
 
+		it('waits for Continue when a sole existing credential requires user selection', async () => {
+			const requests = makeCredentialRequestsWithSingleExisting(1);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+					requireUserSelection: true,
+				},
+			});
+
+			await nextTick();
+			await nextTick();
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { type1: 'existing-1' },
+			});
+		});
+
+		it('waits for Continue after creating a credential when user selection is required', async () => {
+			const credentialsStore = useCredentialsStore();
+			const requests = makeCredentialRequestsWithSingleExisting(1);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			vi.spyOn(credentialsApi, 'createNewCredential').mockResolvedValue({
+				id: 'created-1',
+				name: 'Created Cred',
+				type: 'type1',
+			} as ICredentialsResponse);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+					requireUserSelection: true,
+				},
+			});
+
+			await credentialsStore.createNewCredential({
+				id: '',
+				name: 'Created Cred',
+				type: 'type1',
+				data: {},
+			});
+			await nextTick();
+			await nextTick();
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { type1: 'created-1' },
+			});
+		});
+
 		it('keeps a sole generic auth credential preselected but does not auto-submit', async () => {
 			const requests: InstanceAiCredentialRequest[] = [
 				{
@@ -631,6 +692,41 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
 				kind: 'credentialSelection',
 				credentials: { httpBearerAuth: 'existing-bearer' },
+			});
+		});
+
+		it('waits for Continue when the remaining step is skipped and user selection is required', async () => {
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'slackApi',
+					reason: 'Post the message',
+					existingCredentials: [{ id: 'existing-slack', name: 'Slack account' }],
+				},
+				{
+					credentialType: 'notionApi',
+					reason: 'Create the page',
+					existingCredentials: [],
+				},
+			];
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByText, getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+					requireUserSelection: true,
+				},
+			});
+
+			await vi.waitFor(() => expect(getByText('2 of 2')).toBeTruthy());
+			await userEvent.click(getByText('instanceAi.credential.deny'));
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { slackApi: 'existing-slack' },
 			});
 		});
 
