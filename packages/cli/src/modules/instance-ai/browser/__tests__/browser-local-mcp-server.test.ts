@@ -3,7 +3,7 @@ import type { BrowserToolkit, ToolContext } from '@n8n/mcp-browser';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import { BrowserLocalMcpServer } from './browser-local-mcp-server';
+import { BrowserLocalMcpServer } from '../browser-local-mcp-server';
 
 describe('BrowserLocalMcpServer', () => {
 	function serverWithSchema(inputSchema: z.ZodTypeAny) {
@@ -27,8 +27,9 @@ describe('BrowserLocalMcpServer', () => {
 		);
 
 		const [tool] = server.getAvailableTools();
+		const inputSchema = tool.inputSchema as { properties: Record<string, unknown> };
 
-		expect(tool.inputSchema.properties).toMatchObject({
+		expect(inputSchema.properties).toMatchObject({
 			at: {
 				type: 'array',
 				prefixItems: [{ type: 'number' }, { type: 'number' }],
