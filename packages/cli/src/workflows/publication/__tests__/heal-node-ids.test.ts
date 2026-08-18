@@ -57,7 +57,21 @@ describe('healNodeIds', () => {
 			expect(healed.id).toMatch(/^[0-9a-f-]{36}$/);
 		}
 		expect(result.nodes[0].id).not.toBe(result.nodes[1].id);
-		expect(result.report.filled.map(({ name }) => name)).toEqual(['Empty', 'Missing']);
+		expect(result.report.filled).toEqual([
+			{ name: 'Empty', newId: result.nodes[0].id },
+			{ name: 'Missing', newId: result.nodes[1].id },
+		]);
+		expectStable(result.nodes);
+	});
+
+	it('fills same-named nodes without ids instead of collapsing them', () => {
+		const nodes = [node({ id: '', name: 'Twin' }), node({ id: '', name: 'Twin' })];
+
+		const result = expectChanged(heal(nodes));
+
+		expect(result.nodes).toHaveLength(2);
+		expect(result.nodes[0].id).not.toBe(result.nodes[1].id);
+		expect(result.report.dropped).toEqual([]);
 		expectStable(result.nodes);
 	});
 
@@ -88,7 +102,10 @@ describe('healNodeIds', () => {
 	});
 
 	it('keeps a shared id on the first sharer when several are trigger-like', () => {
+		// The non-trigger comes first so this is distinguishable from "any
+		// trigger-like sharer wins".
 		const nodes = [
+			node({ id: 'shared', name: 'Set' }),
 			trigger({ id: 'shared', name: 'Trigger A' }),
 			trigger({ id: 'shared', name: 'Trigger B' }),
 		];
@@ -97,6 +114,8 @@ describe('healNodeIds', () => {
 
 		expect(result.nodes[0]).toBe(nodes[0]);
 		expect(result.nodes[1].id).not.toBe('shared');
+		expect(result.nodes[2].id).not.toBe('shared');
+		expect(result.nodes[1].id).not.toBe(result.nodes[2].id);
 		expectStable(result.nodes);
 	});
 
@@ -138,18 +157,44 @@ describe('healNodeIds', () => {
 		expectStable(result.nodes);
 	});
 
-	it('never orphans an id that was referenced before healing', () => {
+	it('keeps a referenced id alive through combined drops and reassignments', () => {
 		// nodeGroups.nodeIds, poller_state rows and processed_data contexts key on
-		// the shared id: after healing it must still resolve to exactly one node.
+		// the shared id: after healing it must still resolve to exactly one node,
+		// even when the first occurrence is a dropped same-name duplicate.
 		const nodes = [
-			node({ id: 'shared', name: 'Set' }),
-			trigger({ id: 'shared', name: 'Trigger' }),
-			node({ id: '', name: 'Empty' }),
+			node({ id: 'shared', name: 'Twin', parameters: { generation: 1 } }),
+			node({ id: 'shared', name: 'Twin', parameters: { generation: 2 } }),
+			node({ id: 'shared', name: 'Twin', parameters: { generation: 3 } }),
+			node({ id: 'shared', name: 'Other A' }),
+			node({ id: 'shared', name: 'Other B' }),
 		];
+		const inputSnapshot = structuredClone(nodes);
 
 		const result = expectChanged(heal(nodes));
 
-		expect(result.nodes.filter(({ id }) => id === 'shared')).toHaveLength(1);
+		expect(result.nodes.map(({ name }) => name)).toEqual(['Twin', 'Other A', 'Other B']);
+		// No trigger-like sharer, so the first surviving occurrence keeps the id.
+		expect(result.nodes[0].parameters).toEqual({ generation: 3 });
+		expect(result.nodes[0].id).toBe('shared');
+		expect(result.nodes[1].id).not.toBe('shared');
+		expect(result.nodes[2].id).not.toBe('shared');
+		expect(result.nodes[1].id).not.toBe(result.nodes[2].id);
+		expect(result.report.dropped).toEqual([
+			{ name: 'Twin', id: 'shared' },
+			{ name: 'Twin', id: 'shared' },
+		]);
+		// The input array and its nodes are untouched.
+		expect(nodes).toEqual(inputSnapshot);
+		expectStable(result.nodes);
+	});
+
+	it('counts the same node object at two positions as two occurrences', () => {
+		const twin = node({ id: 'shared', name: 'Twin' });
+
+		const result = expectChanged(heal([twin, twin]));
+
+		expect(result.nodes).toEqual([twin]);
+		expect(result.report.dropped).toEqual([{ name: 'Twin', id: 'shared' }]);
 		expectStable(result.nodes);
 	});
 
@@ -164,7 +209,6 @@ describe('healNodeIds', () => {
 
 		const result = expectChanged(heal(nodes));
 
-		expect(result.nodes).toHaveLength(4);
 		expect(result.nodes.map(({ name }) => name)).toEqual([
 			'Trigger A',
 			'Set A',
