@@ -1587,7 +1587,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 	});
 
 	test('returns 403 for the requesting author without admin override', async () => {
-		const { request } = await seedRequest(member);
+		const { request } = await seedRequest(member, {}, [owner.id]);
 
 		await memberAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
@@ -1600,7 +1600,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 		});
 	});
 
-	test('returns 403 for a user who became an author via update-version', async () => {
+	test('allows an assigned reviewer to decide after they update the review version', async () => {
 		const { request, workflow } = await seedRequest(owner);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
 
@@ -1616,7 +1616,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 		await memberAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
 			.send({ decision: 'approved' })
-			.expect(403);
+			.expect(200);
 	});
 
 	test('allows the instance owner to decide their own review (admin override)', async () => {
@@ -2014,9 +2014,9 @@ describe('GET /workflow-review-requests', () => {
 			description: 'Confidential description',
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
-			// Neither applies to a pending review
+			// Does not apply to a pending review
 			decisionBy: null,
-			approvedVersionPublicationState: null,
+			viewerCanOpen: true,
 		});
 	});
 
@@ -2111,7 +2111,6 @@ describe('GET /workflow-review-requests', () => {
 				firstName: member.firstName,
 				lastName: member.lastName,
 			},
-			approvedVersionPublicationState: null,
 		});
 	});
 
@@ -2142,7 +2141,7 @@ describe('GET /workflow-review-requests', () => {
 		});
 	});
 
-	test('reports an approved version that was never published', async () => {
+	test('does not attribute an approved review to a decider', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 		const request = await requestRepository.createRequest(
 			{
@@ -2167,37 +2166,6 @@ describe('GET /workflow-review-requests', () => {
 			decision: 'approved',
 			// Approval is never attributed in the canvas banner
 			decisionBy: null,
-			approvedVersionPublicationState: 'not_published',
-		});
-	});
-
-	test('reports an approved version that has been published', async () => {
-		const { workflow, versionId } = await createReviewableWorkflow();
-		const request = await requestRepository.createRequest(
-			{
-				projectId: ownerProject.id,
-				state: 'closed',
-				decision: 'approved',
-				title: 'Approved',
-				createdById: owner.id,
-			},
-			{},
-		);
-		await linkRequestToWorkflow(request.id, workflow.id, versionId);
-		await publishHistoryRepository.addRecord({
-			workflowId: workflow.id,
-			versionId,
-			event: 'activated',
-			userId: owner.id,
-		});
-
-		const response = await ownerAgent
-			.get('/workflow-review-requests')
-			.query({ workflowId: workflow.id, take: 1 })
-			.expect(200);
-
-		expect(response.body.data.data[0]).toMatchObject({
-			approvedVersionPublicationState: 'published',
 		});
 	});
 
@@ -2343,6 +2311,119 @@ async function seedInboxRequests() {
 	);
 	return { openRequest, closedRequest, openWorkflow };
 }
+
+describe('POST /workflow-review-requests/statuses', () => {
+	/** A workflow in the team project with a pinned history version. */
+	async function createTeamWorkflow(versionId = uuid()) {
+		const workflow = await createWorkflow({}, teamProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId });
+		return { workflow, versionId };
+	}
+
+	async function createTeamReview(
+		workflowId: string,
+		versionId: string | null,
+		options: { state?: WorkflowReviewRequestState; reviewerId?: string } = {},
+	) {
+		const request = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				state: options.state ?? 'open',
+				title: 'Team review',
+				createdById: owner.id,
+			},
+			{},
+		);
+		await workflowRepository.createWorkflowRow(
+			{ workflowReviewRequestId: request.id, workflowId, workflowVersionId: versionId },
+			{},
+		);
+		await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: owner.id }, {});
+		if (options.reviewerId) {
+			await reviewerRepository.addReviewers(
+				{ workflowReviewRequestId: request.id, userIds: [options.reviewerId] },
+				{},
+			);
+		}
+		return request;
+	}
+
+	const postStatuses = (agent: SuperAgentTest, workflowIds: string[]) =>
+		agent.post('/workflow-review-requests/statuses').send({ workflowIds });
+
+	test('returns the open review to an uninvolved reader as visible but not openable', async () => {
+		const { workflow, versionId } = await createTeamWorkflow();
+		const request = await createTeamReview(workflow.id, versionId);
+
+		const response = await postStatuses(viewerAgent, [workflow.id]).expect(200);
+
+		expect(response.body.data.data[workflow.id]).toEqual({
+			summary: {
+				id: request.id,
+				state: 'open',
+				decision: 'pending',
+				workflowVersionId: versionId,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			},
+			viewerCanOpen: false,
+		});
+	});
+
+	test('marks the review openable for the assigned reviewer and the requester', async () => {
+		const { workflow, versionId } = await createTeamWorkflow();
+		await createTeamReview(workflow.id, versionId, { reviewerId: member.id });
+
+		const reviewerResponse = await postStatuses(memberAgent, [workflow.id]).expect(200);
+		expect(reviewerResponse.body.data.data[workflow.id].viewerCanOpen).toBe(true);
+
+		const requesterResponse = await postStatuses(ownerAgent, [workflow.id]).expect(200);
+		expect(requesterResponse.body.data.data[workflow.id].viewerCanOpen).toBe(true);
+	});
+
+	test('returns null for closed reviews — only open reviews badge', async () => {
+		const { workflow, versionId } = await createTeamWorkflow();
+		await createTeamReview(workflow.id, versionId, { state: 'closed' });
+
+		const response = await postStatuses(memberAgent, [workflow.id]).expect(200);
+
+		expect(response.body.data.data[workflow.id]).toBeNull();
+	});
+
+	test('returns null for an open review whose pin was pruned', async () => {
+		const { workflow } = await createTeamWorkflow();
+		await createTeamReview(workflow.id, null);
+
+		const response = await postStatuses(memberAgent, [workflow.id]).expect(200);
+
+		expect(response.body.data.data[workflow.id]).toBeNull();
+	});
+
+	test('returns the same null for unreadable and nonexistent workflows', async () => {
+		// In the owner's personal project, so the member cannot read it
+		const { workflow, versionId } = await createReviewableWorkflow();
+		await createOpenReview(workflow.id, versionId);
+
+		const response = await postStatuses(memberAgent, [workflow.id, 'does-not-exist']).expect(200);
+
+		expect(response.body.data.data).toEqual({
+			[workflow.id]: null,
+			'does-not-exist': null,
+		});
+	});
+
+	test('returns 400 for an empty batch', async () => {
+		await postStatuses(ownerAgent, []).expect(400);
+	});
+
+	test('is licensed like the other review routes', async () => {
+		testServer.license.disable('feat:workflowReviews');
+
+		await postStatuses(ownerAgent, ['wf-1']).expect(403);
+
+		testServer.license.enable('feat:workflowReviews');
+	});
+});
 
 describe('GET /workflow-review-requests/summary', () => {
 	test('returns open/closed counts for instance owner', async () => {
@@ -3424,13 +3505,23 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		// `missing_reviewer_permission` cannot happen over HTTP. The eligibility service
 		// unit tests cover that branch.
 
-		test('tells an assigned author why they cannot decide their own review', async () => {
+		test('lets an assigned author decide', async () => {
 			const workflow = await createWorkflow({}, teamProject);
 			const request = await seedRequest(workflow.id, null, member);
 			await reviewerRepository.addReviewers(
 				{ workflowReviewRequestId: request.id, userIds: [member.id] },
 				{},
 			);
+
+			const response = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+			expect(response.body.data.viewerCanDecide).toBe(true);
+			expect(response.body.data.viewerDecisionIneligibilityReason).toBeNull();
+		});
+
+		test('tells a non-assigned author why they cannot decide their own review', async () => {
+			const workflow = await createWorkflow({}, teamProject);
+			const request = await seedRequest(workflow.id, null, member);
 
 			const response = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 

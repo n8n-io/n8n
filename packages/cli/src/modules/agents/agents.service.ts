@@ -308,7 +308,7 @@ export class AgentsService {
 			});
 		}
 
-		await this.agentKnowledgeService.destroySandbox(projectId, agentId);
+		await this.agentKnowledgeService.destroyKnowledgeSandbox(projectId, agentId);
 
 		try {
 			await this.agentChatAttachmentService.deleteByAgent(agentId);

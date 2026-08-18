@@ -4,26 +4,17 @@ import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
-import {
-	AGENT_PREVIEW_VIEW,
-	AGENT_SESSION_DETAIL_VIEW,
-	CONTINUE_SESSION_ID_PARAM,
-	EXECUTIONS_SECTION_KEY,
-} from '@/features/agents/constants';
+import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
-import type { AgentExecutionThread } from '@/features/agents/composables/useAgentThreadsApi';
+import type {
+	AgentExecutionStatus,
+	AgentExecutionThread,
+} from '@/features/agents/composables/useAgentThreadsApi';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import {
-	N8nActionDropdown,
-	N8nButton,
-	N8nIcon,
-	N8nIconButton,
-	N8nTableBase,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nIcon, N8nTableBase, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
@@ -35,14 +26,12 @@ const props = withDefaults(
 		embedded?: boolean;
 		projectId?: string;
 		agentId?: string;
-		openSessionInNewTab?: boolean;
 		manageStoreLifecycle?: boolean;
 	}>(),
 	{
 		embedded: false,
 		projectId: undefined,
 		agentId: undefined,
-		openSessionInNewTab: false,
 		manageStoreLifecycle: true,
 	},
 );
@@ -106,6 +95,28 @@ function formatDuration(ms: number): string {
 	return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
 }
 
+function statusColor(status: AgentExecutionStatus): 'success' | 'danger' | 'warning' | 'text-base' {
+	if (status === 'success') return 'success';
+	if (status === 'error') return 'danger';
+	if (status === 'running') return 'text-base';
+	return 'warning';
+}
+
+function statusLabel(status: AgentExecutionStatus): string {
+	switch (status) {
+		case 'running':
+			return i18n.baseText('agentSessions.status.running');
+		case 'success':
+			return i18n.baseText('agentSessions.success');
+		case 'error':
+			return i18n.baseText('agentSessions.timeline.error');
+		case 'cancelled':
+			return i18n.baseText('agentSessions.status.cancelled');
+		case 'interrupted':
+			return i18n.baseText('agentSessions.status.interrupted');
+	}
+}
+
 function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 	const rawSource = thread.source?.trim();
 	const source = rawSource ? rawSource.toLowerCase() : undefined;
@@ -165,22 +176,6 @@ function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<stri
 	return actions;
 }
 
-function openConversation(threadId: string) {
-	const target = {
-		name: AGENT_PREVIEW_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value },
-		query: {
-			[CONTINUE_SESSION_ID_PARAM]: threadId,
-			section: EXECUTIONS_SECTION_KEY,
-		},
-	};
-	if (props.openSessionInNewTab) {
-		window.open(router.resolve(target).href, '_blank');
-		return;
-	}
-	void router.push(target);
-}
-
 function onViewTrace(target: TraceTarget) {
 	const routeTarget = {
 		name: AGENT_SESSION_DETAIL_VIEW,
@@ -190,10 +185,6 @@ function onViewTrace(target: TraceTarget) {
 			threadId: target.threadId,
 		},
 	};
-	if (props.openSessionInNewTab) {
-		window.open(router.resolve(routeTarget).href, '_blank');
-		return;
-	}
 	void router.push(routeTarget);
 }
 
@@ -244,24 +235,42 @@ async function loadMore() {
 <template>
 	<div :class="[$style.wrapper, { [$style.embedded]: props.embedded }]">
 		<div :class="$style.tableContainer">
-			<N8nTableBase>
+			<N8nTableBase :class="$style.sessionsTable">
 				<tbody>
 					<tr
 						v-for="thread in sessionsStore.threads"
 						:key="thread.id"
-						:class="$style.clickableRow"
+						:class="[$style.clickableRow, thread.status === 'error' && $style.errorRow]"
 						data-test-id="agent-session-list-item"
-						@click="openConversation(thread.id)"
+						@click="onViewTrace({ agentId, threadId: thread.id })"
 					>
 						<td :class="$style.titleCell">
-							<button
-								type="button"
-								:class="$style.sessionOpen"
-								data-test-id="agent-session-open"
-								@click.stop="openConversation(thread.id)"
-							>
-								<span :class="$style.sessionTitle" data-test-id="agent-session-title">
-									{{ threadTitleOf(thread) }}
+							<button type="button" :class="$style.sessionOpen" data-test-id="agent-session-open">
+								<span :class="$style.sessionTitleRow">
+									<span :class="$style.sessionTitle" data-test-id="agent-session-title">
+										{{ threadTitleOf(thread) }}
+									</span>
+									<span v-if="thread.status" :class="$style.statusRow">
+										<N8nText
+											:color="statusColor(thread.status)"
+											size="small"
+											data-testid="agent-session-status-indicator"
+										>
+											{{ statusLabel(thread.status) }}
+										</N8nText>
+										<N8nText
+											v-if="thread.status !== 'running'"
+											color="text-base"
+											size="small"
+											data-testid="agent-session-status-duration"
+										>
+											{{
+												i18n.baseText('executionDetails.runningTimeFinished', {
+													interpolate: { time: formatDuration(thread.totalDuration) },
+												})
+											}}
+										</N8nText>
+									</span>
 								</span>
 							</button>
 						</td>
@@ -277,22 +286,8 @@ async function loadMore() {
 						<td :class="$style.tokenCell" data-test-id="agent-session-token-usage">
 							{{ (thread.totalPromptTokens + thread.totalCompletionTokens).toLocaleString() }}t
 						</td>
-						<td :class="$style.durationCell" data-test-id="agent-session-duration">
-							{{ formatDuration(thread.totalDuration) }}
-						</td>
 						<td :class="$style.actionCell" @click.stop>
 							<div :class="$style.actionGroup">
-								<N8nTooltip :content="i18n.baseText('agentSessions.viewTrace')">
-									<N8nIconButton
-										icon="list-tree"
-										icon-size="medium"
-										size="xsmall"
-										variant="ghost"
-										:aria-label="i18n.baseText('agentSessions.viewTrace')"
-										data-test-id="agent-session-view-trace"
-										@click="onViewTrace({ agentId, threadId: thread.id })"
-									/>
-								</N8nTooltip>
 								<N8nActionDropdown
 									:items="rowActions(thread)"
 									activator-icon="ellipsis"
@@ -303,8 +298,8 @@ async function loadMore() {
 						</td>
 					</tr>
 					<template v-if="sessionsStore.loading && !sessionsStore.threads.length">
-						<tr v-for="item in 5" :key="item">
-							<td v-for="col in 6" :key="col">
+						<tr v-for="item in 5" :key="item" :class="$style.skeletonRow">
+							<td v-for="col in 5" :key="col">
 								<ElSkeletonItem />
 							</td>
 						</tr>
@@ -313,7 +308,7 @@ async function loadMore() {
 						v-if="!sessionsStore.loading && !sessionsStore.threads.length"
 						:class="$style.lastRow"
 					>
-						<td :colspan="6" style="text-align: center; padding: var(--spacing--lg)">
+						<td :colspan="5" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
 								<span data-test-id="agent-sessions-empty">
 									{{ i18n.baseText('agentSessions.empty') }}
@@ -322,7 +317,7 @@ async function loadMore() {
 						</td>
 					</tr>
 					<tr :class="$style.lastRow" v-if="sessionsStore.nextCursor">
-						<td :colspan="6">
+						<td :colspan="5">
 							<N8nButton
 								icon="refresh-cw"
 								variant="ghost"
@@ -368,6 +363,30 @@ async function loadMore() {
 	scrollbar-color: var(--border-color) transparent;
 }
 
+.sessionsTable {
+	width: 100%;
+	height: auto;
+	border-collapse: separate;
+	border-spacing: 0;
+	font-size: var(--font-size--sm);
+	white-space: nowrap;
+
+	td {
+		height: var(--height--3xl);
+		padding: 0 var(--spacing--xs);
+		border-bottom: 0;
+		vertical-align: middle;
+	}
+
+	td:first-child {
+		padding-left: var(--spacing--sm);
+	}
+
+	td:last-child {
+		padding-right: var(--spacing--sm);
+	}
+}
+
 .titleCell {
 	width: 46%;
 	min-width: var(--spacing--3xl);
@@ -380,9 +399,24 @@ async function loadMore() {
 	overflow: hidden;
 	color: var(--text-color);
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
+	font-weight: var(--font-weight--bold);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.sessionTitleRow {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
+.statusRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	flex: 0 0 auto;
 }
 
 .sessionOpen {
@@ -402,8 +436,7 @@ async function loadMore() {
 
 .originCell,
 .dateCell,
-.tokenCell,
-.durationCell {
+.tokenCell {
 	width: 1%;
 	white-space: nowrap;
 }
@@ -423,8 +456,7 @@ async function loadMore() {
 }
 
 .dateCell,
-.tokenCell,
-.durationCell {
+.tokenCell {
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
@@ -444,11 +476,17 @@ async function loadMore() {
 	gap: var(--spacing--4xs);
 }
 
-.clickableRow {
+.sessionsTable .clickableRow {
+	background-color: var(--execution-card--color--background);
 	cursor: pointer;
 
 	td {
 		color: var(--text-color--subtler);
+	}
+
+	.titleCell {
+		border-left: var(--spacing--4xs) var(--border-style)
+			var(--execution-card--border-color--success);
 	}
 
 	.actionCell {
@@ -456,12 +494,25 @@ async function loadMore() {
 	}
 
 	&:hover {
-		background-color: var(--background--hover);
+		background-color: var(--execution-card--color--background--hover);
 	}
 }
 
-.lastRow {
+.sessionsTable .errorRow {
+	.titleCell {
+		border-left-color: var(--execution-card--border-color--error);
+	}
+}
+
+.sessionsTable .skeletonRow {
+	background-color: var(--execution-card--color--background);
+}
+
+.sessionsTable .lastRow {
+	background-color: transparent;
+
 	td {
+		height: var(--height--2xl);
 		text-align: center;
 	}
 
@@ -470,7 +521,7 @@ async function loadMore() {
 	}
 
 	&:hover {
-		background-color: var(--background--surface) !important;
+		background-color: transparent;
 	}
 }
 </style>
