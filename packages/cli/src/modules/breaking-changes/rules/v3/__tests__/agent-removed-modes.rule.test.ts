@@ -1,13 +1,13 @@
 import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
-import { AgentNodeVersionRule } from '../agent-node-version.rule';
+import { AgentRemovedModesRule } from '../agent-removed-modes.rule';
 
 const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
 
-describe('AgentNodeVersionRule', () => {
-	let rule: AgentNodeVersionRule;
+describe('AgentRemovedModesRule', () => {
+	let rule: AgentRemovedModesRule;
 
 	beforeEach(() => {
-		rule = new AgentNodeVersionRule();
+		rule = new AgentRemovedModesRule();
 	});
 
 	describe('detectWorkflow()', () => {
@@ -24,7 +24,10 @@ describe('AgentNodeVersionRule', () => {
 
 		it('should not be affected when the AI Agent is on version 2 or above', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-				{ ...createNode('AI Agent', AGENT_NODE_TYPE), typeVersion: 2.2 },
+				{
+					...createNode('AI Agent', AGENT_NODE_TYPE, { agent: 'conversationalAgent' }),
+					typeVersion: 2,
+				},
 			]);
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
@@ -33,7 +36,7 @@ describe('AgentNodeVersionRule', () => {
 			expect(result.issues).toHaveLength(0);
 		});
 
-		it('should warn about an AI Agent below version 2 that uses the tools agent', async () => {
+		it('should not be affected when the node below version 2 uses the tools agent', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				{
 					...createNode('AI Agent', AGENT_NODE_TYPE, { agent: 'toolsAgent' }),
@@ -43,65 +46,74 @@ describe('AgentNodeVersionRule', () => {
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
-			expect(result.isAffected).toBe(true);
-			expect(result.issues).toHaveLength(1);
-			expect(result.issues[0].title).toContain('1.9');
-			expect(result.issues[0].level).toBe('warning');
-			expect(result.issues[0].nodeName).toBe('AI Agent');
+			expect(result.isAffected).toBe(false);
+			expect(result.issues).toHaveLength(0);
 		});
 
-		it('should warn about a node from 1.6 onwards that has no agent parameter', async () => {
-			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-				{ ...createNode('AI Agent', AGENT_NODE_TYPE), typeVersion: 1.7 },
-			]);
-
-			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
-
-			expect(result.issues).toHaveLength(1);
-			expect(result.issues[0].level).toBe('warning');
-		});
-
-		it('should leave nodes on a removed agent mode to the removed modes rule', async () => {
+		it('should report an error for a node that uses a removed agent mode', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				{
 					...createNode('SQL Agent', AGENT_NODE_TYPE, { agent: 'sqlAgent' }),
 					typeVersion: 1.5,
 				},
-				{ ...createNode('Conversational Agent', AGENT_NODE_TYPE), typeVersion: 1.4 },
-			]);
-
-			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
-
-			expect(result.isAffected).toBe(false);
-			expect(result.issues).toHaveLength(0);
-		});
-
-		it('should flag only the nodes below version 2 when multiple AI Agents exist', async () => {
-			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-				{ ...createNode('Old Agent', AGENT_NODE_TYPE, { agent: 'toolsAgent' }), typeVersion: 1.8 },
-				{ ...createNode('New Agent', AGENT_NODE_TYPE), typeVersion: 3.1 },
 			]);
 
 			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
 
 			expect(result.isAffected).toBe(true);
 			expect(result.issues).toHaveLength(1);
-			expect(result.issues[0].nodeName).toBe('Old Agent');
+			expect(result.issues[0].level).toBe('error');
+			expect(result.issues[0].title).toContain('SQL Agent');
+			expect(result.issues[0].description).toContain('SQL Agent');
+			expect(result.issues[0].nodeName).toBe('SQL Agent');
+		});
+
+		it('should report an error for a node up to 1.5 that has no agent parameter', async () => {
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				{ ...createNode('AI Agent', AGENT_NODE_TYPE), typeVersion: 1.4 },
+			]);
+
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+
+			expect(result.issues).toHaveLength(1);
+			expect(result.issues[0].level).toBe('error');
+			expect(result.issues[0].description).toContain('Conversational Agent');
+		});
+
+		it('should flag only the nodes on a removed mode when multiple AI Agents exist', async () => {
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				{
+					...createNode('ReAct Agent', AGENT_NODE_TYPE, { agent: 'reActAgent' }),
+					typeVersion: 1.6,
+				},
+				{
+					...createNode('Tools Agent', AGENT_NODE_TYPE, { agent: 'toolsAgent' }),
+					typeVersion: 1.6,
+				},
+				{ ...createNode('New Agent', AGENT_NODE_TYPE), typeVersion: 2.2 },
+			]);
+
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+
+			expect(result.isAffected).toBe(true);
+			expect(result.issues).toHaveLength(1);
+			expect(result.issues[0].nodeName).toBe('ReAct Agent');
 		});
 	});
 
 	describe('getMetadata()', () => {
-		it('should report a medium severity for nodes that keep working', () => {
-			expect(rule.getMetadata().severity).toBe('medium');
+		it('should report a critical severity for nodes that stop working', () => {
+			expect(rule.getMetadata().severity).toBe('critical');
 		});
 	});
 
 	describe('getRecommendations()', () => {
-		it('should explain how to move the nodes to the latest version', async () => {
+		it('should explain how to rebuild the affected nodes', async () => {
 			const recommendations = await rule.getRecommendations([]);
 
 			expect(recommendations).toHaveLength(1);
 			expect(recommendations[0].description).toContain('latest version');
+			expect(recommendations[0].description).toContain('SQL Agent');
 		});
 	});
 });
