@@ -580,9 +580,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			render([], onConfirm);
 			await flushPromises();
 			return getItems().find((item) => item.id === `workflow:${WORKFLOW.id}`)!;
-	}
+		}
 
-	it('surfaces incompatible workflows as disabled items with a reason', async () => {
+		it('surfaces incompatible workflows as disabled items with a reason', async () => {
 			workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([
 				WORKFLOW,
 				{
@@ -628,11 +628,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			const noTriggerIdx = workflowItems.findIndex(
 				(i) => i.id === 'workflow-disabled:wf-no-trigger',
 			);
-		expect(compatibleIdx).toBeLessThan(waitIdx);
-		expect(compatibleIdx).toBeLessThan(noTriggerIdx);
-	});
+			expect(compatibleIdx).toBeLessThan(waitIdx);
+			expect(compatibleIdx).toBeLessThan(noTriggerIdx);
+		});
 
-	it('creates a compatible workflow and attaches it after configuration is saved', async () => {
+		it('creates a compatible workflow and attaches it after configuration is saved', async () => {
 			const existingTool = toolRef(WIKIPEDIA.name);
 			const onConfirm = vi.fn();
 			workflowsStore.createNewWorkflow.mockResolvedValueOnce({
@@ -709,10 +709,10 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			expect(onConfirm).not.toHaveBeenCalled();
 			expect(windowOpenMock).not.toHaveBeenCalled();
-		expect(showErrorMock).toHaveBeenCalledWith(error, expect.any(String), {
-			message: expect.any(String),
+			expect(showErrorMock).toHaveBeenCalledWith(error, expect.any(String), {
+				message: expect.any(String),
+			});
 		});
-	});
 
 		it('refuses a workflow whose body contains an incompatible node', async () => {
 			const onConfirm = vi.fn();

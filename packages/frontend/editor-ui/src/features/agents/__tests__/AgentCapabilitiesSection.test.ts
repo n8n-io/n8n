@@ -938,19 +938,25 @@ describe('AgentCapabilitiesSection', () => {
 		});
 
 		it('falls back to the generic incompatible_reference key when the reason is absent or unknown', async () => {
-			const tools: AgentJsonToolRef[] = [{ type: 'workflow', workflow: 'Unknown' }];
+			// Two workflow tools so both issues land on a rendered chip: index 0 has
+			// no `reason` (absent), index 1 has an unrecognised `reason` (unknown).
+			// Both must resolve to the generic incompatible_reference key.
+			const tools: AgentJsonToolRef[] = [
+				{ type: 'workflow', workflow: 'No Reason' },
+				{ type: 'workflow', workflow: 'Unknown Reason' },
+			];
 
 			const wrapper = mountSection(tools, {}, null, [], [], {
 				validationIssues: [
 					{
 						code: 'incompatible_reference',
 						path: 'tools.0.workflow',
-						capability: { kind: 'tool', id: 'Unknown', index: 0, toolType: 'workflow' },
+						capability: { kind: 'tool', id: 'No Reason', index: 0, toolType: 'workflow' },
 					},
 					{
 						code: 'incompatible_reference',
 						path: 'tools.1.workflow',
-						capability: { kind: 'tool', id: 'Other', index: 1, toolType: 'workflow' },
+						capability: { kind: 'tool', id: 'Unknown Reason', index: 1, toolType: 'workflow' },
 						reason: 'some_future_reason',
 					},
 				],
@@ -958,9 +964,11 @@ describe('AgentCapabilitiesSection', () => {
 			await flushPromises();
 
 			const toolChips = wrapper.findAll('[data-testid="agent-capabilities-tool-row"]');
-			// Only one workflow tool is configured; the second issue has no matching chip.
-			expect(toolChips).toHaveLength(1);
+			expect(toolChips).toHaveLength(2);
 			expect(toolChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+				'agents.builder.validation.issue.tool.workflow.incompatibleReference',
+			);
+			expect(toolChips[1].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.incompatibleReference',
 			);
 		});
