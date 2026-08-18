@@ -127,8 +127,8 @@ export class LmChatAnthropic implements INodeType {
 		name: 'lmChatAnthropic',
 		icon: 'file:anthropic.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
-		defaultVersion: 1.6,
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		defaultVersion: 1.5,
 		description: 'Language Model Anthropic',
 		defaults: {
 			name: 'Anthropic Chat Model',
@@ -478,36 +478,31 @@ export class LmChatAnthropic implements INodeType {
 							'Whether the model should stream its response over Server-Sent Events instead of returning a single non-streamed payload. Final output shape is unchanged.',
 					},
 					{
-						displayName: 'Enable Prompt Caching',
-						name: 'enablePromptCaching',
-						type: 'boolean',
-						default: false,
-						description:
-							'Whether to cache the system prompt, tool definitions, and conversation history between requests using <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">Anthropic prompt caching</a>',
-						displayOptions: {
-							show: {
-								'@version': [{ _cnd: { gte: 1.6 } }],
-							},
-						},
-					},
-					{
-						displayName: 'Cache TTL',
-						name: 'cacheTtl',
+						displayName: 'Prompt Caching',
+						name: 'promptCaching',
 						type: 'options',
-						default: '5m',
-						description: 'How long cached content stays valid before it needs to be written again',
+						default: 'disabled',
+						description:
+							'Whether to cache the system prompt, tool definitions, and conversation history between requests using <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">Anthropic prompt caching</a>. The value sets how long cached content stays valid before it has to be written again.',
 						options: [
+							{ name: 'Disabled', value: 'disabled' },
 							{ name: '5 Minutes', value: '5m' },
 							{ name: '1 Hour', value: '1h' },
 						],
-						displayOptions: {
-							show: {
-								'@version': [{ _cnd: { gte: 1.6 } }],
-								enablePromptCaching: [true],
-							},
-						},
 					},
 				],
+			},
+			{
+				displayName:
+					'Cached tokens are currently not included in the reported token usage, so logged prompt/total tokens might be lower than actual billable usage',
+				name: 'promptCachingNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'/options.promptCaching': ['5m', '1h'],
+					},
+				},
 			},
 		],
 	};
@@ -543,8 +538,7 @@ export class LmChatAnthropic implements INodeType {
 			thinkingMode?: 'disabled' | 'adaptive' | 'manual';
 			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 			streaming?: boolean;
-			enablePromptCaching?: boolean;
-			cacheTtl?: '5m' | '1h';
+			promptCaching?: 'disabled' | '5m' | '1h';
 		};
 
 		const isOpus47Model = modelName.startsWith('claude-opus-4-7');
@@ -593,13 +587,10 @@ export class LmChatAnthropic implements INodeType {
 			};
 		}
 
-		if (version >= 1.6 && options.enablePromptCaching) {
-			// Anthropic's top-level cache_control caches the last cacheable block and the whole prefix
-			// before it, so the system prompt, tools and conversation history are reused across turns.
-			// Passed through invocationKwargs as a top-level request param.
+		if (options.promptCaching && options.promptCaching !== 'disabled') {
 			invocationKwargs.cache_control = {
 				type: 'ephemeral',
-				ttl: options.cacheTtl === '1h' ? '1h' : '5m',
+				ttl: options.promptCaching,
 			};
 		}
 

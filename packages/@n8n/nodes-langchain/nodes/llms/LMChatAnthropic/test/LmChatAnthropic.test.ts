@@ -84,7 +84,7 @@ describe('LmChatAnthropic', () => {
 				displayName: 'Anthropic Chat Model',
 				name: 'lmChatAnthropic',
 				group: ['transform'],
-				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 				description: 'Language Model Anthropic',
 			});
 		});
@@ -985,9 +985,9 @@ describe('LmChatAnthropic', () => {
 		});
 	});
 
-	describe('prompt caching (v1.6)', () => {
-		function cacheContext(typeVersion: number, options: Record<string, unknown>) {
-			const mockContext = setupMockContext({ typeVersion });
+	describe('prompt caching', () => {
+		function cacheContext(options: Record<string, unknown>) {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
 			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-6';
 				if (paramName === 'options') return options;
@@ -996,24 +996,24 @@ describe('LmChatAnthropic', () => {
 			return mockContext;
 		}
 
+		it('should not set cache_control when the option is left unset', async () => {
+			await lmChatAnthropic.supplyData.call(cacheContext({}), 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({ invocationKwargs: {} }),
+			);
+		});
+
 		it('should not set cache_control when prompt caching is disabled', async () => {
-			await lmChatAnthropic.supplyData.call(cacheContext(1.6, {}), 0);
+			await lmChatAnthropic.supplyData.call(cacheContext({ promptCaching: 'disabled' }), 0);
 
 			expect(MockedChatAnthropic).toHaveBeenCalledWith(
 				expect.objectContaining({ invocationKwargs: {} }),
 			);
 		});
 
-		it('should not set cache_control on pre-1.6 versions', async () => {
-			await lmChatAnthropic.supplyData.call(cacheContext(1.5, { enablePromptCaching: true }), 0);
-
-			expect(MockedChatAnthropic).toHaveBeenCalledWith(
-				expect.objectContaining({ invocationKwargs: {} }),
-			);
-		});
-
-		it('should set a default 5m top-level cache_control when enabled', async () => {
-			await lmChatAnthropic.supplyData.call(cacheContext(1.6, { enablePromptCaching: true }), 0);
+		it('should set a 5m top-level cache_control', async () => {
+			await lmChatAnthropic.supplyData.call(cacheContext({ promptCaching: '5m' }), 0);
 
 			expect(MockedChatAnthropic).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -1022,11 +1022,8 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
-		it('should set a 1h cache_control when Cache TTL is 1h', async () => {
-			await lmChatAnthropic.supplyData.call(
-				cacheContext(1.6, { enablePromptCaching: true, cacheTtl: '1h' }),
-				0,
-			);
+		it('should set a 1h top-level cache_control', async () => {
+			await lmChatAnthropic.supplyData.call(cacheContext({ promptCaching: '1h' }), 0);
 
 			expect(MockedChatAnthropic).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -1037,8 +1034,8 @@ describe('LmChatAnthropic', () => {
 
 		it('should add cache_control alongside thinking invocationKwargs', async () => {
 			await lmChatAnthropic.supplyData.call(
-				cacheContext(1.6, {
-					enablePromptCaching: true,
+				cacheContext({
+					promptCaching: '5m',
 					thinking: true,
 					thinkingMode: 'adaptive',
 					effort: 'high',
@@ -1056,32 +1053,36 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
-		it('should describe Enable Prompt Caching and Cache TTL options gated to v1.6+', () => {
+		it('should describe a single Prompt Caching option available on every node version', () => {
 			const properties = lmChatAnthropic.description.properties;
 			const optionsField = properties.find((p) => p.name === 'options' && p.type === 'collection');
 			const innerOptions = (optionsField as { options: INodeProperties[] }).options;
 
-			const enableField = innerOptions.find((o) => o.name === 'enablePromptCaching');
-			expect(enableField).toBeDefined();
-			expect(enableField!.type).toBe('boolean');
-			expect(enableField!.default).toBe(false);
+			const cachingField = innerOptions.find((o) => o.name === 'promptCaching');
+			expect(cachingField).toBeDefined();
+			expect(cachingField!.type).toBe('options');
+			expect(cachingField!.default).toBe('disabled');
 			expect(
-				(enableField!.displayOptions?.show?.['@version']?.[0] as { _cnd?: { gte?: number } })?._cnd
-					?.gte,
-			).toBe(1.6);
+				(cachingField as { options: Array<{ value: string }> }).options.map((o) => o.value),
+			).toEqual(['disabled', '5m', '1h']);
+			expect(cachingField!.displayOptions).toBeUndefined();
+		});
 
-			const ttlField = innerOptions.find((o) => o.name === 'cacheTtl');
-			expect(ttlField).toBeDefined();
-			expect(ttlField!.type).toBe('options');
-			expect(ttlField!.default).toBe('5m');
-			expect(
-				(ttlField as { options: Array<{ value: string }> }).options.map((o) => o.value),
-			).toEqual(['5m', '1h']);
-			expect(ttlField!.displayOptions?.show?.enablePromptCaching).toEqual([true]);
-			expect(
-				(ttlField!.displayOptions?.show?.['@version']?.[0] as { _cnd?: { gte?: number } })?._cnd
-					?.gte,
-			).toBe(1.6);
+		it('should show the token usage notice only while caching is enabled', () => {
+			const properties = lmChatAnthropic.description.properties;
+
+			// Top-level, not inside the options collection: a notice placed in the collection
+			// shows up as a selectable entry in its "Add option" menu instead of appearing on its own.
+			const optionsField = properties.find((p) => p.name === 'options' && p.type === 'collection');
+			const innerOptions = (optionsField as { options: INodeProperties[] }).options;
+			expect(innerOptions.find((o) => o.name === 'promptCachingNotice')).toBeUndefined();
+
+			const notice = properties.find((p) => p.name === 'promptCachingNotice');
+			expect(notice).toBeDefined();
+			expect(notice!.type).toBe('notice');
+			// Listing the enabled values rather than hiding on 'disabled' keeps the notice hidden
+			// while the option has not been added at all.
+			expect(notice!.displayOptions?.show?.['/options.promptCaching']).toEqual(['5m', '1h']);
 		});
 	});
 });
