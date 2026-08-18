@@ -15,7 +15,7 @@ Implemented so far:
 - ✅ Integration tests (PR 4)
 
 Coming in later PRs:
-- 🚧 Workflow integration behind `N8N_EXPRESSION_ENGINE=vm` flag (PR 5)
+- ✅ Workflow integration via `N8N_EXPRESSION_ENGINE` (default: `vm`; set `legacy` to opt out) (PR 5)
 - 🚧 Web Worker support (Phase 2+)
 - 🚧 Performance optimizations (Phase 3)
 
