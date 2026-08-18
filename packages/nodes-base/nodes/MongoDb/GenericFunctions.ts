@@ -38,8 +38,8 @@ export function sanitizeMongoUriInMessage(error: unknown, connectionString: stri
  * @param {ICredentialDataDecryptedObject} credentials MongoDB credentials to use, unless conn string is overridden
  */
 export function buildParameterizedConnString(credentials: IMongoParametricCredentials): string {
-	const user = credentials.user.trim();
-	const host = credentials.host.trim();
+	const user = (credentials.user ?? '').trim();
+	const host = (credentials.host ?? '').trim();
 
 	if (credentials.port) {
 		return `mongodb://${user}:${credentials.password}@${host}:${credentials.port}`;
