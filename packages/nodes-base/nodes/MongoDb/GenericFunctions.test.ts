@@ -2,6 +2,7 @@ import { Binary, ObjectId } from 'mongodb';
 import type { INode, IExecuteFunctions } from 'n8n-workflow';
 
 import {
+	buildParameterizedConnString,
 	parseAndResolveQueryParameters,
 	prepareItems,
 	sanitizeMongoUriInMessage,
@@ -11,41 +12,73 @@ import {
 const mockNode = { name: 'MongoDB', type: 'n8n-nodes-base.mongoDb' } as INode;
 
 describe('MongoDB Node: Generic Functions', () => {
+	describe('buildParameterizedConnString', () => {
+		it('trims user and host values', () => {
+			const connectionString = buildParameterizedConnString({
+				configurationType: 'values',
+				host: '  localhost  ',
+				database: 'database',
+				user: '  user  ',
+				password: ' password ',
+				port: 27017,
+			});
+
+			expect(connectionString).toBe('mongodb://user: password @localhost:27017');
+		});
+
+		it('keeps values without surrounding whitespace unchanged', () => {
+			const connectionString = buildParameterizedConnString({
+				configurationType: 'values',
+				host: 'localhost',
+				database: 'database',
+				user: 'user',
+				password: 'password',
+				port: 27017,
+			});
+
+			expect(connectionString).toBe('mongodb://user:password@localhost:27017');
+		});
+	});
+
 	describe('sanitizeMongoUriInMessage', () => {
 		it.each([
 			[
 				'Invalid URL: mongodb://leaky_user:supersecret@:27017/?appname=n8n',
-				'Invalid URL: mongodb://[REDACTED]@:27017/?appname=n8n',
+				'Invalid URL: mongodb://[REDACTED]',
 			],
 			[
 				'connect failed: mongodb+srv://user:password@cluster.example.net/db',
-				'connect failed: mongodb+srv://[REDACTED]@cluster.example.net/db',
+				'connect failed: mongodb+srv://[REDACTED]',
 			],
 			[
 				'connect failed: mongodb://%41%42%43:%44%45%46@host:27017/db',
-				'connect failed: mongodb://[REDACTED]@host:27017/db',
+				'connect failed: mongodb://[REDACTED]',
 			],
-			[
-				'Invalid URL: mongodb://user/secret@host:27017/db',
-				'Invalid URL: mongodb://[REDACTED]@host:27017/db',
-			],
+			['Invalid URL: mongodb://user/secret@host:27017/db', 'Invalid URL: mongodb://[REDACTED]'],
 			[
 				'Invalid URL: mongodb://user secret@host:27017/db',
-				'Invalid URL: mongodb://[REDACTED]@host:27017/db',
+				'Invalid URL: mongodb://[REDACTED]',
+				'mongodb://user secret@host:27017/db',
 			],
-			[
-				'Invalid URL: mongodb://user:p@ss@host:27017/db',
-				'Invalid URL: mongodb://[REDACTED]@host:27017/db',
-			],
-		])('redacts authentication from %s', (message, expected) => {
-			expect(sanitizeMongoUriInMessage(message, '')).toBe(expected);
+			['Invalid URL: mongodb://user:p@ss@host:27017/db', 'Invalid URL: mongodb://[REDACTED]'],
+		])('redacts authentication from %s', (message, expected, connectionString = '') => {
+			expect(sanitizeMongoUriInMessage(message, connectionString)).toBe(expected);
 		});
 
 		it('redacts multiple URIs in the same message', () => {
 			const message = 'tried mongodb://a:b@host1, then mongodb+srv://c:d@cluster, both failed';
 
 			expect(sanitizeMongoUriInMessage(message, '')).toBe(
-				'tried mongodb://[REDACTED]@host1, then mongodb+srv://[REDACTED]@cluster, both failed',
+				'tried mongodb://[REDACTED] then mongodb+srv://[REDACTED] both failed',
+			);
+		});
+
+		it('redacts repeated occurrences of the same URI', () => {
+			const connectionString = 'mongodb://user:password@host:27017/db';
+			const message = `tried ${connectionString} then retried ${connectionString}`;
+
+			expect(sanitizeMongoUriInMessage(message, '')).toBe(
+				'tried mongodb://[REDACTED] then retried mongodb://[REDACTED]',
 			);
 		});
 

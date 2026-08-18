@@ -91,10 +91,9 @@ export class MongoDb implements INodeType {
 					}
 					await client.close();
 				} catch (error) {
-					const errorMessage = error instanceof Error ? error.message : String(error);
 					return {
 						status: 'Error',
-						message: sanitizeMongoUriInMessage(errorMessage, connectionString),
+						message: sanitizeMongoUriInMessage(error, connectionString),
 					};
 				}
 				return {
@@ -111,10 +110,7 @@ export class MongoDb implements INodeType {
 		const { database, connectionString } = validateAndResolveMongoCredentials(node, credentials);
 		const nodeVersion = node.typeVersion;
 		const sanitizeErrorMessage = (error: unknown) =>
-			sanitizeMongoUriInMessage(
-				error instanceof Error ? error.message : String(error),
-				connectionString,
-			);
+			sanitizeMongoUriInMessage(error, connectionString);
 		let client: MongoClient;
 		try {
 			client = await connectMongoClient(connectionString, nodeVersion, credentials);
