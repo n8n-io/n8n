@@ -11,6 +11,7 @@ import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import pLimit from 'p-limit';
 import { valid } from 'semver';
 
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -59,6 +60,9 @@ export class CommunityPackagesService {
 	private readonly packageJsonPath = join(this.downloadFolder, 'package.json');
 
 	private readonly http: HttpRequestClient;
+
+	/** Makes install/update/remove run one at a time, so they can't corrupt shared state on disk. */
+	private readonly packageMutex = pLimit(1);
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -414,121 +418,125 @@ export class CommunityPackagesService {
 			| { version?: string; checksum?: string }
 			| { installedPackage: InstalledPackages; version?: string; checksum?: string } = {},
 	) {
-		const isUpdate = 'installedPackage' in options;
-		const packageVersion = !options.version ? 'latest' : options.version;
+		return await this.packageMutex(async () => {
+			const isUpdate = 'installedPackage' in options;
+			const packageVersion = !options.version ? 'latest' : options.version;
 
-		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
-		this.checkInstallPermissions(shouldValidateChecksum);
+			const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
+			this.checkInstallPermissions(shouldValidateChecksum);
 
-		const authToken = this.getNpmAuthToken();
+			const authToken = this.getNpmAuthToken();
 
-		if (options.checksum) {
-			await verifyIntegrity(
+			if (options.checksum) {
+				await verifyIntegrity(
+					packageName,
+					packageVersion,
+					this.getNpmRegistry(),
+					options.checksum,
+					authToken,
+				);
+			}
+
+			await checkIfVersionExistsOrThrow(
 				packageName,
 				packageVersion,
 				this.getNpmRegistry(),
-				options.checksum,
 				authToken,
 			);
-		}
 
-		await checkIfVersionExistsOrThrow(
-			packageName,
-			packageVersion,
-			this.getNpmRegistry(),
-			authToken,
-		);
+			const previousVersion = isUpdate ? options.installedPackage.installedVersion : undefined;
 
-		const previousVersion = isUpdate ? options.installedPackage.installedVersion : undefined;
+			// Keep the previous version aside so a failed update can be rolled back
+			const backupDirectory =
+				isUpdate && (await this.packageDirectoryExists(packageName))
+					? await this.backupPackageDirectory(packageName)
+					: undefined;
 
-		// Keep the previous version aside so a failed update can be rolled back
-		const backupDirectory =
-			isUpdate && (await this.packageDirectoryExists(packageName))
-				? await this.backupPackageDirectory(packageName)
-				: undefined;
-
-		try {
-			await this.downloadPackage(packageName, packageVersion, authToken);
-		} catch (error) {
-			// No reload here: the previous package was not unloaded before the download
-			await this.restoreFailedPackageInstallation(packageName, {
-				backupDirectory,
-				previousVersion,
-			});
-
-			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
-				throw new UserError('npm package not found', { extra: { packageName } });
-			}
-			throw error;
-		}
-
-		let loader: PackageDirectoryLoader;
-		try {
-			await this.loadNodesAndCredentials.unloadPackage(packageName);
-			loader = await this.loadNodesAndCredentials.loadPackage(packageName);
-		} catch (error) {
-			await this.restoreFailedPackageInstallation(packageName, {
-				backupDirectory,
-				previousVersion,
-				reloadPackage: isUpdate,
-			});
-			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
-		}
-
-		if (loader.loadedNodes.length > 0) {
-			let installedPackage: InstalledPackages;
-
-			// Persisting to the DB is the point of no return: the transaction either
-			// commits the new version or leaves the old record intact, so a failure here
-			// can still roll back to a consistent previous state.
 			try {
-				installedPackage = isUpdate
-					? await this.replaceInstalledPackage(options.installedPackage, loader)
-					: await this.persistInstalledPackage(loader);
+				await this.downloadPackage(packageName, packageVersion, authToken);
+			} catch (error) {
+				// No reload here: the previous package was not unloaded before the download
+				await this.restoreFailedPackageInstallation(packageName, {
+					backupDirectory,
+					previousVersion,
+				});
+
+				if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
+					throw new UserError('npm package not found', { extra: { packageName } });
+				}
+				throw error;
+			}
+
+			let loader: PackageDirectoryLoader;
+			try {
+				await this.loadNodesAndCredentials.unloadPackage(packageName);
+				loader = await this.loadNodesAndCredentials.loadPackage(packageName);
 			} catch (error) {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
 					previousVersion,
 					reloadPackage: isUpdate,
 				});
-
-				throw new UnexpectedError('Failed to save installed package', {
-					extra: { packageName },
+				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, {
 					cause: error,
 				});
 			}
 
-			// The new version is now authoritative; later failures must not roll back,
-			// or the DB record would end up inconsistent with the restored files.
-			// Removing the backup is housekeeping — a failure here must not fail the update.
-			if (backupDirectory) {
+			if (loader.loadedNodes.length > 0) {
+				let installedPackage: InstalledPackages;
+
+				// Persisting to the DB is the point of no return: the transaction either
+				// commits the new version or leaves the old record intact, so a failure here
+				// can still roll back to a consistent previous state.
 				try {
-					await rm(backupDirectory, { recursive: true, force: true });
+					installedPackage = isUpdate
+						? await this.replaceInstalledPackage(options.installedPackage, loader)
+						: await this.persistInstalledPackage(loader);
 				} catch (error) {
-					this.logger.warn('Failed to remove community package backup directory', {
-						error: ensureError(error),
-						packageName,
+					await this.restoreFailedPackageInstallation(packageName, {
 						backupDirectory,
+						previousVersion,
+						reloadPackage: isUpdate,
+					});
+
+					throw new UnexpectedError('Failed to save installed package', {
+						extra: { packageName },
+						cause: error,
 					});
 				}
-			}
-			void this.publisher.publishCommand({
-				command: isUpdate ? 'community-package-update' : 'community-package-install',
-				payload: { packageName, packageVersion },
-			});
-			await this.loadNodesAndCredentials.postProcessLoaders();
-			this.loadNodesAndCredentials.releaseTypes();
-			this.logger.info(`Community package installed: ${packageName}`);
-			return installedPackage;
-		} else {
-			await this.restoreFailedPackageInstallation(packageName, {
-				backupDirectory,
-				previousVersion,
-				reloadPackage: isUpdate,
-			});
 
-			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
-		}
+				// The new version is now authoritative; later failures must not roll back,
+				// or the DB record would end up inconsistent with the restored files.
+				// Removing the backup is housekeeping — a failure here must not fail the update.
+				if (backupDirectory) {
+					try {
+						await rm(backupDirectory, { recursive: true, force: true });
+					} catch (error) {
+						this.logger.warn('Failed to remove community package backup directory', {
+							error: ensureError(error),
+							packageName,
+							backupDirectory,
+						});
+					}
+				}
+				void this.publisher.publishCommand({
+					command: isUpdate ? 'community-package-update' : 'community-package-install',
+					payload: { packageName, packageVersion },
+				});
+				await this.loadNodesAndCredentials.postProcessLoaders();
+				this.loadNodesAndCredentials.releaseTypes();
+				this.logger.info(`Community package installed: ${packageName}`);
+				return installedPackage;
+			} else {
+				await this.restoreFailedPackageInstallation(packageName, {
+					backupDirectory,
+					previousVersion,
+					reloadPackage: isUpdate,
+				});
+
+				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
+			}
+		});
 	}
 
 	@OnPubSubEvent('community-package-install')
@@ -546,21 +554,25 @@ export class CommunityPackagesService {
 	}
 
 	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
-		const authToken = this.getNpmAuthToken();
-		await this.downloadPackage(packageName, packageVersion, authToken);
-		await this.loadNodesAndCredentials.unloadPackage(packageName);
-		await this.loadNodesAndCredentials.loadPackage(packageName);
-		await this.loadNodesAndCredentials.postProcessLoaders();
-		this.loadNodesAndCredentials.releaseTypes();
-		this.logger.info(`Community package installed: ${packageName}`);
+		return await this.packageMutex(async () => {
+			const authToken = this.getNpmAuthToken();
+			await this.downloadPackage(packageName, packageVersion, authToken);
+			await this.loadNodesAndCredentials.unloadPackage(packageName);
+			await this.loadNodesAndCredentials.loadPackage(packageName);
+			await this.loadNodesAndCredentials.postProcessLoaders();
+			this.loadNodesAndCredentials.releaseTypes();
+			this.logger.info(`Community package installed: ${packageName}`);
+		});
 	}
 
 	private async removeNpmPackage(packageName: string) {
-		await this.deletePackageDirectory(packageName);
-		await this.loadNodesAndCredentials.unloadPackage(packageName);
-		await this.loadNodesAndCredentials.postProcessLoaders();
-		this.loadNodesAndCredentials.releaseTypes();
-		this.logger.info(`Community package uninstalled: ${packageName}`);
+		return await this.packageMutex(async () => {
+			await this.deletePackageDirectory(packageName);
+			await this.loadNodesAndCredentials.unloadPackage(packageName);
+			await this.loadNodesAndCredentials.postProcessLoaders();
+			this.loadNodesAndCredentials.releaseTypes();
+			this.logger.info(`Community package uninstalled: ${packageName}`);
+		});
 	}
 
 	private resolvePackageDirectory(packageName: string) {
