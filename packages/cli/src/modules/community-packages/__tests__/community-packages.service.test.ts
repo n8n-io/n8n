@@ -840,6 +840,49 @@ describe('CommunityPackagesService', () => {
 
 			expect(callOrder).toEqual(['rename', 'updatePackageJsonDependency']);
 		});
+
+		test('reconciles the package.json manifest even when the directory restore fails', async () => {
+			const packageName = 'n8n-nodes-test';
+			const backupDirectory = `${nodesDownloadDir}/node_modules/${packageName}.backup-123`;
+
+			vi.mocked(rm).mockResolvedValue(undefined);
+			vi.mocked(rename).mockRejectedValue(new Error('EPERM'));
+			vi.spyOn(communityPackagesService, 'updatePackageJsonDependency').mockResolvedValue(
+				undefined,
+			);
+
+			await (communityPackagesService as any).restoreFailedPackageInstallation(packageName, {
+				backupDirectory,
+				previousVersion: '1.0.0',
+				reloadPackage: true,
+			});
+
+			// The manifest must not keep naming the version that failed to install, even
+			// though the directory it describes could not be restored.
+			expect(communityPackagesService.updatePackageJsonDependency).toHaveBeenCalledWith(
+				packageName,
+				'1.0.0',
+			);
+			// The backup never made it back, so there is nothing safe to reload.
+			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+		});
+
+		test('drops the manifest entry when a fresh install fails and the directory restore fails', async () => {
+			const packageName = 'n8n-nodes-test';
+
+			vi.mocked(rm).mockRejectedValue(new Error('EBUSY'));
+			vi.mocked(readFile).mockResolvedValue(
+				JSON.stringify({ dependencies: { [packageName]: '1.0.0' } }),
+			);
+
+			await (communityPackagesService as any).restoreFailedPackageInstallation(packageName, {});
+
+			expect(writeFile).toHaveBeenCalledWith(
+				path.join(nodesDownloadDir, 'package.json'),
+				JSON.stringify({ dependencies: {} }, null, 2),
+				'utf-8',
+			);
+		});
 	});
 
 	describe('ensurePackageJson', () => {

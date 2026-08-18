@@ -611,18 +611,27 @@ export class CommunityPackagesService {
 		try {
 			await this.restorePackageDirectoryFromBackup(packageName, backupDirectory);
 
+			if (backupDirectory && reloadPackage) {
+				await this.loadNodesAndCredentials.unloadPackage(packageName);
+				await this.loadNodesAndCredentials.loadPackage(packageName);
+				await this.loadNodesAndCredentials.postProcessLoaders();
+				this.loadNodesAndCredentials.releaseTypes();
+			}
+		} catch (cleanupError) {
+			this.logger.warn('Failed to restore community package after failed installation', {
+				error: ensureError(cleanupError),
+				packageName,
+			});
+		}
+
+		// Independent of the restore above: a failed restore must not leave package.json
+		// pointing at the version that failed to install.
+		try {
 			if (previousVersion) {
 				await this.updatePackageJsonDependency(packageName, previousVersion);
 			} else {
 				await this.removePackageJsonDependency(packageName);
 			}
-
-			if (!backupDirectory || !reloadPackage) return;
-
-			await this.loadNodesAndCredentials.unloadPackage(packageName);
-			await this.loadNodesAndCredentials.loadPackage(packageName);
-			await this.loadNodesAndCredentials.postProcessLoaders();
-			this.loadNodesAndCredentials.releaseTypes();
 		} catch (cleanupError) {
 			this.logger.warn('Failed to restore community package after failed installation', {
 				error: ensureError(cleanupError),
