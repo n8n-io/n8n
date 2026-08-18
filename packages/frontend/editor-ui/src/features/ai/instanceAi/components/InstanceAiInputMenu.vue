@@ -23,9 +23,9 @@ const { menuItems, hasDisconnectedMcpConnection } = useInstanceAiInputMenuItems(
 );
 
 const STATUS_LABEL_KEYS = {
-	connected: 'instanceAi.connections.row.status.connected',
-	connecting: 'instanceAi.connections.row.status.connecting',
-	disconnected: 'instanceAi.connections.row.status.disconnected',
+	connected: 'instanceAi.inputMenu.status.connected',
+	connecting: 'instanceAi.inputMenu.status.connecting',
+	disconnected: 'instanceAi.inputMenu.status.disconnected',
 } satisfies Record<Exclude<ToolConnectionStatus, 'none'>, BaseTextKey>;
 
 function findMenuItem(items: InputMenuItem[], id: string): InputMenuItem | undefined {

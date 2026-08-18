@@ -91,12 +91,12 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			children: [
 				{
 					id: `${id}-status`,
-					label: connectedTitle ?? i18n.baseText('instanceAi.connections.row.status.connected'),
+					label: connectedTitle ?? i18n.baseText('instanceAi.inputMenu.status.connected'),
 					header: true,
 				},
 				{
 					id: `${id}-disconnect`,
-					label: i18n.baseText('instanceAi.connections.row.disconnect'),
+					label: i18n.baseText('instanceAi.inputMenu.actions.disconnect'),
 					data: { action: disconnect },
 				},
 			],
@@ -136,7 +136,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 					},
 					{
 						id: `mcp-${connection.id}-setup`,
-						label: i18n.baseText('instanceAi.connections.row.settings'),
+						label: i18n.baseText('instanceAi.inputMenu.actions.setup'),
 						data: {
 							action: () => {
 								mcpTelemetry.trackSettingsOpened(connection.serverSlug);
@@ -151,8 +151,8 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 						id: `mcp-${connection.id}-disconnect`,
 						label: i18n.baseText(
 							connection.status === 'disconnected'
-								? 'instanceAi.connections.row.remove'
-								: 'instanceAi.connections.row.disconnect',
+								? 'instanceAi.inputMenu.actions.remove'
+								: 'instanceAi.inputMenu.actions.disconnect',
 						),
 						divided: true,
 						data: {
@@ -206,7 +206,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 					status: connection?.status ?? 'none',
 					icon: 'laptop',
 					connectLabel: i18n.baseText('instanceAi.inputMenu.computer.connect'),
-					connectedLabel: i18n.baseText('instanceAi.connections.types.computerUse.subtitle'),
+					connectedLabel: i18n.baseText('instanceAi.inputMenu.computer.connected'),
 					connectedTitle: settingsStore.gatewayHostIdentifier ?? undefined,
 					connect: openComputerSetup,
 					disconnect: settingsStore.disconnectComputerUse,
@@ -224,7 +224,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 					status: connection?.status ?? 'none',
 					icon: 'globe',
 					connectLabel: i18n.baseText('instanceAi.inputMenu.browser.connect'),
-					connectedLabel: i18n.baseText('instanceAi.connections.types.browserUse.subtitle'),
+					connectedLabel: i18n.baseText('instanceAi.inputMenu.browser.connected'),
 					connectedTitle: connection?.name,
 					connect: () => uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY),
 					disconnect: settingsStore.disconnectBrowserUse,
