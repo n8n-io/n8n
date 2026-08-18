@@ -18,14 +18,13 @@ export type HealNodeIdsResult =
  * Returns a corrected copy of `nodes` in which every node has a unique,
  * non-empty id, or `{ changed: false }` when the input needs no correction.
  *
- * - A missing or empty id is filled with a fresh uuid. Two same-named nodes
- *   without ids both get fresh ids (they never shared one, so there is no
- *   occurrence to collapse) and land in the same-name/distinct-id bucket below.
- * - Nodes sharing an id *and* a name are collapsed to the last occurrence —
- *   the one the runtime's name-keyed node map executes. Re-idding them instead
- *   would leave the duplicate name in place, which structure validation
- *   rejects on the next save. Connections are name-keyed, so the survivor
- *   keeps them.
+ * - Nodes sharing a name and an id — or sharing a name and both lacking an id
+ *   — are collapsed to the last occurrence: the one the runtime's name-keyed
+ *   node map executes. Giving each its own id instead would leave the
+ *   duplicate name in place, which structure validation rejects on the next
+ *   save, while the extra node stays dead at runtime. Connections are
+ *   name-keyed, so the survivor keeps them.
+ * - After the collapse, a missing or empty id is filled with a fresh uuid.
  * - Nodes sharing an id under distinct names keep the id on one of them — the
  *   trigger-like node when exactly one sharer is trigger-like, else the first
  *   — and the rest get fresh uuids. Keeping the contested id alive preserves
@@ -35,9 +34,11 @@ export type HealNodeIdsResult =
  * Same-name nodes with *distinct* ids are left alone: that is a name defect,
  * not an id defect, and it is owned by structure validation.
  *
- * Healing a healed output is a no-op (`{ changed: false }`). Callers publish
- * the corrected copy and re-encounter it on the next activation, so a heal
- * that kept minting ids would publish forever.
+ * Healing a healed output is a no-op (`{ changed: false }`). This matters
+ * because the caller publishes the corrected copy, and that publish enqueues
+ * another activation — which runs the healer again, on its own output. If
+ * that second pass changed anything (say, because the healer minted fresh
+ * uuids on every call), every heal would trigger another publish, forever.
  */
 export function healNodeIds(
 	nodes: INode[],
@@ -46,13 +47,14 @@ export function healNodeIds(
 	const report: HealNodeIdsReport = { filled: [], reassigned: [], dropped: [] };
 
 	// All bookkeeping is by array index, not node reference: one object
-	// appearing at two positions must count as two occurrences.
+	// appearing at two positions must count as two occurrences. Nodes without
+	// an id are grouped under '' so the same-name collapse applies to them too.
 	const byId = new Map<string, number[]>();
 	nodes.forEach((node, index) => {
-		if (!node.id) return;
-		const group = byId.get(node.id);
+		const key = node.id || '';
+		const group = byId.get(key);
 		if (group === undefined) {
-			byId.set(node.id, [index]);
+			byId.set(key, [index]);
 		} else {
 			group.push(index);
 		}
@@ -73,6 +75,9 @@ export function healNodeIds(
 			}
 		}
 
+		// The id-less group has no shared id to keep; its survivors are filled below.
+		if (id === '') continue;
+
 		const sharers = group.filter((index) => !dropped.has(index));
 		if (sharers.length < 2) continue;
 
@@ -87,7 +92,7 @@ export function healNodeIds(
 	}
 
 	nodes.forEach((node, index) => {
-		if (!node.id) {
+		if (!node.id && !dropped.has(index)) {
 			const newId = uuid();
 			newIds.set(index, newId);
 			report.filled.push({ name: node.name, newId });

@@ -64,14 +64,22 @@ describe('healNodeIds', () => {
 		expectStable(result.nodes);
 	});
 
-	it('fills same-named nodes without ids instead of collapsing them', () => {
-		const nodes = [node({ id: '', name: 'Twin' }), node({ id: '', name: 'Twin' })];
+	it('collapses same-named nodes without ids to the last occurrence, then fills it', () => {
+		const nodes = [
+			node({ id: '', name: 'Twin', parameters: { generation: 1 } }),
+			node({ id: '', name: 'Twin', parameters: { generation: 2 } }),
+			node({ id: undefined, name: 'Other' }),
+		];
 
 		const result = expectChanged(heal(nodes));
 
-		expect(result.nodes).toHaveLength(2);
-		expect(result.nodes[0].id).not.toBe(result.nodes[1].id);
-		expect(result.report.dropped).toEqual([]);
+		expect(result.nodes.map(({ name }) => name)).toEqual(['Twin', 'Other']);
+		expect(result.nodes[0].parameters).toEqual({ generation: 2 });
+		expect(result.report.dropped).toEqual([{ name: 'Twin', id: '' }]);
+		expect(result.report.filled).toEqual([
+			{ name: 'Twin', newId: result.nodes[0].id },
+			{ name: 'Other', newId: result.nodes[1].id },
+		]);
 		expectStable(result.nodes);
 	});
 
