@@ -200,6 +200,11 @@ const CustomRawPromptSuggestionsComponent = defineComponent({
 
 const renderComponent = createComponentRenderer(InstanceAiInput, {
 	props: defaultProps(),
+	global: {
+		stubs: {
+			InstanceAiInputMenu: true,
+		},
+	},
 });
 
 describe('InstanceAiInput', () => {
@@ -248,7 +253,7 @@ describe('InstanceAiInput', () => {
 
 		expect(getByRole('textbox')).toHaveAttribute(
 			'placeholder',
-			'Tell me what to build or ask me a question',
+			'Tell me what to build or ask a question – add context with +',
 		);
 	});
 
