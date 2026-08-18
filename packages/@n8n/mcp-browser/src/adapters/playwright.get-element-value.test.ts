@@ -23,9 +23,15 @@ function adapterWithLocator(pageId: string, locator: FakeLocator): PlaywrightAda
 	const adapter = new PlaywrightAdapter(config);
 	const page = {
 		locator: vi.fn().mockReturnValue(locator),
+		evaluate: vi.fn().mockResolvedValue(undefined),
+		on: vi.fn(),
+		url: vi.fn().mockReturnValue('https://example.com'),
 	} as unknown as Page;
-	const pageStates = (adapter as unknown as { pageStates: Map<string, { page: Page }> }).pageStates;
-	pageStates.set(pageId, { page });
+	// Through trackPage so the page record is built the way production builds it.
+	const internals = adapter as unknown as {
+		trackPage: (page: Page, explicitId?: string) => unknown;
+	};
+	internals.trackPage(page, pageId);
 	return adapter;
 }
 

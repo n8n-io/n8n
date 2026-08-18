@@ -49,6 +49,22 @@ const log = createLogger('playwright');
 /** Opting out is best-effort; never let it hold an action longer than this. */
 const OPT_OUT_TIMEOUT_MS = 5_000;
 
+/** Resolves with the work, or on the deadline — whichever comes first. Never rejects. */
+async function withTimeout(work: Promise<unknown>, label: string): Promise<void> {
+	let timer: NodeJS.Timeout | undefined;
+	const deadline = new Promise<void>((resolve) => {
+		timer = setTimeout(() => {
+			log.debug(`${label}: timed out`);
+			resolve();
+		}, OPT_OUT_TIMEOUT_MS);
+	});
+	try {
+		await Promise.race([work.catch(() => {}), deadline]);
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Per-page state tracked by the adapter
 // ---------------------------------------------------------------------------
@@ -61,8 +77,8 @@ interface PageState {
 	networkBuffer: NetworkEntry[];
 	pendingDialog?: Dialog;
 	pendingFileChooser?: FileChooser;
-	/** Resolves once the documents seen so far have had the extension opt-out applied. */
-	optOutReady: Promise<unknown>;
+	/** Opt-out passes still in flight for this page's documents and frames. */
+	optOutPasses: Set<Promise<void>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -430,7 +446,8 @@ export class PlaywrightAdapter {
 		// Without an init script only this pass protects the document, and the page may have
 		// navigated since the last one.
 		if (!this.optOutArmed) {
-			await this.stampOptOut(state, async (script) => await state.page.evaluate(script));
+			this.startOptOutPass(state, async (script) => await state.page.evaluate(script));
+			await this.awaitOptOut(state);
 		}
 
 		if (options?.clear) {
@@ -954,7 +971,7 @@ export class PlaywrightAdapter {
 		const existing = this.pageStates.get(pageId);
 		if (existing) {
 			log.debug('ensurePage: page already tracked:', pageId);
-			await existing.optOutReady;
+			await this.awaitOptOut(existing);
 			return existing;
 		}
 
@@ -998,32 +1015,28 @@ export class PlaywrightAdapter {
 		log.debug('ensurePage: page ready:', pageId);
 		// The context.on('page') listener should have tracked it with the right ID
 		const state = this.pageStates.get(pageId) ?? this.trackPage(page, pageId);
-		await state.optOutReady;
+		await this.awaitOptOut(state);
 		return state;
 	}
 
 	/**
-	 * Queues an opt-out pass behind the page's previous one. Bounded because callers await this
-	 * before every action, so a stalled evaluate would otherwise wedge the page for good.
+	 * Starts an opt-out pass and tracks it until it settles. Passes run concurrently: a frame
+	 * that navigates should be stamped as soon as it can be, not behind every earlier pass.
 	 */
-	private async stampOptOut(
-		state: PageState,
-		deliver: (script: string) => Promise<unknown>,
-	): Promise<void> {
-		const previous = state.optOutReady;
-		await previous.catch(() => {});
-		let timer: NodeJS.Timeout | undefined;
-		const timeout = new Promise<void>((resolve) => {
-			timer = setTimeout(() => {
-				log.debug('stampOptOut: timed out');
-				resolve();
-			}, OPT_OUT_TIMEOUT_MS);
+	private startOptOutPass(state: PageState, deliver: (script: string) => Promise<unknown>): void {
+		const pass = withTimeout(applyExtensionOptOut(deliver), 'opt-out pass').finally(() => {
+			state.optOutPasses.delete(pass);
 		});
-		try {
-			await Promise.race([applyExtensionOptOut(deliver), timeout]);
-		} finally {
-			clearTimeout(timer);
-		}
+		state.optOutPasses.add(pass);
+	}
+
+	/**
+	 * Waits for the passes in flight right now. Bounded at one deadline however many frames have
+	 * navigated: passes run concurrently and each carries its own, and this snapshots the set so
+	 * a page that keeps navigating frames cannot extend an action already waiting.
+	 */
+	private async awaitOptOut(state: PageState): Promise<void> {
+		await Promise.all([...state.optOutPasses]);
 	}
 
 	private findPageState(page: Page): PageState | undefined {
@@ -1042,18 +1055,18 @@ export class PlaywrightAdapter {
 			consoleBuffer: [],
 			errorBuffer: [],
 			networkBuffer: [],
-			// The init script only covers documents opened after we armed it, so a tab that was
-			// already loaded when we attached needs one explicit pass.
-			optOutReady: Promise.resolve(),
+			optOutPasses: new Set(),
 		};
-		state.optOutReady = this.stampOptOut(state, async (script) => await page.evaluate(script));
+		// The init script only covers documents opened after we armed it, so a tab that was
+		// already loaded when we attached needs one explicit pass.
+		this.startOptOutPass(state, async (script) => await page.evaluate(script));
 
 		// A same-origin or srcdoc child frame runs the init script only against its initial
 		// about:blank document and then reuses that window, so its real document never gets it.
 		// Cross-origin frames get a fresh window and are covered either way.
 		page.on('framenavigated', (frame) => {
 			if (frame === page.mainFrame()) return;
-			state.optOutReady = this.stampOptOut(state, async (script) => await frame.evaluate(script));
+			this.startOptOutPass(state, async (script) => await frame.evaluate(script));
 		});
 
 		// Console listener

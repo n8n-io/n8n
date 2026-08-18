@@ -188,4 +188,39 @@ describe('PlaywrightAdapter extension opt-out', () => {
 			vi.useRealTimers();
 		}
 	});
+
+	it('caps the wait no matter how many frames navigated', async () => {
+		vi.useFakeTimers();
+		try {
+			const { page } = pageWithPendingStamp();
+			const { adapter } = adapterWithTrackedPage(page, { armed: true });
+			const locator = page.fakeLocator;
+			// Every frame's evaluate hangs, so only the deadline can release typing.
+			for (let i = 0; i < 5; i++) {
+				page.emit('framenavigated', { evaluate: vi.fn().mockReturnValue(new Promise(() => {})) });
+			}
+
+			const typing = adapter.type('p1', { selector: '#token' }, 'secret');
+			// One budget plus slack — a serialized chain would need five.
+			await vi.advanceTimersByTimeAsync(6_000);
+			await typing;
+
+			expect(locator.pressSequentially).toHaveBeenCalledWith('secret', { delay: undefined });
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('stamps a navigated frame without waiting for an earlier frame to settle', async () => {
+		const page = fakePage();
+		adapterWithTrackedPage(page, { armed: true });
+		const stuck = { evaluate: vi.fn().mockReturnValue(new Promise(() => {})) };
+		const next = { evaluate: vi.fn().mockResolvedValue(undefined) };
+
+		page.emit('framenavigated', stuck);
+		page.emit('framenavigated', next);
+
+		// Serialized passes would leave this one queued behind the stuck frame forever.
+		await vi.waitFor(() => expect(next.evaluate).toHaveBeenCalledWith(OPT_OUT_SCRIPT));
+	});
 });
