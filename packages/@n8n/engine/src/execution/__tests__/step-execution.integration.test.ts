@@ -7,20 +7,15 @@ import { AllowAllAdmittance } from '../../admittance';
 import type { JsonObject } from '../../common';
 import {
 	createDataSource,
-	TypeOrmExecutionStore,
-	TypeOrmStepStore,
+	createStores,
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '../../database';
 import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
-import { InMemoryWorkQueue, type OrchestrationMessage, type StepMessage } from '../../queue';
-import { ExecutionStartHandler } from '../execution-start-handler';
-import { OrchestrationWorker } from '../orchestration-worker';
-import { StartExecutionService } from '../start-execution.service';
+import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
+import { createEngineRuntime } from '../../runtime';
 import { StepReadyHandler } from '../step-ready-handler';
-import { StepSettledHandler } from '../step-settled-handler';
-import { StepWorker } from '../step-worker';
 
 const graph: WorkflowGraph = {
 	nodes: [
@@ -46,59 +41,43 @@ describe('step execution (integration)', () => {
 		if (container) await container.stop();
 	});
 
-	function stores() {
-		return {
-			executionStore: new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution)),
-			stepStore: new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution)),
-		};
-	}
-
 	/**
-	 * Wires both workers over shared queues and runs a workflow through them.
-	 * Resolves once the execution's outcome is recorded, which is after every
-	 * step's own outcome is durable.
+	 * Runs a workflow through a real engine runtime. Resolves once the
+	 * execution's outcome is recorded, which is after every step's own outcome is
+	 * durable.
 	 */
 	async function runWorkflow(
 		executor: IStepExecutor,
 		triggerPayload: JsonObject,
 		{ workflowId = 'wf-1', graph: workflowGraph = graph } = {},
 	) {
-		const { executionStore, stepStore } = stores();
-		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
-		const stepQueue = new InMemoryWorkQueue<StepMessage>();
-
 		let done!: () => void;
 		const finished = new Promise<void>((resolve) => (done = resolve));
-		const finishExecution = executionStore.finishExecution.bind(executionStore);
-		vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
-			const recorded = await finishExecution(id, status);
-			done();
-			return recorded;
+
+		const runtime = createEngineRuntime({
+			dataSource,
+			admittance: new AllowAllAdmittance(),
+			// also how the test reaches the stores the runtime owns
+			externalDependencies: ({ executionStore }) => {
+				const finishExecution = executionStore.finishExecution.bind(executionStore);
+				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
+					const recorded = await finishExecution(id, status);
+					done();
+					return recorded;
+				});
+				return { v1StepExecutor: executor };
+			},
 		});
+		runtime.start();
 
-		const orchestrationWorker = new OrchestrationWorker(
-			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
-		);
-		const stepWorker = new StepWorker(
-			stepQueue,
-			new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {
-				v1StepExecutor: executor,
-			}),
-		);
-		orchestrationWorker.start();
-		stepWorker.start();
-
-		const { executionId } = await new StartExecutionService(
-			new AllowAllAdmittance(),
-			executionStore,
-			orchestrationQueue,
-		).start({ workflowId, graph: workflowGraph, triggerPayload });
+		const { executionId } = await runtime.startExecution({
+			workflowId,
+			graph: workflowGraph,
+			triggerPayload,
+		});
 		await finished;
 
-		await stepWorker.stop();
-		await orchestrationWorker.stop();
+		await runtime.stop();
 
 		const execution = await dataSource
 			.getRepository(WorkflowExecution)
@@ -307,7 +286,7 @@ describe('step execution (integration)', () => {
 	});
 
 	it('is idempotent across duplicate step:ready deliveries', async () => {
-		const { executionStore, stepStore } = stores();
+		const { executionStore, stepStore } = createStores(dataSource);
 		const execute = vi.fn().mockResolvedValue({ outputs: [[{ json: { n: 1 } }]] });
 		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 		const handler = new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {

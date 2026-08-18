@@ -1,20 +1,7 @@
-import type {
-	createDataSource,
-	JsonObject,
-	OrchestrationMessage,
-	StepMessage,
-	WorkflowGraph,
-} from '@n8n/engine';
+import type { createDataSource, JsonObject, WorkflowGraph } from '@n8n/engine';
 import {
 	AllowAllAdmittance,
-	createStores,
-	ExecutionStartHandler,
-	InMemoryWorkQueue,
-	OrchestrationWorker,
-	StartExecutionService,
-	StepReadyHandler,
-	StepSettledHandler,
-	StepWorker,
+	createEngineRuntime,
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '@n8n/engine';
@@ -97,44 +84,38 @@ type EngineDataSource = ReturnType<typeof createDataSource>;
 export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 	return async function runWorkflow(graph: WorkflowGraph, triggerPayload: JsonObject | null) {
 		const dataSource = getDataSource();
-		const { executionStore, stepStore } = createStores(dataSource);
-		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
-		const stepQueue = new InMemoryWorkQueue<StepMessage>();
 
 		let done!: () => void;
 		const finished = new Promise<void>((resolve) => (done = resolve));
-		const finishExecution = executionStore.finishExecution.bind(executionStore);
-		vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
-			const recorded = await finishExecution(id, status);
-			done();
-			return recorded;
+
+		const runtime = createEngineRuntime({
+			dataSource,
+			admittance: new AllowAllAdmittance(),
+			// also how the test reaches the stores the runtime owns
+			externalDependencies: ({ executionStore, stepStore }) => {
+				const finishExecution = executionStore.finishExecution.bind(executionStore);
+				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
+					const recorded = await finishExecution(id, status);
+					done();
+					return recorded;
+				});
+
+				return {
+					v1StepExecutor: new V1StepExecutor({
+						nodeTypes: realNodeTypes,
+						additionalDataFactory: testAdditionalDataFactory,
+						loadStepData: createEngineStepDataLoader(executionStore, stepStore),
+					}),
+				};
+			},
 		});
+		runtime.start();
 
-		const executor = new V1StepExecutor({
-			nodeTypes: realNodeTypes,
-			additionalDataFactory: testAdditionalDataFactory,
-			loadStepData: createEngineStepDataLoader(executionStore, stepStore),
+		const { executionId } = await runtime.startExecution({
+			workflowId: 'wf-m1',
+			graph,
+			triggerPayload,
 		});
-
-		const orchestrationWorker = new OrchestrationWorker(
-			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
-		);
-		const stepWorker = new StepWorker(
-			stepQueue,
-			new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {
-				v1StepExecutor: executor,
-			}),
-		);
-		orchestrationWorker.start();
-		stepWorker.start();
-
-		const { executionId } = await new StartExecutionService(
-			new AllowAllAdmittance(),
-			executionStore,
-			orchestrationQueue,
-		).start({ workflowId: 'wf-m1', graph, triggerPayload });
 
 		try {
 			await Promise.race([
@@ -150,8 +131,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 				}),
 			]);
 		} finally {
-			await stepWorker.stop();
-			await orchestrationWorker.stop();
+			await runtime.stop();
 		}
 
 		const steps = await dataSource
