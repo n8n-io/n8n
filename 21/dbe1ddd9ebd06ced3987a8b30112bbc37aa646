@@ -1,0 +1,52 @@
+packages/cli/test/integration/public-api/role-mapping-rules.test.ts
+  s_410439834a2303::t_bb7156412bd472 209-352
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_410439834a2303::t_45411481a24616 95
+packages/@n8n/api-types/src/dto/index.ts
+  s_410439834a2303::t_3f70fce63c1350 203-207
+packages/@n8n/api-types/src/dto/roles/role-mapping-rule-public.dto.ts
+  s_410439834a2303::t_c60cf1f4ac6d06 4,6,15-27
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_410439834a2303::t_7c9928d7358d5a 1-6,17,20,25,31-43,52-66,68-84,99,103-109
+  s_410439834a2303::t_5b233d88f8d80e 67
+  s_410439834a2303::t_2112bc63c25dc1 27-30
+packages/@n8n/permissions/src/constants.ee.ts
+  s_410439834a2303::t_b27e5d97cdaeed 115
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_410439834a2303::t_16fd90e14e2887 23
+  s_410439834a2303::t_ca2d33134bbc2c 21-22
+packages/cli/src/public-api/v1/controllers/tags.public.controller.ts
+  s_410439834a2303::t_fcb206a637b8d5 36
+  s_410439834a2303::t_96e08d7706f006 15-18
+packages/cli/src/public-api/v1/shared/services/pagination.service.ts
+  h_5d40c27a8fdfd1 17-18
+  s_410439834a2303::t_ebb113f516c1b2 3-4,16,19-35,37-42
+  s_410439834a2303::t_c9b1f9564e2b94 43
+  s_410439834a2303::t_d41308425bb8bb 36
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_410439834a2303::t_eddf464b3ccd1c 41-45
+  s_410439834a2303::t_c1a94a16407edb 329
+packages/cli/src/public-api/v1/shared/services/__tests__/pagination.service.test.ts
+  s_410439834a2303::t_4539cde7cfbcaa 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "21dbe1ddd9ebd06ced3987a8b30112bbc37aa646",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_410439834a2303": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a25fb459-490e-42bf-991a-a55d814e63f2",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
