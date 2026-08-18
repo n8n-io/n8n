@@ -43,6 +43,7 @@ import InputPanel from '../../panel/components/InputPanel.vue';
 import OutputPanel from '../../panel/components/OutputPanel.vue';
 import PanelDragButton from '../../panel/components/PanelDragButton.vue';
 import TriggerPanel from '../../panel/components/TriggerPanel.vue';
+import { useCanvasOnlyExternalLinks } from '@/app/composables/useCanvasOnlyExternalLinks';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
@@ -105,6 +106,8 @@ const isPairedItemHoveringEnabled = ref(true);
 const dialogRef = ref<HTMLDialogElement>();
 const containerRef = useTemplateRef('containerRef');
 const mainPanelRef = useTemplateRef('mainPanelRef');
+
+useCanvasOnlyExternalLinks(dialogRef);
 
 // computed
 const pushRef = computed(() => ndvStore.value.pushRef);
