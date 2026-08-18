@@ -1,0 +1,44 @@
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_91c597c7193a8c::t_220dd0d9881cce 1,108
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_91c597c7193a8c::t_3e8a8aa50f160e 24,84,105-110
+  s_91c597c7193a8c::t_b8b3d1edc4aefc 81
+packages/@n8n/api-types/src/agents/dto.ts
+  s_91c597c7193a8c::t_3ed75dcebc7a78 26-49,90-102
+  s_91c597c7193a8c::t_fb744dfd9df384 103
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionsFilter.vue
+  s_91c597c7193a8c::t_422d1b3717bce0 150,160
+  s_91c597c7193a8c::t_3bc30deab8b77f 5,16,50-53,57-59,62,106,108,125,127,145,155
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_91c597c7193a8c::t_e5f5aa1c63dd92 283,294,307-313,315,319,369-371,378,385
+  s_91c597c7193a8c::t_058ba53ebc7082 1-5,366-368
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsFilter.spec.ts
+  s_91c597c7193a8c::t_fd6192874018b2 45
+  s_91c597c7193a8c::t_dbfc87bae42f6d 49-51
+  s_91c597c7193a8c::t_760984e9f9e382 40,44,46
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_91c597c7193a8c::t_a6f80158f23403 1,507
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_91c597c7193a8c::t_4632e2db59e659 428
+  s_91c597c7193a8c::t_3c54e34c9e5c5f 19-26,240-244,257-262,429
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_91c597c7193a8c::t_1bf9525d642ca8 1-5,37
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_91c597c7193a8c::t_17e22dcf247e75 1,3-4,21-23,25-26,32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6c763279eb06eff9ffa654f998d56a1b4689a175",
+  "prompts": {},
+  "sessions": {
+    "s_91c597c7193a8c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7122e3e1-00de-42c5-8307-a90549fc03e2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
