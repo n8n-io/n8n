@@ -33,6 +33,7 @@ CREATE TABLE "git_connection_project" ("projectId" varchar(36) PRIMARY KEY NOT N
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_12a7fe192a1ee1d933e712e6b1 | CREATE INDEX "IDX_12a7fe192a1ee1d933e712e6b1" ON "git_connection_project" ("gitConnectionId")  |
 | sqlite_autoindex_git_connection_project_1 | PRIMARY KEY (projectId) |
 
 ## Relations

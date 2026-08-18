@@ -23,7 +23,10 @@ export class CreateGitConnectionProjectTable1787089039726 implements ReversibleM
 				tableName: GIT_CONNECTION_TABLE,
 				columnName: 'id',
 				onDelete: 'CASCADE',
-			}).withTimestamps;
+			})
+			// A connection holds many projects; index the FK for connection-scoped
+			// reads ("list projects for this connection") and the cascade delete.
+			.withIndexOn(['gitConnectionId']).withTimestamps;
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {

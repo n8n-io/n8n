@@ -25,6 +25,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_12a7fe192a1ee1d933e712e6b1 | CREATE INDEX "IDX_12a7fe192a1ee1d933e712e6b1" ON public.git_connection_project USING btree ("gitConnectionId") |
 | PK_5affe1c6075bd7ac20297b7947c | CREATE UNIQUE INDEX "PK_5affe1c6075bd7ac20297b7947c" ON public.git_connection_project USING btree ("projectId") |
 
 ## Relations

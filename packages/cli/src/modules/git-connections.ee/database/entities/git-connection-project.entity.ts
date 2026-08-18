@@ -1,5 +1,13 @@
 import { WithTimestamps } from '@n8n/db';
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, type Relation } from '@n8n/typeorm';
+import {
+	Column,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	PrimaryColumn,
+	type Relation,
+} from '@n8n/typeorm';
 
 import { GitConnection } from './git-connection.entity';
 
@@ -16,6 +24,7 @@ export class GitConnectionProject extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	projectId: string;
 
+	@Index()
 	@Column({ type: 'varchar', length: 36 })
 	gitConnectionId: string;
 
