@@ -110,7 +110,7 @@ describe('EngineDataPlaneClient', () => {
 				statusCode: 502,
 				body: '<html>bad gateway</html>',
 				errorClass: OperationalError,
-				message: 'Engine responded with 502: HTTP 502',
+				message: 'Engine responded with 502',
 			},
 		])('maps $case to $errorClass.name', async ({ statusCode, body, errorClass, message }) => {
 			respondWith(statusCode, body);

@@ -1,6 +1,6 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
@@ -12,16 +12,14 @@ describe('EngineV2Module', () => {
 	let module: EngineV2Module;
 	let executionsConfig: ExecutionsConfig;
 	let runtime: EngineV2Runtime;
+	let client: EngineDataPlaneClient;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 
-		executionsConfig = mock<ExecutionsConfig>({ mode: 'regular' });
-		runtime = mock<EngineV2Runtime>();
-
-		Container.set(ExecutionsConfig, executionsConfig);
-		Container.set(EngineV2Runtime, runtime);
-		Container.set(EngineDataPlaneClient, mock<EngineDataPlaneClient>());
+		executionsConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
+		runtime = mockInstance(EngineV2Runtime);
+		client = mockInstance(EngineDataPlaneClient);
 		Container.set(EngineDataPlaneProxyService, new EngineDataPlaneProxyService());
 
 		module = new EngineV2Module();
@@ -43,11 +41,13 @@ describe('EngineV2Module', () => {
 
 		it('registers the client as the data plane provider', async () => {
 			const proxy = Container.get(EngineDataPlaneProxyService);
-			expect(proxy.isAvailable()).toBe(false);
+			const request = { workflowId: 'wf-1', graph: { nodes: [], edges: [] } };
+			await expect(proxy.startExecution(request)).rejects.toThrow('N8N_ENABLED_MODULES');
 
 			await module.init();
+			await proxy.startExecution(request);
 
-			expect(proxy.isAvailable()).toBe(true);
+			expect(client.startExecution).toHaveBeenCalledWith(request);
 		});
 	});
 

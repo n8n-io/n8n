@@ -16,10 +16,6 @@ describe('EngineDataPlaneProxyService', () => {
 		proxy = new EngineDataPlaneProxyService();
 	});
 
-	it('is unavailable until a provider registers', () => {
-		expect(proxy.isAvailable()).toBe(false);
-	});
-
 	it('explains how to enable the engine when no provider is registered', async () => {
 		await expect(proxy.startExecution(request)).rejects.toThrow('N8N_ENABLED_MODULES');
 	});

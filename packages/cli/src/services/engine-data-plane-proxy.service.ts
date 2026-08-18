@@ -16,8 +16,8 @@ export interface EngineDataPlaneProvider {
  * Seam between the control plane and the `engine-v2` module.
  *
  * The module registers itself here on init. Without the module enabled there is
- * no provider, and calling into the engine is a programming error rather than a
- * silent fallback: the caller is expected to check {@link isAvailable} first.
+ * no provider, and calling into the engine throws rather than degrading silently:
+ * a dropped execution would be worse than a loud failure.
  *
  * TODO(CAT-2877): nothing calls this yet. The dispatch that routes on the
  * per-workflow `engineType` setting lands with the parent ticket.
@@ -28,10 +28,6 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 
 	registerProvider(provider: EngineDataPlaneProvider): void {
 		this.provider = provider;
-	}
-
-	isAvailable(): boolean {
-		return this.provider !== null;
 	}
 
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {

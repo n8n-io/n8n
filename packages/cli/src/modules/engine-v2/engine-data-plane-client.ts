@@ -46,26 +46,22 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		return response.body as StartExecutionResult;
 	}
 
-	private toError(statusCode: number, body: StartExecutionResult | EngineErrorResponse): Error {
-		const { error, reason } = this.readErrorResponse(body);
-		const detail = reason ?? error ?? `HTTP ${statusCode}`;
+	private toError(statusCode: number, body: unknown): Error {
+		// A non-engine failure (a proxy, a crash) may not carry the engine's shape.
+		const { error, reason } =
+			typeof body === 'object' && body !== null ? (body as Partial<EngineErrorResponse>) : {};
+		const detail = reason ?? error;
+		const suffix = detail ? `: ${detail}` : '';
 
 		switch (statusCode) {
 			case 400:
-				return new UserError(`Engine rejected the workflow: ${detail}`);
+				return new UserError(`Engine rejected the workflow${suffix}`);
 			case 429:
-				return new OperationalError(`Engine did not admit the execution: ${detail}`);
+				return new OperationalError(`Engine did not admit the execution${suffix}`);
 			case 501:
-				return new UserError(`Engine does not support this workflow yet: ${detail}`);
+				return new UserError(`Engine does not support this workflow yet${suffix}`);
 			default:
-				return new OperationalError(`Engine responded with ${statusCode}: ${detail}`);
+				return new OperationalError(`Engine responded with ${statusCode}${suffix}`);
 		}
-	}
-
-	/** A non-engine failure (a proxy, a crash) may not carry the engine's error shape. */
-	private readErrorResponse(body: unknown): Partial<EngineErrorResponse> {
-		if (typeof body !== 'object' || body === null) return {};
-
-		return body as Partial<EngineErrorResponse>;
 	}
 }
