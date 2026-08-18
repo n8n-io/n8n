@@ -510,7 +510,7 @@ export class CommunityPackagesService {
 				// Removing the backup is housekeeping — a failure here must not fail the update.
 				if (backupDirectory) {
 					try {
-						await rm(backupDirectory, { recursive: true, force: true });
+						await rm(backupDirectory, { recursive: true, force: true, maxRetries: 3 });
 					} catch (error) {
 						this.logger.warn('Failed to remove community package backup directory', {
 							error: ensureError(error),
@@ -695,7 +695,11 @@ export class CommunityPackagesService {
 				);
 				await this.updatePackageJsonDependency(packageName, packageJson.version);
 			} finally {
-				await rm(join(this.downloadFolder, tarballName));
+				// `npm pack` failing to print a filename would otherwise resolve this to
+				// `downloadFolder` itself, and the non-recursive `rm` would mask the real error.
+				if (tarballName) {
+					await rm(join(this.downloadFolder, tarballName));
+				}
 			}
 		} catch (error) {
 			try {
@@ -711,7 +715,7 @@ export class CommunityPackagesService {
 
 		if (backupDirectory) {
 			try {
-				await rm(backupDirectory, { recursive: true, force: true });
+				await rm(backupDirectory, { recursive: true, force: true, maxRetries: 3 });
 			} catch (error) {
 				this.logger.warn('Failed to remove community package backup directory', {
 					error: ensureError(error),
@@ -726,7 +730,9 @@ export class CommunityPackagesService {
 
 	private async deletePackageDirectory(packageName: string) {
 		const packageDirectory = this.resolvePackageDirectory(packageName);
-		await rm(packageDirectory, { recursive: true, force: true });
+		// Node only retries ENOTEMPTY/EBUSY/EPERM when maxRetries > 0; these surface
+		// transiently on overlayfs for large package trees.
+		await rm(packageDirectory, { recursive: true, force: true, maxRetries: 3 });
 	}
 
 	async updatePackageJsonDependency(packageName: string, version: string) {

@@ -679,7 +679,11 @@ describe('CommunityPackagesService', () => {
 				1,
 				path.join(nodesDownloadDir, 'n8n-nodes-test-latest.tgz'),
 			);
-			expect(rm).toHaveBeenNthCalledWith(2, backupDirectory, { recursive: true, force: true });
+			expect(rm).toHaveBeenNthCalledWith(2, backupDirectory, {
+				recursive: true,
+				force: true,
+				maxRetries: 3,
+			});
 
 			// Check executeNpmCommand was called for npm commands
 			expect(executeNpmCommand).toHaveBeenCalledTimes(2);
@@ -737,6 +741,30 @@ describe('CommunityPackagesService', () => {
 			});
 		});
 
+		test('should not attempt to delete the tarball when npm pack prints no filename', async () => {
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
+			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
+
+			vi.mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
+				if (args[0] === 'pack') return '';
+				return 'Done';
+			});
+
+			await communityPackagesService.updatePackage(
+				installedPackageForUpdateTest.packageName,
+				installedPackageForUpdateTest,
+			);
+
+			expect(rm).not.toHaveBeenCalledWith(testBlockDownloadDir);
+			expect(rm).toHaveBeenCalledTimes(1);
+			expect(rm).toHaveBeenCalledWith(backupDirectory, {
+				recursive: true,
+				force: true,
+				maxRetries: 3,
+			});
+		});
+
 		test('should throw when not licensed for custom registry if custom registry is different from default', async () => {
 			// ARRANGE
 			license.isCustomNpmRegistryEnabled.mockReturnValue(false);
@@ -782,6 +810,7 @@ describe('CommunityPackagesService', () => {
 			expect(rm).toHaveBeenCalledWith(`${nodesDownloadDir}/node_modules/${PACKAGE_NAME}`, {
 				recursive: true,
 				force: true,
+				maxRetries: 3,
 			});
 			expect(installedPackageRepository.remove).toHaveBeenCalledWith(installedPackage);
 			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
