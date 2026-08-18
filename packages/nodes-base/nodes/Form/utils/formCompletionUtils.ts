@@ -83,7 +83,6 @@ export const renderFormCompletion = async (
 	res: Response,
 	trigger: NodeTypeAndVersion,
 	authedUser?: IUser,
-	authToken?: string,
 ): Promise<IWebhookResponseData> => {
 	const completionTitle = context.getNodeParameter('completionTitle', '') as string;
 	const completionMessage = handleNewlines(
@@ -119,11 +118,12 @@ export const renderFormCompletion = async (
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 	}
 
-	// Prefer the OAuth2 token the trigger already minted so later waiting-page
-	// navigations can re-present it. HMAC is only for cookie-authenticated GETs.
-	const resolvedAuthToken =
-		authToken ??
-		(authedUser ? generateFormUserAuthToken(context.getNode(), authedUser) : undefined);
+	// Embed the form auth token so the completion page's auto-POST (which
+	// resumes the paused workflow) can re-authenticate the user — cookies
+	// aren't sent on fetch from the sandboxed completion page.
+	const authToken = authedUser
+		? generateFormUserAuthToken(context.getNode(), authedUser)
+		: undefined;
 
 	res.render('form-trigger-completion', {
 		title: completionTitle,
@@ -134,7 +134,7 @@ export const renderFormCompletion = async (
 		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl: validateSafeRedirectUrl(redirectUrl) ?? undefined,
-		authToken: resolvedAuthToken,
+		authToken,
 	});
 
 	return { noWebhookResponse: true };

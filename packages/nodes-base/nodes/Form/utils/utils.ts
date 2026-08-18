@@ -733,38 +733,18 @@ function trimTrailingSlash(url: string): string {
 // sandboxed form page. The token is otherwise already embedded in the form HTML
 // (the page sends it back as `x-auth-token` on POST), so this is not a new exposure.
 const FORM_OAUTH_COOKIE_NAME = 'n8n-form-oauth';
-const FORM_OAUTH_AUD_COOKIE_NAME = 'n8n-form-oauth-aud';
-const FORM_OAUTH_QUERY_TOKEN = 'n8nFormToken';
-const FORM_OAUTH_QUERY_RESOURCE = 'n8nFormResource';
 
-function requestIsHttps(req: Request): boolean {
+function formOAuthCookieOptions(req: Request, resourceUrl: string) {
 	// Derive `secure` from the request scheme (honouring x-forwarded-proto, as
 	// buildAbsoluteFormUrl does) rather than config, so the cookie is actually sent
 	// back on the follow-up GET over http in dev while staying Secure over https.
 	const forwardedProto = req.headers['x-forwarded-proto'];
 	const proto = (typeof forwardedProto === 'string' ? forwardedProto.trim() : '') || req.protocol;
-	return proto === 'https';
-}
-
-function formOAuthCookieOptions(req: Request, resourceUrl: string) {
 	return {
 		httpOnly: true,
 		sameSite: 'lax' as const, // must be Lax: sent on our own top-level 302 → GET
-		secure: requestIsHttps(req),
+		secure: proto === 'https',
 		path: new URL(resourceUrl).pathname, // scope the bearer token to this form
-	};
-}
-
-function formOAuthSessionCookieOptions(req: Request) {
-	return {
-		httpOnly: true,
-		sameSite: 'lax' as const,
-		secure: requestIsHttps(req),
-		// Path `/` so a top-level navigation to `/form-waiting/...` still sends it.
-		// Sandboxed iframe navigations will not (null origin + SameSite=Lax); those
-		// carry the token as `n8nFormToken` on the waiting URL instead.
-		path: '/',
-		maxAge: FORM_USER_AUTH_TOKEN_TTL_SECONDS * 1000,
 	};
 }
 
@@ -775,71 +755,20 @@ function setFormOAuthToken(res: Response, req: Request, resourceUrl: string, tok
 	});
 }
 
-function setFormOAuthSession(
-	res: Response,
-	req: Request,
-	resourceUrl: string,
-	token: string,
-): void {
-	const options = formOAuthSessionCookieOptions(req);
-	res.cookie(FORM_OAUTH_COOKIE_NAME, token, options);
-	res.cookie(FORM_OAUTH_AUD_COOKIE_NAME, resourceUrl, options);
-}
-
-function readCookieValue(req: Request, name: string): string | null {
-	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	const match = (req.headers.cookie ?? '').match(new RegExp(`(?:^|;\\s*)${escaped}=([^;]+)`));
-	return match ? decodeURIComponent(match[1].trim()) : null;
-}
-
 function readFormOAuthToken(req: Request): string | null {
-	return readCookieValue(req, FORM_OAUTH_COOKIE_NAME);
-}
-
-function readFormOAuthAud(req: Request): string | null {
-	return readCookieValue(req, FORM_OAUTH_AUD_COOKIE_NAME);
+	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-form-oauth=([^;]+)/);
+	return match ? decodeURIComponent(match[1].trim()) : null;
 }
 
 function clearFormOAuthToken(res: Response, req: Request, resourceUrl: string): void {
 	res.clearCookie(FORM_OAUTH_COOKIE_NAME, formOAuthCookieOptions(req, resourceUrl));
 }
 
-function queryStringParam(req: Request, name: string): string | undefined {
-	const value = req.query?.[name];
-	return typeof value === 'string' && value ? value : undefined;
-}
-
-function parseFormOAuthResource(raw: string | undefined): string | undefined {
-	if (!raw) return undefined;
-	try {
-		return trimTrailingSlash(tryToParseUrl(raw));
-	} catch {
-		return undefined;
-	}
-}
-
-function presentedFormOAuthToken(req: Request): string | undefined {
-	return (
-		queryStringParam(req, FORM_OAUTH_QUERY_TOKEN) ??
-		readFormOAuthToken(req) ??
-		(typeof req.headers['x-auth-token'] === 'string' && req.headers['x-auth-token']
-			? req.headers['x-auth-token']
-			: undefined)
-	);
-}
-
-function presentedFormOAuthResource(req: Request): string | undefined {
-	return parseFormOAuthResource(
-		queryStringParam(req, FORM_OAUTH_QUERY_RESOURCE) ?? readFormOAuthAud(req) ?? undefined,
-	);
-}
-
 /**
  * Authenticate an `n8nUserAuth` request via:
- * 1. an OAuth2 token (trigger flow, session cookie, waiting-URL query, or
- *    `x-auth-token`) — used when the submitter authenticated through n8n's AS,
- * 2. the `n8n-auth` cookie (sent on top-level GET when the user is logged in), or
- * 3. the HMAC `x-auth-token` (used on POST from the sandboxed form page).
+ * 1. the `n8n-auth` cookie (sent on top-level GET when the user is logged in), or
+ * 2. the `x-auth-token` form auth token (used on POST and multi-step page
+ *    navigations from the sandboxed form page that can't send cookies).
  *
  * On success returns the user. On failure sends the appropriate response
  * (302 to `/signin` on GET, 401 on POST) and returns `null` — the caller
@@ -912,9 +841,6 @@ async function authenticateFormUserOrRespond(
 					clearFormOAuthToken(res, req, resourceUrl);
 					const validation = await context.validateN8nOAuth2Token(cookieToken, resourceUrl);
 					if (validation.valid) {
-						// One-hop cookie is path-scoped to the trigger URL. Persist a
-						// session so later `/form-waiting` GETs can re-validate this token.
-						setFormOAuthSession(res, req, resourceUrl, cookieToken);
 						return { user: validation.user, token: cookieToken };
 					}
 					// Stale/invalid cookie — fall through to restart the OAuth2 flow.
@@ -965,20 +891,6 @@ async function authenticateFormUserOrRespond(
 		}
 	}
 
-	// Subsequent Form/Wait pages: the trigger already minted an OAuth token, but
-	// this request is a navigation to `/form-waiting` (no OAuth redirect). Accept
-	// the same token from the session cookie, waiting-URL query, or x-auth-token,
-	// verified against the trigger resource URL the client/session carries.
-	const oauthToken = presentedFormOAuthToken(req);
-	const oauthResource = presentedFormOAuthResource(req);
-	if (oauthToken && oauthResource) {
-		const validation = await context.validateN8nOAuth2Token(oauthToken, oauthResource);
-		if (validation.valid) {
-			setFormOAuthSession(context.getResponseObject(), req, oauthResource, oauthToken);
-			return { user: validation.user, token: oauthToken };
-		}
-	}
-
 	// Parse the raw Cookie header rather than `req.cookies` because the webhook
 	// path may bypass cookie-parser middleware in some deployments.
 	const cookieMatch = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-auth=([^;]+)/);
@@ -991,7 +903,7 @@ async function authenticateFormUserOrRespond(
 		} catch {}
 	}
 
-	const formToken = req.headers['x-auth-token'] ?? queryStringParam(req, FORM_OAUTH_QUERY_TOKEN);
+	const formToken = req.headers['x-auth-token'];
 	if (typeof formToken === 'string' && formToken) {
 		const user = verifyFormUserAuthToken(formToken, context.getNode());
 		if (user) return { user, token: null };
@@ -1014,22 +926,16 @@ async function authenticateFormUserOrRespond(
  * Multi-step Form/Wait nodes inherit `authentication` from the upstream
  * Form Trigger. This wrapper short-circuits when n8nUserAuth isn't in use.
  *
- * Returns `{ authedUser, authToken }` on success, `{ responded: true }` after
- * sending a 302/401 on failure, or `{}` if the trigger doesn't require auth.
- * `authToken` is the OAuth2 access token when that path authenticated; callers
- * re-embed it so later pages keep working. HMAC cookie-auth leaves it unset.
+ * Returns `{ authedUser }` on success, `{ responded: true }` after sending a
+ * 302/401 on failure, or `{}` if the trigger doesn't require auth.
  */
 export async function validateFormPageAuth(
 	context: IWebhookFunctions,
 	triggerAuthentication: string,
-): Promise<{ authedUser?: IUser; authToken?: string; responded?: boolean }> {
+): Promise<{ authedUser?: IUser; responded?: boolean }> {
 	if (triggerAuthentication !== 'n8nUserAuth') return {};
-	const result = await authenticateFormUserOrRespond(context, false);
-	if (!result) return { responded: true };
-	return {
-		authedUser: result.user,
-		authToken: result.token ?? undefined,
-	};
+	const { user } = (await authenticateFormUserOrRespond(context, false)) ?? {};
+	return user ? { authedUser: user } : { responded: true };
 }
 
 /**

@@ -1059,7 +1059,7 @@ describe('FormTrigger, formWebhook', () => {
 
 		it('renders the form on the clean GET carrying the oauth cookie', async () => {
 			const ctx = mock<IWebhookFunctions>();
-			const { render, clearCookie, cookie } = setupContext(ctx, {
+			const { render, clearCookie } = setupContext(ctx, {
 				method: 'GET',
 				headers: { cookie: 'n8n-form-oauth=as-token' },
 			});
@@ -1070,16 +1070,6 @@ describe('FormTrigger, formWebhook', () => {
 			expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
 			expect(ctx.beginN8nOAuth2Flow).not.toHaveBeenCalled();
 			expect(clearCookie).toHaveBeenCalledWith('n8n-form-oauth', expect.any(Object));
-			expect(cookie).toHaveBeenCalledWith(
-				'n8n-form-oauth',
-				'as-token',
-				expect.objectContaining({ path: '/' }),
-			);
-			expect(cookie).toHaveBeenCalledWith(
-				'n8n-form-oauth-aud',
-				resourceUrl,
-				expect.objectContaining({ path: '/' }),
-			);
 			expect(render).toHaveBeenCalledWith(
 				'form-trigger',
 				expect.objectContaining({ authToken: 'as-token' }),
@@ -3667,17 +3657,12 @@ describe('validateFormPageAuth', () => {
 		lastName: 'User',
 	};
 
-	const buildContext = (
-		method: 'GET' | 'POST',
-		cookie?: string,
-		query?: Record<string, string>,
-	) => {
+	const buildContext = (method: 'GET' | 'POST', cookie?: string) => {
 		const res = {
 			writeHead: vi.fn(),
 			end: vi.fn(),
 			setHeader: vi.fn(),
 			status: vi.fn().mockReturnValue({ send: vi.fn() }),
-			cookie: vi.fn(),
 		};
 		const req = {
 			method,
@@ -3686,7 +3671,6 @@ describe('validateFormPageAuth', () => {
 				host: 'localhost:5678',
 				...(cookie ? { cookie } : {}),
 			},
-			query: query ?? {},
 			protocol: 'http',
 		};
 		const ctx = mock<IWebhookFunctions>();
@@ -3818,62 +3802,6 @@ describe('validateFormPageAuth', () => {
 		expect(result.responded).toBeFalsy();
 		// cookie path wasn't attempted because there's no cookie
 		expect(ctx.validateCookieAuth).not.toHaveBeenCalled();
-	});
-
-	it('authenticates a subsequent form page from the OAuth session cookie', async () => {
-		const resourceUrl = 'http://localhost:5678/form/test';
-		const { ctx, res } = buildContext(
-			'GET',
-			`n8n-form-oauth=as-token; n8n-form-oauth-aud=${encodeURIComponent(resourceUrl)}`,
-		);
-		ctx.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: authedUser });
-
-		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
-
-		expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
-		expect(result.authedUser).toEqual(authedUser);
-		expect(result.authToken).toBe('as-token');
-		expect(result.responded).toBeFalsy();
-		expect(res.writeHead).not.toHaveBeenCalled();
-		expect(ctx.validateCookieAuth).not.toHaveBeenCalled();
-	});
-
-	it('authenticates a subsequent form page from n8nFormToken query params', async () => {
-		const resourceUrl = 'http://localhost:5678/form/test';
-		const { ctx, res } = buildContext('GET', undefined, {
-			n8nFormToken: 'as-token',
-			n8nFormResource: resourceUrl,
-		});
-		ctx.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: authedUser });
-
-		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
-
-		expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
-		expect(result.authedUser).toEqual(authedUser);
-		expect(result.authToken).toBe('as-token');
-		expect(res.cookie).toHaveBeenCalledWith(
-			'n8n-form-oauth',
-			'as-token',
-			expect.objectContaining({ path: '/' }),
-		);
-		expect(res.writeHead).not.toHaveBeenCalled();
-	});
-
-	it('falls through to HMAC when the OAuth token is invalid', async () => {
-		const node = { id: 'node-1', webhookId: 'webhook-1' } as INode;
-		const hmacToken = generateFormUserAuthToken(node, authedUser);
-		const { ctx, req } = buildContext('POST', undefined, {
-			n8nFormToken: hmacToken,
-			n8nFormResource: 'http://localhost:5678/form/test',
-		});
-		req.headers['x-auth-token'] = hmacToken;
-		ctx.getNode.mockReturnValue(node);
-		ctx.validateN8nOAuth2Token.mockResolvedValue({ valid: false, reason: 'invalid_token' });
-
-		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
-
-		expect(result.authedUser).toEqual(authedUser);
-		expect(result.responded).toBeFalsy();
 	});
 });
 

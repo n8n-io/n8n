@@ -25,7 +25,6 @@ export const renderFormNode = async (
 	fields: FormFieldsParameter,
 	mode: 'test' | 'production',
 	authedUser?: IUser,
-	authToken?: string,
 ): Promise<IWebhookResponseData> => {
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
@@ -55,11 +54,11 @@ export const renderFormNode = async (
 		`{{ ${triggerRef}.params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
-	// Prefer the OAuth2 token the trigger already minted so later waiting-page
-	// navigations can re-present it. HMAC is only for cookie-authenticated GETs.
-	const resolvedAuthToken =
-		authToken ??
-		(authedUser ? generateFormUserAuthToken(context.getNode(), authedUser) : undefined);
+	// Embed the form auth token so subsequent POSTs can re-authenticate the
+	// user — cookies aren't sent on fetch from a sandboxed form page.
+	const authToken = authedUser
+		? generateFormUserAuthToken(context.getNode(), authedUser)
+		: undefined;
 
 	renderForm({
 		context,
@@ -73,7 +72,7 @@ export const renderFormNode = async (
 		appendAttribution,
 		buttonLabel,
 		customCss: options.customCss,
-		authToken: resolvedAuthToken,
+		authToken,
 	});
 
 	return {
