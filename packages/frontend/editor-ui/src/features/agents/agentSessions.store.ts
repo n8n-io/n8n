@@ -66,31 +66,35 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	 * handler. Unlike `fetchThreads` it:
 	 *   - Does not flip `loading` (avoids flashing the "Load more" button's
 	 *     spinner on every tick).
-	 *   - Merges the latest first page into the existing list by id rather
-	 *     than replacing it, so threads loaded via "Load more" are preserved
-	 *     across ticks.
-	 *   - Leaves `nextCursor` untouched once the user has paginated — the
-	 *     existing cursor still points past everything we've loaded, while
-	 *     the cursor returned by a fresh first-page fetch would rewind us.
+	 *   - Re-fetches the currently loaded range so filters are re-evaluated
+	 *     without collapsing the list back to its first page.
 	 */
 	async function refreshThreads(projectId: string, agentId: string) {
-		const key = keyFor(projectId, agentId, filters.value);
+		const requestedFilters = filters.value;
+		const key = keyFor(projectId, agentId, requestedFilters);
 		if (latestKey !== null && latestKey !== key) return;
 		try {
 			const rootStore = useRootStore();
-			const page = await listThreads(rootStore.restApiContext, projectId, agentId, {
-				limit: ITEMS_PER_PAGE,
-				filters: filters.value,
+			const limit = Math.max(threads.value.length, ITEMS_PER_PAGE);
+			let page = await listThreads(rootStore.restApiContext, projectId, agentId, {
+				limit,
+				filters: requestedFilters,
 			});
 			if (latestKey !== key) return;
-			const seen = new Set(page.threads.map((t) => t.id));
-			const tail = threads.value.filter((t) => !seen.has(t.id));
-			threads.value = [...page.threads, ...tail];
-			// Only adopt the new cursor if we hadn't paginated yet — otherwise
-			// the existing cursor already points past what we've loaded.
-			if (tail.length === 0) {
-				nextCursor.value = page.nextCursor;
+			const refreshed = [...page.threads];
+			const seen = new Set(refreshed.map(({ id }) => id));
+			while (refreshed.length < limit && page.nextCursor) {
+				page = await listThreads(rootStore.restApiContext, projectId, agentId, {
+					limit: limit - refreshed.length,
+					cursor: page.nextCursor,
+					filters: requestedFilters,
+				});
+				if (latestKey !== key) return;
+				refreshed.push(...page.threads.filter(({ id }) => !seen.has(id)));
+				for (const { id } of page.threads) seen.add(id);
 			}
+			threads.value = refreshed;
+			nextCursor.value = page.nextCursor;
 		} catch {
 			// Swallow refresh errors — the next tick will retry
 		}

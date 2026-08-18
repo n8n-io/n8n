@@ -105,6 +105,32 @@ describe('useAgentSessionsStore', () => {
 		});
 	});
 
+	it('removes a loaded tail session that no longer matches on refresh', async () => {
+		const firstPageIds = Array.from({ length: 20 }, (_, index) => `failed-${index + 1}`);
+		listThreads
+			.mockResolvedValueOnce(page(firstPageIds, 'cursor-1'))
+			.mockResolvedValueOnce(page(['matching-tail', 'stale-tail'], 'cursor-2'))
+			.mockResolvedValueOnce(
+				page([...firstPageIds, 'matching-tail', 'replacement-tail'], 'refreshed-cursor'),
+			);
+		const store = useAgentSessionsStore();
+
+		await store.setFilters('project-1', 'agent-1', errorFilters);
+		await store.loadMore('project-1', 'agent-1');
+		await store.refreshThreads('project-1', 'agent-1');
+
+		expect(listThreads).toHaveBeenLastCalledWith({ baseUrl: '/rest' }, 'project-1', 'agent-1', {
+			limit: 22,
+			filters: errorFilters,
+		});
+		expect(store.threads.map(({ id }) => id)).toEqual([
+			...firstPageIds,
+			'matching-tail',
+			'replacement-tail',
+		]);
+		expect(store.nextCursor).toBe('refreshed-cursor');
+	});
+
 	it('ignores a stale response from an earlier filter', async () => {
 		const errorPage = Promise.withResolvers<ThreadsPage>();
 		const runningPage = Promise.withResolvers<ThreadsPage>();
