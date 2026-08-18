@@ -36,14 +36,23 @@ export const properties: INodeProperties[] = [
 			},
 		},
 	},
+	/* eslint-disable n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
+	/* eslint-disable n8n-nodes-base/node-param-description-wrong-for-dynamic-options */
 	{
 		displayName: 'Model (Deployment) Name',
 		name: 'model',
-		type: 'string',
-		description: 'The name of the model(deployment) to use (e.g., gpt-4, gpt-35-turbo)',
+		type: 'options',
+		description:
+			'The deployment name to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		required: true,
 		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getDeployments',
+		},
+		hint: 'If deployments cannot be loaded, you can type the deployment name manually',
 	},
+	/* eslint-enable n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
+	/* eslint-enable n8n-nodes-base/node-param-description-wrong-for-dynamic-options */
 	{
 		displayName: 'Options',
 		name: 'options',
