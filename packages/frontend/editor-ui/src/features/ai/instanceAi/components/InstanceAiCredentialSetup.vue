@@ -506,22 +506,31 @@ async function handleLater() {
 	await deferWholeCard();
 }
 
+const browserConnectionState = computed(() =>
+	settingsStore.browserConnected ? 'connected' : 'disconnected',
+);
+
 function trackSetupChoiceClicked(choice: CredentialSetupChoice | 'skip', attemptId?: string) {
 	telemetry.track('Instance AI Browser Use User clicked credential setup option', {
 		credential_type: currentRequest.value?.credentialType,
 		choice,
+		browser_connection_state: browserConnectionState.value,
 		...(attemptId ? { credential_setup_attempt_id: attemptId } : {}),
 	});
 }
 
 const shownChoiceTypes = new Set<string>();
 watch(
-	() => (showSetupChoice.value ? currentRequest.value?.credentialType : undefined),
+	() =>
+		showSetupChoice.value && settingsStore.browserStatusLoaded
+			? currentRequest.value?.credentialType
+			: undefined,
 	(credentialType) => {
 		if (!credentialType || shownChoiceTypes.has(credentialType)) return;
 		shownChoiceTypes.add(credentialType);
 		telemetry.track('Instance AI Browser Use credential setup choice shown', {
 			credential_type: credentialType,
+			browser_connection_state: browserConnectionState.value,
 		});
 	},
 	{ immediate: true },
