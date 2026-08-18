@@ -653,6 +653,8 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	scrollbar-width: none;
+	max-width: 800px;
+	margin: 0 auto;
 
 	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
 

@@ -4,6 +4,8 @@ info:
   version: 0.0.0
 paths:
   /role-mapping-rules:
+    get:
+      $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
     post:
       $ref: ./handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
   /roles:
@@ -16,6 +18,8 @@ paths:
       $ref: ./handlers/roles/spec/paths/getRole.generated.yml
     put:
       $ref: ./handlers/roles/spec/paths/updateRole.generated.yml
+    delete:
+      $ref: ./handlers/roles/spec/paths/deleteRole.generated.yml
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml

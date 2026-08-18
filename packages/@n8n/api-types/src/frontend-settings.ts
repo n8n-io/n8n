@@ -100,6 +100,7 @@ export interface FrontendSettings {
 	executionTimeout: number;
 	maxExecutionTimeout: number;
 	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
+	excludeNodes: string[];
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;

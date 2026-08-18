@@ -33,7 +33,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		status: 'running',
 		mode: 'production',
 		graph,
-		triggerPayload: null,
+		triggerOutputs: null,
 		...overrides,
 	};
 	return {
@@ -95,7 +95,7 @@ describe('StepReadyHandler', () => {
 		const executor = makeExecutor({ outputs: [[{ json: { ok: true } }]] });
 		// a stale payload on the execution record must not be consulted: the
 		// trigger's step row is the one source of its output
-		const executionStore = makeExecutionStore({ triggerPayload: { body: { stale: true } } });
+		const executionStore = makeExecutionStore({ triggerOutputs: [{ body: { stale: true } }] });
 		const handler = new StepReadyHandler(executionStore, stepStore, queue, {
 			v1StepExecutor: executor,
 		});

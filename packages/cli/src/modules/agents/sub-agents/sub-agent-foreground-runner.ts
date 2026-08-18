@@ -246,6 +246,12 @@ export class SubAgentForegroundRunner {
 							runId: operation.request.childRunId,
 							toolCallId: operation.request.childToolCallId,
 						});
+			if (operation.type === 'resume') {
+				recorder.recordHitlResponse(
+					operation.request.childToolCallId,
+					operation.request.resumeData,
+				);
+			}
 			try {
 				const currentExecutionId = await this.agentExecutionService.startExecutionRecording(
 					{
