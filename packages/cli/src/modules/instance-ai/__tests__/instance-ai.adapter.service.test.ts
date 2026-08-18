@@ -45,6 +45,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 }));
 
 import { Container } from '@n8n/di';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
 import { Expression } from 'n8n-workflow';
 import type {
@@ -2121,6 +2122,64 @@ describe('createWorkflowAdapter', () => {
 				onError: 'continueErrorOutput',
 			}),
 		);
+	});
+
+	it('returns AI Gateway-managed credentials in a shape accepted by workflow codegen', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-managed',
+			name: 'Managed model workflow',
+			active: false,
+			versionId: 'version-id',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-01-01'),
+			nodes: [
+				{
+					id: 'agent-id',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 3.1,
+					position: [0, 0],
+					parameters: { promptType: 'define', text: 'Summarize the input.' },
+				},
+				{
+					id: 'model-id',
+					name: 'Google Gemini Chat Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					typeVersion: 1.1,
+					position: [0, 200],
+					parameters: { modelName: 'models/gemini-3-flash-preview' },
+					credentials: {
+						googlePalmApi: {
+							id: null,
+							name: 'n8n credits',
+							__aiGatewayManaged: true,
+						},
+					},
+				},
+			],
+			connections: {
+				'Google Gemini Chat Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+			settings: {},
+		});
+
+		const workflow = await adapter.getAsWorkflowJSON('wf-managed');
+
+		expect(workflow.nodes[1].credentials).toEqual({
+			googlePalmApi: {
+				id: null,
+				name: 'n8n credits',
+				__aiGatewayManaged: true,
+			},
+		});
+		const code = generateWorkflowCode(workflow);
+		expect(code).toContain("newCredential('n8n credits')");
+		expect(code).not.toContain("newCredential('n8n credits', 'null')");
 	});
 
 	it('returns the version graph with current workflow metadata when a versionId is passed', async () => {
