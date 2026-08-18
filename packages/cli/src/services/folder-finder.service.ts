@@ -29,6 +29,29 @@ export class FolderFinderService {
 		return new Set(folders.map(({ id }) => id));
 	}
 
+	/**
+	 * Resolves a folder id to itself plus, optionally, its descendant ids —
+	 * deliberately without the project-level access check the `*ForUser` methods
+	 * apply.
+	 *
+	 * Only for narrowing a query that enforces its own access control: the ids go
+	 * into a `WHERE` clause and are never returned, so the caller's ACL still
+	 * decides what the user sees. This mirrors the workflow list endpoint, which
+	 * filters by `parentFolderId` with no folder permission check and gates only
+	 * the *returning* of folder rows behind `folder:list`.
+	 *
+	 * Returns an empty array for a folder that does not exist, so callers can tell
+	 * an unknown id apart from a folder holding nothing.
+	 */
+	async findFolderFilterIds(folderId: string, includeDescendants: boolean): Promise<string[]> {
+		const existing = await this.findExistingFolderIds([folderId]);
+		if (!existing.has(folderId)) return [];
+		if (!includeDescendants) return [folderId];
+
+		const descendantIds = await this.folderRepository.getAllFolderIdsInSubtrees([folderId]);
+		return [folderId, ...descendantIds];
+	}
+
 	async findFoldersByIdsForUser(
 		folderIds: string[],
 		user: User,

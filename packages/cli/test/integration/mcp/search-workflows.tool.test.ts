@@ -1,5 +1,12 @@
 import { LicenseState } from '@n8n/backend-common';
-import { createWorkflow, getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	getPersonalProject,
+	mockInstance,
+	shareWorkflowWithProjects,
+	testDb,
+} from '@n8n/backend-test-utils';
 import type { Folder, Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
@@ -115,15 +122,40 @@ describe('searchWorkflows folder filter', () => {
 
 		expect(byName.get('Slack trigger')).toBe(triggers.id);
 		expect(byName.get('Nested slack trigger')).toBe(nested.id);
-		expect(byName.get('Root flow')).toBeNull();
+		expect(result.data.find((workflow) => workflow.name === 'Root flow')).not.toHaveProperty(
+			'parentFolderId',
+		);
 	});
 
-	test('rejects a folder the user cannot reach rather than searching everything', async () => {
+	// A workflow shared into a member's personal project keeps the parent folder of
+	// its *home* project, which the member has no relation to. Filtering by the
+	// parentFolderId the search just handed them has to keep working: the folder ids
+	// only narrow a result set the workflow ACL already gates.
+	test('filters by a folder in a project the user is not a member of', async () => {
 		const member = await createMember();
+		const memberProject = await getPersonalProject(member);
+		const teamProject = await createTeamProject('Team', owner);
+		const teamFolder = await createFolder(teamProject, { name: 'Team triggers' });
 
-		await expect(
-			searchWorkflows(member, workflowService, folderFinderService, { folderId: triggers.id }),
-		).rejects.toThrow(FolderNotFoundError);
+		const shared = await createWorkflow(
+			{ name: 'Shared team flow', parentFolder: teamFolder },
+			teamProject,
+		);
+		await createWorkflow({ name: 'Unshared team flow', parentFolder: teamFolder }, teamProject);
+		await shareWorkflowWithProjects(shared, [{ project: memberProject }]);
+
+		const found = await searchWorkflows(member, workflowService, folderFinderService, {});
+		expect(found.data.map((workflow) => workflow.name)).toEqual(['Shared team flow']);
+		const reportedFolderId = found.data[0].parentFolderId;
+		expect(reportedFolderId).toBe(teamFolder.id);
+
+		// The id the tool just reported must be usable as a filter, and must not
+		// widen the member's view to the workflow they cannot read.
+		const filtered = await searchWorkflows(member, workflowService, folderFinderService, {
+			folderId: reportedFolderId,
+		});
+		expect(filtered.data.map((workflow) => workflow.name)).toEqual(['Shared team flow']);
+		expect(filtered.count).toBe(1);
 	});
 
 	test('rejects an unknown folder id', async () => {

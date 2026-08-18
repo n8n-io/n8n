@@ -105,7 +105,7 @@ export type SearchWorkflowsItem = {
 	updatedAt: string | null;
 	triggerCount: number | null;
 	availableInMCP: boolean;
-	parentFolderId: string | null;
+	parentFolderId?: string;
 	tags: Array<{ id: string; name: string }>;
 };
 

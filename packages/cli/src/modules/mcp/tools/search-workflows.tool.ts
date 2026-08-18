@@ -43,7 +43,7 @@ const inputSchema = {
 	folderId: folderIdSchema
 		.optional()
 		.describe(
-			`Filter by folder. Use search_folders to resolve a folder name to an id, or pass a workflow's own parentFolderId to find its siblings. Pass "${PROJECT_ROOT}" for workflows that sit at the project root rather than in a folder.`,
+			`Filter by folder. Pass a parentFolderId from an earlier result to find a workflow's siblings, or — when search_folders is available — use it to resolve a folder name to an id first. Pass "${PROJECT_ROOT}" for workflows that sit at the project root rather than in a folder.`,
 		),
 	includeSubfolders: z
 		.boolean()
@@ -79,9 +79,9 @@ const outputSchema = {
 					availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
 					parentFolderId: z
 						.string()
-						.nullable()
+						.optional()
 						.describe(
-							'The id of the folder holding the workflow, or null when it sits at the project root. Pass it back as folderId to find related workflows.',
+							'The id of the folder holding the workflow, omitted when it sits at the project root. Pass it back as folderId to find related workflows.',
 						),
 					tags: z.array(tagSchema).describe('Tags assigned to the workflow'),
 				})
@@ -109,7 +109,7 @@ export const createSearchWorkflowsTool = (
 		name: 'search_workflows',
 		config: {
 			description:
-				'Search for workflows with optional filters. Returns a preview of each workflow. On instances that organise workflows into folders, narrow the search with folderId instead of scanning everything — resolve the folder by name with search_folders first.',
+				'Search for workflows with optional filters. Returns a preview of each workflow. Where workflows are organised into folders, narrow the search with folderId instead of scanning everything: reuse a parentFolderId from an earlier result, or resolve a folder name with search_folders when that tool is available.',
 			inputSchema,
 			outputSchema,
 			annotations: {
@@ -208,11 +208,12 @@ export const createSearchWorkflowsTool = (
  * the plain workflow list query — unlike the workflows-and-folders union the UI
  * uses — matches `parentFolderId` literally and never walks the hierarchy.
  *
- * Resolution goes through the folder finder so folders the user cannot reach are
- * dropped, and an empty resolution raises instead of returning no filter.
+ * The resolved ids only narrow a query that already filters to the workflows the
+ * user may read, so they need no folder-level permission check of their own —
+ * the same split the workflow list endpoint makes. An id that matches no folder
+ * raises, so a wrong id can never be mistaken for an empty folder.
  */
 async function resolveFolderFilter(
-	user: User,
 	folderFinderService: FolderFinderService,
 	folderId: string,
 	includeSubfolders: boolean,
@@ -221,20 +222,10 @@ async function resolveFolderFilter(
 	// matches workflows with no parent folder.
 	if (folderId === PROJECT_ROOT) return { parentFolderId: PROJECT_ROOT };
 
-	if (!includeSubfolders) {
-		const [folder] = await folderFinderService.findFoldersByIdsForUser([folderId], user, [
-			'folder:read',
-		]);
-		if (!folder) throw new FolderNotFoundError(folderId);
-		return { parentFolderId: folder.id };
-	}
+	const folderIds = await folderFinderService.findFolderFilterIds(folderId, includeSubfolders);
+	if (folderIds.length === 0) throw new FolderNotFoundError(folderId);
 
-	const subtree = await folderFinderService.findFolderSubtreesForUser([folderId], user, [
-		'folder:read',
-	]);
-	if (!subtree.some((folder) => folder.id === folderId)) throw new FolderNotFoundError(folderId);
-
-	return { parentFolderIds: subtree.map((folder) => folder.id) };
+	return { parentFolderIds: folderIds };
 }
 
 export async function searchWorkflows(
@@ -258,7 +249,7 @@ export async function searchWorkflows(
 	const folderFilter =
 		folderId === undefined
 			? {}
-			: await resolveFolderFilter(user, folderFinderService, folderId, includeSubfolders);
+			: await resolveFolderFilter(folderFinderService, folderId, includeSubfolders);
 
 	const options: ListQuery.Options = {
 		take: safeLimit,
@@ -315,7 +306,9 @@ export async function searchWorkflows(
 			updatedAt: updatedAt.toISOString(),
 			triggerCount,
 			availableInMCP: settings?.availableInMCP ?? false,
-			parentFolderId: parentFolder?.id ?? null,
+			// Omitted rather than null: most workflows on a folder-less instance would
+			// otherwise carry a dead field on every row of every search.
+			...(parentFolder ? { parentFolderId: parentFolder.id } : {}),
 			tags: toTagSummary(workflowTags),
 		};
 	});

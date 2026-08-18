@@ -26,13 +26,12 @@ describe('search-workflows MCP tool', () => {
 	const folderFixture = (id: string) => ({ id, name: `folder-${id}` }) as Folder;
 
 	/**
-	 * Resolves the given folders for any lookup; an empty list stands in for a
-	 * folder that does not exist or that the user cannot reach.
+	 * Resolves the given folder ids for a filter lookup; an empty list stands in
+	 * for a folderId that matches no folder.
 	 */
-	const mockFolderFinder = (folders: Folder[] = []) =>
+	const mockFolderFinder = (folderIds: string[] = []) =>
 		mockInstance(FolderFinderService, {
-			findFoldersByIdsForUser: vi.fn().mockResolvedValue(folders),
-			findFolderSubtreesForUser: vi.fn().mockResolvedValue(folders),
+			findFolderFilterIds: vi.fn().mockResolvedValue(folderIds),
 		});
 
 	const folderFinderService = mockFolderFinder();
@@ -129,7 +128,6 @@ describe('search-workflows MCP tool', () => {
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
 					availableInMCP: true,
-					parentFolderId: null,
 					tags: [],
 				},
 				{
@@ -141,7 +139,6 @@ describe('search-workflows MCP tool', () => {
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
 					availableInMCP: true,
-					parentFolderId: null,
 					tags: [],
 				},
 			]);
@@ -323,18 +320,13 @@ describe('search-workflows MCP tool', () => {
 
 		test('searches the folder and its subfolders by default', async () => {
 			const workflowService = emptyResult();
-			const folderFinder = mockFolderFinder([
-				folderFixture('folder-1'),
-				folderFixture('folder-1-child'),
-			]);
+			const folderFinder = mockFolderFinder(['folder-1', 'folder-1-child']);
 
 			await searchWorkflows(user, workflowService as unknown as WorkflowService, folderFinder, {
 				folderId: 'folder-1',
 			});
 
-			expect(folderFinder.findFolderSubtreesForUser).toHaveBeenCalledWith(['folder-1'], user, [
-				'folder:read',
-			]);
+			expect(folderFinder.findFolderFilterIds).toHaveBeenCalledWith('folder-1', true);
 			const [, optionsArg] = (workflowService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.filter.parentFolderIds).toEqual(['folder-1', 'folder-1-child']);
 			expect(optionsArg.filter.parentFolderId).toBeUndefined();
@@ -342,20 +334,17 @@ describe('search-workflows MCP tool', () => {
 
 		test('searches only the folder itself when includeSubfolders is false', async () => {
 			const workflowService = emptyResult();
-			const folderFinder = mockFolderFinder([folderFixture('folder-1')]);
+			const folderFinder = mockFolderFinder(['folder-1']);
 
 			await searchWorkflows(user, workflowService as unknown as WorkflowService, folderFinder, {
 				folderId: 'folder-1',
 				includeSubfolders: false,
 			});
 
-			expect(folderFinder.findFoldersByIdsForUser).toHaveBeenCalledWith(['folder-1'], user, [
-				'folder:read',
-			]);
-			expect(folderFinder.findFolderSubtreesForUser).not.toHaveBeenCalled();
+			expect(folderFinder.findFolderFilterIds).toHaveBeenCalledWith('folder-1', false);
 			const [, optionsArg] = (workflowService.getMany as Mock).mock.calls[0];
-			expect(optionsArg.filter.parentFolderId).toBe('folder-1');
-			expect(optionsArg.filter.parentFolderIds).toBeUndefined();
+			expect(optionsArg.filter.parentFolderIds).toEqual(['folder-1']);
+			expect(optionsArg.filter.parentFolderId).toBeUndefined();
 		});
 
 		test('matches the project root without resolving a folder', async () => {
@@ -366,15 +355,14 @@ describe('search-workflows MCP tool', () => {
 				folderId: PROJECT_ROOT,
 			});
 
-			expect(folderFinder.findFolderSubtreesForUser).not.toHaveBeenCalled();
-			expect(folderFinder.findFoldersByIdsForUser).not.toHaveBeenCalled();
+			expect(folderFinder.findFolderFilterIds).not.toHaveBeenCalled();
 			const [, optionsArg] = (workflowService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.filter.parentFolderId).toBe(PROJECT_ROOT);
 		});
 
 		test('combines the folder filter with the other filters', async () => {
 			const workflowService = emptyResult();
-			const folderFinder = mockFolderFinder([folderFixture('folder-1')]);
+			const folderFinder = mockFolderFinder(['folder-1']);
 
 			await searchWorkflows(user, workflowService as unknown as WorkflowService, folderFinder, {
 				folderId: 'folder-1',
@@ -412,7 +400,7 @@ describe('search-workflows MCP tool', () => {
 			);
 
 			expect(result.data[0].parentFolderId).toBe('folder-1');
-			expect(result.data[1].parentFolderId).toBeNull();
+			expect(result.data[1]).not.toHaveProperty('parentFolderId');
 			const [, optionsArg] = (workflowService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.select).toMatchObject({ parentFolder: true });
 		});
@@ -429,7 +417,7 @@ describe('search-workflows MCP tool', () => {
 			expect(workflowService.getMany).not.toHaveBeenCalled();
 		});
 
-		// A folder the user cannot see must fail loudly: dropping the filter would
+		// An id matching no folder must fail loudly: dropping the filter would
 		// quietly hand back every workflow on the instance instead.
 		test('fails with a recoverable error instead of widening the search', async () => {
 			const workflowService = emptyResult();
@@ -481,7 +469,6 @@ describe('search-workflows MCP tool', () => {
 				updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 				triggerCount: 0,
 				availableInMCP: true,
-				parentFolderId: null,
 				tags: [],
 				resource: 'workflow', // unknown field surfaced by the data layer
 			};
