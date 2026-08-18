@@ -106,7 +106,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'project:update',
 	'project:delete',
 	'project:export',
-	'project:manageUsers',
+	'project:manageMembers',
 	'insights:list',
 	'insights:read',
 	'folder:move',

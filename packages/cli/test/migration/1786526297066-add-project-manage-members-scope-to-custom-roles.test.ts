@@ -8,9 +8,9 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddProjectManageUsersScopeToCustomRoles1786526297066';
+const MIGRATION_NAME = 'AddProjectManageMembersScopeToCustomRoles1786526297066';
 
-const MANAGE_USERS_SCOPE = 'project:manageUsers';
+const MANAGE_MEMBERS_SCOPE = 'project:manageMembers';
 const UPDATE_SCOPE = 'project:update';
 
 interface RoleData {
@@ -25,7 +25,7 @@ interface RoleScopeRow {
 	scopeSlug: string;
 }
 
-describe('AddProjectManageUsersScopeToCustomRoles Migration', () => {
+describe('AddProjectManageMembersScopeToCustomRoles Migration', () => {
 	let dataSource: DataSource;
 
 	beforeEach(async () => {
@@ -128,20 +128,20 @@ describe('AddProjectManageUsersScopeToCustomRoles Migration', () => {
 	}
 
 	describe('up migration', () => {
-		it('creates the project:manageUsers scope when it does not exist', async () => {
+		it('creates the project:manageMembers scope when it does not exist', async () => {
 			const context = createTestMigrationContext(dataSource);
-			expect(await findScope(context, MANAGE_USERS_SCOPE)).toBeNull();
+			expect(await findScope(context, MANAGE_MEMBERS_SCOPE)).toBeNull();
 			await context.queryRunner.release();
 
 			await runSingleMigration(MIGRATION_NAME);
 			dataSource = Container.get(DataSource);
 
 			const postContext = createTestMigrationContext(dataSource);
-			expect(await findScope(postContext, MANAGE_USERS_SCOPE)).not.toBeNull();
+			expect(await findScope(postContext, MANAGE_MEMBERS_SCOPE)).not.toBeNull();
 			await postContext.queryRunner.release();
 		});
 
-		it('grants project:manageUsers to custom project roles that have project:update', async () => {
+		it('grants project:manageMembers to custom project roles that have project:update', async () => {
 			const context = createTestMigrationContext(dataSource);
 
 			await insertScope(context, UPDATE_SCOPE);
@@ -159,7 +159,7 @@ describe('AddProjectManageUsersScopeToCustomRoles Migration', () => {
 
 			const postContext = createTestMigrationContext(dataSource);
 			expect(await scopesOfRole(postContext, 'project:custom-admin')).toEqual([
-				MANAGE_USERS_SCOPE,
+				MANAGE_MEMBERS_SCOPE,
 				UPDATE_SCOPE,
 			]);
 			await postContext.queryRunner.release();
@@ -229,18 +229,18 @@ describe('AddProjectManageUsersScopeToCustomRoles Migration', () => {
 			await postContext.queryRunner.release();
 		});
 
-		it('does not duplicate project:manageUsers for roles that already have it', async () => {
+		it('does not duplicate project:manageMembers for roles that already have it', async () => {
 			const context = createTestMigrationContext(dataSource);
 
 			await insertScope(context, UPDATE_SCOPE);
-			await insertScope(context, MANAGE_USERS_SCOPE);
+			await insertScope(context, MANAGE_MEMBERS_SCOPE);
 			await insertRole(context, {
 				slug: 'project:already-granted',
 				displayName: 'Already Granted',
 				roleType: 'project',
 			});
 			await grantScope(context, 'project:already-granted', UPDATE_SCOPE);
-			await grantScope(context, 'project:already-granted', MANAGE_USERS_SCOPE);
+			await grantScope(context, 'project:already-granted', MANAGE_MEMBERS_SCOPE);
 
 			await context.queryRunner.release();
 
@@ -249,7 +249,7 @@ describe('AddProjectManageUsersScopeToCustomRoles Migration', () => {
 
 			const postContext = createTestMigrationContext(dataSource);
 			expect(await scopesOfRole(postContext, 'project:already-granted')).toEqual([
-				MANAGE_USERS_SCOPE,
+				MANAGE_MEMBERS_SCOPE,
 				UPDATE_SCOPE,
 			]);
 			await postContext.queryRunner.release();

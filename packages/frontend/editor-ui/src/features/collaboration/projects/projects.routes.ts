@@ -152,7 +152,7 @@ export const projectsRoutes: RouteRecordRaw[] = [
 										// scope is enough to enter the settings page.
 										return (
 											!!permissions.project.update ||
-											!!permissions.project.manageUsers ||
+											!!permissions.project.manageMembers ||
 											!!permissions.externalSecretsProvider.read
 										);
 									},

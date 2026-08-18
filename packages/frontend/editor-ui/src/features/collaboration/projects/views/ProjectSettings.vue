@@ -65,8 +65,8 @@ const canUpdateProject = computed(
 );
 
 /** Changing the membership list is gated separately from editing project details. */
-const canManageUsers = computed(
-	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.manageUsers,
+const canManageMembers = computed(
+	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.manageMembers,
 );
 
 const showSaveError = (error: Error) => {
@@ -139,7 +139,7 @@ const firstLicensedRole = computed(
 const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => {
 	// Removing a member is part of managing the membership list, so it needs the
 	// same scope as adding one — otherwise the action 403s from the API.
-	if (rolesManaged.value || !canManageUsers.value) {
+	if (rolesManaged.value || !canManageMembers.value) {
 		return [];
 	}
 	return [
@@ -566,7 +566,7 @@ const searchUsers = async (query: string) => {
 const debouncedUserSearch = useDebounceFn(searchUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 onBeforeMount(async () => {
-	if (!canUpdateProject.value && !canManageUsers.value) return;
+	if (!canUpdateProject.value && !canManageMembers.value) return;
 	await searchUsers('');
 });
 
@@ -575,7 +575,7 @@ const rolesManaged = computed(() => projectsStore.currentProject?.rolesManaged ?
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
 
-	if (!canUpdateProject.value && !canManageUsers.value) return;
+	if (!canUpdateProject.value && !canManageMembers.value) return;
 
 	selectProjectNameIfMatchesDefault();
 	await rolesStore.fetchRoles();
@@ -660,7 +660,7 @@ onMounted(async () => {
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
 
-			<template v-if="canUpdateProject || canManageUsers">
+			<template v-if="canUpdateProject || canManageMembers">
 				<fieldset id="projectMembers">
 					<h3>
 						<label for="projectMembers">{{
@@ -679,7 +679,7 @@ onMounted(async () => {
 							remote
 							:remote-method="debouncedUserSearch"
 							:loading="isLoadingUsers"
-							:disabled="rolesManaged || !canManageUsers"
+							:disabled="rolesManaged || !canManageMembers"
 							@update:model-value="onAddMember"
 						>
 							<template #prefix>
@@ -714,7 +714,7 @@ onMounted(async () => {
 							:current-user-id="usersStore.currentUser?.id"
 							:project-roles="rolesStore.processedProjectRoles"
 							:actions="projectMembersActions"
-							:can-edit-role="!rolesManaged && canManageUsers"
+							:can-edit-role="!rolesManaged && canManageMembers"
 							@update:options="onUpdateMembersTableOptions"
 							@update:role="onUpdateMemberRole"
 							@show-role-upgrade-dialog="upgradeDialogVisible = true"

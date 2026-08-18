@@ -10,12 +10,12 @@ import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import { jsonParse } from 'n8n-workflow';
 
-const MIGRATION_NAME = 'AddProjectManageUsersScopeToCustomRoles1786526297066';
+const MIGRATION_NAME = 'AddProjectManageMembersScopeToCustomRoles1786526297066';
 
-const MANAGE_USERS_SCOPE = 'project:manageUsers';
+const MANAGE_MEMBERS_SCOPE = 'project:manageMembers';
 const UPDATE_SCOPE = 'project:update';
 
-describe('AddProjectManageUsersScopeToApiKeys Migration', () => {
+describe('AddProjectManageMembersScopeToApiKeys Migration', () => {
 	let dataSource: DataSource;
 
 	beforeEach(async () => {
@@ -83,7 +83,7 @@ describe('AddProjectManageUsersScopeToApiKeys Migration', () => {
 		return (typeof scopes === 'string' ? jsonParse<string[]>(scopes) : scopes).sort();
 	}
 
-	it('grants project:manageUsers to keys that carry project:update', async () => {
+	it('grants project:manageMembers to keys that carry project:update', async () => {
 		const context = createTestMigrationContext(dataSource);
 		const userId = randomUUID();
 		const keyId = randomUUID();
@@ -100,7 +100,7 @@ describe('AddProjectManageUsersScopeToApiKeys Migration', () => {
 
 		const postContext = createTestMigrationContext(dataSource);
 		expect(await scopesOfApiKey(postContext, keyId)).toEqual([
-			MANAGE_USERS_SCOPE,
+			MANAGE_MEMBERS_SCOPE,
 			UPDATE_SCOPE,
 			'workflow:read',
 		]);
@@ -127,7 +127,7 @@ describe('AddProjectManageUsersScopeToApiKeys Migration', () => {
 		await postContext.queryRunner.release();
 	});
 
-	it('does not duplicate project:manageUsers when the key already has it', async () => {
+	it('does not duplicate project:manageMembers when the key already has it', async () => {
 		const context = createTestMigrationContext(dataSource);
 		const userId = randomUUID();
 		const keyId = randomUUID();
@@ -135,7 +135,7 @@ describe('AddProjectManageUsersScopeToApiKeys Migration', () => {
 		await insertApiKey(context, {
 			id: keyId,
 			userId,
-			scopes: [UPDATE_SCOPE, MANAGE_USERS_SCOPE],
+			scopes: [UPDATE_SCOPE, MANAGE_MEMBERS_SCOPE],
 		});
 		await context.queryRunner.release();
 
@@ -143,7 +143,7 @@ describe('AddProjectManageUsersScopeToApiKeys Migration', () => {
 		dataSource = Container.get(DataSource);
 
 		const postContext = createTestMigrationContext(dataSource);
-		expect(await scopesOfApiKey(postContext, keyId)).toEqual([MANAGE_USERS_SCOPE, UPDATE_SCOPE]);
+		expect(await scopesOfApiKey(postContext, keyId)).toEqual([MANAGE_MEMBERS_SCOPE, UPDATE_SCOPE]);
 		await postContext.queryRunner.release();
 	});
 

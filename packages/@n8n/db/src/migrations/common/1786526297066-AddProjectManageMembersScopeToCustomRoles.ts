@@ -1,13 +1,13 @@
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
 const UPDATE_SCOPE = 'project:update';
-const MANAGE_USERS_SCOPE = 'project:manageUsers';
+const MANAGE_MEMBERS_SCOPE = 'project:manageMembers';
 
 type ApiKeyRow = { id: string; scopes: string | string[] | null };
 
 /**
  * Granting a project role used to ride on `project:update`. It now has its own
- * `project:manageUsers` scope, so custom project roles that could manage members
+ * `project:manageMembers` scope, so custom project roles that could manage members
  * before must keep being able to, otherwise member management silently stops
  * working for them on upgrade. Public API keys carry their own frozen scope
  * list, so a key that could add project members via `project:update` needs the
@@ -20,13 +20,15 @@ type ApiKeyRow = { id: string; scopes: string | string[] | null };
  * and the startup sync that would normally create it runs after migrations.
  *
  * Irreversible: a faithful `down()` would have to know which role_scope rows
- * and API keys already carried `project:manageUsers` before this ran, and that
- * state isn't captured. Deleting every `project:manageUsers` grant on revert
+ * and API keys already carried `project:manageMembers` before this ran, and that
+ * state isn't captured. Deleting every `project:manageMembers` grant on revert
  * would also drop mappings added later (new custom roles, manual grants).
  *
  * Compatible with SQLite and PostgreSQL.
  */
-export class AddProjectManageUsersScopeToCustomRoles1786526297066 implements IrreversibleMigration {
+export class AddProjectManageMembersScopeToCustomRoles1786526297066
+	implements IrreversibleMigration
+{
 	async up(ctx: MigrationContext) {
 		await this.ensureScopeAndGrantCustomRoles(ctx);
 		await this.grantToApiKeysWithUpdate(ctx);
@@ -40,7 +42,7 @@ export class AddProjectManageUsersScopeToCustomRoles1786526297066 implements Irr
 
 		await runQuery(
 			`INSERT INTO ${scopeTable} (${scopeSlug}, ${displayName}, ${description})
-			 VALUES ('project:manageUsers', 'Manage Project Members', 'Allows adding members to a project, changing a member''s project role, and removing members.')
+			 VALUES ('project:manageMembers', 'Manage Project Members', 'Allows adding members to a project, changing a member''s project role, and removing members.')
 			 ON CONFLICT (${scopeSlug}) DO NOTHING`,
 		);
 
@@ -56,7 +58,7 @@ export class AddProjectManageUsersScopeToCustomRoles1786526297066 implements Irr
 		// way each engine expects (Postgres `false` vs SQLite `0`).
 		await runQuery(
 			`INSERT INTO ${roleScopeTable} (${mappedRoleSlug}, ${mappedScopeSlug})
-			 SELECT DISTINCT role.${roleSlug}, 'project:manageUsers'
+			 SELECT DISTINCT role.${roleSlug}, 'project:manageMembers'
 			 FROM ${roleTable} role
 			 INNER JOIN ${roleScopeTable} role_scope
 			   ON role.${roleSlug} = role_scope.${mappedRoleSlug}
@@ -91,11 +93,11 @@ export class AddProjectManageUsersScopeToCustomRoles1786526297066 implements Irr
 						const scopes = parseJson<string[]>(row.scopes ?? '[]');
 						if (!Array.isArray(scopes)) continue;
 						if (!scopes.includes(UPDATE_SCOPE)) continue;
-						if (scopes.includes(MANAGE_USERS_SCOPE)) continue;
+						if (scopes.includes(MANAGE_MEMBERS_SCOPE)) continue;
 
 						await runQuery(
 							`UPDATE ${table} SET ${scopesColumn} = :scopes WHERE ${idColumn} = :id`,
-							{ scopes: JSON.stringify([...scopes, MANAGE_USERS_SCOPE]), id: row.id },
+							{ scopes: JSON.stringify([...scopes, MANAGE_MEMBERS_SCOPE]), id: row.id },
 						);
 					} catch (error) {
 						logger.warn(

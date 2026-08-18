@@ -234,7 +234,7 @@ describe('ProjectSettings', () => {
 					role: 'project:admin',
 				},
 			],
-			scopes: ['project:read', 'project:update', 'project:manageUsers'],
+			scopes: ['project:read', 'project:update', 'project:manageMembers'],
 			rolesManaged: false,
 		};
 
@@ -366,7 +366,7 @@ describe('ProjectSettings', () => {
 			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '1');
 		});
 
-		it('blocks member management when the project role lacks project:manageUsers', async () => {
+		it('blocks member management when the project role lacks project:manageMembers', async () => {
 			projectsStore.currentProject = {
 				...projectsStore.currentProject!,
 				scopes: ['project:read', 'project:update'],
@@ -382,10 +382,10 @@ describe('ProjectSettings', () => {
 			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '0');
 		});
 
-		it('still shows member management when the role has project:manageUsers but not project:update', async () => {
+		it('still shows member management when the role has project:manageMembers but not project:update', async () => {
 			projectsStore.currentProject = {
 				...projectsStore.currentProject!,
-				scopes: ['project:read', 'project:manageUsers'],
+				scopes: ['project:read', 'project:manageMembers'],
 				rolesManaged: false,
 			};
 
@@ -397,10 +397,10 @@ describe('ProjectSettings', () => {
 			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '1');
 		});
 
-		it('exposes only member management to a project:manageUsers role, not project editing', async () => {
+		it('exposes only member management to a project:manageMembers role, not project editing', async () => {
 			projectsStore.currentProject = {
 				...projectsStore.currentProject!,
-				scopes: ['project:read', 'project:manageUsers'],
+				scopes: ['project:read', 'project:manageMembers'],
 				rolesManaged: false,
 			};
 

@@ -241,7 +241,7 @@ describe('ProjectHeader', () => {
 		);
 	});
 
-	it('should render ProjectTabs without Settings if no project update, manageUsers or externalSecretsProvider:read permission', () => {
+	it('should render ProjectTabs without Settings if no project update, manageMembers or externalSecretsProvider:read permission', () => {
 		route.params.projectId = '123';
 		projectsStore.currentProject = createTestProject({
 			scopes: ['project:read'],
@@ -256,10 +256,10 @@ describe('ProjectHeader', () => {
 		);
 	});
 
-	it('should render ProjectTabs Settings if project member has project:manageUsers scope', () => {
+	it('should render ProjectTabs Settings if project member has project:manageMembers scope', () => {
 		route.params.projectId = '123';
 		projectsStore.currentProject = createTestProject({
-			scopes: ['project:read', 'project:manageUsers'],
+			scopes: ['project:read', 'project:manageMembers'],
 		});
 		renderComponent();
 
