@@ -285,4 +285,55 @@ describe('search-workflows MCP tool', () => {
 			expect(parsed.data[0]).toHaveProperty('resource', 'workflow');
 		});
 	});
+
+	describe('content search mode', () => {
+		test('routes to workflowService.searchWorkflowContent and maps matches', async () => {
+			const workflowService = mockInstance(WorkflowService, {
+				getMany: vi.fn(),
+				searchWorkflowContent: vi.fn().mockResolvedValue({
+					count: 1,
+					results: [
+						{
+							id: 'w1',
+							name: 'My workflow',
+							description: null,
+							versionId: 'v1',
+							activeVersionId: 'av1',
+							createdAt: '2026-01-01T00:00:00.000Z',
+							updatedAt: '2026-01-02T00:00:00.000Z',
+							triggerCount: 0,
+							availableInMCP: true,
+							matchedIn: 'nodeParameters',
+							matchDetail: 'HTTP Request',
+							matchedNodeId: 'node-1',
+							tags: [{ id: 't1', name: 'ops' }],
+							parentFolder: null,
+							homeProject: null,
+						},
+					],
+				}),
+			});
+
+			const result = await searchWorkflows(user, workflowService as unknown as WorkflowService, {
+				query: 'hooks.example.com',
+				searchIn: 'content',
+			});
+
+			expect(workflowService.searchWorkflowContent).toHaveBeenCalledWith(user, {
+				search: 'hooks.example.com',
+				limit: 200,
+				projectId: undefined,
+			});
+			expect(workflowService.getMany).not.toHaveBeenCalled();
+			expect(result.count).toBe(1);
+			expect(result.data[0]).toMatchObject({
+				id: 'w1',
+				active: true,
+				matchedIn: 'nodeParameters',
+				matchDetail: 'HTTP Request',
+				matchedNodeId: 'node-1',
+				availableInMCP: true,
+			});
+		});
+	});
 });

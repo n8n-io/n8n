@@ -18,6 +18,7 @@ export * from './workflow-review-activity';
 export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
 export * from './workflow-publish-blocked-details';
+export * from './workflow-content-search';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,

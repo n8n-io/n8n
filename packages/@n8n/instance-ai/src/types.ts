@@ -23,6 +23,7 @@ import type {
 	McpTool,
 	McpToolCallRequest,
 	McpToolCallResult,
+	WorkflowContentMatchType,
 } from '@n8n/api-types';
 import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
@@ -69,6 +70,14 @@ export interface WorkflowSummary {
 	createdAt: string;
 	updatedAt: string;
 	tags?: string[];
+	/** Set on content searches: where the query matched. */
+	matchedIn?: WorkflowContentMatchType;
+	/** Matched node, version, or tag name, when applicable. */
+	matchDetail?: string;
+	/** ID of the matched node, for node name/parameter matches. */
+	matchedNodeId?: string;
+	/** ID of the matched version, for history and past-version matches. */
+	matchedVersionId?: string;
 }
 
 export interface WorkflowDetail extends WorkflowSummary {
@@ -289,6 +298,8 @@ export interface InstanceAiWorkflowService {
 		limit?: number;
 		status?: WorkflowListStatus;
 		scope?: 'project' | 'instance';
+		/** 'content' matches node names/parameters and version history too; requires query. */
+		searchIn?: 'name' | 'content';
 	}): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).

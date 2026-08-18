@@ -1,4 +1,5 @@
-import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
+import { UpdateWorkflowHistoryVersionDto, workflowContentMatchTypes } from '@n8n/api-types';
+import type { WorkflowContentMatchType, WorkflowContentSearchResult } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User, ListQueryDb, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
@@ -9,6 +10,7 @@ import {
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationReason,
@@ -42,6 +44,7 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
@@ -68,6 +71,44 @@ import { getBase as getWorkflowExecutionData } from '@/workflow-execute-addition
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
+const CONTENT_SEARCH_MIN_QUERY_LENGTH = 3;
+const CONTENT_SEARCH_MAX_RESULTS = 100;
+// ponytail: per-process gate; a shared limiter if multi-main load ever warrants it
+const CONTENT_SEARCH_MAX_CONCURRENT = 3;
+
+function classifyContentMatch(
+	workflow: WorkflowEntity,
+	needle: string,
+): { matchedIn: WorkflowContentMatchType | null; matchDetail?: string; matchedNodeId?: string } {
+	if (workflow.name.toLowerCase().includes(needle)) return { matchedIn: 'name' };
+
+	const nodes = workflow.nodes ?? [];
+	const nodeNameMatch = nodes.find((node) => node.name.toLowerCase().includes(needle));
+	if (nodeNameMatch) {
+		return {
+			matchedIn: 'nodeName',
+			matchDetail: nodeNameMatch.name,
+			matchedNodeId: nodeNameMatch.id,
+		};
+	}
+
+	// Serialized node covers parameters, credentials, notes and webhook paths
+	const nodeContentMatch = nodes.find((node) =>
+		JSON.stringify(node).toLowerCase().includes(needle),
+	);
+	if (nodeContentMatch) {
+		return {
+			matchedIn: 'nodeParameters',
+			matchDetail: nodeContentMatch.name,
+			matchedNodeId: nodeContentMatch.id,
+		};
+	}
+
+	if (workflow.description?.toLowerCase().includes(needle)) return { matchedIn: 'description' };
+
+	return { matchedIn: null };
+}
+
 @Service()
 export class WorkflowService {
 	constructor(
@@ -87,6 +128,7 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
@@ -214,6 +256,134 @@ export class WorkflowService {
 			workflows,
 			count,
 		};
+	}
+
+	/** Content searches run a full LIKE scan; gate how many can run at once per process */
+	private activeContentSearches = 0;
+
+	/**
+	 * Search workflows the user can read for a phrase appearing anywhere in
+	 * their content: name, node names, node parameters, description, version
+	 * history titles/descriptions, or tag names. Results are ordered by where
+	 * the match was found (name first), then by most recently updated.
+	 */
+	async searchWorkflowContent(
+		user: User,
+		{ search, limit, projectId }: { search: string; limit: number; projectId?: string },
+	): Promise<WorkflowContentSearchResult> {
+		if (search.trim().length < CONTENT_SEARCH_MIN_QUERY_LENGTH) {
+			throw new BadRequestError(
+				`Workflow content search requires at least ${CONTENT_SEARCH_MIN_QUERY_LENGTH} characters`,
+			);
+		}
+
+		if (this.activeContentSearches >= CONTENT_SEARCH_MAX_CONCURRENT) {
+			throw new TooManyRequestsError(
+				'Too many concurrent workflow content searches, try again shortly',
+			);
+		}
+
+		this.activeContentSearches++;
+		try {
+			return await this.searchWorkflowContentImpl(user, { search, limit, projectId });
+		} finally {
+			this.activeContentSearches--;
+		}
+	}
+
+	private async searchWorkflowContentImpl(
+		user: User,
+		{ search, limit, projectId }: { search: string; limit: number; projectId?: string },
+	): Promise<WorkflowContentSearchResult> {
+		const take = Math.min(Math.max(1, limit), CONTENT_SEARCH_MAX_RESULTS);
+		const projectRoles = await this.roleService.rolesWithScope('project', ['workflow:read']);
+		const workflowRoles = await this.roleService.rolesWithScope('workflow', ['workflow:read']);
+
+		const { workflows, historyContentMatches } =
+			await this.workflowRepository.getManyByContentSearch(
+				user,
+				{ scopes: ['workflow:read'], projectRoles, workflowRoles },
+				{ search, projectId, take },
+			);
+
+		const needle = search.toLowerCase();
+		const historyContentVersionIds = new Map(
+			historyContentMatches.map((match) => [match.workflowId, match.versionId]),
+		);
+
+		const classified = workflows.map((workflow) => ({
+			workflow,
+			homeProject: this.ownershipService.addOwnedByAndSharedWith(workflow).homeProject,
+			// Workflows found by the past-version scan matched nothing else
+			...(historyContentVersionIds.has(workflow.id)
+				? {
+						matchedIn: 'historyContent' as const,
+						matchDetail: undefined,
+						matchedNodeId: undefined,
+						matchedVersionId: historyContentVersionIds.get(workflow.id),
+					}
+				: { ...classifyContentMatch(workflow, needle), matchedVersionId: undefined }),
+		}));
+
+		// The SQL rank cannot tell history matches from tag matches; resolve
+		// the remaining rows with one query over their version history
+		const unresolvedIds = classified.filter((c) => c.matchedIn === null).map((c) => c.workflow.id);
+		const historyMatches = await this.workflowHistoryRepository.findLatestVersionMatches(
+			unresolvedIds,
+			search,
+		);
+
+		const priority = new Map<WorkflowContentMatchType, number>(
+			workflowContentMatchTypes.map((type, index) => [type, index]),
+		);
+
+		const results = classified
+			.map(({ workflow, homeProject, matchedIn, matchDetail, matchedNodeId, matchedVersionId }) => {
+				let resolvedMatch = matchedIn;
+				let detail = matchDetail;
+				let versionId = matchedVersionId;
+
+				if (resolvedMatch === null) {
+					const historyMatch = historyMatches.get(workflow.id);
+					if (historyMatch) {
+						resolvedMatch = 'history';
+						detail = historyMatch.name ?? undefined;
+						versionId = historyMatch.versionId;
+					} else {
+						const tagMatch = workflow.tags?.find((tag) => tag.name.toLowerCase().includes(needle));
+						resolvedMatch = 'other';
+						detail = tagMatch?.name;
+					}
+				}
+
+				return {
+					id: workflow.id,
+					name: workflow.name,
+					description: workflow.description ?? null,
+					versionId: workflow.versionId,
+					activeVersionId: workflow.activeVersionId ?? null,
+					createdAt: workflow.createdAt.toISOString(),
+					updatedAt: workflow.updatedAt.toISOString(),
+					triggerCount: workflow.triggerCount,
+					availableInMCP: workflow.settings?.availableInMCP ?? false,
+					matchedIn: resolvedMatch,
+					...(detail !== undefined ? { matchDetail: detail } : {}),
+					...(matchedNodeId !== undefined ? { matchedNodeId } : {}),
+					...(versionId !== undefined ? { matchedVersionId: versionId } : {}),
+					tags: (workflow.tags ?? []).map((tag) => ({ id: tag.id, name: tag.name })),
+					parentFolder: workflow.parentFolder
+						? {
+								id: workflow.parentFolder.id,
+								name: workflow.parentFolder.name,
+								parentFolderId: workflow.parentFolder.parentFolderId ?? null,
+							}
+						: null,
+					homeProject,
+				};
+			})
+			.sort((a, b) => (priority.get(a.matchedIn) ?? 99) - (priority.get(b.matchedIn) ?? 99));
+
+		return { results, count: results.length };
 	}
 
 	private async resolveCallableForParentWorkflowId(

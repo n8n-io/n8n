@@ -6,6 +6,7 @@ import {
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
 	ManualRunDto,
+	SearchWorkflowContentDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
 	type WorkflowPublicationStatus,
@@ -200,6 +201,20 @@ export class WorkflowsController {
 		}
 
 		return workflowData;
+	}
+
+	/** Search workflow content: name, nodes, description, version history and tags */
+	@Get('/search')
+	async searchWorkflowContent(
+		req: AuthenticatedRequest,
+		_res: express.Response,
+		@Query query: SearchWorkflowContentDto,
+	) {
+		return await this.workflowService.searchWorkflowContent(req.user, {
+			search: query.query,
+			limit: query.limit,
+			projectId: query.projectId,
+		});
 	}
 
 	@Get('/:workflowId')

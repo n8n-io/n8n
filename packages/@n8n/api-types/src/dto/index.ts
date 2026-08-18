@@ -127,6 +127,7 @@ export {
 	type PartialManualExecutionToDestinationPayload,
 } from './workflows/manual-run.dto';
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
+export { SearchWorkflowContentDto } from './workflows/search-workflow-content.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';

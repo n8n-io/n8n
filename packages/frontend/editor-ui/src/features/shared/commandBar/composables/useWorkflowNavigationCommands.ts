@@ -20,10 +20,37 @@ import CommandBarItemTitle from '@/features/shared/commandBar/components/Command
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import type { WorkflowContentMatchType, WorkflowContentSearchItem } from '@n8n/api-types';
+import { searchWorkflowContent } from '@/app/api/workflows';
 
 const ITEM_ID = {
 	CREATE_WORKFLOW: 'create-workflow',
 	OPEN_WORKFLOW: 'open-workflow',
+	DEEP_SEARCH: 'deep-search-workflows',
+	DEEP_SEARCH_HINT: 'deep-search-workflows-hint',
+};
+
+const DEEP_SEARCH_LIMIT = 100;
+// Must match the backend's CONTENT_SEARCH_MIN_QUERY_LENGTH
+const DEEP_SEARCH_MIN_QUERY_LENGTH = 3;
+
+const DEEP_SEARCH_SECTION_KEYS = {
+	name: 'commandBar.workflows.deepSearch.section.name',
+	nodeName: 'commandBar.workflows.deepSearch.section.nodeName',
+	nodeParameters: 'commandBar.workflows.deepSearch.section.nodeParameters',
+	description: 'commandBar.workflows.deepSearch.section.description',
+	history: 'commandBar.workflows.deepSearch.section.history',
+	other: 'commandBar.workflows.deepSearch.section.other',
+	historyContent: 'commandBar.workflows.deepSearch.section.historyContent',
+} as const satisfies Record<WorkflowContentMatchType, string>;
+
+/** The subset of workflow data the open-workflow command items render. */
+type WorkflowCommandData = Pick<
+	IWorkflowDb,
+	'id' | 'name' | 'description' | 'tags' | 'parentFolder'
+> & {
+	homeProject?: Pick<NonNullable<IWorkflowDb['homeProject']>, 'id' | 'name' | 'type' | 'icon'>;
 };
 
 export function useWorkflowNavigationCommands(options: {
@@ -41,6 +68,7 @@ export function useWorkflowNavigationCommands(options: {
 	const tagsStore = useTagsStore();
 	const sourceControlStore = useSourceControlStore();
 	const foldersStore = useFoldersStore();
+	const rootStore = useRootStore();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -52,6 +80,11 @@ export function useWorkflowNavigationCommands(options: {
 	const workflowMatchedNodeTypes = ref<Map<string, string>>(new Map());
 	const isLoading = ref(false);
 
+	const deepSearchPhrase = ref('');
+	const deepSearchResults = ref<WorkflowContentSearchItem[]>([]);
+	const deepSearchDone = ref(false);
+	let deepSearchRunId = 0;
+
 	const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
 	function orderResultByCurrentProjectFirst<T extends IWorkflowDb>(results: T[]) {
@@ -61,6 +94,23 @@ export function useWorkflowNavigationCommands(options: {
 			return 0;
 		});
 	}
+
+	// Cache parent folders for breadcrumb building
+	const cacheParentFolders = (workflows: IWorkflowDb[]) => {
+		const parentFolders = workflows
+			.map((w) => w.parentFolder)
+			.filter((pf) => pf !== undefined && pf !== null);
+
+		if (parentFolders.length > 0) {
+			foldersStore.cacheFolders(
+				parentFolders.map((pf) => ({
+					id: pf.id,
+					name: pf.name,
+					parentFolder: undefined, // We don't have the parent's parent info yet
+				})),
+			);
+		}
+	};
 
 	const fetchWorkflowsImpl = async (query: string) => {
 		try {
@@ -162,20 +212,7 @@ export function useWorkflowNavigationCommands(options: {
 			const nonArchivedWorkflows = uniqueById.filter((w) => !w.isArchived);
 			workflowResults.value = orderResultByCurrentProjectFirst(nonArchivedWorkflows);
 
-			// Cache parent folders for breadcrumb building
-			const parentFolders = nonArchivedWorkflows
-				.map((w) => w.parentFolder)
-				.filter((pf) => pf !== undefined && pf !== null);
-
-			if (parentFolders.length > 0) {
-				foldersStore.cacheFolders(
-					parentFolders.map((pf) => ({
-						id: pf.id,
-						name: pf.name,
-						parentFolder: undefined, // We don't have the parent's parent info yet
-					})),
-				);
-			}
+			cacheParentFolders(nonArchivedWorkflows);
 		} catch {
 			workflowResults.value = [];
 			workflowKeywords.value.clear();
@@ -186,6 +223,49 @@ export function useWorkflowNavigationCommands(options: {
 	};
 
 	const fetchWorkflowsDebounced = debounce(fetchWorkflowsImpl, 300);
+
+	const runDeepSearch = async (phrase: string) => {
+		const runId = ++deepSearchRunId;
+		deepSearchPhrase.value = phrase;
+		deepSearchResults.value = [];
+		deepSearchDone.value = false;
+		if (!phrase) {
+			deepSearchDone.value = true;
+			return;
+		}
+		isLoading.value = true;
+
+		try {
+			const { results } = await searchWorkflowContent(rootStore.restApiContext, {
+				query: phrase,
+				limit: DEEP_SEARCH_LIMIT,
+			});
+			if (runId !== deepSearchRunId) return;
+
+			deepSearchResults.value = results;
+
+			// Cache parent folders for breadcrumb building
+			const parentFolders = results
+				.map((result) => result.parentFolder)
+				.filter((pf) => pf !== null);
+			if (parentFolders.length > 0) {
+				foldersStore.cacheFolders(
+					parentFolders.map((pf) => ({
+						id: pf.id,
+						name: pf.name,
+						parentFolder: pf.parentFolderId ?? undefined,
+					})),
+				);
+			}
+		} catch {
+			deepSearchResults.value = [];
+		} finally {
+			if (runId === deepSearchRunId) {
+				isLoading.value = false;
+				deepSearchDone.value = true;
+			}
+		}
+	};
 
 	const buildFolderPath = (folderId: string): string[] => {
 		const path: string[] = [];
@@ -203,7 +283,7 @@ export function useWorkflowNavigationCommands(options: {
 		return path;
 	};
 
-	const getProjectIcon = (workflow: IWorkflowDb): IconOrEmoji => {
+	const getProjectIcon = (workflow: WorkflowCommandData): IconOrEmoji => {
 		if (workflow.homeProject?.type === ProjectTypes.Personal) {
 			return { type: 'icon', value: 'user' };
 		}
@@ -217,7 +297,7 @@ export function useWorkflowNavigationCommands(options: {
 		return { type: 'icon', value: 'house' };
 	};
 
-	const getWorkflowProjectSuffix = (workflow: IWorkflowDb) => {
+	const getWorkflowProjectSuffix = (workflow: WorkflowCommandData) => {
 		const parts: string[] = [];
 
 		if (workflow.homeProject && workflow.homeProject.type === ProjectTypes.Personal) {
@@ -239,7 +319,7 @@ export function useWorkflowNavigationCommands(options: {
 		return parts.join(' / ');
 	};
 
-	const openWorkflowCommand = (workflow: IWorkflowDb, isRoot: boolean): CommandBarItem => {
+	const openWorkflowCommand = (workflow: WorkflowCommandData, isRoot: boolean): CommandBarItem => {
 		let keywords = workflowKeywords.value.get(workflow.id) ?? [];
 		const matchedNodeType = workflowMatchedNodeTypes.value.get(workflow.id);
 
@@ -320,6 +400,114 @@ export function useWorkflowNavigationCommands(options: {
 		return workflowResults.value.map((workflow) => openWorkflowCommand(workflow, true));
 	});
 
+	const deepSearchItems = computed<CommandBarItem[]>(() => {
+		if (deepSearchResults.value.length === 0) {
+			return deepSearchDone.value
+				? [
+						{
+							id: 'deep-search-no-results',
+							title: i18n.baseText('commandBar.workflows.deepSearch.noResults', {
+								interpolate: { query: deepSearchPhrase.value },
+							}),
+						},
+					]
+				: [];
+		}
+
+		// Results arrive pre-sorted by match priority (name, node name, node
+		// parameters, description, version history, other)
+		return deepSearchResults.value.map((result) => {
+			const base = openWorkflowCommand(
+				{
+					id: result.id,
+					name: result.name,
+					description: result.description,
+					tags: result.tags.map((tag) => tag.name),
+					parentFolder: result.parentFolder ?? undefined,
+					homeProject: result.homeProject ?? undefined,
+				},
+				false,
+			);
+			return {
+				...base,
+				section: i18n.baseText(DEEP_SEARCH_SECTION_KEYS[result.matchedIn]),
+				keywords: [...(base.keywords ?? []), ...(result.matchDetail ? [result.matchDetail] : [])],
+				// Open the workflow directly on the matched node when there is one,
+				// and history matches on the matched version in the history view
+				...(result.matchedNodeId
+					? {
+							handler: () => {
+								const targetRoute = router.resolve({
+									name: VIEWS.WORKFLOW,
+									params: { workflowId: result.id, nodeId: result.matchedNodeId },
+								});
+								window.location.href = targetRoute.fullPath;
+							},
+						}
+					: {}),
+				...(result.matchedVersionId
+					? {
+							handler: () => {
+								const targetRoute = router.resolve({
+									name: VIEWS.WORKFLOW_HISTORY,
+									params: { workflowId: result.id, versionId: result.matchedVersionId },
+								});
+								window.location.href = targetRoute.fullPath;
+							},
+						}
+					: {}),
+			};
+		});
+	});
+
+	const deepSearchRootItem = computed<CommandBarItem | null>(() => {
+		const trimmed = lastQuery.value.trim();
+		// Navigating into the item clears the input (and with it lastQuery), so
+		// while it is the active parent it must stay in the list unconditionally
+		// or the command bar loses its current view and resets to the root
+		const isActive = activeNodeId.value === ITEM_ID.DEEP_SEARCH;
+		if (!workflowsStore.canViewWorkflows || (!isActive && trimmed.length === 0)) {
+			return null;
+		}
+		if (!isActive && trimmed.length < DEEP_SEARCH_MIN_QUERY_LENGTH) {
+			return {
+				id: ITEM_ID.DEEP_SEARCH_HINT,
+				title: i18n.baseText('commandBar.workflows.deepSearch.minChars', {
+					interpolate: { count: `${DEEP_SEARCH_MIN_QUERY_LENGTH}` },
+				}),
+				section: i18n.baseText('commandBar.sections.workflows'),
+				// Always contains the current query, so the item survives the search filter
+				keywords: [trimmed],
+				icon: {
+					component: N8nIcon,
+					props: {
+						icon: 'search',
+						color: 'text-light',
+					},
+				},
+			};
+		}
+		const phrase = isActive ? deepSearchPhrase.value : trimmed;
+		return {
+			id: ITEM_ID.DEEP_SEARCH,
+			title: i18n.baseText('commandBar.workflows.deepSearch', {
+				interpolate: { query: phrase },
+			}),
+			section: i18n.baseText('commandBar.sections.workflows'),
+			placeholder: i18n.baseText('commandBar.workflows.deepSearch.placeholder'),
+			// Always contains the current query, so the item survives the search filter
+			keywords: [trimmed],
+			children: deepSearchItems.value,
+			icon: {
+				component: N8nIcon,
+				props: {
+					icon: 'search',
+					color: 'text-light',
+				},
+			},
+		};
+	});
+
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {
 		const hasCreatePermission =
 			!sourceControlStore.preferences.branchReadOnly &&
@@ -371,6 +559,7 @@ export function useWorkflowNavigationCommands(options: {
 					]
 				: []),
 			...rootWorkflowItems.value,
+			...(deepSearchRootItem.value ? [deepSearchRootItem.value] : []),
 		];
 	});
 
@@ -388,10 +577,21 @@ export function useWorkflowNavigationCommands(options: {
 	function onCommandBarNavigateTo(to: string | null) {
 		activeNodeId.value = to;
 
+		// A quick-search fetch scheduled at the root must not fire after
+		// navigation: it would overwrite fresh results and clear the shared
+		// loading state while a deep search is still running
+		fetchWorkflowsDebounced.cancel();
+
 		if (to === ITEM_ID.OPEN_WORKFLOW) {
 			isLoading.value = true;
 			void fetchWorkflowsImpl('');
+		} else if (to === ITEM_ID.DEEP_SEARCH) {
+			// lastQuery still holds the phrase typed at the root; the input clears afterwards
+			void runDeepSearch(lastQuery.value.trim());
 		} else if (to === null) {
+			deepSearchRunId++;
+			deepSearchResults.value = [];
+			deepSearchDone.value = false;
 			isLoading.value = false;
 			workflowResults.value = [];
 			workflowKeywords.value.clear();

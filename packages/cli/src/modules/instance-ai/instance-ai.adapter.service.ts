@@ -649,6 +649,33 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
+				if (options?.searchIn === 'content' && options.query) {
+					const { results } = await workflowService.searchWorkflowContent(user, {
+						search: options.query,
+						limit: options.limit ?? 50,
+						projectId: options.scope !== 'instance' && boundProjectId ? boundProjectId : undefined,
+					});
+
+					// Content search always excludes archived workflows
+					return results.map(
+						(item): WorkflowSummary => ({
+							id: item.id,
+							name: item.name,
+							versionId: item.versionId,
+							activeVersionId: item.activeVersionId,
+							isArchived: false,
+							createdAt: item.createdAt,
+							updatedAt: item.updatedAt,
+							matchedIn: item.matchedIn,
+							...(item.matchDetail !== undefined ? { matchDetail: item.matchDetail } : {}),
+							...(item.matchedNodeId !== undefined ? { matchedNodeId: item.matchedNodeId } : {}),
+							...(item.matchedVersionId !== undefined
+								? { matchedVersionId: item.matchedVersionId }
+								: {}),
+						}),
+					);
+				}
+
 				const filter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
 					...(options?.query ? { query: options.query } : {}),

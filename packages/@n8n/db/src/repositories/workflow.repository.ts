@@ -21,6 +21,7 @@ import {
 	WebhookEntity,
 	TagEntity,
 	WorkflowEntity,
+	WorkflowHistory,
 	WorkflowTagMapping,
 	WorkflowDependency,
 	User,
@@ -879,6 +880,205 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		const [workflows, count] = await query.getManyAndCount();
 		return { workflows, count };
+	}
+
+	/**
+	 * Find workflows whose content matches a search phrase anywhere: workflow
+	 * name, nodes (names and serialized parameters), description, version
+	 * history titles/descriptions, tag names, or — last — the node contents of
+	 * past versions. Archived workflows are excluded. Results are ordered by
+	 * where the match was found (name first), then by most recently updated.
+	 *
+	 * Runs as two queries so the expensive LIKE scan over the nodes JSON
+	 * executes exactly once, over minimal columns and without joins: first an
+	 * id+rank scan with a plain LIMIT, then hydration of the matched page.
+	 */
+	// ponytail: LIKE full scan per search; move to an FTS index if slow-query logs flag it
+	@TimedQuery({ threshold: 1000 })
+	async getManyByContentSearch(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+		},
+		{ search, projectId, take }: { search: string; projectId?: string; take: number },
+	): Promise<{
+		workflows: WorkflowEntity[];
+		historyContentMatches: Array<{ workflowId: string; versionId: string }>;
+	}> {
+		const scanQb = this.createQueryBuilder('workflow');
+
+		// The subquery restricts to the given project itself, so no extra join is needed
+		const sharedWorkflowSubquery = this.buildSharedWorkflowIdsSubquery(user, {
+			...sharingOptions,
+			projectId,
+		});
+		scanQb.andWhere(`workflow.id IN (${sharedWorkflowSubquery.getQuery()})`);
+		scanQb.setParameters(sharedWorkflowSubquery.getParameters());
+
+		this.applyIsArchivedFilter(scanQb, { isArchived: false });
+
+		const historySubquery = scanQb
+			.subQuery()
+			.select('1')
+			.from(WorkflowHistory, 'version')
+			.where('version.workflowId = workflow.id')
+			.andWhere(
+				"(LOWER(COALESCE(version.name, '')) LIKE :contentSearch OR LOWER(COALESCE(version.description, '')) LIKE :contentSearch)",
+			);
+
+		const tagSubquery = scanQb
+			.subQuery()
+			.select('1')
+			.from(WorkflowTagMapping, 'wt')
+			.innerJoin(TagEntity, 'content_tag', 'content_tag.id = wt.tagId')
+			.where('wt.workflowId = workflow.id')
+			.andWhere('LOWER(content_tag.name) LIKE :contentSearch');
+
+		// The nodes JSON column serializes node names, parameters, credentials and notes
+		const nodesTextExpression =
+			this.globalConfig.database.type === 'sqlite'
+				? 'workflow.nodes'
+				: 'CAST(workflow.nodes AS TEXT)';
+
+		const matchesName = 'LOWER(workflow.name) LIKE :contentSearch';
+		const matchesNodes = `LOWER(${nodesTextExpression}) LIKE :contentSearch`;
+		const matchesDescription = "LOWER(COALESCE(workflow.description, '')) LIKE :contentSearch";
+		// getQuery() on a subquery already includes the surrounding parentheses
+		const matchesHistory = `EXISTS ${historySubquery.getQuery()}`;
+		const matchesTags = `EXISTS ${tagSubquery.getQuery()}`;
+
+		scanQb.andWhere(
+			`(${matchesName} OR ${matchesNodes} OR ${matchesDescription} OR ${matchesHistory} OR ${matchesTags})`,
+			{ contentSearch: `%${search.toLowerCase()}%` },
+		);
+
+		const rankExpression = `CASE WHEN ${matchesName} THEN 0 WHEN ${matchesNodes} THEN 1 WHEN ${matchesDescription} THEN 2 WHEN ${matchesHistory} THEN 3 ELSE 4 END`;
+		const matchedIds = await scanQb
+			.select('workflow.id', 'id')
+			.addSelect(rankExpression, 'content_rank')
+			.orderBy('content_rank', 'ASC')
+			.addOrderBy('workflow.updatedAt', 'DESC')
+			.limit(take)
+			.getRawMany<{ id: string }>();
+
+		const primaryIds = matchedIds.map((row) => row.id);
+
+		// Past-version contents rank last, so they are only scanned when live
+		// content under-fills the limit — common searches never pay for it.
+		// Skipping when full also guarantees these ids matched nothing above.
+		const historyContentMatches =
+			primaryIds.length < take
+				? await this.scanHistoryContentMatches(user, sharingOptions, {
+						search,
+						projectId,
+						take: take - primaryIds.length,
+						excludeIds: primaryIds,
+					})
+				: [];
+
+		const ids = [...primaryIds, ...historyContentMatches.map((match) => match.workflowId)];
+		if (ids.length === 0) return { workflows: [], historyContentMatches: [] };
+		const select = {
+			id: true,
+			name: true,
+			description: true,
+			createdAt: true,
+			updatedAt: true,
+			versionId: true,
+			activeVersionId: true,
+			triggerCount: true,
+			settings: true,
+			nodes: true,
+			ownedBy: true,
+			parentFolder: true,
+			tags: true,
+		};
+		const hydrateQb = this.createQueryBuilder('workflow').where('workflow.id IN (:...ids)', {
+			ids,
+		});
+		this.applySelect(hydrateQb, select);
+		this.applyRelations(hydrateQb, select);
+		const workflows = await hydrateQb.getMany();
+
+		// Restore the scan's rank order
+		const rankById = new Map(ids.map((id, index) => [id, index]));
+		workflows.sort(
+			(a, b) => (rankById.get(a.id) ?? ids.length) - (rankById.get(b.id) ?? ids.length),
+		);
+		return { workflows, historyContentMatches };
+	}
+
+	/**
+	 * Find workflows whose search match exists only in the node contents of a
+	 * past version, along with the newest matching version. EXISTS
+	 * short-circuits on the first matching version.
+	 */
+	// ponytail: reads every version of non-matching workflows; bound by recency if slow-query logs flag it
+	private async scanHistoryContentMatches(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+		},
+		{
+			search,
+			projectId,
+			take,
+			excludeIds,
+		}: { search: string; projectId?: string; take: number; excludeIds: string[] },
+	): Promise<Array<{ workflowId: string; versionId: string }>> {
+		const qb = this.createQueryBuilder('workflow');
+
+		const sharedWorkflowSubquery = this.buildSharedWorkflowIdsSubquery(user, {
+			...sharingOptions,
+			projectId,
+		});
+		qb.andWhere(`workflow.id IN (${sharedWorkflowSubquery.getQuery()})`);
+		qb.setParameters(sharedWorkflowSubquery.getParameters());
+
+		this.applyIsArchivedFilter(qb, { isArchived: false });
+
+		if (excludeIds.length > 0) {
+			qb.andWhere('workflow.id NOT IN (:...excludeIds)', { excludeIds });
+		}
+
+		const versionNodesTextExpression =
+			this.globalConfig.database.type === 'sqlite'
+				? 'version.nodes'
+				: 'CAST(version.nodes AS TEXT)';
+
+		const versionSubquery = qb
+			.subQuery()
+			.select('1')
+			.from(WorkflowHistory, 'version')
+			.where('version.workflowId = workflow.id')
+			.andWhere(`LOWER(${versionNodesTextExpression}) LIKE :contentSearch`);
+
+		qb.andWhere(`EXISTS ${versionSubquery.getQuery()}`, {
+			contentSearch: `%${search.toLowerCase()}%`,
+		});
+
+		// Scalar subquery resolving the newest matching version per result row
+		const latestMatchingVersionSubquery = qb
+			.subQuery()
+			.select('version.versionId')
+			.from(WorkflowHistory, 'version')
+			.where('version.workflowId = workflow.id')
+			.andWhere(`LOWER(${versionNodesTextExpression}) LIKE :contentSearch`)
+			.orderBy('version.createdAt', 'DESC')
+			.limit(1);
+
+		const rows = await qb
+			.select('workflow.id', 'id')
+			.addSelect(latestMatchingVersionSubquery.getQuery(), 'versionId')
+			.orderBy('workflow.updatedAt', 'DESC')
+			.limit(take)
+			.getRawMany<{ id: string; versionId: string }>();
+
+		return rows.map((row) => ({ workflowId: row.id, versionId: row.versionId }));
 	}
 
 	/**

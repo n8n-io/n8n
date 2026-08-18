@@ -164,7 +164,11 @@ const closeCommandBar = () => {
 	isOpen.value = false;
 	selectedIndex.value = -1;
 	inputValue.value = '';
-	currentParentId.value = null;
+	if (currentParentId.value !== null) {
+		currentParentId.value = null;
+		// Let consumers cancel in-flight work tied to the open parent
+		emit('navigateTo', null);
+	}
 };
 
 const navigateToChildren = (item: CommandBarItem) => {
@@ -202,7 +206,13 @@ const selectItem = (item: CommandBarItem) => {
 const handleKeydown = (event: KeyboardEvent) => {
 	if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
 		event.preventDefault();
-		void openCommandBar();
+		// Toggle: reopening while open would reset input and selection but
+		// keep the current parent view, leaving the bar in a mixed state
+		if (isOpen.value) {
+			closeCommandBar();
+		} else {
+			void openCommandBar();
+		}
 		return;
 	}
 

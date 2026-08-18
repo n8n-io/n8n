@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { waitFor } from '@testing-library/vue';
+import type { WorkflowContentSearchItem } from '@n8n/api-types';
 import type { IWorkflowDb } from '@/Interface';
+import * as workflowsApi from '@/app/api/workflows';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
@@ -17,8 +19,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import * as permissionsModule from '@n8n/permissions';
 
+const debounceCancelSpy = vi.hoisted(() => vi.fn());
+
 vi.mock('lodash/debounce', () => ({
-	default: (fn: (...args: unknown[]) => unknown) => fn,
+	default: (fn: (...args: unknown[]) => unknown) =>
+		Object.assign((...args: unknown[]) => fn(...args), { cancel: debounceCancelSpy }),
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -44,6 +49,11 @@ vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => 
 			mergedNodes: visibleNodeTypes,
 		}),
 	}),
+}));
+
+vi.mock('@/app/api/workflows', async (importOriginal) => ({
+	...(await importOriginal()),
+	searchWorkflowContent: vi.fn(async () => ({ results: [], count: 0 })),
 }));
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
@@ -341,13 +351,217 @@ describe('useWorkflowNavigationCommands', () => {
 		});
 		(api.handlers?.onCommandBarChange as (q: string) => void)('Alpha');
 		await waitFor(() => {
-			expect(api.commands.value.length).toBeGreaterThan(2);
+			expect(api.commands.value.find((c) => c.id === 'w1')).toBeDefined();
 		});
 		const alphaWf = api.commands.value.find((c) => c.id === 'w1');
 		expect((alphaWf?.title as unknown as { props?: { title?: string } }).props?.title).toBe(
 			'generic.openResource',
 		);
 		expect(alphaWf?.section).toBe('commandBar.sections.workflows');
+	});
+
+	describe('deep search', () => {
+		const searchItem = (
+			overrides: Partial<WorkflowContentSearchItem> &
+				Pick<WorkflowContentSearchItem, 'id' | 'name' | 'matchedIn'>,
+		): WorkflowContentSearchItem => ({
+			description: null,
+			versionId: 'v1',
+			activeVersionId: null,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+			triggerCount: 0,
+			availableInMCP: false,
+			tags: [],
+			parentFolder: null,
+			homeProject: null,
+			...overrides,
+		});
+
+		const deepSearchResponse = {
+			count: 5,
+			results: [
+				searchItem({ id: 'd1', name: 'Alpha flow', matchedIn: 'name' }),
+				searchItem({
+					id: 'd2',
+					name: 'Beta',
+					matchedIn: 'nodeName',
+					matchDetail: 'Alpha node',
+					matchedNodeId: 'node-123',
+				}),
+				searchItem({ id: 'd4', name: 'Delta', matchedIn: 'nodeParameters', matchDetail: 'Set' }),
+				searchItem({
+					id: 'd5',
+					name: 'Epsilon',
+					matchedIn: 'history',
+					matchDetail: 'Alpha revamp',
+					matchedVersionId: 'v-hist',
+				}),
+				searchItem({
+					id: 'd6',
+					name: 'Zeta',
+					matchedIn: 'historyContent',
+					matchedVersionId: 'v-old',
+				}),
+			],
+		};
+
+		beforeEach(() => {
+			vi.mocked(workflowsApi.searchWorkflowContent).mockResolvedValue(deepSearchResponse);
+		});
+
+		it('shows a min-characters hint below 3 chars and the search-all item from 3', () => {
+			const lastQuery = ref('al');
+			const api = useWorkflowNavigationCommands({
+				lastQuery,
+				activeNodeId: ref(null),
+				currentProjectName: ref('My Project'),
+			});
+			expect(api.commands.value.map((c) => c.id)).not.toContain('deep-search-workflows');
+			expect(api.commands.value.map((c) => c.id)).toContain('deep-search-workflows-hint');
+
+			lastQuery.value = 'alpha';
+			expect(api.commands.value.map((c) => c.id)).toContain('deep-search-workflows');
+			expect(api.commands.value.map((c) => c.id)).not.toContain('deep-search-workflows-hint');
+
+			lastQuery.value = '';
+			expect(api.commands.value.map((c) => c.id)).not.toContain('deep-search-workflows-hint');
+		});
+
+		it('queries the backend and groups matches by priority', async () => {
+			const api = useWorkflowNavigationCommands({
+				lastQuery: ref('alpha'),
+				activeNodeId: ref(null),
+				currentProjectName: ref('My Project'),
+			});
+
+			api.handlers?.onCommandBarNavigateTo?.('deep-search-workflows');
+
+			await waitFor(() => {
+				const item = api.commands.value.find((c) => c.id === 'deep-search-workflows');
+				expect(item?.children).toHaveLength(5);
+			});
+
+			expect(workflowsApi.searchWorkflowContent).toHaveBeenCalledWith(expect.anything(), {
+				query: 'alpha',
+				limit: 100,
+			});
+
+			const children = api.commands.value.find((c) => c.id === 'deep-search-workflows')?.children;
+			expect(children?.map((c) => c.id)).toEqual(['d1', 'd2', 'd4', 'd5', 'd6']);
+			expect(children?.map((c) => c.section)).toEqual([
+				'commandBar.workflows.deepSearch.section.name',
+				'commandBar.workflows.deepSearch.section.nodeName',
+				'commandBar.workflows.deepSearch.section.nodeParameters',
+				'commandBar.workflows.deepSearch.section.history',
+				'commandBar.workflows.deepSearch.section.historyContent',
+			]);
+			// The matched node name is searchable within the results view
+			expect(children?.[1].keywords).toContain('Alpha node');
+
+			// A node match opens the workflow directly on the matched node
+			await children?.[1].handler?.();
+			expect(resolveMock).toHaveBeenCalledWith(
+				expect.objectContaining({ params: { workflowId: 'd2', nodeId: 'node-123' } }),
+			);
+
+			// Other matches open the workflow without a node
+			await children?.[0].handler?.();
+			expect(resolveMock).toHaveBeenCalledWith(
+				expect.objectContaining({ params: { workflowId: 'd1' } }),
+			);
+
+			// History matches open the history view on the matched version
+			await children?.[3].handler?.();
+			expect(resolveMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: 'WorkflowHistory',
+					params: { workflowId: 'd5', versionId: 'v-hist' },
+				}),
+			);
+			await children?.[4].handler?.();
+			expect(resolveMock).toHaveBeenCalledWith(
+				expect.objectContaining({ params: { workflowId: 'd6', versionId: 'v-old' } }),
+			);
+		});
+
+		it('shows a no-results item when the search finishes empty', async () => {
+			vi.mocked(workflowsApi.searchWorkflowContent).mockResolvedValue({
+				results: [],
+				count: 0,
+			});
+
+			const api = useWorkflowNavigationCommands({
+				lastQuery: ref('zzz'),
+				activeNodeId: ref(null),
+				currentProjectName: ref('My Project'),
+			});
+
+			api.handlers?.onCommandBarNavigateTo?.('deep-search-workflows');
+
+			await waitFor(() => {
+				const item = api.commands.value.find((c) => c.id === 'deep-search-workflows');
+				expect(item?.children?.map((c) => c.id)).toEqual(['deep-search-no-results']);
+			});
+		});
+
+		it('stays in the items list after navigation clears the query', async () => {
+			const lastQuery = ref('alpha');
+			const activeNodeId = ref<string | null>(null);
+			const api = useWorkflowNavigationCommands({
+				lastQuery,
+				activeNodeId,
+				currentProjectName: ref('My Project'),
+			});
+
+			// Clicking the item makes the command bar clear its input, which
+			// empties lastQuery right after navigation
+			api.handlers?.onCommandBarNavigateTo?.('deep-search-workflows');
+			lastQuery.value = '';
+
+			await waitFor(() => {
+				const item = api.commands.value.find((c) => c.id === 'deep-search-workflows');
+				expect(item?.children).toHaveLength(5);
+			});
+
+			// Leaving the view with no query removes it again
+			api.handlers?.onCommandBarNavigateTo?.(null);
+			expect(api.commands.value.find((c) => c.id === 'deep-search-workflows')).toBeUndefined();
+		});
+
+		it('cancels a pending root quick-search fetch on navigation', () => {
+			const api = useWorkflowNavigationCommands({
+				lastQuery: ref('alpha'),
+				activeNodeId: ref(null),
+				currentProjectName: ref('My Project'),
+			});
+
+			debounceCancelSpy.mockClear();
+			api.handlers?.onCommandBarNavigateTo?.('deep-search-workflows');
+			expect(debounceCancelSpy).toHaveBeenCalled();
+
+			debounceCancelSpy.mockClear();
+			api.handlers?.onCommandBarNavigateTo?.(null);
+			expect(debounceCancelSpy).toHaveBeenCalled();
+		});
+
+		it('clears results when navigating back to root', async () => {
+			const api = useWorkflowNavigationCommands({
+				lastQuery: ref('alpha'),
+				activeNodeId: ref(null),
+				currentProjectName: ref('My Project'),
+			});
+
+			api.handlers?.onCommandBarNavigateTo?.('deep-search-workflows');
+			await waitFor(() => {
+				const item = api.commands.value.find((c) => c.id === 'deep-search-workflows');
+				expect(item?.children?.length).toBeGreaterThan(0);
+			});
+
+			api.handlers?.onCommandBarNavigateTo?.(null);
+			const item = api.commands.value.find((c) => c.id === 'deep-search-workflows');
+			expect(item?.children).toHaveLength(0);
+		});
 	});
 
 	it('open workflow children have correct title and section', async () => {

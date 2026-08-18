@@ -24,6 +24,7 @@ import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
@@ -95,6 +96,7 @@ describe('WorkflowService', () => {
 				mock(), // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowHistoryRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
@@ -319,6 +321,111 @@ describe('WorkflowService', () => {
 		});
 	});
 
+	describe('searchWorkflowContent()', () => {
+		let workflowService: WorkflowService;
+		let workflowRepositoryMock: MockProxy<{ getManyByContentSearch: Mock }>;
+
+		beforeEach(() => {
+			workflowRepositoryMock = mock();
+			workflowRepositoryMock.getManyByContentSearch.mockResolvedValue({
+				workflows: [],
+				historyContentMatches: [],
+			});
+
+			const roleServiceMock = mock<RoleService>();
+			roleServiceMock.rolesWithScope.mockResolvedValue(['project:viewer']);
+
+			const ownershipServiceMock = mock<OwnershipService>();
+			ownershipServiceMock.addOwnedByAndSharedWith.mockImplementation(
+				(workflow) =>
+					Object.assign(workflow, { homeProject: null, sharedWithProjects: [] }) as never,
+			);
+
+			const workflowHistoryRepositoryMock = mock<{ findLatestVersionMatches: Mock }>();
+			workflowHistoryRepositoryMock.findLatestVersionMatches.mockResolvedValue(new Map());
+
+			workflowService = new WorkflowService(
+				mock(), // logger
+				mock(), // sharedWorkflowRepository
+				workflowRepositoryMock as never, // workflowRepository
+				mock(), // workflowTagMappingRepository
+				ownershipServiceMock, // ownershipService
+				mock(), // tagService
+				mock(), // workflowHistoryService
+				mock(), // externalHooks
+				mock(), // activeWorkflowManager
+				roleServiceMock, // roleService
+				mock(), // projectService
+				mock(), // executionPersistence
+				mock(), // eventService
+				mock(), // globalConfig
+				mock(), // folderRepository
+				mock(), // workflowFinderService
+				workflowHistoryRepositoryMock as never, // workflowHistoryRepository
+				mock(), // workflowPublishHistoryRepository
+				mock(), // outboxRepository
+				mock(), // workflowValidationService
+				mock(), // nodeTypes
+				mock(), // webhookService
+				mock(), // licenseState
+				mock(), // projectRepository
+				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowPublishedVersionRepository
+				mock(), // workflowHookContextService
+				mock(), // workflowPublishGuard
+				mock(), // workflowMutationHooks
+			);
+		});
+
+		test('rejects queries shorter than 3 characters', async () => {
+			await expect(
+				workflowService.searchWorkflowContent(mock<User>(), { search: 'ab', limit: 50 }),
+			).rejects.toThrow(BadRequestError);
+			expect(workflowRepositoryMock.getManyByContentSearch).not.toHaveBeenCalled();
+		});
+
+		test('caps the number of results requested from the database', async () => {
+			await workflowService.searchWorkflowContent(mock<User>(), { search: 'alpha', limit: 5000 });
+
+			expect(workflowRepositoryMock.getManyByContentSearch).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ take: 100 }),
+			);
+		});
+
+		test('rejects when too many content searches are already running, then recovers', async () => {
+			let release!: () => void;
+			const gate = new Promise<{
+				workflows: WorkflowEntity[];
+				historyContentMatches: Array<{ workflowId: string; versionId: string }>;
+			}>((resolve) => {
+				release = () => resolve({ workflows: [], historyContentMatches: [] });
+			});
+			workflowRepositoryMock.getManyByContentSearch.mockReturnValue(gate);
+
+			const user = mock<User>();
+			const inFlight = [1, 2, 3].map(
+				async () =>
+					await workflowService.searchWorkflowContent(user, { search: 'alpha', limit: 50 }),
+			);
+
+			await expect(
+				workflowService.searchWorkflowContent(user, { search: 'alpha', limit: 50 }),
+			).rejects.toThrow(TooManyRequestsError);
+
+			release();
+			await Promise.all(inFlight);
+
+			await expect(
+				workflowService.searchWorkflowContent(user, { search: 'alpha', limit: 50 }),
+			).resolves.toMatchObject({ count: 0 });
+		});
+	});
+
 	describe('update() redactionPolicy scope enforcement', () => {
 		const userHasScopesMock = vi.mocked(userHasScopes);
 		let workflowService: WorkflowService;
@@ -365,6 +472,7 @@ describe('WorkflowService', () => {
 				mock(), // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowHistoryRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
@@ -1120,6 +1228,7 @@ describe('WorkflowService', () => {
 				globalConfigMock, // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowHistoryRepository
 				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
 				outboxRepositoryMock, // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
@@ -1628,6 +1737,7 @@ describe('WorkflowService', () => {
 				globalConfigMock, // globalConfig
 				mock(), // folderRepository
 				mock(), // workflowFinderService
+				mock(), // workflowHistoryRepository
 				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
 				mock(), // outboxRepository
 				mock(), // workflowValidationService
@@ -1746,6 +1856,7 @@ describe('WorkflowService', () => {
 				globalConfigMock, // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowHistoryRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
 				mock(), // workflowValidationService
@@ -1972,6 +2083,7 @@ describe('WorkflowService', () => {
 				mock(), // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowHistoryRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
@@ -2133,6 +2245,7 @@ describe('WorkflowService', () => {
 				mock(), // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowHistoryRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
 				mock(), // workflowValidationService
@@ -2230,6 +2343,7 @@ describe('WorkflowService', () => {
 				mock(), // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowHistoryRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
 				mock(), // workflowValidationService

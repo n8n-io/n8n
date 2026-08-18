@@ -25,6 +25,42 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 	}
 
 	/**
+	 * For each given workflow, find its most recent version whose name or
+	 * description contains the search phrase (case-insensitive).
+	 */
+	async findLatestVersionMatches(
+		workflowIds: string[],
+		search: string,
+	): Promise<Map<string, { versionId: string; name: string | null; description: string | null }>> {
+		if (workflowIds.length === 0) return new Map();
+
+		const rows = await this.createQueryBuilder('version')
+			.select(['version.workflowId', 'version.versionId', 'version.name', 'version.description'])
+			.where('version.workflowId IN (:...workflowIds)', { workflowIds })
+			.andWhere(
+				"(LOWER(COALESCE(version.name, '')) LIKE :contentSearch OR LOWER(COALESCE(version.description, '')) LIKE :contentSearch)",
+				{ contentSearch: `%${search.toLowerCase()}%` },
+			)
+			.orderBy('version.createdAt', 'DESC')
+			.getMany();
+
+		const matches = new Map<
+			string,
+			{ versionId: string; name: string | null; description: string | null }
+		>();
+		for (const row of rows) {
+			if (!matches.has(row.workflowId)) {
+				matches.set(row.workflowId, {
+					versionId: row.versionId,
+					name: row.name,
+					description: row.description,
+				});
+			}
+		}
+		return matches;
+	}
+
+	/**
 	 * Name and optionally describe a single version. Scoped by `workflowId` too
 	 * so a version of another workflow can never be touched, and returns the
 	 * affected row count so callers running inside a transaction can treat `0`
