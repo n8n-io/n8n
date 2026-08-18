@@ -40,6 +40,7 @@
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
     "@vitejs/plugin-vue": "catalog:frontend",
+    "eslint": "catalog:",
     "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",

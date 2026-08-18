@@ -5,16 +5,17 @@ import { editLines, lineIndex, repoRoot, writeTemplates } from './scaffold.mjs';
 
 const TEMPLATE_DIR = fileURLToPath(new URL('templates/frontend', import.meta.url));
 
-const EDITOR_UI = join(repoRoot, 'packages', 'frontend', 'editor-ui');
-const MANIFEST = join(EDITOR_UI, 'src', 'app', 'modules.manifest.ts');
-const VITE_CONFIG = join(
-	repoRoot,
-	'packages',
-	'frontend',
-	'@n8n',
-	'frontend-vite-config',
-	'index.ts',
-);
+/** The four files each registration edits. `root` makes them addressable in a test fixture. */
+export const registrationFiles = (root) => {
+	const editorUi = join(root, 'packages', 'frontend', 'editor-ui');
+
+	return {
+		viteConfig: join(root, 'packages', 'frontend', '@n8n', 'frontend-vite-config', 'index.ts'),
+		editorUiPackage: join(editorUi, 'package.json'),
+		editorUiTsconfig: join(editorUi, 'tsconfig.json'),
+		manifest: join(editorUi, 'src', 'app', 'modules.manifest.ts'),
+	};
+};
 
 /** template file, then the path in the new package. */
 const files = (name) => [
@@ -43,9 +44,10 @@ const files = (name) => [
  *      that Vite reads. `editor-ui/vite/aliases.test.ts` fails when 1 and 3 disagree.
  *   4. `editor-ui/src/app/modules.manifest.ts` gets the descriptor.
  */
-export const createFrontend = ({ name, packageDir, substitutions }) => {
+export const createFrontend = ({ name, packageDir, substitutions, root = repoRoot }) => {
 	const packageName = `@n8n/frontend-module-${name}`;
 	const descriptorName = `${substitutions.PascalName}Module`;
+	const target = registrationFiles(root);
 
 	writeTemplates(TEMPLATE_DIR, packageDir, files(name), substitutions);
 
@@ -55,7 +57,7 @@ export const createFrontend = ({ name, packageDir, substitutions }) => {
 	// 1. The Vite alias. The table is on one line while it holds no module, so an entry that goes
 	//    after that line is not part of the array. Open the array first in that condition.
 	if (
-		editLines(VITE_CONFIG, (lines) => {
+		editLines(target.viteConfig, (lines) => {
 			if (lines.some((line) => line.includes(`'${packageName}'`))) return undefined;
 
 			const at = lineIndex(lines, /^export const modulePackages/, 'frontend-vite-config/index.ts');
@@ -69,13 +71,13 @@ export const createFrontend = ({ name, packageDir, substitutions }) => {
 			return lines;
 		})
 	) {
-		record(VITE_CONFIG, '@n8n/frontend-vite-config/index.ts (Vite alias)');
+		record(target.viteConfig, '@n8n/frontend-vite-config/index.ts (Vite alias)');
 	}
 
 	// 2. The dependency. The list is alphabetical, and `pnpm install` sorts it again. Put the entry
 	//    in its sorted place, or the next install moves it and makes a second diff.
 	if (
-		editLines(join(EDITOR_UI, 'package.json'), (lines) => {
+		editLines(target.editorUiPackage, (lines) => {
 			if (lines.some((line) => line.includes(`"${packageName}"`))) return undefined;
 
 			const entry = `    "${packageName}": "workspace:*",`;
@@ -91,12 +93,12 @@ export const createFrontend = ({ name, packageDir, substitutions }) => {
 			return lines;
 		})
 	) {
-		record(join(EDITOR_UI, 'package.json'), 'editor-ui/package.json (dependency)');
+		record(target.editorUiPackage, 'editor-ui/package.json (dependency)');
 	}
 
 	// 3. The tsconfig paths. Keep them next to the SDK, which every module depends on.
 	if (
-		editLines(join(EDITOR_UI, 'tsconfig.json'), (lines) => {
+		editLines(target.editorUiTsconfig, (lines) => {
 			if (lines.some((line) => line.includes(`"${packageName}"`))) return undefined;
 
 			const at = lineIndex(lines, /^\s*"@n8n\/frontend-module-sdk":/, 'editor-ui/tsconfig.json');
@@ -109,12 +111,12 @@ export const createFrontend = ({ name, packageDir, substitutions }) => {
 			return lines;
 		})
 	) {
-		record(join(EDITOR_UI, 'tsconfig.json'), 'editor-ui/tsconfig.json (paths)');
+		record(target.editorUiTsconfig, 'editor-ui/tsconfig.json (paths)');
 	}
 
 	// 4. The manifest.
 	if (
-		editLines(MANIFEST, (lines) => {
+		editLines(target.manifest, (lines) => {
 			if (lines.some((line) => line.includes(`'${packageName}'`))) return undefined;
 
 			const closing = lineIndex(lines, /^\];/, 'modules.manifest.ts');
@@ -129,7 +131,7 @@ export const createFrontend = ({ name, packageDir, substitutions }) => {
 			return lines;
 		})
 	) {
-		record(MANIFEST, 'editor-ui/src/app/modules.manifest.ts (registration)');
+		record(target.manifest, 'editor-ui/src/app/modules.manifest.ts (registration)');
 	}
 
 	return { packageName, edits };
