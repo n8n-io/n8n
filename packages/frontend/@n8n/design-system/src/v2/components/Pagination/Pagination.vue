@@ -5,8 +5,8 @@ import { computed, nextTick, ref, useAttrs, useCssModule, useTemplateRef, watch 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import N8nTooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
-import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
 import type { SelectValue } from '@n8n/design-system/v2/components/Select/Select.types';
+import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
 
 import type { PaginationEmits, PaginationProps, PaginationSlots } from './Pagination.types';
 import {
