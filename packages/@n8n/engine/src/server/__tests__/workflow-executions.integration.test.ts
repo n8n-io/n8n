@@ -104,6 +104,17 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect((response.body as { error: string }).error).toBe('invalid_request');
 	});
 
+	it('rejects an empty-array triggerOutputs with 400 (send null or omit for "no payload")', async () => {
+		const response = await request(url).post('/api/workflow-executions').send({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			triggerOutputs: [],
+		});
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
 	it('rejects a triggerOutputs with more slots than the cap with 400', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')

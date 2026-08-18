@@ -46,8 +46,8 @@ const WorkflowGraphSchema = z.object({
 const StartExecutionBody = z.object({
 	workflowId: z.string().min(1),
 	graph: WorkflowGraphSchema,
-	/** Trigger output slots */
-	triggerOutputs: z.array(jsonValueSchema).max(MAX_TRIGGER_SLOTS).nullable().optional(),
+	/** Trigger output slots. Empty means "no payload" — send `null` or omit instead. */
+	triggerOutputs: z.array(jsonValueSchema).min(1).max(MAX_TRIGGER_SLOTS).nullable().optional(),
 	mode: z.enum(['production', 'manual']).optional(),
 });
 
