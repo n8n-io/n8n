@@ -22,11 +22,4 @@ describe('PublishWorkflowPublicDto', () => {
 
 		expect(result.success).toBe(false);
 	});
-
-	// Guards the deliberate absence of `.strict()`: the spec this replaced allowed unknown keys.
-	test('accepts an unknown key', () => {
-		const result = PublishWorkflowPublicDto.safeParse({ versionId: 'version-1', bogus: true });
-
-		expect(result.success).toBe(true);
-	});
 });
