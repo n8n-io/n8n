@@ -33,8 +33,7 @@ export function resolveOffsetPagination(query: {
 			}
 			offset = decoded.offset;
 			limit = decoded.limit;
-		} catch (error) {
-			if (error instanceof BadRequestError) throw error;
+		} catch {
 			throw new BadRequestError('An invalid cursor was provided');
 		}
 	}
