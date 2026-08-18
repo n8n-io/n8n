@@ -1,6 +1,9 @@
-import { MongoDBChatMessageHistory } from '@langchain/mongodb';
 import { BufferWindowMemory } from '@langchain/classic/memory';
+import { MongoDBChatMessageHistory } from '@langchain/mongodb';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { getSessionId } from '@utils/helpers';
 import { MongoClient } from 'mongodb';
+import { sanitizeMongoUriInMessage } from 'n8n-nodes-base/dist/nodes/MongoDb/GenericFunctions';
 import type {
 	ISupplyDataFunctions,
 	INodeType,
@@ -9,9 +12,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { getSessionId } from '@utils/helpers';
-import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
-
 import {
 	sessionIdOption,
 	sessionKeyProperty,
@@ -19,16 +19,6 @@ import {
 	contextWindowLengthProperty,
 	scopedSessionHint,
 } from '../descriptions';
-
-export function sanitizeMongoUriInMessage(message: string, connectionString: string): string {
-	const sanitizedMessage = message.replace(
-		/mongodb(\+srv)?:\/\/(?:(?!mongodb(?:\+srv)?:\/\/)[^\r\n])*@/gi,
-		'mongodb$1://[REDACTED]@',
-	);
-	if (sanitizedMessage !== message || !connectionString) return sanitizedMessage;
-
-	return message.replaceAll(connectionString, '[REDACTED]');
-}
 
 export class MemoryMongoDbChat implements INodeType {
 	description: INodeTypeDescription = {

@@ -20,6 +20,19 @@ import type {
 	IMongoParametricCredentials,
 } from './mongoDb.types';
 
+export function sanitizeMongoUriInMessage(message: string, connectionString: string): string {
+	if (connectionString) {
+		const scheme = /^mongodb(?:\+srv)?:\/\//i.exec(connectionString)?.[0] ?? '';
+		const sanitizedMessage = message.replaceAll(connectionString, `${scheme}[REDACTED]`);
+		if (sanitizedMessage !== message) return sanitizedMessage;
+	}
+
+	return message.replace(
+		/mongodb(\+srv)?:\/\/(?:(?!mongodb(?:\+srv)?:\/\/)[^\r\n])*@/gi,
+		'mongodb$1://[REDACTED]@',
+	);
+}
+
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
  *
