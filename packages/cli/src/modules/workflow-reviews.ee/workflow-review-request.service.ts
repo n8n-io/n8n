@@ -5,7 +5,6 @@ import type {
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	UpdateWorkflowReviewRequestVersionDto,
-	WorkflowReviewApprovedPublicationState,
 	WorkflowReviewAutoPublishOutcome,
 	WorkflowReviewEligibleReviewer,
 	WorkflowReviewEligibleReviewersList,
@@ -20,7 +19,6 @@ import {
 	SharedWorkflowRepository,
 	UserRepository,
 	WorkflowHistoryRepository,
-	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowRepository,
@@ -45,9 +43,10 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { WorkflowReviewAccessService } from './workflow-review-access.service';
 import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
-import { toEligibleReviewer } from './workflow-review.mapper';
+import { toEligibleReviewer, toRequestSummary } from './workflow-review.mapper';
 /** Omitted stays omitted (column untouched); an empty/whitespace string clears to null. */
 function normalizeVersionDescription(description: string | undefined): string | null | undefined {
 	if (description === undefined) return undefined;
@@ -84,7 +83,6 @@ export class WorkflowReviewRequestService {
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
@@ -96,6 +94,7 @@ export class WorkflowReviewRequestService {
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
 		private readonly workflowService: WorkflowService,
+		private readonly accessService: WorkflowReviewAccessService,
 	) {}
 
 	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<User[]> {
@@ -142,18 +141,18 @@ export class WorkflowReviewRequestService {
 
 		return {
 			count,
-			data: await this.toWorkflowScopedItems(query.workflowId, requests, canPublish),
+			data: await this.toWorkflowScopedItems(requests, canPublish, user),
 		};
 	}
 
 	private async toWorkflowScopedItems(
-		workflowId: string,
 		requests: WorkflowReviewRequestForWorkflowRow[],
 		canPublish: boolean,
+		user: User,
 	): Promise<WorkflowReviewRequestForWorkflow[]> {
-		const [decisionActors, publicationStates] = await Promise.all([
+		const [decisionActors, openableIds] = await Promise.all([
 			this.resolveDecisionActors(requests),
-			this.resolveApprovedPublicationStates(workflowId, requests),
+			this.accessService.resolveOpenableRequestIds(user, requests),
 		]);
 
 		return requests.map((request) => ({
@@ -165,10 +164,7 @@ export class WorkflowReviewRequestService {
 			createdAt: request.createdAt.toISOString(),
 			updatedAt: request.updatedAt.toISOString(),
 			decisionBy: this.pickDecisionActor(request, decisionActors),
-			approvedVersionPublicationState: this.pickApprovedPublicationState(
-				request,
-				publicationStates,
-			),
+			viewerCanOpen: openableIds.has(request.id),
 		}));
 	}
 
@@ -207,45 +203,6 @@ export class WorkflowReviewRequestService {
 		}
 
 		return actors.get(request.updatedById) ?? null;
-	}
-
-	private async resolveApprovedPublicationStates(
-		workflowId: string,
-		requests: WorkflowReviewRequestForWorkflowRow[],
-	): Promise<Map<string, WorkflowReviewApprovedPublicationState>> {
-		const versionIds = [
-			...new Set(
-				requests.flatMap((request) =>
-					request.decision === 'approved' && request.workflowVersionId
-						? [request.workflowVersionId]
-						: [],
-				),
-			),
-		];
-		if (versionIds.length === 0) {
-			return new Map();
-		}
-
-		return await this.workflowPublishHistoryRepository.getVersionPublicationStates(
-			workflowId,
-			versionIds,
-		);
-	}
-
-	private pickApprovedPublicationState(
-		request: WorkflowReviewRequestForWorkflowRow,
-		states: Map<string, WorkflowReviewApprovedPublicationState>,
-	): WorkflowReviewApprovedPublicationState | null {
-		if (request.decision !== 'approved') {
-			return null;
-		}
-
-		// A pruned pin has no version to reason about, so it stays 'unknown'
-		if (!request.workflowVersionId) {
-			return 'unknown';
-		}
-
-		return states.get(request.workflowVersionId) ?? 'unknown';
 	}
 
 	async getEligibleReviewers(
@@ -462,7 +419,7 @@ export class WorkflowReviewRequestService {
 
 		this.broadcastReviewStateChanged(workflowId);
 
-		return this.toSummary(request, workflowVersionId);
+		return toRequestSummary(request, workflowVersionId);
 	}
 
 	/**
@@ -546,7 +503,7 @@ export class WorkflowReviewRequestService {
 				);
 			}
 
-			return this.toSummary(request, workflowRow.workflowVersionId);
+			return toRequestSummary(request, workflowRow.workflowVersionId);
 		}
 
 		const { request: updated, changed } = await this.dbLockService.withLockContext(
@@ -662,7 +619,7 @@ export class WorkflowReviewRequestService {
 			this.broadcastReviewStateChanged(dto.workflowId);
 		}
 
-		return this.toSummary(updated, dto.workflowVersionId);
+		return toRequestSummary(updated, dto.workflowVersionId);
 	}
 
 	/**
@@ -825,7 +782,7 @@ export class WorkflowReviewRequestService {
 
 		this.broadcastReviewStateChanged(workflowRow.workflowId);
 
-		const summary = this.toSummary(saved, pinnedVersionId);
+		const summary = toRequestSummary(saved, pinnedVersionId);
 
 		if (dto.decision !== 'approved' || requesterPublishability === null) {
 			return summary;
@@ -982,19 +939,5 @@ export class WorkflowReviewRequestService {
 		if (request.state === 'closed' || request.decision === 'approved') {
 			throw new ConflictError('The review request is no longer open');
 		}
-	}
-
-	private toSummary(
-		request: WorkflowReviewRequest,
-		workflowVersionId: string | null,
-	): WorkflowReviewRequestSummary {
-		return {
-			id: request.id,
-			state: request.state,
-			decision: request.decision,
-			workflowVersionId,
-			createdAt: request.createdAt.toISOString(),
-			updatedAt: request.updatedAt.toISOString(),
-		};
 	}
 }

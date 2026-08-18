@@ -6,14 +6,14 @@ import { computed, ref } from 'vue';
 
 import { formatUserDisplayName } from '../workflowReviews.utils';
 
-type BannerAction = 'submit-changes' | 'retry-publish';
+type BannerAction = 'submit-changes';
 
 /**
  * `info` while the review is simply in progress, `warning` once the author has
- * something to do, `success` for an approved version — matching how the design
- * system uses these semantic colors elsewhere.
+ * something to do — matching how the design system uses these semantic colors
+ * elsewhere.
  */
-type BannerTone = 'info' | 'warning' | 'success';
+type BannerTone = 'info' | 'warning';
 
 type BannerStatus = {
 	pill: string;
@@ -31,20 +31,18 @@ const props = defineProps<{
 	savedVersionId?: string;
 	/** Whether the user may push the latest version into the open review. */
 	canSubmitChanges: boolean;
+	/** Why publishing is blocked, or '' when it is not. Mirrors the Publish tooltip. */
+	submitBlockedReason?: string;
 	/**
-	 * Whether the user may open the review detail.
+	 * Whether the user may open the review detail — the backend-computed
+	 * `viewerCanOpen`, never a permission approximation.
 	 */
 	canOpenReview: boolean;
-	/** Whether the user may publish the approved pinned version. */
-	canRetryPublish: boolean;
-	/** A retry publish is in flight. */
-	isPublishing?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'open-review': [];
 	'submit-changes': [];
-	'retry-publish': [];
 }>();
 
 const i18n = useI18n();
@@ -123,24 +121,8 @@ const status = computed<BannerStatus | null>(() => {
 		};
 	}
 
-	// Closed: only an approved version that never made it to production is
-	// actionable. `published`, `superseded` and `unknown` all stay hidden.
-	if (
-		review.decision === 'approved' &&
-		review.approvedVersionPublicationState === 'not_published'
-	) {
-		return {
-			pill: i18n.baseText('workflowReviews.editorBanner.approvedNotPublished.pill'),
-			title: i18n.baseText('workflowReviews.editorBanner.approvedNotPublished.title'),
-			body: i18n.baseText('workflowReviews.editorBanner.approvedNotPublished.body', {
-				interpolate: { version },
-			}),
-			support: i18n.baseText('workflowReviews.editorBanner.approvedNotPublished.support'),
-			tone: 'success',
-			action: 'retry-publish',
-		};
-	}
-
+	// Closed reviews render nothing: approval hands recovery to the regular
+	// Publish button, and any other close needs no canvas presence.
 	return null;
 });
 
@@ -148,16 +130,18 @@ const status = computed<BannerStatus | null>(() => {
 const isSubmitChangesEnabled = computed(() => props.canSubmitChanges && hasDivergentVersion.value);
 
 /**
- * Changes-requested keeps its Submit changes button even in sync, so say why it is
- * disabled — the support copy tells the author to submit. R2 (P3), see LIGO-607_review.md.
+ * Changes-requested keeps its Submit changes button even when disabled, so say why:
+ * an unpublishable workflow first, since that blocks submitting at all, then the
+ * in-sync case where the support copy tells the author to submit. R2 (P3), see
+ * LIGO-607_review.md.
  */
-const submitChangesHint = computed(() =>
-	props.canSubmitChanges && !hasDivergentVersion.value
-		? i18n.baseText('workflowReviews.editorBanner.submitChanges.savedVersionHint')
-		: '',
-);
+const submitChangesHint = computed(() => {
+	if (props.submitBlockedReason) return props.submitBlockedReason;
 
-const isRetryPublishEnabled = computed(() => props.canRetryPublish && !props.isPublishing);
+	return props.canSubmitChanges && !hasDivergentVersion.value
+		? i18n.baseText('workflowReviews.editorBanner.submitChanges.savedVersionHint')
+		: '';
+});
 
 /** A popover with no action left is still worth showing for its copy. */
 const hasActions = computed(() => props.canOpenReview || !!status.value?.action);
@@ -171,11 +155,6 @@ const onOpenReview = () => {
 const onSubmitChanges = () => {
 	isOpen.value = false;
 	emit('submit-changes');
-};
-
-const onRetryPublish = () => {
-	isOpen.value = false;
-	emit('retry-publish');
 };
 </script>
 
@@ -228,16 +207,6 @@ const onRetryPublish = () => {
 							{{ i18n.baseText('workflowReviews.editorBanner.submitChanges') }}
 						</N8nButton>
 					</N8nTooltip>
-					<N8nButton
-						v-else-if="status.action === 'retry-publish'"
-						size="small"
-						:loading="isPublishing"
-						:disabled="!isRetryPublishEnabled"
-						data-test-id="workflow-review-retry-publish-button"
-						@click="onRetryPublish"
-					>
-						{{ i18n.baseText('workflowReviews.editorBanner.retryPublish') }}
-					</N8nButton>
 				</div>
 			</div>
 		</template>
@@ -280,15 +249,6 @@ const onRetryPublish = () => {
 
 	&:hover {
 		border-color: var(--border-color--warning);
-	}
-}
-
-.success {
-	background-color: var(--background--success);
-	color: var(--text-color--success);
-
-	&:hover {
-		border-color: var(--border-color--success);
 	}
 }
 

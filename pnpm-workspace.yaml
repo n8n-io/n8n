@@ -24,6 +24,7 @@ catalog:
   '@ai-sdk/otel': ^1.0.54
   '@ai-sdk/provider-utils': ^5.0.22
   '@ai-sdk/xai': ^4.0.18
+  '@asteasolutions/zod-to-openapi': 7.3.4
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
   # Exact pin: the adapters share an internal protocol with `chat`, and a range
