@@ -1,4 +1,4 @@
-import type { createDataSource, JsonObject, WorkflowGraph } from '@n8n/engine';
+import type { createDataSource, TriggerOutputs, WorkflowGraph } from '@n8n/engine';
 import {
 	AllowAllAdmittance,
 	createEngineRuntime,
@@ -82,7 +82,7 @@ export function setWorkflow(assignments: Assignment[]) {
 type EngineDataSource = ReturnType<typeof createDataSource>;
 
 export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
-	return async function runWorkflow(graph: WorkflowGraph, triggerPayload: JsonObject | null) {
+	return async function runWorkflow(graph: WorkflowGraph, triggerOutputs: TriggerOutputs | null) {
 		const dataSource = getDataSource();
 
 		let done!: () => void;
@@ -114,7 +114,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		const { executionId } = await runtime.startExecution({
 			workflowId: 'wf-m1',
 			graph,
-			triggerPayload,
+			triggerOutputs,
 		});
 
 		try {

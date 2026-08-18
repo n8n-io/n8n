@@ -50,6 +50,7 @@ export type {
 	StepSlots,
 	StepStatus,
 	StepStore,
+	TriggerOutputs,
 } from './execution';
 
 export { createDataSource, WorkflowExecution, WorkflowStepExecution } from './database';

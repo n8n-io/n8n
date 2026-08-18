@@ -4,7 +4,6 @@ import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
-import type { JsonObject } from '../../common';
 import {
 	createDataSource,
 	createStores,
@@ -15,6 +14,7 @@ import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
 import { createEngineRuntime } from '../../runtime';
+import type { TriggerOutputs } from '../execution.types';
 import { StepReadyHandler } from '../step-ready-handler';
 
 const graph: WorkflowGraph = {
@@ -48,7 +48,7 @@ describe('step execution (integration)', () => {
 	 */
 	async function runWorkflow(
 		executor: IStepExecutor,
-		triggerPayload: JsonObject,
+		triggerOutputs: TriggerOutputs,
 		{ workflowId = 'wf-1', graph: workflowGraph = graph } = {},
 	) {
 		let done!: () => void;
@@ -73,7 +73,7 @@ describe('step execution (integration)', () => {
 		const { executionId } = await runtime.startExecution({
 			workflowId,
 			graph: workflowGraph,
-			triggerPayload,
+			triggerOutputs,
 		});
 		await finished;
 
@@ -98,9 +98,9 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { executionId, execution, steps } = await runWorkflow(executor, {
-			body: { name: 'ada' },
-		});
+		const { executionId, execution, steps } = await runWorkflow(executor, [
+			{ body: { name: 'ada' } },
+		]);
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
 		expect(execution.status).toBe('completed');
@@ -129,7 +129,7 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution, steps } = await runWorkflow(executor, {});
+		const { execution, steps } = await runWorkflow(executor, [{}]);
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
 		// the failure is terminal for the execution too
@@ -166,11 +166,10 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution } = await runWorkflow(
-			executor,
-			{ body: { name: 'ada' } },
-			{ workflowId: 'wf-chain', graph: chainGraph },
-		);
+		const { execution } = await runWorkflow(executor, [{ body: { name: 'ada' } }], {
+			workflowId: 'wf-chain',
+			graph: chainGraph,
+		});
 
 		// both nodes ran, in order, each on what came before it: node-a on the
 		// trigger's payload slot, node-b on node-a's output slot 0
@@ -206,11 +205,10 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution } = await runWorkflow(
-			executor,
-			{ body: { name: 'ada' } },
-			{ workflowId: 'wf-diamond', graph: diamondGraph },
-		);
+		const { execution } = await runWorkflow(executor, [{ body: { name: 'ada' } }], {
+			workflowId: 'wf-diamond',
+			graph: diamondGraph,
+		});
 
 		// the merge ran exactly once, after both branches, one slot per branch
 		const merge = requests.filter(({ node }) => node.id === 'node-m');
@@ -256,11 +254,10 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution, steps } = await runWorkflow(
-			executor,
-			{},
-			{ workflowId: 'wf-branch', graph: branchingGraph },
-		);
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-branch',
+			graph: branchingGraph,
+		});
 
 		// the dead branch never ran a node
 		expect(requests.map(({ node }) => node.id).sort()).toEqual(['node-a', 'node-if', 'node-m']);
@@ -298,7 +295,7 @@ describe('step execution (integration)', () => {
 			status: 'running',
 			mode: 'production',
 			graph,
-			triggerPayload: null,
+			triggerOutputs: null,
 		});
 		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them

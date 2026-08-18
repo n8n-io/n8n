@@ -36,12 +36,12 @@ describe('fromStepInputs', () => {
 		expect(fromStepInputs([null])).toEqual([[]]);
 	});
 
-	it('wraps a bare object slot as a single item (trigger payload shape)', () => {
-		expect(fromStepInputs([{ name: 'ada' }])).toEqual([[{ json: { name: 'ada' } }]]);
-	});
-
 	it('yields an empty item list for a slot not carrying items', () => {
 		expect(fromStepInputs(['nope'])).toEqual([[]]);
+	});
+
+	it('yields an empty item list for a bare object slot (no longer a valid trigger shape)', () => {
+		expect(fromStepInputs([{ name: 'ada' }])).toEqual([[]]);
 	});
 });
 
