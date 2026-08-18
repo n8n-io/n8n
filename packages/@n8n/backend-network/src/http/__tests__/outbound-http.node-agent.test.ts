@@ -77,10 +77,10 @@ describe('getNodeAgent', () => {
 // ---------------------------------------------------------------------------
 // getNodeAgent — connection-reuse options propagate across all routing paths
 //
-// The AWS Secrets Manager provider passes `{ keepAlive: true, maxSockets: 50 }`
-// to restore connection reuse. Regardless of how the request is routed, those
-// options must reach the constructed agent — otherwise a proxied deployment
-// would silently lose the fix.
+// Callers may pass connection-management options (e.g. `keepAlive`,
+// `maxSockets`) to enable connection reuse. Regardless of how the request is
+// routed, those options must reach the constructed agent — otherwise a proxied
+// deployment would silently drop them.
 // ---------------------------------------------------------------------------
 
 describe('getNodeAgent connection-reuse options', () => {
