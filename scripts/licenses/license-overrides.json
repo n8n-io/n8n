@@ -71,9 +71,9 @@
       "elected": "MIT",
       "source": "Dual-licensed (MIT OR GPL-3.0-or-later) per https://github.com/Stuk/jszip/blob/main/LICENSE.markdown. n8n elects MIT; recorded so a copyleft policy gate reads MIT rather than the GPL alternative."
     },
-    "pkg:npm/%40zone-eu/mailsplit@5.4.8": {
+    "pkg:npm/%40zone-eu/mailsplit@5.4.15": {
       "elected": "MIT",
-      "source": "Dual-licensed (MIT OR EUPL-1.1+) per https://github.com/zone-eu/mailsplit#license. n8n elects MIT; recorded so a copyleft policy gate reads MIT rather than the EUPL alternative."
+      "source": "Dual-licensed (MIT OR EUPL-1.1+) per https://github.com/zone-eu/mailsplit#license; re-verified for 5.4.15 (package.json license field unchanged). n8n elects MIT; recorded so a copyleft policy gate reads MIT rather than the EUPL alternative."
     }
   }
 }
