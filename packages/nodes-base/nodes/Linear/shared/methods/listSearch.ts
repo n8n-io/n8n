@@ -99,6 +99,19 @@ export async function getIssues(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
+	// Identifiers like "ABC-123" live in `number`+`team.key`, not in the title.
+	const identifierMatch = filter?.match(/^([A-Za-z]+)-(\d+)$/);
+	const issueFilter = filter
+		? identifierMatch
+			? {
+					and: [
+						{ number: { eq: Number(identifierMatch[2]) } },
+						{ team: { key: { eqIgnoreCase: identifierMatch[1] } } },
+					],
+				}
+			: { title: { containsIgnoreCase: filter } }
+		: undefined;
+
 	const body = {
 		query: `query Issues($first: Int, $after: String, $filter: IssueFilter) {
 			issues(first: $first, after: $after, filter: $filter) {
@@ -116,7 +129,7 @@ export async function getIssues(
 		variables: {
 			first: 50,
 			after: paginationToken ?? null,
-			filter: filter ? { title: { containsIgnoreCase: filter } } : undefined,
+			filter: issueFilter,
 		},
 	};
 
