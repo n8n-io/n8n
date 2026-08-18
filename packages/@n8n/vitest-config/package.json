@@ -1,6 +1,6 @@
 {
   "name": "@n8n/vitest-config",
-  "version": "1.20.0",
+  "version": "1.21.0",
   "type": "module",
   "peerDependencies": {
     "@testing-library/jest-dom": "catalog:frontend",

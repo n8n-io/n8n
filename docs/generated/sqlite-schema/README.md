@@ -16,14 +16,14 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 15 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
-| [agent_execution](agent_execution.md) | 20 |  | table |
+| [agent_execution](agent_execution.md) | 21 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 7 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 8 |  | table |
-| [agents](agents.md) | 13 |  | table |
+| [agents](agents.md) | 14 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
 | [agents_memory_entry_cursors](agents_memory_entry_cursors.md) | 6 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
@@ -428,6 +428,7 @@ erDiagram
   datetime_3_ createdAt
   INTEGER duration
   TEXT error
+  TEXT failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
@@ -520,6 +521,7 @@ erDiagram
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt
   TEXT skills

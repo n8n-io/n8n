@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.35.0",
+  "version": "2.36.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -227,7 +227,7 @@
     "ioredis": "5.3.2",
     "isbot": "3.6.13",
     "isolated-vm": "catalog:",
-    "jose": "^6.2.2",
+    "jose": "^6.2.9",
     "json-diff": "1.0.6",
     "json-schema": "catalog:",
     "jsonschema": "1.4.1",

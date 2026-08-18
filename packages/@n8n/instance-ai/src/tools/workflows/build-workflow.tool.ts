@@ -18,6 +18,7 @@ import {
 	resolveCredentials,
 } from './resolve-credentials';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
+import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
 	combineWarnings,
@@ -195,7 +196,11 @@ const triggerNodeOutputSchema = z.object({
 const verificationReadinessOutputSchema = workflowVerificationReadinessSchema;
 
 const setupRequirementOutputSchema = z.discriminatedUnion('status', [
-	z.object({ status: z.literal('not_required') }),
+	z.object({
+		status: z.literal('not_required'),
+		reason: z.literal('skipped-by-user').optional(),
+		guidance: z.string().optional(),
+	}),
 	z.object({
 		status: z.literal('required'),
 		reason: z.enum(['mocked-credentials', 'unresolved-placeholders', 'workflow-needs-setup']),
@@ -941,9 +946,22 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					operation: 'create' | 'update',
 				) => {
 					const setupRequests = await analyzeWorkflow(context, saved.id);
-					const workflowNeedsSetup = setupRequests.some(
-						(request) => request.needsAction && isInSetupScope(request.node.name),
-					);
+					// Two independent filters over the same list: `isInSetupScope` drops nodes this
+					// build never touched, the skip partition drops cards the user declined. A node
+					// only re-arms the setup follow-up when it survives both.
+					const { pending: pendingSetupRequests, skippedByUser: skippedSetupRequests } =
+						partitionSkippedSetupRequests(
+							setupRequests,
+							saved.id,
+							getSkippedSetupSubjects(context),
+						);
+					const needsSetupInScope = (request: (typeof setupRequests)[number]) =>
+						request.needsAction === true && isInSetupScope(request.node.name);
+					const workflowNeedsSetup = pendingSetupRequests.some(needsSetupInScope);
+					// Only the user's skip explains the silence — an out-of-scope node is not
+					// something they declined, and has its own reporting on the setup path.
+					const onlySkippedSetupRemains =
+						!workflowNeedsSetup && skippedSetupRequests.some(needsSetupInScope);
 					const { nodeSimulationPlan, simulationFixtures, waitGateScripts } =
 						await planVerificationSimulation({
 							workflow: json,
@@ -1023,6 +1041,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							? mockResult.resolvedCredentialsByNode
 							: undefined,
 						workflowNeedsSetup,
+						onlySkippedSetupRemains,
 						nodeSimulationPlan,
 						simulationFixtures,
 						waitGateScripts,

@@ -1952,7 +1952,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	};
 
 	const mockWorkflowService = {
-		getMany: vi.fn().mockResolvedValue({ workflows: [savedWorkflow] }),
+		getMany: vi.fn().mockResolvedValue({ workflows: [savedWorkflow], count: 1 }),
 		archive: vi.fn().mockResolvedValue(savedWorkflow),
 		unarchive: vi.fn().mockResolvedValue(savedWorkflow),
 		activateWorkflow: vi.fn().mockResolvedValue({ activeVersionId: 'version-1' }),
@@ -2050,6 +2050,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	return {
 		adapter,
 		context,
+		savedWorkflow,
 		mockProjectRepository,
 		mockWorkflowRepository,
 		mockWorkflowFinderService,
@@ -2161,12 +2162,77 @@ describe('createWorkflowAdapter', () => {
 				projectId: 'team-project-id',
 			},
 		});
-		expect(result).toEqual([
+		expect(result.workflows).toEqual([
 			expect.objectContaining({
 				id: 'wf-new',
 				isArchived: false,
 			}),
 		]);
+	});
+
+	it('reports how many workflows the name filter left out', async () => {
+		const { adapter, mockWorkflowService, mockUser, savedWorkflow } =
+			createWorkflowAdapterForTests();
+		mockWorkflowService.getMany
+			.mockResolvedValueOnce({ workflows: [savedWorkflow], count: 1 })
+			.mockResolvedValueOnce({ workflows: [savedWorkflow], count: 3 });
+
+		const result = await adapter.list({ query: 'PRD' });
+
+		// Second call re-counts the same scope without the name filter.
+		expect(mockWorkflowService.getMany).toHaveBeenNthCalledWith(2, mockUser, {
+			take: 1,
+			filter: { isArchived: false, projectId: 'team-project-id' },
+		});
+		expect(result.total).toBe(1);
+		expect(result.totalInScope).toBe(3);
+	});
+
+	it('lists a caller-named project as a filter, leaving access resolution to getMany', async () => {
+		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.list({ projectId: 'other-project-id' });
+
+		// The user is still the one the query resolves readability from — the project
+		// id only narrows it, so it can never widen what the caller may read.
+		expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
+			take: 50,
+			filter: { isArchived: false, projectId: 'other-project-id' },
+		});
+	});
+
+	it('attributes the owning project only when the listing can span projects', async () => {
+		const { adapter, mockWorkflowService, savedWorkflow } = createWorkflowAdapterForTests();
+		mockWorkflowService.getMany.mockResolvedValue({
+			workflows: [{ ...savedWorkflow, homeProject: { id: 'p2', name: 'Primary', type: 'team' } }],
+			count: 1,
+		});
+
+		const instanceWide = await adapter.list({ scope: 'instance' });
+		expect(instanceWide.workflows[0].project).toEqual({ id: 'p2', name: 'Primary' });
+
+		// Narrowed to one project — repeating it on every row carries no information.
+		const singleProject = await adapter.list({ projectId: 'p2' });
+		expect(singleProject.workflows[0].project).toBeUndefined();
+	});
+
+	it('omits attribution when the listed row carries no home project', async () => {
+		const { adapter, mockWorkflowService, savedWorkflow } = createWorkflowAdapterForTests();
+		mockWorkflowService.getMany.mockResolvedValue({ workflows: [savedWorkflow], count: 1 });
+
+		const result = await adapter.list({ scope: 'instance' });
+
+		expect(result.workflows[0].project).toBeUndefined();
+	});
+
+	it('skips the extra count query when no name filter is given', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		const result = await adapter.list();
+
+		expect(mockWorkflowService.getMany).toHaveBeenCalledTimes(1);
+		expect(result.total).toBe(1);
+		expect(result.totalInScope).toBe(1);
 	});
 
 	it('lists archived workflows when requested', async () => {
@@ -3604,6 +3670,107 @@ describe('createExecutionAdapter run()', () => {
 		const firstStackItem = runData.executionData?.executionData?.nodeExecutionStack[0];
 		expect(firstStackItem?.node.name).toBe('Schedule Trigger');
 		expect(firstStackItem?.data.main[0]?.[0]?.json).toEqual({});
+	});
+
+	describe('trigger selection', () => {
+		const triggerNode = (
+			name: string,
+			overrides?: { type?: string; disabled?: boolean },
+		): INode => ({
+			...makeNode(name, overrides?.type ?? 'n8n-nodes-base.scheduleTrigger'),
+			...(overrides?.disabled ? { disabled: true } : {}),
+		});
+
+		const startedFrom = (mockWorkflowRunner: { run: Mock }) =>
+			mockWorkflowRunner.run.mock.calls[0][0].triggerToStartFrom?.name;
+
+		it('starts from the named trigger instead of the first one', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await adapter.run('wf-1', undefined, { triggerNodeName: 'Weekly 5pm' });
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Weekly 5pm');
+		});
+
+		it('auto-detects the first trigger when none is named', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Daily 8am');
+		});
+
+		it('skips a disabled trigger when auto-detecting', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am', { disabled: true }), triggerNode('Weekly 5pm')],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Weekly 5pm');
+		});
+
+		it('falls back to a disabled trigger when every trigger is disabled', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('Daily 8am', { disabled: true }),
+					triggerNode('Weekly 5pm', { disabled: true }),
+				],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Daily 8am');
+		});
+
+		it('prefers a known trigger type over an unknown one earlier in the node list', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('On Interval', { type: 'n8n-nodes-base.cron' }),
+					triggerNode('On Chat Message', { type: '@n8n/n8n-nodes-langchain.chatTrigger' }),
+				],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('On Chat Message');
+		});
+
+		it('rejects an unknown trigger name instead of running a different branch', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await expect(
+				adapter.run('wf-1', undefined, { triggerNodeName: 'Weekly 5PM' }),
+			).rejects.toThrow(/Weekly 5PM.*Daily 8am.*Weekly 5pm/s);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects a named node that is not a trigger', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('Daily 8am'),
+					triggerNode('Compute Daily', { type: 'n8n-nodes-base.code' }),
+				],
+			});
+
+			await expect(
+				adapter.run('wf-1', undefined, { triggerNodeName: 'Compute Daily' }),
+			).rejects.toThrow(/Compute Daily/);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
 	});
 
 	it('opts a verification run out of the error workflow, on the main process and on a worker', async () => {

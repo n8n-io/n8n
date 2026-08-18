@@ -60,6 +60,7 @@ export type {
 	StepSlots,
 	StepStatus,
 	StepStore,
+	TriggerOutputs,
 } from './execution';
 
 export {
