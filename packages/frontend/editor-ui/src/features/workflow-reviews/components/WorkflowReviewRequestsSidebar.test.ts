@@ -163,8 +163,6 @@ describe('WorkflowReviewRequestsSidebar', () => {
 			expect(getByTestId('workflow-review-section-empty')).toHaveTextContent('No closed reviews');
 		});
 
-		// R5 (P3): headers, retry and load-more are not valid listbox children, so each
-		// section labels its own listbox. See LIGO-949_review.md.
 		it('gives each section its own labelled listbox holding only options', () => {
 			const { container } = renderComponent({
 				props: openProps([{ items: [makeItem()] }, {}]),

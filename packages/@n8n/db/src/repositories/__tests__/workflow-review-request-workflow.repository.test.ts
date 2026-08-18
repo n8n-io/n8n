@@ -6,10 +6,13 @@ import { mock } from 'vitest-mock-extended';
 import { WorkflowReviewRequestWorkflow } from '../../entities/workflow-review-request-workflow.ee';
 import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
+import { mockInstance } from '../../utils/test-utils/mock-instance';
+import { WorkflowPublishedVersionRepository } from '../workflow-published-version.repository';
 import { WorkflowReviewRequestWorkflowRepository } from '../workflow-review-request-workflow.repository';
 
 describe('WorkflowReviewRequestWorkflowRepository', () => {
 	const entityManager = mockEntityManager(WorkflowReviewRequestWorkflow);
+	const publishedVersionRepository = mockInstance(WorkflowPublishedVersionRepository);
 	const repo = Container.get(WorkflowReviewRequestWorkflowRepository);
 
 	beforeEach(() => {
@@ -95,6 +98,39 @@ describe('WorkflowReviewRequestWorkflowRepository', () => {
 				{ workflowVersionId: 'ver-2' },
 			);
 			expect(entityManager.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('captureApprovalBaseline', () => {
+		it('stores the live published version id on the child row', async () => {
+			publishedVersionRepository.getPublishedVersionId.mockResolvedValueOnce('ver-published');
+
+			await repo.captureApprovalBaseline(
+				{ workflowReviewRequestId: 'req-1', workflowId: 'wf-1' },
+				{},
+			);
+
+			expect(publishedVersionRepository.getPublishedVersionId).toHaveBeenCalledWith('wf-1', {});
+			expect(entityManager.update).toHaveBeenCalledWith(
+				WorkflowReviewRequestWorkflow,
+				{ workflowReviewRequestId: 'req-1', workflowId: 'wf-1' },
+				{ baselineVersionId: 'ver-published' },
+			);
+		});
+
+		it('stores null when the workflow was never published', async () => {
+			publishedVersionRepository.getPublishedVersionId.mockResolvedValueOnce(null);
+
+			await repo.captureApprovalBaseline(
+				{ workflowReviewRequestId: 'req-1', workflowId: 'wf-1' },
+				{},
+			);
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				WorkflowReviewRequestWorkflow,
+				{ workflowReviewRequestId: 'req-1', workflowId: 'wf-1' },
+				{ baselineVersionId: null },
+			);
 		});
 	});
 });

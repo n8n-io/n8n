@@ -746,6 +746,20 @@ export class WorkflowReviewRequestService {
 					'review',
 				);
 
+				if (dto.decision === 'approved') {
+					// Freeze the pre-approval published pointer before auto-publish moves it.
+					// One workflow per review today (2 queries/row); batch if multi-workflow lands.
+					for (const row of currentRows) {
+						await this.workflowReviewRequestWorkflowRepository.captureApprovalBaseline(
+							{
+								workflowReviewRequestId,
+								workflowId: row.workflowId,
+							},
+							ctx,
+						);
+					}
+				}
+
 				current.decision = dto.decision;
 				current.updatedById = user.id;
 				if (dto.decision === 'approved') {

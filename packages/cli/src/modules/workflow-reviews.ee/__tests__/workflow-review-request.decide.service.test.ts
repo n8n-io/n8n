@@ -121,16 +121,17 @@ describe('WorkflowReviewRequestService.decide', () => {
 			...overrides,
 		});
 
-	const pinnedRow = (workflowVersionId: string | null = 'ver-1') =>
+	const pinnedRow = (workflowVersionId: string | null = 'ver-1', workflowId = 'wf-1') =>
 		mock<WorkflowReviewRequestWorkflow>({
 			workflowReviewRequestId: requestId,
-			workflowId: 'wf-1',
+			workflowId,
 			workflowVersionId,
 		});
 
 	const mockSuccessfulDecidePath = () => {
 		requestRepository.findById.mockResolvedValue(openRequest());
 		workflowRepository.findByRequestId.mockResolvedValue([pinnedRow()]);
+		workflowRepository.captureApprovalBaseline.mockResolvedValue(undefined);
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			mock<WorkflowEntity>({ isArchived: false }),
 		);
@@ -368,6 +369,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 		);
 		// Re-checked under the lock through the transaction manager.
 		expect(requestRepository.findById).toHaveBeenCalledWith(requestId, ctx);
+		expect(workflowRepository.captureApprovalBaseline).toHaveBeenCalledExactlyOnceWith(
+			{ workflowReviewRequestId: requestId, workflowId: 'wf-1' },
+			ctx,
+		);
 		const savedEntity = requestRepository.saveRequest.mock.calls[0]?.[0];
 		expect(savedEntity).toMatchObject({
 			decision: 'approved',
@@ -388,11 +393,34 @@ describe('WorkflowReviewRequestService.decide', () => {
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-1');
 	});
 
+	// Reviews carry exactly one workflow today (the create DTO enforces it), so this
+	// covers the capture loop for the multi-workflow bundles it was written for.
+	it('approves: freezes a baseline for every workflow the request covers', async () => {
+		mockSuccessfulDecidePath();
+		workflowRepository.findByRequestId.mockResolvedValue([
+			pinnedRow('ver-1', 'wf-1'),
+			pinnedRow('ver-2', 'wf-2'),
+		]);
+
+		await service.decide(memberUser(), requestId, approveDto);
+
+		expect(workflowRepository.captureApprovalBaseline).toHaveBeenCalledTimes(2);
+		expect(workflowRepository.captureApprovalBaseline).toHaveBeenCalledWith(
+			{ workflowReviewRequestId: requestId, workflowId: 'wf-1' },
+			ctx,
+		);
+		expect(workflowRepository.captureApprovalBaseline).toHaveBeenCalledWith(
+			{ workflowReviewRequestId: requestId, workflowId: 'wf-2' },
+			ctx,
+		);
+	});
+
 	it('requests changes: keeps the request open and leaves closedById/approvedAt untouched', async () => {
 		mockSuccessfulDecidePath();
 
 		const result = await service.decide(memberUser(), requestId, requestChangesDto);
 
+		expect(workflowRepository.captureApprovalBaseline).not.toHaveBeenCalled();
 		const savedEntity = requestRepository.saveRequest.mock.calls[0]?.[0];
 		expect(savedEntity).toMatchObject({
 			decision: 'changes_requested',
