@@ -5,6 +5,12 @@ import { expandToTokenSpan, type TokenSpan } from './token-span';
 export interface SecretHit {
 	type: string;
 	value: string;
+	/**
+	 * What the detector matched, when `value` is wider than it. Two sightings of
+	 * one secret are the same hit even when their spans differ, so this — not the
+	 * span — identifies it.
+	 */
+	match?: string;
 	ref?: string;
 	/**
 	 * The whole token the match sits in, read by capturing so a detector boundary
@@ -63,10 +69,10 @@ export function findRegexSecretHits(input: string): SecretHit[] {
 		for (const match of input.matchAll(regex)) {
 			const value = match[0];
 			if (!value) continue;
-			const key = `${slug}:${value}`;
-			const hit = hitForSpan(slug, value, expandToTokenSpan(input, match.index, value.length));
-			const existing = hits.get(key);
-			hits.set(key, existing ? narrowerCapture(existing, hit) : hit);
+			collectHit(
+				hits,
+				hitForSpan(slug, value, expandToTokenSpan(input, match.index, value.length)),
+			);
 		}
 	}
 	return [...hits.values()];
@@ -93,6 +99,18 @@ function hitForSpan(type: string, value: string, { span, delimited }: TokenSpan)
  * reaches, so a delimited span always beats a blocked one; among delimited spans
  * the narrowest wins, since a wider one carries its neighbours into the value.
  */
+/**
+ * Record a hit, merging it with any earlier sighting of the same secret. Owning
+ * the identity here keeps every detector on one rule: callers that chose their
+ * own key drifted apart, and one of them stopped merging at all.
+ */
+export function collectHit(hits: Map<string, SecretHit>, hit: SecretHit): void {
+	if (!hit.value) return;
+	const key = `${hit.type}:${hit.match ?? hit.value}:${hit.ref ?? ''}`;
+	const existing = hits.get(key);
+	hits.set(key, existing ? narrowerCapture(existing, hit) : hit);
+}
+
 export function narrowerCapture(existing: SecretHit, incoming: SecretHit): SecretHit {
 	if (incoming.captureBlocked) return existing;
 	if (existing.captureBlocked) return incoming;

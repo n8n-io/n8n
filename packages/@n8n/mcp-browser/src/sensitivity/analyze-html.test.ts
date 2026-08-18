@@ -46,6 +46,7 @@ describe('analyzeHtmlSensitivity', () => {
 		);
 		const hit = result.ok && result.hits.find((candidate) => candidate.value === key);
 
+		expect(hit).toBeTruthy();
 		expect(hit && hit.captureBlocked).toBeUndefined();
 	});
 

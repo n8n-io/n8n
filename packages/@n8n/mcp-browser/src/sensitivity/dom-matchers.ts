@@ -1,4 +1,4 @@
-import { narrowerCapture, UNDELIMITED_TOKEN, type SecretHit } from '../redaction/redact';
+import { collectHit, UNDELIMITED_TOKEN, type SecretHit } from '../redaction/redact';
 import { expandToTokenSpan } from '../redaction/token-span';
 
 export const TESTID_ATTRS = ['data-testid', 'data-test-id', 'data-test', 'data-qa'] as const;
@@ -161,8 +161,8 @@ export function highEntropyCandidates(text: string): SecretHit[] {
 		const hit: SecretHit = delimited
 			? { type: 'secret', value: span }
 			: { type: 'secret', value: match[0], captureBlocked: UNDELIMITED_TOKEN };
-		const existing = hits.get(hit.value);
-		hits.set(hit.value, existing ? narrowerCapture(existing, hit) : hit);
+		if (hit.value !== match[0]) hit.match = match[0];
+		collectHit(hits, hit);
 	}
 	return [...hits.values()];
 }

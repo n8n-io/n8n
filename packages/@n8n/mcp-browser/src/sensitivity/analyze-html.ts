@@ -18,7 +18,7 @@ import {
 	getTestId,
 } from './dom-matchers';
 import type { SecretHit } from '../redaction/redact';
-import { CONCATENATED_ONLY, findRegexSecretHits, narrowerCapture } from '../redaction/redact';
+import { CONCATENATED_ONLY, collectHit, findRegexSecretHits } from '../redaction/redact';
 import type { HtmlProbeNode, HtmlProbeResult } from '../types';
 
 export interface SensitivityOk {
@@ -34,15 +34,6 @@ export interface SensitivityErr {
 
 export type SensitivityResult = SensitivityOk | SensitivityErr;
 
-function addHit(hits: Map<string, SecretHit>, hit: SecretHit): void {
-	if (!hit.value) return;
-	// Deduplicate by replacement target. The same secret can appear in text,
-	// snapshot, and iframe/shadow copies during one probe.
-	const key = `${hit.type}:${hit.value}:${hit.ref ?? ''}`;
-	const existing = hits.get(key);
-	hits.set(key, existing ? narrowerCapture(existing, hit) : hit);
-}
-
 function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 	const virtualConsole = new VirtualConsole();
 	const dom = new JSDOM(html, { virtualConsole });
@@ -53,11 +44,11 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 	// token — and then nothing replaces it. Such a match still marks the page
 	// sensitive, but it cannot become a credential.
 	const rendered = elementText(document.documentElement);
-	for (const hit of findRegexSecretHits(rendered)) addHit(hits, hit);
+	for (const hit of findRegexSecretHits(rendered)) collectHit(hits, hit);
 	for (const hit of findRegexSecretHits(document.documentElement.textContent ?? '')) {
 		if (rendered.includes(hit.value)) continue; // the rendered pass has it, with a span we can trust
 		hit.captureBlocked = CONCATENATED_ONLY;
-		addHit(hits, hit);
+		collectHit(hits, hit);
 	}
 
 	// Inputs/textareas that are password-shaped or whose label reads as a secret
@@ -71,7 +62,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 			);
 		if (!sensitive) continue;
 		for (const value of sensitiveInputValues(field)) {
-			addHit(hits, { type: 'password', value });
+			collectHit(hits, { type: 'password', value });
 		}
 	}
 
@@ -83,7 +74,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 		const hasRevealPhrase = REVEAL_PHRASE_PATTERNS.some((pattern) => pattern.test(text));
 		const hasCopyButton = hasButtonMatching(dialog, COPY_BUTTON_PATTERN);
 		if (!hasRevealPhrase && !hasCopyButton) continue;
-		for (const hit of highEntropyCandidates(text)) addHit(hits, hit);
+		for (const hit of highEntropyCandidates(text)) collectHit(hits, hit);
 	}
 
 	// Product UIs frequently label secret containers with test IDs even when the
@@ -94,7 +85,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 		const testId = getTestId(el);
 		if (!testId || !SENSITIVE_TESTID_PATTERN.test(testId)) continue;
 		if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') continue;
-		for (const hit of highEntropyCandidates(elementText(el))) addHit(hits, hit);
+		for (const hit of highEntropyCandidates(elementText(el))) collectHit(hits, hit);
 	}
 
 	// aria-label/labelledby captures Stripe-style inline secret displays where
@@ -102,7 +93,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 	for (const el of Array.from(document.querySelectorAll('[aria-label], [aria-labelledby]'))) {
 		if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') continue;
 		if (!SENSITIVE_ARIA_LABEL_PATTERN.test(elementLabel(el, document))) continue;
-		for (const hit of highEntropyCandidates(elementText(el))) addHit(hits, hit);
+		for (const hit of highEntropyCandidates(elementText(el))) collectHit(hits, hit);
 	}
 
 	// Non-dialog pages need both copy and reveal signals before we treat a
@@ -117,7 +108,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 		}
 		if (!container || container.matches('[role="dialog"], dialog[open]')) continue;
 		if (!hasButtonMatching(container, REVEAL_BUTTON_PATTERN)) continue;
-		for (const hit of highEntropyCandidates(elementText(container))) addHit(hits, hit);
+		for (const hit of highEntropyCandidates(elementText(container))) collectHit(hits, hit);
 	}
 
 	// Monospace tokens inside a nearby sensitive ancestor are common in API-key
@@ -136,7 +127,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 			depth++;
 		}
 		if (!confident) continue;
-		for (const hit of highEntropyCandidates(elementText(code))) addHit(hits, hit);
+		for (const hit of highEntropyCandidates(elementText(code))) collectHit(hits, hit);
 	}
 }
 

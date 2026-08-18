@@ -10,6 +10,16 @@ import {
 } from './dom-matchers';
 
 describe('highEntropyCandidates', () => {
+	// The same key shown bare and inside a wrapper is one secret. Keeping both
+	// spans would offer the model a marker that captures the wrapper text.
+	it('merges a bare key with a wrapped rendering of it', () => {
+		const key = 'Zt7vLpQ9mKdW4xR2bNfH3jEuXaGoT5wPqYs1BcRmZxQ';
+
+		const hits = highEntropyCandidates(`bare ${key} and wrapped session.${key}`);
+
+		expect(hits.map((hit) => hit.value)).toEqual([key]);
+	});
+
 	// A large inline script is one long undelimited run. Expansion must not
 	// rescan it for every match, or sensitivity analysis stalls the tool call.
 	it('stays linear on a large run of high-entropy segments', () => {
