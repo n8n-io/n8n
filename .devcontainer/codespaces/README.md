@@ -130,13 +130,14 @@ the tools assume.
 ## Quality skills (Claude plugin)
 
 Claude sessions can also load the private quality skills from the
-`n8n-io/n8n-claude-skills` plugin marketplace (bug insights, defect attribution,
-mutation testing, and more). `post-start.mjs` installs the `quality` plugin on
-each container start, so every session gets the skills with no per-session step.
+`n8n-io/n8n-agent-skills` repository (bug insights, defect attribution,
+mutation testing, and more). Its Claude marketplace remains named
+`n8n-claude-skills`. `post-start.mjs` installs the `quality` plugin on each
+container start, so every session gets the skills with no per-session step.
 
 The private marketplace uses the codespace's own GitHub auth — no extra token.
 `devcontainer.json` grants the codespace read access to
-`n8n-io/n8n-claude-skills` via `customizations.codespaces.repositories`, and
+`n8n-io/n8n-agent-skills` via `customizations.codespaces.repositories`, and
 **each user authorizes that access once when they create the codespace** (GitHub
 prompts for it, then remembers). Both repos are in the same org, which is what
 lets this work.

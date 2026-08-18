@@ -80,7 +80,7 @@ const CACHE = 'export TURBO_CACHE_DIR=/workspaces/.turbo-cache; [ -d "$TURBO_CAC
 // Run the idempotent install here to block until the plugin is on disk (a fast
 // no-op once cached). Mirrors the env vars post-start.mjs sets for the private
 // HTTPS clone; failures are tolerated so a plugin hiccup never blocks the session.
-const MARKETPLACE = 'n8n-io/n8n-claude-skills';
+const MARKETPLACE = 'n8n-io/n8n-agent-skills';
 const PLUGIN = 'quality@n8n-claude-skills';
 const ENSURE_PLUGIN = `export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1 CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1; claude plugin marketplace add ${MARKETPLACE} >/dev/null 2>&1 || true; claude plugin install ${PLUGIN} >/dev/null 2>&1 || true`;
 

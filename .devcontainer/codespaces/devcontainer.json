@@ -24,7 +24,7 @@
 	"customizations": {
 		"codespaces": {
 			"repositories": {
-				"n8n-io/n8n-claude-skills": { "permissions": { "contents": "read" } }
+				"n8n-io/n8n-agent-skills": { "permissions": { "contents": "read" } }
 			}
 		}
 	},
