@@ -1540,6 +1540,21 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(getByTestId('publishing-spinner')).toBeInTheDocument();
 		});
 
+		// A reattempt republishes the current workflow, so these states clear the same
+		// publishability bar as any other publish — and stay in step with the review
+		// banner's Submit changes, which is gated on it too.
+		it.each(['partial', 'failed'] as const)(
+			'disables publish for %s status when the workflow is not publishable',
+			(status) => {
+				workflowDocumentStore.setNodes([]);
+				workflowDocumentStore.setPublicationStatus({ status });
+
+				const { getByTestId } = renderComponent();
+
+				expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			},
+		);
+
 		it('should show publish button enabled with error indicator when status is partial', () => {
 			workflowDocumentStore.setPublicationStatus({
 				status: 'partial',

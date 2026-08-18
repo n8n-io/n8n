@@ -522,7 +522,7 @@ const publishButtonConfig = computed(() => {
 		},
 		'publication-partial': {
 			text: i18n.baseText('workflows.publish'),
-			enabled: true,
+			enabled: isWorkflowPublishable.value,
 			loading: false,
 			showIndicator: true,
 			indicatorClass: 'partial',
@@ -531,7 +531,7 @@ const publishButtonConfig = computed(() => {
 		},
 		'publication-failed': {
 			text: i18n.baseText('workflows.publish'),
-			enabled: true,
+			enabled: isWorkflowPublishable.value,
 			loading: false,
 			showIndicator: true,
 			indicatorClass: 'error',
