@@ -885,7 +885,9 @@ describe('useNodeHelpers()', () => {
 		afterEach(() => {
 			mockDocumentStore.workflowTriggerNodes = [];
 			mockDocumentStore.settings = {};
-			mockedStore(useSettingsStore).settings.envFeatureFlags = {};
+			mockedStore(useSettingsStore).settings.envFeatureFlags = {
+				N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2: 'false',
+			};
 		});
 
 		describe('not connected', () => {
