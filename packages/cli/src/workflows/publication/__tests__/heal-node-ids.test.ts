@@ -76,6 +76,7 @@ describe('healNodeIds', () => {
 		expect(result.nodes.map(({ name }) => name)).toEqual(['Twin', 'Other']);
 		expect(result.nodes[0].parameters).toEqual({ generation: 2 });
 		expect(result.report.dropped).toEqual([{ name: 'Twin', id: '' }]);
+		expect(result.report.reassigned).toEqual([]);
 		expect(result.report.filled).toEqual([
 			{ name: 'Twin', newId: result.nodes[0].id },
 			{ name: 'Other', newId: result.nodes[1].id },
