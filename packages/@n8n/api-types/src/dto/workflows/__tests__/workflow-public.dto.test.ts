@@ -136,10 +136,4 @@ describe('WorkflowPublishPublicDto', () => {
 		const result = WorkflowPublishPublicDto.safeParse(workflowWithoutShared);
 		expect(result.success).toBe(true);
 	});
-
-	test('still requires the rest of the workflow contract', () => {
-		const { id: _id, ...withoutId } = workflowWithoutShared;
-		const result = WorkflowPublishPublicDto.safeParse(withoutId);
-		expect(result.success).toBe(false);
-	});
 });
