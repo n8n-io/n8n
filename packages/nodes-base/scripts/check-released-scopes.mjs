@@ -24,15 +24,16 @@
  *     reported, never failed.
  *   - The baseline is captured rather than specified, because no hand-written
  *     statement of "the correct scopes" exists or could be maintained for ~85
- *     credentials. That is characterization / golden-master testing (Feathers,
- *     *Working Effectively with Legacy Code*, 2004): record what the system
- *     actually does today and diff against it.
+ *     credentials: record what the system actually does today and diff against
+ *     it. That is characterization testing, the term Michael Feathers coined in
+ *     *Working Effectively with Legacy Code* (Prentice Hall, 2004), also known
+ *     as golden master testing.
  *   - An intended change is acknowledged explicitly instead of silently
- *     re-recorded, the approval step of approval testing (Falco,
+ *     re-recorded, the approval step of approval testing (Llewellyn Falco's
  *     ApprovalTests). Here that is `credentials/scope-removals.json`.
  *   - Checking a producer change against what consumers actually depend on is
- *     consumer-driven contract testing (Pact). The consumers here are tokens
- *     already issued to connected credentials.
+ *     consumer-driven contract testing (the Pact family). The consumers here are
+ *     tokens already issued to connected credentials.
  *   - The same recipe is standard for other public contracts: `buf breaking`
  *     for protobuf, `oasdiff` for OpenAPI, `api-extractor` for TypeScript
  *     public APIs. All three snapshot, classify the diff, and fail only on the
