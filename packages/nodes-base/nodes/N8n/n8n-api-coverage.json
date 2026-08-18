@@ -20,6 +20,9 @@
 		"DELETE /roles/{slug}": {
 			"status": "gap"
 		},
+		"GET /role-mapping-rules": {
+			"status": "gap"
+		},
 		"POST /role-mapping-rules": {
 			"status": "gap"
 		},

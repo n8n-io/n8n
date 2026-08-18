@@ -38,7 +38,11 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { EventService } from '@/events/event.service';
-import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
+import {
+	decodeCursor,
+	encodeNextCursor,
+	resolveOffsetPagination,
+} from '@/public-api/v1/shared/services/pagination.service';
 import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -322,21 +326,7 @@ export class WorkflowsPublicController {
 		@Param('workflowId') workflowId: string,
 		@Query query: ListWorkflowHistoryQueryDto,
 	): Promise<WorkflowVersionHistoryListPublicDto> {
-		let { limit, offset } = query;
-
-		if (query.cursor) {
-			try {
-				const decoded = decodeCursor(query.cursor);
-				if (!('offset' in decoded)) {
-					throw new BadRequestError('An invalid cursor was provided');
-				}
-				offset = decoded.offset;
-				limit = decoded.limit;
-			} catch (error) {
-				if (error instanceof BadRequestError) throw error;
-				throw new BadRequestError('An invalid cursor was provided');
-			}
-		}
+		const { offset, limit } = resolveOffsetPagination(query);
 
 		try {
 			const versions = await this.workflowHistoryService.getList(

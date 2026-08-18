@@ -4,6 +4,8 @@ info:
   version: 0.0.0
 paths:
   /role-mapping-rules:
+    get:
+      $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
     post:
       $ref: ./handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
   /roles:
