@@ -12,6 +12,7 @@ import {
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
 	type AgentIntegrationConfig,
+	type AgentTaskConfig,
 	type AgentJsonConfig,
 	type AgentJsonNodeToolConfig,
 	type AgentJsonWorkflowToolConfig,
@@ -45,7 +46,7 @@ type FindCredential = (
 ) => Promise<Awaited<ReturnType<CredentialProvider['list']>>[number] | undefined>;
 
 type CustomToolEntries = Record<string, { code: string; descriptor: ToolDescriptor }>;
-type TaskBody = { name: string; objective: string; cronExpression: string };
+type TaskBody = AgentTaskConfig;
 
 interface ConfigurationValidationContext {
 	agentId: string;

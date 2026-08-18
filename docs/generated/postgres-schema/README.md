@@ -20,9 +20,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
-| [public.agent_task_definition](public.agent_task_definition.md) | 7 |  | BASE TABLE |
+| [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
-| [public.agent_task_snapshot](public.agent_task_snapshot.md) | 8 |  | BASE TABLE |
+| [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
 | [public.agents](public.agents.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
 | [public.agents_memory_entry_cursors](public.agents_memory_entry_cursors.md) | 6 |  | BASE TABLE |
@@ -507,6 +507,7 @@ erDiagram
   varchar_32_ id
   varchar_128_ name
   text objective
+  varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_task_run_lock" {
@@ -524,6 +525,7 @@ erDiagram
   varchar_128_ name
   text objective
   varchar_32_ taskId
+  varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId FK
 }
