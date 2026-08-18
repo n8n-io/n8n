@@ -1124,6 +1124,13 @@ export class WorkflowService {
 	 * is already active, and the content comes from internal correction code,
 	 * which may legitimately fail user-facing checks (e.g. duplicate node
 	 * names).
+	 *
+	 * The caller also owns freshness: the active version is read once here and
+	 * written back without compare-and-swap, so a concurrent user publish or
+	 * unpublish that lands between the read and the write is overwritten (last
+	 * write wins), and the publish history records the stale version as the
+	 * deactivated one. Serialize against user publication or re-read right
+	 * before calling if that matters at the call site.
 	 */
 	async publishAsSystem(
 		workflowId: string,

@@ -1191,6 +1191,9 @@ describe('publishAsSystem()', () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);
 		const previousActiveVersionId = workflow.activeVersionId as string;
+		// Compare against the stored row: the helper's in-memory updatedAt carries
+		// sub-second precision that the insert already dropped.
+		const storedBefore = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
 		const nodes = systemNodes();
 
 		const { versionId } = await workflowService.publishAsSystem(workflow.id, {
@@ -1212,10 +1215,7 @@ describe('publishAsSystem()', () => {
 		// The draft plane stays untouched: same draft version, nodes, and updatedAt.
 		expect(updated.versionId).toBe(workflow.versionId);
 		expect(updated.nodes).toEqual(workflow.nodes);
-		// Second precision: sqlite's datetime column truncates milliseconds.
-		expect(Math.floor(updated.updatedAt.getTime() / 1000)).toBe(
-			Math.floor(workflow.updatedAt.getTime() / 1000),
-		);
+		expect(updated.updatedAt.getTime()).toBe(storedBefore.updatedAt.getTime());
 
 		const activated = await workflowPublishHistoryRepository.findBy({
 			workflowId: workflow.id,
@@ -1256,13 +1256,17 @@ describe('publishAsSystem()', () => {
 		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
 	});
 
-	it('rejects a missing workflow', async () => {
+	it('rejects a missing workflow and writes nothing', async () => {
+		const missingId = uuid();
 		await expect(
-			workflowService.publishAsSystem(uuid(), {
+			workflowService.publishAsSystem(missingId, {
 				nodes: systemNodes(),
 				connections: {},
 				nodeGroups: [],
 			}),
 		).rejects.toThrow('active');
+
+		expect(await outboxRepository.findBy({ workflowId: missingId })).toEqual([]);
+		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
 	});
 });
