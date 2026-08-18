@@ -1,4 +1,6 @@
+import { folderIdSchema } from '@n8n/api-types';
 import { type User, type WorkflowEntity } from '@n8n/db';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -12,9 +14,12 @@ import type {
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';
+import type { FolderFinderService } from '@/services/folder-finder.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import { describeFolderError } from './folder-error.utils';
 import { createLimitSchema, tagSchema, toTagSummary } from './schemas';
 
 const MAX_RESULTS = 200;
@@ -34,6 +39,17 @@ const inputSchema = {
 		.optional()
 		.describe(
 			`Sort order for results (default: ${DEFAULT_SORT_BY}). Use updatedAt:desc to find the most recently edited workflows first.`,
+		),
+	folderId: folderIdSchema
+		.optional()
+		.describe(
+			`Filter by folder. Use search_folders to resolve a folder name to an id, or pass a workflow's own parentFolderId to find its siblings. Pass "${PROJECT_ROOT}" for workflows that sit at the project root rather than in a folder.`,
+		),
+	includeSubfolders: z
+		.boolean()
+		.optional()
+		.describe(
+			`Whether a folderId search also covers that folder's subfolders (default: true). Set false to match only workflows directly inside the folder. Ignored when folderId is "${PROJECT_ROOT}", which always matches the project root only.`,
 		),
 } satisfies z.ZodRawShape;
 
@@ -61,28 +77,39 @@ const outputSchema = {
 						.nullable()
 						.describe('The number of triggers associated with the workflow'),
 					availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
+					parentFolderId: z
+						.string()
+						.nullable()
+						.describe(
+							'The id of the folder holding the workflow, or null when it sits at the project root. Pass it back as folderId to find related workflows.',
+						),
 					tags: z.array(tagSchema).describe('Tags assigned to the workflow'),
 				})
 				.passthrough(),
 		)
 		.describe('List of workflows matching the query'),
 	count: z.number().int().min(0).describe('Total number of workflows that match the filters'),
+	error: z
+		.string()
+		.optional()
+		.describe('Error message explaining why the search failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
 /**
- * 	Creates mcp tool definition for searching workflows with optional filters. Workflows can be filtered by name, project ID, and tags.
- * Returns a preview of each workflow including id, name, active status, creation and update timestamps, trigger count, and tags.
+ * 	Creates mcp tool definition for searching workflows with optional filters. Workflows can be filtered by name, project ID, folder, and tags.
+ * Returns a preview of each workflow including id, name, active status, creation and update timestamps, trigger count, folder and tags.
  */
 export const createSearchWorkflowsTool = (
 	user: User,
 	workflowService: WorkflowService,
+	folderFinderService: FolderFinderService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => {
 	return {
 		name: 'search_workflows',
 		config: {
 			description:
-				'Search for workflows with optional filters. Returns a preview of each workflow.',
+				'Search for workflows with optional filters. Returns a preview of each workflow. On instances that organise workflows into folders, narrow the search with folderId instead of scanning everything — resolve the folder by name with search_folders first.',
 			inputSchema,
 			outputSchema,
 			annotations: {
@@ -99,8 +126,10 @@ export const createSearchWorkflowsTool = (
 			projectId,
 			tags,
 			sortBy,
+			folderId,
+			includeSubfolders,
 		}: SearchWorkflowsParams) => {
-			const parameters = { limit, query, projectId, tags, sortBy };
+			const parameters = { limit, query, projectId, tags, sortBy, folderId, includeSubfolders };
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
 				user_id: user.id,
 				tool_name: 'search_workflows',
@@ -108,13 +137,20 @@ export const createSearchWorkflowsTool = (
 			};
 
 			try {
-				const payload: SearchWorkflowsResult = await searchWorkflows(user, workflowService, {
-					limit,
-					query,
-					projectId,
-					tags,
-					sortBy,
-				});
+				const payload: SearchWorkflowsResult = await searchWorkflows(
+					user,
+					workflowService,
+					folderFinderService,
+					{
+						limit,
+						query,
+						projectId,
+						tags,
+						sortBy,
+						folderId,
+						includeSubfolders,
+					},
+				);
 
 				// Track successful execution
 				telemetryPayload.results = {
@@ -142,19 +178,87 @@ export const createSearchWorkflowsTool = (
 					error: error instanceof Error ? error.message : String(error),
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+				// An unresolvable folderId is a recoverable mistake: hand the client a
+				// structured error pointing at search_folders rather than throwing, so it
+				// can retry with a valid id. Never fall back to an unfiltered search —
+				// silently widening the scope is worse than failing.
+				if (error instanceof FolderNotFoundError) {
+					const output: SearchWorkflowsResult = {
+						data: [],
+						count: 0,
+						error: describeFolderError(error),
+					};
+					return {
+						structuredContent: output,
+						content: [{ type: 'text', text: JSON.stringify(output) }],
+						isError: true,
+					};
+				}
+
 				throw error;
 			}
 		},
 	};
 };
 
+/**
+ * Turns a requested `folderId` into the folder filter the workflow query
+ * understands. A subfolder search resolves the whole subtree up front because
+ * the plain workflow list query — unlike the workflows-and-folders union the UI
+ * uses — matches `parentFolderId` literally and never walks the hierarchy.
+ *
+ * Resolution goes through the folder finder so folders the user cannot reach are
+ * dropped, and an empty resolution raises instead of returning no filter.
+ */
+async function resolveFolderFilter(
+	user: User,
+	folderFinderService: FolderFinderService,
+	folderId: string,
+	includeSubfolders: boolean,
+): Promise<{ parentFolderId: string } | { parentFolderIds: string[] }> {
+	// The project root is not a folder, so there is no subtree to expand: it
+	// matches workflows with no parent folder.
+	if (folderId === PROJECT_ROOT) return { parentFolderId: PROJECT_ROOT };
+
+	if (!includeSubfolders) {
+		const [folder] = await folderFinderService.findFoldersByIdsForUser([folderId], user, [
+			'folder:read',
+		]);
+		if (!folder) throw new FolderNotFoundError(folderId);
+		return { parentFolderId: folder.id };
+	}
+
+	const subtree = await folderFinderService.findFolderSubtreesForUser([folderId], user, [
+		'folder:read',
+	]);
+	if (!subtree.some((folder) => folder.id === folderId)) throw new FolderNotFoundError(folderId);
+
+	return { parentFolderIds: subtree.map((folder) => folder.id) };
+}
+
 export async function searchWorkflows(
 	user: User,
 	workflowService: WorkflowService,
-	{ limit = MAX_RESULTS, query, projectId, tags, sortBy = DEFAULT_SORT_BY }: SearchWorkflowsParams,
+	folderFinderService: FolderFinderService,
+	{
+		limit = MAX_RESULTS,
+		query,
+		projectId,
+		tags,
+		sortBy = DEFAULT_SORT_BY,
+		folderId,
+		includeSubfolders = true,
+	}: SearchWorkflowsParams,
 ): Promise<SearchWorkflowsResult> {
 	const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
 	const filterTags = tags && Array.from(new Set(tags.filter((tag) => tag.length > 0)));
+	// Any folderId the caller sent is resolved, including an empty one: skipping
+	// it would turn a malformed folder search into a search of everything.
+	const folderFilter =
+		folderId === undefined
+			? {}
+			: await resolveFolderFilter(user, folderFinderService, folderId, includeSubfolders);
 
 	const options: ListQuery.Options = {
 		take: safeLimit,
@@ -164,6 +268,7 @@ export async function searchWorkflows(
 			...(query ? { query } : {}),
 			...(projectId ? { projectId } : {}),
 			...(filterTags && filterTags.length > 0 ? { tags: filterTags } : {}),
+			...folderFilter,
 		},
 		select: {
 			id: true,
@@ -174,6 +279,7 @@ export async function searchWorkflows(
 			updatedAt: true,
 			triggerCount: true,
 			settings: true,
+			parentFolder: true,
 			tags: true,
 		},
 	};
@@ -196,6 +302,7 @@ export async function searchWorkflows(
 			updatedAt,
 			triggerCount,
 			settings,
+			parentFolder,
 			tags: workflowTags,
 		} = workflow as WorkflowEntity;
 
@@ -208,6 +315,7 @@ export async function searchWorkflows(
 			updatedAt: updatedAt.toISOString(),
 			triggerCount,
 			availableInMCP: settings?.availableInMCP ?? false,
+			parentFolderId: parentFolder?.id ?? null,
 			tags: toTagSummary(workflowTags),
 		};
 	});
