@@ -56,6 +56,9 @@ export class CanvasComposer {
 		await this.n8n.canvas.openWorkflowHistory();
 		await this.n8n.canvas.closeWorkflowHistory();
 		await this.n8n.page.waitForLoadState();
+		// Wait for the editor's loading overlay to clear before subsequent header
+		// interactions; nodes can report visible while the overlay still blocks clicks.
+		await this.n8n.canvas.waitForCanvasReady();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}
@@ -66,6 +69,9 @@ export class CanvasComposer {
 	async switchBetweenEditorAndWorkflowList(): Promise<void> {
 		await this.n8n.sideBar.clickHomeButton();
 		await this.n8n.workflows.cards.getWorkflows().first().click();
+		// Wait for the editor's loading overlay to clear before subsequent header
+		// interactions; nodes can report visible while the overlay still blocks clicks.
+		await this.n8n.canvas.waitForCanvasReady();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}
