@@ -29,10 +29,6 @@ export function hasToolConnection(status: ToolConnectionStatus): boolean {
 	return status !== 'none';
 }
 
-export function isToolConnectionSettled(status: ToolConnectionStatus): boolean {
-	return status === 'connected' || status === 'disconnected';
-}
-
 export interface BaseConnectionItem {
 	id: string;
 	title: string;
