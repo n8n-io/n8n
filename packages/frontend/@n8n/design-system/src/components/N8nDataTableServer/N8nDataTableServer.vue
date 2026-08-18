@@ -47,7 +47,7 @@ import get from 'lodash/get.js';
 import { computed, h, shallowRef, useSlots, watch } from 'vue';
 
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
-import N8nPagination from '../../v2/components/Pagination/Pagination.vue';
+import N8nPagination from '../N8nPagination';
 
 type VueClass = string | string[] | Record<string, boolean> | undefined;
 
