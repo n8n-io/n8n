@@ -103,6 +103,21 @@ describe('retryabilityFromError', () => {
 			expect(retryabilityFromError(withCode(code))).toEqual({ retryable: 'yes' });
 		});
 
+		it('is retryable for an undici terminated error hidden inside a wrapper', () => {
+			const terminated = new TypeError('terminated');
+			expect(retryabilityFromError(new Error('node failed', { cause: terminated }))).toEqual({
+				retryable: 'yes',
+			});
+		});
+
+		it('is retryable for a network error wrapped under errorResponse', () => {
+			expect(
+				retryabilityFromError(
+					Object.assign(new Error('node failed'), { errorResponse: withCode('ECONNRESET') }),
+				),
+			).toEqual({ retryable: 'yes' });
+		});
+
 		it('is unknown for an error that never went through an HTTP client', () => {
 			expect(retryabilityFromError(new Error('some logic bug'))).toEqual({
 				retryable: 'unknown',

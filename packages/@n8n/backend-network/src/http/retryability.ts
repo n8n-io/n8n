@@ -61,8 +61,7 @@ export function retryabilityFromError(error: unknown, now: Date = new Date()): R
 			retryable = 'no';
 		} else if (
 			(status !== undefined && isRetryableStatus(status)) ||
-			isTransportFailure(error) ||
-			isDnsFailure(error)
+			chain.some((level) => isTransportFailure(level) || isDnsFailure(level))
 		) {
 			retryable = 'yes';
 		}
