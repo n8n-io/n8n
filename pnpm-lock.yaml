@@ -6350,9 +6350,6 @@ importers:
       '@aws-sdk/credential-providers':
         specifier: 3.808.0
         version: 3.808.0
-      '@confluentinc/kafka-javascript':
-        specifier: 'catalog:'
-        version: 1.9.1(encoding@0.1.13)
       '@e965/xlsx':
         specifier: 'catalog:'
         version: 0.20.3
@@ -6750,6 +6747,10 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
+    optionalDependencies:
+      '@confluentinc/kafka-javascript':
+        specifier: 'catalog:'
+        version: 1.9.1(encoding@0.1.13)
 
   packages/testing/code-health:
     dependencies:
@@ -22766,8 +22767,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.3.9:
-    resolution: {integrity: sha512-3c/UfMe0SqyEfcGTyH7mfshHagJ9QTCbppCb0/uGpHZpFug7+If3GeGZN7I0YheKEExemx3xldQPoO7PQSOLQg==}
+  vue-component-type-helpers@3.3.10:
+    resolution: {integrity: sha512-t7IQivQ3oD4D01b7s7a9AWzHAcr3DGBIa/1jZREsFQJcFgSL92gqUkqNiHTYgzTt7QDuJa0I9wCeDwEtZICoBQ==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -25962,6 +25963,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+    optional: true
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -27486,6 +27488,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+    optional: true
 
   '@marijn/find-cluster-break@1.0.2': {}
 
@@ -29876,7 +29879,7 @@ snapshots:
       storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
       type-fest: 2.19.0
       vue: 3.5.26(typescript@6.0.2)
-      vue-component-type-helpers: 3.3.9
+      vue-component-type-helpers: 3.3.10
 
   '@stryker-mutator/api@9.6.1':
     dependencies:
@@ -32010,7 +32013,8 @@ snapshots:
 
   abbrev@1.1.1: {}
 
-  abbrev@3.0.1: {}
+  abbrev@3.0.1:
+    optional: true
 
   abbrev@4.0.0: {}
 
@@ -33337,7 +33341,8 @@ snapshots:
       ini: 1.3.8
       proto-list: 1.2.4
 
-  consola@3.4.2: {}
+  consola@3.4.2:
+    optional: true
 
   console-browserify@1.2.0: {}
 
@@ -38579,6 +38584,7 @@ snapshots:
   nopt@8.1.0:
     dependencies:
       abbrev: 3.0.1
+    optional: true
 
   nopt@9.0.0:
     dependencies:
@@ -42611,7 +42617,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.3.9: {}
+  vue-component-type-helpers@3.3.10: {}
 
   vue-demi@0.14.10(vue@3.5.26(typescript@6.0.2)):
     dependencies:

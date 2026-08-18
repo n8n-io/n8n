@@ -940,7 +940,6 @@
     "@smithy/signature-v4": "5.3.5",
     "@smithy/types": "4.13.1",
     "@n8n/backend-network": "workspace:*",
-    "@confluentinc/kafka-javascript": "catalog:",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@langchain/core": "catalog:",
     "@mozilla/readability": "catalog:",
@@ -1025,6 +1024,9 @@
     "xml2js": "catalog:",
     "xmlhttprequest-ssl": "3.1.0",
     "zod": "catalog:"
+  },
+  "optionalDependencies": {
+    "@confluentinc/kafka-javascript": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

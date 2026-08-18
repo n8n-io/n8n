@@ -105,6 +105,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@confluentinc/kafka-javascript",
       "@vscode/ripgrep",
       "isolated-vm",
       "sqlite3"
