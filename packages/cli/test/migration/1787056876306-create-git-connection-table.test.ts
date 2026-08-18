@@ -9,7 +9,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateGitConnectionTable1786547629549';
+const MIGRATION_NAME = 'CreateGitConnectionTable1787056876306';
 
 describe('CreateGitConnectionTable migration', () => {
 	let dataSource: DataSource;

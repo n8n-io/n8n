@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateGitConnectionTable1786547629549 implements ReversibleMigration {
+export class CreateGitConnectionTable1787056876306 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column }, tablePrefix }: MigrationContext) {
 		await createTable('git_connection')
 			.withColumns(
