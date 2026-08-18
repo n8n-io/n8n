@@ -154,6 +154,27 @@ describe('useAgentSessionsStore', () => {
 		expect(store.nextCursor).toBe('cursor-2');
 	});
 
+	it('keeps the newest result when background refreshes overlap', async () => {
+		const initialIds = Array.from({ length: 20 }, (_, index) => `session-${index + 1}`);
+		const olderRefresh = Promise.withResolvers<ThreadsPage>();
+		const newerRefresh = Promise.withResolvers<ThreadsPage>();
+		listThreads
+			.mockResolvedValueOnce(page(initialIds, 'cursor-1'))
+			.mockReturnValueOnce(olderRefresh.promise)
+			.mockReturnValueOnce(newerRefresh.promise);
+		const store = useAgentSessionsStore();
+		await store.fetchThreads('project-1', 'agent-1');
+
+		const olderRequest = store.refreshThreads('project-1', 'agent-1');
+		const newerRequest = store.refreshThreads('project-1', 'agent-1');
+		newerRefresh.resolve(page(['newest', ...initialIds.slice(1)], 'cursor-1'));
+		await newerRequest;
+		olderRefresh.resolve(page(['stale', ...initialIds.slice(1)], 'cursor-1'));
+		await olderRequest;
+
+		expect(store.threads.map(({ id }) => id)).toEqual(['newest', ...initialIds.slice(1)]);
+	});
+
 	it('ignores a stale response from an earlier filter', async () => {
 		const errorPage = Promise.withResolvers<ThreadsPage>();
 		const runningPage = Promise.withResolvers<ThreadsPage>();

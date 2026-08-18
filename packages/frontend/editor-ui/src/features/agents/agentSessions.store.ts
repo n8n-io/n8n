@@ -26,6 +26,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	let currentProjectId: string | null = null;
 	let currentAgentId: string | null = null;
 	let autoRefreshActive = false;
+	let latestRefreshId = 0;
 
 	// Tracks the most recently requested project, agent, and filter set. Concurrent
 	// `fetchThreads` calls — typically when the user switches agents quickly —
@@ -73,6 +74,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		const requestedFilters = filters.value;
 		const key = keyFor(projectId, agentId, requestedFilters);
 		if (latestKey !== null && latestKey !== key) return;
+		const refreshId = ++latestRefreshId;
 		const threadCount = threads.value.length;
 		const cursor = nextCursor.value;
 		try {
@@ -82,7 +84,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 				limit,
 				filters: requestedFilters,
 			});
-			if (latestKey !== key) return;
+			if (latestKey !== key || refreshId !== latestRefreshId) return;
 			const refreshed = [...page.threads];
 			const seen = new Set(refreshed.map(({ id }) => id));
 			while (refreshed.length < limit && page.nextCursor) {
@@ -91,7 +93,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 					cursor: page.nextCursor,
 					filters: requestedFilters,
 				});
-				if (latestKey !== key) return;
+				if (latestKey !== key || refreshId !== latestRefreshId) return;
 				refreshed.push(...page.threads.filter(({ id }) => !seen.has(id)));
 				for (const { id } of page.threads) seen.add(id);
 			}
