@@ -1,14 +1,19 @@
+import { zodToDraft202012 } from '@n8n/ai-utilities/json-schema';
 import type { StandardSchemaWithJSON } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 /**
  * Bridges a classic-zod raw shape to the Standard Schema interface the v2 MCP
  * SDK requires. The SDK only uses `~standard.validate` (argument checking) and
  * `~standard.jsonSchema` (the shape advertised in tools/list); validation stays
  * on the exact zod object we validate with today, so tool semantics don't
- * change. Removable once the MCP tool schemas move to zod v4, which implements
- * this interface natively.
+ * change.
+ *
+ * Retiring this bridge (ADO-5706) needs the repo-wide catalog bump, not just a
+ * switch to the `zod/v4` subpath: the v4 API in our pinned zod 3.25.76 provides
+ * `~standard.validate` but not `~standard.jsonSchema`, which the SDK requires.
+ * Standalone zod 4.x provides both, and its `jsonSchema.input()` already emits
+ * the same 2020-12 document `zodToDraft202012` produces here.
  */
 export function shapeToStandardSchema<Shape extends z.ZodRawShape>(
 	shape: Shape,
@@ -17,10 +22,7 @@ export function shapeToStandardSchema<Shape extends z.ZodRawShape>(
 	z.objectOutputType<Shape, z.ZodTypeAny>
 > {
 	const schema = z.object(shape);
-	const jsonSchema: Record<string, unknown> = { ...zodToJsonSchema(schema) };
-	// zod-to-json-schema stamps a $schema draft marker; the SDK emits schemas
-	// without one, and clients treat its presence inconsistently.
-	delete jsonSchema.$schema;
+	const jsonSchema = zodToDraft202012(schema);
 
 	return {
 		'~standard': {
