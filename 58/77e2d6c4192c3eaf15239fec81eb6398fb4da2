@@ -6,6 +6,7 @@ packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
 packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
   s_91c597c7193a8c::t_c519e468ff034f 32,56-71,107
   s_91c597c7193a8c::t_637baff6275809 33-55,126,128-138
+  s_91c597c7193a8c::t_cd4a0304144252 27
 packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
   s_91c597c7193a8c::t_f67f4dd11b0fff 87
   s_91c597c7193a8c::t_2879d51afb006d 199
@@ -28,6 +29,7 @@ packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
   s_91c597c7193a8c::t_8f4e4b158b0307 19,255,354,389,398,505,527,533,537
   s_91c597c7193a8c::t_637baff6275809 9-14,53-56,111-125,239-246,251-253,270,273-274,276,279,331-335,411
   s_91c597c7193a8c::t_dbf3cf83860f99 412-415
+  s_91c597c7193a8c::t_2eef06e3113f58 104-105
 packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
   s_91c597c7193a8c::t_25cfe84fd86c78 91,103,117,232,301-329
   s_0bb6949e0d58ea::t_d38190e30dac39 330
@@ -46,6 +48,7 @@ packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.
   s_91c597c7193a8c::t_dcce54aed5f433 89
   s_91c597c7193a8c::t_637baff6275809 17,24,32,54-59,79-84,107-109,116,120-128,186,194,198,203,220-221,260,274-290,299
   s_91c597c7193a8c::t_16537cec7d30c0 291-298,300
+  s_91c597c7193a8c::t_a7c5995b588973 261
 packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
   s_91c597c7193a8c::t_5b32af77597649 297,319-331,400,754,803-811,818,820-821,824-834,836-842,850,852-853,866
   s_91c597c7193a8c::t_f6d6af30407148 851
