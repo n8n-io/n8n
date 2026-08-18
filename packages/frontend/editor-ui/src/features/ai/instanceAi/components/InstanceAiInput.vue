@@ -8,9 +8,15 @@ import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
-import { base64EncodedSize, type InstanceAiAttachment } from '@n8n/api-types';
+import {
+	base64EncodedSize,
+	InstanceAiAttachment,
+	InstanceAiResourceAttachment,
+} from '@n8n/api-types';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
+import { useInstanceAiStore } from '../instanceAi.store';
+import { mergeNodeSets } from '../utils/buildNodesAttachment';
 
 type AmendContext = { agentId: string; role: string } | null;
 type SuggestionPromptPayload =
@@ -101,8 +107,10 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
+const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
+const attachedResources = ref<InstanceAiResourceAttachment[]>([]);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const previewPrompt = ref<string | null>(null);
@@ -289,6 +297,7 @@ function emitSubmittedMessage(
 function resetDraftComposer() {
 	inputText.value = '';
 	attachedFiles.value = [];
+	attachedResources.value = [];
 }
 
 function canSubmitMessage(message: string, attachmentCount = 0) {
@@ -308,6 +317,11 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 	}
 
 	trackSelectedSuggestionSubmitted(message);
+	// Clear the canvas selection once node context is actually sent (Context A).
+	if (attachments?.some((a) => a.type === 'nodes')) {
+		instanceAiStore.requestClearCanvasSelection();
+	}
+
 	const submittedFiles = [...attachedFiles.value];
 	emitSubmittedMessage(
 		message,
@@ -328,23 +342,53 @@ function submitSuggestion(payload: SuggestionSelectionPayload) {
 
 async function handleSubmit() {
 	const text = inputText.value.trim();
-	if (!canSubmitMessage(text, attachedFiles.value.length)) {
+	if (!canSubmitMessage(text, attachedFiles.value.length + attachedResources.value.length)) {
 		return;
 	}
 
-	let attachments: InstanceAiAttachment[] | undefined;
-	if (attachedFiles.value.length > 0) {
-		const binaryData = await Promise.all(attachedFiles.value.map(convertFileToBinaryData));
-		attachments = binaryData.map((b) => ({
-			type: 'file' as const,
-			data: b.data,
-			mimeType: b.mimeType,
-			fileName: b.fileName ?? 'unnamed',
-		}));
-	}
+	const fileAttachments: InstanceAiAttachment[] = attachedFiles.value.length
+		? (await Promise.all(attachedFiles.value.map(convertFileToBinaryData))).map((b) => ({
+				type: 'file' as const,
+				data: b.data,
+				mimeType: b.mimeType,
+				fileName: b.fileName ?? 'unnamed',
+			}))
+		: [];
+	const attachments = [...fileAttachments, ...attachedResources.value];
 
-	submitComposerMessage(text, attachments);
+	submitComposerMessage(text, attachments.length ? attachments : undefined);
 }
+
+function removeResource(index: number) {
+	attachedResources.value = attachedResources.value.filter((_, i) => i !== index);
+}
+
+// Canvas → composer bridge (Phase 2): pick up sets staged from a canvas
+// selection. Never touches inputText — the user's typed draft is untouched.
+watch(
+	() => instanceAiStore.pendingComposerAttachments,
+	(pending) => {
+		if (pending.length === 0) return;
+		const consumed = instanceAiStore.consumePendingAttachments();
+		for (const attachment of consumed) {
+			if (attachment.type === 'file') continue;
+			// Fold a nodes attachment into the existing one for the same workflow so
+			// re-adding the same selection dedups instead of stacking duplicate chips.
+			if (attachment.type === 'nodes') {
+				const existing = attachedResources.value.find(
+					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
+						a.type === 'nodes' && a.workflowId === attachment.workflowId,
+				);
+				if (existing) {
+					existing.sets = mergeNodeSets(existing.sets, attachment.sets);
+					continue;
+				}
+			}
+			attachedResources.value = [...attachedResources.value, attachment];
+		}
+	},
+	{ deep: true, immediate: true },
+);
 
 function handleStop() {
 	emit('stop');
@@ -547,6 +591,19 @@ const resizable = computed(() => {
 							</span>
 						</template>
 					</N8nTag>
+				</div>
+				<div
+					v-if="!props.isPlanEditMode && attachedResources.length > 0"
+					:class="$style.attachments"
+				>
+					<AttachmentPreview
+						v-for="(attachment, index) in attachedResources"
+						:key="`res-${index}`"
+						:attachment="attachment"
+						:is-removable="true"
+						@remove-resource="removeResource(index)"
+						@update:attachment="attachedResources[index] = $event"
+					/>
 				</div>
 				<div v-if="!props.isPlanEditMode && attachedFiles.length > 0" :class="$style.attachments">
 					<AttachmentPreview

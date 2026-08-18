@@ -2,15 +2,20 @@ import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	instanceAiAgentAttachmentSchema,
+	instanceAiNodesAttachmentSchema,
 	type InstanceAiAgentAttachment,
 	type InstanceAiHandoffContext,
+	type InstanceAiNodesAttachment,
 	type InstanceAiThreadOrigin,
 	type InstanceAiThreadSource,
 	type InstanceAiResourceAttachment,
+	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { jsonParse } from 'n8n-workflow';
 
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
+import type { IWorkflowDb } from '@/Interface';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -208,6 +213,39 @@ export function getPendingAgentAttachment(threadId: string): InstanceAiAgentAtta
 
 export function clearPendingAgentAttachment(threadId: string): void {
 	localStorage.removeItem(pendingAgentAttachmentKey(threadId));
+}
+
+const pendingDraftAttachmentKey = (threadId: string) =>
+	`n8n-instance-ai-draft-attachment:${threadId}`;
+
+/**
+ * Stash a canvas node selection made before navigating into the thread view (the
+ * composer doesn't exist yet to hold it). The thread view consumes it once on mount
+ * and stages it into the store, where the composer's chip watcher picks it up.
+ */
+export function stashPendingDraftAttachment(
+	threadId: string,
+	sets: InstanceAiNodesAttachment['sets'],
+	workflowId: string,
+): void {
+	const attachment: InstanceAiNodesAttachment = { type: 'nodes', workflowId, sets };
+
+	localStorage.setItem(pendingDraftAttachmentKey(threadId), JSON.stringify(attachment));
+}
+
+export function consumePendingDraftAttachment(threadId: string): InstanceAiNodesAttachment | null {
+	const raw = localStorage.getItem(pendingDraftAttachmentKey(threadId));
+
+	if (!raw) {
+    return null;
+  }
+	localStorage.removeItem(pendingDraftAttachmentKey(threadId));
+
+	const parsed = instanceAiNodesAttachmentSchema.safeParse(
+		jsonParse(raw, { fallbackValue: undefined }),
+	);
+  
+	return parsed.success ? parsed.data : null;
 }
 
 export function clearPendingThreadHandoff(threadId: string): void {
@@ -436,5 +474,56 @@ export function useInstanceAiHandoff() {
 		}
 	}
 
-	return { startThread, openThreadWithContext, openAgentArtifactThread };
+	/**
+	 * Mint a thread for a draft the caller will stash and navigate to itself (canvas
+	 * "add to chat" on a standalone editor). Same as startThread's same-tab branch
+	 * minus sendMessage/navigation — the caller sends nothing until the user does.
+	 */
+	/**
+	 * Mint an empty thread the caller stages a draft into. When `workflow` is given,
+	 * also open the workflow in the thread's preview pane (same machinery as the
+	 * editor's "open in assistant" button): an empty greeting message carries the
+	 * workflow attachment so the thread view auto-opens the canvas, and the snapshot
+	 * seeds the preview without a refetch. The node chips stay in the composer, unsent.
+	 */
+	async function openThreadForDraft(workflow?: {
+		id: string;
+		name?: string;
+		snapshot?: IWorkflowDb;
+	}): Promise<string | null> {
+		if (handoffInFlight) return null;
+		handoffInFlight = true;
+		try {
+			const projectId = await ensurePersonalProjectId();
+			if (!projectId) return null;
+			const threadId = uuidv4();
+			const launch: InstanceAiThreadLaunch = { source: 'canvas_action_button', origin: 'internal' };
+			try {
+				await instanceAiStore.syncThread(threadId, projectId, launch);
+			} catch {
+				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				return null;
+			}
+			if (workflow) {
+				const attachment: InstanceAiWorkflowAttachment = {
+					type: 'workflow',
+					id: workflow.id,
+					name: workflow.name || undefined,
+				};
+				// Empty message → the editor-context block just greets; the attachment
+				// opens the canvas preview via the thread view's firstAttachedArtifactId.
+				stashPendingFirstMessage(threadId, { message: '', attachments: [attachment] });
+				if (workflow.snapshot) {
+					instanceAiStore
+						.getOrCreateRuntime(threadId, projectId)
+						.setPendingHandoff({ workflowId: workflow.id, workflow: workflow.snapshot });
+				}
+			}
+			return threadId;
+		} finally {
+			handoffInFlight = false;
+		}
+	}
+
+	return { startThread, openThreadWithContext, openAgentArtifactThread, openThreadForDraft };
 }

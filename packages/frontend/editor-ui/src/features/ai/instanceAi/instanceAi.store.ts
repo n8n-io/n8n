@@ -3,7 +3,12 @@ import { ref, computed, inject, provide, shallowReactive, type InjectionKey } fr
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
+import {
+	UNLIMITED_CREDITS,
+	type InstanceAiThreadSummary,
+	type InstanceAiAttachment,
+	type InstanceAiNodesAttachment,
+} from '@n8n/api-types';
 import {
 	ensureThread,
 	getInstanceAiCredits,
@@ -19,6 +24,7 @@ import {
 } from './instanceAi.memory.api';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import { createThreadRuntime, type ThreadRuntime } from './instanceAi.threadRuntime';
+import { mergeNodeSets } from './utils/buildNodesAttachment';
 
 export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
 
@@ -285,6 +291,42 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	// Canvas → composer bridge: sets staged from a canvas selection, waiting for the
+	// composer to pick them up. Appends across repeated "add to chat" actions.
+	const pendingComposerAttachments = ref<InstanceAiAttachment[]>([]);
+
+	function stageNodeSets(workflowId: string, newSets: InstanceAiNodesAttachment['sets']): void {
+		const existing = pendingComposerAttachments.value.find(
+			(a): a is InstanceAiNodesAttachment => a.type === 'nodes' && a.workflowId === workflowId,
+		);
+		if (existing) {
+			existing.sets = mergeNodeSets(existing.sets, newSets);
+		} else {
+			pendingComposerAttachments.value = [
+				...pendingComposerAttachments.value,
+				{ type: 'nodes', workflowId, sets: newSets },
+			];
+		}
+	}
+
+	function consumePendingAttachments(): InstanceAiAttachment[] {
+		const staged = pendingComposerAttachments.value;
+		pendingComposerAttachments.value = [];
+		return staged;
+	}
+
+	// Bumped to ask the thread view to un-expand any preview and focus the composer (Context A).
+	const composerFocusRequest = ref(0);
+	function requestComposerFocus(): void {
+		composerFocusRequest.value++;
+	}
+
+	// Bumped after a message with node attachments is sent, so the canvas clears its selection.
+	const clearCanvasSelectionRequest = ref(0);
+	function requestClearCanvasSelection(): void {
+		clearCanvasSelectionRequest.value++;
+	}
+
 	return {
 		// Instance-level state
 		threads,
@@ -316,6 +358,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		getRuntime,
 		disposeRuntime,
 		syncThread,
+		pendingComposerAttachments,
+		stageNodeSets,
+		consumePendingAttachments,
+		composerFocusRequest,
+		requestComposerFocus,
+		clearCanvasSelectionRequest,
+		requestClearCanvasSelection,
 	};
 });
 

@@ -48,6 +48,7 @@ import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	clearPendingAgentAttachment,
+	consumePendingDraftAttachment,
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
@@ -653,6 +654,16 @@ watch(chatInputRef, (el) => {
 	}
 });
 
+// Context A: canvas "add to chat" staged a node-context attachment directly
+// into this thread's composer — un-expand the preview and focus the input.
+watch(
+	() => store.composerFocusRequest,
+	() => {
+		isPreviewExpanded.value = false;
+		void nextTick(() => chatInputRef.value?.focus());
+	},
+);
+
 watch(
 	[chatInputRef, pendingComposerDraft, () => thread.activePlanEdit],
 	([input, draft, planEdit]) => {
@@ -731,6 +742,8 @@ function reconnectThreadAfterHydration(): void {
 		pendingAgentAttachment.value = agentAttachment;
 		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
 	}
+	const draftAttachment = consumePendingDraftAttachment(props.threadId);
+	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();

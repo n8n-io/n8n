@@ -64,6 +64,13 @@ export function isInstanceAiChatRoute(name: unknown): boolean {
 	return typeof name === 'string' && INSTANCE_AI_CHAT_ROUTE_NAMES.has(name);
 }
 
+/** Keys that remove a node-context chip, shared by the chip itself and its expand-panel rows. */
+const NODE_CHIP_REMOVAL_KEYS: ReadonlySet<string> = new Set(['Delete', 'Backspace', 'x']);
+
+export function isNodeChipRemovalKey(key: string): boolean {
+	return NODE_CHIP_REMOVAL_KEYS.has(key);
+}
+
 export const INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY = 'instanceAiComputerUseSetup';
 export const INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY = 'instanceAiBrowserUseSetup';
 export const INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY = 'instanceAiToolsConnection';
