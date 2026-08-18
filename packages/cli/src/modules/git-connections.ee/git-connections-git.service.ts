@@ -65,7 +65,6 @@ export class GitConnectionsGitService {
 			'SSH connections require an ssh:// or user@host:path repository URL',
 		);
 
-		// Reject option injection (leading `-`) and the transport-helper form (`ext::<cmd>`).
 		if (repositoryUrl.startsWith('-') || repositoryUrl.includes('::')) throw error;
 
 		const scheme = /^([a-zA-Z][a-zA-Z0-9+.-]*):\/\//.exec(repositoryUrl);
