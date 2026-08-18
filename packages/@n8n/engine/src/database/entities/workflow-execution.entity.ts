@@ -35,8 +35,8 @@ export class WorkflowExecution {
 	@Column('jsonb')
 	graph!: WorkflowGraph;
 
-	@Column('jsonb', { name: 'trigger_payload', nullable: true })
-	triggerPayload!: TriggerOutputs | null;
+	@Column('jsonb', { name: 'trigger_outputs', nullable: true })
+	triggerOutputs!: TriggerOutputs | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

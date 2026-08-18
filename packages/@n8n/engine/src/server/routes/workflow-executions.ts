@@ -47,7 +47,7 @@ const StartExecutionBody = z.object({
 	workflowId: z.string().min(1),
 	graph: WorkflowGraphSchema,
 	/** Trigger output slots */
-	triggerPayload: z.array(jsonValueSchema).max(MAX_TRIGGER_SLOTS).nullable().optional(),
+	triggerOutputs: z.array(jsonValueSchema).max(MAX_TRIGGER_SLOTS).nullable().optional(),
 	mode: z.enum(['production', 'manual']).optional(),
 });
 

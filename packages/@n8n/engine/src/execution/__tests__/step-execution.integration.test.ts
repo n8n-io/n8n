@@ -60,7 +60,7 @@ describe('step execution (integration)', () => {
 	 */
 	async function runWorkflow(
 		executor: IStepExecutor,
-		triggerPayload: TriggerOutputs,
+		triggerOutputs: TriggerOutputs,
 		{ workflowId = 'wf-1', graph: workflowGraph = graph } = {},
 	) {
 		const { executionStore, stepStore } = stores();
@@ -94,7 +94,7 @@ describe('step execution (integration)', () => {
 			new AllowAllAdmittance(),
 			executionStore,
 			orchestrationQueue,
-		).start({ workflowId, graph: workflowGraph, triggerPayload });
+		).start({ workflowId, graph: workflowGraph, triggerOutputs });
 		await finished;
 
 		await stepWorker.stop();
@@ -316,7 +316,7 @@ describe('step execution (integration)', () => {
 			status: 'running',
 			mode: 'production',
 			graph,
-			triggerPayload: null,
+			triggerOutputs: null,
 		});
 		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them

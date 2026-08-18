@@ -8,7 +8,7 @@ export interface StartExecutionRequest {
 	workflowId: string;
 	graph: WorkflowGraph;
 	/** Trigger step's output slots, one entry per output. */
-	triggerPayload?: TriggerOutputs | null;
+	triggerOutputs?: TriggerOutputs | null;
 	mode?: ExecutionMode;
 }
 
@@ -40,7 +40,7 @@ export class StartExecutionService {
 			status: 'queued',
 			mode: request.mode ?? 'production',
 			graph: request.graph,
-			triggerPayload: request.triggerPayload ?? null,
+			triggerOutputs: request.triggerOutputs ?? null,
 		});
 
 		// TODO(CAT-2938): the persist above and this publish aren't atomic — a

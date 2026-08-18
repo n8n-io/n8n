@@ -84,12 +84,12 @@ describe('execution start (integration)', () => {
 		const { executionId } = await startExecution.start({
 			workflowId: 'wf-1',
 			graph,
-			triggerPayload: [[{ json: { hello: 'world' } }]],
+			triggerOutputs: [[{ json: { hello: 'world' } }]],
 		});
 		await ready;
 
 		// `findOne({ where })`, not `findOneByOrFail`: the latter's overload exceeds
-		// TypeScript's instantiation depth on the recursive `triggerPayload` column type.
+		// TypeScript's instantiation depth on the recursive `triggerOutputs` column type.
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
 			.findOneOrFail({ where: { id: executionId } });
@@ -122,7 +122,7 @@ describe('execution start (integration)', () => {
 			status: 'queued',
 			mode: 'production',
 			graph,
-			triggerPayload: null,
+			triggerOutputs: null,
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.
@@ -131,7 +131,7 @@ describe('execution start (integration)', () => {
 		await handler.handle(event);
 
 		// `findOne({ where })`, not `findOneByOrFail`: the latter's overload exceeds
-		// TypeScript's instantiation depth on the recursive `triggerPayload` column type.
+		// TypeScript's instantiation depth on the recursive `triggerOutputs` column type.
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
 			.findOneOrFail({ where: { id: executionId } });

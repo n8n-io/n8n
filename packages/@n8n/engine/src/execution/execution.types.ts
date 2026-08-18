@@ -49,5 +49,5 @@ export type StepSlots = JsonValue[];
  */
 export type TriggerOutputs = StepSlots;
 
-/** Slots recorded for a trigger that fired without a payload: one live, empty slot. */
-export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [[]];
+/** Slots recorded for a trigger that fired without a payload: no slots at all. */
+export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];

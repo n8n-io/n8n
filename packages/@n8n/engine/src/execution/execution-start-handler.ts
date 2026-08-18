@@ -40,14 +40,14 @@ export class ExecutionStartHandler {
 
 		// The trigger's outputs were captured at execution start; record them as
 		// already completed so successors read them like any predecessor's slots.
-		// No payload still means the trigger fired: one live but empty slot, or
-		// branching downstream would treat it as never taken.
+		// No payload means no slots at all: every successor edge reads undefined
+		// and is treated as dead, same as any other step that produced nothing.
 		// The claim above makes this the only writer, so the row cannot exist yet.
 		const [triggerStep] = await this.stepStore.createSteps(event.executionId, [
 			{
 				nodeId: trigger.id,
 				status: 'completed',
-				outputs: execution.triggerPayload ?? DEFAULT_TRIGGER_OUTPUTS,
+				outputs: execution.triggerOutputs ?? DEFAULT_TRIGGER_OUTPUTS,
 			},
 		]);
 		if (!triggerStep) {

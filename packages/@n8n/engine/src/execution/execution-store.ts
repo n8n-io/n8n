@@ -7,7 +7,7 @@ export interface NewExecutionRecord {
 	status: ExecutionStatus;
 	mode: ExecutionMode;
 	graph: WorkflowGraph;
-	triggerPayload: TriggerOutputs | null;
+	triggerOutputs: TriggerOutputs | null;
 }
 
 /** A full execution record. */
@@ -17,7 +17,7 @@ export interface ExecutionRecord {
 	status: ExecutionStatus;
 	mode: ExecutionMode;
 	graph: WorkflowGraph;
-	triggerPayload: TriggerOutputs | null;
+	triggerOutputs: TriggerOutputs | null;
 }
 
 /** Thrown by `loadExecution` when no execution exists for the given id. */
