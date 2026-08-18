@@ -299,18 +299,32 @@ describe('InstanceAiWorkflowPreview', () => {
 
 		it('skips while a refresh is in flight and retries on the next workflow-loaded', async () => {
 			const emitSpy = tidyRequestMock();
+			thread.isStreaming = true;
 			const { wrapper } = await mountPreview({ pendingTidyWorkflowId: 'wf-1' });
 			addGroupToDocument();
 
-			// A refresh starts (e.g. the build's own reload)
+			// Establish a loaded baseline first, so the refresh below is a real
+			// mid-flight reload and not just "never loaded yet".
+			await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+			await flushPromises();
+			expect(tidyEmits(emitSpy)).toHaveLength(1);
+
+			// A refresh starts (e.g. the next build chunk's own reload).
 			await wrapper.setProps({ refreshKey: 1 });
 			await flushPromises();
-			expect(tidyEmits(emitSpy)).toHaveLength(0);
+
+			// The agent goes idle *while that reload is still in flight* — this
+			// would normally fire the final tidy, but must be skipped and retried
+			// once the canvas reports loaded again, not silently dropped.
+			thread.isStreaming = false;
+			await flushPromises();
+			expect(tidyEmits(emitSpy)).toHaveLength(1);
+			expect(wrapper.emitted('tidy-up-consumed')).toBeUndefined();
 
 			await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
 			await flushPromises();
 
-			expect(tidyEmits(emitSpy)).toHaveLength(1);
+			expect(tidyEmits(emitSpy)).toHaveLength(2);
 			expect(wrapper.emitted('tidy-up-consumed')).toHaveLength(1);
 		});
 	});
