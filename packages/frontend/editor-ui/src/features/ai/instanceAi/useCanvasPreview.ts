@@ -229,17 +229,40 @@ export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOpt
 		return active && pendingTidyWorkflowIds.value.includes(active) ? active : null;
 	});
 
+	// Reads straight from localStorage instead of the cached `pendingTidyWorkflowIds`
+	// ref: two tabs finishing builds for different workflows close together would
+	// otherwise both read the same stale cached array and the second tab's write
+	// would silently drop the first tab's marker.
+	function readPendingTidyWorkflowIds(): string[] {
+		try {
+			const raw = window.localStorage.getItem(LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY);
+			const parsed: unknown = raw ? JSON.parse(raw) : [];
+			return Array.isArray(parsed) ? (parsed as string[]) : [];
+		} catch {
+			return [];
+		}
+	}
+
+	function writePendingTidyWorkflowIds(ids: string[]) {
+		window.localStorage.setItem(LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY, JSON.stringify(ids));
+		pendingTidyWorkflowIds.value = ids;
+	}
+
 	function markPendingTidy(workflowId: string) {
-		if (!pendingTidyWorkflowIds.value.includes(workflowId)) {
-			pendingTidyWorkflowIds.value = [...pendingTidyWorkflowIds.value, workflowId];
+		const current = readPendingTidyWorkflowIds();
+		if (!current.includes(workflowId)) {
+			writePendingTidyWorkflowIds([...current, workflowId]);
 		}
 	}
 
 	function clearPendingTidy() {
 		const active = activeWorkflowId.value;
-		if (active) {
-			pendingTidyWorkflowIds.value = pendingTidyWorkflowIds.value.filter((id) => id !== active);
+		if (!active) {
+			return;
 		}
+
+		const current = readPendingTidyWorkflowIds();
+		writePendingTidyWorkflowIds(current.filter((id) => id !== active));
 	}
 
 	const latestBuildResult = computed(() => {

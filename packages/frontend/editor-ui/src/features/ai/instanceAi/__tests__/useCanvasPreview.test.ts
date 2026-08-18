@@ -8,6 +8,7 @@ import type {
 import { useCanvasPreview } from '../useCanvasPreview';
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import type { ResourceEntry } from '../useResourceRegistry';
+import { LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY } from '@/app/constants/localStorage';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -523,6 +524,38 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.pendingTidyWorkflowId.value).toBeNull();
+		});
+
+		test('preserves a marker another tab wrote after this instance initialized', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-mine');
+
+			// Simulate a different tab finishing its own build and writing its
+			// marker directly to storage — this instance's cached ref (read once
+			// at init, currently `[]`) has no way to know about it, since a
+			// same-window localStorage write doesn't dispatch a `storage` event
+			// back to the writer.
+			localStorage.setItem(LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY, JSON.stringify(['wf-other']));
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-1',
+								toolName: 'build-workflow',
+								result: { success: true, workflowId: 'wf-mine' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			const stored: string[] = JSON.parse(
+				localStorage.getItem(LOCAL_STORAGE_INSTANCE_AI_PENDING_TIDY) ?? '[]',
+			);
+			expect(stored).toEqual(expect.arrayContaining(['wf-other', 'wf-mine']));
 		});
 
 		test('clearPendingTidy clears the marker', async () => {
