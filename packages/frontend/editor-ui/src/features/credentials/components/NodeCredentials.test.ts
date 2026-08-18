@@ -1,6 +1,6 @@
 import { shallowRef, ref, computed, nextTick } from 'vue';
 import { describe, it, vi, beforeEach } from 'vitest';
-import { screen, within } from '@testing-library/vue';
+import { screen, within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -25,6 +25,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import { ChatHubToolContextKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
 	useWorkflowDocumentStore,
@@ -1769,9 +1770,12 @@ describe('NodeCredentials', () => {
 
 				await userEvent.click(screen.getByTestId('credential-topup-button'));
 
-				expect(uiStore.openModalWithData).toHaveBeenCalledWith(
-					expect.objectContaining({ data: { credentialType: 'googlePalmApi' } }),
-				);
+				await waitFor(() => {
+					expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+						name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+						data: { variant: 'member' },
+					});
+				});
 			});
 
 			it('switches to an own credential from the managed state via the dropdown', async () => {
