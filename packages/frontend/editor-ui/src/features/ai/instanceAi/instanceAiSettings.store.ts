@@ -95,7 +95,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	const gatewayConnected = ref(false);
-	const gatewayStatusLoaded = ref(false);
 	const gatewayDirectory = ref<string | null>(null);
 	const gatewayHostIdentifier = ref<string | null>(null);
 	const gatewayToolCategories = ref<ToolCategory[]>([]);
@@ -104,7 +103,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const browserConnected = ref(false);
 	const browserConnectedAt = ref<string | null>(null);
 	const browserToolCategories = ref<ToolCategory[]>([]);
-	const browserStatusLoaded = ref(false);
 	const browserConnectUrl = ref<string | null>(null);
 	const browserConnectUrlExpiresAt = ref<string | null>(null);
 	let browserConnectUrlRequestId = 0;
@@ -288,13 +286,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		} catch {}
 	}
 
-	// ── Sidebar connections ──────────────────────────────────────────────
+	// ── Input menu connections ───────────────────────────────────────────
 	type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 
-	interface SidebarConnection {
+	interface InputMenuConnection {
 		type: ComputerUseConnectionType | BrowserUseConnectionType;
-		name: string;
-		subtitle: string;
+		name?: string;
 		status: ConnectionStatus;
 	}
 
@@ -312,24 +309,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		if (isDaemonConnecting.value) return 'connecting';
 		return 'disconnected';
 	});
-	const computerUseSubtitle = computed(() => {
-		if (computerUseStatus.value === 'connected') {
-			return i18n.baseText('instanceAi.connections.types.computerUse.subtitle');
-		}
-		if (computerUseStatus.value === 'connecting') {
-			return i18n.baseText('instanceAi.connections.row.status.connecting');
-		}
-		return i18n.baseText('instanceAi.connections.row.status.disconnected');
-	});
-
-	const connections = computed<SidebarConnection[]>(() => {
-		const result: SidebarConnection[] = [];
+	const connections = computed<InputMenuConnection[]>(() => {
+		const result: InputMenuConnection[] = [];
 
 		if (!isLocalGatewayDisabled.value) {
 			result.push({
 				type: COMPUTER_USE_CONNECTION_TYPE,
-				name: gatewayDirectory.value ?? i18n.baseText('instanceAi.connections.add.computerUse'),
-				subtitle: computerUseSubtitle.value,
 				status: computerUseStatus.value,
 			});
 		}
@@ -340,9 +325,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				name: isBrowserUseConnected.value
 					? 'Google Chrome'
 					: i18n.baseText('instanceAi.connections.add.browserUse'),
-				subtitle: isBrowserUseConnected.value
-					? i18n.baseText('instanceAi.connections.types.browserUse.subtitle')
-					: i18n.baseText('instanceAi.connections.row.status.disconnected'),
 				status: isBrowserUseConnected.value ? 'connected' : 'disconnected',
 			});
 		}
@@ -371,12 +353,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		gatewayToolCategories.value = [];
 		gatewayDirectory.value = null;
 		gatewayHostIdentifier.value = null;
-	}
-
-	/** Destructive: disables the user preference and removes the row from the list. */
-	async function removeComputerUse(): Promise<void> {
-		await disconnectComputerUse();
-		await persistLocalGatewayPreference(true);
 	}
 
 	function setField<K extends keyof InstanceAiAdminSettingsUpdateRequest>(
@@ -414,10 +390,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			gatewayHostIdentifier.value = status.hostIdentifier ?? null;
 			gatewayToolCategories.value = status.toolCategories ?? [];
 			if (status.connected) markGatewayEverConnected();
-		} catch {
-		} finally {
-			gatewayStatusLoaded.value = true;
-		}
+		} catch {}
 	}
 
 	// ── Browser Use (direct channel) ──────────────────────────────────────
@@ -428,10 +401,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			browserConnected.value = status.connected;
 			browserConnectedAt.value = status.connectedAt;
 			browserToolCategories.value = status.toolCategories ?? [];
-		} catch {
-		} finally {
-			browserStatusLoaded.value = true;
-		}
+		} catch {}
 	}
 
 	function clearBrowserConnectUrl(): void {
@@ -701,7 +671,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		setupCommandFetchedAt,
 		hasEverConnectedGateway,
 		isGatewayConnected,
-		gatewayStatusLoaded,
 		gatewayDirectory,
 		gatewayHostIdentifier,
 		gatewayToolCategories,
@@ -730,17 +699,15 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		browserConnected,
 		browserConnectedAt,
 		browserToolCategories,
-		browserStatusLoaded,
 		browserConnectUrl,
 		browserConnectUrlExpiresAt,
 		fetchBrowserStatus,
 		fetchBrowserConnectUrl,
 		clearBrowserConnectUrl,
 		disconnectBrowserUse,
-		// Sidebar connections
+		// Input menu connections
 		connections,
 		isBrowserUseConnected,
 		disconnectComputerUse,
-		removeComputerUse,
 	};
 });

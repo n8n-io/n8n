@@ -572,7 +572,6 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.connections[0]).toMatchObject({
 				type: 'computer-use',
 				status: 'connecting',
-				subtitle: 'instanceAi.connections.row.status.connecting',
 			});
 		});
 
@@ -595,7 +594,6 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.connections).toHaveLength(2);
 			expect(store.connections[0]).toMatchObject({
 				type: 'computer-use',
-				name: '/Users/test/project',
 				status: 'connected',
 			});
 			expect(store.connections[1]).toMatchObject({

@@ -197,7 +197,6 @@ function openSettings(row: CardRow) {
 				:name="row.item.title"
 				:subtitle="row.subtitle"
 				:icon="row.icon"
-				size="default"
 				:clickable="hasConnection(row)"
 				@open-settings="openSettings(row)"
 			>
