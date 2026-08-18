@@ -15,9 +15,12 @@ import {
 	type WorkSummary,
 } from '@n8n/instance-ai';
 
+import { OperationalError } from 'n8n-workflow';
+
 import type { Telemetry } from '@/telemetry';
 
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
+import type { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import type { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import type { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
 import type {
@@ -104,6 +107,8 @@ export type InstanceAiTerminalOutcomeSnapshotStorage = Pick<
 
 export type InstanceAiTerminalOutcomeTelemetry = Pick<Telemetry, 'track'>;
 
+export type InstanceAiTerminalOutcomeErrorReporter = Pick<InstanceAiErrorReporterService, 'report'>;
+
 export type InstanceAiTerminalOutcomeRunState = Pick<
 	RunStateRegistry<User>,
 	'getRunIdsForMessageGroup' | 'cancelThread'
@@ -131,6 +136,7 @@ export interface InstanceAiTerminalOutcomeServiceOptions {
 	dbSnapshotStorage: InstanceAiTerminalOutcomeSnapshotStorage;
 	agentMemory: PatchableThreadMemory;
 	telemetry: InstanceAiTerminalOutcomeTelemetry;
+	errorReporter: InstanceAiTerminalOutcomeErrorReporter;
 	logger: Logger;
 	runState: InstanceAiTerminalOutcomeRunState;
 	suspendedThreads: InstanceAiTerminalOutcomeSuspendedThreads;
@@ -188,6 +194,8 @@ export class InstanceAiTerminalOutcomeService {
 
 	private readonly telemetry: InstanceAiTerminalOutcomeTelemetry;
 
+	private readonly errorReporter: InstanceAiTerminalOutcomeErrorReporter;
+
 	private readonly logger: Logger;
 
 	private readonly runState: InstanceAiTerminalOutcomeRunState;
@@ -206,6 +214,7 @@ export class InstanceAiTerminalOutcomeService {
 		this.dbSnapshotStorage = options.dbSnapshotStorage;
 		this.agentMemory = options.agentMemory;
 		this.telemetry = options.telemetry;
+		this.errorReporter = options.errorReporter;
 		this.logger = options.logger;
 		this.runState = options.runState;
 		this.suspendedThreads = options.suspendedThreads;
@@ -303,6 +312,22 @@ export class InstanceAiTerminalOutcomeService {
 				runId,
 				messageGroupId,
 			});
+		}
+
+		// The run reported success while answering nothing, so no error path fires
+		// and the fallback line is all the user gets. Alert on it: a stall that only
+		// shows up as a generic placeholder is otherwise invisible to us.
+		if (decision.reason === 'completed-silent') {
+			this.errorReporter.report(
+				new OperationalError('Instance AI run completed without a final response'),
+				{
+					component: 'instance-ai-terminal-guard',
+					severity: 'warning',
+					threadId,
+					runId,
+					messageGroupId,
+				},
+			);
 		}
 
 		if (decision.reason === 'confirmation-invalid') {

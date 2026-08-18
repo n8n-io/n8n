@@ -4,6 +4,7 @@ import {
 	ListWorkflowsQueryDto,
 	PublishWorkflowPublicDto,
 	TagIdsPublicDto,
+	TransferWorkflowPublicDto,
 	WorkflowListPublicDto,
 	WorkflowPublicDto,
 	WorkflowPublishBlockedErrorPublicDto,
@@ -42,11 +43,16 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { EventService } from '@/events/event.service';
-import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
+import {
+	decodeCursor,
+	encodeNextCursor,
+	resolveOffsetPagination,
+} from '@/public-api/v1/shared/services/pagination.service';
 import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 const PUBLISH_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. publication blocked by an open workflow review (then `reason` and ' +
@@ -155,10 +161,11 @@ export class WorkflowsPublicController {
 	constructor(
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowService: WorkflowService,
+		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
-		private readonly workflowService: WorkflowService,
 	) {}
 
 	private get workflowTagsEnabled(): boolean {
@@ -283,6 +290,75 @@ export class WorkflowsPublicController {
 		return this.toWorkflowPublicDto(workflow, { excludePinnedData: query.excludePinnedData });
 	}
 
+	@Post('/:workflowId/archive')
+	@ApiKeyScope('workflow:delete')
+	@ProjectScope('workflow:delete')
+	@ApiSummary('Archive a workflow')
+	@ApiDescription(
+		'Soft-deletes a workflow by archiving it. Idempotent: archiving an already ' +
+			'archived workflow returns 200 with the current workflow.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(404)
+	async archiveWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowPublicDto> {
+		const workflow = await this.workflowService.archiveForPublicApi(req.user, workflowId);
+
+		if (!workflow) {
+			throw new NotFoundError('Workflow not found');
+		}
+
+		return this.toWorkflowPublicDto(workflow);
+	}
+
+	@Post('/:workflowId/unarchive')
+	@ApiKeyScope('workflow:delete')
+	@ProjectScope('workflow:delete')
+	@ApiSummary('Unarchive a workflow')
+	@ApiDescription('Restores an archived workflow.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	async unarchiveWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowPublicDto> {
+		const workflow = await this.workflowService.unarchiveForPublicApi(req.user, workflowId);
+
+		if (!workflow) {
+			throw new NotFoundError('Workflow not found');
+		}
+
+		return this.toWorkflowPublicDto(workflow);
+	}
+
+	@Put('/:workflowId/transfer')
+	@ApiKeyScope('workflow:move')
+	@ProjectScope('workflow:move')
+	@ApiSummary('Transfer a workflow to another project')
+	@ApiDescription('Transfer a workflow to another project.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async transferWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body body: TransferWorkflowPublicDto,
+	): Promise<void> {
+		await this.enterpriseWorkflowService.transferWorkflow(
+			req.user,
+			workflowId,
+			body.destinationProjectId,
+		);
+	}
+
 	/**
 	 * Every public workflow field except `shared`. Publishing re-reads the workflow without that
 	 * relation, so reading it here would throw for those routes.
@@ -390,21 +466,7 @@ export class WorkflowsPublicController {
 		@Param('workflowId') workflowId: string,
 		@Query query: ListWorkflowHistoryQueryDto,
 	): Promise<WorkflowVersionHistoryListPublicDto> {
-		let { limit, offset } = query;
-
-		if (query.cursor) {
-			try {
-				const decoded = decodeCursor(query.cursor);
-				if (!('offset' in decoded)) {
-					throw new BadRequestError('An invalid cursor was provided');
-				}
-				offset = decoded.offset;
-				limit = decoded.limit;
-			} catch (error) {
-				if (error instanceof BadRequestError) throw error;
-				throw new BadRequestError('An invalid cursor was provided');
-			}
-		}
+		const { offset, limit } = resolveOffsetPagination(query);
 
 		try {
 			const versions = await this.workflowHistoryService.getList(

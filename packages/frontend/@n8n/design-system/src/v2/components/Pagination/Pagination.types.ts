@@ -1,54 +1,57 @@
-import type { PaginationRootEmits, PaginationRootProps } from 'reka-ui';
-
-import type { IconName } from '../../../components/N8nIcon/icons';
+import type { PaginationRootEmits, PaginationRootProps } from './reka-ui';
 
 export type PaginationSizes = 'small' | 'medium';
-export type PaginationVariants = 'default' | 'ghost';
 
 export type PaginationProps = Omit<
 	PaginationRootProps,
-	'dir' | 'asChild' | 'as' | 'itemsPerPage'
+	'dir' | 'asChild' | 'as' | 'itemsPerPage' | 'total'
 > & {
-	// Backward compatibility props (Element+ aliases)
-	currentPage?: number; // Alias for page
-	pageSize?: number; // Alias for itemsPerPage
-	pageCount?: number; // Total number of pages (alternative to total)
-	itemsPerPage?: number; // Optional, can be inferred from pageSize
-	pagerCount?: number; // Alias for siblingCount (Element+ shows odd number, e.g., 7 means 3 siblings)
-	background?: boolean; // For styling (default variant)
-	layout?: string; // Controls which elements to show: 'prev, pager, next, sizes, jumper, total'
-	pageSizes?: number[]; // For page size selector dropdown
-	hideOnSinglePage?: boolean; // Hide when total pages === 1
-	prevText?: string; // Custom text for prev button
-	nextText?: string; // Custom text for next button
-	prevIcon?: IconName; // Custom icon for prev button
-	nextIcon?: IconName; // Custom icon for next button
-	popperClass?: string; // Custom class for page sizes dropdown
-	teleported?: boolean; // Whether to teleport dropdown (not used in Reka UI)
-	defaultPageSize?: number; // Default page size for uncontrolled mode
-	defaultCurrentPage?: number; // Default current page for uncontrolled mode
-
-	// UI props
+	/** Total number of items across all pages. */
+	total: number;
+	/** Number of items per page. Supports `v-model:items-per-page`. */
+	itemsPerPage?: number;
+	/**
+	 * Default number of items per page when `itemsPerPage` is uncontrolled.
+	 * @defaultValue 10
+	 */
+	defaultItemsPerPage?: number;
+	/**
+	 * Options for the page size selector.
+	 * @defaultValue [10, 20, 30, 40, 50, 100]
+	 */
+	pageSizes?: number[];
+	/**
+	 * Show the total item count.
+	 * @defaultValue true
+	 */
+	showTotal?: boolean;
+	/**
+	 * Show the page size selector.
+	 * @defaultValue true
+	 */
+	showSizes?: boolean;
+	/**
+	 * Show the go-to-page jumper.
+	 * @defaultValue false
+	 */
+	showJumper?: boolean;
+	/**
+	 * Hide the component when there is only one page.
+	 * @defaultValue false
+	 */
+	hideOnSinglePage?: boolean;
+	/**
+	 * Size variant.
+	 * @defaultValue 'medium'
+	 */
 	size?: PaginationSizes;
-	variant?: PaginationVariants;
-
-	// Override to make total optional (Element+ allows omitting it)
-	total?: number;
 };
 
 export type PaginationEmits = PaginationRootEmits & {
-	'update:currentPage': [value: number];
-	'update:pageSize': [value: number];
-	'size-change': [value: number]; // Legacy Element+ event
-	'current-change': [value: number]; // Legacy Element+ event
-	'prev-click': [value: number]; // Element+ event
-	'next-click': [value: number]; // Element+ event
+	'update:itemsPerPage': [value: number];
 };
 
 export type PaginationSlots = {
-	default?: (props?: Record<string, never>) => unknown;
-	prev?: (props?: { disabled?: boolean }) => unknown;
-	next?: (props?: { disabled?: boolean }) => unknown;
-	first?: (props?: { disabled?: boolean }) => unknown;
-	last?: (props?: { disabled?: boolean }) => unknown;
+	prev?: (props: { disabled: boolean }) => unknown;
+	next?: (props: { disabled: boolean }) => unknown;
 };
