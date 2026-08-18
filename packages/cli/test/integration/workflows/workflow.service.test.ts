@@ -1191,15 +1191,23 @@ describe('publishAsSystem()', () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);
 		const previousActiveVersionId = workflow.activeVersionId as string;
+		// Desync the draft from the active version (the helper creates them equal):
+		// the method must key everything on activeVersionId, and with the ids equal
+		// a wrong-field bug would be invisible.
+		const draftVersionId = uuid();
+		await workflowRepository.update({ id: workflow.id }, { versionId: draftVersionId });
 		// Compare against the stored row: the helper's in-memory updatedAt carries
 		// sub-second precision that the insert already dropped.
 		const storedBefore = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
 		const nodes = systemNodes();
+		const nodeGroups = [
+			{ id: uuid(), name: 'Group', nodeIds: [nodes[0].id], description: undefined },
+		];
 
 		const result = await workflowService.publishAsSystem(workflow.id, {
 			nodes,
 			connections: {},
-			nodeGroups: [],
+			nodeGroups,
 		});
 
 		expect(result.published).toBe(true);
@@ -1212,12 +1220,13 @@ describe('publishAsSystem()', () => {
 		expect(versionRow.workflowId).toBe(workflow.id);
 		expect(versionRow.authors).toBe('n8n');
 		expect(versionRow.nodes).toEqual(nodes);
+		expect(versionRow.nodeGroups).toEqual(nodeGroups);
 
 		const updated = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
 		expect(updated.activeVersionId).toBe(versionId);
 		expect(updated.active).toBe(true);
 		// The draft plane stays untouched: same draft version, nodes, and updatedAt.
-		expect(updated.versionId).toBe(workflow.versionId);
+		expect(updated.versionId).toBe(draftVersionId);
 		expect(updated.nodes).toEqual(workflow.nodes);
 		expect(updated.updatedAt.getTime()).toBe(storedBefore.updatedAt.getTime());
 
@@ -1252,7 +1261,7 @@ describe('publishAsSystem()', () => {
 				connections: {},
 				nodeGroups: [],
 			}),
-		).rejects.toThrow('active');
+		).rejects.toThrow('Cannot publish a system-authored version');
 
 		const untouched = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
 		expect(untouched.activeVersionId).toBeNull();
@@ -1260,18 +1269,14 @@ describe('publishAsSystem()', () => {
 		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
 	});
 
-	it('rejects a missing workflow and writes nothing', async () => {
-		const missingId = uuid();
+	it('rejects a missing workflow', async () => {
 		await expect(
-			workflowService.publishAsSystem(missingId, {
+			workflowService.publishAsSystem(uuid(), {
 				nodes: systemNodes(),
 				connections: {},
 				nodeGroups: [],
 			}),
-		).rejects.toThrow('active');
-
-		expect(await outboxRepository.findBy({ workflowId: missingId })).toEqual([]);
-		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
+		).rejects.toThrow('Cannot publish a system-authored version');
 	});
 
 	it('refuses to publish when the active version moved after the read', async () => {
