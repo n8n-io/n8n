@@ -83,11 +83,6 @@ jobs:
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
       - name: Bump package versions
         # Assign first: a command substitution nested in another command's
         # arguments (e.g. `echo "X=$(node …)"`) discards the script's exit code.
