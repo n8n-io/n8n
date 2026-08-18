@@ -167,6 +167,26 @@ const updateSkillInputSchema = z
 
 type UpdateSkillInput = z.infer<typeof updateSkillInputSchema>;
 
+const updateTaskFieldsSchema = z
+	.object({
+		name: agentTaskSchema.shape.name.optional(),
+		objective: agentTaskSchema.shape.objective.optional().describe(TASK_OBJECTIVE_GUIDANCE),
+		cronExpression: agentTaskSchema.shape.cronExpression.optional(),
+	})
+	.strict()
+	.refine((updates) => Object.keys(updates).length > 0, {
+		message: 'At least one task field must be supplied.',
+	});
+
+const updateTaskInputSchema = z
+	.object({
+		taskId: z.string().min(1).describe('Persisted target-agent task id to update.'),
+		updates: updateTaskFieldsSchema.describe('Only the task fields to change.'),
+	})
+	.strict();
+
+type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
+
 interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
 	configHash: string | null;
@@ -853,6 +873,7 @@ export class AgentsBuilderToolsService {
 			}),
 			buildAskCredentialTool({
 				credentialProvider,
+				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				listIntegrationCredentialIds: async () => {
 					const agent = await this.agentsService.findById(agentId, projectId);
@@ -864,6 +885,7 @@ export class AgentsBuilderToolsService {
 			}),
 			buildAskEmbeddingCredentialTool({
 				credentialProvider,
+				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
 				track,
@@ -1145,6 +1167,65 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const listTasksTool = new Tool(BUILDER_TOOLS.LIST_TASKS)
+			.description(
+				'List the target agent scheduled tasks, including each persisted body and whether its ' +
+					'current config reference is enabled. Use this to identify a task before updating it. Returns ' +
+					'{ ok: true, tasks: [{ id, name, objective, cronExpression, enabled }] } or ' +
+					'{ ok: false, errors }.',
+			)
+			.input(z.object({}).strict())
+			.handler(async () => {
+				try {
+					const agent = await this.agentsService.findById(agentId, projectId);
+					if (!agent) throw new Error('Agent not found');
+
+					const tasks = await this.agentTaskService.list(agentId);
+					const enabledByTaskId = new Map(
+						(composeJsonConfig(agent)?.tasks ?? []).map((task) => [task.id, task.enabled]),
+					);
+					return {
+						ok: true,
+						tasks: tasks.map(({ id, name, objective, cronExpression }) => ({
+							id,
+							name,
+							objective,
+							cronExpression,
+							enabled: enabledByTaskId.get(id) ?? false,
+						})),
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
+		const updateTaskTool = new Tool(BUILDER_TOOLS.UPDATE_TASK)
+			.description(
+				'Update selected body fields of an existing target-agent scheduled task in place, preserving ' +
+					'its id and config reference. Returns { ok: true, id, name, configMutated: true, agentId } ' +
+					'or { ok: false, errors }.',
+			)
+			.input(updateTaskInputSchema)
+			.handler(async ({ taskId, updates }: UpdateTaskInput) => {
+				try {
+					const updated = await this.agentTaskService.update(agentId, projectId, taskId, updates, {
+						user,
+						modifiedBy: 'builder',
+					});
+					return { ok: true, id: updated.id, name: updated.name };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
 		const createTasksTool = new Tool(BUILDER_TOOLS.CREATE_TASKS)
 			.description(
 				'Create one or more recurring scheduled tasks for the target agent (name + objective + cron ' +
@@ -1160,8 +1241,9 @@ export class AgentsBuilderToolsService {
 				'Never create a task with a vague, broad, or placeholder objective, an objective missing any ' +
 					'required section, or an unclear schedule. Each objective must follow the required structured ' +
 					'Markdown template (Objective, Context, Steps, Output, Constraints, Success criteria) with every ' +
-					'section filled in with concrete content — it is the exact, self-contained message the agent ' +
-					"receives on each unattended run. If anything is ambiguous, derive it from the user's goal as " +
+					'section filled in with concrete, run-specific content. Agent Instructions still apply and ' +
+					'configured Skills remain available during scheduled runs, so never repeat universal rules or ' +
+					"copy reusable procedures into an objective. If anything is ambiguous, derive it from the user's goal as " +
 					'stated assumptions listed in your summary; ask the user clarifying questions with ask_questions ' +
 					'only when even a reasonable assumption is impossible, before calling ' +
 					'create_tasks. A task can only use tools the agent already has: if any step in an objective ' +
@@ -1248,6 +1330,8 @@ export class AgentsBuilderToolsService {
 			readSkillTool,
 			this.withConfigMutationMarker(updateSkillTool, agentId),
 			this.withConfigMutationMarker(createTasksTool, agentId),
+			listTasksTool,
+			this.withConfigMutationMarker(updateTaskTool, agentId),
 			listWorkflowsTool,
 			buildGetResourceLocatorOptionsTool({
 				dynamicNodeParametersService: this.dynamicNodeParametersService,

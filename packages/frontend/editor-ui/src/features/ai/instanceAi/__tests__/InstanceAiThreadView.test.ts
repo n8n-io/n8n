@@ -1278,7 +1278,7 @@ describe('InstanceAiThreadView', () => {
 		);
 	});
 
-	it('detaches dismissed new-agent context without closing its preview', async () => {
+	it('detaches dismissed saved-agent context without closing its preview', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
 		thread.producedArtifacts = new Map([
@@ -1288,22 +1288,21 @@ describe('InstanceAiThreadView', () => {
 					type: 'agent',
 					id: 'agent-1',
 					projectId: 'project-1',
-					name: 'New Agent',
-					pending: true,
+					name: 'Support Agent',
 				},
 			],
 		]) as typeof thread.producedArtifacts;
 		stashPendingAgentAttachment('thread-1', {
 			type: 'agent',
 			id: 'agent-1',
-			name: 'New Agent',
+			name: 'Support Agent',
 			projectId: 'project-1',
-			pending: true,
 		});
 
 		const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		const preview = await findByTestId('instance-ai-agent-preview-stub');
 
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Support Agent');
 		await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
 
 		expect(getPendingAgentAttachment('thread-1')).toBeNull();
@@ -1631,7 +1630,7 @@ describe('InstanceAiThreadView', () => {
 		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
 	});
 
-	it('preserves the artifact width while splitting the remaining width between both chats', async () => {
+	it('keeps the artifact width and resize controls when the agent dock opens', async () => {
 		const { getByTestId, queryByTestId, user } = await renderAgentArtifact({
 			threadAreaWidth: 1200,
 		});
@@ -1650,9 +1649,9 @@ describe('InstanceAiThreadView', () => {
 		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 
 		expect(threadArea).toHaveClass('agentPreviewDockOpen');
-		expect(previewPanel.style.width).toBe('900px');
+		expect(previewPanel.style.width).toBe('600px');
 		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('300px');
-		expect(queryByTestId('resize-handle')).not.toBeInTheDocument();
+		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 
 		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
 
@@ -1665,7 +1664,7 @@ describe('InstanceAiThreadView', () => {
 		expect(previewPanel).not.toHaveClass('agentPreviewLayoutTransition');
 		await fireEvent.mouseMove(window, { clientX: 120 });
 		expect(previewPanel.style.width).toBe('480px');
-		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('360px');
+		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
 
 		await fireEvent.mouseUp(window);
 
@@ -1683,13 +1682,13 @@ describe('InstanceAiThreadView', () => {
 		expect(content).not.toHaveAttribute('inert');
 		expect(content).not.toHaveAttribute('aria-hidden');
 		expect(previewPanel).toBeVisible();
-		expect(previewPanel.style.width).toBe('840px');
-		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('360px');
-		expect(queryByTestId('resize-handle')).not.toBeInTheDocument();
+		expect(previewPanel.style.width).toBe('480px');
+		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
+		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 		expect(routerPushSpy).not.toHaveBeenCalled();
 	});
 
-	it('restores and protects three-column layout when the dock opens from expanded preview', async () => {
+	it('keeps expanded preview state independent from the agent dock', async () => {
 		const { getByTestId, user } = await renderAgentArtifact();
 		const previewPanel = getByTestId('instance-ai-preview-panel');
 		const expandToggle = getByTestId('instance-ai-preview-expand-toggle');
@@ -1699,18 +1698,14 @@ describe('InstanceAiThreadView', () => {
 
 		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 
-		expect(previewPanel).toHaveAttribute('data-expanded', 'false');
-		expect(expandToggle).toBeDisabled();
+		expect(previewPanel).toHaveAttribute('data-expanded', 'true');
 		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
 
 		await user.click(expandToggle);
 		expect(previewPanel).toHaveAttribute('data-expanded', 'false');
 
 		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
-		expect(expandToggle).toBeEnabled();
-
-		await user.click(expandToggle);
-		expect(previewPanel).toHaveAttribute('data-expanded', 'true');
+		expect(getByTestId('instance-ai-thread-area')).not.toHaveClass('agentPreviewDockOpen');
 	});
 
 	it('clears the agent dock layout when switching artifacts', async () => {

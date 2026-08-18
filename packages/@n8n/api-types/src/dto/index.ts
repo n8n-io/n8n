@@ -24,6 +24,7 @@ export type {
 	AiGatewayUsageMetadata,
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
+export type { AiGatewayWalletResponse } from './ai/ai-gateway-wallet-response.dto';
 
 export {
 	InstanceAiConfirmRequestDto,
@@ -191,11 +192,13 @@ export {
 } from './user/users-list-filter.dto';
 
 export { UpdateRoleDto } from './roles/update-role.dto';
+export { UpdateRolePublicDto } from './roles/update-role-public.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
 export {
 	RolePublicDto,
 	RoleListPublicDto,
 	RoleListQueryPublicDto,
+	RoleGetPublicDto,
 } from './roles/role-public.dto';
 export { CreateRoleMappingRuleDto } from './roles/create-role-mapping-rule.dto';
 export { RoleMappingRulePublicDto } from './roles/role-mapping-rule-public.dto';
@@ -339,7 +342,7 @@ export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
 export {
 	ListWorkflowReviewActivityQueryDto,
 	CreateWorkflowReviewCommentDto,
-	WORKFLOW_REVIEW_COMMENT_MAX_LENGTH,
+	WORKFLOW_REVIEW_TEXT_MAX_LENGTH,
 	type ListWorkflowReviewActivityResponse,
 } from './workflow-reviews/workflow-review-activity.dto';
 

@@ -1081,7 +1081,6 @@ export class ToolCallExecutor {
 			filesystem,
 			runId: params.runId,
 			toolCallId: params.toolCallId,
-			...(params.persistence?.threadId ? { threadId: params.persistence.threadId } : {}),
 			...(params.abortSignal ? { abortSignal: params.abortSignal } : {}),
 		};
 	}

@@ -8,14 +8,14 @@ import {
 	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
-} from '@/app/constants/modals';
+} from '../constants';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
-import ConnectionRow from './ConnectionRow.vue';
+import ConnectionRow, { type ConnectionStatus } from './ConnectionRow.vue';
 import { iconForTool } from '../toolIcons';
 import {
 	BROWSER_USE_CONNECTION_TYPE,
@@ -26,8 +26,6 @@ import {
 
 type SingletonConnectionType = ComputerUseConnectionType | BrowserUseConnectionType;
 type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
-type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
-
 const i18n = useI18n();
 const uiStore = useUIStore();
 const store = useInstanceAiSettingsStore();
@@ -68,7 +66,7 @@ const isVisible = computed(() => {
 void store.fetch();
 
 if (isMcpFeatureEnabled.value) {
-	void mcpStore.fetchConnections();
+	void mcpStore.fetchConnectionsLazy();
 }
 
 const ICON_MAP: Record<SingletonConnectionType, IconName> = {
@@ -192,7 +190,7 @@ function openMcpSettings(connectionId: string) {
 				:name="conn.serverTitle"
 				:subtitle="conn.credentialName"
 				:icon="iconForTool(conn.serverIcons, uiStore.appliedTheme)"
-				status="connected"
+				:status="conn.status"
 				:actions="MCP_ROW_ACTIONS"
 				:dropdown-portal-target="props.dropdownPortalTarget"
 				@open-settings="openMcpSettings(conn.id)"

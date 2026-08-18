@@ -974,6 +974,7 @@ export class McpApiHelper {
 	 * @param workflowId - The workflow ID to execute
 	 * @param executionMode - Whether to execute the current or published workflow version
 	 * @param inputs - Optional inputs for the workflow
+	 * @param triggerNodeName - Optional trigger node to execute
 	 * @returns Execution result
 	 */
 	async internalMcpExecuteWorkflow(
@@ -981,10 +982,14 @@ export class McpApiHelper {
 		workflowId: string,
 		executionMode: 'manual' | 'production',
 		inputs?: Record<string, unknown>,
+		triggerNodeName?: string,
 	): Promise<ExecuteWorkflowResult> {
 		const args: Record<string, unknown> = { workflowId, executionMode };
 		if (inputs) {
 			args.inputs = inputs;
+		}
+		if (triggerNodeName) {
+			args.triggerNodeName = triggerNodeName;
 		}
 		try {
 			return await this.callInternalMcpTool<ExecuteWorkflowResult>(

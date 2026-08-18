@@ -9,6 +9,7 @@ import {
 	AGENT_SESSION_DETAIL_VIEW,
 	EXECUTIONS_SECTION_KEY,
 } from '@/features/agents/constants';
+import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type {
 	AgentExecution,
@@ -17,10 +18,16 @@ import type {
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
+import AgentPreviewDock from '@/features/agents/components/AgentPreviewDock.vue';
+import { useAgentBuilderSession } from '@/features/agents/composables/useAgentBuilderSession';
+import { getAgent } from '@/features/agents/composables/useAgentApi';
+import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
+import type { AgentResource } from '@/features/agents/types';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
-import type { PathItem } from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
+import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
+import { useStorage } from '@vueuse/core';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
 const i18n = useI18n();
@@ -29,24 +36,60 @@ const route = useRoute();
 const router = useRouter();
 const sessionsStore = useAgentSessionsStore();
 const projectsStore = useProjectsStore();
+const {
+	isEnabled: isLangSmithExportEnabled,
+	isExporting,
+	sendSession,
+} = useAgentSessionLangSmithExport();
+const rootStore = useRootStore();
+const { config: localConfig, fetchConfig } = useAgentConfig();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
 const threadId = computed(() => route.params.threadId as string);
+const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
+	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
+});
 
 // Populated by the timeline panel's `loaded` event so the header can render its
 // title/metrics/trigger without a second fetch of the same thread.
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
+const agent = ref<AgentResource | null>(null);
+const isPreviewOpen = useStorage(previewOpenStorageKey, false);
+const previewInitialized = ref(false);
+const {
+	activeChatSessionId,
+	effectiveSessionId,
+	currentSessionHasMessages,
+	currentSessionTitle,
+	sessionMenu,
+	onSessionPick,
+	onNewChat,
+} = useAgentBuilderSession({ routeBacked: computed(() => false) });
 
 const triggerSource = computed((): string | null => {
 	if (executions.value.length === 0) return null;
 	const first = executions.value[0];
+
+	/** Relabel InstanceAI to AI Assistant for the UI */
+	if (first.source === 'instance-ai') return 'AI Assistant';
+
 	return first.source ?? 'chat';
 });
 
-const triggerIcon = computed((): 'slack' | 'bolt-filled' => {
-	return triggerSource.value === 'slack' ? 'slack' : 'bolt-filled';
+const triggerIcon = computed((): IconName => {
+	const source = triggerSource.value;
+	if (!source) return 'bolt-filled';
+
+	switch (source) {
+		case 'slack':
+			return 'slack';
+		case 'AI Assistant':
+			return 'sparkles';
+		default:
+			return 'bolt-filled';
+	}
 });
 
 const triggerLabel = computed((): string => {
@@ -130,6 +173,7 @@ const totalTokens = computed(() => {
 	return thread.value.totalPromptTokens + thread.value.totalCompletionTokens;
 });
 
+const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
 const totalCost = computed(() => thread.value?.totalCost ?? 0);
 const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
 
@@ -138,11 +182,36 @@ function onPanelLoaded(detail: ThreadDetail | null) {
 	executions.value = detail?.executions ?? [];
 }
 
-// Keep the header's session-picker dropdown populated. The panel loads the
-// thread detail; the thread list is a header concern, so it's fetched here.
-watch([projectId, agentId], () => void sessionsStore.fetchThreads(projectId.value, agentId.value), {
-	immediate: true,
-});
+let previewLoadRequestId = 0;
+
+/** Load the agent data required by the shared preview dock. */
+watch(
+	[projectId, agentId],
+	async ([nextProjectId, nextAgentId]) => {
+		const requestId = ++previewLoadRequestId;
+		previewInitialized.value = false;
+		agent.value = null;
+		try {
+			const [loadedAgent] = await Promise.all([
+				getAgent(rootStore.restApiContext, nextProjectId, nextAgentId),
+				fetchConfig(nextProjectId, nextAgentId),
+				sessionsStore.fetchThreads(nextProjectId, nextAgentId),
+			]);
+			if (requestId === previewLoadRequestId) agent.value = loadedAgent;
+		} finally {
+			if (requestId === previewLoadRequestId) previewInitialized.value = true;
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	threadId,
+	(nextThreadId) => {
+		activeChatSessionId.value = nextThreadId;
+	},
+	{ immediate: true },
+);
 
 function formatDuration(ms: number): string {
 	if (!ms || ms <= 0) return '0ms';
@@ -188,6 +257,15 @@ function onSessionSelect(nextThreadId: string) {
 		params: { projectId: projectId.value, agentId: agentId.value, threadId: nextThreadId },
 	});
 }
+
+function togglePreview() {
+	isPreviewOpen.value = !isPreviewOpen.value;
+}
+
+function viewPreviewTrace() {
+	if (!effectiveSessionId.value) return;
+	onSessionSelect(effectiveSessionId.value);
+}
 </script>
 
 <template>
@@ -203,17 +281,42 @@ function onSessionSelect(nextThreadId: string) {
 			:total-tokens="totalTokens"
 			:total-cost="totalCost"
 			:duration-label="durationLabel"
+			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
+			:langsmith-export-loading="isExporting"
+			:is-preview-open="isPreviewOpen"
 			@breadcrumb-select="onBreadcrumbSelect"
 			@session-select="onSessionSelect"
+			@langsmith-export="sendSession({ projectId, agentId, threadId })"
+			@toggle-preview="togglePreview"
 			@close="closeTimeline"
 		/>
 
-		<AgentSessionTimelinePanel
-			:project-id="projectId"
-			:agent-id="agentId"
-			:thread-id="threadId"
-			@loaded="onPanelLoaded"
-		/>
+		<div :class="[$style.content, { [$style.previewOpen]: isPreviewOpen }]">
+			<AgentSessionTimelinePanel
+				:project-id="projectId"
+				:agent-id="agentId"
+				:thread-id="threadId"
+				@loaded="onPanelLoaded"
+			/>
+
+			<AgentPreviewDock
+				:is-open="isPreviewOpen"
+				:session-title="currentSessionTitle"
+				:session-options="sessionMenu"
+				:has-session="currentSessionHasMessages"
+				:initialized="previewInitialized"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:agent="agent"
+				:local-config="localConfig"
+				:connected-triggers="[]"
+				:effective-session-id="effectiveSessionId"
+				@view-trace="viewPreviewTrace"
+				@new-session="onNewChat"
+				@session-select="onSessionPick"
+				@close="togglePreview"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -223,5 +326,29 @@ function onSessionSelect(nextThreadId: string) {
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
+}
+
+.content {
+	position: relative;
+	display: flex;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+	padding-right: 0;
+	transition: padding-right var(--duration--snappy) var(--easing--ease-out);
+
+	&.previewOpen {
+		padding-right: var(--agent-preview-chat-column-width, 30rem);
+	}
+
+	&.previewOpen:has([data-preview-layout='floating']),
+	&.previewOpen:has([data-preview-layout='fullpage']) {
+		padding-right: 0;
+		transition: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
 }
 </style>

@@ -3,6 +3,8 @@ import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { NoOpPollJobManager, PollJobManager } from 'n8n-core';
 
+import { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
+
 import { PollTriggerJobRegistrar } from './poll-trigger-job-registrar';
 
 /**
@@ -18,6 +20,7 @@ export class PollJobProvider {
 		private readonly globalConfig: GlobalConfig,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
+		private readonly durablePollerGateService: DurablePollerGateService,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -26,7 +29,10 @@ export class PollJobProvider {
 	init(): void {
 		const intercepting =
 			this.globalConfig.scheduler.enabled && this.workflowsConfig.useWorkflowPublicationService;
-		const active = intercepting && this.globalConfig.scheduler.enabledForPollTriggers;
+		const active =
+			intercepting &&
+			this.globalConfig.scheduler.enabledForPollTriggers &&
+			this.durablePollerGateService.allowed;
 
 		if (
 			this.globalConfig.scheduler.enabled &&

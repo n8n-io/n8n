@@ -15,6 +15,7 @@ import {
 	SharedWorkflowRepository,
 	UserRepository,
 	WorkflowRepository,
+	WorkflowReviewActivityRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestWorkflowRepository,
@@ -62,12 +63,14 @@ let ownerAgent: SuperAgentTest;
 let requestRepository: WorkflowReviewRequestRepository;
 let linkRepository: WorkflowReviewRequestWorkflowRepository;
 let authorRepository: WorkflowReviewRequestAuthorRepository;
+let activityRepository: WorkflowReviewActivityRepository;
 
 beforeAll(async () => {
 	await utils.initNodeTypes();
 	requestRepository = Container.get(WorkflowReviewRequestRepository);
 	linkRepository = Container.get(WorkflowReviewRequestWorkflowRepository);
 	authorRepository = Container.get(WorkflowReviewRequestAuthorRepository);
+	activityRepository = Container.get(WorkflowReviewActivityRepository);
 });
 
 beforeEach(async () => {
@@ -75,6 +78,8 @@ beforeEach(async () => {
 	testServer.license.enable('feat:workflowReviews');
 
 	await testDb.truncate([
+		'WorkflowReviewActivityComment',
+		'WorkflowReviewActivity',
 		'WorkflowReviewRequestAuthor',
 		'WorkflowReviewRequestReviewer',
 		'WorkflowReviewRequestWorkflow',
@@ -98,10 +103,18 @@ beforeEach(async () => {
 	ownerAgent = testServer.authAgentFor(owner);
 });
 
+/** Read through the endpoint, so the entries are asserted exactly as a reader sees them. */
+async function getActivityEntries(requestId: string) {
+	const response = await ownerAgent
+		.get(`/workflow-review-requests/${requestId}/activity`)
+		.expect(200);
+	return response.body.data.data as Array<{ type: string; data: { reason?: string } | null }>;
+}
+
 /** Create a workflow owned by `owner` with a pinned history version. */
-async function createReviewableWorkflow() {
+async function createReviewableWorkflow(attributes: { isArchived?: boolean } = {}) {
 	const versionId = uuid();
-	const workflow = await createWorkflow({ versionId }, owner);
+	const workflow = await createWorkflow({ versionId, ...attributes }, owner);
 	await createWorkflowHistoryItem(workflow.id, { versionId });
 	return { workflow, versionId };
 }
@@ -146,6 +159,54 @@ describe('auto-close on workflow archive', () => {
 		expect(closed?.decision).toBe('changes_requested');
 		expect(closed?.closedById).toBeNull();
 		expect(closed?.approvedAt).toBeNull();
+
+		expect(await getActivityEntries(request.id)).toEqual([
+			expect.objectContaining({
+				type: 'review.closed',
+				data: { reason: 'workflow-archived' },
+			}),
+		]);
+	});
+
+	// The close and its explanation share one transaction, so an unwritable entry rolls the
+	// close back — and archiving still succeeds, because cleanup never fails the mutation. The
+	// reconciliation sweep that follows the hook picks the rolled-back review straight back up.
+	test('archives the workflow anyway when the review cannot be explained, and the sweep closes it', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await createOpenReview(workflow.id, versionId);
+		vi.spyOn(activityRepository, 'createActivity').mockRejectedValueOnce(new Error('write failed'));
+
+		await ownerAgent.post(`/workflows/${workflow.id}/archive`).expect(200);
+
+		expect((await requestRepository.findById(request.id, {}))?.state).toBe('closed');
+		expect(await getActivityEntries(request.id)).toEqual([
+			expect.objectContaining({ type: 'review.closed', data: { reason: 'workflow-archived' } }),
+		]);
+	});
+
+	// Both the targeted close and the sweep that follows it are down, so the review is stranded
+	// open on a workflow that is already archived — the state the next sweep has to repair.
+	test('a review stranded open on an archived workflow is closed by the next sweep', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await createOpenReview(workflow.id, versionId);
+		vi.spyOn(activityRepository, 'createActivity')
+			.mockRejectedValueOnce(new Error('write failed'))
+			.mockRejectedValueOnce(new Error('write failed'));
+
+		await ownerAgent.post(`/workflows/${workflow.id}/archive`).expect(200);
+		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
+
+		// Any later lifecycle mutation runs the sweep again — this one touches an unrelated
+		// workflow, so only the sweep can reach the stranded review.
+		const unrelated = await createReviewableWorkflow();
+		await ownerAgent.post(`/workflows/${unrelated.workflow.id}/archive`).expect(200);
+
+		const closed = await requestRepository.findById(request.id, {});
+		expect(closed?.state).toBe('closed');
+		expect(closed?.closedById).toBeNull();
+		expect(await getActivityEntries(request.id)).toEqual([
+			expect.objectContaining({ type: 'review.closed', data: { reason: 'workflow-archived' } }),
+		]);
 	});
 
 	test('unarchiving does not reopen the review, and the workflow is no longer publish-blocked', async () => {
@@ -192,6 +253,48 @@ describe('auto-close on workflow transfer', () => {
 		expect(closed?.state).toBe('closed');
 		expect(closed?.decision).toBe('pending');
 		expect(await requestRepository.findOpenRequestForWorkflow(workflow.id, {})).toBeNull();
+
+		expect(await getActivityEntries(request.id)).toEqual([
+			expect.objectContaining({ type: 'review.closed', data: { reason: 'workflow-moved' } }),
+		]);
+	});
+
+	// The move stays committed when its close rolls back, leaving the review open on a workflow
+	// that now belongs to another project — the sweep still has the link row to find it by.
+	test('a review stranded open on a moved workflow is closed by the next sweep', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await createOpenReview(workflow.id, versionId);
+		const destination = await createTeamProject('Destination', owner);
+		vi.spyOn(activityRepository, 'createActivity')
+			.mockRejectedValueOnce(new Error('write failed'))
+			.mockRejectedValueOnce(new Error('write failed'));
+
+		await Container.get(EnterpriseWorkflowService).transferWorkflow(
+			owner,
+			workflow.id,
+			destination.id,
+		);
+		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
+
+		const unrelated = await createReviewableWorkflow();
+		await ownerAgent.post(`/workflows/${unrelated.workflow.id}/archive`).expect(200);
+
+		const closed = await requestRepository.findById(request.id, {});
+		expect(closed?.state).toBe('closed');
+		expect(await linkRepository.findByRequestId(request.id, {})).toHaveLength(1);
+		expect(await getActivityEntries(request.id)).toEqual([
+			expect.objectContaining({ type: 'review.closed', data: { reason: 'workflow-moved' } }),
+		]);
+	});
+
+	test('a review whose workflow is still in its project and unarchived is left open', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await createOpenReview(workflow.id, versionId);
+
+		const unrelated = await createReviewableWorkflow();
+		await ownerAgent.post(`/workflows/${unrelated.workflow.id}/archive`).expect(200);
+
+		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
 	});
 });
 
@@ -206,6 +309,26 @@ describe('auto-close on workflow hard delete', () => {
 		expect(closed?.state).toBe('closed');
 		// The link row cascaded away with the workflow; the request itself remains, closed.
 		expect(await linkRepository.findByRequestId(request.id, {})).toHaveLength(0);
+
+		// The pre-delete hook and the post-delete sweep both run here, so the count matters
+		// as much as the reason: the review must be explained exactly once.
+		expect(await getActivityEntries(request.id)).toEqual([
+			expect.objectContaining({ type: 'review.closed', data: { reason: 'workflow-deleted' } }),
+		]);
+	});
+
+	// The pre-delete hook shares one transaction with its explanation and rethrows, so an
+	// unwritable entry calls the delete off rather than leaving a closed review unexplained.
+	test('refuses to delete the workflow when the review cannot be explained', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow({ isArchived: true });
+		const request = await createOpenReview(workflow.id, versionId);
+		vi.spyOn(activityRepository, 'createActivity').mockRejectedValueOnce(new Error('write failed'));
+
+		await ownerAgent.delete(`/workflows/${workflow.id}`).expect(500);
+
+		expect(await Container.get(WorkflowRepository).findOneBy({ id: workflow.id })).not.toBeNull();
+		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
+		expect(await getActivityEntries(request.id)).toEqual([]);
 	});
 
 	// A review opened after the pre-delete hook ran loses its link row to the cascade and
@@ -220,12 +343,18 @@ describe('auto-close on workflow hard delete', () => {
 		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
 		expect(await linkRepository.findByRequestId(request.id, {})).toHaveLength(0);
 
+		// `unrelated` has no review of its own, so the pre-delete hook finds nothing to close
+		// and the sweep is the only thing that can explain the orphaned review.
 		const unrelated = await createReviewableWorkflow();
 		await Container.get(WorkflowService).delete(owner, unrelated.workflow.id, true);
 
 		const closed = await requestRepository.findById(request.id, {});
 		expect(closed?.state).toBe('closed');
 		expect(closed?.closedById).toBeNull();
+
+		expect(await getActivityEntries(request.id)).toEqual([
+			expect.objectContaining({ type: 'review.closed', data: { reason: 'workflow-deleted' } }),
+		]);
 	});
 
 	test('leaves a review whose workflow still exists open', async () => {
