@@ -286,6 +286,18 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect(requestRepository.saveRequest).toHaveBeenCalled();
 		});
 
+		it('rejects a caller unassigned while waiting for the lock', async () => {
+			mockSuccessfulDecidePath();
+			reviewerRepository.isReviewer.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+			authorRepository.isAuthor.mockResolvedValue(false);
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(requestRepository.saveRequest).not.toHaveBeenCalled();
+		});
+
 		it.each([['global:admin'], ['global:owner']])(
 			'allows an author with the %s role without querying project relations',
 			async (slug) => {
