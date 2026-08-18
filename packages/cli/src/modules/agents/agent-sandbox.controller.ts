@@ -44,7 +44,7 @@ export class AgentSandboxController {
 		agentId: string,
 	): Promise<void> {
 		try {
-			await this.agentKnowledgeService.warmSandbox(agentId, projectId);
+			await this.agentKnowledgeService.warmKnowledgeSandbox(agentId, projectId);
 		} catch (error) {
 			this.logger.warn('Failed to warm agent knowledge sandbox', {
 				projectId,

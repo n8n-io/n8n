@@ -91,6 +91,7 @@ function renderWith(
 		categories: ToolCategoryKey[];
 		detailItem: ToolConnectionItem | null;
 		detailMode: 'detail' | 'settings';
+		allowWorkflowCreation: boolean;
 	}>,
 ) {
 	return renderModal({
@@ -100,6 +101,7 @@ function renderWith(
 			categories: props.categories ?? ALL_CATEGORIES,
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
+			allowWorkflowCreation: props.allowWorkflowCreation,
 		},
 		pinia: createTestingPinia(),
 	});
@@ -173,6 +175,22 @@ describe('ToolsConnectionModal', () => {
 	it('shows the empty state when items is empty', () => {
 		const { getByTestId } = renderWith({ items: [] });
 		expect(getByTestId('tools-connection-empty')).toBeTruthy();
+	});
+
+	it('offers workflow creation when the workflows category is empty', async () => {
+		const { emitted, getByTestId, queryByTestId } = renderWith({
+			items: [],
+			categories: ['mcp', 'workflows'],
+			allowWorkflowCreation: true,
+		});
+
+		expect(queryByTestId('tools-connection-create-workflow')).toBeNull();
+
+		await fireEvent.click(getByTestId('tab-workflows'));
+		expect(getByTestId('tools-connection-empty')).toBeTruthy();
+
+		await fireEvent.click(getByTestId('tools-connection-create-workflow'));
+		expect(emitted()['create-workflow']).toEqual([[]]);
 	});
 
 	it('renders the detail view when a detailItem is set', () => {
