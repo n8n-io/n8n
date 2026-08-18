@@ -4,9 +4,9 @@ import { parse } from 'yaml';
 import { getGeneratedArtifacts } from '../generate';
 
 /**
- * Two guards on the generated schemas. Both failures show up only once a schema is emitted at more
- * than one place, and both break express-openapi-validator at start-up rather than in any test — so
- * every legacy route 500s while the decorator routes still answer.
+ * Both faults below appear only once a schema is emitted at more than one place, and both stop
+ * express-openapi-validator at start-up rather than in any request — so every legacy route 500s
+ * while the decorator routes still answer, and no other test notices.
  */
 function walk(
 	node: unknown,
@@ -26,21 +26,16 @@ function walk(
 	});
 }
 
-/**
- * A `z.custom` field carries no shape, so zod-to-openapi emits `{}` and the published spec documents
- * nothing. Annotate it with `.openapi({ type, properties, … })` in `@n8n/api-types`; the annotation is
- * spec text only and does not tighten validation.
- */
+/** To fix: annotate the field with `.openapi({ type, properties, … })` in its DTO. */
 const emptyFieldSchema = (_key: string, value: unknown, parentKey: string | undefined) =>
 	parentKey === 'properties' && isRecord(value) && Object.keys(value).length === 0
 		? 'documents nothing'
 		: undefined;
 
 /**
- * ajv resolves schema ids with `allKeys`, so it walks into values that are not schemas at all —
- * `example` most of all — and reads a nested `id` as a schema `$id`. Two copies of the same `id` are
- * an ambiguous reference and the bundle fails to compile. An `id` under `properties` is a field name,
- * not a keyword, so it is fine.
+ * ajv resolves schema ids with `allKeys`, so it walks into values that are not schemas — `example`
+ * above all — and reads a nested `id` as a schema `$id`. Two copies are an ambiguous reference. An
+ * `id` under `properties` is a field name rather than a keyword, so it is exempt.
  */
 const idOutsideProperties = (key: string, _value: unknown, parentKey: string | undefined) =>
 	(key === 'id' || key === '$id') && parentKey !== 'properties'

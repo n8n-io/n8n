@@ -156,17 +156,27 @@ properties:
     description: Execution and behaviour settings for the workflow
     properties:
       saveExecutionProgress:
-        type: boolean
+        oneOf:
+          - type: boolean
+          - type: string
+            enum:
+              - DEFAULT
       saveManualExecutions:
-        type: boolean
+        oneOf:
+          - type: boolean
+          - type: string
+            enum:
+              - DEFAULT
       saveDataErrorExecution:
         type: string
         enum:
+          - DEFAULT
           - all
           - none
       saveDataSuccessExecution:
         type: string
         enum:
+          - DEFAULT
           - all
           - none
       executionTimeout:

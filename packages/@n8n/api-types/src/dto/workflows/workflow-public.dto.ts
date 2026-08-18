@@ -12,9 +12,8 @@ import { tagPublicSchema } from '../tag/tag-public.dto';
 // inside it. Checking more than that could reject real, already-saved
 // workflows that were created before this check existed.
 //
-// `.openapi()` fills in the shape for the published spec only. Without it a `z.custom` field is
-// emitted as `{}` and documents nothing. It never tightens what the checks above accept, so the
-// spec can describe today's shape while validation stays permissive for older workflows.
+// `.openapi()` only describes the field in the published spec. It does not change what the check
+// above accepts, so the docs can be exact while validation stays permissive.
 const nodesPublicSchema = z
 	.custom<INode[]>((value) => Array.isArray(value), { message: 'Nodes must be an array' })
 	.openapi({
@@ -45,9 +44,8 @@ const nodesPublicSchema = z
 				onError: { type: 'string', example: 'stopWorkflow' },
 				position: { type: 'array', items: { type: 'number' }, example: [-100, 80] },
 				parameters: { type: 'object', additionalProperties: true },
-				// No `id` key in the example: ajv resolves schema ids with `allKeys`, so it descends into
-				// `example` and reads a nested `id` as a schema `$id`. This schema is inlined at more than
-				// one place, so a duplicated `id` makes the whole bundle fail to compile.
+				// No `id` in this example: ajv reads a nested `id` as a schema `$id`, and this schema is
+				// inlined at two places, so a duplicate stops the bundle compiling.
 				credentials: {
 					type: 'object',
 					example: { jiraSoftwareCloudApi: { name: 'jiraApi' } },
@@ -124,9 +122,9 @@ const nullableObjectPublicSchema = z.custom<Record<string, unknown> | null>(
 );
 
 /**
- * `.openapi()` accepts only the keys OpenAPI 3.0 and 3.1 share, and 3.1 dropped `nullable`. The
- * generator writes a 3.0 document, where `nullable` is both correct and what the library emits for
- * an unannotated nullable field, so it has to go in past that type. Everything else stays checked.
+ * Adds `nullable: true`, which `.openapi()` refuses to accept: it types its argument against the
+ * keys OpenAPI 3.0 and 3.1 share, and 3.1 dropped `nullable`. We emit 3.0, where it is the correct
+ * spelling. The cast covers only this one key — callers are still type-checked on everything else.
  */
 function alsoNullable(metadata: ZodOpenAPIMetadata): ZodOpenAPIMetadata {
 	return { ...metadata, nullable: true } as ZodOpenAPIMetadata;
@@ -137,10 +135,16 @@ const settingsPublicSchema = nullableObjectPublicSchema.openapi(
 		type: 'object',
 		description: 'Execution and behaviour settings for the workflow',
 		properties: {
-			saveExecutionProgress: { type: 'boolean' },
-			saveManualExecutions: { type: 'boolean' },
-			saveDataErrorExecution: { type: 'string', enum: ['all', 'none'] },
-			saveDataSuccessExecution: { type: 'string', enum: ['all', 'none'] },
+			// 'DEFAULT' means "use the instance setting". Stored workflows hold it, so it belongs in the
+			// docs, but the hand-written spec these four were copied from leaves it out.
+			saveExecutionProgress: {
+				oneOf: [{ type: 'boolean' }, { type: 'string', enum: ['DEFAULT'] }],
+			},
+			saveManualExecutions: {
+				oneOf: [{ type: 'boolean' }, { type: 'string', enum: ['DEFAULT'] }],
+			},
+			saveDataErrorExecution: { type: 'string', enum: ['DEFAULT', 'all', 'none'] },
+			saveDataSuccessExecution: { type: 'string', enum: ['DEFAULT', 'all', 'none'] },
 			executionTimeout: { type: 'number', example: 3600 },
 			errorWorkflow: {
 				type: 'string',
