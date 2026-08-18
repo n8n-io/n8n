@@ -40,3 +40,12 @@ export function isSettledStatus(status: StepStatus): boolean {
  * the same thing — a step that ran and produced zero items is still live.
  */
 export type StepSlots = JsonValue[];
+
+export interface StepKey {
+	nodeId: string;
+	iteration: number;
+}
+
+export function stepKey({ nodeId, iteration }: StepKey): string {
+	return `${nodeId}@${iteration}`;
+}

@@ -29,8 +29,9 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		completeStep: vi.fn(),
 		failStep: vi.fn(),
 		cancelQueuedSteps: vi.fn(),
-		loadStepsByNodeIds: vi.fn().mockResolvedValue({}),
+		loadSteps: vi.fn().mockResolvedValue({}),
 		loadStepSummaries: vi.fn().mockResolvedValue({}),
+		loadLatestStep: vi.fn().mockResolvedValue(null),
 		countSettledSteps: vi.fn(),
 		hasFailedSteps: vi.fn(),
 	};
@@ -76,6 +77,7 @@ describe('ExecutionStartHandler', () => {
 		expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
 			{
 				nodeId: 'trigger',
+				iteration: 0,
 				status: 'completed',
 				outputs: [{ webhook: 'data' }],
 			},
@@ -104,7 +106,7 @@ describe('ExecutionStartHandler', () => {
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
 		expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'trigger', status: 'completed', outputs: [{}] },
+			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [{}] },
 		]);
 	});
 

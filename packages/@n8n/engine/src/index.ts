@@ -56,6 +56,7 @@ export type {
 	StartExecutionRequest,
 	StartExecutionResult,
 	StepError,
+	StepKey,
 	StepRecord,
 	StepSlots,
 	StepStatus,

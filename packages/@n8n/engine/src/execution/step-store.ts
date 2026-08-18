@@ -1,5 +1,5 @@
 import type { JsonValue } from '../common';
-import type { StepSlots, StepStatus } from './execution.types';
+import type { StepKey, StepSlots, StepStatus } from './execution.types';
 
 /**
  * A new step to persist. `id` and timestamps are assigned by the store.
@@ -12,7 +12,7 @@ import type { StepSlots, StepStatus } from './execution.types';
  * `[]`: a missing one persists as SQL NULL, which liveness reads as every
  * output slot dead.
  */
-export type NewStepRecord = { nodeId: string } & (
+export type NewStepRecord = { nodeId: string; iteration: number } & (
 	| { status: Extract<StepStatus, 'queued' | 'skipped'>; outputs?: never }
 	| { status: Extract<StepStatus, 'completed'>; outputs: StepSlots }
 );
@@ -35,6 +35,7 @@ export interface StepRecord {
 	id: string;
 	executionId: string;
 	nodeId: string;
+	iteration: number;
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
@@ -50,6 +51,7 @@ export interface StepRecord {
 export interface StepSummary {
 	id: string;
 	nodeId: string;
+	iteration: number;
 	status: StepStatus;
 	/** Per output slot: whether the completed step put data there. Empty unless completed. */
 	filledOutputSlots: boolean[];
@@ -81,13 +83,13 @@ export interface StepStore {
 	createSteps(
 		executionId: string,
 		records: NewStepRecord[],
-	): Promise<Array<{ id: string; nodeId: string }>>;
+	): Promise<Array<{ id: string } & StepKey>>;
 
 	/** Load a single step by id. Throws `StepNotFoundError` if absent. */
 	loadStep(id: string): Promise<StepRecord>;
 
 	/**
-	 * Claim a queued step for execution (`queued → running`). A compare-and-set,
+	 * Claim a queued step for execution (`queued -> running`). A compare-and-set,
 	 * so it returns the claimed step for at most one caller — `null` means the
 	 * claim was lost and duplicate/redelivered events are handled idempotently.
 	 *
@@ -112,25 +114,31 @@ export interface StepStore {
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
 
-	/** Cancel every step of the execution still `queued` (`queued → cancelled`). */
+	/** Cancel every step of the execution still `queued` (`queued -> cancelled`). */
 	cancelQueuedSteps(executionId: string): Promise<void>;
 
 	/**
-	 * Step rows of the given nodes within an execution, keyed by node id. A node
-	 * with no row yet is absent from the result — absence always means "not
-	 * planned yet", never "forgotten".
+	 * Step rows of the given keys within an execution, keyed by `stepKey`. A
+	 * key with no row yet is absent from the result — absence always means
+	 * "not planned yet", never "forgotten".
 	 *
 	 * Full rows, outputs included — for gathering a ready step's inputs from its
 	 * direct predecessors. Planning reads `loadStepSummaries` instead.
 	 */
-	loadStepsByNodeIds(executionId: string, nodeIds: string[]): Promise<Record<string, StepRecord>>;
+	loadSteps(executionId: string, keys: StepKey[]): Promise<Record<string, StepRecord>>;
 
 	/**
-	 * Planning view of the given nodes' rows, keyed by node id; absent as in
-	 * `loadStepsByNodeIds`. The per-slot booleans are computed in the database,
-	 * so planning never pulls the potentially large outputs over the wire.
+	 * Planning view of the given keys' rows, keyed by `stepKey`; absent as in
+	 * `loadSteps`. The per-slot booleans are computed in the database, so
+	 * planning never pulls the potentially large outputs over the wire.
 	 */
-	loadStepSummaries(executionId: string, nodeIds: string[]): Promise<Record<string, StepSummary>>;
+	loadStepSummaries(executionId: string, keys: StepKey[]): Promise<Record<string, StepSummary>>;
+
+	/**
+	 * The node's highest-iteration row, or `null` when it has none. For a
+	 * batch node this is the loop's ledger tip.
+	 */
+	loadLatestStep(executionId: string, nodeId: string): Promise<StepRecord | null>;
 
 	/**
 	 * How many of the execution's steps have settled (completed, failed,
