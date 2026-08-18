@@ -5,7 +5,8 @@
 		"ignore": [
 			"theme/**",
 			"src/components/N8nIconPicker/emojiData.ts",
-			"src/components/N8nIconPicker/lucideIconData.ts"
+			"src/components/N8nIconPicker/lucideIconData.ts",
+			"src/styleguide/locale-characters.ts"
 		]
 	}
 }

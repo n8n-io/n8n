@@ -18,6 +18,7 @@
     "format:check": "biome ci .  && prettier --check . --ignore-path ../../../../.prettierignore",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
+    "generate:font-characters": "node ../../../../scripts/generate-locale-font-characters.mjs",
     "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache"
   },

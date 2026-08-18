@@ -1,0 +1,33 @@
+// The upright Baumer faces on their own. Standalone surfaces that render no
+// italic or monospace text pull this instead of `../fonts.scss`.
+//
+// Drop the foundry folder `EK Baumer woff` into `assets/fonts/` as-is.
+// `dist/css/fonts/` sits three levels below the package root exactly like
+// `src/css/fonts/`, so the relative `url()` below resolves the same inside the
+// monorepo and from a published tarball.
+@font-face {
+	font-family: Baumer;
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('../../../assets/fonts/EK Baumer woff/EK Baumer Grotesk/EKBaumerGrotesk-Regular.woff2')
+		format('woff2');
+}
+
+@font-face {
+	font-family: Baumer;
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('../../../assets/fonts/EK Baumer woff/EK Baumer Grotesk/EKBaumerGrotesk-Medium.woff2')
+		format('woff2');
+}
+
+@font-face {
+	font-family: Baumer;
+	font-style: normal;
+	font-weight: 600 700;
+	font-display: swap;
+	src: url('../../../assets/fonts/EK Baumer woff/EK Baumer Grotesk/EKBaumerGrotesk-Bold.woff2')
+		format('woff2');
+}

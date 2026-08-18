@@ -90,3 +90,11 @@ lefthook-local.yml
 IMPROVEMENTS.md
 .playwright-mcp
 stryker.log
+
+# Licensed EK Baumer typeface (drop under design-system assets/fonts)
+/EK Baumer woff/
+
+# Generated migration indexes (scripts/generate-migration-index.mjs)
+packages/@n8n/db/src/migrations/sqlite/index.ts
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+

@@ -1,0 +1,25 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+import FontsCharacterGrid from './components/FontsCharacterGrid.vue';
+
+<Meta title="Style guide/Fonts" parameters={{ chromatic: { disableSnapshot: true } }} />
+
+# Fonts
+
+<div class="sb-unstyled">
+	<FontsCharacterGrid
+		previous={{ label: 'Inter (previous)', fontFamily: 'InterVariable, sans-serif' }}
+		next={{ label: 'Baumer (new)', fontFamily: 'Baumer, sans-serif' }}
+	/>
+
+	<FontsCharacterGrid
+		previous={{
+			label: 'CommitMono (previous)',
+			fontFamily: 'CommitMono, ui-monospace, monospace',
+		}}
+		next={{
+			label: 'Baumer Mono (new)',
+			fontFamily: "'Baumer Mono', ui-monospace, monospace",
+		}}
+	/>
+</div>

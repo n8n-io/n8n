@@ -1,25 +1,31 @@
-@use './common/var';
+// Emits the upright Baumer face, which surfaces that need only that one
+// can also pull on its own. Keep this first so the declaration order is unchanged.
+@use './fonts/baumer';
+@use './fonts/baumer-mono';
 
 @font-face {
-	font-family: InterVariable;
-	font-style: normal;
-	font-weight: 100 900;
+	font-family: Baumer;
+	font-style: italic;
+	font-weight: 400;
 	font-display: swap;
-	src: url('../../assets/fonts/InterVariable.woff2') format('woff2');
+	src: url('../../assets/fonts/EK Baumer woff/EK Baumer Grotesk/EKBaumerGrotesk-RegularItalic.woff2')
+		format('woff2');
 }
 
 @font-face {
-	font-family: InterVariable;
+	font-family: Baumer;
 	font-style: italic;
-	font-weight: 100 900;
+	font-weight: 500;
 	font-display: swap;
-	src: url('../../assets/fonts/InterVariable-Italic.woff2') format('woff2');
+	src: url('../../assets/fonts/EK Baumer woff/EK Baumer Grotesk/EKBaumerGrotesk-MediumItalic.woff2')
+		format('woff2');
 }
 
 @font-face {
-	font-family: CommitMono;
+	font-family: Baumer;
 	font-style: italic;
-	font-weight: 100 900;
+	font-weight: 600 700;
 	font-display: swap;
-	src: url('../../assets/fonts/CommitMonoVariable.woff2') format('woff2');
+	src: url('../../assets/fonts/EK Baumer woff/EK Baumer Grotesk/EKBaumerGrotesk-BoldItalic.woff2')
+		format('woff2');
 }
