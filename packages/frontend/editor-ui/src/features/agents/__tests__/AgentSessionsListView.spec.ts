@@ -7,7 +7,6 @@ import { flushPromises, mount } from '@vue/test-utils';
 // can reference these without hitting a temporal-dead-zone error.
 const {
 	routerPush,
-	routerResolve,
 	storeState,
 	fetchThreads,
 	startAutoRefresh,
@@ -17,7 +16,6 @@ const {
 	deleteThread,
 } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
-	routerResolve: vi.fn((target: { href?: string }) => ({ href: target?.href ?? '/resolved' })),
 	storeState: {
 		threads: [] as unknown[],
 		loading: false,
@@ -31,7 +29,6 @@ const {
 	deleteThread: vi.fn(),
 }));
 
-let windowOpenSpy: ReturnType<typeof vi.spyOn>;
 let documentAddEventListenerSpy: ReturnType<typeof vi.spyOn>;
 let documentRemoveEventListenerSpy: ReturnType<typeof vi.spyOn>;
 
@@ -53,7 +50,7 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('vue-router', () => ({
 	useRoute: () => ({ params: {} }),
-	useRouter: () => ({ push: routerPush, resolve: routerResolve }),
+	useRouter: () => ({ push: routerPush }),
 }));
 
 vi.mock('@n8n/design-system', () => ({
@@ -154,11 +151,9 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 
 async function mountView({
 	threads = [makeThread()],
-	openSessionInNewTab = false,
 	manageStoreLifecycle = true,
 }: {
 	threads?: AgentExecutionThread[];
-	openSessionInNewTab?: boolean;
 	manageStoreLifecycle?: boolean;
 } = {}) {
 	storeState.threads = threads;
@@ -170,7 +165,6 @@ async function mountView({
 			embedded: true,
 			projectId: 'project-1',
 			agentId: 'agent-1',
-			openSessionInNewTab,
 			manageStoreLifecycle,
 		},
 		global: { plugins: [createTestingPinia({ createSpy: vi.fn })] },
@@ -181,97 +175,42 @@ describe('AgentSessionsListView', () => {
 	beforeEach(() => {
 		fetchThreads.mockReset();
 		fetchThreads.mockResolvedValue(undefined);
-		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 		documentAddEventListenerSpy = vi.spyOn(document, 'addEventListener');
 		documentRemoveEventListenerSpy = vi.spyOn(document, 'removeEventListener');
 		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		windowOpenSpy.mockRestore();
 		documentAddEventListenerSpy.mockRestore();
 		documentRemoveEventListenerSpy.mockRestore();
 	});
 
-	it('opens the conversation (preview chat) when a session row is clicked', async () => {
-		const wrapper = await mountView();
-
-		await wrapper.find('[data-test-id="agent-session-list-item"]').trigger('click');
-
-		expect(routerPush).toHaveBeenCalledTimes(1);
-		expect(routerPush).toHaveBeenCalledWith({
-			name: 'AgentPreviewView',
-			params: { projectId: 'project-1', agentId: 'agent-1' },
-			query: { continueSessionId: 'thread-1', section: '__executions' },
-		});
-		expect(windowOpenSpy).not.toHaveBeenCalled();
-	});
-
-	it('uses a native title button while leaving the table row out of the tab order', async () => {
+	it('opens the trace from the row and keeps a native title button', async () => {
 		const wrapper = await mountView();
 		const row = wrapper.get('[data-test-id="agent-session-list-item"]');
+		const expectedRoute = {
+			name: 'AgentSessionDetailView',
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		};
 
+		expect(wrapper.find('[data-test-id="agent-session-new-chat"]').exists()).toBe(false);
+		expect(row.attributes('role')).toBeUndefined();
 		expect(row.attributes('tabindex')).toBeUndefined();
 
-		await row.trigger('keydown', { key: 'Enter' });
-		await row.trigger('keydown', { key: ' ' });
+		await row.trigger('click');
 
-		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith(expectedRoute);
 
-		const openButton = wrapper.get('[data-test-id="agent-session-open"]');
+		const traceButton = wrapper.get('[data-test-id="agent-session-open"]');
 
-		expect(openButton.element.tagName).toBe('BUTTON');
-		expect(openButton.attributes('type')).toBe('button');
-		expect(openButton.text()).toBe('My session');
+		expect(traceButton.element.tagName).toBe('BUTTON');
+		expect(traceButton.attributes('type')).toBe('button');
+		expect(traceButton.text()).toBe('My session');
 
-		await openButton.trigger('click');
+		routerPush.mockClear();
+		await traceButton.trigger('click');
 
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
-			name: 'AgentPreviewView',
-			params: { projectId: 'project-1', agentId: 'agent-1' },
-			query: { continueSessionId: 'thread-1', section: '__executions' },
-		});
-	});
-
-	it('opens the conversation in a new tab when requested', async () => {
-		const wrapper = await mountView({ openSessionInNewTab: true });
-		const target = {
-			name: 'AgentPreviewView',
-			params: { projectId: 'project-1', agentId: 'agent-1' },
-			query: { continueSessionId: 'thread-1', section: '__executions' },
-		};
-
-		await wrapper.find('[data-test-id="agent-session-list-item"]').trigger('click');
-
-		expect(routerPush).not.toHaveBeenCalled();
-		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
-		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
-	});
-
-	it('opens the trace timeline when the trace icon button is clicked', async () => {
-		const wrapper = await mountView();
-
-		await wrapper.get('[data-test-id="agent-session-view-trace"]').trigger('click');
-
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
-			name: 'AgentSessionDetailView',
-			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
-		});
-		expect(windowOpenSpy).not.toHaveBeenCalled();
-	});
-
-	it('opens the trace in a new tab when requested', async () => {
-		const wrapper = await mountView({ openSessionInNewTab: true });
-		const target = {
-			name: 'AgentSessionDetailView',
-			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
-		};
-
-		await wrapper.get('[data-test-id="agent-session-view-trace"]').trigger('click');
-
-		expect(routerPush).not.toHaveBeenCalled();
-		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
-		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith(expectedRoute);
 	});
 
 	it('opens the parent trace in the current tab by default', async () => {
@@ -290,7 +229,6 @@ describe('AgentSessionsListView', () => {
 				threadId: 'parent-thread-1',
 			},
 		});
-		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('fetches, polls, and manages the visibility listener by default', async () => {
@@ -354,13 +292,6 @@ describe('AgentSessionsListView', () => {
 			'visibilitychange',
 			expect.any(Function),
 		);
-	});
-
-	it('renders the trace button with the view-trace aria label', async () => {
-		const wrapper = await mountView();
-		const traceButton = wrapper.get('[data-test-id="agent-session-view-trace"]');
-
-		expect(traceButton.attributes('aria-label')).toBe('View session trace');
 	});
 
 	it.each([

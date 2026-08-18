@@ -3606,6 +3606,107 @@ describe('createExecutionAdapter run()', () => {
 		expect(firstStackItem?.data.main[0]?.[0]?.json).toEqual({});
 	});
 
+	describe('trigger selection', () => {
+		const triggerNode = (
+			name: string,
+			overrides?: { type?: string; disabled?: boolean },
+		): INode => ({
+			...makeNode(name, overrides?.type ?? 'n8n-nodes-base.scheduleTrigger'),
+			...(overrides?.disabled ? { disabled: true } : {}),
+		});
+
+		const startedFrom = (mockWorkflowRunner: { run: Mock }) =>
+			mockWorkflowRunner.run.mock.calls[0][0].triggerToStartFrom?.name;
+
+		it('starts from the named trigger instead of the first one', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await adapter.run('wf-1', undefined, { triggerNodeName: 'Weekly 5pm' });
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Weekly 5pm');
+		});
+
+		it('auto-detects the first trigger when none is named', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Daily 8am');
+		});
+
+		it('skips a disabled trigger when auto-detecting', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am', { disabled: true }), triggerNode('Weekly 5pm')],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Weekly 5pm');
+		});
+
+		it('falls back to a disabled trigger when every trigger is disabled', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('Daily 8am', { disabled: true }),
+					triggerNode('Weekly 5pm', { disabled: true }),
+				],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Daily 8am');
+		});
+
+		it('prefers a known trigger type over an unknown one earlier in the node list', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('On Interval', { type: 'n8n-nodes-base.cron' }),
+					triggerNode('On Chat Message', { type: '@n8n/n8n-nodes-langchain.chatTrigger' }),
+				],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('On Chat Message');
+		});
+
+		it('rejects an unknown trigger name instead of running a different branch', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await expect(
+				adapter.run('wf-1', undefined, { triggerNodeName: 'Weekly 5PM' }),
+			).rejects.toThrow(/Weekly 5PM.*Daily 8am.*Weekly 5pm/s);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects a named node that is not a trigger', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('Daily 8am'),
+					triggerNode('Compute Daily', { type: 'n8n-nodes-base.code' }),
+				],
+			});
+
+			await expect(
+				adapter.run('wf-1', undefined, { triggerNodeName: 'Compute Daily' }),
+			).rejects.toThrow(/Compute Daily/);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+	});
+
 	it('opts a verification run out of the error workflow, on the main process and on a worker', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',
