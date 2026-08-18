@@ -16,6 +16,7 @@ import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { StaticAuthService } from '@/services/static-auth-service';
 
+import { carriesN8nIdentity } from '../credential-resolvers/identifiers/n8n-identifier';
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
 import { extractSharedFields } from './shared-fields';
@@ -31,6 +32,7 @@ import { CredentialResolutionError } from '../errors/credential-resolution.error
 import { CredentialResolverNotConfiguredError } from '../errors/credential-resolver-not-configured.error';
 import { CredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../errors/missing-execution-context.error';
+import { N8nIdentityNotSupportedError } from '../errors/n8n-identity-not-supported.error';
 
 /**
  * Service for resolving credentials dynamically via configured resolvers.
@@ -101,6 +103,20 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 
 		if (!credentialContext) {
 			return this.handleMissingContext(credentialsResolveMetadata);
+		}
+
+		if (carriesN8nIdentity(credentialContext) && !resolver.resolveOwningUserId) {
+			// The identity is an n8n session token and this resolver keys on an external
+			// subject, so it would hand that token to the external provider it validates
+			// against (its identifier reads `context.identity` as its own token). Refuse
+			// instead of leaking it on a request that cannot succeed anyway.
+			this.logger.debug('Refused to resolve external-subject credential with n8n identity', {
+				credentialId: credentialsResolveMetadata.id,
+				credentialName: credentialsResolveMetadata.name,
+				resolverId,
+				resolverType: resolverEntity.type,
+			});
+			throw new N8nIdentityNotSupportedError(credentialsResolveMetadata.name);
 		}
 
 		try {

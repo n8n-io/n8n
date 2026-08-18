@@ -24,6 +24,7 @@ import type { DynamicCredentialResolver } from '../../database/entities/credenti
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
 import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config';
 import { CredentialResolutionError } from '../../errors/credential-resolution.error';
+import { N8nIdentityNotSupportedError } from '../../errors/n8n-identity-not-supported.error';
 import { CredentialResolverNotConfiguredError } from '../../errors/credential-resolver-not-configured.error';
 import { CredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../../errors/missing-execution-context.error';
@@ -78,6 +79,8 @@ describe('DynamicCredentialService', () => {
 		shouldSucceed = true,
 		shouldThrowDataNotFound = false,
 		customData?: ICredentialDataDecryptedObject,
+		/** Set for resolvers that key on n8n users, as the real n8n resolver does. */
+		keysOnN8nUser = false,
 	): Mocked<ICredentialResolver> => ({
 		metadata: {
 			name: 'test-resolver-1.0',
@@ -94,6 +97,7 @@ describe('DynamicCredentialService', () => {
 		}),
 		setSecret: vi.fn(),
 		validateOptions: vi.fn(),
+		...(keysOnN8nUser && { resolveOwningUserId: vi.fn().mockResolvedValue('user-123') }),
 	});
 
 	const createMockExecutionContext = (credentials?: string): IExecutionContext => ({
@@ -501,6 +505,33 @@ describe('DynamicCredentialService', () => {
 				);
 			});
 
+			it('refuses to hand an n8n identity to an external-subject resolver', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				// Default resolver type is an external (non-n8n) resolver: its identifier reads
+				// `context.identity` as a token its own provider issued, so giving it an n8n
+				// session token would send that token to the provider.
+				const resolverEntity = createMockResolverEntity();
+				const mockResolver = createMockResolver();
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const credentialContext = createMockCredentialContext({ source: 'manual-execution' });
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
+
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify(credentialContext));
+
+				await expect(
+					service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						additionalData.executionContext,
+						undefined,
+					),
+				).rejects.toThrow(N8nIdentityNotSupportedError);
+
+				expect(mockResolver.getSecret).not.toHaveBeenCalled();
+			});
+
 			it('external-identity resolver throws CredentialResolverDataNotFoundError keeps the generic message', async () => {
 				const credentialsEntity = createMockCredentialsMetadata();
 				// Default resolver type is an external (non-n8n) resolver
@@ -531,7 +562,7 @@ describe('DynamicCredentialService', () => {
 			it('n8n private-credential resolver throws CredentialResolverDataNotFoundError surfaces the not-connected message', async () => {
 				const credentialsEntity = createMockCredentialsMetadata();
 				const resolverEntity = createMockResolverEntity({ type: SYSTEM_RESOLVER_TYPE });
-				const mockResolver = createMockResolver(false, true);
+				const mockResolver = createMockResolver(false, true, undefined, true);
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext({ source: 'manual-execution' });
 				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
@@ -557,7 +588,7 @@ describe('DynamicCredentialService', () => {
 			it('n8n private-credential resolver surfaces the not-connected message regardless of trigger source', async () => {
 				const credentialsEntity = createMockCredentialsMetadata();
 				const resolverEntity = createMockResolverEntity({ type: SYSTEM_RESOLVER_TYPE });
-				const mockResolver = createMockResolver(false, true);
+				const mockResolver = createMockResolver(false, true, undefined, true);
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				// Chat-hub triggered run still resolves to an n8n user, so the message applies
 				const credentialContext = createMockCredentialContext({ source: 'chat-hub-injected' });
