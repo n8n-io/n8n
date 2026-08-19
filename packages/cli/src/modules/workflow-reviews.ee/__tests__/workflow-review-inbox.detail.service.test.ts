@@ -8,6 +8,7 @@ import type {
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
+	WorkflowReviewRequestState,
 	WorkflowReviewRequestWorkflowDetailRow,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
@@ -15,6 +16,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
@@ -74,6 +76,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	const service = new WorkflowReviewInboxService(
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		accessService,
+		mock<WorkflowFinderService>(),
 		workflowHistoryService,
 		publishedVersionRepository,
 		requestRepository,
@@ -116,8 +119,18 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	function mockChildRow(
 		pinnedVersionId: string | null = 'ver-pinned',
 		workflowName = 'My workflow',
+		baselineVersionId: string | null = null,
+		requestState: WorkflowReviewRequestState = 'open',
 	) {
-		mockGate([{ workflowId, workflowName, workflowVersionId: pinnedVersionId }]);
+		mockGate([
+			{
+				workflowId,
+				workflowName,
+				workflowVersionId: pinnedVersionId,
+				baselineVersionId,
+				requestState,
+			},
+		]);
 	}
 
 	describe('when reviews are unavailable', () => {
@@ -385,6 +398,142 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.workflows[0]?.pinnedVersion).not.toHaveProperty('authors');
+		});
+
+		it('uses the frozen baseline on a closed review, not the live published pointer', async () => {
+			accessService.findReadableRequestOrFail.mockResolvedValue({
+				request: reviewRequest({ state: 'closed', decision: 'approved' }),
+				readableWorkflowRows: [
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						baselineVersionId: 'ver-frozen',
+						requestState: 'closed',
+					},
+				],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: true,
+			});
+			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-live-now');
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.workflows[0]?.baselineVersion).toMatchObject({ versionId: 'ver-frozen' });
+			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
+		});
+
+		it('uses a frozen baseline whatever state accompanies it', async () => {
+			// Only an approval ever writes a baseline, so a frozen one can be trusted alone.
+			accessService.findReadableRequestOrFail.mockResolvedValue({
+				request: reviewRequest({ state: 'open', decision: 'pending' }),
+				readableWorkflowRows: [
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						baselineVersionId: 'ver-frozen',
+						requestState: 'open',
+					},
+				],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: true,
+			});
+			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-pinned');
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.workflows[0]?.baselineVersion).toMatchObject({ versionId: 'ver-frozen' });
+			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
+		});
+
+		it('returns no baseline for a closed review when none was captured', async () => {
+			accessService.findReadableRequestOrFail.mockResolvedValue({
+				request: reviewRequest({ state: 'closed', decision: 'approved' }),
+				readableWorkflowRows: [
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						baselineVersionId: null,
+						requestState: 'closed',
+					},
+				],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: true,
+			});
+			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-live-now');
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.workflows[0]?.baselineVersion).toBeNull();
+			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
+		});
+
+		it('keeps a captured null null when the request row was read before the approval', async () => {
+			// The request is fetched before its rows, so an approval landing in between
+			// leaves the request looking open. The row's own state has to win: a frozen null
+			// baseline would otherwise read as "still open" and resolve the live version.
+			accessService.findReadableRequestOrFail.mockResolvedValue({
+				request: reviewRequest({ state: 'open', decision: 'pending' }),
+				readableWorkflowRows: [
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						baselineVersionId: null,
+						requestState: 'closed',
+					},
+				],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: true,
+			});
+			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-pinned');
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.workflows[0]?.baselineVersion).toBeNull();
+			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
+		});
+
+		it('returns no baseline for a closed review that was never approved', async () => {
+			accessService.findReadableRequestOrFail.mockResolvedValue({
+				request: reviewRequest({ state: 'closed', decision: 'pending' }),
+				readableWorkflowRows: [
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						baselineVersionId: null,
+						requestState: 'closed',
+					},
+				],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: true,
+			});
+			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-live-now');
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.state).toBe('closed');
+			expect(detail.decision).toBe('pending');
+			expect(detail.workflows[0]?.baselineVersion).toBeNull();
+			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -5,6 +5,7 @@ import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { Folder, FolderTagMapping, TagEntity } from '../entities';
 import type { FolderWithWorkflowAndSubFolderCountAndPath, ListQuery } from '../entities/types-db';
+import { parseListQuerySortBy } from '../utils/list-query-sort';
 
 @Service()
 export class FolderRepository extends Repository<Folder> {
@@ -228,13 +229,8 @@ export class FolderRepository extends Repository<Folder> {
 			return;
 		}
 
-		const [field, order] = this.parseSortingParams(sortBy);
-		this.applySortingByField(query, field, order);
-	}
-
-	private parseSortingParams(sortBy: string): [string, 'DESC' | 'ASC'] {
-		const [field, order] = sortBy.split(':');
-		return [field, order?.toLowerCase() === 'desc' ? 'DESC' : 'ASC'];
+		const { column, direction } = parseListQuerySortBy(sortBy);
+		this.applySortingByField(query, column, direction);
 	}
 
 	private applySortingByField(
