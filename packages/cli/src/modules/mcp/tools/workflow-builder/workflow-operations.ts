@@ -509,20 +509,20 @@ const isArrayIndexSegment = (segment: string): boolean => /^(0|[1-9]\d*)$/.test(
 const readSegment = (
 	cursor: Record<string, unknown> | unknown[],
 	key: string,
-	pathSoFar: string,
+	failingPathForErrorMessage: string,
 ): { value: unknown } | { error: string } => {
 	if (!Array.isArray(cursor)) {
 		return { value: cursor[key] };
 	}
 
 	if (!isArrayIndexSegment(key)) {
-		return { error: `cannot use '${key}' as an array index at '/${pathSoFar}'` };
+		return { error: `cannot use '${key}' as an array index at '/${failingPathForErrorMessage}'` };
 	}
 
 	const index = Number(key);
 	if (index >= cursor.length) {
 		return {
-			error: `array index ${index} out of bounds (length ${cursor.length}) at '/${pathSoFar}'`,
+			error: `array index ${index} out of bounds (length ${cursor.length}) at '/${failingPathForErrorMessage}'`,
 		};
 	}
 
@@ -546,40 +546,58 @@ const writeSegment = (
  * Numeric segments index into arrays (must reference an existing element, no auto-extension).
  * Mutates `root` in place; returns an error message on failure, else null.
  */
+// PROVISIONAL — ejemplo:
+//   root     = { assignments: { assignments: [ { id: 'a', name: 'x', value: 1 } ] } }
+//   segments = ['assignments', 'assignments', '0', 'value']   // viene de parsear "/assignments/assignments/0/value"
+//   value    = 99
+// objetivo: dejar root.assignments.assignments[0].value = 99
 const setAtPointer = (
 	root: Record<string, unknown>,
 	segments: string[],
 	value: unknown,
 ): string | null => {
 	let cursor: Record<string, unknown> | unknown[] = root;
+
+	// Loop through all elements but the last one, since that is the one we want
+	// to write to, not read from. The previous segments are just for navigation
+	// to that point.
 	for (let i = 0; i < segments.length - 1; i++) {
-		const key = segments[i];
-		const pathSoFar = segments.slice(0, i + 1).join('/');
-		const read = readSegment(cursor, key, pathSoFar);
+		const key = segments[i]; // i=0 -> 'assignments'; i=1 -> 'assignments'; i=2 -> '0'
+
+		const failingPathSegmentReadingFailure = segments.slice(0, i).join('/');
+
+		const read = readSegment(cursor, key, failingPathSegmentReadingFailure);
 		if ('error' in read) {
 			return read.error;
 		}
 
 		if (read.value === undefined && !Array.isArray(cursor)) {
+			// The intermediate container does not exist yet, must be created.
 			const child: Record<string, unknown> = {};
 			writeSegment(cursor, key, child);
 			cursor = child;
 		} else if (isPlainObject(read.value) || Array.isArray(read.value)) {
+			// The intermediate container already exists and is valid (object or array)
+			// it is our cursor now, next iteration will read from it.
 			cursor = read.value;
 		} else {
-			return `cannot descend into non-object at '/${pathSoFar}'`;
+			const failingPath = segments.slice(0, i + 1).join('/');
+			return `cannot descend into non-object at '/${failingPath}'`;
 		}
 	}
 
+	// Here the cursor finally points to what we want to update
 	const lastKey = segments[segments.length - 1];
 	if (Array.isArray(cursor)) {
+		const failingPathWithoutIndex = segments.slice(0, -1).join('/');
+
 		if (!isArrayIndexSegment(lastKey)) {
-			return `cannot use '${lastKey}' as an array index at '/${segments.join('/')}'`;
+			return `cannot use '${lastKey}' as an array index at '/${failingPathWithoutIndex}'`;
 		}
 
 		const index = Number(lastKey);
 		if (index >= cursor.length) {
-			return `array index ${index} out of bounds (length ${cursor.length}) at '/${segments.join('/')}'`;
+			return `array index ${index} out of bounds (length ${cursor.length}) at '/${failingPathWithoutIndex}'`;
 		}
 	}
 

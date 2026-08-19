@@ -332,23 +332,31 @@ describe('applyOperations', () => {
 		test('rejects an out-of-bounds array index', () => {
 			const wf = baseWorkflow();
 			wf.nodes[1].parameters = { values: [{ name: 'a' }] };
+
 			const result = applyOperations(wf, [
 				{ type: 'setNodeParameter', nodeName: 'B', path: '/values/1/name', value: 'b' },
 			]);
+
 			expect(result.success).toBe(false);
 			if (result.success) return;
-			expect(result.error).toContain('out of bounds');
+
+			expect(result.error).toContain('array index 1 out of bounds');
+			expect(result.error).toContain("at '/values'");
 		});
 
 		test('rejects a non-numeric segment used against an array', () => {
 			const wf = baseWorkflow();
 			wf.nodes[1].parameters = { values: [{ name: 'a' }] };
+
 			const result = applyOperations(wf, [
 				{ type: 'setNodeParameter', nodeName: 'B', path: '/values/foo/name', value: 'b' },
 			]);
+
 			expect(result.success).toBe(false);
 			if (result.success) return;
-			expect(result.error).toContain('array index');
+
+			expect(result.error).toContain("cannot use 'foo' as an array index");
+			expect(result.error).toContain("at '/values'");
 		});
 	});
 
