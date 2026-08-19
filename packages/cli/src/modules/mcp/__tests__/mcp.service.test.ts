@@ -844,7 +844,7 @@ describe('McpService', () => {
 				{},
 				{
 					clientInfo: { name: 'Claude', version: '1.2.3' },
-					auth: { authType: 'oauth', oauthClientId: 'client-abc' },
+					auth: { grantedScopes: undefined, authType: 'oauth', oauthClientId: 'client-abc' },
 				},
 			);
 
@@ -871,7 +871,7 @@ describe('McpService', () => {
 						throw new Error('boom');
 					},
 					{},
-					{ auth: { authType: 'oauth', oauthClientId: 'client-abc' } },
+					{ auth: { grantedScopes: undefined, authType: 'oauth', oauthClientId: 'client-abc' } },
 				),
 			).rejects.toThrow('boom');
 
@@ -889,7 +889,11 @@ describe('McpService', () => {
 		it('should pass the resolved auth through to every tool the server registers', async () => {
 			const user = mcpUser();
 			const registrarSpy = vi.spyOn(mcpService, 'createToolRegistrar');
-			const auth = { authType: 'oauth' as const, oauthClientId: 'client-abc' };
+			const auth = {
+				grantedScopes: undefined,
+				authType: 'oauth' as const,
+				oauthClientId: 'client-abc',
+			};
 
 			await mcpService.getServer(user, mcpFeatureFlags(), { name: 'Cursor' }, auth);
 
@@ -906,7 +910,7 @@ describe('McpService', () => {
 				'my_tool',
 				async () => ({ content: [{ type: 'text', text: 'ok' }] }),
 				{},
-				{ auth: { authType: 'api_key' } },
+				{ auth: { grantedScopes: undefined, authType: 'api_key' } },
 			);
 
 			expect(eventService.emit).toHaveBeenCalledWith(

@@ -158,9 +158,13 @@ export type McpAuthenticatedRequest = AuthenticatedRequest & {
  * label the tool-call events.
  */
 export type McpAuthContext = {
+	/**
+	 * Required, because this is the field that gates which tools register: a
+	 * partial context must not be able to silently expose every tool. `undefined`
+	 * = not scope-bearing (API key, legacy token) → all tools register.
+	 */
+	grantedScopes: string[] | undefined;
 	authType?: McpResolvedAuthType;
-	/** `undefined` = not scope-bearing (API key) → all tools register. */
-	grantedScopes?: string[];
 	oauthClientId?: string;
 };
 

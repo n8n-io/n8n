@@ -75,6 +75,9 @@ export class McpServerApiKeyService {
 				return {
 					user: tokenGrant.actor ?? tokenGrant.subject,
 					actor: tokenGrant.actor,
+					// Every non-OAuth bearer token the strategy chain admits is reported
+					// as `api_key`, token-exchange scoped JWTs included. The distinction
+					// between them is not surfaced to telemetry or log streaming.
 					authType: 'api_key',
 				};
 			}

@@ -312,7 +312,7 @@ export class McpService {
 		server: McpServer,
 		user: User,
 		clientInfo?: McpClientInfo,
-		auth: McpAuthContext = {},
+		auth?: McpAuthContext,
 	) {
 		return (tool: ToolDefinition) => {
 			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
@@ -331,8 +331,8 @@ export class McpService {
 						workflowId: workflowId ?? getWorkflowId(result?.structuredContent),
 						status,
 						errorMessage,
-						authType: auth.authType,
-						clientId: auth.oauthClientId,
+						authType: auth?.authType,
+						clientId: auth?.oauthClientId,
 						clientName: clientInfo?.name,
 					});
 					return result;
@@ -343,8 +343,8 @@ export class McpService {
 						workflowId,
 						status: 'error',
 						errorMessage: error instanceof Error ? error.message : String(error),
-						authType: auth.authType,
-						clientId: auth.oauthClientId,
+						authType: auth?.authType,
+						clientId: auth?.oauthClientId,
 						clientName: clientInfo?.name,
 					});
 					throw error;
@@ -394,7 +394,7 @@ export class McpService {
 		user: User,
 		featureFlags: McpFeatureFlags,
 		clientInfo?: McpClientInfo,
-		auth: McpAuthContext = {},
+		auth?: McpAuthContext,
 	) {
 		const { McpServer } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
@@ -404,7 +404,7 @@ export class McpService {
 		const n8nConnectAvailable = builderEnabled
 			? (await this.aiGatewayService.isAvailable()).available
 			: false;
-		const allowedToolNames = getAllowedToolNames(auth.grantedScopes);
+		const allowedToolNames = getAllowedToolNames(auth?.grantedScopes);
 		// The builder walkthrough is only useful when the grant can actually
 		// create workflows; a read-only grant gets the plain intro instead of
 		// steps referencing tools it cannot call.

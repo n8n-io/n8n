@@ -1184,14 +1184,18 @@ export type RelayEventMap = {
 		errorMessage?: string;
 		/**
 		 * How the call authenticated. Reported so an absent `clientId` is explicit
-		 * rather than inferred.
+		 * rather than inferred. `api_key` covers every non-OAuth bearer token the
+		 * MCP server admits, including token-exchange scoped JWTs, which is the
+		 * same grouping the MCP connection telemetry uses.
 		 */
 		authType?: McpResolvedAuthType;
 		/**
 		 * The OAuth client the call was authenticated with, as registered with this
-		 * instance. Absent for API-key callers, which have no registered client.
+		 * instance. Present whenever `authType` is `oauth`, since verification
+		 * rejects a token carrying no `client_id` claim, and absent otherwise.
 		 * Unlike `clientName` (self-reported by the client), this identifies the
-		 * client, so it is what usage can be attributed by.
+		 * client, so it is what usage can be attributed by. Treat it as opaque: a
+		 * first-party client's id is a URL rather than a generated id.
 		 */
 		clientId?: string;
 		clientName?: string;
