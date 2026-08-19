@@ -9,10 +9,6 @@ export class GitConnectionProjectRepository extends Repository<GitConnectionProj
 		super(GitConnectionProject, dataSource.manager);
 	}
 
-	async findByProjectId(projectId: string) {
-		return await this.findOneBy({ projectId });
-	}
-
 	/** Project IDs linked to a connection, ordered for a stable response. */
 	async findProjectIdsByConnection(gitConnectionId: string) {
 		const rows = await this.find({

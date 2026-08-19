@@ -24,7 +24,7 @@ import { GitConnectionsGitService } from './git-connections-git.service';
 export class GitConnectionsService {
 	constructor(
 		private readonly repository: GitConnectionRepository,
-		private readonly projectLinkRepository: GitConnectionProjectRepository,
+		private readonly projectConnectionRepository: GitConnectionProjectRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly gitService: GitConnectionsGitService,
 		private readonly cipher: Cipher,
@@ -123,7 +123,7 @@ export class GitConnectionsService {
 		await this.getEntity(id);
 		await this.assertProjectCanBeAdded(projectId);
 
-		const existing = await this.projectLinkRepository.findByProjectId(projectId);
+		const existing = await this.projectConnectionRepository.findOneBy({ projectId });
 		if (existing) {
 			// Re-adding to the same connection is a no-op; moving a project that
 			// already belongs to a different connection must be removed first.
@@ -131,23 +131,23 @@ export class GitConnectionsService {
 			throw new ConflictError('Project is already added to another Git connection');
 		}
 
-		const link = this.projectLinkRepository.create({ projectId, gitConnectionId: id });
-		return this.toLinkPublic(await this.projectLinkRepository.save(link));
+		const link = this.projectConnectionRepository.create({ projectId, gitConnectionId: id });
+		return this.toLinkPublic(await this.projectConnectionRepository.save(link));
 	}
 
 	async removeProject(id: string, projectId: string): Promise<void> {
 		await this.getEntity(id);
-		const existing = await this.projectLinkRepository.findByProjectId(projectId);
+		const existing = await this.projectConnectionRepository.findOneBy({ projectId });
 		// Idempotent, and scoped to this connection: never remove a link that
 		// belongs to a different connection.
 		if (existing && existing.gitConnectionId === id) {
-			await this.projectLinkRepository.remove(existing);
+			await this.projectConnectionRepository.remove(existing);
 		}
 	}
 
 	async listProjects(id: string): Promise<GitConnectionProjectListPublicDto> {
 		await this.getEntity(id);
-		const projectIds = await this.projectLinkRepository.findProjectIdsByConnection(id);
+		const projectIds = await this.projectConnectionRepository.findProjectIdsByConnection(id);
 		return { projectIds };
 	}
 
