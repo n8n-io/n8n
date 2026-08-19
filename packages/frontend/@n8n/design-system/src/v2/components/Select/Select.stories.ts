@@ -266,7 +266,7 @@ export const ItemWithDescription = {
 		docs: {
 			description: {
 				story:
-					'Extend `SelectOptionBase` with extra fields (here `description`) and render them in `#item-label`. `side="top"` opens the menu above the trigger.',
+					'Extend `SelectOptionBase` with extra fields (here `description`) and render them in `#item-label`.',
 			},
 		},
 	},
@@ -287,7 +287,6 @@ export const ItemWithDescription = {
 				:icon="current.icon"
 				size="medium"
 				position="popper"
-				side="top"
 			>
 				<template #default>
 					{{ current.label }}

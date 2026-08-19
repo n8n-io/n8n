@@ -95,9 +95,6 @@ export type SelectProps<M extends boolean = false> = Omit<
 	 */
 	position?: 'item-aligned' | 'popper';
 
-	/** The preferred side when position is 'popper'. @defaultValue 'bottom' */
-	side?: 'top' | 'right' | 'bottom' | 'left';
-
 	/** The distance in pixels from the trigger when position is 'popper'. @defaultValue 5 */
 	sideOffset?: number;
 

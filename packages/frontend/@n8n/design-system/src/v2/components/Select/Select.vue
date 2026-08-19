@@ -66,7 +66,6 @@ const props = withDefaults(defineProps<SelectProps<M>>(), {
 	variant: 'default',
 	size: 'small',
 	position: 'item-aligned',
-	side: 'bottom',
 	sideOffset: 5,
 	clearable: false,
 	searchable: false,
@@ -581,7 +580,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				data-test-id="select-content"
 				:class="[$style.selectContent, size, contentClass]"
 				:position="position"
-				:side="side"
+				side="bottom"
 				:side-offset="sideOffset"
 				@keydown.capture="onContentKeydown"
 			>

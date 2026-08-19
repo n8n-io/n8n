@@ -61,7 +61,6 @@ function onSelect(value: SelectValue | undefined) {
 			variant="ghost"
 			size="medium"
 			position="popper"
-			side="top"
 			:content-class="$style.content"
 			@update:model-value="onSelect"
 		>
