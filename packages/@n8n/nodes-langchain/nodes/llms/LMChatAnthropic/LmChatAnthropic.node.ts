@@ -494,7 +494,7 @@ export class LmChatAnthropic implements INodeType {
 			},
 			{
 				displayName:
-					'Cached tokens are currently not included in the reported token usage, so logged prompt/total tokens might be lower than actual billable usage',
+					'Cache reads and writes are billed at different rates than regular input tokens, so reported prompt/total tokens are only an approximation of actual billable usage',
 				name: 'promptCachingNotice',
 				type: 'notice',
 				default: '',
@@ -598,14 +598,20 @@ export class LmChatAnthropic implements INodeType {
 			const usage = (result?.llmOutput?.usage as {
 				input_tokens: number;
 				output_tokens: number;
+				cache_creation_input_tokens?: number;
+				cache_read_input_tokens?: number;
 			}) ?? {
 				input_tokens: 0,
 				output_tokens: 0,
 			};
+			const promptTokens =
+				usage.input_tokens +
+				(usage.cache_creation_input_tokens ?? 0) +
+				(usage.cache_read_input_tokens ?? 0);
 			return {
 				completionTokens: usage.output_tokens,
-				promptTokens: usage.input_tokens,
-				totalTokens: usage.input_tokens + usage.output_tokens,
+				promptTokens,
+				totalTokens: promptTokens + usage.output_tokens,
 			};
 		};
 
