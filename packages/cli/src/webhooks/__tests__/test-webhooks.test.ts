@@ -426,6 +426,55 @@ describe('TestWebhooks', () => {
 
 			await expect(promise).rejects.toThrowError(WebhookNotFoundError);
 		});
+
+		test('releases isolate only after deactivateWebhooks completes on successful execution', async () => {
+			const flushMicrotasks = async () => {
+				const { setImmediate: realSetImmediate } =
+					await vi.importActual<typeof import('timers')>('timers');
+				await new Promise((resolve) => realSetImmediate(resolve));
+			};
+
+			const expression = mock<WorkflowExpression>();
+			const workflowStartNode = mock<ReturnType<Workflow['getNode']>>({
+				type: 'n8n-nodes-base.noOp',
+			});
+			const workflow = mock<Workflow>({
+				id: workflowEntity.id,
+				expression,
+				getNode: vi.fn().mockReturnValue(workflowStartNode),
+			});
+
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
+			registrations.get.mockResolvedValue({
+				version: 1,
+				workflowEntity,
+				webhook,
+			} as TestWebhookRegistration);
+			const deactivateSpy = vi
+				.spyOn(testWebhooks, 'deactivateWebhooks')
+				.mockResolvedValue(undefined);
+
+			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(async (..._args: unknown[]) => {
+				const onDone = _args[10] as (error: Error | null, data: unknown) => void;
+				onDone(null, { noWebhookResponse: true });
+				return 'execution-id';
+			});
+
+			await testWebhooks.executeWebhook(
+				mock<WebhookRequest>({ params: { path }, method: httpMethod }),
+				mock<express.Response>(),
+			);
+			await flushMicrotasks();
+
+			expect(deactivateSpy).toHaveBeenCalledWith(workflow);
+			expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
+			const [acquireOrder] = (expression.acquireIsolate as Mock).mock.invocationCallOrder;
+			const [deactivateOrder] = deactivateSpy.mock.invocationCallOrder;
+			const [releaseOrder] = (expression.releaseIsolate as Mock).mock.invocationCallOrder;
+			expect(acquireOrder).toBeLessThan(deactivateOrder);
+			expect(deactivateOrder).toBeLessThan(releaseOrder);
+		});
 	});
 
 	describe('deactivateWebhooks()', () => {

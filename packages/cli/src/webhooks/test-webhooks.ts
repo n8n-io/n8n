@@ -146,8 +146,10 @@ export class TestWebhooks implements IWebhookManager {
 		}
 
 		await workflow.expression.acquireIsolate();
-		try {
-			return await new Promise(async (resolve, reject) => {
+		// Release only after teardown below runs, not when resolve() settles the
+		// promise early — teardown still needs the isolate held.
+		return await new Promise(async (resolve, reject) => {
+			try {
 				try {
 					const executionMode = 'manual';
 					const executionId = await WebhookHelpers.executeWebhook(
@@ -172,7 +174,6 @@ export class TestWebhooks implements IWebhookManager {
 					// or a ping so do not resolve the promise and wait for the real webhook
 					// request instead.
 					if (executionId === undefined) {
-						await workflow.expression.releaseIsolate();
 						return;
 					}
 
@@ -212,10 +213,10 @@ export class TestWebhooks implements IWebhookManager {
 				this.clearTimeout(key);
 
 				await this.deactivateWebhooks(workflow);
-			});
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
+		});
 	}
 
 	@OnPubSubEvent('clear-test-webhooks', { instanceType: 'main' })
