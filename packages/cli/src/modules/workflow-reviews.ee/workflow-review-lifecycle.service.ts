@@ -152,6 +152,11 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 					{},
 				);
 			}
+
+			// A publish changes review-derived state (e.g. it clears the approved-but-
+			// unpublished banner), so canvas viewers get the same invalidation the other
+			// lifecycle paths send. Fire-and-forget, like the entries above: best-effort.
+			this.broadcastReviewStateChanged([event.workflowId]);
 		} catch (error) {
 			this.logger.warn('Failed to record workflow publication in review activity', {
 				workflowId: event.workflowId,

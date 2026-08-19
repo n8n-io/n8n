@@ -382,9 +382,14 @@ describe('WorkflowReviewLifecycleService', () => {
 					{},
 				);
 			}
+			expect(
+				collaborationService.broadcastWorkflowReviewStateChanged,
+			).toHaveBeenCalledExactlyOnceWith('wf-1');
 		});
 
-		it('records nothing when no request is pinned to the published version', async () => {
+		// The banner derives from review state plus the published version, so a publish
+		// invalidates viewers even when it lands in no feed.
+		it('records nothing when no request is pinned to the published version, but still broadcasts', async () => {
 			requestWorkflowRepository.findRequestIdsPinnedToVersion.mockResolvedValue([]);
 
 			await service.afterWorkflowPublished({
@@ -394,6 +399,9 @@ describe('WorkflowReviewLifecycleService', () => {
 			});
 
 			expect(activityRepository.createActivity).not.toHaveBeenCalled();
+			expect(
+				collaborationService.broadcastWorkflowReviewStateChanged,
+			).toHaveBeenCalledExactlyOnceWith('wf-1');
 		});
 
 		// The publication stands whatever happens to its feed entry.
