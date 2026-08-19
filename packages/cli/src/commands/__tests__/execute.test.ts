@@ -68,6 +68,15 @@ deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
 // Execute.init() chains singletons that cannot init twice per process
 class ReadOnlyCommand extends BaseCommand {}
 
+// default config for every test, so none depends on what an earlier test leaked
+// into the container; tests that need different values set their own
+beforeEach(() => {
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({ taskRunners: {}, nodes: {}, expressionEngine: { engine: 'legacy' } }),
+	);
+});
+
 test('should start a task runner', async () => {
 	// arrange
 
@@ -92,14 +101,6 @@ test('should start a task runner', async () => {
 	);
 	workflowRunner.run.mockResolvedValue('123');
 	activeExecutions.getPostExecutePromise.mockResolvedValue(run);
-
-	Container.set(
-		GlobalConfig,
-		mock<GlobalConfig>({
-			taskRunners: {},
-			nodes: {},
-		}),
-	);
 
 	const cmd = new Execute();
 	// @ts-expect-error Protected property
