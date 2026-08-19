@@ -4,6 +4,7 @@ export type EventKind =
 	| 'tool'
 	| 'node'
 	| 'workflow'
+	| 'execution-error'
 	| 'suspension'
 	| 'hitl-response';
 
@@ -24,6 +25,7 @@ export interface TimelineItem {
 	toolCallId?: string;
 	toolInput?: unknown;
 	toolOutput?: unknown;
+	executionStatus?: 'error' | 'interrupted';
 	/** Terminal outcome of a tool execution. Human decisions are represented on HITL response items. */
 	toolOutcome?: ToolCallOutcome;
 	/** @deprecated Use `toolOutcome`. Kept for compatibility with existing timeline consumers. */

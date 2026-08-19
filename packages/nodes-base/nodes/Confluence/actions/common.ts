@@ -2,14 +2,19 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	INodeParameterResourceLocator,
 	INodeProperties,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
 
+export const PAGE_LIMIT = 250;
+
 /**
- * Shared page-selection fields: operations spread `spaceRLC`/`pageRLC` and add
- * their own displayOptions. An empty space leaves page lookups site-wide.
+ * Shared page-selection fields: operations spread `spaceRLC`/`pageRLC`/
+ * `bodyFormatOption`, add their own displayOptions, and resolve the selection
+ * with `resolvePageId`. An empty space leaves page lookups site-wide.
  */
 export const pageRLC: INodeProperties = {
 	displayName: 'Page',
@@ -134,6 +139,35 @@ export const spaceRLC: INodeProperties = {
 	],
 };
 
+/** `spaceRLC` for operations where the space is optional: the list gets an
+ * "All Spaces" reset entry and By ID accepts an empty value. */
+export const optionalSpaceRLC: INodeProperties = {
+	...spaceRLC,
+	modes: (spaceRLC.modes ?? []).map((mode) => {
+		if (mode.name === 'list') {
+			return {
+				...mode,
+				typeOptions: { ...mode.typeOptions, searchListMethod: 'searchSpacesWithAll' },
+			};
+		}
+		if (mode.name === 'id') {
+			return {
+				...mode,
+				validation: [
+					{
+						type: 'regex' as const,
+						properties: {
+							regex: '^[0-9]*$',
+							errorMessage: 'The space ID must be numeric (leave empty for all spaces)',
+						},
+					},
+				],
+			};
+		}
+		return mode;
+	}),
+};
+
 const spaceKeyCache = new Map<string, string>();
 
 export function clearSpaceKeyCache(): void {
@@ -170,4 +204,79 @@ export function extractNextCursor(response: IDataObject): string | undefined {
 	} catch {
 		return undefined;
 	}
+}
+
+function asString(value: unknown): string {
+	return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+}
+
+async function resolvePageIdByTitle(
+	this: IExecuteFunctions,
+	itemIndex: number,
+	title: string,
+	spaceId: string,
+	spaceLabel: string,
+): Promise<string> {
+	const qs: IDataObject = { title, limit: PAGE_LIMIT };
+	if (spaceId !== '') qs['space-id'] = spaceId;
+
+	const response = await confluenceApiRequest.call(this, 'GET', '/wiki/api/v2/pages', {}, qs);
+	const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
+
+	if (results.length === 0) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`No page titled "${title}" found${spaceId === '' ? '' : ` in space "${spaceLabel}"`}`,
+			{ itemIndex },
+		);
+	}
+	if (results.length > 1) {
+		const candidates = results
+			.slice(0, 5)
+			.map(
+				(page) =>
+					`"${asString(page.title)}" (space ${asString(page.spaceId)}, ID ${asString(page.id)})`,
+			)
+			.join(', ');
+		throw new NodeOperationError(
+			this.getNode(),
+			`Found ${results.length} pages titled "${title}": ${candidates}${results.length > 5 ? ', …' : ''}. Scope the lookup with the Space field, or use the page ID.`,
+			{ itemIndex },
+		);
+	}
+	return asString(results[0].id);
+}
+
+/** Resolves the shared Page parameter to a page ID, whatever the selected mode. */
+export async function resolvePageId(this: IExecuteFunctions, itemIndex: number): Promise<string> {
+	const pageRef = this.getNodeParameter('page', itemIndex) as INodeParameterResourceLocator;
+
+	if (pageRef.mode === 'title') {
+		const title = String(pageRef.value ?? '').trim();
+		if (title === '') {
+			throw new NodeOperationError(this.getNode(), 'The page title must not be empty', {
+				itemIndex,
+			});
+		}
+		const spaceRef = this.getNodeParameter(
+			'space',
+			itemIndex,
+			null,
+		) as INodeParameterResourceLocator | null;
+		const spaceId = spaceRef ? String(spaceRef.value ?? '').trim() : '';
+		const spaceLabel =
+			typeof spaceRef?.cachedResultName === 'string' && spaceRef.cachedResultName !== ''
+				? spaceRef.cachedResultName
+				: spaceId;
+		return await resolvePageIdByTitle.call(this, itemIndex, title, spaceId, spaceLabel);
+	}
+
+	// From List / By ID pass the value through; By URL extracts the ID via the mode's regex
+	const pageId = String(
+		this.getNodeParameter('page', itemIndex, '', { extractValue: true }) as string,
+	).trim();
+	if (pageId === '') {
+		throw new NodeOperationError(this.getNode(), "The 'Page' parameter is empty", { itemIndex });
+	}
+	return pageId;
 }

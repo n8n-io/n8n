@@ -500,8 +500,10 @@ export type {
 	InstanceAiSandboxProvider,
 	InstanceAiConnectionUpdate,
 	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolFilterResponse,
 	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpConnectionToolsResponse,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
@@ -710,4 +712,8 @@ export {
 	MOONSHOTAI_KIMI_K3_PROVIDER,
 	isMoonshotaiKimiK3ModelId,
 } from './constants/instance-ai-models';
-export { BLOCK_ACCESS_ASSIGNMENT } from './constants/role-mapping';
+export {
+	BLOCK_ACCESS_ASSIGNMENT,
+	SSO_ERROR_ACCESS_DENIED,
+	SSO_ERROR_QUERY_PARAM,
+} from './constants/role-mapping';

@@ -4,6 +4,8 @@ info:
   version: 0.0.0
 paths:
   /role-mapping-rules:
+    get:
+      $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
     post:
       $ref: ./handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
   /roles:
@@ -16,6 +18,8 @@ paths:
       $ref: ./handlers/roles/spec/paths/getRole.generated.yml
     put:
       $ref: ./handlers/roles/spec/paths/updateRole.generated.yml
+    delete:
+      $ref: ./handlers/roles/spec/paths/deleteRole.generated.yml
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml
@@ -25,6 +29,15 @@ paths:
   /workflows/{workflowId}:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflow.generated.yml
+  /workflows/{workflowId}/archive:
+    post:
+      $ref: ./handlers/workflows/spec/paths/archiveWorkflow.generated.yml
+  /workflows/{workflowId}/unarchive:
+    post:
+      $ref: ./handlers/workflows/spec/paths/unarchiveWorkflow.generated.yml
+  /workflows/{workflowId}/transfer:
+    put:
+      $ref: ./handlers/workflows/spec/paths/transferWorkflow.generated.yml
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
