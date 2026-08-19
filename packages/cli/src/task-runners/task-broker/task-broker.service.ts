@@ -278,7 +278,6 @@ export class TaskBroker {
 			return;
 		}
 
-		// Any message from the runner disproves the silence a report would be based on.
 		this.silentRunnersSince.delete(runnerId);
 
 		switch (message.type) {
@@ -787,21 +786,18 @@ export class TaskBroker {
 	}
 
 	/**
-	 * Counts consecutive acknowledgement timeouts per runner.
-	 * Timeouts firing within one acceptance window of the previous one are counted as a
-	 * single timeout, since acceptances pending during the same stall prove only one
-	 * missed acknowledgement.
-	 * Any application-level reply (accept, reject, defer, task completion) proves the
-	 * channel is alive and resets the count.
-	 * At the threshold, the runner is reported unresponsive exactly once,
-	 * so its transport can be torn down and the runner restarted.
+	 * Counts consecutive acknowledgement timeouts per runner and reports it unresponsive
+	 * once the threshold is reached. Timeouts within one acceptance window of the previous
+	 * one count as a single timeout, and any reply from the runner resets the count.
 	 */
 	private flagRunnerIfUnresponsive(runnerId: TaskRunner['id']) {
 		const now = Date.now();
 		const previous = this.consecutiveAcceptTimeouts.get(runnerId);
 		const acceptWindowMs = this.taskRunnersConfig.taskAcceptTimeout * Time.seconds.toMilliseconds;
 
-		if (previous && now - previous.lastTimeoutAt < acceptWindowMs) return;
+		if (previous && now - previous.lastTimeoutAt < acceptWindowMs) {
+			return;
+		}
 
 		const failures = (previous?.count ?? 0) + 1;
 
@@ -819,14 +815,8 @@ export class TaskBroker {
 	/**
 	 * Reports as unresponsive every reachable runner for `taskType` with no sign of life:
 	 * no pending offer, no in-flight task, no acceptance in progress, no message received.
-	 *
-	 * A healthy runner with spare capacity keeps offers pending, but is briefly offerless
-	 * between a task completing and the next offer, so one instantaneous sample can catch
-	 * a healthy runner. A runner is only reported once observed silent at two request
-	 * expiries spanning at least the minimum silence duration, which only a runner whose
-	 * offer loop has stalled can reach.
-	 *
-	 * A no-op when no runner is registered, which is normal while a runner is still starting up.
+	 * Since a healthy runner is briefly offerless between tasks, a runner is only reported
+	 * once observed silent at two request expiries at least the minimum silence duration apart.
 	 */
 	private flagSilentRunners(taskType: string) {
 		this.expireTasks();
