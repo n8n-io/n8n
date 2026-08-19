@@ -645,6 +645,7 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .messages {
 	flex: 1;
+	width: 100%;
 	min-height: 0;
 	overflow-y: auto;
 	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
@@ -653,6 +654,8 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	scrollbar-width: none;
+	max-width: 800px;
+	margin: 0 auto;
 
 	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
 

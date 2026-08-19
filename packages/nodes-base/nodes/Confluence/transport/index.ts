@@ -52,6 +52,20 @@ export async function confluenceApiRequest(
 			options,
 		);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		// Atlassian's v2 error envelope sits in response.data.errors; without this,
+		// NodeApiError stops at Axios's generic "Request failed with status code N"
+		const envelope = (error as { response?: { data?: { errors?: unknown } } }).response?.data
+			?.errors;
+		const first = Array.isArray(envelope)
+			? (envelope[0] as { title?: unknown; detail?: unknown })
+			: undefined;
+		const title = typeof first?.title === 'string' && first.title !== '' ? first.title : undefined;
+		const detail =
+			typeof first?.detail === 'string' && first.detail !== '' ? first.detail : undefined;
+		throw new NodeApiError(
+			this.getNode(),
+			error as JsonObject,
+			title ? { message: title, description: detail } : undefined,
+		);
 	}
 }

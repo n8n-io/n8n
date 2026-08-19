@@ -9,7 +9,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { MODAL_CONFIRM } from '@/app/constants';
 import TimeAgo from '@/app/components/TimeAgo.vue';
@@ -35,6 +35,7 @@ const emit = defineEmits<{
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	deleted: [agentId: string];
+	'new-chat': [agentId: string, projectId: string];
 }>();
 
 const locale = useI18n();
@@ -73,17 +74,31 @@ const favoriteStore = useFavoritesStore();
 const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));
 
 const actions = computed(() => {
-	const items: Array<{ value: string; label: string; divided?: boolean }> = [];
+	const items: Array<{ value: string; label: string; divided?: boolean }> = [
+		{
+			value: 'newChat',
+			label: locale.baseText('agents.list.actions.newChat' as BaseTextKey),
+		},
+	];
 
 	if (isPublished.value && canUnpublish.value) {
-		items.push({ value: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') });
+		items.push({
+			value: 'unpublish',
+			label: locale.baseText('agents.list.actions.unpublish'),
+			divided: true,
+		});
 	} else if (!isPublished.value && canPublish.value) {
-		items.push({ value: 'publish', label: locale.baseText('agents.list.actions.publish') });
+		items.push({
+			value: 'publish',
+			label: locale.baseText('agents.list.actions.publish'),
+			divided: true,
+		});
 	}
 
 	items.push({
 		value: 'toggleFavorite',
 		label: locale.baseText(isFavorite.value ? 'favorites.remove' : 'favorites.add'),
+		divided: !isPublished.value ? !canPublish.value : !canUnpublish.value,
 	});
 
 	if (isMcpEnabled.value && canUpdate.value) {
@@ -120,7 +135,9 @@ const formattedCreatedAtDate = computed(() => {
 });
 
 async function onAction(action: string) {
-	if (action === 'publish') {
+	if (action === 'newChat') {
+		emit('new-chat', props.agent.id, props.projectId);
+	} else if (action === 'publish') {
 		const updated = await publish(props.projectId, props.agent.id);
 		if (updated) emit('published', updated);
 	} else if (action === 'unpublish') {

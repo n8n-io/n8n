@@ -10,16 +10,19 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
+import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 
 describe('PollCursorService', () => {
 	const pollerStateRepository = mock<PollerStateRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
+	const eventService = mock<EventService>();
 
 	let txRunner: MockProxy<TransactionRunner>;
 
-	const buildService = (durableCursorsEnabled = true) => {
+	const buildService = (durableCursorsEnabled = true, durablePollersAllowed = true) => {
 		txRunner = mock<TransactionRunner>();
 		txRunner.run.mockImplementation(
 			async <T>(ctx: OperationContext, fn: (ctx: OperationContext) => Promise<T>) => await fn(ctx),
@@ -30,6 +33,8 @@ describe('PollCursorService', () => {
 			txRunner,
 			executionPersistence,
 			mock<PollerConfig>({ durableCursorsEnabled }),
+			mock<DurablePollerGateService>({ allowed: durablePollersAllowed }),
+			eventService,
 		);
 	};
 
@@ -47,9 +52,11 @@ describe('PollCursorService', () => {
 	});
 
 	describe('enabled', () => {
-		it('reports the configured flag', () => {
-			expect(buildService(true).enabled).toBe(true);
-			expect(buildService(false).enabled).toBe(false);
+		it('requires both the config flag and the duplicate-id gate', () => {
+			expect(buildService(true, true).enabled).toBe(true);
+			expect(buildService(true, false).enabled).toBe(false);
+			expect(buildService(false, true).enabled).toBe(false);
+			expect(buildService(false, false).enabled).toBe(false);
 		});
 	});
 
@@ -79,6 +86,20 @@ describe('PollCursorService', () => {
 
 		it('does not create a row when the flag is off and the node has never migrated', async () => {
 			const service = buildService(false);
+			pollerStateRepository.findCursor.mockResolvedValue(null);
+
+			await expect(service.resolveCursor('wf-1', 'node-1', {})).resolves.toEqual({
+				migrated: false,
+			});
+
+			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
+		});
+
+		// Pins the ticket's sticky-row remedy: with the gate refusing, a deleted
+		// `poller_state` row must never be recreated, even though the flag is on —
+		// otherwise deleting an offender's rows would not be terminal.
+		it('does not create a row when the flag is on but the gate refuses durable pollers', async () => {
+			const service = buildService(true, false);
 			pollerStateRepository.findCursor.mockResolvedValue(null);
 
 			await expect(service.resolveCursor('wf-1', 'node-1', {})).resolves.toEqual({
@@ -305,6 +326,121 @@ describe('PollCursorService', () => {
 				{},
 				fence,
 			);
+		});
+	});
+
+	describe('metrics events', () => {
+		const expectSettledEvent = (operation: string, result: string) => {
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('poll-cursor-commit-settled', {
+				operation,
+				result,
+				durationMs: expect.any(Number),
+			});
+		};
+
+		it('emits a success event when commitWithExecution advances the cursor', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
+			executionPersistence.create.mockResolvedValue('exec-1');
+
+			await service.commitWithExecution({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				cursor: { lastItemId: 'b' },
+				payload: payload(),
+			});
+
+			expectSettledEvent('with_execution', 'success');
+		});
+
+		it('emits a fence_rejected event when the fence rejects commitWithExecution', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(false);
+
+			await service.commitWithExecution({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				cursor: { lastItemId: 'b' },
+				payload: payload(),
+				fence: { taskId: 'task-1', leaseEpoch: 3 },
+			});
+
+			expectSettledEvent('with_execution', 'fence_rejected');
+		});
+
+		it('emits a failure event when commitWithExecution throws', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockRejectedValue(new Error('write failed'));
+
+			await expect(
+				service.commitWithExecution({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					cursor: { lastItemId: 'b' },
+					payload: payload(),
+				}),
+			).rejects.toThrow('write failed');
+
+			expectSettledEvent('with_execution', 'failure');
+		});
+
+		it('emits a success event when commitCursorOnly advances the cursor', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
+
+			await service.commitCursorOnly({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				cursor: { lastItemId: 'b' },
+			});
+
+			expectSettledEvent('cursor_only', 'success');
+		});
+
+		it('emits a fence_rejected event when the fence rejects commitCursorOnly', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(false);
+
+			await service.commitCursorOnly({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				cursor: { lastItemId: 'b' },
+				fence: { taskId: 'task-1', leaseEpoch: 3 },
+			});
+
+			expectSettledEvent('cursor_only', 'fence_rejected');
+		});
+
+		it('does not let a throwing event sink fail a commit', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
+			eventService.emit.mockImplementation(() => {
+				throw new Error('metrics sink failed');
+			});
+
+			await expect(
+				service.commitCursorOnly({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					cursor: { lastItemId: 'b' },
+				}),
+			).resolves.toBe(true);
+		});
+
+		it('emits a failure event when commitCursorOnly throws', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockRejectedValue(new Error('write failed'));
+
+			await expect(
+				service.commitCursorOnly({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					cursor: { lastItemId: 'b' },
+				}),
+			).rejects.toThrow('write failed');
+
+			expectSettledEvent('cursor_only', 'failure');
 		});
 	});
 });

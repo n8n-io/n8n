@@ -360,7 +360,7 @@ describe('AgentKnowledgeService', () => {
 		expect(agentKnowledgeFileStore.write).not.toHaveBeenCalled();
 	});
 
-	it('deletes the DB row and its blob', async () => {
+	it('deletes the final file, its blob, and the knowledge sandbox', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		await agentFileRepository.save(makeAgentFile({ id: 'file-1', storedAt: 'fs' }));
 
@@ -370,6 +370,11 @@ describe('AgentKnowledgeService', () => {
 		expect(agentKnowledgeFileStore.delete).toHaveBeenCalledWith([
 			{ storedAt: 'fs', storageKey: `agents/${agentId}/knowledge-files/file-1/content` },
 		]);
+		expect(agentSandboxRuntimeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+		);
+		expect(agentKnowledgeMirrorService.prewarmMirrorInBackground).not.toHaveBeenCalled();
 	});
 
 	it('logs blob deletion failures without restoring the DB row', async () => {
@@ -407,15 +412,27 @@ describe('AgentKnowledgeService', () => {
 		]);
 	});
 
-	it('delegates warmup to the sandbox service for an unpublished agent', async () => {
+	it('warms the knowledge sandbox for an unpublished agent', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: agentId,
 			projectId,
 			activeVersionId: null,
 		} as never);
+		await agentFileRepository.save(makeAgentFile());
 
-		await expect(service.warmSandbox(agentId, projectId)).resolves.toBeUndefined();
-		expect(agentSandboxRuntimeService.warmSandbox).toHaveBeenCalledWith(projectId, agentId);
+		await expect(service.warmKnowledgeSandbox(agentId, projectId)).resolves.toBeUndefined();
+		expect(agentSandboxRuntimeService.warmKnowledgeSandbox).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+		);
+	});
+
+	it('does not warm the knowledge sandbox without files', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+
+		await expect(service.warmKnowledgeSandbox(agentId, projectId)).resolves.toBeUndefined();
+
+		expect(agentSandboxRuntimeService.warmKnowledgeSandbox).not.toHaveBeenCalled();
 	});
 
 	it('pre-warms the mirror after a successful upload', async () => {
@@ -443,13 +460,14 @@ describe('AgentKnowledgeService', () => {
 		);
 	});
 
-	it('pre-warms the mirror after a file deletion', async () => {
+	it('pre-warms the mirror when files remain after a deletion', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: agentId,
 			projectId,
 			activeVersionId: 'version-1',
 		} as never);
 		await agentFileRepository.save(makeAgentFile({ id: 'file-1' }));
+		await agentFileRepository.save(makeAgentFile({ id: 'file-2', fileName: 'second.txt' }));
 
 		await service.deleteFile(agentId, projectId, 'file-1');
 
@@ -457,5 +475,6 @@ describe('AgentKnowledgeService', () => {
 			projectId,
 			agentId,
 		);
+		expect(agentSandboxRuntimeService.destroyKnowledgeSandbox).not.toHaveBeenCalled();
 	});
 });
