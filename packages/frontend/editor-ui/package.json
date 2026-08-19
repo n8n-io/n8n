@@ -92,7 +92,7 @@
     "highlight.js": "catalog:frontend",
     "humanize-duration": "^3.27.2",
     "jsonpath-plus": "^10.3.0",
-    "katex": "0.16.27",
+    "katex": "0.18.2",
     "lodash": "catalog:",
     "luxon": "catalog:",
     "markdown-it": "catalog:",
