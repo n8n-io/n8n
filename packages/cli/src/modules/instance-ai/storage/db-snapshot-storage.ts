@@ -173,17 +173,18 @@ export class DbSnapshotStorage {
 	}
 
 	/**
-	 * Snapshots written inside the window, oldest first. The window is the span
-	 * of the message page being rendered: a snapshot outside it has no message
-	 * to pair with, and `parseStoredMessages` would surface it as a message of
-	 * its own. Passing `{}` reads the whole thread.
+	 * Snapshots written inside the half-open window `[since, before)`, oldest
+	 * first. The window is the span of the message page being rendered: a
+	 * snapshot outside it has no message to pair with, and `parseStoredMessages`
+	 * would surface it as a message of its own. Passing `{}` reads the whole
+	 * thread.
 	 *
 	 * `(threadId, createdAt)` is indexed, so the bounded read is a range scan
 	 * and the `tree` column is only parsed for the rows the page needs.
 	 */
 	async getForWindow(
 		threadId: string,
-		window: { since?: Date; until?: Date } = {},
+		window: { since?: Date; before?: Date } = {},
 	): Promise<AgentTreeSnapshot[]> {
 		const rows = await this.repo.findInWindow(threadId, window);
 		return rows.map((r) => ({

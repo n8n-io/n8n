@@ -14,7 +14,7 @@ function createdAtOperator(find: ReturnType<typeof vi.fn>) {
 
 describe('InstanceAiRunSnapshotRepository.findInWindow', () => {
 	const since = new Date('2026-01-01T00:00:00.000Z');
-	const until = new Date('2026-01-02T00:00:00.000Z');
+	const before = new Date('2026-01-02T00:00:00.000Z');
 
 	function createRepo() {
 		const repo = Object.create(
@@ -25,12 +25,20 @@ describe('InstanceAiRunSnapshotRepository.findInWindow', () => {
 		return { repo, find };
 	}
 
-	it('bounds both sides when the window is closed', async () => {
+	it('bounds both sides when the window is closed, upper bound exclusive', async () => {
+		// Half-open: the next page owns a snapshot written exactly at the
+		// boundary, so no snapshot is claimed by two pages.
 		const { repo, find } = createRepo();
 
-		await repo.findInWindow('thread-1', { since, until });
+		await repo.findInWindow('thread-1', { since, before });
 
-		expect(createdAtOperator(find)).toEqual({ type: 'between', value: [since, until] });
+		expect(createdAtOperator(find)).toEqual({
+			type: 'and',
+			value: [
+				expect.objectContaining({ type: 'moreThanOrEqual', value: since }),
+				expect.objectContaining({ type: 'lessThan', value: before }),
+			],
+		});
 	});
 
 	it('bounds only the lower side for the newest page', async () => {
@@ -44,9 +52,9 @@ describe('InstanceAiRunSnapshotRepository.findInWindow', () => {
 	it('bounds only the upper side when there is no lower bound', async () => {
 		const { repo, find } = createRepo();
 
-		await repo.findInWindow('thread-1', { until });
+		await repo.findInWindow('thread-1', { before });
 
-		expect(createdAtOperator(find)).toEqual({ type: 'lessThanOrEqual', value: until });
+		expect(createdAtOperator(find)).toEqual({ type: 'lessThan', value: before });
 	});
 
 	it('reads the whole thread for an open window', async () => {

@@ -106,10 +106,10 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	}
 
 	/**
-	 * Distinct runs with at least one fact inside the window — the runs whose
-	 * trees a paged history read may need. A run that straddles a bound is
-	 * included, so the caller can widen to whole runs rather than folding half
-	 * of one.
+	 * Distinct runs with at least one fact inside the half-open window
+	 * `[since, before)` — the runs whose trees a paged history read may need. A
+	 * run that straddles a bound is included, so the caller can widen to whole
+	 * runs rather than folding half of one.
 	 *
 	 * Selects no `payload`, so it does not pay the JSON cost of the rows it
 	 * scans. The scan itself is bounded by the thread (PK-led); if it ever shows
@@ -118,14 +118,14 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 */
 	async findRunIdsInWindow(
 		threadId: string,
-		window: { since?: Date; until?: Date },
+		window: { since?: Date; before?: Date },
 	): Promise<string[]> {
 		const qb = this.createQueryBuilder('e')
 			.select('e.runId', 'runId')
 			.distinct(true)
 			.where('e.threadId = :threadId', { threadId });
 		if (window.since) qb.andWhere('e.createdAt >= :since', { since: window.since });
-		if (window.until) qb.andWhere('e.createdAt <= :until', { until: window.until });
+		if (window.before) qb.andWhere('e.createdAt < :before', { before: window.before });
 		const rows = await qb.getRawMany<{ runId: string }>();
 		return rows.map((r) => r.runId);
 	}

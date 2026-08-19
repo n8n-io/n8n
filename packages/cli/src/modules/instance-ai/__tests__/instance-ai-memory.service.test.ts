@@ -67,11 +67,11 @@ function installLogDouble(rows: LogRow[] = []): void {
 			}),
 	);
 	mockEventLogRepository.findRunIdsInWindow.mockImplementation(
-		async (_threadId: string, window: { since?: Date; until?: Date }) => [
+		async (_threadId: string, window: { since?: Date; before?: Date }) => [
 			...new Set(
 				logRows
 					.filter((row) => !window.since || row.createdAt >= window.since)
-					.filter((row) => !window.until || row.createdAt <= window.until)
+					.filter((row) => !window.before || row.createdAt < window.before)
 					.map((row) => row.runId),
 			),
 		],
@@ -1145,16 +1145,67 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			expect(result.messages.some((m) => m.runId === 'run_live')).toBe(true);
 		});
 
-		it('stops an older page at its newest message', async () => {
+		it('stops an older page where the next page starts, not at its own newest message', async () => {
+			// A turn's tree is written when its run ends — after the assistant row
+			// it pairs with. Clipping at the page's own newest message would drop
+			// the tree of the turn the page ends on, and no other page would claim
+			// it either.
+			const nextPageAt = new Date('2026-01-01T00:00:05.000Z');
+			mockListMessages.mockResolvedValue({
+				messages: [userMessage, assistantMessage],
+				newerBoundaryAt: nextPageAt,
+			});
 			setLogRows([...runRows('run_recent', at)]);
 
 			const service = createService({ durableLog: true });
 			await service.getRichMessages('user-1', 'thread-1', { page: 1 });
 
+			expect(mockListMessages).toHaveBeenCalledWith(
+				expect.objectContaining({ page: 1, withNewerBoundary: true }),
+			);
 			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
 				since: userMessage.createdAt,
-				until: assistantMessage.createdAt,
+				before: nextPageAt,
 			});
+		});
+
+		it('keeps the tree of the turn an older page ends on', async () => {
+			// The stored-snapshot path (durable log off) reads by snapshot
+			// createdAt, which lands just after the assistant row it pairs with.
+			const snapshotAt = new Date('2026-01-01T00:00:01.300Z');
+			const nextPageAt = new Date('2026-01-01T00:00:05.000Z');
+			const tree = makeTree();
+			mockListMessages.mockResolvedValue({
+				messages: [userMessage, assistantMessage],
+				newerBoundaryAt: nextPageAt,
+			});
+			mockDbSnapshotStorage.getForWindow.mockResolvedValue([
+				{ tree, runId: 'run_abc', createdAt: snapshotAt, updatedAt: snapshotAt },
+			]);
+
+			const service = createService();
+			const result = await service.getRichMessages('user-1', 'thread-1', { page: 1 });
+
+			expect(mockDbSnapshotStorage.getForWindow).toHaveBeenCalledWith('thread-1', {
+				since: userMessage.createdAt,
+				before: nextPageAt,
+			});
+			expect(result.messages[1].agentTree).toBe(tree);
+		});
+
+		it('hydrates nothing for an out-of-range older page', async () => {
+			// No message rows to pair a tree with, and no bounds to read one
+			// with: an unbounded read here would hydrate the whole thread to
+			// render nothing.
+			mockListMessages.mockResolvedValue({ messages: [] });
+			setLogRows([...runRows('run_recent', at)]);
+
+			const service = createService({ durableLog: true });
+			const result = await service.getRichMessages('user-1', 'thread-1', { page: 3 });
+
+			expect(mockEventLogRepository.findRunIdsInWindow).not.toHaveBeenCalled();
+			expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
+			expect(result.messages).toEqual([]);
 		});
 
 		it('widens the window to whole message groups', async () => {
@@ -1162,6 +1213,10 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			// message. Folding the group without it would drop its work from the
 			// turn's tree, so the window has to pull the sibling back in.
 			const afterPage = new Date('2026-01-01T00:00:30.000Z');
+			mockListMessages.mockResolvedValue({
+				messages: [userMessage, assistantMessage],
+				newerBoundaryAt: new Date('2026-01-01T00:00:05.000Z'),
+			});
 			setLogRows([...runRows('run_parent', at, 'mg-1'), ...runRows('run_bg', afterPage, 'mg-1')]);
 
 			const service = createService({ durableLog: true });
@@ -1189,6 +1244,19 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {});
 			expect(result.messages).toHaveLength(1);
 			expect(result.messages[0].runId).toBe('run_live');
+		});
+
+		it('reads unbounded above on the newest page', async () => {
+			// Page 0 has no newer neighbour, so nothing clips the in-flight turn.
+			mockListMessages.mockResolvedValue({ messages: [userMessage, assistantMessage] });
+			setLogRows([...runRows('run_recent', at)]);
+
+			const service = createService({ durableLog: true });
+			await service.getRichMessages('user-1', 'thread-1');
+
+			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
+				since: userMessage.createdAt,
+			});
 		});
 
 		it('windows the stored-snapshot path too', async () => {

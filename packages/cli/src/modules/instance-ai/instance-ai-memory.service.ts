@@ -84,10 +84,12 @@ function messageCreatedAtMs(message: AgentDbMessage): number {
 	return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-/** Span of a returned message page — the only trees a read needs to hydrate. */
+/** Span of a returned message page — the only trees a read needs to hydrate.
+ *  Half-open (`[since, before)`) so consecutive pages partition the thread:
+ *  every tree is claimed by exactly one page, none by two or by none. */
 interface HistoryWindow {
 	since?: Date;
-	until?: Date;
+	before?: Date;
 }
 
 /**
@@ -98,17 +100,27 @@ interface HistoryWindow {
  *
  * The newest page keeps an open upper bound: an in-flight run's message rows
  * are not written until its turn commits, so clipping there would hide the turn
- * the user is watching. Older pages stop at their newest message — anything
- * after it belongs to a newer page.
+ * the user is watching.
  *
- * An empty page carries no bounds at all. A thread whose only activity is a
- * first, still-running turn has no message rows yet, and must still render.
+ * An older page stops where the next page starts — NOT at its own newest
+ * message. A turn's tree is written when its run ends, after the assistant row
+ * it pairs with (the parser pairs a tree to the newest message at or before
+ * it), so a bound at the page's own newest message drops the tree of the turn
+ * the page ends on and no other page claims it either.
+ *
+ * An empty newest page carries no bounds at all: a thread whose only activity
+ * is a first, still-running turn has no message rows yet and must still render.
+ * An empty older page is out of range — nothing to pair a tree with, and no
+ * bounds to read it with, so it hydrates nothing (`undefined`).
  */
-function historyWindow(messages: AgentDbMessage[], page: number): HistoryWindow {
-	if (messages.length === 0) return {};
+function historyWindow(
+	messages: AgentDbMessage[],
+	page: number,
+	newerBoundaryAt?: Date,
+): HistoryWindow | undefined {
+	if (messages.length === 0) return page === 0 ? {} : undefined;
 	const since = new Date(messageCreatedAtMs(messages[0]));
-	if (page === 0) return { since };
-	return { since, until: new Date(messageCreatedAtMs(messages[messages.length - 1])) };
+	return newerBoundaryAt ? { since, before: newerBoundaryAt } : { since };
 }
 
 /**
@@ -419,16 +431,20 @@ export class InstanceAiMemoryService {
 			excludeMessageGroupIds?: string[];
 		},
 	): Promise<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>> {
+		const page = options?.page ?? 0;
 		const result = await this.agentMemory.listMessages({
 			threadId,
 			limit: options?.limit ?? 50,
-			page: options?.page ?? 0,
+			page,
+			// The next page's first message is this page's upper bound.
+			withNewerBoundary: true,
 		});
 
 		// Hydrate trees only for the page we are about to render.
-		const pageWindow = historyWindow(result.messages, options?.page ?? 0);
+		const pageWindow = historyWindow(result.messages, page, result.newerBoundaryAt);
 
 		const loadStoredSnapshots = async (): Promise<AgentTreeSnapshot[]> => {
+			if (!pageWindow) return [];
 			let snapshots = await this.dbSnapshotStorage
 				.getForWindow(threadId, pageWindow)
 				.catch((error) => {
@@ -452,20 +468,26 @@ export class InstanceAiMemoryService {
 		// in-flight message merge below.
 		const activeCheckpoints = await this.loadActiveCheckpoints(threadId);
 
+		// No window means an out-of-range older page: it has no message rows for
+		// a tree to pair with, and hydrating it unbounded would read the whole
+		// thread to render nothing.
+		//
 		// Durable-log flag (fold-on-read): history trees derive from the event
 		// log; the stored snapshots (the flag-off and rollback path) are only
 		// loaded when the fold needs its pre-log/failure fallback, keeping the
 		// heaviest instance-ai table out of the flag-on hot path.
-		const snapshots = this.instanceAiConfig.durableLog
-			? await this.foldSnapshotsFromLog(
-					threadId,
-					loadStoredSnapshots,
-					collectSuspendedHostRunIds(activeCheckpoints),
-					pageWindow,
-					options?.excludeRunIds,
-					options?.excludeMessageGroupIds,
-				)
-			: await loadStoredSnapshots();
+		const snapshots = !pageWindow
+			? []
+			: this.instanceAiConfig.durableLog
+				? await this.foldSnapshotsFromLog(
+						threadId,
+						loadStoredSnapshots,
+						collectSuspendedHostRunIds(activeCheckpoints),
+						pageWindow,
+						options?.excludeRunIds,
+						options?.excludeMessageGroupIds,
+					)
+				: await loadStoredSnapshots();
 
 		// Surface the in-flight messages from any suspended checkpoint. The
 		// user's prompt is persisted to memory on receipt, but the intermediate
