@@ -97,8 +97,12 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 	/**
 	 * Freeze the live published pointer onto the child row at approval time.
 	 * Read from the workflow row, which both publication paths maintain — the
-	 * publication-service table exists only on the outbox path. Both the SELECT
-	 * and UPDATE go through `ctx` so they share the lock transaction.
+	 * publication-service table exists only on the outbox path, so reading it here
+	 * would freeze null everywhere else. On the outbox path the row can run ahead
+	 * of the wired triggers while the outbox drains, but the committed pointer is
+	 * what every surface (canvas, publish timeline, the feed's published entry)
+	 * already calls "published". Both the SELECT and UPDATE go through `ctx` so
+	 * they share the lock transaction.
 	 */
 	async captureApprovalBaseline(
 		input: {
