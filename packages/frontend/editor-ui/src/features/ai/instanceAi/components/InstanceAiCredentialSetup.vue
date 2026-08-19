@@ -85,8 +85,9 @@ function initSelections() {
 	for (const req of props.credentialRequests) {
 		if (selections.value[req.credentialType] !== undefined) continue;
 
-		if (req.existingCredentials?.length === 1) {
-			// Auto-select when exactly one credential available
+		if (req.existingCredentials?.length === 1 && !req.preferNew) {
+			// Auto-select when exactly one credential available — unless the user
+			// asked to create a new one, which this card must not answer for them.
 			selections.value[req.credentialType] = req.existingCredentials[0].id;
 		} else {
 			selections.value[req.credentialType] = null;
@@ -647,7 +648,11 @@ async function handleSetupAutomatically() {
 							standalone
 							hide-issues
 							:instance-ai-credential-help="instanceAiCredentialHelp"
-							:skip-auto-select="GENERIC_AUTH_CREDENTIAL_TYPES.has(currentRequest.credentialType)"
+							:skip-auto-select="
+								GENERIC_AUTH_CREDENTIAL_TYPES.has(currentRequest.credentialType) ||
+								currentRequest.preferNew === true
+							"
+							:prefer-new-credential="currentRequest.preferNew === true"
 							:credential-setup-hint="currentRequest.setupHint"
 							:credentials-field-label="credentialsFieldLabel"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"

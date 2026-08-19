@@ -39,6 +39,21 @@ describe('useWorkflowSetupSections', () => {
 		expect(sections.value[0].credentialType).toBe('httpBasicAuth');
 	});
 
+	it('carries preferNewCredential from the setup request onto the section', () => {
+		const setupRequests = ref([
+			makeSetupRequest({ credentialType: 'slackApi', preferNewCredential: true }),
+			makeSetupRequest({
+				credentialType: 'telegramApi',
+				node: { id: 'telegram', name: 'Telegram' },
+			}),
+		]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value[0].preferNewCredential).toBe(true);
+		expect(sections.value[1].preferNewCredential).toBeUndefined();
+	});
+
 	it('creates sections for editable parameter-only setup requests', () => {
 		const setupRequests = ref([
 			makeSetupRequest({
