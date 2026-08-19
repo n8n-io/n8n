@@ -940,7 +940,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// covered with n8n credits are exempt — they run as built.
 			const chatModelBlocking: ValidationWarning[] = [];
 			for (const message of buildChatModelProviderMismatchWarnings(
-				json.nodes ?? [],
+				(json.nodes ?? []).filter((node) => !node.disabled),
 				[...credentialMap.values()].flat(),
 				mockResult.resolvedCredentialsByNode,
 			)) {

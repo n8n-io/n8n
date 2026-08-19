@@ -225,5 +225,21 @@ describe('downgradeUnchangedNodeBlockers', () => {
 		]);
 		const modifiedResult = downgradeUnchangedNodeBlockers([chatModelWarning], modifiedBuilt, saved);
 		expect(modifiedResult[0].severity).toBe('error');
+
+		const rewiredCredsBuilt = makeWorkflow([
+			makeNode({
+				id: 'cm-1',
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				parameters: { model: 'gpt-4o-mini' },
+				credentials: { openAiApi: { id: 'new-cred', name: 'New OpenAI' } },
+			}),
+		]);
+		const rewiredCredsResult = downgradeUnchangedNodeBlockers(
+			[chatModelWarning],
+			rewiredCredsBuilt,
+			saved,
+		);
+		expect(rewiredCredsResult[0].severity).toBe('error');
 	});
 });

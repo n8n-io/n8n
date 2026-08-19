@@ -131,7 +131,7 @@ export function buildChatModelProviderHint(
  * user's intent.
  */
 export function buildChatModelProviderMismatchWarnings(
-	nodes: ReadonlyArray<{ name?: string; type?: string }>,
+	nodes: ReadonlyArray<{ name?: string; type?: string; disabled?: boolean }>,
 	storedCredentials: readonly CredentialSummary[],
 	resolvedCredentialsByNode: Record<
 		string,
@@ -141,6 +141,7 @@ export function buildChatModelProviderMismatchWarnings(
 	const storedTypes = new Set(storedCredentials.map((cred) => cred.type));
 	const warnings: string[] = [];
 	for (const node of nodes) {
+		if (node.disabled) continue;
 		const entry = resolveChatModelCatalogEntry(node.type);
 		if (!entry) continue;
 		// Own-key check: a node named "constructor" or "__proto__" must not
