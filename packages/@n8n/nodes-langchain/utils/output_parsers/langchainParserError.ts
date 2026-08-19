@@ -77,6 +77,7 @@ function wrapAsNodeOperationError(
 	const options = {
 		message,
 		description: className ? `Original error: ${className}` : undefined,
+		level: 'error' as const,
 		...(itemIndex !== undefined ? { itemIndex } : {}),
 	};
 	if (error instanceof Error) {
@@ -92,14 +93,18 @@ export function wrapLangChainParserError(
 	options?: { enrichNonParserErrors?: boolean },
 ): Error {
 	if (!isLangChainParserError(error)) {
-		// V1/V2 path (default): preserve existing behaviour.
+		// Default: callers that have not opted in (the chain nodes, ReAct and
+		// Conversational agents) keep the error exactly as it was thrown.
 		if (!options?.enrichNonParserErrors) {
 			return error instanceof Error
 				? error
 				: new Error(getErrorProperty(error, 'message') ?? String(error));
 		}
 
-		// Agent V3 path
+		// Opt-in enrichment (Tools Agent, all versions): wrap plain errors so a
+		// useless message like "Error" never reaches the user, and the original
+		// error survives as `cause` for failure-type telemetry. Errors that are
+		// already ours carry a meaningful message, so leave them alone.
 		if (error instanceof BaseError) return error;
 		return wrapAsNodeOperationError(error, node, itemIndex);
 	}
