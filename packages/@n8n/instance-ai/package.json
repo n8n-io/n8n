@@ -45,12 +45,20 @@
       "import": "./dist/parsers/index.js",
       "types": "./dist/parsers/index.d.ts"
     },
+    "./confirmation-payload": {
+      "require": "./dist/runtime/confirmation-payload.js",
+      "import": "./dist/runtime/confirmation-payload.js",
+      "types": "./dist/runtime/confirmation-payload.d.ts"
+    },
     "./evaluations": "./evaluations/index.ts"
   },
   "typesVersions": {
     "*": {
       "parsers": [
         "dist/parsers/index.d.ts"
+      ],
+      "confirmation-payload": [
+        "dist/runtime/confirmation-payload.d.ts"
       ]
     }
   },

@@ -69,7 +69,7 @@ const gatewayConfirmationRequiredWirePayloadSchema =
 		options: z.array(z.string()),
 	});
 
-const gatewayConfirmationResumeSchema = z.object({
+export const gatewayConfirmationResumeSchema = z.object({
 	approved: z.boolean(),
 	resourceDecision: gatewayResourceDecisionSchema.optional(),
 });
