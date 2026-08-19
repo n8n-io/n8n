@@ -232,9 +232,12 @@
 	--spacing--4xl: 8rem; /** 128px **/
 	--spacing--5xl: 16rem; /** 256px **/
 
-	--font-family: Baumer, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	--font-family:
+		Baumer, 'EK Baumer Uniwidth UNLICENSED', 'EK Baumer Uniwidth', -apple-system,
+		BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	--font-family--monospace:
-		'Baumer Mono', ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+		'Baumer Mono', 'EK Baumer Mono UNLICENSED', 'EK Baumer Mono', ui-monospace, Menlo, Consolas,
+		'DejaVu Sans Mono', monospace;
 
 	--font-size--4xs: 0.5rem;
 	--font-size--3xs: 0.625rem;

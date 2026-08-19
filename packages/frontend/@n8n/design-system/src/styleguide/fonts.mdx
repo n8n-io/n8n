@@ -9,7 +9,10 @@ import FontsCharacterGrid from './components/FontsCharacterGrid.vue';
 <div class="sb-unstyled">
 	<FontsCharacterGrid
 		previous={{ label: 'Inter (previous)', fontFamily: 'InterVariable, sans-serif' }}
-		next={{ label: 'Baumer (new)', fontFamily: 'Baumer, sans-serif' }}
+		next={{
+			label: 'Baumer (new)',
+			fontFamily: "Baumer, 'EK Baumer Uniwidth UNLICENSED', 'EK Baumer Uniwidth', sans-serif",
+		}}
 	/>
 
     <FontsCharacterGrid
@@ -19,7 +22,8 @@ import FontsCharacterGrid from './components/FontsCharacterGrid.vue';
     	}}
     	next={{
     		label: 'Baumer Mono (new)',
-    		fontFamily: "'Baumer Mono', ui-monospace, monospace",
+    		fontFamily:
+    			"'Baumer Mono', 'EK Baumer Mono UNLICENSED', 'EK Baumer Mono', ui-monospace, monospace",
     	}}
     />
 
