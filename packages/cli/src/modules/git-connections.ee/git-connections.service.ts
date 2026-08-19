@@ -117,9 +117,12 @@ export class GitConnectionsService {
 
 	async push(connectionId: string) {
 		this.logger.info(`Pushing all projects to connection ${connectionId}`);
+		throw new Error('Not implemented');
 
+		// TODO: Implement this
 		// check that the connection credentials are valid
-		// export all the project to the connection repository folder
+		// if the repository folder does not exist, clone it
+		// export all the projects to the repository folder
 		// push to the remote repository
 	}
 
