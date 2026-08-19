@@ -122,9 +122,7 @@ describe('searchWorkflows folder filter', () => {
 
 		expect(byName.get('Slack trigger')).toBe(triggers.id);
 		expect(byName.get('Nested slack trigger')).toBe(nested.id);
-		expect(result.data.find((workflow) => workflow.name === 'Root flow')).not.toHaveProperty(
-			'parentFolderId',
-		);
+		expect(byName.get('Root flow')).toBeNull();
 	});
 
 	// A workflow shared into a member's personal project keeps the parent folder of
@@ -148,6 +146,8 @@ describe('searchWorkflows folder filter', () => {
 		expect(found.data.map((workflow) => workflow.name)).toEqual(['Shared team flow']);
 		const reportedFolderId = found.data[0].parentFolderId;
 		expect(reportedFolderId).toBe(teamFolder.id);
+		// Narrow for the round trip below; the assertion above is the real check.
+		if (reportedFolderId === null) throw new Error('expected a folder id to feed back');
 
 		// The id the tool just reported must be usable as a filter, and must not
 		// widen the member's view to the workflow they cannot read.

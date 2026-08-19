@@ -24,6 +24,12 @@ import { createLimitSchema, tagSchema, toTagSummary } from './schemas';
 
 const MAX_RESULTS = 200;
 
+// Folder ids are nanoids, but imported folders can carry an id minted elsewhere,
+// which is why `folderIdSchema` allows up to 36 characters. Match that tolerance
+// and only reject shapes no id can take — an empty string, or the folder *name*
+// an LLM may send instead of an id.
+const FOLDER_ID_PATTERN = /^[A-Za-z0-9-]+$/;
+
 const DEFAULT_SORT_BY: SearchWorkflowsSortBy = 'updatedAt:desc';
 
 const inputSchema = {
@@ -41,6 +47,9 @@ const inputSchema = {
 			`Sort order for results (default: ${DEFAULT_SORT_BY}). Use updatedAt:desc to find the most recently edited workflows first.`,
 		),
 	folderId: folderIdSchema
+		.refine((id) => id === PROJECT_ROOT || FOLDER_ID_PATTERN.test(id), {
+			message: `Must be a folder id, or "${PROJECT_ROOT}" for the project root`,
+		})
 		.optional()
 		.describe(
 			`Filter by folder. Pass a parentFolderId from an earlier result to find a workflow's siblings, or — when search_folders is available — use it to resolve a folder name to an id first. Pass "${PROJECT_ROOT}" for workflows that sit at the project root rather than in a folder.`,
@@ -79,9 +88,9 @@ const outputSchema = {
 					availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
 					parentFolderId: z
 						.string()
-						.optional()
+						.nullable()
 						.describe(
-							'The id of the folder holding the workflow, omitted when it sits at the project root. Pass it back as folderId to find related workflows.',
+							'The id of the folder holding the workflow, or null when it sits at the project root. Pass it back as folderId to find related workflows.',
 						),
 					tags: z.array(tagSchema).describe('Tags assigned to the workflow'),
 				})
@@ -313,9 +322,7 @@ export async function searchWorkflows(
 			updatedAt: updatedAt.toISOString(),
 			triggerCount,
 			availableInMCP: settings?.availableInMCP ?? false,
-			// Omitted rather than null: most workflows on a folder-less instance would
-			// otherwise carry a dead field on every row of every search.
-			...(parentFolder ? { parentFolderId: parentFolder.id } : {}),
+			parentFolderId: parentFolder?.id ?? null,
 			tags: toTagSummary(workflowTags),
 		};
 	});

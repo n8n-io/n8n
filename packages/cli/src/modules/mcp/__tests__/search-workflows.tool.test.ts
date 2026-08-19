@@ -128,6 +128,7 @@ describe('search-workflows MCP tool', () => {
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
 					availableInMCP: true,
+					parentFolderId: null,
 					tags: [],
 				},
 				{
@@ -139,6 +140,7 @@ describe('search-workflows MCP tool', () => {
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
 					availableInMCP: true,
+					parentFolderId: null,
 					tags: [],
 				},
 			]);
@@ -406,7 +408,8 @@ describe('search-workflows MCP tool', () => {
 			);
 
 			expect(result.data[0].parentFolderId).toBe('folder-1');
-			expect(result.data[1]).not.toHaveProperty('parentFolderId');
+			// null rather than absent, matching what get_workflow_details reports.
+			expect(result.data[1].parentFolderId).toBeNull();
 			const [, optionsArg] = (workflowService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.select).toMatchObject({ parentFolder: true });
 		});
@@ -448,6 +451,40 @@ describe('search-workflows MCP tool', () => {
 		});
 	});
 
+	describe('input schema', () => {
+		const folderIdSchemaOf = () => {
+			const workflowService = mockInstance(WorkflowService, { getMany: vi.fn() });
+			const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+			const tool = createSearchWorkflowsTool(
+				user,
+				workflowService as unknown as WorkflowService,
+				folderFinderService,
+				telemetry,
+			);
+			return z.object(tool.config.inputSchema as z.ZodRawShape).shape.folderId;
+		};
+
+		// Rejecting these at the schema saves a database lookup for a value that
+		// could never be an id — an LLM sending a folder name, most likely.
+		test.each([
+			['an empty string', ''],
+			['a blank string', ' '],
+			['a folder name', 'My folder'],
+			['a folder path', 'Triggers/Nested'],
+		])('rejects %s', (_label, value) => {
+			expect(folderIdSchemaOf().safeParse(value).success).toBe(false);
+		});
+
+		test.each([
+			['a folder id', 'uCTsB9uJaYgN4RYF'],
+			['an id minted elsewhere', '0195b8d6-7c3f-7a1e-9f2b-3d4e5f6a7b8c'],
+			['the project root sentinel', PROJECT_ROOT],
+			['nothing at all', undefined],
+		])('accepts %s', (_label, value) => {
+			expect(folderIdSchemaOf().safeParse(value).success).toBe(true);
+		});
+	});
+
 	describe('output schema', () => {
 		// Regression: the advertised output schema for each workflow item must allow
 		// extra properties. The data layer (workflowService.getMany) can surface fields
@@ -475,6 +512,7 @@ describe('search-workflows MCP tool', () => {
 				updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 				triggerCount: 0,
 				availableInMCP: true,
+				parentFolderId: null,
 				tags: [],
 				resource: 'workflow', // unknown field surfaced by the data layer
 			};
