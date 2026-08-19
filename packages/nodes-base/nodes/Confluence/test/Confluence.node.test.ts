@@ -1,11 +1,15 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { mockDeep } from 'vitest-mock-extended';
 
 import { Confluence } from '../Confluence.node';
+import { mockExecuteCtx } from './shared';
 
 describe('Confluence Node', () => {
 	const node = new Confluence();
+
+	const operationOptions = (resource: string) =>
+		node.description.properties.find(
+			(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes(resource),
+		)?.options;
 
 	it('should stay hidden and off the AI-tool surface while operations land', () => {
 		expect(node.description.hidden).toBe(true);
@@ -20,19 +24,11 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'search' }),
 		]);
 
-		const operations = node.description.properties.filter((p) => p.name === 'operation');
-		const pageOperation = operations.find((p) =>
-			p.displayOptions?.show?.resource?.includes('page'),
-		);
-		expect(pageOperation?.options).toEqual([
+		expect(operationOptions('page')).toEqual([
 			expect.objectContaining({ value: 'create' }),
 			expect.objectContaining({ value: 'get' }),
 		]);
-
-		const searchOperation = operations.find((p) =>
-			p.displayOptions?.show?.resource?.includes('search'),
-		);
-		expect(searchOperation?.options).toEqual([expect.objectContaining({ value: 'query' })]);
+		expect(operationOptions('search')).toEqual([expect.objectContaining({ value: 'query' })]);
 	});
 
 	it('should reference the confluenceCloudOAuth2Api credential by name', () => {
@@ -48,21 +44,7 @@ describe('Confluence Node', () => {
 	});
 
 	it('should throw a NodeOperationError when executed without an operation', async () => {
-		const ctx = mockDeep<IExecuteFunctions>();
-		ctx.getInputData.mockReturnValue([{ json: {} }]);
-		ctx.getNodeParameter.mockImplementation(
-			(_name: string, _itemIndex?: number, fallback?: unknown) => fallback as never,
-		);
-		ctx.getNode.mockReturnValue({
-			id: 'test-node',
-			name: 'Test Confluence Node',
-			type: 'n8n-nodes-base.confluence',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		});
-
-		const promise = node.execute.call(ctx);
+		const promise = node.execute.call(mockExecuteCtx({}));
 
 		await expect(promise).rejects.toThrow(NodeOperationError);
 		await expect(promise).rejects.toThrow('The operation ":" is not supported');

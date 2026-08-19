@@ -12,10 +12,46 @@ const accessibleResources = [
 	{ id: 'cloud-2', url: 'https://Other.Atlassian.NET' },
 ];
 
+const pageNotFoundResponse = {
+	message: 'Request failed with status code 404',
+	response: {
+		status: 404,
+		data: {
+			errors: [
+				{
+					status: 404,
+					code: 'NOT_FOUND',
+					title: 'Page not found',
+					detail: 'No page with this ID exists',
+				},
+			],
+		},
+	},
+};
+
 describe('confluenceApiRequest', () => {
 	let ctx: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
 	let mockHttpRequestWithAuthentication: Mock;
+
+	async function captureRejection(endpoint: string): Promise<NodeApiError | null> {
+		return await confluenceApiRequest
+			.call(ctx, 'GET', endpoint)
+			.then(() => null)
+			.catch((thrown: NodeApiError) => thrown);
+	}
+
+	function failNextRequest(error: unknown): void {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockRejectedValueOnce(error);
+	}
+
+	function failNextRequestWrapped(payload: JsonObject): NodeApiError {
+		const wrapped = new NodeApiError(mockNode, payload);
+		failNextRequest(wrapped);
+		return wrapped;
+	}
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -94,14 +130,9 @@ describe('confluenceApiRequest', () => {
 	});
 
 	it('wraps request failures in NodeApiError, keeping status and message', async () => {
-		mockHttpRequestWithAuthentication
-			.mockResolvedValueOnce(accessibleResources)
-			.mockRejectedValueOnce({ message: 'boom', response: { status: 403 } });
+		failNextRequest({ message: 'boom', response: { status: 403 } });
 
-		const error = await confluenceApiRequest
-			.call(ctx, 'GET', '/wiki/api/v2/pages')
-			.then(() => null)
-			.catch((thrown: NodeApiError) => thrown);
+		const error = await captureRejection('/wiki/api/v2/pages');
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.httpCode).toBe('403');
@@ -109,29 +140,9 @@ describe('confluenceApiRequest', () => {
 	});
 
 	it("surfaces Atlassian's v2 error envelope instead of the generic status message", async () => {
-		mockHttpRequestWithAuthentication
-			.mockResolvedValueOnce(accessibleResources)
-			.mockRejectedValueOnce({
-				message: 'Request failed with status code 404',
-				response: {
-					status: 404,
-					data: {
-						errors: [
-							{
-								status: 404,
-								code: 'NOT_FOUND',
-								title: 'Page not found',
-								detail: 'No page with this ID exists',
-							},
-						],
-					},
-				},
-			});
+		failNextRequest(pageNotFoundResponse);
 
-		const error = await confluenceApiRequest
-			.call(ctx, 'GET', '/wiki/api/v2/pages/1')
-			.then(() => null)
-			.catch((thrown: NodeApiError) => thrown);
+		const error = await captureRejection('/wiki/api/v2/pages/1');
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.message).toBe('Page not found');
@@ -139,28 +150,21 @@ describe('confluenceApiRequest', () => {
 	});
 
 	it('falls back to the generic wrap when the envelope carries no usable title', async () => {
-		mockHttpRequestWithAuthentication
-			.mockResolvedValueOnce(accessibleResources)
-			.mockRejectedValueOnce({
-				message: 'boom',
-				response: { status: 500, data: { errors: [{ title: '' }] } },
-			});
+		failNextRequest({
+			message: 'boom',
+			response: { status: 500, data: { errors: [{ title: '' }] } },
+		});
 
-		const error = await confluenceApiRequest
-			.call(ctx, 'GET', '/wiki/api/v2/pages')
-			.then(() => null)
-			.catch((thrown: NodeApiError) => thrown);
+		const error = await captureRejection('/wiki/api/v2/pages');
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error?.httpCode).toBe('500');
 		expect(error?.messages).toContain('boom');
 	});
 
-	// In production the request helper rejects with a NodeApiError of its own,
-	// whose constructor short-circuits on re-wrap — these cases pin the
-	// fresh-error path that keeps enrichment working there.
+	// In production the request helper rejects with an already-wrapped NodeApiError; these cases pin that path
 	it('surfaces the v1 top-level message from a wrapped NodeApiError', async () => {
-		const wrapped = new NodeApiError(mockNode, {
+		const wrapped = failNextRequestWrapped({
 			message: 'Request failed with status code 400',
 			response: {
 				status: 400,
@@ -171,20 +175,13 @@ describe('confluenceApiRequest', () => {
 				},
 			},
 		} as JsonObject);
-		mockHttpRequestWithAuthentication
-			.mockResolvedValueOnce(accessibleResources)
-			.mockRejectedValueOnce(wrapped);
 
-		const error = await confluenceApiRequest
-			.call(ctx, 'GET', '/wiki/rest/api/search')
-			.then(() => null)
-			.catch((thrown: NodeApiError) => thrown);
+		const error = await captureRejection('/wiki/rest/api/search');
 
 		expect(error).toBeInstanceOf(NodeApiError);
 		expect(error).not.toBe(wrapped);
 		expect(error?.message).toBe('Could not parse cql : expecting alphanumeric');
 		expect(error?.httpCode).toBe('400');
-		// The NDV's error-data pane renders context.data; the raw body must survive
 		expect(error?.context.data).toEqual({
 			statusCode: 400,
 			data: { authorized: true, valid: false, errors: [], successful: false },
@@ -193,47 +190,21 @@ describe('confluenceApiRequest', () => {
 	});
 
 	it("surfaces Atlassian's v2 envelope from a wrapped NodeApiError", async () => {
-		const wrapped = new NodeApiError(mockNode, {
-			message: 'Request failed with status code 404',
-			response: {
-				status: 404,
-				data: {
-					errors: [
-						{
-							status: 404,
-							code: 'NOT_FOUND',
-							title: 'Page not found',
-							detail: 'No page with this ID exists',
-						},
-					],
-				},
-			},
-		} as JsonObject);
-		mockHttpRequestWithAuthentication
-			.mockResolvedValueOnce(accessibleResources)
-			.mockRejectedValueOnce(wrapped);
+		const wrapped = failNextRequestWrapped(pageNotFoundResponse as JsonObject);
 
-		const error = await confluenceApiRequest
-			.call(ctx, 'GET', '/wiki/api/v2/pages/1')
-			.then(() => null)
-			.catch((thrown: NodeApiError) => thrown);
+		const error = await captureRejection('/wiki/api/v2/pages/1');
 
 		expect(error).toBeInstanceOf(NodeApiError);
+		expect(error).not.toBe(wrapped);
 		expect(error?.message).toBe('Page not found');
 		expect(error?.description).toBe('No page with this ID exists');
 		expect(error?.httpCode).toBe('404');
 	});
 
 	it('rethrows a wrapped NodeApiError unchanged when there is no response body', async () => {
-		const wrapped = new NodeApiError(mockNode, { message: 'socket hang up' } as JsonObject);
-		mockHttpRequestWithAuthentication
-			.mockResolvedValueOnce(accessibleResources)
-			.mockRejectedValueOnce(wrapped);
+		const wrapped = failNextRequestWrapped({ message: 'socket hang up' } as JsonObject);
 
-		const error = await confluenceApiRequest
-			.call(ctx, 'GET', '/wiki/api/v2/pages')
-			.then(() => null)
-			.catch((thrown: NodeApiError) => thrown);
+		const error = await captureRejection('/wiki/api/v2/pages');
 
 		expect(error).toBe(wrapped);
 	});

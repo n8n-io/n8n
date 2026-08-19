@@ -5,11 +5,12 @@ import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { confluenceApiRequest } from '../../transport';
+import type { NextPageParam } from '../common';
+import { extractNextPageParam, parsePositiveInt } from '../common';
 import type { ConfluenceOperation } from '../router';
 
 const SEARCH_PAGE_SIZE = 50;
-// Search post-filters results by permission, so a page can legitimately come
-// back empty mid-stream — but an endless run of them means the walk is stuck
+// Search post-filters results by permission, so empty pages mid-stream are legitimate
 const MAX_CONSECUTIVE_EMPTY_PAGES = 5;
 
 const properties: INodeProperties[] = [
@@ -90,29 +91,6 @@ function buildExpand(options: SearchOptions): string {
 	return [...new Set(fields)].join(',');
 }
 
-type NextPageParam = { key: 'cursor' | 'start'; value: string };
-
-/**
- * The v1 search API pages via `_links.next`; the link is only used as a
- * parameter source (cursor, or start on older responses), never re-issued
- * verbatim — the follow-up request repeats the known qs plus that parameter.
- */
-function nextPageParam(response: IDataObject): NextPageParam | undefined {
-	const next = (response._links as IDataObject | undefined)?.next;
-	if (typeof next !== 'string' || next === '') return undefined;
-
-	let params: URLSearchParams;
-	try {
-		params = new URL(next, 'https://api.atlassian.com').searchParams;
-	} catch {
-		return undefined;
-	}
-	const cursor = params.get('cursor');
-	if (cursor !== null && cursor !== '') return { key: 'cursor', value: cursor };
-	const start = params.get('start');
-	return start === null || start === '' ? undefined : { key: 'start', value: start };
-}
-
 export const execute: ConfluenceOperation = async function (
 	this: IExecuteFunctions,
 	itemIndex: number,
@@ -123,17 +101,14 @@ export const execute: ConfluenceOperation = async function (
 	}
 
 	const returnAll = this.getNodeParameter('returnAll', itemIndex, false);
-	let limit = Infinity;
-	if (!returnAll) {
-		// Number() because an expression can hand back a numeric string
-		const rawLimit = Number(this.getNodeParameter('limit', itemIndex, 100));
-		if (!Number.isFinite(rawLimit) || rawLimit < 1) {
-			throw new NodeOperationError(this.getNode(), 'Limit must be a number of at least 1', {
+	const limit = returnAll
+		? Infinity
+		: parsePositiveInt.call(
+				this,
+				this.getNodeParameter('limit', itemIndex, 100),
+				'Limit',
 				itemIndex,
-			});
-		}
-		limit = Math.floor(rawLimit);
-	}
+			);
 
 	const options = this.getNodeParameter('options', itemIndex, {}) as SearchOptions;
 
@@ -168,9 +143,7 @@ export const execute: ConfluenceOperation = async function (
 		emptyPages = entries.length === 0 ? emptyPages + 1 : 0;
 		if (emptyPages >= MAX_CONSECUTIVE_EMPTY_PAGES) break;
 
-		const next = nextPageParam(response);
-		// A page can come back empty while next is still set; never repeat the
-		// same cursor/offset
+		const next = extractNextPageParam(response);
 		const repeats =
 			pageParam !== undefined &&
 			next !== undefined &&
