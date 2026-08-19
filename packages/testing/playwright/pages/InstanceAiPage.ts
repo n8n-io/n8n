@@ -429,7 +429,7 @@ export class InstanceAiPage extends BasePage {
 					await node.hover();
 					return await executeNodeButton.isVisible().catch(() => false);
 				},
-				{ intervals: [500, 1_000, 2_000], timeout: 30_000 },
+				{ intervals: [500, 1_000, 2_000], timeout: 10_000 },
 			)
 			.toBe(true);
 		await executeNodeButton.dispatchEvent('click');
