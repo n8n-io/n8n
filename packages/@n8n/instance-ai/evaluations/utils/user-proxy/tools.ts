@@ -1,7 +1,7 @@
 // Decision schema (structured-output target) + encoders to InstanceAiConfirmRequest.
 
 import { domainAccessActionSchema, instanceGatewayResourceDecisionSchema } from '@n8n/api-types';
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest, InstanceAiCredentialSetupHint } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
@@ -207,6 +207,9 @@ export interface SetupWizardParseContext {
 		credentialRequests: Array<{
 			credentialType: string;
 			existingCredentials: Array<{ id: string; name: string }>;
+			/** Simplified Custom Auth's recipe (template + placeholders) for minting
+			 *  the credential — only present for `httpTemplatedCustomAuth` requests. */
+			setupHint?: InstanceAiCredentialSetupHint;
 		}>;
 	}>;
 }
@@ -257,7 +260,7 @@ export const USER_TURN_TOOL_DESCRIPTIONS = `Available actions — it is the user
  *  case — see `UserProxyConfig.credentialCreation` in `user-proxy/index.ts`. */
 export type CreateCredentialFn = (
 	credentialType: string,
-	options?: { works?: boolean },
+	options?: { works?: boolean; setupHint?: InstanceAiCredentialSetupHint },
 ) => Promise<{ id: string; name: string }>;
 
 /**
@@ -271,7 +274,7 @@ async function tryCreateCredential(
 	credentialType: string,
 	actionLabel: string,
 	onFailure?: (raw: string, error: unknown) => void,
-	options?: { works?: boolean },
+	options?: { works?: boolean; setupHint?: InstanceAiCredentialSetupHint },
 ): Promise<{ id: string; name: string } | undefined> {
 	if (!createCredential) {
 		onFailure?.(
@@ -540,7 +543,10 @@ async function parseNodeCredentialsJson(
 					credentialType,
 					'apply_setup_wizard',
 					onFailure,
-					{ works: workingCredentialTypes?.has(credentialType) === true },
+					{
+						works: workingCredentialTypes?.has(credentialType) === true,
+						setupHint: request.setupHint,
+					},
 				);
 				if (created) (result[node.nodeName] ??= {})[credentialType] = created.id;
 				continue;
