@@ -109,6 +109,24 @@ jobs:
         with:
           build-command: pnpm turbo run build --filter=@n8n/code-health...
 
+      # Resolving the scratch graph downloads the registry metadata for every name in it — roughly
+      # 850MB for a full closure, measured, and the step's dominant cost now that the tarball bodies
+      # are gone. Keyed on the pnpm lockfile so an entry is written once per dependency change
+      # rather than once per run: this cache shares a 10GB repo-wide budget with the pnpm store
+      # caches, and a per-run key would evict them.
+      #
+      # A restored entry is revalidated rather than trusted (no `--prefer-offline`), so a
+      # third-party release published since the entry was written still changes the resolution.
+      # Conditional requests cost a fraction of the bodies.
+      - name: Restore npm registry metadata
+        if: steps.verifier.outputs.present == 'true'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.npm/_cacache
+          key: npm-metadata-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            npm-metadata-${{ runner.os }}-
+
       # `--dir` rather than `--filter`: a filter matching nothing exits 0, so a renamed or moved
       # package would turn this into a green job that verified nothing.
       - name: Verify npm-install closure (changed packages)
