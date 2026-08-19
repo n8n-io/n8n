@@ -31,7 +31,8 @@ describe('EngineDataPlaneClient', () => {
 			(error: unknown) => error,
 		);
 
-	beforeEach(() => {
+	/** Rebuilds the client so each test can vary the engine config. */
+	const newClient = (config: Partial<EngineConfig> = {}) => {
 		http = mock<HttpRequestClient>();
 		const outboundHttp = mock<OutboundHttp>({
 			requests: vi.fn((options?: HttpRequestClientOptions) => {
@@ -40,10 +41,14 @@ describe('EngineDataPlaneClient', () => {
 			}),
 		});
 
-		client = new EngineDataPlaneClient(
-			mock<EngineConfig>({ port: 3000, host: '0.0.0.0' }),
+		return new EngineDataPlaneClient(
+			mock<EngineConfig>({ port: 3000, host: '0.0.0.0', baseUrl: '', ...config }),
 			outboundHttp,
 		);
+	};
+
+	beforeEach(() => {
+		client = newClient();
 	});
 
 	describe('startExecution', () => {
@@ -63,6 +68,18 @@ describe('EngineDataPlaneClient', () => {
 
 		it('dials the loopback, not the bind host', () => {
 			expect(clientOptions?.baseURL).toBe('http://127.0.0.1:3000');
+		});
+
+		it('dials the configured base URL when the engine answers elsewhere', () => {
+			newClient({ host: '10.0.0.5', baseUrl: 'http://10.0.0.5:3000' });
+
+			expect(clientOptions?.baseURL).toBe('http://10.0.0.5:3000');
+		});
+
+		it('keeps the configured base URL even for a remote engine', () => {
+			newClient({ baseUrl: 'https://engine.internal:8443' });
+
+			expect(clientOptions?.baseURL).toBe('https://engine.internal:8443');
 		});
 
 		it('opts out of SSRF protection for the n8n-controlled engine host', () => {

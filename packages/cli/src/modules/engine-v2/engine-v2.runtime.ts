@@ -70,7 +70,9 @@ export class EngineV2Runtime {
 
 		this.running = { dataSource, engine, server };
 
-		this.logger.info(`Engine 2.0 listening on http://${host}:${port}`);
+		// An IPv6 literal needs brackets to read as a URL.
+		const shownHost = host.includes(':') ? `[${host}]` : host;
+		this.logger.info(`Engine 2.0 listening on http://${shownHost}:${port}`);
 	}
 
 	async shutdown(): Promise<void> {

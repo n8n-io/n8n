@@ -21,11 +21,12 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 	constructor(engineConfig: EngineConfig, outboundHttp: OutboundHttp) {
 		this.http = outboundHttp.requests({
-			// Fixed, n8n-controlled host. The engine binds to `engineConfig.host`,
-			// which defaults to `0.0.0.0` — a bind address, not a destination — so
-			// dial the loopback instead.
+			// Fixed, n8n-controlled host.
 			ssrf: 'disabled',
-			baseURL: `http://127.0.0.1:${engineConfig.port}`,
+			// `engineConfig.host` is a bind address, not a destination, so it is not
+			// dialable. Default to loopback and let `N8N_ENGINE_BASE_URL` override
+			// when the engine answers somewhere else.
+			baseURL: engineConfig.baseUrl || `http://127.0.0.1:${engineConfig.port}`,
 		});
 	}
 
