@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import {
 	N8nDropdownMenu,
 	N8nIcon,
@@ -21,9 +22,18 @@ const props = withDefaults(defineProps<{ disabled?: boolean }>(), { disabled: fa
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { menuItems, hasDisconnectedConnection } = useInstanceAiInputMenuItems(() =>
+const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(() =>
 	emit('attachFiles'),
 );
+
+const tooltip = computed(() => {
+	const count = disconnectedConnectionCount.value;
+	if (count === 0) return i18n.baseText('instanceAi.inputMenu.open');
+	if (count === 1) return i18n.baseText('instanceAi.inputMenu.connectionNeedsAttention');
+	return i18n.baseText('instanceAi.inputMenu.connectionsNeedAttention', {
+		interpolate: { count: String(count) },
+	});
+});
 
 const STATUS_LABEL_KEYS = {
 	connected: 'instanceAi.inputMenu.status.connected',
@@ -50,11 +60,7 @@ function trackInputPlusButtonClick() {
 </script>
 
 <template>
-	<N8nTooltip
-		:content="i18n.baseText('instanceAi.inputMenu.open')"
-		:content-class="$style.triggerTooltip"
-		placement="top"
-	>
+	<N8nTooltip :content="tooltip" :content-class="$style.triggerTooltip" placement="top">
 		<N8nDropdownMenu
 			:items="menuItems"
 			placement="top-start"
@@ -69,11 +75,11 @@ function trackInputPlusButtonClick() {
 						variant="outline"
 						size="medium"
 						:disabled="props.disabled"
-						:aria-label="i18n.baseText('instanceAi.inputMenu.open')"
+						:aria-label="tooltip"
 						@click="trackInputPlusButtonClick"
 					/>
 					<span
-						v-if="hasDisconnectedConnection"
+						v-if="disconnectedConnectionCount > 0"
 						:class="$style.triggerStatusDot"
 						aria-hidden="true"
 					/>

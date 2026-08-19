@@ -179,11 +179,13 @@ describe('useInstanceAiInputMenuItems', () => {
 				makeMcpConnection(String(index), status),
 			);
 
-			const { menuItems, hasDisconnectedConnection } = useInstanceAiInputMenuItems(vi.fn());
+			const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(vi.fn());
 			const tools = findItem(menuItems.value, 'tools');
 
 			expect(tools?.data?.status).toBe(expectedStatus);
-			expect(hasDisconnectedConnection.value).toBe(statuses.includes('disconnected'));
+			expect(disconnectedConnectionCount.value).toBe(
+				statuses.filter((status) => status === 'disconnected').length,
+			);
 		},
 	);
 
@@ -209,13 +211,13 @@ describe('useInstanceAiInputMenuItems', () => {
 		'shows a Reconnect menu when $id disconnects unexpectedly',
 		async ({ id, setDisconnected, modal, title }) => {
 			setDisconnected();
-			const { menuItems, hasDisconnectedConnection } = useInstanceAiInputMenuItems(vi.fn());
+			const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(vi.fn());
 
 			const item = findItem(menuItems.value, id);
 			expect(item?.data?.status).toBe('disconnected');
 			expect(item?.data?.action).toBeUndefined();
 			expect(findItem(menuItems.value, `${id}-status`)?.label).toBe(title);
-			expect(hasDisconnectedConnection.value).toBe(true);
+			expect(disconnectedConnectionCount.value).toBe(1);
 
 			await findItem(menuItems.value, `${id}-reconnect`)?.data?.action?.();
 			expect(uiStore.openModal).toHaveBeenCalledWith(modal);
@@ -223,7 +225,7 @@ describe('useInstanceAiInputMenuItems', () => {
 	);
 
 	it('keeps user-disconnected services as direct Connect actions', () => {
-		const { menuItems, hasDisconnectedConnection } = useInstanceAiInputMenuItems(vi.fn());
+		const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(vi.fn());
 
 		for (const id of ['computer', 'browser']) {
 			const item = findItem(menuItems.value, id);
@@ -231,7 +233,7 @@ describe('useInstanceAiInputMenuItems', () => {
 			expect(item?.children).toBeUndefined();
 			expect(item?.data?.action).toBeTypeOf('function');
 		}
-		expect(hasDisconnectedConnection.value).toBe(false);
+		expect(disconnectedConnectionCount.value).toBe(0);
 	});
 
 	it('does not offer direct Browser Use disconnect when browser access comes from Computer Use', () => {

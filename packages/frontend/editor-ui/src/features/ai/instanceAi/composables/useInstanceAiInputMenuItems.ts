@@ -122,18 +122,27 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 		};
 	}
 
-	const hasDisconnectedConnection = computed(
-		() =>
-			(isMcpFeatureEnabled.value &&
-				settingsStore.settings?.mcpAccessEnabled === true &&
-				mcpStore.connections.some(({ status }) => status === 'disconnected')) ||
-			(isComputerUseFeatureEnabled.value &&
-				!settingsStore.isLocalGatewayDisabledByAdmin &&
-				settingsStore.hasUnexpectedGatewayDisconnect) ||
-			(isBrowserUseFeatureEnabled.value &&
-				settingsStore.isBrowserUseEnabledByAdmin &&
-				settingsStore.hasUnexpectedBrowserDisconnect),
-	);
+	const disconnectedConnectionCount = computed(() => {
+		let count = 0;
+		if (isMcpFeatureEnabled.value && settingsStore.settings?.mcpAccessEnabled === true) {
+			count += mcpStore.connections.filter(({ status }) => status === 'disconnected').length;
+		}
+		if (
+			isComputerUseFeatureEnabled.value &&
+			!settingsStore.isLocalGatewayDisabledByAdmin &&
+			settingsStore.hasUnexpectedGatewayDisconnect
+		) {
+			count++;
+		}
+		if (
+			isBrowserUseFeatureEnabled.value &&
+			settingsStore.isBrowserUseEnabledByAdmin &&
+			settingsStore.hasUnexpectedBrowserDisconnect
+		) {
+			count++;
+		}
+		return count;
+	});
 
 	const menuItems = computed(() => {
 		const items: InputMenuItem[] = [
@@ -270,5 +279,5 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 		return items;
 	});
 
-	return { menuItems, hasDisconnectedConnection };
+	return { menuItems, disconnectedConnectionCount };
 }
