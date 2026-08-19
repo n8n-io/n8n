@@ -1,26 +1,23 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import postgresVersions from 'n8n-containers/postgres-versions.json';
+import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import {
 	createDataSource,
-	TypeOrmExecutionStore,
-	TypeOrmStepStore,
+	createStores,
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '../../database';
 import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
-import { InMemoryWorkQueue, type OrchestrationMessage, type StepMessage } from '../../queue';
-import { ExecutionStartHandler } from '../execution-start-handler';
+import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
+import { createEngineRuntime } from '../../runtime';
 import type { TriggerOutputs } from '../execution.types';
-import { OrchestrationWorker } from '../orchestration-worker';
-import { StartExecutionService } from '../start-execution.service';
+import type { StartExecutionResult } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
-import { StepSettledHandler } from '../step-settled-handler';
-import { StepWorker } from '../step-worker';
 
 const graph: WorkflowGraph = {
 	nodes: [
@@ -46,59 +43,43 @@ describe('step execution (integration)', () => {
 		if (container) await container.stop();
 	});
 
-	function stores() {
-		return {
-			executionStore: new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution)),
-			stepStore: new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution)),
-		};
-	}
-
 	/**
-	 * Wires both workers over shared queues and runs a workflow through them.
-	 * Resolves once the execution's outcome is recorded, which is after every
-	 * step's own outcome is durable.
+	 * Runs a workflow through a real engine runtime. Resolves once the
+	 * execution's outcome is recorded, which is after every step's own outcome is
+	 * durable.
 	 */
 	async function runWorkflow(
 		executor: IStepExecutor,
 		triggerOutputs: TriggerOutputs,
 		{ workflowId = 'wf-1', graph: workflowGraph = graph } = {},
 	) {
-		const { executionStore, stepStore } = stores();
-		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
-		const stepQueue = new InMemoryWorkQueue<StepMessage>();
-
 		let done!: () => void;
 		const finished = new Promise<void>((resolve) => (done = resolve));
-		const finishExecution = executionStore.finishExecution.bind(executionStore);
-		vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
-			const recorded = await finishExecution(id, status);
-			done();
-			return recorded;
+
+		const runtime = createEngineRuntime({
+			dataSource,
+			admittance: new AllowAllAdmittance(),
+			// also how the test reaches the stores the runtime owns
+			externalDependencies: ({ executionStore }) => {
+				const finishExecution = executionStore.finishExecution.bind(executionStore);
+				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
+					const recorded = await finishExecution(id, status);
+					done();
+					return recorded;
+				});
+				return { v1StepExecutor: executor };
+			},
 		});
+		runtime.start();
 
-		const orchestrationWorker = new OrchestrationWorker(
-			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
-		);
-		const stepWorker = new StepWorker(
-			stepQueue,
-			new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {
-				v1StepExecutor: executor,
-			}),
-		);
-		orchestrationWorker.start();
-		stepWorker.start();
-
-		const { executionId } = await new StartExecutionService(
-			new AllowAllAdmittance(),
-			executionStore,
-			orchestrationQueue,
-		).start({ workflowId, graph: workflowGraph, triggerOutputs });
+		const response = await request(runtime.app)
+			.post('/api/workflow-executions')
+			.send({ workflowId, graph: workflowGraph, triggerOutputs })
+			.expect(201);
+		const { executionId } = response.body as StartExecutionResult;
 		await finished;
 
-		await stepWorker.stop();
-		await orchestrationWorker.stop();
+		await runtime.stop();
 
 		const execution = await dataSource
 			.getRepository(WorkflowExecution)
@@ -241,7 +222,7 @@ describe('step execution (integration)', () => {
 	});
 
 	it('settles a conditional diamond: dead chain skipped, merge runs on the live side', async () => {
-		// trigger → if → {a (out 0), b (out 1) → c} → m: the not-taken branch is
+		// trigger -> if -> {a (out 0), b (out 1) -> c} -> m: the not-taken branch is
 		// two nodes long, so its skips must cascade through the event loop
 		// before the merge can settle and the execution can finish.
 		const branchingGraph: WorkflowGraph = {
@@ -304,7 +285,7 @@ describe('step execution (integration)', () => {
 	});
 
 	it('is idempotent across duplicate step:ready deliveries', async () => {
-		const { executionStore, stepStore } = stores();
+		const { executionStore, stepStore } = createStores(dataSource);
 		const execute = vi.fn().mockResolvedValue({ outputs: [[{ json: { n: 1 } }]] });
 		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 		const handler = new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {
@@ -320,8 +301,8 @@ describe('step execution (integration)', () => {
 		});
 		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them
-			{ nodeId: 'trigger', status: 'completed', outputs: [{}] },
-			{ nodeId: 'node-a', status: 'queued' },
+			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [{}] },
+			{ nodeId: 'node-a', iteration: 0, status: 'queued' },
 		]);
 		const stepId = created.find(({ nodeId }) => nodeId === 'node-a')!.id;
 

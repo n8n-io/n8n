@@ -1126,6 +1126,41 @@ describe('RelayConnection', () => {
 			expect(ws.closeReason).toBe('extension_disconnected');
 		});
 	});
+	describe('document preparation', () => {
+		/** Both attach paths must prepare the tab; only one of them used to. */
+		function preparedTabs() {
+			return chrome.debugger.sendCommand.mock.calls
+				.filter((call) => call[1] === 'Page.addScriptToEvaluateOnNewDocument')
+				.map((call) => (call[0] as { tabId: number }).tabId);
+		}
+
+		it('prepares a lazily attached tab', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(31)]);
+			await relay.registerSelectedTabs([31]);
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'forwardCDPCommand',
+					params: { method: 'Page.reload' },
+				}),
+			});
+			await tick();
+
+			expect(preparedTabs()).toContain(31);
+		});
+
+		it('prepares an eagerly attached agent-created tab', async () => {
+			chrome.tabs.create.mockResolvedValueOnce({ id: 32, title: 'New', url: 'https://new.com' });
+
+			ws.onmessage?.({
+				data: JSON.stringify({ id: 1, method: 'createTab', params: { url: 'https://new.com' } }),
+			});
+			await tick();
+
+			expect(preparedTabs()).toContain(32);
+		});
+	});
 });
 
 describe('RelayConnection keepalive', () => {
