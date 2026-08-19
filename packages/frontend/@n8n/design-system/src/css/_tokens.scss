@@ -3,10 +3,10 @@
 
 @mixin theme {
 	@include tokens-legacy.theme-legacy;
-	--background--brand: var(--color--orange-500);
-	--background--brand--hover: var(--color--orange-600);
-	--background--brand--active: var(--color--orange-700);
-	--background--brand--focus: var(--color--orange-400);
+	--background--brand: var(--color--pink-500);
+	--background--brand--hover: var(--color--pink-600);
+	--background--brand--active: var(--color--pink-700);
+	--background--brand--focus: var(--color--pink-400);
 	--background--brand--disabled: var(--color--neutral-200);
 
 	--background--surface: var(--color--neutral-white);
@@ -30,9 +30,14 @@
 	--icon-color--strong: var(--color--neutral-800);
 
 	--text-color: var(--color--neutral-900);
-	--text-color--subtle: var(--color--neutral-700);
+	--text-color--subtle: var(--color--neutral-600);
 	--text-color--subtler: var(--color--neutral-500);
 	--text-color--disabled: var(--color--neutral-400);
+
+	--color--primary: var(--color--neutral-900);
+	--color--primary--tint-1: var(--color--neutral-600);
+	--color--primary--tint-2: var(--color--neutral-400);
+	--color--primary--tint-3: var(--color--neutral-300);
 
 	--background--success: var(--color--green-50);
 	--border-color--success: var(--color--green-200);
@@ -60,8 +65,8 @@
 	--icon-color--inverse: var(--color--neutral-100);
 
 	--focus--border-width: 2px;
-	--focus--outline-color: var(--color--purple-alpha-200);
-	--focus--border-color: var(--color--purple-500);
+	--focus--outline-color: var(--color--black-alpha-200);
+	--focus--border-color: var(--color--neutral-black);
 
 	// LangChain
 	--lm-chat--messages--color--background: var(--color--background);
@@ -261,8 +266,8 @@
 
 	// Button primary
 	--button--color--text--primary: var(--color--neutral-white);
-	--button--border-color--primary: var(--color--orange-500);
-	--button--color--background--primary: var(--color--orange-500);
+	--button--border-color--primary: var(--background--brand);
+	--button--color--background--primary: var(--background--brand);
 	--button--border-color--primary--hover-active: var(--color--primary);
 	--button--color--background--primary--hover-active-focus: var(--color--primary);
 	--button--outline-color--primary--focus: var(--color--orange-alpha-300);
@@ -274,10 +279,10 @@
 	--button--color--text--secondary: var(--color--neutral-700);
 	--button--border-color--secondary: var(--color--neutral-300);
 	--button--color--background--secondary: var(--color--neutral-white);
-	--button--color--text--secondary--hover-active-focus: var(--color--orange-500);
-	--button--border-color--secondary--hover-active-focus: var(--color--orange-600);
-	--button--color--background--secondary--hover: var(--color--orange-50);
-	--button--color--background--secondary--active-focus: var(--color--orange-100);
+	--button--color--text--secondary--hover-active-focus: var(--color--pink-500);
+	--button--border-color--secondary--hover-active-focus: var(--color--pink-600);
+	--button--color--background--secondary--hover: var(--color--pink-50);
+	--button--color--background--secondary--active-focus: var(--color--pink-100);
 	--button--outline-color--secondary--focus: var(--color--neutral-200);
 	--button--color--text--secondary--disabled: var(--color--neutral-250);
 	--button--border-color--secondary--disabled: var(--color--neutral-250);
@@ -325,8 +330,8 @@
 
 	// Node Creator Button
 	--node-creator--button--color--text: var(--color--neutral-600);
-	--node-creator--button--color--text--hover: var(--color--orange-500);
-	--node-creator--button--border-color--hover: var(--color--orange-500);
+	--node-creator--button--color--text--hover: var(--color--pink-500);
+	--node-creator--button--border-color--hover: var(--color--pink-500);
 	--node-creator--button--color--background: var(--color--neutral-white);
 
 	// Table
@@ -651,10 +656,10 @@
 @mixin theme-dark {
 	@include tokens-legacy.theme-dark-legacy;
 
-	--background--brand: var(--color--orange-500);
-	--background--brand--hover: var(--color--orange-600);
-	--background--brand--active: var(--color--orange-700);
-	--background--brand--focus: var(--color--orange-400);
+	--background--brand: var(--color--pink-500);
+	--background--brand--hover: var(--color--pink-600);
+	--background--brand--active: var(--color--pink-700);
+	--background--brand--focus: var(--color--pink-400);
 	--background--brand--disabled: var(--color--neutral-800);
 
 	--background--surface: var(--color--neutral-900);
@@ -680,6 +685,11 @@
 	--text-color--subtler: var(--color--neutral-400);
 	--text-color--disabled: var(--color--neutral-600);
 
+	--color--primary: var(--color--neutral-white);
+	--color--primary--tint-1: var(--color--neutral-200);
+	--color--primary--tint-2: var(--color--neutral-500);
+	--color--primary--tint-3: var(--color--neutral-700);
+
 	--background--success: var(--color--green-950);
 	--border-color--success: var(--color--green-800);
 	--text-color--success: var(--color--green-50);
@@ -704,6 +714,10 @@
 	--border-color--inverse: var(--color--neutral-200);
 	--text-color--inverse: var(--color--neutral-800);
 	--icon-color--inverse: var(--color--neutral-800);
+
+	--focus--border-width: 2px;
+	--focus--outline-color: var(--color--white-alpha-200);
+	--focus--border-color: var(--color--neutral-white);
 
 	// AI Assistant
 	--assistant--color--highlight-1: #8c90f2;
@@ -942,7 +956,7 @@
 	--node-creator--button--color--text--hover: var(
 		--button--color--text--secondary--hover-active-focus
 	);
-	--node-creator--button--border-color--hover: var(--color--orange-500);
+	--node-creator--button--border-color--hover: var(--color--pink-500);
 	--node-creator--button--color--background: var(--color--orange-alpha-100);
 
 	// Table
@@ -1224,7 +1238,7 @@
 	--link--color--secondary--hover: var(--color--purple-500);
 	// Params
 	--icon--color: var(--color--text--tint-1);
-	--icon--color--hover: var(--color--orange-500);
+	--icon--color--hover: var(--color--pink-500);
 
 	--menu--color--background: var(--color--neutral-900);
 	--menu--color--background--hover: var(--color--neutral-700);
