@@ -133,7 +133,7 @@ describe('v2/components/Combobox', () => {
 			expect(wrapper.getByRole('combobox', { name: 'Status' })).toBeInTheDocument();
 		});
 
-		it('should forward validation ARIA attributes to the input, not the anchor', () => {
+		it('should forward ARIA attributes to the input, not the anchor', () => {
 			const wrapper = render(Combobox, {
 				props: {
 					items: options('Option 1'),
@@ -142,6 +142,7 @@ describe('v2/components/Combobox', () => {
 					'aria-describedby': 'status-help',
 					'aria-errormessage': 'status-error',
 					'aria-invalid': 'true',
+					'aria-required': 'true',
 				},
 			});
 
@@ -151,9 +152,11 @@ describe('v2/components/Combobox', () => {
 			expect(input).toHaveAttribute('aria-describedby', 'status-help');
 			expect(input).toHaveAttribute('aria-errormessage', 'status-error');
 			expect(input).toHaveAttribute('aria-invalid', 'true');
+			expect(input).toHaveAttribute('aria-required', 'true');
 			expect(anchor).not.toHaveAttribute('aria-describedby');
 			expect(anchor).not.toHaveAttribute('aria-errormessage');
 			expect(anchor).not.toHaveAttribute('aria-invalid');
+			expect(anchor).not.toHaveAttribute('aria-required');
 		});
 
 		test.each([false, true])(

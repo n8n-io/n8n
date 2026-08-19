@@ -64,31 +64,13 @@ const emptyText = computed(() => props.emptyText ?? t('combobox.emptyText'));
 const generatedId = useId();
 const inputId = computed(() => props.id ?? generatedId);
 
-const INPUT_ARIA_ATTRS = [
-	'aria-label',
-	'aria-labelledby',
-	'aria-describedby',
-	'aria-errormessage',
-	'aria-invalid',
-] as const;
+const inputAttrs = computed(() =>
+	Object.fromEntries(Object.entries(attrs).filter(([key]) => key.startsWith('aria-'))),
+);
 
-function inputNameAttrs() {
-	const result: Record<string, unknown> = {};
-	for (const key of INPUT_ARIA_ATTRS) {
-		if (key in attrs) {
-			result[key] = attrs[key];
-		}
-	}
-	return result;
-}
-
-function anchorAttrs() {
-	const result = { ...attrs };
-	for (const key of INPUT_ARIA_ATTRS) {
-		delete result[key];
-	}
-	return result;
-}
+const anchorAttrs = computed(() =>
+	Object.fromEntries(Object.entries(attrs).filter(([key]) => !key.startsWith('aria-'))),
+);
 
 const rootProps = useForwardPropsEmits(
 	reactivePick(
@@ -335,7 +317,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 		<ComboboxAnchor
 			ref="anchor"
 			data-test-id="combobox"
-			v-bind="anchorAttrs()"
+			v-bind="anchorAttrs"
 			:class="[$style.comboboxAnchor, sizeClass, props.multiple && $style.multiple]"
 			:data-disabled="props.disabled || undefined"
 			:data-multiple="props.multiple || undefined"
@@ -372,7 +354,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 						:id="inputId"
 						as-child
 						:display-value="getDisplayValue"
-						v-bind="inputNameAttrs()"
+						v-bind="inputAttrs"
 					>
 						<TagsInputInput
 							:id="inputProps.id"
@@ -395,7 +377,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				:placeholder="placeholder"
 				:auto-focus="props.autoFocus"
 				:display-value="getDisplayValue"
-				v-bind="inputNameAttrs()"
+				v-bind="inputAttrs"
 			/>
 
 			<button
