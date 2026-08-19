@@ -32,13 +32,15 @@ function hideFavicon(event: Event): void {
 
 <template>
 	<li :class="['tab-item', { 'tab-item--selectable': selectable }]" @click="handleClick">
-		<img
-			v-if="tab.favIconUrl"
-			:src="tab.favIconUrl"
-			alt=""
-			class="tab-favicon"
-			@error="hideFavicon"
-		/>
+		<span class="tab-marker">
+			<img
+				v-if="tab.favIconUrl"
+				:src="tab.favIconUrl"
+				alt=""
+				class="tab-favicon"
+				@error="hideFavicon"
+			/>
+		</span>
 		<div class="tab-info">
 			<div class="tab-title">{{ tab.title ?? 'Untitled' }}</div>
 			<div class="tab-url">{{ tab.url ?? '' }}</div>
@@ -58,7 +60,7 @@ function hideFavicon(event: Event): void {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--xs);
+	padding: var(--spacing--xs) 0;
 	border-radius: var(--radius--lg);
 }
 
@@ -68,6 +70,12 @@ function hideFavicon(event: Event): void {
 	&:hover {
 		background: var(--background--surface--hover);
 	}
+}
+
+.tab-marker {
+	flex: 0 0 var(--row-marker-size);
+	display: flex;
+	justify-content: center;
 }
 
 .tab-favicon {

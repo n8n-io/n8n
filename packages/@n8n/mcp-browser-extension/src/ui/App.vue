@@ -76,7 +76,7 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 							Allow access to existing tabs{{
 								selectedTabIds.size ? ` (${selectedTabIds.size})` : ''
 							}}
-							<N8nIcon :icon="showTabSelection ? 'chevron-up' : 'chevron-down'" :size="14" />
+							<N8nIcon :icon="showTabSelection ? 'chevron-up' : 'chevron-down'" size="medium" />
 						</button>
 					</InfoRow>
 					<template v-if="showTabSelection && tabs.length">

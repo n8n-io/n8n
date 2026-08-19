@@ -12,7 +12,7 @@ defineProps<{
 <template>
 	<div class="info-row">
 		<span class="marker">
-			<N8nIcon :icon="icon" :size="16" />
+			<N8nIcon :icon="icon" size="large" />
 		</span>
 		<div class="info-content">
 			<div class="info-title">{{ title }}</div>
@@ -34,8 +34,8 @@ defineProps<{
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 40px;
-	height: 40px;
+	width: var(--row-marker-size);
+	height: var(--row-marker-size);
 	border-radius: 50%;
 	background: var(--color--background);
 	color: var(--color--text--shade-1);
