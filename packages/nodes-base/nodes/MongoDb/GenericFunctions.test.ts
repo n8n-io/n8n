@@ -1,9 +1,10 @@
 import { Binary, ObjectId } from 'mongodb';
 import type { INode, IExecuteFunctions } from 'n8n-workflow';
 
+import { parseAndResolveQueryParameters } from '@utils/query-parameters';
+
 import {
 	buildParameterizedConnString,
-	parseAndResolveQueryParameters,
 	prepareItems,
 	sanitizeMongoUriInMessage,
 	serializeMongoItems,
