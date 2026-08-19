@@ -7,8 +7,9 @@ import {
 } from '../graph';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
+import { stepKeyId, type StepKey, type StepKeyId } from './execution.types';
 import { decideSuccessors } from './settlement';
-import type { StepStore, StepSummary } from './step-store';
+import type { StepRecord, StepStore, StepSummary } from './step-store';
 import { validateStepContext } from './validate-step-context';
 
 /**
@@ -56,8 +57,8 @@ export class StepSettledHandler {
 				return;
 			}
 
-			const steps = await this.loadDecisionSteps(execution, step.nodeId);
-			queued = await this.planSuccessors(execution, step.nodeId, steps);
+			const steps = await this.loadDecisionSteps(execution, step);
+			queued = await this.planSuccessors(execution, step, steps);
 		}
 
 		// If we've queued steps, we know the execution isn't done yet, so we
@@ -72,13 +73,13 @@ export class StepSettledHandler {
 		await this.stepStore.cancelQueuedSteps(executionId);
 	}
 
-	/** Plans the direct successors of `nodeId`, returning how many were queued. */
+	/** Plans the settled step's direct successors, returning how many were queued. */
 	private async planSuccessors(
 		execution: ExecutionRecord,
-		nodeId: string,
-		steps: Record<string, StepSummary>,
+		step: StepRecord,
+		steps: Record<StepKeyId, StepSummary>,
 	): Promise<number> {
-		const { toQueue, toSkip } = decideSuccessors(execution.graph, nodeId, steps);
+		const { toQueue, toSkip } = decideSuccessors(execution.graph, step, steps);
 		if (toQueue.length === 0 && toSkip.length === 0) return 0;
 
 		// One batch, so a settlement's consequence lands atomically and a fan-out
@@ -88,11 +89,11 @@ export class StepSettledHandler {
 		// the rows forever; the reconciler re-announces stale queued steps and
 		// settled steps whose decidable successors have no rows.
 		const created = await this.stepStore.createSteps(execution.id, [
-			...toQueue.map((id) => ({ nodeId: id, status: 'queued' as const })),
-			...toSkip.map((id) => ({ nodeId: id, status: 'skipped' as const })),
+			...toQueue.map((key) => ({ ...key, status: 'queued' as const })),
+			...toSkip.map((key) => ({ ...key, status: 'skipped' as const })),
 		]);
 
-		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue));
+		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue.map(stepKeyId)));
 	}
 
 	/**
@@ -102,16 +103,19 @@ export class StepSettledHandler {
 	 */
 	private async loadDecisionSteps(
 		execution: ExecutionRecord,
-		nodeId: string,
-	): Promise<Record<string, StepSummary>> {
-		const successors = getSuccessorNodeIds(execution.graph, nodeId);
+		step: StepRecord,
+	): Promise<Record<StepKeyId, StepSummary>> {
+		const successors = getSuccessorNodeIds(execution.graph, step.nodeId);
 		const nodeIds = [
 			...new Set([
 				...successors,
 				...successors.flatMap((id) => getPredecessorNodeIds(execution.graph, id)),
 			]),
 		];
-		return await this.stepStore.loadStepSummaries(execution.id, nodeIds);
+		// Forward edges stay within a pass, so every row read sits at the
+		// settled row's iteration.
+		const keys = nodeIds.map((nodeId) => ({ nodeId, iteration: step.iteration }));
+		return await this.stepStore.loadStepSummariesByKeys(execution.id, keys);
 	}
 
 	/**
@@ -121,12 +125,12 @@ export class StepSettledHandler {
 	 */
 	private async announceCreatedSteps(
 		executionId: string,
-		created: Array<{ id: string; nodeId: string }>,
-		queuedNodeIds: Set<string>,
+		created: Array<{ id: string } & StepKey>,
+		queuedKeys: Set<StepKeyId>,
 	): Promise<number> {
 		let queued = 0;
-		for (const { id: stepId, nodeId } of created) {
-			if (queuedNodeIds.has(nodeId)) {
+		for (const { id: stepId, ...key } of created) {
+			if (queuedKeys.has(stepKeyId(key))) {
 				queued += 1;
 				await this.stepQueue.publish({ type: 'step:ready', executionId, stepId });
 			} else {

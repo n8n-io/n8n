@@ -441,6 +441,7 @@ export const credentialRequestSchema = z.object({
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
 	suggestedName: z.string().optional(),
 	setupHint: credentialSetupHintSchema.optional(),
+	preferNew: z.boolean().optional(),
 });
 
 export type InstanceAiCredentialRequest = z.infer<typeof credentialRequestSchema>;
@@ -475,6 +476,7 @@ export const workflowSetupNodeSchema = z.object({
 	isFirstTrigger: z.boolean().optional(),
 	isTestable: z.boolean().optional(),
 	isAutoApplied: z.boolean().optional(),
+	preferNewCredential: z.boolean().optional(),
 	credentialTestResult: z
 		.object({
 			success: z.boolean(),
@@ -660,6 +662,12 @@ export const confirmationRequestPayloadSchema = z.object({
 		.optional()
 		.describe('Target-agent tool approval details rendered instead of the outer tool call'),
 	credentialRequests: z.array(credentialRequestSchema).optional(),
+	requireUserSelection: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true, the credential setup card must wait for an explicit user choice instead of automatically submitting a preselected existing credential',
+		),
 	projectId: z
 		.string()
 		.optional()
@@ -1354,6 +1362,7 @@ export interface InstanceAiConfirmation {
 	message: string;
 	targetApproval?: InstanceAiTargetApproval;
 	credentialRequests?: InstanceAiCredentialRequest[];
+	requireUserSelection?: boolean;
 	projectId?: string;
 	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
 	domainAccess?: DomainAccessMeta;

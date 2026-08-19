@@ -37,6 +37,7 @@ const props = defineProps<{
 	message: string;
 	projectId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
+	requireUserSelection?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -84,8 +85,9 @@ function initSelections() {
 	for (const req of props.credentialRequests) {
 		if (selections.value[req.credentialType] !== undefined) continue;
 
-		if (req.existingCredentials?.length === 1) {
-			// Auto-select when exactly one credential available
+		if (req.existingCredentials?.length === 1 && !req.preferNew) {
+			// Auto-select when exactly one credential available — unless the user
+			// asked to create a new one, which this card must not answer for them.
 			selections.value[req.credentialType] = req.existingCredentials[0].id;
 		} else {
 			selections.value[req.credentialType] = null;
@@ -193,13 +195,15 @@ watch(
 /**
  * A generic auth type (bearer, header, query, basic, digest, custom, OAuth) never
  * identifies a service, so its credential must not be attached to whatever URL the
- * workflow points at unless the user says so. Whenever the card carries one, the
- * Continue button is the only path that may submit — every automatic path bails out.
+ * workflow points at unless the user says so. The agent can also require explicit
+ * confirmation for the card. In both cases, only Continue may submit the card.
  */
-const requiresExplicitContinue = computed(() =>
-	props.credentialRequests.some((request) =>
-		GENERIC_AUTH_CREDENTIAL_TYPES.has(request.credentialType),
-	),
+const requiresExplicitContinue = computed(
+	() =>
+		props.requireUserSelection === true ||
+		props.credentialRequests.some((request) =>
+			GENERIC_AUTH_CREDENTIAL_TYPES.has(request.credentialType),
+		),
 );
 
 // Auto-continue once every step is handled (selected or skipped) and at
@@ -644,7 +648,11 @@ async function handleSetupAutomatically() {
 							standalone
 							hide-issues
 							:instance-ai-credential-help="instanceAiCredentialHelp"
-							:skip-auto-select="GENERIC_AUTH_CREDENTIAL_TYPES.has(currentRequest.credentialType)"
+							:skip-auto-select="
+								GENERIC_AUTH_CREDENTIAL_TYPES.has(currentRequest.credentialType) ||
+								currentRequest.preferNew === true
+							"
+							:prefer-new-credential="currentRequest.preferNew === true"
 							:credential-setup-hint="currentRequest.setupHint"
 							:credentials-field-label="credentialsFieldLabel"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"

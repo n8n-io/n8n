@@ -50,6 +50,7 @@ const conflictedMergeTree = (...paths) =>
 // merge tree is computable, and the merge lands on exactly that tree. git grep exits
 // non-zero => no markers.
 const baseGitRoutes = [
+	[(a) => a[0] === 'ls-remote', `${PRE_HEAD}\trefs/heads/bundle/2.x`],
 	[(a) => a[0] === 'rev-parse' && a[1] === 'FETCH_HEAD', BASE],
 	[(a) => a[0] === 'rev-parse' && a[1] === 'HEAD', PRE_HEAD],
 	[(a) => a[0] === 'merge-base', fail()],
@@ -186,6 +187,56 @@ test('a branch that keeps moving fails instead of forcing', () => {
 	assert.throws(() => syncBundleBranch({ git, env, log: silent }), {
 		message: /bundle\/2\.x kept moving while syncing/,
 	});
+});
+
+test('a bundle branch that does not exist yet is created at its base', () => {
+	const git = makeStub([[(a) => a[0] === 'ls-remote', ''], ...baseGitRoutes]);
+	const result = syncBundleBranch({ git, env, log: silent });
+
+	assert.deepEqual(result, { status: 'created' });
+	assert.deepEqual(
+		git.calls.find((a) => a[0] === 'checkout'),
+		['checkout', '--force', '-B', 'bundle/2.x', BASE],
+	);
+	assert.equal(git.calls.some(isMerge), false);
+	assert.deepEqual(
+		git.calls.filter((a) => a[0] === 'fetch'),
+		[['fetch', REMOTE, 'master']],
+	);
+	assert.deepEqual(git.calls.find(isPush), ['push', REMOTE, 'HEAD:refs/heads/bundle/2.x']);
+});
+
+test('a remote that cannot be listed fails instead of re-creating the branch', () => {
+	const git = makeStub([[(a) => a[0] === 'ls-remote', fail()], ...baseGitRoutes]);
+
+	assert.throws(() => syncBundleBranch({ git, env, log: silent }), {
+		message: /Could not check whether bundle\/2\.x exists on the remote/,
+	});
+	assert.equal(git.calls.some(isPush), false);
+});
+
+test('a branch created under us mid-run is merged into on the retry', () => {
+	let lsRemotes = 0;
+	let pushes = 0;
+	const git = makeStub([
+		[
+			(a) => a[0] === 'ls-remote',
+			() => (++lsRemotes === 1 ? '' : `${PRE_HEAD}\trefs/heads/bundle/2.x`),
+		],
+		[
+			isPush,
+			() => {
+				if (++pushes === 1) throw Object.assign(new Error('rejected'), { status: 1 });
+				return '';
+			},
+		],
+		...baseGitRoutes,
+	]);
+	const result = syncBundleBranch({ git, env, log: silent });
+
+	assert.deepEqual(result, { status: 'merged' });
+	assert.equal(pushes, 2);
+	assert.equal(git.calls.filter(isMerge).length, 1);
 });
 
 test('annotation keeps a multi-line message on one line', () => {
