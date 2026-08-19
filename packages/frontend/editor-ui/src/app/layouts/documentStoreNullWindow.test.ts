@@ -3,7 +3,7 @@
  * layout. A layout that renders its `RouterView` before its own initialization
  * has produced a document store therefore renders it against whatever store the
  * *outgoing* layout left in that ref — a store the outgoing layout's `cleanup()`
- * is about to null (`useWorkflowInitialization.ts:89`).
+ * is about to null.
  *
  * `NodeView` reads that ref strictly, through `injectNDVStore()`, from a watcher
  * getter that re-runs on every invalidation. So "store nulled while NodeView is
@@ -13,10 +13,6 @@
  * These tests assert the state, not the throw. In the browser the throw is masked
  * because the parent render effect happens to unmount `NodeView` before the child
  * watcher job runs — flush order, not a guard, is what holds the invariant today.
- *
- * `WorkflowLayout` is here as the control. It gates on `isLoading` as well as on
- * the store, so it never mounts `NodeView` in that window. `DemoLayout` gates on
- * the store alone and does.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, defineComponent, ref, shallowRef, type ShallowRef } from 'vue';
