@@ -5,11 +5,20 @@ import {
 	DbLockService,
 	WorkflowReviewActivityRepository,
 	WorkflowReviewRequestRepository,
+	type ClosedUnreviewableRequest,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { EventService } from '@/events/event.service';
 import type { WorkflowMutationHooks } from '@/workflows/workflow-mutation-hooks-proxy.service';
+
+/** One review the per-mutation close closed, with the workflows it covered. */
+type ClosedRequestWithWorkflows = {
+	id: string;
+	projectId: string;
+	workflowIds: string[];
+};
 
 /**
  * Closes open review requests when their workflow stops being reviewable:
@@ -28,6 +37,7 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 		private readonly activityRepository: WorkflowReviewActivityRepository,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
+		private readonly eventService: EventService,
 	) {}
 
 	async afterWorkflowArchived(workflowId: string): Promise<void> {
@@ -66,8 +76,10 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 	 * viewers heal on the next focus/reconnect refetch.
 	 */
 	private async reconcileUnreviewableOpenRequests(workflowIds: string[]): Promise<void> {
+		let closedRequests: ClosedUnreviewableRequest[];
+
 		try {
-			const closedRequests = await this.dbLockService.withLockContext(
+			closedRequests = await this.dbLockService.withLockContext(
 				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 				async (ctx) => {
 					const requests =
@@ -93,18 +105,38 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 					return requests;
 				},
 			);
-
-			if (closedRequests.length === 0) return;
-
-			this.logger.info('Closed open workflow review request(s) left on unreviewable workflows', {
-				workflowIds,
-				closedRequests,
-			});
 		} catch (error) {
 			// The mutation has already committed; failing it now would be worse than a
 			// request that stays open until the next sweep closes it.
 			this.logger.error(
 				'Failed to close open workflow review request(s) left on unreviewable workflows',
+				{ workflowIds, error },
+			);
+			return;
+		}
+
+		if (closedRequests.length === 0) return;
+
+		this.logger.info('Closed open workflow review request(s) left on unreviewable workflows', {
+			workflowIds,
+			closedRequests,
+		});
+
+		// Per request, not per mutation: one sweep can repair a review left by an archive
+		// next to one left by a move. Reporting must never fail the mutation, which has
+		// already committed by the time the sweep runs.
+		try {
+			for (const { id, projectId, workflowId, reason } of closedRequests) {
+				this.eventService.emit('workflow-review-closed', {
+					workflowReviewRequestId: id,
+					projectId,
+					workflowId,
+					reason,
+				});
+			}
+		} catch (error) {
+			this.logger.error(
+				'Failed to report closed workflow review request(s) left on unreviewable workflows',
 				{ workflowIds, error },
 			);
 		}
@@ -115,8 +147,10 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 		reason: WorkflowReviewClosedReason,
 		options: { rethrow?: boolean } = {},
 	): Promise<void> {
+		let closedRequests: ClosedRequestWithWorkflows[];
+
 		try {
-			const affectedWorkflowIds = await this.dbLockService.withLockContext(
+			closedRequests = await this.dbLockService.withLockContext(
 				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 				async (ctx) => {
 					// Fetched under the lock so the close can't race a concurrent
@@ -127,7 +161,7 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 							ctx,
 						);
 
-					const affected = new Set<string>();
+					const closed: ClosedRequestWithWorkflows[] = [];
 					for (const { request, links } of openRequests) {
 						request.state = 'closed';
 						// A system close has no closing user; the decision stays as-is.
@@ -148,28 +182,16 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 							ctx,
 						);
 
-						for (const link of links) affected.add(link.workflowId);
+						closed.push({
+							id: request.id,
+							projectId: request.projectId,
+							workflowIds: links.map((link) => link.workflowId),
+						});
 					}
 
-					return [...affected];
+					return closed;
 				},
 			);
-
-			if (affectedWorkflowIds.length === 0) return;
-
-			this.logger.info('Closed open workflow review request(s)', {
-				reason,
-				workflowIds: affectedWorkflowIds,
-			});
-
-			for (const workflowId of affectedWorkflowIds) {
-				// Fire-and-forget: viewers heal via focus/reconnect refetch.
-				this.collaborationService
-					.broadcastWorkflowReviewStateChanged(workflowId)
-					.catch((error) =>
-						this.logger.warn('Failed to broadcast review state change', { workflowId, error }),
-					);
-			}
 		} catch (error) {
 			this.logger.error('Failed to close open workflow review request(s)', {
 				reason,
@@ -180,6 +202,49 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 			// here, having rolled the close back. Only the pre-delete hook is still in a
 			// position to call its mutation off.
 			if (options.rethrow) throw error;
+			return;
+		}
+
+		if (closedRequests.length === 0) return;
+
+		const affectedWorkflowIds = [
+			...new Set(closedRequests.flatMap((closed) => closed.workflowIds)),
+		];
+
+		this.logger.info('Closed open workflow review request(s)', {
+			reason,
+			workflowIds: affectedWorkflowIds,
+		});
+
+		// Reporting a close must never fail the mutation: the pre-delete hook propagates
+		// what it catches, and an archive or a move has already committed.
+		try {
+			for (const { id, projectId, workflowIds: closedWorkflowIds } of closedRequests) {
+				this.eventService.emit('workflow-review-closed', {
+					workflowReviewRequestId: id,
+					projectId,
+					// One workflow per open review is enforced today; the event reports the pin
+					// rather than a bundle. Null is the sweep's orphan path: here the repository
+					// inner-joins, so `links` is never empty and the fallback is only totality.
+					workflowId: closedWorkflowIds[0] ?? null,
+					reason,
+				});
+			}
+		} catch (error) {
+			this.logger.error('Failed to report closed workflow review request(s)', {
+				reason,
+				workflowIds: affectedWorkflowIds,
+				error,
+			});
+		}
+
+		for (const workflowId of affectedWorkflowIds) {
+			// Fire-and-forget: viewers heal via focus/reconnect refetch.
+			this.collaborationService
+				.broadcastWorkflowReviewStateChanged(workflowId)
+				.catch((error) =>
+					this.logger.warn('Failed to broadcast review state change', { workflowId, error }),
+				);
 		}
 	}
 }

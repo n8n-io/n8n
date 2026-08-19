@@ -1,4 +1,11 @@
-import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n/api-types';
+import type {
+	AuthenticationMethod,
+	DecideWorkflowReviewRequestDto,
+	ProjectRelation,
+	RedactionFloor,
+	WorkflowReviewClosedReason,
+	WorkflowReviewDecidedVia,
+} from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
@@ -1095,6 +1102,67 @@ export type RelayEventMap = {
 		user: UserLike;
 		before: RedactionFloor;
 		after: RedactionFloor;
+	};
+
+	// #endregion
+
+	// #region Workflow Reviews
+
+	'workflow-review-requested': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		workflowId: string;
+		workflowVersionId: string;
+		reviewerCount: number;
+	};
+
+	'workflow-review-version-updated': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		workflowId: string;
+		workflowVersionId: string;
+	};
+
+	'workflow-review-decided': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		workflowId: string;
+		/** Null when the pinned version was pruned before the decision. */
+		workflowVersionId: string | null;
+		decision: DecideWorkflowReviewRequestDto['decision'];
+		/**
+		 * Which authority allowed the decision. A caller can hold both; the emit site
+		 * reports assignment, because that is what the review asked for.
+		 */
+		decidedVia: WorkflowReviewDecidedVia;
+		/**
+		 * A reviewer who synced a version becomes an author too, so this is not
+		 * exclusive with `decidedVia: 'assigned-reviewer'`.
+		 */
+		decidedByAuthor: boolean;
+		/**
+		 * Wall clock from `review.opened` to this decision. A review can be decided
+		 * several times: `updateVersion` resets the decision to pending.
+		 */
+		msSinceReviewOpened: number;
+	};
+
+	/**
+	 * Closed without a decision, by the auto-close hooks. An approval closes the
+	 * request too but emits 'workflow-review-decided' instead, never both: both close
+	 * paths filter `state = 'open'` and `decide()` closes in-line.
+	 */
+	'workflow-review-closed': {
+		workflowReviewRequestId: string;
+		projectId: string;
+		/** Null only for the orphan the sweep finds with no workflow row behind its link. */
+		workflowId: string | null;
+		reason: WorkflowReviewClosedReason;
+	};
+
+	'workflow-review-comment-created': {
+		user: UserLike;
+		workflowReviewRequestId: string;
 	};
 
 	// #endregion

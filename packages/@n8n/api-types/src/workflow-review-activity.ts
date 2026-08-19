@@ -31,6 +31,9 @@ const workflowReviewClosedReasonSchema = z.enum([
 ]);
 export type WorkflowReviewClosedReason = z.infer<typeof workflowReviewClosedReasonSchema>;
 
+/** Which authority let a caller decide a review. Assignment wins when both apply. */
+export type WorkflowReviewDecidedVia = 'assigned-reviewer' | 'admin-override';
+
 /**
  * Pairs the version with its workflow: the entry is the immutable record, and the live pin it was
  * built from is prunable, so a bare version id becomes unresolvable once pruning removes the

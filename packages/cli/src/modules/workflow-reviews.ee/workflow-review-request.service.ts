@@ -38,6 +38,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -46,7 +47,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowReviewAccessService } from './workflow-review-access.service';
 import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
-import { toEligibleReviewer, toRequestSummary } from './workflow-review.mapper';
+import { toEligibleReviewer, toEventUser, toRequestSummary } from './workflow-review.mapper';
 /** Omitted stays omitted (column untouched); an empty/whitespace string clears to null. */
 function normalizeVersionDescription(description: string | undefined): string | null | undefined {
 	if (description === undefined) return undefined;
@@ -95,6 +96,7 @@ export class WorkflowReviewRequestService {
 		private readonly collaborationService: CollaborationService,
 		private readonly workflowService: WorkflowService,
 		private readonly accessService: WorkflowReviewAccessService,
+		private readonly eventService: EventService,
 	) {}
 
 	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<User[]> {
@@ -419,6 +421,14 @@ export class WorkflowReviewRequestService {
 
 		this.broadcastReviewStateChanged(workflowId);
 
+		this.eventService.emit('workflow-review-requested', {
+			user: toEventUser(user),
+			workflowReviewRequestId: request.id,
+			workflowId,
+			workflowVersionId,
+			reviewerCount: reviewerUserIds.length,
+		});
+
 		return toRequestSummary(request, workflowVersionId);
 	}
 
@@ -506,7 +516,11 @@ export class WorkflowReviewRequestService {
 			return toRequestSummary(request, workflowRow.workflowVersionId);
 		}
 
-		const { request: updated, changed } = await this.dbLockService.withLockContext(
+		const {
+			request: updated,
+			changed,
+			versionUpdated,
+		} = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			async (ctx) => {
 				// Re-check under the lock so update can't race a concurrent close/approve.
@@ -555,14 +569,14 @@ export class WorkflowReviewRequestService {
 					}
 
 					if (reviewDescription === undefined || reviewDescription === current.description) {
-						return { request: current, changed: false };
+						return { request: current, changed: false, versionUpdated: false };
 					}
 
 					current.description = reviewDescription;
 					current.updatedById = user.id;
 					const saved = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
 
-					return { request: saved, changed: true };
+					return { request: saved, changed: true, versionUpdated: false };
 				}
 
 				// Captured before the update.
@@ -611,12 +625,22 @@ export class WorkflowReviewRequestService {
 					ctx,
 				);
 
-				return { request: saved, changed: true };
+				return { request: saved, changed: true, versionUpdated: true };
 			},
 		);
 
 		if (changed) {
 			this.broadcastReviewStateChanged(dto.workflowId);
+		}
+
+		// Only a real re-pin, never a description-only save, which also sets `changed`.
+		if (versionUpdated) {
+			this.eventService.emit('workflow-review-version-updated', {
+				user: toEventUser(user),
+				workflowReviewRequestId,
+				workflowId: dto.workflowId,
+				workflowVersionId: dto.workflowVersionId,
+			});
 		}
 
 		return toRequestSummary(updated, dto.workflowVersionId);
@@ -697,7 +721,12 @@ export class WorkflowReviewRequestService {
 			throw new BadRequestError('A note is required when requesting changes');
 		}
 
-		const { request: saved, pinnedVersionId } = await this.dbLockService.withLockContext(
+		const {
+			request: saved,
+			pinnedVersionId,
+			decidedByAuthor,
+			decidedAsAssignedReviewer,
+		} = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			async (ctx) => {
 				// Re-check under the lock so a decision can't race a concurrent
@@ -790,11 +819,31 @@ export class WorkflowReviewRequestService {
 					ctx,
 				);
 
-				return { request: savedRequest, pinnedVersionId: currentRow.workflowVersionId };
+				return {
+					request: savedRequest,
+					pinnedVersionId: currentRow.workflowVersionId,
+					decidedByAuthor: isAuthorNow,
+					decidedAsAssignedReviewer: isAssignedReviewerNow,
+				};
 			},
 		);
 
 		this.broadcastReviewStateChanged(workflowRow.workflowId);
+
+		this.eventService.emit('workflow-review-decided', {
+			user: toEventUser(user),
+			workflowReviewRequestId,
+			workflowId: workflowRow.workflowId,
+			workflowVersionId: pinnedVersionId,
+			decision: dto.decision,
+			// Assignment is reported ahead of the override when both apply: the review asked
+			// this reviewer for the decision, and the override is what the rest are left with.
+			// The override is deliberately resolved pre-lock (see the note there), so this names
+			// the role that authorized the decision, not one re-asserted at commit time.
+			decidedVia: decidedAsAssignedReviewer ? 'assigned-reviewer' : 'admin-override',
+			decidedByAuthor,
+			msSinceReviewOpened: Date.now() - saved.createdAt.getTime(),
+		});
 
 		const summary = toRequestSummary(saved, pinnedVersionId);
 

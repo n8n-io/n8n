@@ -16,6 +16,8 @@ import type {
 } from '@n8n/db';
 import type { z } from 'zod';
 
+import type { UserLike } from '@/events/maps/relay.event-map';
+
 /**
  * Project a user onto the boundary shape the review endpoints are allowed to expose.
  * Shared by every review response that carries users, so the eligible-reviewer,
@@ -27,6 +29,21 @@ export function toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
 		email: user.email,
 		firstName: user.firstName ?? null,
 		lastName: user.lastName ?? null,
+	};
+}
+
+/**
+ * Project a user onto the event-bus shape. Never emit the `User` entity itself: it
+ * carries the password hash and the MFA secrets, and the emitted object is handed to
+ * every present and future relay.
+ */
+export function toEventUser(user: User): UserLike {
+	return {
+		id: user.id,
+		email: user.email,
+		firstName: user.firstName,
+		lastName: user.lastName,
+		role: user.role ? { slug: user.role.slug } : undefined,
 	};
 }
 

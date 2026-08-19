@@ -21,6 +21,7 @@ import {
 import { Container } from '@n8n/di';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { EventService } from '@/events/event.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -162,6 +163,8 @@ async function getActivity(agent: SuperAgentTest, requestId: string, limit?: num
 describe('Commenting on a review', () => {
 	test('shows a comment in the feed the instant its writer posts it', async () => {
 		const { request } = await seedReviewInTeamProject(member);
+		// Spied rather than mocked: the real container's listeners must keep running.
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		const post = await memberAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
@@ -183,6 +186,17 @@ describe('Commenting on a review', () => {
 			data: null,
 			createdBy: expect.objectContaining({ id: member.id }),
 			messages: [expect.objectContaining({ body: 'Looks good to me' })],
+		});
+		// The comment body never leaves the feed.
+		expect(emit).toHaveBeenCalledWith('workflow-review-comment-created', {
+			user: {
+				id: member.id,
+				email: member.email,
+				firstName: member.firstName,
+				lastName: member.lastName,
+				role: { slug: member.role.slug },
+			},
+			workflowReviewRequestId: request.id,
 		});
 	});
 

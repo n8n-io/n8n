@@ -18,11 +18,12 @@ import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 
 import { WorkflowReviewAccessService } from './workflow-review-access.service';
 import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
-import { toActivityEntry, toEligibleReviewer } from './workflow-review.mapper';
+import { toActivityEntry, toEligibleReviewer, toEventUser } from './workflow-review.mapper';
 
 @Service()
 export class WorkflowReviewActivityService {
@@ -35,6 +36,7 @@ export class WorkflowReviewActivityService {
 		private readonly userRepository: UserRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly logger: Logger,
+		private readonly eventService: EventService,
 	) {}
 
 	async listActivity(
@@ -96,6 +98,11 @@ export class WorkflowReviewActivityService {
 				ctx,
 			);
 			return { activity, message };
+		});
+
+		this.eventService.emit('workflow-review-comment-created', {
+			user: toEventUser(user),
+			workflowReviewRequestId,
 		});
 
 		return toActivityEntry(

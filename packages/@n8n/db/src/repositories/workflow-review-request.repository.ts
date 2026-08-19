@@ -105,7 +105,10 @@ export type InboxStateCounts = {
 /** An open request the reconciliation sweep closed, and what made its workflow unreviewable. */
 export type ClosedUnreviewableRequest = {
 	id: string;
+	projectId: string;
 	reason: WorkflowReviewClosedReason;
+	/** Null when no workflow row is left behind the link. */
+	workflowId: string | null;
 };
 
 /** One row per (open request, linked workflow); a request with no link left yields one empty row. */
@@ -188,7 +191,8 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 
 	/**
 	 * Closes every open request whose workflow can no longer be reviewed — deleted, archived, or
-	 * moved out of the request's project — reporting each id with the reason that closed it.
+	 * moved out of the request's project — reporting each request with its project, the workflow it
+	 * was linked to and the reason that closed it.
 	 *
 	 * Matches on the workflow's current state rather than on the mutation that changed it, so it
 	 * catches what the per-mutation hooks cannot: reviews a delete cascade unlinked before a hook
@@ -224,32 +228,38 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			.where('review.state = :openState', { openState })
 			.getRawMany<OpenRequestWorkflowRow>();
 
-		const reasonByRequestId = new Map<string, WorkflowReviewClosedReason>();
+		const closedByRequestId = new Map<string, ClosedUnreviewableRequest>();
 		for (const row of rows) {
 			const reason = closeReasonFor(row);
 			if (reason === null) continue;
 
 			// A request linked to several workflows gets one row each, so keep the most
-			// definitive reason rather than whichever row the database returned last.
-			const current = reasonByRequestId.get(row.requestId);
+			// definitive reason — and the workflow that produced it — rather than
+			// whichever row the database returned last.
+			const current = closedByRequestId.get(row.requestId);
 			if (
 				current !== undefined &&
-				CLOSE_REASON_PRECEDENCE.indexOf(current) <= CLOSE_REASON_PRECEDENCE.indexOf(reason)
+				CLOSE_REASON_PRECEDENCE.indexOf(current.reason) <= CLOSE_REASON_PRECEDENCE.indexOf(reason)
 			) {
 				continue;
 			}
-			reasonByRequestId.set(row.requestId, reason);
+			closedByRequestId.set(row.requestId, {
+				id: row.requestId,
+				projectId: row.requestProjectId,
+				reason,
+				workflowId: row.linkedWorkflowId,
+			});
 		}
 
-		if (reasonByRequestId.size === 0) return [];
+		if (closedByRequestId.size === 0) return [];
 
 		// A system close has no closing user; the decision stays as-is.
-		await manager.update(WorkflowReviewRequest, [...reasonByRequestId.keys()], {
+		await manager.update(WorkflowReviewRequest, [...closedByRequestId.keys()], {
 			state: closedState,
 			closedById: null,
 		});
 
-		return [...reasonByRequestId].map(([id, reason]) => ({ id, reason }));
+		return [...closedByRequestId.values()];
 	}
 
 	async findById(id: string, ctx: OperationContext): Promise<WorkflowReviewRequest | null> {

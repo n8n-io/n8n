@@ -129,6 +129,10 @@ export class LogStreamingEventRelay extends EventRelay {
 			'job-stalled': (event) => this.jobStalled(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 			'redaction-enforcement-updated': (event) => this.redactionEnforcementUpdated(event),
+			'workflow-review-requested': (event) => this.workflowReviewRequested(event),
+			'workflow-review-version-updated': (event) => this.workflowReviewVersionUpdated(event),
+			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
+			'workflow-review-closed': (event) => this.workflowReviewClosed(event),
 			'token-exchange-succeeded': (event) => this.tokenExchangeSucceeded(event),
 			'token-exchange-failed': (event) => this.tokenExchangeFailed(event),
 			'token-exchange-identity-linked': (event) => this.tokenExchangeIdentityLinked(event),
@@ -219,7 +223,12 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private workflowActivated({ user, workflowId, workflow }: RelayEventMap['workflow-activated']) {
+	private workflowActivated({
+		user,
+		workflowId,
+		workflow,
+		source,
+	}: RelayEventMap['workflow-activated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.activated',
 			payload: {
@@ -227,6 +236,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName: workflow.name,
 				activeVersionId: workflow.activeVersionId,
+				...(source && { source }),
 			},
 		});
 	}
@@ -1129,7 +1139,14 @@ export class LogStreamingEventRelay extends EventRelay {
 				// is emitted separately via 'redaction-enforcement-updated'.
 				break;
 			case 'workflow_reviews':
-				// Telemetry-only signal.
+				// Unlike the two policies above, this one is not named "restricted": enabling it
+				// is the enabled event.
+				void this.eventBus.sendAuditEvent({
+					eventName: value
+						? 'n8n.audit.workflow-reviews-policy.enabled'
+						: 'n8n.audit.workflow-reviews-policy.disabled',
+					payload: user,
+				});
 				break;
 			default:
 				assertNever(settingName);
@@ -1145,6 +1162,80 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.redaction-enforcement.updated',
 			payload: { ...user, before, after },
+		});
+	}
+
+	// #endregion
+
+	// #region Workflow Reviews
+
+	@Redactable()
+	private workflowReviewRequested({
+		user,
+		workflowReviewRequestId,
+		workflowId,
+		workflowVersionId,
+	}: RelayEventMap['workflow-review-requested']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow-review.requested',
+			payload: { ...user, workflowId, versionId: workflowVersionId, workflowReviewRequestId },
+		});
+	}
+
+	@Redactable()
+	private workflowReviewVersionUpdated({
+		user,
+		workflowReviewRequestId,
+		workflowId,
+		workflowVersionId,
+	}: RelayEventMap['workflow-review-version-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow-review.version-updated',
+			payload: { ...user, workflowId, versionId: workflowVersionId, workflowReviewRequestId },
+		});
+	}
+
+	@Redactable()
+	private workflowReviewDecided({
+		user,
+		workflowReviewRequestId,
+		workflowId,
+		workflowVersionId,
+		decision,
+		decidedVia,
+		decidedByAuthor,
+	}: RelayEventMap['workflow-review-decided']) {
+		void this.eventBus.sendAuditEvent({
+			eventName:
+				decision === 'approved'
+					? 'n8n.audit.workflow-review.approved'
+					: 'n8n.audit.workflow-review.changes-requested',
+			payload: {
+				...user,
+				workflowId,
+				...(workflowVersionId !== null && { versionId: workflowVersionId }),
+				workflowReviewRequestId,
+				decidedVia,
+				decidedByAuthor,
+			},
+		});
+	}
+
+	/** Not `@Redactable()`: the auto-close hooks have no actor. */
+	private workflowReviewClosed({
+		workflowReviewRequestId,
+		projectId,
+		workflowId,
+		reason,
+	}: RelayEventMap['workflow-review-closed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow-review.closed',
+			payload: {
+				workflowReviewRequestId,
+				projectId,
+				reviewClosedReason: reason,
+				...(workflowId !== null && { workflowId }),
+			},
 		});
 	}
 
