@@ -2,6 +2,7 @@ import {
 	AlreadyConnectedError,
 	BrowserNotAvailableError,
 	ConnectionLostError,
+	DisabledElementError,
 	ExtensionConflictError,
 	McpBrowserError,
 	NotConnectedError,
@@ -83,6 +84,18 @@ describe('StaleRefError', () => {
 
 	it('should hint about browser_snapshot', () => {
 		expect(error.hint).toContain('browser_snapshot');
+	});
+});
+
+describe('DisabledElementError', () => {
+	const error = new DisabledElementError("button:has-text('Add')");
+
+	it('should include the target in the message', () => {
+		expect(error.message).toContain("button:has-text('Add')");
+	});
+
+	it('should hint at setting whatever gates the control', () => {
+		expect(error.hint).toContain('gates it');
 	});
 });
 

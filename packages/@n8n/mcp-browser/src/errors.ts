@@ -82,6 +82,15 @@ export class ExtensionConflictError extends McpBrowserError {
 	}
 }
 
+export class DisabledElementError extends McpBrowserError {
+	constructor(readonly target: string) {
+		super(
+			`Element is disabled: ${target}`,
+			'It stayed disabled long enough that waiting on it would only have timed out. Either something gates it — an unset dropdown, an empty required field — so set that and retry, or the page was still busy, in which case retrying alone may be enough.',
+		);
+	}
+}
+
 export class UnsupportedOperationError extends McpBrowserError {
 	constructor(
 		readonly operation: string,

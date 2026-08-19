@@ -14,6 +14,7 @@ import { chromium } from 'playwright-core';
 import { CDPRelayServer } from '../cdp-relay';
 import {
 	BrowserExecutableNotFoundError,
+	DisabledElementError,
 	PageNotFoundError,
 	StaleRefError,
 	type ConnectionLostReason,
@@ -44,6 +45,18 @@ import type {
 import { generateId, toError } from '../utils';
 
 const log = createLogger('playwright');
+
+/**
+ * How long a control may stay disabled before a click is refused. Generous on
+ * purpose: a control disabled by a debounce or an in-flight save was clicked
+ * before this guard existed, and refusing one is worse than waiting for it.
+ * Still an order of magnitude below the 30s action timeout it saves.
+ */
+const DISABLED_GRACE_MS = 5_000;
+/** Re-read cadence within the grace window. */
+const DISABLED_POLL_MS = 250;
+/** Budget for one read. Its own value because a remote relay hop is not free. */
+const DISABLED_READ_TIMEOUT_MS = 2_000;
 
 // ---------------------------------------------------------------------------
 // Per-page state tracked by the adapter
@@ -397,6 +410,7 @@ export class PlaywrightAdapter {
 	async click(pageId: string, target: ElementTarget, options?: ClickOptions): Promise<void> {
 		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
+		await this.ensureEnabled(locator, target);
 		await locator.click({
 			button: options?.button,
 			clickCount: options?.clickCount,
@@ -913,6 +927,40 @@ export class PlaywrightAdapter {
 	// =========================================================================
 	// Private helpers
 	// =========================================================================
+
+	/**
+	 * Refuse a click on a control that is still disabled once the grace window is
+	 * up. Playwright would wait its full action timeout and then fail with a
+	 * timeout, which says nothing about why.
+	 */
+	private async ensureEnabled(locator: Locator, target: ElementTarget): Promise<void> {
+		const deadline = Date.now() + DISABLED_GRACE_MS;
+		while (await this.readDisabled(locator)) {
+			const remaining = deadline - Date.now();
+			if (remaining <= 0) {
+				throw new DisabledElementError('ref' in target ? target.ref : target.selector);
+			}
+			await new Promise((resolve) => setTimeout(resolve, Math.min(DISABLED_POLL_MS, remaining)));
+		}
+	}
+
+	/**
+	 * Playwright's own predicate, so it cannot disagree with the click it guards —
+	 * and unlike `evaluateAll` it resolves `aria-ref` locators. Unreadable counts
+	 * as enabled, leaving the click to report its own error.
+	 */
+	private async readDisabled(locator: Locator): Promise<boolean> {
+		return await locator
+			.isDisabled({ timeout: DISABLED_READ_TIMEOUT_MS })
+			.catch((error: unknown) => {
+				const failure = toError(error);
+				// A read that times out just means the element was not there yet, which
+				// the click reports well enough on its own. Anything else is unexpected.
+				if (failure.name === 'TimeoutError') log.debug('disabled check timed out');
+				else log.warn('disabled check failed:', failure.message);
+				return false;
+			});
+	}
 
 	private requireContext(): BrowserContext {
 		if (!this.context) throw new Error('Browser context not initialized');
