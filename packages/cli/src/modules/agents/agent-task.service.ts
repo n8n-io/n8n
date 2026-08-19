@@ -21,6 +21,7 @@ import {
 	diffAgentConfigParts,
 } from './agent-modification-telemetry.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentTaskJobRegistrar } from './scheduling/agent-task-job-registrar';
 import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
@@ -72,6 +73,7 @@ export class AgentTaskService {
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly publisher: Publisher,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly durableJobRegistrar: AgentTaskJobRegistrar,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -327,6 +329,13 @@ export class AgentTaskService {
 	 * harmless.
 	 */
 	async requestReconcile(agentId: string): Promise<void> {
+		// Durable scheduling is DB state: the main handling the request writes it
+		// directly, so there is no cron to register and no peer to broadcast to.
+		if (this.durableJobRegistrar.isEnabled()) {
+			await this.durableJobRegistrar.reconcile(agentId);
+			return;
+		}
+
 		await this.registerEnabledForAgent(agentId);
 		this.broadcastTasksChanged(agentId);
 	}
@@ -338,6 +347,12 @@ export class AgentTaskService {
 	 * Used by the local lifecycle path and the pubsub reconcile handler.
 	 */
 	async registerEnabledForAgent(agentId: string): Promise<void> {
+		// With durable scheduling on, no main may hold in-memory crons — the
+		// leader registering them alongside the durable jobs would run every
+		// task twice per tick. Guarded here so the pubsub reconcile path is
+		// covered too, e.g. a broadcast from a peer still on the legacy path.
+		if (this.durableJobRegistrar.isEnabled()) return;
+
 		const agent = await this.agentRepository.findOne({
 			where: { id: agentId },
 			relations: { activeVersion: true },
@@ -384,6 +399,10 @@ export class AgentTaskService {
 
 	@OnLeaderTakeover()
 	async reconnectAll(): Promise<void> {
+		// Durable jobs live in the DB and survive leader changes; there is
+		// nothing to rebuild on takeover.
+		if (this.durableJobRegistrar.isEnabled()) return;
+
 		const agents = await this.agentRepository.find({
 			where: { activeVersionId: Not(IsNull()) },
 			relations: { activeVersion: true },

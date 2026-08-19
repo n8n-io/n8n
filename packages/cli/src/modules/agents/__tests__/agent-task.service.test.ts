@@ -22,6 +22,7 @@ import type {
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentTaskJobRegistrar } from '../scheduling/agent-task-job-registrar';
 
 const AGENT_ID = 'agent-1';
 const PROJECT_ID = 'project-1';
@@ -145,6 +146,7 @@ describe('AgentTaskService', () => {
 	let agentTaskScheduler: ReturnType<typeof mock<ScheduledTaskManager>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
 	let modificationTelemetry: ReturnType<typeof mock<AgentModificationTelemetryService>>;
+	let durableJobRegistrar: ReturnType<typeof mock<AgentTaskJobRegistrar>>;
 	let txManager: { save: Mock; remove: Mock };
 	let service: AgentTaskService;
 
@@ -166,6 +168,7 @@ describe('AgentTaskService', () => {
 			agentTaskScheduler,
 			publisher,
 			modificationTelemetry,
+			durableJobRegistrar,
 		);
 	}
 
@@ -203,6 +206,9 @@ describe('AgentTaskService', () => {
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue(undefined);
 		modificationTelemetry = mock<AgentModificationTelemetryService>();
+		durableJobRegistrar = mock<AgentTaskJobRegistrar>();
+		// Legacy scheduling is the default under test; durable-path cases flip this.
+		durableJobRegistrar.isEnabled.mockReturnValue(false);
 		// Default to the leader so existing registration assertions hold.
 		service = buildService(true);
 	});
@@ -842,6 +848,18 @@ describe('AgentTaskService', () => {
 
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
+
+		it('routes to the durable registrar when durable scheduling is on, skipping crons and pubsub', async () => {
+			setMultiMain(true);
+			durableJobRegistrar.isEnabled.mockReturnValue(true);
+
+			await service.requestReconcile(AGENT_ID);
+
+			expect(durableJobRegistrar.reconcile).toHaveBeenCalledWith(AGENT_ID);
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+			expect(agentRepository.findOne).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('handleTasksChanged', () => {
@@ -862,6 +880,15 @@ describe('AgentTaskService', () => {
 				},
 				expect.any(Function),
 			);
+		});
+
+		it('registers no crons when durable scheduling is on, even for a broadcast from a legacy peer', async () => {
+			durableJobRegistrar.isEnabled.mockReturnValue(true);
+
+			await service.handleTasksChanged({ agentId: AGENT_ID });
+
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
+			expect(agentRepository.findOne).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1103,6 +1130,17 @@ describe('AgentTaskService', () => {
 			await flushAsyncWork();
 
 			expect(taskRunLockRepository.release).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('reconnectAll', () => {
+		it('rebuilds no crons on leader takeover when durable scheduling is on', async () => {
+			durableJobRegistrar.isEnabled.mockReturnValue(true);
+
+			await service.reconnectAll();
+
+			expect(agentRepository.find).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
 		});
 	});
 
