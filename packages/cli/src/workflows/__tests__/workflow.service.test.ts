@@ -7,6 +7,7 @@ import {
 import type { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
+	ExecutionRepository,
 	SharedWorkflowRepository,
 	type WorkflowEntity,
 	WorkflowPublishHistoryRepository,
@@ -52,7 +53,7 @@ beforeAll(async () => {
 		mock(),
 		mock(),
 		mock(),
-		mock(),
+		Container.get(ExecutionRepository),
 		mock(),
 		globalConfig,
 		mock(),
@@ -207,6 +208,35 @@ describe('update()', () => {
 		expect(workflowData.connections).toEqual(workflow.connections);
 		expect(workflowData.versionId).toBe(newVersionId);
 		expect(addRecordSpy).not.toBeCalled();
+	});
+});
+
+describe('delete()', () => {
+	test('invalidates the cached project for the deleted workflow', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const invalidateSpy = jest.spyOn(
+			Container.get(OwnershipService),
+			'invalidateWorkflowProjectCacheByIds',
+		);
+
+		await workflowService.delete(owner, workflow.id, true);
+
+		expect(invalidateSpy).toHaveBeenCalledWith([workflow.id]);
+	});
+
+	test('does not invalidate the cached project when the workflow is not found', async () => {
+		const owner = await createOwner();
+
+		const invalidateSpy = jest.spyOn(
+			Container.get(OwnershipService),
+			'invalidateWorkflowProjectCacheByIds',
+		);
+
+		await workflowService.delete(owner, uuid(), true);
+
+		expect(invalidateSpy).not.toHaveBeenCalled();
 	});
 });
 

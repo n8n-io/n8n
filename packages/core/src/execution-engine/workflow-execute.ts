@@ -24,7 +24,6 @@ import type {
 	ITaskData,
 	ITaskDataConnections,
 	ITaskMetadata,
-	NodeApiError,
 	NodeOperationError,
 	Workflow,
 	IRunExecutionData,
@@ -36,6 +35,7 @@ import type {
 	INodeIssues,
 	INodeType,
 	ITaskStartedData,
+	JsonObject,
 	AiAgentRequest,
 	IWorkflowExecutionDataProcess,
 	EngineRequest,
@@ -53,6 +53,7 @@ import {
 	UnexpectedError,
 	UserError,
 	OperationalError,
+	NodeApiError,
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
@@ -83,6 +84,23 @@ import {
 import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
+
+function isAxiosError(error: unknown): error is Error & { isAxiosError: true } {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'isAxiosError' in error &&
+		error.isAxiosError === true
+	);
+}
+
+function normalizeUnhandledAxiosError(error: unknown, node: INode): ExecutionBaseError {
+	if (isAxiosError(error)) {
+		return new NodeApiError(node, error as unknown as JsonObject);
+	}
+
+	return error as ExecutionBaseError;
+}
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -1809,7 +1827,7 @@ export class WorkflowExecute {
 								});
 							}
 
-							const e = error as unknown as ExecutionBaseError;
+							const e = normalizeUnhandledAxiosError(error, executionNode);
 
 							executionError = { ...e, message: e.message, stack: e.stack };
 

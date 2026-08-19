@@ -777,6 +777,8 @@ export class WorkflowService {
 		await this.workflowRepository.delete(workflowId);
 		await this.binaryDataService.deleteMany(idsForDeletion);
 
+		await this.ownershipService.invalidateWorkflowProjectCacheByIds([workflowId]);
+
 		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
