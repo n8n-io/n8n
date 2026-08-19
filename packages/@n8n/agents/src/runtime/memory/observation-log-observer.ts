@@ -138,8 +138,16 @@ export function renderObserverTranscript(
 			.map((content) => content.text)
 			.join('\n');
 		if (text) {
-			lines.push(`[${timestamp}] ${message.role}:`);
-			lines.push(redactText(text).text);
+			// Messages synthesized from tool output (toMessage, e.g. MCP rich
+			// results) carry tool provenance and must stay inside the
+			// untrusted-data boundary like inline tool results.
+			if (message.origin?.kind === 'tool') {
+				lines.push(`[${timestamp}] tool_message ${message.origin.toolName}:`);
+				lines.push(wrapUntrustedObserverData(redactText(text).text, message.origin.toolName));
+			} else {
+				lines.push(`[${timestamp}] ${message.role}:`);
+				lines.push(redactText(text).text);
+			}
 		}
 
 		for (const toolCall of message.content.filter(isToolCallContent)) {
