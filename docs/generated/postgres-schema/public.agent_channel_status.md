@@ -37,6 +37,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_a7c67724df9ef3d12f6da773c1 | CREATE INDEX "IDX_a7c67724df9ef3d12f6da773c1" ON public.agent_channel_status USING btree ("expiresAt") |
+| IDX_c75ec632fe0b5b1905edb9cd7f | CREATE INDEX "IDX_c75ec632fe0b5b1905edb9cd7f" ON public.agent_channel_status USING btree ("hostId") |
 | PK_4e1ca943734d575679a56f4da90 | CREATE UNIQUE INDEX "PK_4e1ca943734d575679a56f4da90" ON public.agent_channel_status USING btree ("agentId", "integrationType", "credentialId", "hostId") |
 
 ## Relations

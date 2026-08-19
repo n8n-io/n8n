@@ -1347,3 +1347,65 @@ describe('ChatIntegrationService — channel status recording', () => {
 		expect(statusReporter.withdraw).not.toHaveBeenCalled();
 	});
 });
+
+describe('ChatIntegrationService — reporting failures from every startup step', () => {
+	const slackRef = { agentId: 'agent-1', integrationType: 'slack', credentialId: 'cred-1' };
+
+	beforeEach(() => {
+		Container.reset();
+	});
+
+	it('records a credential that cannot be decrypted, which happens before the adapter is built', async () => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new FakeIntegration('slack', false));
+		// No project credential configured, so `decryptCredentialForProject` throws.
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+
+		const { service, statusReporter } = buildServiceWith({ registry, credentialsService });
+
+		await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toThrow(
+			/not found or not accessible/,
+		);
+
+		expect(statusReporter.recordFailure).toHaveBeenCalledWith(slackRef, expect.any(Error));
+	});
+
+	it('records a pre-connect rejection, so a claimed credential is reported rather than only thrown', async () => {
+		const integration = new FakeIntegration('slack', false);
+		(integration as unknown as { onBeforeConnect: () => Promise<void> }).onBeforeConnect =
+			async () => {
+				throw new Error('already connected to agent "Other"');
+			};
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+
+		const credentialsService = mock<CredentialsService>();
+		mockProjectCredential(credentialsService, { id: 'cred-1' } as CredentialsEntity);
+
+		const { service, statusReporter } = buildServiceWith({ registry, credentialsService });
+
+		await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toThrow(
+			'already connected to agent "Other"',
+		);
+
+		expect(statusReporter.recordFailure).toHaveBeenCalledWith(slackRef, expect.any(Error));
+	});
+
+	it('does not report an outbound Preview connection that fails, since it is not a channel', async () => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new FakeIntegration('slack', false));
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+
+		const { service, statusReporter } = buildServiceWith({ registry, credentialsService });
+
+		await expect(
+			service.connect('agent-1', slackIntegration, 'project-1', { ingressEnabled: false }),
+		).rejects.toThrow();
+
+		expect(statusReporter.recordFailure).not.toHaveBeenCalled();
+	});
+});

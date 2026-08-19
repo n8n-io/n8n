@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
 import {
@@ -66,7 +67,13 @@ export class AgentChannelStatusReporter {
 
 			await this.repository.saveOwn(ref, {
 				status: 'error',
-				errorMessage: cause instanceof Error ? cause.message : String(cause),
+				// A platform or adapter error can carry the credential it failed with —
+				// a failed Telegram request quotes the API URL, and the bot token is in
+				// that path. This message is persisted and served to the UI, so it is
+				// scrubbed the same way recorded execution errors are.
+				errorMessage: scrubSecretsInText(
+					cause instanceof Error ? cause.message : String(cause),
+				),
 				attempts,
 				backoffUntil: this.backoffUntil(attempts),
 				expiresAt: this.leaseExpiresAt(),

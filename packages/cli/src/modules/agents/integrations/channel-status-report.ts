@@ -86,12 +86,18 @@ function resolveStatus(
 
 /**
  * The newest failure, so a channel failing on several mains reports the most
- * current reason rather than whichever row happened to be read first.
+ * current reason rather than whichever row happened to be read first. `hostId`
+ * breaks ties, because two instances failing in the same millisecond would
+ * otherwise leave the answer to database row order and the message could change
+ * between two identical requests.
  */
 function mostRecentFailure(rows: AgentChannelStatus[]): AgentChannelStatus | undefined {
 	return rows
 		.filter((row) => row.status === 'error')
-		.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
+		.sort(
+			(a, b) =>
+				b.updatedAt.getTime() - a.updatedAt.getTime() || a.hostId.localeCompare(b.hostId),
+		)[0];
 }
 
 function rollUp(entries: AgentIntegrationStatusEntry[]): AgentIntegrationStatusResponse['status'] {

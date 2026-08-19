@@ -426,3 +426,104 @@ describe('AgentChannelReconciler', () => {
 		});
 	});
 });
+
+describe('AgentChannelReconciler — passes never overlap', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('drops a tick that lands while a pass is still running', async () => {
+		// Two passes would both see the channel as not running and both start it,
+		// and the second would tear down what the first just built.
+		const { reconciler, agentRepository, chatIntegrationService } = build();
+		agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+		// Held open from outside, so the second call is made while the first pass is
+		// provably still inside `startChannel`.
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => (release = resolve));
+		let entered!: () => void;
+		const inStartChannel = new Promise<void>((resolve) => (entered = resolve));
+		chatIntegrationService.startChannel.mockImplementation(async () => {
+			entered();
+			await held;
+		});
+
+		const first = reconciler.reconcile('interval');
+		await inStartChannel;
+		const second = reconciler.reconcile('interval');
+		release();
+		await Promise.all([first, second]);
+
+		expect(chatIntegrationService.startChannel).toHaveBeenCalledTimes(1);
+	});
+
+	it('waits for a pass in flight before withdrawing on shutdown', async () => {
+		// Otherwise the pass's own `recordConnected` lands after the withdrawal and
+		// leaves a row behind for a lease's worth of time.
+		const { reconciler, agentRepository, channelStatusRepository, chatIntegrationService } =
+			build();
+		agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => (release = resolve));
+		let entered!: () => void;
+		const inStartChannel = new Promise<void>((resolve) => (entered = resolve));
+		chatIntegrationService.startChannel.mockImplementation(async () => {
+			entered();
+			await held;
+		});
+
+		const pass = reconciler.reconcile('interval');
+		await inStartChannel;
+		const shutdown = reconciler.shutdown();
+		expect(channelStatusRepository.clearOwnHost).not.toHaveBeenCalled();
+
+		release();
+		await Promise.all([pass, shutdown]);
+
+		expect(channelStatusRepository.clearOwnHost).toHaveBeenCalled();
+	});
+
+	it('does not start a leader-only channel when leadership was lost mid-pass', async () => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new FakeIntegration('telegram', true));
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findPublished.mockResolvedValue([makeAgent([telegram])]);
+		const channelStatusRepository = mock<AgentChannelStatusRepository>();
+		channelStatusRepository.findOwnAll.mockResolvedValue([]);
+		channelStatusRepository.deleteExpired.mockResolvedValue(0);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.listLiveChannels.mockReturnValue([]);
+		chatIntegrationService.hasLiveChannel.mockReturnValue(false);
+
+		// Leader while the pass computes what it wants, follower by the time it
+		// would start anything.
+		let isLeader = true;
+		const instanceSettings = {
+			hostId: HOST_ID,
+			get isLeader() {
+				const current = isLeader;
+				isLeader = false;
+				return current;
+			},
+		} as InstanceSettings;
+
+		const agentsConfig = Object.assign(new AgentsConfig(), {
+			channelReconcileIntervalSeconds: RECONCILE_INTERVAL_SECONDS,
+		});
+		const reconciler = new AgentChannelReconciler(
+			mockLogger(),
+			agentsConfig,
+			agentRepository,
+			channelStatusRepository,
+			new AgentChannelStatusReporter(mockLogger(), agentsConfig, channelStatusRepository),
+			chatIntegrationService,
+			registry,
+			instanceSettings,
+			mock<ErrorReporter>(),
+		);
+
+		await reconciler.reconcile('interval');
+
+		expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
+	});
+});

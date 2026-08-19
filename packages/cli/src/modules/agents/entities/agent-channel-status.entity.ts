@@ -59,6 +59,8 @@ export class AgentChannelStatus extends WithTimestamps {
 	})
 	credentialId: string;
 
+	/** Indexed: every reconciliation pass reads this instance's own rows. */
+	@Index()
 	@PrimaryColumn({
 		type: 'varchar',
 		length: 128,

@@ -44,6 +44,7 @@ CREATE TABLE "agent_channel_status" ("agentId" varchar(36) NOT NULL, "integratio
 | Name | Definition |
 | ---- | ---------- |
 | IDX_a7c67724df9ef3d12f6da773c1 | CREATE INDEX "IDX_a7c67724df9ef3d12f6da773c1" ON "agent_channel_status" ("expiresAt")  |
+| IDX_c75ec632fe0b5b1905edb9cd7f | CREATE INDEX "IDX_c75ec632fe0b5b1905edb9cd7f" ON "agent_channel_status" ("hostId")  |
 | sqlite_autoindex_agent_channel_status_1 | PRIMARY KEY (agentId, integrationType, credentialId, hostId) |
 
 ## Relations

@@ -23,8 +23,6 @@ import {
  */
 type Status = AgentChannelRuntimeStatus | 'disconnected' | 'unknown';
 
-/** Statuses that came from the server, so a failed refetch must not overwrite them. */
-const CONFIRMED_STATUSES: readonly Status[] = ['configured', 'starting', 'connected', 'error'];
 
 interface AgentIntegrationStatusState {
 	statuses: Ref<Record<string, Status>>;
@@ -39,6 +37,14 @@ interface AgentIntegrationStatusState {
 	 * two have different lifetimes and are shown in different places.
 	 */
 	runtimeErrors: Ref<Record<string, string>>;
+	/**
+	 * Channel types the server has actually answered for. A failed refetch must
+	 * not overwrite what the server said, but it must not protect a guess either:
+	 * the builder seeds this cache from local configuration alone, and treating
+	 * that as an answer would leave the UI showing "Starting…" for a channel
+	 * nobody has asked about yet.
+	 */
+	serverConfirmed: Ref<Set<string>>;
 	fetchInFlight: Promise<void> | null;
 }
 
@@ -62,6 +68,7 @@ function getOrCreate(projectId: string, agentId: string): AgentIntegrationStatus
 			errorMessages: ref({}),
 			errorIsConflict: ref({}),
 			runtimeErrors: ref({}),
+			serverConfirmed: ref(new Set()),
 			fetchInFlight: null,
 		};
 		cache.set(key, state);
@@ -83,6 +90,7 @@ function applyStatus(
 	state: AgentIntegrationStatusState,
 	integrationTypes: readonly string[],
 	integrations: AgentIntegrationStatusEntry[],
+	confirmed: boolean,
 ): void {
 	for (const type of integrationTypes) {
 		state.statuses.value[type] = 'disconnected';
@@ -97,6 +105,10 @@ function applyStatus(
 		state.integrationSettings.value[integration.type] = integration.settings;
 		state.runtimeErrors.value[integration.type] = integration.errorMessage ?? '';
 	}
+	for (const type of integrationTypes) {
+		if (confirmed) state.serverConfirmed.value.add(type);
+		else state.serverConfirmed.value.delete(type);
+	}
 }
 
 export function syncAgentIntegrationStatusCache(
@@ -105,7 +117,8 @@ export function syncAgentIntegrationStatusCache(
 	integrationTypes: readonly string[],
 	integrations: AgentIntegrationStatusEntry[],
 ): void {
-	applyStatus(getOrCreate(projectId, agentId), integrationTypes, integrations);
+	// Seeded from the agent's own configuration, not from the status endpoint.
+	applyStatus(getOrCreate(projectId, agentId), integrationTypes, integrations, false);
 }
 
 export function useAgentIntegrationStatus(projectId: string, agentId: string) {
@@ -122,13 +135,14 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		state.fetchInFlight = (async () => {
 			try {
 				const result = await getIntegrationStatus(rootStore.restApiContext, projectId, agentId);
-				applyStatus(state, integrationTypes, result.integrations ?? []);
+				applyStatus(state, integrationTypes, result.integrations ?? [], true);
 			} catch {
-				// Mark only types we don't already have a confirmed answer for as
-				// `unknown` — a transient network/API failure shouldn't claim that
-				// a channel the server already told us about is now disconnected.
+				// Mark only types the server hasn't answered for as `unknown` — a
+				// transient network failure shouldn't claim that a channel the server
+				// already told us about is now disconnected, and shouldn't dress up a
+				// locally-seeded guess as an answer either.
 				for (const type of integrationTypes) {
-					if (!CONFIRMED_STATUSES.includes(state.statuses.value[type])) {
+					if (!state.serverConfirmed.value.has(type)) {
 						state.statuses.value[type] = 'unknown';
 					}
 				}
@@ -212,7 +226,9 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 
 	/** Set up, whether or not it is currently running. */
 	function isConfigured(type: string): boolean {
-		return CONFIRMED_STATUSES.includes(state.statuses.value[type]);
+		return (['configured', 'starting', 'connected', 'error'] as Status[]).includes(
+			state.statuses.value[type],
+		);
 	}
 
 	/** Should be running and is not — the last startup attempt failed. */

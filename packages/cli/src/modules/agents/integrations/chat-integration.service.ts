@@ -180,7 +180,10 @@ export class ChatIntegrationService {
 		projectId: string,
 	): Promise<void> {
 		const implementation = this.integrationRegistry.require(integration.type);
-		implementation.validateConfig?.(integration);
+		// Deliberately not `validateConfig`: publishing already validates the whole
+		// configuration, and running it again here would newly reject an agent whose
+		// persisted channel predates a later-added required setting — a legacy
+		// Telegram entry with no `settings` could no longer be republished.
 		await implementation.assertStartupPreconditions?.({
 			agentId,
 			projectId,
@@ -221,6 +224,35 @@ export class ChatIntegrationService {
 	 * only build local runtime state.
 	 */
 	async connect(
+		agentId: string,
+		integration: AgentIntegrationConfig,
+		projectId: string,
+		options: ConnectOptions = {},
+	): Promise<void> {
+		const ingressEnabled = options.ingressEnabled ?? true;
+		if (!ingressEnabled) {
+			// An outbound Preview connection is not a channel, so it has no status.
+			await this.establishConnection(agentId, integration, projectId, options);
+			return;
+		}
+
+		const ref = this.channelRef(agentId, integration);
+		try {
+			await this.establishConnection(agentId, integration, projectId, options);
+		} catch (error) {
+			// Outside `establishConnection` so that everything a startup does is
+			// covered — decrypting the credential and the pre-connect hook run before
+			// its internal cleanup block, and a failure in either is exactly the kind
+			// a user needs reported: an inaccessible credential, or one already
+			// claimed. Recorded once, here, whichever step failed.
+			await this.statusReporter.recordFailure(ref, error);
+			throw error;
+		}
+
+		await this.statusReporter.recordConnected(ref);
+	}
+
+	private async establishConnection(
 		agentId: string,
 		integration: AgentIntegrationConfig,
 		projectId: string,
@@ -341,10 +373,6 @@ export class ChatIntegrationService {
 			// failed connect strands it for the life of the process.
 			await this.runDisconnectedHook(integrationImpl, ctx, `${key} after failed connect`);
 
-			if (ingressEnabled) {
-				await this.statusReporter.recordFailure(this.channelRef(agentId, integration), error);
-			}
-
 			throw error;
 		}
 
@@ -372,10 +400,6 @@ export class ChatIntegrationService {
 					`[ChatIntegrationService] onConnected failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
-		}
-
-		if (ingressEnabled) {
-			await this.statusReporter.recordConnected(this.channelRef(agentId, integration));
 		}
 
 		this.logger.info(

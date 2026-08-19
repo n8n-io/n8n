@@ -82,6 +82,24 @@ describe('AgentChannelStatusReporter', () => {
 			expect(savedObservation(repository)).toMatchObject({ attempts: 1 });
 		});
 
+		it('scrubs credential material out of the message it persists', async () => {
+			// A failed Telegram request quotes the API URL, and the bot token is in
+			// that path. This message is stored and served to the UI.
+			const { reporter, repository } = build();
+			repository.findOwnChannel.mockResolvedValue(null);
+
+			await reporter.recordFailure(
+				ref,
+				new Error(
+					'request to https://api.telegram.org/bot123456789:AAFakeTokenValueForTestingOnly12345/setWebhook failed',
+				),
+			);
+
+			const { errorMessage } = savedObservation(repository);
+			expect(errorMessage).not.toContain('AAFakeTokenValueForTestingOnly12345');
+			expect(errorMessage).toContain('setWebhook');
+		});
+
 		it('describes a non-Error cause rather than dropping it', async () => {
 			const { reporter, repository } = build();
 			repository.findOwnChannel.mockResolvedValue(null);

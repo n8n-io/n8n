@@ -134,7 +134,14 @@ export class AgentsModule implements ModuleInterface {
 			);
 			this.interruptedExecutionSweepTimer.unref();
 		}
-		channelReconciler.init();
+		// Workers never receive inbound platform events: no webhook route, no polling
+		// loop. Holding channels there would connect adapters nothing reads and, now
+		// that startups are reported, publish status rows for a process that cannot
+		// serve the channel either way. Webhook instances do serve the agent webhook
+		// route, so they keep their channels.
+		if (instanceSettings.instanceType !== 'worker') {
+			channelReconciler.init();
+		}
 		if (instanceSettings.isLeader) {
 			void taskService.reconnectAll().catch((error) => {
 				logger.error('[Agents] Failed to reconnect tasks on startup', {

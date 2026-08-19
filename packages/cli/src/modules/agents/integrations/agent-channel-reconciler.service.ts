@@ -57,6 +57,15 @@ export class AgentChannelReconciler {
 
 	private isShuttingDown = false;
 
+	/**
+	 * The pass currently running, if any. Two passes at once would both see a
+	 * channel as not running and both start it, and the second would tear down
+	 * what the first had just built — including running a platform's external
+	 * setup twice. A pass slower than the interval therefore skips ticks rather
+	 * than overlapping them, and shutdown waits for it.
+	 */
+	private inFlight: Promise<void> | undefined;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
@@ -105,6 +114,10 @@ export class AgentChannelReconciler {
 		clearInterval(this.reconcileInterval);
 		this.reconcileInterval = undefined;
 
+		// Wait out a pass already running, or its `recordConnected` lands after the
+		// withdrawal and leaves a row behind for a lease's worth of time.
+		await this.inFlight?.catch(() => {});
+
 		await this.statusReporter.withdrawAll();
 	}
 
@@ -126,7 +139,19 @@ export class AgentChannelReconciler {
 	 */
 	async reconcile(reason: ChannelReconcileReason): Promise<void> {
 		if (this.isShuttingDown) return;
+		// A tick that lands mid-pass is dropped, not queued: the next one is a
+		// whole interval away and re-reads everything anyway.
+		if (this.inFlight) return await this.inFlight;
 
+		this.inFlight = this.runPass(reason);
+		try {
+			await this.inFlight;
+		} finally {
+			this.inFlight = undefined;
+		}
+	}
+
+	private async runPass(reason: ChannelReconcileReason): Promise<void> {
 		try {
 			const agents = await this.agentRepository.findPublished();
 			const ownStatuses = await this.channelStatusRepository.findOwnAll();
@@ -197,6 +222,12 @@ export class AgentChannelReconciler {
 			// of this process or by whatever it inherited, and a restart or a
 			// promotion is exactly when the cause may have gone away.
 			if (reason === 'interval' && !this.statusReporter.isRetryReady(own, now)) continue;
+
+			// `wantedHere` was decided when the pass began, and a stepdown since then
+			// would make a leader-only channel someone else's. Starting it now would
+			// put a polling loop on a follower, which is the one thing the role gate
+			// exists to prevent.
+			if (!this.runsHere(integration)) continue;
 
 			try {
 				await this.chatIntegrationService.startChannel(agent, integration);

@@ -48,6 +48,9 @@ export class CreateAgentChannelStatusTable1786700409439 implements ReversibleMig
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
+			// Every pass reads this instance's own rows, and `hostId` is last in the
+			// primary key, so there is no prefix to use.
+			.withIndexOn(['hostId'])
 			// The leader sweeps rows left behind by processes that crashed.
 			.withIndexOn(['expiresAt']).withTimestamps;
 	}

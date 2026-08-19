@@ -192,6 +192,22 @@ describe('buildChannelStatusReport', () => {
 			expect(report.integrations[0].errorMessage).toBe('current cause');
 		});
 
+		it('picks the same failure when two instances failed in the same instant', () => {
+			// Equal timestamps would otherwise leave the answer to row order, and the
+			// message could change between two identical requests.
+			const at = new Date('2026-01-01T00:00:00.000Z');
+			const rows = [
+				erroredRow(slack, 'main-b', 'from b', { updatedAt: at }),
+				erroredRow(slack, 'main-a', 'from a', { updatedAt: at }),
+			];
+
+			const forward = buildChannelStatusReport([slack], PUBLISHED, rows, isLive);
+			const reversed = buildChannelStatusReport([slack], PUBLISHED, [...rows].reverse(), isLive);
+
+			expect(forward.integrations[0].errorMessage).toBe('from a');
+			expect(reversed).toEqual(forward);
+		});
+
 		it('keeps one instance’s failure from bleeding onto another channel', () => {
 			const report = buildChannelStatusReport(
 				[slack, telegram],

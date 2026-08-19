@@ -107,28 +107,51 @@ describe('useAgentIntegrationStatus', () => {
 		expect(status.isConnected('telegram')).toBe(false);
 	});
 
-	it('preserves states the server already confirmed when a refresh fails', async () => {
+	it('does not pass a locally-seeded status off as a server answer', async () => {
+		// The builder seeds this cache from the agent's own configuration so the
+		// panel can render before the status endpoint replies. If that request then
+		// fails, the seeded guess must not be preserved as though it were confirmed.
 		syncAgentIntegrationStatusCache(
 			projectId,
 			agentId,
 			['slack'],
-			[{ type: 'slack', credentialId: 'cred-slack', status: 'configured' }],
-		);
-		syncAgentIntegrationStatusCache(
-			projectId,
-			agentId,
-			['linear'],
-			[{ type: 'linear', credentialId: 'cred-linear', status: 'connected' }],
-		);
-		syncAgentIntegrationStatusCache(
-			projectId,
-			agentId,
-			['discord'],
-			[{ type: 'discord', credentialId: 'cred-discord', status: 'error' }],
+			[{ type: 'slack', credentialId: 'cred-slack', status: 'starting' }],
 		);
 		apiMocks.getIntegrationStatus.mockRejectedValue(new Error('network error'));
 		const status = useAgentIntegrationStatus(projectId, agentId);
 
+		await status.fetchStatus(['slack']);
+
+		expect(status.statuses.value.slack).toBe('unknown');
+	});
+
+	it('keeps a server-confirmed starting status when a later refresh fails', async () => {
+		apiMocks.getIntegrationStatus.mockResolvedValue({
+			status: 'partial',
+			integrations: [{ type: 'slack', credentialId: 'cred-slack', status: 'starting' }],
+		});
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		await status.fetchStatus(['slack']);
+
+		apiMocks.getIntegrationStatus.mockRejectedValue(new Error('network error'));
+		await status.fetchStatus(['slack']);
+
+		expect(status.statuses.value.slack).toBe('starting');
+	});
+
+	it('preserves states the server already confirmed when a refresh fails', async () => {
+		apiMocks.getIntegrationStatus.mockResolvedValue({
+			status: 'partial',
+			integrations: [
+				{ type: 'slack', credentialId: 'cred-slack', status: 'configured' },
+				{ type: 'linear', credentialId: 'cred-linear', status: 'connected' },
+				{ type: 'discord', credentialId: 'cred-discord', status: 'error' },
+			],
+		});
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		await status.fetchStatus(['slack', 'linear', 'discord']);
+
+		apiMocks.getIntegrationStatus.mockRejectedValue(new Error('network error'));
 		await status.fetchStatus(['slack', 'linear', 'discord', 'telegram']);
 
 		expect(status.statuses.value).toMatchObject({
@@ -136,9 +159,11 @@ describe('useAgentIntegrationStatus', () => {
 			linear: 'connected',
 			// A failed refresh must not turn a known failure into a shrug.
 			discord: 'error',
+			// Never answered for, so there is nothing to preserve.
 			telegram: 'unknown',
 		});
 	});
+
 
 	it('clears a cached integration error', async () => {
 		apiMocks.connectIntegration.mockRejectedValue(
