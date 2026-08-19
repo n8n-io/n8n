@@ -46,7 +46,7 @@ const classes = computed(() => ({
 
 <style lang="scss" module>
 .card {
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius);
 	border: 1px solid var(--border-color);
 	background-color: var(--color--background--light-3);
 	padding: var(--card--padding, var(--spacing--sm));

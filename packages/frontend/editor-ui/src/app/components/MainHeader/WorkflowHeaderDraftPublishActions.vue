@@ -961,7 +961,7 @@ onBeforeUnmount(() => {
 .buttonGroup {
 	display: inline-flex;
 	border: var(--border);
-	border-radius: var(--radius--3xs);
+	border-radius: var(--radius--full);
 }
 
 .groupButtonLeft,
