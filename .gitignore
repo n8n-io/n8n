@@ -91,8 +91,8 @@ IMPROVEMENTS.md
 .playwright-mcp
 stryker.log
 
-# Licensed EK Baumer typeface (drop under design-system assets/fonts)
-/EK Baumer woff/
+# Licensed EK Baumer typeface — local foundry drop, do not commit
+**/EK Baumer woff/
 
 # Generated migration indexes (scripts/generate-migration-index.mjs)
 packages/@n8n/db/src/migrations/sqlite/index.ts

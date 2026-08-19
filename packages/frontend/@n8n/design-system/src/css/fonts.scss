@@ -1,31 +1,5 @@
-// Emits the upright Baumer face, which surfaces that need only that one
-// can also pull on its own. Keep this first so the declaration order is unchanged.
+// Rebrand: uses locally installed Baumer / Baumer Mono. Come back and add
+// served @font-face files (upright, italic, mono) once we have a license to
+// ship them.
 @use './fonts/baumer';
 @use './fonts/baumer-mono';
-
-@font-face {
-	font-family: Baumer;
-	font-style: italic;
-	font-weight: 400;
-	font-display: swap;
-	src: url('../../assets/fonts/EK Baumer woff/EK Baumer Grotesk/EKBaumerGrotesk-RegularItalic.woff2')
-		format('woff2');
-}
-
-@font-face {
-	font-family: Baumer;
-	font-style: italic;
-	font-weight: 500;
-	font-display: swap;
-	src: url('../../assets/fonts/EK Baumer woff/EK Baumer Grotesk/EKBaumerGrotesk-MediumItalic.woff2')
-		format('woff2');
-}
-
-@font-face {
-	font-family: Baumer;
-	font-style: italic;
-	font-weight: 600 700;
-	font-display: swap;
-	src: url('../../assets/fonts/EK Baumer woff/EK Baumer Grotesk/EKBaumerGrotesk-BoldItalic.woff2')
-		format('woff2');
-}

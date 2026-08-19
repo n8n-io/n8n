@@ -232,6 +232,8 @@
 	--spacing--4xl: 8rem; /** 128px **/
 	--spacing--5xl: 16rem; /** 256px **/
 
+	// Rebrand: uses locally installed Baumer. Come back and add served @font-face
+	// files, then drop the system-font fallbacks.
 	--font-family:
 		Baumer, 'EK Baumer Uniwidth UNLICENSED', 'EK Baumer Uniwidth', -apple-system,
 		BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
