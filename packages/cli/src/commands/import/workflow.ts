@@ -101,6 +101,9 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
+	// (De)activating imported workflows evaluates webhook parameters, which may be expressions
+	override needsExpressionEngine = true;
+
 	async run(): Promise<void> {
 		const { flags } = this;
 

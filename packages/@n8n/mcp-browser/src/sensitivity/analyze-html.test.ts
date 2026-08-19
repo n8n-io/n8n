@@ -21,6 +21,60 @@ function probe(
 }
 
 describe('analyzeHtmlSensitivity', () => {
+	// The same key often appears in the page and again in an embedded frame; the
+	// bare occurrence is the span that can safely become a credential.
+	it('keeps the narrowest capture span when a key appears in several documents', () => {
+		const key = `AIza${'B'.repeat(35)}`;
+		const result = analyzeHtmlSensitivity(
+			probe(`<p>${key}</p>`, [
+				{ kind: 'iframe', html: `<p>id.${key}</p>`, children: [], errors: [] },
+			]),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'google_api_key', value: key });
+	});
+
+	// One document delimits the key unambiguously, another cannot. Whichever is
+	// merged last, the delimited occurrence is the one that knows the extent.
+	it('lets a delimited occurrence override a blocked one from another document', () => {
+		const key = `ghp_${'B'.repeat(36)}`;
+		const run = 'x'.repeat(600);
+		const result = analyzeHtmlSensitivity(
+			probe(`<p>${run}${key}${run}</p>`, [
+				{ kind: 'iframe', html: `<p>${key}</p>`, children: [], errors: [] },
+			]),
+		);
+		const hit = result.ok && result.hits.find((candidate) => candidate.value === key);
+
+		expect(hit).toBeTruthy();
+		expect(hit && hit.captureBlocked).toBeUndefined();
+	});
+
+	// The entropy pass needs the same fail-closed rule as the pattern pass: inside
+	// an undelimitable run its candidate is a fragment of the real token.
+	it('blocks capture of an entropy candidate whose token could not be delimited', () => {
+		const blob = 'aB3xY9zQ7wE2rT5yU8iO1pL4kJ6hG0fD'.repeat(20);
+		const key = `AQ.${'Zt7vLpQ9mKdW4xR2bNfH3jEuXaGoT5wPqYs1Bc'}`;
+		const result = analyzeHtmlSensitivity(
+			probe(`<div data-testid="api-key">${blob}${key}${blob}</div>`),
+		);
+		const hit = result.ok && result.hits.find((candidate) => candidate.type === 'secret');
+
+		expect(hit).toBeTruthy();
+		expect(hit && hit.captureBlocked).toBeTruthy();
+	});
+
+	// A key split across siblings is only visible in concatenated `textContent`,
+	// and redaction cannot replace it there — but the page must still count as
+	// sensitive, which is what gates screenshots.
+	it('still flags a page whose key only appears in concatenated markup', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(`<p><span>AQ.</span><span>${'AbCdEfGhIj'.repeat(3)}Ab</span></p>`),
+		);
+
+		expect(result.ok && result.sensitive).toBe(true);
+	});
+
 	it('finds regex hits in plain DOM text', () => {
 		const result = analyzeHtmlSensitivity(probe(`<p>${ANTHROPIC}</p>`));
 		expect(result.ok && result.sensitive).toBe(true);
