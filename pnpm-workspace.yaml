@@ -193,7 +193,7 @@ catalog:
   pdfjs-dist: 5.4.296
   pg: 8.21.0
   picocolors: 1.0.1
-  playwright-core: 1.60.0
+  playwright-core: 1.62.1
   posthog-node: 5.33.4
   prettier: 3.6.2
   proxy-from-env: ^1.1.0
@@ -234,10 +234,10 @@ catalogs:
   e2e:
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
-    '@playwright/test': 1.60.0
+    '@playwright/test': 1.62.1
     eslint-plugin-playwright: 2.2.2
-    playwright: 1.60.0
-    playwright-core: 1.60.0
+    playwright: 1.62.1
+    playwright-core: 1.62.1
   frontend:
     '@internationalized/date': ^3.9.0
     '@sentry/vue': ^10.36.0
