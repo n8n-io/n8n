@@ -841,7 +841,7 @@ describe('CommunityPackagesService', () => {
 			expect(callOrder).toEqual(['rename', 'updatePackageJsonDependency']);
 		});
 
-		test('reconciles the package.json manifest even when the directory restore fails', async () => {
+		test('reconciles the package.json manifest and still attempts a reload when the directory restore fails', async () => {
 			const packageName = 'n8n-nodes-test';
 			const backupDirectory = `${nodesDownloadDir}/node_modules/${packageName}.backup-123`;
 
@@ -850,6 +850,9 @@ describe('CommunityPackagesService', () => {
 			vi.spyOn(communityPackagesService, 'updatePackageJsonDependency').mockResolvedValue(
 				undefined,
 			);
+			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
+			loadNodesAndCredentials.loadPackage.mockResolvedValue(mock<PackageDirectoryLoader>());
+			loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
 
 			await (communityPackagesService as any).restoreFailedPackageInstallation(packageName, {
 				backupDirectory,
@@ -863,8 +866,10 @@ describe('CommunityPackagesService', () => {
 				packageName,
 				'1.0.0',
 			);
-			// The backup never made it back, so there is nothing safe to reload.
-			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+			// The caller may have already unloaded the previous package or loaded the failed
+			// new one, so the reload is attempted regardless of whether the restore succeeded.
+			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(packageName);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(packageName);
 		});
 
 		test('drops the manifest entry when a fresh install fails and the directory restore fails', async () => {
