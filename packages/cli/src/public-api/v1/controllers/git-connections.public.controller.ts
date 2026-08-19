@@ -214,8 +214,8 @@ export class GitConnectionsPublicController {
 
 	@Post('/:id/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	@ApiKeyScope('gitConnection:update')
-	@GlobalScope('gitConnection:update')
+	@ApiKeyScope('gitConnection:manageProjects')
+	@GlobalScope('gitConnection:manageProjects')
 	@ApiSummary('Assign a project to a Git connection')
 	@ApiDescription(
 		'Links a team project to the connection. A project can be assigned to only one connection.',
@@ -235,8 +235,8 @@ export class GitConnectionsPublicController {
 
 	@Delete('/:id/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	@ApiKeyScope('gitConnection:update')
-	@GlobalScope('gitConnection:update')
+	@ApiKeyScope('gitConnection:manageProjects')
+	@GlobalScope('gitConnection:manageProjects')
 	@ApiSummary('Un-link a project from a Git connection')
 	@ApiTags(tags)
 	@ApiResponse(204)

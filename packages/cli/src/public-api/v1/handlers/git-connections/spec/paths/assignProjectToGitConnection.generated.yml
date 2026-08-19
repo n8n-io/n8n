@@ -3,7 +3,7 @@ tags:
   - GitConnections
 summary: Assign a project to a Git connection
 description: Links a team project to the connection. A project can be assigned to only one connection.
-x-required-scope: gitConnection:update
+x-required-scope: gitConnection:manageProjects
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true

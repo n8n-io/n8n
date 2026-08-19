@@ -157,4 +157,8 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Clone Git Connection',
 		description: 'Allows cloning and removing the local working copy of a Git connection.',
 	},
+	'gitConnection:manageProjects': {
+		displayName: 'Manage Git Connection Projects',
+		description: 'Allows assigning projects to and un-linking projects from a Git connection.',
+	},
 };
