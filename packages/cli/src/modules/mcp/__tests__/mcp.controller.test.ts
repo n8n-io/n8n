@@ -311,8 +311,7 @@ describe('McpController', () => {
 			expect.objectContaining({ id: 'user-1' }),
 			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
 			{ name: 'Claude', version: '1.0.0' },
-			undefined,
-			undefined,
+			{ authType: undefined, grantedScopes: undefined, oauthClientId: undefined },
 		);
 	});
 
@@ -345,16 +344,16 @@ describe('McpController', () => {
 			expect.objectContaining({ id: 'user-1' }),
 			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
 			undefined,
-			undefined,
-			undefined,
+			{ authType: undefined, grantedScopes: undefined, oauthClientId: undefined },
 		);
 		// Non-initialize requests still skip telemetry tracking.
 		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 
-	test('forwards the OAuth client the request authenticated with to getServer', async () => {
-		// The auth middleware resolves the client from the bearer token; the
-		// controller hands it to the server so tool-call events can report it.
+	test('forwards the auth the middleware resolved to getServer', async () => {
+		// The auth middleware resolves these from the bearer token; the controller
+		// hands them to the server, which gates tools on the scopes and labels its
+		// tool-call events with the rest.
 		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as Mock).mockReturnValue({
 			connect: vi.fn().mockResolvedValue(undefined),
@@ -365,6 +364,7 @@ describe('McpController', () => {
 		await controller.build(
 			createReq({
 				body: { jsonrpc: '2.0', method: 'tools/call' },
+				mcpAuthType: 'oauth',
 				mcpScopes: ['workflow:read'],
 				mcpOauthClientId: 'client-abc',
 			}),
@@ -375,8 +375,7 @@ describe('McpController', () => {
 			expect.objectContaining({ id: 'user-1' }),
 			expect.anything(),
 			undefined,
-			['workflow:read'],
-			'client-abc',
+			{ authType: 'oauth', grantedScopes: ['workflow:read'], oauthClientId: 'client-abc' },
 		);
 	});
 

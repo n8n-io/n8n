@@ -23,6 +23,7 @@ import type {
 } from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
+import type { Mcpauth_type } from '@/services/oauth-token-verifier-proxy.service';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -1181,6 +1182,12 @@ export type RelayEventMap = {
 		workflowId?: string;
 		status: 'success' | 'error';
 		errorMessage?: string;
+		/**
+		 * How the call authenticated. Always `oauth` or `api_key` in practice,
+		 * since an unauthenticated request never reaches a tool. Reported so an
+		 * absent `clientId` is explicit rather than inferred.
+		 */
+		authType?: Mcpauth_type;
 		/**
 		 * The OAuth client the call was authenticated with, as registered with this
 		 * instance. Absent for API-key callers, which have no registered client.

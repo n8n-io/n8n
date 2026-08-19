@@ -45,7 +45,7 @@ import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-a
 
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
-import type { McpClientInfo } from '../mcp.types';
+import type { McpAuthContext, McpClientInfo } from '../mcp.types';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
 // registration is spied on so its wiring options can be asserted.
@@ -648,14 +648,9 @@ describe('McpService', () => {
 			name: string,
 			impl: () => Promise<unknown>,
 			args: Record<string, unknown> = {},
-			{ clientInfo, oauthClientId }: { clientInfo?: McpClientInfo; oauthClientId?: string } = {},
+			{ clientInfo, auth }: { clientInfo?: McpClientInfo; auth?: McpAuthContext } = {},
 		) => {
-			const registerTool = mcpService.createToolRegistrar(
-				server,
-				mcpUser(),
-				clientInfo,
-				oauthClientId,
-			);
+			const registerTool = mcpService.createToolRegistrar(server, mcpUser(), clientInfo, auth);
 			const registered = registerTool({
 				name,
 				config: { description: 'test' },
@@ -682,6 +677,7 @@ describe('McpService', () => {
 				workflowId: 'wf-42',
 				status: 'success',
 				errorMessage: undefined,
+				authType: undefined,
 				clientId: undefined,
 				clientName: undefined,
 			});
@@ -743,6 +739,7 @@ describe('McpService', () => {
 				workflowId: undefined,
 				status: 'error',
 				errorMessage: 'boom',
+				authType: undefined,
 				clientId: undefined,
 				clientName: undefined,
 			});
@@ -845,7 +842,10 @@ describe('McpService', () => {
 				'my_tool',
 				async () => ({ content: [{ type: 'text', text: 'ok' }] }),
 				{},
-				{ clientInfo: { name: 'Claude', version: '1.2.3' }, oauthClientId: 'client-abc' },
+				{
+					clientInfo: { name: 'Claude', version: '1.2.3' },
+					auth: { authType: 'oauth', oauthClientId: 'client-abc' },
+				},
 			);
 
 			expect(eventService.emit).toHaveBeenCalledWith(
@@ -853,6 +853,7 @@ describe('McpService', () => {
 				expect.objectContaining({
 					user,
 					toolName: 'my_tool',
+					authType: 'oauth',
 					clientId: 'client-abc',
 					clientName: 'Claude',
 				}),
@@ -870,7 +871,7 @@ describe('McpService', () => {
 						throw new Error('boom');
 					},
 					{},
-					{ oauthClientId: 'client-abc' },
+					{ auth: { authType: 'oauth', oauthClientId: 'client-abc' } },
 				),
 			).rejects.toThrow('boom');
 
@@ -879,28 +880,38 @@ describe('McpService', () => {
 				expect.objectContaining({
 					toolName: 'err_tool',
 					status: 'error',
+					authType: 'oauth',
 					clientId: 'client-abc',
 				}),
 			);
 		});
 
-		it('should pass the request OAuth client through to every tool the server registers', async () => {
+		it('should pass the resolved auth through to every tool the server registers', async () => {
 			const user = mcpUser();
 			const registrarSpy = vi.spyOn(mcpService, 'createToolRegistrar');
+			const auth = { authType: 'oauth' as const, oauthClientId: 'client-abc' };
 
-			await mcpService.getServer(
-				user,
-				mcpFeatureFlags(),
-				{ name: 'Cursor' },
-				undefined,
-				'client-abc',
+			await mcpService.getServer(user, mcpFeatureFlags(), { name: 'Cursor' }, auth);
+
+			expect(registrarSpy).toHaveBeenCalledWith(expect.anything(), user, { name: 'Cursor' }, auth);
+		});
+
+		it('should report an API-key call as such, with no OAuth client', async () => {
+			// One MCP API key exists per user, so there is no client to name and no
+			// per-key identifier worth reporting beyond the user itself.
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			await registerAndInvoke(
+				server,
+				'my_tool',
+				async () => ({ content: [{ type: 'text', text: 'ok' }] }),
+				{},
+				{ auth: { authType: 'api_key' } },
 			);
 
-			expect(registrarSpy).toHaveBeenCalledWith(
-				expect.anything(),
-				user,
-				{ name: 'Cursor' },
-				'client-abc',
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({ authType: 'api_key', clientId: undefined }),
 			);
 		});
 

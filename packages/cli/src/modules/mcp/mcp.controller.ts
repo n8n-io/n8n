@@ -20,7 +20,11 @@ import {
 import { McpService, type McpFeatureFlags } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
-import type { McpAuthenticatedRequest, UserConnectedToMCPEventPayload } from './mcp.types';
+import type {
+	McpAuthContext,
+	McpAuthenticatedRequest,
+	UserConnectedToMCPEventPayload,
+} from './mcp.types';
 import { getClientInfo, getProtocolVersion } from './mcp.utils';
 
 export type FlushableResponse = Response & { flush: () => void };
@@ -217,21 +221,19 @@ export class McpController {
 		const { toNodeHandler } = await lazyImport<typeof import('@modelcontextprotocol/node')>(
 			async () => await import('@modelcontextprotocol/node'),
 		);
-		const { mcpScopes: grantedScopes, mcpOauthClientId } = req as McpAuthenticatedRequest;
+		const mcpReq = req as McpAuthenticatedRequest;
+		const auth: McpAuthContext = {
+			authType: mcpReq.mcpAuthType,
+			grantedScopes: mcpReq.mcpScopes,
+			oauthClientId: mcpReq.mcpOauthClientId,
+		};
 
 		// The handler builds a fresh server per request (complete isolation, no
 		// request-ID collisions across concurrent clients) and serves both the
 		// 2026-07-28 protocol and, via the stateless legacy fallback, 2025-era
 		// clients on this same endpoint.
 		const handler = createMcpHandler(
-			async () =>
-				await this.mcpService.getServer(
-					req.user,
-					featureFlags,
-					getClientInfo(req),
-					grantedScopes,
-					mcpOauthClientId,
-				),
+			async () => await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth),
 			{
 				legacy: 'stateless',
 				onerror: (error) => this.errorReporter.error(error),

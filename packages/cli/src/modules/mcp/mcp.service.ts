@@ -52,6 +52,7 @@ import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
+	McpAuthContext,
 	McpClientInfo,
 	RegisterResourceFn,
 	RegisterToolFn,
@@ -311,7 +312,7 @@ export class McpService {
 		server: McpServer,
 		user: User,
 		clientInfo?: McpClientInfo,
-		oauthClientId?: string,
+		auth: McpAuthContext = {},
 	) {
 		return (tool: ToolDefinition) => {
 			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
@@ -330,7 +331,8 @@ export class McpService {
 						workflowId: workflowId ?? getWorkflowId(result?.structuredContent),
 						status,
 						errorMessage,
-						clientId: oauthClientId,
+						authType: auth.authType,
+						clientId: auth.oauthClientId,
 						clientName: clientInfo?.name,
 					});
 					return result;
@@ -341,7 +343,8 @@ export class McpService {
 						workflowId,
 						status: 'error',
 						errorMessage: error instanceof Error ? error.message : String(error),
-						clientId: oauthClientId,
+						authType: auth.authType,
+						clientId: auth.oauthClientId,
 						clientName: clientInfo?.name,
 					});
 					throw error;
@@ -375,7 +378,7 @@ export class McpService {
 
 	/**
 	 * Builds a per-request MCP server exposing only the tools covered by the
-	 * token's granted scopes. `grantedScopes: undefined` (API keys, legacy
+	 * token's granted scopes. `auth.grantedScopes: undefined` (API keys, legacy
 	 * tokens) exposes all tools. Filtering registration is sufficient
 	 * enforcement: the server is rebuilt per request, so an unregistered tool
 	 * is neither listed nor callable.
@@ -383,16 +386,15 @@ export class McpService {
 	 * `featureFlags` is the caller's per-request resolution (see
 	 * `resolveFeatureFlags`); this method trusts it and never queries PostHog.
 	 *
-	 * `oauthClientId` is the registered OAuth client the request authenticated
-	 * with, reported on tool-call events so usage can be attributed per client.
-	 * Absent for API-key callers.
+	 * The rest of `auth` labels tool-call events: how the request authenticated
+	 * and, for OAuth, which registered client it authenticated as, so usage can
+	 * be attributed per client.
 	 */
 	async getServer(
 		user: User,
 		featureFlags: McpFeatureFlags,
 		clientInfo?: McpClientInfo,
-		grantedScopes?: string[],
-		oauthClientId?: string,
+		auth: McpAuthContext = {},
 	) {
 		const { McpServer } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
@@ -402,7 +404,7 @@ export class McpService {
 		const n8nConnectAvailable = builderEnabled
 			? (await this.aiGatewayService.isAvailable()).available
 			: false;
-		const allowedToolNames = getAllowedToolNames(grantedScopes);
+		const allowedToolNames = getAllowedToolNames(auth.grantedScopes);
 		// The builder walkthrough is only useful when the grant can actually
 		// create workflows; a read-only grant gets the plain intro instead of
 		// steps referencing tools it cannot call.
@@ -429,7 +431,7 @@ export class McpService {
 			},
 		);
 
-		const registerTool = this.createToolRegistrar(server, user, clientInfo, oauthClientId);
+		const registerTool = this.createToolRegistrar(server, user, clientInfo, auth);
 		const registerResource = this.createResourceRegistrar(server);
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {

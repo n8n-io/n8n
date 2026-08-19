@@ -148,6 +148,19 @@ export type McpAuthenticatedRequest = AuthenticatedRequest & {
 	mcpOauthClientId?: string;
 };
 
+/**
+ * The same resolution, in the shape the MCP server is built from. Read off the
+ * request by the controller so nothing below it touches Express, and passed as
+ * one object because scopes gate which tools register while the other two only
+ * label the tool-call events.
+ */
+export type McpAuthContext = {
+	authType?: Mcpauth_type;
+	/** `undefined` = not scope-bearing (API key) → all tools register. */
+	grantedScopes?: string[];
+	oauthClientId?: string;
+};
+
 export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';
 
 // Telemetry payloads
