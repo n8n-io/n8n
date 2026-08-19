@@ -20,6 +20,12 @@ const packageJsonPath = '/tmp/package.json';
 const fooNode = '/tmp/nodes/Foo/Foo.node.ts';
 const barNode = '/tmp/nodes/Bar/Bar.node.ts';
 
+// Versioned node: the v1/v2 implementations sit behind a `VersionedNodeType`
+// entry file, and only that entry file is listed in `n8n.nodes`.
+const versionedEntryNode = '/tmp/nodes/SoterGuard/SoterGuard.node.ts';
+const versionedV1Node = '/tmp/nodes/SoterGuard/v1/SoterGuardV1.node.ts';
+const versionedV2Node = '/tmp/nodes/SoterGuard/v2/SoterGuardV2.node.ts';
+
 const ruleTester = new RuleTester();
 
 function setup(onDisk: string[], registered: string[]): void {
@@ -45,6 +51,17 @@ ruleTester.run('node-registration-complete', NodeRegistrationCompleteRule, {
 			name: 'non-package.json file is ignored',
 			filename: 'some-config.json',
 			code: '{ "name": "n8n-nodes-example" }',
+		},
+		{
+			// A versioned node registers only its `VersionedNodeType` entry file in
+			// `n8n.nodes`; the per-version implementation files (v1/v2) are pulled in
+			// by that entry file and must not be flagged as unregistered.
+			name: 'versioned node registered via its entry file does not flag its version implementations',
+			filename: packageJsonPath,
+			code: '{ "name": "n8n-nodes-example", "n8n": { "nodes": ["dist/nodes/SoterGuard/SoterGuard.node.js"] } }',
+			before() {
+				setup([versionedEntryNode, versionedV1Node, versionedV2Node], [versionedEntryNode]);
+			},
 		},
 	],
 	invalid: [
