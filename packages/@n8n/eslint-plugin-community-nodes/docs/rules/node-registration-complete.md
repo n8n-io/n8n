@@ -44,3 +44,16 @@ Every node file is registered:
   }
 }
 ```
+
+## Versioned nodes
+
+A versioned node registers a single entry file whose class `extends VersionedNodeType`
+(e.g. `nodes/SoterGuard/SoterGuard.node.ts`). Its per-version implementation files
+(e.g. `nodes/SoterGuard/v1/SoterGuardV1.node.ts`, `v2/SoterGuardV2.node.ts`) are
+discovered indirectly through the imports of that entry file, so they do **not** need
+to be listed in `n8n.nodes`.
+
+This rule resolves the `./…/*.node` imports of each registered `VersionedNodeType`
+entry and treats those implementation files as registered, so they are not flagged.
+Implementation files are only exempt when their importing entry is both listed in
+`n8n.nodes` and actually a `VersionedNodeType`.

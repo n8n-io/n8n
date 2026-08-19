@@ -10,21 +10,27 @@ vi.mock('../utils/file-utils.js', async () => {
 		...actual,
 		findNodeSourceFilesOnDisk: vi.fn(),
 		readPackageJsonNodes: vi.fn(),
+		findVersionedNodeImplementations: vi.fn(),
 	};
 });
 
 const mockFindNodeSourceFilesOnDisk = vi.mocked(fileUtils.findNodeSourceFilesOnDisk);
 const mockReadPackageJsonNodes = vi.mocked(fileUtils.readPackageJsonNodes);
+const mockFindVersionedNodeImplementations = vi.mocked(fileUtils.findVersionedNodeImplementations);
 
 const packageJsonPath = '/tmp/package.json';
 const fooNode = '/tmp/nodes/Foo/Foo.node.ts';
 const barNode = '/tmp/nodes/Bar/Bar.node.ts';
+const soterGuardEntry = '/tmp/nodes/SoterGuard/SoterGuard.node.ts';
+const soterGuardV1 = '/tmp/nodes/SoterGuard/v1/SoterGuardV1.node.ts';
+const soterGuardV2 = '/tmp/nodes/SoterGuard/v2/SoterGuardV2.node.ts';
 
 const ruleTester = new RuleTester();
 
-function setup(onDisk: string[], registered: string[]): void {
+function setup(onDisk: string[], registered: string[], versioned: string[] = []): void {
 	mockFindNodeSourceFilesOnDisk.mockReturnValue(onDisk);
 	mockReadPackageJsonNodes.mockReturnValue(registered);
+	mockFindVersionedNodeImplementations.mockReturnValue(versioned);
 }
 
 afterEach(() => {
@@ -45,6 +51,18 @@ ruleTester.run('node-registration-complete', NodeRegistrationCompleteRule, {
 			name: 'non-package.json file is ignored',
 			filename: 'some-config.json',
 			code: '{ "name": "n8n-nodes-example" }',
+		},
+		{
+			name: 'per-version implementation files of a registered VersionedNodeType entry are not required in n8n.nodes',
+			filename: packageJsonPath,
+			code: '{ "name": "n8n-nodes-example", "n8n": { "nodes": ["dist/nodes/SoterGuard/SoterGuard.node.js"] } }',
+			before() {
+				setup(
+					[soterGuardEntry, soterGuardV1, soterGuardV2],
+					[soterGuardEntry],
+					[soterGuardV1, soterGuardV2],
+				);
+			},
 		},
 	],
 	invalid: [
@@ -82,6 +100,21 @@ ruleTester.run('node-registration-complete', NodeRegistrationCompleteRule, {
 				setup([fooNode], []);
 			},
 			errors: [{ messageId: 'nodeNotRegistered', data: { nodeFile: 'nodes/Foo/Foo.node.ts' } }],
+		},
+		{
+			name: 'version implementation files whose entry is not a registered VersionedNodeType still warn',
+			filename: packageJsonPath,
+			code: '{ "name": "n8n-nodes-example", "n8n": { "nodes": ["dist/nodes/SoterGuard/SoterGuard.node.js"] } }',
+			before() {
+				// Entry is registered but not a VersionedNodeType, so no implementations are whitelisted.
+				setup([soterGuardEntry, soterGuardV1], [soterGuardEntry], []);
+			},
+			errors: [
+				{
+					messageId: 'nodeNotRegistered',
+					data: { nodeFile: 'nodes/SoterGuard/v1/SoterGuardV1.node.ts' },
+				},
+			],
 		},
 	],
 });

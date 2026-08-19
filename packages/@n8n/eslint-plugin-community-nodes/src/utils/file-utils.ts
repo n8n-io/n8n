@@ -200,6 +200,97 @@ export function readPackageJsonNodes(packageJsonPath: string): string[] {
 	return resolveN8nFilePaths(packageJsonPath, nodePaths);
 }
 
+/**
+ * Resolves a relative `import` specifier from a versioned node entry file back
+ * to an existing `.node.ts` source on disk. Only `./…/*.node[.js|.ts]`
+ * specifiers are considered; returns the absolute `.ts` path, or `null` if the
+ * import is not a local node file or no source exists.
+ */
+function resolveLocalNodeImport(entryFilePath: string, importSource: string): string | null {
+	// Only relative imports can point at sibling implementation files on disk.
+	if (!importSource.startsWith('.')) {
+		return null;
+	}
+
+	// Normalise `.js`/`.ts` extensions to a `.ts` source path and require the
+	// `.node` suffix so we only whitelist actual node implementation files.
+	const withoutExt = importSource.replace(/\.(js|ts)$/, '');
+	if (!withoutExt.endsWith('.node')) {
+		return null;
+	}
+
+	const sourcePath = path.resolve(path.dirname(entryFilePath), `${withoutExt}.ts`);
+	return existsSync(sourcePath) ? sourcePath : null;
+}
+
+/**
+ * Given the node files registered in `n8n.nodes`, returns the absolute paths of
+ * per-version implementation files that are registered indirectly: for each
+ * registered entry file whose class `extends VersionedNodeType`, its relative
+ * `./…/*.node` imports are resolved back to existing `.ts` sources on disk.
+ *
+ * These implementation files are not required in `n8n.nodes` because n8n
+ * discovers them through the `VersionedNodeType` entry.
+ */
+export function findVersionedNodeImplementations(registeredNodeFiles: string[]): string[] {
+	const implementations: string[] = [];
+
+	for (const entryFile of registeredNodeFiles) {
+		let sourceCode: string;
+		try {
+			sourceCode = readFileSync(entryFile, 'utf8');
+		} catch {
+			continue;
+		}
+
+		let ast;
+		try {
+			ast = parse(sourceCode, { jsx: false, range: true });
+		} catch {
+			continue;
+		}
+
+		if (!extendsVersionedNodeType(ast)) {
+			continue;
+		}
+
+		simpleTraverse(ast, {
+			enter(node: TSESTree.Node) {
+				if (
+					node.type === AST_NODE_TYPES.ImportDeclaration &&
+					typeof node.source.value === 'string'
+				) {
+					const resolved = resolveLocalNodeImport(entryFile, node.source.value);
+					if (resolved) {
+						implementations.push(resolved);
+					}
+				}
+			},
+		});
+	}
+
+	return implementations;
+}
+
+/** Returns true if any top-level class in the AST `extends VersionedNodeType`. */
+function extendsVersionedNodeType(ast: TSESTree.Program): boolean {
+	let found = false;
+
+	simpleTraverse(ast, {
+		enter(node: TSESTree.Node) {
+			if (
+				node.type === AST_NODE_TYPES.ClassDeclaration &&
+				node.superClass?.type === AST_NODE_TYPES.Identifier &&
+				node.superClass.name === 'VersionedNodeType'
+			) {
+				found = true;
+			}
+		},
+	});
+
+	return found;
+}
+
 function findFilesRecursively(dir: string, matches: (fileName: string) => boolean): string[] {
 	const results: string[] = [];
 
