@@ -66,8 +66,10 @@ const {
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
+	runtimeErrors,
 	isConnected: isIntegrationConnected,
 	isConfigured: isIntegrationConfigured,
+	hasRuntimeError,
 	connect,
 	disconnect,
 	clearError: clearIntegrationError,
@@ -554,6 +556,8 @@ watch(
 							:integration="integration"
 							:configured="isConfigured(integration.type)"
 							:connected="isConnected(integration.type)"
+							:not-running="hasRuntimeError(integration.type)"
+							:runtime-error="runtimeErrors[integration.type]"
 							:loading="listLoading"
 							:connect-action="connectAction(integration.type)"
 							@setup="goToSetup"

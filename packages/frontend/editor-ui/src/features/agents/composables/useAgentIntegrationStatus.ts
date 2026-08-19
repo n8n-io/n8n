@@ -1,8 +1,9 @@
 import { ref, type Ref } from 'vue';
 import type {
+	AgentChannelRuntimeStatus,
 	AgentDisconnectIntegrationResponse,
+	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusEntry,
-	AgentIntegrationStatusResponse,
 	AgentIntegrationSettings,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -15,8 +16,15 @@ import {
 	type ConnectIntegrationOptions,
 } from './useAgentApi';
 
-type ConfirmedStatus = AgentIntegrationStatusResponse['status'];
-type Status = ConfirmedStatus | 'unknown';
+/**
+ * Per-channel state, plus the two answers only the client can give:
+ * `disconnected` for a channel that isn't set up at all, and `unknown` when we
+ * failed to ask.
+ */
+type Status = AgentChannelRuntimeStatus | 'disconnected' | 'unknown';
+
+/** Statuses that came from the server, so a failed refetch must not overwrite them. */
+const CONFIRMED_STATUSES: readonly Status[] = ['configured', 'starting', 'connected', 'error'];
 
 interface AgentIntegrationStatusState {
 	statuses: Ref<Record<string, Status>>;
@@ -25,6 +33,12 @@ interface AgentIntegrationStatusState {
 	loadingMap: Ref<Record<string, boolean>>;
 	errorMessages: Ref<Record<string, string>>;
 	errorIsConflict: Ref<Record<string, boolean>>;
+	/**
+	 * Why a channel isn't running, from the server. Kept apart from
+	 * `errorMessages`, which holds what the setup form's last attempt said — the
+	 * two have different lifetimes and are shown in different places.
+	 */
+	runtimeErrors: Ref<Record<string, string>>;
 	fetchInFlight: Promise<void> | null;
 }
 
@@ -47,6 +61,7 @@ function getOrCreate(projectId: string, agentId: string): AgentIntegrationStatus
 			loadingMap: ref({}),
 			errorMessages: ref({}),
 			errorIsConflict: ref({}),
+			runtimeErrors: ref({}),
 			fetchInFlight: null,
 		};
 		cache.set(key, state);
@@ -59,22 +74,28 @@ export function clearAgentIntegrationStatusCache(projectId: string, agentId: str
 	cache.delete(`${projectId}:${agentId}`);
 }
 
+/**
+ * Each entry carries its own status, so a mix of a running channel and a broken
+ * one renders as exactly that — the response rollup is only for callers that
+ * want one word for the whole agent.
+ */
 function applyStatus(
 	state: AgentIntegrationStatusState,
 	integrationTypes: readonly string[],
 	integrations: AgentIntegrationStatusEntry[],
-	status: ConfirmedStatus,
 ): void {
 	for (const type of integrationTypes) {
 		state.statuses.value[type] = 'disconnected';
 		state.connectedCredentials.value[type] = '';
 		state.integrationSettings.value[type] = undefined;
+		state.runtimeErrors.value[type] = '';
 	}
 	for (const integration of integrations) {
-		state.statuses.value[integration.type] = status;
+		state.statuses.value[integration.type] = integration.status;
 		state.connectedCredentials.value[integration.type] =
 			typeof integration.credentialId === 'string' ? integration.credentialId : '';
 		state.integrationSettings.value[integration.type] = integration.settings;
+		state.runtimeErrors.value[integration.type] = integration.errorMessage ?? '';
 	}
 }
 
@@ -83,9 +104,8 @@ export function syncAgentIntegrationStatusCache(
 	agentId: string,
 	integrationTypes: readonly string[],
 	integrations: AgentIntegrationStatusEntry[],
-	status: ConfirmedStatus,
 ): void {
-	applyStatus(getOrCreate(projectId, agentId), integrationTypes, integrations, status);
+	applyStatus(getOrCreate(projectId, agentId), integrationTypes, integrations);
 }
 
 export function useAgentIntegrationStatus(projectId: string, agentId: string) {
@@ -102,13 +122,13 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		state.fetchInFlight = (async () => {
 			try {
 				const result = await getIntegrationStatus(rootStore.restApiContext, projectId, agentId);
-				applyStatus(state, integrationTypes, result.integrations ?? [], result.status);
+				applyStatus(state, integrationTypes, result.integrations ?? []);
 			} catch {
 				// Mark only types we don't already have a confirmed answer for as
 				// `unknown` — a transient network/API failure shouldn't claim that
-				// a confirmed configured or connected integration is now disconnected.
+				// a channel the server already told us about is now disconnected.
 				for (const type of integrationTypes) {
-					if (!['configured', 'connected'].includes(state.statuses.value[type])) {
+					if (!CONFIRMED_STATUSES.includes(state.statuses.value[type])) {
 						state.statuses.value[type] = 'unknown';
 					}
 				}
@@ -124,7 +144,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		credId: string,
 		settings?: AgentIntegrationSettings,
 		options?: ConnectIntegrationOptions,
-	): Promise<Pick<AgentIntegrationStatusResponse, 'status'>> {
+	): Promise<AgentIntegrationConnectResponse> {
 		state.loadingMap.value[type] = true;
 		state.errorMessages.value[type] = '';
 		state.errorIsConflict.value[type] = false;
@@ -143,6 +163,8 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			state.statuses.value[type] = result.status;
 			state.connectedCredentials.value[type] = credId;
 			state.integrationSettings.value[type] = settings;
+			// The channel just started, so whatever it failed with before is history.
+			state.runtimeErrors.value[type] = '';
 			return result;
 		} catch (e: unknown) {
 			const msg =
@@ -177,6 +199,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			state.statuses.value[type] = 'disconnected';
 			state.connectedCredentials.value[type] = '';
 			state.integrationSettings.value[type] = undefined;
+			state.runtimeErrors.value[type] = '';
 			return result;
 		} finally {
 			state.loadingMap.value[type] = false;
@@ -187,8 +210,19 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		return state.statuses.value[type] === 'connected';
 	}
 
+	/** Set up, whether or not it is currently running. */
 	function isConfigured(type: string): boolean {
-		return ['configured', 'connected'].includes(state.statuses.value[type]);
+		return CONFIRMED_STATUSES.includes(state.statuses.value[type]);
+	}
+
+	/** Should be running and is not — the last startup attempt failed. */
+	function hasRuntimeError(type: string): boolean {
+		return state.statuses.value[type] === 'error';
+	}
+
+	/** Should be running, with no attempt reported back yet. */
+	function isStarting(type: string): boolean {
+		return state.statuses.value[type] === 'starting';
 	}
 
 	function clearError(type: string): void {
@@ -203,11 +237,14 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		loadingMap: state.loadingMap,
 		errorMessages: state.errorMessages,
 		errorIsConflict: state.errorIsConflict,
+		runtimeErrors: state.runtimeErrors,
 		fetchStatus,
 		connect,
 		disconnect,
 		clearError,
 		isConnected,
 		isConfigured,
+		hasRuntimeError,
+		isStarting,
 	};
 }

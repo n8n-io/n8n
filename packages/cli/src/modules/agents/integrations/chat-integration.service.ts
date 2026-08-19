@@ -1,7 +1,7 @@
 import { AgentIntegrationConfig, type AgentIntegrationSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
+import { OnLeaderStepdown, OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
@@ -25,7 +25,9 @@ import { buildIntegrationConnectionId } from './integration-tools';
 import { channelIntegrationRecorder } from './recording/channel-integration-recorder';
 import { recordAdapterCalls } from './recording/recording-adapter';
 import type { Agent } from '../entities/agent.entity';
+import type { AgentChannelRef } from '../repositories/agent-channel-status.repository';
 import { AgentRepository } from '../repositories/agent.repository';
+import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
 
 // ---------------------------------------------------------------------------
 // Chat SDK local interfaces
@@ -56,6 +58,11 @@ export interface ChatInstance {
 interface ChatAgentConnection {
 	chat: ChatInstance;
 	bridge?: AgentChatBridge;
+	/**
+	 * Which channel this connection is. The map key encodes the same thing, but
+	 * as one string — this keeps callers that need the parts from parsing it back.
+	 */
+	ref: AgentChannelRef;
 	/**
 	 * Context captured at connect time. Used by `disconnectOne` to invoke
 	 * `onBeforeDisconnect` hooks with the same decrypted credential the connect
@@ -119,6 +126,7 @@ export class ChatIntegrationService {
 		private readonly publisher: Publisher,
 		private readonly globalConfig: GlobalConfig,
 		private readonly chatSubscriptionStateService: AgentChatSubscriptionStateService,
+		private readonly statusReporter: AgentChannelStatusReporter,
 	) {}
 
 	/**
@@ -155,6 +163,29 @@ export class ChatIntegrationService {
 	private integrationFromConnectionKey(key: string): AgentChatIntegration | undefined {
 		const type = key.split(':')[1];
 		return type ? this.integrationRegistry.get(type) : undefined;
+	}
+
+	/**
+	 * Run only the checks that read our own state, without connecting anything.
+	 *
+	 * Publishing uses this to reject a channel it cannot start — a credential
+	 * another agent already claims — before it writes a version, so the agent is
+	 * never left published with a channel that never came up. Deliberately not
+	 * the full `onBeforeConnect`: that may call the platform, and a platform
+	 * outage must not block a publish (the reconciler retries those instead).
+	 */
+	async assertStartupPreconditions(
+		agentId: string,
+		integration: AgentIntegrationConfig,
+		projectId: string,
+	): Promise<void> {
+		const implementation = this.integrationRegistry.require(integration.type);
+		implementation.validateConfig?.(integration);
+		await implementation.assertStartupPreconditions?.({
+			agentId,
+			projectId,
+			credentialId: integration.credentialId,
+		});
 	}
 
 	async validateBeforeConnect(
@@ -310,6 +341,10 @@ export class ChatIntegrationService {
 			// failed connect strands it for the life of the process.
 			await this.runDisconnectedHook(integrationImpl, ctx, `${key} after failed connect`);
 
+			if (ingressEnabled) {
+				await this.statusReporter.recordFailure(this.channelRef(agentId, integration), error);
+			}
+
 			throw error;
 		}
 
@@ -323,6 +358,7 @@ export class ChatIntegrationService {
 			chat: chatInstance,
 			bridge,
 			context: ctx,
+			ref: this.channelRef(agentId, integration),
 		});
 
 		// Runs on every main, never gated on `skipExternalHooks`: this builds
@@ -336,6 +372,10 @@ export class ChatIntegrationService {
 					`[ChatIntegrationService] onConnected failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
+		}
+
+		if (ingressEnabled) {
+			await this.statusReporter.recordConnected(this.channelRef(agentId, integration));
 		}
 
 		this.logger.info(
@@ -627,52 +667,40 @@ export class ChatIntegrationService {
 		return undefined;
 	}
 
+	/** The channels this main currently has running, ingress connections only. */
+	listLiveChannels(): AgentChannelRef[] {
+		return [...this.connections.values()].map((conn) => conn.ref);
+	}
+
+	hasLiveChannel(ref: AgentChannelRef): boolean {
+		return this.connections.has(
+			this.connectionKey(ref.agentId, ref.integrationType, ref.credentialId),
+		);
+	}
+
 	/**
-	 * Reconnect all agents that have integrations configured. Called on startup
-	 * (every main) and on `leader-takeover` in multi-main mode.
+	 * Start one channel of a published agent, for whichever role this main holds.
 	 *
 	 * Webhook-driven integrations connect on every main so that inbound webhooks
-	 * load-balanced across mains always find a live handler. Integrations that
-	 * declare `requiresLeader()` (e.g. Telegram polling) only connect on the
-	 * leader so a single instance owns the long-poll loop.
+	 * load-balanced across mains always find a live handler; integrations that
+	 * declare `requiresLeader()` (e.g. Telegram polling) are the caller's job to
+	 * filter out on followers, so a single instance owns the long-poll loop.
 	 *
-	 * Already-connected keys are skipped so this is a safe idempotent operation
-	 * — important for leader takeover, where a former follower already holds
-	 * webhook integrations and only needs to add the leader-only ones.
+	 * External setup runs once per cluster and the leader claims that role here,
+	 * because the alternative — every main registering the same webhook — is a
+	 * race. Followers build local runtime state only.
+	 *
+	 * Which channels to start, and when to retry one that failed, is
+	 * {@link AgentChannelReconciler}'s decision.
 	 */
-	@OnLeaderTakeover()
-	async reconnectAll(): Promise<void> {
-		// Only reconnect integrations for published agents — an unpublished agent must not
-		// receive events, so we don't even load it.
-		const agents = await this.agentRepository.findPublished();
-		for (const agent of agents) {
-			if (!agent.integrations || agent.integrations.length === 0) continue;
-			for (const integration of agent.integrations) {
-				const definition = this.integrationRegistry.get(integration.type);
-				if (definition?.requiresLeader() && !this.instanceSettings.isLeader) {
-					this.logger.debug(
-						`[ChatIntegrationService] Skipping ${integration.type} for agent ${agent.id} — leader-only and this main is a follower`,
-					);
-					continue;
-				}
-
-				const key = this.connectionKey(agent.id, integration.type, integration.credentialId);
-				if (this.connections.has(key)) continue;
-
-				// External setup runs once per cluster — the leader claims that role
-				// on startup; followers only build local runtime state.
-				const skipExternalHooks = !this.instanceSettings.isLeader;
-				const options = this.connectOptionsFor(integration, skipExternalHooks);
-
-				try {
-					await this.connect(agent.id, integration, agent.projectId, options);
-				} catch (error) {
-					this.logger.error(
-						`[ChatIntegrationService] Failed to reconnect ${integration.type} for agent ${agent.id} — credential not accessible to the project: ${error instanceof Error ? error.message : String(error)}`,
-					);
-				}
-			}
-		}
+	async startChannel(agent: Agent, integration: AgentIntegrationConfig): Promise<void> {
+		const skipExternalHooks = !this.instanceSettings.isLeader;
+		await this.connect(
+			agent.id,
+			integration,
+			agent.projectId,
+			this.connectOptionsFor(integration, skipExternalHooks),
+		);
 	}
 
 	/**
@@ -735,6 +763,14 @@ export class ChatIntegrationService {
 	// ---------------------------------------------------------------------------
 	// Private helpers
 	// ---------------------------------------------------------------------------
+
+	private channelRef(agentId: string, integration: AgentIntegrationConfig): AgentChannelRef {
+		return {
+			agentId,
+			integrationType: integration.type,
+			credentialId: integration.credentialId,
+		};
+	}
 
 	private async disconnectOutboundOne(key: string): Promise<void> {
 		await this.outboundConnectionInitializations.get(key);
@@ -801,6 +837,13 @@ export class ChatIntegrationService {
 		// Mirror of the `onConnected` call in `connect()`: always runs, so every
 		// main releases the local runtime state it built for this connection.
 		await this.runDisconnectedHook(this.integrationFromConnectionKey(key), conn.context, key);
+
+		// Every teardown reaches here, and every one of them means the same thing:
+		// this main is no longer running this channel, so it has nothing left to say
+		// about it. That holds for a channel being removed and for a purely local
+		// release — leader stepdown, a peer applying a broadcast — because the row
+		// is this process's account, not the cluster's.
+		await this.statusReporter.withdraw(conn.ref);
 
 		this.logger.info(`[ChatIntegrationService] Disconnected: ${key}`);
 	}

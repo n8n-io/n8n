@@ -13,6 +13,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
+	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
 	type BridgeExecutionContext,
@@ -26,6 +27,7 @@ import {
 } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
 import type { SuspendComponent } from '../component-mapper';
+import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadDiscordAdapter } from '../esm-loader';
 import type { ReplyExpectation } from '../integration-tools';
 import {
@@ -194,23 +196,21 @@ export class DiscordIntegration extends AgentChatIntegration {
 		});
 	}
 
+	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
+		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
+	}
+
 	/**
 	 * Reject connect when another agent already owns this credential, then
 	 * verify the bot token against Discord application metadata so a typo'd
 	 * Application ID / Public Key fails before publish rather than at runtime.
+	 *
+	 * The token check stays out of `assertStartupPreconditions` on purpose: it
+	 * calls Discord, so an outage there would otherwise block publishing an
+	 * agent whose credential is perfectly fine.
 	 */
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		const others = await this.agentRepository.findByIntegrationCredential(
-			this.type,
-			ctx.credentialId,
-			ctx.projectId,
-			ctx.agentId,
-		);
-		if (others.length > 0) {
-			throw new ConflictError(
-				`Discord credential is already connected to agent "${others[0].name}"`,
-			);
-		}
+		await this.assertStartupPreconditions(ctx);
 
 		await this.validateDiscordCredential(ctx);
 	}

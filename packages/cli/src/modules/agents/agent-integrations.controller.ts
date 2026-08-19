@@ -2,7 +2,7 @@ import {
 	AgentConnectIntegrationDto,
 	AgentDisconnectIntegrationDto,
 	type AgentDisconnectIntegrationResponse,
-	isDraftIntegration,
+	type AgentIntegrationConnectResponse,
 	type AgentIntegrationStatusResponse,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -10,9 +10,12 @@ import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decor
 import type { Request, Response } from 'express';
 
 import { AgentIntegrationManagementService } from './agent-integration-management.service';
+import { AgentChannelStatusReporter } from './integrations/agent-channel-status-reporter';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { buildChannelStatusReport } from './integrations/channel-status-report';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
+import { AgentChannelStatusRepository } from './repositories/agent-channel-status.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -24,6 +27,8 @@ export class AgentIntegrationsController {
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentRepository: AgentRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly channelStatusRepository: AgentChannelStatusRepository,
+		private readonly statusReporter: AgentChannelStatusReporter,
 	) {}
 
 	@Post('/:agentId/integrations/connect')
@@ -33,7 +38,7 @@ export class AgentIntegrationsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 		@Body payload: AgentConnectIntegrationDto,
-	) {
+	): Promise<AgentIntegrationConnectResponse> {
 		await this.integrationManagementService.validateConfig(req.body);
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -82,26 +87,12 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		// Draft entries (`credentialId: ''`) written during the initial build so
-		// the panel can show a needs-setup chip aren't a real connection — report
-		// them as disconnected so channel-setup UIs don't render an already-
-		// connected state and hide their own setup form.
-		const chatIntegrations = (agent.integrations ?? [])
-			.filter((i) => !isDraftIntegration(i))
-			.map((i) => ({
-				type: i.type,
-				credentialId: i.credentialId,
-				...('settings' in i ? { settings: i.settings } : {}),
-			}));
-		return {
-			status:
-				chatIntegrations.length === 0
-					? 'disconnected'
-					: agent.activeVersionId === null
-						? 'configured'
-						: 'connected',
-			integrations: chatIntegrations,
-		};
+		const statuses = await this.channelStatusRepository.findByAgentId(agentId);
+		const now = new Date();
+
+		return buildChannelStatusReport(agent.integrations, agent.activeVersionId, statuses, (row) =>
+			this.statusReporter.isLive(row, now),
+		);
 	}
 
 	// Third-party webhook callback: do not add @ProjectScope. Auth happens

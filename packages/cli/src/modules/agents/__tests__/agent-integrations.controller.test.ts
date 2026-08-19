@@ -7,7 +7,9 @@ import type { AgentIntegrationManagementService } from '../agent-integration-man
 import { AgentIntegrationsController } from '../agent-integrations.controller';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import type { AgentChannelStatusReporter } from '../integrations/agent-channel-status-reporter';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import {
 	expectProjectScopedAgentRoutes,
@@ -21,22 +23,33 @@ function makeController({
 	chatIntegrationService = mock<ChatIntegrationService>(),
 	agentRepository = mock<AgentRepository>(),
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
+	channelStatusRepository = mock<AgentChannelStatusRepository>(),
+	statusReporter = mock<AgentChannelStatusReporter>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
 	agentRepository?: Mocked<AgentRepository>;
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
+	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
+	statusReporter?: Mocked<AgentChannelStatusReporter>;
 } = {}) {
+	channelStatusRepository.findByAgentId.mockResolvedValue([]);
+	statusReporter.isLive.mockReturnValue(true);
+
 	return {
 		controller: new AgentIntegrationsController(
 			managementService,
 			chatIntegrationService,
 			agentRepository,
 			chatIntegrationRegistry,
+			channelStatusRepository,
+			statusReporter,
 		),
 		managementService,
 		chatIntegrationService,
 		agentRepository,
+		channelStatusRepository,
+		statusReporter,
 	};
 }
 

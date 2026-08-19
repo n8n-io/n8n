@@ -1,0 +1,428 @@
+import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { mockLogger } from '@n8n/backend-test-utils';
+import { AgentsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import type { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
+
+import type { Agent } from '../../entities/agent.entity';
+import type { AgentChannelStatus } from '../../entities/agent-channel-status.entity';
+import type {
+	AgentChannelRef,
+	AgentChannelStatusRepository,
+} from '../../repositories/agent-channel-status.repository';
+import type { AgentRepository } from '../../repositories/agent.repository';
+import { AgentChannelReconciler } from '../agent-channel-reconciler.service';
+import { AgentChannelStatusReporter } from '../agent-channel-status-reporter';
+import { AgentChatIntegration, ChatIntegrationRegistry } from '../agent-chat-integration';
+import type { ChatIntegrationService } from '../chat-integration.service';
+
+const RECONCILE_INTERVAL_SECONDS = 60;
+const HOST_ID = 'main-this-one';
+
+class FakeIntegration extends AgentChatIntegration {
+	constructor(
+		readonly type: string,
+		private readonly leaderOnly: boolean,
+	) {
+		super();
+	}
+
+	readonly credentialTypes = ['fake'];
+
+	readonly displayLabel = 'Fake';
+
+	readonly displayIcon = 'zap';
+
+	override requiresLeader(): boolean {
+		return this.leaderOnly;
+	}
+
+	async createAdapter(): Promise<unknown> {
+		return {};
+	}
+}
+
+const slack: AgentIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
+const telegram: AgentIntegrationConfig = { type: 'telegram', credentialId: 'cred-telegram' };
+
+function makeAgent(integrations: AgentIntegrationConfig[], id = 'agent-1'): Agent {
+	return { id, projectId: 'project-1', integrations } as unknown as Agent;
+}
+
+function refOf(integration: AgentIntegrationConfig, agentId = 'agent-1'): AgentChannelRef {
+	return { agentId, integrationType: integration.type, credentialId: integration.credentialId };
+}
+
+function ownRow(
+	integration: AgentIntegrationConfig,
+	overrides: Partial<AgentChannelStatus> = {},
+): AgentChannelStatus {
+	return {
+		...refOf(integration),
+		hostId: HOST_ID,
+		status: 'connected',
+		errorMessage: null,
+		attempts: 0,
+		backoffUntil: null,
+		expiresAt: new Date(Date.now() + 3 * RECONCILE_INTERVAL_SECONDS * Time.seconds.toMilliseconds),
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		...overrides,
+	} as AgentChannelStatus;
+}
+
+function erroredOwnRow(
+	integration: AgentIntegrationConfig,
+	overrides: Partial<AgentChannelStatus> = {},
+): AgentChannelStatus {
+	return ownRow(integration, {
+		status: 'error',
+		errorMessage: 'boom',
+		attempts: 2,
+		...overrides,
+	});
+}
+
+function build(
+	opts: { isLeader?: boolean; live?: AgentChannelRef[]; intervalSeconds?: number } = {},
+) {
+	const registry = new ChatIntegrationRegistry();
+	// Telegram stands in for a polling platform: exactly one main may own it.
+	registry.register(new FakeIntegration('telegram', true));
+	registry.register(new FakeIntegration('slack', false));
+
+	const agentRepository = mock<AgentRepository>();
+	agentRepository.findPublished.mockResolvedValue([]);
+
+	const channelStatusRepository = mock<AgentChannelStatusRepository>();
+	channelStatusRepository.findOwnAll.mockResolvedValue([]);
+	channelStatusRepository.deleteExpired.mockResolvedValue(0);
+
+	const chatIntegrationService = mock<ChatIntegrationService>();
+	const live = opts.live ?? [];
+	chatIntegrationService.listLiveChannels.mockReturnValue(live);
+	chatIntegrationService.hasLiveChannel.mockImplementation((ref) =>
+		live.some(
+			(candidate) =>
+				candidate.agentId === ref.agentId &&
+				candidate.integrationType === ref.integrationType &&
+				candidate.credentialId === ref.credentialId,
+		),
+	);
+
+	const agentsConfig = Object.assign(new AgentsConfig(), {
+		channelReconcileIntervalSeconds: opts.intervalSeconds ?? RECONCILE_INTERVAL_SECONDS,
+	});
+	// The real reporter, so backoff and lease policy are exercised rather than
+	// mocked away; only the persistence under it is a double.
+	const statusReporter = new AgentChannelStatusReporter(
+		mockLogger(),
+		agentsConfig,
+		channelStatusRepository,
+	);
+
+	const reconciler = new AgentChannelReconciler(
+		mockLogger(),
+		agentsConfig,
+		agentRepository,
+		channelStatusRepository,
+		statusReporter,
+		chatIntegrationService,
+		registry,
+		mock<InstanceSettings>({ isLeader: opts.isLeader ?? true, hostId: HOST_ID }),
+		mock<ErrorReporter>(),
+	);
+
+	return { reconciler, agentRepository, channelStatusRepository, chatIntegrationService };
+}
+
+describe('AgentChannelReconciler', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	describe('starting what should be running', () => {
+		it('starts a published channel that is not running', async () => {
+			const { reconciler, agentRepository, chatIntegrationService } = build();
+			const agent = makeAgent([slack]);
+			agentRepository.findPublished.mockResolvedValue([agent]);
+
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.startChannel).toHaveBeenCalledWith(agent, slack);
+		});
+
+		it('never tries to start a draft entry, which has no credential', async () => {
+			const { reconciler, agentRepository, chatIntegrationService } = build();
+			agentRepository.findPublished.mockResolvedValue([
+				makeAgent([{ type: 'discord', credentialId: '' }]),
+			]);
+
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
+		});
+
+		it('keeps going after one channel fails to start', async () => {
+			const { reconciler, agentRepository, chatIntegrationService } = build();
+			agentRepository.findPublished.mockResolvedValue([makeAgent([telegram, slack])]);
+			chatIntegrationService.startChannel.mockRejectedValueOnce(new Error('boom'));
+
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.startChannel).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('standing behind a channel it is running', () => {
+		it('extends the lease on a row that already says connected', async () => {
+			const { reconciler, agentRepository, channelStatusRepository } = build({
+				live: [refOf(slack)],
+			});
+			agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+			channelStatusRepository.findOwnAll.mockResolvedValue([ownRow(slack)]);
+
+			await reconciler.reconcile('interval');
+
+			expect(channelStatusRepository.refreshOwnLease).toHaveBeenCalledWith(
+				refOf(slack),
+				expect.any(Date),
+			);
+			expect(channelStatusRepository.saveOwn).not.toHaveBeenCalled();
+		});
+
+		it('writes a row for a running channel nothing had reported yet', async () => {
+			// The state of every channel on an instance that just upgraded: live, but
+			// with no row, so it would otherwise be reported as still starting.
+			const { reconciler, agentRepository, channelStatusRepository } = build({
+				live: [refOf(slack)],
+			});
+			agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+
+			await reconciler.reconcile('interval');
+
+			expect(channelStatusRepository.saveOwn).toHaveBeenCalledWith(
+				refOf(slack),
+				expect.objectContaining({ status: 'connected', attempts: 0, backoffUntil: null }),
+			);
+		});
+
+		it('replaces its own stale error once the channel is up', async () => {
+			const { reconciler, agentRepository, channelStatusRepository } = build({
+				live: [refOf(slack)],
+			});
+			agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+			channelStatusRepository.findOwnAll.mockResolvedValue([erroredOwnRow(slack)]);
+
+			await reconciler.reconcile('interval');
+
+			expect(channelStatusRepository.saveOwn).toHaveBeenCalledWith(
+				refOf(slack),
+				expect.objectContaining({ status: 'connected', errorMessage: null }),
+			);
+		});
+	});
+
+	describe('retry backoff', () => {
+		it('waits out a retry deadline that has not passed', async () => {
+			const { reconciler, agentRepository, channelStatusRepository, chatIntegrationService } =
+				build();
+			agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+			channelStatusRepository.findOwnAll.mockResolvedValue([
+				erroredOwnRow(slack, {
+					backoffUntil: new Date(Date.now() + 5 * Time.minutes.toMilliseconds),
+				}),
+			]);
+
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
+		});
+
+		it('retries once the deadline has passed', async () => {
+			const { reconciler, agentRepository, channelStatusRepository, chatIntegrationService } =
+				build();
+			agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+			channelStatusRepository.findOwnAll.mockResolvedValue([
+				erroredOwnRow(slack, {
+					backoffUntil: new Date(Date.now() - Time.seconds.toMilliseconds),
+				}),
+			]);
+
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.startChannel).toHaveBeenCalledTimes(1);
+		});
+
+		it.each(['startup', 'leader-takeover'] as const)(
+			'ignores the deadline on a %s pass, because the cause may be gone',
+			async (reason) => {
+				const { reconciler, agentRepository, channelStatusRepository, chatIntegrationService } =
+					build();
+				agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+				channelStatusRepository.findOwnAll.mockResolvedValue([
+					erroredOwnRow(slack, {
+						backoffUntil: new Date(Date.now() + Time.hours.toMilliseconds),
+					}),
+				]);
+
+				await reconciler.reconcile(reason);
+
+				expect(chatIntegrationService.startChannel).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it('does not let a lease refresh bring a retry forward', async () => {
+			// A heartbeat moves `updatedAt`; only `backoffUntil` decides a retry.
+			const { reconciler, agentRepository, channelStatusRepository, chatIntegrationService } =
+				build({ live: [refOf(slack)] });
+			agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+			channelStatusRepository.findOwnAll.mockResolvedValue([ownRow(slack)]);
+
+			await reconciler.reconcile('interval');
+
+			expect(channelStatusRepository.refreshOwnLease).toHaveBeenCalled();
+			expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('multi-main roles', () => {
+		it('does not start a leader-only channel on a follower', async () => {
+			const { reconciler, agentRepository, chatIntegrationService } = build({ isLeader: false });
+			agentRepository.findPublished.mockResolvedValue([makeAgent([telegram, slack])]);
+
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.startChannel).toHaveBeenCalledTimes(1);
+			expect(chatIntegrationService.startChannel).toHaveBeenCalledWith(expect.anything(), slack);
+		});
+
+		it('releases a leader-only channel it holds as a follower', async () => {
+			const { reconciler, agentRepository, chatIntegrationService } = build({
+				isLeader: false,
+				live: [refOf(telegram)],
+			});
+			agentRepository.findPublished.mockResolvedValue([makeAgent([telegram])]);
+
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.disconnect).toHaveBeenCalledWith('agent-1', {
+				type: 'telegram',
+				credentialId: 'cred-telegram',
+			});
+		});
+
+		it('never touches another instance’s rows, only its own and expired ones', async () => {
+			const { reconciler, agentRepository, channelStatusRepository } = build({
+				live: [refOf(slack)],
+			});
+			agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+
+			await reconciler.reconcile('interval');
+
+			// Reads are scoped to this host; the only cross-host write is the
+			// expiry sweep.
+			expect(channelStatusRepository.findOwnAll).toHaveBeenCalled();
+			expect(channelStatusRepository.find).not.toHaveBeenCalled();
+			expect(channelStatusRepository.findByAgentId).not.toHaveBeenCalled();
+		});
+
+		it('leaves the expiry sweep to the leader', async () => {
+			const { reconciler, channelStatusRepository } = build({ isLeader: false });
+
+			await reconciler.reconcile('interval');
+
+			expect(channelStatusRepository.deleteExpired).not.toHaveBeenCalled();
+		});
+
+		it('clears rows abandoned by instances that are gone', async () => {
+			const { reconciler, channelStatusRepository } = build({ isLeader: true });
+			channelStatusRepository.deleteExpired.mockResolvedValue(2);
+
+			await reconciler.reconcile('interval');
+
+			expect(channelStatusRepository.deleteExpired).toHaveBeenCalledWith(expect.any(Date));
+		});
+	});
+
+	describe('withdrawing what it no longer runs', () => {
+		it('releases a channel whose agent is no longer published', async () => {
+			const { reconciler, chatIntegrationService } = build({ live: [refOf(slack)] });
+
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.disconnect).toHaveBeenCalledWith('agent-1', {
+				type: 'slack',
+				credentialId: 'cred-slack',
+			});
+		});
+
+		it('drops its own row for a channel it is not running and should not', async () => {
+			// A failed startup, then the agent was unpublished: nothing live to tear
+			// down, so nothing would have withdrawn the row.
+			const { reconciler, channelStatusRepository } = build();
+			channelStatusRepository.findOwnAll.mockResolvedValue([erroredOwnRow(slack)]);
+
+			await reconciler.reconcile('interval');
+
+			expect(channelStatusRepository.clearOwnChannel).toHaveBeenCalledWith(refOf(slack));
+		});
+
+		it('keeps its own row for a channel it should still be running', async () => {
+			const { reconciler, agentRepository, channelStatusRepository } = build();
+			agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+			channelStatusRepository.findOwnAll.mockResolvedValue([erroredOwnRow(slack)]);
+
+			await reconciler.reconcile('interval');
+
+			expect(channelStatusRepository.clearOwnChannel).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('the loop itself', () => {
+		it('does not schedule anything when the interval is zero', () => {
+			const { reconciler, channelStatusRepository } = build({ intervalSeconds: 0 });
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
+
+			reconciler.init();
+
+			expect(setIntervalSpy).not.toHaveBeenCalled();
+			expect(channelStatusRepository.findOwnAll).not.toHaveBeenCalled();
+			setIntervalSpy.mockRestore();
+		});
+
+		it('reports a failing pass instead of letting it kill the interval', async () => {
+			const { reconciler, agentRepository } = build();
+			agentRepository.findPublished.mockRejectedValue(new Error('database is down'));
+
+			await expect(reconciler.reconcile('interval')).resolves.toBeUndefined();
+		});
+
+		it('withdraws everything it said on shutdown, so a restart is not read as degraded', async () => {
+			const { reconciler, channelStatusRepository } = build();
+
+			await reconciler.shutdown();
+
+			expect(channelStatusRepository.clearOwnHost).toHaveBeenCalled();
+		});
+
+		it('stops working once shut down', async () => {
+			const { reconciler, agentRepository, chatIntegrationService } = build();
+			agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+
+			await reconciler.shutdown();
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
+		});
+
+		it('does not run on leader takeover while the loop is disabled', async () => {
+			const { reconciler, agentRepository } = build();
+
+			await reconciler.reconcileOnLeaderTakeover();
+
+			expect(agentRepository.findPublished).not.toHaveBeenCalled();
+		});
+	});
+});
