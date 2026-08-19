@@ -7,6 +7,7 @@
  * All communication with the relay uses these CDP target IDs.
  */
 
+import { DocumentPreparation } from './documentPreparation';
 import { ForeignFrames } from './foreignFrames';
 import { createLogger } from './logger';
 import type { TabManagementSettings } from './types';
@@ -92,6 +93,7 @@ export class RelayConnection {
 		params?: object,
 	) => void;
 	private readonly detachListener: (source: chrome.debugger.Debuggee, reason: string) => void;
+	private readonly documentPrep = new DocumentPreparation();
 	private closed = false;
 	private keepaliveInterval: ReturnType<typeof setInterval> | undefined;
 	private settings: TabManagementSettings = DEFAULT_SETTINGS;
@@ -313,6 +315,7 @@ export class RelayConnection {
 		)) as { targetInfo: { targetId: string } };
 
 		await this.applyFocusEmulation(chromeTabId);
+		await this.documentPrep.applyToTab(chromeTabId);
 
 		const targetId = result.targetInfo.targetId;
 		log.debug(`attached: chromeTabId=${chromeTabId} → targetId=${targetId}`);
@@ -368,6 +371,7 @@ export class RelayConnection {
 			log.debug(`ensureAttached: attached ${id}`);
 
 			await this.applyFocusEmulation(entry.chromeTabId);
+			await this.documentPrep.applyToTab(entry.chromeTabId);
 
 			// Reapply cached auto-attach so new tabs report iframes immediately
 			if (this.autoAttachParams) {

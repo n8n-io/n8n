@@ -84,6 +84,7 @@ const keyboardExecution = {
 		},
 	],
 	error: null,
+	failureSummary: null,
 	hitlStatus: null,
 	source: null,
 } satisfies ThreadDetail['executions'][number];
@@ -195,7 +196,7 @@ describe('AgentSessionTimelinePanel', () => {
 			options
 				.filter((option) => option.presentation === 'badge')
 				.map(({ key, count }) => [key, count]),
-		).toEqual([['error', 1]]);
+		).toEqual([['error', 2]]);
 	});
 
 	it('omits status pills when the session has no matching statuses', async () => {

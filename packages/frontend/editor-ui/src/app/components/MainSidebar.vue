@@ -70,7 +70,7 @@ const {
 	toggleCollapse,
 } = useSidebarLayout();
 
-const { settingsItems } = useSettingsItems();
+const { settingsItems, handleSettingsItemSelect } = useSettingsItems();
 const { fetchWallet, isEnabled: isAiGatewayEnabled } = useAiGateway();
 
 // Component data
@@ -295,6 +295,10 @@ const handleSelect = (key: string) => {
 		}
 		case 'cloud-admin': {
 			void pageRedirectionHelper.goToDashboard();
+			break;
+		}
+		case 'settings-n8n-connect': {
+			void handleSettingsItemSelect(key);
 			break;
 		}
 		case 'quickstart':

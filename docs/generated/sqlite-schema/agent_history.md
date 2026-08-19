@@ -122,6 +122,7 @@ erDiagram
   varchar_128_ name
   TEXT objective
   varchar_32_ taskId PK
+  varchar_64_ timezone
   datetime_3_ updatedAt
   varchar_36_ versionId PK
 }
