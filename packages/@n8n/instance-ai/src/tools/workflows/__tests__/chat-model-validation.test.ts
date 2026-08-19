@@ -327,8 +327,33 @@ describe('chat-model-validation', () => {
 		expect(recovery.relatedNodeNames.has('AI Agent')).toBe(true);
 		expect(recovery.suggestionsByNodeName.get('OpenAI Chat Model')).toEqual(['newer-model']);
 		expect(recovery.suggestionsByNodeName.get('AI Agent')).toEqual(['newer-model']);
-		expect(recovery.aiCreditsAvailable).toBe(true);
+		expect(recovery.creditsCoveredNodeNames.has('OpenAI Chat Model')).toBe(true);
+		expect(recovery.creditsCoveredNodeNames.has('AI Agent')).toBe(true);
 		expect(isAiGatewayCredentialType).toHaveBeenCalledWith('openAiApi');
+	});
+
+	it('tracks credits coverage per node when providers differ in gateway support', async () => {
+		getCachedCatalogMock.mockResolvedValue(undefined);
+		const isAiGatewayCredentialType = vi
+			.fn()
+			.mockImplementation(
+				async (credType: string) => await Promise.resolve(credType === 'openAiApi'),
+			);
+		const context = {
+			credentialService: { isAiGatewayCredentialType },
+		} as unknown as InstanceAiContext;
+
+		const recovery = await collectChatModelRecoveryContext(
+			context,
+			[
+				{ name: 'OpenAI Chat Model', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' },
+				{ name: 'Mistral Chat Model', type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud' },
+			],
+			undefined,
+		);
+
+		expect(recovery.creditsCoveredNodeNames.has('OpenAI Chat Model')).toBe(true);
+		expect(recovery.creditsCoveredNodeNames.has('Mistral Chat Model')).toBe(false);
 	});
 
 	it('reports credits unavailable and empty suggestions when the gateway and catalog are absent', async () => {
@@ -342,7 +367,7 @@ describe('chat-model-validation', () => {
 
 		expect(recovery.relatedNodeNames.has('OpenAI Chat Model')).toBe(true);
 		expect(recovery.suggestionsByNodeName.size).toBe(0);
-		expect(recovery.aiCreditsAvailable).toBe(false);
+		expect(recovery.creditsCoveredNodeNames.size).toBe(0);
 	});
 
 	it('collects chat-model nodes and the agent parents they feed', () => {

@@ -130,7 +130,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 					['Gemini Chat Model', ['gemini-3-flash']],
 					['AI Agent', ['gemini-3-flash']],
 				]),
-				aiCreditsAvailable: false,
+				creditsCoveredNodeNames: new Set<string>(),
 			},
 		});
 
@@ -171,7 +171,10 @@ describe('analyzeVerificationResult — chat model failures', () => {
 			stateBefore: undefined,
 			runId: 'run-1',
 			chatModelRelatedNodeNames: new Set(['OpenAI Chat Model']),
-			chatModelRecovery: { suggestionsByNodeName: new Map(), aiCreditsAvailable: true },
+			chatModelRecovery: {
+				suggestionsByNodeName: new Map(),
+				creditsCoveredNodeNames: new Set(['OpenAI Chat Model']),
+			},
 		});
 
 		expect(analysis.remediation?.category).toBe('needs_setup');
@@ -191,7 +194,59 @@ describe('analyzeVerificationResult — chat model failures', () => {
 			stateBefore: undefined,
 			runId: 'run-1',
 			chatModelRelatedNodeNames: new Set(['OpenAI Chat Model']),
-			chatModelRecovery: { suggestionsByNodeName: new Map(), aiCreditsAvailable: false },
+			chatModelRecovery: {
+				suggestionsByNodeName: new Map(),
+				creditsCoveredNodeNames: new Set<string>(),
+			},
+		});
+
+		expect(analysis.remediation?.category).toBe('needs_setup');
+		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
+		expect(analysis.remediation?.guidance).toContain('another provider or key');
+	});
+
+	it("does not borrow another node's suggestions when the failing node has none", () => {
+		const analysis = analyzeVerificationResult({
+			result: {
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'The model "gpt-3.5-turbo" was not found',
+				lastNodeExecuted: 'AI Agent',
+				nodeErrors: [{ nodeName: 'AI Agent', message: 'The model "gpt-3.5-turbo" was not found' }],
+			} as unknown as ExecutionRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+			chatModelRelatedNodeNames: new Set(['OpenAI Chat Model', 'AI Agent']),
+			chatModelRecovery: {
+				suggestionsByNodeName: new Map([['Anthropic Chat Model', ['claude-x']]]),
+				creditsCoveredNodeNames: new Set<string>(),
+			},
+		});
+
+		expect(analysis.remediation?.reason).toBe('chat_model_failure');
+		expect(analysis.remediation?.guidance).not.toContain('claude-x');
+		expect(analysis.remediation?.guidance).toContain('explore-resources');
+	});
+
+	it('omits n8n credits when the gateway covers a different node than the failing one', () => {
+		const analysis = analyzeVerificationResult({
+			result: {
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'You exceeded your current quota, please check your plan and billing details',
+				lastNodeExecuted: 'Mistral Chat Model',
+			} as unknown as ExecutionRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+			chatModelRelatedNodeNames: new Set(['OpenAI Chat Model', 'Mistral Chat Model']),
+			chatModelRecovery: {
+				suggestionsByNodeName: new Map(),
+				creditsCoveredNodeNames: new Set(['OpenAI Chat Model']),
+			},
 		});
 
 		expect(analysis.remediation?.category).toBe('needs_setup');

@@ -19,7 +19,7 @@ import {
 
 export type ChatModelRecoveryOptions = Pick<
 	ChatModelRecoveryContext,
-	'suggestionsByNodeName' | 'aiCreditsAvailable'
+	'suggestionsByNodeName' | 'creditsCoveredNodeNames'
 >;
 
 type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
@@ -161,25 +161,44 @@ function isChatModelScopedFailure(
 	return false;
 }
 
-/** Suggestions for the failing node when known, otherwise any provider's suggestions. */
+/** Failing node names in match-priority order: erroring nodes first, then the last executed node. */
+function failingNodeCandidates(
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+): string[] {
+	const candidates = nodeErrors.map((nodeError) => nodeError.nodeName);
+	if (lastNodeExecuted) candidates.push(lastNodeExecuted);
+	return candidates;
+}
+
+/**
+ * Suggestions scoped to the identified failing node only. When the failing
+ * node cannot be identified, return none rather than another provider's model
+ * IDs — the guidance then falls back to verified-resource discovery.
+ */
 function replacementSuggestionsForFailure(
 	nodeErrors: ExecutionNodeError[],
 	lastNodeExecuted: string | undefined,
 	suggestionsByNodeName: ChatModelRecoveryOptions['suggestionsByNodeName'] | undefined,
 ): string[] {
 	if (!suggestionsByNodeName) return [];
-	for (const nodeError of nodeErrors) {
-		const suggestions = suggestionsByNodeName.get(nodeError.nodeName);
+	for (const name of failingNodeCandidates(nodeErrors, lastNodeExecuted)) {
+		const suggestions = suggestionsByNodeName.get(name);
 		if (suggestions && suggestions.length > 0) return suggestions;
-	}
-	if (lastNodeExecuted) {
-		const suggestions = suggestionsByNodeName.get(lastNodeExecuted);
-		if (suggestions && suggestions.length > 0) return suggestions;
-	}
-	for (const suggestions of suggestionsByNodeName.values()) {
-		if (suggestions.length > 0) return suggestions;
 	}
 	return [];
+}
+
+/** Whether n8n credits cover the identified failing node's credential type. */
+function creditsCoverFailingNode(
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+	creditsCoveredNodeNames: ChatModelRecoveryOptions['creditsCoveredNodeNames'] | undefined,
+): boolean {
+	if (!creditsCoveredNodeNames || creditsCoveredNodeNames.size === 0) return false;
+	return failingNodeCandidates(nodeErrors, lastNodeExecuted).some((name) =>
+		creditsCoveredNodeNames.has(name),
+	);
 }
 
 function classifyVerificationFailure(
@@ -224,7 +243,11 @@ function classifyVerificationFailure(
 		const quotaGuidance =
 			normalized.includes('quota') &&
 			isChatModelScopedFailure(nodeErrors, error, lastNodeExecuted, chatModelRelatedNodeNames)
-				? chatModelRecovery?.aiCreditsAvailable
+				? creditsCoverFailingNode(
+						nodeErrors,
+						lastNodeExecuted,
+						chatModelRecovery?.creditsCoveredNodeNames,
+					)
 					? " If the user's own key or free tier is exhausted, switch the chat-model node to n8n credits or another provider they can run."
 					: " If the user's own key or free tier is exhausted, switch the chat-model node to another provider or key the user can run."
 				: '';
@@ -268,7 +291,11 @@ function classifyVerificationFailure(
 					lastNodeExecuted,
 					chatModelRecovery?.suggestionsByNodeName,
 				),
-				chatModelRecovery?.aiCreditsAvailable ?? false,
+				creditsCoverFailingNode(
+					nodeErrors,
+					lastNodeExecuted,
+					chatModelRecovery?.creditsCoveredNodeNames,
+				),
 			),
 		});
 	}

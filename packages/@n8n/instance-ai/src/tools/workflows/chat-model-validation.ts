@@ -405,8 +405,12 @@ export interface ChatModelRecoveryContext {
 	relatedNodeNames: Set<string>;
 	/** Replacement model ids keyed by chat-model node name AND its parent agent/chain names. */
 	suggestionsByNodeName: ReadonlyMap<string, string[]>;
-	/** Whether at least one chat-model credential type is covered by n8n credits on this instance. */
-	aiCreditsAvailable: boolean;
+	/**
+	 * Node names (chat-model + parent agent/chain names) whose credential type
+	 * is covered by n8n credits. Tracked per node so recovery never suggests
+	 * credits for a provider the gateway does not cover.
+	 */
+	creditsCoveredNodeNames: ReadonlySet<string>;
 }
 
 /**
@@ -421,9 +425,9 @@ export async function collectChatModelRecoveryContext(
 ): Promise<ChatModelRecoveryContext> {
 	const relatedNodeNames = collectChatModelRelatedNodeNames(nodes, connections);
 	const suggestionsByNodeName = new Map<string, string[]>();
-	let aiCreditsAvailable = false;
+	const creditsCoveredNodeNames = new Set<string>();
 	if (relatedNodeNames.size === 0) {
-		return { relatedNodeNames, suggestionsByNodeName, aiCreditsAvailable };
+		return { relatedNodeNames, suggestionsByNodeName, creditsCoveredNodeNames };
 	}
 
 	const catalog = await loadCatalogWithTimeout();
@@ -433,14 +437,15 @@ export async function collectChatModelRecoveryContext(
 		const entry = resolveChatModelCatalogEntry(node.type);
 		if (!entry) continue;
 
+		const relatedNames = relatedNamesForChatModelNode(node.name, connections);
 		const suggestions = suggestReplacementModels(catalog?.[entry.modelsDevProviderId]);
 		if (suggestions.length > 0) {
-			for (const name of relatedNamesForChatModelNode(node.name, connections)) {
+			for (const name of relatedNames) {
 				suggestionsByNodeName.set(name, suggestions);
 			}
 		}
 
-		if (!aiCreditsAvailable && context.credentialService.isAiGatewayCredentialType) {
+		if (context.credentialService.isAiGatewayCredentialType) {
 			let supported = gatewaySupportByCredType.get(entry.credentialType);
 			if (supported === undefined) {
 				supported = await context.credentialService
@@ -448,9 +453,13 @@ export async function collectChatModelRecoveryContext(
 					.catch(() => false);
 				gatewaySupportByCredType.set(entry.credentialType, supported);
 			}
-			if (supported) aiCreditsAvailable = true;
+			if (supported) {
+				for (const name of relatedNames) {
+					creditsCoveredNodeNames.add(name);
+				}
+			}
 		}
 	}
 
-	return { relatedNodeNames, suggestionsByNodeName, aiCreditsAvailable };
+	return { relatedNodeNames, suggestionsByNodeName, creditsCoveredNodeNames };
 }
