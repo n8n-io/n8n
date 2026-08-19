@@ -7,6 +7,7 @@ import type {
 	INodeProperties,
 	Icon,
 } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { formatGoogleScopesForJwt, parseGoogleScopes } from './common/google-scopes';
 import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
@@ -316,6 +317,7 @@ export class GoogleApi implements ICredentialType {
 			default: '',
 			description:
 				'You can find the scopes for services <a href="https://developers.google.com/identity/protocols/oauth2/scopes" target="_blank">here</a>',
+			required: true,
 			displayOptions: {
 				show: {
 					httpNode: [true],
@@ -333,9 +335,16 @@ export class GoogleApi implements ICredentialType {
 		const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
 		credentials.email = (credentials.email as string).trim();
 
-		const scopes = formatGoogleScopesForJwt(
-			parseGoogleScopes(typeof credentials.scopes === 'string' ? credentials.scopes : ''),
+		const parsedScopes = parseGoogleScopes(
+			typeof credentials.scopes === 'string' ? credentials.scopes : '',
 		);
+		if (parsedScopes.length === 0) {
+			throw new UserError(
+				'Add at least one scope in the "Scope(s)" field to use this credential with the HTTP Request node.',
+			);
+		}
+
+		const scopes = formatGoogleScopesForJwt(parsedScopes);
 
 		const now = moment().unix();
 

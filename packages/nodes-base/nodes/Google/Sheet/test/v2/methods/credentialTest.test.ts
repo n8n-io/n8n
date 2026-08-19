@@ -110,18 +110,20 @@ describe('googleApiCredentialTest', () => {
 			);
 		});
 
-		it('should return an Error without calling getGoogleAccessToken when httpNode is enabled but no scopes are configured', async () => {
+		it('should fall back to the sheetV2 default when httpNode is enabled but no scopes are configured', async () => {
+			vi.mocked(getGoogleAccessToken).mockResolvedValue({ access_token: 'a-token' });
 			const credentialWithNoScopes = {
 				data: { ...httpNodeCredential.data, scopes: '' },
 			} as unknown as ICredentialsDecrypted;
 
 			const result = await googleApiCredentialTest.call(testFunctions, credentialWithNoScopes);
 
-			expect(result).toEqual({
-				status: 'Error',
-				message: 'Add at least one scope in the "Scope(s)" field to test this credential.',
-			});
-			expect(getGoogleAccessToken).not.toHaveBeenCalled();
+			expect(result).toEqual({ status: 'OK', message: 'Connection successful!' });
+			expect(getGoogleAccessToken).toHaveBeenCalledWith(
+				credentialWithNoScopes.data,
+				'sheetV2',
+				undefined,
+			);
 		});
 
 		it('should return Error including the configured scopes when token generation throws', async () => {
