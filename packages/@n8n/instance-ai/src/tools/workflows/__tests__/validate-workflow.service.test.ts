@@ -1091,7 +1091,7 @@ describe('validateWorkflowConfig', () => {
 				google: {
 					id: 'google',
 					name: 'Google',
-					deprecatedModelIds: new Set(['gemini-2.5-flash', 'models/gemini-2.5-flash']),
+					deprecatedModelIds: ['gemini-2.5-flash', 'models/gemini-2.5-flash'],
 					models: {
 						'gemini-3-flash-preview': {
 							id: 'gemini-3-flash-preview',
@@ -1122,6 +1122,47 @@ describe('validateWorkflowConfig', () => {
 
 			expect(result.valid).toBe(false);
 			expect(result.summary.some((line) => line.includes('deprecated'))).toBe(true);
+		});
+
+		it('honors ignoreIssues: ["chatModel"] to suppress chat model validation issues', async () => {
+			getCachedCatalogMock.mockResolvedValueOnce({
+				google: {
+					id: 'google',
+					name: 'Google',
+					deprecatedModelIds: ['gemini-2.5-flash', 'models/gemini-2.5-flash'],
+					models: {
+						'gemini-3-flash-preview': {
+							id: 'gemini-3-flash-preview',
+							name: 'Gemini 3 Flash Preview',
+							releaseDate: '2025-12-01',
+							toolCall: true,
+						},
+					},
+				},
+			});
+
+			const context = createMockContext();
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
+				makeDescription({
+					name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					displayName: 'Google Gemini Chat Model',
+				}),
+			);
+			const node = makeNode({
+				name: 'Gemini Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+				parameters: {
+					model: { __rl: true, mode: 'id', value: 'models/gemini-2.5-flash' },
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+				ignoreIssues: ['chatModel'],
+			});
+
+			expect(result.valid).toBe(true);
+			expect(result.issues).toEqual({});
 		});
 	});
 });

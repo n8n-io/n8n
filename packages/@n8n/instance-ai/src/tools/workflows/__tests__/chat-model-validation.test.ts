@@ -110,7 +110,7 @@ describe('chat-model-validation', () => {
 		const suggestions = suggestReplacementModels({
 			id: 'openai',
 			name: 'OpenAI',
-			deprecatedModelIds: new Set(),
+			deprecatedModelIds: [],
 			models: {
 				'older-model': {
 					id: 'older-model',
@@ -134,7 +134,7 @@ describe('chat-model-validation', () => {
 			openai: {
 				id: 'openai',
 				name: 'OpenAI',
-				deprecatedModelIds: new Set(['gpt-4o-mini']),
+				deprecatedModelIds: ['gpt-4o-mini'],
 				models: {
 					'gpt-5-mini': {
 						id: 'gpt-5-mini',
@@ -148,7 +148,7 @@ describe('chat-model-validation', () => {
 			google: {
 				id: 'google',
 				name: 'Google',
-				deprecatedModelIds: new Set(['gemini-2.5-flash', 'models/gemini-2.5-flash']),
+				deprecatedModelIds: ['gemini-2.5-flash', 'models/gemini-2.5-flash'],
 				models: {
 					'gemini-3-flash-preview': {
 						id: 'gemini-3-flash-preview',
@@ -196,7 +196,7 @@ describe('chat-model-validation', () => {
 			openai: {
 				id: 'openai',
 				name: 'OpenAI',
-				deprecatedModelIds: new Set(),
+				deprecatedModelIds: [],
 				models: {
 					'gpt-5-mini': {
 						id: 'gpt-5-mini',

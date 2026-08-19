@@ -106,14 +106,26 @@ export class NodeResourceExplorerService {
 				};
 			}
 
-			const options = await this.dynamicNodeParametersService.getOptionsViaMethodName(
-				params.methodName,
-				'',
-				additionalData,
-				nodeTypeAndVersion,
-				currentNodeParameters,
-				credentials,
-			);
+			const isRouted = nodeDescription
+				? isRoutedLoadOptionsProperty(nodeDescription, params.methodName)
+				: false;
+
+			const options = isRouted
+				? await this.dynamicNodeParametersService.getOptionsViaLoadOptionsByPath(
+						params.methodName,
+						additionalData,
+						nodeTypeAndVersion,
+						currentNodeParameters,
+						credentials,
+					)
+				: await this.dynamicNodeParametersService.getOptionsViaMethodName(
+						params.methodName,
+						'',
+						additionalData,
+						nodeTypeAndVersion,
+						currentNodeParameters,
+						credentials,
+					);
 			return {
 				results: options.map((o) => ({
 					name: String(o.name),
@@ -437,6 +449,9 @@ function collectListBackedLocators(
 			} else if (property.typeOptions?.searchListMethod) {
 				methodName = property.typeOptions.searchListMethod;
 				methodType = 'listSearch';
+			} else if (property.typeOptions?.loadOptions?.routing) {
+				methodName = property.name;
+				methodType = 'loadOptions';
 			}
 		}
 
@@ -473,7 +488,10 @@ function findBuilderHintForMethod(
 	const referencesMethod = (prop: INodeProperties): boolean => {
 		switch (methodType) {
 			case 'loadOptions':
-				return prop.typeOptions?.loadOptionsMethod === methodName;
+				return (
+					prop.typeOptions?.loadOptionsMethod === methodName ||
+					(Boolean(prop.typeOptions?.loadOptions?.routing) && prop.name === methodName)
+				);
 			case 'listSearch': {
 				const modes: INodePropertyMode[] = prop.modes ?? [];
 				return modes.some((mode) => mode.typeOptions?.searchListMethod === methodName);
@@ -508,4 +526,28 @@ function findBuilderHintForMethod(
 	};
 
 	return searchProps(nodeDesc.properties);
+}
+
+function isRoutedLoadOptionsProperty(
+	nodeDesc: INodeTypeDescription,
+	propertyName: string,
+): boolean {
+	const search = (
+		items?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+	): boolean => {
+		for (const item of items ?? []) {
+			if ('values' in item && Array.isArray(item.values)) {
+				if (search(item.values)) return true;
+				continue;
+			}
+			if ('type' in item) {
+				if (item.name === propertyName && Boolean(item.typeOptions?.loadOptions?.routing)) {
+					return true;
+				}
+				if (item.options && search(item.options)) return true;
+			}
+		}
+		return false;
+	};
+	return search(nodeDesc.properties);
 }

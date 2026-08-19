@@ -125,20 +125,41 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		expect(analysis.remediation?.reason).toBe('runtime_failure');
 	});
 
-	it('adds n8n credits guidance for quota failures', () => {
+	it('adds n8n credits guidance for chat-model scoped quota failures', () => {
 		const analysis = analyzeVerificationResult({
 			result: {
 				executionId: 'exec-1',
 				status: 'error',
 				error: 'You exceeded your current quota, please check your plan and billing details',
+				lastNodeExecuted: 'OpenAI Chat Model',
 			} as unknown as ExecutionRunResult,
 			buildOutcome: makeBuildOutcome(),
 			simulatedNodes: [],
 			stateBefore: undefined,
 			runId: 'run-1',
+			chatModelRelatedNodeNames: new Set(['OpenAI Chat Model']),
 		});
 
 		expect(analysis.remediation?.category).toBe('needs_setup');
 		expect(analysis.remediation?.guidance).toContain('n8n credits');
+	});
+
+	it('retains generic credential guidance for non-chat node quota failures', () => {
+		const analysis = analyzeVerificationResult({
+			result: {
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'Google Sheets API error: Quota exceeded for quota metric Read requests',
+				lastNodeExecuted: 'Google Sheets',
+			} as unknown as ExecutionRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+			chatModelRelatedNodeNames: new Set(['OpenAI Chat Model']),
+		});
+
+		expect(analysis.remediation?.category).toBe('needs_setup');
+		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
 	});
 });

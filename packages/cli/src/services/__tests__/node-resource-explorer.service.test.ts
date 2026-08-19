@@ -765,5 +765,62 @@ describe('NodeResourceExplorerService', () => {
 				},
 			]);
 		});
+
+		test('validates options properties with declarative loadOptions.routing', async () => {
+			mockCredentialOwned({
+				id: 'cred-google',
+				type: 'googlePalmApi',
+				name: 'Google Gemini',
+			});
+			mockNodeDescription({
+				name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+				properties: [
+					{
+						displayName: 'Model',
+						name: 'modelName',
+						type: 'options',
+						typeOptions: {
+							loadOptions: {
+								routing: {
+									request: {
+										method: 'GET',
+										url: '/v1beta/models',
+									},
+								},
+							},
+						},
+						default: 'models/gemini-2.5-flash',
+						builderHint: { propertyHint: 'Default to gemini-3.1-pro-preview' },
+					},
+				] as INodeTypeDescription['properties'],
+			});
+			dynamicNodeParametersService.getOptionsViaLoadOptionsByPath.mockResolvedValue([
+				{ name: 'models/gemini-3.1-pro-preview', value: 'models/gemini-3.1-pro-preview' },
+				{ name: 'models/gemini-3.1-flash-lite', value: 'models/gemini-3.1-flash-lite' },
+			] as never);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				nodeType: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+				version: 1,
+				credentialType: 'googlePalmApi',
+				credentialId: 'cred-google',
+				parameters: { modelName: 'models/gemini-2.5-flash' },
+			});
+
+			expect(result).toEqual([
+				{
+					name: 'modelName',
+					displayName: 'Model',
+					currentValue: 'models/gemini-2.5-flash',
+				},
+			]);
+			expect(dynamicNodeParametersService.getOptionsViaLoadOptionsByPath).toHaveBeenCalledWith(
+				'modelName',
+				expect.anything(),
+				{ name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini', version: 1 },
+				{ modelName: 'models/gemini-2.5-flash' },
+				expect.anything(),
+			);
+		});
 	});
 });

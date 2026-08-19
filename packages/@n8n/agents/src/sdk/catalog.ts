@@ -80,7 +80,7 @@ export interface ProviderInfo {
 	 * `models` so existing consumers never offer them, but exposed so callers
 	 * can distinguish known-retired IDs (hard error) from merely-absent ones.
 	 */
-	deprecatedModelIds?: Set<string>;
+	deprecatedModelIds?: string[];
 }
 
 /** The full catalog of providers and their models. */
@@ -237,7 +237,7 @@ export async function fetchProviderCatalog(options?: {
 				...(catalog[providerId]?.models ?? {}),
 				...models,
 			},
-			deprecatedModelIds,
+			deprecatedModelIds: Array.from(deprecatedModelIds),
 		};
 	}
 

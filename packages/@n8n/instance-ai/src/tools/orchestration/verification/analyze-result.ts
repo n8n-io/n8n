@@ -193,9 +193,11 @@ function classifyVerificationFailure(
 	}
 
 	if (messageMatchesAny(normalized, CREDENTIAL_FAILURE_KEYWORDS)) {
-		const quotaGuidance = normalized.includes('quota')
-			? " If the user's own key or free tier is exhausted, switch the chat-model node to n8n credits or another provider they can run."
-			: '';
+		const quotaGuidance =
+			normalized.includes('quota') &&
+			isChatModelScopedFailure(nodeErrors, error, lastNodeExecuted, chatModelRelatedNodeNames)
+				? " If the user's own key or free tier is exhausted, switch the chat-model node to n8n credits or another provider they can run."
+				: '';
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,

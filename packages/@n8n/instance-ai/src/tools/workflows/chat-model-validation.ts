@@ -204,12 +204,13 @@ function lookupCatalogModel(
 }
 
 function isDeprecatedModelId(provider: ProviderInfo | undefined, modelId: string): boolean {
-	if (!provider?.deprecatedModelIds) return false;
+	if (!provider?.deprecatedModelIds || provider.deprecatedModelIds.length === 0) return false;
+	const deprecatedSet = new Set(provider.deprecatedModelIds);
 	const normalized = normalizeChatModelId(modelId);
 	return (
-		provider.deprecatedModelIds.has(modelId) ||
-		provider.deprecatedModelIds.has(normalized) ||
-		provider.deprecatedModelIds.has(stripSnapshotSuffix(modelId))
+		deprecatedSet.has(modelId) ||
+		deprecatedSet.has(normalized) ||
+		deprecatedSet.has(stripSnapshotSuffix(modelId))
 	);
 }
 

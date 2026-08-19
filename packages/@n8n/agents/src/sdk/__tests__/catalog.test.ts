@@ -139,7 +139,7 @@ describe('fetchProviderCatalog', () => {
 				toolCall: true,
 			},
 		});
-		expect(catalog.openai.deprecatedModelIds?.size).toBe(0);
+		expect(catalog.openai.deprecatedModelIds).toEqual([]);
 	});
 
 	it('keeps deprecated model ids out of models but exposes them for validation', async () => {
@@ -174,7 +174,7 @@ describe('fetchProviderCatalog', () => {
 		const catalog = await fetchProviderCatalog();
 
 		expect(catalog.anthropic.models['claude-3-haiku-20240307']).toBeUndefined();
-		expect(catalog.anthropic.deprecatedModelIds?.has('claude-3-haiku-20240307')).toBe(true);
+		expect(catalog.anthropic.deprecatedModelIds).toContain('claude-3-haiku-20240307');
 		expect(catalog.anthropic.models['claude-sonnet-4-6'].name).toBe('Claude Sonnet 4.6');
 		expect(catalog.anthropic.models['claude-beta-model'].name).toBe('Claude Beta Model');
 	});
@@ -209,9 +209,9 @@ describe('fetchProviderCatalog', () => {
 		const catalog = await fetchProviderCatalog();
 
 		expect(catalog.anthropic.models).toEqual({});
-		expect(catalog.anthropic.deprecatedModelIds?.has('claude-3-haiku-20240307')).toBe(true);
+		expect(catalog.anthropic.deprecatedModelIds).toContain('claude-3-haiku-20240307');
 		expect(catalog.openai.models['gpt-5'].name).toBe('GPT-5');
-		expect(catalog.openai.deprecatedModelIds?.size).toBe(0);
+		expect(catalog.openai.deprecatedModelIds).toEqual([]);
 	});
 
 	it('parses the temperature capability flag from models.dev', async () => {

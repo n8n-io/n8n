@@ -952,7 +952,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			for (const node of json.nodes ?? []) {
-				if (!node.name) continue;
+				if (!node.name || node.disabled) continue;
 				const chatModelIssues = await computeChatModelValidationIssues(context, node);
 				for (const messages of Object.values(chatModelIssues)) {
 					for (const message of messages) {
@@ -966,10 +966,15 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 			}
 
-			if (chatModelBlocking.length > 0) {
+			const partitionedChatModelWarnings = partitionWarnings(
+				downgradeUnchangedNodeBlockers(chatModelBlocking, json, savedWorkflowSnapshot),
+			);
+			informational.push(...partitionedChatModelWarnings.informational);
+
+			if (partitionedChatModelWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
 					context,
-					blocking: chatModelBlocking,
+					blocking: partitionedChatModelWarnings.blocking,
 					informational,
 					reason: 'chat_model_validation_failed',
 					guidance:

@@ -175,7 +175,8 @@ export function downgradeUnchangedNodeBlockers(
 
 	return warnings.map((warning) => {
 		if (warning.severity === 'informational') return warning;
-		if (warning.code !== 'INVALID_PARAMETER') return warning;
+		if (warning.code !== 'INVALID_PARAMETER' && warning.code !== 'chat_model_validation')
+			return warning;
 		if (!warning.nodeName || !unchangedNames.has(warning.nodeName)) return warning;
 		return {
 			...warning,
