@@ -178,14 +178,15 @@ function fieldMode(fieldName: string): 'ai' | 'fixed' {
 function fieldFixedValue(fieldName: string): string {
 	const binding = fieldBinding(fieldName);
 	if (binding.mode !== 'fixed') return '';
-	return binding.value == null ? '' : String(binding.value);
+	return binding.value === null || binding.value === undefined ? '' : String(binding.value);
 }
 
 function setFieldMode(fieldName: string, nextMode: string) {
 	if (nextMode !== 'ai' && nextMode !== 'fixed') return;
 	if (nextMode === 'ai') {
-		const { [fieldName]: _removed, ...rest } = inputs.value;
-		inputs.value = rest;
+		const next = { ...inputs.value };
+		delete next[fieldName];
+		inputs.value = next;
 		return;
 	}
 	inputs.value = {

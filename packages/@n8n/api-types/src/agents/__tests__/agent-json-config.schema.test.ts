@@ -624,7 +624,7 @@ describe('WorkflowToolJsonConfigSchema — inputs', () => {
 
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data.tools[0]).toMatchObject({
+			expect(result.data.tools?.[0]).toMatchObject({
 				type: 'workflow',
 				inputs: {
 					chatId: { mode: 'ai' },
