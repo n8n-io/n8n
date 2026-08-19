@@ -42,21 +42,8 @@ export class CanvasComposer {
 		nodes: Array<{ credentials?: Record<string, unknown> }>;
 		meta?: Record<string, unknown>;
 	}> {
-		await this.n8n.clipboard.grant();
-		await this.n8n.canvas.selectAll();
-		// copyNodes() presses Ctrl+C and returns before the app has serialized the
-		// workflow to the clipboard, so a lone readText() can win the race and yield ''.
-		// Retry the copy→read→parse until the clipboard holds valid JSON.
-		let workflow!: {
-			nodes: Array<{ credentials?: Record<string, unknown> }>;
-			meta?: Record<string, unknown>;
-		};
-		await expect(async () => {
-			await this.n8n.canvas.copyNodes();
-			const workflowJSON = await this.n8n.clipboard.readText();
-			workflow = JSON.parse(workflowJSON);
-		}).toPass({ timeout: 5000 });
-		return workflow;
+		await this.selectAllAndCopy();
+		return JSON.parse(await this.n8n.clipboard.readText());
 	}
 
 	/**
