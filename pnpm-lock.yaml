@@ -484,8 +484,8 @@ catalogs:
       specifier: 1.0.1
       version: 1.0.1
     playwright-core:
-      specifier: 1.60.0
-      version: 1.60.0
+      specifier: 1.62.1
+      version: 1.62.1
     posthog-node:
       specifier: 5.33.4
       version: 5.33.4
@@ -581,14 +581,14 @@ catalogs:
       specifier: 0.1.0
       version: 0.1.0
     '@playwright/test':
-      specifier: 1.60.0
-      version: 1.60.0
+      specifier: 1.62.1
+      version: 1.62.1
     eslint-plugin-playwright:
       specifier: 2.2.2
       version: 2.2.2
     playwright:
-      specifier: 1.60.0
-      version: 1.60.0
+      specifier: 1.62.1
+      version: 1.62.1
   frontend:
     '@internationalized/date':
       specifier: ^3.9.0
@@ -1137,7 +1137,7 @@ importers:
         version: 1.0.27(@langchain/core@1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(cheerio@1.1.0)(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(39726096b3fd28dc4909d84391eb99ef)
+        version: 1.1.27(048956cd8b702eb90308b94e99a07926)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -2759,7 +2759,7 @@ importers:
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
       playwright-core:
         specifier: 'catalog:'
-        version: 1.60.0
+        version: 1.62.1
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -2950,7 +2950,7 @@ importers:
         version: 1.0.1
       playwright-core:
         specifier: 'catalog:'
-        version: 1.60.0
+        version: 1.62.1
       selenium-webdriver:
         specifier: 4.39.0
         version: 4.39.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -3147,9 +3147,15 @@ importers:
       '@testcontainers/postgresql':
         specifier: 'catalog:'
         version: 11.13.0
+      '@types/supertest':
+        specifier: ^6.0.3
+        version: 6.0.3
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base
+      supertest:
+        specifier: ^7.1.1
+        version: 7.1.1
       testcontainers:
         specifier: 'catalog:'
         version: 11.13.0
@@ -3209,7 +3215,7 @@ importers:
         version: 1.0.1(@langchain/core@1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(7f480e1fce181cb485639704c1151d24)
+        version: 1.1.27(7fa4fa0276456bb8d74a75b15791da44)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -5797,7 +5803,7 @@ importers:
         version: 5.2.4(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vitest/browser-playwright':
         specifier: 'catalog:'
-        version: 4.1.9(bufferutil@4.0.9)(playwright@1.60.0)(utf-8-validate@5.0.10)(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@4.1.9)
+        version: 4.1.9(bufferutil@4.0.9)(playwright@1.62.1)(utf-8-validate@5.0.10)(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@4.1.9)
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
@@ -5809,7 +5815,7 @@ importers:
         version: 10.1.11(eslint@9.29.0(jiti@2.6.1))(storybook@10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10))(typescript@6.0.2)
       playwright:
         specifier: catalog:e2e
-        version: 1.60.0
+        version: 1.62.1
       prettier:
         specifier: 'catalog:'
         version: 3.6.2
@@ -7022,7 +7028,7 @@ importers:
         version: 0.1.0
       '@playwright/test':
         specifier: catalog:e2e
-        version: 1.60.0
+        version: 1.62.1
       '@types/autocannon':
         specifier: ^7.12.7
         version: 7.12.7
@@ -11195,9 +11201,9 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@playwright/test@1.60.0':
-    resolution: {integrity: sha512-O71yZIbAh/PxDMNGns37GHBIfrVkEVyn+AXyIa5dOTfb4/xNvRWV+Vv/NMbNCtODB/pO7vLlF2OTmMVLhmr7Ag==}
-    engines: {node: '>=18'}
+  '@playwright/test@1.62.1':
+    resolution: {integrity: sha512-DTcUc8qii+cpHvtOwggMtBRMjKZHXYWdw8syRYu2vtzuq4Wxphqq4NfCs5Zt44L6mA8rfDfj+PHnxFc/FeK6mQ==}
+    engines: {node: '>=20'}
     hasBin: true
 
   '@polka/url@1.0.0-next.29':
@@ -20143,9 +20149,9 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright-core@1.60.0:
-    resolution: {integrity: sha512-9bW6zvX/m0lEbgTKJ6YppOKx8H3VOPBMOCFh2irXFOT4BbHgrx5hPjwJYLT40Lu+4qtD36qKc/Hn56StUW57IA==}
-    engines: {node: '>=18'}
+  playwright-core@1.62.1:
+    resolution: {integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==}
+    engines: {node: '>=20'}
     hasBin: true
 
   playwright@1.59.0-alpha-1770426101000:
@@ -20153,9 +20159,9 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.60.0:
-    resolution: {integrity: sha512-hheHdokM8cdqCb0lcE3s+zT4t4W+vvjpGxsZlDnikarzx8tSzMebh3UiFtgqwFwnTnjYQcsyMF8ei2mCO/tpeA==}
-    engines: {node: '>=18'}
+  playwright@1.62.1:
+    resolution: {integrity: sha512-0M+L3LAD8/nm554LOla9Ayx0j0tmFZ0FBcoQ7F1VuVHpM/XpiC8RcDzBQB8W5+hA8L22THxELzeF+2WcUzvcLg==}
+    engines: {node: '>=20'}
     hasBin: true
 
   plimit-lit@1.4.1:
@@ -25811,11 +25817,11 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@browserbasehq/stagehand@1.14.0(@playwright/test@1.60.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.4.2)(encoding@0.1.13)(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(utf-8-validate@5.0.10)(zod@3.25.76)':
+  '@browserbasehq/stagehand@1.14.0(@playwright/test@1.62.1)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.4.2)(encoding@0.1.13)(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(utf-8-validate@5.0.10)(zod@3.25.76)':
     dependencies:
       '@anthropic-ai/sdk': 0.91.1(zod@3.25.76)
       '@browserbasehq/sdk': 2.12.0(encoding@0.1.13)
-      '@playwright/test': 1.60.0
+      '@playwright/test': 1.62.1
       deepmerge: 4.3.1
       dotenv: 17.4.2
       openai: 6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76)
@@ -27079,9 +27085,9 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.1.27(39726096b3fd28dc4909d84391eb99ef)':
+  '@langchain/community@1.1.27(048956cd8b702eb90308b94e99a07926)':
     dependencies:
-      '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.60.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.4.2)(encoding@0.1.13)(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(utf-8-validate@5.0.10)(zod@3.25.76)
+      '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.62.1)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.4.2)(encoding@0.1.13)(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(utf-8-validate@5.0.10)(zod@3.25.76)
       '@ibm-cloud/watsonx-ai': 1.1.2
       '@langchain/classic': 1.0.27(@langchain/core@1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(cheerio@1.1.0)(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/core': 1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -27124,7 +27130,7 @@ snapshots:
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5
       pg: 8.21.0(pg-native@3.8.0)
-      playwright: 1.60.0
+      playwright: 1.62.1
       puppeteer: 24.41.0(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
       ws: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
@@ -27134,9 +27140,9 @@ snapshots:
       - '@smithy/hash-node'
       - peggy
 
-  '@langchain/community@1.1.27(7f480e1fce181cb485639704c1151d24)':
+  '@langchain/community@1.1.27(7fa4fa0276456bb8d74a75b15791da44)':
     dependencies:
-      '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.60.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.4.2)(encoding@0.1.13)(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(utf-8-validate@5.0.10)(zod@3.25.76)
+      '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.62.1)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.4.2)(encoding@0.1.13)(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(utf-8-validate@5.0.10)(zod@3.25.76)
       '@ibm-cloud/watsonx-ai': 1.1.2
       '@langchain/classic': 1.0.27(@langchain/core@1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(cheerio@1.1.0)(openai@6.46.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/core': 1.2.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -27189,7 +27195,7 @@ snapshots:
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5
       pg: 8.21.0(pg-native@3.8.0)
-      playwright: 1.60.0
+      playwright: 1.62.1
       puppeteer: 24.41.0(@typescript/typescript6@6.0.2)(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       redis: 4.6.14
       weaviate-client: 3.9.0(encoding@0.1.13)
@@ -28756,9 +28762,9 @@ snapshots:
       minimist: 1.2.8
       playwright: 1.59.0-alpha-1770426101000
 
-  '@playwright/test@1.60.0':
+  '@playwright/test@1.62.1':
     dependencies:
-      playwright: 1.60.0
+      playwright: 1.62.1
 
   '@polka/url@1.0.0-next.29': {}
 
@@ -29899,7 +29905,7 @@ snapshots:
       storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
     optionalDependencies:
       '@vitest/browser': 4.1.10(bufferutil@4.0.9)(utf-8-validate@5.0.10)(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@4.1.9)
-      '@vitest/browser-playwright': 4.1.9(bufferutil@4.0.9)(playwright@1.60.0)(utf-8-validate@5.0.10)(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@4.1.9)
+      '@vitest/browser-playwright': 4.1.9(bufferutil@4.0.9)(playwright@1.62.1)(utf-8-validate@5.0.10)(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@4.1.9)
       '@vitest/runner': 4.1.9
       vitest: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
     transitivePeerDependencies:
@@ -31549,11 +31555,11 @@ snapshots:
       vite: 8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vue: 3.5.26(typescript@6.0.2)
 
-  '@vitest/browser-playwright@4.1.9(bufferutil@4.0.9)(playwright@1.60.0)(utf-8-validate@5.0.10)(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@4.1.9)':
+  '@vitest/browser-playwright@4.1.9(bufferutil@4.0.9)(playwright@1.62.1)(utf-8-validate@5.0.10)(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@4.1.9)':
     dependencies:
       '@vitest/browser': 4.1.10(bufferutil@4.0.9)(utf-8-validate@5.0.10)(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@4.1.9)
       '@vitest/mocker': 4.1.9(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      playwright: 1.60.0
+      playwright: 1.62.1
       tinyrainbow: 3.1.0
       vitest: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
     transitivePeerDependencies:
@@ -39294,7 +39300,7 @@ snapshots:
 
   playwright-core@1.59.0-alpha-1770426101000: {}
 
-  playwright-core@1.60.0: {}
+  playwright-core@1.62.1: {}
 
   playwright@1.59.0-alpha-1770426101000:
     dependencies:
@@ -39302,9 +39308,9 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.2
 
-  playwright@1.60.0:
+  playwright@1.62.1:
     dependencies:
-      playwright-core: 1.60.0
+      playwright-core: 1.62.1
     optionalDependencies:
       fsevents: 2.3.2
 
@@ -42657,7 +42663,7 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
       '@types/node': 20.19.41
-      '@vitest/browser-playwright': 4.1.9(bufferutil@4.0.9)(playwright@1.60.0)(utf-8-validate@5.0.10)(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@4.1.9)
+      '@vitest/browser-playwright': 4.1.9(bufferutil@4.0.9)(playwright@1.62.1)(utf-8-validate@5.0.10)(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@4.1.9)
       '@vitest/coverage-v8': 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
       jsdom: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
