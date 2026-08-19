@@ -6833,7 +6833,7 @@
 	"instanceAi.browserUse.directConnect.retry": "Try again",
 	"instanceAi.browserUse.unsupportedBrowser": "Browser Use requires Google Chrome or another Chromium-based browser like Microsoft Edge or Brave. Open n8n in a supported browser to continue.",
 	"instanceAi.browserUse.connected": "Browser Use is connected",
-	"instanceAi.browserUse.connected.description": "The agent can now use your browser. You can disconnect anytime from the extension or from the Connections list.",
+	"instanceAi.browserUse.connected.description": "The agent can now use your browser. You can disconnect anytime from the extension or the + menu beside the chat input.",
 	"instanceAi.browserUse.connected.toastMessage": "n8n can now access your browser. You can disconnect anytime.",
 	"instanceAi.browserUse.connectLinkError.title": "Browser Use setup failed",
 	"instanceAi.browserUse.connectLinkError.message": "Could not create a connection link. Please try again.",
