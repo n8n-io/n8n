@@ -18,7 +18,7 @@ Extends Reka UI `NumberFieldRootProps` (except `formatOptions`, derived from `pr
 - `defaultValue?: number` - Uncontrolled initial value when `modelValue` is omitted.
 - `size?: 'mini' | 'small' | 'medium' | 'large' | 'xlarge'` - Size variant. Default: `'medium'`
 - `min?: number` - Minimum allowed value. Values below min clamp on blur.
-- `max?: number` - Maximum allowed value. Keystrokes that would exceed max are ignored; the value also clamps on blur.
+- `max?: number` - Maximum allowed value. Keystrokes and pastes that would exceed max are ignored; the value also clamps on blur.
 - `step?: number` - Increment/decrement step amount. Default: `1`
 - `stepSnapping?: boolean` - When `true`, typed values snap to `step` on blur. Default: `false` (Reka defaults to `true`; we override so decimals are preserved unless opted in).
 - `precision?: number` - Decimal places. Maps to Reka `formatOptions` fraction digits.
@@ -35,6 +35,14 @@ Extends Reka UI `NumberFieldRootProps` (except `formatOptions`, derived from `pr
 - `blur` - Emitted when the input loses focus. Payload: `FocusEvent`
 
 Clicking the input selects the full value. Increment/decrement controls do not.
+
+**Exposed methods** (template ref)
+
+Same contract as `N8nInput`, so `ParameterInput` can programmatically focus, blur, and select number fields.
+
+- `focus()` - Focus the nested input.
+- `blur()` - Blur the nested input.
+- `select()` - Select the input value.
 
 **Slots**
 

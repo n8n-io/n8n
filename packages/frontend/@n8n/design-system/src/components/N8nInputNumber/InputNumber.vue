@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactiveOmit, reactivePick } from '@vueuse/core';
+import { reactiveOmit, reactivePick, unrefElement } from '@vueuse/core';
 import {
 	NumberFieldRoot,
 	NumberFieldInput,
@@ -7,12 +7,17 @@ import {
 	NumberFieldDecrement,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { computed, useAttrs, useCssModule } from 'vue';
+import { computed, useAttrs, useCssModule, useTemplateRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
 
-import type { InputNumberProps, InputNumberEmits, InputNumberSlots } from './InputNumber.types';
+import type {
+	InputNumberProps,
+	InputNumberEmits,
+	InputNumberSlots,
+	InputNumberExposed,
+} from './InputNumber.types';
 
 defineOptions({ name: 'N8nInputNumber', inheritAttrs: false });
 
@@ -36,6 +41,19 @@ const isControlsBoth = computed(() => props.controls && props.controlsPosition =
 
 const emit = defineEmits<InputNumberEmits>();
 defineSlots<InputNumberSlots>();
+
+const inputRef = useTemplateRef('inputRef');
+
+function getInput(): HTMLInputElement | null {
+	const el = unrefElement(inputRef);
+	return el instanceof HTMLInputElement ? el : null;
+}
+
+const focus = () => getInput()?.focus();
+const blur = () => getInput()?.blur();
+const select = () => getInput()?.select();
+
+defineExpose<InputNumberExposed>({ focus, blur, select });
 
 // Map precision to formatOptions - uses Intl.NumberFormatOptions
 // When no precision is set, use maximumFractionDigits: 20 (the max allowed by Intl.NumberFormat)
@@ -79,10 +97,26 @@ function onInputClick(event: MouseEvent) {
 	}
 }
 
+function nextInputValue(target: HTMLInputElement, inserted: string) {
+	return (
+		target.value.slice(0, target.selectionStart ?? 0) +
+		inserted +
+		target.value.slice(target.selectionEnd ?? 0)
+	);
+}
+
+function exceedsMax(value: string) {
+	if (props.max === undefined) return false;
+	const parsed = Number(value);
+	return !Number.isNaN(parsed) && parsed > props.max;
+}
+
 /**
  * Reka's beforeinput validator only checks that characters form a number, not min/max.
  * Reject complete values above max while typing; below-min values still clamp on blur
  * so the user can type a larger number (e.g. 1 → 15 when min is 10).
+ *
+ * Paste is handled separately: `insertFromPaste` often has `event.data === null`.
  */
 function onBeforeInput(event: InputEvent) {
 	if (event.defaultPrevented || props.max === undefined) return;
@@ -91,12 +125,24 @@ function onBeforeInput(event: InputEvent) {
 	const target = event.target;
 	if (!(target instanceof HTMLInputElement)) return;
 
-	const nextValue =
-		target.value.slice(0, target.selectionStart ?? 0) +
-		(event.data ?? '') +
-		target.value.slice(target.selectionEnd ?? 0);
-	const parsed = Number(nextValue);
-	if (!Number.isNaN(parsed) && parsed > props.max) {
+	if (exceedsMax(nextInputValue(target, event.data ?? ''))) {
+		event.preventDefault();
+	}
+}
+
+/**
+ * Paste `beforeinput` may not include the clipboard text (`event.data` is null).
+ * Read `clipboardData` here and reject over-max values before they land in the field.
+ * Do not stop the event — consumers (e.g. expression paste) still need the bubble.
+ */
+function onPaste(event: ClipboardEvent) {
+	if (event.defaultPrevented || props.max === undefined) return;
+
+	const target = event.target;
+	if (!(target instanceof HTMLInputElement)) return;
+
+	const inserted = event.clipboardData?.getData('text') ?? '';
+	if (exceedsMax(nextInputValue(target, inserted))) {
 		event.preventDefault();
 	}
 }
@@ -141,11 +187,13 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 		</NumberFieldDecrement>
 
 		<NumberFieldInput
+			ref="inputRef"
 			:class="$style.input"
 			:placeholder="placeholder"
 			@focus="onFocus"
 			@click="onInputClick"
 			@beforeinput="onBeforeInput"
+			@paste="onPaste"
 			@blur="emit('blur', $event)"
 		/>
 
