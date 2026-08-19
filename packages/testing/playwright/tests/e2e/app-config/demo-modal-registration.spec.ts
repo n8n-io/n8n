@@ -31,6 +31,10 @@ import simpleWorkflow from '../../../workflows/Manual_wait_set.json';
  *
  * If a later seam moves a modal that preview mode CAN reach, add the open-and-close
  * assertion here — that is the case this file exists to catch.
+ *
+ * Scope is one entry point on purpose. `registerEagerModals()` runs once pre-mount in
+ * `main.ts`, so it is route-independent: `/workflows/demo/diff` would exercise the same
+ * registration a second time and only add what `demo-diff.spec.ts` already asserts.
  */
 const requirements: TestRequirements = {
 	config: {
@@ -100,16 +104,6 @@ test.describe(
 			// predates the modal work and is not what this file guards, so pinning it either way
 			// would put an unrelated bug in a modal test's failure message.
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
-			expect(problems.pageErrors).toEqual([]);
-			expect(problems.consoleErrors).toEqual([]);
-		});
-
-		test('boots the demo diff view with no current user @auth:none', async ({ n8n }) => {
-			const problems = watchForPageProblems(n8n.page);
-
-			await n8n.demo.gotoDiff();
-			await expect(n8n.demo.getWaitingMessage()).toBeVisible();
-
 			expect(problems.pageErrors).toEqual([]);
 			expect(problems.consoleErrors).toEqual([]);
 		});
