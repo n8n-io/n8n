@@ -437,16 +437,64 @@ describe('decideSuccessors over loop iterations', () => {
 	});
 
 	it('leaves what follows the loop undecided while the loop still runs', () => {
-		// d reads B's terminal row, which does not exist yet, so it is not skipped
-		// on the strength of a done slot that may yet fire
+		// B@1 has a dead done slot, and d is not skipped on the strength of it: an
+		// empty toSkip is the assertion, since a later row may still fire that slot
 		const steps = makeSteps(
 			at('B', 0, 'completed', [false, true]),
 			at('x', 0, 'completed', [true]),
 			at('B', 1, 'completed', [false, true]),
 		);
 
-		expect(decide(key('x', 0), steps).toQueue).not.toContainEqual(key('d', 0));
 		expect(decide(key('B', 1), steps)).toEqual({ toQueue: [key('x', 1)], toSkip: [] });
+	});
+
+	/**
+	 * The rule above keeps a running loop from deciding its exit, but a node after
+	 * the loop can also be reached from outside it. Then the exit edge is resolved
+	 * for real, finds no terminal row, and holds the decision open.
+	 *
+	 * ┌───────┐    ┌───┐ o1    ┌───┐
+	 * │trigger├───►│ B ├──────►│ x │
+	 * └───┬───┘    └─▲─┘       └─┬─┘
+	 *     │          └──(back)───┘
+	 *     │       ┌───┐ o0
+	 *     └──────►│ p ├──────────► d ◄── B's done slot
+	 *             └───┘
+	 */
+	it('holds a node after the loop undecided when another predecessor settles first', () => {
+		const joined = makeGraph([
+			{ from: 'trigger', to: 'B' },
+			{ from: 'B', to: 'x', outputIndex: 1 },
+			{ from: 'x', to: 'B', isBackEdge: true },
+			{ from: 'B', to: 'd', outputIndex: 0 },
+			{ from: 'trigger', to: 'p', outputIndex: 1 },
+			{ from: 'p', to: 'd', inputIndex: 1 },
+		]);
+		joined.nodes = joined.nodes.map((node) =>
+			node.id === 'B' ? { ...node, type: 'batch' as const } : node,
+		);
+		const joinedLoops = deriveLoops(joined);
+		const steps = makeSteps(
+			at('B', 0, 'completed', [false, true]),
+			at('p', 0, 'completed', [true]),
+		);
+
+		// p settling makes d a candidate, but the loop has not ended, so the exit
+		// edge has no row to read and d gets no fate at all
+		expect(decideSuccessors(joined, joinedLoops, key('p', 0), steps, new Map())).toEqual({
+			toQueue: [],
+			toSkip: [],
+		});
+
+		// once it has ended, the same settlement queues d
+		const ended = makeSteps(
+			at('B', 2, 'completed', [true, false]),
+			at('p', 0, 'completed', [true]),
+		);
+		expect(decideSuccessors(joined, joinedLoops, key('p', 0), ended, new Map([['B', 2]]))).toEqual({
+			toQueue: [key('d', 0)],
+			toSkip: [],
+		});
 	});
 
 	it('reads the entry edge at iteration 0 and the return edge after it', () => {
