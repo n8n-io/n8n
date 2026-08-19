@@ -1,4 +1,3 @@
-import type { JsonValue } from 'n8n-workflow';
 import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
@@ -15,6 +14,7 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MAX,
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from './sub-agent.schema';
+import { jsonValueSchema } from '../schemas/json-value.schema';
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
@@ -379,23 +379,6 @@ const CustomToolJsonConfigSchema = z.object({
 		),
 	requireApproval: z.boolean().optional(),
 });
-
-/**
- * A recursive JSON value: primitives, arrays of JSON values, and string-keyed
- * objects of JSON values. Used for nested fixed-binding values so the inferred
- * `AgentJsonConfig` type stays safely JSON-serializable (no `undefined`,
- * functions, `Date`, `Map`, etc.).
- */
-const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
-	z.union([
-		z.string(),
-		z.number(),
-		z.boolean(),
-		z.null(),
-		z.array(jsonValueSchema),
-		z.record(z.string(), jsonValueSchema),
-	]),
-);
 
 /**
  * Per-field binding for a workflow tool's Execute Workflow Trigger inputs.
