@@ -341,6 +341,14 @@ export interface ExportPackageResult {
 }
 
 /**
+ * Result of exporting to a directory (the unzipped format): no stream, since the
+ * package is written to disk in place. Consumers surface the same per-entity counts.
+ */
+export interface ExportPackageToDirectoryResult {
+	counts: ExportPackageEventCounts;
+}
+
+/**
  * The outcome for one package workflow, folding in what the publish phase decided for it. Import
  * writes and publishes in two separate phases, but a consumer cannot act on that distinction, so
  * the response reports one row per workflow.

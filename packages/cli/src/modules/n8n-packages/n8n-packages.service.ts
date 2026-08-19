@@ -27,6 +27,8 @@ import {
 import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
+import { DirectoryPackageWriter } from './io/directory/directory-package-writer';
+import type { PackageWriter } from './io/package-writer';
 import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
@@ -36,6 +38,7 @@ import {
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageResult,
+	type ExportPackageToDirectoryResult,
 	type ImportPackageRequest,
 	type ImportResult,
 } from './n8n-packages.types';
@@ -71,11 +74,36 @@ export class N8nPackagesService {
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<ExportPackageResult> {
+		const writer = new TarPackageWriter();
+		const counts = await this.writeExport(writer, request);
+		return { stream: writer.finalize(), counts };
+	}
+
+	/**
+	 * Exports the same n8n-packages layout as {@link exportPackage}, but as loose
+	 * files on disk (the unzipped format) under `target.targetDir` — optionally
+	 * namespaced by `target.subfolder` so several packages can share a directory —
+	 * instead of a tar stream. Reuses the full export orchestration; only the
+	 * writer differs.
+	 */
+	async exportPackageToDirectory(
+		request: ExportPackageRequest,
+		target: { targetDir: string; subfolder?: string },
+	): Promise<ExportPackageToDirectoryResult> {
+		const writer = new DirectoryPackageWriter(target.targetDir, target.subfolder);
+		const counts = await this.writeExport(writer, request);
+		await writer.finalize();
+		return { counts };
+	}
+
+	private async writeExport(
+		writer: PackageWriter,
+		request: ExportPackageRequest,
+	): Promise<ExportPackageEventCounts> {
 		const { missingWorkflowDependencyPolicy } = request;
 		const isReferenceOnly =
 			missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly;
 
-		const writer = new TarPackageWriter();
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
@@ -276,8 +304,6 @@ export class N8nPackagesService {
 
 		writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
 
-		const stream = writer.finalize();
-
 		const counts: ExportPackageEventCounts = {
 			workflows: allWorkflowsInPackage.length,
 			folders: allFolders.length,
@@ -297,7 +323,7 @@ export class N8nPackagesService {
 			counts,
 		});
 
-		return { stream, counts };
+		return counts;
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
