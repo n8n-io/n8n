@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { hoverToReveal } from '../utils/retry-utils';
 import { CredentialModal } from './components/CredentialModal';
 import { InstanceAiSidebar } from './components/InstanceAiSidebar';
 import { InstanceAiWorkflowSetup } from './components/InstanceAiWorkflowSetup';
@@ -417,21 +418,12 @@ export class InstanceAiPage extends BasePage {
 
 	/**
 	 * The "Execute step" toolbar button only renders once the AI build has
-	 * finished, and mid-stream canvas re-renders can dismiss an open toolbar.
-	 * Poll with a re-hover on every attempt instead of a single hover + wait.
+	 * finished, and mid-stream canvas re-renders can dismiss an open toolbar,
+	 * so reveal it with a re-hovering poll.
 	 */
 	async executePreviewNodeByName(nodeName: string): Promise<void> {
-		const node = this.getPreviewNodeByName(nodeName);
 		const executeNodeButton = this.getPreviewExecuteNodeButton(nodeName);
-		await expect
-			.poll(
-				async () => {
-					await node.hover();
-					return await executeNodeButton.isVisible().catch(() => false);
-				},
-				{ intervals: [500, 1_000, 2_000], timeout: 10_000 },
-			)
-			.toBe(true);
+		await hoverToReveal(this.getPreviewNodeByName(nodeName), executeNodeButton);
 		await executeNodeButton.dispatchEvent('click');
 	}
 
