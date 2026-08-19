@@ -30,8 +30,6 @@ export const DataTableModule: FrontendModuleDescription = {
 			path: '/home/datatables',
 			component: DataTableView,
 			meta: {
-				// The instance-wide aggregate list needs the global dataTable:list scope,
-				// distinct from the project-scoped routes below.
 				middleware: ['authenticated', 'rbac', 'custom'],
 				middlewareOptions: { rbac: { scope: ['dataTable:list'] } },
 			},
@@ -50,13 +48,6 @@ export const DataTableModule: FrontendModuleDescription = {
 			props: true,
 			component: DataTableView,
 			meta: {
-				// No rbac middleware here: useRBACStore().scopesByProjectId is never
-				// populated in production (only addGlobalScope/setGlobalScopes are wired
-				// up at login — there's no equivalent call for project-level scopes), so
-				// a project-scoped rbac check here would incorrectly block any project
-				// member whose access comes from their project role rather than a global
-				// scope. The project itself already gates membership; page-level create/
-				// manage affordances are permission-gated in DataTableView.vue instead.
 				projectRoute: true,
 				middleware: ['authenticated', 'custom'],
 			},
@@ -67,7 +58,6 @@ export const DataTableModule: FrontendModuleDescription = {
 			props: true,
 			component: DataTableDetailsView,
 			meta: {
-				// Same reasoning as PROJECT_DATA_TABLES above — no rbac middleware.
 				projectRoute: true,
 				middleware: ['authenticated', 'custom'],
 			},

@@ -757,9 +757,6 @@ describe('Simplified Layout', () => {
 		renderComponent({ pinia });
 		await waitAllPromises();
 
-		// Whether the user actually has dataTable:list is the store's concern (it
-		// silently no-ops the request itself, see dataTable.store.test.ts) — this
-		// component only needs to gate on the feature flag and delegate the rest.
 		expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith('', 1, 1);
 	});
 

@@ -9,7 +9,7 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
-import { DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
+import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -63,7 +63,7 @@ const showErrorAndGoBackToList = async (error: unknown) => {
 		error = new Error(String(i18n.baseText('dataTable.getDetails.error')));
 	}
 	toast.showError(error, i18n.baseText('dataTable.getDetails.error'));
-	await router.push({ name: DATA_TABLE_VIEW, params: { projectId: props.projectId } });
+	await router.push({ name: PROJECT_DATA_TABLES, params: { projectId: props.projectId } });
 };
 
 const initialize = async () => {

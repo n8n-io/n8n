@@ -71,9 +71,6 @@ describe('custom role scope whitelists', () => {
 	});
 
 	it('grants dataTable:list its own group, independent of settings.Manage', () => {
-		// dataTable:list is a baseline Member scope (see GLOBAL_MEMBER_SCOPES); it must
-		// be grantable without also granting the unrelated settings.Manage admin bundle
-		// (SAML/LDAP/security policies/etc.) — see IAM-1197.
 		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage).not.toContain('dataTable:list');
 		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.dataTable.View).toContain('dataTable:list');
 		expect(GLOBAL_CUSTOM_ROLE_SCOPES.has('dataTable:list')).toBe(true);

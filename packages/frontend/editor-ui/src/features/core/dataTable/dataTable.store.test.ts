@@ -43,6 +43,7 @@ describe('dataTable.store', () => {
 
 		vi.mocked(useProjectsStore).mockReturnValue({
 			fetchProject: vi.fn(),
+			currentProject: { id: 'project-1', scopes: ['dataTable:listProject'] },
 		} as unknown as ReturnType<typeof useProjectsStore>);
 
 		rootStore = useRootStore();
@@ -136,10 +137,6 @@ describe('dataTable.store', () => {
 		});
 
 		it('should still fetch the project-scoped list even when the user lacks the global scope', async () => {
-			// The guard only applies to the global route (projectId === ''); a project-scoped
-			// call must never even consult canViewDataTables. No hasPermission override here —
-			// if the guard started reading it for this path, the default `() => true` mock
-			// would hide that, but the test above already proves the guard fetches this scope.
 			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue(mockResponse);
 
 			await dataTableStore.fetchDataTables('project-1', 1, 25);
@@ -151,6 +148,63 @@ describe('dataTable.store', () => {
 				undefined,
 				undefined,
 			);
+		});
+
+		it('should skip the request and clear state when the user cannot list data tables for that project', async () => {
+			setActivePinia(createPinia());
+			vi.mocked(useProjectsStore).mockReturnValue({
+				fetchProject: vi.fn(),
+				currentProject: { id: 'project-1', scopes: [] },
+			} as unknown as ReturnType<typeof useProjectsStore>);
+			const scopedStore = useDataTableStore();
+			const spy = vi.spyOn(dataTableApi, 'fetchDataTablesApi');
+			scopedStore.dataTables = mockResponse.data;
+			scopedStore.totalCount = 50;
+
+			await scopedStore.fetchDataTables('project-1', 1, 25);
+
+			expect(spy).not.toHaveBeenCalled();
+			expect(scopedStore.dataTables).toEqual([]);
+			expect(scopedStore.totalCount).toBe(0);
+		});
+
+		it('should still fetch a project the store has no loaded scopes for, rather than guessing from an unrelated project', async () => {
+			setActivePinia(createPinia());
+			vi.mocked(useProjectsStore).mockReturnValue({
+				fetchProject: vi.fn(),
+				currentProject: { id: 'some-other-project', scopes: [] },
+				personalProject: { id: 'personal-project', scopes: ['dataTable:listProject'] },
+			} as unknown as ReturnType<typeof useProjectsStore>);
+			const scopedStore = useDataTableStore();
+			const scopedRootStore = useRootStore();
+			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue(mockResponse);
+
+			await scopedStore.fetchDataTables('project-1', 1, 25);
+
+			expect(dataTableApi.fetchDataTablesApi).toHaveBeenCalledWith(
+				scopedRootStore.restApiContext,
+				'project-1',
+				{ skip: 0, take: 25 },
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should skip the request when the target is the personal project and it lacks the scope', async () => {
+			setActivePinia(createPinia());
+			vi.mocked(useProjectsStore).mockReturnValue({
+				fetchProject: vi.fn(),
+				currentProject: null,
+				personalProject: { id: 'personal-project', scopes: [] },
+			} as unknown as ReturnType<typeof useProjectsStore>);
+			const scopedStore = useDataTableStore();
+			const spy = vi.spyOn(dataTableApi, 'fetchDataTablesApi');
+
+			await scopedStore.fetchDataTables('personal-project', 1, 25);
+
+			expect(spy).not.toHaveBeenCalled();
+			expect(scopedStore.dataTables).toEqual([]);
+			expect(scopedStore.totalCount).toBe(0);
 		});
 	});
 
@@ -296,6 +350,47 @@ describe('dataTable.store', () => {
 			const result = await dataTableStore.fetchDataTableDetails('dt-1', 'p1');
 
 			expect(result).toBeNull();
+		});
+
+		it('should return null without a request when the user cannot list data tables for that project', async () => {
+			setActivePinia(createPinia());
+			vi.mocked(useProjectsStore).mockReturnValue({
+				fetchProject: vi.fn(),
+				currentProject: { id: 'p1', scopes: [] },
+			} as unknown as ReturnType<typeof useProjectsStore>);
+			const scopedStore = useDataTableStore();
+			const spy = vi.spyOn(dataTableApi, 'fetchDataTablesApi');
+
+			const result = await scopedStore.fetchDataTableDetails('dt-1', 'p1');
+
+			expect(spy).not.toHaveBeenCalled();
+			expect(result).toBeNull();
+		});
+
+		it('should still fetch a project the store has no loaded scopes for, rather than guessing from an unrelated project', async () => {
+			setActivePinia(createPinia());
+			vi.mocked(useProjectsStore).mockReturnValue({
+				fetchProject: vi.fn(),
+				currentProject: { id: 'some-other-project', scopes: [] },
+				personalProject: { id: 'personal-project', scopes: ['dataTable:listProject'] },
+			} as unknown as ReturnType<typeof useProjectsStore>);
+			const scopedStore = useDataTableStore();
+			const scopedRootStore = useRootStore();
+			const mockTable = createTable({ id: 'dt-1', name: 'Table' });
+			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue({
+				count: 1,
+				data: [mockTable],
+			});
+
+			const result = await scopedStore.fetchDataTableDetails('dt-1', 'p1');
+
+			expect(dataTableApi.fetchDataTablesApi).toHaveBeenCalledWith(
+				scopedRootStore.restApiContext,
+				'p1',
+				undefined,
+				{ projectId: 'p1', id: 'dt-1' },
+			);
+			expect(result).toBe(mockTable);
 		});
 	});
 
