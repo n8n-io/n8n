@@ -30,7 +30,8 @@ export class CallerPolicyAnyRemovedRule implements IBreakingChangeWorkflowRule {
 				'These workflows set "This workflow can be called by → Any workflow", so any project on the instance can call them. Version 3 removes the option: give each one a new policy in its settings, or its sub-workflow calls fail.',
 			category: BreakingChangeCategory.workflow,
 			severity: 'medium',
-			documentationUrl: 'https://docs.n8n.io/build/manage-workflows/configure-workflow-settings',
+			documentationUrl:
+				'https://docs.n8n.io/build/manage-workflows/configure-workflow-settings#this-workflow-can-be-called-by',
 		};
 	}
 

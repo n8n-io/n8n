@@ -29,7 +29,8 @@ export class CallerPolicyDefaultAnyRule implements IBreakingChangeInstanceRule {
 				'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION is set to "any", which version 3 removes. Every workflow without its own caller policy falls back to it. Set a supported value before upgrading. Workflows that set the policy themselves are listed under workflow issues.',
 			category: BreakingChangeCategory.instance,
 			severity: 'medium',
-			documentationUrl: 'https://docs.n8n.io/hosting/configuration/environment-variables/workflows',
+			documentationUrl:
+				'https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/use-environment-variables/workflows',
 		};
 	}
 
