@@ -512,6 +512,24 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
 		});
 
+		// INS-361: when the user asked for a new credential, the sole existing one
+		// must not be preselected — let alone auto-submitted before they see the card.
+		it('does not preselect or auto-submit when the request prefers a new credential', async () => {
+			const [request] = makeCredentialRequestsWithSingleExisting(1);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: [{ ...request, preferNew: true }],
+					message: 'Set up credentials',
+				},
+			});
+
+			await nextTick();
+			expect(confirmSpy).not.toHaveBeenCalled();
+		});
+
 		it('auto-submits a single pre-selected existing credential without user input', async () => {
 			const requests = makeCredentialRequestsWithSingleExisting(1);
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
