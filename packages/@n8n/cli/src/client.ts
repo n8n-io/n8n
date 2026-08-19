@@ -246,6 +246,10 @@ export class N8nClient {
 		return await this.del<undefined>(`/git-connections/${id}`);
 	}
 
+	async pushGitConnectionProjects(id: string) {
+		return await this.post<undefined>(`/git-connections/${id}/push`);
+	}
+
 	// ─── Workflows ─────────────────────────────────────────────────
 
 	async listWorkflows(query: Record<string, string> = {}, limit?: number) {

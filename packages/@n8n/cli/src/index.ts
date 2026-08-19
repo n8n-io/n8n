@@ -28,6 +28,7 @@ import GitConnectionsDelete from './commands/git-connections/delete';
 import GitConnectionsDisconnect from './commands/git-connections/disconnect';
 import GitConnectionsGet from './commands/git-connections/get';
 import GitConnectionsList from './commands/git-connections/list';
+import GitConnectionsPush from './commands/git-connections/push';
 import GitConnectionsUpdate from './commands/git-connections/update';
 import Login from './commands/login';
 import Logout from './commands/logout';
@@ -106,6 +107,8 @@ export const commands = {
 	'tag:create': TagCreate,
 	'tag:update': TagUpdate,
 	'tag:delete': TagDelete,
+
+	'git-connections:push': GitConnectionsPush,
 
 	'project:list': ProjectList,
 	'project:get': ProjectGet,
