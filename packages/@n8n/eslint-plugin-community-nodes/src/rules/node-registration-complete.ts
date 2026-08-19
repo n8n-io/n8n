@@ -6,6 +6,7 @@ import {
 	createRule,
 	findJsonProperty,
 	findNodeSourceFilesOnDisk,
+	findVersionedNodeImplementations,
 	readPackageJsonNodes,
 } from '../utils/index.js';
 
@@ -41,9 +42,19 @@ export const NodeRegistrationCompleteRule = createRule({
 					return;
 				}
 
-				const registered = new Set(
-					readPackageJsonNodes(context.filename).map((filePath) => path.resolve(filePath)),
+				const registeredFiles = readPackageJsonNodes(context.filename).map((filePath) =>
+					path.resolve(filePath),
 				);
+				const registered = new Set(registeredFiles);
+
+				// A versioned node registers only its `VersionedNodeType` entry file in
+				// `n8n.nodes`; the per-version implementations are wired in through the
+				// entry file's imports. Treat those imported files as registered too.
+				for (const registeredFile of registeredFiles) {
+					for (const implementation of findVersionedNodeImplementations(registeredFile)) {
+						registered.add(path.resolve(implementation));
+					}
+				}
 
 				const packageDir = path.dirname(context.filename);
 				const reportTarget = resolveReportTarget(node);

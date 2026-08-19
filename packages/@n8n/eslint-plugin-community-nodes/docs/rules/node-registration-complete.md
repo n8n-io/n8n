@@ -44,3 +44,28 @@ Every node file is registered:
   }
 }
 ```
+
+## Versioned nodes
+
+A versioned node has a single entry file whose class extends `VersionedNodeType`
+and pulls in its per-version implementations (`v1/…V1.node.ts`,
+`v2/…V2.node.ts`, …) through relative imports. n8n discovers those versions via
+the entry file, so **only the entry file needs an `n8n.nodes` entry**. The rule
+follows the entry file's imports and treats the imported implementation files as
+registered, so they are not flagged even though they are not listed in
+`n8n.nodes` directly.
+
+```
+nodes/Foo/Foo.node.ts        <- entry file, extends VersionedNodeType
+nodes/Foo/v1/FooV1.node.ts   <- imported by the entry file
+nodes/Foo/v2/FooV2.node.ts   <- imported by the entry file
+```
+
+```json
+{
+  "name": "n8n-nodes-my-service",
+  "n8n": {
+    "nodes": ["dist/nodes/Foo/Foo.node.js"]
+  }
+}
+```

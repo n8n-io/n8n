@@ -7,6 +7,7 @@ import { dirname, parse as parsePath } from 'node:path';
 import {
 	isCredentialTypeClass,
 	isNodeTypeClass,
+	isVersionedNodeTypeClass,
 	findClassProperty,
 	getStringLiteralValue,
 	findArrayLiteralProperty,
@@ -236,6 +237,70 @@ export function findNodeSourceFilesOnDisk(packageJsonPath: string): string[] {
 	}
 
 	return findFilesRecursively(nodesDir, (fileName) => fileName.endsWith('.node.ts'));
+}
+
+/**
+ * Resolves a relative `.node` import specifier (as written in a versioned node's
+ * entry file, e.g. `./v1/FooV1.node`) to the absolute path of the corresponding
+ * `.node.ts` source file. Strips a trailing `.js` and appends `.ts`. Returns
+ * null if the import is not relative or the resolved file does not exist.
+ */
+export function resolveRelativeNodeImport(importSource: string, fromDir: string): string | null {
+	if (!importSource.startsWith('.')) {
+		return null;
+	}
+
+	const withoutJs = importSource.replace(/\.js$/, '');
+	if (!withoutJs.endsWith('.node')) {
+		return null;
+	}
+
+	const resolved = path.resolve(fromDir, `${withoutJs}.ts`);
+	return existsSync(resolved) ? resolved : null;
+}
+
+/**
+ * For a versioned node's entry file (a class extending `VersionedNodeType`),
+ * returns the absolute paths of the `.node.ts` implementation files it imports
+ * via relative specifiers. Returns an empty array for non-versioned nodes or if
+ * the file can't be read or parsed.
+ */
+export function findVersionedNodeImplementations(nodeFilePath: string): string[] {
+	try {
+		const sourceCode = readFileSync(nodeFilePath, 'utf8');
+		const ast = parse(sourceCode, { jsx: false, range: true });
+
+		let isVersioned = false;
+		simpleTraverse(ast, {
+			enter(node: TSESTree.Node) {
+				if (node.type === AST_NODE_TYPES.ClassDeclaration && isVersionedNodeTypeClass(node)) {
+					isVersioned = true;
+				}
+			},
+		});
+
+		if (!isVersioned) {
+			return [];
+		}
+
+		const fromDir = dirname(nodeFilePath);
+		const implementations: string[] = [];
+
+		simpleTraverse(ast, {
+			enter(node: TSESTree.Node) {
+				if (node.type === AST_NODE_TYPES.ImportDeclaration) {
+					const resolved = resolveRelativeNodeImport(node.source.value, fromDir);
+					if (resolved) {
+						implementations.push(resolved);
+					}
+				}
+			},
+		});
+
+		return implementations;
+	} catch {
+		return [];
+	}
 }
 
 /**
