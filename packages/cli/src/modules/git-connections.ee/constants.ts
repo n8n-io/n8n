@@ -18,6 +18,6 @@ export const HTTP_LOW_SPEED_LIMIT_BYTES = 1000;
 export const HTTP_LOW_SPEED_TIME_SECONDS = 30;
 
 // Transport-agnostic backstop: kill the git process if it emits no output for
-// this long, so connect() always rejects and its cleanup path runs. Clone is run
+// this long, so clone() always rejects and its cleanup path runs. Clone is run
 // with --progress so a healthy transfer keeps feeding this timer.
 export const GIT_COMMAND_STALL_TIMEOUT_MS = 60_000;

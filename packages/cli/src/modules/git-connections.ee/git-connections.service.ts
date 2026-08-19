@@ -89,7 +89,7 @@ export class GitConnectionsService {
 		const effectiveBranch = branchName ?? connection.branchName;
 		if (!effectiveBranch) throw new BadRequestError('A branch name is required to connect');
 		const credentials = await this.decryptCredentials(connection);
-		await this.gitService.connect({
+		await this.gitService.clone({
 			connection,
 			credentials,
 			branchName: effectiveBranch,

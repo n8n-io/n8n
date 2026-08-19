@@ -112,7 +112,7 @@ export class GitConnectionsGitService {
 		return await generateSshKeyPair(keyType, GIT_KEY_COMMENT);
 	}
 
-	async connect({
+	async clone({
 		connection,
 		credentials,
 		branchName,
