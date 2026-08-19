@@ -896,11 +896,10 @@ describe('AgentTaskService', () => {
 	});
 
 	describe('runTask', () => {
-		const publishedAgentWithTask = (enabled: boolean) =>
-			makePublishedAgent([{ id: 'task-1', enabled }]);
-
 		it('runs the published agent with the objective', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
+			(agentRepository.findOne as Mock).mockResolvedValue(
+				makePublishedAgent([{ id: 'task-1', enabled: true }]),
+			);
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				emptyStream(),
@@ -971,7 +970,9 @@ describe('AgentTaskService', () => {
 		});
 
 		it('skips when the published task snapshot is not enabled', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
+			(agentRepository.findOne as Mock).mockResolvedValue(
+				makePublishedAgent([{ id: 'task-1', enabled: true }]),
+			);
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
 				makeSnapshot({ enabled: false }),
 			);
@@ -982,7 +983,9 @@ describe('AgentTaskService', () => {
 		});
 
 		it('logs when execution throws', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
+			(agentRepository.findOne as Mock).mockResolvedValue(
+				makePublishedAgent([{ id: 'task-1', enabled: true }]),
+			);
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				throwingStream(),
@@ -998,14 +1001,18 @@ describe('AgentTaskService', () => {
 		});
 
 		it('allows a later scheduled run after a failed execution completes', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
+			(agentRepository.findOne as Mock).mockResolvedValue(
+				makePublishedAgent([{ id: 'task-1', enabled: true }]),
+			);
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock)
 				.mockReturnValueOnce(throwingStream())
 				.mockReturnValueOnce(emptyStream());
 
 			await runScheduledTaskOf(service, AGENT_ID, 'task-1');
+			await flushAsyncWork();
 			await runScheduledTaskOf(service, AGENT_ID, 'task-1');
+			await flushAsyncWork();
 
 			expect(agentExecutionOrchestratorService.executeForTaskPublished).toHaveBeenCalledTimes(2);
 			expect(taskRunLockRepository.release).toHaveBeenCalledTimes(2);
@@ -1021,7 +1028,9 @@ describe('AgentTaskService', () => {
 						finishRun = resolve;
 					});
 				}
-				(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
+				(agentRepository.findOne as Mock).mockResolvedValue(
+					makePublishedAgent([{ id: 'task-1', enabled: true }]),
+				);
 				(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
 				(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 					blockingStream(),
@@ -1043,6 +1052,57 @@ describe('AgentTaskService', () => {
 			} finally {
 				vi.useRealTimers();
 			}
+		});
+	});
+
+	describe('startScheduledRun', () => {
+		it("returns 'skipped-active' without running when the lock is held", async () => {
+			taskRunLockRepository.acquire.mockResolvedValue(null);
+
+			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).resolves.toBe('skipped-active');
+
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
+			expect(taskRunLockRepository.release).not.toHaveBeenCalled();
+		});
+
+		it("returns 'started' before the run resolves, then releases the lock after it", async () => {
+			let finishRun!: () => void;
+			// eslint-disable-next-line require-yield
+			async function* blockingStream(): AsyncGenerator<never> {
+				await new Promise<void>((resolve) => {
+					finishRun = resolve;
+				});
+			}
+			(agentRepository.findOne as Mock).mockResolvedValue(
+				makePublishedAgent([{ id: 'task-1', enabled: true }]),
+			);
+			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
+			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
+				blockingStream(),
+			);
+
+			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).resolves.toBe('started');
+			await flushAsyncWork();
+			expect(taskRunLockRepository.release).not.toHaveBeenCalled();
+
+			finishRun();
+			await flushAsyncWork();
+			expect(taskRunLockRepository.release).toHaveBeenCalledTimes(1);
+		});
+
+		it('releases the lock when the run fails', async () => {
+			(agentRepository.findOne as Mock).mockResolvedValue(
+				makePublishedAgent([{ id: 'task-1', enabled: true }]),
+			);
+			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
+			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
+				throwingStream(),
+			);
+
+			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).resolves.toBe('started');
+			await flushAsyncWork();
+
+			expect(taskRunLockRepository.release).toHaveBeenCalledTimes(1);
 		});
 	});
 

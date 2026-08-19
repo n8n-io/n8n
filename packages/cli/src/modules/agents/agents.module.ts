@@ -144,6 +144,27 @@ export class AgentsModule implements ModuleInterface {
 		} else {
 			logger.debug('[Agents] Skipping task reconnect on startup — not leader');
 		}
+
+		// Durable scheduling for agent tasks. Registered before DurableScheduler
+		// starts (module init precedes its start() in the start command); both the
+		// handler registration and the reconcile self-gate on the scheduler flags.
+		const { AgentTaskTaskHandler } = await import('./scheduling/agent-task-task-handler.js');
+		const { AgentTaskJobRegistrar } = await import('./scheduling/agent-task-job-registrar.js');
+		const { DurableScheduler } = await import('@/scheduling/durable-scheduler.js');
+		const agentTaskHandler = Container.get(AgentTaskTaskHandler);
+		Container.get(DurableScheduler).registerTaskHandler(
+			agentTaskHandler.taskType,
+			agentTaskHandler,
+		);
+		if (instanceSettings.instanceType === 'main') {
+			void Container.get(AgentTaskJobRegistrar)
+				.reconcileAll()
+				.catch((error) => {
+					logger.error('[Agents] Failed to reconcile durable agent-task jobs on startup', {
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+		}
 	}
 
 	@OnShutdown()
