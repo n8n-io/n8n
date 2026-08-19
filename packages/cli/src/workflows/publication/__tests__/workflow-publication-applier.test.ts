@@ -9,12 +9,14 @@ import type {
 } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeType } from 'n8n-workflow';
 import { WebhookPathTakenError } from 'n8n-workflow';
 
+import type { NodeTypes } from '@/node-types';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 describe('WorkflowPublicationApplier', () => {
 	const logger = mock<Logger>();
@@ -24,6 +26,8 @@ describe('WorkflowPublicationApplier', () => {
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowTriggerActivator = mock<WorkflowTriggerActivator>();
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+	const nodeTypes = mock<NodeTypes>();
+	const workflowService = mock<WorkflowService>();
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -32,6 +36,8 @@ describe('WorkflowPublicationApplier', () => {
 		workflowPublishedVersionRepository,
 		workflowTriggerActivator,
 		workflowPublishedDataService,
+		nodeTypes,
+		workflowService,
 	);
 
 	function makeRecord(
@@ -815,6 +821,100 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
+		});
+	});
+	describe('node id healing', () => {
+		const dupTriggerVersion = (): WorkflowHistory =>
+			({
+				versionId: 'v-2',
+				workflowId: 'wf-1',
+				nodes: [
+					triggerNode('shared', { name: 'Trigger A' }),
+					triggerNode('shared', { name: 'Trigger B' }),
+				],
+				connections: {},
+				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['shared'] }],
+			}) as unknown as WorkflowHistory;
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) =>
+				type.toLowerCase().includes('trigger')
+					? ({ trigger: async () => ({}) } as unknown as INodeType)
+					: ({} as INodeType),
+			);
+			workflowService.publishAsSystem.mockResolvedValue({
+				published: true,
+				versionId: 'v-healed',
+			});
+		});
+
+		it('publishes a healed system version instead of applying one with duplicate node ids', async () => {
+			const version = dupTriggerVersion();
+			workflowHistoryRepository.findOneBy.mockResolvedValue(version);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({ type: 'skipped', reason: 'node-ids-healed' });
+			expect(workflowService.publishAsSystem).toHaveBeenCalledTimes(1);
+			const [workflowId, versionData] = workflowService.publishAsSystem.mock.calls[0];
+			expect(workflowId).toBe('wf-1');
+			expect(versionData.connections).toBe(version.connections);
+			expect(versionData.nodeGroups).toBe(version.nodeGroups);
+			const ids = versionData.nodes.map((node: INode) => node.id);
+			expect(new Set(ids).size).toBe(2);
+			// The contested id survives on one node, so state keyed on it stays valid.
+			expect(ids).toContain('shared');
+			// The broken version itself is never applied.
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		});
+
+		it('fills missing node ids the same way', async () => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue({
+				versionId: 'v-2',
+				workflowId: 'wf-1',
+				nodes: [triggerNode('', { name: 'Trigger' })],
+				connections: {},
+			} as unknown as WorkflowHistory);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({ type: 'skipped', reason: 'node-ids-healed' });
+			const [, versionData] = workflowService.publishAsSystem.mock.calls[0];
+			expect(versionData.nodes[0].id).toBeTruthy();
+		});
+
+		it('skips as superseded when the system publish loses its race', async () => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(dupTriggerVersion());
+			workflowService.publishAsSystem.mockResolvedValue({
+				published: false,
+				reason: 'superseded',
+			});
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({ type: 'skipped', reason: 'superseded' });
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		});
+
+		it('does not publish anything for a healthy version', async () => {
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(workflowService.publishAsSystem).not.toHaveBeenCalled();
+			expect(result.type).toBe('completed');
+		});
+
+		it('heals even when a node type cannot be resolved', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw new Error('Unknown node type');
+			});
+			workflowHistoryRepository.findOneBy.mockResolvedValue(dupTriggerVersion());
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({ type: 'skipped', reason: 'node-ids-healed' });
 		});
 	});
 });

@@ -25,13 +25,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import {
-	PROJECT_ROOT,
-	UnexpectedError,
-	Workflow,
-	assert,
-	calculateWorkflowChecksum,
-} from 'n8n-workflow';
+import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
@@ -1152,13 +1146,12 @@ export class WorkflowService {
 		},
 	): Promise<{ published: true; versionId: string } | { published: false; reason: 'superseded' }> {
 		const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
-		// Load-bearing for the guard below: it compares against a non-null value,
-		// so a null active version must never reach it.
+		// A missing or inactive workflow is the same benign race as losing the
+		// guard below — whatever removed the active version owns the state now.
+		// This early return is also load-bearing for that guard: it compares
+		// against a non-null value.
 		if (!workflow?.active || workflow.activeVersionId === null) {
-			throw new UnexpectedError(
-				'Cannot publish a system-authored version: the workflow has no active version',
-				{ extra: { workflowId } },
-			);
+			return { published: false, reason: 'superseded' };
 		}
 
 		// Narrowed copy: the closure below would see `string | null` again.

@@ -1251,32 +1251,31 @@ describe('publishAsSystem()', () => {
 		expect(workflowPublicationNotifier.requestDrain).toHaveBeenCalled();
 	});
 
-	it('rejects a workflow without an active version and writes nothing', async () => {
+	it('returns superseded for a workflow without an active version and writes nothing', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		await expect(
-			workflowService.publishAsSystem(workflow.id, {
-				nodes: systemNodes(),
-				connections: {},
-				nodeGroups: [],
-			}),
-		).rejects.toThrow('Cannot publish a system-authored version');
+		const result = await workflowService.publishAsSystem(workflow.id, {
+			nodes: systemNodes(),
+			connections: {},
+			nodeGroups: [],
+		});
 
+		expect(result).toEqual({ published: false, reason: 'superseded' });
 		const untouched = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
 		expect(untouched.activeVersionId).toBeNull();
 		expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
 		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
 	});
 
-	it('rejects a missing workflow', async () => {
+	it('returns superseded for a missing workflow', async () => {
 		await expect(
 			workflowService.publishAsSystem(uuid(), {
 				nodes: systemNodes(),
 				connections: {},
 				nodeGroups: [],
 			}),
-		).rejects.toThrow('Cannot publish a system-authored version');
+		).resolves.toEqual({ published: false, reason: 'superseded' });
 	});
 
 	it('refuses to publish when the active version moved after the read', async () => {
