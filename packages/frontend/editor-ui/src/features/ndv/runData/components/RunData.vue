@@ -36,6 +36,7 @@ import {
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
+	MODAL_CONFIRM,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
 	RUN_DATA_DEFAULT_PAGE_SIZE,
 } from '@/app/constants';
@@ -59,6 +60,8 @@ import { useToast } from '@n8n/composables/useToast';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecutions.store';
+import { useMessage } from '@/app/composables/useMessage';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -244,6 +247,8 @@ const rootStore = useRootStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 
 const toast = useToast();
+const message = useMessage();
+const aiSimulatedExecutionsStore = useAiSimulatedExecutionsStore();
 const route = useRoute();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
@@ -378,6 +383,19 @@ const hasNodeRun = computed(() =>
 			((workflowRunData.value && workflowRunData.value.hasOwnProperty(node.value.name)) ||
 				pinnedData.hasData.value),
 	),
+);
+
+/**
+ * The displayed output of this node was simulated (fabricated fixture data)
+ * by the AI Assistant during workflow verification — label it and guard the
+ * pin affordance so it isn't adopted as if it were real.
+ */
+const isAiSimulatedOutput = computed(
+	() =>
+		!isPaneTypeInput.value &&
+		hasNodeRun.value &&
+		!pinnedData.hasData.value &&
+		aiSimulatedExecutionsStore.isSimulatedNodeOutput(currentExecution.value?.id, node.value?.name),
 );
 
 const isArtificialRecoveredEventItem = computed(
@@ -1022,7 +1040,7 @@ function onClickCancelEdit() {
 	onExitEditMode({ type: 'cancel' });
 }
 
-function onClickSaveEdit() {
+async function onClickSaveEdit() {
 	if (!node.value) {
 		return;
 	}
@@ -1030,6 +1048,11 @@ function onClickSaveEdit() {
 	const { value } = editMode.value;
 
 	toast.clearAllStickyNotifications();
+
+	// Saving output edits pins the result — same adoption boundary as the pin icon.
+	if (!(await confirmPinningAiSimulatedData())) {
+		return;
+	}
 
 	try {
 		const clearedValue = clearJsonKey(value) as INodeExecutionData[];
@@ -1059,6 +1082,24 @@ function onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 	});
 }
 
+/**
+ * Pinning AI-simulated data needs an explicit opt-in: the fabricated fixture
+ * would otherwise silently become the node's "real" data in every test run.
+ */
+async function confirmPinningAiSimulatedData(): Promise<boolean> {
+	if (!isAiSimulatedOutput.value) return true;
+	const answer = await message.confirm(
+		i18n.baseText('ndv.pinData.aiSimulated.confirm.description'),
+		i18n.baseText('ndv.pinData.aiSimulated.confirm.title'),
+		{
+			type: 'warning',
+			confirmButtonText: i18n.baseText('ndv.pinData.aiSimulated.confirm.confirmButtonText'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	return answer === MODAL_CONFIRM;
+}
+
 async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSource }) {
 	if (!node.value) {
 		return;
@@ -1082,6 +1123,10 @@ async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSo
 
 	if (pinnedData.hasData.value) {
 		pinnedData.unsetData(source);
+		return;
+	}
+
+	if (!(await confirmPinningAiSimulatedData())) {
 		return;
 	}
 
@@ -1508,6 +1553,16 @@ defineExpose({ enterEditMode });
 					{{ i18n.baseText('runData.pindata.learnMore') }}
 				</N8nLink>
 			</template>
+		</N8nCallout>
+
+		<N8nCallout
+			v-if="isAiSimulatedOutput && !editMode.enabled"
+			theme="warning"
+			icon="triangle-alert"
+			:class="$style.pinnedDataCallout"
+			data-test-id="ndv-ai-simulated-data-callout"
+		>
+			{{ i18n.baseText('runData.aiSimulatedData.callout') }}
 		</N8nCallout>
 
 		<div :class="$style.header">
