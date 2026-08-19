@@ -232,6 +232,7 @@ export abstract class BaseCommand<F = never> {
 		if (this.needsExpressionEngine) {
 			const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
 				this.globalConfig.expressionEngine;
+			const observability = Container.get(ExpressionObservabilityProvider);
 			try {
 				await Expression.initExpressionEngine({
 					engine,
@@ -240,11 +241,11 @@ export abstract class BaseCommand<F = never> {
 					bridgeTimeout,
 					bridgeMemoryLimit,
 					idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
-					observability: Container.get(ExpressionObservabilityProvider),
+					observability,
 				});
 			} catch (error) {
 				await this.exitWithCrash(
-					'There was an error initializing the vm expression engine. Check that the isolated-vm package installed correctly, e.g. that native build scripts were not skipped.',
+					'Could not initialize the vm expression engine (see errors above for details). If they point at isolated-vm, check that it installed correctly, e.g. that native build scripts were not skipped.',
 					error,
 				);
 			}
