@@ -207,6 +207,19 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 					: tools.length > 0
 						? 'connected'
 						: 'none';
+			const toolsChildren: InputMenuItem[] | undefined =
+				tools.length > 0
+					? [
+							...tools,
+							{
+								id: 'add-tool',
+								label: i18n.baseText('instanceAi.inputMenu.tools.add'),
+								icon: { type: 'icon', value: 'plus' },
+								divided: true,
+								data: { action: openToolsModal },
+							},
+						]
+					: undefined;
 
 			items.push({
 				id: 'tools',
@@ -216,17 +229,8 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 						: 'instanceAi.inputMenu.tools.connect',
 				),
 				icon: { type: 'icon', value: 'plug' },
-				data: toolsStatus === 'none' ? undefined : { status: toolsStatus },
-				children: [
-					...tools,
-					{
-						id: 'add-tool',
-						label: i18n.baseText('instanceAi.inputMenu.tools.add'),
-						icon: { type: 'icon', value: 'plus' },
-						divided: tools.length > 0,
-						data: { action: openToolsModal },
-					},
-				],
+				data: tools.length > 0 ? { status: toolsStatus } : { action: openToolsModal },
+				children: toolsChildren,
 			});
 		}
 

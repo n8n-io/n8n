@@ -410,6 +410,8 @@ async function handleConnect(item: ToolConnectionItem) {
 		v-model:open="isOpen"
 		:items="items"
 		:categories="['all', 'built-in', 'mcp']"
+		:title="i18n.baseText('instanceAi.connections.modal.title')"
+		:search-placeholder="i18n.baseText('instanceAi.connections.modal.searchPlaceholder')"
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
 		:hide-back-button="isDirectConnectionOpen"
