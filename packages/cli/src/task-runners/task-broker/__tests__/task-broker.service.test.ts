@@ -1612,6 +1612,33 @@ describe('TaskBroker', () => {
 			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
 		});
 
+		it('should report on the next timeout once the in-flight tasks are gone', async () => {
+			taskBroker.setTasks({
+				task1: {
+					id: 'task1',
+					runnerId: 'runner1',
+					requesterId: 'requester1',
+					taskType: 'taskType1',
+				},
+			});
+
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+
+			taskBroker.setTasks({});
+
+			// the threshold was already reached, so no further timeouts need to be re-earned
+			await timeOutAcceptance();
+
+			expect(lifecycleEvents.emit).toHaveBeenCalledTimes(1);
+			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
+				runnerId: 'runner1',
+			});
+		});
+
 		it('should reset the count when the runner acknowledges an acceptance', async () => {
 			await timeOutAcceptance();
 			await timeOutAcceptance();

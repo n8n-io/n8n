@@ -799,16 +799,19 @@ export class TaskBroker {
 			return;
 		}
 
-		const failures = (previous?.count ?? 0) + 1;
+		const failures = Math.min((previous?.count ?? 0) + 1, MAX_CONSECUTIVE_ACCEPT_TIMEOUTS);
 
-		if (failures < MAX_CONSECUTIVE_ACCEPT_TIMEOUTS) {
-			this.consecutiveAcceptTimeouts.set(runnerId, { count: failures, lastTimeoutAt: now });
-		} else {
+		this.consecutiveAcceptTimeouts.set(runnerId, { count: failures, lastTimeoutAt: now });
+
+		if (failures < MAX_CONSECUTIVE_ACCEPT_TIMEOUTS) return;
+
+		const reported = this.reportUnresponsive(
+			runnerId,
+			`failed to acknowledge ${MAX_CONSECUTIVE_ACCEPT_TIMEOUTS} consecutive task acceptances`,
+		);
+
+		if (reported) {
 			this.consecutiveAcceptTimeouts.delete(runnerId);
-			this.reportUnresponsive(
-				runnerId,
-				`failed to acknowledge ${MAX_CONSECUTIVE_ACCEPT_TIMEOUTS} consecutive task acceptances`,
-			);
 		}
 	}
 
@@ -853,17 +856,21 @@ export class TaskBroker {
 	 *
 	 * Reports a runner that is no longer registered too, since a process that outlived
 	 * its transport is exactly what still needs restarting.
+	 *
+	 * @returns whether the runner was reported.
 	 */
-	private reportUnresponsive(runnerId: TaskRunner['id'], cause: string) {
+	private reportUnresponsive(runnerId: TaskRunner['id'], cause: string): boolean {
 		if (this.getInFlightTaskIds(runnerId).length > 0) {
 			this.logger.warn(
 				`Runner (${runnerId}) ${cause}, but it still has tasks in flight, so not reporting it as unresponsive`,
 			);
-			return;
+			return false;
 		}
 
 		this.logger.warn(`Runner (${runnerId}) ${cause}, reporting it as unresponsive`);
 		this.taskRunnerLifecycleEvents.emit('runner:unresponsive', { runnerId });
+
+		return true;
 	}
 
 	private isSilent(runnerId: TaskRunner['id']) {
