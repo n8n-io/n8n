@@ -2301,6 +2301,213 @@ describe('POST /workflows', () => {
 			expect(await workflowRepository.findOneBy({ name })).toBeNull();
 		});
 	});
+
+	// These cases lock the wire contract of this endpoint so the decorator migration
+	// cannot change it. They pass against the legacy handler and must keep passing.
+	describe('response contract', () => {
+		// The legacy handler serialises the entity the creation service returns, so the body
+		// carries every loaded relation. A migration that builds the body from a DTO drops any
+		// field the DTO forgets, and nothing else in this suite would notice.
+		const expectedResponseKeys = [
+			'active',
+			'activeVersion',
+			'activeVersionId',
+			'connections',
+			'createdAt',
+			'description',
+			'id',
+			'isArchived',
+			'meta',
+			'name',
+			'nodeGroups',
+			'nodes',
+			'parentFolder',
+			'pinData',
+			'settings',
+			'shared',
+			'sourceWorkflowId',
+			'staticData',
+			'tags',
+			'triggerCount',
+			'updatedAt',
+			'versionCounter',
+			'versionId',
+		];
+
+		test('should return exactly the documented set of workflow fields', async () => {
+			const response = await authMemberAgent.post('/workflows').send(mockPostWorkflowPayload());
+
+			expect(response.statusCode).toBe(200);
+			expect(Object.keys(response.body).sort()).toEqual(expectedResponseKeys);
+		});
+
+		test('should return parentFolder as null at the project root', async () => {
+			const response = await authMemberAgent.post('/workflows').send(mockPostWorkflowPayload());
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.parentFolder).toBeNull();
+		});
+
+		test('should return the parent folder when parentFolderId is given', async () => {
+			const folder = await createFolder(memberPersonalProject, { name: 'Response Folder' });
+
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), parentFolderId: folder.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(Object.keys(response.body.parentFolder).sort()).toEqual([
+				'createdAt',
+				'id',
+				'name',
+				'parentFolderId',
+				'updatedAt',
+			]);
+			expect(response.body.parentFolder).toMatchObject({
+				id: folder.id,
+				name: 'Response Folder',
+				parentFolderId: null,
+			});
+		});
+
+		test('should return an empty tag list and no active version', async () => {
+			const response = await authMemberAgent.post('/workflows').send(mockPostWorkflowPayload());
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.tags).toEqual([]);
+			expect(response.body.activeVersion).toBeNull();
+		});
+
+		test('should return the owning share with its project', async () => {
+			const response = await authMemberAgent.post('/workflows').send(mockPostWorkflowPayload());
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.shared).toHaveLength(1);
+			expect(Object.keys(response.body.shared[0]).sort()).toEqual([
+				'createdAt',
+				'project',
+				'projectId',
+				'role',
+				'updatedAt',
+				'workflowId',
+			]);
+			expect(Object.keys(response.body.shared[0].project).sort()).toEqual([
+				'createdAt',
+				'creatorId',
+				'customTelemetryTags',
+				'description',
+				'icon',
+				'id',
+				'name',
+				'type',
+				'updatedAt',
+			]);
+		});
+	});
+
+	describe('request contract', () => {
+		// express-openapi-validator registers a custom Ajv `readOnly` keyword that fails whenever
+		// the property is present at all, so every read-only field in the spec is a hard 400 — not
+		// a field that is quietly accepted and ignored. `workflowEntityWriteFields` allows `id` and
+		// `meta`, but only the internal REST controller can ever reach them.
+		test.each([
+			{ key: 'id', value: '2tUt1wbLX592XDdX' },
+			{ key: 'active', value: false },
+			{ key: 'createdAt', value: '2026-01-01T00:00:00.000Z' },
+			{ key: 'updatedAt', value: '2026-01-01T00:00:00.000Z' },
+			{ key: 'isArchived', value: false },
+			{ key: 'versionId', value: 'a-version-id' },
+			{ key: 'triggerCount', value: 0 },
+			{ key: 'meta', value: {} },
+			{ key: 'tags', value: [] },
+			{ key: 'activeVersion', value: null },
+		] as const)('should reject the read-only field $key', async ({ key, value }) => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), [key]: value });
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		// `shared` is the one documented field that is neither read-only nor written: it is
+		// accepted, ignored, and overwritten by the real owner share.
+		test('should accept and ignore a supplied shared list', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), shared: [] });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.shared).toHaveLength(1);
+			expect(response.body.shared[0].role).toBe('workflow:owner');
+		});
+
+		test('should reject a read-only field nested in a node', async () => {
+			const response = await authMemberAgent.post('/workflows').send({
+				...mockPostWorkflowPayload(),
+				nodes: [{ ...triggerNode, createdAt: '2026-01-01T00:00:00.000Z' }],
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should reject an unknown top-level field', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), notAWorkflowField: 'x' });
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should reject an unknown settings key', async () => {
+			const response = await authMemberAgent.post('/workflows').send({
+				...mockPostWorkflowPayload(),
+				settings: { executionOrder: 'v1', notASetting: true },
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should reject an unknown node key', async () => {
+			const response = await authMemberAgent.post('/workflows').send({
+				...mockPostWorkflowPayload(),
+				nodes: [{ ...triggerNode, notANodeField: 'x' }],
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should accept staticData as a JSON string', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), staticData: '{"lastId":1}' });
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('should reject staticData as a string that is not JSON', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), staticData: 'not json' });
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should reject a node group description over the length limit', async () => {
+			const response = await authMemberAgent.post('/workflows').send({
+				...mockPostWorkflowPayload(),
+				nodeGroups: [
+					{
+						id: 'group-1',
+						name: 'Too long',
+						nodeIds: [triggerNode.id],
+						description: 'x'.repeat(156),
+					},
+				],
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+	});
 });
 
 describe('POST /workflows redaction floor enforcement', () => {
@@ -2370,6 +2577,21 @@ describe('POST /workflows redaction floor enforcement', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
+	});
+
+	// The floor check runs before the workflow is built, so it wins over any error the
+	// creation service raises later. Keeping that order matters: moving the check into
+	// WorkflowCreationService would turn this 422 into the node-group 400.
+	test('reports the floor violation even when the payload is also otherwise invalid', async () => {
+		const response = await authOwnerAgent.post('/workflows').send({
+			name: 'redaction-floor-precedence',
+			nodes: [redactionTrigger],
+			connections: {},
+			settings: { redactionPolicy: 'none' },
+			nodeGroups: [{ id: 'group-1', name: 'Ghost', nodeIds: ['does-not-exist'] }],
+		});
+
+		expect(response.statusCode).toBe(422);
 	});
 });
 
