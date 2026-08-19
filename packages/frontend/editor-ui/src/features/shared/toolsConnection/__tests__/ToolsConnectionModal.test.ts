@@ -186,7 +186,7 @@ describe('ToolsConnectionModal', () => {
 			kind: 'node',
 			title: 'Slack',
 			description: 'Send messages',
-			isConnected: false,
+			status: 'none',
 			category: 'n8n-connect',
 			freeCredits: true,
 			nodeTypeName: 'n8n-nodes-base.slackTool',

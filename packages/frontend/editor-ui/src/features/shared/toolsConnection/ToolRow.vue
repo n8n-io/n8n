@@ -9,6 +9,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import ToolIcon from './ToolIcon.vue';
 import {
@@ -32,7 +33,21 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const aiGatewayStore = useAiGatewayStore();
 const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+
+/**
+ * Gateway-backed rows share the credits pill copy with the node creator and
+ * model selector: "Free credits" until a top-up or a depleted allowance flips
+ * it to a blue "n8n credits" pill.
+ */
+const creditsPill = computed(() => {
+	const key = aiGatewayStore.creditsLabelKey;
+	return {
+		text: i18n.baseText(key),
+		type: key === 'generic.freeCredits' ? ('default' as const) : ('info' as const),
+	};
+});
 
 /**
  * The picker needs both credential definitions and an injected adapter.
@@ -147,9 +162,10 @@ function handleConnect() {
 						<N8nActionPill
 							v-if="item.freeCredits"
 							size="small"
+							:type="creditsPill.type"
 							data-test-id="tools-connection-row-free-credits"
 						>
-							{{ i18n.baseText('generic.freeCredits') }}
+							{{ creditsPill.text }}
 						</N8nActionPill>
 					</span>
 					<N8nText

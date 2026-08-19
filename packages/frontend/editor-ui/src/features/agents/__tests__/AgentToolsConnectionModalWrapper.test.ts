@@ -835,7 +835,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(gateway).toMatchObject({
 				category: 'n8n-connect',
 				freeCredits: true,
-				isConnected: false,
+				status: 'none',
 			});
 			// The own-credential entry stays put so the manual flow is unaffected.
 			expect(getItems().find((item) => item.id === `nodeType:${SLACK.name}`)).toBeDefined();

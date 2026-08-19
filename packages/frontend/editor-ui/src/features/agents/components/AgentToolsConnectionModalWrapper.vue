@@ -70,6 +70,8 @@ import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from
 import { toToolIconSource } from '../utils/toolIconSource';
 
 const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
+/** Prefix for the synthetic ids of gateway-backed rows in the n8n Connect section. */
+const N8N_CONNECT_ID_PREFIX = 'n8n-connect:';
 const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 );
@@ -208,9 +210,13 @@ onMounted(() => {
 	void loadWorkflows(props.data.projectId);
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
-	// Config gates which tools are eligible for the n8n Connect section.
+	// Config gates which tools are eligible for the n8n Connect section; the
+	// wallet drives the credits pill copy (Free credits vs n8n credits). Fetch
+	// both here so the section is correct without relying on a sibling (sidebar
+	// or model selector) having loaded them first.
 	if (settingsStore.isAiGatewayEnabled) {
 		void aiGatewayStore.fetchConfig();
+		void aiGatewayStore.fetchWallet();
 	}
 });
 
@@ -666,7 +672,7 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 function n8nConnectNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 	return {
 		...availableNodeItem(nodeType),
-		id: `n8n-connect:${nodeType.name}`,
+		id: `${N8N_CONNECT_ID_PREFIX}${nodeType.name}`,
 		category: 'n8n-connect',
 		freeCredits: true,
 	};
@@ -784,8 +790,8 @@ function handleRowActivate(item: ToolConnectionItem) {
 		return;
 	}
 
-	if (item.kind === 'node' && item.id.startsWith('n8n-connect:')) {
-		const nodeTypeName = item.id.slice('n8n-connect:'.length);
+	if (item.kind === 'node' && item.id.startsWith(N8N_CONNECT_ID_PREFIX)) {
+		const nodeTypeName = item.id.slice(N8N_CONNECT_ID_PREFIX.length);
 		const nodeType = availableToolTypes.value.find((nt) => nt.name === nodeTypeName);
 		if (nodeType) addManagedNodeTool(nodeType);
 		return;
