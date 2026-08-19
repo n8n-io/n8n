@@ -860,9 +860,6 @@ export class TaskBroker {
 	 * execution timeout, which force-restarts the process in internal mode and, in external
 	 * mode, untracks the tasks so the next report is no longer skipped.
 	 *
-	 * Reports a runner that is no longer registered too, since a process that outlived
-	 * its transport is exactly what still needs restarting.
-	 *
 	 * @returns whether the runner was reported.
 	 */
 	private reportUnresponsive(runnerId: TaskRunner['id'], cause: string): boolean {

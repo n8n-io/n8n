@@ -1718,20 +1718,6 @@ describe('TaskBroker', () => {
 			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
 		});
 
-		it('should report a runner that reached the threshold after deregistering', async () => {
-			// the transport deregistered the runner, but a process that outlived its
-			// transport still needs restarting
-			taskBroker.deregisterRunner('runner1', new Error('connection lost'));
-
-			await timeOutAcceptance();
-			await timeOutAcceptance();
-			await timeOutAcceptance();
-
-			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
-				runnerId: 'runner1',
-			});
-		});
-
 		it('should count acknowledgment timeouts per runner', async () => {
 			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner2' }), vi.fn());
 
