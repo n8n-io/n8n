@@ -87,7 +87,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	/** Facts for specific runs in seq order, with the run and write-time context
 	 *  the fold-on-read history derivation needs. Scoped rather than
 	 *  whole-thread: a paged history read folds only the runs behind the page it
-	 *  returns (INS-693). */
+	 *  returns. */
 	async getForThreadRuns(
 		threadId: string,
 		runIds: string[],

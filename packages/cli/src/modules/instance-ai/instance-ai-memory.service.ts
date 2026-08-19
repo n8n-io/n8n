@@ -517,8 +517,8 @@ export class InstanceAiMemoryService {
 	 * lazy loader runs only when the thread has no log rows or the read
 	 * fails/derives nothing.
 	 *
-	 * Only the runs behind the requested page are read and folded (INS-693), so
-	 * a long thread costs the same per read as a short one. Run-start facts are
+	 * Only the runs behind the requested page are read and folded, so a long
+	 * thread costs the same per read as a short one. Run-start facts are
 	 * read for the whole thread — one row per run, no group can be resolved
 	 * without them — but their payloads are the only ones parsed outside the
 	 * window.

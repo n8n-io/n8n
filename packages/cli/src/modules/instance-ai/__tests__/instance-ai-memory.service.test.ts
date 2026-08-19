@@ -1060,7 +1060,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(mockEventLogRepository.getRunStarts).not.toHaveBeenCalled();
 	});
 
-	describe('hydration is scoped to the requested page (INS-693)', () => {
+	describe('hydration is scoped to the requested page', () => {
 		const oldAt = new Date('2025-06-01T00:00:00.000Z');
 
 		/** A complete, renderable run: start, one tool call, finish. */
