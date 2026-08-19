@@ -480,6 +480,9 @@ catalogs:
     oxlint-tsgolint:
       specifier: ^0.21.1
       version: 0.21.1
+    p-limit:
+      specifier: ^3.1.0
+      version: 3.1.0
     picocolors:
       specifier: 1.0.1
       version: 1.0.1
@@ -647,6 +650,10 @@ catalogs:
     vue-router:
       specifier: ^4.5.0
       version: 4.5.0
+  p-limit-v7:
+    p-limit:
+      specifier: ^7.3.1
+      version: 7.3.1
   sentry:
     '@sentry/core':
       specifier: ^10.55.0
@@ -1307,7 +1314,7 @@ importers:
         specifier: workspace:*
         version: link:../../workflow
       p-limit:
-        specifier: ^3.1.0
+        specifier: 'catalog:'
         version: 3.1.0
       picocolors:
         specifier: 'catalog:'
@@ -2742,7 +2749,7 @@ importers:
         specifier: 'catalog:'
         version: 3.3.3
       p-limit:
-        specifier: ^7.3.1
+        specifier: catalog:p-limit-v7
         version: 7.3.1
       playwright-core:
         specifier: 'catalog:'
@@ -4478,7 +4485,7 @@ importers:
         specifier: 3.1.0
         version: 3.1.0
       p-limit:
-        specifier: ^3.1.0
+        specifier: 'catalog:'
         version: 3.1.0
       pdf-parse:
         specifier: 2.4.5
