@@ -436,6 +436,28 @@ describe('close policy with multiple linked workflows', () => {
 			closedEntry,
 		]);
 	});
+
+	// A linked workflow without an owner sharing row is a broken row, not a move; the
+	// targeted close must leave it reviewable, exactly as the reconciliation sweep does.
+	test('treats a linked workflow with no owner row as reviewable, matching the sweep', async () => {
+		const first = await createReviewableWorkflow();
+		const second = await createReviewableWorkflow();
+		const request = await createOpenReview(first.workflow.id, first.versionId);
+		await linkRepository.createWorkflowRow(
+			{
+				workflowReviewRequestId: request.id,
+				workflowId: second.workflow.id,
+				workflowVersionId: second.versionId,
+			},
+			{},
+		);
+		await Container.get(SharedWorkflowRepository).delete({ workflowId: second.workflow.id });
+
+		await ownerAgent.post(`/workflows/${first.workflow.id}/archive`).expect(200);
+
+		// Neither the targeted close nor the sweep that follows it may take the request.
+		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
+	});
 });
 
 describe('publish recorder', () => {

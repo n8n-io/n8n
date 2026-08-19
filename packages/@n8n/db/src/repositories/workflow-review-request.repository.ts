@@ -251,14 +251,18 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			.select('1')
 			.innerJoin(WorkflowReviewRequestWorkflow, 'link', 'link.workflowReviewRequestId = review.id')
 			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = link.workflowId')
-			.innerJoin(
+			// Left join, like the sweep: a workflow with no owner row is a broken row, not
+			// a move, and {@link isReviewable} keeps it reviewable — dropping it here would
+			// let a targeted close take a request the sweep would leave open.
+			.leftJoin(
 				SharedWorkflow,
 				'shared',
-				'shared.workflowId = link.workflowId AND shared.role = :ownerRole AND shared.projectId = review.projectId',
+				'shared.workflowId = link.workflowId AND shared.role = :ownerRole',
 				{ ownerRole },
 			)
 			.where('review.id = :requestId', { requestId })
 			.andWhere('workflow.isArchived = :isArchived', { isArchived: false })
+			.andWhere('(shared.projectId IS NULL OR shared.projectId = review.projectId)')
 			.limit(1);
 
 		if (excludedWorkflowIds.length > 0) {
