@@ -35,6 +35,8 @@ function toWorkflowConnections(connections: WorkflowJSON['connections']): IConne
 		for (const [connectionType, outputs] of Object.entries(byType)) {
 			if (!isSafeObjectProperty(connectionType)) continue;
 
+			// SDK connection types are plain strings. Re-key known values into
+			// n8n-workflow's type union and skip unsafe object keys from raw JSON.
 			nodeConnections[connectionType] = outputs.map(
 				(outputConnections) =>
 					outputConnections?.flatMap((connection) =>
@@ -70,10 +72,17 @@ export function dropInvalidNodeGroups(
 
 	if (result.valid) return [];
 
-	const droppedGroupIds = new Set(result.violations.map((violation) => violation.groupId));
+	const firstViolationByGroupId = new Map<string, (typeof result.violations)[number]>();
+	for (const violation of result.violations) {
+		if (!firstViolationByGroupId.has(violation.groupId)) {
+			firstViolationByGroupId.set(violation.groupId, violation);
+		}
+	}
+
+	const droppedGroupIds = new Set(firstViolationByGroupId.keys());
 	json.nodeGroups = json.nodeGroups.filter((group) => !droppedGroupIds.has(group.id));
 
-	return result.violations.map((violation) => ({
+	return Array.from(firstViolationByGroupId.values()).map((violation) => ({
 		code: NODE_GROUP_DROPPED_CODE,
 		severity: 'informational',
 		message: `Node group "${violation.groupName}" was removed from the saved workflow: ${violation.message}`,

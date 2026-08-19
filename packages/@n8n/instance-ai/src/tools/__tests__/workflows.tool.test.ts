@@ -1064,6 +1064,27 @@ describe('workflows tool', () => {
 			expect(result.warnings?.join('\n')).toContain('Trigger group');
 		});
 
+		it('returns an error instead of throwing when raw update nodes are malformed', async () => {
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'always_allow' },
+				nodeTypesProvider: makeNodeTypesProvider(),
+			});
+
+			const result = await executeTool<{ success: boolean; error?: string }>(
+				createWorkflowsTool(context, 'full'),
+				{
+					action: 'update',
+					workflowId: 'wf1',
+					workflow: { name: 'Updated WF', nodes: [null], connections: {} },
+				},
+				{} as never,
+			);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain('Cannot read');
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
 		it('saves a valid node group unchanged without returning warnings', async () => {
 			const validGroupWorkflow: WorkflowJSON = {
 				name: 'Updated WF',

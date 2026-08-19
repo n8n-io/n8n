@@ -1280,15 +1280,14 @@ async function handleUpdate(
 		};
 	}
 
-	ensureUniqueNodeIds(input.workflow);
-	const droppedGroups = dropInvalidNodeGroups(input.workflow, context);
-
 	// Guard against overwriting a save this conversation never saw (canvas
 	// autosave, another user, another thread). Absent when the agent never read
 	// the workflow here — then there is nothing to pin the save to.
 	const expectedChecksum = await getObservedWorkflowChecksum(context, input.workflowId);
 
 	try {
+		ensureUniqueNodeIds(input.workflow);
+		const droppedGroups = dropInvalidNodeGroups(input.workflow, context);
 		const saved = expectedChecksum
 			? await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow, {
 					expectedChecksum,

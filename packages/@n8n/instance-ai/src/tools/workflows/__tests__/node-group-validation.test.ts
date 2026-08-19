@@ -194,6 +194,18 @@ describe('dropInvalidNodeGroups', () => {
 		expect(warnings[0]?.message).toContain('Trigger group');
 	});
 
+	it('returns one warning per dropped group when a group has multiple violations', () => {
+		const json = makeWorkflow([makeNode('a', 'A')], {}, [
+			{ id: 'g1', name: 'Missing nodes group', nodeIds: ['missing-1', 'missing-2'] },
+		]);
+
+		const warnings = dropInvalidNodeGroups(json, context);
+
+		expect(json.nodeGroups).toEqual([]);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]?.message).toContain('missing-1');
+	});
+
 	it('runs basic checks without a nodeTypesProvider but skips trigger checks', () => {
 		const basicInvalid = makeWorkflow([makeNode('a', 'A')], {}, [
 			{ id: 'g1', name: 'Unknown node group', nodeIds: ['missing'] },
