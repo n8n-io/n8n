@@ -187,4 +187,59 @@ describe('downgradeUnchangedNodeBlockers', () => {
 
 		expect(result[0].severity).toBe('informational');
 	});
+
+	it('downgrades chat_model_validation on unchanged nodes and keeps it on changed nodes', () => {
+		const chatModelSaved = makeNode({
+			id: 'cm-1',
+			name: 'OpenAI Chat Model',
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			parameters: { model: 'gpt-4o-mini' },
+		});
+		const chatModelBuilt = makeNode({
+			id: 'cm-1',
+			name: 'OpenAI Chat Model',
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			parameters: { model: 'gpt-4o-mini' },
+		});
+		const saved = makeWorkflow([chatModelSaved]);
+		const built = makeWorkflow([chatModelBuilt]);
+
+		const chatModelWarning: ValidationWarning = {
+			code: 'chat_model_validation',
+			message: 'OpenAI Chat Model: Model "gpt-4o-mini" is deprecated.',
+			nodeName: 'OpenAI Chat Model',
+			severity: 'error',
+		};
+
+		const unchangedResult = downgradeUnchangedNodeBlockers([chatModelWarning], built, saved);
+		expect(unchangedResult[0].severity).toBe('informational');
+		expect(unchangedResult[0].message).toContain('pre-existing node, unchanged by this build');
+
+		const modifiedBuilt = makeWorkflow([
+			makeNode({
+				id: 'cm-1',
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				parameters: { model: 'gpt-4o-mini', options: { temperature: 0.7 } },
+			}),
+		]);
+		const modifiedResult = downgradeUnchangedNodeBlockers([chatModelWarning], modifiedBuilt, saved);
+		expect(modifiedResult[0].severity).toBe('error');
+
+		const rewiredCredsBuilt = makeWorkflow([
+			makeNode({
+				id: 'cm-1',
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				parameters: { model: 'gpt-4o-mini' },
+				credentials: { openAiApi: { id: 'new-cred', name: 'New OpenAI' } },
+			}),
+		]);
+		const rewiredCredsResult = downgradeUnchangedNodeBlockers(
+			[chatModelWarning],
+			rewiredCredsBuilt,
+			saved,
+		);
+		expect(rewiredCredsResult[0].severity).toBe('error');
+	});
 });

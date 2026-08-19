@@ -199,7 +199,17 @@ const validateAction = z.object({
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	ignoreIssues: z
-		.array(z.enum(['parameters', 'credentials', 'input', 'execution', 'typeUnknown']))
+		.array(
+			z.enum([
+				'parameters',
+				'credentials',
+				'input',
+				'execution',
+				'typeUnknown',
+				'aiGateway',
+				'chatModel',
+			]),
+		)
 		.optional()
 		.describe('Issue categories to suppress from the result'),
 });
@@ -383,7 +393,7 @@ function getSupportedWorkflowActionSchemas(
 	return {
 		list: listAction,
 		get: getAction,
-		'get-json': getJsonAction,
+		...(surface !== 'orchestrator' ? { 'get-json': getJsonAction } : {}),
 		'get-as-code': getAsCodeAction,
 		delete: deleteAction,
 		unarchive: unarchiveAction,
