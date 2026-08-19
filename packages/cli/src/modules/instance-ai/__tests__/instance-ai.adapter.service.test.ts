@@ -2079,6 +2079,29 @@ describe('createWorkflowAdapter', () => {
 		mockedUserHasScopes.mockResolvedValue(true);
 	});
 
+	it('summarizes pinned data as node names and item counts, without payloads', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-pins',
+			pinData: {
+				'Get Job Alert Emails': [{ json: { id: 'msg_1' } }, { json: { id: 'msg_2' } }],
+				'Empty Pin': [],
+			},
+		});
+
+		await expect(adapter.getPinnedDataSummary?.('wf-pins')).resolves.toEqual([
+			{ nodeName: 'Get Job Alert Emails', itemCount: 2 },
+			{ nodeName: 'Empty Pin', itemCount: 0 },
+		]);
+	});
+
+	it('returns an empty pinned-data summary when the workflow has no pins', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-clean' });
+
+		await expect(adapter.getPinnedDataSummary?.('wf-clean')).resolves.toEqual([]);
+	});
+
 	it('preserves node-level execution options when returning WorkflowJSON', async () => {
 		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
 		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
@@ -3390,6 +3413,32 @@ function createRunAdapterForTests(
 describe('createExecutionAdapter run()', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('reports workflow-pinned nodes on the run result', async () => {
+		const { adapter } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+				pinData: { 'Get Job Alert Emails': [{ json: { id: 'msg_1' } }] },
+			},
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		const result = await adapter.run('wf-1');
+
+		expect(result.workflowPinnedNodeNames).toEqual(['Get Job Alert Emails']);
+	});
+
+	it('omits workflow-pinned nodes from the run result when the workflow has none', async () => {
+		const { adapter } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [] },
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		const result = await adapter.run('wf-1');
+
+		expect(result).not.toHaveProperty('workflowPinnedNodeNames');
 	});
 
 	it('forces save settings so the agent can read the result back', async () => {
