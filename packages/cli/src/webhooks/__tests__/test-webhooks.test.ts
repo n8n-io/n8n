@@ -455,8 +455,8 @@ describe('TestWebhooks', () => {
 				.spyOn(testWebhooks, 'deactivateWebhooks')
 				.mockResolvedValue(undefined);
 
-			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(async (..._args: unknown[]) => {
-				const onDone = _args[10] as (error: Error | null, data: unknown) => void;
+			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(async (...args: unknown[]) => {
+				const onDone = args[10] as (error: Error | null, data: unknown) => void;
 				onDone(null, { noWebhookResponse: true });
 				return 'execution-id';
 			});
