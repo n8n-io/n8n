@@ -14,7 +14,13 @@ import type {
 import {
 	buildChatModelFailureGuidance,
 	classifyChatModelFailure,
+	type ChatModelRecoveryContext,
 } from '../../workflows/chat-model-validation';
+
+export type ChatModelRecoveryOptions = Pick<
+	ChatModelRecoveryContext,
+	'suggestionsByNodeName' | 'aiCreditsAvailable'
+>;
 
 type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
 
@@ -155,6 +161,27 @@ function isChatModelScopedFailure(
 	return false;
 }
 
+/** Suggestions for the failing node when known, otherwise any provider's suggestions. */
+function replacementSuggestionsForFailure(
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+	suggestionsByNodeName: ChatModelRecoveryOptions['suggestionsByNodeName'] | undefined,
+): string[] {
+	if (!suggestionsByNodeName) return [];
+	for (const nodeError of nodeErrors) {
+		const suggestions = suggestionsByNodeName.get(nodeError.nodeName);
+		if (suggestions && suggestions.length > 0) return suggestions;
+	}
+	if (lastNodeExecuted) {
+		const suggestions = suggestionsByNodeName.get(lastNodeExecuted);
+		if (suggestions && suggestions.length > 0) return suggestions;
+	}
+	for (const suggestions of suggestionsByNodeName.values()) {
+		if (suggestions.length > 0) return suggestions;
+	}
+	return [];
+}
+
 function classifyVerificationFailure(
 	error: string | undefined,
 	status: string | undefined,
@@ -162,6 +189,7 @@ function classifyVerificationFailure(
 	nodeErrors: ExecutionNodeError[],
 	lastNodeExecuted: string | undefined,
 	chatModelRelatedNodeNames: ReadonlySet<string> | undefined,
+	chatModelRecovery: ChatModelRecoveryOptions | undefined,
 ): RemediationMetadata {
 	if (status === 'waiting') {
 		const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
@@ -196,7 +224,9 @@ function classifyVerificationFailure(
 		const quotaGuidance =
 			normalized.includes('quota') &&
 			isChatModelScopedFailure(nodeErrors, error, lastNodeExecuted, chatModelRelatedNodeNames)
-				? " If the user's own key or free tier is exhausted, switch the chat-model node to n8n credits or another provider they can run."
+				? chatModelRecovery?.aiCreditsAvailable
+					? " If the user's own key or free tier is exhausted, switch the chat-model node to n8n credits or another provider they can run."
+					: " If the user's own key or free tier is exhausted, switch the chat-model node to another provider or key the user can run."
 				: '';
 		return createRemediation({
 			category: 'needs_setup',
@@ -230,7 +260,16 @@ function classifyVerificationFailure(
 			category: 'code_fixable',
 			shouldEdit: true,
 			reason: 'chat_model_failure',
-			guidance: buildChatModelFailureGuidance(modelFailureKind, error),
+			guidance: buildChatModelFailureGuidance(
+				modelFailureKind,
+				error,
+				replacementSuggestionsForFailure(
+					nodeErrors,
+					lastNodeExecuted,
+					chatModelRecovery?.suggestionsByNodeName,
+				),
+				chatModelRecovery?.aiCreditsAvailable ?? false,
+			),
 		});
 	}
 
@@ -347,6 +386,8 @@ export function analyzeVerificationResult(args: {
 	 * nodes — never globally.
 	 */
 	chatModelRelatedNodeNames?: ReadonlySet<string>;
+	/** Precomputed replacement suggestions and n8n-credits availability for chat-model recovery guidance. */
+	chatModelRecovery?: ChatModelRecoveryOptions;
 }): VerificationAnalysis {
 	const {
 		result,
@@ -356,6 +397,7 @@ export function analyzeVerificationResult(args: {
 		stateBefore,
 		runId,
 		chatModelRelatedNodeNames,
+		chatModelRecovery,
 	} = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
@@ -382,6 +424,7 @@ export function analyzeVerificationResult(args: {
 				nodeErrors,
 				result.lastNodeExecuted,
 				chatModelRelatedNodeNames,
+				chatModelRecovery,
 			);
 	const budgetRemediation =
 		failureRemediation?.shouldEdit === true

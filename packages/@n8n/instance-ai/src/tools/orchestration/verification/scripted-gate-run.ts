@@ -8,6 +8,7 @@
 import {
 	analyzeVerificationResult,
 	buildSimulationNote,
+	type ChatModelRecoveryOptions,
 	type VerificationAnalysis,
 } from './analyze-result';
 import type { PreparedVerificationRun } from './prepare-run';
@@ -35,6 +36,7 @@ export interface ScriptedGateRunArgs {
 	stateBefore: WorkflowLoopState | undefined;
 	runId: string;
 	chatModelRelatedNodeNames?: ReadonlySet<string>;
+	chatModelRecovery?: ChatModelRecoveryOptions;
 }
 
 interface DecisionPass {
@@ -55,6 +57,7 @@ export async function runScriptedGateVerification(
 		stateBefore,
 		runId,
 		chatModelRelatedNodeNames,
+		chatModelRecovery,
 	} = args;
 	const basePins = prepared.verificationPinData ?? {};
 
@@ -74,6 +77,7 @@ export async function runScriptedGateVerification(
 			stateBefore,
 			runId,
 			chatModelRelatedNodeNames,
+			chatModelRecovery,
 		});
 		passes.push({ label: decision.label, result, analysis });
 	}

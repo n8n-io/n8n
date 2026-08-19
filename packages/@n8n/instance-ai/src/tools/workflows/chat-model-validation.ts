@@ -133,6 +133,7 @@ export function buildChatModelFailureGuidance(
 	kind: ChatModelFailureKind,
 	errorMessage: string,
 	replacementSuggestions: string[] = [],
+	aiCreditsAvailable = false,
 ): string {
 	const base =
 		'Verification failed because of a chat-model configuration problem, not workflow logic. ' +
@@ -153,7 +154,10 @@ export function buildChatModelFailureGuidance(
 				base +
 				' The chosen model cannot perform this node operation (for example image generation, computer use, or Responses API-only models). ' +
 				replacements +
-				' Or switch to n8n credits when the task fits a covered model. Original error: ' +
+				(aiCreditsAvailable
+					? ' Or switch to n8n credits (no API key required) when the task fits a covered model.'
+					: '') +
+				' Original error: ' +
 				errorMessage
 			);
 		case 'invalid_model':
@@ -161,7 +165,10 @@ export function buildChatModelFailureGuidance(
 				base +
 				' ' +
 				replacements +
-				" If the user's own key cannot reach any working model, switch the node to n8n credits instead of another guessed ID. Original error: " +
+				(aiCreditsAvailable
+					? " If the user's own key cannot reach any working model, switch the node to n8n credits (no API key required) instead of another guessed ID."
+					: " If the user's own key cannot reach any working model, ask the user for a provider or key that works instead of another guessed ID.") +
+				' Original error: ' +
 				errorMessage
 			);
 	}
@@ -257,6 +264,15 @@ function computeCatalogChatModelIssues(
 }
 
 /**
+ * Locator values and credential names are user-controlled; keep them
+ * single-line and short before embedding them in agent-facing guidance.
+ */
+function sanitizeForGuidance(value: string, maxLength = 120): string {
+	const singleLine = value.replace(/\s+/g, ' ').trim();
+	return singleLine.length > maxLength ? `${singleLine.slice(0, maxLength)}…` : singleLine;
+}
+
+/**
  * Ask the host which list-backed locator parameters the connected credential
  * cannot reach, and turn each into a parameter issue.
  */
@@ -285,7 +301,7 @@ export async function computeUnavailableLocatorIssues(
 		const isModel = entry.name.toLowerCase().includes('model');
 		const resourceType = isModel ? 'allowed models' : 'allowed options';
 		issues[entry.name] = [
-			`"${entry.currentValue}" isn't available with the connected credential "${credential.name}". ` +
+			`"${sanitizeForGuidance(entry.currentValue)}" isn't available with the connected credential "${sanitizeForGuidance(credential.name)}". ` +
 				`Pick a value the credential offers instead — use nodes(action="explore-resources") to list ${resourceType}.`,
 		];
 	}
@@ -346,6 +362,25 @@ export async function computeChatModelValidationIssues(
 	return issues;
 }
 
+/** A chat-model node name plus the parent agent/chain nodes it feeds via `ai_languageModel`. */
+function relatedNamesForChatModelNode(
+	nodeName: string,
+	connections: IConnections | Record<string, unknown> | undefined,
+): string[] {
+	const names = [nodeName];
+	if (connections) {
+		names.push(
+			...getChildNodes(
+				connections as IConnections,
+				nodeName,
+				NodeConnectionTypes.AiLanguageModel,
+				1,
+			),
+		);
+	}
+	return names;
+}
+
 /**
  * Chat-model node names plus parent agent/chain nodes they feed via
  * `ai_languageModel`. Provider errors often surface on the parent, not the
@@ -358,18 +393,64 @@ export function collectChatModelRelatedNodeNames(
 	const related = new Set<string>();
 	for (const node of nodes) {
 		if (node.name && isChatModelNode(node.type)) {
-			related.add(node.name);
-			if (connections) {
-				for (const parent of getChildNodes(
-					connections as IConnections,
-					node.name,
-					NodeConnectionTypes.AiLanguageModel,
-					1,
-				)) {
-					related.add(parent);
-				}
+			for (const name of relatedNamesForChatModelNode(node.name, connections)) {
+				related.add(name);
 			}
 		}
 	}
 	return related;
+}
+
+export interface ChatModelRecoveryContext {
+	relatedNodeNames: Set<string>;
+	/** Replacement model ids keyed by chat-model node name AND its parent agent/chain names. */
+	suggestionsByNodeName: ReadonlyMap<string, string[]>;
+	/** Whether at least one chat-model credential type is covered by n8n credits on this instance. */
+	aiCreditsAvailable: boolean;
+}
+
+/**
+ * Precomputes everything the sync verification-failure classifier needs to
+ * build chat-model recovery guidance: related node names, catalog-backed
+ * replacement suggestions per node, and n8n-credits availability.
+ */
+export async function collectChatModelRecoveryContext(
+	context: Pick<InstanceAiContext, 'credentialService'>,
+	nodes: ReadonlyArray<{ name?: string; type?: string }>,
+	connections: IConnections | Record<string, unknown> | undefined,
+): Promise<ChatModelRecoveryContext> {
+	const relatedNodeNames = collectChatModelRelatedNodeNames(nodes, connections);
+	const suggestionsByNodeName = new Map<string, string[]>();
+	let aiCreditsAvailable = false;
+	if (relatedNodeNames.size === 0) {
+		return { relatedNodeNames, suggestionsByNodeName, aiCreditsAvailable };
+	}
+
+	const catalog = await loadCatalogWithTimeout();
+	const gatewaySupportByCredType = new Map<string, boolean>();
+	for (const node of nodes) {
+		if (!node.name || !isChatModelNode(node.type)) continue;
+		const entry = resolveChatModelCatalogEntry(node.type);
+		if (!entry) continue;
+
+		const suggestions = suggestReplacementModels(catalog?.[entry.modelsDevProviderId]);
+		if (suggestions.length > 0) {
+			for (const name of relatedNamesForChatModelNode(node.name, connections)) {
+				suggestionsByNodeName.set(name, suggestions);
+			}
+		}
+
+		if (!aiCreditsAvailable && context.credentialService.isAiGatewayCredentialType) {
+			let supported = gatewaySupportByCredType.get(entry.credentialType);
+			if (supported === undefined) {
+				supported = await context.credentialService
+					.isAiGatewayCredentialType(entry.credentialType)
+					.catch(() => false);
+				gatewaySupportByCredType.set(entry.credentialType, supported);
+			}
+			if (supported) aiCreditsAvailable = true;
+		}
+	}
+
+	return { relatedNodeNames, suggestionsByNodeName, aiCreditsAvailable };
 }

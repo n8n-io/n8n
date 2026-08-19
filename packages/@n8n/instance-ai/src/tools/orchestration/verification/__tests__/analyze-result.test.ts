@@ -106,6 +106,39 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		expect(analysis.remediation?.guidance).toContain('explore-resources');
 	});
 
+	it('includes precomputed replacement suggestions in recovery guidance', () => {
+		const analysis = analyzeVerificationResult({
+			result: {
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'The model "models/gemini-2.5-flash" was not found',
+				lastNodeExecuted: 'AI Agent',
+				nodeErrors: [
+					{
+						nodeName: 'AI Agent',
+						message: 'The model "models/gemini-2.5-flash" was not found',
+					},
+				],
+			} as unknown as ExecutionRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+			chatModelRelatedNodeNames: new Set(['Gemini Chat Model', 'AI Agent']),
+			chatModelRecovery: {
+				suggestionsByNodeName: new Map([
+					['Gemini Chat Model', ['gemini-3-flash']],
+					['AI Agent', ['gemini-3-flash']],
+				]),
+				aiCreditsAvailable: false,
+			},
+		});
+
+		expect(analysis.remediation?.reason).toBe('chat_model_failure');
+		expect(analysis.remediation?.guidance).toContain('Prefer one of: "gemini-3-flash"');
+		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
+	});
+
 	it('does not classify a model-shaped HTTP Request failure as a chat-model failure', () => {
 		const analysis = analyzeVerificationResult({
 			result: {
@@ -125,7 +158,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		expect(analysis.remediation?.reason).toBe('runtime_failure');
 	});
 
-	it('adds n8n credits guidance for chat-model scoped quota failures', () => {
+	it('adds n8n credits guidance for chat-model scoped quota failures when credits are available', () => {
 		const analysis = analyzeVerificationResult({
 			result: {
 				executionId: 'exec-1',
@@ -138,10 +171,32 @@ describe('analyzeVerificationResult — chat model failures', () => {
 			stateBefore: undefined,
 			runId: 'run-1',
 			chatModelRelatedNodeNames: new Set(['OpenAI Chat Model']),
+			chatModelRecovery: { suggestionsByNodeName: new Map(), aiCreditsAvailable: true },
 		});
 
 		expect(analysis.remediation?.category).toBe('needs_setup');
 		expect(analysis.remediation?.guidance).toContain('n8n credits');
+	});
+
+	it('omits n8n credits from quota guidance when the instance has no gateway coverage', () => {
+		const analysis = analyzeVerificationResult({
+			result: {
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'You exceeded your current quota, please check your plan and billing details',
+				lastNodeExecuted: 'OpenAI Chat Model',
+			} as unknown as ExecutionRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+			chatModelRelatedNodeNames: new Set(['OpenAI Chat Model']),
+			chatModelRecovery: { suggestionsByNodeName: new Map(), aiCreditsAvailable: false },
+		});
+
+		expect(analysis.remediation?.category).toBe('needs_setup');
+		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
+		expect(analysis.remediation?.guidance).toContain('another provider or key');
 	});
 
 	it('retains generic credential guidance for non-chat node quota failures', () => {
