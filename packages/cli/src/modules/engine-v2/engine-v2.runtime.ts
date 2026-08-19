@@ -144,28 +144,28 @@ export class EngineV2Runtime {
 		const server = this.server;
 		if (!server) return;
 
-		// Each release drops its handle before awaiting, so a failure here does not
-		// make the next `shutdown()` wait on the same resource again.
-		this.server = undefined;
-
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
 		});
+
+		// Each release drops its handle only after it succeeds, so a resource that
+		// failed to release is tried again on the next `shutdown()`.
+		this.server = undefined;
 	}
 
 	private async stopEngine(): Promise<void> {
 		const engine = this.engine;
 		if (!engine) return;
 
-		this.engine = undefined;
 		await engine.stop();
+		this.engine = undefined;
 	}
 
 	private async destroyDataSource(): Promise<void> {
 		const dataSource = this.dataSource;
 		if (!dataSource) return;
 
-		this.dataSource = undefined;
 		if (dataSource.isInitialized) await dataSource.destroy();
+		this.dataSource = undefined;
 	}
 }

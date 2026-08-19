@@ -226,6 +226,21 @@ describe('EngineV2Runtime', () => {
 			expect(mocks.dataSource.destroy).not.toHaveBeenCalled();
 		});
 
+		it('releases a resource again when its first release failed', async () => {
+			const runtime = newRuntime();
+			await runtime.init();
+			mocks.server.close.mockImplementationOnce((done) => done(new Error('close failed')));
+
+			await expect(runtime.shutdown()).rejects.toThrow(AggregateError);
+			await expect(runtime.shutdown()).resolves.toBeUndefined();
+
+			expect(mocks.server.close).toHaveBeenCalledTimes(2);
+			// The engine and the connection released on the first pass, so they are
+			// not touched again.
+			expect(mocks.engine.stop).toHaveBeenCalledTimes(1);
+			expect(mocks.dataSource.destroy).toHaveBeenCalledTimes(1);
+		});
+
 		it('is safe to call twice', async () => {
 			const runtime = newRuntime();
 			await runtime.init();
