@@ -441,6 +441,7 @@ export const credentialRequestSchema = z.object({
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
 	suggestedName: z.string().optional(),
 	setupHint: credentialSetupHintSchema.optional(),
+	preferNew: z.boolean().optional(),
 });
 
 export type InstanceAiCredentialRequest = z.infer<typeof credentialRequestSchema>;
@@ -475,6 +476,7 @@ export const workflowSetupNodeSchema = z.object({
 	isFirstTrigger: z.boolean().optional(),
 	isTestable: z.boolean().optional(),
 	isAutoApplied: z.boolean().optional(),
+	preferNewCredential: z.boolean().optional(),
 	credentialTestResult: z
 		.object({
 			success: z.boolean(),

@@ -5,7 +5,8 @@ import request from 'supertest';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
-import { createDataSource, WorkflowExecution } from '../../database';
+import { createDataSource, createStores, WorkflowExecution } from '../../database';
+import { StartExecutionService } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import { startEngineServer } from '../../testing/start-engine-server';
@@ -31,11 +32,10 @@ describe('POST /api/workflow-executions (integration)', () => {
 
 	beforeEach(async () => {
 		workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
-		({ url, stop } = await startEngineServer({
-			dataSource,
-			admittance: new AllowAllAdmittance(),
-			workQueue,
-		}));
+		const { executionStore } = createStores(dataSource);
+		({ url, stop } = await startEngineServer(
+			new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
+		));
 	});
 
 	afterEach(async () => {

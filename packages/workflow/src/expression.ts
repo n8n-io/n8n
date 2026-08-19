@@ -6,13 +6,7 @@ import { UnexpectedError, UserError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
-import {
-	DollarSignValidator,
-	PrototypeSanitizer,
-	ThisSanitizer,
-	sanitizer,
-	sanitizerName,
-} from './expression-sandboxing';
+import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
@@ -268,10 +262,7 @@ export class Expression {
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
 				idleTimeoutMs: options.idleTimeoutMs,
-				hooks: {
-					before: [ThisSanitizer],
-					after: [PrototypeSanitizer, DollarSignValidator],
-				},
+				hooks: expressionSandboxHooks,
 				logger: LoggerProxy,
 				observability: options.observability,
 			});
