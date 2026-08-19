@@ -200,7 +200,7 @@ export class GitConnectionsPublicController {
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
-	@ApiSummary('List projects assigned to a Git connection')
+	@ApiSummary('List projects added to a Git connection')
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionProjectListPublicDto)
 	@ApiErrorResponse(404)
@@ -216,37 +216,37 @@ export class GitConnectionsPublicController {
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:manageProjects')
 	@GlobalScope('gitConnection:manageProjects')
-	@ApiSummary('Assign a project to a Git connection')
+	@ApiSummary('Add a project to a Git connection')
 	@ApiDescription(
-		'Links a team project to the connection. A project can be assigned to only one connection.',
+		'Adds a team project to the connection. A project can be added to only one connection.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionProjectPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
-	async assignProjectToGitConnection(
+	async addProjectToGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
 		@Param('projectId') projectId: string,
 	): Promise<GitConnectionProjectPublicDto> {
-		return await (await this.gitConnectionsService()).assignProject(id, projectId);
+		return await (await this.gitConnectionsService()).addProject(id, projectId);
 	}
 
 	@Delete('/:id/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:manageProjects')
 	@GlobalScope('gitConnection:manageProjects')
-	@ApiSummary('Un-link a project from a Git connection')
+	@ApiSummary('Remove a project from a Git connection')
 	@ApiTags(tags)
 	@ApiResponse(204)
 	@ApiErrorResponse(404)
-	async unlinkProjectFromGitConnection(
+	async removeProjectFromGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
 		@Param('projectId') projectId: string,
 	): Promise<void> {
-		await (await this.gitConnectionsService()).unlinkProject(id, projectId);
+		await (await this.gitConnectionsService()).removeProject(id, projectId);
 	}
 }

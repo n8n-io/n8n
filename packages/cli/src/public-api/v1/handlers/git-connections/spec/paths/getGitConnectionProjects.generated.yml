@@ -1,7 +1,7 @@
 operationId: getGitConnectionProjects
 tags:
   - GitConnections
-summary: List projects assigned to a Git connection
+summary: List projects added to a Git connection
 x-required-scope: gitConnection:read
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler

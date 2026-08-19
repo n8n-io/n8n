@@ -1,7 +1,7 @@
-operationId: unlinkProjectFromGitConnection
+operationId: removeProjectFromGitConnection
 tags:
   - GitConnections
-summary: Un-link a project from a Git connection
+summary: Remove a project from a Git connection
 x-required-scope: gitConnection:manageProjects
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
