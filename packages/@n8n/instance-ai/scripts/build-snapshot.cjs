@@ -21,6 +21,15 @@
  * Required env vars:
  *   DAYTONA_API_KEY   admin key with snapshot.create permissions
  *   DAYTONA_API_URL   Daytona API base URL (optional — SDK default used if absent)
+ *   DAYTONA_SNAPSHOT_MAX_AGE_DAYS
+ *                     prune versioned snapshots not used within this many days
+ *                     (lastUsedAt, falling back to createdAt). Runs after a
+ *                     successful publish and on quota-exceeded errors.
+ *                     0 disables age pruning. Default: 20.
+ *   DAYTONA_SNAPSHOT_RETENTION
+ *                     hard cap on versioned snapshots per org (quota backstop);
+ *                     least-recently-used ones are evicted beyond this count.
+ *                     0 disables the cap. Default: 10.
  *
  * Usage:
  *   node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version 1.123.0
@@ -36,6 +45,21 @@ function parseVersion(argv) {
 		if (arg.startsWith('--version=')) return arg.slice('--version='.length);
 	}
 	return process.env.N8N_VERSION;
+}
+
+const DEFAULT_SNAPSHOT_RETENTION = 10;
+const DEFAULT_SNAPSHOT_MAX_AGE_DAYS = 20;
+
+/** Read a non-negative integer env var, exiting with an error when malformed. */
+function readNonNegativeIntEnv(name, defaultValue) {
+	const rawValue = process.env[name];
+	if (rawValue === undefined || rawValue === '') return defaultValue;
+	const parsed = Number.parseInt(rawValue, 10);
+	if (!Number.isInteger(parsed) || parsed < 0 || String(parsed) !== rawValue.trim()) {
+		console.error(`Invalid ${name} "${rawValue}" — expected a non-negative integer`);
+		process.exit(1);
+	}
+	return parsed;
 }
 
 const consoleLogger = {
@@ -59,6 +83,12 @@ async function main() {
 	}
 	const apiUrl = process.env.DAYTONA_API_URL || undefined;
 
+	const retention = readNonNegativeIntEnv('DAYTONA_SNAPSHOT_RETENTION', DEFAULT_SNAPSHOT_RETENTION);
+	const maxAgeDays = readNonNegativeIntEnv(
+		'DAYTONA_SNAPSHOT_MAX_AGE_DAYS',
+		DEFAULT_SNAPSHOT_MAX_AGE_DAYS,
+	);
+
 	const daytona = new Daytona({ apiKey, apiUrl });
 	const baseImage = process.env.SANDBOX_IMAGE || undefined;
 	const manager = new SnapshotManager(baseImage, consoleLogger, version);
@@ -66,6 +96,8 @@ async function main() {
 	const name = await manager.createSnapshot(daytona, {
 		timeout: 1800,
 		onLogs: (chunk) => process.stdout.write(`${chunk}\n`),
+		retention: retention > 0 ? retention : undefined,
+		maxAgeDays: maxAgeDays > 0 ? maxAgeDays : undefined,
 	});
 
 	consoleLogger.info('Snapshot ready', { name });

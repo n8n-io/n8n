@@ -35,7 +35,10 @@ jobs:
   build-snapshot:
     name: Build versioned Daytona snapshot (${{ matrix.environment }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Checkout + monorepo build (~10 min) run before the snapshot script, whose
+    # own create/verify budget is 30 min — keep headroom so the script's
+    # in-process timeout fires before the runner's hard kill.
+    timeout-minutes: 45
     # Dev is best-effort: a dev failure is reported but does not block the release.
     # Only the prod publish gates the release.
     continue-on-error: ${{ matrix.environment == 'dev' }}
@@ -60,4 +63,11 @@ jobs:
           DAYTONA_API_KEY: ${{ matrix.environment == 'dev' && secrets.DAYTONA_API_KEY_DEV || matrix.environment == 'prod' && secrets.DAYTONA_API_KEY_PROD || '' }}
           # Fall back to the shared DAYTONA_API_URL when an env-specific URL isn't set.
           DAYTONA_API_URL: ${{ matrix.environment == 'dev' && secrets.DAYTONA_API_URL_DEV || matrix.environment == 'prod' && secrets.DAYTONA_API_URL_PROD || secrets.DAYTONA_API_URL }}
+          # Prune versioned snapshots not used in 20 days (lastUsedAt-based, so
+          # versions still in use survive regardless of release cadence).
+          DAYTONA_SNAPSHOT_MAX_AGE_DAYS: '20'
+          # Hard count cap as a quota backstop (LRU eviction). Dev has a
+          # 30-snapshot org quota shared with ad-hoc testing, so keep it well
+          # below that.
+          DAYTONA_SNAPSHOT_RETENTION: ${{ matrix.environment == 'dev' && '15' || '100' }}
         run: node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version "$N8N_VERSION"
