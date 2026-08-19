@@ -77,7 +77,13 @@ describe('WorkflowReviewAccessService', () => {
 
 	function mockChildRow(pinnedVersionId: string | null = 'ver-pinned') {
 		workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([
-			{ workflowId, workflowName: 'My workflow', workflowVersionId: pinnedVersionId },
+			{
+				workflowId,
+				workflowName: 'My workflow',
+				workflowVersionId: pinnedVersionId,
+				baselineVersionId: null,
+				requestState: 'open',
+			},
 		]);
 	}
 
@@ -216,7 +222,13 @@ describe('WorkflowReviewAccessService', () => {
 			const result = await service.findReadableRequestOrFail(requester, requestId);
 
 			expect(result.readableWorkflowRows).toEqual([
-				{ workflowId, workflowName: 'My workflow', workflowVersionId: 'ver-pinned' },
+				{
+					workflowId,
+					workflowName: 'My workflow',
+					workflowVersionId: 'ver-pinned',
+					baselineVersionId: null,
+					requestState: 'open',
+				},
 			]);
 			expect(result.pinnedWorkflowId).toBe(workflowId);
 			expect(result.canReadPinnedWorkflow).toBe(true);
@@ -230,8 +242,20 @@ describe('WorkflowReviewAccessService', () => {
 		it('leaves out an unreadable workflow while another one keeps the review open', async () => {
 			mockReadableReviewProject();
 			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([
-				{ workflowId, workflowName: 'My workflow', workflowVersionId: 'ver-pinned' },
-				{ workflowId: 'wf-2', workflowName: 'Other workflow', workflowVersionId: 'ver-other' },
+				{
+					workflowId,
+					workflowName: 'My workflow',
+					workflowVersionId: 'ver-pinned',
+					baselineVersionId: null,
+					requestState: 'open',
+				},
+				{
+					workflowId: 'wf-2',
+					workflowName: 'Other workflow',
+					workflowVersionId: 'ver-other',
+					baselineVersionId: null,
+					requestState: 'open',
+				},
 			]);
 			workflowFinderService.findWorkflowForUser.mockImplementation(async (id) =>
 				id === 'wf-2' ? mock<WorkflowEntity>() : null,
@@ -240,7 +264,13 @@ describe('WorkflowReviewAccessService', () => {
 			const result = await service.findReadableRequestOrFail(requester, requestId);
 
 			expect(result.readableWorkflowRows).toEqual([
-				{ workflowId: 'wf-2', workflowName: 'Other workflow', workflowVersionId: 'ver-other' },
+				{
+					workflowId: 'wf-2',
+					workflowName: 'Other workflow',
+					workflowVersionId: 'ver-other',
+					baselineVersionId: null,
+					requestState: 'open',
+				},
 			]);
 			// Eligibility still resolves against the pinned row, which they cannot read
 			expect(result.pinnedWorkflowId).toBe(workflowId);
@@ -254,6 +284,69 @@ describe('WorkflowReviewAccessService', () => {
 
 			expect(result.pinnedWorkflowId).toBeNull();
 			expect(result.canReadPinnedWorkflow).toBe(false);
+		});
+	});
+
+	describe('resolveOpenableRequestIds', () => {
+		const requests = [
+			{ id: 'req-1', projectId: 'proj-1' },
+			{ id: 'req-2', projectId: 'proj-2' },
+		];
+
+		beforeEach(() => {
+			authorRepository.findRequestIdsForUser.mockResolvedValue(new Set());
+			reviewerRepository.findRequestIdsForUser.mockResolvedValue(new Set());
+		});
+
+		it('returns nothing for an empty batch without resolving visibility', async () => {
+			expect(await service.resolveOpenableRequestIds(member, [])).toEqual(new Set());
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
+		});
+
+		it('lets a global admin open every request without probing participation', async () => {
+			const openable = await service.resolveOpenableRequestIds(globalAdmin, requests);
+
+			expect(openable).toEqual(new Set(['req-1', 'req-2']));
+			expect(authorRepository.findRequestIdsForUser).not.toHaveBeenCalled();
+			expect(reviewerRepository.findRequestIdsForUser).not.toHaveBeenCalled();
+		});
+
+		it('opens requests in administered projects and only probes participation for the rest', async () => {
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['proj-1']);
+			reviewerRepository.findRequestIdsForUser.mockResolvedValue(new Set(['req-2']));
+
+			const openable = await service.resolveOpenableRequestIds(member, requests);
+
+			expect(openable).toEqual(new Set(['req-1', 'req-2']));
+			expect(authorRepository.findRequestIdsForUser).toHaveBeenCalledWith(['req-2'], member.id);
+			expect(reviewerRepository.findRequestIdsForUser).toHaveBeenCalledWith(['req-2'], member.id);
+		});
+
+		it('opens requests the user authored — the requester and version-pinning co-authors', async () => {
+			authorRepository.findRequestIdsForUser.mockResolvedValue(new Set(['req-1']));
+
+			expect(await service.resolveOpenableRequestIds(member, requests)).toEqual(new Set(['req-1']));
+		});
+
+		it('opens nothing for an uninvolved non-admin, whatever workflow permissions they hold', async () => {
+			expect(await service.resolveOpenableRequestIds(member, requests)).toEqual(new Set());
+		});
+
+		it('answers exactly like the single-request detail gate', async () => {
+			// Same fixtures as the detail-gate tests above: assigned reviewer on req-1.
+			reviewerRepository.findRequestIdsForUser.mockResolvedValue(new Set(['req-1']));
+			reviewerRepository.isReviewer.mockImplementation(
+				async ({ workflowReviewRequestId }) => workflowReviewRequestId === 'req-1',
+			);
+			authorRepository.isAuthor.mockResolvedValue(false);
+			projectService.getProjectIdsWithScope.mockResolvedValue(['proj-1']);
+
+			const openable = await service.resolveOpenableRequestIds(member, requests);
+			expect(openable).toEqual(new Set(['req-1']));
+
+			await expect(service.findReadableRequestOrFail(member, requestId)).resolves.toMatchObject({
+				request: { id: requestId },
+			});
 		});
 	});
 

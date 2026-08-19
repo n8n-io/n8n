@@ -1,5 +1,5 @@
 import { getSuccessorNodeIds, type GraphEdge, type WorkflowGraph } from '../graph';
-import { isSettledStatus } from './execution.types';
+import { stepKeyId, isSettledStatus, type StepKey, type StepKeyId } from './execution.types';
 import type { StepSummary } from './step-store';
 
 /**
@@ -12,7 +12,7 @@ import type { StepSummary } from './step-store';
  *    slot; it is dead if the source settled any other way, or left the slot
  *    null. An edge whose source is unsettled is neither yet.
  * 3. A node is decidable once every predecessor is settled. Decidable with at
- *    least one live incoming edge → it runs (queued). Decidable with none →
+ *    least one live incoming edge -> it runs (queued). Decidable with none ->
  *    it is skipped: settled at birth, its own out-edges all dead.
  * 4. A settlement decides only its direct successors; the cascade is the
  *    event loop. A skip is announced as settled like any other settlement,
@@ -25,29 +25,34 @@ import type { StepSummary } from './step-store';
  * Fates are pure functions of settled rows, so any planner, at any time,
  * recomputes the same decisions; duplicates and races converge instead of
  * corrupting.
+ *
+ * Rows are identified per `(nodeId, iteration)`: loop members run once per
+ * pass (CAT-2875). Forward edges stay within a pass; the back-edge and exit
+ * mappings land with loop execution, and until then back-edges are rejected.
  */
 
 export interface SuccessorDecisions {
 	/** Successors with a live input, to enqueue — in edge order. */
-	toQueue: string[];
+	toQueue: StepKey[];
 	/** Successors with settled but all-dead inputs, to record as skipped. */
-	toSkip: string[];
+	toSkip: StepKey[];
 }
 
 /**
- * Decides the direct successors of `settledNodeId` (rules 2–4). `steps` holds
- * the existing rows for those successors and their predecessors, including
- * `settledNodeId` itself.
+ * Decides the direct successors of the settled step (rules 2–4). `steps`
+ * holds the existing rows for those successors and their predecessors, keyed
+ * by `stepKeyId`, including the settled step itself.
  */
 export function decideSuccessors(
 	graph: WorkflowGraph,
-	settledNodeId: string,
-	steps: Record<string, StepSummary>,
+	settled: StepKey,
+	steps: Record<StepKeyId, StepSummary>,
 ): SuccessorDecisions {
 	const decisions: SuccessorDecisions = { toQueue: [], toSkip: [] };
-	for (const successor of getSuccessorNodeIds(graph, settledNodeId)) {
+	for (const successorNodeId of getSuccessorNodeIds(graph, settled.nodeId)) {
+		const successor: StepKey = { nodeId: successorNodeId, iteration: settled.iteration };
 		// An existing row was decided by an earlier settlement, which announced it.
-		if (steps[successor]) continue;
+		if (steps[stepKeyId(successor)]) continue;
 		const fate = decideNodeFate(graph, successor, steps);
 		if (fate === 'queued') decisions.toQueue.push(successor);
 		else if (fate === 'skipped') decisions.toSkip.push(successor);
@@ -55,24 +60,31 @@ export function decideSuccessors(
 	return decisions;
 }
 
-/** One node's fate under rules 2–3; undecidable while a predecessor is unsettled. */
+/** One candidate's fate under rules 2–3; undecidable while a predecessor is unsettled. */
 function decideNodeFate(
 	graph: WorkflowGraph,
-	nodeId: string,
-	steps: Record<string, StepSummary>,
+	candidate: StepKey,
+	steps: Record<StepKeyId, StepSummary>,
 ): 'queued' | 'skipped' | 'undecidable' {
 	// Back-edges aside: loop iteration is CAT-2875.
-	const incoming = graph.edges.filter((edge) => edge.to === nodeId && !edge.isBackEdge);
+	const incoming = graph.edges.filter((edge) => edge.to === candidate.nodeId && !edge.isBackEdge);
 	const predecessors = [...new Set(incoming.map((edge) => edge.from))];
-	const settled = predecessors.every(
-		(id) => steps[id] !== undefined && isSettledStatus(steps[id].status),
-	);
+	const settled = predecessors.every((nodeId) => {
+		const row = steps[stepKeyId({ nodeId, iteration: candidate.iteration })];
+		return row !== undefined && isSettledStatus(row.status);
+	});
 	if (!settled) return 'undecidable';
-	return incoming.some((edge) => isLiveEdge(edge, steps)) ? 'queued' : 'skipped';
+	return incoming.some((edge) => isLiveEdge(edge, candidate.iteration, steps))
+		? 'queued'
+		: 'skipped';
 }
 
 /** Rule 2. A slot beyond the produced list reads undefined — dead, like null. */
-function isLiveEdge(edge: GraphEdge, steps: Record<string, StepSummary>): boolean {
-	const source = steps[edge.from];
+function isLiveEdge(
+	edge: GraphEdge,
+	iteration: number,
+	steps: Record<StepKeyId, StepSummary>,
+): boolean {
+	const source = steps[stepKeyId({ nodeId: edge.from, iteration })];
 	return source?.status === 'completed' && Boolean(source.filledOutputSlots[edge.outputIndex]);
 }

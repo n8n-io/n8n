@@ -1,11 +1,20 @@
 import type { InsightsDateRange } from '@n8n/api-types';
-import { mockInstance, createWorkflow, createTeamProject, testDb } from '@n8n/backend-test-utils';
+import {
+	mockInstance,
+	createWorkflow,
+	createTeamProject,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
+import type { Project } from '@n8n/db';
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { DateTime } from 'luxon';
 
 import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
+import type { InsightsByPeriod } from '@/modules/insights/database/entities/insights-by-period';
 import { Telemetry } from '@/telemetry';
 
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils';
@@ -19,6 +28,17 @@ const testServer = utils.setupTestServer({
 	quotas: { 'quota:insights:maxHistoryDays': 365 },
 	modules: ['insights'],
 });
+
+const truncateDatabase = async () => {
+	await testDb.truncate([
+		'InsightsRaw',
+		'InsightsByPeriod',
+		'InsightsMetadata',
+		'SharedWorkflow',
+		'WorkflowEntity',
+		'Project',
+	]);
+};
 
 beforeAll(async () => {
 	const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
@@ -113,6 +133,87 @@ describe('GET /insights routes return 200 if date range inside license limits', 
 	});
 });
 
+describe('GET /insights/summary', () => {
+	describe('scopes results by project access', () => {
+		let insightsViewer: SuperAgentTest;
+		let accessibleProject: Project;
+		let inaccessibleProject: Project;
+
+		let accessibleWorkflowInsights: InsightsByPeriod;
+
+		beforeAll(async () => {
+			testServer.license.setDefaults({
+				features: ['feat:insights:viewSummary', 'feat:insights:viewDashboard'],
+				quotas: { 'quota:insights:maxHistoryDays': 365 },
+			});
+
+			// A global role granting only the insights view scopes, and no workflow access
+			const insightsRole = await createCustomRoleWithScopeSlugs(
+				['insights:list', 'insights:read'],
+				{
+					roleType: 'global',
+				},
+			);
+			const viewer = await createUser({ role: insightsRole });
+			insightsViewer = testServer.authAgentFor(viewer);
+
+			accessibleProject = await createTeamProject();
+			inaccessibleProject = await createTeamProject();
+			await linkUserToProject(viewer, accessibleProject, 'project:viewer');
+
+			const accessibleWorkflow = await createWorkflow({}, accessibleProject);
+			const inaccessibleWorkflow = await createWorkflow({}, inaccessibleProject);
+
+			const periodStart = DateTime.utc().startOf('day');
+			accessibleWorkflowInsights = await createCompactedInsightsEvent(accessibleWorkflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart,
+			});
+			await createCompactedInsightsEvent(inaccessibleWorkflow, {
+				type: 'success',
+				value: 5,
+				periodUnit: 'day',
+				periodStart,
+			});
+		});
+
+		test('should return the summary for a project the user can read', async () => {
+			const response = await insightsViewer
+				.get('/insights/summary')
+				.query({ projectId: accessibleProject.id })
+				.expect(200);
+
+			expect(response.body.data.total.value).toBe(accessibleWorkflowInsights.value);
+		});
+
+		test('should return 403 for a project the user cannot read', async () => {
+			await insightsViewer
+				.get('/insights/summary')
+				.query({ projectId: inaccessibleProject.id })
+				.expect(403);
+		});
+
+		test('should respond the same for an unknown project id as for an inaccessible one', async () => {
+			await insightsViewer
+				.get('/insights/summary')
+				.query({ projectId: 'non-existing-project-id' })
+				.expect(403);
+		});
+
+		test('should return the summary when no project is requested', async () => {
+			const response = await insightsViewer.get('/insights/summary').expect(200);
+
+			expect(response.body.data.total.value).toBe(accessibleWorkflowInsights.value);
+		});
+
+		afterAll(async () => {
+			await truncateDatabase();
+		});
+	});
+});
+
 describe('GET /insights/by-workflow', () => {
 	beforeAll(() => {
 		testServer.license.setDefaults({
@@ -189,14 +290,7 @@ describe('GET /insights/by-workflow', () => {
 
 	describe('sorting order verification', () => {
 		afterEach(async () => {
-			await testDb.truncate([
-				'InsightsRaw',
-				'InsightsByPeriod',
-				'InsightsMetadata',
-				'SharedWorkflow',
-				'WorkflowEntity',
-				'Project',
-			]);
+			await truncateDatabase();
 		});
 
 		test('should return workflows sorted by total:desc', async () => {
@@ -323,6 +417,217 @@ describe('GET /insights/by-workflow', () => {
 			response.body.data.data.forEach((item: any, index: number) => {
 				expect(item.failureRate).toBe(expectedOrder[index]);
 			});
+		});
+	});
+
+	describe('scopes results by project access', () => {
+		let insightsViewer: SuperAgentTest;
+		let accessibleProject: Project;
+		let inaccessibleProject: Project;
+		let inaccessibleWorkflowName: string;
+
+		let accessibleWorkflowInsights: InsightsByPeriod;
+
+		beforeAll(async () => {
+			testServer.license.setDefaults({
+				features: ['feat:insights:viewSummary', 'feat:insights:viewDashboard'],
+				quotas: { 'quota:insights:maxHistoryDays': 365 },
+			});
+
+			// A global role granting only the insights view scopes, and no workflow access
+			const insightsRole = await createCustomRoleWithScopeSlugs(
+				['insights:list', 'insights:read'],
+				{
+					roleType: 'global',
+				},
+			);
+			const viewer = await createUser({ role: insightsRole });
+			insightsViewer = testServer.authAgentFor(viewer);
+
+			accessibleProject = await createTeamProject();
+			inaccessibleProject = await createTeamProject();
+			await linkUserToProject(viewer, accessibleProject, 'project:viewer');
+
+			const accessibleWorkflow = await createWorkflow({}, accessibleProject);
+			const inaccessibleWorkflow = await createWorkflow(
+				{ name: 'TOPSECRET Payroll Sync' },
+				inaccessibleProject,
+			);
+			inaccessibleWorkflowName = inaccessibleWorkflow.name;
+
+			const periodStart = DateTime.utc().startOf('day');
+			accessibleWorkflowInsights = await createCompactedInsightsEvent(accessibleWorkflow, {
+				type: 'success',
+				value: 2,
+				periodUnit: 'day',
+				periodStart,
+			});
+			await createCompactedInsightsEvent(inaccessibleWorkflow, {
+				type: 'success',
+				value: 6,
+				periodUnit: 'day',
+				periodStart,
+			});
+		});
+
+		test('should not include workflows from inaccessible projects when no project is requested', async () => {
+			const response = await insightsViewer.get('/insights/by-workflow').expect(200);
+
+			expect(response.body.data.count).toBe(1);
+			expect(response.body.data.data).toHaveLength(1);
+
+			const workflowNames = response.body.data.data.map(
+				(row: { workflowName: string }) => row.workflowName,
+			);
+			expect(workflowNames).not.toContain(inaccessibleWorkflowName);
+			expect(response.body.data.data[0].total).toBe(accessibleWorkflowInsights.value);
+		});
+
+		test('should return 403 for a project the user cannot read', async () => {
+			await insightsViewer
+				.get('/insights/by-workflow')
+				.query({ projectId: inaccessibleProject.id })
+				.expect(403);
+		});
+
+		test('should return workflows for a project the user can read', async () => {
+			const response = await insightsViewer
+				.get('/insights/by-workflow')
+				.query({ projectId: accessibleProject.id })
+				.expect(200);
+
+			expect(response.body.data.data).toHaveLength(1);
+			expect(response.body.data.data[0].total).toBe(accessibleWorkflowInsights.value);
+		});
+
+		afterAll(async () => {
+			await truncateDatabase();
+		});
+	});
+});
+
+describe('GET /insights/by-time', () => {
+	describe('scopes results by project access', () => {
+		let insightsViewer: SuperAgentTest;
+		let accessibleProject: Project;
+		let inaccessibleProject: Project;
+
+		let accessibleWorkflowInsights: InsightsByPeriod;
+
+		beforeAll(async () => {
+			testServer.license.setDefaults({
+				features: ['feat:insights:viewSummary', 'feat:insights:viewDashboard'],
+				quotas: { 'quota:insights:maxHistoryDays': 365 },
+			});
+
+			// A global role granting only the insights view scopes, and no workflow access
+			const insightsRole = await createCustomRoleWithScopeSlugs(
+				['insights:list', 'insights:read'],
+				{
+					roleType: 'global',
+				},
+			);
+			const viewer = await createUser({ role: insightsRole });
+			insightsViewer = testServer.authAgentFor(viewer);
+
+			accessibleProject = await createTeamProject();
+			inaccessibleProject = await createTeamProject();
+			await linkUserToProject(viewer, accessibleProject, 'project:viewer');
+
+			const accessibleWorkflow = await createWorkflow({}, accessibleProject);
+			const inaccessibleWorkflow = await createWorkflow({}, inaccessibleProject);
+
+			const periodStart = DateTime.utc().startOf('day');
+			accessibleWorkflowInsights = await createCompactedInsightsEvent(accessibleWorkflow, {
+				type: 'success',
+				value: 3,
+				periodUnit: 'day',
+				periodStart,
+			});
+			await createCompactedInsightsEvent(inaccessibleWorkflow, {
+				type: 'success',
+				value: 7,
+				periodUnit: 'day',
+				periodStart,
+			});
+		});
+
+		test('returns 403 for an inaccessible project and scoped totals otherwise', async () => {
+			await insightsViewer
+				.get('/insights/by-time')
+				.query({ projectId: inaccessibleProject.id })
+				.expect(403);
+
+			const response = await insightsViewer.get('/insights/by-time').expect(200);
+
+			expect(response.body.data[0].values.succeeded).toBe(accessibleWorkflowInsights.value);
+		});
+
+		afterAll(async () => {
+			await truncateDatabase();
+		});
+	});
+});
+
+describe('GET /insights/by-time/time-saved', () => {
+	describe('scopes results by project access', () => {
+		let insightsViewer: SuperAgentTest;
+		let accessibleProject: Project;
+		let inaccessibleProject: Project;
+
+		let accessibleWorkflowInsights: InsightsByPeriod;
+
+		beforeAll(async () => {
+			testServer.license.setDefaults({
+				features: ['feat:insights:viewSummary', 'feat:insights:viewDashboard'],
+				quotas: { 'quota:insights:maxHistoryDays': 365 },
+			});
+
+			// A global role granting only the insights view scopes, and no workflow access
+			const insightsRole = await createCustomRoleWithScopeSlugs(
+				['insights:list', 'insights:read'],
+				{
+					roleType: 'global',
+				},
+			);
+			const viewer = await createUser({ role: insightsRole });
+			insightsViewer = testServer.authAgentFor(viewer);
+
+			accessibleProject = await createTeamProject();
+			inaccessibleProject = await createTeamProject();
+			await linkUserToProject(viewer, accessibleProject, 'project:viewer');
+
+			const accessibleWorkflow = await createWorkflow({}, accessibleProject);
+			const inaccessibleWorkflow = await createWorkflow({}, inaccessibleProject);
+
+			const periodStart = DateTime.utc().startOf('day');
+			accessibleWorkflowInsights = await createCompactedInsightsEvent(accessibleWorkflow, {
+				type: 'time_saved_min',
+				value: 4,
+				periodUnit: 'day',
+				periodStart,
+			});
+			await createCompactedInsightsEvent(inaccessibleWorkflow, {
+				type: 'time_saved_min',
+				value: 8,
+				periodUnit: 'day',
+				periodStart,
+			});
+		});
+
+		afterAll(async () => {
+			await truncateDatabase();
+		});
+
+		test('returns 403 for an inaccessible project and scoped totals otherwise', async () => {
+			await insightsViewer
+				.get('/insights/by-time/time-saved')
+				.query({ projectId: inaccessibleProject.id })
+				.expect(403);
+
+			const response = await insightsViewer.get('/insights/by-time/time-saved').expect(200);
+
+			expect(response.body.data[0].values.timeSaved).toBe(accessibleWorkflowInsights.value);
 		});
 	});
 });
