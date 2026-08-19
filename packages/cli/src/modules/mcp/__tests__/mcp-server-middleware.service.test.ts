@@ -292,6 +292,30 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).toHaveBeenCalled();
 		});
 
+		it('should attach the OAuth client the token was issued to', async () => {
+			const user = mock<User>({ id: 'user-123' });
+			const oauthToken = jwtService.sign({
+				sub: 'user-123',
+				aud: 'mcp-server-api',
+				meta: { isOAuth: true },
+			});
+
+			const req = mockReqWith(`Bearer ${oauthToken}`);
+			const res = mockDeep<Response>();
+			const next = vi.fn() as NextFunction;
+
+			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({
+				user,
+				authType: 'oauth',
+				oauthClientId: 'client-abc',
+			});
+
+			await service.getAuthMiddleware()(req, res, next);
+
+			expect((req as Request & { mcpOauthClientId?: string }).mcpOauthClientId).toBe('client-abc');
+			expect(next).toHaveBeenCalled();
+		});
+
 		it('should authenticate with valid API key and call next', async () => {
 			const user = mock<User>({ id: 'user-123' });
 			const apiKeyToken = jwtService.sign({
@@ -318,6 +342,8 @@ describe('McpServerMiddlewareService', () => {
 			expect(authenticatedReq.mcpAuthType).toBe('api_key');
 			// API keys are not scope-bearing: undefined means full tool access
 			expect(authenticatedReq.mcpScopes).toBeUndefined();
+			// An API key is not issued to an OAuth client, so there is none to report
+			expect((req as Request & { mcpOauthClientId?: string }).mcpOauthClientId).toBeUndefined();
 			expect(next).toHaveBeenCalled();
 			expect(res.status).not.toHaveBeenCalled();
 		});

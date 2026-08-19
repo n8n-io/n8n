@@ -1181,6 +1181,13 @@ export type RelayEventMap = {
 		workflowId?: string;
 		status: 'success' | 'error';
 		errorMessage?: string;
+		/**
+		 * The OAuth client the call was authenticated with, as registered with this
+		 * instance. Absent for API-key callers, which have no registered client.
+		 * Unlike `clientName` (self-reported by the client), this identifies the
+		 * client, so it is what usage can be attributed by.
+		 */
+		clientId?: string;
 		clientName?: string;
 	};
 

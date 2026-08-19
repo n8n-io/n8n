@@ -30,6 +30,12 @@ export type UserWithContext = {
 	/** OAuth scopes granted to the token. `undefined` = not scope-bearing (e.g. API key) → full access. */
 	scopes?: string[];
 	/**
+	 * The registered OAuth client the token was issued to (`client_id`). Absent
+	 * for API keys, which are not issued to a client. Carried so callers can
+	 * attribute activity to a client, not just to the user who authorized it.
+	 */
+	oauthClientId?: string;
+	/**
 	 * Sealable form of the gate this call was admitted by, for callers that keep
 	 * re-verifying after the resource stops resolving. Absent when the gate can't be
 	 * expressed as a grant, or the call was rejected.

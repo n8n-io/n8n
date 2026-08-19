@@ -50,7 +50,8 @@ vi.mock('@modelcontextprotocol/node', () => ({
 
 type AuthenticatedMcpRequest = AuthenticatedRequest & {
 	mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'];
-	mcpClientId?: string;
+	mcpScopes?: string[];
+	mcpOauthClientId?: string;
 };
 
 const createReq = (overrides: Partial<AuthenticatedMcpRequest> = {}): AuthenticatedMcpRequest =>
@@ -311,6 +312,7 @@ describe('McpController', () => {
 			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
 			{ name: 'Claude', version: '1.0.0' },
 			undefined,
+			undefined,
 		);
 	});
 
@@ -344,9 +346,38 @@ describe('McpController', () => {
 			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
 			undefined,
 			undefined,
+			undefined,
 		);
 		// Non-initialize requests still skip telemetry tracking.
 		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
+	test('forwards the OAuth client the request authenticated with to getServer', async () => {
+		// The auth middleware resolves the client from the bearer token; the
+		// controller hands it to the server so tool-call events can report it.
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				body: { jsonrpc: '2.0', method: 'tools/call' },
+				mcpScopes: ['workflow:read'],
+				mcpOauthClientId: 'client-abc',
+			}),
+			res,
+		);
+
+		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			expect.anything(),
+			undefined,
+			['workflow:read'],
+			'client-abc',
+		);
 	});
 
 	test('HEAD /http returns 401 with WWW-Authenticate header for auth scheme discovery', async () => {

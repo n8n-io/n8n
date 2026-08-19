@@ -20,7 +20,7 @@ import {
 import { McpService, type McpFeatureFlags } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
-import type { UserConnectedToMCPEventPayload } from './mcp.types';
+import type { McpAuthenticatedRequest, UserConnectedToMCPEventPayload } from './mcp.types';
 import { getClientInfo, getProtocolVersion } from './mcp.utils';
 
 export type FlushableResponse = Response & { flush: () => void };
@@ -142,9 +142,7 @@ export class McpController {
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
 			protocol_version: getProtocolVersion(req),
-			auth_type: (
-				req as AuthenticatedRequest & { mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'] }
-			).mcpAuthType,
+			auth_type: (req as McpAuthenticatedRequest).mcpAuthType,
 		};
 
 		const enabled = await this.mcpSettingsService.getEnabled();
@@ -219,7 +217,7 @@ export class McpController {
 		const { toNodeHandler } = await lazyImport<typeof import('@modelcontextprotocol/node')>(
 			async () => await import('@modelcontextprotocol/node'),
 		);
-		const grantedScopes = (req as AuthenticatedRequest & { mcpScopes?: string[] }).mcpScopes;
+		const { mcpScopes: grantedScopes, mcpOauthClientId } = req as McpAuthenticatedRequest;
 
 		// The handler builds a fresh server per request (complete isolation, no
 		// request-ID collisions across concurrent clients) and serves both the
@@ -227,7 +225,13 @@ export class McpController {
 		// clients on this same endpoint.
 		const handler = createMcpHandler(
 			async () =>
-				await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), grantedScopes),
+				await this.mcpService.getServer(
+					req.user,
+					featureFlags,
+					getClientInfo(req),
+					grantedScopes,
+					mcpOauthClientId,
+				),
 			{
 				legacy: 'stateless',
 				onerror: (error) => this.errorReporter.error(error),

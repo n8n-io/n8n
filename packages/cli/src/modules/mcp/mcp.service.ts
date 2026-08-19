@@ -307,7 +307,12 @@ export class McpService {
 	 * agent tools, go through the function this returns. Returns the SDK's
 	 * RegisteredTool so callers (and tests) can reach the stored handler.
 	 */
-	createToolRegistrar(server: McpServer, user: User, clientInfo?: McpClientInfo) {
+	createToolRegistrar(
+		server: McpServer,
+		user: User,
+		clientInfo?: McpClientInfo,
+		oauthClientId?: string,
+	) {
 		return (tool: ToolDefinition) => {
 			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
 			// through a generic callable and narrow the result back to a tool result.
@@ -325,6 +330,7 @@ export class McpService {
 						workflowId: workflowId ?? getWorkflowId(result?.structuredContent),
 						status,
 						errorMessage,
+						clientId: oauthClientId,
 						clientName: clientInfo?.name,
 					});
 					return result;
@@ -335,6 +341,7 @@ export class McpService {
 						workflowId,
 						status: 'error',
 						errorMessage: error instanceof Error ? error.message : String(error),
+						clientId: oauthClientId,
 						clientName: clientInfo?.name,
 					});
 					throw error;
@@ -375,12 +382,17 @@ export class McpService {
 	 *
 	 * `featureFlags` is the caller's per-request resolution (see
 	 * `resolveFeatureFlags`); this method trusts it and never queries PostHog.
+	 *
+	 * `oauthClientId` is the registered OAuth client the request authenticated
+	 * with, reported on tool-call events so usage can be attributed per client.
+	 * Absent for API-key callers.
 	 */
 	async getServer(
 		user: User,
 		featureFlags: McpFeatureFlags,
 		clientInfo?: McpClientInfo,
 		grantedScopes?: string[],
+		oauthClientId?: string,
 	) {
 		const { McpServer } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
@@ -417,7 +429,7 @@ export class McpService {
 			},
 		);
 
-		const registerTool = this.createToolRegistrar(server, user, clientInfo);
+		const registerTool = this.createToolRegistrar(server, user, clientInfo, oauthClientId);
 		const registerResource = this.createResourceRegistrar(server);
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {

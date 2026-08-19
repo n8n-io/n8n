@@ -1,5 +1,6 @@
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import type { WorkflowPublishBlockedReason } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
@@ -132,6 +133,19 @@ export type JSONRPCRequest = {
 export type McpClientInfo = {
 	name?: string;
 	version?: string;
+};
+
+/**
+ * What the MCP auth middleware resolved from the bearer token, carried on the
+ * request for the handlers downstream of it. All three fields are absent until
+ * the middleware runs, and the OAuth-only ones stay absent for API keys.
+ */
+export type McpAuthenticatedRequest = AuthenticatedRequest & {
+	mcpAuthType?: Mcpauth_type;
+	/** `undefined` = not scope-bearing (API key) → full tool access. */
+	mcpScopes?: string[];
+	/** The registered OAuth client the token was issued to. */
+	mcpOauthClientId?: string;
 };
 
 export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';

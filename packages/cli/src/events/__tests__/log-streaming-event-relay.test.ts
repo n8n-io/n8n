@@ -3072,6 +3072,7 @@ describe('LogStreamingEventRelay', () => {
 				toolName: 'execute_workflow',
 				workflowId: 'wf-789',
 				status: 'success',
+				clientId: 'client-abc',
 				clientName: 'Cursor',
 			};
 
@@ -3089,6 +3090,7 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-789',
 					status: 'success',
 					errorMessage: undefined,
+					clientId: 'client-abc',
 					clientName: 'Cursor',
 				},
 			});
@@ -3122,6 +3124,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: undefined,
 					status: 'error',
 					errorMessage: 'Workflow not found',
+					// An API-key caller has no OAuth client and reports no name
+					clientId: undefined,
 					clientName: undefined,
 				},
 			});
