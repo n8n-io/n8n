@@ -1059,6 +1059,8 @@ describe('AgentValidationService — structured issues', () => {
 						parameters: {},
 					},
 				],
+				// Wait is reachable from the trigger, so it actually runs and is flagged.
+				connections: { 'Manual Trigger': { main: [[{ node: 'Wait', type: 'main', index: 0 }]] } },
 			},
 		] as never);
 

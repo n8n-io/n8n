@@ -161,7 +161,13 @@ function handleConnect() {
 				:disabled="!item.disabledReason"
 				placement="top"
 			>
-				<span :class="$style.disabledMarker" data-test-id="tools-connection-row-disabled">
+				<span
+					:class="$style.disabledMarker"
+					role="img"
+					tabindex="0"
+					:aria-label="item.disabledReason"
+					data-test-id="tools-connection-row-disabled"
+				>
 					<N8nIcon icon="info" :size="14" color="text-light" />
 				</span>
 			</N8nTooltip>
