@@ -3,7 +3,6 @@ import type {
 	User,
 	UserRepository,
 	WorkflowHistory,
-	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -62,7 +61,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const accessService = mock<WorkflowReviewAccessService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
-	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
@@ -75,7 +73,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		accessService,
 		workflowHistoryService,
-		publishedVersionRepository,
 		requestRepository,
 		workflowRepository,
 		reviewerRepository,
@@ -103,7 +100,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		reviewerRepository.findByRequestIds.mockResolvedValue([]);
 		authorRepository.findByRequestIds.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
-		publishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
 		workflowHistoryService.findVersion.mockResolvedValue(null);
 		eligibilityService.resolveViewerEligibility.mockResolvedValue({
 			canDecide: true,
@@ -116,8 +112,9 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	function mockChildRow(
 		pinnedVersionId: string | null = 'ver-pinned',
 		workflowName = 'My workflow',
+		activeVersionId: string | null = null,
 	) {
-		mockGate([{ workflowId, workflowName, workflowVersionId: pinnedVersionId }]);
+		mockGate([{ workflowId, workflowName, workflowVersionId: pinnedVersionId, activeVersionId }]);
 	}
 
 	describe('when reviews are unavailable', () => {
@@ -315,8 +312,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 	describe('the two versions to compare', () => {
 		it('returns the version under review and the published version to compare it against', async () => {
-			mockChildRow('ver-pinned');
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-published');
+			mockChildRow('ver-pinned', 'My workflow', 'ver-published');
 			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
 				historyVersion(versionId),
 			);
@@ -336,7 +332,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 		it('has nothing to compare against when the workflow was never published', async () => {
 			mockChildRow('ver-pinned');
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
 			workflowHistoryService.findVersion.mockResolvedValue(historyVersion('ver-pinned'));
 
 			const detail = await service.getDetail(requester, requestId);
@@ -346,8 +341,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		});
 
 		it('has nothing to compare against when the published version is no longer stored', async () => {
-			mockChildRow('ver-pinned');
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-published');
+			mockChildRow('ver-pinned', 'My workflow', 'ver-published');
 			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
 				versionId === 'ver-pinned' ? historyVersion(versionId) : null,
 			);

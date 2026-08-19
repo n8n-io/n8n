@@ -116,13 +116,13 @@ describe('WorkflowReviewChangesSection', () => {
 	it.each([
 		['null', null],
 		['empty', ''],
-	])('falls back to the short id when the name is %s', (_case, name) => {
+	])('falls back to the id-derived label when the name is %s', (_case, name) => {
 		const { getByTestId } = renderComponent({
 			props: { workflow: makeWorkflow({ pinnedVersion: makeSnapshot({ name }) }) },
 		});
 
 		expect(getByTestId('workflow-review-changes-target-label')).toHaveTextContent(
-			'In review: 77b70644',
+			'In review: Version 77b70644',
 		);
 	});
 

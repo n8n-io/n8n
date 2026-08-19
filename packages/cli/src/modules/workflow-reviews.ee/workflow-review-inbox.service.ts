@@ -10,7 +10,6 @@ import type {
 } from '@n8n/api-types';
 import {
 	UserRepository,
-	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
@@ -26,13 +25,13 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-
 import { WorkflowReviewAccessService } from './workflow-review-access.service';
 import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toEligibleReviewer } from './workflow-review.mapper';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 /**
  * The reviewer-facing read side of workflow reviews: the cross-project inbox, its
@@ -46,7 +45,6 @@ export class WorkflowReviewInboxService {
 		private readonly featureGate: WorkflowReviewFeatureGate,
 		private readonly accessService: WorkflowReviewAccessService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
-		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
@@ -163,13 +161,9 @@ export class WorkflowReviewInboxService {
 	private async toWorkflowDetail(
 		row: WorkflowReviewRequestWorkflowDetailRow,
 	): Promise<WorkflowReviewRequestWorkflowDetail> {
-		const publishedVersionId = await this.workflowPublishedVersionRepository.getPublishedVersionId(
-			row.workflowId,
-		);
-
 		const [pinnedVersion, baselineVersion] = await Promise.all([
 			this.findVersionSnapshot(row.workflowId, row.workflowVersionId),
-			this.findVersionSnapshot(row.workflowId, publishedVersionId),
+			this.findVersionSnapshot(row.workflowId, row.activeVersionId),
 		]);
 
 		return {

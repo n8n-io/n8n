@@ -16,6 +16,7 @@ export type WorkflowReviewRequestWorkflowDetailRow = {
 	workflowId: string;
 	workflowName: string;
 	workflowVersionId: string | null;
+	activeVersionId: string | null;
 };
 
 @Service()
@@ -132,6 +133,7 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = wrw.workflowId')
 			.select('wrw.workflowId', 'workflowId')
 			.addSelect('workflow.name', 'workflowName')
+			.addSelect('workflow.activeVersionId', 'activeVersionId')
 			.addSelect('wrw.workflowVersionId', 'workflowVersionId')
 			.where('wrw.workflowReviewRequestId = :requestId', { requestId })
 			.orderBy('wrw.id', 'ASC')
@@ -139,12 +141,14 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 				workflowId: string;
 				workflowName: string;
 				workflowVersionId: string | null;
+				activeVersionId: string | null;
 			}>();
 
 		return rows.map((row) => ({
 			workflowId: row.workflowId,
 			workflowName: row.workflowName,
 			workflowVersionId: row.workflowVersionId ?? null,
+			activeVersionId: row.activeVersionId ?? null,
 		}));
 	}
 }

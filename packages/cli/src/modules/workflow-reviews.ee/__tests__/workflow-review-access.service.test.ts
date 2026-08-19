@@ -77,7 +77,12 @@ describe('WorkflowReviewAccessService', () => {
 
 	function mockChildRow(pinnedVersionId: string | null = 'ver-pinned') {
 		workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([
-			{ workflowId, workflowName: 'My workflow', workflowVersionId: pinnedVersionId },
+			{
+				workflowId,
+				workflowName: 'My workflow',
+				workflowVersionId: pinnedVersionId,
+				activeVersionId: null,
+			},
 		]);
 	}
 
@@ -216,7 +221,12 @@ describe('WorkflowReviewAccessService', () => {
 			const result = await service.findReadableRequestOrFail(requester, requestId);
 
 			expect(result.readableWorkflowRows).toEqual([
-				{ workflowId, workflowName: 'My workflow', workflowVersionId: 'ver-pinned' },
+				{
+					workflowId,
+					workflowName: 'My workflow',
+					workflowVersionId: 'ver-pinned',
+					activeVersionId: null,
+				},
 			]);
 			expect(result.pinnedWorkflowId).toBe(workflowId);
 			expect(result.canReadPinnedWorkflow).toBe(true);
@@ -230,8 +240,18 @@ describe('WorkflowReviewAccessService', () => {
 		it('leaves out an unreadable workflow while another one keeps the review open', async () => {
 			mockReadableReviewProject();
 			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([
-				{ workflowId, workflowName: 'My workflow', workflowVersionId: 'ver-pinned' },
-				{ workflowId: 'wf-2', workflowName: 'Other workflow', workflowVersionId: 'ver-other' },
+				{
+					workflowId,
+					workflowName: 'My workflow',
+					workflowVersionId: 'ver-pinned',
+					activeVersionId: null,
+				},
+				{
+					workflowId: 'wf-2',
+					workflowName: 'Other workflow',
+					workflowVersionId: 'ver-other',
+					activeVersionId: null,
+				},
 			]);
 			workflowFinderService.findWorkflowForUser.mockImplementation(async (id) =>
 				id === 'wf-2' ? mock<WorkflowEntity>() : null,
@@ -240,7 +260,12 @@ describe('WorkflowReviewAccessService', () => {
 			const result = await service.findReadableRequestOrFail(requester, requestId);
 
 			expect(result.readableWorkflowRows).toEqual([
-				{ workflowId: 'wf-2', workflowName: 'Other workflow', workflowVersionId: 'ver-other' },
+				{
+					workflowId: 'wf-2',
+					workflowName: 'Other workflow',
+					workflowVersionId: 'ver-other',
+					activeVersionId: null,
+				},
 			]);
 			// Eligibility still resolves against the pinned row, which they cannot read
 			expect(result.pinnedWorkflowId).toBe(workflowId);

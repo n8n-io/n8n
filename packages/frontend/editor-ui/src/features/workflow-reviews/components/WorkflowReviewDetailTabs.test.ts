@@ -2,6 +2,7 @@ import type {
 	WorkflowReviewInboxItem,
 	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestWorkflowDetail,
+	WorkflowReviewVersionSnapshot,
 } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -16,12 +17,28 @@ vi.mock('./WorkflowReviewChangesSection.vue', () => ({
 	},
 }));
 
-vi.mock('./WorkflowReviewActivityFeed.vue', () => ({
-	default: {
-		name: 'WorkflowReviewActivityFeed',
-		template: '<div data-test-id="workflow-review-activity-feed"><slot name="header" /></div>',
-	},
-}));
+vi.mock('./WorkflowReviewActivityFeed.vue', async () => {
+	const { computed, inject } = await import('vue');
+	const { ReviewLinkedWorkflowsKey } = await import('../constants');
+	return {
+		default: {
+			name: 'WorkflowReviewActivityFeed',
+			setup() {
+				const linkedWorkflows = inject(
+					ReviewLinkedWorkflowsKey,
+					computed(() => new Map()),
+				);
+				return {
+					linkedWorkflowsJson: computed(() =>
+						JSON.stringify(Object.fromEntries(linkedWorkflows.value)),
+					),
+				};
+			},
+			template:
+				'<div data-test-id="workflow-review-activity-feed" :data-linked-workflows="linkedWorkflowsJson"><slot name="header" /><slot name="footer" /></div>',
+		},
+	};
+});
 
 vi.mock('./WorkflowReviewCommentComposer.vue', () => ({
 	default: {
@@ -73,6 +90,17 @@ function makeInboxItem(overrides: Partial<WorkflowReviewInboxItem> = {}): Workfl
 		createdAt: '2024-01-01T00:00:00.000Z',
 		updatedAt: '2024-01-01T00:00:00.000Z',
 		...overrides,
+	};
+}
+
+function makeSnapshot(versionId: string): WorkflowReviewVersionSnapshot {
+	return {
+		versionId,
+		name: null,
+		nodes: [],
+		connections: {},
+		nodeGroups: [],
+		createdAt: '2024-01-01T00:00:00.000Z',
 	};
 }
 
@@ -182,6 +210,83 @@ describe('WorkflowReviewDetailTabs', () => {
 				'data-can-comment',
 				'false',
 			);
+		});
+
+		it('provides the linked workflows to the feed', () => {
+			const { getByTestId } = renderComponent({
+				props: { review: makeDetail(), tab: 'activity', deciding: false },
+			});
+
+			expect(getByTestId('workflow-review-activity-feed')).toHaveAttribute(
+				'data-linked-workflows',
+				JSON.stringify({
+					'wf-1': {
+						workflowName: 'My workflow',
+						pinnedVersionId: 'version-1',
+						pinnedVersionName: null,
+					},
+				}),
+			);
+		});
+
+		describe('closed-state callout', () => {
+			it('celebrates a review that was approved and published', () => {
+				const { getByTestId } = renderComponent({
+					props: {
+						review: makeDetail({
+							state: 'closed',
+							decision: 'approved',
+							workflows: [makeWorkflowDetail({ baselineVersion: makeSnapshot('version-1') })],
+						}),
+						tab: 'activity',
+						deciding: false,
+					},
+				});
+
+				const callout = getByTestId('workflow-review-closed-callout');
+				expect(callout).toHaveTextContent('Submission closed');
+				expect(callout).toHaveTextContent(
+					'The review was approved and the workflow was published.',
+				);
+			});
+
+			it('shows no callout while the review is open', () => {
+				const { queryByTestId } = renderComponent({
+					props: { review: makeDetail(), tab: 'activity', deciding: false },
+				});
+
+				expect(queryByTestId('workflow-review-closed-callout')).not.toBeInTheDocument();
+			});
+
+			it('shows no callout when the approved version is not the published one', () => {
+				const { queryByTestId } = renderComponent({
+					props: {
+						review: makeDetail({
+							state: 'closed',
+							decision: 'approved',
+							workflows: [makeWorkflowDetail({ baselineVersion: makeSnapshot('other-version') })],
+						}),
+						tab: 'activity',
+						deciding: false,
+					},
+				});
+
+				expect(queryByTestId('workflow-review-closed-callout')).not.toBeInTheDocument();
+			});
+
+			// A lifecycle close is already summarized by its `review.closed` feed entry,
+			// which renders as a callout; a second one here would say the same thing twice.
+			it('adds no summary for a review closed without an approval', () => {
+				const { queryByTestId } = renderComponent({
+					props: {
+						review: makeDetail({ state: 'closed', decision: 'changes_requested' }),
+						tab: 'activity',
+						deciding: false,
+					},
+				});
+
+				expect(queryByTestId('workflow-review-closed-callout')).not.toBeInTheDocument();
+			});
 		});
 
 		it('does not render the composer on closed reviews', () => {

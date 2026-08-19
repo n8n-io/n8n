@@ -14,7 +14,6 @@ import type { Project, User, WorkflowReviewRequestState } from '@n8n/db';
 import {
 	UserRepository,
 	WorkflowHistoryRepository,
-	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 	WorkflowReviewRequestAuthorRepository,
@@ -56,7 +55,6 @@ let workflowRepository: WorkflowReviewRequestWorkflowRepository;
 let authorRepository: WorkflowReviewRequestAuthorRepository;
 let reviewerRepository: WorkflowReviewRequestReviewerRepository;
 let userRepository: UserRepository;
-let publishedVersionRepository: WorkflowPublishedVersionRepository;
 let publishHistoryRepository: WorkflowPublishHistoryRepository;
 let workflowEntityRepository: WorkflowRepository;
 let workflowHistoryRepository: WorkflowHistoryRepository;
@@ -69,7 +67,6 @@ beforeAll(async () => {
 	authorRepository = Container.get(WorkflowReviewRequestAuthorRepository);
 	reviewerRepository = Container.get(WorkflowReviewRequestReviewerRepository);
 	userRepository = Container.get(UserRepository);
-	publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	publishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	workflowEntityRepository = Container.get(WorkflowRepository);
 	workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
@@ -3131,7 +3128,11 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			versionId: 'version-pinned',
 			name: 'Release candidate',
 		});
-		await publishedVersionRepository.setPublishedVersion(workflow.id, baseline.versionId);
+		// The baseline resolves from the workflow row, which both publication paths maintain.
+		await workflowEntityRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: baseline.versionId,
+		});
 		const reviewer = await createAdmin();
 		const request = await seedRequest(workflow.id, 'version-pinned', owner);
 		await reviewerRepository.addReviewers(

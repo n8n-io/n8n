@@ -2,8 +2,9 @@
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
 import { N8nCallout, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, provide } from 'vue';
 
+import { ReviewLinkedWorkflowsKey } from '../constants';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
 import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
@@ -33,6 +34,24 @@ const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 const viewerCanDecide = computed(() => detail.value?.viewerCanDecide ?? false);
 const viewerCanComment = computed(() => detail.value?.viewerCanComment ?? false);
 
+// See the key's doc: read-time names for feed entries, never snapshotted into payloads.
+provide(
+	ReviewLinkedWorkflowsKey,
+	computed(
+		() =>
+			new Map(
+				(detail.value?.workflows ?? []).map((workflow) => [
+					workflow.workflowId,
+					{
+						workflowName: workflow.workflowName,
+						pinnedVersionId: workflow.workflowVersionId,
+						pinnedVersionName: workflow.pinnedVersion?.name ?? null,
+					},
+				]),
+			),
+	),
+);
+
 const ineligibilityHint = computed(() => {
 	if (!detail.value || detail.value.viewerCanDecide) return '';
 	// Any reason other than 'author' gets the generic permission hint, so new
@@ -40,6 +59,25 @@ const ineligibilityHint = computed(() => {
 	return detail.value.viewerDecisionIneligibilityReason === 'author'
 		? i18n.baseText('workflowReviews.detail.decision.ineligible.author')
 		: i18n.baseText('generic.missing.permissions');
+});
+
+/**
+ * Whether to append the approved-and-published summary below the feed. Derived, not an
+ * event. A lifecycle close needs no summary here: its `review.closed` entry renders as
+ * a callout.
+ */
+const showApprovedAndPublished = computed(() => {
+	const review = detail.value;
+	if (!review || review.state !== 'closed' || review.decision !== 'approved') return false;
+
+	return (
+		review.workflows.length > 0 &&
+		review.workflows.every(
+			(workflow) =>
+				workflow.workflowVersionId !== null &&
+				workflow.baselineVersion?.versionId === workflow.workflowVersionId,
+		)
+	);
 });
 
 const tabOptions = computed(() => [
@@ -112,6 +150,22 @@ const tabOptions = computed(() => [
 								{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
 							</N8nText>
 						</div>
+					</template>
+					<template v-if="showApprovedAndPublished" #footer>
+						<N8nCallout
+							theme="success"
+							:class="$style.closedCallout"
+							data-test-id="workflow-review-closed-callout"
+						>
+							<div :class="$style.closedCalloutContent">
+								<N8nText bold size="medium">
+									{{ i18n.baseText('workflowReviews.detail.closedCallout.title') }}
+								</N8nText>
+								<N8nText size="medium">
+									{{ i18n.baseText('workflowReviews.detail.closedCallout.approvedAndPublished') }}
+								</N8nText>
+							</div>
+						</N8nCallout>
 					</template>
 				</WorkflowReviewActivityFeed>
 
@@ -214,6 +268,17 @@ const tabOptions = computed(() => [
 
 .callout {
 	max-width: var(--review-callout--max-width, 34rem);
+}
+
+/* line up the summary's edges with the entry cards above it. */
+.closedCallout {
+	margin-inline: calc(-1 * var(--spacing--sm));
+}
+
+.closedCalloutContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
 /* `pre-wrap` alone does not break a pasted URL, which is the one thing that could scroll the
