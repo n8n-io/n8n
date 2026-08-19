@@ -196,6 +196,53 @@ describe('useConnection', () => {
 		});
 	});
 
+	describe('connected instance', () => {
+		const RELAY_URL = 'wss://acme.app.n8n.cloud/relay';
+
+		it('names the instance reported by the background on mount', async () => {
+			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
+				if (msg.type === 'getStatus') return { connected: true, tabIds: [], relayUrl: RELAY_URL };
+				if (msg.type === 'getRelayUrl') return null;
+				if (msg.type === 'getTabs') return [makeTab(1)];
+				return await Promise.resolve({});
+			});
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			expect(result().relayHost.value).toBe('acme.app.n8n.cloud');
+
+			wrapper.unmount();
+		});
+
+		it('names the instance when a connection starts while the view is open', async () => {
+			const { wrapper, result } = mountComposable();
+			await flush();
+			expect(result().relayHost.value).toBeNull();
+
+			pushMessage({ type: 'statusChanged', connected: true, tabIds: [], relayUrl: RELAY_URL });
+			await flush();
+
+			expect(result().relayHost.value).toBe('acme.app.n8n.cloud');
+
+			wrapper.unmount();
+		});
+
+		it('forgets the instance once disconnected', async () => {
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			pushMessage({ type: 'statusChanged', connected: true, tabIds: [], relayUrl: RELAY_URL });
+			await flush();
+			await result().disconnect();
+			await flush();
+
+			expect(result().relayHost.value).toBeNull();
+
+			wrapper.unmount();
+		});
+	});
+
 	describe('statusChanged broadcast', () => {
 		it('shows controlled tabs immediately when statusChanged arrives with new tab', async () => {
 			// Tab 42 must be in the registry (returned by getTabs) for controlledTabDetails to resolve it

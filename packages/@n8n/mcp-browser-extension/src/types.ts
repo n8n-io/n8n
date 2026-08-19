@@ -17,6 +17,8 @@ export interface ConnectResponse {
 export interface StatusResponse {
 	connected?: boolean;
 	tabIds?: ControlledTabId[];
+	/** Relay URL of the live session, so any view can name the instance it is bound to. */
+	relayUrl?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,6 +96,7 @@ export interface StatusChangedMessage {
 	type: 'statusChanged';
 	connected: boolean;
 	tabIds?: ControlledTabId[];
+	relayUrl?: string;
 }
 
 export type BackgroundPushMessage = RelayUrlReadyMessage | StatusChangedMessage;
@@ -122,6 +125,7 @@ export function isStatusResponse(raw: unknown): raw is StatusResponse {
 	if (raw === null || typeof raw !== 'object') return false;
 	const obj = raw as Record<string, unknown>;
 	if ('connected' in obj && typeof obj.connected !== 'boolean') return false;
+	if (obj.relayUrl !== undefined && typeof obj.relayUrl !== 'string') return false;
 	if ('tabIds' in obj) {
 		if (!Array.isArray(obj.tabIds)) return false;
 		for (const item of obj.tabIds) {

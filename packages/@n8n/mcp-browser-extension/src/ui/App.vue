@@ -66,7 +66,7 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 					<InfoRow
 						icon="lock"
 						title="Browser access"
-						description="n8n can access tabs it opens. Select existing tabs below to grant additional access."
+						description="n8n can access tabs it opens. Select existing tabs below to grant additional access"
 					>
 						<button
 							v-if="tabs.length"

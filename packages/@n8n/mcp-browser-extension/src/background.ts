@@ -101,6 +101,7 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 			return {
 				connected: activeConnection !== null,
 				tabIds: activeConnection?.relay.getControlledIds() ?? [],
+				relayUrl: activeConnection?.relayUrl,
 			};
 
 		case 'getRelayUrl': {
@@ -495,7 +496,8 @@ function disconnect(): void {
 function broadcastStatusChange(): void {
 	const connected = activeConnection !== null;
 	const tabIds = activeConnection?.relay.getControlledIds() ?? [];
-	chrome.runtime.sendMessage({ type: 'statusChanged', connected, tabIds }).catch(() => {
+	const relayUrl = activeConnection?.relayUrl;
+	chrome.runtime.sendMessage({ type: 'statusChanged', connected, tabIds, relayUrl }).catch(() => {
 		// No receivers — this is fine if the popup/tab is not open
 	});
 }
