@@ -1595,6 +1595,39 @@ describe('TaskBroker', () => {
 			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
 		});
 
+		it('should reset the count when the runner reports a task error', async () => {
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+			await taskBroker.onRunnerMessage('runner1', {
+				type: 'runner:taskerror',
+				taskId: 'task1',
+				error: new Error('some error'),
+			});
+
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should not reset the count when the runner only keeps sending offers', async () => {
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+			await taskBroker.onRunnerMessage('runner1', {
+				type: 'runner:taskoffer',
+				taskType: 'taskType1',
+				offerId: 'offer2',
+				validFor: 10_000,
+			});
+
+			await timeOutAcceptance();
+
+			expect(lifecycleEvents.emit).toHaveBeenCalledTimes(1);
+			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
+				runnerId: 'runner1',
+			});
+		});
+
 		it('should not report a runner that still has tasks in flight', async () => {
 			taskBroker.setTasks({
 				task1: {

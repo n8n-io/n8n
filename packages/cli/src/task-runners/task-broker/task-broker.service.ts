@@ -303,11 +303,11 @@ export class TaskBroker {
 				});
 				break;
 			case 'runner:taskdone':
-				// A completed task proves the channel is alive, like an acknowledgement does.
 				this.consecutiveAcceptTimeouts.delete(runnerId);
 				await this.taskDoneHandler(message.taskId, message.data);
 				break;
 			case 'runner:taskerror':
+				this.consecutiveAcceptTimeouts.delete(runnerId);
 				await this.taskErrorHandler(message.taskId, message.error);
 				break;
 			case 'runner:taskdatarequest':
@@ -788,7 +788,9 @@ export class TaskBroker {
 	/**
 	 * Counts consecutive acknowledgement timeouts per runner and reports it unresponsive
 	 * once the threshold is reached. Timeouts within one acceptance window of the previous
-	 * one count as a single timeout, and any reply from the runner resets the count.
+	 * one count as a single timeout, and any reply to a broker request resets the count.
+	 * Task offers do not reset it, since an alive offer loop with a dead accept path is
+	 * the state this detects.
 	 */
 	private flagRunnerIfUnresponsive(runnerId: TaskRunner['id']) {
 		const now = Date.now();
