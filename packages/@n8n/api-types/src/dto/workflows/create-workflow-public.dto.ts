@@ -38,15 +38,16 @@ import { Z } from '../../zod-class';
 
 /**
  * A field the deleted `workflowCreate.yml` documented as `readOnly`. The descriptor keeps it in the
- * published request schema; the check refuses any value a caller sends, which is what
+ * published request schema; `z.undefined()` refuses any value a caller sends, which is what
  * express-openapi-validator's own `readOnly` keyword did — it failed on the property being present,
- * `null` included. An absent key never reaches the parsed object, so nothing leaks downstream.
+ * `null` included. An absent key never reaches the parsed object, so nothing leaks downstream, and
+ * the parsed type reads `undefined` rather than `unknown`: the key can only ever be absent.
+ *
+ * The descriptor must set `type`. That makes the generator describe the field from the metadata
+ * instead of from `z.undefined()`, which it has no mapping for and would throw on.
  */
 const readOnlyPublicSchema = (descriptor: ZodOpenAPIMetadata) =>
-	z
-		.unknown()
-		.refine((value) => value === undefined, { message: 'is read-only' })
-		.openapi(descriptor);
+	z.undefined({ invalid_type_error: 'is read-only' }).openapi(descriptor);
 
 const customTelemetryTagPublicSchema = z
 	.object({
