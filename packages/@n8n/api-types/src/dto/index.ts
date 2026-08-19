@@ -98,6 +98,18 @@ export {
 } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
+export {
+	ConnectGitConnectionDto,
+	CreateGitConnectionDto,
+	GitConnectionListPublicDto,
+	GitConnectionPublicDto,
+	ListGitConnectionsQueryDto,
+	UpdateGitConnectionDto,
+	gitConnectionTypeSchema,
+	gitKeyGeneratorTypeSchema,
+	type GitConnectionType,
+	type GitKeyGeneratorType,
+} from './git-connections/git-connections.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';

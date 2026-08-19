@@ -1,10 +1,6 @@
+import type { GitConnectionType, GitKeyGeneratorType } from '@n8n/api-types';
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity } from '@n8n/typeorm';
-
-// Defined inline so this DB-layer entity stays self-contained; the shared
-// @n8n/api-types DTOs that own these unions arrive in a later PR.
-type GitConnectionType = 'ssh' | 'https';
-type GitKeyGeneratorType = 'ed25519' | 'rsa';
 
 @Entity('git_connection')
 export class GitConnection extends WithTimestampsAndStringId {
