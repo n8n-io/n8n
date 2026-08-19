@@ -62,9 +62,14 @@ const ineligibilityHint = computed(() => {
 });
 
 /**
- * Whether to append the approved-and-published summary below the feed. Derived, not an
- * event. A lifecycle close needs no summary here: its `review.closed` entry renders as
- * a callout.
+ * Whether to append the approved-and-published summary below the feed. Derived at read
+ * time from the live published pointer, not from a `workflow.published` entry: an entry
+ * can sit on an unfetched feed page, and it would keep the summary up after a newer
+ * version replaced this one. The pointer cannot claim a publication that isn't live —
+ * a failed publish either left the pin unpublished (no summary) or never touched a pin
+ * that was already live (summary true) — and it is the signal the canvas banner trusts,
+ * so the two cannot disagree. A lifecycle close needs no summary here: its
+ * `review.closed` entry renders as a callout.
  */
 const showApprovedAndPublished = computed(() => {
 	const review = detail.value;
