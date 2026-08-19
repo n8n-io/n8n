@@ -35,34 +35,53 @@ export interface ZodArrayClass<T, Item extends z.ZodTypeAny = z.ZodTypeAny> {
  * }) {}
  * ```
  */
+/**
+ * Shared body for `Z.class` and `Z.strictClass`. Only the schema differs: strictness changes what
+ * is accepted, not the parsed output, so both produce the same `ZodClass<Output, T>`.
+ */
+const dtoClassFor = <T extends z.ZodRawShape, Unknown extends z.UnknownKeysParam>(
+	shape: T,
+	schema: z.ZodObject<T, Unknown>,
+): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> => {
+	type Output = z.objectOutputType<T, z.ZodTypeAny>;
+
+	const DtoClass = class {
+		static schema = schema;
+
+		constructor(data: Output) {
+			const parsed = schema.parse(data);
+			Object.assign(this, parsed);
+		}
+
+		static safeParse(data: unknown) {
+			return schema.safeParse(data);
+		}
+
+		static parse(data: unknown): Output {
+			return schema.parse(data) as Output;
+		}
+
+		static extend<U extends z.ZodRawShape>(additionalShape: U) {
+			return dtoClassFor({ ...shape, ...additionalShape }, schema.extend(additionalShape));
+		}
+	};
+
+	return DtoClass as unknown as ZodClass<Output, T>;
+};
+
 export const Z = {
-	class: <T extends z.ZodRawShape>(shape: T): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> => {
-		const schema = z.object(shape);
-		type Output = z.objectOutputType<T, z.ZodTypeAny>;
+	class: <T extends z.ZodRawShape>(shape: T): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> =>
+		dtoClassFor(shape, z.object(shape)),
 
-		const DtoClass = class {
-			static schema = schema;
-
-			constructor(data: Output) {
-				const parsed = schema.parse(data);
-				Object.assign(this, parsed);
-			}
-
-			static safeParse(data: unknown) {
-				return schema.safeParse(data);
-			}
-
-			static parse(data: unknown): Output {
-				return schema.parse(data);
-			}
-
-			static extend<U extends z.ZodRawShape>(additionalShape: U) {
-				return Z.class({ ...shape, ...additionalShape });
-			}
-		};
-
-		return DtoClass as unknown as ZodClass<Output, T>;
-	},
+	/**
+	 * Like `Z.class`, but an unknown key fails validation instead of being stripped. Use for a
+	 * public API request body whose OpenAPI schema sets `additionalProperties: false`: silently
+	 * dropping an unknown field would widen the contract and hide a caller's typo.
+	 */
+	strictClass: <T extends z.ZodRawShape>(
+		shape: T,
+	): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> =>
+		dtoClassFor(shape, z.object(shape).strict()),
 
 	/**
 	 * Array-rooted counterpart to `Z.class`, for endpoints whose request body or response is a bare
