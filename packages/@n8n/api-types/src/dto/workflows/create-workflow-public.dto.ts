@@ -1,11 +1,14 @@
 import '../../openapi-extend';
 
+import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 import type { IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
 import {
 	connectionsOpenApi,
+	readOnlyTimestampOpenApi,
 	workflowCreateFieldDocs,
+	workflowCreateReadOnlyFieldDocs,
 	workflowNodeFieldDocs,
 	workflowNodeGroupFieldDocs,
 	workflowSettingsFieldDocs,
@@ -21,9 +24,10 @@ import { Z } from '../../zod-class';
  * - Every field the spec marked `readOnly` was a hard 400, not a field that was quietly ignored.
  *   express-openapi-validator registers its own Ajv `readOnly` keyword that fails on the property
  *   being present at all. So `id`, `active`, `createdAt`, `updatedAt`, `isArchived`, `versionId`,
- *   `triggerCount`, `meta`, `tags` and `activeVersion` are absent from this shape, and the strict
- *   top level turns any of them into a 400. The same holds for the read-only fields nested in
- *   `node.yml` and `sharedWorkflow.yml`.
+ *   `triggerCount`, `meta`, `tags` and `activeVersion` are declared through
+ *   `readOnlyPublicSchema`: still documented, still a 400. The read-only fields nested in
+ *   `node.yml` and `sharedWorkflow.yml` are refused by their strict objects instead, matching
+ *   those schemas, which never listed them as writable.
  * - `workflowCreate.yml`, `node.yml`, `workflowSettings.yml`, `workflowNodeGroup.yml` and
  *   `sharedWorkflow.yml` all set `additionalProperties: false`, so those objects are strict here.
  *   `sharedWorkflow.yml`'s nested `project` does not, so that one stays open.
@@ -31,6 +35,18 @@ import { Z } from '../../zod-class';
  * Field documentation lives in `workflow-public.openapi.ts` alongside the response descriptors, so
  * each field is described once for both directions.
  */
+
+/**
+ * A field the deleted `workflowCreate.yml` documented as `readOnly`. The descriptor keeps it in the
+ * published request schema; the check refuses any value a caller sends, which is what
+ * express-openapi-validator's own `readOnly` keyword did — it failed on the property being present,
+ * `null` included. An absent key never reaches the parsed object, so nothing leaks downstream.
+ */
+const readOnlyPublicSchema = (descriptor: ZodOpenAPIMetadata) =>
+	z
+		.unknown()
+		.refine((value) => value === undefined, { message: 'is read-only' })
+		.openapi(descriptor);
 
 const customTelemetryTagPublicSchema = z
 	.object({
@@ -70,6 +86,8 @@ const workflowNodeCreatePublicSchema = z
 			.object({ tag: z.array(customTelemetryTagPublicSchema).optional() })
 			.strict()
 			.optional(),
+		createdAt: readOnlyPublicSchema(readOnlyTimestampOpenApi),
+		updatedAt: readOnlyPublicSchema(readOnlyTimestampOpenApi),
 	})
 	.strict();
 
@@ -145,40 +163,57 @@ const workflowSettingsCreatePublicSchema = z
  */
 const sharedWorkflowCreatePublicSchema = z
 	.object({
-		role: z.string().optional(),
-		workflowId: z.string().optional(),
-		projectId: z.string().optional(),
+		role: z.string().optional().openapi({ example: 'workflow:owner' }),
+		workflowId: z.string().optional().openapi({ example: '2tUt1wbLX592XDdX' }),
+		projectId: z.string().optional().openapi({ example: '2tUt1wbLX592XDdX' }),
+		// The old schema left `project` open, so unknown keys pass; its `id` and `type` were
+		// read-only, so they are declared and refused rather than silently accepted.
 		project: z
-			.object({ name: z.string().optional() })
-			.passthrough()
-			.refine((value) => !('id' in value) && !('type' in value), {
-				message: 'project.id and project.type are read-only',
+			.object({
+				id: readOnlyPublicSchema({ type: 'string', readOnly: true }),
+				name: z.string().optional(),
+				type: readOnlyPublicSchema({ type: 'string', readOnly: true }),
 			})
+			.passthrough()
 			.optional(),
+		createdAt: readOnlyPublicSchema(readOnlyTimestampOpenApi),
+		updatedAt: readOnlyPublicSchema(readOnlyTimestampOpenApi),
 	})
 	.strict();
 
 /** `staticData`: a JSON string, an object, or null. */
 const staticDataCreatePublicSchema = z
 	.union([
-		z.string().refine(
-			(value) => {
-				try {
-					JSON.parse(value);
-					return true;
-				} catch {
-					return false;
-				}
-			},
-			{ message: 'staticData must be a JSON string' },
-		),
+		z
+			.string()
+			.refine(
+				(value) => {
+					try {
+						JSON.parse(value);
+						return true;
+					} catch {
+						return false;
+					}
+				},
+				{ message: 'staticData must be a JSON string' },
+			)
+			.openapi({ format: 'jsonString' }),
 		z.record(z.unknown()),
-		z.null(),
 	])
+	// `.nullable()` rather than a `z.null()` union member: OpenAPI 3.0 expresses a nullable union by
+	// appending one `{ nullable: true }` branch, and a `z.null()` member would add a second.
+	.nullable()
 	.openapi(workflowCreateFieldDocs.staticData);
 
 export const createWorkflowPublicShape = {
+	id: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.id),
 	name: z.string().openapi(workflowCreateFieldDocs.name),
+	active: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.active),
+	createdAt: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.createdAt),
+	updatedAt: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.updatedAt),
+	isArchived: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.isArchived),
+	versionId: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.versionId),
+	triggerCount: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.triggerCount),
 	nodes: z.array(workflowNodeCreatePublicSchema).openapi(workflowCreateFieldDocs.nodes),
 	// `type: object` was the whole of the old check, which is what this custom schema does. It keeps
 	// the domain type, so the parsed value needs no cast on the way to the workflow entity.
@@ -197,10 +232,13 @@ export const createWorkflowPublicShape = {
 	pinData: z.record(z.unknown()).nullable().optional().openapi(workflowCreateFieldDocs.pinData),
 	projectId: z.string().optional().openapi(workflowCreateFieldDocs.projectId),
 	parentFolderId: z.string().nullable().optional().openapi(workflowCreateFieldDocs.parentFolderId),
+	meta: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.meta),
+	tags: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.tags),
 	shared: z
 		.array(sharedWorkflowCreatePublicSchema)
 		.optional()
 		.openapi(workflowCreateFieldDocs.shared),
+	activeVersion: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.activeVersion),
 } as const;
 
 export class CreateWorkflowPublicDto extends Z.strictClass(createWorkflowPublicShape) {}

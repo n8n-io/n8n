@@ -292,3 +292,161 @@ export const metaOpenApi: ZodOpenAPIMetadata = alsoNullable({
 		templateCredsSetupCompleted: { type: 'boolean' },
 	},
 });
+
+/**
+ * Assembles a descriptor that nests another descriptor. `ZodOpenAPIMetadata` is a union of the
+ * OpenAPI 3.0 and 3.1 schema types, and TypeScript will not assign that union into a nested
+ * `properties` slot, so the object is built loosely here — the same reason `alsoNullable` exists.
+ */
+function nestingDescriptor(schema: Record<string, unknown>): ZodOpenAPIMetadata {
+	return schema as ZodOpenAPIMetadata;
+}
+
+/** A `readOnly` timestamp, as every request schema documented one. */
+export const readOnlyTimestampOpenApi = {
+	type: 'string',
+	format: 'date-time',
+	readOnly: true,
+} as const;
+
+/**
+ * `node.yml` as the request schemas documented it: strict, with read-only timestamps. Derived from
+ * `nodesOpenApi` so the prose and examples stay in one place.
+ */
+export const requestNodesOpenApi = nestingDescriptor({
+	...nodesOpenApi,
+	items: {
+		...(nodesOpenApi.items as Record<string, unknown>),
+		additionalProperties: false,
+		properties: {
+			...(nodesOpenApi.items as { properties: Record<string, unknown> }).properties,
+			customTelemetryTags: {
+				type: 'object',
+				additionalProperties: false,
+				properties: {
+					tag: {
+						type: 'array',
+						items: {
+							type: 'object',
+							additionalProperties: false,
+							required: ['key', 'value'],
+							properties: { key: { type: 'string' }, value: { type: 'string' } },
+						},
+					},
+				},
+			},
+			createdAt: readOnlyTimestampOpenApi,
+			updatedAt: readOnlyTimestampOpenApi,
+		},
+	},
+});
+
+/** `workflowNodeGroup.yml` as the request schemas documented it: strict. */
+export const requestNodeGroupsOpenApi = nestingDescriptor({
+	...nodeGroupsOpenApi,
+	items: {
+		...(nodeGroupsOpenApi.items as Record<string, unknown>),
+		additionalProperties: false,
+	},
+});
+
+/**
+ * The fields `workflowCreate.yml` documented as `readOnly`. They stay in the published create
+ * request schema, and sending any of them is a 400 — see `readOnlyPublicSchema` in
+ * `create-workflow-public.dto.ts`. Each literal carries its own `readOnly: true` so the key lands
+ * where the deleted schema had it. `tags` and `activeVersion` reproduce the two files that schema
+ * pulled in by `$ref` (`tag.yml` and `activeVersion.yml`); their nested node, connection and node
+ * group shapes come from the descriptors above rather than a second copy.
+ */
+export const workflowCreateReadOnlyFieldDocs = {
+	id: { type: 'string', readOnly: true, example: '2tUt1wbLX592XDdX' },
+	active: { type: 'boolean', readOnly: true },
+	createdAt: { type: 'string', format: 'date-time', readOnly: true },
+	updatedAt: { type: 'string', format: 'date-time', readOnly: true },
+	isArchived: { type: 'boolean', readOnly: true },
+	versionId: {
+		type: 'string',
+		readOnly: true,
+		description: 'Current version identifier used for optimistic locking',
+	},
+	triggerCount: {
+		type: 'integer',
+		readOnly: true,
+		description: 'Number of active trigger nodes in the workflow',
+	},
+	meta: alsoNullable({
+		type: 'object',
+		readOnly: true,
+		description: 'Workflow metadata such as template information',
+		properties: {
+			onboardingId: { type: 'string' },
+			templateId: { type: 'string' },
+			instanceId: { type: 'string' },
+			templateCredsSetupCompleted: { type: 'boolean' },
+		},
+	}),
+	tags: {
+		type: 'array',
+		readOnly: true,
+		items: {
+			type: 'object',
+			additionalProperties: false,
+			required: ['name'],
+			properties: {
+				id: { type: 'string', readOnly: true, example: '2tUt1wbLX592XDdX' },
+				name: { type: 'string', example: 'Production' },
+				createdAt: { type: 'string', format: 'date-time', readOnly: true },
+				updatedAt: { type: 'string', format: 'date-time', readOnly: true },
+			},
+		},
+	},
+	activeVersion: nestingDescriptor({
+		type: 'object',
+		readOnly: true,
+		nullable: true,
+		additionalProperties: false,
+		properties: {
+			versionId: {
+				type: 'string',
+				readOnly: true,
+				description: 'Unique identifier for this workflow version',
+				example: '7c6b9e3f-8d4a-4b2c-9f1e-6a5d3b8c7e4f',
+			},
+			workflowId: {
+				type: 'string',
+				readOnly: true,
+				description: 'The workflow this version belongs to',
+				example: '2tUt1wbLX592XDdX',
+			},
+			nodes: { ...requestNodesOpenApi, readOnly: true },
+			connections: { ...connectionsOpenApi, readOnly: true },
+			nodeGroups: { ...requestNodeGroupsOpenApi, readOnly: true },
+			authors: {
+				type: 'string',
+				readOnly: true,
+				description: 'Comma-separated list of author IDs who contributed to this version',
+				example: '1,2,3',
+			},
+			name: {
+				type: 'string',
+				nullable: true,
+				readOnly: true,
+				description: 'Optional name for this workflow version',
+				example: 'Production release',
+			},
+			description: {
+				type: 'string',
+				nullable: true,
+				readOnly: true,
+				description: 'Optional description for this workflow version',
+			},
+			autosaved: {
+				type: 'boolean',
+				readOnly: true,
+				description: 'Whether this version was created by autosave',
+			},
+			createdAt: { type: 'string', format: 'date-time', readOnly: true },
+			updatedAt: { type: 'string', format: 'date-time', readOnly: true },
+		},
+	}),
+} satisfies Record<string, ZodOpenAPIMetadata>;
