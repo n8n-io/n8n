@@ -32,7 +32,6 @@ const mocks = vi.hoisted(() => {
 		app: { listen: vi.fn((_port: number, _host: string) => server) },
 		start: vi.fn(),
 		stop: vi.fn(async () => {}),
-		startExecution: vi.fn(),
 	};
 
 	return {
