@@ -35,7 +35,7 @@ afterAll(async () => {
 
 describe('InsightsController', () => {
 	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
-	const workflowSharingService = mockInstance(WorkflowSharingService);
+	mockInstance(WorkflowSharingService);
 	let controller: InsightsController;
 	const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 	const today = DateTime.now().toJSDate();
@@ -364,13 +364,6 @@ describe('InsightsController', () => {
 				timeSaved: 0,
 			},
 		];
-
-		beforeEach(() => {
-			// getSharedWorkflowIds returns all workflow IDs for the owner-like user
-			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(
-				mockRows.map((row) => row.workflowId),
-			);
-		});
 
 		it('should return empty insights by workflow if no data', async () => {
 			// ARRANGE
