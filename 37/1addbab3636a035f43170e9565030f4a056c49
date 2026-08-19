@@ -1,0 +1,28 @@
+packages/nodes-base/nodes/Google/Drive/GoogleDriveTrigger.node.ts
+  s_d9617de0c18e73::t_e3a415491427b4 457-458,510,589,610
+  s_d9617de0c18e73::t_a6bd3d3bf8557d 455-456,612
+packages/nodes-base/nodes/Google/Drive/test/GoogleDriveTrigger.node.test.ts
+  s_d9617de0c18e73::t_fdd1f551aa2d7f 535-541,552-573
+  s_d9617de0c18e73::t_a6bd3d3bf8557d 548
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "371addbab3636a035f43170e9565030f4a056c49",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d9617de0c18e73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db073cfb-d44c-4aef-93d6-9427a6b439b0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
