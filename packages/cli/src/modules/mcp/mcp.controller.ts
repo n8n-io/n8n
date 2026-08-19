@@ -17,6 +17,7 @@ import {
 	INTERNAL_SERVER_ERROR_MESSAGE,
 	MCP_DISCOVER_METHOD,
 	HANDSHAKE_FAILED_ERROR_MESSAGE,
+	MISSING_PROTOCOL_VERSION_ERROR_MESSAGE,
 } from './mcp.constants';
 import { McpService, type McpFeatureFlags } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
@@ -132,9 +133,9 @@ export class McpController {
 		// request is `server/discover`, so both mark the connection handshake for
 		// telemetry. Legacy clients on the stateless fallback still send
 		// `initialize`.
-		const isConnectionHandshake = isJSONRPCRequest(body)
-			? body.method === 'initialize' || body.method === MCP_DISCOVER_METHOD
-			: false;
+		const isDiscoverHandshake = isJSONRPCRequest(body) && body.method === MCP_DISCOVER_METHOD;
+		const isConnectionHandshake =
+			isDiscoverHandshake || (isJSONRPCRequest(body) && body.method === 'initialize');
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'tools/call' : false;
 		const clientInfo = getClientInfo(req);
 
@@ -181,15 +182,22 @@ export class McpController {
 				// The SDK answers a failed handshake with an error response instead of
 				// throwing, so a resolved call says nothing about the outcome: the
 				// status it wrote is what tells us whether the client connected.
-				// Known limit: an error delivered after the head was written (a late
-				// error, or one sent over an SSE upgrade) still reads as a success.
-				// Handshakes settle during dispatch, so they take the status path.
-				const failed = res.statusCode >= 400;
+				//
+				// One failure does not reach the status. `server/discover` exists only
+				// on the modern leg, and a request that declares no protocol version
+				// in its `_meta` envelope classifies as legacy, where the method is
+				// unknown. That answer is a JSON-RPC method-not-found inside a 200, so
+				// a client that adopted the 2026 method name without the envelope would
+				// otherwise count as connected.
+				const unservableDiscover = isDiscoverHandshake && !telemetryPayload.protocol_version;
+				const failed = res.statusCode >= 400 || unservableDiscover;
 				this.trackConnectionEvent({
 					...telemetryPayload,
 					mcp_connection_status: failed ? 'error' : 'success',
 					...(failed && {
-						error: transportError ?? HANDSHAKE_FAILED_ERROR_MESSAGE,
+						error: unservableDiscover
+							? MISSING_PROTOCOL_VERSION_ERROR_MESSAGE
+							: (transportError ?? HANDSHAKE_FAILED_ERROR_MESSAGE),
 						http_status: res.statusCode,
 					}),
 				});

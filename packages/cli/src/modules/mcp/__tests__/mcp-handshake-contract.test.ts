@@ -48,6 +48,28 @@ describe('MCP handshake status contract', () => {
 		expect(response.status).toBeGreaterThanOrEqual(400);
 	});
 
+	// A discover with no envelope claim classifies legacy, where the method does
+	// not exist. The handler answers that at HTTP 200 with a JSON-RPC
+	// method-not-found, which is why the controller cannot judge this one by
+	// status and checks the declared protocol version instead.
+	it('answers a discover with no protocol version at 200, carrying a JSON-RPC error', async () => {
+		const request = new Request('https://n8n.example.com/mcp-server/http', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				// The legacy leg requires both media types in Accept, as real clients send.
+				accept: 'application/json, text/event-stream',
+				'mcp-method': MCP_DISCOVER_METHOD,
+			},
+			body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: MCP_DISCOVER_METHOD, params: {} }),
+		});
+
+		const response = await buildHandler().fetch(request);
+
+		expect(response.status).toBe(200);
+		expect(await response.text()).toContain('"code":-32601');
+	});
+
 	// Pinned to the revision the server serves rather than the SDK's
 	// LATEST_PROTOCOL_VERSION, which still names a 2025-era revision and so
 	// routes to the legacy leg, where `server/discover` is not a method.

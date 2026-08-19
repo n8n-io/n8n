@@ -316,6 +316,37 @@ describe('McpController', () => {
 		);
 	});
 
+	// `server/discover` exists only on the modern leg. Without a protocol version
+	// in the `_meta` envelope the request classifies as legacy, where the method is
+	// unknown, and the handler answers method-not-found inside a 200. Verified
+	// against a running instance: the response is an SSE frame carrying
+	// {"error":{"code":-32601}} with HTTP 200, so the status alone reads as success.
+	test('tracks a discover handshake with no declared protocol version as an error', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				mcpAuthType: 'oauth',
+				body: { jsonrpc: '2.0', method: 'server/discover', params: {} },
+			}),
+			res,
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'User connected to MCP server',
+			expect.objectContaining({
+				mcp_connection_status: 'error',
+				error: 'MCP handshake failed: no protocol version declared',
+				http_status: 200,
+			}),
+		);
+	});
+
 	test('reports the handler error when building the MCP server fails', async () => {
 		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as Mock).mockRejectedValue(
