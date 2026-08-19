@@ -428,8 +428,8 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 
 		expect(browserItem).toBeDefined();
 		expect(computerItem).toBeDefined();
-		emitModalEvent('onConnect', browserItem);
-		emitModalEvent('onConnect', computerItem);
+		emitModalEvent('onUpdate:detailItem', browserItem);
+		emitModalEvent('onUpdate:detailItem', computerItem);
 
 		expect(browserTelemetryMock.trackModalOpened).toHaveBeenCalledWith('tools_modal');
 		expect(computerTelemetryMock.trackModalOpened).toHaveBeenCalledWith(false, 'tools_modal');

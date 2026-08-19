@@ -384,22 +384,23 @@ async function handleDisconnect(item: ToolConnectionItem) {
 	activeItemId.value = null;
 }
 
+function handleDetailItemUpdate(item: ToolConnectionItem | null) {
+	activeItemId.value = item?.id ?? null;
+	if (item?.kind !== 'service') return;
+
+	if (item.serviceId === BROWSER_USE_CONNECTION_TYPE) {
+		browserUseTelemetry.trackModalOpened('tools_modal');
+	} else if (item.serviceId === COMPUTER_USE_CONNECTION_TYPE) {
+		computerUseTelemetry.trackModalOpened(settingsStore.isGatewayConnected, 'tools_modal');
+	}
+}
+
 async function handleConnect(item: ToolConnectionItem) {
-	switch (item.kind) {
-		case 'service':
-			activeItemId.value = item.id;
-			if (item.serviceId === BROWSER_USE_CONNECTION_TYPE) {
-				browserUseTelemetry.trackModalOpened('tools_modal');
-			} else if (item.serviceId === COMPUTER_USE_CONNECTION_TYPE) {
-				computerUseTelemetry.trackModalOpened(settingsStore.isGatewayConnected, 'tools_modal');
-			}
-			break;
-		case 'mcp-server':
-			const server = findServerForItem(item);
-			if (server) {
-				showConnectedServer(await connectServer(server));
-			}
-			break;
+	if (item.kind !== 'mcp-server') return;
+
+	const server = findServerForItem(item);
+	if (server) {
+		showConnectedServer(await connectServer(server));
 	}
 }
 </script>
@@ -412,7 +413,7 @@ async function handleConnect(item: ToolConnectionItem) {
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
 		:hide-back-button="isDirectConnectionOpen"
-		@update:detail-item="(item) => (activeItemId = item?.id ?? null)"
+		@update:detail-item="handleDetailItemUpdate"
 		@select-credential="handleSelectCredential"
 		@credential-dropdown-open="handleCredentialDropdownOpen"
 		@first-credential-connect="handleFirstCredentialConnect"
