@@ -13,10 +13,10 @@ import type {
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
 import {
-	getTeams,
-	getUsers,
+	getTeams as loadTeams,
+	getUsers as loadUsers,
 	getStates,
-	getLabels,
+	getLabels as loadLabels,
 	getProjects,
 	getCycles,
 } from '../shared/methods/loadOptions';
@@ -25,6 +25,14 @@ import {
 	getProjects as searchProjects,
 	getCustomers,
 	getIssues,
+	getTeams as searchTeams,
+	getUsers as searchUsers,
+	getStates as searchStates,
+	getLabels as searchLabels,
+	getCycles as searchCycles,
+	getDocuments,
+	getReleases,
+	getViews,
 } from '../shared/methods/listSearch';
 import { validateCredentials } from '../shared/GenericFunctions';
 
@@ -69,10 +77,12 @@ export class LinearV2 implements INodeType {
 			},
 		},
 		loadOptions: {
-			getTeams,
-			getUsers,
+			// Kept for multi-select fields (label IDs, subscriber IDs, team IDs), which
+			// resource locators can't express — they hold a single value.
+			getTeams: loadTeams,
+			getUsers: loadUsers,
 			getStates,
-			getLabels,
+			getLabels: loadLabels,
 			getProjects,
 			getCycles,
 		},
@@ -81,6 +91,14 @@ export class LinearV2 implements INodeType {
 			getProjects: searchProjects,
 			getCustomers,
 			getIssues,
+			getTeams: searchTeams,
+			getUsers: searchUsers,
+			getStates: searchStates,
+			getLabels: searchLabels,
+			getCycles: searchCycles,
+			getDocuments,
+			getReleases,
+			getViews,
 		},
 	};
 

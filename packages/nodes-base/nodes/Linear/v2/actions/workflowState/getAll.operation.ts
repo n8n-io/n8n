@@ -5,7 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
+import { TEAM_LOCATOR } from '../../../shared/constants';
+import { extractLocatorIds, linearApiRequestAllItems } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
@@ -31,17 +32,7 @@ const properties: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
-		options: [
-			{
-				displayName: 'Team Name or ID',
-				name: 'teamId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getTeams' },
-				default: '',
-			},
-		],
+		options: [TEAM_LOCATOR],
 	},
 ];
 
@@ -62,6 +53,7 @@ export async function execute(
 	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
 	const filters = this.getNodeParameter('filters', 0) as IDataObject;
+	extractLocatorIds(this, filters, 'filters', 0);
 
 	const filter: IDataObject = {};
 	if (filters.teamId) filter.team = { id: { eq: filters.teamId } };

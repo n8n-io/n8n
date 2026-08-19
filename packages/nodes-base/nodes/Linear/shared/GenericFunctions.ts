@@ -164,3 +164,23 @@ export function normalizeTimelessDates(fields: Record<string, unknown>): void {
 		}
 	}
 }
+
+/**
+ * Resource locators nested in a collection (Additional/Update Fields, Filters) come back
+ * as `{ __rl, mode, value }` objects, so re-read each one by path to apply the mode's
+ * value extraction before the fields are spread into GraphQL variables.
+ */
+export function extractLocatorIds(
+	ctx: IExecuteFunctions,
+	fields: Record<string, unknown>,
+	collectionName: string,
+	itemIndex: number,
+): void {
+	for (const [key, value] of Object.entries(fields)) {
+		if (value !== null && typeof value === 'object' && '__rl' in value) {
+			fields[key] = ctx.getNodeParameter(`${collectionName}.${key}`, itemIndex, undefined, {
+				extractValue: true,
+			});
+		}
+	}
+}

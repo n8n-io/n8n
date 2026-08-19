@@ -6,7 +6,12 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { linearApiRequest, normalizeTimelessDates } from '../../../shared/GenericFunctions';
+import { LEAD_LOCATOR } from '../../../shared/constants';
+import {
+	extractLocatorIds,
+	linearApiRequest,
+	normalizeTimelessDates,
+} from '../../../shared/GenericFunctions';
 
 const properties: INodeProperties[] = [
 	{
@@ -40,15 +45,7 @@ const properties: INodeProperties[] = [
 				typeOptions: { rows: 4 },
 				default: '',
 			},
-			{
-				displayName: 'Lead Name or ID',
-				name: 'leadId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getUsers' },
-				default: '',
-			},
+			LEAD_LOCATOR,
 			{
 				displayName: 'Status',
 				name: 'state',
@@ -97,6 +94,7 @@ export async function execute(
 				string,
 				unknown
 			>;
+			extractLocatorIds(this, additionalFields, 'additionalFields', i);
 			normalizeTimelessDates(additionalFields);
 
 			const body = {

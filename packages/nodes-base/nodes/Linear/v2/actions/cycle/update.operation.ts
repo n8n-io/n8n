@@ -5,17 +5,12 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { CYCLE_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Cycle ID',
-		name: 'cycleId',
-		type: 'string',
-		required: true,
-		default: '',
-	},
+	CYCLE_LOCATOR,
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -62,7 +57,7 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const cycleId = this.getNodeParameter('cycleId', i) as string;
+			const cycleId = this.getNodeParameter('cycleId', i, '', { extractValue: true }) as string;
 			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 			const body = {

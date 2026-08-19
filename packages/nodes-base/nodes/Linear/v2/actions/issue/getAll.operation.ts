@@ -5,8 +5,16 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { ISSUE_FIELDS, PRIORITY_OPTIONS } from '../../../shared/constants';
-import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
+import {
+	ASSIGNEE_LOCATOR,
+	CYCLE_LOCATOR,
+	ISSUE_FIELDS,
+	PRIORITY_OPTIONS,
+	PROJECT_LOCATOR,
+	STATE_LOCATOR,
+	TEAM_LOCATOR,
+} from '../../../shared/constants';
+import { extractLocatorIds, linearApiRequestAllItems } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
@@ -35,24 +43,8 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		default: {},
 		options: [
-			{
-				displayName: 'Assignee Name or ID',
-				name: 'assigneeId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getUsers' },
-				default: '',
-			},
-			{
-				displayName: 'Cycle Name or ID',
-				name: 'cycleId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getCycles' },
-				default: '',
-			},
+			ASSIGNEE_LOCATOR,
+			CYCLE_LOCATOR,
 			{
 				displayName: 'Label Name or ID',
 				name: 'labelId',
@@ -69,33 +61,9 @@ const properties: INodeProperties[] = [
 				options: PRIORITY_OPTIONS,
 				default: 0,
 			},
-			{
-				displayName: 'Project Name or ID',
-				name: 'projectId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getProjects' },
-				default: '',
-			},
-			{
-				displayName: 'State Name or ID',
-				name: 'stateId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getStates' },
-				default: '',
-			},
-			{
-				displayName: 'Team Name or ID',
-				name: 'teamId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getTeams' },
-				default: '',
-			},
+			PROJECT_LOCATOR,
+			STATE_LOCATOR,
+			TEAM_LOCATOR,
 		],
 	},
 ];
@@ -117,6 +85,7 @@ export async function execute(
 
 	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 	const filters = this.getNodeParameter('filters', 0) as IDataObject;
+	extractLocatorIds(this, filters, 'filters', 0);
 	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
 
 	// Build filter object for the query

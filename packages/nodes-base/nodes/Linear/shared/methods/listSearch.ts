@@ -1,4 +1,5 @@
 import type {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
@@ -152,4 +153,156 @@ export async function getIssues(
 		results,
 		paginationToken: pageInfo.hasNextPage ? (pageInfo.endCursor ?? undefined) : undefined,
 	};
+}
+
+/**
+ * Search over a connection whose records aren't matched server-side — either the label
+ * isn't `name` (documents use `title`) or the connection's filter input isn't part of
+ * the API surface this node relies on elsewhere. Filters the fetched page locally.
+ */
+async function searchLocally(
+	ctx: ILoadOptionsFunctions,
+	entity: string,
+	fields: string,
+	toItem: (node: IDataObject) => INodeListSearchItems,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const body = {
+		query: `query Search($first: Int, $after: String) {
+			${entity}(first: $first, after: $after) {
+				nodes {
+					${fields}
+				}
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
+			}
+		}`,
+		variables: { first: 250, after: paginationToken ?? null },
+	};
+
+	const response = (await linearApiRequest.call(ctx, body)) as unknown as {
+		data: Record<
+			string,
+			{ nodes: IDataObject[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } }
+		>;
+	};
+	const connection = response.data[entity];
+
+	const search = filter?.toLowerCase();
+	const results = connection.nodes
+		.map(toItem)
+		.filter((item) => !search || item.name.toLowerCase().includes(search));
+
+	return {
+		results,
+		paginationToken: connection.pageInfo.hasNextPage
+			? (connection.pageInfo.endCursor ?? undefined)
+			: undefined,
+	};
+}
+
+export async function getTeams(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchByName(this, 'teams', 'TeamFilter', filter, paginationToken);
+}
+
+export async function getUsers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchByName(this, 'users', 'UserFilter', filter, paginationToken);
+}
+
+export async function getStates(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchByName(this, 'workflowStates', 'WorkflowStateFilter', filter, paginationToken);
+}
+
+export async function getLabels(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchByName(this, 'issueLabels', 'IssueLabelFilter', filter, paginationToken);
+}
+
+export async function getCycles(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	// A cycle's name is optional, so fall back to its number for the list label
+	return await searchLocally(
+		this,
+		'cycles',
+		'id name number team { key }',
+		(node) => {
+			const team = (node.team as IDataObject | undefined)?.key;
+			const label = (node.name as string) || `Cycle ${node.number as number}`;
+			return { name: team ? `${team as string} — ${label}` : label, value: node.id as string };
+		},
+		filter,
+		paginationToken,
+	);
+}
+
+export async function getDocuments(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchLocally(
+		this,
+		'documents',
+		'id title',
+		(node) => ({ name: node.title as string, value: node.id as string }),
+		filter,
+		paginationToken,
+	);
+}
+
+export async function getReleases(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchLocally(
+		this,
+		'releases',
+		'id name version',
+		(node) => {
+			const version = node.version as string | undefined;
+			return {
+				name: version ? `${node.name as string} (${version})` : (node.name as string),
+				value: node.id as string,
+			};
+		},
+		filter,
+		paginationToken,
+	);
+}
+
+export async function getViews(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchLocally(
+		this,
+		'customViews',
+		'id name',
+		(node) => ({ name: node.name as string, value: node.id as string }),
+		filter,
+		paginationToken,
+	);
 }

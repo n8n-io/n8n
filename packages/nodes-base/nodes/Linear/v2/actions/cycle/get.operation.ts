@@ -5,18 +5,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { CYCLE_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-const properties: INodeProperties[] = [
-	{
-		displayName: 'Cycle ID',
-		name: 'cycleId',
-		type: 'string',
-		required: true,
-		default: '',
-	},
-];
+const properties: INodeProperties[] = [CYCLE_LOCATOR];
 
 const displayOptions = {
 	show: {
@@ -35,7 +28,7 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const cycleId = this.getNodeParameter('cycleId', i) as string;
+			const cycleId = this.getNodeParameter('cycleId', i, '', { extractValue: true }) as string;
 
 			const body = {
 				query: `query Cycle($cycleId: String!) {

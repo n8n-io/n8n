@@ -5,27 +5,18 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { ISSUE_RELATION_FIELDS, ISSUE_RELATION_TYPE_OPTIONS } from '../../../shared/constants';
+import {
+	ISSUE_LOCATOR,
+	ISSUE_RELATION_FIELDS,
+	ISSUE_RELATION_TYPE_OPTIONS,
+	RELATED_ISSUE_LOCATOR,
+} from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Issue ID',
-		name: 'issueId',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The issue that the relation originates from',
-	},
-	{
-		displayName: 'Related Issue ID',
-		name: 'relatedIssueId',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The issue that is related to the origin issue',
-	},
+	ISSUE_LOCATOR,
+	RELATED_ISSUE_LOCATOR,
 	{
 		displayName: 'Type',
 		name: 'type',
@@ -53,8 +44,12 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const issueId = this.getNodeParameter('issueId', i) as string;
-			const relatedIssueId = this.getNodeParameter('relatedIssueId', i) as string;
+			const issueId = this.getNodeParameter('issueId', i, '', {
+				extractValue: true,
+			}) as string;
+			const relatedIssueId = this.getNodeParameter('relatedIssueId', i, '', {
+				extractValue: true,
+			}) as string;
 			const type = this.getNodeParameter('type', i) as string;
 
 			const body = {

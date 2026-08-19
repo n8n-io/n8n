@@ -5,17 +5,12 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { LABEL_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Label ID',
-		name: 'labelId',
-		type: 'string',
-		required: true,
-		default: '',
-	},
+	LABEL_LOCATOR,
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -62,7 +57,7 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const labelId = this.getNodeParameter('labelId', i) as string;
+			const labelId = this.getNodeParameter('labelId', i, '', { extractValue: true }) as string;
 			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 			const body = {

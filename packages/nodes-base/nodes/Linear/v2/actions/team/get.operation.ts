@@ -5,18 +5,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { TEAM_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-const properties: INodeProperties[] = [
-	{
-		displayName: 'Team ID',
-		name: 'teamId',
-		type: 'string',
-		required: true,
-		default: '',
-	},
-];
+const properties: INodeProperties[] = [TEAM_LOCATOR];
 
 const displayOptions = {
 	show: {
@@ -35,7 +28,7 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const teamId = this.getNodeParameter('teamId', i) as string;
+			const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 
 			const body = {
 				query: `query Team($teamId: String!) {

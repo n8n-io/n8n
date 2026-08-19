@@ -5,23 +5,24 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { ISSUE_FIELDS, PRIORITY_OPTIONS } from '../../../shared/constants';
-import { linearApiRequest, normalizeTimelessDates } from '../../../shared/GenericFunctions';
+import {
+	ASSIGNEE_LOCATOR,
+	CYCLE_LOCATOR,
+	ISSUE_FIELDS,
+	PRIORITY_OPTIONS,
+	PROJECT_LOCATOR,
+	STATE_LOCATOR,
+	TEAM_LOCATOR,
+} from '../../../shared/constants';
+import {
+	extractLocatorIds,
+	linearApiRequest,
+	normalizeTimelessDates,
+} from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Team Name or ID',
-		name: 'teamId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getTeams',
-		},
-		default: '',
-	},
+	TEAM_LOCATOR,
 	{
 		displayName: 'Title',
 		name: 'title',
@@ -36,24 +37,8 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Field',
 		default: {},
 		options: [
-			{
-				displayName: 'Assignee Name or ID',
-				name: 'assigneeId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getUsers' },
-				default: '',
-			},
-			{
-				displayName: 'Cycle Name or ID',
-				name: 'cycleId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getCycles' },
-				default: '',
-			},
+			ASSIGNEE_LOCATOR,
+			CYCLE_LOCATOR,
 			{
 				displayName: 'Description',
 				name: 'description',
@@ -98,15 +83,7 @@ const properties: INodeProperties[] = [
 				options: PRIORITY_OPTIONS,
 				default: 0,
 			},
-			{
-				displayName: 'Project Name or ID',
-				name: 'projectId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getProjects' },
-				default: '',
-			},
+			PROJECT_LOCATOR,
 			{
 				displayName: 'Project Milestone ID',
 				name: 'projectMilestoneId',
@@ -114,15 +91,7 @@ const properties: INodeProperties[] = [
 				default: '',
 				description: 'The ID of the project milestone to assign the issue to',
 			},
-			{
-				displayName: 'State Name or ID',
-				name: 'stateId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getStates' },
-				default: '',
-			},
+			STATE_LOCATOR,
 			{
 				displayName: 'Subscriber Names or IDs',
 				name: 'subscriberIds',
@@ -153,9 +122,10 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const teamId = this.getNodeParameter('teamId', i) as string;
+			const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 			const title = this.getNodeParameter('title', i) as string;
 			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+			extractLocatorIds(this, additionalFields, 'additionalFields', i);
 			normalizeTimelessDates(additionalFields);
 
 			const body = {

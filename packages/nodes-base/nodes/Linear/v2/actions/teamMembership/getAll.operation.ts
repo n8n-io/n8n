@@ -1,19 +1,11 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
+import { TEAM_LOCATOR } from '../../../shared/constants';
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Team Name or ID',
-		name: 'teamId',
-		type: 'options',
-		required: true,
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-		typeOptions: { loadOptionsMethod: 'getTeams' },
-		default: '',
-	},
+	TEAM_LOCATOR,
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -46,7 +38,7 @@ export async function execute(
 	_items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
-	const teamId = this.getNodeParameter('teamId', 0) as string;
+	const teamId = this.getNodeParameter('teamId', 0, '', { extractValue: true }) as string;
 	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
 

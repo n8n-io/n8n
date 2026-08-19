@@ -5,6 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { TEAM_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -16,16 +17,7 @@ const properties: INodeProperties[] = [
 		required: true,
 		default: '',
 	},
-	{
-		displayName: 'Team Name or ID',
-		name: 'teamId',
-		type: 'options',
-		required: true,
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-		typeOptions: { loadOptionsMethod: 'getTeams' },
-		default: '',
-	},
+	TEAM_LOCATOR,
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -68,7 +60,7 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const name = this.getNodeParameter('name', i) as string;
-			const teamId = this.getNodeParameter('teamId', i) as string;
+			const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 			const additionalFields = this.getNodeParameter('additionalFields', i) as Record<
 				string,
 				unknown

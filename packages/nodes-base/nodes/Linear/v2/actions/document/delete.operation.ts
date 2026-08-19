@@ -5,18 +5,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { DOCUMENT_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-const properties: INodeProperties[] = [
-	{
-		displayName: 'Document ID',
-		name: 'documentId',
-		type: 'string',
-		required: true,
-		default: '',
-	},
-];
+const properties: INodeProperties[] = [DOCUMENT_LOCATOR];
 
 const displayOptions = {
 	show: {
@@ -35,7 +28,9 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const documentId = this.getNodeParameter('documentId', i) as string;
+			const documentId = this.getNodeParameter('documentId', i, '', {
+				extractValue: true,
+			}) as string;
 
 			const body = {
 				query: `mutation DocumentDelete($documentId: String!) {

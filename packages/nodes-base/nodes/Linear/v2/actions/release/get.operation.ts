@@ -5,20 +5,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { RELEASE_FIELDS } from '../../../shared/constants';
+import { RELEASE_FIELDS, RELEASE_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-const properties: INodeProperties[] = [
-	{
-		displayName: 'Release ID',
-		name: 'releaseId',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The ID of the release to retrieve',
-	},
-];
+const properties: INodeProperties[] = [RELEASE_LOCATOR];
 
 const displayOptions = {
 	show: {
@@ -37,7 +28,7 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const releaseId = this.getNodeParameter('releaseId', i) as string;
+			const releaseId = this.getNodeParameter('releaseId', i, '', { extractValue: true }) as string;
 
 			const body = {
 				query: `query Release($releaseId: String!) {

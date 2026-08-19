@@ -5,7 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { linearApiRequest } from '../../../shared/GenericFunctions';
+import { PROJECT_LOCATOR } from '../../../shared/constants';
+import { extractLocatorIds, linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
@@ -31,15 +32,7 @@ const properties: INodeProperties[] = [
 				default: '',
 				description: 'The document content in markdown format',
 			},
-			{
-				displayName: 'Project Name or ID',
-				name: 'projectId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getProjects' },
-				default: '',
-			},
+			PROJECT_LOCATOR,
 		],
 	},
 ];
@@ -66,6 +59,7 @@ export async function execute(
 				string,
 				unknown
 			>;
+			extractLocatorIds(this, additionalFields, 'additionalFields', i);
 
 			const body = {
 				query: `mutation DocumentCreate($title: String!, $content: String, $projectId: String) {

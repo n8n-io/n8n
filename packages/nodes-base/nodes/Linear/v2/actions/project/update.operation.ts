@@ -6,8 +6,12 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { PROJECT_LOCATOR } from '../../../shared/constants';
-import { linearApiRequest, normalizeTimelessDates } from '../../../shared/GenericFunctions';
+import { LEAD_LOCATOR, PROJECT_LOCATOR } from '../../../shared/constants';
+import {
+	extractLocatorIds,
+	linearApiRequest,
+	normalizeTimelessDates,
+} from '../../../shared/GenericFunctions';
 
 const properties: INodeProperties[] = [
 	PROJECT_LOCATOR,
@@ -25,15 +29,7 @@ const properties: INodeProperties[] = [
 				typeOptions: { rows: 4 },
 				default: '',
 			},
-			{
-				displayName: 'Lead Name or ID',
-				name: 'leadId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				typeOptions: { loadOptionsMethod: 'getUsers' },
-				default: '',
-			},
+			LEAD_LOCATOR,
 			{
 				displayName: 'Name',
 				name: 'name',
@@ -84,6 +80,7 @@ export async function execute(
 		try {
 			const projectId = this.getNodeParameter('projectId', i, '', { extractValue: true }) as string;
 			const updateFields = this.getNodeParameter('updateFields', i);
+			extractLocatorIds(this, updateFields, 'updateFields', i);
 			normalizeTimelessDates(updateFields);
 
 			const body = {

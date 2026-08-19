@@ -5,8 +5,13 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { CUSTOMER_LOCATOR, CUSTOMER_NEED_FIELDS } from '../../../shared/constants';
-import { linearApiRequest } from '../../../shared/GenericFunctions';
+import {
+	CUSTOMER_LOCATOR,
+	CUSTOMER_NEED_FIELDS,
+	ISSUE_LOCATOR,
+	PROJECT_LOCATOR,
+} from '../../../shared/constants';
+import { extractLocatorIds, linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
@@ -27,17 +32,13 @@ const properties: INodeProperties[] = [
 				description: 'The content describing the need',
 			},
 			{
-				displayName: 'Issue ID',
-				name: 'issueId',
-				type: 'string',
-				default: '',
+				...ISSUE_LOCATOR,
+				required: false,
 				description: 'The issue to attach the need to',
 			},
 			{
-				displayName: 'Project ID',
-				name: 'projectId',
-				type: 'string',
-				default: '',
+				...PROJECT_LOCATOR,
+				required: false,
 				description: 'The project to attach the need to',
 			},
 			{
@@ -71,6 +72,7 @@ export async function execute(
 				extractValue: true,
 			}) as string;
 			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+			extractLocatorIds(this, additionalFields, 'additionalFields', i);
 
 			const body = {
 				query: `mutation CustomerNeedCreate($customerId: String!, $body: String, $issueId: String, $projectId: String, $priority: Float) {

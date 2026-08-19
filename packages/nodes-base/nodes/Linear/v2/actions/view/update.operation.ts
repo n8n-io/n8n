@@ -5,19 +5,12 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { CUSTOM_VIEW_FIELDS } from '../../../shared/constants';
+import { CUSTOM_VIEW_FIELDS, VIEW_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'View ID',
-		name: 'viewId',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The ID of the view to update',
-	},
+	VIEW_LOCATOR,
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -59,7 +52,7 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const viewId = this.getNodeParameter('viewId', i) as string;
+			const viewId = this.getNodeParameter('viewId', i, '', { extractValue: true }) as string;
 			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 			const body = {
