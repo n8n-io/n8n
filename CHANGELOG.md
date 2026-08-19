@@ -1,3 +1,16 @@
+## [1.123.73](https://github.com/n8n-io/n8n/compare/n8n@1.123.72...n8n@1.123.73) (2026-08-19)
+
+
+### Bug Fixes
+
+* **core:** Acquire expression isolate for dynamic node parameter requests ([#36494](https://github.com/n8n-io/n8n/issues/36494)) ([4ee48e6](https://github.com/n8n-io/n8n/commit/4ee48e61a16e5730306556f1e79f1b4f32c8104f))
+
+
+### Features
+
+* **core:** Make the vm expression engine the default on 1.x ([#36498](https://github.com/n8n-io/n8n/issues/36498)) ([75bedd8](https://github.com/n8n-io/n8n/commit/75bedd8eaf5ff2a04504c9973d019b787cb6c149))
+
+
 ## [1.123.72](https://github.com/n8n-io/n8n/compare/n8n@1.123.71...n8n@1.123.72) (2026-08-17)
 
 
