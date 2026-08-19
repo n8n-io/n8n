@@ -31,6 +31,8 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
  * e.g. the n8n Trigger's "Instance Started" event fires exactly for the
  * leader's startup pass. Records from before the `reason` column existed
  * default to `publish` at the DB level, i.e. today's `update` behavior.
+ * A first publication overrides `publish` → `activate`; see
+ * {@link WorkflowPublicationApplier.resolveActivationMode}.
  */
 const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActivateMode> = {
 	[WorkflowPublicationReason.Publish]: 'update',
@@ -177,8 +179,7 @@ export class WorkflowPublicationApplier {
 		try {
 			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
-				const activationMode =
-					ACTIVATION_MODE_BY_REASON[record.reason ?? WorkflowPublicationReason.Publish];
+				const activationMode = this.resolveActivationMode(record, oldVersion);
 				const outcome = await this.workflowTriggerActivator.activate(
 					workflow,
 					newVersion,
@@ -203,6 +204,19 @@ export class WorkflowPublicationApplier {
 				failures: [],
 			}),
 		};
+	}
+
+	/**
+	 * A first publication (no old version) reports `activate`, so the n8n Trigger's
+	 * "Workflow Published" event fires; otherwise the mode follows the record's reason.
+	 */
+	private resolveActivationMode(
+		record: WorkflowPublicationOutbox,
+		oldVersion: WorkflowHistory | null,
+	): WorkflowActivateMode {
+		const reason = record.reason ?? WorkflowPublicationReason.Publish;
+		if (reason === WorkflowPublicationReason.Publish && oldVersion === null) return 'activate';
+		return ACTIVATION_MODE_BY_REASON[reason];
 	}
 
 	/**

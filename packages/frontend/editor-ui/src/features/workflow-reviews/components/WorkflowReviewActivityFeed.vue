@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton, N8nEmptyState, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { onMounted, ref, watch } from 'vue';
@@ -52,6 +52,12 @@ watch(
 watch(
 	entries,
 	(next, previous) => {
+		// Good for this update only, and only while its element is still in the list: `loadMore`
+		// bails out on a cursor it has already spent, leaving an anchor behind, and a refetch
+		// drops the entries an older anchor points at.
+		const anchor = prependAnchor?.element.isConnected === true ? prependAnchor : null;
+		prependAnchor = null;
+
 		if (next.length === 0) return;
 		if (!previous || previous.length === 0) {
 			scrollToBottom();
@@ -59,11 +65,13 @@ watch(
 		}
 		if (next[0]?.id !== previous[0]?.id) {
 			const container = scrollContainer.value;
-			if (container && prependAnchor) {
-				container.scrollTop +=
-					prependAnchor.element.getBoundingClientRect().top - prependAnchor.top;
+			// With no anchor the list was replaced rather than prepended to — a refetch keeps
+			// only what is newer than the page it got — so the newest entry is what to show.
+			if (!container || !anchor) {
+				scrollToBottom();
+				return;
 			}
-			prependAnchor = null;
+			container.scrollTop += anchor.element.getBoundingClientRect().top - anchor.top;
 			return;
 		}
 		if (next.at(-1)?.id !== previous.at(-1)?.id) scrollToBottom();
@@ -91,6 +99,9 @@ onMounted(() => {
 
 <template>
 	<div ref="scrollContainer" :class="$style.feed" data-test-id="workflow-review-activity-feed">
+		<div v-if="$slots.header" :class="$style.header">
+			<slot name="header" />
+		</div>
 		<N8nLoading v-if="loading && entries.length === 0" :loading="true" :rows="3" />
 		<div
 			v-else-if="error && entries.length === 0"
@@ -108,12 +119,6 @@ onMounted(() => {
 			>
 				{{ i18n.baseText('generic.retry') }}
 			</N8nButton>
-		</div>
-		<div v-else-if="entries.length === 0" data-test-id="workflow-review-activity-empty">
-			<N8nEmptyState
-				:heading="i18n.baseText('workflowReviews.detail.activity.empty.heading')"
-				:description="i18n.baseText('workflowReviews.detail.activity.empty.description')"
-			/>
 		</div>
 		<template v-else>
 			<div
@@ -138,6 +143,9 @@ onMounted(() => {
 					{{ i18n.baseText('generic.retry') }}
 				</N8nButton>
 			</div>
+			<N8nText bold color="text-light" size="medium" :class="$style.header">{{
+				i18n.baseText('workflowReviews.detail.tabs.activity')
+			}}</N8nText>
 			<div
 				ref="list"
 				role="list"
@@ -148,6 +156,7 @@ onMounted(() => {
 					v-for="entry in entries"
 					:key="entry.id"
 					role="listitem"
+					:class="$style.item"
 					data-test-id="workflow-review-activity-entry"
 				>
 					<component :is="resolveActivityComponent(entry)" :entry="entry" />
@@ -164,7 +173,9 @@ onMounted(() => {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-	padding-block: var(--spacing--2xs) var(--spacing--sm);
+	padding-block: var(--spacing--5xs) var(--spacing--sm);
+	/* Keeps the cards off the scrollbar that appears here when feed overflows */
+	padding-inline-end: var(--spacing--2xs);
 }
 
 /* The detail body stacks and takes over scrolling here, so the feed must bound itself or its
@@ -175,10 +186,44 @@ onMounted(() => {
 	}
 }
 
+/* Same inset the list gives its entries, so a card here starts on the avatar column. */
+.header {
+	padding-inline: var(--spacing--sm);
+	padding-bottom: var(--spacing--sm);
+}
+
 .list {
+	/* The rail below spans this gap, so both read it from here. */
+	--review-activity--gap: var(--spacing--md);
+	/* Every entry leads with an `xxsmall` avatar (`N8nAvatar/avatarSizes.ts`), and a boxed
+		entry's negative margin and padding cancel out, so all avatars share this column. The
+		rail below is centred on it. */
+	--review-activity--avatar-size: 16px;
+	--review-activity--line-height: 20px;
+
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
+	gap: var(--review-activity--gap);
+	/* Entries sit inset; a boxed entry cancels this to reach the panel edge. */
+	padding-inline: var(--spacing--sm);
+}
+
+.item {
+	position: relative;
+}
+
+/* Threads the entries into one timeline. Drawn in the gap above each entry rather than
+	inside it, because the line belongs to the space between two entries and only the list
+	knows that gap. The first entry has nothing above it to join. */
+.item:not(:first-child)::before {
+	content: '';
+	position: absolute;
+	/* Floats clear of both neighbours instead of butting into them, as the design does. The
+		row is taller than its avatar, so the same inset reads as a wider gap at the top. */
+	bottom: calc(100% + var(--spacing--5xs));
+	height: calc(var(--review-activity--gap) - 2 * var(--spacing--5xs));
+	left: calc(var(--review-activity--avatar-size) / 2);
+	border-left: var(--border);
 }
 
 .errorRow {

@@ -56,14 +56,15 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
+import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { DCR_MANAGED_CREDENTIAL_FIELDS } from '@/oauth/dcr-managed-fields';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -97,6 +98,24 @@ type PrepareUpdateDataOptions = {
 	 */
 	clearOauthTokenData?: boolean;
 	operationContext?: OperationContext;
+	/**
+	 * How to combine incoming `data` with the stored decrypted blob:
+	 * - `unredact` (default): replace `***` redacted values from stored data
+	 * - `replace`: use incoming data as-is
+	 * - `partial`: merge stored + incoming, then unredact
+	 */
+	dataMerge?: 'unredact' | 'replace' | 'partial';
+};
+
+type GetManyOptions = {
+	listQueryOptions?: ListQuery.Options;
+	includeScopes?: boolean;
+	includeData?: boolean;
+	onlySharedWithMe?: boolean;
+	includeGlobal?: boolean;
+	filters?: {
+		externalSecretsStore?: string;
+	};
 };
 
 type UpdateOptions = {
@@ -140,6 +159,11 @@ type GetManyCredentialsOptions = {
 	filters?: {
 		dependency?: CredentialDependencyFilter;
 	};
+};
+
+type CredentialsWithCount<T = CredentialsEntity> = {
+	credentials: T[];
+	count: number;
 };
 
 type WorkflowCredentialResult = {
@@ -190,6 +214,7 @@ export class CredentialsService {
 		private readonly instanceCredentialAssignmentRepository: InstanceCredentialAssignmentRepository,
 		private readonly instanceCredentialUseRegistry: InstanceCredentialUseRegistry,
 		private readonly dbLockService: DbLockService,
+		private readonly eventService: EventService,
 	) {}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
@@ -256,31 +281,23 @@ export class CredentialsService {
 
 	async getMany(
 		user: User,
-		options: {
-			listQueryOptions?: ListQuery.Options;
-			includeScopes?: boolean;
-			includeData: true;
-			onlySharedWithMe?: boolean;
-			includeGlobal?: boolean;
-			filters?: {
-				externalSecretsStore?: string;
-			};
-		},
+		options: GetManyOptions & { includeData: true },
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
+	async getMany(user: User, options?: GetManyOptions): Promise<CredentialsEntity[]>;
 	async getMany(
 		user: User,
-		options?: {
-			listQueryOptions?: ListQuery.Options;
-			includeScopes?: boolean;
-			includeData?: boolean;
-			onlySharedWithMe?: boolean;
-			includeGlobal?: boolean;
-			filters?: {
-				externalSecretsStore?: string;
-			};
-		},
-	): Promise<CredentialsEntity[]>;
-	async getMany(
+		options: GetManyOptions = {},
+	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
+		const { credentials } = await this.getManyAndCount(user, options);
+		return credentials;
+	}
+
+	async getManyAndCount(
+		user: User,
+		options: GetManyOptions & { includeData: true },
+	): Promise<CredentialsWithCount<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
+	async getManyAndCount(user: User, options?: GetManyOptions): Promise<CredentialsWithCount>;
+	async getManyAndCount(
 		user: User,
 		{
 			listQueryOptions = {},
@@ -289,17 +306,10 @@ export class CredentialsService {
 			onlySharedWithMe = false,
 			includeGlobal = false,
 			filters = {},
-		}: {
-			listQueryOptions?: ListQuery.Options;
-			includeScopes?: boolean;
-			includeData?: boolean;
-			onlySharedWithMe?: boolean;
-			includeGlobal?: boolean;
-			filters?: {
-				externalSecretsStore?: string;
-			};
-		} = {},
-	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
+		}: GetManyOptions = {},
+	): Promise<
+		CredentialsWithCount<ICredentialsDecrypted<ICredentialDataDecryptedObject> | CredentialsEntity>
+	> {
 		const { externalSecretsStore } = filters;
 		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
@@ -310,7 +320,7 @@ export class CredentialsService {
 			: undefined;
 
 		if (externalSecretsStore && !dependencyFilter) {
-			return [];
+			return { credentials: [], count: 0 };
 		}
 
 		// Auto-enable includeScopes when includeData is requested
@@ -318,27 +328,19 @@ export class CredentialsService {
 			includeScopes = true;
 		}
 
-		let credentials: CredentialsEntity[];
+		const fetchOptions: GetManyCredentialsOptions = {
+			listQueryOptions,
+			includeGlobal,
+			includeData,
+			onlySharedWithMe,
+			filters: { dependency: dependencyFilter },
+		};
 
-		if (returnAll) {
-			credentials = await this.getManyForAdminUser(user, {
-				listQueryOptions,
-				includeGlobal,
-				includeData,
-				onlySharedWithMe,
-				filters: { dependency: dependencyFilter },
-			});
-		} else {
-			credentials = await this.getManyForMemberUser(user, {
-				listQueryOptions,
-				includeGlobal,
-				includeData,
-				onlySharedWithMe,
-				filters: { dependency: dependencyFilter },
-			});
-		}
+		const { credentials, count } = returnAll
+			? await this.getManyForAdminUser(user, fetchOptions)
+			: await this.getManyForMemberUser(user, fetchOptions);
 
-		return await this.enrichCredentials(
+		const enriched = await this.enrichCredentials(
 			credentials,
 			user,
 			isDefaultSelect,
@@ -347,6 +349,8 @@ export class CredentialsService {
 			listQueryOptions,
 			onlySharedWithMe,
 		);
+
+		return { credentials: enriched, count };
 	}
 
 	private async getManyForAdminUser(
@@ -358,7 +362,7 @@ export class CredentialsService {
 			onlySharedWithMe,
 			filters,
 		}: GetManyCredentialsOptions,
-	): Promise<CredentialsEntity[]> {
+	): Promise<CredentialsWithCount> {
 		const { dependency: dependencyFilter } = filters ?? {};
 		const typeFilter = this.extractTypeFilter(listQueryOptions);
 
@@ -367,47 +371,50 @@ export class CredentialsService {
 			const sharingOptions = {
 				...(onlySharedWithMe ? { onlySharedWithMe: true } : {}),
 			};
-			const { credentials } = await this.credentialsRepository.getManyAndCountWithSharingSubquery(
-				user,
-				sharingOptions,
-				{
+			const { credentials, count } =
+				await this.credentialsRepository.getManyAndCountWithSharingSubquery(user, sharingOptions, {
 					...listQueryOptions,
 					...(includeData ? { includeData: true } : {}),
 					filters: {
 						dependency: dependencyFilter,
 					},
-				},
-			);
+				});
 
 			if (includeGlobal) {
-				return await this.addGlobalCredentials(
-					credentials,
-					includeData,
-					dependencyFilter,
-					typeFilter,
-				);
+				return {
+					credentials: await this.addGlobalCredentials(
+						credentials,
+						includeData,
+						dependencyFilter,
+						typeFilter,
+					),
+					count,
+				};
 			}
 
-			return credentials;
+			return { credentials, count };
 		}
 
 		await this.applyPersonalProjectFilter(listQueryOptions);
 
-		let credentials = await this.credentialsRepository.findMany({
+		const [credentials, count] = await this.credentialsRepository.findManyAndCount({
 			...listQueryOptions,
 			...(includeData ? { includeData: true } : {}),
 		});
 
 		if (includeGlobal) {
-			credentials = await this.addGlobalCredentials(
-				credentials,
-				includeData,
-				dependencyFilter,
-				typeFilter,
-			);
+			return {
+				credentials: await this.addGlobalCredentials(
+					credentials,
+					includeData,
+					dependencyFilter,
+					typeFilter,
+				),
+				count,
+			};
 		}
 
-		return credentials;
+		return { credentials, count };
 	}
 
 	private async getManyForMemberUser(
@@ -419,7 +426,7 @@ export class CredentialsService {
 			onlySharedWithMe,
 			filters,
 		}: GetManyCredentialsOptions,
-	): Promise<CredentialsEntity[]> {
+	): Promise<CredentialsWithCount> {
 		const { dependency: dependencyFilter } = filters ?? {};
 		const typeFilter = this.extractTypeFilter(listQueryOptions);
 
@@ -432,7 +439,7 @@ export class CredentialsService {
 				id: listQueryOptions.filter.projectId as string,
 			});
 			if (!project) {
-				return [];
+				return { credentials: [], count: 0 };
 			}
 			isPersonalProject = project.type === 'personal';
 			personalProjectOwnerId = project.creatorId;
@@ -451,7 +458,7 @@ export class CredentialsService {
 		if (isPersonalProject && personalProjectOwnerId) {
 			// Prevent users from accessing another user's personal project credentials
 			if (personalProjectOwnerId !== user.id && !hasGlobalScope(user, 'credential:read')) {
-				return [];
+				return { credentials: [], count: 0 };
 			}
 			sharingOptions.isPersonalProject = true;
 			sharingOptions.personalProjectOwnerId = personalProjectOwnerId;
@@ -468,29 +475,28 @@ export class CredentialsService {
 			sharingOptions.credentialRoles = credentialRoles;
 		}
 
-		// Use the new subquery-based repository method
-		const { credentials } = await this.credentialsRepository.getManyAndCountWithSharingSubquery(
-			user,
-			sharingOptions,
-			{
+		const { credentials, count } =
+			await this.credentialsRepository.getManyAndCountWithSharingSubquery(user, sharingOptions, {
 				...listQueryOptions,
 				...(includeData ? { includeData: true } : {}),
 				filters: {
 					dependency: dependencyFilter,
 				},
-			},
-		);
+			});
 
 		if (includeGlobal) {
-			return await this.addGlobalCredentials(
-				credentials,
-				includeData,
-				dependencyFilter,
-				typeFilter,
-			);
+			return {
+				credentials: await this.addGlobalCredentials(
+					credentials,
+					includeData,
+					dependencyFilter,
+					typeFilter,
+				),
+				count,
+			};
 		}
 
-		return credentials;
+		return { credentials, count };
 	}
 
 	private async applyPersonalProjectFilter(listQueryOptions: ListQuery.Options): Promise<void> {
@@ -516,24 +522,6 @@ export class CredentialsService {
 		}
 	}
 
-	private async enrichCredentials(
-		credentials: CredentialsEntity[],
-		user: User,
-		isDefaultSelect: boolean,
-		includeScopes: boolean,
-		includeData: true,
-		listQueryOptions: ListQuery.Options,
-		onlySharedWithMe: boolean,
-	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
-	private async enrichCredentials(
-		credentials: CredentialsEntity[],
-		user: User,
-		isDefaultSelect: boolean,
-		includeScopes: boolean,
-		includeData: boolean,
-		listQueryOptions: ListQuery.Options,
-		onlySharedWithMe: boolean,
-	): Promise<CredentialsEntity[]>;
 	private async enrichCredentials(
 		credentials: CredentialsEntity[],
 		user: User,
@@ -756,6 +744,24 @@ export class CredentialsService {
 		});
 	}
 
+	private applyDataMerge(
+		incomingData: ICredentialDataDecryptedObject,
+		decryptedData: ICredentialDataDecryptedObject,
+		credentialType: string,
+		dataMerge: NonNullable<PrepareUpdateDataOptions['dataMerge']>,
+	): ICredentialDataDecryptedObject {
+		if (dataMerge === 'replace') {
+			return incomingData;
+		}
+		const dataToUnredact =
+			dataMerge === 'partial' ? { ...decryptedData, ...incomingData } : incomingData;
+		return this.unredact(
+			dataToUnredact,
+			decryptedData,
+			this.getCredentialTypeProperties(credentialType),
+		);
+	}
+
 	async prepareUpdateData(
 		user: User,
 		data: CredentialRequest.CredentialProperties,
@@ -763,13 +769,15 @@ export class CredentialsService {
 		options?: PrepareUpdateDataOptions,
 	): Promise<CredentialsEntity> {
 		const decryptedData = await this.decrypt(existingCredential, true);
+		const dataMerge = options?.dataMerge ?? 'unredact';
 
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
-			mergedData.data = this.unredact(
+			mergedData.data = this.applyDataMerge(
 				mergedData.data,
 				decryptedData,
-				this.getCredentialTypeProperties(existingCredential.type),
+				existingCredential.type,
+				dataMerge,
 			);
 		}
 		if (existingCredential.usageScope === 'instance') {
@@ -810,15 +818,13 @@ export class CredentialsService {
 
 		await validateEntity(updateData);
 
-		// Do not overwrite the oauth data else data like the access or refresh token would get lost
-		// every time anybody changes anything on the credentials even if it is just the name.
-		// Exception: when toggling to private (Static→Private), the shared token must be cleared.
-		if (decryptedData.oauthTokenData && !options?.clearOauthTokenData) {
-			// @ts-expect-error data is typed as encrypted string
-			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
-		}
-
-		if (!options?.clearOauthTokenData) {
+		// Keep oauth / DCR fields unless the caller replaces the blob or clears the token
+		// (e.g. Static→Private toggle).
+		if (dataMerge !== 'replace' && !options?.clearOauthTokenData) {
+			if (decryptedData.oauthTokenData) {
+				// @ts-expect-error data is typed as encrypted string
+				updateData.data.oauthTokenData = decryptedData.oauthTokenData;
+			}
 			this.restoreHiddenDcrFields(
 				existingCredential.type,
 				updateData.data as unknown as ICredentialDataDecryptedObject,
@@ -826,10 +832,12 @@ export class CredentialsService {
 			);
 		}
 
-		this.validateOAuthCredentialUrls(
-			updateData.type,
-			updateData.data as unknown as ICredentialDataDecryptedObject,
-		);
+		if (updateData.data) {
+			this.validateOAuthCredentialUrls(
+				updateData.type,
+				updateData.data as unknown as ICredentialDataDecryptedObject,
+			);
+		}
 		return updateData;
 	}
 
@@ -1162,6 +1170,10 @@ export class CredentialsService {
 		return result;
 	}
 
+	async findCredentialOwningProject(credentialId: string) {
+		return await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+	}
+
 	/**
 	 * Deletes a credential.
 	 *
@@ -1200,10 +1212,30 @@ export class CredentialsService {
 					`This credential is assigned to credential use "${result.credentialUseIds.join(', ')}" and cannot be deleted`,
 				);
 			}
+			if (result.status === 'deleted') {
+				this.emitCredentialDeleted(user, credential);
+			}
 			return;
 		}
 
 		await this.credentialsRepository.remove(credential);
+		this.emitCredentialDeleted(user, credential);
+	}
+
+	private emitCredentialDeleted(user: User, credential: CredentialsEntity) {
+		this.eventService.emit('credentials-deleted', {
+			user,
+			credentialType: credential.type,
+			credentialId: credential.id,
+		});
+
+		if (credential.isResolvable) {
+			this.eventService.emit('private-credential-deleted', {
+				user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		}
 	}
 
 	async test(userId: User['id'], credentials: ICredentialsDecrypted) {
@@ -1211,7 +1243,7 @@ export class CredentialsService {
 	}
 
 	async testById(userId: User['id'], credentialId: string) {
-		const storedCredential = await this.credentialsFinderService.findCredentialById(credentialId);
+		const storedCredential = await this.credentialsFinderService.findById(credentialId);
 
 		// Dynamic-credential flows only; admins test instance credentials via testWithCredentials
 		if (!storedCredential || storedCredential.usageScope !== 'project') {

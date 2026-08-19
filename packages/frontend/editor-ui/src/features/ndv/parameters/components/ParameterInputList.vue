@@ -91,6 +91,8 @@ type Props = {
 	optionsOverrides?: ParameterOptionsOverrides;
 	assignmentCollectionEditableValueIndices?: Record<string, number[]>;
 	layout?: 'inline';
+	parameterIssues?: Record<string, string[]>;
+	fromAiDisabledParameters?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -1023,6 +1025,8 @@ watch(
 					:key="node?.name"
 					:parameter="item.parameter"
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
+					:external-issues="parameterIssues?.[item.parameter.name]"
+					:disable-from-ai="fromAiDisabledParameters?.includes(item.parameter.name)"
 					:value="getParameterValue(item.parameter.name)"
 					:display-options="item.showOptions"
 					:options-overrides="optionsOverrides"

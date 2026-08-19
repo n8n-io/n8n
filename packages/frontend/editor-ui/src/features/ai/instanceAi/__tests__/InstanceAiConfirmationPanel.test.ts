@@ -78,8 +78,16 @@ vi.mock('../components/GatewayResourceDecision.vue', () => ({
 }));
 vi.mock('../components/InstanceAiCredentialSetup.vue', () => ({
 	default: {
-		template: '<div />',
-		props: ['requestId', 'credentialRequests', 'message', 'projectId', 'credentialFlow'],
+		template:
+			'<div data-test-id="mock-credential-setup" :data-project-id="projectId" :data-require-user-selection="String(requireUserSelection)" />',
+		props: [
+			'requestId',
+			'credentialRequests',
+			'message',
+			'projectId',
+			'credentialFlow',
+			'requireUserSelection',
+		],
 	},
 }));
 vi.mock('../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
@@ -490,6 +498,31 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			const { queryByTestId } = renderComponent({ props: { kind: 'inline' } });
 			expect(queryByTestId('instance-ai-panel-confirm-approve')).toBeNull();
 			expect(queryByTestId('instance-ai-confirmation-panel')).toBeNull();
+		});
+	});
+
+	describe('credential setup', () => {
+		it('passes requireUserSelection and falls back to the thread project', () => {
+			thread.projectId = 'thread-project';
+			injectPendingConfirmation(thread, {
+				requestId: 'req-credential',
+				severity: 'info',
+				message: 'Set up credentials',
+				credentialRequests: [
+					{
+						credentialType: 'slackApi',
+						reason: 'Post a message',
+						existingCredentials: [],
+					},
+				],
+				requireUserSelection: true,
+			});
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			const credentialSetup = getByTestId('mock-credential-setup');
+
+			expect(credentialSetup).toHaveAttribute('data-require-user-selection', 'true');
+			expect(credentialSetup).toHaveAttribute('data-project-id', 'thread-project');
 		});
 	});
 

@@ -14,6 +14,7 @@ import type {
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestSummary,
+	WorkflowReviewStatusesResponse,
 } from '@n8n/api-types';
 import { makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
@@ -25,8 +26,8 @@ export type FetchWorkflowReviewInboxParams = {
 	cursor?: string;
 };
 
-/** A decision a reviewer can submit; `pending` is the initial state, never an input. */
-export type WorkflowReviewDecisionInput = DecideWorkflowReviewRequestDto['decision'];
+/** What a reviewer submits with a decision; `pending` is the initial state, never an input. */
+export type WorkflowReviewDecisionInput = Pick<DecideWorkflowReviewRequestDto, 'decision' | 'note'>;
 
 /** Workflow-scoped list used by the review status sync (toggle + canvas banner). */
 export async function fetchWorkflowReviewRequests(
@@ -38,6 +39,19 @@ export async function fetchWorkflowReviewRequests(
 		'GET',
 		'/workflow-review-requests',
 		{ ...query },
+	);
+}
+
+/** Batched open-review statuses for a page of workflows. POST for the body only — a read. */
+export async function fetchWorkflowReviewStatuses(
+	context: IRestApiContext,
+	workflowIds: string[],
+): Promise<WorkflowReviewStatusesResponse> {
+	return await makeRestApiRequest<WorkflowReviewStatusesResponse>(
+		context,
+		'POST',
+		'/workflow-review-requests/statuses',
+		{ workflowIds },
 	);
 }
 
