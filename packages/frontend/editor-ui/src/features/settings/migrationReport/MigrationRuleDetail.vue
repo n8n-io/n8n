@@ -351,6 +351,7 @@ const sortedWorkflows = computed(() => {
 				<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
 					<!-- Workflow-level issues carry no node, so there is nothing to link to. -->
 					<template v-for="(issue, index) in nodeIssues(item.issues)" :key="issue.nodeId">
+						<template v-if="index > 0">, </template>
 						<N8nLink
 							theme="text"
 							:to="`/workflow/${item.id}/${issue.nodeId}`"
@@ -359,7 +360,6 @@ const sortedWorkflows = computed(() => {
 						>
 							{{ issue.nodeName }}
 						</N8nLink>
-						<template v-if="index < nodeIssues(item.issues).length - 1">, </template>
 					</template>
 				</div>
 			</template>
