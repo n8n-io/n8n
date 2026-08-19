@@ -208,7 +208,7 @@ overrides:
   prebuild-install: 7.1.3
   pug: ^3.0.3
   semver: ^7.5.4
-  tar-fs: 2.1.4
+  tar-fs: 2.1.5
   tslib: ^2.6.2
   tsconfig-paths: ^4.2.0
   typescript: 5.9.2
@@ -16771,8 +16771,8 @@ packages:
     resolution: {integrity: sha512-Re10+NauLTMCudc7T5WLFLAwDhQ0JWdrMK+9B2M8zR5hRExKmsRDCBA7/aV/pNJFltmBFO5BAMlQFi/vq3nKOg==}
     engines: {node: '>=6'}
 
-  tar-fs@2.1.4:
-    resolution: {integrity: sha512-mDAjwmZdh7LTT6pNleZ05Yt65HC3E+NiQzl672vQG38jIrehtJk/J3mNwIg+vShQPcLF/LV7CMnDW6vjj6sfYQ==}
+  tar-fs@2.1.5:
+    resolution: {integrity: sha512-OboTd8mmMhZDNPV+UjQcK9yKAatXu2aJ+r1w4im1Otd4M4fl2hwvdoXUxIYHFTHWK/3y3FarBP70v3vwmGlOxw==}
 
   tar-stream@2.2.0:
     resolution: {integrity: sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ==}
@@ -27962,7 +27962,7 @@ snapshots:
       '@grpc/proto-loader': 0.7.13
       docker-modem: 5.0.6
       protobufjs: 7.6.5
-      tar-fs: 2.1.4
+      tar-fs: 2.1.5
       uuid: 11.1.1
     transitivePeerDependencies:
       - supports-color
@@ -33537,7 +33537,7 @@ snapshots:
       pump: 3.0.0
       rc: 1.2.8
       simple-get: 4.0.1
-      tar-fs: 2.1.4
+      tar-fs: 2.1.5
       tunnel-agent: 0.6.0
 
   precinct@12.2.0:
@@ -35466,7 +35466,7 @@ snapshots:
 
   tapable@2.2.2: {}
 
-  tar-fs@2.1.4:
+  tar-fs@2.1.5:
     dependencies:
       chownr: 1.1.4
       mkdirp-classic: 0.5.3
@@ -35566,7 +35566,7 @@ snapshots:
       proper-lockfile: 4.1.2
       properties-reader: 2.3.0
       ssh-remote-port-forward: 1.0.4
-      tar-fs: 2.1.4
+      tar-fs: 2.1.5
       tmp: 0.2.7
       undici: 7.29.0
     transitivePeerDependencies:
