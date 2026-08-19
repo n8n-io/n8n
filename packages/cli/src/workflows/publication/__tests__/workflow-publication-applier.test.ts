@@ -882,11 +882,17 @@ describe('WorkflowPublicationApplier', () => {
 			});
 		});
 
-		it('fills missing node ids the same way', async () => {
+		it('keeps the contested id on the trigger-like sharer, not the first sharer', async () => {
+			// Keeper preference needs real node-type resolution: poller_state rows and
+			// processed_data contexts follow the surviving id, so it must stay on the
+			// node that owns that state.
 			workflowHistoryRepository.findOneBy.mockResolvedValue({
 				versionId: 'v-2',
 				workflowId: 'wf-1',
-				nodes: [triggerNode('', { name: 'Trigger' })],
+				nodes: [
+					triggerNode('shared', { name: 'Set', type: 'n8n-nodes-base.set' }),
+					triggerNode('shared', { name: 'Trigger' }),
+				],
 				connections: {},
 			} as unknown as WorkflowHistory);
 
@@ -894,7 +900,9 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(result).toEqual({ type: 'skipped', reason: 'node-ids-healed' });
 			const [, versionData] = workflowService.publishAsSystem.mock.calls[0];
-			expect(versionData.nodes[0].id).toBeTruthy();
+			const byName = new Map(versionData.nodes.map((node: INode) => [node.name, node.id]));
+			expect(byName.get('Trigger')).toBe('shared');
+			expect(byName.get('Set')).not.toBe('shared');
 		});
 
 		it('skips as superseded when the system publish loses its race', async () => {
