@@ -27,13 +27,15 @@ function makeProvider(creds: CredentialListItem[]): CredentialProvider {
 
 let track: Mock;
 
-function askCredentialTool(deps: Omit<AskCredentialToolDeps, 'track'>) {
-	const merged: AskCredentialToolDeps = { ...deps, track };
+function askCredentialTool(deps: Omit<AskCredentialToolDeps, 'track' | 'projectId'>) {
+	const merged: AskCredentialToolDeps = { projectId: 'project-1', ...deps, track };
 	return buildAskCredentialTool(merged);
 }
 
-function askEmbeddingCredentialTool(deps: Omit<AskEmbeddingCredentialToolDeps, 'track'>) {
-	const merged: AskEmbeddingCredentialToolDeps = { ...deps, track };
+function askEmbeddingCredentialTool(
+	deps: Omit<AskEmbeddingCredentialToolDeps, 'track' | 'projectId'>,
+) {
+	const merged: AskEmbeddingCredentialToolDeps = { projectId: 'project-1', ...deps, track };
 	return buildAskEmbeddingCredentialTool(merged);
 }
 
@@ -189,6 +191,7 @@ describe('ask_credential tool', () => {
 					},
 				],
 				credentialFlow: { stage: 'generic' },
+				projectId: 'project-1',
 			}),
 		);
 		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL, {

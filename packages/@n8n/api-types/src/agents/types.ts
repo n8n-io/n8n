@@ -46,6 +46,21 @@ export interface AgentIntegrationStatusResponse {
 	integrations: AgentIntegrationStatusEntry[];
 }
 
+export interface AgentDisconnectIntegrationResponse {
+	status: 'disconnected';
+	warning?: AgentIntegrationDisconnectWarning;
+}
+
+export interface AgentIntegrationDisconnectWarning {
+	integrationType: string;
+	code: string;
+	action?: {
+		type: 'open_url';
+		url: string;
+	};
+	details?: Record<string, string>;
+}
+
 export interface AgentSkillReference {
 	path: string;
 	content: string;
@@ -172,6 +187,8 @@ export interface AgentPersistedMessageContentPart {
 	toolName?: string;
 	toolCallId?: string;
 	input?: unknown;
+	/** HITL payload associated with this tool call, when it suspended. */
+	suspendPayload?: unknown;
 	state?: string;
 	output?: unknown;
 	canceled?: boolean;
@@ -236,6 +253,10 @@ export interface AgentBuilderOpenSuspension {
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
+}
+
+export interface AgentSessionLangSmithExportResponse {
+	traceId: string;
 }
 
 /**

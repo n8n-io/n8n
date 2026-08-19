@@ -16,14 +16,14 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 15 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
-| [agent_execution](agent_execution.md) | 20 |  | table |
+| [agent_execution](agent_execution.md) | 21 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
-| [agent_task_definition](agent_task_definition.md) | 7 |  | table |
+| [agent_task_definition](agent_task_definition.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
-| [agent_task_snapshot](agent_task_snapshot.md) | 8 |  | table |
-| [agents](agents.md) | 13 |  | table |
+| [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
+| [agents](agents.md) | 14 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
 | [agents_memory_entry_cursors](agents_memory_entry_cursors.md) | 6 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
@@ -63,6 +63,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 6 |  | table |
 | [folder_tag](folder_tag.md) | 2 |  | table |
+| [git_connection](git_connection.md) | 13 |  | table |
 | [insights_by_period](insights_by_period.md) | 6 |  | table |
 | [insights_metadata](insights_metadata.md) | 5 |  | table |
 | [insights_raw](insights_raw.md) | 5 |  | table |
@@ -428,6 +429,7 @@ erDiagram
   datetime_3_ createdAt
   INTEGER duration
   TEXT error
+  TEXT failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
@@ -492,6 +494,7 @@ erDiagram
   varchar_32_ id PK
   varchar_128_ name
   TEXT objective
+  varchar_64_ timezone
   datetime_3_ updatedAt
 }
 "agent_task_run_lock" {
@@ -509,6 +512,7 @@ erDiagram
   varchar_128_ name
   TEXT objective
   varchar_32_ taskId PK
+  varchar_64_ timezone
   datetime_3_ updatedAt
   varchar_36_ versionId PK
 }
@@ -520,6 +524,7 @@ erDiagram
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt
   TEXT skills
@@ -891,6 +896,21 @@ erDiagram
 "folder_tag" {
   varchar_36_ folderId PK
   varchar_36_ tagId PK
+}
+"git_connection" {
+  varchar_64_ baseCommit
+  varchar_255_ branchName
+  varchar_16_ connectionType
+  datetime_3_ createdAt
+  TEXT encryptedPassword
+  TEXT encryptedPrivateKey
+  TEXT encryptedUsername
+  varchar_36_ id PK
+  varchar_16_ keyGeneratorType
+  varchar_128_ name
+  TEXT publicKey
+  TEXT repositoryUrl
+  datetime_3_ updatedAt
 }
 "insights_by_period" {
   INTEGER id

@@ -2,6 +2,7 @@ import {
 	AiGatewayConfigDto,
 	getAgentModelProviderCredentialTypes,
 	type AiGatewayUsageResponse,
+	type AiGatewayWalletResponse,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -23,11 +24,6 @@ import { UrlService } from '@/services/url.service';
 interface GatewayTokenResponse {
 	token: string;
 	expiresIn: number;
-}
-
-interface GatewayWalletResponse {
-	budget: number;
-	balance: number;
 }
 
 export type AiGatewayAvailability =
@@ -282,7 +278,7 @@ export class AiGatewayService {
 	/**
 	 * Returns the current wallet (budget and remaining balance) for the given user.
 	 */
-	async getWallet(userId: string): Promise<GatewayWalletResponse> {
+	async getWallet(userId: string): Promise<AiGatewayWalletResponse> {
 		const baseUrl = this.requireBaseUrl();
 
 		const jwt = await this.getOrFetchToken(userId);
@@ -301,12 +297,16 @@ export class AiGatewayService {
 		return this.parseWalletResponse(data);
 	}
 
-	private parseWalletResponse(data: unknown): GatewayWalletResponse {
-		const d = data as GatewayWalletResponse;
+	private parseWalletResponse(data: unknown): AiGatewayWalletResponse {
+		const d = data as { budget?: unknown; balance?: unknown; hasEverToppedUp?: unknown };
 		if (typeof d.budget !== 'number' || typeof d.balance !== 'number') {
 			throw new UserError('n8n credits returned an invalid wallet response.');
 		}
-		return d;
+		return {
+			budget: d.budget,
+			balance: d.balance,
+			hasEverToppedUp: d.hasEverToppedUp === true,
+		};
 	}
 
 	/**
