@@ -1,33 +1,18 @@
-type CopyActionProps =
-	| {
-			/** Show the copy action. Defaults to true. */
-			showCopy?: true;
-			/** Accessible label and tooltip content for the copy action. Overrides default */
-			copyLabel?: string;
-			/** Copy the message. */
-			onCopy: () => void;
-	  }
-	| {
-			/** Hide the copy action. */
-			showCopy: false;
-			copyLabel?: never;
-			onCopy?: never;
-	  };
-
-type ReadAloudActionProps =
-	| {
-			/** Show the read-aloud action. Defaults to true. */
-			showReadAloud?: true;
-			/** Accessible label and tooltip content for the read-aloud action. */
-			readAloudLabel: string;
-			/** Read the message aloud. */
-			onReadAloud: () => void;
-	  }
-	| {
-			/** Hide the read-aloud action. */
-			showReadAloud: false;
-			readAloudLabel?: never;
-			onReadAloud?: never;
-	  };
-
-export type ChatActionsProps = CopyActionProps & ReadAloudActionProps;
+export interface ChatActionsProps {
+	/** Show the copy action. Defaults to true. */
+	showCopy?: boolean;
+	/** Accessible label and tooltip content for the copy action. */
+	copyLabel?: string;
+	/** Test identifier for the copy action. */
+	copyTestId?: string;
+	/** Show the read-aloud action. Defaults to true. */
+	showReadAloud?: boolean;
+	/** Accessible label and tooltip content for the read-aloud action. */
+	readAloudLabel?: string;
+	/** Show that the message is currently being read aloud. */
+	isReadingAloud?: boolean;
+	/** Accessible label and tooltip content for stopping read-aloud. */
+	stopReadingLabel?: string;
+	/** Test identifier for the read-aloud action. */
+	readAloudTestId?: string;
+}

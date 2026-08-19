@@ -94,6 +94,7 @@ export default {
 	'assistantChat.copied': 'Copied',
 	'assistantChat.messageActions': 'Message actions',
 	'assistantChat.readAloud': 'Read aloud',
+	'assistantChat.stopReading': 'Stop reading',
 	'assistantChat.characterLimit': "You've reached the {limit} character limit",
 	'aiAssistant.builder.canvas.thinking': 'Working...',
 	'aiAssistant.builder.streamAbortedMessage': 'Task aborted',

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+
 import { useI18n } from '../../composables/useI18n';
 import N8nIconButton from '../N8nIconButton';
 import N8nTooltip from '../N8nTooltip';
@@ -8,7 +10,11 @@ defineOptions({ name: 'N8nChatActions' });
 
 const { t } = useI18n();
 
-defineProps<ChatActionsProps>();
+const props = withDefaults(defineProps<ChatActionsProps>(), {
+	showCopy: true,
+	showReadAloud: true,
+	isReadingAloud: false,
+});
 
 const emit = defineEmits<{
 	copy: [];
@@ -18,6 +24,12 @@ const emit = defineEmits<{
 defineSlots<{
 	default(): unknown;
 }>();
+
+const readAloudActionLabel = computed(function getReadAloudActionLabel() {
+	return props.isReadingAloud
+		? (props.stopReadingLabel ?? t('assistantChat.stopReading'))
+		: (props.readAloudLabel ?? t('assistantChat.readAloud'));
+});
 
 function copyMessage() {
 	emit('copy');
@@ -41,20 +53,19 @@ function readMessageAloud() {
 				size="small"
 				icon-size="medium"
 				:aria-label="copyLabel ?? t('assistantChat.copy')"
+				:data-test-id="copyTestId"
 				@click="copyMessage"
 			/>
 		</N8nTooltip>
-		<N8nTooltip
-			v-if="showReadAloud !== false"
-			:content="readAloudLabel ?? t('assistantChat.readAloud')"
-			placement="bottom"
-		>
+		<N8nTooltip v-if="showReadAloud !== false" :content="readAloudActionLabel" placement="bottom">
 			<N8nIconButton
-				icon="volume-2"
+				:icon="isReadingAloud ? 'volume-x' : 'volume-2'"
 				variant="ghost"
 				size="small"
 				icon-size="medium"
-				:aria-label="readAloudLabel ?? t('assistantChat.readAloud')"
+				:aria-label="readAloudActionLabel"
+				:aria-pressed="isReadingAloud === true"
+				:data-test-id="readAloudTestId"
 				@click="readMessageAloud"
 			/>
 		</N8nTooltip>

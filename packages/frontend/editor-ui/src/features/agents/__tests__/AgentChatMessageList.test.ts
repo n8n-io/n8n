@@ -5,7 +5,27 @@ import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 const copySpy = vi.fn();
 
+vi.mock('@n8n/composables/useClipboard', () => ({
+	useClipboard: function useClipboard() {
+		return { copy: copySpy };
+	},
+}));
+
 vi.mock('@n8n/design-system', () => ({
+	N8nChatActions: {
+		props: ['showReadAloud', 'isReadingAloud'],
+		emits: ['copy', 'readAloud'],
+		template: `<div v-bind="$attrs">
+			<button data-test-id="agent-chat-message-copy" @click="$emit('copy')" />
+			<button
+				v-if="showReadAloud"
+				data-test-id="agent-chat-message-read-aloud"
+				:aria-pressed="isReadingAloud"
+				@click="$emit('readAloud')"
+			/>
+			<slot />
+		</div>`,
+	},
 	N8nIcon: { template: '<i />' },
 	N8nIconButton: {
 		template:
@@ -72,17 +92,6 @@ vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
 		template:
 			'<div data-testid="interactive-card-stub" :data-tool-call-id="payload.toolCallId" :data-run-id="payload.runId || \'\'" />',
 		props: ['payload'],
-	},
-}));
-
-vi.mock('@/features/ai/chatHub/components/CopyButton.vue', () => ({
-	default: {
-		template:
-			'<button data-test-id="agent-chat-message-copy" @click="copySpy(content)">copy</button>',
-		props: ['content'],
-		setup() {
-			return { copySpy };
-		},
 	},
 }));
 

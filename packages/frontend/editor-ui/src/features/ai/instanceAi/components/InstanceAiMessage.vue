@@ -4,16 +4,20 @@ import type { RatingFeedback } from '@n8n/design-system';
 import {
 	N8nButton,
 	N8nCallout,
+	N8nChatActions,
 	N8nChatMessage,
 	N8nIcon,
 	N8nIconButton,
 	N8nMessageRating,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useChatMessageCopy } from '@/features/ai/shared/composables/useChatMessageCopy';
+import { useChatMessageSpeech } from '@/features/ai/shared/composables/useChatMessageSpeech';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
@@ -122,6 +126,48 @@ const hasSubmittedFeedback = computed(
 	() => !isUser.value && responseId.value in thread.feedbackByResponseId,
 );
 
+const hasSettledText = computed(function hasSettledAssistantText() {
+	return !isUser.value && !isStreaming.value && props.message.content.trim().length > 0;
+});
+
+const { copyMessage } = useChatMessageCopy(function getMessageContent() {
+	return props.message.content;
+});
+const {
+	isSupported: isSpeechSynthesisAvailable,
+	isSpeaking: isSpeakingMessage,
+	toggle: toggleMessageSpeech,
+} = useChatMessageSpeech({
+	getText: function getMessageSpeechText(messageId) {
+		return messageId === props.message.id ? props.message.content : '';
+	},
+});
+const isSpeaking = computed(function isMessageSpeaking() {
+	return isSpeakingMessage(props.message.id);
+});
+const canReadAloud = computed(function canReadMessageAloud() {
+	return hasSettledText.value && isSpeechSynthesisAvailable.value;
+});
+const hasMessageActions = computed(function hasAvailableMessageActions() {
+	return hasSettledText.value || isRateable.value || (store.debugMode && !isUser.value);
+});
+const debugActionLabel = computed(function getDebugActionLabel() {
+	return i18n.baseText(
+		showDebugInfo.value
+			? 'instanceAi.message.actions.hideDebugInfo'
+			: 'instanceAi.message.actions.showDebugInfo',
+	);
+});
+
+function toggleReadAloud() {
+	if (!canReadAloud.value) return;
+	toggleMessageSpeech(props.message.id);
+}
+
+function toggleDebugInfo() {
+	showDebugInfo.value = !showDebugInfo.value;
+}
+
 function onFeedback(payload: RatingFeedback) {
 	thread.submitFeedback(responseId.value, payload);
 }
@@ -218,15 +264,8 @@ function formatJson(value: unknown): string {
 				<span>{{ cancelledLabel }}</span>
 			</div>
 
-			<!-- Response feedback -->
-			<N8nMessageRating
-				v-if="isRateable"
-				minimal
-				data-test-id="instance-ai-message-rating"
-				@feedback="onFeedback"
-			/>
 			<p
-				v-else-if="hasSubmittedFeedback"
+				v-if="hasSubmittedFeedback"
 				:class="$style.feedbackSuccess"
 				data-test-id="instance-ai-feedback-success"
 			>
@@ -236,13 +275,42 @@ function formatJson(value: unknown): string {
 			<pre v-if="showDebugInfo" :class="$style.debugJson">{{ formatJson(props.message) }}</pre>
 		</template>
 
-		<template v-if="store.debugMode && !isUser" #actions>
-			<N8nIconButton
-				icon="code"
-				variant="ghost"
-				size="xsmall"
-				@click="showDebugInfo = !showDebugInfo"
-			/>
+		<template v-if="hasMessageActions" #actions>
+			<N8nChatActions
+				:show-copy="hasSettledText"
+				:copy-label="i18n.baseText('generic.copy')"
+				copy-test-id="instance-ai-message-copy"
+				:show-read-aloud="canReadAloud"
+				:read-aloud-label="i18n.baseText('chatHub.message.actions.readAloud')"
+				:stop-reading-label="i18n.baseText('chatHub.message.actions.stopReading')"
+				read-aloud-test-id="instance-ai-message-read-aloud"
+				:is-reading-aloud="isSpeaking"
+				@copy="copyMessage"
+				@read-aloud="toggleReadAloud"
+			>
+				<N8nMessageRating
+					v-if="isRateable"
+					minimal
+					data-test-id="instance-ai-message-rating"
+					@feedback="onFeedback"
+				/>
+				<N8nTooltip
+					v-if="store.debugMode && !isUser"
+					placement="bottom"
+					:content="debugActionLabel"
+				>
+					<N8nIconButton
+						icon="code"
+						variant="ghost"
+						size="small"
+						icon-size="medium"
+						data-test-id="instance-ai-message-debug"
+						:aria-label="debugActionLabel"
+						:aria-pressed="showDebugInfo"
+						@click="toggleDebugInfo"
+					/>
+				</N8nTooltip>
+			</N8nChatActions>
 		</template>
 	</N8nChatMessage>
 </template>

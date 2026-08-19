@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { N8nText } from '@n8n/design-system';
-import { useSpeechSynthesis } from '@vueuse/core';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
@@ -19,6 +18,7 @@ import type {
 	InteractivePayload,
 	ToolCall,
 } from '@/features/ai/shared/agentsChat/types';
+import { useChatMessageSpeech } from '@/features/ai/shared/composables/useChatMessageSpeech';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
@@ -287,17 +287,11 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			: openMemoryFooterGroupId.value;
 }
 
-const spokenMessageId = ref<string | null>(null);
-const spokenText = computed(() => {
-	if (!spokenMessageId.value) return '';
-	return getAssistantRunContent(spokenMessageId.value);
-});
-const speech = useSpeechSynthesis(spokenText, {
-	pitch: 1,
-	rate: 1,
-	volume: 1,
-});
-const isSpeechSynthesisAvailable = computed(() => speech.isSupported.value);
+const {
+	isSupported: isSpeechSynthesisAvailable,
+	isSpeaking: isSpeakingMessage,
+	toggle: toggleReadAloud,
+} = useChatMessageSpeech({ getText: getAssistantRunContent });
 
 // How close to the bottom the user has to be for incoming chunks to keep
 // following them. Small enough that a deliberate scroll-up breaks the lock,
@@ -340,24 +334,6 @@ function scrollToBottom(): void {
 
 function autoScrollIfSticky(): void {
 	if (isStickToBottom.value) scrollToBottom();
-}
-
-function isSpeakingMessage(messageId: string): boolean {
-	return spokenMessageId.value === messageId && speech.status.value === 'play';
-}
-
-function toggleReadAloud(messageId: string): void {
-	if (!isSpeechSynthesisAvailable.value) return;
-
-	if (spokenMessageId.value === messageId && speech.status.value === 'play') {
-		speech.stop();
-		spokenMessageId.value = null;
-		return;
-	}
-
-	speech.stop();
-	spokenMessageId.value = messageId;
-	speech.speak();
 }
 
 // Snap to the bottom on initial render with a preloaded history. Two hooks on
@@ -405,26 +381,6 @@ watch(
 	autoScrollIfSticky,
 	{ flush: 'post' },
 );
-
-watch(
-	() => speech.status.value,
-	(status) => {
-		if (status === 'end') {
-			spokenMessageId.value = null;
-		}
-	},
-);
-
-watch(spokenText, (value) => {
-	if (!value && spokenMessageId.value) {
-		speech.stop();
-		spokenMessageId.value = null;
-	}
-});
-
-onBeforeUnmount(() => {
-	speech.stop();
-});
 </script>
 
 <template>
