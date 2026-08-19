@@ -39,7 +39,7 @@ const PATCHES_TO_KEEP = [
 	'pdfjs-dist',
 	'pkce-challenge',
 	'bull',
-	'@confluentinc/kafka-javascript',
+	'lodash'
 ];
 
 // #endregion ===== Configuration =====
