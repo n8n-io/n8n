@@ -6,7 +6,6 @@ import {
 } from '../composables/useInstanceAiInputMenuItems';
 import {
 	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
-	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 } from '../constants';
 
@@ -34,11 +33,12 @@ const {
 	settingsStore: {
 		fetch: vi.fn(),
 		settings: { mcpAccessEnabled: true },
-		connections: [] as Array<Record<string, unknown>>,
 		isLocalGatewayDisabled: false,
 		isLocalGatewayDisabledByAdmin: false,
 		isBrowserUseEnabledByAdmin: true,
+		browserConnected: false,
 		isGatewayConnected: false,
+		isDaemonConnecting: false,
 		gatewayHostIdentifier: null as string | null,
 		persistLocalGatewayPreference: vi.fn(),
 		disconnectComputerUse: vi.fn(),
@@ -147,11 +147,12 @@ describe('useInstanceAiInputMenuItems', () => {
 		featureFlags.mcp = true;
 		mcpStore.connections = [];
 		settingsStore.settings.mcpAccessEnabled = true;
-		settingsStore.connections = [];
 		settingsStore.isLocalGatewayDisabled = false;
 		settingsStore.isLocalGatewayDisabledByAdmin = false;
 		settingsStore.isBrowserUseEnabledByAdmin = true;
+		settingsStore.browserConnected = false;
 		settingsStore.isGatewayConnected = false;
+		settingsStore.isDaemonConnecting = false;
 		settingsStore.gatewayHostIdentifier = null;
 	});
 
@@ -181,13 +182,38 @@ describe('useInstanceAiInputMenuItems', () => {
 		},
 	);
 
+	it('does not offer direct Browser Use disconnect when browser access comes from Computer Use', () => {
+		settingsStore.isGatewayConnected = true;
+
+		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+		expect(findItem(menuItems.value, 'browser-disconnect')).toBeUndefined();
+		expect(findItem(menuItems.value, 'browser')?.label).toBe(
+			'instanceAi.inputMenu.browser.connect',
+		);
+	});
+
+	it('disconnects Browser Use when the direct extension is connected', async () => {
+		settingsStore.browserConnected = true;
+
+		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+		await findItem(menuItems.value, 'browser-disconnect')?.data?.action?.();
+
+		expect(settingsStore.disconnectBrowserUse).toHaveBeenCalledOnce();
+	});
+
+	it('shows Computer Use as connecting while daemon pairing is in progress', () => {
+		settingsStore.isDaemonConnecting = true;
+
+		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+		expect(findItem(menuItems.value, 'computer')?.data?.status).toBe('connecting');
+	});
+
 	it('delegates attachment and connection actions to their owners', async () => {
 		const attachFiles = vi.fn();
 		settingsStore.isLocalGatewayDisabled = true;
-		settingsStore.connections = [
-			{ type: 'computer-use', status: 'connected' },
-			{ type: 'browser-use', status: 'disconnected' },
-		];
+		settingsStore.isGatewayConnected = true;
 		mcpStore.connections = [makeMcpConnection('1', 'connected')];
 		const { menuItems } = useInstanceAiInputMenuItems(attachFiles);
 

@@ -7,8 +7,6 @@ import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrows
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
 import {
-	BROWSER_USE_CONNECTION_TYPE,
-	COMPUTER_USE_CONNECTION_TYPE,
 	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
@@ -203,13 +201,14 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 		}
 
 		if (isComputerUseFeatureEnabled.value && !settingsStore.isLocalGatewayDisabledByAdmin) {
-			const connection = settingsStore.connections.find(
-				({ type }) => type === COMPUTER_USE_CONNECTION_TYPE,
-			);
 			items.push(
 				createConnectionItem({
 					id: 'computer',
-					status: connection?.status ?? 'none',
+					status: settingsStore.isGatewayConnected
+						? 'connected'
+						: settingsStore.isDaemonConnecting
+							? 'connecting'
+							: 'disconnected',
 					icon: 'laptop',
 					connectLabel: i18n.baseText('instanceAi.inputMenu.computer.connect'),
 					connectedLabel: i18n.baseText('instanceAi.inputMenu.computer.connected'),
@@ -221,17 +220,14 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 		}
 
 		if (isBrowserUseFeatureEnabled.value && settingsStore.isBrowserUseEnabledByAdmin) {
-			const connection = settingsStore.connections.find(
-				({ type }) => type === BROWSER_USE_CONNECTION_TYPE,
-			);
 			items.push(
 				createConnectionItem({
 					id: 'browser',
-					status: connection?.status ?? 'none',
+					status: settingsStore.browserConnected ? 'connected' : 'disconnected',
 					icon: 'globe',
 					connectLabel: i18n.baseText('instanceAi.inputMenu.browser.connect'),
 					connectedLabel: i18n.baseText('instanceAi.inputMenu.browser.connected'),
-					connectedTitle: connection?.name,
+					connectedTitle: settingsStore.browserConnected ? 'Google Chrome' : undefined,
 					connect: () => {
 						browserUseTelemetry.trackModalOpened('input_menu');
 						uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
