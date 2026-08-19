@@ -15,6 +15,8 @@ import {
 } from '../constants';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
+import { useInstanceAiBrowserUseTelemetry } from '../instanceAiBrowserUse.telemetry';
+import { useInstanceAiComputerUseTelemetry } from '../instanceAiComputerUse.telemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { iconForTool } from '../toolIcons';
 
@@ -34,6 +36,8 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	const settingsStore = useInstanceAiSettingsStore();
 	const mcpStore = useInstanceAiMcpStore();
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
+	const browserUseTelemetry = useInstanceAiBrowserUseTelemetry();
+	const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 	const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
 	const { isFeatureEnabled: isBrowserUseFeatureEnabled } = useInstanceAiBrowserUseExperiment();
 	const { isFeatureEnabled: isComputerUseFeatureEnabled } = useInstanceAiComputerUseExperiment();
@@ -45,11 +49,13 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 		if (settingsStore.isLocalGatewayDisabled) {
 			await settingsStore.persistLocalGatewayPreference(false);
 		}
+
+		computerUseTelemetry.trackModalOpened(settingsStore.isGatewayConnected, 'input_menu');
 		uiStore.openModal(INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY);
 	}
 
 	function openToolsModal() {
-		mcpTelemetry.trackToolsListOpened();
+		mcpTelemetry.trackToolsListOpened('input_menu');
 		uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 	}
 
@@ -139,7 +145,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 						label: i18n.baseText('instanceAi.inputMenu.actions.setup'),
 						data: {
 							action: () => {
-								mcpTelemetry.trackSettingsOpened(connection.serverSlug);
+								mcpTelemetry.trackSettingsOpened(connection.serverSlug, 'input_menu');
 								uiStore.openModalWithData({
 									name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 									data: { connectionId: connection.id },
@@ -226,7 +232,10 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 					connectLabel: i18n.baseText('instanceAi.inputMenu.browser.connect'),
 					connectedLabel: i18n.baseText('instanceAi.inputMenu.browser.connected'),
 					connectedTitle: connection?.name,
-					connect: () => uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY),
+					connect: () => {
+						browserUseTelemetry.trackModalOpened('input_menu');
+						uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
+					},
 					disconnect: settingsStore.disconnectBrowserUse,
 				}),
 			);

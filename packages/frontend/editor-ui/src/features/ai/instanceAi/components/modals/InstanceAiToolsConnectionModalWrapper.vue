@@ -23,6 +23,8 @@ import {
 import { useInstanceAiMcpStore } from '../../instanceAiMcp.store';
 import type { InstanceAiMcpConnection } from '../../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../../instanceAiMcp.telemetry';
+import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
+import { useInstanceAiComputerUseTelemetry } from '../../instanceAiComputerUse.telemetry';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useMcpServerConnect } from '../../composables/useMcpServerConnect';
 import type {
@@ -60,6 +62,8 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
+const browserUseTelemetry = useInstanceAiBrowserUseTelemetry();
+const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
 const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
@@ -384,6 +388,11 @@ async function handleConnect(item: ToolConnectionItem) {
 	switch (item.kind) {
 		case 'service':
 			activeItemId.value = item.id;
+			if (item.serviceId === BROWSER_USE_CONNECTION_TYPE) {
+				browserUseTelemetry.trackModalOpened('tools_modal');
+			} else if (item.serviceId === COMPUTER_USE_CONNECTION_TYPE) {
+				computerUseTelemetry.trackModalOpened(settingsStore.isGatewayConnected, 'tools_modal');
+			}
 			break;
 		case 'mcp-server':
 			const server = findServerForItem(item);

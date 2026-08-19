@@ -56,7 +56,6 @@ async function refreshExtensionState(): Promise<void> {
 }
 
 onMounted(async () => {
-	telemetry.trackModalOpened(isBrowserSupported);
 	if (!isBrowserSupported) return;
 	await Promise.all([refreshExtensionState(), store.fetchBrowserStatus()]);
 	statusChecked.value = true;

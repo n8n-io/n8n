@@ -5,9 +5,12 @@ import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiToolsConnectionModalWrapper from '../InstanceAiToolsConnectionModalWrapper.vue';
 import type {
 	McpServerConnectionItem,
+	ServiceConnectionItem,
 	ToolConnectionCredentialAdapter,
 	ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
+
+const featureFlags = vi.hoisted(() => ({ browserUse: false, computerUse: false }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -19,11 +22,23 @@ vi.mock('@/experiments/instanceAiMcpConnections', () => ({
 }));
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
-	useInstanceAiComputerUseExperiment: () => ({ isFeatureEnabled: { value: false } }),
+	useInstanceAiComputerUseExperiment: () => ({
+		isFeatureEnabled: {
+			get value() {
+				return featureFlags.computerUse;
+			},
+		},
+	}),
 }));
 
 vi.mock('@/experiments/instanceAiBrowserUse', () => ({
-	useInstanceAiBrowserUseExperiment: () => ({ isFeatureEnabled: { value: false } }),
+	useInstanceAiBrowserUseExperiment: () => ({
+		isFeatureEnabled: {
+			get value() {
+				return featureFlags.browserUse;
+			},
+		},
+	}),
 }));
 
 const { mockConnect, mockUpdateConnection, mcpStoreMock } = vi.hoisted(() => {
@@ -85,34 +100,50 @@ vi.mock('../../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => ({
 		settings: { mcpAccessEnabled: true },
 		isLocalGatewayDisabledByAdmin: false,
-		isBrowserUseEnabledByAdmin: false,
+		isBrowserUseEnabledByAdmin: true,
 		isGatewayConnected: false,
 		isBrowserUseConnected: false,
 	}),
 }));
 
-const { telemetryMock, uiStoreMock } = vi.hoisted(() => ({
-	telemetryMock: {
-		trackToolFilterSettingsUpdated: vi.fn(),
-		trackFirstCredentialConnectionStart: vi.fn(),
-		trackCredentialDropdownOpened: vi.fn(),
-		trackExistingCredentialSelected: vi.fn(),
-		trackNewCredentialConnectionStart: vi.fn(),
-	},
-	uiStoreMock: {
-		modalsById: {
-			instanceAiToolsConnection: { open: true, data: {} },
+const { browserTelemetryMock, computerTelemetryMock, telemetryMock, uiStoreMock } = vi.hoisted(
+	() => ({
+		browserTelemetryMock: {
+			trackModalOpened: vi.fn(),
 		},
-		closeModal: vi.fn(),
-		setModalData: vi.fn(),
-		openNewCredential: vi.fn(),
-		openExistingCredential: vi.fn(),
-		appliedTheme: 'light',
-	},
-}));
+		computerTelemetryMock: {
+			trackModalOpened: vi.fn(),
+		},
+		telemetryMock: {
+			trackToolFilterSettingsUpdated: vi.fn(),
+			trackFirstCredentialConnectionStart: vi.fn(),
+			trackCredentialDropdownOpened: vi.fn(),
+			trackExistingCredentialSelected: vi.fn(),
+			trackNewCredentialConnectionStart: vi.fn(),
+		},
+		uiStoreMock: {
+			modalsById: {
+				instanceAiToolsConnection: { open: true, data: {} },
+			},
+			closeModal: vi.fn(),
+			setModalData: vi.fn(),
+			openNewCredential: vi.fn(),
+			openExistingCredential: vi.fn(),
+			appliedTheme: 'light',
+		},
+	}),
+);
 
 vi.mock('../../../instanceAiMcp.telemetry', () => ({
 	useInstanceAiMcpTelemetry: () => telemetryMock,
+}));
+
+vi.mock('../../../instanceAiBrowserUse.telemetry', () => ({
+	useInstanceAiBrowserUseTelemetry: () => browserTelemetryMock,
+}));
+
+vi.mock('../../../instanceAiComputerUse.telemetry', () => ({
+	useInstanceAiComputerUseTelemetry: () => computerTelemetryMock,
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -168,7 +199,7 @@ let modalProps: Record<string, unknown> = {};
 const ToolsConnectionModalStub = defineComponent({
 	name: 'ToolsConnectionModal',
 	inheritAttrs: false,
-	props: ['detailItem', 'detailMode'],
+	props: ['detailItem', 'detailMode', 'items'],
 	setup(props, { attrs }) {
 		modalListeners = attrs;
 		modalProps = props;
@@ -218,6 +249,8 @@ const renderComponent = createComponentRenderer(InstanceAiToolsConnectionModalWr
 describe('InstanceAiToolsConnectionModalWrapper', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		featureFlags.browserUse = false;
+		featureFlags.computerUse = false;
 		modalListeners = {};
 		modalProps = {};
 		mcpStoreMock.connections = [];
@@ -353,5 +386,24 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		emitNewCredentialConnect();
 
 		expect(telemetryMock.trackNewCredentialConnectionStart).toHaveBeenCalledWith('linear');
+	});
+
+	it('tracks opening built-in connection details', () => {
+		featureFlags.browserUse = true;
+		featureFlags.computerUse = true;
+		renderComponent();
+		const serviceItems = (modalProps.items as ServiceConnectionItem[]).filter(
+			(item) => item.kind === 'service',
+		);
+		const browserItem = serviceItems.find((item) => item.serviceId === 'browser-use');
+		const computerItem = serviceItems.find((item) => item.serviceId === 'computer-use');
+
+		expect(browserItem).toBeDefined();
+		expect(computerItem).toBeDefined();
+		emitModalEvent('onConnect', browserItem);
+		emitModalEvent('onConnect', computerItem);
+
+		expect(browserTelemetryMock.trackModalOpened).toHaveBeenCalledWith('tools_modal');
+		expect(computerTelemetryMock.trackModalOpened).toHaveBeenCalledWith(false, 'tools_modal');
 	});
 });

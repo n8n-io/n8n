@@ -160,13 +160,13 @@ provide(
 );
 
 function handleBrowseAll() {
-	mcpTelemetry.trackToolsListOpened();
+	mcpTelemetry.trackToolsListOpened('mcp_connect_card');
 	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 }
 
 function openSettings(row: CardRow) {
 	if (!hasConnection(row)) return;
-	mcpTelemetry.trackSettingsOpened(row.serverSlug);
+	mcpTelemetry.trackSettingsOpened(row.serverSlug, 'mcp_connect_card');
 	uiStore.openModalWithData({
 		name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 		data: { connectionId: row.item.id },

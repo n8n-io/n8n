@@ -9,6 +9,8 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
 import {
 	type InputMenuItem,
@@ -18,6 +20,7 @@ import {
 const props = withDefaults(defineProps<{ disabled?: boolean }>(), { disabled: false });
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const { menuItems, hasDisconnectedMcpConnection } = useInstanceAiInputMenuItems(() =>
 	emit('attachFiles'),
 );
@@ -39,6 +42,10 @@ function findMenuItem(items: InputMenuItem[], id: string): InputMenuItem | undef
 
 async function handleSelect(id: string) {
 	await findMenuItem(menuItems.value, id)?.data?.action?.();
+}
+
+function trackInputPlusButtonClick() {
+	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON);
 }
 </script>
 
@@ -63,6 +70,7 @@ async function handleSelect(id: string) {
 						size="medium"
 						:disabled="props.disabled"
 						:aria-label="i18n.baseText('instanceAi.inputMenu.open')"
+						@click="trackInputPlusButtonClick"
 					/>
 					<span
 						v-if="hasDisconnectedMcpConnection"
