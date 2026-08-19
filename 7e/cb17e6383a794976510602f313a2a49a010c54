@@ -1,0 +1,16 @@
+packages/@n8n/expression-runtime/package.json
+  h_32d8cd6a0d6aad 35
+packages/workflow/package.json
+  h_32d8cd6a0d6aad 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ecb17e6383a794976510602f313a2a49a010c54",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
