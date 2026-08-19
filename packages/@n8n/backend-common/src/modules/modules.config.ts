@@ -14,6 +14,7 @@ export const MODULE_NAMES = [
 	'provisioning',
 	'breaking-changes',
 	'source-control',
+	'git-connections',
 	'dynamic-credentials',
 	'chat-hub',
 	'sso-oidc',
