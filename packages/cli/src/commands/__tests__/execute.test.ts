@@ -240,3 +240,7 @@ test('exitWithCrash logs the crash message to the console', async () => {
 	expect(logger.error).toHaveBeenCalledWith('something broke', { error: cause });
 	expect(exitSpy).toHaveBeenCalledWith(1);
 });
+
+test('execute needs the expression engine', () => {
+	expect(new Execute().needsExpressionEngine).toBe(true);
+});
