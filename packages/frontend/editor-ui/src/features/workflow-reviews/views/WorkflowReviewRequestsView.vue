@@ -77,6 +77,11 @@ function stateFromQuery(value: unknown): WorkflowReviewRequestState {
 	return value === 'closed' ? 'closed' : 'open';
 }
 
+// Clear on entry, not exit: a discarded layout-swap copy can unmount after the live
+// one has started probing, and a teardown clear would invalidate that probe.
+store.reset();
+activityStore.reset();
+
 // Hydrate the tab before probing so the first list fetch uses the URL state.
 store.activeTab = stateFromQuery(route.query[REVIEW_INBOX_QUERY_PARAM.state]);
 
@@ -263,10 +268,9 @@ onMounted(async () => {
 	}
 });
 
+// Nothing is cleared on the way out: see the entry reset above.
 onUnmounted(() => {
 	isMounted = false;
-	store.reset();
-	activityStore.reset();
 });
 </script>
 
