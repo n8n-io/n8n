@@ -19,10 +19,11 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 
+import { parseAndResolveQueryParameters } from '@utils/query-parameters';
+
 import {
 	buildParameterizedConnString,
 	connectMongoClient,
-	parseAndResolveQueryParameters,
 	prepareFields,
 	prepareItems,
 	sanitizeMongoUriInMessage,

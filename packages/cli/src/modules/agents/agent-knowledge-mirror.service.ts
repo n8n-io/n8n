@@ -2,7 +2,7 @@ import type { CommandResult } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError, safeRegex } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -50,6 +50,8 @@ import {
 } from './agent-sandbox-runtime.service';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
+
+const GLOB_MATCH_TIMEOUT_MS = 250;
 
 interface AgentKnowledgeMirrorRuntime extends AgentSandboxRuntime {
 	paths: AgentKnowledgePaths;
@@ -538,10 +540,24 @@ function matchKnowledgeFilesByGlob(
 	request: GlobKnowledgeFilesRequest,
 ): AgentKnowledgeFileReference[] {
 	const caseSensitive = request.caseSensitive === true;
-	const regex = globPatternToRegExp(request.pattern, caseSensitive);
+	const source = globPatternToRegexSource(request.pattern);
+	const flags = caseSensitive ? undefined : 'i';
 	const patternTokens = tokenizeKnowledgeFilePattern(request.pattern, caseSensitive);
+	const deadline = performance.now() + GLOB_MATCH_TIMEOUT_MS;
+	const matchesGlob = (fileName: string): boolean => {
+		if (performance.now() >= deadline) {
+			throw new Error('Regular expression execution timed out');
+		}
+
+		const matches = safeRegex.test(source, fileName, flags);
+		if (performance.now() >= deadline) {
+			throw new Error('Regular expression execution timed out');
+		}
+
+		return matches;
+	};
 	return files
-		.filter((file) => regex.test(file.file) || regex.test(file.displayName))
+		.filter((file) => matchesGlob(file.file) || matchesGlob(file.displayName))
 		.map((file) => ({
 			file,
 			bucket: getKnowledgeFileMatchBucket(file, patternTokens, caseSensitive),
@@ -627,7 +643,7 @@ function containsTokenSequence(fileTokens: string[], patternTokens: string[]): b
 	return false;
 }
 
-function globPatternToRegExp(pattern: string, caseSensitive: boolean): RegExp {
+function globPatternToRegexSource(pattern: string): string {
 	let source = '^';
 
 	for (const character of pattern) {
@@ -643,7 +659,7 @@ function globPatternToRegExp(pattern: string, caseSensitive: boolean): RegExp {
 	}
 
 	source += '$';
-	return new RegExp(source, caseSensitive ? undefined : 'i');
+	return source;
 }
 
 function escapeRegExp(value: string): string {

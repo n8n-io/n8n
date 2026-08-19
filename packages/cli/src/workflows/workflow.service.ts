@@ -1202,6 +1202,8 @@ export class WorkflowService {
 
 		await this.workflowRepository.delete(workflowId);
 
+		await this.ownershipService.invalidateWorkflowProjectCacheByIds([workflowId]);
+
 		// After the cascade, so it can see the rows the delete orphaned. Observes a
 		// committed delete, so it must not throw — the module swallows its own errors.
 		await this.workflowMutationHooks.afterWorkflowsDeleted([workflowId]);

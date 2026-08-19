@@ -1,8 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import http from 'node:http';
-import https from 'node:https';
+import type http from 'node:http';
+import type https from 'node:https';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfProtectionService } from '../../ssrf';
@@ -30,15 +30,9 @@ function getAgentLookup(agent: http.Agent | https.Agent): unknown {
 // ---------------------------------------------------------------------------
 
 describe('getNodeAgent', () => {
-	it('proxy: false → plain http/https.Agent (no proxy class)', () => {
-		const { httpAgent, httpsAgent } = makeFacade().transport({ proxy: false }).getNodeAgent();
-
-		expect(httpAgent).toBeInstanceOf(http.Agent);
-		expect(httpsAgent).toBeInstanceOf(https.Agent);
-		expect(httpAgent).not.toBeInstanceOf(HttpProxyAgent);
-		expect(httpsAgent).not.toBeInstanceOf(HttpsProxyAgent);
-	});
-
+	// Proxy-mode → agent-class matrix is owned by `node-agents.test.ts`
+	// (`buildNodeAgents` → `describe('agent classes per proxy mode')`); this is a
+	// representative case proving the facade forwards to it correctly.
 	it('proxy: explicit URL → HttpProxyAgent / HttpsProxyAgent', () => {
 		const { httpAgent, httpsAgent } = makeFacade()
 			.transport({ proxy: 'http://proxy.internal:3128' })
@@ -46,13 +40,6 @@ describe('getNodeAgent', () => {
 
 		expect(httpAgent).toBeInstanceOf(HttpProxyAgent);
 		expect(httpsAgent).toBeInstanceOf(HttpsProxyAgent);
-	});
-
-	it('proxy: env → custom env-routing agents (http/https.Agent subclasses)', () => {
-		const { httpAgent, httpsAgent } = makeFacade().transport({ proxy: 'env' }).getNodeAgent();
-
-		expect(httpAgent).toBeInstanceOf(http.Agent);
-		expect(httpsAgent).toBeInstanceOf(https.Agent);
 	});
 
 	it('returns the same agent instances on repeated calls', () => {
@@ -113,62 +100,29 @@ describe('getNodeAgent connection-reuse options', () => {
 // ---------------------------------------------------------------------------
 
 describe('getNodeAgent SSRF lookup injection', () => {
-	describe('proxy: false', () => {
-		it('injects createSecureLookup when SSRF is enabled', () => {
-			const lookupFn = makeLookupFn();
-			const bridge = makeSsrfBridge({
-				createSecureLookup: vi.fn().mockReturnValue(lookupFn),
-			});
-			const { httpAgent, httpsAgent } = makeFacade()
-				.transport({ ssrf: bridge, proxy: false })
-				.getNodeAgent();
-
-			expect(bridge.createSecureLookup).toHaveBeenCalledTimes(1);
-			expect(getAgentLookup(httpAgent)).toBe(lookupFn);
-			expect(getAgentLookup(httpsAgent)).toBe(lookupFn);
+	// The full proxy-mode matrix is owned by `node-agents.test.ts`
+	// (`buildNodeAgents` → `describe('SSRF lookup placement')`); this is a
+	// representative case proving the facade forwards to it correctly.
+	it('the agents carry the lookup created by the SSRF bridge', () => {
+		const lookupFn = makeLookupFn();
+		const bridge = makeSsrfBridge({
+			createSecureLookup: vi.fn().mockReturnValue(lookupFn),
 		});
 
-		it('does NOT inject lookup when SSRF is disabled', () => {
-			const { httpAgent, httpsAgent } = makeFacade()
-				.transport({ ssrf: 'disabled', proxy: false })
-				.getNodeAgent();
+		const { httpAgent, httpsAgent } = makeFacade()
+			.transport({ ssrf: bridge, proxy: false })
+			.getNodeAgent();
 
-			expect(getAgentLookup(httpAgent)).toBeUndefined();
-			expect(getAgentLookup(httpsAgent)).toBeUndefined();
-		});
+		expect(getAgentLookup(httpAgent)).toBe(lookupFn);
+		expect(getAgentLookup(httpsAgent)).toBe(lookupFn);
 	});
 
-	describe('proxy: explicit URL', () => {
-		it('does NOT inject lookup behind an explicit proxy (proxy validates the target)', () => {
-			const lookupFn = makeLookupFn();
-			const bridge = makeSsrfBridge({
-				createSecureLookup: vi.fn().mockReturnValue(lookupFn),
-			});
-			const { httpAgent, httpsAgent } = makeFacade()
-				.transport({ ssrf: bridge, proxy: 'http://proxy.internal:3128' })
-				.getNodeAgent();
+	it('no lookup when SSRF is disabled', () => {
+		const { httpAgent, httpsAgent } = makeFacade()
+			.transport({ ssrf: 'disabled', proxy: false })
+			.getNodeAgent();
 
-			// SSRF lookup is applied to direct connections only. Behind a proxy it
-			// would resolve the proxy host, not the final target, so it is omitted.
-			expect(getAgentLookup(httpAgent)).toBeUndefined();
-			expect(getAgentLookup(httpsAgent)).toBeUndefined();
-		});
-	});
-
-	describe('proxy: env', () => {
-		it('injects createSecureLookup when SSRF is enabled', () => {
-			const lookupFn = makeLookupFn();
-			const bridge = makeSsrfBridge({
-				createSecureLookup: vi.fn().mockReturnValue(lookupFn),
-			});
-			const { httpAgent, httpsAgent } = makeFacade()
-				.transport({ ssrf: bridge, proxy: 'env' })
-				.getNodeAgent();
-
-			expect(bridge.createSecureLookup).toHaveBeenCalledTimes(1);
-			// EnvProxy* agents inherit from http/https.Agent and pass lookup to super()
-			expect(getAgentLookup(httpAgent)).toBe(lookupFn);
-			expect(getAgentLookup(httpsAgent)).toBe(lookupFn);
-		});
+		expect(getAgentLookup(httpAgent)).toBeUndefined();
+		expect(getAgentLookup(httpsAgent)).toBeUndefined();
 	});
 });

@@ -24,13 +24,14 @@ export class InsightsController {
 	@Get('/summary')
 	@GlobalScope('insights:list')
 	async getInsightsSummary(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: InsightsDateFilterDto = {},
 	): Promise<InsightsSummary> {
 		const { startDate, endDate, timeZone } = this.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsSummary({
+			user: req.user,
 			startDate,
 			endDate,
 			timeZone,
@@ -64,7 +65,7 @@ export class InsightsController {
 	@GlobalScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
 	async getInsightsByTime(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: InsightsDateFilterDto,
 	): Promise<InsightsByTime[]> {
@@ -73,6 +74,7 @@ export class InsightsController {
 		// Cast to full insights by time type
 		// as the service returns all types by default
 		return (await this.insightsService.getInsightsByTime({
+			user: req.user,
 			projectId: query.projectId,
 			startDate,
 			endDate,
@@ -87,7 +89,7 @@ export class InsightsController {
 	@Get('/by-time/time-saved')
 	@GlobalScope('insights:list')
 	async getTimeSavedInsightsByTime(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: InsightsDateFilterDto,
 	): Promise<RestrictedInsightsByTime[]> {
@@ -96,6 +98,7 @@ export class InsightsController {
 		// Cast to restricted insights by time type
 		// as the service returns only time saved data
 		return (await this.insightsService.getInsightsByTime({
+			user: req.user,
 			insightTypes: ['time_saved_min'],
 			projectId: query.projectId,
 			startDate,
