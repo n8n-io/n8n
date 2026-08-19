@@ -278,7 +278,7 @@ overrides:
   hono@<=4.12.34: 4.12.34
   vue-i18n@<=11.4.4: 11.4.4
   '@intlify/shared@<=11.4.4': 11.4.4
-  linkify-it@<=5.0.1: 5.0.1
+  linkify-it@<=5.0.2: 5.0.2
   '@zone-eu/mailsplit@<5.4.15': 5.4.15
   fast-uri: 3.1.5
   sharp: 0.35.0
@@ -13617,8 +13617,8 @@ packages:
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
-  linkify-it@5.0.1:
-    resolution: {integrity: sha512-wVoTjP4Q6R0NW5hiZkVJaFZPWgtXfoGF+6LucL3/FtiNjmcHhYjEr5f1Kqjirc1nBW07J/ZuRFumqr2oqccEWg==}
+  linkify-it@5.0.2:
+    resolution: {integrity: sha512-ONTm2jCMAVZjgQa/Fy1kScXsuOoF5NPTsoFBdE1KVIZ2vAh/r9+Bqo+0jINCBYnavTPQZz38QzFTme79ENoN3Q==}
 
   load-tsconfig@0.2.5:
     resolution: {integrity: sha512-IXO6OCs9yg8tMKzfPZ1YmheJbZCiEsnBdcB03l0OcfK9prKnJb96siuHCr5Fl37/yo9DnKU+TLpxzTUspw9shg==}
@@ -31561,7 +31561,7 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
-  linkify-it@5.0.1:
+  linkify-it@5.0.2:
     dependencies:
       uc.micro: 2.1.0
 
@@ -31747,7 +31747,7 @@ snapshots:
       html-to-text: 9.0.5
       iconv-lite: 0.7.2
       libmime: 5.3.7
-      linkify-it: 5.0.1
+      linkify-it: 5.0.2
       nodemailer: 7.0.11
       punycode.js: 2.3.1
       tlds: 1.261.0
@@ -31820,7 +31820,7 @@ snapshots:
     dependencies:
       argparse: 2.0.1
       entities: 3.0.1
-      linkify-it: 5.0.1
+      linkify-it: 5.0.2
       mdurl: 1.0.1
       uc.micro: 1.0.6
 
