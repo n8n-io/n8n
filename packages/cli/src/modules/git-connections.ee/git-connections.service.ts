@@ -115,13 +115,13 @@ export class GitConnectionsService {
 		await this.repository.remove(connection);
 	}
 
-	async push({
-		connectionId,
-		projectIds,
-	}: {
-		connectionId: string;
-		projectIds: string[];
-	}) {}
+	async push(connectionId: string) {
+		this.logger.info(`Pushing all projects to connection ${connectionId}`);
+
+		// check that the connection credentials are valid
+		// export all the project to the connection repository folder
+		// push to the remote repository
+	}
 
 	private async applyNewAuthentication(
 		connection: GitConnection,
