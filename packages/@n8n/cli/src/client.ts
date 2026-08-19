@@ -250,11 +250,11 @@ export class N8nClient {
 		return await this.get<{ projectIds: string[] }>(`/git-connections/${id}/projects`);
 	}
 
-	async assignProjectToGitConnection(id: string, projectId: string) {
+	async addProjectToGitConnection(id: string, projectId: string) {
 		return await this.post<Record<string, unknown>>(`/git-connections/${id}/projects/${projectId}`);
 	}
 
-	async unlinkProjectFromGitConnection(id: string, projectId: string) {
+	async removeProjectFromGitConnection(id: string, projectId: string) {
 		return await this.del<undefined>(`/git-connections/${id}/projects/${projectId}`);
 	}
 

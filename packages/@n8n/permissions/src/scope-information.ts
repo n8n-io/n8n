@@ -159,6 +159,6 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	},
 	'gitConnection:manageProjects': {
 		displayName: 'Manage Git Connection Projects',
-		description: 'Allows assigning projects to and un-linking projects from a Git connection.',
+		description: 'Allows adding projects to and removing projects from a Git connection.',
 	},
 };
