@@ -212,11 +212,6 @@ N8N_RUNNERS_MODE=external
 N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
 N8N_RUNNERS_AUTH_TOKEN=$(gen_secret)
 
-# Instance AI (optional): fill this in to enable the AI assistant in n8n.
-# n8n works fine without it. Setup guide:
-# https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant
-N8N_INSTANCE_AI_MODEL_API_KEY=
-
 # Web search for the AI assistant runs through the bundled SearXNG service.
 # Optionally set a Brave Search API key instead — it takes priority.
 INSTANCE_AI_BRAVE_SEARCH_API_KEY=
@@ -376,9 +371,6 @@ To uninstall: docker compose -f ${N8N_DIR}/compose.yml down -v   # -v DELETES al
 Security notes:
   - Only port ${N8N_PORT} (n8n) should ever be reachable from the internet.
   - The sandbox runner is privileged Docker-in-Docker — never publish its ports.
-  - The AI assistant stays disabled until you set N8N_INSTANCE_AI_MODEL_API_KEY
-    in ${N8N_DIR}/.env — see
-    https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant
 
 This setup is meant to try n8n locally. For production (TLS, Postgres, queue
 mode) see ${DOCS_HOSTING_URL}
