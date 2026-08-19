@@ -36,6 +36,7 @@ const ERROR_RESPONSE_REFS: Record<number, { $ref: string }> = {
 	403: { $ref: '../../../../shared/spec/responses/forbidden.yml' },
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
+	422: { $ref: '../../../../shared/spec/responses/unprocessableEntity.yml' },
 };
 
 /** A `ResponseDtoClass` narrowed to the two fields the generator actually reads off it. */

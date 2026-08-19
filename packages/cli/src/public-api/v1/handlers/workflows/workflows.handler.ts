@@ -7,9 +7,6 @@ import { ResponseError } from '@/errors/response-errors/abstract/response.error'
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -35,7 +32,6 @@ const handleError = (error: unknown) => {
 };
 
 type WorkflowHandlers = {
-	createWorkflow: PublicAPIEndpoint<WorkflowRequest.Create>;
 	deleteWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
 	updateWorkflow: PublicAPIEndpoint<WorkflowRequest.Update>;
@@ -86,37 +82,6 @@ const unpublishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate> = [
 ];
 
 const workflowHandlers: WorkflowHandlers = {
-	createWorkflow: [
-		publicApiScope('workflow:create'),
-		async (req, res) => {
-			const { projectId, parentFolderId, ...rest } = req.body;
-
-			if (rest.settings?.binaryMode !== undefined) {
-				delete rest.settings.binaryMode;
-			}
-			if (rest.settings?.credentialResolverId !== undefined) {
-				delete rest.settings.credentialResolverId;
-			}
-
-			const workflow = createWorkflowEntityFromPayload(rest);
-
-			await Container.get(RedactionEnforcementService).assertNewPolicyAllowed(
-				workflow.settings?.redactionPolicy,
-			);
-
-			const createdWorkflow = await Container.get(WorkflowCreationService).createWorkflow(
-				req.user,
-				workflow,
-				{
-					projectId,
-					parentFolderId: parentFolderId ?? undefined,
-					publicApi: true,
-					source: 'api',
-				},
-			);
-			return res.json(createdWorkflow);
-		},
-	],
 	deleteWorkflow: [
 		publicApiScope('workflow:delete'),
 		projectScope('workflow:delete', 'workflow'),
