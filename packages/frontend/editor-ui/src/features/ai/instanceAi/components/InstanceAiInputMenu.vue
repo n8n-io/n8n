@@ -156,8 +156,8 @@ function trackInputPlusButtonClick() {
 
 .triggerStatusDot {
 	position: absolute;
-	top: 0;
-	right: 0;
+	top: 2px;
+	right: 2px;
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
 	border-radius: 50%;

@@ -6806,7 +6806,7 @@
 	"instanceAi.connections.types.computerUse.description": "Work with local files, terminal commands, and your browser",
 	"instanceAi.connections.types.browserUse.description": "Let the agent automate tasks in your browser",
 	"instanceAi.connections.modal.title": "Connectors",
-	"instanceAi.connections.modal.searchPlaceholder": "Search all connectors",
+	"instanceAi.connections.modal.searchPlaceholder": "Search all connectors...",
 	"instanceAi.inputMenu.open": "Add context with connectors, files and more",
 	"instanceAi.inputMenu.connectionNeedsAttention": "1 connection needs attention",
 	"instanceAi.inputMenu.connectionsNeedAttention": "{count} connections need attention",
