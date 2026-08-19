@@ -12,8 +12,6 @@ import type {
 } from '@/events/maps/poll-trigger-metrics.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
-import { DurablePollerGateService } from './durable-poller-gate.service';
-
 /** Narrows a stored cursor, which the persistence layer types more loosely. */
 const toPollCursor = (cursor: PollerCursor): PollCursor => cursor as PollCursor;
 
@@ -26,7 +24,6 @@ export class PollCursorService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly pollerConfig: PollerConfig,
 		private readonly schedulerConfig: SchedulerConfig,
-		private readonly durablePollerGateService: DurablePollerGateService,
 		private readonly eventService: EventService,
 	) {
 		if (this.pollerConfig.durableCursorsEnabled && !this.schedulerChainEnabled) {
@@ -78,11 +75,7 @@ export class PollCursorService {
 	}
 
 	get enabled(): boolean {
-		return (
-			this.pollerConfig.durableCursorsEnabled &&
-			this.schedulerChainEnabled &&
-			this.durablePollerGateService.allowed
-		);
+		return this.pollerConfig.durableCursorsEnabled && this.schedulerChainEnabled;
 	}
 
 	/**

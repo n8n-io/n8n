@@ -30,7 +30,6 @@ import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provide
 import { JwtService } from '@/services/jwt.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
-import { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
@@ -74,7 +73,6 @@ communityPackagesService.init.mockResolvedValue(undefined);
 const taskRunnerModule = mockInstance(TaskRunnerModule);
 taskRunnerModule.start.mockResolvedValue(undefined);
 const pollJobProvider = mockInstance(PollJobProvider);
-const durablePollerGate = mockInstance(DurablePollerGateService);
 
 const instanceSettings = Container.get(InstanceSettings);
 
@@ -137,7 +135,6 @@ describe('Start - AuthRolesService initialization', () => {
 			mockInstance(BinaryDataConfig, { initialize: vi.fn().mockResolvedValue(undefined) }),
 		);
 		Container.set(PollJobProvider, pollJobProvider);
-		Container.set(DurablePollerGateService, durablePollerGate);
 
 		start = new Start();
 		// @ts-expect-error - Accessing protected property for testing
@@ -191,12 +188,6 @@ describe('Start - AuthRolesService initialization', () => {
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
 			expect(pollJobProvider.init).toHaveBeenCalledTimes(1);
-			// The gate's verdict must exist before the provider reads it to pick
-			// the PollJobManager binding.
-			expect(durablePollerGate.init).toHaveBeenCalledTimes(1);
-			expect(durablePollerGate.init.mock.invocationCallOrder[0]).toBeLessThan(
-				pollJobProvider.init.mock.invocationCallOrder[0],
-			);
 		});
 
 		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, and is leader', async () => {

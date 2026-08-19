@@ -13,7 +13,6 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 
 describe('PollCursorService', () => {
@@ -26,7 +25,6 @@ describe('PollCursorService', () => {
 
 	const buildService = (
 		durableCursorsEnabled = true,
-		durablePollersAllowed = true,
 		{ schedulerEnabled = true, schedulerEnabledForPollTriggers = true } = {},
 	) => {
 		txRunner = mock<TransactionRunner>();
@@ -44,7 +42,6 @@ describe('PollCursorService', () => {
 				enabled: schedulerEnabled,
 				enabledForPollTriggers: schedulerEnabledForPollTriggers,
 			}),
-			mock<DurablePollerGateService>({ allowed: durablePollersAllowed }),
 			eventService,
 		);
 	};
@@ -63,24 +60,22 @@ describe('PollCursorService', () => {
 	});
 
 	describe('enabled', () => {
-		it('requires both the config flag and the duplicate-id gate', () => {
-			expect(buildService(true, true).enabled).toBe(true);
-			expect(buildService(true, false).enabled).toBe(false);
-			expect(buildService(false, true).enabled).toBe(false);
-			expect(buildService(false, false).enabled).toBe(false);
+		it('requires the config flag', () => {
+			expect(buildService(true).enabled).toBe(true);
+			expect(buildService(false).enabled).toBe(false);
 		});
 
 		it('requires the durable scheduler and durable pollers to be enabled', () => {
 			expect(
-				buildService(true, true, { schedulerEnabled: false, schedulerEnabledForPollTriggers: true })
+				buildService(true, { schedulerEnabled: false, schedulerEnabledForPollTriggers: true })
 					.enabled,
 			).toBe(false);
 			expect(
-				buildService(true, true, { schedulerEnabled: true, schedulerEnabledForPollTriggers: false })
+				buildService(true, { schedulerEnabled: true, schedulerEnabledForPollTriggers: false })
 					.enabled,
 			).toBe(false);
 			expect(
-				buildService(true, true, {
+				buildService(true, {
 					schedulerEnabled: false,
 					schedulerEnabledForPollTriggers: false,
 				}).enabled,
@@ -88,7 +83,7 @@ describe('PollCursorService', () => {
 		});
 
 		it('warns once when durable cursors are configured without the scheduler chain', () => {
-			buildService(true, true, { schedulerEnabled: true, schedulerEnabledForPollTriggers: false });
+			buildService(true, { schedulerEnabled: true, schedulerEnabledForPollTriggers: false });
 
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
@@ -97,7 +92,7 @@ describe('PollCursorService', () => {
 		});
 
 		it('does not warn when durable cursors are off, whatever the scheduler flags', () => {
-			buildService(false, true, {
+			buildService(false, {
 				schedulerEnabled: false,
 				schedulerEnabledForPollTriggers: false,
 			});
@@ -106,7 +101,7 @@ describe('PollCursorService', () => {
 		});
 
 		it('does not warn when the full chain is enabled', () => {
-			buildService(true, true);
+			buildService(true);
 
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
@@ -138,20 +133,6 @@ describe('PollCursorService', () => {
 
 		it('does not create a row when the flag is off and the node has never migrated', async () => {
 			const service = buildService(false);
-			pollerStateRepository.findCursor.mockResolvedValue(null);
-
-			await expect(service.resolveCursor('wf-1', 'node-1', {})).resolves.toEqual({
-				migrated: false,
-			});
-
-			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
-		});
-
-		// Pins the ticket's sticky-row remedy: with the gate refusing, a deleted
-		// `poller_state` row must never be recreated, even though the flag is on —
-		// otherwise deleting an offender's rows would not be terminal.
-		it('does not create a row when the flag is on but the gate refuses durable pollers', async () => {
-			const service = buildService(true, false);
 			pollerStateRepository.findCursor.mockResolvedValue(null);
 
 			await expect(service.resolveCursor('wf-1', 'node-1', {})).resolves.toEqual({
