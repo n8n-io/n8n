@@ -151,4 +151,31 @@ describe('OPT_OUT_SCRIPT', () => {
 		expect(observers).toBe(1);
 		vi.unstubAllGlobals();
 	});
+
+	// As an init script this runs before the parser has created <html>, let alone <body>, so the
+	// empty document is the real entry state — not the populated one the cases above start from.
+	it('marks a body and field parsed after it ran against an empty document', async () => {
+		const documentElement = document.documentElement;
+		documentElement.remove();
+
+		expect(() => run()).not.toThrow();
+
+		const root = document.createElement('html');
+		const body = document.createElement('body');
+		const input = document.createElement('input');
+		body.appendChild(input);
+		root.appendChild(body);
+		document.appendChild(root);
+
+		try {
+			await vi.waitFor(() => {
+				expect(input.hasAttribute('data-bwignore')).toBe(true);
+				expect(body.hasAttribute('data-1p-ignore')).toBe(true);
+			});
+		} finally {
+			// jsdom is per file, not per test, so every later beforeEach needs a document back.
+			document.documentElement?.remove();
+			document.appendChild(documentElement);
+		}
+	});
 });
