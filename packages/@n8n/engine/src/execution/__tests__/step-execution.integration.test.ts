@@ -241,7 +241,7 @@ describe('step execution (integration)', () => {
 	});
 
 	it('settles a conditional diamond: dead chain skipped, merge runs on the live side', async () => {
-		// trigger → if → {a (out 0), b (out 1) → c} → m: the not-taken branch is
+		// trigger -> if -> {a (out 0), b (out 1) -> c} -> m: the not-taken branch is
 		// two nodes long, so its skips must cascade through the event loop
 		// before the merge can settle and the execution can finish.
 		const branchingGraph: WorkflowGraph = {
@@ -320,8 +320,8 @@ describe('step execution (integration)', () => {
 		});
 		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them
-			{ nodeId: 'trigger', status: 'completed', outputs: [{}] },
-			{ nodeId: 'node-a', status: 'queued' },
+			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [{}] },
+			{ nodeId: 'node-a', iteration: 0, status: 'queued' },
 		]);
 		const stepId = created.find(({ nodeId }) => nodeId === 'node-a')!.id;
 
