@@ -189,8 +189,34 @@ function fieldFixedValue(fieldName: string): string {
 	return formatWorkflowToolFixedValue(binding.value);
 }
 
+// Raw text being typed per field. While editing, the input shows this
+// uncoerced text so fractional numbers (and in-progress JSON) survive
+// each keystroke. On blur the text is parsed and committed to `inputs`.
+const fieldInputText = ref<Record<string, string>>({});
+
+function fieldInputDisplay(fieldName: string): string {
+	return fieldInputText.value[fieldName] ?? fieldFixedValue(fieldName);
+}
+
+function handleFieldInput(fieldName: string, value: string | number) {
+	fieldInputText.value = { ...fieldInputText.value, [fieldName]: String(value) };
+}
+
+function commitFieldFixedValue(fieldName: string) {
+	const raw = fieldInputText.value[fieldName];
+	if (raw === undefined) return;
+	setFieldFixedValue(fieldName, raw);
+	const next = { ...fieldInputText.value };
+	delete next[fieldName];
+	fieldInputText.value = next;
+}
+
 function setFieldMode(fieldName: string, nextMode: string) {
 	if (nextMode !== 'ai' && nextMode !== 'fixed') return;
+	// Discard any in-progress text when the mode changes.
+	const nextText = { ...fieldInputText.value };
+	delete nextText[fieldName];
+	fieldInputText.value = nextText;
 	if (nextMode === 'ai') {
 		const next = { ...inputs.value };
 		delete next[fieldName];
@@ -273,6 +299,11 @@ function getWorkflowId() {
 }
 
 function getInputs(): WorkflowToolRef['inputs'] {
+	// Commit any in-progress text so the value isn't lost when the user
+	// confirms the modal without blurring the field first.
+	for (const fieldName of Object.keys(fieldInputText.value)) {
+		commitFieldFixedValue(fieldName);
+	}
 	if (Object.keys(inputs.value).length === 0) return undefined;
 	// Drop bindings for fields that no longer exist on the selected workflow.
 	const allowed = new Set(declaredInputFields.value.map((field) => field.name));
@@ -476,11 +507,12 @@ defineExpose({
 
 				<N8nInput
 					v-if="fieldMode(field.name) === 'fixed'"
-					:model-value="fieldFixedValue(field.name)"
+					:model-value="fieldInputDisplay(field.name)"
 					:class="$style.inputValue"
 					:placeholder="i18n.baseText('agents.toolConfig.workflow.inputs.value.placeholder')"
 					:data-test-id="`agent-workflow-tool-input-value-${field.name}`"
-					@update:model-value="setFieldFixedValue(field.name, $event)"
+					@update:model-value="handleFieldInput(field.name, $event)"
+					@blur="commitFieldFixedValue(field.name)"
 				/>
 			</div>
 		</div>
