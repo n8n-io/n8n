@@ -1,3 +1,13 @@
+## [2.36.1](https://github.com/n8n-io/n8n/compare/n8n@2.36.0...n8n@2.36.1) (2026-08-19)
+
+
+### Bug Fixes
+
+* **API:** Return a request schema for decorator routes in /discover ([#36496](https://github.com/n8n-io/n8n/issues/36496)) ([2c09a81](https://github.com/n8n-io/n8n/commit/2c09a81269e5411b0f81b301d5e140514126e941))
+* **core:** Resolve end-user credentials when loading node parameters ([#36518](https://github.com/n8n-io/n8n/issues/36518)) ([19eb966](https://github.com/n8n-io/n8n/commit/19eb96602d8fe6f89287cdc36522db8f60a8a4ec))
+* **editor:** Keep agent preview user messages right-aligned ([#36533](https://github.com/n8n-io/n8n/issues/36533)) ([705014a](https://github.com/n8n-io/n8n/commit/705014a02de7815961723a552271520418cf023b))
+
+
 # [2.36.0](https://github.com/n8n-io/n8n/compare/n8n@2.35.0...n8n@2.36.0) (2026-08-18)
 
 
