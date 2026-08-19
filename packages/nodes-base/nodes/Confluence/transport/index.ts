@@ -52,20 +52,81 @@ export async function confluenceApiRequest(
 			options,
 		);
 	} catch (error) {
-		// Atlassian's v2 error envelope sits in response.data.errors; without this,
-		// NodeApiError stops at Axios's generic "Request failed with status code N"
-		const envelope = (error as { response?: { data?: { errors?: unknown } } }).response?.data
-			?.errors;
-		const first = Array.isArray(envelope)
-			? (envelope[0] as { title?: unknown; detail?: unknown })
-			: undefined;
-		const title = typeof first?.title === 'string' && first.title !== '' ? first.title : undefined;
-		const detail =
-			typeof first?.detail === 'string' && first.detail !== '' ? first.detail : undefined;
-		throw new NodeApiError(
-			this.getNode(),
-			error as JsonObject,
-			title ? { message: title, description: detail } : undefined,
-		);
+		throw toConfluenceApiError.call(this, error);
 	}
+}
+
+interface CaughtRequestError {
+	response?: { status?: unknown; data?: unknown };
+}
+
+interface ExtractedApiError {
+	message: string;
+	description?: string;
+	data: IDataObject;
+}
+
+function extractApiMessage(body: unknown): ExtractedApiError | undefined {
+	if (typeof body !== 'object' || body === null) return undefined;
+	const data = body as IDataObject;
+	const { errors, message } = data as { errors?: unknown; message?: unknown };
+
+	// Atlassian's v2 error envelope: errors[0].title/detail
+	const first = Array.isArray(errors)
+		? (errors[0] as { title?: unknown; detail?: unknown } | undefined)
+		: undefined;
+	if (typeof first?.title === 'string' && first.title !== '') {
+		return {
+			message: first.title,
+			description:
+				typeof first.detail === 'string' && first.detail !== '' ? first.detail : undefined,
+			data,
+		};
+	}
+
+	// v1 endpoints (e.g. search) put the real cause in a top-level message,
+	// such as "Could not parse cql : ..."
+	if (typeof message === 'string' && message !== '') return { message, data };
+
+	return undefined;
+}
+
+/**
+ * `httpRequestWithAuthentication` wraps failures in a NodeApiError, whose
+ * constructor short-circuits on re-wrap (returning the same instance and
+ * dropping any overrides) — so enrichment must go on a fresh error. The
+ * response body survives on the wrapped error's `context.data`; without this,
+ * the API's own message only reaches `error.description` while `error.message`
+ * stays the generic status text, which is all continue-on-fail keeps.
+ */
+function toConfluenceApiError(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	error: unknown,
+): NodeApiError {
+	const wrapped = error instanceof NodeApiError ? error : undefined;
+	const body = wrapped ? wrapped.context.data : (error as CaughtRequestError).response?.data;
+
+	const extracted = extractApiMessage(body);
+	if (extracted !== undefined) {
+		let httpCode: string | undefined;
+		if (wrapped) {
+			httpCode = wrapped.httpCode ?? undefined;
+		} else {
+			const status = (error as CaughtRequestError).response?.status;
+			httpCode =
+				typeof status === 'number' || typeof status === 'string' ? String(status) : undefined;
+		}
+
+		const sanitizedError: JsonObject = { message: extracted.message };
+		const fresh = new NodeApiError(this.getNode(), sanitizedError, {
+			message: extracted.message,
+			description: extracted.description,
+			httpCode,
+		});
+		// Keep the raw response body visible in the NDV's error-data pane
+		fresh.context.data = extracted.data;
+		return fresh;
+	}
+	if (wrapped) return wrapped;
+	return new NodeApiError(this.getNode(), error as JsonObject);
 }

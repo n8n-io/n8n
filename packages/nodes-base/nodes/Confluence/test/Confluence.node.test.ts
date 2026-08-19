@@ -13,15 +13,26 @@ describe('Confluence Node', () => {
 		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
-	it('should expose the page resource with the create and get operations', () => {
+	it('should expose the page and search resources with their operations', () => {
 		const resource = node.description.properties.find((p) => p.name === 'resource');
-		expect(resource?.options).toEqual([expect.objectContaining({ value: 'page' })]);
+		expect(resource?.options).toEqual([
+			expect.objectContaining({ value: 'page' }),
+			expect.objectContaining({ value: 'search' }),
+		]);
 
-		const operation = node.description.properties.find((p) => p.name === 'operation');
-		expect(operation?.options).toEqual([
+		const operations = node.description.properties.filter((p) => p.name === 'operation');
+		const pageOperation = operations.find((p) =>
+			p.displayOptions?.show?.resource?.includes('page'),
+		);
+		expect(pageOperation?.options).toEqual([
 			expect.objectContaining({ value: 'create' }),
 			expect.objectContaining({ value: 'get' }),
 		]);
+
+		const searchOperation = operations.find((p) =>
+			p.displayOptions?.show?.resource?.includes('search'),
+		);
+		expect(searchOperation?.options).toEqual([expect.objectContaining({ value: 'query' })]);
 	});
 
 	it('should reference the confluenceCloudOAuth2Api credential by name', () => {
