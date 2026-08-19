@@ -28,6 +28,9 @@
       "tokenizer": [
         "dist/esm/utils/tokenizer/tiktoken.d.ts"
       ],
+      "json-schema": [
+        "dist/esm/json-schema/index.d.ts"
+      ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
       ],
@@ -76,6 +79,11 @@
       "types": "./dist/esm/utils/tokenizer/tiktoken.d.ts",
       "import": "./dist/esm/utils/tokenizer/tiktoken.js",
       "require": "./dist/cjs/utils/tokenizer/tiktoken.js"
+    },
+    "./json-schema": {
+      "types": "./dist/esm/json-schema/index.d.ts",
+      "import": "./dist/esm/json-schema/index.js",
+      "require": "./dist/cjs/json-schema/index.js"
     },
     "./web-search": {
       "types": "./dist/esm/web-search/index.d.ts",
