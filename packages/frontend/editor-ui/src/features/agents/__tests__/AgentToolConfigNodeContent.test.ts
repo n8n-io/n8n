@@ -11,8 +11,14 @@ const renderComponent = createComponentRenderer(AgentToolConfigNodeContent, {
 		stubs: {
 			NodeToolSettingsContent: {
 				template:
-					'<div data-test-id="node-tool-settings" :data-schema-auto-refresh="schemaAutoRefreshEnabled">{{ JSON.stringify(hiddenOperations) }}</div>',
-				props: ['initialNode', 'existingToolNames', 'projectId', 'hiddenOperations'],
+					'<div data-test-id="node-tool-settings" :data-schema-auto-refresh="schemaAutoRefreshEnabled" :data-sync-node-to-ndv="syncNodeToNdv">{{ JSON.stringify(hiddenOperations) }}</div>',
+				props: [
+					'initialNode',
+					'existingToolNames',
+					'projectId',
+					'hiddenOperations',
+					'syncNodeToNdv',
+				],
 				setup() {
 					return {
 						schemaAutoRefreshEnabled: inject(ResourceMapperSchemaAutoRefreshKey, true),
@@ -48,5 +54,13 @@ describe('AgentToolConfigNodeContent', () => {
 			'data-schema-auto-refresh',
 			'false',
 		);
+	});
+
+	it('syncs the tool node to the scoped NDV', () => {
+		const { getByTestId } = renderComponent({
+			props: { initialNode: node, contentTestId: 'node-tool-settings' },
+		});
+
+		expect(getByTestId('node-tool-settings')).toHaveAttribute('data-sync-node-to-ndv', 'true');
 	});
 });

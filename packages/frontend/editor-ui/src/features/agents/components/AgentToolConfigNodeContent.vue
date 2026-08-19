@@ -53,6 +53,7 @@ defineExpose({
 		:hidden-operations="UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS"
 		:parameter-issues="props.parameterIssues"
 		:from-ai-disabled-parameters="props.fromAiDisabledParameters"
+		:sync-node-to-ndv="true"
 		:data-test-id="props.contentTestId"
 		@update:valid="emit('update:valid', $event)"
 		@update:node-name="emit('update:node-name', $event)"
