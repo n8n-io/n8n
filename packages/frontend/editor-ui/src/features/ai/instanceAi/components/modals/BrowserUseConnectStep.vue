@@ -116,7 +116,6 @@ onBeforeUnmount(() => {
 				:label="i18n.baseText('instanceAi.browserUse.step.connect.cta')"
 				variant="solid"
 				size="medium"
-				icon="external-link"
 				:disabled="!connectUrl"
 				data-test-id="browser-use-open-connect-page"
 				@click="openConnectPage"
