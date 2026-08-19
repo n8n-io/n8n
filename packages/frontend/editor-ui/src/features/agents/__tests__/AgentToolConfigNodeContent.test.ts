@@ -3,7 +3,10 @@ import type { INode } from 'n8n-workflow';
 import { inject } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { ResourceMapperSchemaAutoRefreshKey } from '@/app/constants';
+import {
+	ResourceMapperRefreshEmptySchemaKey,
+	ResourceMapperSchemaAutoRefreshKey,
+} from '@/app/constants';
 import AgentToolConfigNodeContent from '../components/AgentToolConfigNodeContent.vue';
 
 const renderComponent = createComponentRenderer(AgentToolConfigNodeContent, {
@@ -11,7 +14,7 @@ const renderComponent = createComponentRenderer(AgentToolConfigNodeContent, {
 		stubs: {
 			NodeToolSettingsContent: {
 				template:
-					'<div data-test-id="node-tool-settings" :data-schema-auto-refresh="schemaAutoRefreshEnabled" :data-sync-node-to-ndv="syncNodeToNdv">{{ JSON.stringify(hiddenOperations) }}</div>',
+					'<div data-test-id="node-tool-settings" :data-refresh-empty-schema="refreshEmptySchemaEnabled" :data-schema-auto-refresh="schemaAutoRefreshEnabled" :data-sync-node-to-ndv="syncNodeToNdv">{{ JSON.stringify(hiddenOperations) }}</div>',
 				props: [
 					'initialNode',
 					'existingToolNames',
@@ -21,6 +24,7 @@ const renderComponent = createComponentRenderer(AgentToolConfigNodeContent, {
 				],
 				setup() {
 					return {
+						refreshEmptySchemaEnabled: inject(ResourceMapperRefreshEmptySchemaKey, false),
 						schemaAutoRefreshEnabled: inject(ResourceMapperSchemaAutoRefreshKey, true),
 					};
 				},
@@ -47,12 +51,16 @@ describe('AgentToolConfigNodeContent', () => {
 		expect(hiddenOperations).toContain('dispatchAndWait');
 	});
 
-	it('disables automatic resource mapper schema refreshes', () => {
+	it('configures resource mapper schema refreshes', () => {
 		const { container } = renderComponent({ props: { initialNode: node } });
 
 		expect(container.querySelector('[data-schema-auto-refresh]')).toHaveAttribute(
 			'data-schema-auto-refresh',
 			'false',
+		);
+		expect(container.querySelector('[data-refresh-empty-schema]')).toHaveAttribute(
+			'data-refresh-empty-schema',
+			'true',
 		);
 	});
 
