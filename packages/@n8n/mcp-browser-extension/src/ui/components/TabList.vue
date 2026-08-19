@@ -40,5 +40,7 @@ function isSelected(tab: chrome.tabs.Tab): boolean {
 	list-style: none;
 	padding: 0;
 	margin: 0;
+	overflow-y: auto;
+	min-height: 60px;
 }
 </style>

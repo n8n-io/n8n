@@ -153,8 +153,12 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 
 .content {
 	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
 	overflow-y: auto;
 	padding: var(--spacing--2xl) var(--spacing--xl);
+	padding-bottom: var(--spacing--xs);
 }
 
 .logo {
@@ -200,6 +204,7 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
 	border-radius: var(--radius--lg);
 	padding: var(--spacing--lg);
+	min-height: 0;
 }
 
 .divider {
