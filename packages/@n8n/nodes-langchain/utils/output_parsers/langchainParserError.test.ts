@@ -15,7 +15,7 @@ const node = {
 } as INode;
 
 describe('wrapLangChainParserError', () => {
-	describe('default (V1/V2) behaviour — non-parser errors unchanged', () => {
+	describe('default behaviour (no opt-in) — non-parser errors unchanged', () => {
 		it('leaves non-parser Error instances unchanged', () => {
 			const error = new Error('Connection failed');
 
@@ -54,7 +54,7 @@ describe('wrapLangChainParserError', () => {
 		});
 	});
 
-	describe('enrichNonParserErrors (V3) behaviour', () => {
+	describe('enrichNonParserErrors opt-in behaviour', () => {
 		it('wraps a plain Error with a useful message in NodeOperationError and chains the cause', () => {
 			const original = new Error('Connection failed');
 
@@ -68,6 +68,15 @@ describe('wrapLangChainParserError', () => {
 			expect((wrapped as NodeOperationError).cause).toBe(original);
 			expect((wrapped as NodeOperationError).description).toBe('Original error: Error');
 			expect((wrapped as NodeOperationError).context.itemIndex).toBe(3);
+		});
+
+		it('keeps the wrapped error reportable, since NodeOperationError defaults to a level the error reporter drops', () => {
+			const wrapped = wrapLangChainParserError(new Error('Error'), node, 0, {
+				enrichNonParserErrors: true,
+			}) as NodeOperationError;
+
+			expect(wrapped.level).toBe('error');
+			expect(wrapped.shouldReport).toBe(true);
 		});
 
 		it('uses a fallback message when the original message is empty or matches the class name', () => {

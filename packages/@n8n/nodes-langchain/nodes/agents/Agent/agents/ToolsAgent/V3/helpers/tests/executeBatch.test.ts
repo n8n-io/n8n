@@ -52,7 +52,7 @@ function buildItemContext(itemIndex: number): ItemContext {
 	};
 }
 
-describe('executeBatch — error enrichment (V3)', () => {
+describe('executeBatch — error enrichment', () => {
 	it('surfaces a useful message in the output item when a tool throws a plain Error("Error") and continueOnFail is on', async () => {
 		prepareItemContextMock.mockResolvedValue(buildItemContext(0));
 		runAgentMock.mockRejectedValue(new Error('Error'));
