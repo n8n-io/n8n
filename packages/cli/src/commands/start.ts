@@ -62,6 +62,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsCommunityPackages = true;
 
+	override needsExpressionEngine = true;
+
 	override needsTaskRunner = true;
 
 	private getEditorUrl = () => Container.get(UrlService).getInstanceBaseUrl();
