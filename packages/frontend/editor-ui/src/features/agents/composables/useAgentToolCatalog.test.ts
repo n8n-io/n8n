@@ -216,15 +216,44 @@ describe('useAgentToolCatalog', () => {
 					parameters: {},
 				},
 			],
+			// Wait is reachable from the trigger, so it actually runs and must be flagged.
+			connections: { 'Manual Trigger': { main: [[{ node: 'Wait', type: 'main', index: 0 }]] } },
+		});
+		const noTrigger = makeWorkflow({
+			id: 'no-trigger',
+			nodes: [
+				{
+					id: 's',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
 		});
 		workflowsListStore.searchWorkflows = vi
 			.fn()
-			.mockResolvedValue([compatible, archived, waitBody]);
+			.mockResolvedValue([compatible, archived, waitBody, noTrigger]);
 
-		const { availableWorkflows, loadWorkflows } = useAgentToolCatalog();
+		const { availableWorkflows, incompatibleWorkflows, loadWorkflows } = useAgentToolCatalog();
 		await loadWorkflows('p-1');
 
+		// Compatible workflows surface as selectable; archived ones are excluded entirely.
 		expect(availableWorkflows.value.map((wf) => wf.id)).toEqual(['ok']);
+
+		// Incompatible workflows surface with their reason, greyed out at the
+		// bottom of the picker. Archived ones are not surfaced as incompatible.
+		expect(incompatibleWorkflows.value).toEqual([
+			{
+				workflow: expect.objectContaining({ id: 'wait' }),
+				reason: { reason: 'incompatible_nodes', nodeTypes: ['n8n-nodes-base.wait'] },
+			},
+			{
+				workflow: expect.objectContaining({ id: 'no-trigger' }),
+				reason: { reason: 'no_supported_trigger' },
+			},
+		]);
 	});
 });
 
@@ -247,6 +276,34 @@ describe('isWorkflowCompatibleWithAgentTools', () => {
 				}),
 			),
 		).toBe(false);
+		// An incompatible node reachable from the trigger blocks the workflow.
+		expect(
+			isWorkflowCompatibleWithAgentTools(
+				makeWorkflow({
+					nodes: [
+						{
+							id: 't',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'f',
+							name: 'Form',
+							type: 'n8n-nodes-base.form',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: { 'Manual Trigger': { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
+				}),
+			),
+		).toBe(false);
+		// An incompatible node that is NOT reachable from the trigger never runs,
+		// so it must not block the workflow.
 		expect(
 			isWorkflowCompatibleWithAgentTools(
 				makeWorkflow({
@@ -270,6 +327,33 @@ describe('isWorkflowCompatibleWithAgentTools', () => {
 					],
 				}),
 			),
-		).toBe(false);
+		).toBe(true);
+		// A disabled incompatible node never runs, so it must not block the workflow.
+		expect(
+			isWorkflowCompatibleWithAgentTools(
+				makeWorkflow({
+					nodes: [
+						{
+							id: 't',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'f',
+							name: 'Form',
+							type: 'n8n-nodes-base.form',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							disabled: true,
+						},
+					],
+					connections: { 'Manual Trigger': { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
+				}),
+			),
+		).toBe(true);
 	});
 });

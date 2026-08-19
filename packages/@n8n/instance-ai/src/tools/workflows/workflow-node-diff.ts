@@ -159,7 +159,8 @@ export function downgradeUnchangedNodeBlockers(
 	const findCounterpart = counterpartFinder(savedWorkflow);
 	const builtSignatures = connectionSignatures(workflow);
 	const savedSignatures = connectionSignatures(savedWorkflow);
-	const unchangedNames = new Set<string>();
+	const unchangedParameterNames = new Set<string>();
+	const fullyUnchangedNames = new Set<string>();
 	for (const node of workflow.nodes ?? []) {
 		if (!node.name) continue;
 		const saved = findCounterpart(node);
@@ -168,15 +169,29 @@ export function downgradeUnchangedNodeBlockers(
 			parametersUnchanged(node, saved) &&
 			connectionsUnchanged(node, saved, builtSignatures, savedSignatures)
 		) {
-			unchangedNames.add(node.name);
+			unchangedParameterNames.add(node.name);
+			if (
+				isDeepStrictEqual(node.credentials ?? {}, saved.credentials ?? {}) &&
+				(node.disabled ?? false) === (saved.disabled ?? false)
+			) {
+				fullyUnchangedNames.add(node.name);
+			}
 		}
 	}
-	if (unchangedNames.size === 0) return warnings;
+	if (unchangedParameterNames.size === 0) return warnings;
 
 	return warnings.map((warning) => {
 		if (warning.severity === 'informational') return warning;
-		if (warning.code !== 'INVALID_PARAMETER') return warning;
-		if (!warning.nodeName || !unchangedNames.has(warning.nodeName)) return warning;
+		if (!warning.nodeName) return warning;
+
+		if (warning.code === 'INVALID_PARAMETER') {
+			if (!unchangedParameterNames.has(warning.nodeName)) return warning;
+		} else if (warning.code === 'chat_model_validation') {
+			if (!fullyUnchangedNames.has(warning.nodeName)) return warning;
+		} else {
+			return warning;
+		}
+
 		return {
 			...warning,
 			severity: 'informational' as const,
