@@ -134,7 +134,12 @@ test('should not seed the instance identity and should tolerate deployment key r
 test('should not init the expression engine for commands that do not need it', async () => {
 	// arrange
 
-	const initSpy = vi.spyOn(Expression, 'initExpressionEngine');
+	const initSpy = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue(undefined);
+	const setEngineSpy = vi.spyOn(Expression, 'setExpressionEngine').mockReturnValue(undefined);
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({ taskRunners: {}, nodes: {}, expressionEngine: { engine: 'vm' } }),
+	);
 
 	class ReadOnlyCommand2 extends BaseCommand {}
 	const cmd = new ReadOnlyCommand2();
@@ -146,6 +151,9 @@ test('should not init the expression engine for commands that do not need it', a
 	// assert
 
 	expect(initSpy).not.toHaveBeenCalled();
+	// the configured engine is still recorded, so evaluating an expression without
+	// an initialized engine throws instead of silently using the legacy engine
+	expect(setEngineSpy).toHaveBeenCalledWith('vm');
 });
 
 test('should exit with a crash when expression engine init fails', async () => {

@@ -248,6 +248,10 @@ export abstract class BaseCommand<F = never> {
 					error,
 				);
 			}
+		} else {
+			// Record the configured engine so an unexpected expression evaluation on a
+			// vm-configured instance fails loudly instead of silently using the legacy engine
+			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
 		}
 	}
 
