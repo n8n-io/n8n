@@ -4,8 +4,8 @@ import { Service } from '@n8n/di';
 import type { EngineRuntime } from '@n8n/engine';
 import { AllowAllAdmittance, createDataSource, createEngineRuntime } from '@n8n/engine';
 import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
-import type { DataSource } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
+import assert from 'node:assert';
 import type { Server } from 'node:http';
 
 import { NodeTypes } from '@/node-types';
@@ -21,8 +21,11 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
  */
 @Service()
 export class EngineV2Runtime {
-	/** Everything `init()` owns, held together so `shutdown()` releases it as one unit. */
-	private running?: { dataSource: DataSource; engine: EngineRuntime; server: Server };
+	private dataSource?: ReturnType<typeof createDataSource>;
+
+	private engine?: EngineRuntime;
+
+	private server?: Server;
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
@@ -33,7 +36,26 @@ export class EngineV2Runtime {
 	}
 
 	async init(): Promise<void> {
-		const { databaseUrl, host, port } = this.engineConfig;
+		try {
+			await this.initDb();
+
+			this.engine = this.initEngine();
+
+			this.server = await this.initServer();
+		} catch (error) {
+			// A half-started engine holds a connection and its worker loops, and the
+			// host has no handle to it, so roll back before surfacing the failure.
+			await this.shutdown().catch((teardownError) => {
+				this.logger.error('Failed to roll back after Engine 2.0 could not start', {
+					teardownError,
+				});
+			});
+			throw error;
+		}
+	}
+
+	private async initDb(): Promise<void> {
+		const { databaseUrl } = this.engineConfig;
 
 		if (!databaseUrl) {
 			throw new UserError(
@@ -41,12 +63,18 @@ export class EngineV2Runtime {
 			);
 		}
 
-		const dataSource = createDataSource(databaseUrl);
-		await dataSource.initialize();
-		await dataSource.runMigrations();
+		// Store the data source before connecting, so a failed connect or migration
+		// still leaves a handle for `shutdown()` to release.
+		this.dataSource = createDataSource(databaseUrl);
+		await this.dataSource.initialize();
+		await this.dataSource.runMigrations();
+	}
+
+	private initEngine(): EngineRuntime {
+		assert(this.dataSource, 'Engine 2.0 cannot start without a data source');
 
 		const engine = createEngineRuntime({
-			dataSource,
+			dataSource: this.dataSource,
 			// TODO(CAT-2909): placeholder policy — every execution is admitted and no
 			// limits are applied.
 			admittance: new AllowAllAdmittance(),
@@ -62,31 +90,49 @@ export class EngineV2Runtime {
 		});
 		engine.start();
 
+		return engine;
+	}
+
+	private async initServer(): Promise<Server> {
+		const { host, port } = this.engineConfig;
+
 		const server = await new Promise<Server>((resolve, reject) => {
-			const listener = engine.app.listen(port, host);
+			assert(this.engine, 'Engine 2.0 cannot start without an engine runtime');
+
+			const listener = this.engine.app.listen(port, host);
 			listener.once('listening', () => resolve(listener));
 			listener.once('error', reject);
 		});
 
-		this.running = { dataSource, engine, server };
-
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
 		this.logger.info(`Engine 2.0 listening on http://${shownHost}:${port}`);
+
+		return server;
 	}
 
+	/** Releases each resource `init()` reached, in reverse order of acquisition. */
 	async shutdown(): Promise<void> {
-		if (!this.running) return;
+		if (this.server) {
+			const server = this.server;
 
-		const { dataSource, engine, server } = this.running;
-		this.running = undefined;
+			await new Promise<void>((resolve, reject) => {
+				server.close((error) => (error ? reject(error) : resolve()));
+			});
 
-		await new Promise<void>((resolve, reject) => {
-			server.close((error) => (error ? reject(error) : resolve()));
-		});
+			this.server = undefined;
+		}
 
-		await engine.stop();
+		if (this.engine) {
+			await this.engine.stop();
+			this.engine = undefined;
+		}
 
-		if (dataSource.isInitialized) await dataSource.destroy();
+		if (this.dataSource) {
+			if (this.dataSource.isInitialized) {
+				await this.dataSource.destroy();
+			}
+			this.dataSource = undefined;
+		}
 	}
 }

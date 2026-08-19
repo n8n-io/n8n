@@ -20,10 +20,14 @@ const mocks = vi.hoisted(() => {
 		}),
 	};
 
+	/** Set to make `listen()` fail instead of coming up. */
+	const listen: { error?: Error } = {};
+
 	const server = {
 		close: vi.fn((done: (error?: Error) => void) => done()),
-		once: vi.fn((event: string, listener: () => void) => {
-			if (event === 'listening') listener();
+		once: vi.fn((event: string, listener: (error?: Error) => void) => {
+			if (event === 'listening' && !listen.error) listener();
+			if (event === 'error' && listen.error) listener(listen.error);
 			return server;
 		}),
 	};
@@ -36,6 +40,7 @@ const mocks = vi.hoisted(() => {
 
 	return {
 		dataSource,
+		listen,
 		server,
 		engine,
 		createDataSource: vi.fn((_url: string) => dataSource),
@@ -76,6 +81,7 @@ describe('EngineV2Runtime', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.dataSource.isInitialized = false;
+		mocks.listen.error = undefined;
 	});
 
 	describe('init', () => {
@@ -112,6 +118,32 @@ describe('EngineV2Runtime', () => {
 			await newRuntime().init();
 
 			expect(mocks.engine.app.listen).toHaveBeenCalledWith(3000, '0.0.0.0');
+		});
+
+		it('closes the connection when migrations fail', async () => {
+			mocks.dataSource.runMigrations.mockRejectedValueOnce(new Error('migration failed'));
+
+			await expect(newRuntime().init()).rejects.toThrow('migration failed');
+
+			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+			expect(mocks.engine.stop).not.toHaveBeenCalled();
+		});
+
+		it('stops the engine and closes the connection when the server fails to listen', async () => {
+			mocks.listen.error = new Error('listen failed');
+
+			await expect(newRuntime().init()).rejects.toThrow('listen failed');
+
+			expect(mocks.server.close).not.toHaveBeenCalled();
+			expect(mocks.engine.stop).toHaveBeenCalled();
+			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+		});
+
+		it('surfaces the startup failure even when the rollback fails', async () => {
+			mocks.listen.error = new Error('listen failed');
+			mocks.engine.stop.mockRejectedValueOnce(new Error('stop failed'));
+
+			await expect(newRuntime().init()).rejects.toThrow('listen failed');
 		});
 	});
 
