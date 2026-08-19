@@ -513,7 +513,7 @@ describe('TestWebhooks', () => {
 
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to release expression isolate for test webhook',
-				expect.objectContaining({ error }),
+				expect.objectContaining({ error, workflowId: workflowEntity.id }),
 			);
 		});
 	});
