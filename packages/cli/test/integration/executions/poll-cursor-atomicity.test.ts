@@ -1,5 +1,5 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { PollerConfig, SchedulerConfig } from '@n8n/config';
+import { PollerConfig, SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
 	PollLeaseFence,
@@ -51,6 +51,7 @@ describe('poll cursor atomicity', () => {
 		const schedulerConfig = Container.get(SchedulerConfig);
 		schedulerConfig.enabled = true;
 		schedulerConfig.enabledForPollTriggers = true;
+		Container.get(WorkflowsConfig).useWorkflowPublicationService = true;
 	});
 
 	beforeEach(async () => {

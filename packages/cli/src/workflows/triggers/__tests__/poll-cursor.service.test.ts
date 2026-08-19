@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { PollerConfig, SchedulerConfig } from '@n8n/config';
+import type { PollerConfig, SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
 	OperationContext,
@@ -25,7 +25,11 @@ describe('PollCursorService', () => {
 
 	const buildService = (
 		durableCursorsEnabled = true,
-		{ schedulerEnabled = true, schedulerEnabledForPollTriggers = true } = {},
+		{
+			schedulerEnabled = true,
+			schedulerEnabledForPollTriggers = true,
+			useWorkflowPublicationService = true,
+		} = {},
 	) => {
 		txRunner = mock<TransactionRunner>();
 		txRunner.run.mockImplementation(
@@ -42,6 +46,7 @@ describe('PollCursorService', () => {
 				enabled: schedulerEnabled,
 				enabledForPollTriggers: schedulerEnabledForPollTriggers,
 			}),
+			mock<WorkflowsConfig>({ useWorkflowPublicationService }),
 			eventService,
 		);
 	};
@@ -63,6 +68,10 @@ describe('PollCursorService', () => {
 		it('requires the config flag', () => {
 			expect(buildService(true).enabled).toBe(true);
 			expect(buildService(false).enabled).toBe(false);
+		});
+
+		it('requires the workflow publication service: legacy activation must never create cursor rows', () => {
+			expect(buildService(true, { useWorkflowPublicationService: false }).enabled).toBe(false);
 		});
 
 		it('requires the durable scheduler and durable pollers to be enabled', () => {

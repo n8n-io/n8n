@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { PollerConfig, SchedulerConfig } from '@n8n/config';
+import { PollerConfig, SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type { CreateExecutionPayload, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { PollerStateRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -24,11 +24,12 @@ export class PollCursorService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly pollerConfig: PollerConfig,
 		private readonly schedulerConfig: SchedulerConfig,
+		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly eventService: EventService,
 	) {
 		if (this.pollerConfig.durableCursorsEnabled && !this.schedulerChainEnabled) {
 			this.logger.warn(
-				'N8N_POLLER_DURABLE_CURSORS_ENABLED requires N8N_SCHEDULER_ENABLED and N8N_SCHEDULER_POLL_TRIGGERS_ENABLED; durable poll cursors stay disabled.',
+				'N8N_POLLER_DURABLE_CURSORS_ENABLED requires N8N_SCHEDULER_ENABLED, N8N_SCHEDULER_POLL_TRIGGERS_ENABLED and N8N_USE_WORKFLOW_PUBLICATION_SERVICE; durable poll cursors stay disabled.',
 			);
 		}
 	}
@@ -36,10 +37,16 @@ export class PollCursorService {
 	/**
 	 * Durable cursors and durable pollers are one feature block: cursors depend
 	 * on the durable scheduler owning poll scheduling, so enabling the cursors
-	 * on their own is not supported.
+	 * on their own is not supported. The publication service is part of the
+	 * chain because cursor rows are only healthy where activation heals node
+	 * ids — legacy activation must never create them.
 	 */
 	private get schedulerChainEnabled(): boolean {
-		return this.schedulerConfig.enabled && this.schedulerConfig.enabledForPollTriggers;
+		return (
+			this.schedulerConfig.enabled &&
+			this.schedulerConfig.enabledForPollTriggers &&
+			this.workflowsConfig.useWorkflowPublicationService
+		);
 	}
 
 	/**
