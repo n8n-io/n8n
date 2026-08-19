@@ -1,18 +1,18 @@
 @mixin primitives {
 	/* pink */
-	--color--pink-50: oklch(97.14% 0.0141 343.2);
-	--color--pink-100: oklch(94.82% 0.0276 342.26);
-	--color--pink-150: oklch(92.3% 0.0423 343.08);
-	--color--pink-200: oklch(89.85% 0.0615 343.45);
-	--color--pink-250: oklch(86.04% 0.0898 343.69);
-	--color--pink-300: oklch(82.25% 0.119 346.16);
-	--color--pink-400: oklch(71.76% 0.2017 349.7);
-	--color--pink-500: oklch(65.58% 0.2404 354.32);
-	--color--pink-600: oklch(59.79% 0.2417 1.37);
-	--color--pink-700: oklch(53.17% 0.2137 4.81);
-	--color--pink-800: oklch(46.07% 0.1853 4.1);
-	--color--pink-900: oklch(40.82% 0.1533 2.23);
-	--color--pink-950: oklch(28.41% 0.1089 3.59);
+	--color--pink-50: oklch(97.53% 0.0128 5.65);
+	--color--pink-100: oklch(95.06% 0.0256 5.65);
+	--color--pink-150: oklch(92.56% 0.0398 5.49);
+	--color--pink-200: oklch(90.05% 0.0541 5.33);
+	--color--pink-250: oklch(88.05% 0.0666 5.18);
+	--color--pink-300: oklch(86.04% 0.0791 5.02);
+	--color--pink-400: oklch(82.05% 0.1071 4.98);
+	--color--pink-500: oklch(78.07% 0.136 5.02);
+	--color--pink-600: oklch(68.08% 0.148 5.02);
+	--color--pink-700: oklch(59.09% 0.1611 5.09);
+	--color--pink-800: oklch(40.08% 0.1209 4.81);
+	--color--pink-900: oklch(24.87% 0.1 4.8);
+	--color--pink-950: oklch(18% 0.075 4.8);
 
 	/* white */
 	--color--white-alpha-50: oklch(100% 0 89.88 / 0.05);
@@ -274,6 +274,7 @@
 	--radius--xl: 1.5rem; /** 24px **/
 	--radius--2xl: 2rem; /** 32px **/
 	--radius--full: 9999px;
+	--radius: var(--radius--xs);
 
 	--height--5xs: 0.5rem; /** 8px **/
 	--height--4xs: 0.75rem; /** 12px **/
