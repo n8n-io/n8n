@@ -814,6 +814,47 @@ describe('v2/components/Combobox', () => {
 		});
 	});
 
+	describe('multiple selection', () => {
+		it('should clear the search input after selecting an option', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Apple', 'Banana'),
+					multiple: true,
+					defaultOpen: true,
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const { popover } = await getPopoverContainer();
+			await userEvent.type(input, 'App');
+			await userEvent.click(within(popover).getByRole('option', { name: 'Apple' }));
+
+			await waitFor(() => {
+				expect(wrapper.getAllByTestId('tags-input-tag')).toHaveLength(1);
+				expect(input).toHaveValue('');
+			});
+			expect(within(popover).getByRole('option', { name: 'Banana' })).toBeVisible();
+		});
+
+		it('should clear the search input after selecting with Enter', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Apple', 'Banana'),
+					multiple: true,
+					defaultOpen: true,
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			await userEvent.type(input, 'Apple{Enter}');
+
+			await waitFor(() => {
+				expect(wrapper.getAllByTestId('tags-input-tag')).toHaveLength(1);
+				expect(input).toHaveValue('');
+			});
+		});
+	});
+
 	describe('events', () => {
 		it('should open on focus, close after selection, and emit update:open', async () => {
 			const wrapper = render(Combobox, {

@@ -95,11 +95,36 @@ const internalValue = ref<ComboboxValue | ComboboxValue[] | undefined>(props.def
 
 const rootModelValue = computed(() => (isModelControlled ? props.modelValue : internalValue.value));
 
+const inputRef = useTemplateRef<
+	InstanceType<typeof ComboboxInput> | InstanceType<typeof TagsInputInput>
+>('input');
+
+function getInputElement(): HTMLInputElement | undefined {
+	const element: unknown = inputRef.value?.$el;
+	return element instanceof HTMLInputElement ? element : undefined;
+}
+
+function clearSearchInput() {
+	void nextTick(() => {
+		const element = getInputElement();
+		if (!element) {
+			return;
+		}
+
+		element.value = '';
+		element.dispatchEvent(new InputEvent('input', { bubbles: true, data: null }));
+	});
+}
+
 function onModelValueUpdate(value: ComboboxValue | ComboboxValue[] | undefined) {
 	if (!isModelControlled) {
 		internalValue.value = value;
 	}
 	emit('update:modelValue', value);
+
+	if (props.multiple) {
+		clearSearchInput();
+	}
 }
 
 function setSelectedValue(value: ComboboxValue | ComboboxValue[] | undefined) {
@@ -217,9 +242,6 @@ const optionItems = computed(() =>
 );
 
 const anchorRef = useTemplateRef<InstanceType<typeof ComboboxAnchor>>('anchor');
-const inputRef = useTemplateRef<
-	InstanceType<typeof ComboboxInput> | InstanceType<typeof TagsInputInput>
->('input');
 
 defineExpose({
 	anchorRef,
@@ -286,8 +308,8 @@ function onClear() {
 	setSelectedValue(props.multiple ? [] : undefined);
 
 	void nextTick(() => {
-		const element: unknown = inputRef.value?.$el;
-		if (!(element instanceof HTMLInputElement)) {
+		const element = getInputElement();
+		if (!element) {
 			return;
 		}
 
