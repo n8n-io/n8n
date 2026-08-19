@@ -3,7 +3,13 @@ import { DateTime, IANAZone, Settings } from 'luxon';
 import { extend, extendOptional } from '../extensions/extend';
 import { extendedFunctions } from '../extensions/function-extensions';
 
-import { __sanitize, createSafeErrorSubclass, ExpressionError } from './safe-globals';
+import {
+	__guardPlus,
+	__guardTemplate,
+	__sanitize,
+	createSafeErrorSubclass,
+	ExpressionError,
+} from './safe-globals';
 import {
 	createDeepLazyProxy,
 	isArrayMetadata,
@@ -123,6 +129,20 @@ export function buildContext(
 		set: () => {
 			throw new ExpressionError('Cannot override "__sanitize" due to security concerns');
 		},
+		enumerable: false,
+		configurable: false,
+	});
+
+	// Undefined-coercion guards, same reason: UndefinedCoercionGuard generates
+	// this.__guardPlus(a, b) / this.__guardTemplate(e). Both are invoked as
+	// methods, so `this` is the context proxy they read the gate off.
+	Object.defineProperty(target, '__guardPlus', {
+		get: () => __guardPlus,
+		enumerable: false,
+		configurable: false,
+	});
+	Object.defineProperty(target, '__guardTemplate', {
+		get: () => __guardTemplate,
 		enumerable: false,
 		configurable: false,
 	});

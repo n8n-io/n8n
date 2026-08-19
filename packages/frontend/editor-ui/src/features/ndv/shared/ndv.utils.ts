@@ -46,6 +46,7 @@ export function getNodeSettingsInitialValues(): INodeParameters {
 		notesInFlow: false,
 		onError: 'stopWorkflow',
 		retryOnFail: false,
+		throwOnUndefinedExpression: false,
 		maxTries: 3,
 		waitBetweenTries: 1000,
 		notes: '',
@@ -527,6 +528,15 @@ export function createCommonNodeSettings(
 				isNodeSetting: true,
 			},
 			{
+				displayName: t('nodeSettings.throwOnUndefinedExpression.displayName'),
+				name: 'throwOnUndefinedExpression',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: t('nodeSettings.throwOnUndefinedExpression.description'),
+				isNodeSetting: true,
+			},
+			{
 				displayName: t('nodeSettings.onError.displayName'),
 				name: 'onError',
 				type: 'options',
@@ -700,6 +710,14 @@ export function collectSettings(node: INodeUi, nodeSettings: INodeProperties[]):
 		ret = {
 			...ret,
 			waitBetweenTries: node.waitBetweenTries,
+		};
+	}
+
+	if (node.throwOnUndefinedExpression) {
+		foundNodeSettings.push('throwOnUndefinedExpression');
+		ret = {
+			...ret,
+			throwOnUndefinedExpression: node.throwOnUndefinedExpression,
 		};
 	}
 

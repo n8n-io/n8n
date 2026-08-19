@@ -16,6 +16,7 @@ import {
 	DollarSignValidator,
 	PrototypeSanitizer,
 	ThisSanitizer,
+	UndefinedCoercionGuard,
 } from 'n8n-workflow/expression-sandboxing';
 
 import { BENCH_OPTIONS } from '../bench-options';
@@ -26,7 +27,7 @@ const evaluator = new ExpressionEvaluator({
 	maxCodeCacheSize: 1024,
 	hooks: {
 		before: [ThisSanitizer],
-		after: [PrototypeSanitizer, DollarSignValidator],
+		after: [PrototypeSanitizer, DollarSignValidator, UndefinedCoercionGuard],
 	},
 });
 await evaluator.initialize();

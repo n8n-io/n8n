@@ -1,4 +1,5 @@
 import { type ASTAfterHook, type ASTBeforeHook, astBuilders as b, astVisit } from '@n8n/tournament';
+import type { ExpressionKind } from 'ast-types/lib/gen/kinds';
 
 import {
 	ExpressionClassExtensionError,
@@ -561,3 +562,123 @@ export const sanitizer = (value: unknown): unknown => {
 	}
 	return propertyKey;
 };
+
+// ---------------------------------------------------------------------------
+// Undefined-coercion guard — the `throwOnUndefinedExpression` node setting.
+//
+// Not a security transform: it routes the two syntactic sites that turn
+// `undefined` into the text "undefined" (`+` and template-literal
+// interpolation) through runtime guards, so a node that opted in fails instead
+// of shipping `Hello, undefined`.
+// ---------------------------------------------------------------------------
+
+/** Runtime gate, read off the data context. Absent or `false` ⇒ pass-through. */
+export const undefinedCoercionGateName = '__throwOnUndefinedCoercion';
+export const plusGuardName = '__guardPlus';
+export const templateGuardName = '__guardTemplate';
+
+const plusGuardIdentifier = b.identifier(plusGuardName);
+const templateGuardIdentifier = b.identifier(templateGuardName);
+
+export const UNDEFINED_COERCION_MESSAGE = 'Expression inserted "undefined" into text';
+
+const undefinedCoercionDescription = (operation: string) =>
+	`A value in this expression is undefined, and ${operation} turned it into the text "undefined". Provide a fallback (for example \`?? ''\`), or turn off "Error On Undefined Expression" in this node's settings.`;
+
+/**
+ * Rewrites `a + b` to `<data>.__guardPlus(a, b)` and every `${expr}` of an
+ * untagged template literal to `<data>.__guardTemplate(expr)`.
+ *
+ * Emitted unconditionally, never conditionally on the node setting: transformed
+ * code is cached keyed by the expression string alone, so two nodes sharing an
+ * expression share generated code. The setting is read at runtime, inside the
+ * guard — see `guardPlus` / `guardTemplate`.
+ */
+export const UndefinedCoercionGuard: ASTAfterHook = (ast, dataNode) => {
+	// A tag function receives interpolated values raw, so nothing is stringified
+	// and there is no `undefined` text to catch. Recorded on the way down;
+	// ast-types visits a parent before its children.
+	const taggedQuasis = new Set<unknown>();
+
+	astVisit(ast, {
+		visitTaggedTemplateExpression(path) {
+			taggedQuasis.add(path.node.quasi);
+			this.traverse(path);
+		},
+
+		visitBinaryExpression(path) {
+			this.traverse(path); // depth first, so nested `+` is already wrapped
+			const { node } = path;
+			if (node.operator !== '+') return false;
+
+			path.replace(
+				b.callExpression(b.memberExpression(dataNode, plusGuardIdentifier), [
+					node.left,
+					node.right,
+				]),
+			);
+			return false;
+		},
+
+		visitTemplateLiteral(path) {
+			this.traverse(path);
+			const { node } = path;
+			if (taggedQuasis.has(node) || node.expressions.length === 0) return false;
+
+			path.replace(
+				b.templateLiteral(
+					node.quasis,
+					node.expressions.map((expression) =>
+						b.callExpression(b.memberExpression(dataNode, templateGuardIdentifier), [
+							// A TemplateLiteral's `expressions` are typed to include TS type
+							// nodes, which cannot occur in a parsed n8n expression.
+							expression as ExpressionKind,
+						]),
+					),
+				),
+			);
+			return false;
+		},
+	});
+};
+
+const undefinedCoercionGateIsOn = (context: unknown): boolean =>
+	(context as Record<string, unknown> | null | undefined)?.[undefinedCoercionGateName] === true;
+
+/**
+ * Runtime half of `UndefinedCoercionGuard` for `+`.
+ *
+ * Applies the operator itself, so coercion order, `NaN` results and `null`
+ * handling stay byte-identical to `left + right`. Throws only when an operand
+ * was `undefined` *and* the result is a string — `1 + undefined` is `NaN`, no
+ * text was inserted, no throw. The gate is read last so the common path costs
+ * two identity checks and a `typeof`.
+ */
+export function guardPlus(this: unknown, left: unknown, right: unknown): unknown {
+	const result: unknown = (left as string) + (right as string);
+
+	if (
+		(left === undefined || right === undefined) &&
+		typeof result === 'string' &&
+		undefinedCoercionGateIsOn(this)
+	) {
+		throw new ExpressionError(UNDEFINED_COERCION_MESSAGE, {
+			type: 'undefined_coercion',
+			description: undefinedCoercionDescription('`+`'),
+		});
+	}
+
+	return result;
+}
+
+/** Runtime half of `UndefinedCoercionGuard` for `${...}` in a template literal. */
+export function guardTemplate(this: unknown, value: unknown): unknown {
+	if (value === undefined && undefinedCoercionGateIsOn(this)) {
+		throw new ExpressionError(UNDEFINED_COERCION_MESSAGE, {
+			type: 'undefined_coercion',
+			description: undefinedCoercionDescription('a template literal placeholder'),
+		});
+	}
+
+	return value;
+}

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { ref, shallowRef } from 'vue';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, type RenderResult } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
 
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
@@ -112,6 +112,7 @@ interface RenderOptions {
 	provide?: Record<symbol, unknown>;
 	stubs?: Record<string, unknown>;
 	canvasOnly?: boolean;
+	readOnly?: boolean;
 }
 
 const renderNodeSettings = (options: RenderOptions = {}) => {
@@ -122,6 +123,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		provide = {},
 		stubs = {},
 		canvasOnly = false,
+		readOnly = true,
 	} = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
@@ -190,7 +192,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		props: {
 			dragging: false,
 			pushRef: 'pushRef',
-			readOnly: true,
+			readOnly,
 			foreignCredentials: [],
 			blockUI: false,
 			executable: false,
@@ -254,6 +256,64 @@ describe('NodeSettings', () => {
 
 			await findByTestId('tab-params');
 			expect(queryByTestId('node-feature-request')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Error On Undefined Expression toggle', () => {
+		const renderSettingsTab = async (node?: typeof httpNode) => {
+			const rendered = renderNodeSettings({
+				node,
+				readOnly: false,
+				// The real list renders the toggle; stubbing it would test nothing.
+				stubs: { ParameterInputList: false },
+			});
+
+			const settingsTab = await rendered.findByTestId('tab-settings');
+			await fireEvent.click(settingsTab.querySelector<HTMLElement>('.tab')!);
+
+			return rendered;
+		};
+
+		const findSwitchFor = async (label: string, findByText: RenderResult['findByText']) => {
+			const labelEl = await findByText(label);
+			const item = labelEl.closest('[data-test-id="parameter-item"]');
+			expect(item).not.toBeNull();
+
+			const input = item!.querySelector<HTMLInputElement>('input[type="checkbox"]');
+			expect(input).not.toBeNull();
+
+			return input!;
+		};
+
+		it('renders off for a node that has never had the setting touched', async () => {
+			const { findByText } = await renderSettingsTab();
+
+			const input = await findSwitchFor('Error On Undefined Expression', findByText);
+
+			expect(input.checked).toBe(false);
+		});
+
+		it('renders on for a node that has the setting enabled', async () => {
+			const { findByText } = await renderSettingsTab(
+				createTestNode({ ...httpNode, throwOnUndefinedExpression: true }),
+			);
+
+			const input = await findSwitchFor('Error On Undefined Expression', findByText);
+
+			expect(input.checked).toBe(true);
+		});
+
+		it('writes the value back to the node as a top-level key, not a parameter', async () => {
+			const { findByText, workflowDocumentStore } = await renderSettingsTab();
+
+			const input = await findSwitchFor('Error On Undefined Expression', findByText);
+			await fireEvent.click(input);
+
+			await waitFor(() => {
+				const node = workflowDocumentStore.getNodeByName(httpNode.name);
+				expect(node?.throwOnUndefinedExpression).toBe(true);
+				expect(node?.parameters).not.toHaveProperty('throwOnUndefinedExpression');
+			});
 		});
 	});
 

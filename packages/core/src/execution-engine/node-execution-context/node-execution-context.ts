@@ -49,6 +49,18 @@ import { validateValueAgainstSchema } from './utils/validate-value-against-schem
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
 
+	/**
+	 * Whether the node's `throwOnUndefinedExpression` setting applies in this context.
+	 * Editor-time contexts opt out: loading dropdown options resolves parameters
+	 * without input data, where `undefined` is expected rather than a defect.
+	 */
+	protected readonly respectsThrowOnUndefinedExpression: boolean = true;
+
+	/** Whether this context's node opted into failing on `undefined`. */
+	protected get throwsOnUndefinedExpression(): boolean {
+		return this.node.throwOnUndefinedExpression === true && this.respectsThrowOnUndefinedExpression;
+	}
+
 	constructor(
 		readonly workflow: Workflow,
 		readonly node: INode,
@@ -531,11 +543,16 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				false,
 				{},
 				options?.contextNode?.name,
+				this.throwsOnUndefinedExpression,
 			);
 			cleanupParameterData(returnData);
 		} catch (e) {
 			if (
 				e instanceof ExpressionError &&
+				// The setting is opt-in, so its error outranks the PAY-684 rescue:
+				// swallowing it here would no-op the setting on the very node where
+				// `Hello, undefined` most often starts.
+				e.context.type !== 'undefined_coercion' &&
 				node.continueOnFail &&
 				node.type === 'n8n-nodes-base.set'
 			) {
@@ -552,6 +569,24 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				});
 				throw e;
 			}
+		}
+
+		// Outside the try/catch on purpose: the catch above swallows ExpressionErrors for
+		// Set nodes with `continueOnFail` (PAY-684), which would silently no-op the setting.
+		if (
+			node.throwOnUndefinedExpression &&
+			this.respectsThrowOnUndefinedExpression &&
+			returnData === undefined
+		) {
+			throw new ExpressionError(`Parameter "${parameterName}" resolved to undefined`, {
+				type: 'undefined_value',
+				parameter: parameterName,
+				itemIndex,
+				runIndex,
+				nodeCause: node.name,
+				description:
+					"The expression has no value. Provide a fallback (for example `?? ''`), or turn off \"Error On Undefined Expression\" in this node's settings.",
+			});
 		}
 
 		// This is outside the try/catch because it throws errors with proper messages

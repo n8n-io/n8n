@@ -2374,6 +2374,8 @@
 	"nodeSettings.communityNodeTooltip": "This is a <a href=\"{docUrl}\" target=\"_blank\"/>community node</a>",
 	"nodeSettings.retryOnFail.description": "If active, the node tries to execute again when it fails",
 	"nodeSettings.retryOnFail.displayName": "Retry On Fail",
+	"nodeSettings.throwOnUndefinedExpression.description": "If active, the node fails when an expression resolves to no value, or when an expression combines a missing value into text so it reads \"undefined\". Fixed text around an expression is unaffected: a missing value there still resolves to empty.",
+	"nodeSettings.throwOnUndefinedExpression.displayName": "Error On Undefined Expression",
 	"nodeSettings.scopes.expandedNoticeWithScopes": "<a data-key=\"toggle-expand\">{count} scope</a> available for {activeCredential} credentials<br>{scopes}<br><a data-key=\"show-less\">Show less</a> | <a data-key=\"toggle-expand\">{count} scopes</a> available for {activeCredential} credentials<br>{scopes}<br><a data-key=\"show-less\">Show less</a>",
 	"nodeSettings.scopes.notice": "<a data-key=\"toggle-expand\">{count} scope</a> available for {activeCredential} credentials | <a data-key=\"toggle-expand\">{count} scopes</a> available for {activeCredential} credentials",
 	"nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown": "The node is not valid as its type ({nodeType}) is unknown",

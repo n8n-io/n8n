@@ -13,6 +13,8 @@ export class LoadWorkflowNodeContext extends NodeExecutionContext implements IWo
 	// same name in `NodeExecutionContext`, as it has the `itemIndex` parameter
 	readonly getNodeParameter: IWorkflowNodeContext['getNodeParameter'];
 
+	protected readonly respectsThrowOnUndefinedExpression = false;
+
 	constructor(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData) {
 		super(workflow, node, additionalData, 'internal');
 		{

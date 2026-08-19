@@ -63,6 +63,7 @@ export function compareNodes<T extends DiffableNode>(
 		'waitBetweenTries',
 		'alwaysOutputData',
 		'executeOnce',
+		'throwOnUndefinedExpression',
 	];
 
 	const baseNode = pick(base, propsToCompare);

@@ -612,6 +612,7 @@ describe('createCommonNodeSettings', () => {
 		expect(names).toContain('executeOnce');
 		expect(names).toContain('alwaysOutputData');
 		expect(names).toContain('onError');
+		expect(names).toContain('throwOnUndefinedExpression');
 	});
 
 	it('should exclude retry, executeOnce, and alwaysOutputData settings when isToolOrModelNode is true', () => {
@@ -624,6 +625,7 @@ describe('createCommonNodeSettings', () => {
 		expect(names).not.toContain('executeOnce');
 		expect(names).not.toContain('alwaysOutputData');
 		expect(names).not.toContain('onError');
+		expect(names).not.toContain('throwOnUndefinedExpression');
 	});
 
 	it('should always include notes and notesInFlow settings', () => {
@@ -657,6 +659,16 @@ describe('createCommonNodeSettings', () => {
 		for (const settings of [regularSettings, toolSettings]) {
 			expect(settings[settings.length - 1].name).toBe('customTelemetryTags');
 		}
+	});
+
+	it('should configure throwOnUndefinedExpression as an off-by-default node setting', () => {
+		const settings = createCommonNodeSettings(false, mockT);
+		const setting = settings.find((s) => s.name === 'throwOnUndefinedExpression');
+
+		expect(setting?.type).toBe('boolean');
+		expect(setting?.default).toBe(false);
+		expect(setting?.noDataExpression).toBe(true);
+		expect(setting?.isNodeSetting).toBe(true);
 	});
 
 	it('should configure customTelemetryTags with non-expression key and expression-capable value', () => {
@@ -707,6 +719,25 @@ describe('collectSettings', () => {
 		const result = collectSettings(node, []);
 
 		expect(result.customTelemetryTags).toEqual({});
+	});
+
+	it('should round-trip an enabled throwOnUndefinedExpression from the node object', () => {
+		const node = { throwOnUndefinedExpression: true } as INodeUi;
+
+		const result = collectSettings(node, []);
+
+		expect(result.throwOnUndefinedExpression).toBe(true);
+	});
+
+	it.each([
+		['absent', undefined],
+		['explicitly false', false],
+	])('should read throwOnUndefinedExpression as false when %s', (_case, value) => {
+		const node = { throwOnUndefinedExpression: value } as INodeUi;
+
+		const result = collectSettings(node, []);
+
+		expect(result.throwOnUndefinedExpression).toBe(false);
 	});
 });
 

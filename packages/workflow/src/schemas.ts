@@ -485,6 +485,7 @@ const iNodeSchemaObject = z.object({
 	executeOnce: z.boolean().optional(),
 	onError: OnErrorSchema.optional(),
 	continueOnFail: z.boolean().optional(),
+	throwOnUndefinedExpression: z.boolean().optional(),
 	webhookId: z.string().optional(),
 	extendsCredential: z.string().optional(),
 	rewireOutputLogTo: NodeConnectionTypeSchema.optional(),

@@ -1621,6 +1621,11 @@ export interface INode {
 	executeOnce?: boolean;
 	onError?: OnError;
 	continueOnFail?: boolean;
+	/**
+	 * Fail the node when one of its parameters resolves to `undefined`, instead of
+	 * running with a hole in it. Opt-in: absent and `false` behave identically.
+	 */
+	throwOnUndefinedExpression?: boolean;
 	customTelemetryTags?: {
 		tag?: ICustomTelemetryTag[];
 	};
