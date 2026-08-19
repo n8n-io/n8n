@@ -274,12 +274,12 @@ const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
 // Resume: setup-specific fields plus optional session scope for generic approvals
 // (e.g. update "always allow" → persist `workflows:update:<id>`).
-const resumeSchema = setupResumeSchema.extend({
+export const workflowsResumeSchema = setupResumeSchema.extend({
 	scope: z.enum(['once', 'session']).optional(),
 });
 
 interface WorkflowToolContext {
-	resumeData: z.infer<typeof resumeSchema> | undefined;
+	resumeData: z.infer<typeof workflowsResumeSchema> | undefined;
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
 }
 
@@ -1646,7 +1646,7 @@ export function createWorkflowsTool(
 		.description(getToolDescription(context, options))
 		.input(inputSchema)
 		.suspend(suspendSchema)
-		.resume(resumeSchema)
+		.resume(workflowsResumeSchema)
 		.handler(async (input, ctx) => {
 			const workflowInput = input as Input;
 			switch (workflowInput.action) {
