@@ -1449,10 +1449,12 @@ export class WorkflowExecute {
 				void hooks.runHook('workflowExecuteAfter', [fullRunData]);
 			});
 
+			let acquiredIsolate = false;
+
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				try {
-					await workflow.expression.acquireIsolate();
+					acquiredIsolate = await workflow.expression.acquireIsolate();
 
 					// Establish the execution context
 					await establishExecutionContext(
@@ -2306,6 +2308,7 @@ export class WorkflowExecute {
 					return fullRunData;
 				})
 				.finally(async () => {
+					if (!acquiredIsolate) return;
 					try {
 						await workflow.expression.releaseIsolate();
 					} catch (error) {
