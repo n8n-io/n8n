@@ -163,7 +163,11 @@ describe('fixed workflow tool inputs', () => {
 		const llmSchema = omitFixedFieldsFromSchema(schema, inputs);
 		expect(Object.keys(llmSchema.shape)).toEqual(['chatId']);
 		expect(
-			mergeWorkflowToolInput(llmSchema.parse({ chatId: '42' }) as Record<string, unknown>, inputs),
+			mergeWorkflowToolInput(
+				llmSchema.parse({ chatId: '42' }) as Record<string, unknown>,
+				inputs,
+				schema,
+			),
 		).toEqual({
 			chatId: '42',
 			shoppingListId: 'OySx3QNU0BcCs8yz',
@@ -176,9 +180,30 @@ describe('fixed workflow tool inputs', () => {
 		const inputs = { pinned: { mode: 'fixed' as const, value: 'yes' } };
 		const llmSchema = omitFixedFieldsFromSchema(schema, inputs);
 		expect(llmSchema.parse({ anything: 1 })).toEqual({ anything: 1 });
-		expect(mergeWorkflowToolInput({ anything: 1 }, inputs)).toEqual({
+		expect(mergeWorkflowToolInput({ anything: 1 }, inputs, schema)).toEqual({
 			anything: 1,
 			pinned: 'yes',
 		});
+	});
+
+	it('coerces fixed values to the declared field type via the full schema', () => {
+		// A number field with a string fixed value (e.g. from a legacy config)
+		// must be coerced to a number before reaching the sub-workflow.
+		const schema = z.object({
+			count: z.coerce.number().nullable().optional(),
+			label: z.coerce.string().nullable().optional(),
+			active: z.boolean().nullable().optional(),
+		});
+		const inputs = {
+			count: { mode: 'fixed' as const, value: '3' },
+			label: { mode: 'fixed' as const, value: 42 },
+			active: { mode: 'fixed' as const, value: true },
+		};
+
+		const merged = mergeWorkflowToolInput({}, inputs, schema);
+		expect(merged).toEqual({ count: 3, label: '42', active: true });
+		expect(typeof merged.count).toBe('number');
+		expect(typeof merged.label).toBe('string');
+		expect(typeof merged.active).toBe('boolean');
 	});
 });

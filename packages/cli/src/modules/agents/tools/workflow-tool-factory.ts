@@ -355,15 +355,23 @@ export function omitFixedFieldsFromSchema(
 	return z.object(shape);
 }
 
-/** Merge LLM-supplied args with fixed tool-config values (fixed wins). */
+/**
+ * Merge LLM-supplied args with fixed tool-config values (fixed wins), then
+ * parse the result against the full declared schema so fixed values are
+ * coerced to their field's declared type (e.g. numeric IDs stored as strings
+ * are converted to numbers for number fields). Without this, fixed bindings
+ * bypass the schema and reach the sub-workflow with the wrong runtime type.
+ */
 export function mergeWorkflowToolInput(
 	llmInput: Record<string, unknown>,
 	inputs: WorkflowToolInputsConfig | undefined,
+	fullSchema: z.ZodObject<z.ZodRawShape>,
 ): Record<string, unknown> {
-	return {
+	const merged: Record<string, unknown> = {
 		...llmInput,
 		...getFixedWorkflowToolInputs(inputs),
 	};
+	return fullSchema.parse(merged) as Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -690,13 +698,12 @@ async function buildWorkflowTool(
 			)
 			.handler(async (input: Record<string, unknown>) => {
 				const current = await loadCurrentWorkflow(context, reference, triggerType);
-				const currentSchema = omitFixedFieldsFromSchema(
-					inferInputSchema(current.triggerNode, current.triggerType),
-					toolInputs,
-				);
+				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
+				const currentSchema = omitFixedFieldsFromSchema(currentFullSchema, toolInputs);
 				const parsedInput = mergeWorkflowToolInput(
 					currentSchema.parse(input) as Record<string, unknown>,
 					toolInputs,
+					currentFullSchema,
 				);
 				const formUrl = getFormUrl(current.workflow, current.triggerNode, context.webhookBaseUrl);
 				const reason = parsedInput.reason;
@@ -736,13 +743,12 @@ async function buildWorkflowTool(
 		)
 		.handler(async (input: Record<string, unknown>) => {
 			const current = await loadCurrentWorkflow(context, reference, triggerType);
-			const currentSchema = omitFixedFieldsFromSchema(
-				inferInputSchema(current.triggerNode, current.triggerType),
-				toolInputs,
-			);
+			const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
+			const currentSchema = omitFixedFieldsFromSchema(currentFullSchema, toolInputs);
 			const parsedInput = mergeWorkflowToolInput(
 				currentSchema.parse(input) as Record<string, unknown>,
 				toolInputs,
+				currentFullSchema,
 			);
 			return await executeWorkflow(
 				current.workflow,
