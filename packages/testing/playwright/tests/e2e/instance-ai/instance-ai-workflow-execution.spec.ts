@@ -161,9 +161,16 @@ test.describe(
 
 				// The node streams onto the canvas while the AI is still building; wait
 				// for the run button to enable (build finished) before using the toolbar.
-				await expect(n8n.instanceAi.getPreviewRunWorkflowButton()).toBeEnabled({
-					timeout: 60_000,
-				});
+				await expect
+					.poll(
+						async () =>
+							await n8n.instanceAi
+								.getPreviewRunWorkflowButton()
+								.isEnabled()
+								.catch(() => false),
+						{ intervals: [500, 1_000, 2_000], timeout: 60_000 },
+					)
+					.toBe(true);
 
 				// Hover the node and click the execute step button on its toolbar
 				await n8n.instanceAi.executePreviewNodeByName(setNodeName);
