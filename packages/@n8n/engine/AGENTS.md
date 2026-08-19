@@ -35,9 +35,18 @@ a deployable engine worker) without touching core logic.
   (in-memory default). The Postgres/ORM coupling lives *here only*.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
   Dockerfile. First candidate to be extracted later.
+- **Runtime factory** — `runtime/` (`createEngineRuntime`). Owns the engine's
+  internal topology: the queues, the stores, the handlers, the workers, the HTTP
+  app and the start/stop order. It takes the adapters a host chooses and returns
+  a running engine, so no host repeats the wiring. A data plane database is not
+  optional — the factory's type requires one, and each composition root refuses
+  to start without it rather than serving `/healthz` while unable to run a
+  workflow.
 - **Composition roots** — `serve.ts` (standalone) and, in integrated mode,
-  `packages/cli`. These construct the concrete adapters (the `DataSource`, etc.)
-  and hand them in. **Construction lives here, not in the core.**
+  `packages/cli`. These construct the concrete adapters (the `DataSource`, the
+  admittance policy, the v1 step executor) and hand them to
+  `createEngineRuntime`. **Construction lives here, not in the core** — but the
+  topology does not: that belongs to the factory.
 
 ## Rules that keep the seams extractable
 
