@@ -48,7 +48,7 @@ export class TypeformOAuth2Api implements ICredentialType {
 		},
 		{
 			displayName:
-				'The scopes needed for the node to work are already set by default. Take care when removing scopes, as this can stop the node from working.',
+				'The default scopes needed for the node to work are already set. If you change these the node may not function correctly.',
 			name: 'customScopesNotice',
 			type: 'notice',
 			default: '',
