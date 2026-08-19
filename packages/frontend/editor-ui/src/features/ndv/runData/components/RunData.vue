@@ -1668,7 +1668,7 @@ defineExpose({ enterEditMode });
 			<slot v-if="!displaysMultipleNodes" name="before-data" />
 		</div>
 
-		<div v-show="!binaryDataDisplayVisible" data-test-id="run-data-hints">
+		<div v-show="!binaryDataDisplayVisible" :class="$style.hints" data-test-id="run-data-hints">
 			<div v-if="props.calloutMessage || $slots['callout-message']" :class="$style.hintCallout">
 				<N8nCallout theme="info" data-test-id="run-data-callout">
 					<slot name="callout-message">
@@ -2471,6 +2471,14 @@ defineExpose({ enterEditMode });
 
 .uiBlocker {
 	border-radius: 0;
+}
+
+.hints {
+	/* Rare fallback: keep long hint lists from pushing output data out of the pane. */
+	max-height: 40%;
+	overflow-y: auto;
+	flex-shrink: 0;
+	scrollbar-width: thin;
 }
 
 .hintCallout {

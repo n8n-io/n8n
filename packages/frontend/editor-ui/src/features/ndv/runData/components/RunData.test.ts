@@ -1463,6 +1463,7 @@ describe('RunData', () => {
 
 			expect(within(hintsContainer).getAllByTestId('node-hint')).toHaveLength(2);
 			expect(getAllByTestId('node-hint')).toHaveLength(2);
+			expect(hintsContainer).toHaveClass('hints');
 		});
 
 		it('should hide an afterExecution hint before the node has run', () => {
