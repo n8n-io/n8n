@@ -32,8 +32,8 @@ const SLACK_CREDENTIAL_TYPE = 'slackApi';
 
 const REQUIRED_BOT_EVENTS = [
 	'app_mention',
-	'assistant_thread_started',
-	'assistant_thread_context_changed',
+	'app_context_changed',
+	'app_home_opened',
 	'message.channels',
 	'message.groups',
 	'message.im',
@@ -121,6 +121,9 @@ export class SlackMethodsService {
 					: {}),
 			},
 			features: {
+				agent_view: {
+					agent_description: `Chat with ${slackAppName}, an agent powered by n8n.`,
+				},
 				app_home: {
 					home_tab_enabled: false,
 					messages_tab_enabled: true,
@@ -210,6 +213,7 @@ export class SlackMethodsService {
 		const integration = {
 			type: 'slack',
 			credentialId: credential.id,
+			settings: { messagingExperience: 'agent' },
 		} satisfies AgentIntegrationConfig;
 		await this.integrationManagementService.connect({
 			agent,
