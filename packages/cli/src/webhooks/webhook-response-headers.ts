@@ -15,8 +15,16 @@ export type WebhookNodeResponseHeaders = {
 	}>;
 };
 
-/** Headers that users are not allowed to set via webhook response config */
-const PROTECTED_HEADERS = new Set(['content-security-policy']);
+/**
+ * Headers that users are not allowed to set via webhook response config, because they control
+ * client-side state the instance owns rather than the response payload.
+ */
+const PROTECTED_HEADERS = new Set([
+	'content-security-policy',
+	'set-cookie',
+	'strict-transport-security',
+	'clear-site-data',
+]);
 
 /** Response headers. Keys are always lower-cased. Invalid headers are silently skipped. */
 export class WebhookResponseHeaders {
@@ -29,10 +37,15 @@ export class WebhookResponseHeaders {
 		return instance;
 	}
 
-	/** Add a single header. Silently skips invalid or protected headers. */
+	/** Add a single header. Skips invalid or protected headers, logging a warning for each. */
 	set(name: string, value: string): void {
 		const lowerName = name.toLowerCase();
-		if (PROTECTED_HEADERS.has(lowerName)) return;
+		if (PROTECTED_HEADERS.has(lowerName)) {
+			Container.get(Logger).warn('Dropping protected webhook response header', {
+				headerName: name,
+			});
+			return;
+		}
 		try {
 			validateHeaderName(lowerName);
 			validateHeaderValue(lowerName, value);
