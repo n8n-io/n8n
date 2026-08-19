@@ -46,9 +46,6 @@ const splitScopes = (scopes) => new Set(scopes.split(/[\s,]+/).filter(Boolean));
  *    ternary). There is no reliable way to read a scope set out of it without
  *    evaluating it, so it is returned as opaque and compared as a raw string.
  *
- * `source` is carried on both so an opaque default can still be compared as a
- * raw string, including against a side that did parse.
- *
  * @returns {{kind: 'literal', scopes: Set<string>, source: string} | {kind: 'opaque', source: string}}
  */
 export const parseScopeDefault = (rawDefault) => {
