@@ -446,7 +446,7 @@ describe('TestWebhooks', () => {
 
 			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
 			vi.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
-			registrations.get.mockResolvedValue({
+			registrations.get.mockResolvedValueOnce({
 				version: 1,
 				workflowEntity,
 				webhook,
