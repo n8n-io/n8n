@@ -214,6 +214,7 @@ export const commonProperties: INodeProperties[] = [
 					},
 				],
 			},
+			// Free-text override for nodes below v3.1; v3.1+ uses the Session settings below.
 			{
 				displayName: 'Session ID',
 				name: 'sessionId',
@@ -221,6 +222,81 @@ export const commonProperties: INodeProperties[] = [
 				default: '',
 				description:
 					'Reuse an agent session to keep memory across runs. Leave empty to start a fresh session per execution.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 3.1 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Session',
+				name: 'session',
+				placeholder: 'Add session settings',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {
+					session: {},
+				},
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 3.1 } }],
+					},
+				},
+				options: [
+					{
+						displayName: 'Session',
+						name: 'session',
+						values: [
+							{
+								displayName: 'Session ID',
+								name: 'sessionIdType',
+								type: 'options',
+								options: [
+									{
+										name: 'Connected Chat Trigger Node',
+										value: 'fromInput',
+										description:
+											"Looks for an input field called 'sessionId' that is coming from a directly connected Chat Trigger",
+									},
+									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'Define below',
+										value: 'customKey',
+										description:
+											'Use an expression to reference data in previous nodes or enter static text',
+									},
+								],
+								default: 'fromInput',
+							},
+							{
+								displayName: 'Session Key From Previous Node',
+								name: 'sessionKey',
+								type: 'string',
+								default: '={{ $json.sessionId }}',
+								disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+								displayOptions: {
+									show: {
+										sessionIdType: ['fromInput'],
+									},
+								},
+							},
+							{
+								displayName: 'Key',
+								name: 'sessionKey',
+								type: 'string',
+								default: '',
+								description: 'The key to use as the agent session ID',
+								displayOptions: {
+									show: {
+										sessionIdType: ['customKey'],
+									},
+								},
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: "Allow Agent to Access Other Nodes' Data",
@@ -413,6 +489,77 @@ function getAgentSource(ctx: IExecuteFunctions, itemIndex: number): ExecuteAgent
  */
 const SESSION_ID_MAX_LENGTH = 74;
 
+function validateSessionIdLength(ctx: IExecuteFunctions, sessionId: string, itemIndex: number) {
+	if (sessionId.length > SESSION_ID_MAX_LENGTH) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`Session ID must be at most ${SESSION_ID_MAX_LENGTH} characters (got ${sessionId.length})`,
+			{ itemIndex },
+		);
+	}
+}
+
+/**
+ * Resolve the session ID the way the Simple Memory node does: read `sessionId`
+ * from the input item, falling back to the Chat Trigger node's output. Returns
+ * `undefined` when neither resolves (e.g. the workflow has no Chat Trigger),
+ * letting the engine fall back to a per-execution session.
+ */
+function getChatSessionId(ctx: IExecuteFunctions, itemIndex: number): string | undefined {
+	let sessionId: unknown;
+
+	try {
+		sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex);
+	} catch {}
+
+	if (typeof sessionId !== 'string' || !sessionId.trim()) {
+		try {
+			const chatTrigger = ctx.getChatTrigger();
+			if (chatTrigger && chatTrigger.disabled !== true) {
+				const triggerName = chatTrigger.name.replace(/'/g, "\\'");
+				sessionId = ctx.evaluateExpression(
+					`{{ $('${triggerName}').first().json.sessionId }}`,
+					itemIndex,
+				);
+			}
+		} catch {}
+	}
+
+	if (typeof sessionId !== 'string') return undefined;
+
+	const trimmed = sessionId.trim();
+	if (!trimmed) return undefined;
+
+	// Chat clients control this value, so an over-length id is not user-fixable;
+	// hash it to fit the thread-key budget.
+	if (trimmed.length > SESSION_ID_MAX_LENGTH) {
+		return crypto.createHash('sha256').update(trimmed).digest('hex');
+	}
+
+	return trimmed;
+}
+
+/**
+ * Session resolution for typeVersion >= 3.1, mirroring the Simple Memory node:
+ * a custom key when "Define below" is selected, otherwise the connected Chat
+ * Trigger's session. The Session settings default to `fromInput` even when the
+ * option was never added, so a Chat Trigger works out of the box.
+ */
+function resolveSessionId(ctx: IExecuteFunctions, itemIndex: number): string | undefined {
+	const session = ctx.getNodeParameter('advanced.session.session', itemIndex, {}) as {
+		sessionIdType?: string;
+		sessionKey?: unknown;
+	};
+
+	if (session.sessionIdType === 'customKey') {
+		const key = typeof session.sessionKey === 'string' ? session.sessionKey.trim() : '';
+		validateSessionIdLength(ctx, key, itemIndex);
+		return key || undefined;
+	}
+
+	return getChatSessionId(ctx, itemIndex);
+}
+
 /** Shared execution for every version. */
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
@@ -439,16 +586,16 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				sessionId?: string;
 				allowOtherNodesData?: boolean;
 			};
-			const sessionIdOverride = advanced.sessionId?.trim();
 			const allowOtherNodesData =
 				agentSource === 'inline' ? false : (advanced.allowOtherNodesData ?? false);
 
-			if (sessionIdOverride && sessionIdOverride.length > SESSION_ID_MAX_LENGTH) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Session ID must be at most ${SESSION_ID_MAX_LENGTH} characters (got ${sessionIdOverride.length})`,
-					{ itemIndex: i },
-				);
+			let sessionId: string | undefined;
+			if (this.getNode().typeVersion >= 3.1) {
+				sessionId = resolveSessionId(this, i);
+			} else {
+				const sessionIdOverride = advanced.sessionId?.trim();
+				if (sessionIdOverride) validateSessionIdLength(this, sessionIdOverride, i);
+				sessionId = sessionIdOverride || undefined;
 			}
 
 			if (!prompt.trim()) {
@@ -462,7 +609,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const result = await this.executeAgent(
 				{
 					...source,
-					sessionId: sessionIdOverride || undefined,
+					sessionId,
 					outputSchema,
 					inputDataScope: runOnceForAll ? 'all' : 'item',
 					exposeWorkflowData: allowOtherNodesData,

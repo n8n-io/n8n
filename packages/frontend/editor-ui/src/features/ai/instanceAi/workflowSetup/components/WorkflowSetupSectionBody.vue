@@ -237,7 +237,8 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			standalone
 			hide-issues
 			:instance-ai-credential-help="instanceAiCredentialHelp"
-			:skip-auto-select="isTemplatedType"
+			:skip-auto-select="isTemplatedType || section.preferNewCredential === true"
+			:prefer-new-credential="section.preferNewCredential === true"
 			:credential-setup-hint="section.setupHint"
 			:credentials-field-label="credentialsFieldLabel"
 			@credential-selected="onCredentialSelected"
