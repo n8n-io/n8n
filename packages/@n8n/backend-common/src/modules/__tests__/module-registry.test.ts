@@ -31,6 +31,7 @@ describe('eligibleModules', () => {
 	it('should not include opt-in modules by default', () => {
 		const eligible = Container.get(ModuleRegistry).eligibleModules;
 		expect(eligible).not.toContain('agents');
+		expect(eligible).not.toContain('policy-infrastructure');
 	});
 
 	it('should include instance-ai by default', () => {

@@ -428,9 +428,10 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		await flushPromises();
 
 		const items = getItems();
-		const connected = items.filter((item) => item.isConnected);
+		const connected = items.filter((item) => item.status === 'connected');
 		const availableSlack = items.filter(
-			(item) => !item.isConnected && item.kind === 'node' && item.id === `nodeType:${SLACK.name}`,
+			(item) =>
+				item.status === 'none' && item.kind === 'node' && item.id === `nodeType:${SLACK.name}`,
 		);
 
 		expect(connected).toHaveLength(1);
@@ -492,7 +493,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		render([toolRef(SLACK.name)], onConfirm);
 		await flushPromises();
 
-		const connected = getItems().find((item) => item.isConnected);
+		const connected = getItems().find((item) => item.status === 'connected');
 		emitConnect(connected!);
 
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -507,7 +508,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		render([toolRef(SLACK.name)], onConfirm);
 		await flushPromises();
 
-		const connected = getItems().find((item) => item.isConnected);
+		const connected = getItems().find((item) => item.status === 'connected');
 		emitConnect(connected!);
 
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -580,6 +581,56 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			await flushPromises();
 			return getItems().find((item) => item.id === `workflow:${WORKFLOW.id}`)!;
 		}
+
+		it('surfaces incompatible workflows as disabled items with a reason', async () => {
+			workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([
+				WORKFLOW,
+				{
+					id: 'wf-wait',
+					name: 'Has Wait',
+					isArchived: false,
+					nodes: [
+						{ type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'When called' },
+						{ type: 'n8n-nodes-base.wait', name: 'Wait' },
+					],
+				},
+				{
+					id: 'wf-no-trigger',
+					name: 'No Trigger',
+					isArchived: false,
+					nodes: [{ type: 'n8n-nodes-base.set', name: 'Set' }],
+				},
+			]);
+			render();
+			await flushPromises();
+
+			const items = getItems();
+			const compatible = items.find((i) => i.id === 'workflow:wf-1');
+			const waitDisabled = items.find((i) => i.id === 'workflow-disabled:wf-wait');
+			const noTriggerDisabled = items.find((i) => i.id === 'workflow-disabled:wf-no-trigger');
+
+			// Compatible workflow remains selectable.
+			expect(compatible?.disabled).toBeFalsy();
+
+			// Incompatible workflows are visible but disabled, with a reason.
+			expect(waitDisabled).toBeTruthy();
+			expect(waitDisabled?.disabled).toBe(true);
+			expect(waitDisabled?.disabledReason).toContain("aren't supported as agent tools");
+
+			expect(noTriggerDisabled).toBeTruthy();
+			expect(noTriggerDisabled?.disabled).toBe(true);
+			expect(noTriggerDisabled?.disabledReason).toContain('No supported trigger node');
+
+			// Disabled items appear after compatible ones within the category.
+			const workflowItems = items.filter((i) => i.kind === 'workflow');
+			const compatibleIdx = workflowItems.findIndex((i) => i.id === 'workflow:wf-1');
+			const waitIdx = workflowItems.findIndex((i) => i.id === 'workflow-disabled:wf-wait');
+			const noTriggerIdx = workflowItems.findIndex(
+				(i) => i.id === 'workflow-disabled:wf-no-trigger',
+			);
+			expect(compatibleIdx).toBeLessThan(waitIdx);
+			expect(compatibleIdx).toBeLessThan(noTriggerIdx);
+		});
 
 		it('creates a compatible workflow and attaches it after configuration is saved', async () => {
 			const existingTool = toolRef(WIKIPEDIA.name);
