@@ -1,7 +1,7 @@
 import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { bodyProperties, readBodyEnvelope } from './bodyEnvelope';
+import { bodyProperties, readBodyEnvelopeIfProvided } from './bodyEnvelope';
 import { fetchPageForWrite, putPage } from './pageWrite';
 import { optionalSpaceRLC, pageRLC, resolvePageId } from '../common';
 import type { ConfluenceOperation } from '../router';
@@ -29,14 +29,39 @@ export const description: INodeProperties[] = [
 		description: 'The new title of the page. Leave empty to keep the current title.',
 		displayOptions: { show: showOnUpdate },
 	},
-	...bodyProperties(['update']),
+	...bodyProperties(['update'], 'Leave empty to keep the current page content'),
+	{
+		displayName: 'Status',
+		name: 'status',
+		type: 'options',
+		default: 'keep',
+		description: 'Whether the page is published or a draft after the update',
+		options: [
+			{
+				name: 'Draft',
+				value: 'draft',
+				description: 'Save the update as a draft. Replaces any existing draft of the page.',
+			},
+			{
+				name: 'Keep Current Status',
+				value: 'keep',
+				description: 'A published page stays published, a draft stays a draft',
+			},
+			{
+				name: 'Published',
+				value: 'current',
+				description: 'Publish the page; use this to publish a page created as a draft',
+			},
+		],
+		displayOptions: { show: showOnUpdate },
+	},
 ];
 
 export const execute: ConfluenceOperation = async function (
 	this: IExecuteFunctions,
 	itemIndex: number,
 ) {
-	const body = readBodyEnvelope(this, itemIndex);
+	const body = readBodyEnvelopeIfProvided(this, itemIndex);
 
 	const rawTitle: unknown = this.getNodeParameter('title', itemIndex, '');
 	// An empty title means "keep the current one", so an object from an
@@ -47,8 +72,24 @@ export const execute: ConfluenceOperation = async function (
 	const title = rawTitle === null || rawTitle === undefined ? '' : String(rawTitle).trim();
 
 	const pageId = await resolvePageId.call(this, itemIndex);
-	const page = await fetchPageForWrite.call(this, itemIndex, pageId);
+	const page = await fetchPageForWrite.call(
+		this,
+		itemIndex,
+		pageId,
+		body === undefined ? 'storage' : undefined,
+	);
 
-	// Confluence requires a title on every PUT, so keeping it means resending it
-	return await putPage.call(this, itemIndex, pageId, page, title === '' ? page.title : title, body);
+	const statusChoice = this.getNodeParameter('status', itemIndex, 'keep');
+	const status =
+		statusChoice === 'current' || statusChoice === 'draft' ? statusChoice : page.status;
+
+	return await putPage.call(
+		this,
+		itemIndex,
+		pageId,
+		page,
+		title === '' ? page.title : title,
+		body ?? { representation: 'storage', value: page.bodyValue },
+		status,
+	);
 };

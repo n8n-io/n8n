@@ -35,6 +35,19 @@ export async function fetchPageForWrite(
 		qs,
 	);
 
+	const status = typeof page.status === 'string' ? page.status : 'unknown';
+	if (status !== 'current' && status !== 'draft') {
+		throw new NodeOperationError(
+			this.getNode(),
+			`The page cannot be changed because its status is "${status}"`,
+			{
+				itemIndex,
+				description:
+					'Only pages with "current" or "draft" status can be written to. Restore the page in Confluence first, then run this operation again.',
+			},
+		);
+	}
+
 	const versionNumber = (page.version as IDataObject | undefined)?.number;
 	if (typeof versionNumber !== 'number') {
 		throw new NodeOperationError(this.getNode(), 'Could not read the current version of the page', {
@@ -48,8 +61,7 @@ export async function fetchPageForWrite(
 			: ((page.body as IDataObject | undefined)?.[bodyFormat] as IDataObject | undefined);
 
 	return {
-		// Echoed back on the PUT so updating a draft does not publish it
-		status: page.status === 'draft' ? 'draft' : 'current',
+		status,
 		title: typeof page.title === 'string' ? page.title : '',
 		versionNumber,
 		bodyValue: typeof bodyEnvelope?.value === 'string' ? bodyEnvelope.value : '',
@@ -63,13 +75,18 @@ export async function putPage(
 	snapshot: ConfluencePageSnapshot,
 	title: string,
 	body: ConfluenceBodyEnvelope,
+	status: ConfluencePageSnapshot['status'] = snapshot.status,
 ): Promise<IDataObject> {
 	const payload: IDataObject = {
 		id: pageId,
-		status: snapshot.status,
+		status,
 		title,
 		body,
-		version: { number: snapshot.versionNumber + 1 },
+		// Drafts are single-version and require version 1; only published-to-published
+		// writes increment. See https://developer.atlassian.com/cloud/confluence/rest/v2/api-group-page/#api-pages-id-put
+		version: {
+			number: status === 'draft' || snapshot.status === 'draft' ? 1 : snapshot.versionNumber + 1,
+		},
 	};
 
 	try {
@@ -80,8 +97,6 @@ export async function putPage(
 			payload,
 		);
 	} catch (error) {
-		// The version fetched above went stale: the page changed between the
-		// read and this write. The collision is detected, never overwritten.
 		if (error instanceof NodeApiError && error.httpCode === '409') {
 			throw new NodeOperationError(this.getNode(), 'The page was modified concurrently', {
 				itemIndex,

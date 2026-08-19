@@ -105,11 +105,16 @@ describe('page:append', () => {
 			{},
 			{ 'body-format': 'atlas_doc_format' },
 		);
-		const [, , body] = apiRequest.mock.calls[1];
-		expect(body.body.representation).toBe('atlas_doc_format');
-		expect(jsonParse(body.body.value as string)).toEqual(
-			adfDoc([{ type: 'paragraph' }, { type: 'heading' }]),
-		);
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', '/wiki/api/v2/pages/123', {
+			id: '123',
+			status: 'current',
+			title: 'Doc',
+			body: {
+				representation: 'atlas_doc_format',
+				value: JSON.stringify(adfDoc([{ type: 'paragraph' }, { type: 'heading' }])),
+			},
+			version: { number: 3 },
+		});
 	});
 
 	it('uses the ADF input as the whole body when the page body is empty', async () => {
@@ -126,8 +131,16 @@ describe('page:append', () => {
 			0,
 		);
 
-		const [, , body] = apiRequest.mock.calls[1];
-		expect(jsonParse(body.body.value as string)).toEqual(adfDoc([{ type: 'heading' }]));
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', '/wiki/api/v2/pages/123', {
+			id: '123',
+			status: 'current',
+			title: 'Doc',
+			body: {
+				representation: 'atlas_doc_format',
+				value: JSON.stringify(adfDoc([{ type: 'heading' }])),
+			},
+			version: { number: 3 },
+		});
 	});
 
 	it('rejects an ADF input without a content array before calling the API', async () => {
@@ -177,6 +190,26 @@ describe('page:append', () => {
 
 		expect(error).toBeInstanceOf(NodeOperationError);
 		expect(error?.message).toBe('The page was modified concurrently');
+	});
+
+	it('does not increment the version when appending to a draft', async () => {
+		apiRequest
+			.mockResolvedValueOnce({ ...storagePage, status: 'draft', version: { number: 1 } })
+			.mockResolvedValueOnce({ id: '123' });
+
+		await execute.call(mockExecuteCtx(baseParams), 0);
+
+		const [, , body] = apiRequest.mock.calls[1];
+		expect(body).toMatchObject({ status: 'draft', version: { number: 1 } });
+	});
+
+	it('refuses to append to a trashed page instead of restoring it', async () => {
+		apiRequest.mockResolvedValueOnce({ ...storagePage, status: 'trashed' });
+
+		await expect(execute.call(mockExecuteCtx(baseParams), 0)).rejects.toThrow(
+			'The page cannot be changed because its status is "trashed"',
+		);
+		expect(apiRequest).toHaveBeenCalledTimes(1);
 	});
 
 	it('rejects a missing page without calling the API', async () => {

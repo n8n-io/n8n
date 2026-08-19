@@ -66,14 +66,106 @@ describe('page:update', () => {
 	it('echoes the draft status back so updating a draft does not publish it', async () => {
 		apiRequest.mockReset();
 		apiRequest
-			.mockResolvedValueOnce({ ...currentPage, status: 'draft' })
+			.mockResolvedValueOnce({ ...currentPage, status: 'draft', version: { number: 1 } })
 			.mockResolvedValueOnce({ id: '123' });
 
 		await execute.call(mockExecuteCtx(baseParams), 0);
 
 		const [, , body] = apiRequest.mock.calls[1];
-		expect(body).toMatchObject({ status: 'draft' });
+		expect(body).toMatchObject({ status: 'draft', version: { number: 1 } });
 	});
+
+	it.each([
+		['publishes a draft when Status is Published', 'draft', 'current', 1],
+		['saves a published page as a draft when Status is Draft', 'current', 'draft', 1],
+		['keeps the fetched status when Status is Keep Current Status', 'draft', 'keep', 1],
+		['increments the version for a published-to-published update', 'current', 'current', 5],
+	])('%s', async (_name, fetchedStatus, statusChoice, expectedVersion) => {
+		apiRequest.mockReset();
+		apiRequest
+			.mockResolvedValueOnce({ ...currentPage, status: fetchedStatus })
+			.mockResolvedValueOnce({ id: '123' });
+
+		await execute.call(mockExecuteCtx({ ...baseParams, status: statusChoice }), 0);
+
+		const [, , body] = apiRequest.mock.calls[1];
+		expect(body).toMatchObject({
+			status: statusChoice === 'keep' ? fetchedStatus : statusChoice,
+			version: { number: expectedVersion },
+		});
+	});
+
+	it('publishes a draft while keeping its content and single version', async () => {
+		apiRequest.mockReset();
+		apiRequest
+			.mockResolvedValueOnce({
+				id: '123',
+				status: 'draft',
+				title: 'Draft Title',
+				version: { number: 1 },
+				body: { storage: { value: '<p>Existing</p>' } },
+			})
+			.mockResolvedValueOnce({ id: '123' });
+
+		await execute.call(
+			mockExecuteCtx({ ...baseParams, title: '', bodyPlainText: '', status: 'current' }),
+			0,
+		);
+
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			'/wiki/api/v2/pages/123',
+			{},
+			{ 'body-format': 'storage' },
+		);
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', '/wiki/api/v2/pages/123', {
+			id: '123',
+			status: 'current',
+			title: 'Draft Title',
+			body: { representation: 'storage', value: '<p>Existing</p>' },
+			version: { number: 1 },
+		});
+	});
+
+	it.each([
+		['an empty plain text', { bodyFormat: 'plainText', bodyPlainText: '' }],
+		['a whitespace-only storage', { bodyFormat: 'storage', bodyStorage: '  ' }],
+		['an empty ADF', { bodyFormat: 'atlas_doc_format', bodyAdf: '' }],
+	])('keeps the current content when %s body is provided', async (_name, overrides) => {
+		apiRequest.mockReset();
+		apiRequest
+			.mockResolvedValueOnce({ ...currentPage, body: { storage: { value: '<p>Existing</p>' } } })
+			.mockResolvedValueOnce({ id: '123' });
+
+		await execute.call(mockExecuteCtx({ ...baseParams, ...overrides }), 0);
+
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			'/wiki/api/v2/pages/123',
+			{},
+			{ 'body-format': 'storage' },
+		);
+		const [, , body] = apiRequest.mock.calls[1];
+		expect(body).toMatchObject({
+			body: { representation: 'storage', value: '<p>Existing</p>' },
+			version: { number: 5 },
+		});
+	});
+
+	it.each(['archived', 'trashed'])(
+		'refuses to write to a page whose status is %s',
+		async (status) => {
+			apiRequest.mockReset();
+			apiRequest.mockResolvedValueOnce({ ...currentPage, status });
+
+			await expect(execute.call(mockExecuteCtx(baseParams), 0)).rejects.toThrow(
+				`The page cannot be changed because its status is "${status}"`,
+			);
+			expect(apiRequest).toHaveBeenCalledTimes(1);
+		},
+	);
 
 	it('surfaces a stale-version 409 as a clear concurrent-edit error', async () => {
 		apiRequest.mockReset();
@@ -145,7 +237,7 @@ describe('page:update', () => {
 
 	it('fails clearly when the page version cannot be read', async () => {
 		apiRequest.mockReset();
-		apiRequest.mockResolvedValueOnce({ id: '123', title: 'Old Title' });
+		apiRequest.mockResolvedValueOnce({ id: '123', status: 'current', title: 'Old Title' });
 
 		await expect(execute.call(mockExecuteCtx(baseParams), 0)).rejects.toThrow(
 			'Could not read the current version of the page',

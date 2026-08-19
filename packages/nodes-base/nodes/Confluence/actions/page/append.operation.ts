@@ -74,9 +74,7 @@ export const execute: ConfluenceOperation = async function (
 
 	const pageId = await resolvePageId.call(this, itemIndex);
 
-	// The merge representation follows the input format: storage bodies (plain
-	// text is wrapped into storage paragraphs) concatenate as strings, ADF
-	// bodies concatenate their documents' content arrays — never mixed
+	// The page is fetched in the input's representation; formats are never mixed
 	const page = await fetchPageForWrite.call(this, itemIndex, pageId, addition.representation);
 
 	let value: string;
