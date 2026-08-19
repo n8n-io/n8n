@@ -145,7 +145,8 @@ const handleClick = (event: MouseEvent) => {
 
 	height: var(--button--height);
 	padding: var(--button--padding);
-	border-radius: var(--button--radius);
+	border-radius: var(--radius--full);
+	// border-radius: var(--button--radius);
 	font-size: var(--button--font-size);
 
 	--button--color--background: transparent;
@@ -201,35 +202,35 @@ const handleClick = (event: MouseEvent) => {
 	&.xsmall {
 		--button--height: var(--height--xs);
 		--button--padding: 0 var(--spacing--2xs);
-		--button--radius: var(--radius--3xs);
+		--button--radius: var(--radius--xs);
 		--button--font-size: var(--font-size--2xs);
 	}
 
 	&.small {
 		--button--height: var(--height--sm);
 		--button--padding: 0 var(--spacing--xs);
-		--button--radius: var(--radius--3xs);
+		--button--radius: var(--radius--xs);
 		--button--font-size: var(--font-size--xs);
 	}
 
 	&.medium {
 		--button--height: var(--height--md);
 		--button--padding: 0 var(--spacing--xs);
-		--button--radius: var(--radius--3xs);
+		--button--radius: var(--radius--xs);
 		--button--font-size: var(--font-size--sm);
 	}
 
 	&.large {
 		--button--height: var(--height--lg);
 		--button--padding: 0 var(--spacing--sm);
-		--button--radius: var(--radius--2xs);
+		--button--radius: var(--radius--sm);
 		--button--font-size: var(--font-size--sm);
 	}
 
 	&.xlarge {
 		--button--height: var(--height--xl);
 		--button--padding: 0 var(--spacing--sm);
-		--button--radius: var(--radius--xs);
+		--button--radius: var(--radius--sm);
 		--button--font-size: var(--font-size--md);
 	}
 
@@ -237,7 +238,7 @@ const handleClick = (event: MouseEvent) => {
 		--button--color--background: var(--background--brand);
 		--button--color--background-hover: var(--background--brand--hover);
 		--button--color--background-active: var(--background--brand--active);
-		--button--color: var(--color--neutral-white);
+		--button--color: var(--color--neutral-black);
 		--button--shadow: var(--shadow--xs);
 		--button--shadow--hover: var(--shadow--xs);
 		--button--shadow--active: var(--shadow--xs);
