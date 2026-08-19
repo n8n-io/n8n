@@ -222,7 +222,7 @@ describe('PollBackoffService', () => {
 			);
 		});
 
-		test('does not throw and does not write when the error throws on property access', async () => {
+		test('still backs off when the error throws on property access', async () => {
 			const service = buildService();
 			const hostileError: Record<string, unknown> = {};
 			Object.defineProperty(hostileError, 'httpCode', {
@@ -235,7 +235,17 @@ describe('PollBackoffService', () => {
 				recordFailure(service, { state: null, error: hostileError }),
 			).resolves.toBeUndefined();
 
-			expect(pollerStateRepository.recordFailure).not.toHaveBeenCalled();
+			const expectedBackoffUntil = computeBackoffUntil({
+				failureClass: 'transient',
+				consecutiveErrors: 1,
+				retryAfterMs: null,
+				now,
+			});
+			expect(pollerStateRepository.recordFailure).toHaveBeenCalledWith(
+				'wf-1',
+				'node-1',
+				expectedBackoffUntil,
+			);
 		});
 	});
 

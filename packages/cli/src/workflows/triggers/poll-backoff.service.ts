@@ -6,9 +6,8 @@ import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 
 import {
-	classifyPollFailure,
 	computeBackoffUntil,
-	retryAfterMs,
+	pollFailureFromError,
 	RETRY_AFTER_MAX_MS,
 } from '@/workflows/triggers/poll-backoff-policy';
 
@@ -78,12 +77,11 @@ export class PollBackoffService {
 		const consecutiveErrors = (state?.consecutiveErrors ?? 0) + 1;
 
 		try {
-			const retryAfter = retryAfterMs(error, now);
-			const failureClass = classifyPollFailure(error, retryAfter);
+			const { failureClass, retryAfterMs } = pollFailureFromError(error, now);
 			const backoffUntil = computeBackoffUntil({
 				failureClass,
 				consecutiveErrors,
-				retryAfterMs: retryAfter,
+				retryAfterMs,
 				now,
 			});
 
