@@ -43,6 +43,38 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
+	test('accepts the writable fields of a shared entry', () => {
+		const result = CreateWorkflowPublicDto.safeParse({
+			...validPayload,
+			shared: [{ role: 'workflow:owner', workflowId: 'w1', projectId: 'p1' }],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	// `shared` is discarded, but the old schema still rejected these, so this one does too.
+	test.each([
+		['createdAt', { createdAt: '2026-01-01T00:00:00.000Z' }],
+		['updatedAt', { updatedAt: '2026-01-01T00:00:00.000Z' }],
+		['an unknown key', { notASharedField: 'x' }],
+		['project.id', { project: { id: 'p1' } }],
+		['project.type', { project: { type: 'personal' } }],
+	])('rejects %s in a shared entry', (_label, entry) => {
+		const result = CreateWorkflowPublicDto.safeParse({ ...validPayload, shared: [entry] });
+
+		expect(result.success).toBe(false);
+	});
+
+	// `sharedWorkflow.yml` left the nested project open, so an unknown project key is allowed.
+	test('allows an unknown key inside a shared project', () => {
+		const result = CreateWorkflowPublicDto.safeParse({
+			...validPayload,
+			shared: [{ project: { name: 'My project', somethingElse: 1 } }],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
 	test('drops the derived binaryMode and credentialResolverId settings', () => {
 		const result = CreateWorkflowPublicDto.safeParse({
 			...validPayload,

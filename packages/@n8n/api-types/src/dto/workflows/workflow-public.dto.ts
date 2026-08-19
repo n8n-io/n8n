@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import {
 	connectionsOpenApi,
+	workflowCreateFieldDocs,
 	metaOpenApi,
 	nodeGroupsOpenApi,
 	nodesOpenApi,
@@ -151,9 +152,9 @@ export const workflowParentFolderPublicSchema = z.object({
 });
 
 export const createdWorkflowPublicSchema = workflowPublicSchema.extend({
-	parentFolder: workflowParentFolderPublicSchema.nullable().openapi({
-		description: 'Folder the workflow was placed in, or null at the project root',
-	}),
+	parentFolder: workflowParentFolderPublicSchema
+		.nullable()
+		.openapi(workflowCreateFieldDocs.parentFolder),
 });
 
 export class CreatedWorkflowPublicDto extends Z.class(createdWorkflowPublicSchema.shape) {}
