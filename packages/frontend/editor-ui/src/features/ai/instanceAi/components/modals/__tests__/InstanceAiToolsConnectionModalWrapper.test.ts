@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import { defineComponent } from 'vue';
+import { defineComponent, nextTick, reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import InstanceAiToolsConnectionModalWrapper from '../InstanceAiToolsConnectionModalWrapper.vue';
 import type {
 	McpServerConnectionItem,
@@ -124,7 +125,7 @@ const { browserTelemetryMock, computerTelemetryMock, telemetryMock, uiStoreMock 
 		uiStoreMock: {
 			modalsById: {
 				instanceAiToolsConnection: { open: true, data: {} },
-			},
+			} as Record<string, { open: boolean; data?: Record<string, unknown> }>,
 			closeModal: vi.fn(),
 			setModalData: vi.fn(),
 			openNewCredential: vi.fn(),
@@ -133,6 +134,8 @@ const { browserTelemetryMock, computerTelemetryMock, telemetryMock, uiStoreMock 
 		},
 	}),
 );
+
+uiStoreMock.modalsById = reactive(uiStoreMock.modalsById);
 
 vi.mock('../../../instanceAiMcp.telemetry', () => ({
 	useInstanceAiMcpTelemetry: () => telemetryMock,
@@ -199,7 +202,7 @@ let modalProps: Record<string, unknown> = {};
 const ToolsConnectionModalStub = defineComponent({
 	name: 'ToolsConnectionModal',
 	inheritAttrs: false,
-	props: ['detailItem', 'detailMode', 'items'],
+	props: ['open', 'detailItem', 'detailMode', 'items'],
 	setup(props, { attrs }) {
 		modalListeners = attrs;
 		modalProps = props;
@@ -270,7 +273,9 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		];
 		mcpStoreMock.connectionsByServerSlug = new Map();
 		mcpStoreMock.connectionToolsById = new Map();
+		uiStoreMock.modalsById.instanceAiToolsConnection.open = true;
 		uiStoreMock.modalsById.instanceAiToolsConnection.data = {};
+		delete uiStoreMock.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		mockConnect.mockResolvedValue(null);
 		mockUpdateConnection.mockResolvedValue({ serverSlug: 'linear' });
 	});
@@ -332,6 +337,29 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		});
 		expect(modalProps.detailMode).toBe('settings');
 		expect(mcpStoreMock.fetchConnectionToolsLazy).toHaveBeenCalledWith('conn-1');
+	});
+
+	it('hides and restores the selected connection while editing a credential', async () => {
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'linear' };
+		renderComponent();
+
+		expect(modalProps.open).toBe(true);
+		expect(modalProps.detailItem).toMatchObject({ id: 'linear' });
+
+		uiStoreMock.modalsById[CREDENTIAL_EDIT_MODAL_KEY] = { open: true };
+		await nextTick();
+
+		expect(modalProps.open).toBe(false);
+		expect(uiStoreMock.closeModal).not.toHaveBeenCalled();
+
+		uiStoreMock.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = false;
+		await nextTick();
+
+		expect(modalProps.open).toBe(true);
+		expect(modalProps.detailItem).toMatchObject({ id: 'linear' });
+
+		emitModalEvent('onUpdate:open', false);
+		expect(uiStoreMock.closeModal).toHaveBeenCalledWith('instanceAiToolsConnection');
 	});
 
 	// Through the store, because what it resolves is derived state — an assignment
