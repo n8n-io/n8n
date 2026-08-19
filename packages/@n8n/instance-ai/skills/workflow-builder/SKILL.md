@@ -603,9 +603,10 @@ first.
 
 `.group(name, members, { description })` on the workflow builder; members are the node handles.
 Read `knowledge-base/reference/node-groups.md` for the exact rules (trigger nodes excluded,
-one connected section, AI sub-nodes stay with their Agent) before creating groups — an invalid
-group is rejected on save. When editing an existing workflow, keep existing `.group(...)` calls
-and their descriptions intact unless the change is about grouping.
+one connected section, AI sub-nodes stay with their Agent) before creating groups. Agent save
+tools drop an invalid group and report a warning, so fix the source rather than re-emitting the
+same invalid group. When editing an existing workflow, keep existing `.group(...)` calls and
+their descriptions intact unless the change is about grouping.
 
 ## Workflow Rules
 
