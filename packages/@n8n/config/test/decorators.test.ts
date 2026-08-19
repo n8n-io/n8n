@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import fs from 'fs';
+import { z } from 'zod';
 
 import { Config, Env } from '../src/decorators';
 
@@ -82,5 +83,20 @@ describe('decorators', () => {
 		const config = Container.get(TestConfig);
 		expect(config.value).toBe('direct-value');
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
+	});
+
+	it('should trim trailing newline from _FILE value before parsing it with a zod schema', () => {
+		const filePath = '/path/to/secret';
+		process.env.TEST_VALUE_FILE = filePath;
+		mockFs.readFileSync.mockReturnValueOnce('legacy\n');
+
+		@Config
+		class TestConfig {
+			@Env('TEST_VALUE', z.enum(['legacy', 'vm']))
+			value: string = 'vm';
+		}
+
+		const config = Container.get(TestConfig);
+		expect(config.value).toBe('legacy');
 	});
 });

@@ -28,7 +28,9 @@ const readEnv = (envName: string) => {
 				`[n8n] Warning: The file specified by ${envName}_FILE contains leading or trailing whitespace, which may cause authentication failures.`,
 			);
 		}
-		return value;
+		// Config file contents commonly carry a trailing newline (e.g. `echo value > file`);
+		// leaving it in silently fails schema/type parsing and falls back to the default value.
+		return value.trim();
 	}
 
 	return undefined;
