@@ -25,6 +25,13 @@ interface ConnectionState {
 
 let activeConnection: ConnectionState | null = null;
 
+/** A query param rather than a header because `WebSocket` cannot set request headers. */
+export function buildRelayWsUrl(relayUrl: string, version: string): string {
+	const url = new URL(relayUrl);
+	url.searchParams.set('extensionVersion', version);
+	return url.toString();
+}
+
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
@@ -417,7 +424,7 @@ async function connectToRelay(
 	disconnect();
 
 	try {
-		const ws = new WebSocket(relayUrl);
+		const ws = new WebSocket(buildRelayWsUrl(relayUrl, chrome.runtime.getManifest().version));
 
 		await new Promise<void>((resolve, reject) => {
 			const timeout = setTimeout(() => {

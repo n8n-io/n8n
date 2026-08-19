@@ -3734,6 +3734,9 @@ export class InstanceAiService {
 			// Shared with createExecutionEnvironment so one ProxyTokenManager backs tracing + the run.
 			const proxyRunConfig = await this.createProxyRunConfig(user);
 
+			// Read per run: Chrome auto-updates extensions silently.
+			const browserExtension = this.browserSessionService.getExtensionTraceContext(user.id);
+
 			// Create the trace before run-start so the SSE event carries traceId (modelId lands at finalization).
 			if (resumeReason) {
 				tracing = await this.tracing.createOrchestratorResumeTraceContext({
@@ -3752,6 +3755,7 @@ export class InstanceAiService {
 							? { build_task_id: plannedBuild.buildTaskId }
 							: {}),
 					},
+					browserExtension,
 				});
 			} else {
 				tracing = await createInstanceAiTraceContext({
@@ -3764,6 +3768,7 @@ export class InstanceAiService {
 					proxyConfig: proxyRunConfig.tracingProxyConfig,
 					n8nVersion: N8N_VERSION,
 					workflowSdkVersion: WORKFLOW_SDK_VERSION,
+					browserExtension,
 				});
 			}
 
@@ -5261,6 +5266,7 @@ export class InstanceAiService {
 					? { build_task_id: plannedBuild.buildTaskId }
 					: {}),
 			},
+			browserExtension: this.browserSessionService.getExtensionTraceContext(activeUser.id),
 			register: false,
 		});
 		const effectiveTracing = resumeTracing ?? tracing;
