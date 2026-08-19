@@ -1,4 +1,4 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity, Project } from '@n8n/db';
@@ -10,6 +10,7 @@ import {
 	DeploymentKeyRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { Expression } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -51,6 +52,8 @@ mockInstance(LicenseState);
 mockInstance(CommunityPackagesService);
 mockInstance(WorkflowFailureNotificationEventRelay);
 
+const logger = mockInstance(Logger);
+const errorReporter = mockInstance(ErrorReporter);
 const dbConnection = mockInstance(DbConnection);
 dbConnection.init.mockResolvedValue(undefined);
 dbConnection.migrate.mockResolvedValue(undefined);
@@ -180,4 +183,35 @@ test('should exit with a crash when expression engine init fails', async () => {
 
 	expect(initSpy).toHaveBeenCalledTimes(1);
 	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));
+});
+
+test('exitWithCrash logs the crash message to the console', async () => {
+	// arrange
+
+	const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+	vi.useFakeTimers();
+
+	class CrashingCommand extends BaseCommand {}
+	const cmd = new CrashingCommand();
+	// @ts-expect-error Protected property, set directly to avoid another init() traversal
+	cmd.errorReporter = errorReporter;
+
+	const cause = new Error('isolated-vm failed to load');
+
+	// act
+
+	try {
+		// @ts-expect-error Protected method
+		const promise: Promise<void> = cmd.exitWithCrash('something broke', cause);
+		await vi.advanceTimersByTimeAsync(2000);
+		await promise;
+	} finally {
+		vi.useRealTimers();
+	}
+
+	// assert
+
+	// the error reporter may only reach Sentry, so the message must also hit the console
+	expect(logger.error).toHaveBeenCalledWith('something broke', { error: cause });
+	expect(exitSpy).toHaveBeenCalledWith(1);
 });

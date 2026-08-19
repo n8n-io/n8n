@@ -287,6 +287,8 @@ export abstract class BaseCommand<F = never> {
 	}
 
 	protected async exitWithCrash(message: string, error: unknown) {
+		// the error reporter only sends to Sentry when a DSN is configured, so also log to the console
+		this.logger.error(message, { error });
 		this.errorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
 		await sleep(2000);
 		process.exit(1);
