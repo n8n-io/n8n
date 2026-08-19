@@ -189,6 +189,7 @@ catalog:
   oracledb: 6.10.0
   oxlint: ^1.61.0
   oxlint-tsgolint: ^0.21.1
+  p-limit: ^3.1.0
   pdf-parse: 2.4.5
   pdfjs-dist: 5.4.296
   pg: 8.21.0
@@ -259,6 +260,8 @@ catalogs:
     vue-markdown-render: ^2.2.1
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
+  p-limit-v7:
+    p-limit: ^7.3.1
   sentry:
     '@sentry/core': ^10.55.0
     '@sentry/node': ^10.55.0

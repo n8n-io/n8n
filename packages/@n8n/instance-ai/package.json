@@ -98,7 +98,7 @@
     "@types/turndown": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "fast-glob": "catalog:",
-    "p-limit": "^7.3.1",
+    "p-limit": "catalog:p-limit-v7",
     "playwright-core": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
