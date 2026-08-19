@@ -181,6 +181,9 @@ export class McpController {
 				// The SDK answers a failed handshake with an error response instead of
 				// throwing, so a resolved call says nothing about the outcome: the
 				// status it wrote is what tells us whether the client connected.
+				// Known limit: an error delivered after the head was written (a late
+				// error, or one sent over an SSE upgrade) still reads as a success.
+				// Handshakes settle during dispatch, so they take the status path.
 				const failed = res.statusCode >= 400;
 				this.trackConnectionEvent({
 					...telemetryPayload,
