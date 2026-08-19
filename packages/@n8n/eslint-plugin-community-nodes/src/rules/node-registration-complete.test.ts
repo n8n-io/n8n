@@ -105,7 +105,9 @@ ruleTester.run('node-registration-complete', NodeRegistrationCompleteRule, {
 			before() {
 				setup([fooNode, fooSiblingNode], [fooNode]);
 			},
-			errors: [{ messageId: 'nodeNotRegistered', data: { nodeFile: 'nodes/Foo/FooExtra.node.ts' } }],
+			errors: [
+				{ messageId: 'nodeNotRegistered', data: { nodeFile: 'nodes/Foo/FooExtra.node.ts' } },
+			],
 		},
 		{
 			name: 'node files exist on disk but there is no n8n object',
