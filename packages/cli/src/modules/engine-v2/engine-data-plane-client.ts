@@ -1,3 +1,4 @@
+import { isObjectLiteral } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
 import { EngineConfig } from '@n8n/config';
@@ -69,7 +70,7 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 	 * may not carry that shape, so every field stays optional.
 	 */
 	private parseErrorResponse(body: unknown): Partial<EngineErrorResponse> {
-		if (typeof body !== 'object' || body === null) return {};
+		if (!isObjectLiteral(body)) return {};
 
 		return body as Partial<EngineErrorResponse>;
 	}
