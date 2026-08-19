@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_ff953bd5fa5eff::t_4f2b7acec2daca 1158
+  s_ff953bd5fa5eff::t_7bfbd6af55c1a0 1143
+  s_ff953bd5fa5eff::t_7eb4bbaccc4d72 1380
+  s_ff953bd5fa5eff::t_5ed8bd23ea6ec7 1076-1086
+  s_ff953bd5fa5eff::t_27b08dc0699949 1412
+  s_ff953bd5fa5eff::t_ecd15ed1efd25c 1072
+  s_ff953bd5fa5eff::t_84b750ad11feaa 1035,1042-1044,1073
+  s_ff953bd5fa5eff::t_c6b3860ea14ea5 1090,1092-1094
+  s_ff953bd5fa5eff::t_75649c2ed2425f 1074-1075
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ff953bd5fa5eff::t_272614c6111dce 4326-4327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "160d3220be990901941d8edd7b8a85d3f102144f",
+  "prompts": {},
+  "sessions": {
+    "s_ff953bd5fa5eff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a86677f-f714-4b73-9d32-32cecd91c41c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

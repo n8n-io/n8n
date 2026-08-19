@@ -1,0 +1,37 @@
+packages/cli/test/migration/1787089039726-create-git-connection-project-table.test.ts
+  s_f180b2f3fffe6c::t_0716202b0aa5f3 1-145
+packages/cli/src/modules/git-connections.ee/database/entities/git-connection-project.entity.ts
+  s_f180b2f3fffe6c::t_edeb39b6a4712b 1,3-25
+  s_f180b2f3fffe6c::t_75aac145a2fe38 2
+packages/@n8n/db/src/migrations/common/1787089039726-CreateGitConnectionProjectTable.ts
+  s_f180b2f3fffe6c::t_b6448704967960 26
+  s_f180b2f3fffe6c::t_fdffaba91da4e0 1-2,7,27-28,31-32
+  s_f180b2f3fffe6c::t_d5558a04a63ceb 3-6,8-25,29-30
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_f180b2f3fffe6c::t_67c5609d0e84aa 71-74
+  s_16634a1acc1bfc::t_98a9a6ad9d2a2a 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f316b466f7690187aa1b5b4ca07bf2a3a37382df",
+  "prompts": {},
+  "sessions": {
+    "s_16634a1acc1bfc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0808427a-0789-4d8e-bd3b-bfcbb4ac14c9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_f180b2f3fffe6c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20e23070-5cd7-4528-991c-c7c347105355",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

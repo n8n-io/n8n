@@ -1,0 +1,29 @@
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_3977282fcb4fb5::t_12caf98308c412 157-159,161-162
+  s_3977282fcb4fb5::t_abd49f5fd8305d 260-265,271-272
+  s_3977282fcb4fb5::t_b057a119a9edb8 160,163-164
+  s_3977282fcb4fb5::t_6884cd97258a6e 277,281-288,297-299,308-314,323
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_3977282fcb4fb5::t_3d247430111725 10
+  s_3977282fcb4fb5::t_5898e5841dc82a 118-164,213-239
+  s_3977282fcb4fb5::t_e62690ad7b73ba 166-167,169
+  s_3977282fcb4fb5::t_f8e25634900abd 240-241,243-300
+  s_3977282fcb4fb5::t_d154173cb4e593 165,168,170-212
+  s_3977282fcb4fb5::t_2f2d6d88b18e62 242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b3928ca695d56fce01221ec81aa8e0d060fb0b27",
+  "prompts": {},
+  "sessions": {
+    "s_3977282fcb4fb5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b249567b-caff-42db-8140-3149eef9bf4e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
