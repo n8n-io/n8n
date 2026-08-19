@@ -6,6 +6,7 @@ import type {
 import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import path from 'node:path';
+import { Logger } from '@n8n/backend-common';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -21,7 +22,10 @@ export class GitConnectionsService {
 		private readonly gitService: GitConnectionsGitService,
 		private readonly cipher: Cipher,
 		private readonly instanceSettings: InstanceSettings,
-	) {}
+		private readonly logger: Logger,
+	) {
+		this.logger = this.logger.scoped('git-connections');
+	}
 
 	async create(input: CreateGitConnectionDto) {
 		this.gitService.validateRepositoryUrl(input.repositoryUrl, input.connectionType);
@@ -110,6 +114,14 @@ export class GitConnectionsService {
 		await this.purge(id);
 		await this.repository.remove(connection);
 	}
+
+	async push({
+		connectionId,
+		projectIds,
+	}: {
+		connectionId: string;
+		projectIds: string[];
+	}) {}
 
 	private async applyNewAuthentication(
 		connection: GitConnection,
