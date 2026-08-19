@@ -36,9 +36,10 @@ jobs:
     name: Build versioned Daytona snapshot (${{ matrix.environment }})
     runs-on: ubuntu-latest
     # Checkout + monorepo build (~10 min) run before the snapshot script, whose
-    # own create/verify budget is 30 min — keep headroom so the script's
-    # in-process timeout fires before the runner's hard kill.
-    timeout-minutes: 45
+    # own budgets are 30 min create/verify + 5 min prune — keep headroom beyond
+    # that sum so the script's in-process timeouts always fire before the
+    # runner's hard kill.
+    timeout-minutes: 50
     # Dev is best-effort: a dev failure is reported but does not block the release.
     # Only the prod publish gates the release.
     continue-on-error: ${{ matrix.environment == 'dev' }}

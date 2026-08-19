@@ -501,6 +501,26 @@ describe('SnapshotManager.createSnapshot', () => {
 		}
 	});
 
+	it('bounds a hung status poll with the overall deadline', async () => {
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
+		const daytona = makeFakeDaytona();
+		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
+		// A request that never settles (stalled transport, no error).
+		daytona.snapshot.get.mockImplementation(async () => await new Promise<never>(() => {}));
+
+		await manager.ensureImage();
+		vi.useFakeTimers();
+		try {
+			const assertion = expect(
+				manager.createSnapshot(daytona as never, { timeout: 60 }),
+			).rejects.toThrow('Timed out fetching state');
+			await vi.runAllTimersAsync();
+			await assertion;
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('tolerates a transient error while polling snapshot state', async () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();

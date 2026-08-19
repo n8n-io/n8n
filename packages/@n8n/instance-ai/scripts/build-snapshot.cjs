@@ -103,9 +103,15 @@ async function main() {
 	consoleLogger.info('Snapshot ready', { name });
 }
 
-main().catch((error) => {
-	consoleLogger.error('Snapshot creation failed', {
-		error: error instanceof Error ? error.message : String(error),
-	});
-	process.exit(1);
-});
+main().then(
+	// Exit explicitly: a Daytona request abandoned by its deadline (e.g. a hung
+	// prune call) would otherwise keep the event loop alive until the CI runner
+	// kills the job despite a successful publish.
+	() => process.exit(0),
+	(error) => {
+		consoleLogger.error('Snapshot creation failed', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+		process.exit(1);
+	},
+);

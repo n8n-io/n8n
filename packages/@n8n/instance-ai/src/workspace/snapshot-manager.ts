@@ -333,7 +333,14 @@ export class SnapshotManager {
 		for (;;) {
 			let snapshot: DaytonaSnapshot;
 			try {
-				snapshot = await daytona.snapshot.get(name);
+				// Race every request against the deadline — the SDK's transport
+				// timeout is effectively unbounded, so a stalled request would
+				// otherwise hang the job past the budget.
+				snapshot = await this.withDeadline(
+					daytona.snapshot.get(name),
+					deadline,
+					`Timed out fetching state of Daytona snapshot "${name}"`,
+				);
 			} catch (error) {
 				if (!isTransientDaytonaError(error) || Date.now() >= deadline) throw error;
 				this.logger.warn('Transient Daytona error while polling snapshot state; retrying', {
@@ -363,7 +370,11 @@ export class SnapshotManager {
 						attempt: activationAttempts,
 					});
 					try {
-						await daytona.snapshot.activate(snapshot);
+						await this.withDeadline(
+							daytona.snapshot.activate(snapshot),
+							deadline,
+							`Timed out requesting activation of Daytona snapshot "${name}"`,
+						);
 					} catch (error) {
 						if (!isTransientDaytonaError(error)) throw error;
 						this.logger.warn('Transient Daytona error during snapshot activation; will retry', {
