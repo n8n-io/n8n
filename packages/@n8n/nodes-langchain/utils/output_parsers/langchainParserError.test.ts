@@ -128,6 +128,16 @@ describe('wrapLangChainParserError', () => {
 			expect(wrapped.message).toBe('something broke');
 		});
 
+		it('uses the fallback when a non-Error throw has no string message', () => {
+			const wrapped = wrapLangChainParserError({ code: 500 }, node, undefined, {
+				enrichNonParserErrors: true,
+			});
+
+			expect(wrapped).toBeInstanceOf(NodeOperationError);
+			expect(wrapped.message).toBe('Agent execution failed');
+			expect(wrapped.message).not.toBe('[object Object]');
+		});
+
 		it('still wraps parser errors when the option is set', () => {
 			const error = new Error('Failed to parse. Text: "x"');
 
@@ -148,6 +158,23 @@ describe('getFailureType', () => {
 
 	it('returns the class name of a typed Error', () => {
 		expect(getFailureType(new TypeError('x'))).toBe('TypeError');
+	});
+
+	it('uses constructor.name for a custom subclass that inherits name "Error"', () => {
+		class CustomAgentError extends Error {}
+
+		expect(getFailureType(new CustomAgentError('boom'))).toBe('CustomAgentError');
+	});
+
+	it('keeps an explicitly set name over constructor.name', () => {
+		class CustomAgentError extends Error {
+			constructor(message?: string) {
+				super(message);
+				this.name = 'ExplicitFailure';
+			}
+		}
+
+		expect(getFailureType(new CustomAgentError('boom'))).toBe('ExplicitFailure');
 	});
 
 	it('walks the cause chain through a NodeOperationError to the underlying class', () => {

@@ -50,10 +50,14 @@ export function getFailureType(error: unknown): string {
 	while (current instanceof Error && current.cause instanceof Error) {
 		current = current.cause;
 	}
-	return (
-		(current instanceof Error ? current.name || current.constructor.name : typeof current) ||
-		'Error'
-	);
+	if (!(current instanceof Error)) {
+		return typeof current;
+	}
+	// Custom subclasses that do not set `this.name` inherit `'Error'`.
+	if (current.name && current.name !== 'Error') {
+		return current.name;
+	}
+	return current.constructor.name || 'Error';
 }
 
 function isUselessMessage(message: string | undefined, className: string | undefined): boolean {
@@ -69,7 +73,7 @@ function wrapAsNodeOperationError(
 ): Error {
 	const className = getErrorName(error);
 	const messageProperty = getErrorProperty(error, 'message');
-	const candidateMessage = messageProperty ?? (error instanceof Error ? undefined : String(error));
+	const candidateMessage = messageProperty ?? (typeof error === 'string' ? error : undefined);
 	const message = isUselessMessage(candidateMessage, className)
 		? AGENT_FAILURE_FALLBACK_MESSAGE
 		: (candidateMessage as string);
