@@ -41,6 +41,7 @@ describe('instance ai browser use telemetry', () => {
 		expect(track).toHaveBeenCalledTimes(1);
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_INSTALL_EXTENSION_CLICKED,
+			{},
 		);
 	});
 
@@ -50,6 +51,7 @@ describe('instance ai browser use telemetry', () => {
 		expect(track).toHaveBeenCalledTimes(1);
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_OPEN_EXTENSION_CLICKED,
+			{},
 		);
 	});
 
@@ -59,6 +61,7 @@ describe('instance ai browser use telemetry', () => {
 		expect(track).toHaveBeenCalledTimes(1);
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_DIRECT_CONNECT_REQUESTED,
+			{},
 		);
 	});
 });

@@ -103,6 +103,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const browserConnected = ref(false);
 	const browserConnectedAt = ref<string | null>(null);
 	const browserToolCategories = ref<ToolCategory[]>([]);
+	const browserStatusLoaded = ref(false);
 	const browserConnectUrl = ref<string | null>(null);
 	const browserConnectUrlExpiresAt = ref<string | null>(null);
 	let browserConnectUrlRequestId = 0;
@@ -401,7 +402,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			browserConnected.value = status.connected;
 			browserConnectedAt.value = status.connectedAt;
 			browserToolCategories.value = status.toolCategories ?? [];
-		} catch {}
+		} catch {
+			// Keep the last known status if the refresh fails.
+		} finally {
+			browserStatusLoaded.value = true;
+		}
 	}
 
 	function clearBrowserConnectUrl(): void {
@@ -699,6 +704,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		browserConnected,
 		browserConnectedAt,
 		browserToolCategories,
+		browserStatusLoaded,
 		browserConnectUrl,
 		browserConnectUrlExpiresAt,
 		fetchBrowserStatus,

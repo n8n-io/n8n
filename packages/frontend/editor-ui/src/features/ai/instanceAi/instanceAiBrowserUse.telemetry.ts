@@ -16,13 +16,13 @@ export function useInstanceAiBrowserUseTelemetry() {
 			});
 		},
 		trackInstallExtensionClicked() {
-			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_INSTALL_EXTENSION_CLICKED);
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_INSTALL_EXTENSION_CLICKED, {});
 		},
 		trackOpenExtensionClicked() {
-			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_OPEN_EXTENSION_CLICKED);
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_OPEN_EXTENSION_CLICKED, {});
 		},
 		trackDirectConnectRequested() {
-			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_DIRECT_CONNECT_REQUESTED);
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BROWSER_USE_DIRECT_CONNECT_REQUESTED, {});
 		},
 	};
 }

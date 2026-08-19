@@ -32,6 +32,7 @@ describe('InstanceAiInputMenu', () => {
 
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON,
+			{},
 		);
 	});
 });

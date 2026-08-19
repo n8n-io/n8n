@@ -45,7 +45,7 @@ async function handleSelect(id: string) {
 }
 
 function trackInputPlusButtonClick() {
-	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON);
+	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON, {});
 }
 </script>
 
