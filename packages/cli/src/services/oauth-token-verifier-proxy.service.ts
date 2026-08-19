@@ -16,6 +16,13 @@ export type AuthFailureReason =
 
 export type Mcpauth_type = 'oauth' | 'api_key' | 'unknown';
 
+/**
+ * How a caller that got through authenticated. `unknown` is reachable only on
+ * the failure paths, where auth was rejected before the method could be
+ * determined, so it cannot describe an admitted caller.
+ */
+export type McpResolvedAuthType = Exclude<Mcpauth_type, 'unknown'>;
+
 export type TelemetryAuthContext = {
 	reason: AuthFailureReason;
 	auth_type: Mcpauth_type;
@@ -26,7 +33,7 @@ export type UserWithContext = {
 	user: User | null;
 	actor?: User;
 	context?: TelemetryAuthContext;
-	authType?: Mcpauth_type;
+	authType?: McpResolvedAuthType;
 	/** OAuth scopes granted to the token. `undefined` = not scope-bearing (e.g. API key) → full access. */
 	scopes?: string[];
 	/**

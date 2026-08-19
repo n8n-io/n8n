@@ -21,7 +21,7 @@ export interface EventPayloadMcp extends AbstractEventPayload {
 	workflowId?: string;
 	status?: 'success' | 'error';
 	errorMessage?: string;
-	authType?: 'oauth' | 'api_key' | 'unknown';
+	authType?: 'oauth' | 'api_key';
 	clientId?: string;
 	clientName?: string;
 	enabled?: boolean;
