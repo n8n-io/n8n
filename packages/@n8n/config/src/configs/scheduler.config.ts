@@ -269,6 +269,14 @@ export class SchedulerConfig {
 	enabledForPollTriggers: boolean = false;
 
 	/**
+	 * Whether agent scheduled tasks are scheduled by the durable scheduler
+	 * instead of n8n's in-process timer. Off by default; requires
+	 * {@link enabled} to also be on.
+	 */
+	@Env('N8N_SCHEDULER_AGENT_TASKS_ENABLED')
+	enabledForAgentTasks: boolean = false;
+
+	/**
 	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
 	 * Off by default; intended to be removed once the durable scheduler is GA.
 	 *

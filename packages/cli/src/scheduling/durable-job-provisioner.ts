@@ -61,12 +61,14 @@ type ProvisionScope = WorkflowNodeProvisionScope | LinkedProvisionScope;
 
 /**
  * Identifies jobs for deletion: one node's jobs, one workflow's jobs of a task
- * type, or specific jobs a linked owner resolved through its link table.
+ * type, specific jobs a linked owner resolved through its link table, or every
+ * job of a task type (whole-consumer teardown).
  */
 type DeprovisionScope =
 	| Pick<WorkflowNodeProvisionScope, 'workflowId' | 'nodeId'>
 	| Pick<WorkflowNodeProvisionScope, 'workflowId' | 'taskType'>
-	| { jobIds: number[] };
+	| { jobIds: number[] }
+	| { taskType: string };
 
 /** A job row's schedule columns: one `ScheduleDefinition` flattened for storage. */
 type ScheduleColumns = Pick<
@@ -173,6 +175,16 @@ export class DurableJobProvisioner {
 	async deprovisionJobs(jobIds: number[]): Promise<{ removed: number }> {
 		if (jobIds.length === 0) return { removed: 0 };
 		return await this.provisioner.deprovision({ jobIds });
+	}
+
+	/**
+	 * Delete every job of one task type, whoever owns them; their queued tasks
+	 * and ownership links cascade away. For tearing a whole consumer down, e.g.
+	 * at startup when its feature flag is off, so no unclaimed occurrences pile
+	 * up behind an unregistered handler.
+	 */
+	async deprovisionTaskType(taskType: string): Promise<{ removed: number }> {
+		return await this.provisioner.deprovision({ taskType });
 	}
 
 	/**
@@ -434,6 +446,9 @@ export class DurableJobProvisioner {
 						deleteAll: async () => {
 							if ('jobIds' in scope) {
 								return await this.jobs.deleteManyByIds(manager, scope.jobIds);
+							}
+							if (!('workflowId' in scope)) {
+								return await this.jobs.deleteByTaskType(manager, scope.taskType);
 							}
 							return 'nodeId' in scope
 								? await this.jobs.deleteByWorkflowNode(manager, scope.workflowId, scope.nodeId)

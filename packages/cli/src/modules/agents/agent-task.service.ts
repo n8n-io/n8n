@@ -481,33 +481,54 @@ export class AgentTaskService {
 	// ── Run ───────────────────────────────────────────────────────────────
 
 	private async runScheduledTask(agentId: string, taskId: string): Promise<void> {
-		const holderId = randomUUID();
-		let lock: AgentTaskRunLockHandle | null = null;
-		let renewInterval: ReturnType<typeof setInterval> | undefined;
 		try {
-			lock = await this.taskRunLockRepository.acquire(agentId, taskId, {
-				holderId,
-				ttlMs: TASK_RUN_LOCK_TTL_MS,
-			});
-			if (!lock) {
-				this.logger.info('[AgentTaskService] Skipping task because previous run is still active', {
-					taskId,
-					agentId,
-				});
-				return;
-			}
-
-			renewInterval = this.startTaskRunLockRenewal(lock);
-			await this.runTask(agentId, taskId);
+			await this.startScheduledRun(agentId, taskId);
 		} catch (error) {
 			this.logger.error('[AgentTaskService] Scheduled task lock failed', {
 				taskId,
 				agentId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-		} finally {
-			if (renewInterval) clearInterval(renewInterval);
-			if (lock) {
+		}
+	}
+
+	/**
+	 * Take the run lock and start the task run in the background, resolving as
+	 * soon as the lock decision is made. Both schedulers enter here: the
+	 * in-memory cron via `runScheduledTask`, the durable handler directly — the
+	 * latter must report its dispatch decision within the occurrence's lease, so
+	 * it cannot wait out a run that takes minutes.
+	 *
+	 * A lock-acquisition failure propagates to the caller; run failures are
+	 * logged by the background continuation, which also renews the lock while
+	 * the run lasts and releases it after.
+	 */
+	async startScheduledRun(agentId: string, taskId: string): Promise<'started' | 'skipped-active'> {
+		const holderId = randomUUID();
+		const lock = await this.taskRunLockRepository.acquire(agentId, taskId, {
+			holderId,
+			ttlMs: TASK_RUN_LOCK_TTL_MS,
+		});
+		if (!lock) {
+			this.logger.info('[AgentTaskService] Skipping task because previous run is still active', {
+				taskId,
+				agentId,
+			});
+			return 'skipped-active';
+		}
+
+		const renewInterval = this.startTaskRunLockRenewal(lock);
+		void (async () => {
+			try {
+				await this.runTask(agentId, taskId);
+			} catch (error) {
+				this.logger.error('[AgentTaskService] Scheduled task run failed', {
+					taskId,
+					agentId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			} finally {
+				clearInterval(renewInterval);
 				await this.taskRunLockRepository.release(lock).catch((error) => {
 					this.logger.warn('[AgentTaskService] Failed to release task run lock', {
 						taskId,
@@ -516,7 +537,8 @@ export class AgentTaskService {
 					});
 				});
 			}
-		}
+		})();
+		return 'started';
 	}
 
 	private startTaskRunLockRenewal(lock: AgentTaskRunLockHandle): ReturnType<typeof setInterval> {
