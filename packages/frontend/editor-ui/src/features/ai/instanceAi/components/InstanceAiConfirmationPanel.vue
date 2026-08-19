@@ -452,6 +452,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:message="chunk.item.toolCall.confirmation.message"
 					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
+					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
 				/>
 
 				<!-- Structured questions -->

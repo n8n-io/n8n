@@ -105,6 +105,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@confluentinc/kafka-javascript",
       "@vscode/ripgrep",
       "isolated-vm",
       "sqlite3"
@@ -146,6 +147,7 @@
       "validator": "13.15.26",
       "zod": "3.25.76",
       "js-yaml": "4.3.1",
+      "katex": "0.18.2",
       "body-parser": "2.3.0",
       "glob@10": "10.5.0",
       "glob@7": "7.2.3",
@@ -237,7 +239,8 @@
       "assert@2.1.0": "patches/assert@2.1.0.patch",
       "lodash@4.18.1": "patches/lodash@4.18.1.patch",
       "@langchain/openai@1.4.4": "patches/@langchain__openai@1.4.4.patch",
-      "@langchain/google-common@2.1.24": "patches/@langchain__google-common@2.1.24.patch"
+      "@langchain/google-common@2.1.24": "patches/@langchain__google-common@2.1.24.patch",
+      "@confluentinc/kafka-javascript@1.9.1": "patches/@confluentinc__kafka-javascript@1.9.1.patch"
     }
   }
 }

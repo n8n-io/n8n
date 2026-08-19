@@ -61,6 +61,7 @@ vi.mock('../resolve-credentials', () => ({
 				mockedNodeNames: [],
 				mockedCredentialTypes: [],
 				mockedCredentialsByNode: {},
+				heldForNewCredentialTypes: [],
 				resolvedCredentialsByNode: {},
 			}),
 	),
@@ -1840,6 +1841,7 @@ describe('createBuildWorkflowTool', () => {
 			mockedNodeNames: ['OpenAI Chat Model'],
 			mockedCredentialTypes: [],
 			mockedCredentialsByNode: {},
+			heldForNewCredentialTypes: [],
 			resolvedCredentialsByNode: {
 				'OpenAI Chat Model': [
 					{ type: 'openAiApi', id: null, name: 'n8n Connect', __aiGatewayManaged: true },

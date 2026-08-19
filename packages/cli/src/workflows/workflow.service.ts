@@ -25,7 +25,13 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
+import {
+	PROJECT_ROOT,
+	UnexpectedError,
+	Workflow,
+	assert,
+	calculateWorkflowChecksum,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
@@ -67,6 +73,9 @@ import { WebhookService } from '@/webhooks/webhook.service';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
+
+/** Internal rollback vehicle for `publishAsSystem`'s guarded transaction; never escapes it. */
+class SystemPublishSupersededError extends Error {}
 
 @Service()
 export class WorkflowService {
@@ -874,7 +883,7 @@ export class WorkflowService {
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			await this._publishViaOutbox(
-				user,
+				user.id,
 				workflowId,
 				versionIdToActivate,
 				previousActiveVersionId,
@@ -1107,6 +1116,100 @@ export class WorkflowService {
 	}
 
 	/**
+	 * Publishes a new system-authored version of an already-active workflow,
+	 * without a user: inserts the `workflow_history` row (author `'n8n'`),
+	 * advances `activeVersionId`, records publish history with a null user, and
+	 * enqueues the outbox record. The draft plane — `workflow_entity.nodes`,
+	 * `versionId`, `updatedAt` — stays untouched.
+	 *
+	 * Publication-service plane only; the caller owns flag and leader concerns.
+	 * Skips user-facing activation validation and lifecycle hooks: the workflow
+	 * is already active, and the content comes from internal correction code,
+	 * which may legitimately fail user-facing checks (e.g. duplicate node
+	 * names).
+	 *
+	 * The write only lands if the active version is still the one read here
+	 * (compare-and-swap): a concurrent user publish or unpublish wins, and this
+	 * method returns `{ published: false, reason: 'superseded' }` having written
+	 * nothing — the version row, publish history, and outbox record all live in
+	 * one transaction that a guard miss rolls back. The caller must not retry —
+	 * whatever superseded the read enqueued its own outbox record, and the next
+	 * activation pass covers it. Two accepted residuals: a concurrent draft save's
+	 * `updatedAt` bump can be rolled back to the value read here (the guard
+	 * deliberately excludes `updatedAt` — a datetime-equality quirk would make
+	 * the heal silently never land, a worse failure direction than a bounded
+	 * timestamp clobber; draft content is untouched either way), and the *user*
+	 * path's unguarded update can still record a stale `deactivated` version
+	 * when the user wins the gap — a pre-existing property of
+	 * `activateWorkflow`, not of this method.
+	 */
+	async publishAsSystem(
+		workflowId: string,
+		versionData: {
+			nodes: WorkflowEntity['nodes'];
+			connections: WorkflowEntity['connections'];
+			nodeGroups?: WorkflowEntity['nodeGroups'];
+		},
+	): Promise<{ published: true; versionId: string } | { published: false; reason: 'superseded' }> {
+		const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
+		// Load-bearing for the guard below: it compares against a non-null value,
+		// so a null active version must never reach it.
+		if (!workflow?.active || workflow.activeVersionId === null) {
+			throw new UnexpectedError(
+				'Cannot publish a system-authored version: the workflow has no active version',
+				{ extra: { workflowId } },
+			);
+		}
+
+		// Narrowed copy: the closure below would see `string | null` again.
+		const previousActiveVersionId = workflow.activeVersionId;
+		const versionId = uuid();
+		try {
+			await this.workflowRepository.manager.transaction(async (trx) => {
+				// The version row must precede the guarded update: `activeVersionId`'s
+				// foreign key requires it. `saveVersion` swallows insert errors; a
+				// missing row surfaces as a foreign-key violation on the update, which
+				// rolls the transaction back.
+				await this.workflowHistoryService.saveVersion(
+					'n8n',
+					{ versionId, ...versionData },
+					workflowId,
+					false,
+					undefined,
+					trx,
+				);
+
+				// Re-publication of the same version id in the gap (unpublish +
+				// publish of the version read above) passes the guard; same id means
+				// same content, so the heal is still a valid heal of the current
+				// active version.
+				const recorded = await this._recordPublishInTransaction(
+					trx,
+					null,
+					workflowId,
+					versionId,
+					previousActiveVersionId,
+					workflow.updatedAt,
+					{ onlyIfActiveVersionIs: previousActiveVersionId },
+				);
+				// Roll back the version row too — a lost race must leave no trace.
+				if (!recorded) throw new SystemPublishSupersededError();
+			});
+		} catch (error) {
+			if (error instanceof SystemPublishSupersededError) {
+				return { published: false, reason: 'superseded' };
+			}
+			throw error;
+		}
+
+		// Wake the leader now that the record is committed, so it drains without
+		// waiting for the next poll cycle.
+		this.workflowPublicationNotifier.requestDrain();
+
+		return { published: true, versionId };
+	}
+
+	/**
 	 * Flag-branched teardown shared by user- and system-initiated deactivation.
 	 * Keeping it in one place prevents the two paths from drifting apart, which
 	 * is how system deactivation ended up skipping unpublishing (CAT-3814).
@@ -1201,6 +1304,8 @@ export class WorkflowService {
 		await this.executionPersistence.hardDeleteByWorkflowId(workflowId);
 
 		await this.workflowRepository.delete(workflowId);
+
+		await this.ownershipService.invalidateWorkflowProjectCacheByIds([workflowId]);
 
 		// After the cascade, so it can see the rows the delete orphaned. Observes a
 		// committed delete, so it must not throw — the module swallows its own errors.
@@ -1563,57 +1668,94 @@ export class WorkflowService {
 	 * manager here.
 	 */
 	private async _publishViaOutbox(
-		user: User,
+		userId: string | null,
 		workflowId: string,
 		versionIdToActivate: string,
 		previousActiveVersionId: string | null,
 		updatedAt: Date,
 	): Promise<void> {
 		await this.workflowRepository.manager.transaction(async (trx) => {
-			await trx.update(
-				WorkflowEntity,
-				{ id: workflowId },
-				{
-					activeVersionId: versionIdToActivate,
-					active: true,
-					// workflow content did not change, so we keep updatedAt as is
-					updatedAt,
-				},
-			);
-
-			if (previousActiveVersionId) {
-				await this.workflowPublishHistoryRepository.addRecord(
-					{
-						workflowId,
-						versionId: previousActiveVersionId,
-						event: 'deactivated',
-						userId: user.id,
-					},
-					trx,
-				);
-			}
-
-			await this.workflowPublishHistoryRepository.addRecord(
-				{
-					workflowId,
-					versionId: versionIdToActivate,
-					event: 'activated',
-					userId: user.id,
-				},
+			await this._recordPublishInTransaction(
 				trx,
-			);
-
-			await this.outboxRepository.enqueue(
+				userId,
 				workflowId,
 				versionIdToActivate,
-				WorkflowPublicationReason.Publish,
-				trx,
+				previousActiveVersionId,
+				updatedAt,
 			);
 		});
 
 		// Wake the leader now that the record is committed, so it drains without
 		// waiting for the next poll cycle.
 		this.workflowPublicationNotifier.requestDrain();
+	}
+
+	/**
+	 * Writes one publish into an open transaction: the workflow-row update, the
+	 * publish-history records, and the outbox record. With
+	 * `onlyIfActiveVersionIs`, the row update — this method's first write — is
+	 * guarded on the active version still being that value; a miss returns
+	 * `false` without writing anything further, and the caller owns rolling
+	 * back whatever it wrote earlier in the same transaction.
+	 */
+	private async _recordPublishInTransaction(
+		trx: EntityManager,
+		userId: string | null,
+		workflowId: string,
+		versionIdToActivate: string,
+		previousActiveVersionId: string | null,
+		updatedAt: Date,
+		options?: { onlyIfActiveVersionIs: string },
+	): Promise<boolean> {
+		const result = await trx.update(
+			WorkflowEntity,
+			options === undefined
+				? { id: workflowId }
+				: { id: workflowId, activeVersionId: options.onlyIfActiveVersionIs },
+			{
+				activeVersionId: versionIdToActivate,
+				active: true,
+				// workflow content did not change, so we keep updatedAt as is
+				updatedAt,
+			},
+		);
+
+		// A miss means a concurrent publish or unpublish moved the active version
+		// since the caller's read.
+		if (options !== undefined && (result.affected ?? 0) === 0) {
+			return false;
+		}
+
+		if (previousActiveVersionId) {
+			await this.workflowPublishHistoryRepository.addRecord(
+				{
+					workflowId,
+					versionId: previousActiveVersionId,
+					event: 'deactivated',
+					userId,
+				},
+				trx,
+			);
+		}
+
+		await this.workflowPublishHistoryRepository.addRecord(
+			{
+				workflowId,
+				versionId: versionIdToActivate,
+				event: 'activated',
+				userId,
+			},
+			trx,
+		);
+
+		await this.outboxRepository.enqueue(
+			workflowId,
+			versionIdToActivate,
+			WorkflowPublicationReason.Publish,
+			trx,
+		);
+
+		return true;
 	}
 
 	/**
