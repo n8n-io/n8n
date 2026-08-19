@@ -52,6 +52,8 @@ const props = defineProps<{
 	hiddenOperations?: readonly string[];
 	parameterIssues?: Record<string, string[]>;
 	fromAiDisabledParameters?: string[];
+	/** Keeps standalone Agent tool parameters resolvable through the scoped NDV store. */
+	syncNodeToNdv?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -161,6 +163,7 @@ const hasCredentialIssues = computed(() => {
 
 const toolWorkflowDocumentId = createWorkflowDocumentId('node-tool-workflow');
 const toolWorkflowStore = useWorkflowDocumentStore(toolWorkflowDocumentId);
+const toolNdvStore = useNDVStore(toolWorkflowDocumentId);
 const workflowDocumentStore = computed(() => toolWorkflowStore);
 
 watch(
@@ -168,6 +171,9 @@ watch(
 	(currentNode) => {
 		if (currentNode) {
 			toolWorkflowStore.setNodes([currentNode]);
+			if (props.syncNodeToNdv) {
+				toolNdvStore.setActiveNodeName(currentNode.name, 'other');
+			}
 		}
 	},
 	{ immediate: true },
@@ -402,7 +408,7 @@ onBeforeUnmount(() => {
 	// materialize — Pinia stores are not freed on unmount. The doc id is a
 	// constant and only one tool-config host is mounted at a time.
 	const documentStore = workflowDocumentStore.value;
-	disposeNDVStore(useNDVStore(documentStore.documentId));
+	disposeNDVStore(toolNdvStore);
 	disposeWorkflowDocumentStore(documentStore);
 });
 

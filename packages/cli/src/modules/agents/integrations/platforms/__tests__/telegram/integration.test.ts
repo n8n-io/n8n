@@ -38,6 +38,11 @@ const makeContext = (
 ): AgentChatIntegrationContext => ({
 	agentId: 'agent-1',
 	projectId: 'proj-1',
+	integration: {
+		type: 'telegram',
+		credentialId: 'cred-1',
+		settings: { accessMode: 'public', allowedUsers: [] },
+	},
 	credentialId: 'cred-1',
 	credential: { accessToken: 'bot-token' },
 	ingressEnabled: true,
