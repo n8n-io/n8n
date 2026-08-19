@@ -3,7 +3,7 @@ import { render, waitFor } from '@testing-library/vue';
 
 import InputNumber from './InputNumber.vue';
 
-describe('v2/components/InputNumber', () => {
+describe('components/N8nInputNumber', () => {
 	describe('rendering', () => {
 		it('should render with placeholder text', () => {
 			const wrapper = render(InputNumber, {
@@ -501,7 +501,7 @@ describe('v2/components/InputNumber', () => {
 				throw new Error('Expected input element');
 			}
 
-			// Min blocks out-of-range keystrokes; set the DOM value then blur to exercise clamping.
+			// Typing below min is allowed (1 can become 15); set the DOM value then blur to clamp.
 			await userEvent.click(input);
 			input.value = '5';
 			await userEvent.tab();
@@ -531,6 +531,46 @@ describe('v2/components/InputNumber', () => {
 			await waitFor(() => {
 				expect(input).toHaveValue('10');
 			});
+		});
+
+		it('should ignore keystrokes that would exceed max', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					defaultValue: 5,
+					max: 10,
+					controls: false,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.click(input);
+			await userEvent.type(input, '50');
+
+			expect(input).toHaveValue('5');
+		});
+
+		it('should allow typing a value equal to max', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					defaultValue: 1,
+					max: 10,
+					controls: false,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.click(input);
+			await userEvent.type(input, '10');
+
+			expect(input).toHaveValue('10');
 		});
 	});
 
