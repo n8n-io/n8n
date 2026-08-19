@@ -13,7 +13,7 @@ export async function customerIoApiRequest(
 	endpoint: string,
 	body: object,
 	baseApi?: string,
-	_query?: IDataObject,
+	query?: IDataObject,
 ) {
 	const credentials = await this.getCredentials('customerIoApi');
 	const region = credentials.region as string;
@@ -26,6 +26,7 @@ export async function customerIoApiRequest(
 		method,
 		body,
 		url: '',
+		qs: query,
 		json: true,
 	};
 
