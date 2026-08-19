@@ -58,7 +58,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	};
 });
 
-const TRIGGER_TYPE = SUPPORTED_WORKFLOW_TOOL_TRIGGERS[0];
+const TRIGGER_TYPE: string = SUPPORTED_WORKFLOW_TOOL_TRIGGERS[0];
 
 function workflow(
 	name: string,
@@ -75,7 +75,10 @@ function workflow(
 		description: overrides.description ?? '',
 		isArchived: overrides.isArchived ?? false,
 		updatedAt: overrides.updatedAt ?? '2026-07-01T12:00:00.000Z',
-		nodes: [{ type: TRIGGER_TYPE }],
+		nodes: [{ type: TRIGGER_TYPE }] as Array<{
+			type: string;
+			parameters?: Record<string, unknown>;
+		}>,
 	};
 }
 

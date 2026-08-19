@@ -34,7 +34,11 @@ import { useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useAgentToolCatalog } from '../composables/useAgentToolCatalog';
 import type { WorkflowToolRef } from '../types';
-import { listWorkflowToolInputFields } from '../utils/workflowToolInputFields';
+import {
+	formatWorkflowToolFixedValue,
+	listWorkflowToolInputFields,
+	parseWorkflowToolFixedValue,
+} from '../utils/workflowToolInputFields';
 
 const props = defineProps<{
 	initialRef: WorkflowToolRef;
@@ -175,10 +179,14 @@ function fieldMode(fieldName: string): 'ai' | 'fixed' {
 	return fieldBinding(fieldName).mode;
 }
 
+function fieldType(fieldName: string): string | undefined {
+	return declaredInputFields.value.find((field) => field.name === fieldName)?.type;
+}
+
 function fieldFixedValue(fieldName: string): string {
 	const binding = fieldBinding(fieldName);
 	if (binding.mode !== 'fixed') return '';
-	return binding.value === null || binding.value === undefined ? '' : String(binding.value);
+	return formatWorkflowToolFixedValue(binding.value);
 }
 
 function setFieldMode(fieldName: string, nextMode: string) {
@@ -189,16 +197,16 @@ function setFieldMode(fieldName: string, nextMode: string) {
 		inputs.value = next;
 		return;
 	}
-	inputs.value = {
-		...inputs.value,
-		[fieldName]: { mode: 'fixed', value: fieldFixedValue(fieldName) },
-	};
+	setFieldFixedValue(fieldName, fieldFixedValue(fieldName));
 }
 
 function setFieldFixedValue(fieldName: string, value: string | number) {
 	inputs.value = {
 		...inputs.value,
-		[fieldName]: { mode: 'fixed', value: String(value) },
+		[fieldName]: {
+			mode: 'fixed',
+			value: parseWorkflowToolFixedValue(String(value), fieldType(fieldName)),
+		},
 	};
 }
 

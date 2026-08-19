@@ -651,4 +651,54 @@ describe('WorkflowToolJsonConfigSchema — inputs', () => {
 
 		expect(result.success).toBe(false);
 	});
+
+	it('accepts nested JSON arrays and objects as fixed values', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'Show Shopping List',
+					inputs: {
+						tags: { mode: 'fixed', value: ['a', 'b', { nested: [1, 2, null] }] },
+						meta: { mode: 'fixed', value: { count: 3, flag: true, items: ['x'] } },
+					},
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.tools?.[0]).toMatchObject({
+				inputs: {
+					tags: { mode: 'fixed', value: ['a', 'b', { nested: [1, 2, null] }] },
+					meta: { mode: 'fixed', value: { count: 3, flag: true, items: ['x'] } },
+				},
+			});
+		}
+	});
+
+	it('rejects non-JSON values inside fixed arrays and objects', () => {
+		const cases: Array<[string, unknown]> = [
+			['array with undefined', { mode: 'fixed', value: ['a', undefined, 'b'] }],
+			['object with undefined', { mode: 'fixed', value: { ok: undefined } }],
+			['array with function', { mode: 'fixed', value: [() => 1] }],
+			['object with Date', { mode: 'fixed', value: { when: new Date() } }],
+		];
+
+		for (const [, value] of cases) {
+			const result = AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				tools: [
+					{
+						type: 'workflow',
+						workflow: 'Show Shopping List',
+						inputs: { field: value },
+					},
+				],
+			});
+
+			expect(result.success).toBe(false);
+		}
+	});
 });

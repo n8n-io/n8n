@@ -121,6 +121,25 @@ describe('inferInputSchema — executeWorkflow', () => {
 		expect(listWorkflowInputFields(trigger).map((f) => f.name)).toEqual(['chatId']);
 		expect(schema.parse({ chatId: 'x' })).toEqual({ chatId: 'x' });
 	});
+
+	it('defaults to passthrough when inputSource is absent (legacy / imported triggers)', () => {
+		// Mirrors the runtime fallback `getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH)`:
+		// legacy node versions < 1.1 and imported triggers without a saved inputSource
+		// pass all input data through, so the inferred schema must stay open even if
+		// stale workflowInputs are present.
+		const trigger = makeExecuteWorkflowTrigger({
+			workflowInputs: {
+				values: [{ name: 'chatId', type: 'string' }],
+			},
+		});
+
+		const schema = inferInputSchema(trigger, 'executeWorkflow');
+		expect(listWorkflowInputFields(trigger)).toEqual([]);
+		expect(schema.parse({ chatId: 123, anything: true })).toEqual({
+			chatId: 123,
+			anything: true,
+		});
+	});
 });
 
 describe('fixed workflow tool inputs', () => {
