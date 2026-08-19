@@ -109,8 +109,8 @@ catalogs:
       specifier: 6.0.1
       version: 6.0.1
     sanitize-html:
-      specifier: 2.17.4
-      version: 2.17.4
+      specifier: 2.17.5
+      version: 2.17.5
     simple-git:
       specifier: 3.36.0
       version: 3.36.0
@@ -1372,7 +1372,7 @@ importers:
         version: 4.6.14
       sanitize-html:
         specifier: 'catalog:'
-        version: 2.17.4
+        version: 2.17.5
       sqlite3:
         specifier: 5.1.7
         version: 5.1.7
@@ -2333,7 +2333,7 @@ importers:
         version: 2.5.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
       sanitize-html:
         specifier: 'catalog:'
-        version: 2.17.4
+        version: 2.17.5
       vue:
         specifier: catalog:frontend
         version: 3.5.13(typescript@5.9.2)
@@ -3206,7 +3206,7 @@ importers:
         version: 3.13.0
       sanitize-html:
         specifier: 'catalog:'
-        version: 2.17.4
+        version: 2.17.5
       semver:
         specifier: ^7.5.4
         version: 7.6.0
@@ -16115,8 +16115,8 @@ packages:
   samlify@2.13.0:
     resolution: {integrity: sha512-9VyXF9FKUn4D1LFt1KnkcltIk/P0w5WOp13oiGjq6NEVBleBSd3iaFFP7vigmvmCEntaAeyFSSdjMhYc41hptA==}
 
-  sanitize-html@2.17.4:
-    resolution: {integrity: sha512-2HW7v2ol/uAM7sX4hbD8Z59OGWmAPrvjL8E71UWlBcj6m+kcF6ilQBLny+cIgY214QJeJT5tQuxKKqX0SQqjGQ==}
+  sanitize-html@2.17.5:
+    resolution: {integrity: sha512-ZmU1joGRrvoyctKIiuwUxqR6moLoU2Wk+2bMccN6f7UwhAmwYDvWziqPxRDDN2Qip62NqnIrVrT9akbL6Wretg==}
 
   sass-lookup@6.1.0:
     resolution: {integrity: sha512-Zx+lVyoWqXZxHuYWlTA17Z5sczJ6braNT2C7rmClw+c4E7r/n911Zwss3h1uHI9reR5AgHZyNHF7c2+VIp5AUA==}
@@ -34509,7 +34509,7 @@ snapshots:
       xml-escape: 1.1.0
       xpath: 0.0.34
 
-  sanitize-html@2.17.4:
+  sanitize-html@2.17.5:
     dependencies:
       deepmerge: 4.3.1
       escape-string-regexp: 4.0.0
