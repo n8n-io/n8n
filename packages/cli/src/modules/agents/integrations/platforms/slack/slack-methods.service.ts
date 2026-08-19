@@ -232,10 +232,15 @@ export class SlackMethodsService {
 	 * leave one behind in the project.
 	 *
 	 * Keyed on whether the agent durably references it rather than on how the
-	 * connect failed: a startup failure can still leave the entry persisted, and
-	 * that entry is what the next publish or reconcile acts on. Only ever called
-	 * with a credential created moments earlier in the same call, so nothing the
-	 * user picked or already owned can be reached from here.
+	 * connect failed: the integration write lands before the steps that settle
+	 * publication and release a replaced channel, so a failure there still leaves
+	 * the entry persisted, and that entry is what the next publish or reconcile
+	 * acts on.
+	 *
+	 * Only ever called with a credential created moments earlier in the same call
+	 * and never handed out on this path, so the agent row is the only place that
+	 * can reference it — nothing the user picked or already owned is reachable
+	 * from here.
 	 */
 	private async deleteUnreferencedCredential(
 		agentId: string,

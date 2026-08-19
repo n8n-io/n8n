@@ -336,8 +336,22 @@ async function persistAgent(): Promise<boolean> {
 		await props.ensureAgentPersisted?.();
 		return true;
 	} catch (error) {
-		// Only this step needs a toast — a failed `connect` is already rendered
-		// inline by the setup view.
+		// Needs a toast — unlike `connect`, this step has no inline error surface.
+		toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
+		return false;
+	}
+}
+
+/**
+ * The platform's own pre-save step (Slack managed settings). Only some of its
+ * failures render inline in the view, so a rejection is reported here rather
+ * than closing the modal on settings that were never saved.
+ */
+async function runBeforeSave(): Promise<boolean> {
+	try {
+		await channelViewRef.value?.beforeSave?.();
+		return true;
+	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
 		return false;
 	}
@@ -363,12 +377,13 @@ async function saveChannelConfig() {
 	channelActionInFlight.value = true;
 	try {
 		if (!(await persistAgent())) return;
-		await channelViewRef.value?.beforeSave?.();
+		if (!(await runBeforeSave())) return;
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
 			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
 		});
 	} catch {
-		// `useAgentIntegrationStatus` exposes the failure to the setup view.
+		// Only `connect` is left to throw here, and `useAgentIntegrationStatus`
+		// exposes that failure to the setup view.
 		return;
 	} finally {
 		channelActionInFlight.value = false;

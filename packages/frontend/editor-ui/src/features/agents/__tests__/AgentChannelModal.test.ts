@@ -384,6 +384,20 @@ describe('AgentChannelModal', () => {
 		});
 	});
 
+	it('surfaces a failed pre-save step instead of connecting', async () => {
+		mocks.beforeSave.mockRejectedValue(new Error('settings could not be saved'));
+		selectedCredentials.value.example = 'credential-new';
+		const wrapper = mountModal('example_setup');
+		await flushPromises();
+
+		await wrapper.get('[data-testid="connect-channel"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.showError).toHaveBeenCalled();
+		expect(mocks.connect).not.toHaveBeenCalled();
+		expect(wrapper.emitted('update:open')).toBeUndefined();
+	});
+
 	it('closes when a platform reports connected from inside its own flow', async () => {
 		const wrapper = mountModal('example_setup');
 		await flushPromises();
