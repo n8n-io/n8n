@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_eae6ef118ad146::t_5dce5ebc5fac08 442-444
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cf1f724ff5711a1872d53d7a04d97d64106e49d1",
+  "prompts": {},
+  "sessions": {
+    "s_eae6ef118ad146": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50bff671-5fab-4eee-b068-5db7d02fa42d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

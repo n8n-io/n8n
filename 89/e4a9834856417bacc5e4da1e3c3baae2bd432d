@@ -1,0 +1,333 @@
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/openai.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1,3,18-26,30-32,43,54
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 94
+packages/frontend/editor-ui/src/features/core/auth/views/SigninView.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 129-146
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 46,63,74,80,90,96-100,109-134
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 37
+packages/modules/instance-registry/frontend/src/instance-registry.module.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-15
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 7-9,49-50
+packages/@n8n/instance-ai/evaluations/discovery/expected-tools-invoked.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 19-20,25,35,40,72-75,80,82,91-114,116-124,168,184,218-249
+packages/@n8n/instance-ai/evaluations/discovery/stub-mcp-registry.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-190
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/methods/__tests__/listSearch.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 33-34
+packages/@n8n/instance-ai/evaluations/discovery/confirmation-policy.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-70
+packages/@n8n/instance-ai/src/tools/__tests__/executions.tool.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 19,561-565
+packages/modules/instance-registry/frontend/README.md
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-27
+packages/@n8n/instance-ai/evaluations/data/discovery/index.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 6-7,12-15,17,30-70,83,87,104
+packages/@n8n/instance-ai/src/tools/mcp-servers.tool.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 99,102
+packages/frontend/editor-ui/src/features/core/auth/views/SigninView.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 20,48-55,57-68,73
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 72-78,84,89-90
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 118-160
+scripts/licenses/license-overrides.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 74,76
+packages/frontend/editor-ui/src/app/components/SettingsSidebar.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 20,37-42
+packages/@n8n/engine/src/execution/execution-start-handler.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 5,41-44,50
+packages/@n8n/eslint-config/src/rules/no-reka-ui-pagination.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1,3,5-9,11-18,20-21,23-27,29-33,35-41,44-46,48-60
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/ListRuns/RunsSection.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 125-126,128-129
+packages/modules/instance-registry/frontend/src/instance-registry.store.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-29
+packages/@n8n/instance-ai/src/tools/workspace.tool.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 146-156
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 652-660,662-665,669,674-700,702-704,3883-3897
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/Pagination.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 8-9,14-29,32,36-38,41-81,84-87,90-91,93,95,99-102,109,120,128-129,132,134,138-141,145,148,150,153-154,157,160,162-163,166-184,187,190,192,195-200,203,206,208,211-216,219,222,224,227-234,237,240,242-243,247-252,255-256,259,261-262,265-266,271-276,279,282-283,288,290-292,295,299,302-303,308,310-312,315-322,324-325,328,331-332,337,340,344-345,352-353,358,361,365,370-371,374,376-377,381-389,392,395,397-398,402-411,414,417,419-420,424-433,436,439,441-442,446-454,457,460-463,467-476,479,482,484-485,489-491,493-494,498-499,502-507,511-524,527-528,530-531,533-535,539-542,544,546-551,555-558,560,562-564,566-570,573-574,576-583,585-587,590,593-597,601-603,605-609,611-620,651,654-661,665-699,701,703-704,707,709,714
+packages/@n8n/api-types/src/constants/role-mapping.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 10-18
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 14-16,22-30,32-40,58,61,74,87,96-98,100,108-110,112-119,123-131,135-138,161,178,191-195,198-199,201,204,207,210-217,222-223,238,260,313-315
+packages/cli/src/modules/sso-saml/__tests__/saml.controller.ee.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 11,308-323
+packages/@n8n/instance-ai/evaluations/data/discovery/slack-oauth-credential-setup.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 20-21
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 13,15,668-850
+packages/modules/instance-registry/frontend/src/index.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-5
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 84
+packages/frontend/editor-ui/tsconfig.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 28-33
+packages/frontend/editor-ui/src/app/components/AboutModal.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 10
+packages/testing/playwright/pages/NodeDetailsViewPage.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 529
+packages/@n8n/instance-ai/evaluations/data/discovery/mcp-no-registry-match.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-13
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/reka-ui.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-11
+packages/@n8n/instance-ai/evaluations/data/discovery/google-oauth-credential-setup.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 20-21
+packages/cli/src/modules/sso-oidc/oidc.controller.ee.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 5,14-15,146-159
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-2,91-92,304,359,391-393,474,489,556,569
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 43-53
+packages/@n8n/instance-ai/src/workspace/sandbox-setup.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 462
+packages/@n8n/instance-ai/evaluations/__tests__/stub-workspace.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-38
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 82
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataPaginationBar.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 4,19-22,24-27
+packages/@n8n/instance-ai/evaluations/discovery/credential-approval.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-19
+packages/frontend/editor-ui/package.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 52
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSidebar.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 47,99-104
+packages/@n8n/engine/src/execution/start-execution.service.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 5,10-11,43
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 184-245
+.agents/skills/create-pr/SKILL.md
+  s_de7b3b7247646c::t_3dcc4eb408788c 37
+packages/frontend/editor-ui/src/app/composables/useDebugInfo.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 3
+packages/@n8n/instance-ai/src/tools/__tests__/workspace.tool.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 95-113
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 28,737-739,743-745
+packages/@n8n/instance-ai/evaluations/data/discovery/mcp-uses-connected-server-tools.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-16
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 243-244,1527-1528,5164
+packages/cli/src/__tests__/controller.registry.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 24,31,374-413
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/Pagination.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 2-10,18-19,23-26,30,32-34,37,40,44,46,48,50-59,62-66,69-73,76-88,90-92,95-103,105-108,110-112,114-116,118-120,122-133,135,137-138,140-144,146,148-157,159-161,163-222,227-236,238-254,256-270,273-311,314-347,351-353,360-365,367-382,388-393,395-410,413-418,421-423,432,435-440,442,444-445,448-449,452,454,458-461,463-474,478,483,485-487,490-493,495-497,499-502,506-510,519-520
+packages/@n8n/instance-ai/src/types.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 72-78,293-306,313-320
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 33-39
+packages/cli/src/modules/provisioning.ee/errors/sso-access-denied.error.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-2,4,6-8,10-12
+packages/cli/test/integration/saml/saml.api.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1088-1107
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 33,38-41,47,62,72
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 509-512,517,524-527,533
+packages/modules/instance-registry/frontend/tsconfig.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-21
+packages/@n8n/engine/src/database/entities/workflow-execution.entity.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 11-15,38-39
+packages/testing/playwright/pages/DataTableDetails.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 288-289
+packages/@n8n/engine/src/database/migrations/1778529600000-CreateWorkflowExecution.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 17
+packages/cli/src/modules/sso-saml/saml.controller.ee.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 15-16,195-199
+.github/workflows/ci-check-pr-title.yml
+  s_de7b3b7247646c::t_3dcc4eb408788c 19
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 56,64-66,71,85-125
+packages/@n8n/instance-ai/evaluations/discovery/__tests__/confirmation-policy.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-269
+packages/@n8n/instance-ai/evaluations/discovery/stream-status.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-35
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 102
+packages/cli/src/modules/provisioning.ee/constants.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-2,4-9
+packages/@n8n/node-engine-compatibility/src/__tests__/io.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 42-44
+packages/@n8n/engine/src/execution/__tests__/start-execution.service.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 40,50,58,69
+packages/frontend/@n8n/design-system/src/components/N8nDatatable/Datatable.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 4,8,110-111,113-115
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvalCollectionsListView.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 190-191,193-194
+packages/@n8n/instance-ai/evaluations/discovery/types.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 11,35-40,42-45,64,67-76,84-85,92-107
+packages/@n8n/eslint-config/src/rules/no-reka-ui-pagination.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-93
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 25-39
+packages/modules/instance-registry/frontend/vite.config.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-23
+packages/cli/src/controller.registry.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 25-26,125-136
+packages/@n8n/instance-ai/evaluations/data/discovery/data-table-workflow-skill-loading.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 20-21
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/Pagination.stories.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 3,12,14-15,17,19,21-26,28-44,46,48,50-52,54,56,74-76,79-81,83-84,87,90,95,98-101,104-105,109,111-112,116,120-123,127,130-131,135-188,190-192,196,200-203,207-229,232-233,237,240-243,247-290,292-294,298-330,333-335,339-393,403-408,410,413-415,420-421,423,426
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 37-38,47,390-394,404,409,419,426-587
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 4,7-9,16-19,26-31,43-48,50,55-98
+packages/cli/src/modules/sso-oidc/__tests__/oidc.controller.ee.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 11,269-291
+packages/frontend/@n8n/design-system/src/components/N8nDatatable/Datatable.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 87
+packages/frontend/@n8n/design-system/src/components/N8nDatatable/__snapshots__/Datatable.test.ts.snap
+  ai_agent 102-111
+packages/frontend/editor-ui/src/app/composables/useDebugInfo.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 65
+packages/@n8n/api-types/src/index.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 715-719
+packages/@n8n/agents/src/types/index.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 64
+packages/@n8n/instance-ai/evaluations/data/discovery/workflow-builder-no-agent-builder-leak.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 17-18
+packages/@n8n/instance-ai/evaluations/data/discovery/workflow-builder-no-credential-ask.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 27-28
+packages/modules/instance-registry/frontend/src/instance-registry.store.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 2-5
+packages/@n8n/instance-ai/docs/tools.md
+  s_de7b3b7247646c::t_3dcc4eb408788c 183,186-187,189,193-208,629
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/component-pagination.md
+  s_de7b3b7247646c::t_3dcc4eb408788c 5-6,14,16,18-24,26,28-34,36,38-39,41,43-49,54-55,60-63,68-69,76-78
+packages/frontend/editor-ui/src/app/components/SettingsSidebar.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-38
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 751,772-808,887,905-908
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 36,98
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.project-scope.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-44
+packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 73,300-301
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 64-65
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 4,22,63-65,69-73,216-222
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionDetailPanel.spec.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 139-156,302-360,391,410
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 19-22,32,216-218,222-223
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 109,451,454
+packages/@n8n/instance-ai/evaluations/data/discovery/mcp-connect-unconnected-service.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-18
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineRow.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-106
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 502-521
+packages/@n8n/agents/src/index.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 103,105
+packages/@n8n/engine/src/execution/index.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 6-12
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 258-293
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatSidebar.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-61
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 10,24
+packages/frontend/@n8n/design-system/src/v2/components/Pagination/Pagination.types.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1,7,9-46,51,55-56
+packages/@n8n/engine/src/graph/index.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 14-18
+packages/@n8n/engine/src/execution/__tests__/execution-start.integration.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 87,91-92,95,104,125,133-134,137
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/methods/listSearch.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-4,84-88
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 27,60
+packages/@n8n/instance-ai/evaluations/harness/stub-workspace.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-82
+packages/frontend/editor-ui/src/app/components/MainSidebar.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 17-18,27-30,54,215-232
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 31-69,71-80,82-87,91-96
+packages/@n8n/eslint-config/src/plugin.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 2,14-20
+packages/@n8n/instance-ai/evaluations/data/discovery/mcp-broken-connection-reconnect.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-18
+packages/@n8n/instance-ai/evaluations/data/discovery/mcp-not-offered-for-workflow-build.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-17
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 208
+pnpm-lock.yaml
+  ai_agent 5907-5909,6302-6379
+packages/@n8n/ai-utilities/src/model-discovery/providers/openai.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 4,17-21,30-36
+packages/@n8n/node-engine-compatibility/src/__tests__/m1-acceptance.integration.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 35,68,100-102,123-125,132-157,162,192
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 56
+packages/modules/instance-registry/frontend/biome.jsonc
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-4
+packages/modules/instance-registry/frontend/eslint.config.mjs
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-4
+packages/testing/playwright/pages/DataTableView.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 64,68,72
+packages/modules/instance-registry/frontend/package.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-51
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 28,31,202-212,214-217,303-310,350-357,376-377,446-447
+packages/@n8n/instance-ai/evaluations/discovery/__tests__/expected-tools-invoked.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 2-16,19-20,28,33,354-583,604-694
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1955,2053,2165,2173-2235
+packages/@n8n/instance-ai/evaluations/data/discovery/mcp-declined-tool-call-no-reconnect.json
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-17
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 32-34
+packages/cli/src/modules/provisioning.ee/provisioning.service.ee.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 34,747,764,777
+packages/frontend/@n8n/frontend-vite-config/index.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 45-47
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  s_de7b3b7247646c::t_3dcc4eb408788c 50,330,500,502-503,505-508
+packages/@n8n/engine/src/graph/validate-executable-graph.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 5
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/model-discovery.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 76-77
+packages/@n8n/instance-ai/evaluations/discovery/__tests__/stream-status.test.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-63
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 2,10,20
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 61-65,69-77,91,149,447,452,454-486,527
+packages/modules/instance-registry/frontend/src/__tests__/setup.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 1-2,4-5,7-12
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 200
+packages/testing/playwright/pages/components/RunDataPanel.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 51
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 30,276-283
+packages/@n8n/engine/src/index.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 53
+packages/@n8n/eslint-config/src/configs/frontend.ts
+  s_de7b3b7247646c::t_3dcc4eb408788c 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "89e4a9834856417bacc5e4da1e3c3baae2bd432d",
+  "prompts": {},
+  "sessions": {
+    "s_de7b3b7247646c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aded32c-351c-4581-b8d0-20fdf708d539",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

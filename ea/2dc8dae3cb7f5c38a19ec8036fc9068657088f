@@ -1,0 +1,44 @@
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-run-snapshot.repository.test.ts
+  s_075e27a55d59b0::t_bc86e39b4aa183 1-57,59-60
+  s_075e27a55d59b0::t_bd64920547db2b 58
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-event-log.repository.test.ts
+  s_075e27a55d59b0::t_d1019e16ce3e71 46-89,91-105
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_075e27a55d59b0::t_8b049215a1900b 1062-1164,1166-1201
+  s_075e27a55d59b0::t_7e9163cb162e8e 35,61-62
+  s_075e27a55d59b0::t_5ea69ac7fad215 29,31-34,36-60,63-79,82-83,150,172,408-409,418,426,462,466,503,578,581,617,628,657,666,712,717,741,777,843,945,997,1010,1013,1023,1028,1060
+  s_075e27a55d59b0::t_bd64920547db2b 80-81,1165
+packages/cli/src/modules/instance-ai/storage/__tests__/db-snapshot-storage.test.ts
+  s_075e27a55d59b0::t_684839517741df 152-179
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_075e27a55d59b0::t_6fa3ca7b7fc291 87-142
+  s_075e27a55d59b0::t_951e43b7d3dd03 429,464,508,524
+  s_075e27a55d59b0::t_bd64920547db2b 432-439
+  s_075e27a55d59b0::t_c8120ef5c7ed7a 428,430
+  s_075e27a55d59b0::t_8bcab64577ce47 497-502,515-523,525-528
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_075e27a55d59b0::t_1287af716dc783 87-90
+  s_075e27a55d59b0::t_a07a7b6f4f7cc6 91,93,95-100,108-137,139-150
+  s_075e27a55d59b0::t_bd64920547db2b 138
+packages/cli/src/modules/instance-ai/storage/db-snapshot-storage.ts
+  s_075e27a55d59b0::t_e83fdab5fdc105 175-187
+  s_075e27a55d59b0::t_9b9204847b9145 188
+packages/cli/src/modules/instance-ai/repositories/instance-ai-run-snapshot.repository.ts
+  s_075e27a55d59b0::t_9ca174a8c7dfb7 2,11-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea2dc8dae3cb7f5c38a19ec8036fc9068657088f",
+  "prompts": {},
+  "sessions": {
+    "s_075e27a55d59b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9399f92-043d-4946-b67c-5fd7553feafa",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
