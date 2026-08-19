@@ -572,7 +572,13 @@ const setAtPointer = (
 		}
 
 		if (read.value === undefined && !Array.isArray(cursor)) {
-			// The intermediate container does not exist yet, must be created.
+			const nextKey = segments[i + 1];
+			if (isArrayIndexSegment(nextKey)) {
+				// Do not auto-create an array as in many if not all situations might result in a broken node and workflow
+				const containerPath = segments.slice(0, i + 1).join('/');
+				return `cannot create array at '/${containerPath}' for numeric segment '${nextKey}' — set the whole array via updateNodeParameters instead`;
+			}
+
 			const child: Record<string, unknown> = {};
 			writeSegment(cursor, key, child);
 			cursor = child;

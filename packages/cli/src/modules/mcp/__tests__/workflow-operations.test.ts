@@ -358,6 +358,30 @@ describe('applyOperations', () => {
 			expect(result.error).toContain("cannot use 'foo' as an array index");
 			expect(result.error).toContain("at '/values'");
 		});
+
+		test('rejects creating an array via a numeric segment when the container does not exist', () => {
+			const wf = baseWorkflow();
+
+			// Empty node with no parameters, so updating an array value will error
+			wf.nodes[1].parameters = {};
+
+			const result = applyOperations(wf, [
+				{
+					type: 'setNodeParameter',
+					nodeName: 'B',
+					path: '/assignments/assignments/0/value',
+					value: 99,
+				},
+			]);
+
+			expect(result.success).toBe(false);
+			if (result.success) return;
+
+			expect(result.error).toContain("cannot create array at '/assignments/assignments'");
+			expect(result.error).toContain("for numeric segment '0'");
+			expect(result.error).toContain('updateNodeParameters');
+			expect(wf.nodes[1].parameters).toEqual({});
+		});
 	});
 
 	describe('addNode', () => {
