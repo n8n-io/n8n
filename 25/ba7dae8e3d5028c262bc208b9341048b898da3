@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_09a437b1b52fd1::t_1d98da9d1d3813 124
+  s_09a437b1b52fd1::t_faf5b3d8369d19 569
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_09a437b1b52fd1::t_6a98a8ecdc3b93 807-818
+  s_09a437b1b52fd1::t_97169b549e1b48 777,784-796
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "25ba7dae8e3d5028c262bc208b9341048b898da3",
+  "prompts": {},
+  "sessions": {
+    "s_09a437b1b52fd1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9fd515cb-a3e4-4fce-a9a8-6f84304c6e77",
+        "model": "grok-4.6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
