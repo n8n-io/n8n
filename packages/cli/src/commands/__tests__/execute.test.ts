@@ -64,6 +64,10 @@ const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
 deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
 deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
 
+// minimal command for exercising BaseCommand.init():
+// Execute.init() chains singletons that cannot init twice per process
+class ReadOnlyCommand extends BaseCommand {}
+
 test('should start a task runner', async () => {
 	// arrange
 
@@ -117,8 +121,6 @@ test('should not seed the instance identity and should tolerate deployment key r
 	deploymentKeyRepository.insertOrIgnore.mockClear();
 	deploymentKeyRepository.findActiveByType.mockRejectedValueOnce(new Error('permission denied'));
 
-	// minimal command: Execute.init() chains singletons that cannot init twice per process
-	class ReadOnlyCommand extends BaseCommand {}
 	const cmd = new ReadOnlyCommand();
 
 	// act
@@ -140,8 +142,7 @@ test('should not init the expression engine for commands that do not need it', a
 		mock<GlobalConfig>({ taskRunners: {}, nodes: {}, expressionEngine: { engine: 'vm' } }),
 	);
 
-	class ReadOnlyCommand2 extends BaseCommand {}
-	const cmd = new ReadOnlyCommand2();
+	const cmd = new ReadOnlyCommand();
 
 	// act
 
@@ -212,8 +213,7 @@ test('exitWithCrash logs the crash message to the console', async () => {
 	const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 	vi.useFakeTimers();
 
-	class CrashingCommand extends BaseCommand {}
-	const cmd = new CrashingCommand();
+	const cmd = new ReadOnlyCommand();
 	// @ts-expect-error Protected property, set directly to avoid another init() traversal
 	cmd.errorReporter = errorReporter;
 
