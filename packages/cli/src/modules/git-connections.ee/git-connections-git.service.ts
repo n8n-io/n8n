@@ -27,6 +27,14 @@ export class GitConnectionsGitService {
 	}
 
 	validateRepositoryUrl(repositoryUrl: string, connectionType: GitConnectionType) {
+		// `new URL()` silently strips control characters, so reject them up front to
+		// keep the persisted/git-handed URL identical to what we validated.
+		for (const char of repositoryUrl) {
+			const code = char.charCodeAt(0);
+			if (code < 32 || code === 127) {
+				throw new BadRequestError('Repository URL must not contain control characters');
+			}
+		}
 		if (connectionType === 'https') {
 			this.validateHttpsRepositoryUrl(repositoryUrl);
 		} else {

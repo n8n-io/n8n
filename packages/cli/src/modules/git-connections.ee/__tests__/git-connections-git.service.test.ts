@@ -31,6 +31,24 @@ describe('GitConnectionsGitService', () => {
 		});
 	});
 
+	describe('control characters', () => {
+		it.each([
+			['tab', 'https://github.com/org/re\tpo.git'],
+			['carriage return', 'https://github.com/org/re\rpo.git'],
+			['newline', 'https://github.com/org/re\npo.git'],
+		])('rejects an https URL containing a %s', (_label, url) => {
+			expect(() => service.validateRepositoryUrl(url, 'https')).toThrow(BadRequestError);
+		});
+
+		it.each([
+			['tab', 'git@github.com:org/re\tpo.git'],
+			['carriage return', 'git@github.com:org/re\rpo.git'],
+			['newline', 'git@github.com:org/re\npo.git'],
+		])('rejects an ssh URL containing a %s', (_label, url) => {
+			expect(() => service.validateRepositoryUrl(url, 'ssh')).toThrow(BadRequestError);
+		});
+	});
+
 	describe('validateRepositoryUrl (ssh)', () => {
 		it.each([
 			'ssh://git@github.com/org/repo.git',
