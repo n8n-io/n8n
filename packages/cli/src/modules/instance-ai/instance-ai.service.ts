@@ -198,6 +198,7 @@ import {
 	type ResumableOrphan,
 } from './suspended-run-restorer.service';
 import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
+import { redactTelemetryText } from './telemetry-redaction';
 import {
 	InstanceAiTracingService,
 	type MessageTraceFinalization,
@@ -4140,7 +4141,7 @@ export class InstanceAiService {
 				if (intermediateText) {
 					this.telemetry.track('Builder sent message', {
 						thread_id: threadId,
-						message: intermediateText,
+						message: redactTelemetryText(intermediateText),
 						is_intermediate: true,
 					});
 				}
@@ -4317,7 +4318,7 @@ export class InstanceAiService {
 			if (result.status === 'completed') {
 				this.telemetry.track('Builder sent message', {
 					thread_id: threadId,
-					message: outputText,
+					message: redactTelemetryText(outputText),
 				});
 				this.telemetry.track('Builder satisfied user intent', {
 					thread_id: threadId,
@@ -5483,7 +5484,7 @@ export class InstanceAiService {
 				if (intermediateText) {
 					this.telemetry.track('Builder sent message', {
 						thread_id: opts.threadId,
-						message: intermediateText,
+						message: redactTelemetryText(intermediateText),
 						is_intermediate: true,
 					});
 				}
@@ -5665,7 +5666,7 @@ export class InstanceAiService {
 				);
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
-					message: outputText,
+					message: redactTelemetryText(outputText),
 				});
 				this.telemetry.track('Builder satisfied user intent', {
 					thread_id: opts.threadId,
