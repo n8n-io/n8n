@@ -116,7 +116,7 @@ export const Items = {
 		},
 		template: `
 		<div style="padding: 40px;">
-			<Select :items="args.items" v-model="value"/>
+			<Select v-bind="args" v-model="value"/>
 		</div>
 		`,
 	}),
@@ -285,8 +285,6 @@ export const ItemWithDescription = {
 				v-bind="args"
 				v-model="value"
 				:icon="current.icon"
-				size="medium"
-				position="popper"
 			>
 				<template #default>
 					{{ current.label }}
@@ -306,6 +304,8 @@ export const ItemWithDescription = {
 	args: {
 		items: modeItems,
 		modelValue: 'build',
+		size: 'medium',
+		position: 'popper',
 	},
 } satisfies Story;
 
@@ -322,13 +322,13 @@ export const Variants = {
 		template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<N8nInputLabel label="Default">
-				<Select :items="args.items" v-model="defaultValue"/>
+				<Select v-bind="args" v-model="defaultValue"/>
 			</N8nInputLabel>
 			<N8nInputLabel label="Ghost">
-				<Select :items="args.items" v-model="ghostValue" variant="ghost"/>
+				<Select v-bind="args" v-model="ghostValue" variant="ghost"/>
 			</N8nInputLabel>
 			<N8nInputLabel label="Flush">
-				<Select :items="args.items" v-model="flushValue" variant="flush"/>
+				<Select v-bind="args" v-model="flushValue" variant="flush"/>
 			</N8nInputLabel>
 		</div>
 		`,
@@ -350,9 +350,9 @@ export const Positions = {
 		},
 		template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
-			<N8nInputLabel label="Popper (default)">
+			<N8nInputLabel label="Popper">
 				<Select
-					:items="args.items"
+					v-bind="args"
 					v-model="popperValue"
 					position="popper"
 					:style="{ width: '220px' }"
@@ -360,7 +360,7 @@ export const Positions = {
 			</N8nInputLabel>
 			<N8nInputLabel label="Item-aligned">
 				<Select
-					:items="args.items"
+					v-bind="args"
 					v-model="itemAlignedValue"
 					position="item-aligned"
 					:style="{ width: '220px' }"
@@ -389,7 +389,7 @@ export const Sizes = {
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<N8nInputLabel v-for="size in sizes" :key="size" :label="size">
 				<Select
-					:items="args.items"
+					v-bind="args"
 					v-model="values[size].value"
 					:size="size"
 					:style="{ width: '220px' }"
