@@ -22,7 +22,6 @@ export const INSTANCE_RESOURCE_ORDER: InstanceResource[] = [
 	'tag',
 	'project',
 	'insights',
-	'dataTable',
 ];
 
 /** i18n label key per resource group. */
@@ -34,7 +33,6 @@ export const INSTANCE_RESOURCE_LABEL_KEYS: Record<InstanceResource, BaseTextKey>
 	tag: 'instanceRoles.resource.tag',
 	project: 'instanceRoles.resource.project',
 	insights: 'instanceRoles.resource.insights',
-	dataTable: 'instanceRoles.resource.dataTable',
 };
 
 /**
@@ -82,7 +80,6 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 	tag: { Manage: 'instanceRoles.description.tag.manage' },
 	project: { Create: 'instanceRoles.description.project.create' },
 	insights: { View: 'instanceRoles.description.insights.view' },
-	dataTable: { View: 'instanceRoles.description.dataTable.view' },
 };
 
 /** Display order of options within a resource group. */

@@ -70,9 +70,7 @@ describe('custom role scope whitelists', () => {
 		expect(bundle).toContain('mcpApiKey:rotate');
 	});
 
-	it('grants dataTable:list its own group, independent of settings.Manage', () => {
-		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage).not.toContain('dataTable:list');
-		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.dataTable.View).toContain('dataTable:list');
-		expect(GLOBAL_CUSTOM_ROLE_SCOPES.has('dataTable:list')).toBe(true);
+	it('does not expose dataTable:list as a selectable custom-role scope', () => {
+		expect(GLOBAL_CUSTOM_ROLE_SCOPES.has('dataTable:list')).toBe(false);
 	});
 });
