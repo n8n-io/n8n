@@ -477,7 +477,32 @@ export class LmChatAnthropic implements INodeType {
 						description:
 							'Whether the model should stream its response over Server-Sent Events instead of returning a single non-streamed payload. Final output shape is unchanged.',
 					},
+					{
+						displayName: 'Prompt Caching',
+						name: 'promptCaching',
+						type: 'options',
+						default: 'disabled',
+						description:
+							'Whether to cache the system prompt, tool definitions, and conversation history between requests using <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">Anthropic prompt caching</a>. The value sets how long cached content stays valid before it has to be written again.',
+						options: [
+							{ name: 'Disabled', value: 'disabled' },
+							{ name: '5 Minutes', value: '5m' },
+							{ name: '1 Hour', value: '1h' },
+						],
+					},
 				],
+			},
+			{
+				displayName:
+					'Cache reads and writes are billed at different rates than regular input tokens, so reported prompt/total tokens are only an approximation of actual billable usage',
+				name: 'promptCachingNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'/options.promptCaching': ['5m', '1h'],
+					},
+				},
 			},
 		],
 	};
@@ -513,6 +538,7 @@ export class LmChatAnthropic implements INodeType {
 			thinkingMode?: 'disabled' | 'adaptive' | 'manual';
 			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 			streaming?: boolean;
+			promptCaching?: 'disabled' | '5m' | '1h';
 		};
 
 		const isOpus47Model = modelName.startsWith('claude-opus-4-7');
@@ -561,18 +587,31 @@ export class LmChatAnthropic implements INodeType {
 			};
 		}
 
+		if (options.promptCaching && options.promptCaching !== 'disabled') {
+			invocationKwargs.cache_control = {
+				type: 'ephemeral',
+				ttl: options.promptCaching,
+			};
+		}
+
 		const tokensUsageParser = (result: LLMResult) => {
 			const usage = (result?.llmOutput?.usage as {
 				input_tokens: number;
 				output_tokens: number;
+				cache_creation_input_tokens?: number;
+				cache_read_input_tokens?: number;
 			}) ?? {
 				input_tokens: 0,
 				output_tokens: 0,
 			};
+			const promptTokens =
+				usage.input_tokens +
+				(usage.cache_creation_input_tokens ?? 0) +
+				(usage.cache_read_input_tokens ?? 0);
 			return {
 				completionTokens: usage.output_tokens,
-				promptTokens: usage.input_tokens,
-				totalTokens: usage.input_tokens + usage.output_tokens,
+				promptTokens,
+				totalTokens: promptTokens + usage.output_tokens,
 			};
 		};
 
