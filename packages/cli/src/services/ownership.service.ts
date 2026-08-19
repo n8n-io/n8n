@@ -103,6 +103,20 @@ export class OwnershipService {
 	}
 
 	/**
+	 * Invalidate the cached project for specific workflows. Use after a bulk
+	 * ownership change where the workflow IDs are already known and their
+	 * `workflow:owner` rows have moved to a different project.
+	 */
+	async invalidateWorkflowProjectCacheByIds(workflowIds: string[]): Promise<void> {
+		await Promise.all(
+			workflowIds.map(
+				async (workflowId) =>
+					await this.cacheService.deleteFromHash('workflow-project', workflowId),
+			),
+		);
+	}
+
+	/**
 	 * Retrieve the user who owns the personal project, or `null` if non-personal project.
 	 * Personal project ownership is **immutable**.
 	 */
