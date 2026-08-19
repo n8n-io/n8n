@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 
+import { computeChatModelValidationIssues } from './chat-model-validation';
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
@@ -56,6 +57,7 @@ import {
 	normalizeWorkflowSourceFilePath,
 	readWorkflowSourceFile,
 	saveWorkflowSourceFileBinding,
+	type WorkflowSourceFileBinding,
 } from './workflow-file-bindings';
 import {
 	ensureUniqueNodeIds,
@@ -340,6 +342,86 @@ function directPostBuildFlowHandoff(
 		reason: 'direct-build-succeeded',
 		guidance: POST_BUILD_FLOW_GUIDANCE,
 		instructions: getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID),
+	};
+}
+
+interface ValidationFailureArgs {
+	context: InstanceAiContext;
+	blocking: ValidationWarning[];
+	informational: ValidationWarning[];
+	reason: string;
+	guidance: string;
+	summary: string;
+	binding: WorkflowSourceFileBinding;
+	sourceHash: string;
+	targetWorkflowId?: string;
+	filePath: string;
+	resolvedWorkItemId: string;
+	resolvedTaskId: string;
+	plannedTaskId?: string;
+	owner: WorkflowBuildOutcome['owner'];
+	isSupportingWorkflow?: boolean;
+	isAuxiliarySupportingWorkflow?: boolean;
+	withEscalation: (errors: string[]) => string[];
+}
+
+async function handleValidationFailure(args: ValidationFailureArgs) {
+	const {
+		context,
+		blocking,
+		informational,
+		reason,
+		guidance,
+		summary,
+		binding: initialBinding,
+		sourceHash,
+		targetWorkflowId,
+		filePath,
+		resolvedWorkItemId,
+		resolvedTaskId,
+		plannedTaskId,
+		owner,
+		isSupportingWorkflow = false,
+		isAuxiliarySupportingWorkflow = false,
+		withEscalation,
+	} = args;
+
+	const formattedErrors = withEscalation(
+		blocking.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
+	);
+	const remediation = createCodeFixableRemediation({ reason, guidance });
+	const binding = await markSourceBuildFailed(context, initialBinding, sourceHash);
+	await reportFailedWorkflowBuildOutcome(context, {
+		targetWorkflowId,
+		sourceFilePath: filePath,
+		workItemId: resolvedWorkItemId,
+		taskId: resolvedTaskId,
+		plannedTaskId,
+		owner,
+		remediation,
+		errors: formattedErrors,
+		summary,
+		storeOnRunContext: !isAuxiliarySupportingWorkflow,
+	});
+	trackWorkflowSourceBuild(context, {
+		result: 'failure',
+		stage: 'validation',
+		binding,
+		targetWorkflowId,
+		isSupportingWorkflow,
+		isAuxiliarySupportingWorkflow,
+		remediation,
+		errorCount: formattedErrors.length,
+		warningCount: informational.length,
+	});
+	return {
+		success: false as const,
+		...sourceResponseBase(binding),
+		workflowId: targetWorkflowId,
+		workItemId: resolvedWorkItemId,
+		errors: formattedErrors,
+		remediation,
+		warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
 	};
 }
 
@@ -790,49 +872,26 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			informational = partitionedWarnings.informational;
 
 			if (partitionedWarnings.blocking.length > 0) {
-				const formattedErrors = withEscalation(
-					partitionedWarnings.blocking.map(
-						(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
-					),
-				);
-				const remediation = createCodeFixableRemediation({
+				return await handleValidationFailure({
+					context,
+					blocking: partitionedWarnings.blocking,
+					informational,
 					reason: 'workflow_source_validation_failed',
 					guidance:
 						'Edit the workspace source file using the validation diagnostics, then call build-workflow again with the same filePath.',
-				});
-				binding = await markSourceBuildFailed(context, binding, sourceHash);
-				await reportFailedWorkflowBuildOutcome(context, {
+					summary: 'Workflow source failed validation.',
+					binding,
+					sourceHash,
 					targetWorkflowId,
-					sourceFilePath: filePath,
-					workItemId: resolvedWorkItemId,
-					taskId: resolvedTaskId,
+					filePath,
+					resolvedWorkItemId,
+					resolvedTaskId,
 					plannedTaskId,
 					owner,
-					remediation,
-					errors: formattedErrors,
-					summary: 'Workflow source failed validation.',
-					storeOnRunContext: !isAuxiliarySupportingWorkflow,
-				});
-				trackWorkflowSourceBuild(context, {
-					result: 'failure',
-					stage: 'validation',
-					binding,
-					targetWorkflowId,
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
-					remediation,
-					errorCount: formattedErrors.length,
-					warningCount: informational.length,
+					withEscalation,
 				});
-				return {
-					success: false,
-					...sourceResponseBase(binding),
-					workflowId: targetWorkflowId,
-					workItemId: resolvedWorkItemId,
-					errors: formattedErrors,
-					remediation,
-					warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
-				};
 			}
 
 			const json = compiled.workflow;
@@ -894,8 +953,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// a chat-model node for a provider the user has no credential for gets
 			// flagged with the LLM credentials they do have. Nodes the resolver
 			// covered with n8n credits are exempt — they run as built.
+			const chatModelBlocking: ValidationWarning[] = [];
 			for (const message of buildChatModelProviderMismatchWarnings(
-				json.nodes ?? [],
+				(json.nodes ?? []).filter((node) => !node.disabled),
 				[...credentialMap.values()].flat(),
 				mockResult.resolvedCredentialsByNode,
 			)) {
@@ -903,6 +963,49 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					code: 'chat_model_provider_mismatch',
 					message,
 					severity: 'informational',
+				});
+			}
+
+			for (const node of json.nodes ?? []) {
+				if (!node.name || node.disabled) continue;
+				const chatModelIssues = await computeChatModelValidationIssues(context, node);
+				for (const messages of Object.values(chatModelIssues)) {
+					for (const message of messages) {
+						chatModelBlocking.push({
+							code: 'chat_model_validation',
+							message: `${node.name}: ${message}`,
+							nodeName: node.name,
+							severity: 'error',
+						});
+					}
+				}
+			}
+
+			const partitionedChatModelWarnings = partitionWarnings(
+				downgradeUnchangedNodeBlockers(chatModelBlocking, json, savedWorkflowSnapshot),
+			);
+			informational.push(...partitionedChatModelWarnings.informational);
+
+			if (partitionedChatModelWarnings.blocking.length > 0) {
+				return await handleValidationFailure({
+					context,
+					blocking: partitionedChatModelWarnings.blocking,
+					informational,
+					reason: 'chat_model_validation_failed',
+					guidance:
+						'Fix the chat-model configuration using nodes(action="explore-resources") to pick a model the connected credential supports, then call build-workflow again.',
+					summary: 'Workflow uses a chat model or parameter the connected credential cannot run.',
+					binding,
+					sourceHash,
+					targetWorkflowId,
+					filePath,
+					resolvedWorkItemId,
+					resolvedTaskId,
+					plannedTaskId,
+					owner,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					withEscalation,
 				});
 			}
 
