@@ -302,10 +302,12 @@ export class AgentSandboxRuntimeService {
 					? await this.resolveDaytonaSandboxConfig(projectId, sandboxId, labels)
 					: await this.resolveN8nSandboxConfig(sandboxId);
 			const sandbox = await createSandbox(config, { logger: this.logger });
-			if (!sandbox?.destroy) {
+			// deleteRemote deletes by sandbox identity even though this instance never
+			// started it; destroy() is scoped to remotes the instance acquired.
+			if (!sandbox?.deleteRemote) {
 				throw new OperationalError('Agent knowledge sandbox does not support provider destroy');
 			}
-			await sandbox.destroy();
+			await sandbox.deleteRemote();
 		} catch (error) {
 			this.logger.warn('Failed to destroy agent knowledge sandbox', {
 				projectId,
