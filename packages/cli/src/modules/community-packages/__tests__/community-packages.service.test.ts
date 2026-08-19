@@ -841,12 +841,36 @@ describe('CommunityPackagesService', () => {
 			expect(callOrder).toEqual(['rename', 'updatePackageJsonDependency']);
 		});
 
-		test('reconciles the package.json manifest and still attempts a reload when the directory restore fails', async () => {
+		test('rolls the package.json dependency back even when restoring the directory fails', async () => {
 			const packageName = 'n8n-nodes-test';
 			const backupDirectory = `${nodesDownloadDir}/node_modules/${packageName}.backup-123`;
 
 			vi.mocked(rm).mockResolvedValue(undefined);
 			vi.mocked(rename).mockRejectedValue(new Error('EPERM'));
+			const updateDependency = vi
+				.spyOn(communityPackagesService, 'updatePackageJsonDependency')
+				.mockResolvedValue(undefined);
+
+			await (communityPackagesService as any).restoreFailedPackageInstallation(packageName, {
+				backupDirectory,
+				previousVersion: '1.0.0',
+				reloadPackage: true,
+			});
+
+			// The manifest must not keep naming the version that failed to install, even
+			// though the directory it describes could not be restored.
+			expect(updateDependency).toHaveBeenCalledWith(packageName, '1.0.0');
+			// The restore failed, so there is nothing valid on disk to reload: reloading
+			// would only unload a working loader without anything to put back in its place.
+			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+		});
+
+		test('reloads the restored package when the directory restore succeeds', async () => {
+			const packageName = 'n8n-nodes-test';
+			const backupDirectory = `${nodesDownloadDir}/node_modules/${packageName}.backup-123`;
+
+			vi.mocked(rm).mockResolvedValue(undefined);
+			vi.mocked(rename).mockResolvedValue(undefined);
 			vi.spyOn(communityPackagesService, 'updatePackageJsonDependency').mockResolvedValue(
 				undefined,
 			);
@@ -860,14 +884,6 @@ describe('CommunityPackagesService', () => {
 				reloadPackage: true,
 			});
 
-			// The manifest must not keep naming the version that failed to install, even
-			// though the directory it describes could not be restored.
-			expect(communityPackagesService.updatePackageJsonDependency).toHaveBeenCalledWith(
-				packageName,
-				'1.0.0',
-			);
-			// The caller may have already unloaded the previous package or loaded the failed
-			// new one, so the reload is attempted regardless of whether the restore succeeded.
 			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(packageName);
 			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(packageName);
 		});

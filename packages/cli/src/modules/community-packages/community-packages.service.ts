@@ -610,28 +610,27 @@ export class CommunityPackagesService {
 
 		try {
 			await this.restorePackageDirectoryFromBackup(packageName, backupDirectory);
+
+			// Reload only if the restore above succeeded, otherwise there's nothing
+			// valid on disk to load and we'd just unload a working loader for nothing.
+			if (backupDirectory && reloadPackage) {
+				try {
+					await this.loadNodesAndCredentials.unloadPackage(packageName);
+					await this.loadNodesAndCredentials.loadPackage(packageName);
+					await this.loadNodesAndCredentials.postProcessLoaders();
+					this.loadNodesAndCredentials.releaseTypes();
+				} catch (cleanupError) {
+					this.logger.warn('Failed to reload community package after failed installation', {
+						error: ensureError(cleanupError),
+						packageName,
+					});
+				}
+			}
 		} catch (cleanupError) {
 			this.logger.warn('Failed to restore community package directory after failed installation', {
 				error: ensureError(cleanupError),
 				packageName,
 			});
-		}
-
-		// Independent of the restore above: the caller may have already unloaded the
-		// previous package or loaded the failed new one, so reconcile in-memory loaders
-		// with whatever ended up on disk even if the restore itself failed.
-		if (backupDirectory && reloadPackage) {
-			try {
-				await this.loadNodesAndCredentials.unloadPackage(packageName);
-				await this.loadNodesAndCredentials.loadPackage(packageName);
-				await this.loadNodesAndCredentials.postProcessLoaders();
-				this.loadNodesAndCredentials.releaseTypes();
-			} catch (cleanupError) {
-				this.logger.warn('Failed to reload community package after failed installation', {
-					error: ensureError(cleanupError),
-					packageName,
-				});
-			}
 		}
 
 		// Independent of the restore above: a failed restore must not leave package.json
