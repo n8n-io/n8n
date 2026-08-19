@@ -117,6 +117,10 @@ export class LinearTriggerV2 implements INodeType {
 							value: 'document',
 						},
 						{
+							name: 'Initiative',
+							value: 'initiative',
+						},
+						{
 							name: 'Issue',
 							value: 'issue',
 						},
@@ -131,10 +135,6 @@ export class LinearTriggerV2 implements INodeType {
 						{
 							name: 'Project',
 							value: 'project',
-						},
-						{
-							name: 'Roadmap',
-							value: 'roadmap',
 						},
 						{
 							name: 'Team Membership',

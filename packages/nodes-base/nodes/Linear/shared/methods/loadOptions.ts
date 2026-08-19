@@ -64,12 +64,16 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 
 export async function getStates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	let teamId = this.getNodeParameter('teamId', null) as string;
-	// Handle Updates
+	// The team can live in the operation's own collection (update/getAll) rather than at the root
 	if (!teamId) {
 		const updateFields = this.getNodeParameter('updateFields', null) as IDataObject;
-		// If not updating the team look up the current team
-		if (!updateFields?.teamId) {
-			const issueId = this.getNodeParameter('issueId');
+		const filters = this.getNodeParameter('filters', null) as IDataObject;
+		teamId = (updateFields?.teamId ?? filters?.teamId) as string;
+	}
+	// Fall back to the team of the selected issue (issueId is a resource locator in v2)
+	if (!teamId) {
+		const issueId = this.getNodeParameter('issueId', null, { extractValue: true }) as string | null;
+		if (issueId) {
 			const body = {
 				query: `query Issue($issueId: String!) {
 					issue(id: $issueId) {
@@ -85,9 +89,11 @@ export async function getStates(this: ILoadOptionsFunctions): Promise<INodePrope
 			const responseData = await linearApiRequest.call(this, body);
 			teamId = (responseData as IDataObject & { data: { issue: { team: { id: string } } } })?.data
 				?.issue?.team?.id;
-		} else {
-			teamId = updateFields.teamId as string;
 		}
+	}
+
+	if (!teamId) {
+		return [];
 	}
 
 	const returnData: INodePropertyOptions[] = [];
