@@ -44,6 +44,12 @@ const webhook = mock<IWebhookData>({
 	userId,
 });
 
+const flushMicrotasks = async () => {
+	const { setImmediate: realSetImmediate } =
+		await vi.importActual<typeof import('timers')>('timers');
+	await new Promise((resolve) => realSetImmediate(resolve));
+};
+
 describe('TestWebhooks', () => {
 	const logger = mock<Logger>();
 	const registrations = mock<TestWebhookRegistrationsService>();
@@ -428,12 +434,6 @@ describe('TestWebhooks', () => {
 		});
 
 		test('releases isolate only after deactivateWebhooks completes on successful execution', async () => {
-			const flushMicrotasks = async () => {
-				const { setImmediate: realSetImmediate } =
-					await vi.importActual<typeof import('timers')>('timers');
-				await new Promise((resolve) => realSetImmediate(resolve));
-			};
-
 			const expression = mock<WorkflowExpression>();
 			const workflowStartNode = mock<ReturnType<Workflow['getNode']>>({
 				type: 'n8n-nodes-base.noOp',
@@ -495,12 +495,6 @@ describe('TestWebhooks', () => {
 	});
 
 	describe('cancelWebhook()', () => {
-		const flushMicrotasks = async () => {
-			const { setImmediate: realSetImmediate } =
-				await vi.importActual<typeof import('timers')>('timers');
-			await new Promise((resolve) => realSetImmediate(resolve));
-		};
-
 		test('acquires and releases isolate around deactivateWebhooks', async () => {
 			const expression = mock<WorkflowExpression>();
 			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });
