@@ -64,10 +64,6 @@ const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
 deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
 deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
 
-afterEach(() => {
-	vi.restoreAllMocks();
-});
-
 test('should start a task runner', async () => {
 	// arrange
 
