@@ -3,27 +3,16 @@ import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 import { createLogger } from '../../logger';
 import { getRelayHost, isAllowedRelayUrl, isLocalhostRelay } from '../../relayAllowlist';
 import { isEligibleTab } from '../../relayConnection';
-import type {
-	ConnectionStatus,
-	ControlledTabId,
-	TabManagementSettings,
-	BackgroundPushMessage,
-} from '../../types';
-import { isConnectResponse, isStatusResponse, isTabManagementSettings } from '../../types';
+import type { ConnectionStatus, ControlledTabId, BackgroundPushMessage } from '../../types';
+import { isConnectResponse, isStatusResponse } from '../../types';
 
 const log = createLogger('ui');
-
-const DEFAULT_SETTINGS: TabManagementSettings = {
-	allowTabCreation: true,
-	allowTabClosing: false,
-};
 
 export function useConnection() {
 	// ── Core connection state ─────────────────────────────────────────────────
 	const status = ref<ConnectionStatus>('disconnected');
 	const controlledTabIds = ref<ControlledTabId[]>([]);
 	const errorMessage = ref('');
-	const settings = ref<TabManagementSettings>({ ...DEFAULT_SETTINGS });
 	const relayUrl = ref<string | null>(null);
 
 	// Set when the page is opened with `?autoConnect=1` AND the relay URL
@@ -60,14 +49,6 @@ export function useConnection() {
 	const hasRelayUrl = computed(() => !!relayUrl.value);
 	const relayHost = computed(() => getRelayHost(relayUrl.value));
 	const isRelayAllowed = computed(() => isAllowedRelayUrl(relayUrl.value));
-
-	const allSelected = computed(
-		() =>
-			availableTabs.value.length > 0 &&
-			availableTabs.value.every((t) => t.id !== undefined && selectedTabIds.has(t.id)),
-	);
-
-	const someSelected = computed(() => selectedTabIds.size > 0);
 
 	// ── Private helpers ───────────────────────────────────────────────────────
 
@@ -107,16 +88,6 @@ export function useConnection() {
 			selectedTabIds.delete(tabId);
 		} else {
 			selectedTabIds.add(tabId);
-		}
-	}
-
-	function toggleAll(): void {
-		if (allSelected.value) {
-			selectedTabIds.clear();
-		} else {
-			for (const t of availableTabs.value) {
-				if (t.id !== undefined) selectedTabIds.add(t.id);
-			}
 		}
 	}
 
@@ -173,12 +144,14 @@ export function useConnection() {
 		relayUrl.value = null;
 	}
 
-	async function updateSettings(partial: Partial<TabManagementSettings>): Promise<void> {
-		settings.value = { ...settings.value, ...partial };
-		await chrome.runtime.sendMessage({
-			type: 'updateSettings',
-			settings: settings.value,
-		});
+	async function decline(): Promise<void> {
+		log.debug('decline');
+		await chrome.runtime.sendMessage({ type: 'clearRelayUrl' });
+		relayUrl.value = null;
+		const currentTab = await chrome.tabs.getCurrent();
+		if (currentTab?.id !== undefined) {
+			await chrome.tabs.remove(currentTab.id);
+		}
 	}
 
 	// ── Background push message listener ─────────────────────────────────────
@@ -228,13 +201,6 @@ export function useConnection() {
 	// ── Initialization ────────────────────────────────────────────────────────
 
 	onMounted(async () => {
-		const savedSettings: unknown = await chrome.runtime.sendMessage({ type: 'getSettings' });
-		log.debug('saved settings:', savedSettings);
-		if (isTabManagementSettings(savedSettings)) {
-			const validated: TabManagementSettings = savedSettings;
-			settings.value = validated;
-		}
-
 		// Read relay URL directly from the page's own query string first.
 		// This is more reliable than session storage, which can race with the UI mount
 		// (the background script writes it asynchronously when the tab is created).
@@ -295,19 +261,15 @@ export function useConnection() {
 		tabs: availableTabs,
 		selectedTabIds,
 		errorMessage,
-		settings,
 		relayUrl,
 		hasRelayUrl,
 		relayHost,
 		isRelayAllowed,
 		isAutoConnect,
 		controlledTabs: controlledTabDetails,
-		allSelected,
-		someSelected,
 		toggleTab,
-		toggleAll,
 		connect,
+		decline,
 		disconnect,
-		updateSettings,
 	};
 }

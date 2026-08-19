@@ -12,7 +12,6 @@ import type {
 	ExtensionMessage,
 	ExternalConnectResponse,
 	ExternalConnectResultResponse,
-	TabManagementSettings,
 } from './types';
 import { isExternalMessage } from './types';
 
@@ -24,22 +23,6 @@ interface ConnectionState {
 }
 
 let activeConnection: ConnectionState | null = null;
-
-// ---------------------------------------------------------------------------
-// Settings
-// ---------------------------------------------------------------------------
-
-const SETTINGS_KEY = 'tabManagementSettings';
-
-const DEFAULT_SETTINGS: TabManagementSettings = {
-	allowTabCreation: true,
-	allowTabClosing: false,
-};
-
-async function loadSettings(): Promise<TabManagementSettings> {
-	const result = await chrome.storage.local.get(SETTINGS_KEY);
-	return (result[SETTINGS_KEY] as TabManagementSettings) ?? DEFAULT_SETTINGS;
-}
 
 // ---------------------------------------------------------------------------
 // Relay URL storage (for deduplicating connect.html tabs)
@@ -84,17 +67,6 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 				connected: activeConnection !== null,
 				tabIds: activeConnection?.relay.getControlledIds() ?? [],
 			};
-
-		case 'updateSettings': {
-			await chrome.storage.local.set({ [SETTINGS_KEY]: message.settings });
-			if (activeConnection) {
-				activeConnection.relay.setSettings(message.settings);
-			}
-			return { success: true };
-		}
-
-		case 'getSettings':
-			return await loadSettings();
 
 		case 'getRelayUrl': {
 			const stored = await chrome.storage.session.get(RELAY_URL_KEY);
@@ -191,8 +163,8 @@ async function deliverRelayUrl(
 // ---------------------------------------------------------------------------
 
 const EXTERNAL_CONNECT_THROTTLE_MS = 1000;
-const CONNECT_POPUP_WIDTH = 620;
-const CONNECT_POPUP_HEIGHT = 640;
+const CONNECT_POPUP_WIDTH = 540;
+const CONNECT_POPUP_HEIGHT = 700;
 
 let lastExternalConnectAt = 0;
 
@@ -331,7 +303,6 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 
 	const relay = activeConnection.relay;
 	const sourceIsControlled = relay.isControlledTab(details.sourceTabId);
-	const tabCreationAllowed = relay.isTabCreationAllowed();
 
 	log.debug(
 		'[onCreatedNavigationTarget] tabId:',
@@ -342,11 +313,9 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 		details.url,
 		'sourceIsControlled:',
 		sourceIsControlled,
-		'tabCreationAllowed:',
-		tabCreationAllowed,
 	);
 
-	if (!sourceIsControlled || !tabCreationAllowed) return;
+	if (!sourceIsControlled) return;
 
 	// Mark as agent-created so onUpdated listener also tracks URL changes
 	relay.markAsAgentCreated(details.tabId);
@@ -442,10 +411,6 @@ async function connectToRelay(
 		try {
 			// Eagerly attach debugger to selected tabs and resolve CDP targetIds
 			await relay.registerSelectedTabs(selectedTabIds);
-
-			// Load and apply settings
-			const settings = await loadSettings();
-			relay.setSettings(settings);
 		} catch (error) {
 			relay.close('network_error');
 			throw error;

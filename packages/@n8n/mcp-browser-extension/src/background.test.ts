@@ -231,10 +231,10 @@ describe('external messages (direct connect flow)', () => {
 		expect(chromeMock.windows.create).toHaveBeenCalledWith({
 			url: connectUrlWithRelay(RELAY_URL),
 			type: 'popup',
-			width: 620,
-			height: 640,
-			left: 650,
-			top: 220,
+			width: 540,
+			height: 700,
+			left: 690,
+			top: 190,
 		});
 		expect(response()).toEqual({ accepted: true });
 	});
