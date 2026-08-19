@@ -11,7 +11,7 @@ import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'DropWorkflowReviewActivityTypeCheckAndWorkflowIdColumn1786893802707';
+const MIGRATION_NAME = 'DropWorkflowReviewActivityTypeCheckAndWorkflowIdColumn1787089039727';
 
 const ACTIVITY_TABLE = 'workflow_review_activity';
 const COMMENT_TABLE = 'workflow_review_activity_comment';

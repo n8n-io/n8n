@@ -25,7 +25,7 @@ const ORIGINAL_ACTIVITY_TYPES = [
  * `workflowId` goes with it: nothing ever wrote it, and its FK cascades, so a `workflow.deleted`
  * entry scoped through it would delete itself. Per-workflow entries keep the id in `data`.
  */
-export class DropWorkflowReviewActivityTypeCheckAndWorkflowIdColumn1786893802707
+export class DropWorkflowReviewActivityTypeCheckAndWorkflowIdColumn1787089039727
 	implements ReversibleMigration
 {
 	async up({ schemaBuilder: { dropEnumCheck, dropColumns } }: MigrationContext) {
