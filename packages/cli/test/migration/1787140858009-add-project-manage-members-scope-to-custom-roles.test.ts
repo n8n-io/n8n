@@ -8,7 +8,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddProjectManageMembersScopeToCustomRoles1786526297066';
+const MIGRATION_NAME = 'AddProjectManageMembersScopeToCustomRoles1787140858009';
 
 const MANAGE_MEMBERS_SCOPE = 'project:manageMembers';
 const UPDATE_SCOPE = 'project:update';

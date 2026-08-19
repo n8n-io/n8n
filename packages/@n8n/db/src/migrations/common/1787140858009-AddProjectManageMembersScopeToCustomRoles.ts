@@ -26,7 +26,7 @@ type ApiKeyRow = { id: string; scopes: string | string[] | null };
  *
  * Compatible with SQLite and PostgreSQL.
  */
-export class AddProjectManageMembersScopeToCustomRoles1786526297066
+export class AddProjectManageMembersScopeToCustomRoles1787140858009
 	implements IrreversibleMigration
 {
 	async up(ctx: MigrationContext) {

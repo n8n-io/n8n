@@ -10,7 +10,7 @@ import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import { jsonParse } from 'n8n-workflow';
 
-const MIGRATION_NAME = 'AddProjectManageMembersScopeToCustomRoles1786526297066';
+const MIGRATION_NAME = 'AddProjectManageMembersScopeToCustomRoles1787140858009';
 
 const MANAGE_MEMBERS_SCOPE = 'project:manageMembers';
 const UPDATE_SCOPE = 'project:update';
