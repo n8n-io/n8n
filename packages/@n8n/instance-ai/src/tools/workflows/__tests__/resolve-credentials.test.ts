@@ -55,6 +55,14 @@ function makeCredentialMap(credentials: CredentialEntry[]): CredentialMap {
 	return map;
 }
 
+function makeManagedCredential(): {
+	id: null;
+	name: string;
+	__aiGatewayManaged: true;
+} {
+	return { id: null, name: 'n8n credits', __aiGatewayManaged: true };
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -633,6 +641,46 @@ describe('resolveCredentials', () => {
 			expect(json.nodes[0].credentials).toEqual({
 				slackApi: { id: 'existing-id', name: 'Existing Slack' },
 			});
+		});
+
+		it('restores a saved managed credential from a null placeholder', async () => {
+			const managedCredential = makeManagedCredential();
+			const workflow = makeWorkflow({
+				nodes: [
+					{
+						id: 'slack-1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2.2,
+						position: [0, 0],
+						credentials: {
+							slackApi: null as unknown as { id: string; name: string },
+						},
+					},
+				],
+			});
+			const existingWorkflow = makeWorkflow({
+				nodes: [
+					{
+						id: 'slack-1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2.2,
+						position: [0, 0],
+						credentials: { slackApi: managedCredential },
+					},
+				],
+			});
+
+			const result = await resolveCredentials(
+				workflow,
+				'wf-123',
+				createMockContext(existingWorkflow),
+				makeCredentialMap([]),
+			);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(workflow.nodes[0]?.credentials?.slackApi).toBe(managedCredential);
 		});
 	});
 

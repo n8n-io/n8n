@@ -9,6 +9,7 @@ import type { GraphNode } from '@vue-flow/core';
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
 import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGroupActions';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { BoundingBox } from '../../../canvas.types';
 
 const TOOLBAR_OFFSET_PX = 12;
@@ -33,6 +34,7 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 const { teleportTarget } = useVueFlowTransformPaneTeleport();
 const { isSelectionExtractable } = useSelectionValidation();
 const { canGroup, groupSelection } = useCanvasNodeGroupActions(() => props.selectedNodes, {
@@ -47,7 +49,10 @@ const emit = defineEmits<{
 const selectedNodeIds = computed(() => props.selectedNodes.map((node) => node.id));
 
 const canExtractWorkflow = computed(
-	() => !props.readOnly && isSelectionExtractable(selectedNodeIds.value).valid,
+	() =>
+		!props.readOnly &&
+		!settingsStore.isSubworkflowConversionDisabled &&
+		isSelectionExtractable(selectedNodeIds.value).valid,
 );
 
 const isToolbarVisible = computed(

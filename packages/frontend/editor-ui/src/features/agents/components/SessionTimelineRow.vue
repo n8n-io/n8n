@@ -8,6 +8,8 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
 import {
+	executionErrorLabel,
+	executionErrorMessage,
 	hitlTimelineName,
 	isSubAgentTimelineItem,
 	timelineItemStatus,
@@ -56,6 +58,8 @@ const infoText = computed((): string => {
 			return it.workflowName ?? formatToolNameForDisplay(it.toolName);
 		case 'node':
 			return it.nodeDisplayName ?? formatToolNameForDisplay(it.toolName);
+		case 'execution-error':
+			return executionErrorMessage(it, i18n);
 		case 'suspension':
 		case 'hitl-response':
 			return hitlTimelineName(it, i18n);
@@ -89,6 +93,8 @@ const label = computed((): string => {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
+		case 'execution-error':
+			return executionErrorLabel(props.item, i18n);
 		case 'suspension':
 			return i18n.baseText(
 				props.item.hitlRequestType === 'approval'
@@ -130,7 +136,9 @@ const label = computed((): string => {
 				:data-test-id="
 					status.kind === 'hitl-response'
 						? 'timeline-hitl-response-badge'
-						: 'timeline-tool-error-badge'
+						: item.kind === 'execution-error'
+							? 'timeline-execution-error-badge'
+							: 'timeline-tool-error-badge'
 				"
 			>
 				{{ i18n.baseText(status.labelKey) }}
