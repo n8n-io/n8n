@@ -50,9 +50,8 @@ const assetFileNames = (name: string) => (asset: { names?: string[] }) =>
  * read identically inside and outside the monorepo.
  *
  * `dist/css/` sits two levels below the package root, exactly like `src/css/`,
- * so the `url('../../assets/fonts/…')` in `icon.scss` (and later served
- * `@font-face` rules in `fonts.scss`) keeps resolving without rewriting a
- * single path.
+ * so the `url('../../assets/fonts/…')` in `fonts.scss` and `icon.scss` keeps
+ * resolving without rewriting a single path.
  */
 function copyScssSources(): Plugin {
 	return {
