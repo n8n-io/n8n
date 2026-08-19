@@ -43,11 +43,6 @@ export class WorkflowReviewActivityRepository extends BaseRepository<WorkflowRev
 		input: WorkflowReviewActivityPayload & {
 			workflowReviewRequestId: string;
 			createdById: string | null;
-			/**
-			 * Scopes the entry to one workflow; omit for review-level entries. No caller sets it
-			 * yet — see the entity, whose FK cascades.
-			 */
-			workflowId?: string;
 		},
 		ctx: OperationContext,
 	): Promise<WorkflowReviewActivity> {

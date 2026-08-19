@@ -501,17 +501,13 @@ describe('Recording the review lifecycle in the feed', () => {
 
 		const feed = await getActivity(memberAgent, requestId);
 		expect(entryTypes(feed)).toEqual(['review.opened', 'review.version_updated']);
+		// In `data`, never a column: a scoping column would cascade, so a workflow delete would
+		// take the entry with it.
 		expect(feed.data[1].data).toEqual({
 			workflowId: workflow.id,
 			fromWorkflowVersionId: 'version-1',
 			toWorkflowVersionId: 'version-2',
 		});
-
-		// The scoping column stays unwritten: its FK cascades, so a workflow delete would take
-		// the entry with it.
-		const rows = await activityRepository.findBy({ type: 'review.version_updated' });
-		expect(rows).toHaveLength(1);
-		expect(rows[0].workflowId).toBeNull();
 	});
 
 	test('keeps a version update in the feed after its workflow is deleted', async () => {
