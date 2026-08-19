@@ -18,7 +18,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'gitConnection:update',
 	'gitConnection:delete',
 	'gitConnection:list',
-	'gitConnection:connect',
+	'gitConnection:clone',
 	'securityAudit:generate',
 	'securitySettings:manage',
 	'saml:manage',

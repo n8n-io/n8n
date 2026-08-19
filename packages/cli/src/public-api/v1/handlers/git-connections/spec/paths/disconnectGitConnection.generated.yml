@@ -3,7 +3,7 @@ tags:
   - GitConnections
 summary: Disconnect a Git connection
 description: Removes the local clone. The connection and its authentication material are retained.
-x-required-scope: gitConnection:connect
+x-required-scope: gitConnection:clone
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true

@@ -1,5 +1,5 @@
 import {
-	ConnectGitConnectionDto,
+	CloneGitConnectionDto,
 	CreateGitConnectionDto,
 	GitConnectionListPublicDto,
 	GitConnectionPublicDto,
@@ -128,28 +128,28 @@ export class GitConnectionsPublicController {
 		return await this.gitConnections.update(id, input);
 	}
 
-	@Post('/:id/connect')
+	@Post('/:id/clone')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	@ApiKeyScope('gitConnection:connect')
-	@GlobalScope('gitConnection:connect')
-	@ApiSummary('Connect a Git connection')
+	@ApiKeyScope('gitConnection:clone')
+	@GlobalScope('gitConnection:clone')
+	@ApiSummary('Clone a Git connection')
 	@ApiDescription('Clones the repository into local storage. Safe to call repeatedly.')
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionPublicDto)
 	@ApiErrorResponse(404)
-	async connectGitConnection(
+	async cloneGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
-		@Body input: ConnectGitConnectionDto,
+		@Body input: CloneGitConnectionDto,
 	): Promise<GitConnectionPublicDto> {
-		return await this.gitConnections.connect(id, input.branchName);
+		return await this.gitConnections.clone(id, input.branchName);
 	}
 
 	@Post('/:id/disconnect')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	@ApiKeyScope('gitConnection:connect')
-	@GlobalScope('gitConnection:connect')
+	@ApiKeyScope('gitConnection:clone')
+	@GlobalScope('gitConnection:clone')
 	@ApiSummary('Disconnect a Git connection')
 	@ApiDescription(
 		'Removes the local clone. The connection and its authentication material are retained.',

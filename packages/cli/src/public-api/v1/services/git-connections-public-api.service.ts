@@ -24,8 +24,8 @@ export class GitConnectionsPublicApiService {
 		return await (await this.getService()).update(id, input);
 	}
 
-	async connect(id: string, branchName?: string) {
-		return await (await this.getService()).connect(id, branchName);
+	async clone(id: string, branchName?: string) {
+		return await (await this.getService()).clone(id, branchName);
 	}
 
 	async disconnect(id: string) {

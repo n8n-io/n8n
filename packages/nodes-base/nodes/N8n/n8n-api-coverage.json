@@ -16,7 +16,7 @@
 		"DELETE /git-connections/{id}": {
 			"status": "gap"
 		},
-		"POST /git-connections/{id}/connect": {
+		"POST /git-connections/{id}/clone": {
 			"status": "gap"
 		},
 		"POST /git-connections/{id}/disconnect": {
