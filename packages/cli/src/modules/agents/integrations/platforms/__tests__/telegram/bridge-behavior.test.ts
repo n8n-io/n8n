@@ -134,6 +134,7 @@ describe('telegram-bridge-behavior', () => {
 				logger,
 				agentId: 'agent-1',
 				isNewMention: false,
+				replyExpectation: 'required',
 			});
 
 			expect(context.platformAgentContext).toEqual({});

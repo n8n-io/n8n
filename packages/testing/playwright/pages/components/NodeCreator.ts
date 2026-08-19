@@ -98,8 +98,8 @@ export class NodeCreator {
 		await this.getSearchBar().clear();
 	}
 
-	async selectItem(text: string): Promise<void> {
-		await this.getItem(text).click();
+	async selectItem(text: string, options: { exact?: boolean } = {}): Promise<void> {
+		await this.getItem(text, options).click();
 	}
 
 	async selectCategoryItem(text: string): Promise<void> {

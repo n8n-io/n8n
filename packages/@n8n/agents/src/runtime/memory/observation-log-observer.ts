@@ -1,4 +1,7 @@
+import { SECRET_KEYS } from '@n8n/utils/scrub-secrets';
+
 import { renderObservationLog } from './observation-log-renderer';
+import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
@@ -9,10 +12,9 @@ import type {
 	ObservationLogMarker,
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,
-	TokenCounter,
 } from '../../types/sdk/observation-log';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export type { ObservationLogObserveFn, ObservationLogObserverInput };
 
@@ -29,12 +31,15 @@ const DEFAULT_MAX_SERIALIZED_CHARS = 2_000;
 const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
 const DEFAULT_MAX_OBJECT_KEYS = 40;
-const REDACTED_VALUE = '[redacted]';
-const SENSITIVE_KEY_PATTERN =
-	/(?:^|[_-])(?:api[-_]?key|authorization|credential|password|secret|token|access[-_]?token|refresh[-_]?token|private[-_]?key|client[-_]?secret|session[-_]?cookie)(?:$|[_-])/i;
-const INLINE_AUTHORIZATION_PATTERN = /\b(authorization\s*[:=]\s*)(?:[a-z][\w.-]*\s+)?[^\s"',&;]+/gi;
-const INLINE_SECRET_ASSIGNMENT_PATTERN =
-	/\b((?:api[-_]?key|password|secret|token|access[-_]?token|refresh[-_]?token|client[-_]?secret)\s*[:=]\s*)[^\s"',&;]+/gi;
+const REDACTED_VALUE = '[REDACTED]';
+// Built from the shared secret-key vocabulary (@n8n/utils/scrub-secrets) plus
+// a few key names that vocabulary doesn't cover (bare `token`, private keys,
+// client secrets, session cookies) — catches secrets sitting under a
+// sensitive object key regardless of value shape.
+const SENSITIVE_KEY_PATTERN = new RegExp(
+	`(?:^|[_-])(?:${SECRET_KEYS}|token|private[_-]?key|client[_-]?secret|session[_-]?cookie)(?:$|[_-])`,
+	'i',
+);
 
 export interface ParsedObservationLogEntry {
 	marker: ObservationLogMarker;
@@ -134,7 +139,7 @@ export function renderObserverTranscript(
 			.join('\n');
 		if (text) {
 			lines.push(`[${timestamp}] ${message.role}:`);
-			lines.push(text);
+			lines.push(redactText(text).text);
 		}
 
 		for (const toolCall of message.content.filter(isToolCallContent)) {
@@ -176,7 +181,7 @@ export async function runObservationLogObserver(
 
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
 	const transcript = renderObserverTranscript(deltaMessages);
-	const tokenCount = tokenCounter(transcript);
+	const tokenCount = await tokenCounter(transcript);
 	if (tokenCount < opts.observerThresholdTokens) {
 		return { status: 'skipped', reason: 'below-threshold', tokenCount };
 	}
@@ -207,8 +212,20 @@ export async function runObservationLogObserver(
 		opts.onMalformedLine?.(line);
 	}
 
+	const prepared = await Promise.all(
+		parsed.entries.map(async (entry) => {
+			const text = redactText(entry.text).text;
+			return {
+				marker: entry.marker,
+				parentIndex: entry.parentIndex,
+				text,
+				tokenCount: await tokenCounter(text),
+			};
+		}),
+	);
+
 	const inserted: ObservationLogEntry[] = [];
-	for (const entry of parsed.entries) {
+	for (const entry of prepared) {
 		const parentId = entry.parentIndex === null ? null : (inserted[entry.parentIndex]?.id ?? null);
 		const [row] = await memory.appendObservationLogEntries([
 			{
@@ -216,6 +233,7 @@ export async function runObservationLogObserver(
 				marker: entry.marker,
 				text: entry.text,
 				parentId,
+				tokenCount: entry.tokenCount,
 				createdAt: new Date(now.getTime() + inserted.length),
 			},
 		]);
@@ -268,7 +286,7 @@ function serializeErrorForObserver(
 	options: RenderObserverTranscriptOptions,
 ): string {
 	return truncateString(
-		redactSensitiveString(error),
+		redactText(error).text,
 		options.maxStringChars ?? DEFAULT_MAX_STRING_CHARS,
 		'string',
 	);
@@ -280,7 +298,7 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	const maxObjectKeys = options.maxObjectKeys ?? DEFAULT_MAX_OBJECT_KEYS;
 
 	if (typeof value === 'string') {
-		return truncateString(redactSensitiveString(value), maxStringChars, 'string');
+		return truncateString(redactText(value).text, maxStringChars, 'string');
 	}
 	if (value === null || typeof value !== 'object') return value;
 
@@ -313,18 +331,6 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 
 function isSensitiveKey(key: string): boolean {
 	return SENSITIVE_KEY_PATTERN.test(key);
-}
-
-function redactSensitiveString(value: string): string {
-	return value
-		.replace(
-			INLINE_AUTHORIZATION_PATTERN,
-			(_match: string, prefix: string) => `${prefix}${REDACTED_VALUE}`,
-		)
-		.replace(
-			INLINE_SECRET_ASSIGNMENT_PATTERN,
-			(_match: string, prefix: string) => `${prefix}${REDACTED_VALUE}`,
-		);
 }
 
 function shouldStripBlob(key: string, value: unknown): boolean {

@@ -1,3 +1,4 @@
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import fc from 'fast-check';
 import type { CronExpression } from 'n8n-workflow';
 
@@ -20,6 +21,9 @@ const makeIntervalJob = (intervalSeconds: number): ScheduledJob => ({
 	nextRunAt: NOW,
 	lastFiredAt: null,
 	maxAttempts: 1,
+	misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+	misfireGraceSeconds: 60,
+	ownerKey: null,
 });
 
 const makeCronJob = (cronExpression: string, timezone: string): ScheduledJob => ({
@@ -36,6 +40,9 @@ const makeCronJob = (cronExpression: string, timezone: string): ScheduledJob => 
 	nextRunAt: NOW,
 	lastFiredAt: null,
 	maxAttempts: 1,
+	misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+	misfireGraceSeconds: 60,
+	ownerKey: null,
 });
 
 const makeOneOffJob = (fireAt: Date): ScheduledJob => ({
@@ -54,6 +61,9 @@ const makeOneOffJob = (fireAt: Date): ScheduledJob => ({
 	nextRunAt: fireAt,
 	lastFiredAt: null,
 	maxAttempts: 1,
+	misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+	misfireGraceSeconds: 60,
+	ownerKey: null,
 });
 
 /**
@@ -175,6 +185,124 @@ describe('planOccurrences (fast-check)', () => {
 						expect(plan.occurrences).toEqual([]);
 						expect(plan.nextRunAt).toEqual(fireAt);
 					}
+				},
+			),
+		);
+	});
+});
+
+describe('planOccurrences misfire handling (fast-check)', () => {
+	/** An every-`intervalSeconds` job whose clock stopped `backlogSeconds` ago. */
+	const makeBackloggedJob = (
+		intervalSeconds: number,
+		backlogSeconds: number,
+		misfirePolicy: ScheduledJobMisfirePolicy,
+		misfireGraceSeconds: number,
+	): ScheduledJob => ({
+		...makeIntervalJob(intervalSeconds),
+		nextRunAt: new Date(NOW.getTime() - backlogSeconds * 1000),
+		misfirePolicy,
+		misfireGraceSeconds,
+	});
+
+	const MAX_PER_JOB = 500;
+
+	const arbBacklog = fc.tuple(
+		fc.integer({ min: 1, max: 600 }), // intervalSeconds
+		fc.integer({ min: 0, max: 7200 }), // backlogSeconds
+		fc.integer({ min: 1, max: 300 }), // misfireGraceSeconds
+		fc.integer({ min: 0, max: 600 }), // windowSeconds
+	);
+
+	/**
+	 * The instants the pass had to choose from, derived independently of the
+	 * implementation so the properties below compare against the candidate set rather
+	 * than against what was recorded.
+	 */
+	const candidates = (intervalSeconds: number, backlogSeconds: number, windowSeconds: number) => {
+		const first = NOW.getTime() - backlogSeconds * 1000;
+		const windowEnd = NOW.getTime() + windowSeconds * 1000;
+		const all: Date[] = [];
+		// Counted past the cap as well as up to it: a walk that filled the cap exactly
+		// with nothing left in the window counts as complete, not truncated.
+		let inWindow = 0;
+		for (let t = first; t <= windowEnd; t += intervalSeconds * 1000) {
+			inWindow++;
+			if (all.length < MAX_PER_JOB) all.push(new Date(t));
+		}
+		return { all, truncated: inWindow > MAX_PER_JOB };
+	};
+
+	it('records at most one occurrence at or before now once a deadline has passed', () => {
+		fc.assert(
+			fc.property(
+				arbBacklog,
+				([intervalSeconds, backlogSeconds, misfireGraceSeconds, windowSeconds]) => {
+					const options = { windowSeconds, maxPerJob: MAX_PER_JOB, defaultTimezone: 'UTC' };
+					const { all, truncated } = candidates(intervalSeconds, backlogSeconds, windowSeconds);
+					const anyPastDeadline = all.some(
+						(o) => o.getTime() + misfireGraceSeconds * 1000 <= NOW.getTime(),
+					);
+
+					for (const policy of [
+						ScheduledJobMisfirePolicy.Coalesce,
+						ScheduledJobMisfirePolicy.Skip,
+					]) {
+						const job = makeBackloggedJob(
+							intervalSeconds,
+							backlogSeconds,
+							policy,
+							misfireGraceSeconds,
+						);
+						const recorded = planOccurrences(job, NOW, options).occurrences;
+						const behind = recorded.filter((o) => o.getTime() <= NOW.getTime());
+						const ahead = all.filter((o) => o.getTime() > NOW.getTime());
+
+						if (!anyPastDeadline) {
+							expect(recorded).toEqual(all);
+							continue;
+						}
+
+						// Skip records no catch-up run; coalesce records exactly one, unless the
+						// walk was capped mid-backlog, where it defers to a later pass.
+						const expectedBehind =
+							policy === ScheduledJobMisfirePolicy.Skip || (truncated && ahead.length === 0)
+								? 0
+								: 1;
+						expect(behind).toHaveLength(expectedBehind);
+
+						if (expectedBehind === 1) {
+							const newestBehind = all.filter((o) => o.getTime() <= NOW.getTime()).at(-1);
+							expect(behind[0]).toEqual(newestBehind);
+						}
+						expect(recorded.filter((o) => o.getTime() > NOW.getTime())).toEqual(ahead);
+					}
+				},
+			),
+		);
+	});
+
+	it('advances the clock identically under either policy', () => {
+		fc.assert(
+			fc.property(
+				arbBacklog,
+				([intervalSeconds, backlogSeconds, misfireGraceSeconds, windowSeconds]) => {
+					const options = { windowSeconds, maxPerJob: MAX_PER_JOB, defaultTimezone: 'UTC' };
+					const plans = [ScheduledJobMisfirePolicy.Coalesce, ScheduledJobMisfirePolicy.Skip].map(
+						(policy) =>
+							planOccurrences(
+								makeBackloggedJob(intervalSeconds, backlogSeconds, policy, misfireGraceSeconds),
+								NOW,
+								options,
+							),
+					);
+
+					expect(plans[0].nextRunAt).toEqual(plans[1].nextRunAt);
+					expect(plans[0].lastFiredAt).toEqual(plans[1].lastFiredAt);
+
+					expect(plans[0].occurrences.length + plans[0].skippedOccurrences).toBe(
+						plans[1].occurrences.length + plans[1].skippedOccurrences,
+					);
 				},
 			),
 		);

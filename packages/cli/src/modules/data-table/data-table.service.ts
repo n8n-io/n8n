@@ -395,6 +395,13 @@ export class DataTableService {
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[] | true>;
+	async upsertRow(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData: boolean = false,
 		dryRun: boolean = false,
 	) {
@@ -496,6 +503,13 @@ export class DataTableService {
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[] | true>;
+	async updateRows(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
 		returnData: boolean = false,
 		dryRun: boolean = false,
 	) {
@@ -556,6 +570,13 @@ export class DataTableService {
 		returnData?: false,
 		dryRun?: false,
 	): Promise<true>;
+	async deleteRows(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | true>;
 	async deleteRows(
 		dataTableId: string,
 		projectId: string,
@@ -688,7 +709,10 @@ export class DataTableService {
 		return validationResult.newValue as DataTableColumnJsType;
 	}
 
-	private async validateDataTableExists(dataTableId: string, projectId: string) {
+	/**
+	 * Performs no authorization — callers must pass an already-authorized `projectId`.
+	 */
+	async validateDataTableExists(dataTableId: string, projectId: string) {
 		const existingTable = await this.dataTableRepository.findOneBy({
 			id: dataTableId,
 			project: {

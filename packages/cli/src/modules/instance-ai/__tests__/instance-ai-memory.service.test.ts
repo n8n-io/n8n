@@ -1020,18 +1020,26 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 			id: 'thread-new',
 			title: '',
 			resourceId: 'user-1',
-			metadata: undefined,
+			metadata: { source: 'assistant_page', origin: 'internal' },
 			createdAt: new Date('2026-01-01T00:00:00.000Z'),
 			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
 		});
 
 		const service = createService();
-		const result = await service.ensureThread('user-1', 'thread-new', 'project-1');
+		const result = await service.ensureThread('user-1', 'thread-new', 'project-1', {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 
 		// Thread + project binding are written together, so a partial failure can
 		// never persist a project-less thread.
 		expect(mockSaveThreadWithProject).toHaveBeenCalledWith(
-			{ id: 'thread-new', resourceId: 'user-1', title: '' },
+			{
+				id: 'thread-new',
+				resourceId: 'user-1',
+				title: '',
+				metadata: { source: 'assistant_page', origin: 'internal' },
+			},
 			'project-1',
 		);
 		expect(mockSaveThread).not.toHaveBeenCalled();
@@ -1051,7 +1059,10 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		});
 
 		const service = createService();
-		const result = await service.ensureThread('user-1', 'thread-existing', 'project-1');
+		const result = await service.ensureThread('user-1', 'thread-existing', 'project-1', {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 
 		expect(mockSaveThread).not.toHaveBeenCalled();
 		expect(result.created).toBe(false);

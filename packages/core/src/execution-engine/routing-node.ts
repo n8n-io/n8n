@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { sleep } from '@n8n/utils/sleep';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
@@ -10,7 +11,6 @@ import {
 	NodeHelpers,
 	NodeApiError,
 	NodeOperationError,
-	sleep,
 	NodeConnectionTypes,
 	getCredentialAllowedDomains,
 } from 'n8n-workflow';

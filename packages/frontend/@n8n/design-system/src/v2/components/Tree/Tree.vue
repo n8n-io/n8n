@@ -203,10 +203,10 @@ function mapVirtualFlattenedItem(
 	>
 		<TreeVirtualizer
 			v-if="virtualized"
+			v-slot="{ item: flattenedItem }"
 			:estimate-size="estimateSize"
 			:overscan="overscan"
 			:text-content="virtualTextContent"
-			v-slot="{ item: flattenedItem }"
 		>
 			<TreeNode
 				:key="flattenedItem._id"

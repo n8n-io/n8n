@@ -15,6 +15,7 @@ export const RESOURCES = {
 		'move',
 		'connect',
 		'createEndUser',
+		'manageInstance',
 		...DEFAULT_OPERATIONS,
 	] as const,
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
@@ -71,12 +72,12 @@ export const RESOURCES = {
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
 	testRun: ['read', 'list'] as const,
 	workflowTags: ['update', 'list'] as const,
-	role: ['manage', 'read', 'manageProject'] as const,
+	role: ['manage', 'read', 'manageProject', 'list'] as const,
 	mcp: ['manage', 'oauth'] as const,
 	mcpApiKey: ['create', 'rotate'] as const,
 	chatHub: ['manage', 'message'] as const,
 	chatHubAgent: [...DEFAULT_OPERATIONS] as const,
-	breakingChanges: ['list'] as const,
+	breakingChanges: ['list', 'migrate'] as const,
 	apiKey: ['manage', 'list', 'create', 'delete', 'update'] as const,
 	encryptionKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
@@ -92,6 +93,9 @@ export const API_KEY_RESOURCES = {
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
 	saml: ['manage'] as const,
+	oidc: ['manage'] as const,
+	otel: ['manage'] as const,
+	ldap: ['manage', 'sync'] as const,
 	project: ['create', 'update', 'delete', 'list', 'export'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,
@@ -107,9 +111,12 @@ export const API_KEY_RESOURCES = {
 	dataTableColumn: ['create', 'read', 'delete', 'update'] as const,
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
 	insights: ['read'] as const,
+	role: ['manage', 'manageProject', 'list', 'read'] as const,
+	roleMappingRule: ['create', 'list'] as const,
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
+export const GLOBAL_ADMIN_ROLE_SLUG = 'global:admin';
 export const GLOBAL_CHAT_USER_ROLE_SLUG = 'global:chatUser';
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
 export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';

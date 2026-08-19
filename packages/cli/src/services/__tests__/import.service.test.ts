@@ -117,6 +117,19 @@ describe('ImportService', () => {
 		);
 	});
 
+	describe('initRecords', () => {
+		it('loads only credentials available to workflows', async () => {
+			vi.mocked(mockCredentialsRepository.find).mockResolvedValue([]);
+			vi.mocked(mockTagRepository.find).mockResolvedValue([]);
+
+			await importService.initRecords();
+
+			expect(mockCredentialsRepository.find).toHaveBeenCalledWith({
+				where: { usageScope: 'project' },
+			});
+		});
+	});
+
 	describe('isTableEmpty', () => {
 		it('should return true for empty table', async () => {
 			const mockQueryBuilder = {

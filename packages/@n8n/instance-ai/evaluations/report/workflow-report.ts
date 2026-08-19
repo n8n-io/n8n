@@ -18,6 +18,7 @@ import type {
 	BuildExpectationResult,
 	ConversationMetrics,
 	ExecutionScenarioResult,
+	SetupWizardSkippedNode,
 	ToolInteraction,
 	TranscriptStep,
 	TranscriptTurn,
@@ -294,8 +295,12 @@ function firstPromptText(result: WorkflowTestCaseResult): string {
 
 function promptReview(result: WorkflowTestCaseResult, sr: ExecutionScenarioResult): StageReview {
 	const evidence = `${sr.reasoning} ${sr.rootCause ?? ''}`.toLowerCase();
+	// Gated on the failure being the builder's: a mock or infra failure says
+	// nothing about the prompt. Used to read `failureCategory ===
+	// 'legitimate_failure'` — a lang-tracer bucket the harness never emits, so
+	// this stage could never fail (TRUST-375).
 	const promptLooksUnderspecified =
-		sr.failureCategory === 'legitimate_failure' &&
+		sr.attribution === 'builder_issue' &&
 		['ambiguous', 'unclear', 'not specified', 'not define', 'does not specify'].some((needle) =>
 			evidence.includes(needle),
 		);
@@ -461,8 +466,11 @@ function verifierReview(sr: ExecutionScenarioResult): StageReview {
 	};
 }
 
+/** Keyed on the attribution buckets, not the raw verifier category: the old
+ *  switch mixed our categories with lang-tracer's bucket names, so two of its
+ *  arms were unreachable (TRUST-375). */
 function promptImprovementSuggestion(sr: ExecutionScenarioResult): string {
-	switch (sr.failureCategory) {
+	switch (sr.attribution) {
 		case 'builder_issue':
 			return 'For workflows with multiple required effects, branches, or error paths, state each required action explicitly and add observable acceptance conditions for every branch. This reduces silent omission during planning or build.';
 		case 'mock_issue':
@@ -471,8 +479,6 @@ function promptImprovementSuggestion(sr: ExecutionScenarioResult): string {
 			return 'Make trigger preconditions and scenario setup requirements explicit in the test prompt or fixture description so empty-input framework failures are easier to separate from workflow defects.';
 		case 'verification_gap':
 			return 'Add concrete, inspectable success evidence to the prompt, such as the exact side effect, branch behavior, or output field that should be observed, so the verifier has less room to infer.';
-		case 'legitimate_failure':
-			return 'If this behavior is required, move it from an implied expectation into an explicit prompt requirement with a clear fallback path and observable success criterion.';
 		default:
 			return 'Turn the failed behavior into a more explicit, testable requirement in future prompts: name the required step, the expected branch, and the observable evidence that proves it happened.';
 	}
@@ -590,8 +596,166 @@ function renderScenario(
 	</div>`;
 }
 
+/** Objects render as pretty JSON; pre-truncated capture strings render verbatim. */
+function agentValueBlock(value: unknown): string {
+	const text = typeof value === 'string' ? value : (JSON.stringify(value, null, 2) ?? 'null');
+	return `<pre class="json-block json-sm"><code>${escapeHtml(text)}</code></pre>`;
+}
+
+/**
+ * Scenario detail for agent-artifact runs: the tool-call timeline (with the
+ * intercepted requests + mock responses behind each call) plays the role the
+ * per-node execution trace plays for workflows, and the recorded real-model
+ * turns replace the wire-server section.
+ */
+function renderAgentScenarioDetail(
+	sr: ExecutionScenarioResult,
+	ar: NonNullable<ExecutionScenarioResult['agentEvalResult']>,
+): string {
+	let html = '';
+
+	if (!sr.success && sr.failureCategory) {
+		const catClass =
+			sr.failureCategory === 'builder_issue'
+				? 'warn'
+				: sr.failureCategory === 'mock_issue'
+					? 'fail'
+					: 'info';
+		html += `<div class="category-badge category-${catClass}">${escapeHtml(sr.failureCategory)}${sr.rootCause ? ': ' + escapeHtml(sr.rootCause) : ''}</div>`;
+	}
+
+	// The reshape guard only validates runId/toolCalls/modelTurns/seed — default
+	// the rest so a partially-shaped row degrades instead of crashing the report.
+	const errors = ar.errors ?? [];
+	const seedWarnings = ar.seed.warnings ?? [];
+	const skippedFeatures = ar.skippedFeatures ?? [];
+	if (errors.length > 0) {
+		html += `<div class="error-box">${escapeHtml(errors.join('; '))}</div>`;
+	}
+	if (seedWarnings.length > 0) {
+		html += `<div class="warning-box">${escapeHtml(seedWarnings.join('; '))}</div>`;
+	}
+	if (skippedFeatures.length > 0) {
+		html += `<div class="warning-box">Agent features disabled for this run (not mockable yet): ${escapeHtml(
+			skippedFeatures.map((s) => s.feature).join(', '),
+		)}</div>`;
+	}
+
+	if (sr.reasoning) {
+		html += '<details class="section" open><summary>Diagnosis</summary>';
+		html += `<div class="diagnosis">${escapeHtml(sr.reasoning)}</div>`;
+		html += '</details>';
+	}
+
+	// Scenario seed — the agent analog of the workflow mock data plan: the
+	// generated opening message plays the trigger-content role.
+	html += '<details class="section"><summary>Scenario seed</summary>';
+	html += '<div class="subsection-label">Opening user message</div>';
+	html += `<div class="hint-text">${escapeHtml(ar.seed.openingMessage || '(none)')}</div>`;
+	if (ar.seed.globalContext) {
+		html += '<div class="subsection-label">Global context</div>';
+		html += `<div class="hint-text">${escapeHtml(ar.seed.globalContext)}</div>`;
+	}
+	const toolHintEntries = Object.entries(ar.seed.toolHints ?? {});
+	if (toolHintEntries.length > 0) {
+		html += '<div class="subsection-label">Per-tool hints</div>';
+		for (const [toolName, hint] of toolHintEntries) {
+			html += `<details class="node-hint"><summary>${escapeHtml(toolName)}</summary>`;
+			html += `<div class="hint-text">${escapeHtml(hint)}</div>`;
+			html += '</details>';
+		}
+	}
+	html += '</details>';
+
+	// Agent run trace — tool calls with their intercepted wire traffic.
+	html += '<details class="section"><summary>Agent run trace</summary>';
+	const usage = ar.usage
+		? ` — ~${String(ar.usage.inputTokens ?? 0)} in / ${String(ar.usage.outputTokens ?? 0)} out tokens`
+		: '';
+	html += `<div class="hint-text">Model ${escapeHtml(ar.model ?? '(unknown)')} ran for real (${String(ar.modelTurns.length)} turn(s)${usage})${ar.finishReason ? ` — finishReason: ${escapeHtml(ar.finishReason)}` : ''}</div>`;
+
+	if (ar.toolCalls.length === 0) {
+		html += '<div class="muted">No tool calls were made in this run.</div>';
+	}
+	for (const call of ar.toolCalls) {
+		// Defensive: reshaped LangSmith rows may carry partially-shaped entries.
+		const interceptedRequests = call.interceptedRequests ?? [];
+		html += '<div class="trace-node">';
+		html += '<div class="trace-node-header">';
+		html += `<span class="${call.mocked ? 'node-mode-mocked' : 'node-mode-real'}">[${escapeHtml(call.kind)}]</span> <strong>${escapeHtml(call.tool ?? '(unnamed tool)')}</strong>`;
+		if (interceptedRequests.length > 0) {
+			html += ` <span class="request-count">${String(interceptedRequests.length)} request(s)</span>`;
+		}
+		if (call.autoApproved) {
+			html += ' <span class="muted">(approval auto-granted by the harness)</span>';
+		}
+		html += '</div>';
+		if (call.error) {
+			html += `<span class="build-issue">Tool error: ${escapeHtml(call.error)}</span>`;
+		}
+		if (call.input !== undefined) {
+			html += '<div class="request-header">Tool input</div>';
+			html += agentValueBlock(call.input);
+		}
+		for (const req of interceptedRequests) {
+			html += '<div class="request-pair">';
+			html += '<div class="request-header">Request sent</div>';
+			html += `<div class="request-method">${escapeHtml(req.method)} ${escapeHtml(req.url || '(no URL)')}</div>`;
+			if (req.requestBody) {
+				html += agentValueBlock(req.requestBody);
+			}
+			html += '<div class="response-header">Mock returned</div>';
+			if (req.mockResponse !== undefined) {
+				html += agentValueBlock(req.mockResponse);
+			} else {
+				html += '<div class="muted">no mock response</div>';
+			}
+			html += '</div>';
+		}
+		if (call.output !== undefined) {
+			html += '<div class="response-header">Tool output</div>';
+			html += agentValueBlock(call.output);
+		}
+		html += '</div>';
+	}
+
+	// Real model turns (recorded passthrough traffic, bodies truncated at capture).
+	if (ar.modelTurns.length > 0) {
+		html += '<div class="subsection-label">Model turns (real, recorded)</div>';
+		ar.modelTurns.forEach((turn, index) => {
+			const duration =
+				turn.durationMs !== undefined ? ` ${String(Math.round(turn.durationMs / 100) / 10)}s` : '';
+			html += `<details class="node-hint"><summary>turn ${String(index + 1)} — ${escapeHtml(turn.provider ?? turn.url)} ${turn.status !== undefined ? String(turn.status) : ''}${duration}${turn.streamed ? ' (streamed)' : ''}${turn.error ? ' — ERROR' : ''}</summary>`;
+			if (turn.error) {
+				html += `<div class="error-box">${escapeHtml(turn.error)}</div>`;
+			}
+			if (turn.requestBody !== undefined) {
+				html += '<div class="request-header">Request body</div>';
+				html += agentValueBlock(turn.requestBody);
+			}
+			if (turn.responseBody !== undefined) {
+				html += '<div class="response-header">Response body</div>';
+				html += agentValueBlock(turn.responseBody);
+			}
+			html += '</details>';
+		});
+	}
+	html += '</details>';
+
+	// Final reply — what the user would have seen.
+	html += '<details class="section" open><summary>Agent final reply</summary>';
+	html += `<div class="diagnosis">${escapeHtml(ar.finalText || '(no final text)')}</div>`;
+	html += '</details>';
+
+	return html;
+}
+
 function renderScenarioDetail(sr: ExecutionScenarioResult): string {
 	let html = '';
+
+	if (sr.agentEvalResult) {
+		return renderAgentScenarioDetail(sr, sr.agentEvalResult);
+	}
 
 	if (!sr.evalResult) {
 		if (sr.reasoning) {
@@ -872,7 +1036,8 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			return `<details class="transcript-aside" open><summary>${summary}</summary><ul class="transcript-questions">${lines}</ul></details>`;
 		}
 		case 'setup-wizard': {
-			const skipped = interaction.skippedNodes;
+			const skipped = interaction.nodesStillNeedingSetup;
+			const declined = interaction.skippedByUser ?? [];
 			const needCreds = skipped.filter((s) => Boolean(s.credentialType)).length;
 			const needParams = skipped.length - needCreds;
 			const breakdown: string[] = [];
@@ -884,8 +1049,11 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			}
 			if (skipped.length > 0) {
 				headerParts.push(
-					`${String(skipped.length)} skipped${breakdown.length > 0 ? ` (${breakdown.join(', ')})` : ''}`,
+					`${String(skipped.length)} unconfigured${breakdown.length > 0 ? ` (${breakdown.join(', ')})` : ''}`,
 				);
+			}
+			if (declined.length > 0) {
+				headerParts.push(`${String(declined.length)} skipped by user`);
 			}
 			const header = headerParts.length > 0 ? headerParts.join(', ') : 'nothing to apply';
 
@@ -901,17 +1069,20 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 					`<div class="transcript-section-label">configured (${String(interaction.completedNodes.length)})</div><ul class="transcript-plan">${items}</ul>`,
 				);
 			}
-			if (skipped.length > 0) {
-				const items = skipped
+			const renderNodeList = (nodes: SetupWizardSkippedNode[], label: string) => {
+				const items = nodes
 					.map(
 						(s) =>
 							`<li>${escapeHtml(s.nodeName)}${s.credentialType ? ` — needs <code>${escapeHtml(s.credentialType)}</code> credential` : ' — needs parameters'}</li>`,
 					)
 					.join('');
 				sections.push(
-					`<div class="transcript-section-label">skipped (${String(skipped.length)})</div><ul class="transcript-plan">${items}</ul>`,
+					`<div class="transcript-section-label">${label} (${String(nodes.length)})</div><ul class="transcript-plan">${items}</ul>`,
 				);
-			}
+			};
+			if (skipped.length > 0) renderNodeList(skipped, 'unconfigured');
+			// Separate section: re-asking for one of these is the failure a judge looks for.
+			if (declined.length > 0) renderNodeList(declined, 'skipped by user');
 			return `<details class="transcript-aside" open><summary>🛠 setup wizard — ${escapeHtml(header)}</summary>${sections.join('')}</details>`;
 		}
 		case 'setup-card': {
@@ -1197,7 +1368,16 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 			`<details class="section"><summary>Builder agent activity (raw)</summary><pre class="json-block"><code>${escapeHtml(JSON.stringify(result.buildTrace.agentActivities, null, 2))}</code></pre></details>`;
 	}
 
-	return nodesHtml + diagramHtml + edgesHtml + jsonHtml + traceHtml;
+	// Agent-artifact cases: the rendered agent config + skills is the built
+	// artifact — the counterpart of the workflow JSON block above.
+	let agentHtml = '';
+	if (result.agentArtifactContext) {
+		agentHtml = `<details class="section"><summary>Built agent${result.agentId ? ` (${escapeHtml(result.agentId)})` : ''}</summary><pre class="json-block"><code>${escapeHtml(result.agentArtifactContext)}</code></pre></details>`;
+	} else if (result.agentId) {
+		agentHtml = `<details class="section"><summary>Built agent (${escapeHtml(result.agentId)})</summary><pre class="json-block"><code>(no agent artifact captured for this run)</code></pre></details>`;
+	}
+
+	return agentHtml + nodesHtml + diagramHtml + edgesHtml + jsonHtml + traceHtml;
 }
 
 // ---------------------------------------------------------------------------
@@ -1639,8 +1819,14 @@ ${results.map((r, i) => renderTestCase(r, i)).join('')}
 // Write report to disk
 // ---------------------------------------------------------------------------
 
-export function writeWorkflowReport(results: WorkflowTestCaseResult[]): string {
-	const reportDir = path.join(__dirname, '..', '..', '.data');
+/**
+ * Write the HTML report into `outputDir` (--output-dir), falling back to the
+ * package-level `.data` directory. The stable filename makes the fallback
+ * unsafe for concurrent runs against one checkout, so callers that have a
+ * per-run directory must pass it (see run/reporters.ts).
+ */
+export function writeWorkflowReport(results: WorkflowTestCaseResult[], outputDir?: string): string {
+	const reportDir = outputDir ?? path.join(__dirname, '..', '..', '.data');
 	if (!fs.existsSync(reportDir)) {
 		fs.mkdirSync(reportDir, { recursive: true });
 	}

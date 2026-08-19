@@ -1,3 +1,4 @@
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { testDb } from '@n8n/backend-test-utils';
 import {
 	ScheduledJob,
@@ -463,6 +464,9 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 					intervalSeconds: 60,
 					fireAt: null,
 					nextRunAt: secondsFromNow(3600),
+					maxAttempts: 1,
+					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+					misfireGraceSeconds: 60,
 				}));
 				const ids = await dataSource.transaction(
 					async (trx) => await jobRepository.insertMany(trx, newJobs),

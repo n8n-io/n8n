@@ -11,10 +11,10 @@ import SettingsUsersView from './SettingsUsersView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useEmitters } from '@/__tests__/utils';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { useUsersStore } from '../users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import * as permissions from '@/app/utils/rbac/permissions';
 import type { PermissionTypeOptions } from '@/app/types/rbac';
@@ -59,11 +59,11 @@ const mockPageRedirectionHelper = {
 	goToUpgrade: vi.fn(),
 };
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => mockToast),
 }));
 
-vi.mock('@/app/composables/useClipboard', () => ({
+vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: vi.fn(() => mockClipboard),
 }));
 
@@ -134,6 +134,12 @@ describe('SettingsUsersView', () => {
 		// Reset mock to default state before each test
 		mockIsVariantEnabled.mockReset();
 		mockIsVariantEnabled.mockReturnValue(false);
+
+		// Mimic useClipboard.copy resolving a promise-returning value, so a
+		// rejected invite-link fetch surfaces to the handler's try/catch.
+		mockClipboard.copy.mockImplementation(async (value: string | (() => Promise<string>)) => {
+			if (typeof value === 'function') await value();
+		});
 
 		renderComponent = createComponentRenderer(SettingsUsersView, {
 			pinia: createTestingPinia(),
@@ -259,7 +265,7 @@ describe('SettingsUsersView', () => {
 
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('action-box')).toBeInTheDocument();
+		expect(getByTestId('empty-state')).toBeInTheDocument();
 	});
 
 	it('should show advanced permissions notice when feature is disabled', async () => {
@@ -555,10 +561,10 @@ describe('SettingsUsersView', () => {
 			emitters.settingsUsersTable.emit('action', { action: 'generateInviteLink', userId: '3' });
 
 			expect(usersStore.generateInviteLink).toHaveBeenCalledWith({ id: '3' });
-			await waitFor(() => {
-				expect(mockClipboard.copy).toHaveBeenCalledWith(
-					'https://example.com/signup?token=generated-token',
-				);
+			await waitFor(async () => {
+				expect(mockClipboard.copy).toHaveBeenCalledWith(expect.any(Function));
+				const getLink = mockClipboard.copy.mock.calls.at(-1)![0];
+				await expect(getLink()).resolves.toBe('https://example.com/signup?token=generated-token');
 				expect(mockToast.showToast).toHaveBeenCalledWith({
 					type: 'success',
 					title: expect.any(String),

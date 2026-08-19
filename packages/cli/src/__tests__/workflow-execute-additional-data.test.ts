@@ -37,6 +37,7 @@ import {
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
+import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentWorkflowExecutionService } from '@/modules/agents/agent-workflow-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -124,7 +125,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
 	const activeExecutions = mockInstance(ActiveExecutions);
-	mockInstance(CredentialsPermissionChecker);
+	const credentialsPermissionChecker = mockInstance(CredentialsPermissionChecker);
 	mockInstance(SubworkflowPolicyChecker);
 	mockInstance(WorkflowStatisticsService);
 	mockInstance(WorkflowPublishHistoryRepository);
@@ -271,6 +272,100 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 
 			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, undefined);
+		});
+
+		describe('credential permission check routing', () => {
+			const subWorkflowData = () =>
+				mock<IWorkflowBase>({
+					id: 'sub-id',
+					name: 'Sub Workflow',
+					nodes: [],
+					connections: {},
+					staticData: {},
+					settings: {},
+				});
+
+			beforeEach(() => {
+				vi.mocked(credentialsPermissionChecker.check).mockClear();
+				vi.mocked(credentialsPermissionChecker.checkForUser).mockClear();
+				vi.mocked(WorkflowExecute).mockClear();
+			});
+
+			it('checks credentials against the triggering user for an inline sub-workflow', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+					}),
+				);
+
+				expect(credentialsPermissionChecker.checkForUser).toHaveBeenCalledTimes(1);
+				expect(vi.mocked(credentialsPermissionChecker.checkForUser).mock.calls[0][0]).toBe(
+					'user-1',
+				);
+				expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+			});
+
+			it('checks credentials against the project for a database sub-workflow', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+					}),
+				);
+
+				expect(credentialsPermissionChecker.check).toHaveBeenCalled();
+				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
+			});
+
+			it('falls back to the project check for an inline sub-workflow without a triggering user', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: undefined }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+					}),
+				);
+
+				expect(credentialsPermissionChecker.check).toHaveBeenCalled();
+				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
+			});
+
+			it('preserves the triggering user in the sub-workflow additional data for inline sub-workflows so nested inline calls stay scoped to that user', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+					}),
+				);
+
+				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
+				expect(integratedAdditionalData.userId).toBe('user-1');
+			});
+
+			it('does not carry the triggering user into a database sub-workflow (runs under its own project scope)', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+					}),
+				);
+
+				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
+				expect(integratedAdditionalData.userId).toBeUndefined();
+			});
 		});
 
 		describe('sub-workflow dynamic credential reporting', () => {
@@ -1245,6 +1340,20 @@ describe('WorkflowExecuteAdditionalData', () => {
 		const MESSAGE = 'hello';
 		const EXEC_ID = 'exec-id';
 		const THREAD_ID = 'thread-id';
+		const executionSandboxScope = {
+			principalHash: hashAgentSandboxPrincipal({
+				type: 'workflow-execution',
+				workflowId: 'workflow-1',
+				executionId: EXEC_ID,
+			}),
+		};
+		const sessionSandboxScope = {
+			principalHash: hashAgentSandboxPrincipal({
+				type: 'workflow-session',
+				workflowId: 'workflow-1',
+				sessionId: THREAD_ID,
+			}),
+		};
 
 		beforeEach(() => {
 			vi.clearAllMocks();
@@ -1334,6 +1443,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				true,
 				undefined,
 				undefined,
+				executionSandboxScope,
 			);
 		});
 
@@ -1369,6 +1479,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				true,
 				outputSchema,
 				undefined,
+				executionSandboxScope,
 			);
 		});
 
@@ -1382,6 +1493,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				workflowId: 'workflow-1',
 				workflowName: 'My workflow',
 				callingNodeName: 'Message an Agent',
+				hasCallerSessionId: true,
 				nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }],
 				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
 			};
@@ -1407,6 +1519,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				true,
 				undefined,
 				workflowContext,
+				sessionSandboxScope,
 			);
 		});
 
@@ -1440,6 +1553,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				true,
 				undefined,
 				undefined,
+				executionSandboxScope,
 			);
 		});
 
@@ -1502,6 +1616,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				false,
 				undefined,
 				undefined,
+				executionSandboxScope,
 			);
 		});
 
@@ -1534,6 +1649,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					true,
 					undefined,
 					undefined,
+					executionSandboxScope,
 				);
 			},
 		);
@@ -1568,6 +1684,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				false,
 				undefined,
 				undefined,
+				executionSandboxScope,
 			);
 		});
 	});

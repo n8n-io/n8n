@@ -52,6 +52,9 @@ reference:
   Pick the index that matches the text you need.
 - **Structured / JSON output** (`text.format.type` of `json_object` or
   `json_schema`): `content[].text` is parsed into an **object**, not a string.
+  In a Code node, use it directly (`$json.output[0].content[0].text.someField`)
+  — calling `JSON.parse`, `.slice`, `.trim`, or other string methods on it will
+  throw or misbehave.
 - **`simplify: false`**: `$json` is the full Responses API payload (`id`, `status`,
   `output`, `usage`, …). Message text is still under `output`, but `output` may
   also include non-message items (reasoning, tool calls, etc.).

@@ -2,8 +2,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { isAxiosError } from '@n8n/backend-network';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
 import get from 'lodash/get';
@@ -25,7 +27,6 @@ import type {
 	ITaskData,
 	ITaskDataConnections,
 	ITaskMetadata,
-	NodeApiError,
 	NodeOperationError,
 	Workflow,
 	IRunExecutionData,
@@ -37,6 +38,7 @@ import type {
 	INodeIssues,
 	INodeType,
 	ITaskStartedData,
+	JsonObject,
 	AiAgentRequest,
 	IWorkflowExecutionDataProcess,
 	EngineRequest,
@@ -49,11 +51,11 @@ import {
 	NodeConnectionTypes,
 	ApplicationError,
 	BaseError,
-	sleep,
 	isNodeClassInstance,
 	UnexpectedError,
 	UserError,
 	OperationalError,
+	NodeApiError,
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
@@ -102,6 +104,14 @@ interface RunWorkflowOptions {
 	 * By default run() executes only destinationNode and its parents, others are not allowed to run
 	 */
 	additionalRunFilterNodes?: string[];
+}
+
+function normalizeUnhandledAxiosError(error: unknown, node: INode): ExecutionBaseError {
+	if (isAxiosError(error)) {
+		return new NodeApiError(node, error as JsonObject);
+	}
+
+	return error as ExecutionBaseError;
 }
 
 export class WorkflowExecute {
@@ -1976,7 +1986,9 @@ export class WorkflowExecute {
 								// BaseError subclasses specify shouldReport and level
 								// so always report and let beforeSend decide
 								toReport = error;
-							} else if (error instanceof Error) {
+							} else if (error instanceof Error && !isAxiosError(error)) {
+								// Axios errors are suppressed in ErrorReporter's beforeSend via the
+								// `isAxiosError` brand, which sanitizing below would strip - so skip them here
 								// Non-BaseError errors only report their class and call frames
 								// The full error is still stored in the execution resultData
 								// Stack frames are in the format `<name>: <message>\n<call frames>`
@@ -2007,7 +2019,7 @@ export class WorkflowExecute {
 								});
 							}
 
-							const e = error as unknown as ExecutionBaseError;
+							const e = normalizeUnhandledAxiosError(error, executionNode);
 
 							executionError = { ...e, message: e.message, stack: e.stack };
 
@@ -2752,9 +2764,10 @@ export class WorkflowExecute {
 				let errorData: GenericValue | undefined;
 				if (item.error) {
 					errorData = item.error;
-				} else if (item.json.error && Object.keys(item.json).length === 1) {
-					errorData = item.json.error;
-				} else if (item.json.error && item.json.message && Object.keys(item.json).length === 2) {
+				} else if (
+					item.json.error &&
+					Object.keys(item.json).every((key) => ['error', 'message', 'details'].includes(key))
+				) {
 					errorData = item.json.error;
 				}
 

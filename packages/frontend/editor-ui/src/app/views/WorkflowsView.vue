@@ -14,7 +14,7 @@ import ProjectHeader from '@/features/collaboration/projects/components/ProjectH
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import type {
@@ -24,17 +24,18 @@ import type {
 	WorkflowListEventMap,
 } from '@/features/core/folders/folders.types';
 import { useDependencies } from '@/app/composables/useDependencies';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { useFolders } from '@/features/core/folders/composables/useFolders';
 import { useMessage } from '@/app/composables/useMessage';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	DEBOUNCE_TIME,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	EnterpriseEditionFeature,
-	getDebounceTime,
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/app/constants';
@@ -48,6 +49,7 @@ import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/Te
 import TemplateRecommendationV3 from '@/experiments/personalizedTemplatesV3/components/TemplateRecommendationV3.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
+import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/trialIntroModal.store';
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
@@ -69,12 +71,12 @@ import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -88,7 +90,7 @@ import {
 	type ProjectSharingData,
 	ProjectTypes,
 } from '@/features/collaboration/projects/projects.types';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -98,7 +100,7 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nCallout,
 	N8nCard,
@@ -169,12 +171,15 @@ const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
+const trialIntroModalStore = useTrialIntroModalStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
 const { next: nextFetch } = useLatestFetch();
 const { fetchDependencyCounts } = useDependencies();
+const { isWorkflowReviewsEnabled } = useWorkflowReviewsFeature();
+const reviewStatusStore = useWorkflowReviewStatusStore();
 const { readOnlyEnv, projectPermissions } = useWorkflowsEmptyState();
 const { hasKnownInstanceContent } = useEmptyStateDetection();
 const emptinessResolved = ref(false);
@@ -914,6 +919,11 @@ const fetchWorkflows = async () => {
 			.map((r) => r.id);
 		if (workflowIds.length > 0) {
 			void fetchDependencyCounts(workflowIds, 'workflow');
+			// Same fire-and-forget pattern for the review badges. Gated up front so a
+			// disabled feature issues no review request at all.
+			if (isWorkflowReviewsEnabled.value) {
+				void reviewStatusStore.fetchReviewStatuses(workflowIds);
+			}
 		}
 
 		// Toggle ownership cards visibility only after we have fetched the workflows
@@ -2179,8 +2189,12 @@ const onNameSubmit = async (name: string) => {
 </script>
 
 <template>
+	<div
+		v-if="trialIntroModalStore.shouldSuppressTrialBackground"
+		data-test-id="trial-intro-background-placeholder"
+	/>
 	<ResourcesListLoadingState
-		v-if="deferChromeForOnboarding"
+		v-else-if="deferChromeForOnboarding"
 		data-test-id="workflows-onboarding-loading"
 	/>
 	<EmptyStateLayout v-else-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
@@ -2529,7 +2543,7 @@ const onNameSubmit = async (name: string) => {
 					:personal-project="personalProject"
 					resource-type="workflows"
 				/>
-				<N8nActionBox
+				<N8nEmptyState
 					v-else-if="currentFolder"
 					data-test-id="empty-folder-action-box"
 					:heading="
@@ -2548,7 +2562,7 @@ const onNameSubmit = async (name: string) => {
 								? i18n.baseText('readOnlyEnv.cantAdd.workflow')
 								: i18n.baseText('generic.missing.permissions')
 						}}
-					</template></N8nActionBox
+					</template></N8nEmptyState
 				>
 				<ResourcesListEmptyState
 					v-else-if="showArchivedOnlyHint"

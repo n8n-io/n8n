@@ -3,8 +3,8 @@ import { TaskRunnersConfig } from '@n8n/config';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import { ErrorReporter } from 'n8n-core';
-import { sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
 import { EventService } from '@/events/event.service';

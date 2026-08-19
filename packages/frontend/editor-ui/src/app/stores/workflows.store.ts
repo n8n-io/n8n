@@ -27,8 +27,8 @@ import { i18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ExecutionRedactionQueryDto, WorkflowPublicationStatus } from '@n8n/api-types';
-import { useSettingsStore } from './settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -294,12 +294,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function createNewWorkflow(sendData: WorkflowDataCreate): Promise<IWorkflowDb> {
 		// make sure that the new ones are not active
 		sendData.active = false;
-
-		// When activation is false, ensure MCP is disabled
-		if (!sendData.settings) {
-			sendData.settings ??= {};
-		}
-		sendData.settings.availableInMCP = false;
 
 		const projectStore = useProjectsStore();
 

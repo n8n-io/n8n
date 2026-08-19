@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { isValueExpression as isValueExpressionUtil } from '@/app/utils/nodeTypesUtils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
@@ -188,6 +188,7 @@ defineExpose({
 					:is-read-only="false"
 					:show-options="!isFixedCollectionType"
 					:show-expression-selector="!isFixedCollectionType"
+					:show-focus-panel="false"
 					:is-value-expression="isValueExpression"
 					@update:model-value="optionSelected"
 					@menu-expanded="onMenuExpanded"

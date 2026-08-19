@@ -15,15 +15,15 @@ import { BUILDER_ENABLED_VIEWS } from './constants';
 
 const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import { createTestNode } from '@/__tests__/mocks';
 import merge from 'lodash/merge';
 import { nextTick, reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
-import * as telemetryModule from '@/app/composables/useTelemetry';
+import * as telemetryModule from '@n8n/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
-import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { ChatUI } from '@n8n/design-system';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
@@ -68,7 +68,7 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', async (importOriginal) => {
 });
 
 // Mock useToast
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 	}),

@@ -14,11 +14,12 @@ vi.mock('../../src/utils/eval-agents', () => ({
 
 import { createEvalAgent, resolveEvalModelConfig } from '../../src/utils/eval-agents';
 import {
+	VERIFIER_MAX_OUTPUT_TOKENS,
 	VERIFY_ATTEMPT_TIMEOUTS_MS,
 	VERIFY_INACTIVITY_TIMEOUT_MS,
 	verifyChecklist,
 } from '../checklist/verifier';
-import type { VerificationArtifact } from '../harness/runner';
+import type { VerificationArtifact } from '../harness/scenario-execution';
 import type { ChecklistItem } from '../types';
 
 const mockCreateEvalAgent = vi.mocked(createEvalAgent);
@@ -39,7 +40,12 @@ const GOOD_OUTPUT = {
 	],
 };
 
-type StreamFn = Mock<(messages: unknown, opts: { abortSignal: AbortSignal }) => Promise<unknown>>;
+type StreamFn = Mock<
+	(
+		messages: unknown,
+		opts: { abortSignal: AbortSignal; maxOutputTokens?: number },
+	) => Promise<unknown>
+>;
 
 /** Wire createEvalAgent().structuredOutput().stream() to the given stream mock. */
 function mockVerifierAgent(stream: StreamFn): void {
@@ -155,6 +161,10 @@ describe('verifyChecklist (agents stream path)', () => {
 		expect(attempts).toHaveLength(1);
 		expect(attempts[0].status).toBe('success');
 		expect(stream).toHaveBeenCalledTimes(1);
+		expect(stream).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ maxOutputTokens: VERIFIER_MAX_OUTPUT_TOKENS }),
+		);
 	});
 
 	it('falls back to parsing the streamed text when no structured output arrives', async () => {

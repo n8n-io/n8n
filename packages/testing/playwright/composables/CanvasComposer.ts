@@ -56,6 +56,9 @@ export class CanvasComposer {
 		await this.n8n.canvas.openWorkflowHistory();
 		await this.n8n.canvas.closeWorkflowHistory();
 		await this.n8n.page.waitForLoadState();
+		// Wait for the editor's loading overlay to clear before subsequent header
+		// interactions; nodes can report visible while the overlay still blocks clicks.
+		await this.n8n.canvas.waitForCanvasReady();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}
@@ -66,6 +69,9 @@ export class CanvasComposer {
 	async switchBetweenEditorAndWorkflowList(): Promise<void> {
 		await this.n8n.sideBar.clickHomeButton();
 		await this.n8n.workflows.cards.getWorkflows().first().click();
+		// Wait for the editor's loading overlay to clear before subsequent header
+		// interactions; nodes can report visible while the overlay still blocks clicks.
+		await this.n8n.canvas.waitForCanvasReady();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}
@@ -76,35 +82,40 @@ export class CanvasComposer {
 	async zoomInAndCheckNodes(): Promise<void> {
 		await this.n8n.canvas.getCanvasNodes().first().waitFor();
 
-		const initialNodeSize = await this.n8n.page.evaluate(() => {
-			const firstNode = document.querySelector('[data-test-id="canvas-node"]');
-			if (!firstNode) {
-				throw new Error('Canvas node not found during initial measurement');
-			}
-			return firstNode.getBoundingClientRect().width;
-		});
+		const measureFirstNodeWidth = async () =>
+			await this.n8n.page.evaluate(() => {
+				const firstNode = document.querySelector('[data-test-id="canvas-node"]');
+				if (!firstNode) {
+					throw new Error('Canvas node not found during measurement');
+				}
+				return firstNode.getBoundingClientRect().width;
+			});
+
+		// Wait for the animated fit-to-view to settle before capturing the baseline.
+		let previousWidth = Number.NaN;
+		await expect
+			.poll(async () => {
+				const width = await measureFirstNodeWidth();
+				const settled = width === previousWidth;
+				previousWidth = width;
+				return settled;
+			})
+			.toBe(true);
+
+		const initialNodeSize = await measureFirstNodeWidth();
 
 		for (let i = 0; i < 4; i++) {
 			await this.n8n.canvas.clickZoomInButton();
 		}
 
-		const finalNodeSize = await this.n8n.page.evaluate(() => {
-			const firstNode = document.querySelector('[data-test-id="canvas-node"]');
-			if (!firstNode) {
-				throw new Error('Canvas node not found during final measurement');
-			}
-			return firstNode.getBoundingClientRect().width;
-		});
-
-		// Validate zoom increased node sizes by at least 50%
-		const zoomWorking = finalNodeSize > initialNodeSize * 1.5;
-
-		if (!zoomWorking) {
-			throw new Error(
-				"Zoom functionality not working: nodes didn't scale properly. " +
-					`Initial: ${initialNodeSize.toFixed(1)}px, Final: ${finalNodeSize.toFixed(1)}px`,
-			);
-		}
+		// Poll the width until the animated zoom transition settles.
+		await expect
+			.poll(measureFirstNodeWidth, {
+				message:
+					"Zoom functionality not working: nodes didn't scale properly. " +
+					`Initial: ${initialNodeSize.toFixed(1)}px`,
+			})
+			.toBeGreaterThan(initialNodeSize * 1.5);
 	}
 
 	/**
@@ -135,7 +146,7 @@ export class CanvasComposer {
 	 * @returns The workflow URL after save
 	 */
 	async waitForWorkflowSaveAndUrl(): Promise<string> {
-		const isNewWorkflow = this.n8n.page.url().includes('/workflow/new');
+		const isNewWorkflow = this.n8n.navigate.currentUrl().includes('/workflow/new');
 
 		if (isNewWorkflow) {
 			await this.n8n.canvas.waitForSaveWorkflowCompleted();
@@ -145,6 +156,6 @@ export class CanvasComposer {
 			await this.n8n.canvas.waitForSaveWorkflowCompleted();
 		}
 
-		return this.n8n.page.url();
+		return this.n8n.navigate.currentUrl();
 	}
 }

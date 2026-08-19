@@ -1,0 +1,99 @@
+name: 'Test get-n8n.sh installer'
+
+# Lints and end-to-end tests the get.n8n.io install script:
+# fresh install boots the full stack, re-runs are no-ops, --upgrade only
+# bumps N8N_VERSION, and all failure modes exit cleanly.
+#
+# Also runs nightly against master: the script pins n8n but pulls the
+# sandbox images at :latest, so an image-side change can break installs
+# without any change to the script itself.
+
+on:
+  pull_request:
+    paths:
+      - 'docker/get-n8n.sh'
+      - 'docker/get-n8n-compose.yml'
+      - 'docker/test-get-n8n.sh'
+      - '.github/workflows/test-get-n8n.yml'
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-get-n8n-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: 'Lint (shellcheck + POSIX)'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: shellcheck
+        run: shellcheck docker/get-n8n.sh docker/test-get-n8n.sh
+      - name: POSIX syntax check (dash)
+        run: dash -n docker/get-n8n.sh && dash -n docker/test-get-n8n.sh
+
+  e2e:
+    name: 'Install, boot, upgrade'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Run test harness
+        run: sh docker/test-get-n8n.sh --e2e
+
+  # GitHub-hosted Windows runners can't run Linux containers, so no e2e here.
+  # This covers the real Windows-adjacent user path (Git Bash + Docker Desktop):
+  # arg parsing, file generation, secrets, idempotency, compose validation.
+  fast-checks-windows:
+    name: 'Fast checks (Windows / Git Bash)'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      # The Docker service on Windows runners is occasionally not running,
+      # which fails every docker-dependent assertion. Fail fast here instead.
+      - name: Ensure the Docker engine is running
+        shell: pwsh
+        run: |
+          $svc = Get-Service docker -ErrorAction SilentlyContinue
+          if ($svc -and $svc.Status -ne 'Running') { Start-Service docker }
+          foreach ($i in 1..30) {
+            docker info *> $null
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            Start-Sleep -Seconds 2
+          }
+          docker info
+          exit 1
+      - name: Run test harness (no containers)
+        shell: bash
+        run: sh docker/test-get-n8n.sh
+
+  notify-on-failure:
+    name: Notify Slack on failure
+    runs-on: ubuntu-slim
+    needs: [lint, e2e, fast-checks-windows]
+    if: ${{ always() && github.event_name == 'schedule' && contains(needs.*.result, 'failure') }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-build' \
+            --text 'get-n8n.sh installer nightly failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'

@@ -27,6 +27,14 @@ post:
   responses:
     '200':
       description: A gzipped tar archive containing the exported package contents.
+      headers:
+        X-N8n-Export-Counts:
+          description: |
+            JSON-serialized per-entity counts of what actually ended up in the
+            package (after folder bundling and auto-inclusion), e.g.
+            `{"workflows":2,"folders":1,"credentials":0,"dataTables":0,"variables":0}`.
+          schema:
+            type: string
       content:
         application/gzip:
           schema:

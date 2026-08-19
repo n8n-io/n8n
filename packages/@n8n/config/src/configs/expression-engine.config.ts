@@ -8,13 +8,11 @@ const expressionEngineSchema = z.enum(['legacy', 'vm']);
 export class ExpressionEngineConfig {
 	/**
 	 * Which expression engine to use.
-	 * - `legacy` runs expressions without isolation.
-	 * - `vm` runs expressions in a V8 isolate.
-	 *
-	 * `vm` is currently **experimental**. Use at your own risk.
+	 * - `vm` (default) runs expressions in a V8 isolate.
+	 * - `legacy` runs expressions without isolation. Less secure and soon to be deprecated.
 	 */
 	@Env('N8N_EXPRESSION_ENGINE', expressionEngineSchema)
-	engine: 'legacy' | 'vm' = 'legacy';
+	engine: 'legacy' | 'vm' = 'vm';
 
 	/** Number of V8 isolates ready in the pool. */
 	@Env('N8N_EXPRESSION_ENGINE_POOL_SIZE')
@@ -61,4 +59,12 @@ export class ExpressionEngineConfig {
 	/** If set, scale the pool to 0 warm isolates after this many seconds with no acquire. */
 	@Env('N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT')
 	idleTimeout?: number;
+
+	/**
+	 * Whether a production webhook request may skip acquiring an isolate when its
+	 * trigger provably evaluates no expression during the webhook phase. Off
+	 * acquires one for every request.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_ALLOW_WEBHOOK_ISOLATE_SKIP')
+	allowWebhookIsolateSkip: boolean = true;
 }

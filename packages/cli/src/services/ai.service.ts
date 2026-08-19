@@ -90,12 +90,18 @@ export class AiService {
 
 	async createFreeAiCredits(user: IUser) {
 		const client = await this.getClient();
-		// Retrying the claim is no worse than the user clicking again; already-claimed is a definite 4xx.
 		return await callAiServiceWithRetry(
 			'AI credits credential generation',
 			async () => await client.generateAiCreditsCredentials(user),
 			this.logger,
 			this.errorReporter,
+			{ retryOnTimeout: false },
 		);
+	}
+
+	/** Forfeit the remaining Instance AI quota for this instance. Idempotent server-side. */
+	async lockInstanceAiQuota(user: IUser, activatedAt?: number) {
+		const client = await this.getClient();
+		return await client.lockInstanceAiQuota(user, { activatedAt });
 	}
 }

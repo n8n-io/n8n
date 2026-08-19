@@ -7,9 +7,13 @@
 import { camelCase } from 'change-case';
 
 import type { McpRegistryServer } from './mcp-registry.types';
-import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
+import {
+	getMcpRegistryCredentialTypeName,
+	MCP_REGISTRY_PACKAGE_NAME,
+} from '../node-description-transform';
 
 export interface McpRegistrySearchResult {
+	slug: string;
 	name: string;
 	title: string;
 	description: string;
@@ -32,15 +36,12 @@ function pickPreferredRemote(
 	return null;
 }
 
-function credentialTypeName(server: McpRegistryServer): string {
-	return `${camelCase(server.slug)}McpOAuth2Api`;
-}
-
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
 	const remote = pickPreferredRemote(server);
 	if (!remote) return null;
-	const credentialType = credentialTypeName(server);
+	const credentialType = getMcpRegistryCredentialTypeName(server);
 	return {
+		slug: server.slug,
 		name: camelCase(server.slug),
 		title: server.title,
 		description: server.tagline,
@@ -54,6 +55,14 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 		})),
 		metadata: { nodeTypeName: `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}` },
 	};
+}
+
+/** Map registry servers to the config-ready shape, skipping entries without a usable remote. */
+export function listMcpRegistryServers(servers: McpRegistryServer[]): McpRegistrySearchResult[] {
+	return servers.flatMap((server) => {
+		const result = toSearchResult(server);
+		return result ? [result] : [];
+	});
 }
 
 function normalizeQueries(queries: string[]): string[] {
@@ -73,16 +82,28 @@ function matchesQuery(server: McpRegistryServer, normalizedQueries: string[]): b
 	return normalizedQueries.some((query) => fields.some((field) => field.includes(query)));
 }
 
-/** Filter `servers` to those matching any query, mapped to the config-ready shape. */
+function relevance(server: McpRegistryServer, normalizedQueries: string[]): number {
+	const names = [server.slug, camelCase(server.slug), server.title]
+		.filter((name): name is string => typeof name === 'string')
+		.map((name) => name.toLowerCase());
+	if (normalizedQueries.some((query) => names.includes(query))) return 2;
+	if (normalizedQueries.some((query) => names.some((name) => name.includes(query)))) return 1;
+	return 0;
+}
+
+/** Filter `servers` to those matching any query, most relevant first, mapped to
+ *  the config-ready shape. */
 export function searchMcpRegistryServers(
 	servers: McpRegistryServer[],
 	queries: string[],
 ): McpRegistrySearchResult[] {
 	const normalized = normalizeQueries(queries);
 	if (normalized.length === 0) return [];
-	return servers.flatMap((server) => {
-		if (!matchesQuery(server, normalized)) return [];
-		const result = toSearchResult(server);
-		return result ? [result] : [];
-	});
+	return listMcpRegistryServers(
+		servers
+			.filter((server) => matchesQuery(server, normalized))
+			.map((server) => ({ server, score: relevance(server, normalized) }))
+			.sort((left, right) => right.score - left.score)
+			.map(({ server }) => server),
+	);
 }

@@ -38,7 +38,6 @@ const i18n = useI18n();
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	padding-top: var(--spacing--2xs);
-	margin-right: var(--spacing--lg);
 }
 
 .approvalText {

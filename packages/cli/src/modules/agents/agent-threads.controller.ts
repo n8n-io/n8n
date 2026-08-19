@@ -1,13 +1,17 @@
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Delete, Get, ProjectScope, RestController } from '@n8n/decorators';
+import { Delete, Get, Post, ProjectScope, RestController } from '@n8n/decorators';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentThreadsController {
-	constructor(private readonly agentExecutionService: AgentExecutionService) {}
+	constructor(
+		private readonly agentExecutionService: AgentExecutionService,
+		private readonly langsmithExportService: AgentSessionLangSmithExportService,
+	) {}
 
 	@Get('/:agentId/threads')
 	@ProjectScope('agent:read')
@@ -42,6 +46,20 @@ export class AgentThreadsController {
 			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
 		}
 		return result;
+	}
+
+	@Post('/:agentId/threads/:threadId/langsmith-export')
+	@ProjectScope('agent:read')
+	async exportThreadToLangSmith(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		return await this.langsmithExportService.exportSession({
+			projectId,
+			agentId,
+			threadId,
+			user: req.user,
+		});
 	}
 
 	@Delete('/:agentId/threads/:threadId')

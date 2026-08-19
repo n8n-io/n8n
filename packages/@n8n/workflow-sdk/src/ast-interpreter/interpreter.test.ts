@@ -840,6 +840,22 @@ describe('AST Interpreter', () => {
 			interpretSDKCode(code, sdkFunctions);
 			expect(connectMock).toHaveBeenCalledWith('source', 0, 'target', 0);
 		});
+
+		it("should forward group()'s options object to the workflow builder", () => {
+			const groupMock = vi.fn();
+			sdkFunctions.workflow = vi.fn(() => ({
+				group: groupMock,
+			}));
+			// Members are irrelevant here — this pins the third argument surviving evaluation.
+			const code = `
+				const wf = workflow('id', 'name');
+				export default wf.group('Ingestion', [], { description: 'Pulls the CRM contacts' });
+			`;
+			interpretSDKCode(code, sdkFunctions);
+			expect(groupMock).toHaveBeenCalledWith('Ingestion', [], {
+				description: 'Pulls the CRM contacts',
+			});
+		});
 	});
 
 	describe('Security - dangerous globals (defense-in-depth)', () => {

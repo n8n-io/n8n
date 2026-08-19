@@ -24,7 +24,7 @@ const oidcConfig = {
 } as OidcConfigDto;
 
 const telemetryTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: telemetryTrack,
 	}),
@@ -32,7 +32,7 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 
 const showError = vi.fn();
 const showMessage = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError,
 		showMessage,
@@ -530,6 +530,43 @@ describe('SettingsSso View', () => {
 					discovery_endpoint: oidcConfig.discoveryEndpoint,
 					is_active: true,
 				}),
+			);
+		});
+
+		it('includes the RP-initiated logout setting in the saved OIDC config', async () => {
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.isEnterpriseSamlEnabled = false;
+			ssoStore.isOidcLoginEnabled = true;
+			ssoStore.isSamlLoginEnabled = false;
+			ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;
+			ssoStore.oidcConfig = {
+				...oidcConfig,
+				discoveryEndpoint: '',
+				rpInitiatedLogoutEnabled: true,
+			};
+
+			ssoStore.getOidcConfig.mockResolvedValue({
+				...oidcConfig,
+				discoveryEndpoint: '',
+				rpInitiatedLogoutEnabled: true,
+			});
+			ssoStore.saveOidcConfig.mockResolvedValue({ ...oidcConfig, rpInitiatedLogoutEnabled: true });
+
+			const { getByTestId } = renderView();
+
+			const saveButton = await waitFor(() => getByTestId('sso-oidc-save'));
+			expect(getByTestId('sso-oidc-logout-toggle')).toBeVisible();
+
+			// Change another field so the form is dirty and Save is enabled.
+			await userEvent.type(getByTestId('oidc-discovery-endpoint'), oidcConfig.discoveryEndpoint);
+			await userEvent.type(getByTestId('oidc-client-id'), 'test-client-id');
+			await userEvent.type(getByTestId('oidc-client-secret'), 'test-client-secret');
+
+			ssoStore.oidcConfig = { ...oidcConfig, rpInitiatedLogoutEnabled: true };
+			await userEvent.click(saveButton);
+
+			expect(ssoStore.saveOidcConfig).toHaveBeenCalledWith(
+				expect.objectContaining({ rpInitiatedLogoutEnabled: true }),
 			);
 		});
 

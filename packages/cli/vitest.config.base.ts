@@ -16,6 +16,7 @@ const alias = {
 	'@test': path.resolve(__dirname, 'test/shared'),
 	'@n8n/mcp-apps/server': path.resolve(__dirname, '../@n8n/mcp-apps/src/server/index.ts'),
 	'@n8n/backend-test-utils': path.resolve(__dirname, '../@n8n/backend-test-utils/src/index.ts'),
+	'@n8n/telemetry': path.resolve(__dirname, '../@n8n/telemetry/src'),
 	'@': path.resolve(__dirname, 'src'),
 };
 
