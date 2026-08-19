@@ -415,9 +415,23 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewNodeByName(nodeName).getByRole('button', { name: 'Execute step' });
 	}
 
+	/**
+	 * The "Execute step" toolbar button only renders once the AI build has
+	 * finished, and mid-stream canvas re-renders can dismiss an open toolbar.
+	 * Poll with a re-hover on every attempt instead of a single hover + wait.
+	 */
 	async executePreviewNodeByName(nodeName: string): Promise<void> {
+		const node = this.getPreviewNodeByName(nodeName);
 		const executeNodeButton = this.getPreviewExecuteNodeButton(nodeName);
-		await executeNodeButton.waitFor({ state: 'visible', timeout: 5_000 });
+		await expect
+			.poll(
+				async () => {
+					await node.hover();
+					return await executeNodeButton.isVisible().catch(() => false);
+				},
+				{ intervals: [500, 1_000, 2_000], timeout: 30_000 },
+			)
+			.toBe(true);
 		await executeNodeButton.dispatchEvent('click');
 	}
 

@@ -159,12 +159,13 @@ test.describe(
 
 				await n8n.instanceAi.waitForPreviewCanvasNode(setNodeName);
 
-				// Hover over the Set node to show its toolbar
-				const setNode = n8n.instanceAi.getPreviewNodeByName(setNodeName);
-				await expect(setNode).toBeVisible({ timeout: 10_000 });
-				await setNode.hover();
+				// The node streams onto the canvas while the AI is still building; wait
+				// for the run button to enable (build finished) before using the toolbar.
+				await expect(n8n.instanceAi.getPreviewRunWorkflowButton()).toBeEnabled({
+					timeout: 60_000,
+				});
 
-				// Click the execute node button on the toolbar
+				// Hover the node and click the execute step button on its toolbar
 				await n8n.instanceAi.executePreviewNodeByName(setNodeName);
 
 				// The node should show a success indicator after execution
