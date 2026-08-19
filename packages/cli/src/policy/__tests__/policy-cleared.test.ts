@@ -40,6 +40,17 @@ describe('mintPolicyCleared', () => {
 		);
 	});
 
+	it('refuses to clear when a check never ran', () => {
+		const decision: PolicyDecision = {
+			violations: [],
+			checkErrors: [{ checkId: 'node-type-availability', correlationId: 'abc123' }],
+		};
+
+		expect(() => mintPolicyCleared({ point: 'workflowStart', subject, decision })).toThrow(
+			UnexpectedError,
+		);
+	});
+
 	describe('brand', () => {
 		it('does not accept a token minted for another point', () => {
 			const saveToken = mintPolicyCleared({ point: 'workflowSave', subject, decision: cleared });

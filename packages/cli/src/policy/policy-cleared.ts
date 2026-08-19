@@ -6,9 +6,8 @@ const brand = Symbol('policyCleared');
 
 /**
  * What kind of thing was policed. Closed, so a typo is a compile error rather than a binding
- * that silently never matches — but not keyed off the point: `contentImport` is generic over
- * artifact kind, so a point-to-kind map would fix a correspondence that only holds today.
- * Widening this union touches no signature.
+ * that silently never matches. Open to widening: `contentImport` in particular is generic over
+ * artifact kind, and adding a kind here touches no signature.
  */
 export type PolicySubjectType = 'workflow' | 'credential';
 
@@ -47,7 +46,8 @@ export type PolicyCleared<Point extends EnforcementPoint> = {
  * The only way to produce a `PolicyCleared`. Internal to `@/policy` — the enforcement service
  * being its only caller is what makes the type mean anything.
  *
- * @throws UnexpectedError if the decision has violations, which would make the value a lie.
+ * @throws UnexpectedError if the decision has violations, or records a check that never ran.
+ * Either would make the value a lie — something objected, or something never got to look.
  */
 export function mintPolicyCleared<Point extends EnforcementPoint>({
 	point,
@@ -58,10 +58,18 @@ export function mintPolicyCleared<Point extends EnforcementPoint>({
 	subject: PolicySubject;
 	decision: PolicyDecision;
 }): PolicyCleared<Point> {
+	const refusal = `Refusing to clear ${point} for ${subject.type} ${subject.id}`;
+
 	if (decision.violations.length > 0) {
 		throw new UnexpectedError(
-			`Refusing to clear ${point} for ${subject.type} ${subject.id}: decision has ${decision.violations.length} violation(s)`,
+			`${refusal}: decision has ${decision.violations.length} violation(s)`,
 		);
+	}
+
+	// `checkErrors` is `evaluate`-only by contract — under `enforce` a check that breaks blocks —
+	// so one here means the backend has a bug, and clearing would hide that a check never ran.
+	if (decision.checkErrors && decision.checkErrors.length > 0) {
+		throw new UnexpectedError(`${refusal}: ${decision.checkErrors.length} check(s) failed to run`);
 	}
 
 	return {
