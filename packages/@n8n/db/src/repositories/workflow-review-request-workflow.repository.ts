@@ -2,8 +2,13 @@ import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
+import { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
+import {
+	WorkflowReviewRequest,
+	type WorkflowReviewRequestState,
+} from '../entities/workflow-review-request.ee';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 /** The review's linked workflow as shown in cross-request lists (inbox). */
@@ -17,11 +22,21 @@ export type WorkflowReviewRequestWorkflowDetailRow = {
 	workflowName: string;
 	workflowVersionId: string | null;
 	activeVersionId: string | null;
+	baselineVersionId: string | null;
+	/**
+	 * The parent request's state. It comes from this same query, so it always matches
+	 * the `baselineVersionId` beside it — the detail read needs both to pick a baseline.
+	 */
+	requestState: WorkflowReviewRequestState;
 };
 
 @Service()
 export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<WorkflowReviewRequestWorkflow> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
+	) {
 		super(WorkflowReviewRequestWorkflow, dataSource.manager, transactionRunner);
 	}
 
@@ -84,6 +99,33 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 		return rows.map((row) => row.workflowReviewRequestId);
 	}
 
+	/**
+	 * Freeze the live published pointer onto the child row at approval time.
+	 * Reads through the published-version repo with `ctx` so both the SELECT and
+	 * UPDATE share the lock transaction (no second pooled connection).
+	 */
+	async captureApprovalBaseline(
+		input: {
+			workflowReviewRequestId: string;
+			workflowId: string;
+		},
+		ctx: OperationContext,
+	): Promise<void> {
+		const publishedVersionId = await this.workflowPublishedVersionRepository.getPublishedVersionId(
+			input.workflowId,
+			ctx,
+		);
+
+		await this.managerFor(ctx).update(
+			WorkflowReviewRequestWorkflow,
+			{
+				workflowReviewRequestId: input.workflowReviewRequestId,
+				workflowId: input.workflowId,
+			},
+			{ baselineVersionId: publishedVersionId },
+		);
+	}
+
 	async findByRequestId(
 		requestId: string,
 		ctx: OperationContext,
@@ -131,10 +173,16 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 			// The inner join is safe: `workflowId` FKs onto `workflow_entity` with
 			// `ON DELETE CASCADE`, so a child row never outlives its workflow.
 			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = wrw.workflowId')
+			// The state is joined in rather than read separately, because an approval writes
+			// the baseline and closes the request together: two queries can catch one half
+			// of that and miss the other.
+			.innerJoin(WorkflowReviewRequest, 'request', 'request.id = wrw.workflowReviewRequestId')
 			.select('wrw.workflowId', 'workflowId')
 			.addSelect('workflow.name', 'workflowName')
 			.addSelect('workflow.activeVersionId', 'activeVersionId')
 			.addSelect('wrw.workflowVersionId', 'workflowVersionId')
+			.addSelect('wrw.baselineVersionId', 'baselineVersionId')
+			.addSelect('request.state', 'requestState')
 			.where('wrw.workflowReviewRequestId = :requestId', { requestId })
 			.orderBy('wrw.id', 'ASC')
 			.getRawMany<{
@@ -142,6 +190,8 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 				workflowName: string;
 				workflowVersionId: string | null;
 				activeVersionId: string | null;
+				baselineVersionId: string | null;
+				requestState: WorkflowReviewRequestState;
 			}>();
 
 		return rows.map((row) => ({
@@ -149,6 +199,8 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 			workflowName: row.workflowName,
 			workflowVersionId: row.workflowVersionId ?? null,
 			activeVersionId: row.activeVersionId ?? null,
+			baselineVersionId: row.baselineVersionId ?? null,
+			requestState: row.requestState,
 		}));
 	}
 }

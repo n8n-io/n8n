@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type {
+	WorkflowReviewRequestDecision,
+	WorkflowReviewRequestState,
 	WorkflowReviewRequestWorkflowDetail,
 	WorkflowReviewVersionSnapshot,
 } from '@n8n/api-types';
@@ -16,9 +18,18 @@ import type { IWorkflowDb } from '@/Interface';
 
 const props = defineProps<{
 	workflow: WorkflowReviewRequestWorkflowDetail;
+	state: WorkflowReviewRequestState;
+	decision: WorkflowReviewRequestDecision;
 }>();
 
 const i18n = useI18n();
+
+// Only approval freezes a baseline, so an approved review diffs against what was
+// published back then; a review closed any other way has nothing to diff against.
+const isApproved = computed(() => props.state === 'closed' && props.decision === 'approved');
+const isClosedWithoutApproval = computed(
+	() => props.state === 'closed' && props.decision !== 'approved',
+);
 
 /**
  * Label each side the way version history does, falling back to a short id.
@@ -73,25 +84,63 @@ const targetWorkflow = computed(() =>
 	props.workflow.pinnedVersion ? snapshotToWorkflow(props.workflow.pinnedVersion) : undefined,
 );
 
+// The dots track publish status, which approval flips: the approved version is
+// the published one now, and the baseline it replaced no longer is.
+const sourceDotClass = computed(() =>
+	isApproved.value ? 'statusDotSuperseded' : 'statusDotPublished',
+);
+const targetDotClass = computed(() =>
+	isApproved.value ? 'statusDotPublished' : 'statusDotInReview',
+);
+
+const noChangesText = computed(() =>
+	i18n.baseText(
+		isApproved.value
+			? 'workflowReviews.changes.closed.noChanges'
+			: 'workflowReviews.changes.noChanges',
+	),
+);
+const sourceEmptyText = computed(() =>
+	i18n.baseText(
+		isApproved.value
+			? 'workflowReviews.changes.closed.firstPublish.sourceEmpty'
+			: 'workflowReviews.changes.firstPublish.sourceEmpty',
+	),
+);
+
 const sourceLabel = computed(() =>
 	props.workflow.baselineVersion
-		? i18n.baseText('workflowReviews.changes.sourceLabel', {
-				interpolate: { version: versionLabel(props.workflow.baselineVersion) },
-			})
+		? i18n.baseText(
+				isApproved.value
+					? 'workflowReviews.changes.closed.sourceLabel'
+					: 'workflowReviews.changes.sourceLabel',
+				{ interpolate: { version: versionLabel(props.workflow.baselineVersion) } },
+			)
 		: undefined,
 );
 const targetLabel = computed(() =>
 	props.workflow.pinnedVersion
-		? i18n.baseText('workflowReviews.changes.targetLabel', {
-				interpolate: { version: versionLabel(props.workflow.pinnedVersion) },
-			})
+		? i18n.baseText(
+				isApproved.value
+					? 'workflowReviews.changes.closed.targetLabel'
+					: 'workflowReviews.changes.targetLabel',
+				{ interpolate: { version: versionLabel(props.workflow.pinnedVersion) } },
+			)
 		: undefined,
 );
 </script>
 
 <template>
 	<N8nCallout
-		v-if="!workflow.pinnedVersion"
+		v-if="isClosedWithoutApproval"
+		theme="info"
+		:class="$style.callout"
+		data-test-id="workflow-review-changes-closed-without-approval"
+	>
+		{{ i18n.baseText('workflowReviews.changes.closedWithoutApproval') }}
+	</N8nCallout>
+	<N8nCallout
+		v-else-if="!workflow.pinnedVersion"
 		theme="warning"
 		:class="$style.callout"
 		data-test-id="workflow-review-changes-version-unavailable"
@@ -104,7 +153,7 @@ const targetLabel = computed(() =>
 		:class="$style.callout"
 		data-test-id="workflow-review-changes-no-changes"
 	>
-		{{ i18n.baseText('workflowReviews.changes.noChanges') }}
+		{{ noChangesText }}
 	</N8nCallout>
 	<div v-else :class="$style.diff" data-test-id="workflow-review-changes-diff">
 		<WorkflowDiffView
@@ -117,18 +166,18 @@ const targetLabel = computed(() =>
 				no publish status to represent. -->
 			<template v-if="workflow.baselineVersion" #sourceLabel>
 				<span :class="$style.versionBadge" data-test-id="workflow-review-changes-source-label">
-					<span :class="[$style.statusDot, $style.statusDotPublished]" />
+					<span :class="[$style.statusDot, $style[sourceDotClass]]" />
 					<N8nText color="text-dark" size="small" compact>{{ sourceLabel }}</N8nText>
 				</span>
 			</template>
 			<template #targetLabel>
 				<span :class="$style.versionBadge" data-test-id="workflow-review-changes-target-label">
-					<span :class="[$style.statusDot, $style.statusDotInReview]" />
+					<span :class="[$style.statusDot, $style[targetDotClass]]" />
 					<N8nText color="text-dark" size="small" compact>{{ targetLabel }}</N8nText>
 				</span>
 			</template>
 			<template #sourceEmptyText>
-				{{ i18n.baseText('workflowReviews.changes.firstPublish.sourceEmpty') }}
+				{{ sourceEmptyText }}
 			</template>
 		</WorkflowDiffView>
 	</div>
@@ -137,6 +186,7 @@ const targetLabel = computed(() =>
 <style module lang="scss">
 .callout {
 	max-width: var(--review-callout--max-width, 34rem);
+	margin-top: var(--spacing--5xs);
 }
 
 .versionBadge {
@@ -157,6 +207,10 @@ const targetLabel = computed(() =>
 
 .statusDotInReview {
 	background-color: var(--color--yellow-500);
+}
+
+.statusDotSuperseded {
+	background-color: var(--color--text--tint-1);
 }
 
 .diff {

@@ -61,7 +61,7 @@ describe('WorkflowReviewLifecycleService', () => {
 		it('records the cause entry and the close entry together, in the lock transaction', async () => {
 			const request = openRequest({ decision: 'changes_requested', updatedById: 'user-2' });
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-				{ request, workflowIds: ['wf-1'] },
+				{ request, links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
 			]);
 
 			await service.afterWorkflowArchived('wf-1', 'user-9');
@@ -101,7 +101,10 @@ describe('WorkflowReviewLifecycleService', () => {
 
 		it('attributes a system archive (no user) as a system actor', async () => {
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-				{ request: openRequest(), workflowIds: ['wf-1'] },
+				{
+					request: openRequest(),
+					links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }],
+				},
 			]);
 
 			await service.afterWorkflowArchived('wf-1', null);
@@ -119,7 +122,7 @@ describe('WorkflowReviewLifecycleService', () => {
 		it('leaves the request open while a reviewable workflow remains outside the affected set', async () => {
 			const request = openRequest();
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-				{ request, workflowIds: ['wf-1'] },
+				{ request, links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
 			]);
 			requestRepository.hasReviewableWorkflowOutside.mockResolvedValue(true);
 
@@ -165,8 +168,8 @@ describe('WorkflowReviewLifecycleService', () => {
 			const first = openRequest({ id: 'req-1' });
 			const second = openRequest({ id: 'req-2' });
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-				{ request: first, workflowIds: ['wf-1'] },
-				{ request: second, workflowIds: ['wf-2'] },
+				{ request: first, links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
+				{ request: second, links: [{ workflowId: 'wf-2', workflowVersionId: 'wfv-2' }] },
 			]);
 
 			await service.afterWorkflowsTransferred(['wf-1', 'wf-2', 'wf-3'], 'user-9');
@@ -203,7 +206,10 @@ describe('WorkflowReviewLifecycleService', () => {
 	describe('delete', () => {
 		it('captures before the delete without writing anything', async () => {
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-				{ request: openRequest(), workflowIds: ['wf-1'] },
+				{
+					request: openRequest(),
+					links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }],
+				},
 			]);
 
 			await service.beforeWorkflowDeleted('wf-1', 'user-9');
@@ -227,7 +233,7 @@ describe('WorkflowReviewLifecycleService', () => {
 		it('records the captured deletion and closes, after the delete committed', async () => {
 			const request = openRequest();
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-				{ request, workflowIds: ['wf-1'] },
+				{ request, links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
 			]);
 			await service.beforeWorkflowDeleted('wf-1', 'user-9');
 			requestRepository.findById.mockResolvedValue(request);
@@ -256,7 +262,7 @@ describe('WorkflowReviewLifecycleService', () => {
 		it('evaluates a batch as one affected set: per-workflow cause entries, one close', async () => {
 			const request = openRequest();
 			requestRepository.findOpenRequestsForWorkflows.mockImplementation(async ([workflowId]) => [
-				{ request, workflowIds: [workflowId] },
+				{ request, links: [{ workflowId, workflowVersionId: `wfv-${workflowId}` }] },
 			]);
 			await service.beforeWorkflowDeleted('wf-1', 'user-9');
 			await service.beforeWorkflowDeleted('wf-2', 'user-9');
@@ -295,7 +301,7 @@ describe('WorkflowReviewLifecycleService', () => {
 		it('records nothing for a request that closed between capture and delete', async () => {
 			const request = openRequest();
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-				{ request, workflowIds: ['wf-1'] },
+				{ request, links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
 			]);
 			await service.beforeWorkflowDeleted('wf-1', 'user-9');
 			requestRepository.findById.mockResolvedValue(openRequest({ state: 'closed' }));
@@ -308,7 +314,7 @@ describe('WorkflowReviewLifecycleService', () => {
 		it('consumes the capture: a second after-hook for the same workflow records nothing', async () => {
 			const request = openRequest();
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-				{ request, workflowIds: ['wf-1'] },
+				{ request, links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
 			]);
 			await service.beforeWorkflowDeleted('wf-1', 'user-9');
 			requestRepository.findById.mockResolvedValue(request);
@@ -482,7 +488,10 @@ describe('WorkflowReviewLifecycleService', () => {
 
 	it('a failed broadcast is only warned about, never thrown', async () => {
 		requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-			{ request: openRequest(), workflowIds: ['wf-1'] },
+			{
+				request: openRequest(),
+				links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }],
+			},
 		]);
 		collaborationService.broadcastWorkflowReviewStateChanged.mockRejectedValue(
 			new Error('push down'),

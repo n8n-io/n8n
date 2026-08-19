@@ -4,7 +4,7 @@ import {
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
-import { SDK_IMPORTABLE_FUNCTIONS } from '@n8n/workflow-sdk';
+import { SDK_IMPORTABLE_FUNCTIONS, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -18,6 +18,7 @@ import {
 	resolveCredentials,
 } from './resolve-credentials';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
+import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
 	combineWarnings,
@@ -66,6 +67,7 @@ import {
 	preserveExistingNodeGroupIds,
 	preserveExistingSetupValues,
 } from './workflow-json-utils';
+import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
 import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
@@ -171,6 +173,15 @@ export const buildWorkflowInputSchema = z
 				'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
 					'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
 			),
+		preferNewCredentials: z
+			.array(z.string())
+			.optional()
+			.describe(
+				'Credential types (e.g. ["slackApi"]) the user explicitly asked to create fresh — pass ONLY on ' +
+					'an explicit request like "create a new Slack credential", never as a default. Those slots are ' +
+					'left unresolved instead of being filled from an existing credential or n8n credits, so ' +
+					'credential setup can offer to create one. Pass the same list to workflows(action="setup").',
+			),
 		executionIntent: z
 			.enum(['one-off', 'reusable'])
 			.optional()
@@ -194,7 +205,11 @@ const triggerNodeOutputSchema = z.object({
 const verificationReadinessOutputSchema = workflowVerificationReadinessSchema;
 
 const setupRequirementOutputSchema = z.discriminatedUnion('status', [
-	z.object({ status: z.literal('not_required') }),
+	z.object({
+		status: z.literal('not_required'),
+		reason: z.literal('skipped-by-user').optional(),
+		guidance: z.string().optional(),
+	}),
 	z.object({
 		status: z.literal('required'),
 		reason: z.enum(['mocked-credentials', 'unresolved-placeholders', 'workflow-needs-setup']),
@@ -251,7 +266,7 @@ const ONE_OFF_OPERATIONS_GUIDANCE =
 	'This one-off build is not complete yet. Follow the one-off instructions in `instructions` now (do NOT load the one-off-operations skill — they are the same instructions). Simulated verification is NOT required and NOT the completion criterion: route setup if needed, then run the workflow live with the user’s approval, read back the actual node output, and report only what you read. Offer to keep or delete the workflow when the operation is done.';
 
 const POST_BUILD_FLOW_GUIDANCE =
-	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
+	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after `executions(action="list")` and `executions(action="get")` confirm that it succeeded and ran the required path; the user\'s statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
 
 // Inlined into successful build results; the skills stay registered for tag-driven follow-up turns.
 const inlineSkillInstructionsCache = new Map<string, string>();
@@ -758,7 +773,20 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			const partitionedWarnings = partitionWarnings(compiled.warnings);
+			// Snapshot of the previously saved workflow, used to tell nodes this
+			// build actually touched apart from pre-existing ones it round-tripped.
+			let savedWorkflowSnapshot: WorkflowJSON | undefined;
+			if (targetWorkflowId) {
+				try {
+					savedWorkflowSnapshot = await context.workflowService.getAsWorkflowJSON(targetWorkflowId);
+				} catch {
+					// Prior state unreadable — treat every node as changed (unscoped).
+				}
+			}
+
+			const partitionedWarnings = partitionWarnings(
+				downgradeUnchangedNodeBlockers(compiled.warnings, compiled.workflow, savedWorkflowSnapshot),
+			);
 			informational = partitionedWarnings.informational;
 
 			if (partitionedWarnings.blocking.length > 0) {
@@ -854,7 +882,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			const credentialMap = await buildCredentialMap(context.credentialService);
-			const mockResult = await resolveCredentials(json, targetWorkflowId, context, credentialMap);
+			const mockResult = await resolveCredentials(
+				json,
+				targetWorkflowId,
+				context,
+				credentialMap,
+				input.preferNewCredentials,
+			);
 
 			// Deterministic backstop for a builder that never checked credentials:
 			// a chat-model node for a provider the user has no credential for gets
@@ -901,6 +935,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 				const hasMockedCredentialNodes = mockResult.mockedNodeNames.length > 0;
 				const hasResolvedCredentials = Object.keys(mockResult.resolvedCredentialsByNode).length > 0;
+				// Reported by the resolver rather than inferred from the mocked types, so a
+				// slot the source omitted entirely — held by the required-type pass, which
+				// mocks nothing — still carries the request into the setup call.
+				const heldForNewCredentialTypes = mockResult.heldForNewCredentialTypes;
 				const referencedWorkflowIds = getReferencedWorkflowIds(json);
 				const triggerNodes = (json.nodes ?? [])
 					.filter((n) => isTriggerNodeType(n.type))
@@ -909,13 +947,44 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						(t): t is { nodeName: string; nodeType: string } =>
 							Boolean(t.nodeName) && Boolean(t.nodeType),
 					);
-				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
+				// Setup routing is scoped to nodes this build actually changed:
+				// pre-existing nodes the build merely round-tripped must not route
+				// the user into setup for an unrelated edit. Undefined = unscoped
+				// (new workflow, or prior state unreadable).
+				const changedNodeNames = savedWorkflowSnapshot
+					? computeChangedNodeNames(json, savedWorkflowSnapshot)
+					: undefined;
+				const isInSetupScope = (nodeName: string | undefined) =>
+					changedNodeNames === undefined ||
+					(nodeName !== undefined && changedNodeNames.includes(nodeName));
+				const hasPlaceholders = (json.nodes ?? []).some(
+					(n) => isInSetupScope(n.name) && hasPlaceholderDeep(n.parameters),
+				);
 				const createSuccessResponse = async (
 					saved: { id: string; versionId: string; checksum?: string },
 					operation: 'create' | 'update',
 				) => {
-					const setupRequests = await analyzeWorkflow(context, saved.id);
-					const workflowNeedsSetup = setupRequests.some((request) => request.needsAction);
+					const setupRequests = await analyzeWorkflow(context, saved.id, undefined, {
+						...(input.preferNewCredentials
+							? { preferNewCredentialTypes: input.preferNewCredentials }
+							: {}),
+					});
+					// Two independent filters over the same list: `isInSetupScope` drops nodes this
+					// build never touched, the skip partition drops cards the user declined. A node
+					// only re-arms the setup follow-up when it survives both.
+					const { pending: pendingSetupRequests, skippedByUser: skippedSetupRequests } =
+						partitionSkippedSetupRequests(
+							setupRequests,
+							saved.id,
+							getSkippedSetupSubjects(context),
+						);
+					const needsSetupInScope = (request: (typeof setupRequests)[number]) =>
+						request.needsAction === true && isInSetupScope(request.node.name);
+					const workflowNeedsSetup = pendingSetupRequests.some(needsSetupInScope);
+					// Only the user's skip explains the silence — an out-of-scope node is not
+					// something they declined, and has its own reporting on the setup path.
+					const onlySkippedSetupRemains =
+						!workflowNeedsSetup && skippedSetupRequests.some(needsSetupInScope);
 					const { nodeSimulationPlan, simulationFixtures, waitGateScripts } =
 						await planVerificationSimulation({
 							workflow: json,
@@ -995,12 +1064,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							? mockResult.resolvedCredentialsByNode
 							: undefined,
 						workflowNeedsSetup,
+						onlySkippedSetupRemains,
 						nodeSimulationPlan,
 						simulationFixtures,
 						waitGateScripts,
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
+						changedNodeNames,
 						executionIntent,
 						summary,
 					});
@@ -1052,9 +1123,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						resolvedCredentialsByNode: hasResolvedCredentials
 							? mockResult.resolvedCredentialsByNode
 							: undefined,
-						credentialResolutionNote: hasResolvedCredentials
-							? buildCredentialResolutionNote(mockResult.resolvedCredentialsByNode)
-							: undefined,
+						credentialResolutionNote:
+							hasResolvedCredentials || heldForNewCredentialTypes.length > 0
+								? buildCredentialResolutionNote(
+										mockResult.resolvedCredentialsByNode,
+										heldForNewCredentialTypes,
+									)
+								: undefined,
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,

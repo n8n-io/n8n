@@ -149,6 +149,14 @@ export interface WorkflowNodeResponse {
 	credentials?: Record<string, unknown>;
 }
 
+/** A canvas node group as returned by the n8n REST API — members are node *ids*. */
+export interface WorkflowNodeGroupResponse {
+	id: string;
+	name: string;
+	nodeIds: string[];
+	description?: string;
+}
+
 /** A workflow as returned by GET /rest/workflows/:id. */
 export interface WorkflowResponse {
 	id: string;
@@ -158,6 +166,7 @@ export interface WorkflowResponse {
 	description?: string;
 	nodes: WorkflowNodeResponse[];
 	connections: Record<string, unknown>;
+	nodeGroups?: WorkflowNodeGroupResponse[];
 	pinData?: Record<string, unknown>;
 }
 

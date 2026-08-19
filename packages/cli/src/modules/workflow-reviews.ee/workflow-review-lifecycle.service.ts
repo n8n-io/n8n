@@ -241,8 +241,8 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 						);
 
 					const affected = new Set<string>();
-					for (const { request, workflowIds: linkedWorkflowIds } of openRequests) {
-						for (const linkedWorkflowId of linkedWorkflowIds) {
+					for (const { request, links } of openRequests) {
+						for (const { workflowId: linkedWorkflowId } of links) {
 							await this.activityRepository.createActivity(
 								{
 									workflowReviewRequestId: request.id,

@@ -45,6 +45,8 @@ export interface SubAgentSpawnRequest {
 	parentThreadId?: string;
 	/** Parent's episodic-memory resource id, inherited so the child shares its scope. */
 	parentResourceId?: string;
+	/** Parent's workspace principal hash, inherited by configured first-class children. */
+	parentSandboxPrincipalHash?: string;
 	/**
 	 * This delegation's task path — already assigned and policy-checked by the SDK
 	 * delegate tool, then validated by `@n8n/agents` (`assertSubAgentTaskPath`)

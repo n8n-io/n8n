@@ -17,6 +17,7 @@ import {
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
+	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
@@ -135,6 +136,7 @@ import { assertNever } from '@/utils';
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { CanvasNodeContextFlagGate } from './canvas-node-context-flag-gate';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
@@ -242,30 +244,74 @@ function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo |
  * block so they're available once the user actually asks for something.
  * Returns an empty string when there are none.
  */
-function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttachment[]): string {
-	if (contextAttachments.length === 0) return '';
+/** Renders one canvas node-selection attachment as one line per set. */
+function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string {
+	const setLines = attachment.sets.map((set) => {
+		const names = set.nodes.map((node) => node.name ?? node.id);
+
+		const label =
+			names.length === 1
+				? `Node "${names[0]}"`
+				: `A chain of connected nodes: ${names.join(' → ')}`;
+
+		const input = set.inputNode ? `, preceded by "${set.inputNode.name ?? set.inputNode.id}"` : '';
+
+		const output = set.outputNode
+			? `, followed by "${set.outputNode.name ?? set.outputNode.id}"`
+			: '';
+
+		const group = set.canvasGroupName
+			? `, part of canvas group "${set.canvasGroupName}"`
+			: set.canvasGroupId
+				? `, part of canvas group \`${set.canvasGroupId}\``
+				: '';
+
+		return `  - ${label}${input}${output}${group}.`;
+	});
+
+	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}`;
+}
+
+export function buildContextResourcesBlock(
+	contextAttachments: InstanceAiResourceAttachment[],
+): string {
+	if (contextAttachments.length === 0) {
+		return '';
+	}
+
 	const lines = contextAttachments.map((attachment) => {
+		if (attachment.type === 'nodes') {
+			return buildNodesAttachmentLine(attachment);
+		}
+
 		const name = attachment.name ? ` "${attachment.name}"` : '';
+
 		if (attachment.type === 'agent') {
 			if (attachment.pending) {
 				return `- New unsaved Agent artifact${name} (pending id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
 			}
 			return `- Agent${name} (id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
 		}
+
+		// Attachment type must be workflow at this point
 		// Only mention the execution when one was actually handed off.
 		const execution = attachment.executionId
 			? `, currently viewing its execution \`${attachment.executionId}\``
 			: '';
+
 		return `- Workflow${name} (id: \`${attachment.id}\`)${execution}.`;
 	});
+
 	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
 		? 'The user opened this conversation from the agent editor, where they are looking at:'
 		: 'The user opened this conversation from the workflow editor, where they are looking at:';
+
 	const pendingAgentGuidance = contextAttachments.some(
 		(attachment) => attachment.type === 'agent' && attachment.pending,
 	)
 		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
 		: '';
+
 	const prose = [
 		header,
 		...lines,
@@ -279,6 +325,13 @@ function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttach
 	// reload from the leading JSON line — keeping the resource durable without
 	// persisting it as visible text.
 	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(contextAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
+}
+
+/** Workflow/agent attachments carry a display name; a nodes attachment doesn't. */
+function isNamedResourceAttachment(
+	attachment: InstanceAiResourceAttachment,
+): attachment is InstanceAiWorkflowAttachment | InstanceAiAgentAttachment {
+	return attachment.type !== 'nodes' && Boolean(attachment.name);
 }
 
 function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {
@@ -647,6 +700,7 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 				action: 'apply',
 				nodeCredentials: request.nodeCredentials,
 				nodeParameters: request.nodeParameters,
+				skippedNodes: request.skippedNodes,
 			};
 		case 'setupWorkflowTestTrigger':
 			return {
@@ -824,6 +878,7 @@ export class InstanceAiService {
 		private readonly creditService: InstanceAiCreditService,
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
+		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -903,6 +958,7 @@ export class InstanceAiService {
 			dbSnapshotStorage: this.dbSnapshotStorage,
 			agentMemory: this.agentMemory,
 			telemetry: this.telemetry,
+			errorReporter: this.instanceAiErrorReporter,
 			logger: this.logger,
 			runState: this.runState,
 			suspendedThreads: this.suspendedThreads,
@@ -1017,6 +1073,27 @@ export class InstanceAiService {
 			await this.threadGrantRepo.grant(threadId, userId, key);
 		} catch (error) {
 			this.logger.warn('Failed to persist Instance AI session grant', {
+				threadId,
+				key,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	/**
+	 * Drop a per-user, thread-level grant. Used by decisions that are meant to be reversible
+	 * within a thread — e.g. the user skipped a credential's setup, then later asks for it.
+	 * Best-effort: a failed delete leaves the decision in place until the next run.
+	 */
+	private async revokeThreadSessionGrant(
+		threadId: string,
+		userId: string,
+		key: string,
+	): Promise<void> {
+		try {
+			await this.threadGrantRepo.revoke(threadId, userId, key);
+		} catch (error) {
+			this.logger.warn('Failed to revoke Instance AI session grant', {
 				threadId,
 				key,
 				error: getErrorMessage(error),
@@ -2448,6 +2525,10 @@ export class InstanceAiService {
 			sessionGrants.add(key);
 		};
 		context.grantSessionToolApproval = grantSessionToolApproval;
+		context.revokeSessionToolApproval = async (key: string) => {
+			await this.revokeThreadSessionGrant(threadId, user.id, key);
+			sessionGrants.delete(key);
+		};
 
 		// Domain-access approvals are stored as grant keys in `instance_ai_thread_grants` (via
 		// the same load/persist path as above), so they survive restart and are visible
@@ -3534,6 +3615,40 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Splits a message's attachments into the resource references that feed the
+	 * context block, gating canvas node-selection attachments behind
+	 * CANVAS_NODE_CONTEXT_FLAG per user. Workflow and agent references always pass
+	 * through — only `nodes` attachments are conditional.
+	 */
+	private async resolveContextAttachments(
+		attachments: InstanceAiAttachment[] | undefined,
+		user: User,
+	): Promise<InstanceAiResourceAttachment[]> {
+		const attachmentsOrEmpty = attachments ?? [];
+
+		const workflowAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiWorkflowAttachment => attachment.type === 'workflow',
+		);
+
+		const agentAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
+		);
+
+		const nodeAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiNodesAttachment => attachment.type === 'nodes',
+		);
+
+		const canvasNodeContextEnabled =
+			nodeAttachments.length > 0 && (await this.canvasNodeContextFlagGate.isEnabled(user));
+
+		return [
+			...workflowAttachments,
+			...agentAttachments,
+			...(canvasNodeContextEnabled ? nodeAttachments : []),
+		];
+	}
+
+	/**
 	 * Run body for a fresh orchestrator turn. Never call directly — go through
 	 * `startExecuteRun` so the promise is registered with `inFlightExecutions`
 	 * and shutdown can drain it before the DB closes.
@@ -3561,16 +3676,8 @@ export class InstanceAiService {
 		const fileAttachments = (attachments ?? []).filter(
 			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
 		);
-		const workflowAttachments = (attachments ?? []).filter(
-			(attachment): attachment is InstanceAiWorkflowAttachment => attachment.type === 'workflow',
-		);
-		const agentAttachments = (attachments ?? []).filter(
-			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
-		);
-		const contextAttachments: InstanceAiResourceAttachment[] = [
-			...workflowAttachments,
-			...agentAttachments,
-		];
+
+		const contextAttachments = await this.resolveContextAttachments(attachments, user);
 
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
@@ -3595,20 +3702,28 @@ export class InstanceAiService {
 					size: attachment.data.length,
 				}));
 			}
+
 			// `message` is the user's raw text, so without this the trace has no
 			// record that the editor handed the agent a resource.
 			if (contextAttachments.length) {
 				traceInput.resourceAttachments = contextAttachments.map((attachment) => {
+					if (attachment.type === 'nodes') {
+						return { type: attachment.type, id: attachment.workflowId };
+					}
+
 					const resource: TracedResourceAttachment = {
 						type: attachment.type,
 						id: attachment.id,
 					};
+
 					if (attachment.type === 'agent') {
 						resource.projectId = attachment.projectId;
 					}
+
 					if (attachment.type === 'workflow' && attachment.executionId) {
 						resource.executionId = attachment.executionId;
 					}
+
 					return resource;
 				});
 			}
@@ -3828,10 +3943,11 @@ export class InstanceAiService {
 			// message), so title it with the workflow name and mark it refined so
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
+
 			if (thread && !thread.title) {
 				const handoffTitle =
-					contextAttachments.find((attachment) => attachment.name)?.name ??
-					agentPreviewTitleFallback;
+					contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback;
+
 				await patchThread(memory, {
 					threadId,
 					update: ({ metadata }) =>
@@ -5105,6 +5221,7 @@ export class InstanceAiService {
 			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
 			...(data.action ? { action: data.action } : {}),
 			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
+			...(data.skippedNodes ? { skippedNodes: data.skippedNodes } : {}),
 			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 			...(data.answers ? { answers: data.answers } : {}),
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),

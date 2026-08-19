@@ -1735,6 +1735,7 @@ describe('WorkflowService', () => {
 		let externalHooksMock: MockProxy<ExternalHooks>;
 		let workflowPublishedVersionRepositoryMock: MockProxy<WorkflowPublishedVersionRepository>;
 		let workflowMutationHooksMock: MockProxy<WorkflowMutationHooksProxy>;
+		let ownershipServiceMock: MockProxy<OwnershipService>;
 
 		const WORKFLOW_ID = 'workflow-1';
 
@@ -1751,6 +1752,7 @@ describe('WorkflowService', () => {
 
 		beforeEach(() => {
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			ownershipServiceMock = mock<OwnershipService>();
 			workflowRepositoryMock = mock();
 			executionPersistenceMock = mock();
 			activeWorkflowManagerMock = mock();
@@ -1767,7 +1769,7 @@ describe('WorkflowService', () => {
 				mock(), // sharedWorkflowRepository
 				workflowRepositoryMock, // workflowRepository
 				mock(), // workflowTagMappingRepository
-				mock(), // ownershipService
+				ownershipServiceMock, // ownershipService
 				mock(), // tagService
 				mock(), // workflowHistoryService
 				externalHooksMock, // externalHooks
@@ -1905,6 +1907,25 @@ describe('WorkflowService', () => {
 			expect(
 				executionPersistenceMock.hardDeleteByWorkflowId.mock.invocationCallOrder[0],
 			).toBeLessThan(workflowRepositoryMock.delete.mock.invocationCallOrder[0]);
+		});
+
+		test('invalidates the cached project for the deleted workflow', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
+
+			expect(ownershipServiceMock.invalidateWorkflowProjectCacheByIds).toHaveBeenCalledWith([
+				WORKFLOW_ID,
+			]);
+		});
+
+		test('does not invalidate the cached project when the workflow is not found', async () => {
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(null);
+
+			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
+
+			expect(ownershipServiceMock.invalidateWorkflowProjectCacheByIds).not.toHaveBeenCalled();
 		});
 
 		test('forwards the acting user to the delete and afterDelete hooks', async () => {

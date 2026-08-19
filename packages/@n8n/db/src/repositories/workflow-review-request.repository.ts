@@ -80,7 +80,14 @@ export type FindManyForInboxOptions = {
  */
 export type WorkflowReviewRequestForWorkflowRow = Pick<
 	WorkflowReviewRequest,
-	'id' | 'state' | 'decision' | 'description' | 'updatedById' | 'createdAt' | 'updatedAt'
+	| 'id'
+	| 'projectId'
+	| 'state'
+	| 'decision'
+	| 'description'
+	| 'updatedById'
+	| 'createdAt'
+	| 'updatedAt'
 > & {
 	workflowVersionId: string | null;
 };
@@ -306,6 +313,7 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 		);
 		const requests = entities.map((entity) => ({
 			id: entity.id,
+			projectId: entity.projectId,
 			state: entity.state,
 			decision: entity.decision,
 			description: entity.description,
@@ -339,13 +347,19 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 
 	/**
 	 * All open requests linked to any of the given workflows, each with the
-	 * subset of those workflows it is linked to — so a lifecycle cleanup can
-	 * close a request once while still knowing which workflows were affected.
+	 * subset of those workflows it is linked to and the version pinned per link —
+	 * so a lifecycle cleanup can close a request once while knowing which
+	 * workflows were affected, and a status read can report the pin.
 	 */
 	async findOpenRequestsForWorkflows(
 		workflowIds: string[],
 		ctx: OperationContext,
-	): Promise<Array<{ request: WorkflowReviewRequest; workflowIds: string[] }>> {
+	): Promise<
+		Array<{
+			request: WorkflowReviewRequest;
+			links: Array<{ workflowId: string; workflowVersionId: string | null }>;
+		}>
+	> {
 		if (workflowIds.length === 0) return [];
 
 		const state: WorkflowReviewRequestState = 'open';
@@ -358,21 +372,32 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 				'requestWorkflow.workflowReviewRequestId = request.id',
 			)
 			.addSelect('requestWorkflow.workflowId', 'linkedWorkflowId')
+			.addSelect('requestWorkflow.workflowVersionId', 'linkedWorkflowVersionId')
 			.where('requestWorkflow.workflowId IN (:...workflowIds)', { workflowIds })
 			.andWhere('request.state = :state', { state })
-			.getRawAndEntities<{ request_id: string; linkedWorkflowId: string }>();
+			.getRawAndEntities<{
+				request_id: string;
+				linkedWorkflowId: string;
+				linkedWorkflowVersionId: string | null;
+			}>();
 
 		// Raw rows are per (request, workflow) pair; entities are deduplicated.
-		const workflowIdsByRequestId = new Map<string, string[]>();
+		const linksByRequestId = new Map<
+			string,
+			Array<{ workflowId: string; workflowVersionId: string | null }>
+		>();
 		for (const row of raw) {
-			const linked = workflowIdsByRequestId.get(row.request_id) ?? [];
-			linked.push(row.linkedWorkflowId);
-			workflowIdsByRequestId.set(row.request_id, linked);
+			const links = linksByRequestId.get(row.request_id) ?? [];
+			links.push({
+				workflowId: row.linkedWorkflowId,
+				workflowVersionId: row.linkedWorkflowVersionId ?? null,
+			});
+			linksByRequestId.set(row.request_id, links);
 		}
 
 		return entities.map((request) => ({
 			request,
-			workflowIds: workflowIdsByRequestId.get(request.id) ?? [],
+			links: linksByRequestId.get(request.id) ?? [],
 		}));
 	}
 

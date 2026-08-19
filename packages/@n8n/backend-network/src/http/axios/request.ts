@@ -20,6 +20,7 @@ import {
 	searchForHeader,
 	setAxiosAgents,
 	throwIfDomainNotAllowed,
+	validateProxySsrf,
 	validateUrlSsrf,
 } from './utils';
 import type { SsrfBridge } from '../../ssrf';
@@ -187,6 +188,7 @@ export async function httpRequest(
 
 	const url = buildTargetUrl(requestOptions.url, requestOptions.baseURL) ?? requestOptions.url;
 	await validateUrlSsrf(url, ssrfBridge);
+	await validateProxySsrf(requestOptions.proxy, ssrfBridge);
 
 	const axiosRequest = convertN8nRequestToAxios(requestOptions, ssrfBridge);
 	if (
