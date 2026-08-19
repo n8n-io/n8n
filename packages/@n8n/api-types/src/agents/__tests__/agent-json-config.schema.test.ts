@@ -604,3 +604,51 @@ describe('formatAgentConfigZodError', () => {
 		expect(result.error.issues[0]?.message).toBe('MCP server name cannot be blank');
 	});
 });
+
+describe('WorkflowToolJsonConfigSchema — inputs', () => {
+	it('accepts AI and fixed input bindings on a workflow tool', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'Show Shopping List',
+					inputs: {
+						chatId: { mode: 'ai' },
+						shoppingListId: { mode: 'fixed', value: 'OySx3QNU0BcCs8yz' },
+						botName: { mode: 'fixed', value: 'Jarvis' },
+					},
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.tools[0]).toMatchObject({
+				type: 'workflow',
+				inputs: {
+					chatId: { mode: 'ai' },
+					shoppingListId: { mode: 'fixed', value: 'OySx3QNU0BcCs8yz' },
+					botName: { mode: 'fixed', value: 'Jarvis' },
+				},
+			});
+		}
+	});
+
+	it('rejects a fixed binding without a value', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'Show Shopping List',
+					inputs: {
+						botName: { mode: 'fixed' },
+					},
+				},
+			],
+		});
+
+		expect(result.success).toBe(false);
+	});
+});

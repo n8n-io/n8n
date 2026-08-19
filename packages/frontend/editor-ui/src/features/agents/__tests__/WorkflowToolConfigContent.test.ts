@@ -337,4 +337,83 @@ describe('WorkflowToolConfigContent', () => {
 		expect(await findByTestId('agent-workflow-tool-target-unusable')).toBeTruthy();
 		expect(queryByTestId('agent-workflow-tool-target-missing')).toBeNull();
 	});
+
+	describe('workflow input bindings', () => {
+		function workflowWithInputs(
+			name: string,
+			fields: Array<{ name: string; type?: string }>,
+			overrides: { id?: string } = {},
+		) {
+			return {
+				...workflow(name, overrides),
+				nodes: [
+					{
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						parameters: {
+							inputSource: 'workflowInputs',
+							workflowInputs: { values: fields },
+						},
+					},
+				],
+			};
+		}
+
+		it('renders declared input fields for an Execute Workflow Trigger target', async () => {
+			setProjectWorkflows([
+				workflowWithInputs('Notify Sales', [
+					{ name: 'chatId', type: 'string' },
+					{ name: 'botName', type: 'string' },
+				]),
+			]);
+
+			const { findByTestId } = renderComponent({ props: { initialRef: createRef() } });
+
+			expect(await findByTestId('agent-workflow-tool-inputs')).toBeTruthy();
+			expect(await findByTestId('agent-workflow-tool-input-chatId')).toBeTruthy();
+			expect(await findByTestId('agent-workflow-tool-input-botName')).toBeTruthy();
+		});
+
+		it('shows a fixed value input when a binding is already fixed', async () => {
+			setProjectWorkflows([
+				workflowWithInputs('Notify Sales', [
+					{ name: 'chatId', type: 'string' },
+					{ name: 'botName', type: 'string' },
+				]),
+			]);
+
+			const { findByTestId, getByTestId } = renderComponent({
+				props: {
+					initialRef: createRef({
+						inputs: { botName: { mode: 'fixed', value: 'Jarvis' } },
+					}),
+				},
+			});
+
+			await findByTestId('agent-workflow-tool-input-value-botName');
+			expect(
+				(getByTestId('agent-workflow-tool-input-value-botName') as HTMLInputElement).value,
+			).toBe('Jarvis');
+		});
+
+		it('does not render input bindings for passthrough workflows', async () => {
+			setProjectWorkflows([
+				{
+					...workflow('Notify Sales'),
+					nodes: [
+						{
+							type: 'n8n-nodes-base.executeWorkflowTrigger',
+							parameters: { inputSource: 'passthrough' },
+						},
+					],
+				},
+			]);
+
+			const { findByTestId, queryByTestId } = renderComponent({
+				props: { initialRef: createRef() },
+			});
+			await findByTestId('agent-workflow-tool-target');
+
+			expect(queryByTestId('agent-workflow-tool-inputs')).toBeNull();
+		});
+	});
 });

@@ -314,6 +314,7 @@ function handleConfirm() {
 			allOutputs: wc.getAllOutputs(),
 			workflow: wc.getWorkflow(),
 			...(workflowId !== undefined ? { workflowId } : {}),
+			inputs: wc.getInputs(),
 		});
 		toolData.onConfirm(withApprovalRequirement(updatedRef));
 		closeDialog();

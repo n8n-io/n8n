@@ -194,51 +194,85 @@ export function normalizeTriggerInput(
 // 4. inferInputSchema
 // ---------------------------------------------------------------------------
 
-/** Map an n8n-field primitive type to the matching Zod type. */
+/** Execute Workflow Trigger `inputSource` values (mirror nodes-base constants). */
+const INPUT_SOURCE = 'inputSource';
+const WORKFLOW_INPUTS = 'workflowInputs';
+const JSON_EXAMPLE = 'jsonExample';
+const PASSTHROUGH = 'passthrough';
+
+const openCatchallSchema = () => z.object({}).catchall(z.unknown());
+
+/**
+ * Map an n8n-field primitive type to the matching Zod type.
+ * String fields coerce so numeric IDs (e.g. Telegram chatId) do not hard-fail.
+ * Fields are nullable/optional to match the trigger's null fallback for missing keys.
+ */
 function fieldTypeToZod(type: string | undefined, label: string): z.ZodTypeAny {
+	const described = (schema: z.ZodTypeAny) => schema.describe(label).nullable().optional();
+
 	switch (type) {
 		case 'number':
-			return z.number().describe(label);
+			return described(z.coerce.number());
 		case 'boolean':
-			return z.boolean().describe(label);
+			// Do not coerce — Boolean("false") === true.
+			return described(z.boolean());
+		case 'array':
+			return described(z.array(z.unknown()));
+		case 'object':
+			return described(z.record(z.unknown()));
+		case 'any':
+			return described(z.unknown());
 		default:
-			return z.string().describe(label);
+			// string (and unknown type labels) — coerce so numbers/booleans stringify
+			return described(z.coerce.string());
 	}
 }
 
-/** Derive a Zod schema from a trigger's declared `workflowInputs.values`. */
-function schemaFromWorkflowInputs(triggerNode: INode): z.ZodObject<z.ZodRawShape> | null {
+export type WorkflowInputFieldDef = { name: string; type?: string };
+
+function getExecuteWorkflowInputSource(triggerNode: INode): string {
 	const params = triggerNode.parameters ?? {};
-	const workflowInputs = params.workflowInputs as
+	return (params[INPUT_SOURCE] as string | undefined) ?? WORKFLOW_INPUTS;
+}
+
+/** Declared field defs from an Execute Workflow Trigger (empty for passthrough). */
+export function listWorkflowInputFields(triggerNode: INode): WorkflowInputFieldDef[] {
+	const params = triggerNode.parameters ?? {};
+	const inputSource = getExecuteWorkflowInputSource(triggerNode);
+
+	if (inputSource === PASSTHROUGH) return [];
+
+	if (inputSource === JSON_EXAMPLE) {
+		const jsonExample = params[JSON_EXAMPLE] as string | undefined;
+		if (!jsonExample) return [];
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(jsonExample);
+		} catch {
+			return [];
+		}
+		if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return [];
+		return Object.entries(parsed as Record<string, unknown>).map(([name, value]) => ({
+			name,
+			type: value === null ? 'any' : Array.isArray(value) ? 'array' : typeof value,
+		}));
+	}
+
+	// workflowInputs (default)
+	const workflowInputs = params[WORKFLOW_INPUTS] as
 		| { values?: Array<{ name: string; type?: string }> }
 		| undefined;
 
-	if (!workflowInputs?.values?.length) return null;
-
-	const shape: z.ZodRawShape = {};
-	for (const field of workflowInputs.values) {
-		if (!field.name) continue;
-		shape[field.name] = fieldTypeToZod(field.type, field.name);
-	}
-	return Object.keys(shape).length > 0 ? z.object(shape) : null;
+	return (workflowInputs?.values ?? []).filter(
+		(field): field is WorkflowInputFieldDef =>
+			typeof field.name === 'string' && field.name.length > 0,
+	);
 }
 
-/** Derive a Zod schema from a trigger's `jsonExample` passthrough config. */
-function schemaFromJsonExample(triggerNode: INode): z.ZodObject<z.ZodRawShape> | null {
-	const jsonExample = triggerNode.parameters?.jsonExample as string | undefined;
-	if (!jsonExample) return null;
-
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(jsonExample);
-	} catch {
-		return null;
-	}
-	if (typeof parsed !== 'object' || parsed === null) return null;
-
+function schemaFromFieldDefs(fields: WorkflowInputFieldDef[]): z.ZodObject<z.ZodRawShape> | null {
 	const shape: z.ZodRawShape = {};
-	for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-		shape[key] = fieldTypeToZod(typeof value, key);
+	for (const field of fields) {
+		shape[field.name] = fieldTypeToZod(field.type, field.name);
 	}
 	return Object.keys(shape).length > 0 ? z.object(shape) : null;
 }
@@ -259,16 +293,69 @@ export function inferInputSchema(
 				reason: z.string().optional().describe('Why the user should fill out this form'),
 			});
 
-		case 'executeWorkflow':
-			return (
-				schemaFromWorkflowInputs(triggerNode) ??
-				schemaFromJsonExample(triggerNode) ??
-				z.object({}).catchall(z.unknown())
-			);
+		case 'executeWorkflow': {
+			const inputSource = getExecuteWorkflowInputSource(triggerNode);
+			if (inputSource === PASSTHROUGH) {
+				return openCatchallSchema();
+			}
+			return schemaFromFieldDefs(listWorkflowInputFields(triggerNode)) ?? openCatchallSchema();
+		}
 
 		default:
-			return z.object({}).catchall(z.unknown());
+			return openCatchallSchema();
 	}
+}
+
+type WorkflowToolInputsConfig = NonNullable<
+	Extract<AgentJsonToolConfig, { type: 'workflow' }>['inputs']
+>;
+
+/** Collect fixed values configured on the workflow tool (omitted from the LLM schema). */
+export function getFixedWorkflowToolInputs(
+	inputs: WorkflowToolInputsConfig | undefined,
+): Record<string, unknown> {
+	if (!inputs) return {};
+	const fixed: Record<string, unknown> = {};
+	for (const [name, binding] of Object.entries(inputs)) {
+		if (binding.mode === 'fixed') {
+			fixed[name] = binding.value;
+		}
+	}
+	return fixed;
+}
+
+/**
+ * Drop fixed-bound keys from the LLM-facing schema so the model is not asked
+ * for values the user already configured.
+ */
+export function omitFixedFieldsFromSchema(
+	schema: z.ZodObject<z.ZodRawShape>,
+	inputs: WorkflowToolInputsConfig | undefined,
+): z.ZodObject<z.ZodRawShape> {
+	const fixedKeys = Object.keys(getFixedWorkflowToolInputs(inputs));
+	if (fixedKeys.length === 0) return schema;
+
+	const shape = { ...schema.shape };
+	for (const key of fixedKeys) {
+		delete shape[key];
+	}
+
+	const catchall = schema._def.catchall as z.ZodTypeAny | undefined;
+	if (catchall && !(catchall instanceof z.ZodNever)) {
+		return z.object(shape).catchall(catchall);
+	}
+	return z.object(shape);
+}
+
+/** Merge LLM-supplied args with fixed tool-config values (fixed wins). */
+export function mergeWorkflowToolInput(
+	llmInput: Record<string, unknown>,
+	inputs: WorkflowToolInputsConfig | undefined,
+): Record<string, unknown> {
+	return {
+		...llmInput,
+		...getFixedWorkflowToolInputs(inputs),
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -555,7 +642,9 @@ async function buildWorkflowTool(
 	// `agent-json-config.ts`); this is the runtime safety net for legacy configs.
 	const toolName = toToolName(descriptor.name ?? workflowName);
 	const toolDescription = descriptor.description ?? `Execute the "${workflowName}" workflow`;
-	const inputSchema = inferInputSchema(triggerNode, triggerType);
+	const fullInputSchema = inferInputSchema(triggerNode, triggerType);
+	const inputSchema = omitFixedFieldsFromSchema(fullInputSchema, descriptor.inputs);
+	const toolInputs = descriptor.inputs;
 	const allOutputs = descriptor.allOutputs ?? false;
 	const reference: WorkflowToolWorkflowReference = {
 		workflowId: workflow.id,
@@ -593,7 +682,14 @@ async function buildWorkflowTool(
 			)
 			.handler(async (input: Record<string, unknown>) => {
 				const current = await loadCurrentWorkflow(context, reference, triggerType);
-				const parsedInput = inferInputSchema(current.triggerNode, current.triggerType).parse(input);
+				const currentSchema = omitFixedFieldsFromSchema(
+					inferInputSchema(current.triggerNode, current.triggerType),
+					toolInputs,
+				);
+				const parsedInput = mergeWorkflowToolInput(
+					currentSchema.parse(input) as Record<string, unknown>,
+					toolInputs,
+				);
 				const formUrl = getFormUrl(current.workflow, current.triggerNode, context.webhookBaseUrl);
 				const reason = parsedInput.reason;
 				return {
@@ -632,7 +728,14 @@ async function buildWorkflowTool(
 		)
 		.handler(async (input: Record<string, unknown>) => {
 			const current = await loadCurrentWorkflow(context, reference, triggerType);
-			const parsedInput = inferInputSchema(current.triggerNode, current.triggerType).parse(input);
+			const currentSchema = omitFixedFieldsFromSchema(
+				inferInputSchema(current.triggerNode, current.triggerType),
+				toolInputs,
+			);
+			const parsedInput = mergeWorkflowToolInput(
+				currentSchema.parse(input) as Record<string, unknown>,
+				toolInputs,
+			);
 			return await executeWorkflow(
 				current.workflow,
 				current.triggerNode,
