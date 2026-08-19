@@ -73,7 +73,14 @@ class ReadOnlyCommand extends BaseCommand {}
 beforeEach(() => {
 	Container.set(
 		GlobalConfig,
-		mock<GlobalConfig>({ taskRunners: {}, nodes: {}, expressionEngine: { engine: 'legacy' } }),
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: { engine: 'legacy' },
+			// must be numeric: the SIGTERM/SIGINT handlers registered by init() compute
+			// a setTimeout delay from it, and a mock proxy yields NaN at pool teardown
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
 	);
 });
 
@@ -140,7 +147,12 @@ test('should not init the expression engine for commands that do not need it', a
 	const setEngineSpy = vi.spyOn(Expression, 'setExpressionEngine').mockReturnValue(undefined);
 	Container.set(
 		GlobalConfig,
-		mock<GlobalConfig>({ taskRunners: {}, nodes: {}, expressionEngine: { engine: 'vm' } }),
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: { engine: 'vm' },
+			generic: { gracefulShutdownTimeout: 30 },
+		}),
 	);
 
 	const cmd = new ReadOnlyCommand();
@@ -181,6 +193,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 				bridgeMemoryLimit: 128,
 				idleTimeout: 30,
 			},
+			generic: { gracefulShutdownTimeout: 30 },
 		}),
 	);
 
