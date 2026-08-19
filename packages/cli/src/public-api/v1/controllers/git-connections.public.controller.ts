@@ -7,6 +7,7 @@ import {
 	MAX_ITEMS_PER_PAGE,
 	UpdateGitConnectionDto,
 } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -27,17 +28,28 @@ import {
 	Put,
 	Query,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { GitConnectionsPublicApiService } from '@/public-api/v1/services/git-connections-public-api.service';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
 
 const tags = ['GitConnections'];
 
 @PublicApiController('/git-connections')
 export class GitConnectionsPublicController {
-	constructor(private readonly gitConnections: GitConnectionsPublicApiService) {}
+	constructor(private readonly moduleRegistry: ModuleRegistry) {}
+
+	private async gitConnectionsService() {
+		if (!this.moduleRegistry.isActive('git-connections')) {
+			throw new ServiceUnavailableError('Git connections module is not enabled');
+		}
+		const { GitConnectionsService } = await import(
+			'@/modules/git-connections.ee/git-connections.service.js'
+		);
+		return Container.get(GitConnectionsService);
+	}
 
 	@Post('/')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
@@ -52,7 +64,7 @@ export class GitConnectionsPublicController {
 		_res: Response,
 		@Body input: CreateGitConnectionDto,
 	): Promise<GitConnectionPublicDto> {
-		return await this.gitConnections.create(input);
+		return await (await this.gitConnectionsService()).create(input);
 	}
 
 	@Get('/')
@@ -87,7 +99,7 @@ export class GitConnectionsPublicController {
 			}
 			limit = Math.min(limit, MAX_ITEMS_PER_PAGE);
 		}
-		const { data, count } = await this.gitConnections.list(offset, limit);
+		const { data, count } = await (await this.gitConnectionsService()).list(offset, limit);
 		return {
 			data,
 			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
@@ -107,7 +119,7 @@ export class GitConnectionsPublicController {
 		_res: Response,
 		@Param('id') id: string,
 	): Promise<GitConnectionPublicDto> {
-		return await this.gitConnections.findOne(id);
+		return await (await this.gitConnectionsService()).findOne(id);
 	}
 
 	@Put('/:id')
@@ -125,7 +137,7 @@ export class GitConnectionsPublicController {
 		@Param('id') id: string,
 		@Body input: UpdateGitConnectionDto,
 	): Promise<GitConnectionPublicDto> {
-		return await this.gitConnections.update(id, input);
+		return await (await this.gitConnectionsService()).update(id, input);
 	}
 
 	@Post('/:id/clone')
@@ -143,7 +155,7 @@ export class GitConnectionsPublicController {
 		@Param('id') id: string,
 		@Body input: CloneGitConnectionDto,
 	): Promise<GitConnectionPublicDto> {
-		return await this.gitConnections.clone(id, input.branchName);
+		return await (await this.gitConnectionsService()).clone(id, input.branchName);
 	}
 
 	@Post('/:id/disconnect')
@@ -162,7 +174,7 @@ export class GitConnectionsPublicController {
 		_res: Response,
 		@Param('id') id: string,
 	): Promise<GitConnectionPublicDto> {
-		return await this.gitConnections.disconnect(id);
+		return await (await this.gitConnectionsService()).disconnect(id);
 	}
 
 	@Delete('/:id')
@@ -179,6 +191,6 @@ export class GitConnectionsPublicController {
 		_res: Response,
 		@Param('id') id: string,
 	): Promise<void> {
-		await this.gitConnections.delete(id);
+		await (await this.gitConnectionsService()).delete(id);
 	}
 }
