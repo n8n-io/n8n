@@ -60,6 +60,19 @@ export function annotation(title, message) {
 	return `::error title=${title}::${message.replace(/\n/g, '%0A')}`;
 }
 
+function createBundleBranch({ git, log, bundle, base, baseSha, remote }) {
+	log(`${bundle} does not exist yet; creating it at ${base} ${baseSha}.`);
+	git(['checkout', '--force', '-B', bundle, baseSha]);
+
+	const push = attempt(git, ['push', remote, `HEAD:refs/heads/${bundle}`]);
+	if (!push.ok) {
+		if (push.out) log(push.out);
+		return { status: 'rejected' };
+	}
+	log(`Created ${bundle} at ${base} ${baseSha}.`);
+	return { status: 'created' };
+}
+
 /**
  * One fetch-merge-push cycle. `status: 'rejected'` means the branch moved under us — the
  * caller re-runs from a fresh fetch rather than forcing anything.
@@ -69,6 +82,15 @@ function mergeBaseIntoBundle({ git, log, bundle, base, remote }) {
 	// refs, so FETCH_HEAD is the only handle. Base first: the second fetch overwrites it.
 	git(['fetch', remote, base]);
 	const baseSha = git(['rev-parse', 'FETCH_HEAD']);
+
+	const listed = attempt(git, ['ls-remote', '--heads', remote, `refs/heads/${bundle}`]);
+	if (!listed.ok) {
+		throw new Error(`Could not check whether ${bundle} exists on the remote:\n${listed.out}`);
+	}
+	if (!listed.out) {
+		return createBundleBranch({ git, log, bundle, base, baseSha, remote });
+	}
+
 	git(['fetch', remote, bundle]);
 	git(['checkout', '--force', '-B', bundle, 'FETCH_HEAD']);
 	const preHead = git(['rev-parse', 'HEAD']);
