@@ -468,6 +468,7 @@ describe('TestWebhooks', () => {
 			await flushMicrotasks();
 
 			expect(deactivateSpy).toHaveBeenCalledWith(workflow);
+			expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
 			expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
 			const [acquireOrder] = (expression.acquireIsolate as Mock).mock.invocationCallOrder;
 			const [deactivateOrder] = deactivateSpy.mock.invocationCallOrder;
