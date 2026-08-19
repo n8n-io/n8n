@@ -111,6 +111,7 @@ export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
 export type { CredentialConnectionStatus } from './credentials/credential-connection-status';
+export { ShareCredentialPublicDto } from './credentials/share-credential-public.dto';
 
 export {
 	MAX_PINNED_DATA_SIZE,

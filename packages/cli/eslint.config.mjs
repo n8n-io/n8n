@@ -215,7 +215,6 @@ export default defineConfig(
 			'./src/credentials/credential-connection-status-proxy.ts',
 			'./src/credentials/credential-dependency.service.ts',
 			'./src/credentials/credentials-finder.service.ts',
-			'./src/credentials/credentials.controller.ts',
 			'./src/credentials/credentials.service.ee.ts',
 			'./src/credentials/credentials.service.ts',
 			// workflows/

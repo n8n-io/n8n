@@ -3,6 +3,7 @@ import type {
 	User,
 	CredentialsEntity,
 	Project,
+	ProjectRelationRepository,
 	SharedCredentials,
 	SharedCredentialsRepository,
 } from '@n8n/db';
@@ -12,11 +13,20 @@ import type { CredentialConnectionStatusProxy } from '@/credentials/credential-c
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { EventService } from '@/events/event.service';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
+import type { UserManagementMailer } from '@/user-management/email';
+
+const userHasScopesMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: userHasScopesMock,
+}));
 
 describe('EnterpriseCredentialsService', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
@@ -29,6 +39,9 @@ describe('EnterpriseCredentialsService', () => {
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
 	const licenseState = mock<LicenseState>();
 	const connectionStatusProxy = mock<CredentialConnectionStatusProxy>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
+	const eventService = mock<EventService>();
+	const userManagementMailer = mock<UserManagementMailer>();
 
 	const service = new EnterpriseCredentialsService(
 		sharedCredentialsRepository,
@@ -41,6 +54,9 @@ describe('EnterpriseCredentialsService', () => {
 		externalSecretsProviderAccessCheckService,
 		licenseState,
 		connectionStatusProxy,
+		projectRelationRepository,
+		eventService,
+		userManagementMailer,
 	);
 
 	beforeEach(() => {
@@ -319,6 +335,163 @@ describe('EnterpriseCredentialsService', () => {
 				{ includeInstanceCredentials: true },
 			);
 			expect(result).not.toHaveProperty('data');
+		});
+	});
+
+	describe('getSharedWithProjectsDiff', () => {
+		const makeCredential = (sharedProjectIds: string[]) =>
+			mock<CredentialsEntity>({
+				id: 'cred-1',
+				shared: [
+					{ projectId: 'owner-project', role: 'credential:owner' },
+					...sharedProjectIds.map((projectId) => ({ projectId, role: 'credential:user' })),
+				] as SharedCredentials[],
+			});
+
+		it('reports projects to add and ignores the owning project', () => {
+			const diff = service.getSharedWithProjectsDiff(makeCredential([]), ['p1', 'p2']);
+
+			expect(diff.toShare).toEqual(['p1', 'p2']);
+			expect(diff.toUnshare).toEqual([]);
+		});
+
+		it('reports projects to remove', () => {
+			const diff = service.getSharedWithProjectsDiff(makeCredential(['p1', 'p2']), []);
+
+			expect(diff.toShare).toEqual([]);
+			expect(diff.toUnshare).toEqual(['p1', 'p2']);
+		});
+
+		it('reports both directions when the set is partially replaced', () => {
+			const diff = service.getSharedWithProjectsDiff(makeCredential(['p1', 'p2']), ['p2', 'p3']);
+
+			expect(diff.toShare).toEqual(['p3']);
+			expect(diff.toUnshare).toEqual(['p1']);
+		});
+
+		it('reports no change when the requested set matches the current one', () => {
+			const diff = service.getSharedWithProjectsDiff(makeCredential(['p1']), ['p1']);
+
+			expect(diff.toShare).toEqual([]);
+			expect(diff.toUnshare).toEqual([]);
+		});
+	});
+
+	describe('setSharedWithProjects', () => {
+		const user = mock<User>({ id: 'user-1', role: { scopes: [] } });
+		const credential = mock<CredentialsEntity>({
+			id: 'cred-1',
+			name: 'My Credential',
+			type: 'slackApi',
+		});
+
+		let trx: {
+			delete: ReturnType<typeof vi.fn>;
+			exists: ReturnType<typeof vi.fn>;
+			find: ReturnType<typeof vi.fn>;
+			save: ReturnType<typeof vi.fn>;
+		};
+
+		beforeEach(() => {
+			trx = {
+				delete: vi.fn().mockResolvedValue({ affected: 0 }),
+				exists: vi.fn().mockResolvedValue(true),
+				find: vi.fn().mockResolvedValue([]),
+				save: vi.fn().mockResolvedValue([]),
+			};
+			// @ts-expect-error - Mocking manager for testing
+			sharedCredentialsRepository.manager = {
+				transaction: vi.fn(async (cb: (t: unknown) => Promise<void>) => await cb(trx)),
+			};
+			projectRelationRepository.findBy.mockResolvedValue([]);
+			userHasScopesMock.mockResolvedValue(true);
+		});
+
+		it('requires credential:share when projects are added', async () => {
+			userHasScopesMock.mockResolvedValue(false);
+
+			await expect(
+				service.setSharedWithProjects(user, credential, { toShare: ['p1'], toUnshare: [] }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['credential:share'], false, {
+				credentialId: 'cred-1',
+			});
+			expect(sharedCredentialsRepository.manager.transaction).not.toHaveBeenCalled();
+		});
+
+		it('requires credential:unshare when projects are removed', async () => {
+			userHasScopesMock.mockResolvedValue(false);
+
+			await expect(
+				service.setSharedWithProjects(user, credential, { toShare: [], toUnshare: ['p1'] }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['credential:unshare'], false, {
+				credentialId: 'cred-1',
+			});
+			expect(sharedCredentialsRepository.manager.transaction).not.toHaveBeenCalled();
+		});
+
+		it('does not check either scope when nothing changes', async () => {
+			await service.setSharedWithProjects(user, credential, { toShare: [], toUnshare: [] });
+
+			expect(userHasScopesMock).not.toHaveBeenCalled();
+		});
+
+		it('emits the sharing event with the added projects and removed count', async () => {
+			trx.delete.mockResolvedValue({ affected: 2 });
+
+			await service.setSharedWithProjects(user, credential, {
+				toShare: ['p1'],
+				toUnshare: ['p2', 'p3'],
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith('credentials-shared', {
+				user,
+				credentialType: 'slackApi',
+				credentialId: 'cred-1',
+				userIdSharer: 'user-1',
+				userIdsShareesAdded: ['p1'],
+				shareesRemoved: 2,
+			});
+		});
+
+		it('reports no removals when the unshare delete affected no rows', async () => {
+			await service.setSharedWithProjects(user, credential, { toShare: ['p1'], toUnshare: [] });
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'credentials-shared',
+				expect.objectContaining({ shareesRemoved: null }),
+			);
+			expect(connectionStatusProxy.cleanupOrphanedEntriesForProjects).not.toHaveBeenCalled();
+		});
+
+		it('cleans up orphaned connection entries for unshared projects', async () => {
+			trx.delete.mockResolvedValue({ affected: 1 });
+
+			await service.setSharedWithProjects(user, credential, { toShare: [], toUnshare: ['p2'] });
+
+			expect(connectionStatusProxy.cleanupOrphanedEntriesForProjects).toHaveBeenCalledWith(
+				'cred-1',
+				['p2'],
+				trx,
+			);
+		});
+
+		it('notifies the owners of the projects the credential was shared with', async () => {
+			projectRelationRepository.findBy.mockResolvedValue([
+				{ userId: 'owner-1' },
+				{ userId: 'owner-2' },
+			] as never);
+
+			await service.setSharedWithProjects(user, credential, { toShare: ['p1'], toUnshare: [] });
+
+			expect(userManagementMailer.notifyCredentialsShared).toHaveBeenCalledWith({
+				sharer: user,
+				newShareeIds: ['owner-1', 'owner-2'],
+				credentialsName: 'My Credential',
+			});
 		});
 	});
 });
