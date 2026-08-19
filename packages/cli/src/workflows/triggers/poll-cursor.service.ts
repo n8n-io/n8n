@@ -1,4 +1,5 @@
-import { PollerConfig } from '@n8n/config';
+import { Logger } from '@n8n/backend-common';
+import { PollerConfig, SchedulerConfig } from '@n8n/config';
 import type { CreateExecutionPayload, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { PollerStateRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,13 +20,30 @@ const toPollCursor = (cursor: PollerCursor): PollCursor => cursor as PollCursor;
 @Service()
 export class PollCursorService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly pollerStateRepository: PollerStateRepository,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly pollerConfig: PollerConfig,
+		private readonly schedulerConfig: SchedulerConfig,
 		private readonly durablePollerGateService: DurablePollerGateService,
 		private readonly eventService: EventService,
-	) {}
+	) {
+		if (this.pollerConfig.durableCursorsEnabled && !this.schedulerChainEnabled) {
+			this.logger.warn(
+				'N8N_POLLER_DURABLE_CURSORS_ENABLED requires N8N_SCHEDULER_ENABLED and N8N_SCHEDULER_POLL_TRIGGERS_ENABLED; durable poll cursors stay disabled.',
+			);
+		}
+	}
+
+	/**
+	 * Durable cursors and durable pollers are one feature block: cursors depend
+	 * on the durable scheduler owning poll scheduling, so enabling the cursors
+	 * on their own is not supported.
+	 */
+	private get schedulerChainEnabled(): boolean {
+		return this.schedulerConfig.enabled && this.schedulerConfig.enabledForPollTriggers;
+	}
 
 	/**
 	 * Runs a cursor commit and emits its outcome and latency as a metrics event.
@@ -60,7 +78,11 @@ export class PollCursorService {
 	}
 
 	get enabled(): boolean {
-		return this.pollerConfig.durableCursorsEnabled && this.durablePollerGateService.allowed;
+		return (
+			this.pollerConfig.durableCursorsEnabled &&
+			this.schedulerChainEnabled &&
+			this.durablePollerGateService.allowed
+		);
 	}
 
 	/**

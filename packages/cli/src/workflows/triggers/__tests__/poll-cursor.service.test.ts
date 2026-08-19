@@ -1,4 +1,5 @@
-import type { PollerConfig } from '@n8n/config';
+import type { Logger } from '@n8n/backend-common';
+import type { PollerConfig, SchedulerConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
 	OperationContext,
@@ -16,23 +17,33 @@ import type { DurablePollerGateService } from '@/workflows/triggers/durable-poll
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 
 describe('PollCursorService', () => {
+	const logger = mock<Logger>();
 	const pollerStateRepository = mock<PollerStateRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const eventService = mock<EventService>();
 
 	let txRunner: MockProxy<TransactionRunner>;
 
-	const buildService = (durableCursorsEnabled = true, durablePollersAllowed = true) => {
+	const buildService = (
+		durableCursorsEnabled = true,
+		durablePollersAllowed = true,
+		{ schedulerEnabled = true, schedulerEnabledForPollTriggers = true } = {},
+	) => {
 		txRunner = mock<TransactionRunner>();
 		txRunner.run.mockImplementation(
 			async <T>(ctx: OperationContext, fn: (ctx: OperationContext) => Promise<T>) => await fn(ctx),
 		);
 
 		return new PollCursorService(
+			logger,
 			pollerStateRepository,
 			txRunner,
 			executionPersistence,
 			mock<PollerConfig>({ durableCursorsEnabled }),
+			mock<SchedulerConfig>({
+				enabled: schedulerEnabled,
+				enabledForPollTriggers: schedulerEnabledForPollTriggers,
+			}),
 			mock<DurablePollerGateService>({ allowed: durablePollersAllowed }),
 			eventService,
 		);
@@ -57,6 +68,47 @@ describe('PollCursorService', () => {
 			expect(buildService(true, false).enabled).toBe(false);
 			expect(buildService(false, true).enabled).toBe(false);
 			expect(buildService(false, false).enabled).toBe(false);
+		});
+
+		it('requires the durable scheduler and durable pollers to be enabled', () => {
+			expect(
+				buildService(true, true, { schedulerEnabled: false, schedulerEnabledForPollTriggers: true })
+					.enabled,
+			).toBe(false);
+			expect(
+				buildService(true, true, { schedulerEnabled: true, schedulerEnabledForPollTriggers: false })
+					.enabled,
+			).toBe(false);
+			expect(
+				buildService(true, true, {
+					schedulerEnabled: false,
+					schedulerEnabledForPollTriggers: false,
+				}).enabled,
+			).toBe(false);
+		});
+
+		it('warns once when durable cursors are configured without the scheduler chain', () => {
+			buildService(true, true, { schedulerEnabled: true, schedulerEnabledForPollTriggers: false });
+
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_POLLER_DURABLE_CURSORS_ENABLED'),
+			);
+		});
+
+		it('does not warn when durable cursors are off, whatever the scheduler flags', () => {
+			buildService(false, true, {
+				schedulerEnabled: false,
+				schedulerEnabledForPollTriggers: false,
+			});
+
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('does not warn when the full chain is enabled', () => {
+			buildService(true, true);
+
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 
