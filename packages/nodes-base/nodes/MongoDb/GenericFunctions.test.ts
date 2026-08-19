@@ -1,11 +1,9 @@
 import type { INode, IExecuteFunctions } from 'n8n-workflow';
 import { Binary, ObjectId } from 'mongodb';
 
-import {
-	parseAndResolveQueryParameters,
-	prepareItems,
-	serializeMongoItems,
-} from './GenericFunctions';
+import { parseAndResolveQueryParameters } from '@utils/query-parameters';
+
+import { prepareItems, serializeMongoItems } from './GenericFunctions';
 
 const mockNode = { name: 'MongoDB', type: 'n8n-nodes-base.mongoDb' } as INode;
 
