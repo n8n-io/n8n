@@ -629,6 +629,22 @@ describe('useConnection', () => {
 
 			wrapper.unmount();
 		});
+
+		it('closes the window when the page is not a tab (action popover)', async () => {
+			chromeMock.tabs.getCurrent.mockResolvedValue(undefined);
+			const closeSpy = vi.spyOn(window, 'close').mockImplementation(() => {});
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			await result().decline();
+
+			expect(chromeMock.tabs.remove).not.toHaveBeenCalled();
+			expect(closeSpy).toHaveBeenCalled();
+
+			closeSpy.mockRestore();
+			wrapper.unmount();
+		});
 	});
 
 	describe('relayUrlReady message', () => {

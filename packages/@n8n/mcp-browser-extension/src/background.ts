@@ -32,6 +32,41 @@ const CONNECT_PAGE = 'connect.html';
 const RELAY_URL_KEY = 'pendingRelayUrl';
 
 // ---------------------------------------------------------------------------
+// Action drawer — clicking the extension icon opens drawer.html. While a
+// connect confirmation page is open, the drawer is disabled so the icon click
+// falls through to onClicked, which focuses the pending page instead of
+// showing the same connect view twice.
+// ---------------------------------------------------------------------------
+
+const DRAWER_PAGE = 'drawer.html';
+
+function setDrawerEnabled(enabled: boolean): void {
+	void chrome.action.setPopup({ popup: enabled ? DRAWER_PAGE : '' });
+}
+
+// The disabled state persists across service-worker restarts while the pending
+// flow does not — reset on startup so the drawer can't get stuck disabled.
+setDrawerEnabled(true);
+
+chrome.action.onClicked.addListener(() => {
+	void focusPendingConnectPage();
+});
+
+async function focusPendingConnectPage(): Promise<void> {
+	const tabId = pendingConnectFlow?.tabId;
+	if (tabId === null || tabId === undefined) return;
+	try {
+		const tab = await chrome.tabs.get(tabId);
+		await chrome.tabs.update(tabId, { active: true });
+		if (tab.windowId !== undefined) {
+			await chrome.windows.update(tab.windowId, { focused: true });
+		}
+	} catch {
+		// Pending page already gone — the next settle re-enables the drawer
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Message handling from connect.html UI
 // ---------------------------------------------------------------------------
 
@@ -183,6 +218,7 @@ function settleConnectFlow(connected: boolean): void {
 		pendingConnectFlow.notify?.({ connected });
 	} finally {
 		pendingConnectFlow = null;
+		setDrawerEnabled(true);
 	}
 }
 
@@ -238,6 +274,7 @@ async function handleExternalConnect(relayUrl: string): Promise<ExternalConnectR
 	const existing = await deliverRelayUrl(relayUrl);
 	const tabId = existing?.id ?? (await openConnectPopup(relayUrl));
 	pendingConnectFlow = { relayUrl, tabId, notify: null };
+	setDrawerEnabled(false);
 	return { accepted: true };
 }
 
@@ -471,26 +508,4 @@ function updateBadge(tabCount: number): void {
 	const text = tabCount > 0 ? String(tabCount) : '';
 	void chrome.action.setBadgeText({ text });
 	void chrome.action.setBadgeBackgroundColor({ color: tabCount > 0 ? '#4CAF50' : '#999' });
-}
-
-// ---------------------------------------------------------------------------
-// Extension icon click — open or focus the connect tab
-// ---------------------------------------------------------------------------
-
-chrome.action.onClicked.addListener(() => {
-	void openOrFocusConnectTab();
-});
-
-async function openOrFocusConnectTab(): Promise<void> {
-	const connectUrl = chrome.runtime.getURL(CONNECT_PAGE);
-	const existing = await chrome.tabs.query({ url: `${connectUrl}*` });
-
-	if (existing.length > 0 && existing[0].id !== undefined) {
-		await chrome.tabs.update(existing[0].id, { active: true });
-		if (existing[0].windowId !== undefined) {
-			await chrome.windows.update(existing[0].windowId, { focused: true });
-		}
-	} else {
-		await chrome.tabs.create({ url: connectUrl });
-	}
 }

@@ -148,15 +148,26 @@ export function useConnection() {
 		log.debug('decline');
 		await chrome.runtime.sendMessage({ type: 'clearRelayUrl' });
 		relayUrl.value = null;
+		// In the action popover the page is not a tab — getCurrent returns undefined
 		const currentTab = await chrome.tabs.getCurrent();
 		if (currentTab?.id !== undefined) {
 			await chrome.tabs.remove(currentTab.id);
+		} else {
+			window.close();
 		}
 	}
 
 	// ── Background push message listener ─────────────────────────────────────
 
-	async function onBackgroundMessage(message: BackgroundPushMessage): Promise<void> {
+	// Must be a sync listener: an async listener returns a Promise, which Chrome
+	// treats as "will respond" — with several extension views open (drawer +
+	// connect page) it then races the background's real sendMessage response
+	// with `undefined` and the caller sees a bogus error.
+	function onBackgroundMessage(message: BackgroundPushMessage): void {
+		void handleBackgroundMessage(message);
+	}
+
+	async function handleBackgroundMessage(message: BackgroundPushMessage): Promise<void> {
 		if (message.type === 'relayUrlReady' && message.relayUrl) {
 			log.debug('relayUrlReady received:', message.relayUrl);
 			relayUrl.value = message.relayUrl;
