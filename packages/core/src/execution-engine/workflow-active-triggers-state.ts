@@ -1,10 +1,12 @@
-import type { ITriggerResponse } from 'n8n-workflow';
+import type { ITriggerResponse, WorkflowExpression } from 'n8n-workflow';
 
 export type TriggerRegistrationToken = symbol;
 
 type TriggerRegistration = {
 	token: TriggerRegistrationToken;
 	response?: ITriggerResponse;
+	/** The registering workflow's expression handle, needed to hold an isolate while closing the trigger. */
+	expression?: WorkflowExpression;
 };
 
 /**
@@ -31,10 +33,15 @@ export class WorkflowActiveTriggersState {
 		return this.pendingRegistrations > 0;
 	}
 
-	/** Records a trigger response for a registered node. */
-	addTriggerResponse(nodeId: string, response: ITriggerResponse): TriggerRegistrationToken {
+	/** Records a trigger response for a registered node, along with the workflow's expression handle used to close it under an isolate. */
+	addTriggerResponse(
+		nodeId: string,
+		response: ITriggerResponse,
+		expression: WorkflowExpression,
+	): TriggerRegistrationToken {
 		const registration = this.getOrCreateRegistration(nodeId);
 		registration.response = response;
+		registration.expression = expression;
 
 		return registration.token;
 	}
@@ -62,6 +69,11 @@ export class WorkflowActiveTriggersState {
 	/** The trigger response recorded for a node, if any. */
 	get(nodeId: string) {
 		return this.registrationsByNodeId.get(nodeId)?.response;
+	}
+
+	/** The expression handle recorded for a node's trigger response, if any. */
+	getExpression(nodeId: string) {
+		return this.registrationsByNodeId.get(nodeId)?.expression;
 	}
 
 	/** Whether the given node is registered in memory. */
@@ -96,7 +108,9 @@ export class WorkflowActiveTriggersState {
 	 */
 	*closableTriggers() {
 		for (const [nodeId, registration] of this.registrationsByNodeId.entries()) {
-			if (registration.response) yield { nodeId, response: registration.response };
+			if (registration.response) {
+				yield { nodeId, response: registration.response, expression: registration.expression };
+			}
 		}
 	}
 }

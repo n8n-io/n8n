@@ -788,6 +788,29 @@ describe('ActiveWorkflowTriggers', () => {
 			expect(triggerResponse.closeFunction).toHaveBeenCalled();
 		});
 
+		it('should hold an expression isolate around closeFunction so an expression evaluated during teardown does not fail', async () => {
+			acquireIsolate.mockResolvedValueOnce(true);
+
+			await setupForRemoval();
+
+			expect(acquireIsolate).toHaveBeenCalledTimes(1);
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+			const [acquireOrder] = acquireIsolate.mock.invocationCallOrder;
+			const [closeOrder] = (triggerResponse.closeFunction as Mock).mock.invocationCallOrder;
+			const [releaseOrder] = releaseIsolate.mock.invocationCallOrder;
+			expect(acquireOrder).toBeLessThan(closeOrder);
+			expect(closeOrder).toBeLessThan(releaseOrder);
+		});
+
+		it('should not release an isolate it never acquired', async () => {
+			acquireIsolate.mockResolvedValueOnce(false);
+
+			await setupForRemoval();
+
+			expect(acquireIsolate).toHaveBeenCalledTimes(1);
+			expect(releaseIsolate).not.toHaveBeenCalled();
+		});
+
 		it('should return false when removing non-existent workflow', async () => {
 			scheduledTaskManager.deregisterGroup.mockReturnValue(false);
 

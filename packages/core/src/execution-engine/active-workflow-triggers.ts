@@ -9,6 +9,7 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	WorkflowExpression,
 } from 'n8n-workflow';
 import {
 	isSubMinuteCron,
@@ -219,7 +220,7 @@ export class ActiveWorkflowTriggers {
 					activation,
 				);
 				if (triggerResponse !== undefined) {
-					triggers.addTriggerResponse(triggerNode.id, triggerResponse);
+					triggers.addTriggerResponse(triggerNode.id, triggerResponse, workflow.expression);
 					registeredNodeIds.add(triggerNode.id);
 
 					this.logTriggerActivation(workflow, triggerNode);
@@ -307,7 +308,7 @@ export class ActiveWorkflowTriggers {
 
 			const response = activeTriggers.get(nodeId);
 			if (response) {
-				await this.closeTrigger(response, workflowId);
+				await this.closeTrigger(response, workflowId, activeTriggers.getExpression(nodeId));
 			}
 			activeTriggers.delete(nodeId);
 
@@ -346,7 +347,7 @@ export class ActiveWorkflowTriggers {
 			}
 
 			try {
-				await this.closeTrigger(response, workflowId);
+				await this.closeTrigger(response, workflowId, triggers.getExpression(nodeId));
 			} catch (e) {
 				this.errorReporter.error(ensureError(e), { extra: { workflowId } });
 			} finally {
@@ -476,9 +477,9 @@ export class ActiveWorkflowTriggers {
 		// Best-effort: every close is attempted; a failing close keeps its node
 		// tracked (a possibly still-live trigger must stay visible to later
 		// teardown passes) while the rest of the cleanup proceeds.
-		for (const { nodeId, response } of triggers.closableTriggers()) {
+		for (const { nodeId, response, expression } of triggers.closableTriggers()) {
 			try {
-				await this.closeTrigger(response, workflowId);
+				await this.closeTrigger(response, workflowId, expression);
 				triggers.delete(nodeId);
 			} catch (error) {
 				errors.push(ensureError(error));
@@ -528,8 +529,14 @@ export class ActiveWorkflowTriggers {
 		});
 	}
 
-	private async closeTrigger(response: ITriggerResponse, workflowId: string) {
+	private async closeTrigger(
+		response: ITriggerResponse,
+		workflowId: string,
+		expression?: WorkflowExpression,
+	) {
 		if (!response.closeFunction) return;
+
+		const ownsIsolate = expression ? await expression.acquireIsolate() : false;
 
 		try {
 			await response.closeFunction();
@@ -548,6 +555,8 @@ export class ActiveWorkflowTriggers {
 				`Failed to deactivate trigger of workflow ID "${workflowId}": "${error.message}"`,
 				{ cause: error, workflowId },
 			);
+		} finally {
+			if (ownsIsolate) await expression?.releaseIsolate();
 		}
 	}
 
