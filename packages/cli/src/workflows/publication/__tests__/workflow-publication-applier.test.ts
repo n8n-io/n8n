@@ -328,6 +328,58 @@ describe('WorkflowPublicationApplier', () => {
 				abort,
 			);
 		});
+
+		describe('first publication (no published-version mapping)', () => {
+			beforeEach(() => {
+				workflowPublishedVersionRepository.findOne.mockResolvedValue(null);
+			});
+
+			test('reason publish activates with mode activate', async () => {
+				setTriggerSets([], [triggerNode('a')]);
+
+				await applier.apply(makeRecord({ reason: 'publish' }), abort);
+
+				expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'wf-1' }),
+					newVersion,
+					new Set(['a']),
+					'activate',
+					abort,
+				);
+			});
+
+			test('a record without a reason (pre-migration row) activates with mode activate', async () => {
+				setTriggerSets([], [triggerNode('a')]);
+
+				await applier.apply(makeRecord({ reason: undefined }), abort);
+
+				expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'wf-1' }),
+					newVersion,
+					new Set(['a']),
+					'activate',
+					abort,
+				);
+			});
+
+			test.each([
+				['startup', 'init'],
+				['leadership-takeover', 'leadershipChange'],
+				['reconcile', 'update'],
+			] as const)('reason %s still activates with mode %s', async (reason, expectedMode) => {
+				setTriggerSets([], [triggerNode('a')]);
+
+				await applier.apply(makeRecord({ reason }), abort);
+
+				expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'wf-1' }),
+					newVersion,
+					new Set(['a']),
+					expectedMode,
+					abort,
+				);
+			});
+		});
 	});
 
 	test('reconciles by registering desired non-webhook triggers missing from memory', async () => {
@@ -714,7 +766,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
 			new Set(['a']),
-			'update',
+			'activate',
 			abort,
 		);
 	});

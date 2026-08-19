@@ -54,8 +54,9 @@ export class WorkflowReviewEligibilityService {
 	/**
 	 * `canDecide` is an advisory read-time snapshot of whether the viewer could decide
 	 * the request, mirroring `decide()`'s authorization checks in order (read on the
-	 * pinned workflow, then admin / author / assignee) so the surfaced reason matches
-	 * the error the endpoint would return. The endpoint remains the source of truth
+	 * pinned workflow, then admin / assignee / author) so the surfaced reason matches
+	 * the error the endpoint would return. Assigned reviewers stay eligible even if
+	 * they later submitted a version. The endpoint remains the source of truth
 	 * and re-checks under its lock.
 	 *
 	 * Deliberately viewer-scoped: `decide()`'s `assertRequestUpdatable` lifecycle
@@ -102,6 +103,14 @@ export class WorkflowReviewEligibilityService {
 			return { canDecide: true, decisionIneligibilityReason: null, canComment: true };
 		}
 
+		const isAssignedReviewer = await this.workflowReviewRequestReviewerRepository.isReviewer(
+			{ workflowReviewRequestId: request.id, userId: user.id },
+			{},
+		);
+		if (isAssignedReviewer) {
+			return { canDecide: true, decisionIneligibilityReason: null, canComment: true };
+		}
+
 		if (isAuthor) {
 			return {
 				canDecide: false,
@@ -110,18 +119,10 @@ export class WorkflowReviewEligibilityService {
 			};
 		}
 
-		const isAssignedReviewer = await this.workflowReviewRequestReviewerRepository.isReviewer(
-			{ workflowReviewRequestId: request.id, userId: user.id },
-			{},
-		);
-		if (!isAssignedReviewer) {
-			return {
-				canDecide: false,
-				decisionIneligibilityReason: 'missing_reviewer_permission',
-				canComment: false,
-			};
-		}
-
-		return { canDecide: true, decisionIneligibilityReason: null, canComment: true };
+		return {
+			canDecide: false,
+			decisionIneligibilityReason: 'missing_reviewer_permission',
+			canComment: false,
+		};
 	}
 }
