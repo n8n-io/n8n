@@ -174,8 +174,7 @@ export class PlaywrightAdapter {
 		});
 		const contexts = this.browser.contexts();
 		log.debug('browser contexts:', contexts.length);
-		const context = contexts[0] ?? (await this.browser.newContext({ colorScheme: null }));
-		this.context = context;
+		this.context = contexts[0] ?? (await this.browser.newContext({ colorScheme: null }));
 
 		// Two-tier model: pages are created lazily via ensurePage().
 		// When ensurePage() triggers activateTab(), it sets pendingActivation
@@ -977,8 +976,7 @@ export class PlaywrightAdapter {
 
 		log.debug('ensurePage: page ready:', pageId);
 		// The context.on('page') listener should have tracked it with the right ID
-		const state = this.pageStates.get(pageId) ?? this.trackPage(page, pageId);
-		return state;
+		return this.pageStates.get(pageId) ?? this.trackPage(page, pageId);
 	}
 
 	private findPageState(page: Page): PageState | undefined {
