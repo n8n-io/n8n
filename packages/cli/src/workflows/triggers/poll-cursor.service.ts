@@ -11,6 +11,7 @@ import type {
 	PollCursorCommitResult,
 } from '@/events/maps/poll-trigger-metrics.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { isDurablePollerChainEnabled } from '@/scheduling/poll-trigger-node/durable-poller-chain';
 
 /** Narrows a stored cursor, which the persistence layer types more loosely. */
 const toPollCursor = (cursor: PollerCursor): PollCursor => cursor as PollCursor;
@@ -35,18 +36,12 @@ export class PollCursorService {
 	}
 
 	/**
-	 * Durable cursors and durable pollers are one feature block: cursors depend
-	 * on the durable scheduler owning poll scheduling, so enabling the cursors
-	 * on their own is not supported. The publication service is part of the
-	 * chain because cursor rows are only healthy where activation heals node
-	 * ids — legacy activation must never create them.
+	 * Cursors additionally require the publication service because cursor rows
+	 * are only healthy where activation heals node ids — legacy activation must
+	 * never create them.
 	 */
 	private get schedulerChainEnabled(): boolean {
-		return (
-			this.schedulerConfig.enabled &&
-			this.schedulerConfig.enabledForPollTriggers &&
-			this.workflowsConfig.useWorkflowPublicationService
-		);
+		return isDurablePollerChainEnabled(this.schedulerConfig, this.workflowsConfig);
 	}
 
 	/**
