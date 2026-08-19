@@ -65,6 +65,9 @@ const MAX_SNAPSHOT_LIST_PAGES = 20;
 // a hung Daytona call must not stall a release (the SDK has no sane default
 // HTTP timeout).
 const SNAPSHOT_PRUNE_TIMEOUT_MS = 5 * 60_000;
+// Deleted snapshots pass through `removing` before their quota slot frees up.
+const SNAPSHOT_REMOVAL_WAIT_MS = 60_000;
+const SNAPSHOT_REMOVAL_POLL_MS = 2_000;
 const MAX_ACTIVATION_ATTEMPTS = 3;
 // Polls (5s apart) to let an activation request settle before re-requesting.
 const ACTIVATION_SETTLE_POLLS = 6;
@@ -271,8 +274,13 @@ export class SnapshotManager {
 		let prunedForQuota = false;
 		for (;;) {
 			try {
+				const image = await this.withDeadline(
+					this.ensureImage(),
+					deadline,
+					`Timed out preparing the image for Daytona snapshot "${name}"`,
+				);
 				await this.withDeadline(
-					daytona.snapshot.create({ name, image: await this.ensureImage() }, createOptions),
+					daytona.snapshot.create({ name, image }, createOptions),
 					deadline,
 					`Timed out creating Daytona snapshot "${name}"`,
 				);
@@ -295,9 +303,12 @@ export class SnapshotManager {
 						this.pruneSnapshots(daytona, name, options, { ensureAtLeastOne: true }),
 						deadline,
 						'Timed out pruning Daytona snapshots',
-					).catch(() => 0);
-					if (deleted > 0) continue;
-					throw error;
+					).catch((): DaytonaSnapshot[] => []);
+					if (deleted.length === 0) throw error;
+					// Deletion is asynchronous server-side (snapshots pass through
+					// `removing`); the quota slot only frees once they are gone.
+					await this.waitForSnapshotRemoval(daytona, deleted, deadline);
+					continue;
 				}
 				if (
 					isTransientDaytonaError(error) &&
@@ -310,10 +321,51 @@ export class SnapshotManager {
 						attempt: transientRetries,
 						error: error instanceof Error ? error.message : String(error),
 					});
-					await sleep(TRANSIENT_CREATE_RETRY_BACKOFF_MS * transientRetries);
+					await sleep(
+						Math.min(TRANSIENT_CREATE_RETRY_BACKOFF_MS * transientRetries, deadline - Date.now()),
+					);
+					// The backoff may have consumed the remaining budget; surface the
+					// real error instead of a confusing deadline timeout.
+					if (Date.now() >= deadline) throw error;
 					continue;
 				}
 				throw error;
+			}
+		}
+	}
+
+	/**
+	 * Wait until pruned snapshots are actually gone (a 404 on lookup). Bounded
+	 * and best-effort: on timeout or an unexpected lookup result the create is
+	 * retried anyway and surfaces whatever is still wrong.
+	 */
+	private async waitForSnapshotRemoval(
+		daytona: Daytona,
+		snapshots: DaytonaSnapshot[],
+		deadline: number,
+	): Promise<void> {
+		const { DaytonaNotFoundError } = loadDaytona();
+		const waitDeadline = Math.min(deadline, Date.now() + SNAPSHOT_REMOVAL_WAIT_MS);
+		for (const snapshot of snapshots) {
+			for (;;) {
+				try {
+					await daytona.snapshot.get(snapshot.name);
+				} catch (error) {
+					if (!(error instanceof DaytonaNotFoundError)) {
+						this.logger.warn('Unexpected error while waiting for snapshot removal', {
+							name: snapshot.name,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
+					break;
+				}
+				if (Date.now() >= waitDeadline) {
+					this.logger.warn('Timed out waiting for pruned snapshots to be removed', {
+						name: snapshot.name,
+					});
+					return;
+				}
+				await sleep(SNAPSHOT_REMOVAL_POLL_MS);
 			}
 		}
 	}
@@ -419,17 +471,17 @@ export class SnapshotManager {
 	 * exceeds it. Failed snapshots are always deleted. Only touches
 	 * `n8n/instance-ai:*` names, never the snapshot being published, never
 	 * in-progress states, and never the newest `MIN_KEEP_NEWEST_VERSIONS`
-	 * versions. Never throws: returns the number of snapshots actually deleted.
+	 * versions. Never throws: returns the snapshots actually deleted.
 	 */
 	private async pruneSnapshots(
 		daytona: Daytona,
 		protectedName: string,
 		options?: Pick<CreateSnapshotOptions, 'retention' | 'maxAgeDays'>,
 		{ ensureAtLeastOne = false }: { ensureAtLeastOne?: boolean } = {},
-	): Promise<number> {
+	): Promise<DaytonaSnapshot[]> {
 		const retention = options?.retention;
 		const maxAgeDays = options?.maxAgeDays;
-		if (!retention && !maxAgeDays) return 0;
+		if (!retention && !maxAgeDays) return [];
 
 		let matching: DaytonaSnapshot[];
 		try {
@@ -438,7 +490,7 @@ export class SnapshotManager {
 			this.logger.warn('Failed to list Daytona snapshots for pruning; skipping', {
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return 0;
+			return [];
 		}
 
 		// Floor slots must go to usable release versions — failed and suffixed
@@ -509,11 +561,11 @@ export class SnapshotManager {
 			}
 		}
 
-		let deleted = 0;
+		const deleted: DaytonaSnapshot[] = [];
 		for (const snapshot of toDelete) {
 			try {
 				await daytona.snapshot.delete(snapshot);
-				deleted++;
+				deleted.push(snapshot);
 				this.logger.info('Pruned versioned Daytona snapshot', {
 					name: snapshot.name,
 					state: snapshot.state,

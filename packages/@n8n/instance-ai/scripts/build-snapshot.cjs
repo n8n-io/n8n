@@ -50,14 +50,17 @@ function parseVersion(argv) {
 const DEFAULT_SNAPSHOT_RETENTION = 10;
 const DEFAULT_SNAPSHOT_MAX_AGE_DAYS = 20;
 
-/** Read a non-negative integer env var, exiting with an error when malformed. */
+/**
+ * Read a non-negative integer env var. These are tuning knobs — a malformed
+ * value warns and falls back to the default instead of failing the release.
+ */
 function readNonNegativeIntEnv(name, defaultValue) {
 	const rawValue = process.env[name];
 	if (rawValue === undefined || rawValue === '') return defaultValue;
 	const parsed = Number.parseInt(rawValue, 10);
 	if (!Number.isInteger(parsed) || parsed < 0 || String(parsed) !== rawValue.trim()) {
-		console.error(`Invalid ${name} "${rawValue}" — expected a non-negative integer`);
-		process.exit(1);
+		console.warn(`Invalid ${name} "${rawValue}" — using default ${defaultValue}`);
+		return defaultValue;
 	}
 	return parsed;
 }
@@ -106,8 +109,9 @@ async function main() {
 main().then(
 	// Exit explicitly: a Daytona request abandoned by its deadline (e.g. a hung
 	// prune call) would otherwise keep the event loop alive until the CI runner
-	// kills the job despite a successful publish.
-	() => process.exit(0),
+	// kills the job despite a successful publish. The empty write drains any
+	// buffered stdout (e.g. streamed build logs) before the forced exit.
+	() => process.stdout.write('', () => process.exit(0)),
 	(error) => {
 		consoleLogger.error('Snapshot creation failed', {
 			error: error instanceof Error ? error.message : String(error),

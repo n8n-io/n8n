@@ -176,6 +176,14 @@ function daysAgo(days: number): string {
 	return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
+/** After a prune, lookups of deleted snapshots must 404 for the removal wait. */
+function mockGetActiveOnlyFor(daytona: FakeDaytona, name: string): void {
+	daytona.snapshot.get.mockImplementation(async (requested) => {
+		if (requested !== name) throw new DaytonaNotFoundError(`Snapshot ${requested} not found`);
+		return await Promise.resolve({ name, state: 'active' });
+	});
+}
+
 describe('SnapshotManager.ensureImage', () => {
 	it('stages workspace files and builds a small COPY-based Daytona image descriptor', async () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
@@ -580,6 +588,7 @@ describe('SnapshotManager snapshot pruning', () => {
 				{ name: 'n8n/instance-ai:1.118.0', state: 'inactive' },
 			]),
 		);
+		mockGetActiveOnlyFor(daytona, SNAPSHOT_NAME);
 
 		const result = await manager.createSnapshot(daytona as never, { retention: 2 });
 
@@ -589,6 +598,47 @@ describe('SnapshotManager snapshot pruning', () => {
 		const deletedNames = daytona.snapshot.delete.mock.calls.map(([snapshot]) => snapshot.name);
 		expect(deletedNames).toContain('n8n/instance-ai:1.119.0');
 		expect(deletedNames).toContain('n8n/instance-ai:1.118.0');
+	});
+
+	it('waits for pruned snapshots to finish removing before retrying after a quota error', async () => {
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
+		const daytona = makeFakeDaytona();
+		daytona.snapshot.create
+			.mockRejectedValueOnce(new DaytonaError('Snapshot quota exceeded. Maximum allowed: 30'))
+			.mockResolvedValue({ name: SNAPSHOT_NAME });
+		daytona.snapshot.list.mockResolvedValue(
+			snapshotPage([
+				{ name: 'n8n/instance-ai:1.122.0', state: 'active' },
+				{ name: 'n8n/instance-ai:1.121.0', state: 'active' },
+				{ name: 'n8n/instance-ai:1.120.0', state: 'active' },
+				{ name: 'n8n/instance-ai:1.119.0', state: 'active' },
+			]),
+		);
+		// The deleted snapshot lingers in `removing` before disappearing.
+		daytona.snapshot.get.mockImplementation(async (requested) => {
+			if (requested === SNAPSHOT_NAME)
+				return await Promise.resolve({ name: SNAPSHOT_NAME, state: 'active' });
+			if (daytona.snapshot.get.mock.calls.filter(([n]) => n === requested).length <= 1)
+				return await Promise.resolve({ name: requested, state: 'removing' });
+			throw new DaytonaNotFoundError(`Snapshot ${requested} not found`);
+		});
+
+		await manager.ensureImage();
+		vi.useFakeTimers();
+		try {
+			const promise = manager.createSnapshot(daytona as never, { retention: 3 });
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toBe(SNAPSHOT_NAME);
+			// The retry happened only after the pruned snapshot was gone.
+			expect(daytona.snapshot.create).toHaveBeenCalledTimes(2);
+			const removalPolls = daytona.snapshot.get.mock.calls.filter(
+				([requested]) => requested === 'n8n/instance-ai:1.119.0',
+			);
+			expect(removalPolls.length).toBeGreaterThanOrEqual(2);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('throws the quota error when no retention is configured', async () => {
@@ -632,6 +682,7 @@ describe('SnapshotManager snapshot pruning', () => {
 				{ name: 'n8n/instance-ai:1.119.0', state: 'active', lastUsedAt: daysAgo(10) },
 			]),
 		);
+		mockGetActiveOnlyFor(daytona, SNAPSHOT_NAME);
 
 		const result = await manager.createSnapshot(daytona as never, { retention: 15 });
 
