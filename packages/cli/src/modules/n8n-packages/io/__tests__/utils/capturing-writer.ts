@@ -12,4 +12,6 @@ export class CapturingWriter implements PackageWriter {
 	writeDirectory(path: string): void {
 		this.directories.push(path);
 	}
+
+	finalize(): void {}
 }

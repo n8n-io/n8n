@@ -1,6 +1,6 @@
+import { UnexpectedError } from 'n8n-workflow';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { UnexpectedError } from 'n8n-workflow';
 
 import type { PackageWriter } from '../package-writer';
 
@@ -20,7 +20,7 @@ function normaliseEntryPath(entryPath: string): string {
  * by side under one `targetDir` (e.g. one project per subfolder) without their
  * `manifest.json` files colliding.
  */
-export class DirectoryPackageWriter implements PackageWriter {
+export class DirectoryPackageWriter implements PackageWriter<Promise<void>> {
 	private readonly entries: Entry[] = [];
 
 	constructor(

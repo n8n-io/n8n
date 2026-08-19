@@ -43,7 +43,7 @@ function directoryEntry(path: string): ReadEntry {
 	return entry;
 }
 
-export class TarPackageWriter implements PackageWriter {
+export class TarPackageWriter implements PackageWriter<Readable> {
 	private readonly entries: Entry[] = [];
 
 	private manifest: Buffer | null = null;
