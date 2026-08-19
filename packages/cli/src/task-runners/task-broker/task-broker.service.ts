@@ -49,9 +49,10 @@ const MAX_REQUEST_TIMEOUT_REFRESHES = 3;
 const MAX_CONSECUTIVE_ACCEPT_TIMEOUTS = 3;
 
 /**
- * How long a runner must have been silent before it may be reported unresponsive.
- * Well above the runner's 250ms offer refresh interval, so the short gap between
- * a task completing and the next offer does not count as silence.
+ * How far apart two silence observations must be to count as two.
+ * Requests pending together expire in the same tick, so without this floor a single
+ * instant of silence would satisfy the two-observation rule and could catch a runner
+ * that is only briefly offerless between tasks.
  */
 const MIN_SILENCE_DURATION_MS = 2_000;
 
