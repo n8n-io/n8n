@@ -157,7 +157,7 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 	flex-direction: column;
 	min-height: 0;
 	overflow-y: auto;
-	padding: var(--spacing--2xl) var(--spacing--xl);
+	padding: var(--spacing--xl);
 	padding-bottom: var(--spacing--xs);
 }
 
