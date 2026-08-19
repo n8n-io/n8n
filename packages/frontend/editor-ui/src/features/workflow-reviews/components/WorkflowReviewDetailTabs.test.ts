@@ -11,8 +11,9 @@ import WorkflowReviewDetailTabs from './WorkflowReviewDetailTabs.vue';
 vi.mock('./WorkflowReviewChangesSection.vue', () => ({
 	default: {
 		name: 'WorkflowReviewChangesSection',
-		props: ['workflow'],
-		template: '<div data-test-id="workflow-review-changes-section" />',
+		props: ['workflow', 'state', 'decision'],
+		template:
+			'<div data-test-id="workflow-review-changes-section" :data-state="state" :data-decision="decision" />',
 	},
 }));
 
@@ -219,8 +220,10 @@ describe('WorkflowReviewDetailTabs', () => {
 			expect(getAllByTestId('workflow-review-changes-section')).toHaveLength(2);
 		});
 
-		it('shows an info state instead of diffs for a closed review', () => {
-			const { getByTestId, queryByTestId } = renderComponent({
+		// A closed review keeps its diff: the backend serves the baseline frozen at
+		// approval, and the section needs the lifecycle to phrase the sides.
+		it('renders the diff for a closed review and forwards its lifecycle', () => {
+			const { getByTestId } = renderComponent({
 				props: {
 					review: makeDetail({ state: 'closed', decision: 'approved' }),
 					tab: 'changes',
@@ -228,20 +231,21 @@ describe('WorkflowReviewDetailTabs', () => {
 				},
 			});
 
-			expect(getByTestId('workflow-review-changes-closed')).toBeInTheDocument();
-			expect(queryByTestId('workflow-review-changes-section')).not.toBeInTheDocument();
+			const section = getByTestId('workflow-review-changes-section');
+			expect(section).toHaveAttribute('data-state', 'closed');
+			expect(section).toHaveAttribute('data-decision', 'approved');
 		});
 
-		it('shows an empty state when the detail has no workflows', () => {
+		it('shows an unavailable state when the detail has no workflows left', () => {
 			const { getByTestId } = renderComponent({
 				props: {
-					review: makeDetail({ workflows: [] }),
+					review: makeDetail({ state: 'closed', workflows: [] }),
 					tab: 'changes',
 					deciding: false,
 				},
 			});
 
-			expect(getByTestId('workflow-review-changes-empty')).toBeInTheDocument();
+			expect(getByTestId('workflow-review-changes-workflow-unavailable')).toBeInTheDocument();
 		});
 
 		it('shows an error state when the detail fetch failed', () => {
@@ -250,7 +254,7 @@ describe('WorkflowReviewDetailTabs', () => {
 			});
 
 			expect(getByTestId('workflow-review-changes-unavailable')).toBeInTheDocument();
-			expect(queryByTestId('workflow-review-changes-empty')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-review-changes-workflow-unavailable')).not.toBeInTheDocument();
 		});
 	});
 
