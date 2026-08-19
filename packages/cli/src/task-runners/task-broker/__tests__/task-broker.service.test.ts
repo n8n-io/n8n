@@ -1538,6 +1538,12 @@ describe('TaskBroker', () => {
 			await acceptPromise;
 		};
 
+		const trackTaskFor = (runnerId: string) => {
+			taskBroker.setTasks({
+				task1: { id: 'task1', runnerId, requesterId: 'requester1', taskType: 'taskType1' },
+			});
+		};
+
 		const answerAcceptance = async (respond: (taskId: string) => void) => {
 			const acceptPromise = taskBroker.acceptOffer(offerFrom('runner1'), requestFor());
 			const [taskId] = taskBroker.getRunnerAcceptRejects().keys();
@@ -1583,6 +1589,7 @@ describe('TaskBroker', () => {
 		it('should reset the count when the runner completes a task', async () => {
 			await timeOutAcceptance();
 			await timeOutAcceptance();
+			trackTaskFor('runner1');
 			await taskBroker.onRunnerMessage('runner1', {
 				type: 'runner:taskdone',
 				taskId: 'task1',
@@ -1595,9 +1602,43 @@ describe('TaskBroker', () => {
 			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
 		});
 
+		it('should not reset the count on a result for a task the runner was not given', async () => {
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+			trackTaskFor('runner2');
+			await taskBroker.onRunnerMessage('runner1', {
+				type: 'runner:taskdone',
+				taskId: 'task1',
+				data: mock<TaskResultData>(),
+			});
+
+			await timeOutAcceptance();
+
+			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
+				runnerId: 'runner1',
+			});
+		});
+
+		it('should not reset the count on a result for an untracked task', async () => {
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+			await taskBroker.onRunnerMessage('runner1', {
+				type: 'runner:taskdone',
+				taskId: 'unknown-task',
+				data: mock<TaskResultData>(),
+			});
+
+			await timeOutAcceptance();
+
+			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
+				runnerId: 'runner1',
+			});
+		});
+
 		it('should reset the count when the runner reports a task error', async () => {
 			await timeOutAcceptance();
 			await timeOutAcceptance();
+			trackTaskFor('runner1');
 			await taskBroker.onRunnerMessage('runner1', {
 				type: 'runner:taskerror',
 				taskId: 'task1',
@@ -1718,6 +1759,43 @@ describe('TaskBroker', () => {
 			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
 		});
 
+		it('should keep counting timeouts across a backward system clock jump', async () => {
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+
+			// a clock correction must not make the next timeout look like part of the last burst
+			vi.setSystemTime(Date.now() - 60_000);
+			await timeOutAcceptance();
+
+			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
+				runnerId: 'runner1',
+			});
+		});
+
+		it('should report a runner that keeps offering but never acknowledges', async () => {
+			taskBroker.registerRequester('requester1', vi.fn());
+			taskBroker.taskRequested({
+				requestId: 'request1',
+				requesterId: 'requester1',
+				taskType: 'taskType1',
+				timeout: taskBroker['createRequestTimeout']('request1'),
+			});
+
+			for (let n = 0; n < 3; n++) {
+				await taskBroker.onRunnerMessage('runner1', {
+					type: 'runner:taskoffer',
+					taskType: 'taskType1',
+					offerId: `offer${n}`,
+					validFor: 10_000,
+				});
+				await vi.advanceTimersByTimeAsync(ACCEPT_TIMEOUT_MS);
+			}
+
+			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
+				runnerId: 'runner1',
+			});
+		});
+
 		it('should count acknowledgment timeouts per runner', async () => {
 			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner2' }), vi.fn());
 
@@ -1737,6 +1815,7 @@ describe('TaskBroker', () => {
 
 	describe('silent runner detection', () => {
 		const REQUEST_TIMEOUT_MS = 60_000;
+		const MIN_SILENCE_DURATION_MS = 2_000;
 
 		let lifecycleEvents: MockProxy<TaskRunnerLifecycleEvents>;
 		let requesterCallback: ReturnType<typeof vi.fn<RequesterMessageCallback>>;
@@ -1813,6 +1892,30 @@ describe('TaskBroker', () => {
 			vi.advanceTimersByTime(REQUEST_TIMEOUT_MS);
 
 			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should not report a runner when the expiries are just under the silence floor', () => {
+			registerRunner();
+
+			enqueueRequest('request1');
+			vi.advanceTimersByTime(MIN_SILENCE_DURATION_MS - 1);
+			enqueueRequest('request2');
+			vi.advanceTimersByTime(REQUEST_TIMEOUT_MS);
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should report a runner when the expiries are exactly the silence floor apart', () => {
+			registerRunner();
+
+			enqueueRequest('request1');
+			vi.advanceTimersByTime(MIN_SILENCE_DURATION_MS);
+			enqueueRequest('request2');
+			vi.advanceTimersByTime(REQUEST_TIMEOUT_MS);
+
+			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
+				runnerId: 'runner1',
+			});
 		});
 
 		it('should not report a runner that sent a message between expiries', async () => {

@@ -305,12 +305,11 @@ export class TaskBroker {
 				});
 				break;
 			case 'runner:taskdone':
-				// A task result proves the channel is alive, like an acknowledgement does.
-				this.consecutiveAcceptTimeouts.delete(runnerId);
+				this.resetAcceptTimeoutsOnOwnTask(runnerId, message.taskId);
 				await this.taskDoneHandler(message.taskId, message.data);
 				break;
 			case 'runner:taskerror':
-				this.consecutiveAcceptTimeouts.delete(runnerId);
+				this.resetAcceptTimeoutsOnOwnTask(runnerId, message.taskId);
 				await this.taskErrorHandler(message.taskId, message.error);
 				break;
 			case 'runner:taskdatarequest':
@@ -789,14 +788,25 @@ export class TaskBroker {
 	}
 
 	/**
+	 * Clears acknowledgement strikes when a runner reports on a task the broker tracks for
+	 * it, which proves its accept path is alive. A result for a task the broker no longer
+	 * tracks, or never assigned to this runner, proves nothing and is ignored.
+	 */
+	private resetAcceptTimeoutsOnOwnTask(runnerId: TaskRunner['id'], taskId: Task['id']) {
+		if (this.tasks.get(taskId)?.runnerId === runnerId) {
+			this.consecutiveAcceptTimeouts.delete(runnerId);
+		}
+	}
+
+	/**
 	 * Counts consecutive acknowledgement timeouts per runner and reports it unresponsive
 	 * once the threshold is reached. Timeouts within one acceptance window of the previous
-	 * one count as a single timeout, and any reply to a broker request resets the count.
-	 * Task offers do not reset it, since an alive offer loop with a dead accept path is
-	 * the state this detects.
+	 * one count as a single timeout, and any acknowledgement or task result resets the
+	 * count. Task offers do not reset it, since an alive offer loop with a dead accept path
+	 * is the state this detects.
 	 */
 	private flagRunnerIfUnresponsive(runnerId: TaskRunner['id']) {
-		const now = Date.now();
+		const now = this.monotonicNowMs();
 		const previous = this.consecutiveAcceptTimeouts.get(runnerId);
 		const acceptWindowMs = this.taskRunnersConfig.taskAcceptTimeout * Time.seconds.toMilliseconds;
 
@@ -829,7 +839,7 @@ export class TaskBroker {
 	private flagSilentRunners(taskType: string) {
 		this.expireTasks();
 
-		const now = Date.now();
+		const now = this.monotonicNowMs();
 
 		[...this.knownRunners.values()]
 			.filter(({ runner }) => runner.taskTypes.includes(taskType))
@@ -845,8 +855,14 @@ export class TaskBroker {
 				if (silentSince === undefined) {
 					this.silentRunnersSince.set(runner.id, now);
 				} else if (now - silentSince >= MIN_SILENCE_DURATION_MS) {
-					this.silentRunnersSince.delete(runner.id);
-					this.reportUnresponsive(runner.id, 'sent no task offers while task requests expired');
+					const reported = this.reportUnresponsive(
+						runner.id,
+						'sent no task offers while task requests expired',
+					);
+
+					if (reported) {
+						this.silentRunnersSince.delete(runner.id);
+					}
 				}
 			});
 	}
@@ -864,7 +880,7 @@ export class TaskBroker {
 	 */
 	private reportUnresponsive(runnerId: TaskRunner['id'], cause: string): boolean {
 		if (this.getInFlightTaskIds(runnerId).length > 0) {
-			this.logger.warn(
+			this.logger.debug(
 				`Runner (${runnerId}) ${cause}, but it still has tasks in flight, so not reporting it as unresponsive`,
 			);
 			return false;
@@ -874,6 +890,14 @@ export class TaskBroker {
 		this.taskRunnerLifecycleEvents.emit('runner:unresponsive', { runnerId });
 
 		return true;
+	}
+
+	/**
+	 * Milliseconds from a monotonic clock, so a system clock adjustment cannot make two
+	 * observations look closer together or further apart than they were.
+	 */
+	private monotonicNowMs() {
+		return Number(process.hrtime.bigint() / 1_000_000n);
 	}
 
 	private isSilent(runnerId: TaskRunner['id']) {
