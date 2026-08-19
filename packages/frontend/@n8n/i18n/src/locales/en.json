@@ -6796,7 +6796,7 @@
 	"instanceAi.inputMenu.tools.add": "Add tool",
 	"instanceAi.inputMenu.actions.disconnect": "Disconnect",
 	"instanceAi.inputMenu.actions.remove": "Remove",
-	"instanceAi.inputMenu.actions.setup": "Setup",
+	"instanceAi.inputMenu.actions.settings": "Settings",
 	"instanceAi.inputMenu.status.connected": "Connected",
 	"instanceAi.inputMenu.status.connecting": "Connecting…",
 	"instanceAi.inputMenu.status.disconnected": "Disconnected",

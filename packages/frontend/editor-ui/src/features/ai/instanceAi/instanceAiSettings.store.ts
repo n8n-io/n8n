@@ -73,11 +73,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const setupCommandTtlSeconds = ref<number | null>(null);
 	const setupCommandFetchedAt = ref<number | null>(null);
 	let setupCommandRequestId = 0;
-
 	const hasEverConnectedGateway = ref(
 		typeof localStorage !== 'undefined' &&
 			localStorage.getItem(HAS_CONNECTED_STORAGE_KEY) === 'true',
 	);
+	const hasObservedGatewayConnection = ref(false);
+	const hasObservedBrowserConnection = ref(false);
 
 	function markGatewayEverConnected(): void {
 		if (hasEverConnectedGateway.value) return;
@@ -305,6 +306,16 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		() =>
 			browserConnected.value || (gatewayConnected.value && isGatewayBrowserCategoryEnabled.value),
 	);
+	const hasUnexpectedGatewayDisconnect = computed(
+		() =>
+			hasObservedGatewayConnection.value &&
+			!gatewayConnected.value &&
+			!isDaemonConnecting.value &&
+			!isLocalGatewayDisabled.value,
+	);
+	const hasUnexpectedBrowserDisconnect = computed(
+		() => hasObservedBrowserConnection.value && !browserConnected.value,
+	);
 	const computerUseStatus = computed<ConnectionStatus>(() => {
 		if (gatewayConnected.value) return 'connected';
 		if (isDaemonConnecting.value) return 'connecting';
@@ -350,6 +361,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		}
 		clearSetupCommand();
 		clearGatewayEverConnected();
+		hasObservedGatewayConnection.value = false;
 		gatewayConnected.value = false;
 		gatewayToolCategories.value = [];
 		gatewayDirectory.value = null;
@@ -387,10 +399,13 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		try {
 			const status = await getGatewayStatus(rootStore.restApiContext);
 			gatewayConnected.value = status.connected;
-			gatewayDirectory.value = status.directory;
-			gatewayHostIdentifier.value = status.hostIdentifier ?? null;
 			gatewayToolCategories.value = status.toolCategories ?? [];
-			if (status.connected) markGatewayEverConnected();
+			if (status.connected) {
+				hasObservedGatewayConnection.value = true;
+				gatewayDirectory.value = status.directory;
+				gatewayHostIdentifier.value = status.hostIdentifier ?? null;
+				markGatewayEverConnected();
+			}
 		} catch {}
 	}
 
@@ -402,6 +417,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			browserConnected.value = status.connected;
 			browserConnectedAt.value = status.connectedAt;
 			browserToolCategories.value = status.toolCategories ?? [];
+			if (status.connected) hasObservedBrowserConnection.value = true;
 		} catch {
 			// Keep the last known status if the refresh fails.
 		} finally {
@@ -448,6 +464,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			return;
 		}
 		clearBrowserConnectUrl();
+		hasObservedBrowserConnection.value = false;
 		browserConnected.value = false;
 		browserConnectedAt.value = null;
 		browserToolCategories.value = [];
@@ -513,10 +530,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		removeGatewayPushListener = pushStore.addEventListener((message) => {
 			if (message.type === 'instanceAiGatewayStateChanged') {
 				gatewayConnected.value = message.data.connected;
-				gatewayDirectory.value = message.data.directory;
-				gatewayHostIdentifier.value = message.data.hostIdentifier ?? null;
 				gatewayToolCategories.value = message.data.toolCategories ?? [];
 				if (message.data.connected) {
+					hasObservedGatewayConnection.value = true;
+					gatewayDirectory.value = message.data.directory;
+					gatewayHostIdentifier.value = message.data.hostIdentifier ?? null;
 					markGatewayEverConnected();
 				}
 				return;
@@ -525,6 +543,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				browserConnected.value = message.data.connected;
 				browserConnectedAt.value = message.data.connectedAt;
 				browserToolCategories.value = message.data.toolCategories ?? [];
+				if (message.data.connected) hasObservedBrowserConnection.value = true;
 			}
 		});
 
@@ -675,6 +694,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		setupCommandTtlSeconds,
 		setupCommandFetchedAt,
 		hasEverConnectedGateway,
+		hasUnexpectedGatewayDisconnect,
 		isGatewayConnected,
 		gatewayDirectory,
 		gatewayHostIdentifier,
@@ -702,6 +722,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		verifySearch,
 		// Browser Use (direct channel)
 		browserConnected,
+		hasUnexpectedBrowserDisconnect,
 		browserConnectedAt,
 		browserToolCategories,
 		browserStatusLoaded,

@@ -45,7 +45,7 @@ vi.mock('../../composables/useInstanceAiInputMenuItems', async () => {
 	return {
 		useInstanceAiInputMenuItems: () => ({
 			menuItems: ref([{ id: 'action', label: 'Action', data: { action } }]),
-			hasDisconnectedMcpConnection: ref(false),
+			hasDisconnectedConnection: ref(false),
 		}),
 	};
 });

@@ -76,14 +76,29 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 		connect: () => void | Promise<void>;
 		disconnect: () => void | Promise<void>;
 	}): InputMenuItem {
-		const menuStatus = status === 'disconnected' ? 'none' : status;
-
-		if (menuStatus !== 'connected') {
+		if (status === 'none' || status === 'connecting') {
 			return {
 				id,
 				label: connectLabel,
 				icon: { type: 'icon', value: icon },
-				data: { status: menuStatus, action: connect },
+				data: { status, action: connect },
+			};
+		}
+
+		if (status === 'disconnected') {
+			return {
+				id,
+				label: connectedLabel,
+				icon: { type: 'icon', value: icon },
+				data: { status },
+				children: [
+					...(connectedTitle ? [{ id: `${id}-status`, label: connectedTitle, header: true }] : []),
+					{
+						id: `${id}-reconnect`,
+						label: i18n.baseText('tools.connection.action.reconnect'),
+						data: { action: connect },
+					},
+				],
 			};
 		}
 
@@ -107,11 +122,17 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 		};
 	}
 
-	const hasDisconnectedMcpConnection = computed(
+	const hasDisconnectedConnection = computed(
 		() =>
-			isMcpFeatureEnabled.value &&
-			settingsStore.settings?.mcpAccessEnabled === true &&
-			mcpStore.connections.some(({ status }) => status === 'disconnected'),
+			(isMcpFeatureEnabled.value &&
+				settingsStore.settings?.mcpAccessEnabled === true &&
+				mcpStore.connections.some(({ status }) => status === 'disconnected')) ||
+			(isComputerUseFeatureEnabled.value &&
+				!settingsStore.isLocalGatewayDisabledByAdmin &&
+				settingsStore.hasUnexpectedGatewayDisconnect) ||
+			(isBrowserUseFeatureEnabled.value &&
+				settingsStore.isBrowserUseEnabledByAdmin &&
+				settingsStore.hasUnexpectedBrowserDisconnect),
 	);
 
 	const menuItems = computed(() => {
@@ -140,7 +161,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 					},
 					{
 						id: `mcp-${connection.id}-setup`,
-						label: i18n.baseText('instanceAi.inputMenu.actions.setup'),
+						label: i18n.baseText('instanceAi.inputMenu.actions.settings'),
 						data: {
 							action: () => {
 								mcpTelemetry.trackSettingsOpened(connection.serverSlug, 'input_menu');
@@ -208,7 +229,9 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 						? 'connected'
 						: settingsStore.isDaemonConnecting
 							? 'connecting'
-							: 'disconnected',
+							: settingsStore.hasUnexpectedGatewayDisconnect
+								? 'disconnected'
+								: 'none',
 					icon: 'laptop',
 					connectLabel: i18n.baseText('instanceAi.inputMenu.computer.connect'),
 					connectedLabel: i18n.baseText('instanceAi.inputMenu.computer.connected'),
@@ -223,11 +246,18 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			items.push(
 				createConnectionItem({
 					id: 'browser',
-					status: settingsStore.browserConnected ? 'connected' : 'disconnected',
+					status: settingsStore.browserConnected
+						? 'connected'
+						: settingsStore.hasUnexpectedBrowserDisconnect
+							? 'disconnected'
+							: 'none',
 					icon: 'globe',
 					connectLabel: i18n.baseText('instanceAi.inputMenu.browser.connect'),
 					connectedLabel: i18n.baseText('instanceAi.inputMenu.browser.connected'),
-					connectedTitle: settingsStore.browserConnected ? 'Google Chrome' : undefined,
+					connectedTitle:
+						settingsStore.browserConnected || settingsStore.hasUnexpectedBrowserDisconnect
+							? 'Google Chrome'
+							: undefined,
 					connect: () => {
 						browserUseTelemetry.trackModalOpened('input_menu');
 						uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
@@ -240,5 +270,5 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 		return items;
 	});
 
-	return { menuItems, hasDisconnectedMcpConnection };
+	return { menuItems, hasDisconnectedConnection };
 }

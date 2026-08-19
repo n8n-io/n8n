@@ -6,6 +6,7 @@ import {
 } from '../composables/useInstanceAiInputMenuItems';
 import {
 	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
+	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 } from '../constants';
 
@@ -39,6 +40,8 @@ const {
 		browserConnected: false,
 		isGatewayConnected: false,
 		isDaemonConnecting: false,
+		hasUnexpectedGatewayDisconnect: false,
+		hasUnexpectedBrowserDisconnect: false,
 		gatewayHostIdentifier: null as string | null,
 		persistLocalGatewayPreference: vi.fn(),
 		disconnectComputerUse: vi.fn(),
@@ -153,6 +156,8 @@ describe('useInstanceAiInputMenuItems', () => {
 		settingsStore.browserConnected = false;
 		settingsStore.isGatewayConnected = false;
 		settingsStore.isDaemonConnecting = false;
+		settingsStore.hasUnexpectedGatewayDisconnect = false;
+		settingsStore.hasUnexpectedBrowserDisconnect = false;
 		settingsStore.gatewayHostIdentifier = null;
 	});
 
@@ -174,13 +179,60 @@ describe('useInstanceAiInputMenuItems', () => {
 				makeMcpConnection(String(index), status),
 			);
 
-			const { menuItems, hasDisconnectedMcpConnection } = useInstanceAiInputMenuItems(vi.fn());
+			const { menuItems, hasDisconnectedConnection } = useInstanceAiInputMenuItems(vi.fn());
 			const tools = findItem(menuItems.value, 'tools');
 
 			expect(tools?.data?.status).toBe(expectedStatus);
-			expect(hasDisconnectedMcpConnection.value).toBe(statuses.includes('disconnected'));
+			expect(hasDisconnectedConnection.value).toBe(statuses.includes('disconnected'));
 		},
 	);
+
+	it.each([
+		{
+			id: 'computer',
+			setDisconnected: () => {
+				settingsStore.hasUnexpectedGatewayDisconnect = true;
+				settingsStore.gatewayHostIdentifier = 'Work computer';
+			},
+			modal: INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
+			title: 'Work computer',
+		},
+		{
+			id: 'browser',
+			setDisconnected: () => {
+				settingsStore.hasUnexpectedBrowserDisconnect = true;
+			},
+			modal: INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
+			title: 'Google Chrome',
+		},
+	])(
+		'shows a Reconnect menu when $id disconnects unexpectedly',
+		async ({ id, setDisconnected, modal, title }) => {
+			setDisconnected();
+			const { menuItems, hasDisconnectedConnection } = useInstanceAiInputMenuItems(vi.fn());
+
+			const item = findItem(menuItems.value, id);
+			expect(item?.data?.status).toBe('disconnected');
+			expect(item?.data?.action).toBeUndefined();
+			expect(findItem(menuItems.value, `${id}-status`)?.label).toBe(title);
+			expect(hasDisconnectedConnection.value).toBe(true);
+
+			await findItem(menuItems.value, `${id}-reconnect`)?.data?.action?.();
+			expect(uiStore.openModal).toHaveBeenCalledWith(modal);
+		},
+	);
+
+	it('keeps user-disconnected services as direct Connect actions', () => {
+		const { menuItems, hasDisconnectedConnection } = useInstanceAiInputMenuItems(vi.fn());
+
+		for (const id of ['computer', 'browser']) {
+			const item = findItem(menuItems.value, id);
+			expect(item?.data?.status).toBe('none');
+			expect(item?.children).toBeUndefined();
+			expect(item?.data?.action).toBeTypeOf('function');
+		}
+		expect(hasDisconnectedConnection.value).toBe(false);
+	});
 
 	it('does not offer direct Browser Use disconnect when browser access comes from Computer Use', () => {
 		settingsStore.isGatewayConnected = true;

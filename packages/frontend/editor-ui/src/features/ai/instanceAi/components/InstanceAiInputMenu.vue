@@ -21,7 +21,7 @@ const props = withDefaults(defineProps<{ disabled?: boolean }>(), { disabled: fa
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { menuItems, hasDisconnectedMcpConnection } = useInstanceAiInputMenuItems(() =>
+const { menuItems, hasDisconnectedConnection } = useInstanceAiInputMenuItems(() =>
 	emit('attachFiles'),
 );
 
@@ -73,7 +73,7 @@ function trackInputPlusButtonClick() {
 						@click="trackInputPlusButtonClick"
 					/>
 					<span
-						v-if="hasDisconnectedMcpConnection"
+						v-if="hasDisconnectedConnection"
 						:class="$style.triggerStatusDot"
 						aria-hidden="true"
 					/>
@@ -101,11 +101,15 @@ function trackInputPlusButtonClick() {
 				<N8nText
 					size="medium"
 					:color="item.disabled ? 'text-xlight' : 'text-dark'"
-					:class="[ui.class, $style.itemLabel]"
+					:class="[ui.class, $style.itemLabel, !item.children?.length && $style.itemLabelLeaf]"
 				>
 					<span>{{ item.label }}</span>
 					<span
-						v-if="item.data?.status && item.data.status !== 'none'"
+						v-if="
+							item.data?.status &&
+							item.data.status !== 'none' &&
+							!(item.id === 'tools' && item.data.status === 'connected')
+						"
 						:class="$style.statusIndicator"
 						:aria-label="i18n.baseText(STATUS_LABEL_KEYS[item.data.status])"
 					>
@@ -164,6 +168,10 @@ function trackInputPlusButtonClick() {
 	gap: var(--spacing--xs);
 }
 
+.itemLabelLeaf {
+	padding-right: var(--spacing--xs);
+}
+
 .statusDot {
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
@@ -178,7 +186,7 @@ function trackInputPlusButtonClick() {
 .statusIndicator {
 	display: inline-flex;
 	align-items: center;
-	justify-content: flex-end;
+	justify-content: center;
 	width: var(--spacing--sm);
 	height: var(--spacing--sm);
 	flex: 0 0 var(--spacing--sm);
