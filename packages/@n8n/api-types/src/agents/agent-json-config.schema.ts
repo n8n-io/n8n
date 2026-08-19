@@ -1,6 +1,5 @@
-import { z, type ZodError } from 'zod';
-
 import type { JsonValue } from 'n8n-workflow';
+import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
