@@ -8,8 +8,10 @@ export function getAll(): CommandBarEntry[] {
 }
 
 function notifyListeners(): void {
-	const snapshot = getAll();
-	listeners.forEach((listener) => listener(snapshot));
+	// One array per listener, as `modalRegistry` does: `sort`, `reverse` and
+	// `splice` mutate in place, so a shared snapshot lets one subscriber reorder
+	// the list for every later one.
+	listeners.forEach((listener) => listener(getAll()));
 }
 
 export function register(command: CommandBarEntry): void {

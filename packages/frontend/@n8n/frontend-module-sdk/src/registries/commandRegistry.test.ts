@@ -55,6 +55,26 @@ describe('commandRegistry', () => {
 		expect(listener).toHaveBeenLastCalledWith([]);
 	});
 
+	it('should give each subscriber its own array', () => {
+		const received: CommandBarEntry[][] = [];
+		// The first subscriber mutates in place, as a sort or a splice would.
+		commandRegistry.subscribe((commands) => {
+			commands.reverse();
+			received.push(commands);
+		});
+		commandRegistry.subscribe((commands) => {
+			received.push(commands);
+		});
+
+		commandRegistry.register(commandA);
+		commandRegistry.register(commandB);
+
+		const [firstMutated, secondUnaffected] = received.slice(-2);
+		expect(firstMutated).toEqual([commandB, commandA]);
+		expect(secondUnaffected).toEqual([commandA, commandB]);
+		expect(commandRegistry.getAll()).toEqual([commandA, commandB]);
+	});
+
 	it('should return an unsubscribe function that stops notifications', () => {
 		const listener = vi.fn();
 		const unsubscribe = commandRegistry.subscribe(listener);

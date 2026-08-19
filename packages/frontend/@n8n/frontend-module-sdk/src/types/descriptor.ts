@@ -42,7 +42,11 @@ export type FrontendModuleDescription = {
 
 	/** Per-module i18n messages, merged into the active locale by the shell. */
 	locales?: ModuleLocaleMessages;
-	/** Push-message handlers, keyed by message type. */
+	/**
+	 * Push-message handlers, keyed by message type. Registering a type makes the
+	 * module its owner, and a handler must not depend on the built-in handling of
+	 * the same event. See `ModulePushHandlers`.
+	 */
 	pushHandlers?: ModulePushHandlers;
 	/** Command-bar contributions. */
 	commands?: CommandBarEntry[];

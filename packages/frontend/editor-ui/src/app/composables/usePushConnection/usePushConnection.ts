@@ -69,10 +69,11 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		};
 
 		// A module can own (or override) a push message type via its descriptor.
-		// When none is registered, fall through to the built-in handlers below.
-		const moduleHandler = pushHandlerRegistry.get(event.type);
-		if (moduleHandler) {
-			return await moduleHandler(event, options);
+		// `useModulePushDispatcher` runs the handler at app scope, so this only has
+		// to yield the type — otherwise a module override would run beside the
+		// built-in handler it replaces.
+		if (pushHandlerRegistry.has(event.type)) {
+			return;
 		}
 
 		switch (event.type) {

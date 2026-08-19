@@ -100,7 +100,7 @@ describe('usePushConnection composable', () => {
 		expect(testWebhookReceived).toHaveBeenCalledWith(testEvent, expect.any(Object));
 	});
 
-	it('delegates to a registered module push handler instead of the built-in switch', async () => {
+	it('yields a push type a module owns, and never runs the handler itself', async () => {
 		const moduleHandler = vi.fn();
 		pushHandlerRegistry.register('executionStarted', moduleHandler);
 
@@ -115,10 +115,11 @@ describe('usePushConnection composable', () => {
 		handler(testEvent);
 		await Promise.resolve();
 
-		// The module handler owns the type, so the built-in handler is skipped.
-		expect(moduleHandler).toHaveBeenCalledTimes(1);
-		expect(moduleHandler).toHaveBeenCalledWith(testEvent, expect.any(Object));
+		// The module owns the type, so the built-in handler is skipped. Dispatch
+		// belongs to `useModulePushDispatcher` at app scope, so this composable
+		// must not run the module handler a second time.
 		expect(executionStarted).not.toHaveBeenCalled();
+		expect(moduleHandler).not.toHaveBeenCalled();
 	});
 
 	it('should call removeEventListener when terminate is called', () => {
