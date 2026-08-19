@@ -125,7 +125,8 @@ export class RoleMappingRulesPublicController {
 		const rule = await this.roleMappingRuleService.move({
 			id: roleMappingRuleId,
 			targetIndex: body.targetIndex,
-			user: req.user,
+			userId: req.user.id,
+			userEmail: req.user.email,
 		});
 
 		return toRoleMappingRulePublicDto(rule);

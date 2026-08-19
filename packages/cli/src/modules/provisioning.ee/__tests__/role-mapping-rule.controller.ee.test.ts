@@ -191,7 +191,8 @@ describe('RoleMappingRuleController', () => {
 			expect(roleMappingRuleService.move).toHaveBeenCalledWith({
 				id: ruleId,
 				targetIndex: moveBody.targetIndex,
-				user: req.user,
+				userId: req.user.id,
+				userEmail: req.user.email,
 			});
 		});
 	});

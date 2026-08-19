@@ -824,8 +824,15 @@ describe('RoleMappingRuleService', () => {
 			roleMappingRuleRepository.findOne.mockResolvedValue(null);
 
 			await expect(
-				service.move({ id: 'nonexistent', targetIndex: 0, user: testUser }),
+				service.move({
+					id: 'nonexistent',
+					targetIndex: 0,
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
 			).rejects.toThrow(NotFoundError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should move first rule to last position', async () => {
@@ -839,10 +846,21 @@ describe('RoleMappingRuleService', () => {
 				updatedAt: new Date(),
 			} as unknown as RoleMappingRule);
 
-			await service.move({ id: 'a', targetIndex: 2, user: testUser });
+			await service.move({
+				id: 'a',
+				targetIndex: 2,
+				userId: testUser.id,
+				userEmail: testUser.email,
+			});
 
 			// Verify applyOrder called with correct sequence: b, c, a
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-updated', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: 'a',
+				ruleType: 'instance',
+				patchedFields: ['order'],
+			});
 		});
 
 		it('should move last rule to first position', async () => {
@@ -856,9 +874,20 @@ describe('RoleMappingRuleService', () => {
 				updatedAt: new Date(),
 			} as unknown as RoleMappingRule);
 
-			await service.move({ id: 'c', targetIndex: 0, user: testUser });
+			await service.move({
+				id: 'c',
+				targetIndex: 0,
+				userId: testUser.id,
+				userEmail: testUser.email,
+			});
 
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-updated', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: 'c',
+				ruleType: 'instance',
+				patchedFields: ['order'],
+			});
 		});
 
 		it('should clamp targetIndex to last position when out of bounds', async () => {
@@ -873,26 +902,16 @@ describe('RoleMappingRuleService', () => {
 			} as unknown as RoleMappingRule);
 
 			// targetIndex 999 should clamp to 1 (last valid index)
-			await service.move({ id: 'a', targetIndex: 999, user: testUser });
+			await service.move({
+				id: 'a',
+				targetIndex: 999,
+				userId: testUser.id,
+				userEmail: testUser.email,
+			});
 
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
-		});
-
-		it('emits role-mapping-rule-updated with the moved rule and patched fields', async () => {
-			const rules = [makeRule('a', 0), makeRule('b', 1)];
-			roleMappingRuleRepository.findOne.mockResolvedValue(rules[0]);
-			roleMappingRuleRepository.find.mockResolvedValue(rules);
-			roleMappingRuleRepository.findOneOrFail.mockResolvedValue({
-				...rules[0],
-				order: 1,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			} as unknown as RoleMappingRule);
-
-			await service.move({ id: 'a', targetIndex: 1, user: testUser });
-
 			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-updated', {
-				user: testUser,
+				user: { id: testUser.id, email: testUser.email },
 				ruleId: 'a',
 				ruleType: 'instance',
 				patchedFields: ['order'],

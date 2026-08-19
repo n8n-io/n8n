@@ -78,7 +78,8 @@ export class RoleMappingRuleController {
 		return await this.roleMappingRuleService.move({
 			id,
 			targetIndex: body.targetIndex,
-			user: req.user,
+			userId: req.user.id,
+			userEmail: req.user.email,
 		});
 	}
 

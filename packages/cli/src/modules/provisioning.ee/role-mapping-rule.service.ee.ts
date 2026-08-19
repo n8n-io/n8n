@@ -278,11 +278,13 @@ export class RoleMappingRuleService {
 	async move({
 		id,
 		targetIndex,
-		user,
+		userId,
+		userEmail,
 	}: {
 		id: string;
 		targetIndex: number;
-		user: UserLike;
+		userId: string;
+		userEmail?: string;
 	}): Promise<RoleMappingRuleResponse> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
@@ -322,7 +324,7 @@ export class RoleMappingRuleService {
 		const result = this.toResponse(loaded);
 
 		this.eventService.emit('role-mapping-rule-updated', {
-			user,
+			user: { id: userId, email: userEmail },
 			ruleId: result.id,
 			ruleType: result.type,
 			patchedFields: ['order'],
