@@ -219,9 +219,9 @@ export class TestWebhooks implements IWebhookManager {
 					await workflow.expression.releaseIsolate();
 				} catch (error) {
 					this.logger.error('Failed to release expression isolate for test webhook', {
-					error,
-					workflowId: workflow.id,
-				});
+						error,
+						workflowId: workflow.id,
+					});
 				}
 			}
 		});
