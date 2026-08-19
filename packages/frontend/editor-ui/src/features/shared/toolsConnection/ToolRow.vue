@@ -111,9 +111,9 @@ function handleConnect() {
 	>
 		<button
 			type="button"
-		:class="$style.mainAction"
-		:disabled="isDisabled || item.status === 'connecting'"
-		data-test-id="tools-connection-row-main"
+			:class="$style.mainAction"
+			:disabled="isDisabled || item.status === 'connecting'"
+			data-test-id="tools-connection-row-main"
 			@click="handleRowClick"
 		>
 			<template v-if="item.kind === 'workflow'">
