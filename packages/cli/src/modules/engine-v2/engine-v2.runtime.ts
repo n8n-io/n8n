@@ -141,11 +141,10 @@ export class EngineV2Runtime {
 	}
 
 	private async closeServer(): Promise<void> {
-		const server = this.server;
-		if (!server) return;
+		if (!this.server) return;
 
 		await new Promise<void>((resolve, reject) => {
-			server.close((error) => (error ? reject(error) : resolve()));
+			this.server!.close((error) => (error ? reject(error) : resolve()));
 		});
 
 		// Each release drops its handle only after it succeeds, so a resource that
@@ -154,18 +153,16 @@ export class EngineV2Runtime {
 	}
 
 	private async stopEngine(): Promise<void> {
-		const engine = this.engine;
-		if (!engine) return;
+		if (!this.engine) return;
 
-		await engine.stop();
+		await this.engine.stop();
 		this.engine = undefined;
 	}
 
 	private async destroyDataSource(): Promise<void> {
-		const dataSource = this.dataSource;
-		if (!dataSource) return;
+		if (!this.dataSource) return;
 
-		if (dataSource.isInitialized) await dataSource.destroy();
+		if (this.dataSource.isInitialized) await this.dataSource.destroy();
 		this.dataSource = undefined;
 	}
 }
