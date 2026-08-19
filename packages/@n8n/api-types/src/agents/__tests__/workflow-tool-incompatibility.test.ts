@@ -1,3 +1,4 @@
+import type { IConnections } from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -8,6 +9,24 @@ import {
 
 function wf(...nodeTypes: string[]) {
 	return { nodes: nodeTypes.map((type, i) => ({ type, name: `Node ${i}` })) };
+}
+
+/**
+ * Build a workflow with named nodes and (optionally) connections. `disabled`
+ * is a per-node flag keyed by 0-based index.
+ */
+function wfNamed(
+	nodes: Array<{ type: string; name: string; disabled?: boolean }>,
+	connections?: IConnections,
+) {
+	return { nodes, connections };
+}
+
+/** Connect `source` → `target` on the main output[0] → input[0] axis. */
+function link(source: string, target: string): IConnections {
+	return {
+		[source]: { main: [[{ node: target, type: 'main', index: 0 }]] },
+	};
 }
 
 const [compatibleTrigger] = SUPPORTED_WORKFLOW_TOOL_TRIGGERS;
@@ -66,6 +85,50 @@ describe('getWorkflowToolIncompatibilityReason', () => {
 	it('treats a missing nodes array as no_supported_trigger', () => {
 		expect(getWorkflowToolIncompatibilityReason({})).toEqual({
 			reason: 'no_supported_trigger',
+		});
+	});
+
+	it('ignores a disabled incompatible node', () => {
+		const result = getWorkflowToolIncompatibilityReason(
+			wfNamed([
+				{ type: compatibleTrigger, name: 'Trigger' },
+				{ type: incompatibleBodyNode, name: 'Wait', disabled: true },
+			]),
+		);
+		expect(result).toBeNull();
+	});
+
+	it('ignores an incompatible node that is not reachable from a supported trigger', () => {
+		// Two disconnected subgraphs: the supported trigger's branch has no
+		// incompatible node; the Wait sits behind an unsupported trigger and
+		// never runs when the agent invokes the workflow.
+		const result = getWorkflowToolIncompatibilityReason(
+			wfNamed(
+				[
+					{ type: compatibleTrigger, name: 'Trigger' },
+					{ type: 'n8n-nodes-base.set', name: 'Set' },
+					{ type: 'n8n-nodes-base.cronTrigger', name: 'Cron' },
+					{ type: incompatibleBodyNode, name: 'Wait' },
+				],
+				{ ...link('Trigger', 'Set'), ...link('Cron', 'Wait') },
+			),
+		);
+		expect(result).toBeNull();
+	});
+
+	it('flags an incompatible node that is reachable from a supported trigger', () => {
+		const result = getWorkflowToolIncompatibilityReason(
+			wfNamed(
+				[
+					{ type: compatibleTrigger, name: 'Trigger' },
+					{ type: incompatibleBodyNode, name: 'Wait' },
+				],
+				link('Trigger', 'Wait'),
+			),
+		);
+		expect(result).toEqual({
+			reason: 'incompatible_nodes',
+			nodeTypes: [incompatibleBodyNode],
 		});
 	});
 });

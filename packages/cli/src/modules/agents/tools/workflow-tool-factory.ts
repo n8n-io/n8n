@@ -130,14 +130,15 @@ export function validateCompatibility(workflow: WorkflowEntity): void {
 	if (incompatibility.reason === 'incompatible_nodes') {
 		// Re-resolve node names here (the shared function only returns types) so the
 		// thrown message stays actionable for a developer reading the agent log.
+		// Skip disabled nodes — they don't execute, so they aren't the problem.
 		const nodes = workflow.nodes ?? [];
 		const names = nodes
-			.filter((n) => incompatibility.nodeTypes.includes(n.type))
+			.filter((n) => !n.disabled && incompatibility.nodeTypes.includes(n.type))
 			.map((n) => `${n.name} (${n.type})`)
 			.join(', ');
 		throw new Error(
 			`Workflow "${workflow.name}" contains nodes that aren't supported as agent tools: ${names}. ` +
-				`Remove them or pick another workflow.`,
+				'Remove them or pick another workflow.',
 		);
 	}
 

@@ -2,8 +2,10 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	getChildNodes,
 	MANUAL_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
+	type IConnections,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -28,23 +30,47 @@ export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
 /**
  * Why a workflow can't be attached as an agent tool. `null` means compatible.
  *
- * @remarks Computed from `nodes[].type` only, so it stays pure and shareable
- * between the backend validation service and the frontend picker. The runtime
+ * @remarks Computed from `nodes` (type/name/disabled) and `connections`, so it
+ * stays pure and shareable between the backend validation service and the
+ * frontend picker. Only nodes that can actually execute when the agent
+ * invokes the workflow are considered: disabled nodes are skipped, and when
+ * `connections` is available only nodes reachable from an enabled supported
+ * trigger are checked — an incompatible node in an orphaned subgraph or behind
+ * a different trigger never runs, so it must not block the workflow. When
+ * `connections` is absent the check degrades to scanning every enabled node,
+ * which is the strict superset and stays safe. The runtime
  * `validateCompatibility`/`detectTriggerNode` throws still cover edge cases that
- * a pure node-type scan can't (e.g. a trigger that resolves to a supported
- * type only after parameter materialisation), so this is a strict subset of
- * the runtime check — never relax the runtime check based on this.
+ * a pure scan can't (e.g. a trigger that resolves to a supported type only
+ * after parameter materialisation), so this is a strict subset of the runtime
+ * check — never relax the runtime check based on this.
  */
 export type WorkflowToolIncompatibilityReason =
 	| { reason: 'incompatible_nodes'; nodeTypes: string[] }
 	| { reason: 'no_supported_trigger' };
 
 export function getWorkflowToolIncompatibilityReason(workflow: {
-	nodes?: Array<{ type: string }>;
+	nodes?: Array<{ type: string; name: string; disabled?: boolean }>;
+	connections?: IConnections;
 }): WorkflowToolIncompatibilityReason | null {
 	const nodes = workflow.nodes ?? [];
+	// Disabled nodes never execute, so they can't make the workflow incompatible
+	// and a disabled trigger can't serve as the agent's entry point.
+	const enabledNodes = nodes.filter((n) => !n.disabled);
 
-	const incompatibleNodeTypes = nodes
+	const triggerNames = enabledNodes
+		.filter((n) => (SUPPORTED_WORKFLOW_TOOL_TRIGGERS as readonly string[]).includes(n.type))
+		.map((n) => n.name);
+
+	// Only nodes reachable from a supported trigger run when the workflow is
+	// invoked as an agent tool. Without `connections` we can't compute
+	// reachability, so fall back to every enabled node — the safe superset.
+	const reachableNames =
+		workflow.connections && triggerNames.length > 0
+			? reachableNodesFromTriggers(triggerNames, workflow.connections)
+			: new Set(enabledNodes.map((n) => n.name));
+
+	const incompatibleNodeTypes = enabledNodes
+		.filter((n) => reachableNames.has(n.name))
 		.filter((n) =>
 			(INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES as readonly string[]).includes(n.type),
 		)
@@ -53,12 +79,27 @@ export function getWorkflowToolIncompatibilityReason(workflow: {
 		return { reason: 'incompatible_nodes', nodeTypes: incompatibleNodeTypes };
 	}
 
-	const hasSupportedTrigger = nodes.some((n) =>
-		(SUPPORTED_WORKFLOW_TOOL_TRIGGERS as readonly string[]).includes(n.type),
-	);
-	if (!hasSupportedTrigger) return { reason: 'no_supported_trigger' };
+	if (triggerNames.length === 0) return { reason: 'no_supported_trigger' };
 
 	return null;
+}
+
+/**
+ * All node names reachable from any of `triggerNames` (the triggers included),
+ * following every connection type. `getChildNodes` is cycle-safe and returns
+ * each descendant once, so one call per trigger and a union is enough.
+ */
+function reachableNodesFromTriggers(
+	triggerNames: string[],
+	connections: IConnections,
+): Set<string> {
+	const reachable = new Set<string>(triggerNames);
+	for (const name of triggerNames) {
+		for (const child of getChildNodes(connections, name, 'ALL')) {
+			reachable.add(child);
+		}
+	}
+	return reachable;
 }
 
 export interface ChatIntegrationDescriptor {

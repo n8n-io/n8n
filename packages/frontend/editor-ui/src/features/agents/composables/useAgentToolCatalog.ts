@@ -146,9 +146,11 @@ export function useAgentToolCatalog() {
 		try {
 			// Fetch all project workflows (not just those with a supported trigger)
 			// so unsupported ones can be shown greyed-out with a reason in the picker.
+			// `connections` is needed to scope the incompatibility check to nodes
+			// actually reachable from a supported trigger.
 			projectWorkflows.value = await workflowsListStore.searchWorkflows({
 				projectId,
-				select: ['id', 'name', 'description', 'isArchived', 'nodes', 'updatedAt'],
+				select: ['id', 'name', 'description', 'isArchived', 'nodes', 'connections', 'updatedAt'],
 			});
 		} catch (error) {
 			console.warn('[useAgentToolCatalog] failed to load workflows for project', error);

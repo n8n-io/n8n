@@ -216,6 +216,8 @@ describe('useAgentToolCatalog', () => {
 					parameters: {},
 				},
 			],
+			// Wait is reachable from the trigger, so it actually runs and must be flagged.
+			connections: { 'Manual Trigger': { main: [[{ node: 'Wait', type: 'main', index: 0 }]] } },
 		});
 		const noTrigger = makeWorkflow({
 			id: 'no-trigger',
@@ -274,6 +276,34 @@ describe('isWorkflowCompatibleWithAgentTools', () => {
 				}),
 			),
 		).toBe(false);
+		// An incompatible node reachable from the trigger blocks the workflow.
+		expect(
+			isWorkflowCompatibleWithAgentTools(
+				makeWorkflow({
+					nodes: [
+						{
+							id: 't',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'f',
+							name: 'Form',
+							type: 'n8n-nodes-base.form',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: { 'Manual Trigger': { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
+				}),
+			),
+		).toBe(false);
+		// An incompatible node that is NOT reachable from the trigger never runs,
+		// so it must not block the workflow.
 		expect(
 			isWorkflowCompatibleWithAgentTools(
 				makeWorkflow({
@@ -297,6 +327,33 @@ describe('isWorkflowCompatibleWithAgentTools', () => {
 					],
 				}),
 			),
-		).toBe(false);
+		).toBe(true);
+		// A disabled incompatible node never runs, so it must not block the workflow.
+		expect(
+			isWorkflowCompatibleWithAgentTools(
+				makeWorkflow({
+					nodes: [
+						{
+							id: 't',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: 'f',
+							name: 'Form',
+							type: 'n8n-nodes-base.form',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							disabled: true,
+						},
+					],
+					connections: { 'Manual Trigger': { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
+				}),
+			),
+		).toBe(true);
 	});
 });
