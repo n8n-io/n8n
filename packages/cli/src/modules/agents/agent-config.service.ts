@@ -34,8 +34,12 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
+import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
+import {
+	findHttpRequestToolUrlFromAiViolations,
+	validateNodeToolConfigs,
+	validateNodeToolExpressions,
+} from './utils/node-tool-validation';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
 @Service()
@@ -100,6 +104,19 @@ export class AgentConfigService {
 			return {
 				valid: false,
 				error: `Invalid $fromAI expression in node tool config: ${message}`,
+			};
+		}
+
+		const urlViolations = findHttpRequestToolUrlFromAiViolations(config.tools);
+		if (urlViolations.length > 0) {
+			return {
+				valid: false,
+				error: urlViolations
+					.map(
+						({ toolName, path }) =>
+							`HTTP Request tool "${toolName}" cannot use $fromAI in ${path}. Enter a fixed URL.`,
+					)
+					.join('\n'),
 			};
 		}
 
@@ -272,7 +289,7 @@ export class AgentConfigService {
 			user,
 		);
 
-		const saved = await this.agentRepository.save(entity);
+		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
 		this.eventService.emit('agent-saved', { agentId });
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 

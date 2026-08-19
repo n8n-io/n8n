@@ -1,6 +1,7 @@
 import {
 	AgentConnectIntegrationDto,
 	AgentDisconnectIntegrationDto,
+	type AgentDisconnectIntegrationResponse,
 	isDraftIntegration,
 	type AgentIntegrationStatusResponse,
 } from '@n8n/api-types';
@@ -8,13 +9,13 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
 import { AgentIntegrationManagementService } from './agent-integration-management.service';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
 import { AgentRepository } from './repositories/agent.repository';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentIntegrationsController {
@@ -56,18 +57,19 @@ export class AgentIntegrationsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 		@Body payload: AgentDisconnectIntegrationDto,
-	) {
-		const { type, credentialId } = payload;
+	): Promise<AgentDisconnectIntegrationResponse> {
+		const { type, credentialId, deleteExternalResource } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		await this.integrationManagementService.disconnect({
+		const { warning } = await this.integrationManagementService.disconnect({
 			agent,
 			user: req.user,
 			type,
 			credentialId,
+			deleteExternalResource,
 		});
 
-		return { status: 'disconnected' };
+		return { status: 'disconnected', ...(warning ? { warning } : {}) };
 	}
 
 	@Get('/:agentId/integrations/status')

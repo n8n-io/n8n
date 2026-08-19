@@ -190,6 +190,7 @@ export { parseModelHeadersJson } from './utils/parse-model-headers';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
 export { WorkflowNotFoundError } from './errors/workflow-not-found.error';
+export { WorkflowEditorLockedError } from './errors/workflow-editor-locked.error';
 export {
 	LEGACY_PLANNED_TASK_KINDS,
 	PLANNED_TASK_KINDS,

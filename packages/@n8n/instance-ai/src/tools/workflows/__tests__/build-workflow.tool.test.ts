@@ -60,6 +60,7 @@ vi.mock('../resolve-credentials', () => ({
 				mockedNodeNames: [],
 				mockedCredentialTypes: [],
 				mockedCredentialsByNode: {},
+				heldForNewCredentialTypes: [],
 				resolvedCredentialsByNode: {},
 			}),
 	),
@@ -257,6 +258,12 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.instructions).toContain('## After build-workflow succeeds');
 		expect(result.postBuildFlow?.guidance).toContain(
 			'then mocked/no-mock live-test when latest verification used mocks or simulations',
+		);
+		expect(result.postBuildFlow?.guidance).toContain(
+			'never offer publishing as an alternative to the live test',
+		);
+		expect(result.postBuildFlow?.guidance).toContain(
+			'A user-run execution counts only after `executions(action="list")`',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
 			'Do not replace the error-workflow opt-in with a generic add-anything',
@@ -567,6 +574,109 @@ describe('createBuildWorkflowTool', () => {
 				status: 'required',
 				reason: 'workflow-needs-setup',
 			},
+		});
+	});
+
+	it('does not fail the build on blocking findings for nodes unchanged from the saved workflow', async () => {
+		// Severity-aware partition (the default test mock ignores severity).
+		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+			blocking: warnings.filter((w) => w.severity !== 'informational'),
+			informational: warnings.filter((w) => w.severity === 'informational'),
+		}));
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: structuredClone(generatedWorkflow),
+			warnings: [
+				{
+					code: 'INVALID_PARAMETER',
+					message: 'Node "Webhook": Missing discriminator "parameters.resource".',
+					nodeName: 'Webhook',
+				},
+			],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		// Saved workflow contains the identical node — this build did not touch it.
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			...structuredClone(generatedWorkflow),
+			name: 'Target workflow',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-bound' });
+		expect(result.warnings?.some((w) => w.includes('pre-existing node'))).toBe(true);
+	});
+
+	it('still fails the build on blocking findings for nodes the build changed', async () => {
+		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+			blocking: warnings.filter((w) => w.severity !== 'informational'),
+			informational: warnings.filter((w) => w.severity === 'informational'),
+		}));
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: structuredClone(generatedWorkflow),
+			warnings: [
+				{
+					code: 'INVALID_PARAMETER',
+					message: 'Node "Webhook": Missing discriminator "parameters.resource".',
+					nodeName: 'Webhook',
+				},
+			],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		// Saved workflow has different parameters on the node — the build changed it.
+		const saved = structuredClone(generatedWorkflow);
+		saved.nodes[0].parameters = { path: 'old-path' };
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			...saved,
+			name: 'Target workflow',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.errors?.some((e) => e.includes('Missing discriminator'))).toBe(true);
+	});
+
+	it('does not require setup for pending nodes the build did not change', async () => {
+		vi.mocked(analyzeWorkflow).mockResolvedValueOnce([
+			{
+				node: {
+					id: 'webhook-1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					parameters: {},
+					position: [0, 0],
+				},
+				parameterIssues: { path: ['Missing webhook path'] },
+				isTrigger: true,
+				needsAction: true,
+			} as SetupRequest,
+		]);
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		// Saved workflow is identical to the compiled one — nothing changed.
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+			...structuredClone(generatedWorkflow),
+			name: 'Target workflow',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		expect(result).toMatchObject({
+			success: true,
+			setupRequirement: { status: 'not_required' },
 		});
 	});
 
@@ -1730,6 +1840,7 @@ describe('createBuildWorkflowTool', () => {
 			mockedNodeNames: ['OpenAI Chat Model'],
 			mockedCredentialTypes: [],
 			mockedCredentialsByNode: {},
+			heldForNewCredentialTypes: [],
 			resolvedCredentialsByNode: {
 				'OpenAI Chat Model': [
 					{ type: 'openAiApi', id: null, name: 'n8n Connect', __aiGatewayManaged: true },

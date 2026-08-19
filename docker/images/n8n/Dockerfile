@@ -1,9 +1,9 @@
-ARG NODE_VERSION=24.18.1
+ARG NODE_VERSION=26.5.1
 ARG N8N_VERSION=snapshot
 
 # The runtime base has no compiler, so this stage supplies one.
-# The digest pins node:24.18.1-alpine3.24 for amd64 and arm64. Change the tag and the digest together.
-FROM node:24.18.1-alpine3.24@sha256:f70403e87646dc51b45295f4b8b70cdad0b63d2297c4c9899119b03f7af7a6b3 AS toolchain
+# The digest pins node:26.5.1-alpine3.24 for amd64 and arm64. Change the tag and the digest together.
+FROM node:26.5.1-alpine3.24@sha256:233761595746769ebfdb6090f44fc7cdf818ae0ce62d2b37e0367723b9823e36 AS toolchain
 RUN apk add --no-cache python3 make g++
 
 # Build isolated-vm in a separate stage. The only cache input is the module source.
@@ -29,14 +29,20 @@ COPY ./compiled /usr/local/lib/node_modules/n8n
 # version to the pinned image digest instead of fetching it at build time.
 RUN cd /usr/local/lib/node_modules/n8n/node_modules/sqlite3 && \
     node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release
+# The workspace install cannot build this binding, because CI installs on a Node version
+# Confluent ships no prebuild for, so `./compiled` arrives without one. Compile it here
+# and link against the runtime base's librdkafka. See: https://github.com/confluentinc/confluent-kafka-javascript/issues/397
+RUN apk add --no-cache librdkafka-dev && \
+    cd /usr/local/lib/node_modules/n8n/node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript && \
+    BUILD_LIBRDKAFKA=0 node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release
 COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
      /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build/Release/isolated_vm.node
 # node-gyp-build finds build/Release first. Delete the prebuilds to remove the glibc fallback.
 RUN rm -rf /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/prebuilds
 
-# The digest pins n8nio/base:24.18.1 for amd64 and arm64. A separate workflow builds that
+# The digest pins n8nio/base:26.5.1 for amd64 and arm64. A separate workflow builds that
 # image, so a new base reaches this image only when you change the digest here.
-FROM n8nio/base:24.18.1@sha256:f7a23e449f093b8b203467919e969ca35d12ba959442aadc1f69bb174b160ad2
+FROM n8nio/base:26.5.1@sha256:1b0bca5c94bbd04ad2120b9e9892a8bc717a1d88efa76fefe452c59bdc611d25
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev

@@ -259,6 +259,94 @@ describe('browser_capture_secret', () => {
 
 			expect(result.isError).toBe(true);
 		});
+
+		it('refuses to buffer a value that is itself a redaction marker', async () => {
+			mockProbe(htmlWithPasswordInput('[REDACTED:secret:1] trailing'));
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
+		// A match that only exists once `textContent` runs sibling text together is
+		// never shown to the model, so its marker can only have been guessed.
+		it('refuses to buffer a value that only exists in concatenated markup', async () => {
+			// Split across siblings, so the key exists only once `textContent`
+			// concatenates them — never in the text the model reads.
+			mockProbe(
+				`<html><body><section><span>AQ.</span><span>${'AbCdEfGhIj'.repeat(3)}Ab</span></section></body></html>`,
+			);
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:google_api_key:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
+		it('refuses to buffer an empty value', async () => {
+			mockConn.adapter.getElementValue.mockResolvedValue('');
+
+			const result = await getTool().execute(
+				{ credentialsKey: 'k1', field: 'apiKey', element: { ref: 'e42' } },
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
+		// Expansion gives up inside an undelimitable run, and the match it falls
+		// back to may be partial — that must fail, not be stored.
+		it('refuses to buffer a value whose token could not be delimited', async () => {
+			const key = `AQ.${'Ab8RN6Jr7xQfP2mKdW9tZsLyVc4hEuNgT3iBoXaQwMzRkJvSpH'}`;
+			const run = 'x'.repeat(600);
+			mockProbe(`<html><body><p>${run}${key}${run}</p></body></html>`);
+
+			const result = await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:google_api_key:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(buffer.capture).not.toHaveBeenCalled();
+		});
+
+		// A fixed-length pattern matches only the first N characters of a longer
+		// token; extraction must not inherit that boundary.
+		it('captures the whole token when a provider pattern matched only its prefix', async () => {
+			const key = `AIza${'SyC7mQ2xR9tKdW4vLpZ8bNfH3jEuXaGoT5wPqYs1Bc'}`;
+			mockProbe(`<html><body><p>Your key is ${key}</p></body></html>`);
+
+			await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:google_api_key:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(buffer.capture).toHaveBeenCalledWith('k1', 'apiKey', key);
+		});
 	});
 });
 

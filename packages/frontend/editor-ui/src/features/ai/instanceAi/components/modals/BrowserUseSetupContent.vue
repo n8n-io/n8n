@@ -1,12 +1,14 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useEventListener } from '@vueuse/core';
-import { N8nButton, N8nCallout, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nHeading, N8nText } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { isBrowserUseSupportedForBrowser } from '@/experiments/instanceAiBrowserUse';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
+import BrowserUseConnectStep from './BrowserUseConnectStep.vue';
 
 import { CHROME_EXTENSION_URL } from '../../constants';
 import {
@@ -14,31 +16,31 @@ import {
 	type BrowserUseExtensionState,
 } from '../../utils/browserUseExtension';
 
-const CONNECT_URL_REFRESH_MARGIN_MS = 30_000;
-
 const props = withDefaults(
 	defineProps<{
 		embedded?: boolean;
+		autoConnect?: boolean;
 	}>(),
 	{
 		embedded: false,
+		autoConnect: false,
 	},
 );
 
 const emit = defineEmits<{ close: [] }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
 const { onDocumentVisible } = useDocumentVisibility();
 
 const isBrowserSupported = isBrowserUseSupportedForBrowser();
 const isConnected = computed(() => store.browserConnected);
-const connectUrl = ref<string | null>(null);
+const statusChecked = ref(false);
 const extensionState = ref<BrowserUseExtensionState>('unknown');
 const isExtensionMissing = computed(() => extensionState.value === 'not-installed');
 const isExtensionInstalled = computed(() => extensionState.value === 'installed');
-let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 let isProbingExtension = false;
 
 async function refreshExtensionState(): Promise<void> {
@@ -53,35 +55,30 @@ async function refreshExtensionState(): Promise<void> {
 	}
 }
 
-function clearRefreshTimer(): void {
-	if (refreshTimer) {
-		clearTimeout(refreshTimer);
-		refreshTimer = undefined;
-	}
-}
-
-async function refreshConnectUrl(): Promise<void> {
-	clearRefreshTimer();
-	connectUrl.value = await store.fetchBrowserConnectUrl();
-
-	const expiresAt = store.browserConnectUrlExpiresAt;
-	if (!connectUrl.value || !expiresAt) return;
-
-	const delay = Date.parse(expiresAt) - Date.now() - CONNECT_URL_REFRESH_MARGIN_MS;
-	if (!Number.isFinite(delay) || delay <= 0) return;
-
-	refreshTimer = setTimeout(() => void refreshConnectUrl(), delay);
-}
-
-onMounted(() => {
+onMounted(async () => {
 	telemetry.trackModalOpened(isBrowserSupported);
 	if (!isBrowserSupported) return;
-	void store.fetchBrowserStatus();
-	if (!store.browserConnected) {
-		void refreshConnectUrl();
-	}
-	void refreshExtensionState();
+	await Promise.all([refreshExtensionState(), store.fetchBrowserStatus()]);
+	statusChecked.value = true;
 });
+
+// When the connection is driven from this view, reporting success as a toast keeps
+// the screen free instead of parking the user on a status-only modal. Flushed
+// synchronously because other views watch the same state to close this one, and a
+// deferred callback would be dropped along with the unmounting component.
+watch(
+	isConnected,
+	(connected) => {
+		if (!connected || !props.autoConnect) return;
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('instanceAi.browserUse.connected'),
+			message: i18n.baseText('instanceAi.browserUse.connected.toastMessage'),
+		});
+		emit('close');
+	},
+	{ flush: 'sync' },
+);
 
 // Re-probe when the user returns from installing the extension. Coming back by tab switch
 // only fires `visibilitychange` — the window's focus can land in DevTools or another pane —
@@ -89,11 +86,6 @@ onMounted(() => {
 const reprobeExtension = () => void refreshExtensionState();
 onDocumentVisible(reprobeExtension);
 useEventListener(window, 'focus', reprobeExtension);
-
-onBeforeUnmount(() => {
-	clearRefreshTimer();
-	store.clearBrowserConnectUrl();
-});
 </script>
 
 <template>
@@ -155,39 +147,17 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 
-			<div :class="$style.step">
+			<div v-if="isExtensionMissing" :class="$style.step">
 				<N8nText :bold="true" size="small">
 					{{ i18n.baseText('instanceAi.browserUse.step.connect.title') }}
 				</N8nText>
-				<N8nText
-					v-if="isExtensionMissing"
-					color="text-light"
-					size="small"
-					data-test-id="browser-use-extension-missing-note"
-				>
+				<N8nText color="text-light" size="small" data-test-id="browser-use-extension-missing-note">
 					{{ i18n.baseText('instanceAi.browserUse.step.connect.extensionMissing') }}
 				</N8nText>
-				<template v-else>
-					<N8nText color="text-light" size="small">
-						{{ i18n.baseText('instanceAi.browserUse.step.connect.description') }}
-					</N8nText>
-					<N8nButton
-						:label="i18n.baseText('instanceAi.browserUse.step.connect.cta')"
-						:href="connectUrl ?? undefined"
-						target="_blank"
-						variant="solid"
-						size="medium"
-						icon="external-link"
-						:disabled="!connectUrl"
-						data-test-id="browser-use-open-connect-page"
-						@click="telemetry.trackOpenExtensionClicked"
-					/>
-				</template>
 			</div>
 
-			<div v-if="!isExtensionMissing" :class="$style.waitingRow">
-				<N8nIcon icon="spinner" color="primary" spin size="small" />
-				<span>{{ i18n.baseText('instanceAi.browserUse.step.extension.waiting') }}</span>
+			<div v-else-if="statusChecked" :class="$style.step">
+				<BrowserUseConnectStep :auto-connect="props.autoConnect" />
 			</div>
 		</template>
 	</div>
@@ -252,17 +222,5 @@ onBeforeUnmount(() => {
 
 .statusDotConnected {
 	background: var(--color--success);
-}
-
-.waitingRow {
-	display: flex;
-	font-size: var(--font-size--2xs);
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	background: var(--color--background--light-2);
-	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight--bold);
-	border-radius: var(--radius);
 }
 </style>
