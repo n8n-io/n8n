@@ -43,7 +43,7 @@ const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 const shutdownService = mockInstance(ShutdownService);
 const deprecationService = mockInstance(DeprecationService);
 mockInstance(MessageEventBus);
-mockInstance(ExpressionObservabilityProvider);
+const expressionObservability = mockInstance(ExpressionObservabilityProvider);
 const posthogClient = mockInstance(PostHogClient);
 const telemetryEventRelay = mockInstance(TelemetryEventRelay);
 const externalHooks = mockInstance(ExternalHooks);
@@ -170,6 +170,22 @@ test('should exit with a crash when expression engine init fails', async () => {
 		.spyOn(BaseCommand.prototype, 'exitWithCrash')
 		.mockResolvedValue(undefined);
 
+	Container.set(
+		GlobalConfig,
+		mock<GlobalConfig>({
+			taskRunners: {},
+			nodes: {},
+			expressionEngine: {
+				engine: 'vm',
+				poolSize: 4,
+				maxCodeCacheSize: 1024,
+				bridgeTimeout: 5000,
+				bridgeMemoryLimit: 128,
+				idleTimeout: 30,
+			},
+		}),
+	);
+
 	class ExpressionCommand extends BaseCommand {
 		override needsExpressionEngine = true;
 	}
@@ -182,6 +198,15 @@ test('should exit with a crash when expression engine init fails', async () => {
 	// assert
 
 	expect(initSpy).toHaveBeenCalledTimes(1);
+	expect(initSpy).toHaveBeenCalledWith({
+		engine: 'vm',
+		poolSize: 4,
+		maxCodeCacheSize: 1024,
+		bridgeTimeout: 5000,
+		bridgeMemoryLimit: 128,
+		idleTimeoutMs: 30_000, // the config value is in seconds
+		observability: expressionObservability,
+	});
 	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));
 });
 
