@@ -678,6 +678,45 @@ describe('SourceControlGitService', () => {
 					),
 				);
 			});
+
+			it('should escape single quotes in paths to prevent command injection', async () => {
+				// Arrange - a path containing a single quote (e.g. a Windows user
+				// folder like "John's") would otherwise terminate the quoted argument.
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				const pathWithSingleQuote = "C:/Users/John's/.n8n/ssh_private_key_temp";
+				const sshFolder = "C:/Users/John's/.n8n/.ssh";
+
+				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(pathWithSingleQuote);
+				mockPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'ssh',
+					connected: true,
+					repositoryUrl: 'git@github.com:user/repo.git',
+					branchName: 'main',
+					branchReadOnly: false,
+					branchColor: '#5296D6',
+					initRepo: false,
+					keyGeneratorType: 'ed25519',
+				});
+
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+
+				// Act
+				await gitService.setGitCommand('/git/folder', sshFolder);
+
+				// Assert - the single quote is emitted as the POSIX '\'' sequence
+				// (close-quote, escaped quote, reopen-quote), keeping it literal so
+				// it cannot break out of the argument and inject a command.
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining("-i 'C:/Users/John'\"'\"'s/.n8n/ssh_private_key_temp'"),
+				);
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining(
+						"-o UserKnownHostsFile='C:/Users/John'\"'\"'s/.n8n/.ssh/known_hosts'",
+					),
+				);
+			});
 		});
 	});
 });
