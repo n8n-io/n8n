@@ -19,9 +19,7 @@ import {
 	hashAgentSandboxPrincipal,
 } from '../agent-sandbox-principal';
 import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
-import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { Agent } from '../entities/agent.entity';
-import type { N8nMemory } from '../integrations/n8n-memory';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
@@ -119,7 +117,6 @@ function makeService() {
 	const agentRunTracingService = mock<AgentRunTracingService>();
 	const executionLevelTracer = mock<ExecutionLevelTracer>();
 	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
-	const n8nMemory = mock<N8nMemory>();
 
 	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
@@ -140,7 +137,6 @@ function makeService() {
 		agentRunTracingService,
 		executionLevelTracer,
 		nodeToolAiGatewayService,
-		n8nMemory,
 	);
 
 	return {
@@ -152,58 +148,12 @@ function makeService() {
 		agentRunTracingService,
 		executionLevelTracer,
 		nodeToolAiGatewayService,
-		n8nMemory,
 	};
 }
 
 describe('AgentWorkflowExecutionService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-	});
-
-	it('resolves an existing workflow-scoped session to its legacy thread', async () => {
-		const { service, executionService } = makeService();
-		executionService.findThreadById.mockResolvedValue(
-			mock<AgentExecutionThread>({ agentId, projectId }),
-		);
-
-		await expect(
-			service.resolveWorkflowSessionThreadId({
-				agentId,
-				projectId,
-				legacyThreadId: 'wf:workflow-1:session-1',
-				projectThreadId: 'workflow:project-project-1:session-1',
-			}),
-		).resolves.toBe('wf:workflow-1:session-1');
-	});
-
-	it('does not resolve a legacy thread from another project', async () => {
-		const { service, executionService } = makeService();
-		executionService.findThreadById.mockResolvedValue(
-			mock<AgentExecutionThread>({ agentId, projectId: 'project-2' }),
-		);
-
-		await expect(
-			service.resolveWorkflowSessionThreadId({
-				agentId,
-				projectId,
-				legacyThreadId: 'wf:workflow-1:session-1',
-				projectThreadId: 'workflow:project-project-1:session-1',
-			}),
-		).resolves.toBe('workflow:project-project-1:session-1');
-	});
-
-	it('resolves an existing inline session from memory', async () => {
-		const { service, n8nMemory } = makeService();
-		n8nMemory.threadExists.mockResolvedValue(true);
-
-		await expect(
-			service.resolveWorkflowSessionThreadId({
-				projectId,
-				legacyThreadId: 'wf:workflow-1:session-1',
-				projectThreadId: 'workflow:project-project-1:session-1',
-			}),
-		).resolves.toBe('wf:workflow-1:session-1');
 	});
 
 	it('executes workflow runs with thread-scoped persistence and tool-call output', async () => {

@@ -18,10 +18,6 @@ describe('hashAgentSandboxPrincipal', () => {
 				'hvv8BfUEg9z51q2osaDXES2zFyThZImKNiT2euVvAUA',
 			],
 			[
-				{ type: 'workflow-session', workflowId: 'workflow|one', sessionId: 'session|two' },
-				'U1yUIOzcWHMbn3uOWB_UKJCbW1yZ_aqsOZJl_o3omc0',
-			],
-			[
 				{
 					type: 'workflow-execution',
 					workflowId: 'workflow-1',

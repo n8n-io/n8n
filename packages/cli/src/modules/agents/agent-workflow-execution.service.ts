@@ -24,11 +24,7 @@ import type { AgentRunTelemetryType } from '@/interfaces';
 import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 import { Telemetry } from '@/telemetry';
 
-import {
-	AgentExecutionService,
-	type StartExecutionParams,
-	threadBelongsTo,
-} from './agent-execution.service';
+import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import { AgentRunTracingService } from './agent-run-tracing.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import {
@@ -41,7 +37,6 @@ import {
 } from './agent-telemetry';
 import type { Agent } from './entities/agent.entity';
 import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
-import { N8nMemory } from './integrations/n8n-memory';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { AgentRepository } from './repositories/agent.repository';
 import { createInputDataTool } from './tools/input-data-tool';
@@ -92,26 +87,7 @@ export class AgentWorkflowExecutionService {
 		private readonly agentRunTracingService: AgentRunTracingService,
 		private readonly executionLevelTracer: ExecutionLevelTracer,
 		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
-		private readonly n8nMemory: N8nMemory,
 	) {}
-
-	async resolveWorkflowSessionThreadId(params: {
-		agentId?: string;
-		projectId: string;
-		legacyThreadId: string;
-		projectThreadId: string;
-	}): Promise<string> {
-		if (params.agentId) {
-			const legacyThread = await this.agentExecutionService.findThreadById(params.legacyThreadId);
-			if (legacyThread && threadBelongsTo(legacyThread, params.projectId, params.agentId)) {
-				return params.legacyThreadId;
-			}
-		} else if (await this.n8nMemory.threadExists(params.legacyThreadId)) {
-			return params.legacyThreadId;
-		}
-
-		return params.projectThreadId;
-	}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
 		const normalizedError = error instanceof Error ? error : new Error(String(error));

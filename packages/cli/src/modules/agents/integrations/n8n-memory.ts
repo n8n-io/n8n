@@ -84,10 +84,6 @@ export class N8nMemory {
 		private readonly memoryEntryCursorRepository: AgentMemoryEntryCursorRepository,
 	) {}
 
-	async threadExists(threadId: string): Promise<boolean> {
-		return await this.threadRepository.existsBy({ id: threadId });
-	}
-
 	getImplementation(agentId: string) {
 		return new N8nMemoryImpl(
 			agentId,

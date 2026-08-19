@@ -399,21 +399,7 @@ export async function executeAgent(
 		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
 	}
 
-	const projectThreadId = `workflow:project-${projectId}:${threadId}`;
-	let scopedThreadId = projectThreadId;
-	let usesLegacyWorkflowScope = false;
-
-	// Keep workflow-scoped sessions addressable from their original workflow.
-	// New sessions use the project key and can be shared by every workflow in it.
-	if (workflowContext?.hasCallerSessionId === true) {
-		scopedThreadId = await agentWorkflowExecutionService.resolveWorkflowSessionThreadId({
-			agentId: source.agentId,
-			projectId,
-			legacyThreadId: `wf:${additionalData.workflowId}:${threadId}`,
-			projectThreadId,
-		});
-		usesLegacyWorkflowScope = scopedThreadId !== projectThreadId;
-	}
+	const scopedThreadId = `workflow:project-${projectId}:${threadId}`;
 
 	if (source.inlineAgent) {
 		return await agentWorkflowExecutionService.executeInlineForWorkflow(
@@ -434,17 +420,11 @@ export async function executeAgent(
 	const sandboxScope =
 		workflowContext?.hasCallerSessionId === true
 			? {
-					principalHash: usesLegacyWorkflowScope
-						? hashAgentSandboxPrincipal({
-								type: 'workflow-session',
-								workflowId: additionalData.workflowId,
-								sessionId: threadId,
-							})
-						: hashAgentSandboxPrincipal({
-								type: 'project-session',
-								projectId,
-								sessionId: threadId,
-							}),
+					principalHash: hashAgentSandboxPrincipal({
+						type: 'project-session',
+						projectId,
+						sessionId: threadId,
+					}),
 				}
 			: {
 					principalHash: hashAgentSandboxPrincipal({
