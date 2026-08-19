@@ -674,7 +674,7 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 	});
 
-	it('TypeOrmStepStore.loadLatestStep returns the highest-iteration row, or null', async () => {
+	it('TypeOrmStepStore.loadLatestStepSummary returns the highest-iteration row, or null', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		await store.createSteps(executionId, [
@@ -685,10 +685,16 @@ describe('workflow_step_execution table (integration)', () => {
 		const otherExecutionId = await createExecution();
 		await store.createSteps(otherExecutionId, [{ nodeId: 'b', iteration: 5, status: 'queued' }]);
 
-		const latest = await store.loadLatestStep(executionId, 'b');
-		expect(latest).toMatchObject({ nodeId: 'b', iteration: 1, status: 'completed' });
+		const latest = await store.loadLatestStepSummary(executionId, 'b');
+		// the slim view: which slots were filled, not what they hold
+		expect(latest).toMatchObject({
+			nodeId: 'b',
+			iteration: 1,
+			status: 'completed',
+			filledOutputSlots: [true, false],
+		});
 
-		expect(await store.loadLatestStep(executionId, 'ghost')).toBeNull();
+		expect(await store.loadLatestStepSummary(executionId, 'ghost')).toBeNull();
 	});
 
 	it('carries the unique key and the failed-rows partial index in the schema', async () => {

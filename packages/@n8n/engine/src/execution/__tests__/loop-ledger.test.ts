@@ -1,0 +1,106 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import { deriveLoops, type WorkflowGraph } from '../../graph';
+import { endsLoop, exitSourcesInto, isTerminalRow, loadTerminalIterations } from '../loop-ledger';
+import type { StepStore, StepSummary } from '../step-store';
+
+function tip(iteration: number, filledOutputSlots: boolean[], status = 'completed' as const) {
+	return { id: `step-B-${iteration}`, nodeId: 'B', iteration, status, filledOutputSlots };
+}
+
+/** The canonical loop: trigger into B, body x, exit to d. */
+const loopGraph: WorkflowGraph = {
+	nodes: [
+		{ id: 'trigger', name: 'T', type: 'trigger' },
+		{ id: 'B', name: 'B', type: 'batch' },
+		{ id: 'x', name: 'X', type: 'v1-node' },
+		{ id: 'd', name: 'D', type: 'v1-node' },
+	],
+	edges: [
+		{ from: 'trigger', to: 'B', outputIndex: 0, inputIndex: 0 },
+		{ from: 'B', to: 'x', outputIndex: 1, inputIndex: 0 },
+		{ from: 'x', to: 'B', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+		{ from: 'B', to: 'd', outputIndex: 0, inputIndex: 0 },
+	],
+};
+const loops = deriveLoops(loopGraph);
+
+describe('endsLoop', () => {
+	it('ends the loop when a settled row leaves its loop slot dead', () => {
+		expect(endsLoop('completed', false)).toBe(true);
+	});
+
+	it('does not end the loop while the loop slot is filled', () => {
+		expect(endsLoop('completed', true)).toBe(false);
+	});
+
+	it('ends the loop on a skipped row, which fired nothing', () => {
+		expect(endsLoop('skipped', false)).toBe(true);
+	});
+
+	it('does not end the loop from a row that has not settled', () => {
+		expect(endsLoop('running', false)).toBe(false);
+		expect(endsLoop('queued', false)).toBe(false);
+	});
+});
+
+describe('isTerminalRow', () => {
+	it('is terminal when the row fired the done slot', () => {
+		expect(isTerminalRow(tip(2, [true, false]))).toBe(true);
+	});
+
+	it('is not terminal when the row fired the loop slot', () => {
+		expect(isTerminalRow(tip(2, [false, true]))).toBe(false);
+	});
+
+	it('is terminal when the row fired nothing at all', () => {
+		expect(isTerminalRow(tip(2, []))).toBe(true);
+	});
+});
+
+describe('exitSourcesInto', () => {
+	it('names the batch node whose terminal row a node after the loop reads', () => {
+		expect(exitSourcesInto(loopGraph, loops, ['d'])).toEqual(['B']);
+	});
+
+	it('names nothing for a node inside the loop, which reads its own iteration', () => {
+		expect(exitSourcesInto(loopGraph, loops, ['x'])).toEqual([]);
+		expect(exitSourcesInto(loopGraph, loops, ['B'])).toEqual([]);
+	});
+
+	it('names nothing in a graph without loops, so no tip is ever read', () => {
+		expect(exitSourcesInto(loopGraph, [], ['d'])).toEqual([]);
+	});
+});
+
+describe('loadTerminalIterations', () => {
+	function makeStepStore(row: StepSummary | null): StepStore {
+		return { loadLatestStepSummary: vi.fn().mockResolvedValue(row) } as unknown as StepStore;
+	}
+
+	it('reports the tip iteration of a loop that has ended', async () => {
+		const stepStore = makeStepStore(tip(3, [true, false]));
+
+		expect(await loadTerminalIterations(stepStore, 'exec-1', ['B'])).toEqual(new Map([['B', 3]]));
+		expect(stepStore.loadLatestStepSummary).toHaveBeenCalledExactlyOnceWith('exec-1', 'B');
+	});
+
+	it('omits a loop still running, so its exit stays undecidable', async () => {
+		const stepStore = makeStepStore(tip(3, [false, true]));
+
+		expect(await loadTerminalIterations(stepStore, 'exec-1', ['B'])).toEqual(new Map());
+	});
+
+	it('omits a loop with no rows yet', async () => {
+		const stepStore = makeStepStore(null);
+
+		expect(await loadTerminalIterations(stepStore, 'exec-1', ['B'])).toEqual(new Map());
+	});
+
+	it('reads nothing when no loop is named', async () => {
+		const stepStore = makeStepStore(null);
+
+		expect(await loadTerminalIterations(stepStore, 'exec-1', [])).toEqual(new Map());
+		expect(stepStore.loadLatestStepSummary).not.toHaveBeenCalled();
+	});
+});
