@@ -19,7 +19,8 @@ import { type IconName } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
-import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { DATA_TABLE_VIEW, PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
@@ -39,6 +40,7 @@ const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const dataTableStore = useDataTableStore();
 const telemetry = useTelemetry();
 const agentTelemetry = useAgentTelemetry();
 const usersStore = useUsersStore();
@@ -147,7 +149,15 @@ const customProjectTabs = computed((): Array<TabOptions<string>> => {
 	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter(
 		settingsStore.isModuleActive,
 	);
-	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+	const tabs = activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+
+	// The Overview "Data tables" tab links to the global aggregate route, which needs
+	// dataTable:list — hide it rather than showing a dead-end empty state for a role
+	// that lacks the scope. Project-scoped data table access is unaffected.
+	if (tabType === 'overview' && !dataTableStore.canViewDataTables) {
+		return tabs.filter((tab) => tab.value !== DATA_TABLE_VIEW);
+	}
+	return tabs;
 });
 
 const ACTION_TYPES = {

@@ -30,7 +30,10 @@ export const DataTableModule: FrontendModuleDescription = {
 			path: '/home/datatables',
 			component: DataTableView,
 			meta: {
-				middleware: ['authenticated', 'custom'],
+				// The instance-wide aggregate list needs the global dataTable:list scope,
+				// distinct from the project-scoped routes below.
+				middleware: ['authenticated', 'rbac', 'custom'],
+				middlewareOptions: { rbac: { scope: ['dataTable:list'] } },
 			},
 			beforeEnter: (_to, _from, next) => {
 				const insightsStore = useInsightsStore();
@@ -48,7 +51,8 @@ export const DataTableModule: FrontendModuleDescription = {
 			component: DataTableView,
 			meta: {
 				projectRoute: true,
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated', 'rbac', 'custom'],
+				middlewareOptions: { rbac: { scope: ['dataTable:listProject'] } },
 			},
 		},
 		{
@@ -58,7 +62,8 @@ export const DataTableModule: FrontendModuleDescription = {
 			component: DataTableDetailsView,
 			meta: {
 				projectRoute: true,
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated', 'rbac', 'custom'],
+				middlewareOptions: { rbac: { scope: ['dataTable:read'] } },
 			},
 		},
 	],
