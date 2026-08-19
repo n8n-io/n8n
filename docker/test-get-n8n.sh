@@ -156,7 +156,7 @@ case "$1 ${2:-}" in
 "compose version") echo "2.99.0" ;;
 "compose -f")
 	case "$*" in
-	*" up "* | *" pull "*)
+	*" up "* | *" pull"*)
 		echo "Error response from daemon: toomanyrequests: You have reached your pull rate limit." >&2
 		exit 1
 		;;
@@ -184,8 +184,9 @@ if [ "$E2E" -eq 1 ]; then
 	E2E_DIR="$WORK/e2e"
 	trap 'teardown "$E2E_DIR"; rm -rf "$WORK"' EXIT INT TERM
 
-	# install the previous release so --upgrade below is a real version change
-	if env N8N_DIR="$E2E_DIR" sh "$SCRIPT" --version 2.31.4; then
+	# install the previous release so --upgrade below is a real version change.
+	# stdin from /dev/null so the browser-open prompt never fires in a test run.
+	if env N8N_DIR="$E2E_DIR" sh "$SCRIPT" --version 2.31.4 </dev/null; then
 		pass "fresh install boots and reaches /healthz"
 	else
 		fail "fresh install boots and reaches /healthz"

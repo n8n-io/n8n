@@ -12,7 +12,7 @@
 # Source: https://github.com/n8n-io/n8n/blob/master/docker/get-n8n.sh
 set -eu
 
-SCRIPT_VERSION="1.1.0"
+SCRIPT_VERSION="1.2.0"
 # The version to install is derived from the latest stable GitHub release in
 # resolve_n8n_version(); this fallback only applies when that lookup fails.
 FALLBACK_N8N_VERSION="2.32.0"
@@ -288,9 +288,33 @@ compose() {
 	docker compose -f "${N8N_DIR}/compose.yml" "$@"
 }
 
-# For compose commands that pull images: Docker Hub's anonymous pull rate
-# limit is a common first-run failure, so turn it into recovery advice
-# instead of a raw error dump.
+# Docker Hub's anonymous pull rate limit is a common first-run failure, so
+# turn it into recovery advice instead of a raw error dump. Consumes the log.
+check_rate_limit() {
+	grep -qiE 'toomanyrequests|rate ?limit' "$1" || return 0
+	rm -f "$1"
+	fail "Docker Hub pull rate limit reached — your configuration in ${N8N_DIR} is
+  unaffected. Wait about an hour, then start n8n with:
+    docker compose -f ${N8N_DIR}/compose.yml up -d
+  Or 'docker login' with a Docker Hub account to raise the limit and re-run."
+}
+
+# Pull attached to the terminal so compose renders its in-place progress bars
+# (capturing the output would drop compose into plain line mode). On failure,
+# retry quietly to get the error text for classification — a rate-limited pull
+# fails again instantly, a transient blip just succeeds on the retry.
+compose_pull() {
+	compose pull && return 0
+	log="$(mktemp)"
+	if compose pull -q >"$log" 2>&1; then
+		rm -f "$log"
+		return 0
+	fi
+	check_rate_limit "$log"
+	rm -f "$log"
+	fail "pulling images failed — see the output above; check your network and re-run."
+}
+
 compose_checked() {
 	log="$(mktemp)"
 	if compose "$@" >"$log" 2>&1; then
@@ -299,13 +323,7 @@ compose_checked() {
 		return 0
 	fi
 	cat "$log" >&2
-	if grep -qiE 'toomanyrequests|rate ?limit' "$log"; then
-		rm -f "$log"
-		fail "Docker Hub pull rate limit reached — your configuration in ${N8N_DIR} is
-  unaffected. Wait about an hour, then start n8n with:
-    docker compose -f ${N8N_DIR}/compose.yml up -d
-  Or 'docker login' with a Docker Hub account to raise the limit and re-run."
-	fi
+	check_rate_limit "$log"
 	rm -f "$log"
 	fail "starting n8n failed — check 'docker compose -f ${N8N_DIR}/compose.yml logs'."
 }
@@ -335,7 +353,8 @@ do_upgrade() {
 		exit 0
 	fi
 
-	compose_checked pull -q
+	say "Pulling images..."
+	compose_pull
 	compose_checked up -d --quiet-pull
 	ok "Restarted with n8n ${target}"
 }
@@ -377,6 +396,34 @@ mode) see ${DOCS_HOSTING_URL}
 
 get-n8n.sh v${SCRIPT_VERSION} — source: ${SOURCE_URL}
 EOF
+}
+
+# Offer to open n8n in the browser when run interactively. 'curl | sh' keeps
+# stdin on the pipe, so it never prompts — then only the suggestion prints.
+offer_open() {
+	url="http://localhost:${N8N_PORT}"
+	opener=""
+	case "$(uname -s)" in
+	Darwin) command -v open >/dev/null 2>&1 && opener="open" ;;
+	*)
+		if grep -qi microsoft /proc/version 2>/dev/null; then
+			command -v explorer.exe >/dev/null 2>&1 && opener="explorer.exe"
+		elif [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && command -v xdg-open >/dev/null 2>&1; then
+			opener="xdg-open"
+		fi
+		;;
+	esac
+	if [ -n "$opener" ] && [ -t 0 ]; then
+		printf 'Open n8n in your browser now? [Y/n] '
+		read -r answer || answer="n"
+		case "$answer" in
+		[Nn]*) ;;
+		# explorer.exe exits non-zero even on success, hence best-effort.
+		*) "$opener" "$url" >/dev/null 2>&1 || true ;;
+		esac
+	fi
+	say ""
+	say "Open ${url} in your browser to get started."
 }
 
 main() {
@@ -429,11 +476,13 @@ main() {
 		exit 0
 	fi
 
-	say "Pulling images and starting (this can take a few minutes on first run)..."
+	say "Pulling images (this can take a few minutes on first run)..."
+	compose_pull
 	compose_checked up -d --quiet-pull
 	ok "Started n8n ${INSTALL_VERSION} and sandbox services"
 	wait_for_n8n || fail "n8n did not become ready — check 'docker compose -f ${N8N_DIR}/compose.yml logs n8n'."
 	print_summary
+	offer_open
 }
 
 # main is called on the last line so a truncated download executes nothing.
