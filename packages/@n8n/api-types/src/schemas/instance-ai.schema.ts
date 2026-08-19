@@ -660,6 +660,12 @@ export const confirmationRequestPayloadSchema = z.object({
 		.optional()
 		.describe('Target-agent tool approval details rendered instead of the outer tool call'),
 	credentialRequests: z.array(credentialRequestSchema).optional(),
+	requireUserSelection: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true, the credential setup card must wait for an explicit user choice instead of automatically submitting a preselected existing credential',
+		),
 	projectId: z
 		.string()
 		.optional()
@@ -1354,6 +1360,7 @@ export interface InstanceAiConfirmation {
 	message: string;
 	targetApproval?: InstanceAiTargetApproval;
 	credentialRequests?: InstanceAiCredentialRequest[];
+	requireUserSelection?: boolean;
 	projectId?: string;
 	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
 	domainAccess?: DomainAccessMeta;

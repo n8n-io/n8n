@@ -15,6 +15,7 @@ import {
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
+	confirmationRequestPayloadSchema,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	errorPayloadSchema,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
@@ -225,6 +226,14 @@ function makeConfirmation(
 		...overrides,
 	};
 }
+
+describe('confirmationRequestPayloadSchema', () => {
+	it('preserves an explicit credential selection requirement', () => {
+		const payload = makeConfirmation({ requireUserSelection: true });
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+});
 
 describe('isDisplayableConfirmationRequest', () => {
 	it('treats approval and text messages as displayable', () => {

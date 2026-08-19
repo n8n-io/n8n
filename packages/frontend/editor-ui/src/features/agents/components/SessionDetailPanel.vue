@@ -24,6 +24,8 @@ import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
 import {
+	executionErrorLabel,
+	executionErrorMessage,
 	hitlTimelineName,
 	isErroredToolCallTimelineItem,
 	isSubAgentTimelineItem,
@@ -176,6 +178,7 @@ const headerTitle = computed((): string => {
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'user') return i18n.baseText('agentSessions.timeline.user');
 	if (item.kind === 'agent') return i18n.baseText('agentSessions.timeline.agent');
+	if (item.kind === 'execution-error') return executionErrorLabel(item, i18n);
 	if (item.kind === 'suspension') {
 		return item.hitlRequestType === 'approval'
 			? hitlTimelineName(item, i18n)
@@ -195,6 +198,7 @@ const headerIcon = computed((): IconName => {
 	if (item.kind === 'node') return 'box';
 	if (item.kind === 'user') return 'user';
 	if (item.kind === 'agent') return 'bot';
+	if (item.kind === 'execution-error') return 'circle-x';
 	if (item.kind === 'hitl-response') return 'message-square';
 	return 'clock';
 });
@@ -243,7 +247,9 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						:data-test-id="
 							status.kind === 'hitl-response'
 								? 'detail-hitl-response-badge'
-								: 'detail-tool-error-badge'
+								: item.kind === 'execution-error'
+									? 'detail-execution-error-badge'
+									: 'detail-tool-error-badge'
 						"
 					>
 						{{ i18n.baseText(status.labelKey) }}
@@ -281,7 +287,13 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 				</N8nCard>
 
 				<div :class="$style.output">
-					<template v-if="item.kind === 'suspension'">
+					<template v-if="item.kind === 'execution-error'">
+						<N8nCallout theme="danger" data-testid="execution-error-callout">
+							{{ executionErrorMessage(item, i18n) }}
+						</N8nCallout>
+					</template>
+
+					<template v-else-if="item.kind === 'suspension'">
 						<div data-test-id="hitl-request-details">
 							<div :class="$style.label">
 								{{ i18n.baseText('agentSessions.timeline.requestDetails') }}

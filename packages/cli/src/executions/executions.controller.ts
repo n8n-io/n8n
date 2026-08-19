@@ -1,6 +1,8 @@
-import type { User, ExecutionSummaries } from '@n8n/db';
-import { Get, Patch, Post, RestController } from '@n8n/decorators';
+import { DeleteExecutionsDto } from '@n8n/api-types';
+import type { AuthenticatedRequest, User, ExecutionSummaries } from '@n8n/db';
+import { Body, Get, Patch, Post, RestController } from '@n8n/decorators';
 import type { Scope } from '@n8n/permissions';
+import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -134,12 +136,12 @@ export class ExecutionsController {
 	}
 
 	@Post('/delete')
-	async delete(req: ExecutionRequest.Delete) {
+	async delete(req: AuthenticatedRequest, _res: Response, @Body payload: DeleteExecutionsDto) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		return await this.executionService.delete(req, workflowIds);
+		return await this.executionService.delete(req.user, payload, workflowIds);
 	}
 
 	@Patch('/:id')
