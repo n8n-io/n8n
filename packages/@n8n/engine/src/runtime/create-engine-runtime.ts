@@ -75,8 +75,6 @@ export function createEngineRuntime({
 		),
 	);
 
-	// Reachable over HTTP only: the engine API is the boundary, for an in-process
-	// host as much as for a remote one.
 	const { app } = createEngineServer(
 		new StartExecutionService(admittance, executionStore, orchestrationQueue),
 	);
