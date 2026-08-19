@@ -212,13 +212,9 @@ export class TestWebhooks implements IWebhookManager {
 
 				this.clearTimeout(key);
 
-				try {
-					await this.deactivateWebhooks(workflow);
-				} catch (error) {
-					// Response (if any) was already sent, so this can only be logged.
-					this.logger.error('Failed to deactivate test webhooks after execution', { error });
-				}
+				await this.deactivateWebhooks(workflow);
 			} finally {
+				// Response (if any) was already sent, so a release failure here can only be logged.
 				try {
 					await workflow.expression.releaseIsolate();
 				} catch (error) {
