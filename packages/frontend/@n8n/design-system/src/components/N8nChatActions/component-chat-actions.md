@@ -1,118 +1,125 @@
-# Component specification
+# N8nChatActions
 
-Displays actions at the end of an AI assistant response. `N8nChatActions` provides a consistent action group and a default copy action. `N8nChatAction` provides a consistent icon button for additional actions.
+Displays actions for an assistant message. The component provides copy and read-aloud actions and accepts more actions through its default slot.
 
-Product-specific behavior stays with the caller. For example, Instance AI can add feedback actions while Agents can add read-aloud or send-to-assistant actions.
+- **Component name:** `N8nChatActions`
+- **W3C APG patterns:** [Button](https://www.w3.org/WAI/ARIA/apg/patterns/button/) and [Group](https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/#naming_role_guidance)
 
-- **Component Names:** N8nChatActions, N8nChatAction
-- **W3C APG Pattern:** [Button](https://www.w3.org/WAI/ARIA/apg/patterns/button/)
+## Public API
 
-## Public API Definition
+### Copy action
 
-### N8nChatActions
+- `showCopy?: true` shows the copy action. It is shown by default.
+- `copyLabel?: string` replaces the localized `Copy` tooltip and accessible label.
+- `onCopy: () => void` is required when the copy action is shown.
 
-A flex container for actions associated with one assistant response.
+Set `showCopy` to `false` to hide the action. In this state, `copyLabel` and `onCopy` are not accepted.
 
-**Props**
+### Read-aloud action
 
-- `showCopy?: boolean` Whether to show the default copy action. Default: `true`.
-- `copyLabel?: string` Accessible label and tooltip content for the default copy action. The caller supplies localized text. Required when `showCopy` is `true`.
+- `showReadAloud?: true` shows the read-aloud action. It is shown by default.
+- `readAloudLabel: string` sets the tooltip and accessible label.
+- `onReadAloud: () => void` is required when the read-aloud action is shown.
 
-**Events**
+Set `showReadAloud` to `false` to hide the action. In this state, `readAloudLabel` and `onReadAloud` are not accepted.
 
-- `copy()` Emitted when the user selects the default copy action. The caller owns clipboard behavior, copied state, error handling, and telemetry.
+The implementation has a localized `Read aloud` fallback. The public type still requires `readAloudLabel` when the action is shown so that callers make the accessible name explicit.
 
-**Slots**
+### Events
 
-- `default` Additional actions rendered after the default copy action. Use `N8nChatAction` for consistent presentation.
+- `copy()` is emitted when the copy button is selected.
+- `readAloud()` is emitted when the read-aloud button is selected.
 
-### N8nChatAction
+The events have no payload. The caller owns clipboard access, speech synthesis, feedback, errors, and telemetry.
 
-Wraps `N8nIconButton` and applies the standard chat-action appearance and dimensions.
+### Slots
 
-**Props**
+- `default` renders custom actions after the built-in actions.
 
-- `icon: IconName` Icon displayed in the button.
-- `label: string` Accessible name and tooltip content. The caller supplies localized text.
-- `disabled?: boolean` Whether the action is unavailable. Default: `false`.
-- `loading?: boolean` Whether the action is in progress. Default: `false`.
+Custom actions must provide their own tooltip, accessible name, state, and behavior.
 
-All other attributes and listeners pass through to `N8nIconButton`. This includes `aria-pressed`, `data-testid`, and click listeners.
+## Presentation
 
-**Presentation defaults**
+The built-in actions use `N8nIconButton` with these values:
 
-- `variant`: `'ghost'`
-- `size`: `'small'`
-- `iconSize`: `'medium'`
-- Tooltip placement: `'bottom'`
+- `variant="ghost"`
+- `size="small"`
+- `icon-size="medium"`
+- Tooltip placement: `bottom`
 
-The component owns these values. Callers cannot override them.
+The action container uses a flex row with `var(--spacing--4xs)` between actions.
 
 ## Accessibility
 
-- Each action must have an accessible name. `label` is required for `N8nChatAction` and is applied as its `aria-label` and tooltip content.
-- Toggle actions, such as positive and negative feedback, must set `aria-pressed` to communicate their state.
-- Disabled actions use the native button disabled state supplied by `N8nIconButton`.
-- The action group does not use toolbar semantics. It is a small set of independent buttons and does not need toolbar keyboard behavior.
+- The container has `role="group"` and the localized accessible name `Message actions`.
+- Each built-in action has the same text for its tooltip and `aria-label`.
+- The buttons remain in the normal Tab sequence.
+- The component does not use toolbar semantics or arrow-key navigation.
+- Toggle actions supplied through the slot must use `aria-pressed`.
+- Custom disabled actions must use the button's disabled state.
 
-## Responsibilities
+## Usage
 
-`N8nChatActions` owns:
-
-- Action layout, spacing, and alignment.
-- Placement of the default copy action.
-- The default copy button presentation.
-
-`N8nChatAction` owns:
-
-- Button variant and dimensions.
-- Icon presentation.
-- Tooltip presentation.
-- Accessible label forwarding.
-
-The caller owns:
-
-- Message content.
-- Clipboard behavior and copied feedback.
-- Product-specific actions and state.
-- Telemetry and error handling.
-
-## Usage examples
-
-### Default copy action with additional actions
-
-```vue
-<script setup lang="ts">
-import { N8nChatAction, N8nChatActions } from '@n8n/design-system';
-
-function copyMessage() {
-	/* Copy the message and handle copied feedback. */
-}
-
-function readMessage() {
-	/* Start speech synthesis. */
-}
-</script>
-
-<template>
-	<N8nChatActions copy-label="Copy response" @copy="copyMessage">
-		<N8nChatAction icon="volume-2" label="Read aloud" @click="readMessage" />
-	</N8nChatActions>
-</template>
-```
-
-### Product-specific feedback actions
+### Both built-in actions
 
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue';
-import { N8nChatAction, N8nChatActions } from '@n8n/design-system';
+import { N8nChatActions } from '@n8n/design-system';
 
-const feedback = ref<'positive' | 'negative'>();
+const message = ref('The workflow is ready.');
 
 function copyMessage() {
-	/* Copy the message. */
+	void navigator.clipboard.writeText(message.value);
 }
+
+function readMessageAloud() {
+	speechSynthesis.speak(new SpeechSynthesisUtterance(message.value));
+}
+</script>
+
+<template>
+	<N8nChatActions
+		copy-label="Copy"
+		read-aloud-label="Read aloud"
+		@copy="copyMessage"
+		@read-aloud="readMessageAloud"
+	/>
+</template>
+```
+
+### Copy only
+
+```vue
+<template>
+	<N8nChatActions
+		copy-label="Copy"
+		:show-read-aloud="false"
+		@copy="copyMessage"
+	/>
+</template>
+```
+
+### Read aloud only
+
+```vue
+<template>
+	<N8nChatActions
+		:show-copy="false"
+		read-aloud-label="Read aloud"
+		@read-aloud="readMessageAloud"
+	/>
+</template>
+```
+
+### Custom feedback actions
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import { N8nChatActions, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+
+const feedback = ref<'positive' | 'negative'>();
 
 function submitPositiveFeedback() {
 	feedback.value = 'positive';
@@ -124,36 +131,41 @@ function submitNegativeFeedback() {
 </script>
 
 <template>
-	<N8nChatActions copy-label="Copy response" @copy="copyMessage">
-		<N8nChatAction
-			icon="thumbs-up"
-			label="Helpful"
-			:aria-pressed="feedback === 'positive'"
-			@click="submitPositiveFeedback"
-		/>
-		<N8nChatAction
-			icon="thumbs-down"
-			label="Not helpful"
-			:aria-pressed="feedback === 'negative'"
-			@click="submitNegativeFeedback"
-		/>
-	</N8nChatActions>
-</template>
-```
-
-### Actions without copy
-
-```vue
-<template>
-	<N8nChatActions :show-copy="false">
-		<N8nChatAction icon="rotate-ccw" label="Try again" @click="tryAgain" />
+	<N8nChatActions
+		copy-label="Copy"
+		read-aloud-label="Read aloud"
+		@copy="copyMessage"
+		@read-aloud="readMessageAloud"
+	>
+		<N8nTooltip content="Helpful" placement="bottom">
+			<N8nIconButton
+				icon="thumbs-up"
+				variant="ghost"
+				size="small"
+				icon-size="medium"
+				aria-label="Helpful"
+				:aria-pressed="feedback === 'positive'"
+				@click="submitPositiveFeedback"
+			/>
+		</N8nTooltip>
+		<N8nTooltip content="Not helpful" placement="bottom">
+			<N8nIconButton
+				icon="thumbs-down"
+				variant="ghost"
+				size="small"
+				icon-size="medium"
+				aria-label="Not helpful"
+				:aria-pressed="feedback === 'negative'"
+				@click="submitNegativeFeedback"
+			/>
+		</N8nTooltip>
 	</N8nChatActions>
 </template>
 ```
 
 ## Implementation notes
 
-- The copy event does not include message content. This keeps message data and clipboard behavior outside the layout component.
-- Vue component events do not await listener return values. The caller must manage asynchronous copy state.
-- Do not add feedback, speech synthesis, or telemetry logic to either design-system component.
-- Add Storybook stories for the default state, additional actions, toggle actions, disabled actions, loading actions, and `showCopy="false"`.
+- The conditional prop types require an event handler for each visible built-in action.
+- Vue component events do not wait for asynchronous listeners.
+- Product-specific actions belong in the default slot.
+- The Storybook stories cover both built-in actions, each action by itself, emitted events, and custom feedback actions.
