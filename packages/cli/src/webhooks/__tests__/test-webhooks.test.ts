@@ -475,6 +475,47 @@ describe('TestWebhooks', () => {
 			expect(acquireOrder).toBeLessThan(deactivateOrder);
 			expect(deactivateOrder).toBeLessThan(releaseOrder);
 		});
+
+		test('logs when isolate release fails after teardown', async () => {
+			const expression = mock<WorkflowExpression>();
+			const workflowStartNode = mock<ReturnType<Workflow['getNode']>>({
+				type: 'n8n-nodes-base.noOp',
+			});
+			const workflow = mock<Workflow>({
+				id: workflowEntity.id,
+				expression,
+				getNode: vi.fn().mockReturnValue(workflowStartNode),
+			});
+
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
+			registrations.get.mockResolvedValueOnce({
+				version: 1,
+				workflowEntity,
+				webhook,
+			} as TestWebhookRegistration);
+			vi.spyOn(testWebhooks, 'deactivateWebhooks').mockResolvedValue(undefined);
+
+			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(async (...args: unknown[]) => {
+				const onDone = args[10] as (error: Error | null, data: unknown) => void;
+				onDone(null, { noWebhookResponse: true });
+				return 'execution-id';
+			});
+
+			const error = new Error('release failed');
+			expression.releaseIsolate.mockRejectedValueOnce(error);
+
+			await testWebhooks.executeWebhook(
+				mock<WebhookRequest>({ params: { path }, method: httpMethod }),
+				mock<express.Response>(),
+			);
+			await flushMicrotasks();
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to release expression isolate for test webhook',
+				expect.objectContaining({ error }),
+			);
+		});
 	});
 
 	describe('deactivateWebhooks()', () => {
