@@ -3147,9 +3147,15 @@ importers:
       '@testcontainers/postgresql':
         specifier: 'catalog:'
         version: 11.13.0
+      '@types/supertest':
+        specifier: ^6.0.3
+        version: 6.0.3
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base
+      supertest:
+        specifier: ^7.1.1
+        version: 7.1.1
       testcontainers:
         specifier: 'catalog:'
         version: 11.13.0
