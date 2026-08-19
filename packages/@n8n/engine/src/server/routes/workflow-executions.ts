@@ -1,4 +1,5 @@
 import { Router, type Response, type Router as RouterType } from 'express';
+import assert from 'node:assert';
 import { z } from 'zod';
 
 import { AdmittanceRejectedError } from '../../admittance';
@@ -56,6 +57,7 @@ export function createWorkflowExecutionsRouter(startExecution: StartExecutionSer
 	const router = Router();
 
 	const fail = (res: Response, status: number, body: EngineErrorResponse): void => {
+		assert(status >= 400, `fail() sends error responses only, but got status ${status}`);
 		res.status(status).json(body);
 	};
 
