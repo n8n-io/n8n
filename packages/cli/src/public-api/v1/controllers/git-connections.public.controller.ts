@@ -193,4 +193,20 @@ export class GitConnectionsPublicController {
 	): Promise<void> {
 		await (await this.gitConnectionsService()).delete(id);
 	}
+
+	@Post('/:id/push')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:push')
+	@GlobalScope('gitConnection:push')
+	@ApiSummary('Push all projects linked to a Git connection')
+	@ApiDescription('Push all projects linked to a Git connection to the remote repository')
+	@ApiTags(tags)
+	@ApiResponse(200)
+	async pushGitConnectionProjects(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<void> {
+		return await (await this.gitConnectionsService()).push(id);
+	}
 }

@@ -1,4 +1,5 @@
 import type { CreateGitConnectionDto, UpdateGitConnectionDto } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -14,8 +15,16 @@ describe('GitConnectionsService (credential state machine)', () => {
 	const gitService = mock<GitConnectionsGitService>();
 	const cipher = mock<Cipher>();
 	const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/tmp/n8n' });
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
 
-	const service = new GitConnectionsService(repository, gitService, cipher, instanceSettings);
+	const service = new GitConnectionsService(
+		repository,
+		gitService,
+		cipher,
+		instanceSettings,
+		logger,
+	);
 
 	const baseEntity = () => ({
 		id: '1',

@@ -1,0 +1,22 @@
+operationId: pushGitConnectionProjects
+tags:
+  - GitConnections
+summary: Push all projects linked to a Git connection
+description: Push all projects linked to a Git connection to the remote repository
+x-required-scope: gitConnection:push
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: id
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
