@@ -95,8 +95,7 @@ function mostRecentFailure(rows: AgentChannelStatus[]): AgentChannelStatus | und
 	return rows
 		.filter((row) => row.status === 'error')
 		.sort(
-			(a, b) =>
-				b.updatedAt.getTime() - a.updatedAt.getTime() || a.hostId.localeCompare(b.hostId),
+			(a, b) => b.updatedAt.getTime() - a.updatedAt.getTime() || a.hostId.localeCompare(b.hostId),
 		)[0];
 }
 

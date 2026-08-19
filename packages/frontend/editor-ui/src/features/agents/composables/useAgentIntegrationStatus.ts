@@ -23,7 +23,6 @@ import {
  */
 type Status = AgentChannelRuntimeStatus | 'disconnected' | 'unknown';
 
-
 interface AgentIntegrationStatusState {
 	statuses: Ref<Record<string, Status>>;
 	connectedCredentials: Ref<Record<string, string>>;
@@ -179,6 +178,9 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			state.integrationSettings.value[type] = settings;
 			// The channel just started, so whatever it failed with before is history.
 			state.runtimeErrors.value[type] = '';
+			// The server answered for this channel, even though it was a mutation
+			// rather than a status read — a later failed refetch must not downgrade it.
+			state.serverConfirmed.value.add(type);
 			return result;
 		} catch (e: unknown) {
 			const msg =
@@ -214,6 +216,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			state.connectedCredentials.value[type] = '';
 			state.integrationSettings.value[type] = undefined;
 			state.runtimeErrors.value[type] = '';
+			state.serverConfirmed.value.add(type);
 			return result;
 		} finally {
 			state.loadingMap.value[type] = false;

@@ -1409,3 +1409,61 @@ describe('ChatIntegrationService — reporting failures from every startup step'
 		expect(statusReporter.recordFailure).not.toHaveBeenCalled();
 	});
 });
+
+describe('ChatIntegrationService.assertStartupPreconditions', () => {
+	beforeEach(() => {
+		Container.reset();
+	});
+
+	it('does not re-run the platform config check, so a legacy entry can still publish', async () => {
+		// Publishing already validates the whole configuration. Re-running a
+		// platform's own check here would newly reject an agent whose persisted
+		// channel predates a later-added required setting — a Telegram entry with no
+		// `settings` could no longer be republished.
+		const integration = new FakeIntegration('telegram', false);
+		const validateConfig = vi.fn(() => {
+			throw new Error('Telegram integration settings are required');
+		});
+		(integration as unknown as { validateConfig: typeof validateConfig }).validateConfig =
+			validateConfig;
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+
+		const { service } = buildServiceWith({ registry });
+
+		await expect(
+			service.assertStartupPreconditions(
+				'agent-1',
+				{ type: 'telegram', credentialId: 'c1' },
+				'project-1',
+			),
+		).resolves.toBeUndefined();
+		expect(validateConfig).not.toHaveBeenCalled();
+	});
+
+	it('runs the platform’s own deterministic claim check', async () => {
+		const integration = new FakeIntegration('telegram', false);
+		const assertStartupPreconditions = vi.fn().mockResolvedValue(undefined);
+		(
+			integration as unknown as { assertStartupPreconditions: typeof assertStartupPreconditions }
+		).assertStartupPreconditions = assertStartupPreconditions;
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+
+		const { service } = buildServiceWith({ registry });
+
+		await service.assertStartupPreconditions(
+			'agent-1',
+			{ type: 'telegram', credentialId: 'c1' },
+			'project-1',
+		);
+
+		// No decrypted credential: the check reads our own state only, which is what
+		// makes it safe to run before a publish.
+		expect(assertStartupPreconditions).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			credentialId: 'c1',
+		});
+	});
+});

@@ -71,9 +71,7 @@ export class AgentChannelStatusReporter {
 				// a failed Telegram request quotes the API URL, and the bot token is in
 				// that path. This message is persisted and served to the UI, so it is
 				// scrubbed the same way recorded execution errors are.
-				errorMessage: scrubSecretsInText(
-					cause instanceof Error ? cause.message : String(cause),
-				),
+				errorMessage: scrubSecretsInText(cause instanceof Error ? cause.message : String(cause)),
 				attempts,
 				backoffUntil: this.backoffUntil(attempts),
 				expiresAt: this.leaseExpiresAt(),

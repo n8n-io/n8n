@@ -23,6 +23,13 @@ export type ChannelReconcileReason = 'startup' | 'leader-takeover' | 'interval';
 /** Channels a pass should see running, keyed by {@link channelKey}. */
 type WantedChannels = Map<string, { agent: Agent; integration: AgentIntegrationConfig }>;
 
+/**
+ * How long shutdown waits for a pass to finish before withdrawing anyway. Well
+ * inside a normal graceful-shutdown budget: the point is to let a pass that is
+ * nearly done finish, not to see a stalled one through.
+ */
+const SHUTDOWN_SETTLE_MS = 5 * Time.seconds.toMilliseconds;
+
 function channelKey(ref: AgentChannelRef): string {
 	return `${ref.agentId}:${ref.integrationType}:${ref.credentialId}`;
 }
@@ -115,10 +122,29 @@ export class AgentChannelReconciler {
 		this.reconcileInterval = undefined;
 
 		// Wait out a pass already running, or its `recordConnected` lands after the
-		// withdrawal and leaves a row behind for a lease's worth of time.
-		await this.inFlight?.catch(() => {});
+		// withdrawal and leaves a row behind for a lease's worth of time. Bounded,
+		// because a startup can stall on a platform that never answers and a
+		// deployment must not wait on it: past the bound the rows are withdrawn
+		// anyway, and whatever the pass writes afterwards expires with its lease.
+		await this.settleInFlight();
 
 		await this.statusReporter.withdrawAll();
+	}
+
+	private async settleInFlight(): Promise<void> {
+		const pass = this.inFlight;
+		if (!pass) return;
+
+		let timer: NodeJS.Timeout | undefined;
+		const bound = new Promise<void>((resolve) => {
+			timer = setTimeout(resolve, SHUTDOWN_SETTLE_MS);
+			timer.unref();
+		});
+		try {
+			await Promise.race([pass.catch(() => {}), bound]);
+		} finally {
+			clearTimeout(timer);
+		}
 	}
 
 	/**
@@ -139,15 +165,25 @@ export class AgentChannelReconciler {
 	 */
 	async reconcile(reason: ChannelReconcileReason): Promise<void> {
 		if (this.isShuttingDown) return;
-		// A tick that lands mid-pass is dropped, not queued: the next one is a
-		// whole interval away and re-reads everything anyway.
-		if (this.inFlight) return await this.inFlight;
 
-		this.inFlight = this.runPass(reason);
+		// An interval tick that lands mid-pass is dropped: the next one is a whole
+		// interval away and re-reads everything anyway. Startup and takeover are not
+		// droppable — they carry a role change the running pass decided before it, so
+		// they queue behind it and then run for themselves. Only waiting would leave
+		// a promoted main's leader-only channels stopped until the next tick.
+		if (this.inFlight && reason === 'interval') return await this.inFlight.catch(() => {});
+
+		const pass = (this.inFlight ?? Promise.resolve())
+			.catch(() => {})
+			.then(async () => {
+				if (this.isShuttingDown) return;
+				await this.runPass(reason);
+			});
+		this.inFlight = pass;
 		try {
-			await this.inFlight;
+			await pass;
 		} finally {
-			this.inFlight = undefined;
+			if (this.inFlight === pass) this.inFlight = undefined;
 		}
 	}
 
@@ -213,6 +249,18 @@ export class AgentChannelReconciler {
 			const ref = this.refOf(agent, integration);
 			const own = ownByChannel.get(key);
 
+			// `wantedHere` was decided when the pass began, and a stepdown since then
+			// makes a leader-only channel someone else's. Checked before the branches
+			// below so a demoted main neither starts it — putting a polling loop on a
+			// follower, the one thing the role gate exists to prevent — nor goes on
+			// affirming a row for it. The row is withdrawn here because
+			// `forgetOwnOrphans` reads the same stale snapshot and would leave it
+			// standing, reported as this instance's, until the next pass.
+			if (!this.runsHere(integration)) {
+				await this.statusReporter.withdraw(ref);
+				continue;
+			}
+
 			if (this.chatIntegrationService.hasLiveChannel(ref)) {
 				await this.affirmRunning(ref, own);
 				continue;
@@ -222,12 +270,6 @@ export class AgentChannelReconciler {
 			// of this process or by whatever it inherited, and a restart or a
 			// promotion is exactly when the cause may have gone away.
 			if (reason === 'interval' && !this.statusReporter.isRetryReady(own, now)) continue;
-
-			// `wantedHere` was decided when the pass began, and a stepdown since then
-			// would make a leader-only channel someone else's. Starting it now would
-			// put a polling loop on a follower, which is the one thing the role gate
-			// exists to prevent.
-			if (!this.runsHere(integration)) continue;
 
 			try {
 				await this.chatIntegrationService.startChannel(agent, integration);

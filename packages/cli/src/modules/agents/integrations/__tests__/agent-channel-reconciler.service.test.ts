@@ -527,3 +527,110 @@ describe('AgentChannelReconciler — passes never overlap', () => {
 		expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
 	});
 });
+
+describe('AgentChannelReconciler — role changes while a pass is running', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function heldStart(chatIntegrationService: ReturnType<typeof mock<ChatIntegrationService>>) {
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => (release = resolve));
+		let entered!: () => void;
+		const inStartChannel = new Promise<void>((resolve) => (entered = resolve));
+		chatIntegrationService.startChannel.mockImplementation(async () => {
+			entered();
+			await held;
+		});
+		return { release: () => release(), inStartChannel };
+	}
+
+	it('still runs a takeover pass that arrived while another pass was running', async () => {
+		// The takeover carries the promotion; the running pass decided it was a
+		// follower before it. Only waiting would leave leader-only channels stopped
+		// until the next tick.
+		const { reconciler, agentRepository, chatIntegrationService } = build();
+		agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+		const { release, inStartChannel } = heldStart(chatIntegrationService);
+
+		const running = reconciler.reconcile('interval');
+		await inStartChannel;
+		// The takeover entry point is gated on the loop running, which `init` sets up;
+		// the queueing being tested here is in `reconcile` itself.
+		const takeover = reconciler.reconcile('leader-takeover');
+		release();
+		await Promise.all([running, takeover]);
+
+		// Once for the pass that was running, once for the queued takeover.
+		expect(agentRepository.findPublished).toHaveBeenCalledTimes(2);
+	});
+
+	it('withdraws its own row for a leader-only channel it lost mid-pass', async () => {
+		// `forgetOwnOrphans` reads the snapshot taken before the stepdown, so
+		// without this the row would keep claiming the channel for this instance.
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new FakeIntegration('telegram', true));
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findPublished.mockResolvedValue([makeAgent([telegram])]);
+		const channelStatusRepository = mock<AgentChannelStatusRepository>();
+		channelStatusRepository.findOwnAll.mockResolvedValue([]);
+		channelStatusRepository.deleteExpired.mockResolvedValue(0);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.listLiveChannels.mockReturnValue([]);
+		chatIntegrationService.hasLiveChannel.mockReturnValue(false);
+
+		let isLeader = true;
+		const instanceSettings = {
+			hostId: HOST_ID,
+			get isLeader() {
+				const current = isLeader;
+				isLeader = false;
+				return current;
+			},
+		} as InstanceSettings;
+
+		const agentsConfig = Object.assign(new AgentsConfig(), {
+			channelReconcileIntervalSeconds: RECONCILE_INTERVAL_SECONDS,
+		});
+		const reconciler = new AgentChannelReconciler(
+			mockLogger(),
+			agentsConfig,
+			agentRepository,
+			channelStatusRepository,
+			new AgentChannelStatusReporter(mockLogger(), agentsConfig, channelStatusRepository),
+			chatIntegrationService,
+			registry,
+			instanceSettings,
+			mock<ErrorReporter>(),
+		);
+
+		await reconciler.reconcile('interval');
+
+		expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
+		expect(channelStatusRepository.clearOwnChannel).toHaveBeenCalledWith(refOf(telegram));
+	});
+
+	it('gives up waiting on a stalled pass rather than blocking shutdown', async () => {
+		vi.useFakeTimers();
+		try {
+			const { reconciler, agentRepository, channelStatusRepository, chatIntegrationService } =
+				build();
+			agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+			// Never resolves: a platform that accepted the connection and went quiet.
+			chatIntegrationService.startChannel.mockImplementation(
+				async () => await new Promise<void>(() => {}),
+			);
+
+			void reconciler.reconcile('interval');
+			await vi.advanceTimersByTimeAsync(0);
+
+			const shutdown = reconciler.shutdown();
+			await vi.advanceTimersByTimeAsync(6 * Time.seconds.toMilliseconds);
+			await shutdown;
+
+			expect(channelStatusRepository.clearOwnHost).toHaveBeenCalled();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});

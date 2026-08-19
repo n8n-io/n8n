@@ -164,6 +164,27 @@ describe('useAgentIntegrationStatus', () => {
 		});
 	});
 
+	it('keeps a connect result when a later refresh fails, since the server did answer', async () => {
+		apiMocks.connectIntegration.mockResolvedValue({ status: 'connected' });
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		await status.connect('slack', 'cred-slack');
+
+		apiMocks.getIntegrationStatus.mockRejectedValue(new Error('network error'));
+		await status.fetchStatus(['slack']);
+
+		expect(status.statuses.value.slack).toBe('connected');
+	});
+
+	it('keeps a disconnect result when a later refresh fails', async () => {
+		apiMocks.disconnectIntegration.mockResolvedValue({ status: 'disconnected' });
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		await status.disconnect('slack', 'cred-slack');
+
+		apiMocks.getIntegrationStatus.mockRejectedValue(new Error('network error'));
+		await status.fetchStatus(['slack']);
+
+		expect(status.statuses.value.slack).toBe('disconnected');
+	});
 
 	it('clears a cached integration error', async () => {
 		apiMocks.connectIntegration.mockRejectedValue(

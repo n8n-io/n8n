@@ -271,20 +271,22 @@ describe('AgentPublishService', () => {
 			);
 		});
 
-		it('does not re-validate channel configuration, so a legacy entry can still be republished', async () => {
-			// Publishing already validates the whole configuration. Re-running a
-			// platform's own `validateConfig` here would newly reject an agent whose
-			// persisted channel predates a later-added required setting.
+		it('preflights a channel whose settings a later version made required', async () => {
+			// Whether the preflight re-runs a platform's own `validateConfig` is
+			// asserted against the real service in `chat-integration.service.test.ts`;
+			// here the point is only that a legacy entry still reaches the preflight.
 			const { service, agentRepository, chatIntegrationService } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(
 				makeAgent({ integrations: [{ type: 'telegram', credentialId: 'cred-1' }] }),
 			);
 
-			await expect(
-				service.publishAgent(agentId, projectId, user, byUser),
-			).resolves.toBeDefined();
+			await expect(service.publishAgent(agentId, projectId, user, byUser)).resolves.toBeDefined();
 
-			expect(chatIntegrationService.assertStartupPreconditions).toHaveBeenCalledTimes(1);
+			expect(chatIntegrationService.assertStartupPreconditions).toHaveBeenCalledWith(
+				agentId,
+				{ type: 'telegram', credentialId: 'cred-1' },
+				projectId,
+			);
 		});
 
 		it('runs before the version is written, so a rejection cannot leave a half-publish', async () => {
