@@ -774,17 +774,41 @@ describe('ProjectSettings', () => {
 	});
 
 	describe('User search for member invitation', () => {
-		it('preloads all users without projectId filter on mount when user has project:update scope', async () => {
+		it('preloads all users without projectId filter on mount when user has project:manageMembers scope', async () => {
 			renderComponent();
 			await nextTick();
 
 			expect(usersStore.fetchUsers).toHaveBeenCalledWith({ take: 50, filter: {} });
 		});
 
-		it('skips user preloading on mount when user cannot update the project', async () => {
+		it('preloads all users when the role has project:manageMembers but not project:update', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:manageMembers'],
+			};
+
+			renderComponent();
+			await nextTick();
+
+			expect(usersStore.fetchUsers).toHaveBeenCalledWith({ take: 50, filter: {} });
+		});
+
+		it('skips user preloading on mount when user cannot manage members', async () => {
 			projectsStore.currentProject = {
 				...projectsStore.currentProject!,
 				scopes: ['project:read'],
+			};
+
+			renderComponent();
+			await nextTick();
+
+			expect(usersStore.fetchUsers).not.toHaveBeenCalled();
+		});
+
+		it('skips user preloading when the role has project:update but not project:manageMembers', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:update'],
 			};
 
 			renderComponent();

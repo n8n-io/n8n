@@ -121,7 +121,7 @@ const userSearchResults = ref<typeof usersStore.allUsers>([]);
 const isLoadingUsers = ref(false);
 
 const shouldFetchAllUsers = computed(
-	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canUpdateProject.value,
+	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canManageMembers.value,
 );
 
 const usersList = computed(() =>
@@ -566,7 +566,7 @@ const searchUsers = async (query: string) => {
 const debouncedUserSearch = useDebounceFn(searchUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 onBeforeMount(async () => {
-	if (!canUpdateProject.value && !canManageMembers.value) return;
+	if (!canManageMembers.value) return;
 	await searchUsers('');
 });
 
