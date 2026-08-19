@@ -745,6 +745,7 @@ overrides:
   validator: 13.15.26
   zod: 3.25.76
   js-yaml: 4.3.1
+  katex: 0.18.2
   body-parser: 2.3.0
   glob@10: 10.5.0
   glob@7: 7.2.3
@@ -6051,8 +6052,8 @@ importers:
         specifier: ^10.3.0
         version: 10.4.0
       katex:
-        specifier: 0.16.27
-        version: 0.16.27
+        specifier: 0.18.2
+        version: 0.18.2
       lodash:
         specifier: 4.18.1
         version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
@@ -18055,8 +18056,8 @@ packages:
     resolution: {integrity: sha512-j/YeapB1vfPT2iOIUn/vxdyKEuhuY2PxMBvf5JWux6iSaukAccrMtXEY/Lb7OvavDhOWME589bpLrEdnVHjfjA==}
     engines: {node: '>=14.0.0'}
 
-  katex@0.16.27:
-    resolution: {integrity: sha512-aeQoDkuRWSqQN6nSvVCEFvfXdqo1OQiCmmW1kc9xSdjutPv7BGO7pqY9sQRJpMOGrEdfDgF2TfRXe5eUAD2Waw==}
+  katex@0.18.2:
+    resolution: {integrity: sha512-3snve4y0SXTMequLim1FMiPvLGElySam0blN5xQZBqEY3lOJz1TnuaaiugnBZBqHzlSAGmFTYL7MCQkORuLKCA==}
     hasBin: true
 
   keyv@4.5.4:
@@ -31708,7 +31709,7 @@ snapshots:
 
   '@vscode/markdown-it-katex@1.1.2':
     dependencies:
-      katex: 0.16.27
+      katex: 0.18.2
 
   '@vscode/ripgrep@1.17.1':
     dependencies:
@@ -36811,7 +36812,7 @@ snapshots:
 
   kafkajs@2.2.4: {}
 
-  katex@0.16.27:
+  katex@0.18.2:
     dependencies:
       commander: 8.3.0
 
