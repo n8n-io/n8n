@@ -7,7 +7,12 @@ import type { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import type { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 
-import { N8NIdentifier } from '../n8n-identifier';
+import {
+	carriesN8nIdentity,
+	N8N_IDENTITY_SOURCES,
+	N8NIdentifierMetadataSchema,
+	N8NIdentifier,
+} from '../n8n-identifier';
 
 describe('N8NIdentifier', () => {
 	let identifier: N8NIdentifier;
@@ -410,5 +415,33 @@ describe('N8NIdentifier', () => {
 				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
 			});
 		});
+	});
+});
+
+describe('carriesN8nIdentity', () => {
+	it.each(N8N_IDENTITY_SOURCES)('recognises the %s source', (source) => {
+		expect(carriesN8nIdentity({ identity: 'token', version: 1, metadata: { source } })).toBe(true);
+	});
+
+	it('recognises an n8n source even when the rest of the metadata is missing', () => {
+		// Fail-safe: an incomplete `cookie-source` context still carries an n8n token, and
+		// must not be waved through to a resolver that would treat it as an external one.
+		expect(
+			carriesN8nIdentity({ identity: 'token', version: 1, metadata: { source: 'cookie-source' } }),
+		).toBe(true);
+	});
+
+	it.each([
+		['slack-signature', { source: 'slack-signature' }],
+		['http-header', { source: 'http-header', headerName: 'authorization' }],
+		['no source at all', {}],
+	])('does not claim %s', (_label, metadata) => {
+		expect(carriesN8nIdentity({ identity: 'token', version: 1, metadata })).toBe(false);
+	});
+
+	it('covers every source the identifier accepts', () => {
+		// Guards against a source being added to the schema but not to the list, which
+		// would silently hand an n8n token to an external-subject resolver.
+		expect(N8NIdentifierMetadataSchema.options).toHaveLength(3);
 	});
 });
