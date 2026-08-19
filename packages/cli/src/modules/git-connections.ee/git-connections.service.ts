@@ -119,23 +119,23 @@ export class GitConnectionsService {
 		await this.repository.remove(connection);
 	}
 
-	async assignProject(id: string, projectId: string): Promise<GitConnectionProjectPublicDto> {
+	async addProject(id: string, projectId: string): Promise<GitConnectionProjectPublicDto> {
 		await this.getEntity(id);
-		await this.assertAssignableProject(projectId);
+		await this.assertProjectCanBeAdded(projectId);
 
 		const existing = await this.projectLinkRepository.findByProjectId(projectId);
 		if (existing) {
-			// Re-assigning to the same connection is a no-op; moving a project that
-			// already belongs to a different connection must be an explicit unlink first.
+			// Re-adding to the same connection is a no-op; moving a project that
+			// already belongs to a different connection must be removed first.
 			if (existing.gitConnectionId === id) return this.toLinkPublic(existing);
-			throw new ConflictError('Project is already assigned to another Git connection');
+			throw new ConflictError('Project is already added to another Git connection');
 		}
 
 		const link = this.projectLinkRepository.create({ projectId, gitConnectionId: id });
 		return this.toLinkPublic(await this.projectLinkRepository.save(link));
 	}
 
-	async unlinkProject(id: string, projectId: string): Promise<void> {
+	async removeProject(id: string, projectId: string): Promise<void> {
 		await this.getEntity(id);
 		const existing = await this.projectLinkRepository.findByProjectId(projectId);
 		// Idempotent, and scoped to this connection: never remove a link that
@@ -151,11 +151,11 @@ export class GitConnectionsService {
 		return { projectIds };
 	}
 
-	private async assertAssignableProject(projectId: string) {
+	private async assertProjectCanBeAdded(projectId: string) {
 		const project = await this.projectRepository.findOneBy({ id: projectId });
 		if (!project) throw new NotFoundError('Project not found');
 		if (project.type !== 'team') {
-			throw new BadRequestError('Only team projects can be assigned to a Git connection');
+			throw new BadRequestError('Only team projects can be added to a Git connection');
 		}
 	}
 

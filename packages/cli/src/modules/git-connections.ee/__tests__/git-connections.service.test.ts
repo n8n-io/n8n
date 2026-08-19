@@ -205,7 +205,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		});
 	});
 
-	describe('project assignment', () => {
+	describe('adding and removing projects', () => {
 		const teamProject = { id: 'p1', type: 'team' };
 		const personalProject = { id: 'p1', type: 'personal' };
 
@@ -215,12 +215,12 @@ describe('GitConnectionsService (credential state machine)', () => {
 			projectLinkRepository.save.mockImplementation(async (input) => input as never);
 		});
 
-		describe('assignProject', () => {
+		describe('addProject', () => {
 			it('creates a link for a team project', async () => {
 				projectRepository.findOneBy.mockResolvedValue(teamProject as never);
 				projectLinkRepository.findByProjectId.mockResolvedValue(null);
 
-				const result = await service.assignProject('1', 'p1');
+				const result = await service.addProject('1', 'p1');
 
 				expect(projectLinkRepository.create).toHaveBeenCalledWith({
 					projectId: 'p1',
@@ -236,49 +236,49 @@ describe('GitConnectionsService (credential state machine)', () => {
 					gitConnectionId: '1',
 				} as never);
 
-				const result = await service.assignProject('1', 'p1');
+				const result = await service.addProject('1', 'p1');
 
 				expect(projectLinkRepository.save).not.toHaveBeenCalled();
 				expect(result).toEqual({ projectId: 'p1', gitConnectionId: '1' });
 			});
 
-			it('rejects reassigning a project linked to a different connection', async () => {
+			it('rejects re-adding a project linked to a different connection', async () => {
 				projectRepository.findOneBy.mockResolvedValue(teamProject as never);
 				projectLinkRepository.findByProjectId.mockResolvedValue({
 					projectId: 'p1',
 					gitConnectionId: 'other',
 				} as never);
 
-				await expect(service.assignProject('1', 'p1')).rejects.toThrow(ConflictError);
+				await expect(service.addProject('1', 'p1')).rejects.toThrow(ConflictError);
 				expect(projectLinkRepository.save).not.toHaveBeenCalled();
 			});
 
 			it('rejects an unknown project with 404', async () => {
 				projectRepository.findOneBy.mockResolvedValue(null);
 
-				await expect(service.assignProject('1', 'missing')).rejects.toThrow(NotFoundError);
+				await expect(service.addProject('1', 'missing')).rejects.toThrow(NotFoundError);
 			});
 
 			it('rejects a personal project with 400', async () => {
 				projectRepository.findOneBy.mockResolvedValue(personalProject as never);
 
-				await expect(service.assignProject('1', 'p1')).rejects.toThrow(BadRequestError);
+				await expect(service.addProject('1', 'p1')).rejects.toThrow(BadRequestError);
 			});
 
 			it('rejects when the connection does not exist', async () => {
 				repository.findOneBy.mockResolvedValue(null);
 
-				await expect(service.assignProject('missing', 'p1')).rejects.toThrow(NotFoundError);
+				await expect(service.addProject('missing', 'p1')).rejects.toThrow(NotFoundError);
 				expect(projectRepository.findOneBy).not.toHaveBeenCalled();
 			});
 		});
 
-		describe('unlinkProject', () => {
+		describe('removeProject', () => {
 			it('removes a link that belongs to this connection', async () => {
 				const link = { projectId: 'p1', gitConnectionId: '1' };
 				projectLinkRepository.findByProjectId.mockResolvedValue(link as never);
 
-				await service.unlinkProject('1', 'p1');
+				await service.removeProject('1', 'p1');
 
 				expect(projectLinkRepository.remove).toHaveBeenCalledWith(link);
 			});
@@ -286,7 +286,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			it('is a no-op when the project is not linked', async () => {
 				projectLinkRepository.findByProjectId.mockResolvedValue(null);
 
-				await service.unlinkProject('1', 'p1');
+				await service.removeProject('1', 'p1');
 
 				expect(projectLinkRepository.remove).not.toHaveBeenCalled();
 			});
@@ -297,7 +297,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 					gitConnectionId: 'other',
 				} as never);
 
-				await service.unlinkProject('1', 'p1');
+				await service.removeProject('1', 'p1');
 
 				expect(projectLinkRepository.remove).not.toHaveBeenCalled();
 			});
