@@ -5,6 +5,9 @@ import type { Copy, DuplicateGroup } from './collect-copies.js';
 import { distinctCopies } from './collect-copies.js';
 import { CURATED_LIBS, PEER_LIBS, PUBLISHED_SECTIONS } from './libs.js';
 
+/** A manifest section a copy can be declared in. */
+type Section = (typeof PUBLISHED_SECTIONS)[number];
+
 export interface AttributedCopy {
 	version: string;
 	/** Path within the install tree — the nesting chain itself reads as the cause. */
@@ -13,6 +16,11 @@ export interface AttributedCopy {
 	requiredBy: string | null;
 	/** Range `requiredBy` declares, when it declares one directly. */
 	range: string | null;
+	/**
+	 * Section the range came from. Which one decides the fix: a package that already declares the
+	 * library as a peer has nothing to move, so the split is a version conflict, not a wrong shape.
+	 */
+	section: Section | null;
 	/** `requiredBy` is a package in this repo, so the fix is a manifest change here. */
 	isWorkspace: boolean;
 	/** Copy lives in a pnpm virtual store, whose nesting names no requirer. */
@@ -48,7 +56,12 @@ function isManifest(value: unknown): value is Manifest {
 	return typeof value === 'object' && value !== null;
 }
 
-function readDeclaredRange(dir: string, lib: string): string | null {
+interface Declaration {
+	section: Section;
+	range: string;
+}
+
+function readDeclaration(dir: string, lib: string): Declaration | null {
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
@@ -58,7 +71,7 @@ function readDeclaredRange(dir: string, lib: string): string | null {
 	if (!isManifest(parsed)) return null;
 	for (const section of PUBLISHED_SECTIONS) {
 		const range = parsed[section]?.[lib];
-		if (typeof range === 'string' && range) return range;
+		if (typeof range === 'string' && range) return { section, range };
 	}
 	return null;
 }
@@ -92,10 +105,15 @@ export function attributeCopy(
 
 	// Nearest ancestor first: the innermost declaration is the one that forced this copy.
 	for (let i = ancestorDirs.length - 1; i >= 0; i--) {
-		const range = readDeclaredRange(ancestorDirs[i], lib);
-		if (range) {
+		const declared = readDeclaration(ancestorDirs[i], lib);
+		if (declared) {
 			const requiredBy = ancestors[i];
-			return { ...base, requiredBy, range, isWorkspace: workspaceNames.has(requiredBy) };
+			return {
+				...base,
+				requiredBy,
+				...declared,
+				isWorkspace: workspaceNames.has(requiredBy),
+			};
 		}
 	}
 
@@ -106,6 +124,7 @@ export function attributeCopy(
 		...base,
 		requiredBy: nearest,
 		range: null,
+		section: null,
 		isWorkspace: nearest !== null && workspaceNames.has(nearest),
 	};
 }
@@ -143,7 +162,7 @@ export function describeOrigin(copy: AttributedCopy): string {
 	const marker = copy.isWorkspace ? ' [workspace package]' : '';
 	return copy.range === null
 		? `nested under ${copy.requiredBy} (no direct declaration)${marker}`
-		: `required by ${copy.requiredBy} ("${copy.range}")${marker}`;
+		: `required by ${copy.requiredBy} (${copy.section} "${copy.range}")${marker}`;
 }
 
 /** One indented block per physical copy: version, what pulled it in, and where it landed. */
@@ -198,21 +217,25 @@ interface Requirer {
 	lib: string;
 	requiredBy: string;
 	range: string | null;
+	section: Section | null;
 	isWorkspace: boolean;
 }
 
-function describeRequirer({ lib, requiredBy, range }: Requirer): string {
-	return `     - ${lib} <- ${requiredBy}${range === null ? '' : ` ("${range}")`}`;
+function describeRequirer({ lib, requiredBy, range, section }: Requirer): string {
+	return `     - ${lib} <- ${requiredBy}${range === null ? '' : ` (${section} "${range}")`}`;
 }
 
 /** Which remediation a requirer needs. One bucket per fix, so every copy is accounted for. */
-type Bucket = 'peerMove' | 'workspaceExempt' | 'thirdParty' | 'indirect';
+type Bucket = 'peerMove' | 'peerConflict' | 'workspaceExempt' | 'thirdParty' | 'indirect';
 
 function bucketFor(requirer: Requirer, exemptPackages: Set<string>): Bucket {
 	// No declared range means the requirer of record does not ask for the lib itself — something
 	// deeper in its own graph does, and none of the manifest fixes below apply to it.
 	if (requirer.range === null) return 'indirect';
 	if (!requirer.isWorkspace) return 'thirdParty';
+	// Already a peer: the shape the peer rule asks for. Nothing to move — the copy exists because
+	// the graph resolved a version outside this range, which is a pin problem elsewhere.
+	if (requirer.section === 'peerDependencies') return 'peerConflict';
 	// A lib the peer rule does not cover (pin-only, e.g. reflect-metadata) or a package it exempts
 	// is legitimately allowed its own dependency; only a version split is left to fix.
 	return PEER_LIBS.includes(requirer.lib) && !exemptPackages.has(requirer.requiredBy)
@@ -233,12 +256,13 @@ export function formatRemediation(
 	// one manifest edit however many copies it produced.
 	const requirers = new Map<string, Requirer>();
 	for (const dup of explained) {
-		for (const { requiredBy, range, isWorkspace } of dup.copies) {
+		for (const { requiredBy, range, section, isWorkspace } of dup.copies) {
 			if (requiredBy === null) continue;
-			requirers.set(`${dup.name}|${requiredBy}|${range}`, {
+			requirers.set(`${dup.name}|${requiredBy}|${section}|${range}`, {
 				lib: dup.name,
 				requiredBy,
 				range,
+				section,
 				isWorkspace,
 			});
 		}
@@ -246,6 +270,7 @@ export function formatRemediation(
 	const inBucket = (bucket: Bucket): Requirer[] =>
 		[...requirers.values()].filter((r) => bucketFor(r, exemptPackages) === bucket);
 	const peerMove = inBucket('peerMove');
+	const peerConflict = inBucket('peerConflict');
 	const workspaceExempt = inBucket('workspaceExempt');
 	const thirdParty = inBucket('thirdParty');
 	const indirect = inBucket('indirect');
@@ -262,6 +287,16 @@ export function formatRemediation(
 			...peerMove.map(describeRequirer),
 			'     Move it to "peerDependencies" with "catalog:" in that package.json, and keep it in',
 			'     devDependencies (also "catalog:") so local builds still resolve it.',
+			'',
+		);
+	}
+	if (peerConflict.length > 0) {
+		lines.push(
+			`  ${++step}. Our own packages that already declare the library as a peer:`,
+			...peerConflict.map(describeRequirer),
+			'     Nothing to move — this copy exists because something else in the graph resolved a',
+			'     version outside that range. Align the "catalog:" pin, or fix the requirer that forced',
+			'     the other version (it is listed under one of the other steps).',
 			'',
 		);
 	}

@@ -67,7 +67,18 @@ describe('attributeCopy', () => {
 	it('attributes a nested copy to the package that declares the range', () => {
 		const copy = attribute('node_modules/third-party/node_modules/zod', '3.20.1');
 		expect(copy).toMatchObject({ requiredBy: 'third-party', range: '~3.20.0', isWorkspace: false });
-		expect(describeOrigin(copy)).toBe('required by third-party ("~3.20.0")');
+		expect(describeOrigin(copy)).toBe('required by third-party (peerDependencies "~3.20.0")');
+	});
+
+	// Which section declared it decides the fix, so attribution has to keep it.
+	it('records the section the range came from', () => {
+		expect(attribute('node_modules/@n8n/api-types/node_modules/zod', '3.25.76').section).toBe(
+			'dependencies',
+		);
+		expect(attribute('node_modules/third-party/node_modules/zod', '3.20.1').section).toBe(
+			'peerDependencies',
+		);
+		expect(attribute('node_modules/silent/node_modules/zod', '3.1.0').section).toBeNull();
 	});
 
 	it('flags a requirer that is one of our own packages', () => {
@@ -142,7 +153,7 @@ describe('explainDuplicates', () => {
 		const output = formatCopyLines(explainAll()[0].copies).join('\n');
 
 		expect(output).toContain('v3.20.1');
-		expect(output).toContain('required by third-party ("~3.20.0")');
+		expect(output).toContain('required by third-party (peerDependencies "~3.20.0")');
 		expect(output).toContain('node_modules/third-party/node_modules/zod');
 	});
 });
@@ -176,7 +187,7 @@ describe('formatCuratedReport', () => {
 describe('formatRemediation', () => {
 	it('tells our own packages to move the library to peerDependencies', () => {
 		const output = formatRemediation(explainAll(), { exemptPackages: NO_EXEMPTIONS }).join('\n');
-		expect(output).toContain('- zod <- @n8n/api-types ("^3.25.0")');
+		expect(output).toContain('- zod <- @n8n/api-types (dependencies "^3.25.0")');
 		expect(output).toContain('"peerDependencies"');
 	});
 
@@ -200,8 +211,32 @@ describe('formatRemediation', () => {
 		const output = formatRemediation(explained, { exemptPackages: new Set(['n8n']) }).join('\n');
 
 		expect(output).toContain('legitimately own a copy');
-		expect(output).toContain('- zod <- n8n ("^3.0.0")');
+		expect(output).toContain('- zod <- n8n (dependencies "^3.0.0")');
 		expect(output).not.toContain('"peerDependencies"');
+	});
+
+	// The compliant shape: @n8n/api-types, n8n-core and n8n-workflow all declare zod only as a peer,
+	// so they are the likeliest requirers in the real closure — and there is nothing for them to move.
+	it('does not propose a peer move for a package that already declares the peer', () => {
+		const peerRoot = join(ROOT, 'peer');
+		pkg('peer/node_modules/zod', { name: 'zod', version: '4.4.3' });
+		pkg('peer/node_modules/@n8n/api-types', {
+			name: '@n8n/api-types',
+			version: '1.0.0',
+			peerDependencies: { zod: '3.25.76' },
+		});
+		pkg('peer/node_modules/@n8n/api-types/node_modules/zod', { name: 'zod', version: '3.25.76' });
+
+		const explained = explainDuplicates(
+			peerRoot,
+			analyze(collectCopies(peerRoot)).failures,
+			WORKSPACE,
+		);
+		const output = formatRemediation(explained, { exemptPackages: NO_EXEMPTIONS }).join('\n');
+
+		expect(output).toContain('already declare the library as a peer');
+		expect(output).toContain('- zod <- @n8n/api-types (peerDependencies "3.25.76")');
+		expect(output).not.toContain('Move it to "peerDependencies"');
 	});
 
 	// reflect-metadata is curated but pin-only, so the peer rule does not cover it either.
@@ -225,7 +260,7 @@ describe('formatRemediation', () => {
 
 	it('names the third-party requirer and its range', () => {
 		expect(formatRemediation(explainAll(), { exemptPackages: NO_EXEMPTIONS }).join('\n')).toContain(
-			'- zod <- third-party ("~3.20.0")',
+			'- zod <- third-party (peerDependencies "~3.20.0")',
 		);
 	});
 
@@ -289,6 +324,7 @@ describe('formatStepSummary', () => {
 							path: 'node_modules/pkg/node_modules/zod',
 							requiredBy: 'pkg',
 							range: '^3.22.0 || ^4.0.0',
+							section: 'dependencies' as const,
 							isWorkspace: false,
 							inPnpmStore: false,
 						},
