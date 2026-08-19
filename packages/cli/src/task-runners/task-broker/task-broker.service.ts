@@ -279,6 +279,7 @@ export class TaskBroker {
 			return;
 		}
 
+		// Any message from the runner disproves the silence a report would be based on.
 		this.silentRunnersSince.delete(runnerId);
 
 		switch (message.type) {
@@ -304,6 +305,7 @@ export class TaskBroker {
 				});
 				break;
 			case 'runner:taskdone':
+				// A task result proves the channel is alive, like an acknowledgement does.
 				this.consecutiveAcceptTimeouts.delete(runnerId);
 				await this.taskDoneHandler(message.taskId, message.data);
 				break;
