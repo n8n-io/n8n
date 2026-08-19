@@ -128,6 +128,7 @@
       "jws@4": "4.0.1",
       "@modelcontextprotocol/sdk": "1.26.0",
       "langchain": "1.2.3",
+      "@langchain/langgraph-checkpoint@<1.0.3": "1.0.3",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
       "@smithy/config-resolver": ">=4.4.0",
       "word-wrap@<=1.2.4": "1.2.4",
