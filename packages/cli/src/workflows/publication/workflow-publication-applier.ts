@@ -10,10 +10,12 @@ import {
 	type WorkflowPublicationTriggerKind,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { INode, WorkflowActivateMode } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
+import { Telemetry } from '@/telemetry';
 import { healNodeIds } from '@/workflows/publication/heal-node-ids';
 import type {
 	PublicationResult,
@@ -65,6 +67,7 @@ export class WorkflowPublicationApplier {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowService: WorkflowService,
+		private readonly telemetry: Telemetry,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -397,6 +400,14 @@ export class WorkflowPublicationApplier {
 			nodes: healed.nodes,
 			connections: newVersion.connections,
 			nodeGroups: newVersion.nodeGroups,
+		});
+
+		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW.NODE_IDS_HEALED, {
+			workflow_id: workflow.id,
+			filled_count: healed.report.filled.length,
+			reassigned_count: healed.report.reassigned.length,
+			dropped_count: healed.report.dropped.length,
+			superseded: !published.published,
 		});
 
 		return { type: 'skipped', reason: published.published ? 'node-ids-healed' : 'superseded' };

@@ -12,7 +12,10 @@ import { mock } from 'vitest-mock-extended';
 import type { INode, INodeType } from 'n8n-workflow';
 import { WebhookPathTakenError } from 'n8n-workflow';
 
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
 import type { NodeTypes } from '@/node-types';
+import type { Telemetry } from '@/telemetry';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
@@ -28,6 +31,7 @@ describe('WorkflowPublicationApplier', () => {
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
 	const nodeTypes = mock<NodeTypes>();
 	const workflowService = mock<WorkflowService>();
+	const telemetry = mock<Telemetry>();
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -38,6 +42,7 @@ describe('WorkflowPublicationApplier', () => {
 		workflowPublishedDataService,
 		nodeTypes,
 		workflowService,
+		telemetry,
 	);
 
 	function makeRecord(
@@ -868,6 +873,13 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.WORKFLOW.NODE_IDS_HEALED, {
+				workflow_id: 'wf-1',
+				filled_count: 0,
+				reassigned_count: 1,
+				dropped_count: 0,
+				superseded: false,
+			});
 		});
 
 		it('fills missing node ids the same way', async () => {
@@ -897,12 +909,17 @@ describe('WorkflowPublicationApplier', () => {
 			expect(result).toEqual({ type: 'skipped', reason: 'superseded' });
 			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW.NODE_IDS_HEALED,
+				expect.objectContaining({ superseded: true }),
+			);
 		});
 
 		it('does not publish anything for a healthy version', async () => {
 			const result = await applier.apply(makeRecord(), abort);
 
 			expect(workflowService.publishAsSystem).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalled();
 			expect(result.type).toBe('completed');
 		});
 
