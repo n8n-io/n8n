@@ -1,4 +1,9 @@
-import type { createDataSource, TriggerOutputs, WorkflowGraph } from '@n8n/engine';
+import type {
+	createDataSource,
+	StartExecutionResult,
+	TriggerOutputs,
+	WorkflowGraph,
+} from '@n8n/engine';
 import {
 	AllowAllAdmittance,
 	createEngineRuntime,
@@ -13,6 +18,7 @@ import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
 import { SplitOut } from 'n8n-nodes-base/nodes/Transform/SplitOut/SplitOut.node';
 import type { IDataObject, INodeType, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
+import request from 'supertest';
 import { vi } from 'vitest';
 
 import { createEngineStepDataLoader } from '../engine-step-data-loader';
@@ -111,11 +117,12 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		});
 		runtime.start();
 
-		const { executionId } = await runtime.startExecution({
-			workflowId: 'wf-m1',
-			graph,
-			triggerOutputs,
-		});
+		// over HTTP, because that is the engine's only boundary
+		const response = await request(runtime.app)
+			.post('/api/workflow-executions')
+			.send({ workflowId: 'wf-m1', graph, triggerOutputs })
+			.expect(201);
+		const { executionId } = response.body as StartExecutionResult;
 
 		try {
 			await Promise.race([

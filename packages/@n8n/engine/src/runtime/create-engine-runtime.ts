@@ -13,7 +13,6 @@ import {
 	StepSettledHandler,
 	StepWorker,
 } from '../execution';
-import type { StartExecutionRequest, StartExecutionResult } from '../execution';
 import { InMemoryWorkQueue } from '../queue';
 import type { OrchestrationMessage, StepMessage } from '../queue';
 import { createEngineServer } from '../server';
@@ -42,8 +41,6 @@ export interface EngineRuntime {
 	start(): void;
 	/** Stops the engine's workers. The host still owns its listener and its `DataSource`. */
 	stop(): Promise<void>;
-	/** Starts an execution in-process, without going through the HTTP API. */
-	startExecution(request: StartExecutionRequest): Promise<StartExecutionResult>;
 }
 
 /**
@@ -78,8 +75,11 @@ export function createEngineRuntime({
 		),
 	);
 
-	const startExecution = new StartExecutionService(admittance, executionStore, orchestrationQueue);
-	const { app } = createEngineServer(startExecution);
+	// Reachable over HTTP only: the engine API is the boundary, for an in-process
+	// host as much as for a remote one.
+	const { app } = createEngineServer(
+		new StartExecutionService(admittance, executionStore, orchestrationQueue),
+	);
 
 	return {
 		app,
@@ -95,7 +95,5 @@ export function createEngineRuntime({
 			// dropped, since the in-memory queues die with the process.
 			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
 		},
-
-		startExecution: async (request) => await startExecution.start(request),
 	};
 }

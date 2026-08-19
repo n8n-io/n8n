@@ -1,6 +1,7 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import postgresVersions from 'n8n-containers/postgres-versions.json';
+import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
@@ -15,6 +16,7 @@ import type { WorkflowGraph } from '../../graph';
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
 import { createEngineRuntime } from '../../runtime';
 import type { TriggerOutputs } from '../execution.types';
+import type { StartExecutionResult } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
 
 const graph: WorkflowGraph = {
@@ -70,11 +72,11 @@ describe('step execution (integration)', () => {
 		});
 		runtime.start();
 
-		const { executionId } = await runtime.startExecution({
-			workflowId,
-			graph: workflowGraph,
-			triggerOutputs,
-		});
+		const response = await request(runtime.app)
+			.post('/api/workflow-executions')
+			.send({ workflowId, graph: workflowGraph, triggerOutputs })
+			.expect(201);
+		const { executionId } = response.body as StartExecutionResult;
 		await finished;
 
 		await runtime.stop();
