@@ -81,7 +81,15 @@ export class EngineV2Runtime {
 					nodeTypes: this.nodeTypes,
 					// TODO(CAT-2880): no credential access. A v1 node that needs credentials
 					// fails when it asks for them.
-					additionalDataFactory: async () => await WorkflowExecuteAdditionalData.getBase(),
+					additionalDataFactory: async (executionId) => {
+						const additionalData = await WorkflowExecuteAdditionalData.getBase();
+
+						// The task runner keys its tasks by execution id, so it needs the engine's
+						// id to cancel them. `$execution.id` also reads it.
+						additionalData.executionId = executionId;
+
+						return additionalData;
+					},
 					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
 				}),
 			}),
@@ -107,28 +115,57 @@ export class EngineV2Runtime {
 		this.logger.info(`Engine 2.0 listening on http://${shownHost}:${port}`);
 	}
 
-	/** Releases each resource `init()` reached, in reverse order of acquisition. */
+	/**
+	 * Releases each resource `init()` reached, in reverse order of acquisition.
+	 *
+	 * Each resource is released on its own, so one failure cannot leave the others
+	 * holding a connection or running worker loops.
+	 */
 	async shutdown(): Promise<void> {
-		if (this.server) {
-			const server = this.server;
+		const errors: unknown[] = [];
+		const shutdownTasks = [
+			async () => await this.closeServer(),
+			async () => await this.stopEngine(),
+			async () => await this.destroyDataSource(),
+		];
 
-			await new Promise<void>((resolve, reject) => {
-				server.close((error) => (error ? reject(error) : resolve()));
+		for (const release of shutdownTasks) {
+			await release().catch((error) => {
+				errors.push(error);
 			});
-
-			this.server = undefined;
 		}
 
-		if (this.engine) {
-			await this.engine.stop();
-			this.engine = undefined;
+		if (errors.length > 0) {
+			throw new AggregateError(errors, 'Engine 2.0 could not release every resource');
 		}
+	}
 
-		if (this.dataSource) {
-			if (this.dataSource.isInitialized) {
-				await this.dataSource.destroy();
-			}
-			this.dataSource = undefined;
-		}
+	private async closeServer(): Promise<void> {
+		const server = this.server;
+		if (!server) return;
+
+		// Each release drops its handle before awaiting, so a failure here does not
+		// make the next `shutdown()` wait on the same resource again.
+		this.server = undefined;
+
+		await new Promise<void>((resolve, reject) => {
+			server.close((error) => (error ? reject(error) : resolve()));
+		});
+	}
+
+	private async stopEngine(): Promise<void> {
+		const engine = this.engine;
+		if (!engine) return;
+
+		this.engine = undefined;
+		await engine.stop();
+	}
+
+	private async destroyDataSource(): Promise<void> {
+		const dataSource = this.dataSource;
+		if (!dataSource) return;
+
+		this.dataSource = undefined;
+		if (dataSource.isInitialized) await dataSource.destroy();
 	}
 }

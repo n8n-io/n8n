@@ -38,13 +38,29 @@ const mocks = vi.hoisted(() => {
 		stop: vi.fn(async () => {}),
 	};
 
+	const v1StepExecutor = { execute: vi.fn() };
+	const stepDataLoader = vi.fn();
+
+	type V1StepExecutorDeps = {
+		additionalDataFactory: (executionId: string) => Promise<{ executionId?: string }>;
+	};
+
 	return {
+		getBase: vi.fn(async () => ({}) as { executionId?: string }),
 		dataSource,
 		listen,
 		server,
 		engine,
+		v1StepExecutor,
+		stepDataLoader,
 		createDataSource: vi.fn((_url: string) => dataSource),
 		createEngineRuntime: vi.fn((_options: unknown) => engine),
+		createEngineStepDataLoader: vi.fn((_executionStore: unknown, _stepStore: unknown) => {
+			return stepDataLoader;
+		}),
+		V1StepExecutor: vi.fn(function (_deps: V1StepExecutorDeps) {
+			return v1StepExecutor;
+		}),
 	};
 });
 
@@ -55,27 +71,27 @@ vi.mock('@n8n/engine', () => ({
 }));
 
 vi.mock('@n8n/node-engine-compatibility', () => ({
-	createEngineStepDataLoader: vi.fn(),
-	V1StepExecutor: vi.fn(function () {
-		return { execute: vi.fn() };
-	}),
+	createEngineStepDataLoader: mocks.createEngineStepDataLoader,
+	V1StepExecutor: mocks.V1StepExecutor,
 }));
 
-vi.mock('@/workflow-execute-additional-data', () => ({ getBase: vi.fn() }));
+vi.mock('@/workflow-execute-additional-data', () => ({ getBase: mocks.getBase }));
 
 describe('EngineV2Runtime', () => {
 	const engineConfig = (databaseUrl: string) =>
 		mock<EngineConfig>({ databaseUrl, host: '0.0.0.0', port: 3000 });
 
+	const nodeTypes = mock<NodeTypes>();
+
 	const newRuntime = (databaseUrl = 'postgres://engine') =>
-		new EngineV2Runtime(engineConfig(databaseUrl), mock<NodeTypes>(), mockLogger());
+		new EngineV2Runtime(engineConfig(databaseUrl), nodeTypes, mockLogger());
 
 	/** The `externalDependencies` callback the runtime handed to the engine. */
-	const externalDependencies = () => {
+	const externalDependencies = (stores: { executionStore: unknown; stepStore: unknown }) => {
 		const options = mocks.createEngineRuntime.mock.calls[0][0] as {
 			externalDependencies: (stores: unknown) => Record<string, unknown>;
 		};
-		return options.externalDependencies({ executionStore: {}, stepStore: {} });
+		return options.externalDependencies(stores);
 	};
 
 	beforeEach(() => {
@@ -111,7 +127,27 @@ describe('EngineV2Runtime', () => {
 		it('injects the v1 step executor so v1-node steps can run', async () => {
 			await newRuntime().init();
 
-			expect(externalDependencies().v1StepExecutor).toBeDefined();
+			const stores = { executionStore: {}, stepStore: {} };
+
+			expect(externalDependencies(stores).v1StepExecutor).toBe(mocks.v1StepExecutor);
+			// The executor needs the CLI node types to run a v1 node, and the engine's
+			// own stores to read the step data.
+			expect(mocks.V1StepExecutor).toHaveBeenCalledWith(
+				expect.objectContaining({ nodeTypes, loadStepData: mocks.stepDataLoader }),
+			);
+			expect(mocks.createEngineStepDataLoader).toHaveBeenCalledWith(
+				stores.executionStore,
+				stores.stepStore,
+			);
+		});
+
+		it('tags the v1 additional data with the engine execution id', async () => {
+			await newRuntime().init();
+			externalDependencies({ executionStore: {}, stepStore: {} });
+
+			const { additionalDataFactory } = mocks.V1StepExecutor.mock.calls[0][0];
+
+			await expect(additionalDataFactory('exec-1')).resolves.toEqual({ executionId: 'exec-1' });
 		});
 
 		it('serves the engine API on the configured address', async () => {
@@ -156,6 +192,31 @@ describe('EngineV2Runtime', () => {
 
 			expect(mocks.server.close).toHaveBeenCalled();
 			expect(mocks.engine.stop).toHaveBeenCalled();
+			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+		});
+
+		it('stops the engine and closes the connection when the server fails to close', async () => {
+			const runtime = newRuntime();
+			await runtime.init();
+			mocks.server.close.mockImplementationOnce((done) => done(new Error('close failed')));
+
+			const error = await runtime
+				.shutdown()
+				.catch((shutdownError: AggregateError) => shutdownError);
+
+			expect(error).toBeInstanceOf(AggregateError);
+			expect((error as AggregateError).errors).toEqual([new Error('close failed')]);
+			expect(mocks.engine.stop).toHaveBeenCalled();
+			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+		});
+
+		it('closes the connection when the engine fails to stop', async () => {
+			const runtime = newRuntime();
+			await runtime.init();
+			mocks.engine.stop.mockRejectedValueOnce(new Error('stop failed'));
+
+			await expect(runtime.shutdown()).rejects.toThrow(AggregateError);
+
 			expect(mocks.dataSource.destroy).toHaveBeenCalled();
 		});
 
