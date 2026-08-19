@@ -1,5 +1,3 @@
-import { createHmac, timingSafeEqual } from 'crypto';
-
 import {
 	type IHookFunctions,
 	type IWebhookFunctions,
@@ -14,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import { capitalizeFirstLetter, linearApiRequest } from '../shared/GenericFunctions';
+import { verifySignature } from '../shared/verifySignature';
 
 export class LinearTriggerV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -319,17 +318,13 @@ export class LinearTriggerV2 implements INodeType {
 		const webhookData = this.getWorkflowStaticData('node');
 		const secret = webhookData.webhookSecret as string | undefined;
 
-		// Verify Linear-Signature (HMAC-SHA256 of the raw body) when we hold the webhook's secret.
-		// No timestamp check: Linear retries carry the original timestamp, so a window would drop them.
-		if (secret) {
-			const signature = this.getHeaderData()['linear-signature'];
-			const { rawBody } = this.getRequestObject();
-			const computed = createHmac('sha256', secret).update(rawBody).digest();
-			const received = typeof signature === 'string' ? Buffer.from(signature, 'hex') : null;
-
-			if (!received || received.length !== 32 || !timingSafeEqual(computed, received)) {
-				return {};
-			}
+		const isSignatureValid = await verifySignature.call(this, secret);
+		if (!isSignatureValid) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
 		}
 
 		const bodyData = this.getBodyData();

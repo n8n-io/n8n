@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { ISSUE_FIELDS, ISSUE_LOCATOR, PRIORITY_OPTIONS } from '../../../shared/constants';
-import { linearApiRequest } from '../../../shared/GenericFunctions';
+import { linearApiRequest, normalizeTimelessDates } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
@@ -47,6 +47,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Due Date',
 				name: 'dueDate',
 				type: 'dateTime',
+				typeOptions: { dateOnly: true },
 				default: '',
 			},
 			{
@@ -150,6 +151,7 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
 		const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+		normalizeTimelessDates(updateFields);
 
 		try {
 			const body = {

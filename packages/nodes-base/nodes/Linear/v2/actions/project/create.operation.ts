@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { linearApiRequest } from '../../../shared/GenericFunctions';
+import { linearApiRequest, normalizeTimelessDates } from '../../../shared/GenericFunctions';
 
 const properties: INodeProperties[] = [
 	{
@@ -67,6 +67,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Target Date',
 				name: 'targetDate',
 				type: 'dateTime',
+				typeOptions: { dateOnly: true },
 				default: '',
 			},
 		],
@@ -96,6 +97,7 @@ export async function execute(
 				string,
 				unknown
 			>;
+			normalizeTimelessDates(additionalFields);
 
 			const body = {
 				query: `mutation ProjectCreate(

@@ -53,14 +53,19 @@ export async function execute(
 	const body = {
 		query: `query TeamMemberships($teamId: String!, $first: Int, $after: String) {
 			team(id: $teamId) {
-				members(first: $first, after: $after) {
+				memberships(first: $first, after: $after) {
 					nodes {
 						id
-						name
-						displayName
-						email
-						avatarUrl
-						active
+						owner
+						sortOrder
+						user {
+							id
+							name
+							displayName
+							email
+							avatarUrl
+							active
+						}
 					}
 					pageInfo { hasNextPage endCursor }
 				}
@@ -70,9 +75,14 @@ export async function execute(
 	};
 
 	try {
-		const members = await linearApiRequestAllItems.call(this, 'data.team.members', body, limit);
+		const memberships = await linearApiRequestAllItems.call(
+			this,
+			'data.team.memberships',
+			body,
+			limit,
+		);
 		returnData.push(
-			...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(members), {
+			...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(memberships), {
 				itemData: { item: 0 },
 			}),
 		);

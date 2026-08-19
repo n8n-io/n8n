@@ -149,3 +149,18 @@ export const sort = (a: { name: string }, b: { name: string }) => {
 	}
 	return 0;
 };
+
+/**
+ * Linear's `TimelessDate` scalar expects `YYYY-MM-DD`, but n8n's dateTime control (and
+ * expressions) can produce a full ISO timestamp, which the API rejects. Trims in place.
+ */
+export function normalizeTimelessDates(fields: Record<string, unknown>): void {
+	for (const key of ['dueDate', 'targetDate']) {
+		const value = fields[key];
+		if (typeof value === 'string' && value !== '') {
+			fields[key] = value.slice(0, 10);
+		} else if (value instanceof Date) {
+			fields[key] = value.toISOString().slice(0, 10);
+		}
+	}
+}

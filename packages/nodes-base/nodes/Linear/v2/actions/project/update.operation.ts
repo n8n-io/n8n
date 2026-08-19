@@ -7,7 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { PROJECT_LOCATOR } from '../../../shared/constants';
-import { linearApiRequest } from '../../../shared/GenericFunctions';
+import { linearApiRequest, normalizeTimelessDates } from '../../../shared/GenericFunctions';
 
 const properties: INodeProperties[] = [
 	PROJECT_LOCATOR,
@@ -58,6 +58,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Target Date',
 				name: 'targetDate',
 				type: 'dateTime',
+				typeOptions: { dateOnly: true },
 				default: '',
 			},
 		],
@@ -83,6 +84,7 @@ export async function execute(
 		try {
 			const projectId = this.getNodeParameter('projectId', i, '', { extractValue: true }) as string;
 			const updateFields = this.getNodeParameter('updateFields', i);
+			normalizeTimelessDates(updateFields);
 
 			const body = {
 				query: `mutation ProjectUpdate(

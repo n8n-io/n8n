@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { PROJECT_LOCATOR, PROJECT_MILESTONE_FIELDS } from '../../../shared/constants';
-import { linearApiRequest } from '../../../shared/GenericFunctions';
+import { linearApiRequest, normalizeTimelessDates } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
@@ -37,6 +37,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Target Date',
 				name: 'targetDate',
 				type: 'dateTime',
+				typeOptions: { dateOnly: true },
 				default: '',
 			},
 		],
@@ -63,6 +64,7 @@ export async function execute(
 			const projectId = this.getNodeParameter('projectId', i, '', { extractValue: true }) as string;
 			const name = this.getNodeParameter('name', i) as string;
 			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+			normalizeTimelessDates(additionalFields);
 
 			const body = {
 				query: `mutation ProjectMilestoneCreate($name: String!, $projectId: String!, $description: String, $targetDate: TimelessDate) {

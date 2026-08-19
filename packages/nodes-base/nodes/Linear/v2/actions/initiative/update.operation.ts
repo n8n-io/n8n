@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { INITIATIVE_FIELDS } from '../../../shared/constants';
-import { linearApiRequest } from '../../../shared/GenericFunctions';
+import { linearApiRequest, normalizeTimelessDates } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
@@ -56,6 +56,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Target Date',
 				name: 'targetDate',
 				type: 'dateTime',
+				typeOptions: { dateOnly: true },
 				default: '',
 				description: 'The estimated completion date of the initiative',
 			},
@@ -84,6 +85,7 @@ export async function execute(
 				extractValue: true,
 			}) as string;
 			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+			normalizeTimelessDates(updateFields);
 
 			const body = {
 				query: `mutation InitiativeUpdate($initiativeId: String!, $name: String, $description: String, $targetDate: TimelessDate) {

@@ -1,59 +1,82 @@
 import { createHmac } from 'crypto';
 
 import { mock } from 'vitest-mock-extended';
-import type { IDataObject, INodeTypeBaseDescription, IWebhookFunctions } from 'n8n-workflow';
+import type { INodeTypeBaseDescription, IWebhookFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { LinearTriggerV2 } from '../../../v2/LinearTriggerV2.node';
 
 describe('LinearTriggerV2', () => {
 	const secret = 'test-signing-secret';
-	const body = { action: 'create', type: 'Issue', data: { id: 'issue-1' } };
+	const body = {
+		action: 'create',
+		type: 'Issue',
+		data: { id: 'issue-1' },
+		webhookTimestamp: Date.now(),
+	};
 	const rawBody = Buffer.from(JSON.stringify(body));
 
 	let node: LinearTriggerV2;
 	let webhookFunctions: Mocked<IWebhookFunctions>;
+	let response: { status: ReturnType<typeof vi.fn>; send: ReturnType<typeof vi.fn> };
+
+	const signWith = (signingSecret: string) =>
+		createHmac('sha256', signingSecret).update(rawBody).digest('hex');
 
 	beforeEach(() => {
 		node = new LinearTriggerV2(mock<INodeTypeBaseDescription>());
 		webhookFunctions = mock<IWebhookFunctions>();
+		response = {
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnValue({ end: vi.fn() }),
+		};
+
 		webhookFunctions.getWorkflowStaticData.mockReturnValue({ webhookSecret: secret });
-		webhookFunctions.getBodyData.mockReturnValue(body as unknown as IDataObject);
-		webhookFunctions.getRequestObject.mockReturnValue({ rawBody } as never);
+		webhookFunctions.getNodeParameter.mockReturnValue('apiToken');
+		webhookFunctions.getCredentials.mockResolvedValue({});
+		webhookFunctions.getBodyData.mockReturnValue(body);
+		webhookFunctions.getResponseObject.mockReturnValue(response as never);
 		webhookFunctions.helpers = {
-			returnJsonArray: vi.fn((data: IDataObject) => [data]),
+			returnJsonArray: vi.fn((data: unknown) => [data]),
 		} as never;
 	});
 
-	it('should return workflow data when the Linear-Signature is valid', async () => {
-		const signature = createHmac('sha256', secret).update(rawBody).digest('hex');
-		webhookFunctions.getHeaderData.mockReturnValue({ 'linear-signature': signature });
+	const mockRequest = (signature?: string) =>
+		webhookFunctions.getRequestObject.mockReturnValue({
+			rawBody,
+			header: (name: string) => (name === 'linear-signature' ? signature : undefined),
+		} as never);
+
+	it('should return workflow data when the signature matches the stored webhook secret', async () => {
+		mockRequest(signWith(secret));
 
 		const result = await node.webhook.call(webhookFunctions);
 
 		expect(result.workflowData).toEqual([[body]]);
 	});
 
-	it('should not start the workflow when the Linear-Signature is invalid', async () => {
-		const signature = createHmac('sha256', 'wrong-secret').update(rawBody).digest('hex');
-		webhookFunctions.getHeaderData.mockReturnValue({ 'linear-signature': signature });
+	it('should respond 401 when the signature is invalid', async () => {
+		mockRequest(signWith('wrong-secret'));
 
 		const result = await node.webhook.call(webhookFunctions);
 
-		expect(result).toEqual({});
+		expect(response.status).toHaveBeenCalledWith(401);
+		expect(result).toEqual({ noWebhookResponse: true });
 	});
 
-	it('should not start the workflow when the Linear-Signature header is missing', async () => {
-		webhookFunctions.getHeaderData.mockReturnValue({});
+	it('should respond 401 when the signature header is missing', async () => {
+		mockRequest(undefined);
 
 		const result = await node.webhook.call(webhookFunctions);
 
-		expect(result).toEqual({});
+		expect(response.status).toHaveBeenCalledWith(401);
+		expect(result).toEqual({ noWebhookResponse: true });
 	});
 
-	it('should pass through when no webhook secret is stored', async () => {
+	it('should fall back to the credential signing secret when no secret is stored', async () => {
 		webhookFunctions.getWorkflowStaticData.mockReturnValue({});
-		webhookFunctions.getHeaderData.mockReturnValue({});
+		webhookFunctions.getCredentials.mockResolvedValue({ signingSecret: 'credential-secret' });
+		mockRequest(signWith('credential-secret'));
 
 		const result = await node.webhook.call(webhookFunctions);
 

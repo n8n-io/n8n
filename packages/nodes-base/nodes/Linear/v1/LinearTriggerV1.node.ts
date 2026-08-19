@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import { capitalizeFirstLetter, linearApiRequest } from '../shared/GenericFunctions';
+import { verifySignature } from '../shared/verifySignature';
 
 export class LinearTriggerV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -287,6 +288,15 @@ export class LinearTriggerV1 implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const isSignatureValid = await verifySignature.call(this);
+		if (!isSignatureValid) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const bodyData = this.getBodyData();
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],
