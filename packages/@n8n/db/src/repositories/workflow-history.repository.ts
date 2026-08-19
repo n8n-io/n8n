@@ -22,16 +22,36 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		return await this.delete({ createdAt: LessThan(date) });
 	}
 
-	/** Authors and creation dates of a workflow's versions created after the given date, newest first. */
-	async findAuthorsAndDatesCreatedAfter(
+	/**
+	 * Date range and author sets of a workflow's versions created after the given date.
+	 * Authors are read from a bounded window of the most recent versions.
+	 */
+	async findChangelogCreatedAfter(
 		workflowId: string,
 		after: Date,
-	): Promise<Array<Pick<WorkflowHistory, 'authors' | 'createdAt'>>> {
-		return await this.find({
-			where: { workflowId, createdAt: MoreThan(after) },
-			select: ['authors', 'createdAt'],
-			order: { createdAt: 'DESC' },
-		});
+		maxAuthorVersions: number,
+	): Promise<{ authorLists: string[]; from: Date; to: Date } | null> {
+		const where = { workflowId, createdAt: MoreThan(after) };
+		const [oldest, newest, recentVersions] = await Promise.all([
+			this.findOne({ where, select: ['createdAt'], order: { createdAt: 'ASC' } }),
+			this.findOne({ where, select: ['createdAt'], order: { createdAt: 'DESC' } }),
+			this.find({
+				where,
+				select: ['authors'],
+				order: { createdAt: 'DESC' },
+				take: maxAuthorVersions,
+			}),
+		]);
+
+		if (!oldest || !newest) {
+			return null;
+		}
+
+		return {
+			authorLists: recentVersions.map((v) => v.authors),
+			from: oldest.createdAt,
+			to: newest.createdAt,
+		};
 	}
 
 	/**

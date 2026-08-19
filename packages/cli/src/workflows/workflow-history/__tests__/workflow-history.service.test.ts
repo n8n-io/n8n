@@ -556,7 +556,7 @@ describe('WorkflowHistoryService', () => {
 			workflowHistoryRepository.findOne.mockResolvedValueOnce({
 				createdAt: new Date('2024-03-01T00:00:00.000Z'),
 			} as WorkflowHistory);
-			workflowHistoryRepository.findAuthorsAndDatesCreatedAfter.mockResolvedValueOnce([]);
+			workflowHistoryRepository.findChangelogCreatedAfter.mockResolvedValueOnce(null);
 
 			await expect(workflowHistoryService.getChangelog(testUser, workflowId)).resolves.toBeNull();
 		});
@@ -569,11 +569,11 @@ describe('WorkflowHistoryService', () => {
 			workflowHistoryRepository.findOne.mockResolvedValueOnce({
 				createdAt: new Date('2024-03-01T00:00:00.000Z'),
 			} as WorkflowHistory);
-			workflowHistoryRepository.findAuthorsAndDatesCreatedAfter.mockResolvedValueOnce([
-				{ authors: 'Alice, Bob', createdAt: new Date('2024-03-05T10:00:00.000Z') },
-				{ authors: 'Bob', createdAt: new Date('2024-03-03T09:00:00.000Z') },
-				{ authors: 'Carol', createdAt: new Date('2024-03-02T08:00:00.000Z') },
-			] as WorkflowHistory[]);
+			workflowHistoryRepository.findChangelogCreatedAfter.mockResolvedValueOnce({
+				authorLists: ['Alice, Bob', 'Bob', 'Carol'],
+				from: new Date('2024-03-02T08:00:00.000Z'),
+				to: new Date('2024-03-05T10:00:00.000Z'),
+			});
 
 			const result = await workflowHistoryService.getChangelog(testUser, workflowId);
 
@@ -582,9 +582,10 @@ describe('WorkflowHistoryService', () => {
 				from: '2024-03-02T08:00:00.000Z',
 				to: '2024-03-05T10:00:00.000Z',
 			});
-			expect(workflowHistoryRepository.findAuthorsAndDatesCreatedAfter).toHaveBeenCalledWith(
+			expect(workflowHistoryRepository.findChangelogCreatedAfter).toHaveBeenCalledWith(
 				workflowId,
 				new Date('2024-03-01T00:00:00.000Z'),
+				expect.any(Number),
 			);
 		});
 	});

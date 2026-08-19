@@ -23,6 +23,9 @@ import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
 
+// Authors in the changelog are aggregated from at most this many versions
+const MAX_CHANGELOG_AUTHOR_VERSIONS = 500;
+
 @Service()
 export class WorkflowHistoryService {
 	constructor(
@@ -334,22 +337,23 @@ export class WorkflowHistoryService {
 			return null;
 		}
 
-		const versions = await this.workflowHistoryRepository.findAuthorsAndDatesCreatedAfter(
+		const changelog = await this.workflowHistoryRepository.findChangelogCreatedAfter(
 			workflow.id,
 			publishedVersion.createdAt,
+			MAX_CHANGELOG_AUTHOR_VERSIONS,
 		);
 
-		if (versions.length === 0) {
+		if (!changelog) {
 			return null;
 		}
 
-		// `authors` is a comma-separated string per version
-		const authors = [...new Set(versions.flatMap((v) => v.authors.split(', ')))];
+		// `authorLists` are comma-separated strings, one per version
+		const authors = [...new Set(changelog.authorLists.flatMap((a) => a.split(', ')))];
 
 		return {
 			authors,
-			from: versions[versions.length - 1].createdAt.toISOString(),
-			to: versions[0].createdAt.toISOString(),
+			from: changelog.from.toISOString(),
+			to: changelog.to.toISOString(),
 		};
 	}
 

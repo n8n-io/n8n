@@ -280,6 +280,22 @@ describe('WorkflowPublishModal', () => {
 			expect(getByTestId('workflow-publish-changelog-history-link')).toBeInTheDocument();
 		});
 
+		it('keeps the authors when the user count lookup fails', async () => {
+			setUserCount(1);
+			usersStore.fetchUsers.mockRejectedValue(new Error('network error'));
+			workflowHistoryStore.getWorkflowChangelog.mockResolvedValue(changelog);
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-publish-changelog')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('workflow-publish-changelog')).toHaveTextContent(
+				'Includes changes from 2024 Mar 1 to 2024 Mar 2 from Alice, Bob.',
+			);
+		});
+
 		it('is hidden when there are no versions since the last publish', async () => {
 			workflowHistoryStore.getWorkflowChangelog.mockResolvedValue(null);
 

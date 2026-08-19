@@ -10,7 +10,7 @@ import {
 } from 'vue';
 import type { VNode } from 'vue';
 import Modal from '@/app/components/Modal.vue';
-import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
+import { VIEWS, WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -117,18 +117,23 @@ function onModalOpened() {
 }
 
 const changelog = ref<WorkflowChangelog>(null);
+const usersLoaded = ref(false);
 
+// The changelog is informational; publishing works when any of this fails
 async function loadChangelog() {
 	if (!workflowDocumentStore.value.activeVersion?.versionId) return;
 
-	try {
-		await usersStore.fetchUsers({ take: 2 });
-		changelog.value = await workflowHistoryStore.getWorkflowChangelog(
-			workflowDocumentStore.value.workflowId,
-		);
-	} catch {
-		// ponytail: changelog is informational; publishing works without it
-	}
+	// Users are only fetched to detect a single-user instance
+	const loadUsers = usersStore.fetchUsers({ take: 2 }).then(() => {
+		usersLoaded.value = true;
+	});
+	const loadSummary = workflowHistoryStore
+		.getWorkflowChangelog(workflowDocumentStore.value.workflowId)
+		.then((summary) => {
+			changelog.value = summary;
+		});
+
+	await Promise.allSettled([loadUsers, loadSummary]);
 }
 
 const changelogSummary = computed(() => {
@@ -137,8 +142,9 @@ const changelogSummary = computed(() => {
 	const from = formatTimestamp(changelog.value.from).date;
 	const to = formatTimestamp(changelog.value.to).date;
 
-	// Authors add no information on a single-user instance
-	if (usersStore.allUsers.length <= 1) {
+	// Authors add no information on a single-user instance.
+	// Show them unless a successful lookup confirmed there is only one user.
+	if (usersLoaded.value && usersStore.allUsers.length <= 1) {
 		return i18n.baseText('workflows.publishModal.changelogNoAuthors', {
 			interpolate: { from, to },
 		});
@@ -370,7 +376,10 @@ async function handlePublish() {
 					{{ changelogSummary }}
 					<N8nLink
 						size="small"
-						:to="`/workflow/${workflowDocumentStore.workflowId}/history`"
+						:to="{
+							name: VIEWS.WORKFLOW_HISTORY,
+							params: { workflowId: workflowDocumentStore.workflowId },
+						}"
 						data-test-id="workflow-publish-changelog-history-link"
 						@click="modalBus.emit('close')"
 					>
