@@ -241,6 +241,7 @@ export class GitConnectionsPublicController {
 	@ApiTags(tags)
 	@ApiResponse(204)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	async removeProjectFromGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,

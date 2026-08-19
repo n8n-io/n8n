@@ -211,46 +211,42 @@ describe('GitConnectionsService (credential state machine)', () => {
 
 		beforeEach(() => {
 			repository.findOneBy.mockResolvedValue(sshEntity());
-			projectLinkRepository.create.mockImplementation((input) => input as never);
-			projectLinkRepository.save.mockImplementation(async (input) => input as never);
 		});
 
 		describe('addProject', () => {
 			it('creates a link for a team project', async () => {
 				projectRepository.findOneBy.mockResolvedValue(teamProject as never);
-				projectLinkRepository.findByProjectId.mockResolvedValue(null);
+				projectLinkRepository.linkProject.mockResolvedValue({
+					projectId: 'p1',
+					gitConnectionId: '1',
+				} as never);
 
 				const result = await service.addProject('1', 'p1');
 
-				expect(projectLinkRepository.create).toHaveBeenCalledWith({
-					projectId: 'p1',
-					gitConnectionId: '1',
-				});
+				expect(projectLinkRepository.linkProject).toHaveBeenCalledWith('p1', '1');
 				expect(result).toEqual({ projectId: 'p1', gitConnectionId: '1' });
 			});
 
 			it('is idempotent when the project is already linked to the same connection', async () => {
 				projectRepository.findOneBy.mockResolvedValue(teamProject as never);
-				projectLinkRepository.findByProjectId.mockResolvedValue({
+				projectLinkRepository.linkProject.mockResolvedValue({
 					projectId: 'p1',
 					gitConnectionId: '1',
 				} as never);
 
 				const result = await service.addProject('1', 'p1');
 
-				expect(projectLinkRepository.save).not.toHaveBeenCalled();
 				expect(result).toEqual({ projectId: 'p1', gitConnectionId: '1' });
 			});
 
 			it('rejects re-adding a project linked to a different connection', async () => {
 				projectRepository.findOneBy.mockResolvedValue(teamProject as never);
-				projectLinkRepository.findByProjectId.mockResolvedValue({
+				projectLinkRepository.linkProject.mockResolvedValue({
 					projectId: 'p1',
 					gitConnectionId: 'other',
 				} as never);
 
 				await expect(service.addProject('1', 'p1')).rejects.toThrow(ConflictError);
-				expect(projectLinkRepository.save).not.toHaveBeenCalled();
 			});
 
 			it('rejects an unknown project with 404', async () => {
@@ -291,13 +287,13 @@ describe('GitConnectionsService (credential state machine)', () => {
 				expect(projectLinkRepository.remove).not.toHaveBeenCalled();
 			});
 
-			it('never removes a link owned by a different connection', async () => {
+			it('rejects removing a link owned by a different connection', async () => {
 				projectLinkRepository.findByProjectId.mockResolvedValue({
 					projectId: 'p1',
 					gitConnectionId: 'other',
 				} as never);
 
-				await service.removeProject('1', 'p1');
+				await expect(service.removeProject('1', 'p1')).rejects.toThrow(ConflictError);
 
 				expect(projectLinkRepository.remove).not.toHaveBeenCalled();
 			});

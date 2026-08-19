@@ -197,6 +197,38 @@ describe('Git connections in Public API', () => {
 			expect(conflict.status).toBe(409);
 		});
 
+		it('does not reassign a project when different connections add it concurrently', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const first = await createConnection('First');
+			const second = await createConnection('Second');
+			const project = await createTeamProject('Team project', owner);
+
+			const responses = await Promise.all([
+				agent.post(`/git-connections/${first}/projects/${project.id}`),
+				agent.post(`/git-connections/${second}/projects/${project.id}`),
+			]);
+
+			expect(responses.map(({ status }) => status).sort()).toEqual([200, 409]);
+			const successfulResponse = responses.find(({ status }) => status === 200);
+			const link = await Container.get(GitConnectionProjectRepository).findByProjectId(project.id);
+			expect(link?.gitConnectionId).toBe(successfulResponse?.body.gitConnectionId);
+		});
+
+		it('rejects removing a project through a different connection', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const first = await createConnection('First');
+			const second = await createConnection('Second');
+			const project = await createTeamProject('Team project', owner);
+			await agent.post(`/git-connections/${first}/projects/${project.id}`);
+
+			const response = await agent.delete(`/git-connections/${second}/projects/${project.id}`);
+
+			expect(response.status).toBe(409);
+			expect(
+				await Container.get(GitConnectionProjectRepository).findByProjectId(project.id),
+			).toMatchObject({ gitConnectionId: first });
+		});
+
 		it('rejects a personal project', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const id = await createConnection();

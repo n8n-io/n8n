@@ -9,6 +9,20 @@ export class GitConnectionProjectRepository extends Repository<GitConnectionProj
 		super(GitConnectionProject, dataSource.manager);
 	}
 
+	async findByProjectId(projectId: string): Promise<GitConnectionProject | null> {
+		return await this.findOneBy({ projectId });
+	}
+
+	/**
+	 * Links a project without changing an existing link. Concurrent inserts race on
+	 * the project primary key, and all callers read the link that won.
+	 */
+	async linkProject(projectId: string, gitConnectionId: string): Promise<GitConnectionProject> {
+		const link = this.create({ projectId, gitConnectionId });
+		await this.createQueryBuilder().insert().values(link).orIgnore().execute();
+		return await this.findOneByOrFail({ projectId });
+	}
+
 	/** Project IDs linked to a connection, ordered for a stable response. */
 	async findProjectIdsByConnection(gitConnectionId: string) {
 		const rows = await this.find({

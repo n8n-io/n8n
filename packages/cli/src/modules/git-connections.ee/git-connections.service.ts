@@ -123,26 +123,21 @@ export class GitConnectionsService {
 		await this.getEntity(id);
 		await this.assertProjectCanBeAdded(projectId);
 
-		const existing = await this.projectConnectionRepository.findOneBy({ projectId });
-		if (existing) {
-			// Re-adding to the same connection is a no-op; moving a project that
-			// already belongs to a different connection must be removed first.
-			if (existing.gitConnectionId === id) return this.toLinkPublic(existing);
+		const link = await this.projectConnectionRepository.linkProject(projectId, id);
+		if (link.gitConnectionId !== id) {
 			throw new ConflictError('Project is already added to another Git connection');
 		}
-
-		const link = this.projectConnectionRepository.create({ projectId, gitConnectionId: id });
-		return this.toLinkPublic(await this.projectConnectionRepository.save(link));
+		return this.toLinkPublic(link);
 	}
 
 	async removeProject(id: string, projectId: string): Promise<void> {
 		await this.getEntity(id);
-		const existing = await this.projectConnectionRepository.findOneBy({ projectId });
-		// Idempotent, and scoped to this connection: never remove a link that
-		// belongs to a different connection.
-		if (existing && existing.gitConnectionId === id) {
-			await this.projectConnectionRepository.remove(existing);
+		const existing = await this.projectConnectionRepository.findByProjectId(projectId);
+		if (!existing) return;
+		if (existing.gitConnectionId !== id) {
+			throw new ConflictError('Project is added to another Git connection');
 		}
+		await this.projectConnectionRepository.remove(existing);
 	}
 
 	async listProjects(id: string): Promise<GitConnectionProjectListPublicDto> {
