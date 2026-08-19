@@ -854,8 +854,9 @@ export class TaskBroker {
 	 * mode, its process force-restarted.
 	 *
 	 * Skipped while the runner has in-flight tasks: tearing it down would fail tasks that
-	 * may still complete, and a runner that is truly stuck is still recovered once those
-	 * tasks hit their own execution timeout.
+	 * may still complete. A stuck runner is still recovered once those tasks hit their own
+	 * execution timeout, which force-restarts the process in internal mode and, in external
+	 * mode, untracks the tasks so the next report is no longer skipped.
 	 *
 	 * Reports a runner that is no longer registered too, since a process that outlived
 	 * its transport is exactly what still needs restarting.
