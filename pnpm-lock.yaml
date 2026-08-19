@@ -3019,9 +3019,6 @@ importers:
       '@types/chrome':
         specifier: 0.0.300
         version: 0.0.300
-      '@types/jsdom':
-        specifier: 'catalog:'
-        version: 21.1.7
       '@typescript/native':
         specifier: catalog:typescript-tooling
         version: typescript@7.0.2
@@ -3031,9 +3028,6 @@ importers:
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
-      jsdom:
-        specifier: ^23.0.1
-        version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       typescript:
         specifier: catalog:typescript-tooling
         version: '@typescript/typescript6@6.0.2'

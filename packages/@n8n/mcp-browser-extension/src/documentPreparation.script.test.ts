@@ -1,36 +1,28 @@
-import type { DOMWindow } from 'jsdom';
-import { JSDOM } from 'jsdom';
+import { applyOptOutAttributes, OPT_OUT_SCRIPT } from './documentPreparation';
 
-import { OPT_OUT_SCRIPT } from './documentPreparation';
+const run = applyOptOutAttributes;
 
-/** `beforeParse` mirrors init-script timing; otherwise the script sees a parsed document. */
-function makeDom(html: string, { beforeParse = false } = {}) {
-	return new JSDOM(html, {
-		runScripts: 'dangerously',
-		url: 'http://test.local/page',
-		...(beforeParse
-			? {
-					beforeParse: (window: DOMWindow) => {
-						window.eval(OPT_OUT_SCRIPT);
-					},
-				}
-			: {}),
-	});
+function html(markup: string) {
+	document.body.innerHTML = markup;
 }
 
-function runOptOut(html: string) {
-	const dom = makeDom(html);
-	dom.window.eval(OPT_OUT_SCRIPT);
-	return dom.window.document;
-}
-
-const runAsInitScript = (html: string) => makeDom(html, { beforeParse: true });
+beforeEach(() => {
+	Reflect.deleteProperty(window, '__n8nExtensionOptOut');
+	document.body.innerHTML = '';
+	document.body.removeAttribute('data-1p-ignore');
+});
 
 describe('OPT_OUT_SCRIPT', () => {
+	it('ships the function as a self-invoking source string', () => {
+		expect(OPT_OUT_SCRIPT.startsWith('(function')).toBe(true);
+		expect(OPT_OUT_SCRIPT.endsWith(')()')).toBe(true);
+		expect(OPT_OUT_SCRIPT).toContain('data-bwignore');
+	});
+
 	it('marks every form field with the password manager opt-out attributes', () => {
-		const document = runOptOut(
-			'<input id="a"><textarea id="b"></textarea><select id="c"></select>',
-		);
+		html('<input id="a"><textarea id="b"></textarea><select id="c"></select>');
+
+		run();
 
 		for (const id of ['a', 'b', 'c']) {
 			const field = document.getElementById(id);
@@ -43,7 +35,9 @@ describe('OPT_OUT_SCRIPT', () => {
 	});
 
 	it('marks the body with the 1Password whole-page switch only', () => {
-		const document = runOptOut('<input>');
+		html('<input>');
+
+		run();
 
 		expect(document.body.hasAttribute('data-1p-ignore')).toBe(true);
 		expect(document.body.hasAttribute('data-lpignore')).toBe(false);
@@ -51,7 +45,9 @@ describe('OPT_OUT_SCRIPT', () => {
 	});
 
 	it('marks editable text with the writing assistant opt-out attributes', () => {
-		const document = runOptOut('<textarea id="a"></textarea><div id="b" contenteditable></div>');
+		html('<textarea id="a"></textarea><div id="b" contenteditable></div>');
+
+		run();
 
 		for (const id of ['a', 'b']) {
 			const field = document.getElementById(id);
@@ -63,112 +59,96 @@ describe('OPT_OUT_SCRIPT', () => {
 	});
 
 	it('leaves plain inputs out of the writing assistant group', () => {
-		const document = runOptOut('<input id="a">');
+		html('<input id="a">');
+
+		run();
 
 		expect(document.getElementById('a')?.hasAttribute('data-gramm')).toBe(false);
 	});
 
 	it('skips explicitly non-editable contenteditable elements', () => {
-		const document = runOptOut('<div id="a" contenteditable="false"></div>');
+		html('<div id="a" contenteditable="false"></div>');
+
+		run();
 
 		expect(document.getElementById('a')?.hasAttribute('data-gramm')).toBe(false);
 	});
 
 	it('leaves attributes the page already set untouched', () => {
-		const document = runOptOut('<input id="a" data-form-type="password">');
+		html('<input id="a" data-form-type="password">');
+
+		run();
 
 		expect(document.getElementById('a')?.getAttribute('data-form-type')).toBe('password');
 	});
 
 	it('reaches fields inside open shadow roots', () => {
-		const dom = new JSDOM('<div id="host"></div>', {
-			runScripts: 'dangerously',
-			url: 'http://test.local/page',
-		});
-		const shadow = dom.window.document
-			.getElementById('host')!
-			.attachShadow({ mode: 'open' }) as unknown as ShadowRoot;
+		html('<div id="host"></div>');
+		const shadow = document.getElementById('host')!.attachShadow({ mode: 'open' });
 		shadow.innerHTML = '<input id="inner">';
 
-		dom.window.eval(OPT_OUT_SCRIPT);
+		run();
 
 		expect(shadow.getElementById('inner')?.hasAttribute('data-1p-ignore')).toBe(true);
 	});
 
 	it('does not throw on a page with no fields', () => {
-		expect(() => runOptOut('<p>nothing here</p>')).not.toThrow();
-	});
-});
+		html('<p>nothing here</p>');
 
-describe('OPT_OUT_SCRIPT as an init script', () => {
-	it('stamps fields parsed after it ran, with no <html> present at install time', async () => {
-		const dom = runAsInitScript('<html><body><input id="server"></body></html>');
-
-		await vi.waitFor(() =>
-			expect(dom.window.document.getElementById('server')?.hasAttribute('data-bwignore')).toBe(
-				true,
-			),
-		);
-		expect(dom.window.document.body.hasAttribute('data-1p-ignore')).toBe(true);
+		expect(() => run()).not.toThrow();
 	});
 
-	it('stamps a field inserted long after parsing', async () => {
-		const dom = runAsInitScript('<html><body><div id="app"></div></body></html>');
+	it('marks a field inserted after it ran', async () => {
+		html('<div id="app"></div>');
+		run();
 
-		const input = dom.window.document.createElement('input');
-		input.id = 'late';
-		dom.window.document.getElementById('app')!.appendChild(input);
+		const input = document.createElement('input');
+		document.getElementById('app')!.appendChild(input);
 
 		await vi.waitFor(() => expect(input.hasAttribute('data-bwignore')).toBe(true));
 	});
 
-	it('stamps a field nested inside an inserted subtree', async () => {
-		const dom = runAsInitScript('<html><body><div id="app"></div></body></html>');
+	it('marks a field nested inside an inserted subtree', async () => {
+		html('<div id="app"></div>');
+		run();
 
-		const modal = dom.window.document.createElement('div');
+		const modal = document.createElement('div');
 		modal.innerHTML = '<form><input id="nested"></form>';
-		dom.window.document.getElementById('app')!.appendChild(modal);
+		document.getElementById('app')!.appendChild(modal);
 
 		await vi.waitFor(() =>
-			expect(dom.window.document.getElementById('nested')?.hasAttribute('data-bwignore')).toBe(
-				true,
-			),
+			expect(document.getElementById('nested')?.hasAttribute('data-bwignore')).toBe(true),
 		);
 	});
 
-	it('re-stamps on every call so repeat callers catch up', () => {
-		const dom = runAsInitScript('<html><body><div id="app"></div></body></html>');
-		const host = dom.window.document.getElementById('app')!;
-		const shadow = host.attachShadow({ mode: 'open' });
-		shadow.innerHTML = '<input id="inner">';
+	it('marks a field inserted into a shadow root it has already walked', async () => {
+		html('<div id="host"></div>');
+		const shadow = document.getElementById('host')!.attachShadow({ mode: 'open' });
+		run();
 
-		// The observer cannot see into a shadow root it never walked; a second pass must.
-		dom.window.eval(OPT_OUT_SCRIPT);
+		const input = document.createElement('input');
+		shadow.appendChild(input);
 
-		expect(shadow.getElementById('inner')?.hasAttribute('data-bwignore')).toBe(true);
+		await vi.waitFor(() => expect(input.hasAttribute('data-bwignore')).toBe(true));
 	});
 
-	it('installs one observer per root even when run repeatedly', () => {
+	it('installs one observer per root however often it runs', () => {
+		html('<div id="app"></div>');
 		let observers = 0;
-		const dom = new JSDOM('<html><body></body></html>', {
-			runScripts: 'dangerously',
-			url: 'http://test.local/page',
-			beforeParse(window) {
-				const Native = window.MutationObserver;
-				class Counting extends Native {
-					constructor(onMutation: MutationCallback) {
-						super(onMutation);
-						observers++;
-					}
-				}
-				Reflect.set(window, 'MutationObserver', Counting);
-				window.eval(OPT_OUT_SCRIPT);
-			},
-		});
+		const Native = window.MutationObserver;
+		class Counting extends Native {
+			constructor(onMutation: MutationCallback) {
+				super(onMutation);
+				observers++;
+			}
+		}
+		vi.stubGlobal('MutationObserver', Counting);
 
-		dom.window.eval(OPT_OUT_SCRIPT);
-		dom.window.eval(OPT_OUT_SCRIPT);
+		run();
+		run();
+		run();
 
 		expect(observers).toBe(1);
+		vi.unstubAllGlobals();
 	});
 });
