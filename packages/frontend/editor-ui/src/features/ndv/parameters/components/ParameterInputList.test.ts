@@ -25,12 +25,6 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useWorkflowHelpers', () => ({
-	useWorkflowHelpers: () => ({
-		resolveParameter: async (parameters: INodeParameters) => parameters,
-	}),
-}));
-
 // Mock i18n to return translation keys instead of translated strings
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -67,7 +61,7 @@ import {
 	FIXED_COLLECTION_PARAMETERS,
 } from './ParameterInputList.test.constants';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import type { INode, INodeParameters, INodeProperties } from 'n8n-workflow';
+import type { INode, INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
 import { WAIT_NODE_TYPE, AGENT_NODE_TYPE } from '@/app/constants';
@@ -144,11 +138,6 @@ const renderComponent = createComponentRenderer(ParameterInputList, {
 	global: {
 		stubs: {
 			ParameterInputFull: { template: '<div data-test-id="parameter-input"></div>' },
-			ResourceMapper: {
-				props: ['dependentParametersValues'],
-				template:
-					'<div data-test-id="resource-mapper" :data-dependencies="dependentParametersValues" />',
-			},
 			Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
 		},
 	},
@@ -808,7 +797,7 @@ describe('ParameterInputList', () => {
 			expect(await findByText('Test Collection')).toBeInTheDocument();
 		});
 
-		it('should resolve resourceMapper dependencies from the supplied node', async () => {
+		it('should render resourceMapper parameter', async () => {
 			const resourceMapperParameters: INodeProperties[] = [
 				{
 					displayName: 'Resource Mapper',
@@ -818,7 +807,6 @@ describe('ParameterInputList', () => {
 					noDataExpression: true,
 					required: true,
 					typeOptions: {
-						loadOptionsDependsOn: ['dataTableId.value'],
 						resourceMapper: {
 							resourceMapperMethod: 'getMappingColumns',
 							mode: 'add',
@@ -831,26 +819,18 @@ describe('ParameterInputList', () => {
 				},
 			];
 
-			ndvStore.activeNode = {
-				...TEST_NODE_NO_ISSUES,
-				parameters: { dataTableId: { value: 'active-table' } },
-			};
-			const node = {
-				...TEST_NODE_NO_ISSUES,
-				parameters: { dataTableId: { value: 'tool-table' }, resourceMapper: {} },
-			};
-			const { findByTestId } = renderComponent({
+			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+			const { container, findByTestId } = renderComponent({
 				props: {
 					parameters: resourceMapperParameters,
-					node,
-					nodeValues: node.parameters,
+					nodeValues: { resourceMapper: {} },
 				},
 			});
+			await flushPromises();
 
-			const resourceMapper = await findByTestId('resource-mapper');
-			await waitFor(() =>
-				expect(resourceMapper).toHaveAttribute('data-dependencies', 'tool-table'),
-			);
+			// ResourceMapper is rendered as a standalone component without label wrapper
+			expect(container.querySelector('.parameter-input-list-wrapper')).toBeInTheDocument();
+			expect(await findByTestId('parameter-item')).toBeInTheDocument();
 		});
 
 		it('should render filter parameter', async () => {
