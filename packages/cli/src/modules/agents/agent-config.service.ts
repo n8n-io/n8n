@@ -34,7 +34,7 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import {
 	findHttpRequestToolUrlFromAiViolations,
 	validateNodeToolConfigs,
@@ -289,7 +289,7 @@ export class AgentConfigService {
 			user,
 		);
 
-		const saved = await this.agentRepository.save(entity);
+		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
 		this.eventService.emit('agent-saved', { agentId });
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 

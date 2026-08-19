@@ -69,6 +69,13 @@ export interface CredentialResolutionResult {
 	/** Map of node name → credential types that were mocked on that node. */
 	mockedCredentialsByNode: Record<string, string[]>;
 	/**
+	 * Credential types from `preferNewCredentialTypes` the resolver actually left
+	 * open for the user to create. Not derivable from `mockedCredentialTypes`: a
+	 * slot the source omitted entirely is held by the required-type pass, which
+	 * attaches nothing and therefore mocks nothing.
+	 */
+	heldForNewCredentialTypes: string[];
+	/**
 	 * Map of node name → credentials the resolver attached automatically
 	 * (restored from the saved workflow or auto-bound to the sole existing
 	 * candidate). These nodes are already connected — the agent must not ask
@@ -83,6 +90,7 @@ export interface CredentialResolutionResult {
  */
 export function buildCredentialResolutionNote(
 	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>,
+	heldForNewCredentialTypes: readonly string[] = [],
 ): string | undefined {
 	const storedParts: string[] = [];
 	const gatewayParts: string[] = [];
@@ -93,9 +101,24 @@ export function buildCredentialResolutionNote(
 			else storedParts.push(`"${credential.name}" ${label}`);
 		}
 	}
-	if (storedParts.length === 0 && gatewayParts.length === 0) return undefined;
+	if (
+		storedParts.length === 0 &&
+		gatewayParts.length === 0 &&
+		heldForNewCredentialTypes.length === 0
+	) {
+		return undefined;
+	}
 
 	const sentences: string[] = [];
+	if (heldForNewCredentialTypes.length > 0) {
+		// Restate the request the flag encodes: the next setup call has to repeat it,
+		// or the card falls back to preselecting an existing credential.
+		sentences.push(
+			`Left unresolved because the user asked to create them fresh: ${heldForNewCredentialTypes.join(', ')}. ` +
+				`Route these to credential setup and pass preferNewCredentials: ${JSON.stringify(heldForNewCredentialTypes)} ` +
+				'so the card opens on credential creation instead of preselecting an existing credential.',
+		);
+	}
 	if (storedParts.length > 0) {
 		sentences.push(`Connected existing credential(s) automatically: ${storedParts.join('; ')}.`);
 	}
@@ -104,9 +127,13 @@ export function buildCredentialResolutionNote(
 			`Set up automatically with n8n credits (no API key required) for: ${gatewayParts.join('; ')}.`,
 		);
 	}
-	sentences.push(
-		'These are already set up — do not ask the user to connect or create them, and do not route them to credential setup.',
-	);
+	if (storedParts.length > 0 || gatewayParts.length > 0) {
+		// Scoped to what was actually attached — a type held back for fresh creation
+		// must still be routed to setup.
+		sentences.push(
+			'Those attached credentials are already set up — do not ask the user to connect or create them, and do not route them to credential setup.',
+		);
+	}
 	if (gatewayParts.length > 0) {
 		sentences.push(
 			'Briefly let the user know these run on n8n credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
@@ -124,6 +151,11 @@ export function buildCredentialResolutionNote(
  * 2. Preserve explicit valid raw credential ids
  * 3. Mock: remove the credential key and report the node in the mock metadata
  *
+ * `preferNewCredentialTypes` opts a type out of every automatic attachment: the
+ * user asked for a fresh credential, so an unresolved slot of that type is
+ * mocked and left for credential setup instead of being silently filled from a
+ * sibling node, the saved workflow, the sole stored candidate, or n8n credits.
+ *
  * Nothing is ever written into json.pinData — the saved workflow stays clean.
  */
 export async function resolveCredentials(
@@ -131,7 +163,10 @@ export async function resolveCredentials(
 	workflowId: string | undefined,
 	ctx: InstanceAiContext,
 	availableCredentials?: CredentialMap,
+	preferNewCredentialTypes?: readonly string[],
 ): Promise<CredentialResolutionResult> {
+	const preferNewTypes = new Set(preferNewCredentialTypes ?? []);
+	const heldForNewCredentialTypes = new Set<string>();
 	const mockedNodeNames: string[] = [];
 	const mockedCredentialTypesSet = new Set<string>();
 	const mockedCredentialsByNode: Record<string, string[]> = {};
@@ -271,6 +306,10 @@ export async function resolveCredentials(
 			// without the id, which serializes to undefined).
 			const existingCreds = node.name ? existingCredsByNode.get(node.name) : undefined;
 
+			// The user asked to create this credential, so no automatic attachment may
+			// answer the slot on their behalf — it goes to setup unresolved.
+			const wantsNewCredential = preferNewTypes.has(key);
+
 			const recordResolvedCredential = (id: string, name: string) => {
 				if (!node.name) return;
 				resolvedCredentialsByNode[node.name] ??= [];
@@ -278,6 +317,7 @@ export async function resolveCredentials(
 			};
 
 			const restoreExistingCredential = () => {
+				if (wantsNewCredential) return false;
 				const restored = existingCreds?.[key];
 				if (!restored) return false;
 				creds[key] = restored;
@@ -294,6 +334,7 @@ export async function resolveCredentials(
 			// already settled on that credential for the service, so a new node of
 			// the same service must not re-prompt setup for it.
 			const reuseSiblingNodeCredential = () => {
+				if (wantsNewCredential) return false;
 				const sibling = siblingBindingsByType.get(key);
 				if (!sibling) return false;
 				creds[key] = { id: sibling.id, name: sibling.name };
@@ -350,6 +391,13 @@ export async function resolveCredentials(
 			// switch auth to it and mock under that type, so setup asks for one-click
 			// OAuth instead of an API key.
 			const mockOrAttachGateway = async () => {
+				// n8n credits is still an existing credential from the user's point of
+				// view — they asked to create their own, so don't answer with ours.
+				if (wantsNewCredential) {
+					mockCredential();
+					heldForNewCredentialTypes.add(key);
+					return;
+				}
 				if (!hasStoredCredential(key)) {
 					if (await isGatewayCredentialType(key)) {
 						await attachGatewayCredential();
@@ -417,7 +465,11 @@ export async function resolveCredentials(
 			// to a different service and must not be sent to this node's URL — mock
 			// instead so setup asks.
 			const credentialsForType = availableCredentials?.get(key);
-			if (credentialsForType?.length === 1 && !GENERIC_AUTH_CREDENTIAL_TYPES.has(key)) {
+			if (
+				!wantsNewCredential &&
+				credentialsForType?.length === 1 &&
+				!GENERIC_AUTH_CREDENTIAL_TYPES.has(key)
+			) {
 				const [credential] = credentialsForType;
 				creds[key] = { id: credential.id, name: credential.name };
 				registerSiblingBinding(key, creds[key]);
@@ -450,6 +502,14 @@ export async function resolveCredentials(
 			const creds = (node.credentials ?? {}) as Record<string, unknown>;
 			const existing = creds[credType];
 			if (existing !== undefined && existing !== null) continue;
+			// Asked-for-fresh types stay open for setup — never pre-answered with credits.
+			// Checked before the stored-credential bail so the type is reported as held
+			// either way: this pass attaches nothing, so it mocks nothing, and the build
+			// result would otherwise carry no trace of the request for the setup call.
+			if (preferNewTypes.has(credType)) {
+				heldForNewCredentialTypes.add(credType);
+				continue;
+			}
 			if (hasStoredCredential(credType)) continue;
 
 			let managedType = credType;
@@ -488,6 +548,7 @@ export async function resolveCredentials(
 		mockedNodeNames,
 		mockedCredentialTypes: [...mockedCredentialTypesSet],
 		mockedCredentialsByNode,
+		heldForNewCredentialTypes: [...heldForNewCredentialTypes],
 		resolvedCredentialsByNode,
 	};
 }

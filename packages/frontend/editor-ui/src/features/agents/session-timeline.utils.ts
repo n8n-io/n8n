@@ -28,13 +28,76 @@ export function isSubAgentTimelineItem(item: TimelineItem): boolean {
 	return item.kind === 'tool' && isDelegateSubAgentTool(item.toolName);
 }
 
+function errorTextFromValue(value: unknown): string {
+	if (typeof value === 'string' && value.length > 0) return value;
+	if (isRecord(value) && typeof value.message === 'string' && value.message.length > 0) {
+		return value.message;
+	}
+	return '';
+}
+
+/** MCP CallToolResult stores the message in structuredContent.error or text content. */
+function mcpErrorMessage(output: Record<string, unknown>): string {
+	if (isRecord(output.structuredContent)) {
+		const fromStructured = errorTextFromValue(output.structuredContent.error);
+		if (fromStructured) return fromStructured;
+	}
+
+	if (!Array.isArray(output.content)) return '';
+	for (const block of output.content) {
+		if (!isRecord(block) || block.type !== 'text' || typeof block.text !== 'string') continue;
+		const text = block.text.trim();
+		if (!text) continue;
+		try {
+			const parsed: unknown = JSON.parse(text);
+			if (typeof parsed === 'string' && parsed.length > 0) return parsed;
+			if (isRecord(parsed)) {
+				const fromJson = errorTextFromValue(parsed.error);
+				if (fromJson) return fromJson;
+			}
+		} catch {
+			return text;
+		}
+	}
+	return '';
+}
+
+/**
+ * A tool/workflow/node call is failed when the runtime recorded an error
+ * outcome, or when a built-in tool returned a soft-failure payload instead
+ * of throwing. In-flight calls without output are not failed.
+ */
 export function isErroredToolCallTimelineItem(item: TimelineItem): boolean {
-	if (item.kind !== 'tool' && item.kind !== 'node' && item.kind !== 'workflow') return false;
+	if (item.kind !== 'tool' && item.kind !== 'workflow' && item.kind !== 'node') return false;
+	if (item.toolOutcome === 'error') return true;
+	if (item.toolOutcome === undefined && item.toolSuccess === false) return true;
+	if (!isRecord(item.toolOutput)) return false;
+
+	const { error, status, success, ok, isError } = item.toolOutput;
+	const hasErrorMessage =
+		(typeof error === 'string' && error.length > 0) ||
+		(isRecord(error) && typeof error.message === 'string' && error.message.length > 0);
+
 	return (
-		item.toolOutcome === 'error' ||
-		(item.toolOutcome === undefined && item.toolSuccess === false) ||
-		(item.kind === 'workflow' && isRecord(item.toolOutput) && item.toolOutput.status === 'error')
+		hasErrorMessage ||
+		status === 'error' ||
+		status === 'failed' ||
+		success === false ||
+		ok === false ||
+		isError === true
 	);
+}
+
+export function isErroredTimelineItem(item: TimelineItem): boolean {
+	return item.kind === 'execution-error' || isErroredToolCallTimelineItem(item);
+}
+
+/** Extracts a human-readable error message from a failed item's tool output. */
+export function timelineItemErrorMessage(item: TimelineItem): string {
+	if (!isErroredToolCallTimelineItem(item)) return '';
+	const output = item.toolOutput;
+	if (!isRecord(output)) return '';
+	return errorTextFromValue(output.error) || mcpErrorMessage(output);
 }
 
 export function hitlTimelineNameKey(item: TimelineItem): BaseTextKey | undefined {
@@ -45,6 +108,23 @@ export function hitlTimelineNameKey(item: TimelineItem): BaseTextKey | undefined
 }
 
 type TimelineI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
+
+export function executionErrorLabel(item: TimelineItem, i18n: TimelineI18n): string {
+	return i18n.baseText(
+		item.executionStatus === 'interrupted'
+			? 'agentSessions.timeline.executionInterrupted'
+			: 'agentSessions.timeline.executionFailed',
+	);
+}
+
+export function executionErrorMessage(item: TimelineItem, i18n: TimelineI18n): string {
+	if (item.content) return item.content;
+	return i18n.baseText(
+		item.executionStatus === 'interrupted'
+			? 'agentSessions.timeline.executionInterruptedFallback'
+			: 'agentSessions.timeline.executionFailedFallback',
+	);
+}
 
 export function linkedToolDisplayName(item: TimelineItem, i18n: TimelineI18n): string {
 	return (
@@ -85,7 +165,7 @@ export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | und
 			theme: 'default',
 		};
 	}
-	if (isErroredToolCallTimelineItem(item)) {
+	if (isErroredTimelineItem(item)) {
 		return { kind: 'tool-error', labelKey: 'agentSessions.timeline.error', theme: 'danger' };
 	}
 	return undefined;
@@ -114,7 +194,7 @@ export function itemFilterKey(item: TimelineItem): string {
 }
 
 export function itemStatusFilterKey(item: TimelineItem): TimelineStatusFilterKey | undefined {
-	if (isErroredToolCallTimelineItem(item)) return 'error';
+	if (isErroredTimelineItem(item)) return 'error';
 	if (
 		item.kind === 'hitl-response' &&
 		(item.hitlResponseStatus === 'approved' || item.hitlResponseStatus === 'declined')
@@ -154,6 +234,9 @@ export function timelineItemSearchText(
 	const parts: Array<string | undefined> = [];
 
 	parts.push(labelForKey(itemFilterKey(item)));
+	if (item.kind === 'execution-error' && item.executionStatus === 'interrupted') {
+		parts.push(labelForKey('execution-interrupted'));
+	}
 	if (item.kind === 'suspension') {
 		parts.push(
 			labelForKey(item.hitlRequestType === 'approval' ? 'approval-requested' : 'hitl-requested'),
@@ -165,7 +248,7 @@ export function timelineItemSearchText(
 	if (item.hitlResponseStatus) {
 		parts.push(labelForKey(item.hitlResponseStatus));
 	}
-	if (isErroredToolCallTimelineItem(item)) {
+	if (isErroredTimelineItem(item)) {
 		parts.push(labelForKey('error'));
 	}
 
@@ -235,6 +318,7 @@ const COLOR_MAP: Record<EventKind, string> = {
 	tool: 'var(--color--success)',
 	node: 'var(--color--text)',
 	workflow: 'var(--color--primary)',
+	'execution-error': 'var(--color--danger)',
 	suspension: 'var(--color--warning)',
 	'hitl-response': 'var(--color--blue-400)',
 };
@@ -249,6 +333,7 @@ const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
 	tool: 'var(--color--green-600)',
 	node: 'var(--color--neutral-600)',
 	workflow: 'var(--color--orange-600)',
+	'execution-error': 'var(--color--red-400)',
 	suspension: 'var(--color--yellow-600)',
 	'hitl-response': 'var(--color--blue-600)',
 };
@@ -558,6 +643,16 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				hitlContext.hasExplicitResponse = true;
 				items.push(hitlResponseItem(hitlContext, exec.id, event.response, event.timestamp ?? 0));
 			}
+		}
+		if (exec.status === 'error' || exec.status === 'interrupted') {
+			const terminalTimestamp = exec.stoppedAt ?? exec.startedAt ?? exec.createdAt;
+			items.push({
+				kind: 'execution-error',
+				executionId: exec.id,
+				executionStatus: exec.status,
+				content: exec.error ?? undefined,
+				timestamp: terminalTimestamp ? new Date(terminalTimestamp).getTime() : 0,
+			});
 		}
 	}
 	return items;
