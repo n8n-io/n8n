@@ -328,11 +328,14 @@
 :root {
 	@include primitives;
 
-	[data-theme='dark'] {
-		@include dark-theme-overrides;
+	/** Make sure that media query preceeds [data-theme] as MacOS theme can override attribute specificity **/
+	@media (prefers-color-scheme: dark) {
+		body:not([data-theme]) {
+			@include dark-theme-overrides;
+		}
 	}
 
-	@media (prefers-color-scheme: dark) {
+	[data-theme='dark'] {
 		@include dark-theme-overrides;
 	}
 }
