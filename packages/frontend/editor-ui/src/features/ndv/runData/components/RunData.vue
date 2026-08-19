@@ -36,7 +36,6 @@ import {
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW,
-	MODAL_CONFIRM,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
 	RUN_DATA_DEFAULT_PAGE_SIZE,
 } from '@/app/constants';
@@ -60,8 +59,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecutions.store';
-import { useMessage } from '@/app/composables/useMessage';
+import { useAiSimulatedDataGuard } from '@/app/composables/useAiSimulatedDataGuard';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -247,8 +245,7 @@ const rootStore = useRootStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 
 const toast = useToast();
-const message = useMessage();
-const aiSimulatedExecutionsStore = useAiSimulatedExecutionsStore();
+const aiSimulatedDataGuard = useAiSimulatedDataGuard();
 const route = useRoute();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
@@ -395,7 +392,7 @@ const isAiSimulatedOutput = computed(
 		!isPaneTypeInput.value &&
 		hasNodeRun.value &&
 		!pinnedData.hasData.value &&
-		aiSimulatedExecutionsStore.isSimulatedNodeOutput(currentExecution.value?.id, node.value?.name),
+		aiSimulatedDataGuard.isSimulatedNodeOutput(currentExecution.value?.id, node.value?.name),
 );
 
 const isArtificialRecoveredEventItem = computed(
@@ -1088,16 +1085,7 @@ function onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
  */
 async function confirmPinningAiSimulatedData(): Promise<boolean> {
 	if (!isAiSimulatedOutput.value) return true;
-	const answer = await message.confirm(
-		i18n.baseText('ndv.pinData.aiSimulated.confirm.description'),
-		i18n.baseText('ndv.pinData.aiSimulated.confirm.title'),
-		{
-			type: 'warning',
-			confirmButtonText: i18n.baseText('ndv.pinData.aiSimulated.confirm.confirmButtonText'),
-			cancelButtonText: i18n.baseText('generic.cancel'),
-		},
-	);
-	return answer === MODAL_CONFIRM;
+	return await aiSimulatedDataGuard.confirmAdoption();
 }
 
 async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSource }) {

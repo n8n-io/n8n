@@ -1060,6 +1060,11 @@ export class InstanceAiAdapterService {
 					throw error;
 				}
 
+				// Tell open editors to reload. Without this a stale canvas keeps state
+				// this save replaced (e.g. cleared pinned data) and the next editor
+				// save resurrects it via the overwrite-conflict dialog (INS-1216).
+				await notifyWorkflowUpdated(workflowId);
+
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
 						user_id: user.id,

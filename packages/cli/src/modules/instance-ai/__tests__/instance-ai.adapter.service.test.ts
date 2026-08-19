@@ -2574,6 +2574,30 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('notifies open editors after a successful update so stale canvases reload', async () => {
+		// Without this an open editor keeps state the save replaced (e.g. cleared
+		// pinned data) and resurrects it via the overwrite-conflict dialog.
+		const { adapter, mockCollaborationService, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON);
+
+		expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+			'wf-existing',
+			mockUser.id,
+		);
+	});
+
+	it('does not notify editors when the update fails', async () => {
+		const { adapter, mockCollaborationService, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+		mockWorkflowService.update.mockRejectedValueOnce(new Error('save failed'));
+
+		await expect(
+			adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON),
+		).rejects.toThrow('save failed');
+		expect(mockCollaborationService.broadcastWorkflowUpdate).not.toHaveBeenCalled();
+	});
+
 	it('clears existing node groups when the SDK workflow declares none (update is authoritative)', async () => {
 		// Regression: the SDK omits `nodeGroups` when no `.group(...)` is declared. The
 		// update path must treat that as "no groups" and send [] so a removed group is
