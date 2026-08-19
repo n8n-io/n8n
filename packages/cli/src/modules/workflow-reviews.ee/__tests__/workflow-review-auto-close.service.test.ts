@@ -317,6 +317,22 @@ describe('WorkflowReviewAutoCloseService', () => {
 			);
 		});
 
+		// Same as the pre-delete hook: the close is committed by now, so a broken relay must
+		// not surface as a failed mutation.
+		it('swallows a reporting failure too', async () => {
+			requestRepository.closeUnreviewableOpenRequests.mockResolvedValue([
+				{ id: 'req-9', projectId: 'proj-9', reason: 'workflow-deleted', workflowId: null },
+			]);
+			activityRepository.createActivity.mockResolvedValue(mock<WorkflowReviewActivity>());
+			eventService.emit.mockImplementation(() => {
+				throw new Error('relay down');
+			});
+
+			await expect(service.afterWorkflowsDeleted(['wf-1'])).resolves.toBeUndefined();
+
+			expect(logger.error).toHaveBeenCalled();
+		});
+
 		// An archive or a move whose close rolled back stays committed, so the sweep has to run
 		// there too — the targeted close is done with the review by then.
 		it('runs after the targeted close on archive, and again on transfer', async () => {
