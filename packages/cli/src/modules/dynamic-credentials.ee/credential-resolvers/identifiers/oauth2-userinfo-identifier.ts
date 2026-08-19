@@ -76,16 +76,6 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 	async validateOptions(identifierOptions: Record<string, unknown>): Promise<void> {
 		const options = this.parseOptions(identifierOptions);
 
-		// A UserInfo response carries claims about the user, never about the token, so
-		// there is nothing in it to prove the token was issued for us. Binding the
-		// identity to an audience means verifying the access token itself, which needs
-		// an expected audience to check against.
-		if (!options.expectedAudience) {
-			throw new IdentifierValidationError(
-				'An expected audience is required when validating via the UserInfo endpoint',
-			);
-		}
-
 		let metadata;
 		try {
 			metadata = await this.fetchMetadata(options, true);
@@ -105,7 +95,9 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 			this.logger.error('Metadata does not contain an userinfo endpoint');
 			throw new IdentifierValidationError('Metadata does not contain an userinfo endpoint');
 		}
-		if (!metadata.jwks_uri) {
+		// Only needed once an audience is configured, since that is what turns on access
+		// token verification. Without one the resolver never reaches for the keys.
+		if (options.expectedAudience && !metadata.jwks_uri) {
 			this.logger.error('Metadata does not contain a JWKS endpoint');
 			throw new IdentifierValidationError(
 				'Metadata does not contain a JWKS endpoint, which is required to verify access tokens',

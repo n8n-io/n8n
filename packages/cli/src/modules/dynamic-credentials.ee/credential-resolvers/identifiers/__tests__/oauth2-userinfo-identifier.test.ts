@@ -168,19 +168,20 @@ describe('OAuth2UserInfoIdentifier', () => {
 			await expect(identifier.validateOptions(boundOptions)).resolves.toBeUndefined();
 		});
 
-		test('should reject options without an expected audience', async () => {
-			await expect(identifier.validateOptions(validOptions)).rejects.toThrow(
-				'An expected audience is required when validating via the UserInfo endpoint',
-			);
+		test('should accept options without an expected audience', async () => {
+			// Optional by design: without one the resolver stays on the unenforced path.
+			request.mockResolvedValue({ statusCode: 200, body: validMetadata });
+
+			await expect(identifier.validateOptions(validOptions)).resolves.toBeUndefined();
 		});
 
-		test('should report a blank expected audience as missing, not malformed', async () => {
+		test('should accept a blank expected audience', async () => {
 			// The form sends every rendered property, so an untouched field arrives as ''.
+			request.mockResolvedValue({ statusCode: 200, body: validMetadata });
+
 			await expect(
 				identifier.validateOptions({ ...validOptions, expectedAudience: '   ' }),
-			).rejects.toThrow(
-				'An expected audience is required when validating via the UserInfo endpoint',
-			);
+			).resolves.toBeUndefined();
 		});
 
 		test('should throw IdentifierValidationError when metadata missing userinfo_endpoint', async () => {
@@ -209,6 +210,18 @@ describe('OAuth2UserInfoIdentifier', () => {
 			await expect(identifier.validateOptions(boundOptions)).rejects.toThrow(
 				'Metadata does not contain a JWKS endpoint',
 			);
+		});
+
+		test('should not require jwks_uri without an expected audience', async () => {
+			// The keys are only reached once verification is switched on.
+			const metadataWithoutJwks = {
+				issuer: ISSUER,
+				userinfo_endpoint: validMetadata.userinfo_endpoint,
+			};
+
+			request.mockResolvedValue({ statusCode: 200, body: metadataWithoutJwks });
+
+			await expect(identifier.validateOptions(validOptions)).resolves.toBeUndefined();
 		});
 	});
 

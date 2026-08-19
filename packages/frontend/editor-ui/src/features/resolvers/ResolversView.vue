@@ -4,7 +4,6 @@ import type { CredentialResolver } from '@n8n/api-types';
 import {
 	N8nEmptyState,
 	N8nActionToggle,
-	N8nBadge,
 	N8nButton,
 	N8nCard,
 	N8nHeading,
@@ -12,7 +11,6 @@ import {
 	N8nLink,
 	N8nLoading2,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import dateformat from 'dateformat';
@@ -155,17 +153,7 @@ async function onAction(action: string, resolver: CredentialResolver) {
 					<N8nIcon icon="resolver" color="text-dark" :size="28" />
 				</template>
 				<template #header>
-					<div :class="$style.cardHeader">
-						<N8nText tag="h2" bold> {{ resolver.name }} </N8nText>
-						<N8nTooltip v-if="resolver.needsConfigurationUpdate" placement="top">
-							<template #content>
-								{{ i18n.baseText('credentialResolver.item.needsUpdate.tooltip') }}
-							</template>
-							<N8nBadge theme="warning">
-								{{ i18n.baseText('credentialResolver.item.needsUpdate') }}
-							</N8nBadge>
-						</N8nTooltip>
-					</div>
+					<N8nText tag="h2" bold> {{ resolver.name }} </N8nText>
 				</template>
 				<div :class="$style.cardDescription">
 					<N8nText color="text-light" size="small">
@@ -207,12 +195,6 @@ async function onAction(action: string, resolver: CredentialResolver) {
 	display: flex;
 	align-items: center;
 	margin-bottom: var(--spacing--sm);
-}
-
-.cardHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
 }
 
 .headerTitle {

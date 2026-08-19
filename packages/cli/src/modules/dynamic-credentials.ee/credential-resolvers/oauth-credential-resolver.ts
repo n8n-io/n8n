@@ -214,15 +214,6 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 		await identifier.validateOptions(parsedOptions);
 	}
 
-	/**
-	 * Audience enforcement is opt-in in both validation methods, so a resolver without
-	 * an expected audience accepts tokens that are not bound to this instance. Those
-	 * keep working, but should be updated.
-	 */
-	needsConfigurationUpdate(config: CredentialResolverConfiguration): boolean {
-		return !config.expectedAudience;
-	}
-
 	private async getIdentifier(
 		options: CredentialResolverConfiguration,
 	): Promise<[ITokenIdentifier, OAuthCredentialResolverOptions]> {
