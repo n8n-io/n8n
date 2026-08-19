@@ -168,7 +168,7 @@ test.describe(
 								.getPreviewRunWorkflowButton()
 								.isEnabled()
 								.catch(() => false),
-						{ intervals: [500, 1_000, 2_000], timeout: 60_000 },
+						{ intervals: [500, 1_000, 2_000], timeout: 10_000 },
 					)
 					.toBe(true);
 
