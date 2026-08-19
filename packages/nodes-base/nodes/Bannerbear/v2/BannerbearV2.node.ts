@@ -38,6 +38,12 @@ import {
 	animationTemplateOperations,
 } from './AnimationDescription';
 
+/** V5 list endpoints return at most this many rows per page. */
+const PAGE_SIZE = 25;
+
+/** Backstop so a misbehaving endpoint cannot spin the paginator forever. */
+const MAX_LIST_PAGES = 200;
+
 /** n8n uses camelCase parameter names; the API uses kebab-case layer properties. */
 const LAYER_PROPERTY_NAMES: IDataObject = {
 	backgroundColor: 'background-color',
@@ -264,12 +270,7 @@ export class BannerbearV2 implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const templates = (await bannerbearApiRequest.call(
-							this,
-							'GET',
-							'/image_templates',
-						)) as IDataObject[];
-						responseData = applyLimit(this, templates, i);
+						responseData = await fetchList(this, '/image_templates', i);
 					}
 				}
 
@@ -292,12 +293,7 @@ export class BannerbearV2 implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const workflows = (await bannerbearApiRequest.call(
-							this,
-							'GET',
-							'/workflows',
-						)) as IDataObject[];
-						responseData = applyLimit(this, workflows, i);
+						responseData = await fetchList(this, '/workflows', i);
 					}
 				}
 
@@ -312,12 +308,7 @@ export class BannerbearV2 implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const runs = (await bannerbearApiRequest.call(
-							this,
-							'GET',
-							'/workflow_runs',
-						)) as IDataObject[];
-						responseData = applyLimit(this, runs, i);
+						responseData = await fetchList(this, '/workflow_runs', i);
 					}
 				}
 
@@ -338,12 +329,7 @@ export class BannerbearV2 implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const animations = (await bannerbearApiRequest.call(
-							this,
-							'GET',
-							'/animations',
-						)) as IDataObject[];
-						responseData = applyLimit(this, animations, i).map((animation) =>
+						responseData = (await fetchList(this, '/animations', i)).map((animation) =>
 							flattenAnimationFiles(animation),
 						);
 					}
@@ -360,12 +346,7 @@ export class BannerbearV2 implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const templates = (await bannerbearApiRequest.call(
-							this,
-							'GET',
-							'/animation_templates',
-						)) as IDataObject[];
-						responseData = applyLimit(this, templates, i);
+						responseData = await fetchList(this, '/animation_templates', i);
 					}
 				}
 
@@ -420,13 +401,48 @@ export class BannerbearV2 implements INodeType {
  * that a plain boolean could not express.
  */
 const LAYER_FIELD_DEFAULTS: IDataObject = {
-	opacity: 1,
 	ratingScore: 0,
 };
 
-function applyLimit(ctx: IExecuteFunctions, items: IDataObject[], i: number): IDataObject[] {
-	if (ctx.getNodeParameter('returnAll', i)) return items;
-	return items.slice(0, ctx.getNodeParameter('limit', i) as number);
+/** A value may arrive as a real boolean from an expression, or as a string from the picker. */
+function toBoolean(value: unknown): boolean {
+	if (typeof value === 'boolean') return value;
+	return ['true', 'yes', '1'].includes(String(value).trim().toLowerCase());
+}
+
+/**
+ * V5 list endpoints are paginated, so a single GET only yields the first page.
+ * Walk pages until one comes back short, or until enough rows are in hand to
+ * satisfy a limited request.
+ */
+async function fetchList(
+	ctx: IExecuteFunctions,
+	resource: string,
+	i: number,
+): Promise<IDataObject[]> {
+	const returnAll = ctx.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? Infinity : (ctx.getNodeParameter('limit', i) as number);
+
+	const items: IDataObject[] = [];
+	for (let page = 1; page <= MAX_LIST_PAGES; page++) {
+		const batch = (await bannerbearApiRequest.call(
+			ctx,
+			'GET',
+			resource,
+			{},
+			{
+				page,
+			},
+		)) as IDataObject[];
+
+		if (!Array.isArray(batch) || batch.length === 0) break;
+		items.push(...batch);
+
+		if (items.length >= limit) break;
+		if (batch.length < PAGE_SIZE) break;
+	}
+
+	return returnAll ? items : items.slice(0, limit);
 }
 
 function buildLayerObjects(rows: IDataObject[]): IDataObject[] {
@@ -442,7 +458,7 @@ function buildLayerObjects(rows: IDataObject[]): IDataObject[] {
 			if (LAYER_FIELD_DEFAULTS[name] === value) continue;
 
 			const key = (LAYER_PROPERTY_NAMES[name] as string) ?? name;
-			object[key] = name === 'hidden' ? value === 'true' : value;
+			object[key] = name === 'hidden' ? toBoolean(value) : value;
 		}
 
 		if (Object.keys(object).length > 1) objects.push(object);

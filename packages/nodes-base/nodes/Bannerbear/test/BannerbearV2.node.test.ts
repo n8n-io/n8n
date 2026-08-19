@@ -102,9 +102,7 @@ describe('Bannerbear node -> image', () => {
 				additionalFields: {},
 				waitForImage: false,
 				modificationsUi: {
-					modificationsValues: [
-						{ id: 'title', text: 'Hello', hidden: '', opacity: 1, ratingScore: 0 },
-					],
+					modificationsValues: [{ id: 'title', text: 'Hello', hidden: '', ratingScore: 0 }],
 				},
 			},
 			[{ uid: 'i2', status: 'pending' }],
@@ -114,6 +112,48 @@ describe('Bannerbear node -> image', () => {
 
 		expect(requestFor(ctx).body.modifications).toEqual({
 			objects: [{ id: 'title', text: 'Hello' }],
+		});
+	});
+
+	// Regression: `value === 'true'` turned a boolean true from an expression into
+	// false, showing a layer the user asked to hide.
+	it('hides the layer when hidden arrives as a real boolean', async () => {
+		const ctx = execContext(
+			{
+				resource: 'image',
+				operation: 'create',
+				templateId: 'tpl1',
+				additionalFields: {},
+				waitForImage: false,
+				modificationsUi: { modificationsValues: [{ id: 'badge', hidden: true }] },
+			},
+			[{ uid: 'i5', status: 'pending' }],
+		);
+
+		await node.execute.call(ctx);
+
+		expect(requestFor(ctx).body.modifications).toEqual({
+			objects: [{ id: 'badge', hidden: true }],
+		});
+	});
+
+	it('can send an explicit opacity of 1', async () => {
+		const ctx = execContext(
+			{
+				resource: 'image',
+				operation: 'create',
+				templateId: 'tpl1',
+				additionalFields: {},
+				waitForImage: false,
+				modificationsUi: { modificationsValues: [{ id: 'badge', opacity: 1 }] },
+			},
+			[{ uid: 'i6', status: 'pending' }],
+		);
+
+		await node.execute.call(ctx);
+
+		expect(requestFor(ctx).body.modifications).toEqual({
+			objects: [{ id: 'badge', opacity: 1 }],
 		});
 	});
 
@@ -273,6 +313,48 @@ describe('Bannerbear node -> list operations', () => {
 		const [items] = await node.execute.call(ctx);
 
 		expect(items).toHaveLength(3);
+	});
+});
+
+describe('Bannerbear node -> pagination', () => {
+	const page = (n: number, size: number) =>
+		Array.from({ length: size }, (_, k) => ({ uid: `p${n}-${k}` }));
+
+	it('walks every page when Return All is on', async () => {
+		const ctx = execContext({ resource: 'workflowRun', operation: 'getAll', returnAll: true }, [
+			page(1, 25),
+			page(2, 25),
+			page(3, 4),
+		]);
+
+		const [items] = await node.execute.call(ctx);
+
+		expect(items).toHaveLength(54);
+		expect(requestFor(ctx, 0).qs).toEqual({ page: 1 });
+		expect(requestFor(ctx, 2).qs).toEqual({ page: 3 });
+	});
+
+	it('stops fetching once the limit is satisfied', async () => {
+		const ctx = execContext(
+			{ resource: 'workflowRun', operation: 'getAll', returnAll: false, limit: 30 },
+			[page(1, 25), page(2, 25), page(3, 25)],
+		);
+
+		const [items] = await node.execute.call(ctx);
+
+		expect(items).toHaveLength(30);
+		expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+	});
+
+	it('stops on a short page without asking for another', async () => {
+		const ctx = execContext({ resource: 'workflowRun', operation: 'getAll', returnAll: true }, [
+			page(1, 3),
+		]);
+
+		const [items] = await node.execute.call(ctx);
+
+		expect(items).toHaveLength(3);
+		expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 	});
 });
 

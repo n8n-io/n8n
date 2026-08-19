@@ -2,7 +2,7 @@
 	"type": "object",
 	"properties": {
 		"avifUrl": {
-			"type": "string"
+			"type": ["string", "null"]
 		},
 		"completed_at": {
 			"type": "string"
@@ -17,19 +17,19 @@
 			"type": "object"
 		},
 		"imageUrl": {
-			"type": "string"
+			"type": ["string", "null"]
 		},
 		"jpgUrl": {
-			"type": "string"
+			"type": ["string", "null"]
 		},
 		"metadata": {
 			"type": "string"
 		},
 		"pdfUrl": {
-			"type": "string"
+			"type": ["string", "null"]
 		},
 		"pngUrl": {
-			"type": "string"
+			"type": ["string", "null"]
 		},
 		"self": {
 			"type": "string"
@@ -44,7 +44,7 @@
 			"type": "string"
 		},
 		"webpUrl": {
-			"type": "string"
+			"type": ["string", "null"]
 		}
 	},
 	"version": 2

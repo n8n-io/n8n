@@ -112,7 +112,7 @@ export const workflowFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Whether to poll until the run finishes. Most workflows take minutes, so leave this off and use the Bannerbear Trigger on workflow runs instead.',
+			'Whether to poll until the run finishes. Most workflows take minutes, which is longer than a single execution should wait, so leaving this off returns the queued run and lets a later step fetch the result.',
 	},
 	{
 		displayName: 'Max Tries',

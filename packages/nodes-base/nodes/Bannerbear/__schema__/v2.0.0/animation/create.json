@@ -2,7 +2,7 @@
 	"type": "object",
 	"properties": {
 		"animationUrl": {
-			"type": "string"
+			"type": ["string", "null"]
 		},
 		"completed_at": {
 			"type": "string"
@@ -20,10 +20,10 @@
 			"type": "string"
 		},
 		"movUrl": {
-			"type": "string"
+			"type": ["string", "null"]
 		},
 		"mp4Url": {
-			"type": "string"
+			"type": ["string", "null"]
 		},
 		"progress": {
 			"type": "integer"
