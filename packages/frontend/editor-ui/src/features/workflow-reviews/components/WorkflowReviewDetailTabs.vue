@@ -165,6 +165,8 @@ const tabOptions = computed(() => [
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
+	container-name: review-detail;
+	container-type: inline-size;
 }
 
 .tabRow {
@@ -227,21 +229,19 @@ const tabOptions = computed(() => [
 	flex-shrink: 0;
 }
 
-@media (max-width: 60rem) {
+@container review-detail (max-width: 44rem) {
 	.detailBody {
 		flex-direction: column;
 		overflow: auto;
 	}
 
 	.panel {
-		flex: 0 0 auto;
-		order: 1;
+		flex: 1 0 auto;
 		overflow: visible;
 	}
 
 	.activityPanel {
-		flex: 0 0 auto;
-		order: 1;
+		flex: 1 1 0%;
 		overflow: visible;
 		max-width: none;
 		margin-inline-end: 0;

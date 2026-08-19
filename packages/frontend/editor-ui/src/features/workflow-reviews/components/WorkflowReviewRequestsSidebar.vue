@@ -306,7 +306,7 @@ function onListBackgroundClick() {
 
 <style lang="scss" module>
 .sidebar {
-	--review-sidebar--width: max(10rem, 25vw);
+	--review-sidebar--width: max(15rem, 25vw);
 
 	display: flex;
 	flex-direction: column;
