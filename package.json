@@ -159,7 +159,7 @@
       "@tootallnate/once@<=2.0.1": "2.0.1",
       "protobufjs@<=7.6.5": "7.6.5",
       "multer": "2.2.0",
-      "js-yaml": "4.2.0",
+      "js-yaml": "4.3.1",
       "undici@<=7.29.0": "7.29.0",
       "form-data": "4.0.6",
       "esbuild": "0.28.1",
