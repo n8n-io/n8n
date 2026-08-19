@@ -178,13 +178,15 @@ export function buildRequestBodyJsonSchema(
  * invented: the success status is the one `@ApiResponse` declares (and the same one the registry
  * sends), auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
  * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
- * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`. An error
- * body is documented only when that decorator was given a DTO; otherwise the status points at its
- * shared, description-only response file.
+ * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`.
  *
- * Error body schemas are always inlined, never hoisted into a shared component the way success
- * schemas are. Hoisting would move the schema between files as soon as a second route declared the
- * same error, producing a large diff that changes nothing.
+ * An error body is documented only when that decorator was given a DTO. Without one, the status
+ * points at its shared, description-only response file.
+ *
+ * A documented error body is written into the route's own spec file and stays there. Success
+ * schemas are moved into a shared component once a second route uses the same one; doing that for
+ * errors would move the schema to a different file the moment another route declared the same
+ * status, which reads as a large diff that changes nothing.
  */
 function buildResponses(
 	route: ResolvedPublicApiRoute,
