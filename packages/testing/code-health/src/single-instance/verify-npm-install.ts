@@ -1,10 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 
-import { analyze, collectCopies } from './collect-copies.js';
+import { analyze } from './collect-copies.js';
+import { copiesFromLockfile } from './lock-graph.js';
 import type { PackageJsonInfo } from '../utils/package-json-scanner.js';
 import {
 	findPackageJsonFiles,
@@ -33,20 +34,28 @@ function annotate(message: string): void {
 }
 
 /**
- * The scratch install is the one network-bound step, and a registry blip must not read as a
- * dependency finding. Retries only the install; a persistent failure still throws.
+ * Resolve the scratch project's dependency graph and write it to `package-lock.json`.
+ *
+ * `--package-lock-only` reports the tree npm *would* install without fetching a single tarball.
+ * The lockfile records the path of every copy, which is all this check reads — so the ~2500
+ * downloads and unpacks that dominated the step buy nothing.
+ *
+ * This is the one network-bound step, and a registry blip must not read as a dependency finding.
+ * Retries only the resolve; a persistent failure still throws.
  */
-async function installWithRetry(scratch: string, attempts = 3): Promise<void> {
+async function resolveGraphWithRetry(scratch: string, attempts = 3): Promise<void> {
 	for (let attempt = 1; ; attempt++) {
 		try {
 			execFileSync(
 				'npm',
 				[
 					'install',
+					'--package-lock-only',
 					'--no-audit',
 					'--no-fund',
+					// Nothing is unpacked, so no script can run — kept so that stays true if a future
+					// npm resolves `file:` dependencies by preparing them.
 					'--ignore-scripts',
-					'--no-package-lock',
 					// Third-party deprecation notices run to ~2000 lines and bury the report this step
 					// exists to print. Errors still come through.
 					'--loglevel=error',
@@ -56,7 +65,7 @@ async function installWithRetry(scratch: string, attempts = 3): Promise<void> {
 			return;
 		} catch (error) {
 			if (attempt >= attempts) throw error;
-			console.error(`npm install failed (attempt ${attempt}/${attempts}); retrying...`);
+			console.error(`npm resolve failed (attempt ${attempt}/${attempts}); retrying...`);
 			await setTimeout(attempt * 5_000);
 		}
 	}
@@ -248,7 +257,8 @@ function packWorkspacePackages(
  * verifier against it. Local pnpm dev and the `pnpm deploy` closure both apply root
  * `pnpm.overrides`, which hide duplication; those don't travel in published tarballs, so
  * `npm install` can resolve a second copy. Packs with `pnpm pack` (resolving `catalog:`/
- * `workspace:` like publishing does), installs into a scratch dir with npm, then verifies.
+ * `workspace:` like publishing does), has npm resolve the graph those tarballs produce, then
+ * verifies the resolved tree.
  */
 export async function runVerifyNpmInstall(args: string[], rootDir: string): Promise<number> {
 	const reportOnly = args.includes('--report-only');
@@ -276,9 +286,9 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 	mkdirSync(tarballs, { recursive: true });
 	mkdirSync(scratch, { recursive: true });
 
-	// An enforcing-mode finding is the only reason to keep the tree. A report-only run exits 0 so
-	// nothing downstream reads it, and a throw (pack failure, registry outage) leaves nothing worth
-	// inspecting — either way, keeping it just leaks a full node_modules into tmpdir per run.
+	// An enforcing-mode finding is the only reason to keep the resolved lockfile. A report-only run
+	// exits 0 so nothing downstream reads it, and a throw (pack failure, registry outage) leaves
+	// nothing worth inspecting.
 	let keepScratch = false;
 	try {
 		console.log(`Packing ${toPack.length} workspace package(s) (targets: ${targets.length})...`);
@@ -298,12 +308,13 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 			),
 		);
 
-		console.log('Installing into scratch dir with npm...');
-		await installWithRetry(scratch);
+		console.log('Resolving the npm-install graph...');
+		await resolveGraphWithRetry(scratch);
 
-		const { duplicates, failures } = analyze(collectCopies(scratch));
+		const lockfile = join(scratch, 'package-lock.json');
+		const { duplicates, failures } = analyze(copiesFromLockfile(readFileSync(lockfile, 'utf8')));
 
-		console.log(`\nnpm-install closure — scratch: ${scratch}\n`);
+		console.log(`\nnpm-install closure — lockfile: ${lockfile}\n`);
 		const curatedTag = reportOnly ? 'CURATED DUP (report)' : 'FAIL';
 		for (const d of duplicates) {
 			const tag = d.isCurated ? (d.allowed ? 'ALLOWED DUP' : curatedTag) : 'dup (report)';
@@ -327,7 +338,7 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 		console.log('\nOK: no curated duplicates in the npm-install graph.');
 		return 0;
 	} finally {
-		if (keepScratch) console.log(`\nScratch install kept for inspection: ${scratch}`);
+		if (keepScratch) console.log(`\nResolved lockfile kept for inspection: ${scratch}`);
 		else rmSync(work, { recursive: true, force: true });
 	}
 }
