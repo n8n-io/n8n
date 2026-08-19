@@ -180,7 +180,7 @@ onMounted(() => {
 
 /* The detail body stacks and takes over scrolling here, so the feed must bound itself or its
 	load-older sentinel never leaves the screen and drains every page. */
-@media (max-width: 60rem) {
+@container review-detail (max-width: 44rem) {
 	.feed {
 		max-height: 60vh;
 	}
