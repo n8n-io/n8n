@@ -906,6 +906,29 @@ describe('ExecutionService', () => {
 			);
 			expect(activeExecutions.getActiveExecutions).not.toHaveBeenCalled();
 		});
+
+		it('should forward startedAfter and startedBefore to the query', async () => {
+			executionPersistence.findManyInWorkflows.mockResolvedValue([]);
+			executionRepository.countInWorkflows.mockResolvedValue(0);
+			const startedAfter = '2024-01-01T00:00:00.000Z';
+			const startedBefore = '2024-12-31T23:59:59.999Z';
+
+			await executionService.findManyAndCount(['wf-1'], {
+				limit: 10,
+				startedAfter,
+				startedBefore,
+			});
+
+			expect(executionPersistence.findManyInWorkflows).toHaveBeenCalledWith(
+				['wf-1'],
+				expect.objectContaining({ startedAfter, startedBefore }),
+				undefined,
+			);
+			expect(executionRepository.countInWorkflows).toHaveBeenCalledWith(
+				['wf-1'],
+				expect.objectContaining({ startedAfter, startedBefore }),
+			);
+		});
 	});
 
 	describe('delete', () => {
