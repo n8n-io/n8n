@@ -1,5 +1,5 @@
 import type { Mock } from 'vitest';
-import { SandboxAcquisitionError } from '@n8n/agents/sandbox';
+import { SandboxAcquisitionError, SandboxNotReadyError } from '@n8n/agents/sandbox';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
@@ -433,6 +433,26 @@ describe('InstanceAiSandboxService', () => {
 				(error: unknown) => error instanceof OperationalError && error.cause === acquisitionError,
 			);
 			expect(workspace.destroy).toHaveBeenCalledTimes(1);
+		});
+
+		it('rethrows classified acquisition errors unwrapped so they stay reportable', async () => {
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+			});
+
+			const notReady = new SandboxNotReadyError('sandbox did not become ready (state: restoring)');
+			const workspace = {
+				init: vi.fn(async () => {
+					throw notReady;
+				}),
+				destroy: vi.fn(async () => {}),
+			};
+			(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+			(createWorkspace as Mock).mockReturnValue(workspace);
+
+			await expect(
+				service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
+			).rejects.toBe(notReady);
 		});
 
 		it('serializes workspace creation for concurrent calls on the same thread', async () => {

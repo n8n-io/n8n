@@ -419,8 +419,13 @@ export class InstanceAiSandboxService {
 			} catch {
 				// Best-effort cleanup when the sandbox cannot start
 			}
-			if (error instanceof SandboxAcquisitionError) {
-				// Acquisition failures are transient infra conditions, not code bugs.
+			// Only the generic transient wrap is downgraded to a non-reported warning.
+			// Classified subclasses (name conflict, sandbox not ready) keep their identity
+			// so they stay visible in Sentry as distinct issues.
+			if (
+				error instanceof SandboxAcquisitionError &&
+				error.constructor === SandboxAcquisitionError
+			) {
 				throw new OperationalError(error.message, { cause: error });
 			}
 			throw error;
