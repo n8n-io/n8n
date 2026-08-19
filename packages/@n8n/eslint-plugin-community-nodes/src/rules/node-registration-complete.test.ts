@@ -26,6 +26,10 @@ const versionedEntryNode = '/tmp/nodes/SoterGuard/SoterGuard.node.ts';
 const versionedV1Node = '/tmp/nodes/SoterGuard/v1/SoterGuardV1.node.ts';
 const versionedV2Node = '/tmp/nodes/SoterGuard/v2/SoterGuardV2.node.ts';
 
+// A sibling node file in the same directory as a registered node (not nested in a
+// version subdirectory) is not a versioned implementation and must still be flagged.
+const fooSiblingNode = '/tmp/nodes/Foo/FooExtra.node.ts';
+
 const ruleTester = new RuleTester();
 
 function setup(onDisk: string[], registered: string[]): void {
@@ -90,6 +94,18 @@ ruleTester.run('node-registration-complete', NodeRegistrationCompleteRule, {
 				{ messageId: 'nodeNotRegistered', data: { nodeFile: 'nodes/Foo/Foo.node.ts' } },
 				{ messageId: 'nodeNotRegistered', data: { nodeFile: 'nodes/Bar/Bar.node.ts' } },
 			],
+		},
+		{
+			// The unregistered file sits directly beside a registered node, not in a
+			// version subdirectory, so it is not covered by the versioned-node entry
+			// and must still be reported.
+			name: 'unregistered sibling in a registered node directory is still flagged',
+			filename: packageJsonPath,
+			code: '{ "name": "n8n-nodes-example", "n8n": { "nodes": ["dist/nodes/Foo/Foo.node.js"] } }',
+			before() {
+				setup([fooNode, fooSiblingNode], [fooNode]);
+			},
+			errors: [{ messageId: 'nodeNotRegistered', data: { nodeFile: 'nodes/Foo/FooExtra.node.ts' } }],
 		},
 		{
 			name: 'node files exist on disk but there is no n8n object',
