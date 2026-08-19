@@ -15,7 +15,6 @@ import {
 	UserRepository,
 	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
-	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -57,7 +56,6 @@ let authorRepository: WorkflowReviewRequestAuthorRepository;
 let reviewerRepository: WorkflowReviewRequestReviewerRepository;
 let userRepository: UserRepository;
 let publishHistoryRepository: WorkflowPublishHistoryRepository;
-let publishedVersionRepository: WorkflowPublishedVersionRepository;
 let workflowEntityRepository: WorkflowRepository;
 let workflowHistoryRepository: WorkflowHistoryRepository;
 let policyService: WorkflowReviewPolicyService;
@@ -70,7 +68,6 @@ beforeAll(async () => {
 	reviewerRepository = Container.get(WorkflowReviewRequestReviewerRepository);
 	userRepository = Container.get(UserRepository);
 	publishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
-	publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	workflowEntityRepository = Container.get(WorkflowRepository);
 	workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
 	policyService = Container.get(WorkflowReviewPolicyService);
@@ -3267,7 +3264,10 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			name: 'Release candidate',
 		});
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-later' });
-		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-published');
+		await workflowEntityRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: 'version-published',
+		});
 		const request = await seedRequest(workflow.id, 'version-pinned', owner);
 		await reviewerRepository.addReviewers(
 			{ workflowReviewRequestId: request.id, userIds: [member.id] },
@@ -3281,7 +3281,7 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 
 		// Auto-publish moved the live pointer to the pinned version; advance it again
 		// so a live read would show the wrong baseline without persistence.
-		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-later');
+		await workflowEntityRepository.update(workflow.id, { activeVersionId: 'version-later' });
 
 		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 
@@ -3312,10 +3312,8 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			.send({ decision: 'approved' })
 			.expect(200);
 
-		// Auto-publish leaves the live version pointing at the pinned one, so reading it
+		// Auto-publish left the live pointer on the pinned version, so reading it
 		// live would diff that version against itself.
-		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-pinned');
-
 		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 
 		expect(response.body.data.state).toBe('closed');
@@ -3326,7 +3324,10 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		const workflow = await createWorkflow({ name: 'Reviewed workflow' }, teamProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-published' });
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
-		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-published');
+		await workflowEntityRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: 'version-published',
+		});
 		const request = await requestRepository.createRequest(
 			{
 				projectId: teamProject.id,

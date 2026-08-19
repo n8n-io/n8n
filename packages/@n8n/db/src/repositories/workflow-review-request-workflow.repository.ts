@@ -2,7 +2,6 @@ import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
-import { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
 import {
@@ -32,11 +31,7 @@ export type WorkflowReviewRequestWorkflowDetailRow = {
 
 @Service()
 export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<WorkflowReviewRequestWorkflow> {
-	constructor(
-		dataSource: DataSource,
-		transactionRunner: TransactionRunner,
-		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
-	) {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(WorkflowReviewRequestWorkflow, dataSource.manager, transactionRunner);
 	}
 
@@ -101,8 +96,9 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 
 	/**
 	 * Freeze the live published pointer onto the child row at approval time.
-	 * Reads through the published-version repo with `ctx` so both the SELECT and
-	 * UPDATE share the lock transaction (no second pooled connection).
+	 * Read from the workflow row, which both publication paths maintain — the
+	 * publication-service table exists only on the outbox path. Both the SELECT
+	 * and UPDATE go through `ctx` so they share the lock transaction.
 	 */
 	async captureApprovalBaseline(
 		input: {
@@ -111,10 +107,10 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 		},
 		ctx: OperationContext,
 	): Promise<void> {
-		const publishedVersionId = await this.workflowPublishedVersionRepository.getPublishedVersionId(
-			input.workflowId,
-			ctx,
-		);
+		const workflow = await this.managerFor(ctx).findOne(WorkflowEntity, {
+			select: ['activeVersionId'],
+			where: { id: input.workflowId },
+		});
 
 		await this.managerFor(ctx).update(
 			WorkflowReviewRequestWorkflow,
@@ -122,7 +118,7 @@ export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<Work
 				workflowReviewRequestId: input.workflowReviewRequestId,
 				workflowId: input.workflowId,
 			},
-			{ baselineVersionId: publishedVersionId },
+			{ baselineVersionId: workflow?.activeVersionId ?? null },
 		);
 	}
 
