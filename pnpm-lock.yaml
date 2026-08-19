@@ -133,8 +133,8 @@ catalogs:
       specifier: ^3.1.0
       version: 3.1.0
     vm2:
-      specifier: 3.11.4
-      version: 3.11.4
+      specifier: 3.11.6
+      version: 3.11.6
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
@@ -1386,7 +1386,7 @@ importers:
         version: 7.29.0
       vm2:
         specifier: 'catalog:'
-        version: 3.11.4
+        version: 3.11.6
       weaviate-client:
         specifier: 3.6.2
         version: 3.6.2(encoding@0.1.13)
@@ -3232,7 +3232,7 @@ importers:
         version: 11.1.1
       vm2:
         specifier: 'catalog:'
-        version: 3.11.4
+        version: 3.11.6
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -17701,8 +17701,8 @@ packages:
   vm-browserify@1.1.2:
     resolution: {integrity: sha512-2ham8XPWTONajOR0ohOKOHXkm3+gaBmGut3SRuu75xLd/RRaY6vqgh8NBYYk7+RW3u5AtzPQZG8F10LHkl0lAQ==}
 
-  vm2@3.11.4:
-    resolution: {integrity: sha512-3assDRyB+A9/5rjECD2e2FAlezOfzCqejZy0L36zij4LgzoWZRA3a26q3PZnl6o5PmNjrTBRbAWACpdK/Y3qOQ==}
+  vm2@3.11.6:
+    resolution: {integrity: sha512-35hVTcKieg7jJMntHhgWT5c2a1J2vmpXm66Xs1Z8ayHOJTj8rzIlXKzba3nO1Om/sonmnkjlAOMt9p8lYJXsWw==}
     engines: {node: '>=6.0'}
     hasBin: true
 
@@ -26406,6 +26406,16 @@ snapshots:
       - debug
       - supports-color
 
+  axios@1.18.0(debug@4.4.3):
+    dependencies:
+      follow-redirects: 1.16.0(debug@4.4.3)
+      form-data: 4.0.6
+      https-proxy-agent: 5.0.1
+      proxy-from-env: 2.1.0
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
   b4a@1.6.7: {}
 
   babel-jest@29.6.2(@babel/core@7.28.4):
@@ -29857,7 +29867,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.18.0(debug@4.4.1)
+      axios: 1.18.0(debug@4.4.3)
       camelcase: 6.3.0
       debug: 4.4.3
       dotenv: 16.6.1
@@ -29867,7 +29877,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.18.0(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.18.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -34232,7 +34242,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.18.0(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.18.0):
     dependencies:
       axios: 1.18.0(debug@4.4.1)
 
@@ -36485,7 +36495,7 @@ snapshots:
 
   vm-browserify@1.1.2: {}
 
-  vm2@3.11.4:
+  vm2@3.11.6:
     dependencies:
       acorn: 8.15.0
       acorn-walk: 8.3.4
