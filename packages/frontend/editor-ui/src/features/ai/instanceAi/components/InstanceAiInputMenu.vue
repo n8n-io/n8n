@@ -110,7 +110,22 @@ function trackInputPlusButtonClick() {
 						:aria-label="i18n.baseText(STATUS_LABEL_KEYS[item.data.status])"
 					>
 						<N8nSpinner v-if="item.data.status === 'connecting'" size="small" />
-						<span v-else :class="[$style.statusDot, $style[item.data.status]]" />
+						<N8nIcon
+							v-else-if="item.data.status === 'connected'"
+							icon="check"
+							size="small"
+							:class="[$style.statusIcon, $style.connected]"
+						/>
+						<span
+							v-else-if="item.id === 'tools'"
+							:class="[$style.statusDot, $style.disconnectedDot]"
+						/>
+						<N8nIcon
+							v-else
+							icon="circle-x"
+							size="small"
+							:class="[$style.statusIcon, $style.disconnected]"
+						/>
 					</span>
 				</N8nText>
 			</template>
@@ -156,6 +171,10 @@ function trackInputPlusButtonClick() {
 	border-radius: 50%;
 }
 
+.statusIcon {
+	flex: 0 0 auto;
+}
+
 .statusIndicator {
 	display: inline-flex;
 	align-items: center;
@@ -167,10 +186,14 @@ function trackInputPlusButtonClick() {
 }
 
 .connected {
-	background: var(--color--success);
+	color: var(--color--success);
 }
 
 .disconnected {
+	color: var(--color--danger);
+}
+
+.disconnectedDot {
 	background: var(--color--danger);
 }
 </style>
