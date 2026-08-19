@@ -8,7 +8,7 @@
 | cronExpression | varchar(255) |  | true |  |  | Cron expression. For kind 'cron' it is the schedule; for 'recurring_cron' it lists the candidate run times that the every-N-periods filter then keeps every Nth of. |
 | enabled | boolean | true | false |  |  | Whether the scheduler considers this job for firing. |
 | fireAt | timestamp(3) with time zone |  | true |  |  | Absolute time the job fires once; set only when kind is 'one_off'. |
-| id | integer |  | false | [public.scheduled_task](public.scheduled_task.md) |  |  |
+| id | integer |  | false | [public.agent_task_schedule](public.agent_task_schedule.md) [public.scheduled_task](public.scheduled_task.md) |  |  |
 | intervalSeconds | integer |  | true |  |  | Gap between fires in seconds; set only when kind is 'interval'. |
 | kind | varchar(16) |  | false |  |  | Recurrence kind; selects which of the schedule columns below apply. |
 | lastFiredAt | timestamp(3) with time zone |  | true |  |  | Last time an occurrence was materialized; used to recompute nextRunAt. |
@@ -67,6 +67,7 @@
 ```mermaid
 erDiagram
 
+"public.agent_task_schedule" |o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
 "public.scheduled_task" }o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
 "public.scheduled_job" }o--o| "public.workflow_published_version" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_published_version(#quot;workflowId#quot;) ON DELETE CASCADE"
 
@@ -92,6 +93,12 @@ erDiagram
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
+}
+"public.agent_task_schedule" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  integer jobId FK
+  varchar_32_ taskId
 }
 "public.scheduled_task" {
   integer attempts

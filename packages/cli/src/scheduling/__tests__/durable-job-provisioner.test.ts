@@ -509,7 +509,7 @@ describe('DurableJobProvisioner', () => {
 			await provisionWithGrace(30.7);
 
 			expect(logger.warn).toHaveBeenCalledWith(
-				"Raised a node's misfire grace to the scheduler's minimum",
+				"Raised an owner's misfire grace to the scheduler's minimum",
 				{
 					workflowId: 'wf',
 					nodeId: 'node',
@@ -526,7 +526,7 @@ describe('DurableJobProvisioner', () => {
 				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
 			]);
 			expect(logger.warn).toHaveBeenCalledWith(
-				"Lowered a node's misfire grace to the scheduler's maximum",
+				"Lowered an owner's misfire grace to the scheduler's maximum",
 				{
 					workflowId: 'wf',
 					nodeId: 'node',
@@ -543,7 +543,7 @@ describe('DurableJobProvisioner', () => {
 				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
 			]);
 			expect(logger.warn).toHaveBeenCalledWith(
-				"Lowered a node's misfire grace to the scheduler's maximum",
+				"Lowered an owner's misfire grace to the scheduler's maximum",
 				{
 					workflowId: 'wf',
 					nodeId: 'node',
@@ -564,7 +564,7 @@ describe('DurableJobProvisioner', () => {
 				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
 			]);
 			expect(logger.warn).toHaveBeenCalledWith(
-				"Raised a node's misfire grace to the scheduler's minimum",
+				"Raised an owner's misfire grace to the scheduler's minimum",
 				{
 					workflowId: 'wf',
 					nodeId: 'node',
@@ -970,6 +970,97 @@ describe('DurableJobProvisioner', () => {
 					ScheduledJobMisfirePolicy.Coalesce,
 				),
 			).rejects.toThrow('Unexpected scheduled job kind');
+		});
+	});
+
+	describe('provisionLinked', () => {
+		/** A linked-owner scope; the callbacks stand in for an owner's link table. */
+		const linkedScope = () => ({
+			taskType: 'agent:scheduled-task',
+			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+			logContext: { agentId: 'agent-1' },
+			findExisting: vi.fn<() => Promise<ScheduledJob[]>>().mockResolvedValue([]),
+			payloadFor: vi.fn((jobName: string) => ({ agentId: 'agent-1', jobName })),
+			linkInserted: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+		});
+
+		it('inserts job rows without a workflow identity, stamping each with its own payload', async () => {
+			jobs.insertMany.mockResolvedValue([100, 101]);
+
+			const summary = await provisioner.provisionLinked(linkedScope(), [
+				desiredJob('agent-task:a:1'),
+				desiredJob('agent-task:a:2'),
+			]);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({
+					name: 'agent-task:a:1',
+					workflowId: null,
+					nodeId: null,
+					taskType: 'agent:scheduled-task',
+					payload: { agentId: 'agent-1', jobName: 'agent-task:a:1' },
+					misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				}),
+				expect.objectContaining({
+					name: 'agent-task:a:2',
+					payload: { agentId: 'agent-1', jobName: 'agent-task:a:2' },
+				}),
+			]);
+			expect(summary.inserted).toEqual([
+				{ id: 100, name: 'agent-task:a:1' },
+				{ id: 101, name: 'agent-task:a:2' },
+			]);
+		});
+
+		it('records ownership links for freshly inserted jobs within the transaction', async () => {
+			jobs.insertMany.mockResolvedValue([100, 101]);
+			const scope = linkedScope();
+
+			await provisioner.provisionLinked(scope, [
+				desiredJob('agent-task:a:1'),
+				desiredJob('agent-task:a:2'),
+			]);
+
+			expect(scope.linkInserted).toHaveBeenCalledWith(manager, [
+				{ id: 100, name: 'agent-task:a:1' },
+				{ id: 101, name: 'agent-task:a:2' },
+			]);
+		});
+
+		it("diffs against the jobs the scope finds, not a workflow node's", async () => {
+			const scope = linkedScope();
+			scope.findExisting.mockResolvedValue([
+				jobRow({
+					name: 'agent-task:a:1',
+					misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				}),
+			]);
+
+			const summary = await provisioner.provisionLinked(scope, [desiredJob('agent-task:a:1')]);
+
+			expect(scope.findExisting).toHaveBeenCalledWith(manager);
+			expect(jobs.findManyByWorkflowNode).not.toHaveBeenCalled();
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, []);
+			expect(summary.unchanged).toEqual([{ id: 10, name: 'agent-task:a:1' }]);
+		});
+	});
+
+	describe('deprovisionJobs', () => {
+		it('deletes exactly the given jobs inside a transaction and reports the count', async () => {
+			jobs.deleteManyByIds.mockResolvedValue(2);
+
+			const result = await provisioner.deprovisionJobs([5, 6]);
+
+			expect(jobs.deleteManyByIds).toHaveBeenCalledWith(manager, [5, 6]);
+			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ removed: 2 });
+		});
+
+		it('short-circuits an empty id list without opening a transaction', async () => {
+			const result = await provisioner.deprovisionJobs([]);
+
+			expect(result).toEqual({ removed: 0 });
+			expect(dataSource.transaction).not.toHaveBeenCalled();
 		});
 	});
 

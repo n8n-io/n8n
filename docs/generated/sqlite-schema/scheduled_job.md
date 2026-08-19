@@ -19,7 +19,7 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 | cronExpression | varchar(255) |  | true |  |  |  |
 | enabled | boolean | true | false |  |  |  |
 | fireAt | datetime(3) |  | true |  |  |  |
-| id | INTEGER |  | false | [scheduled_task](scheduled_task.md) |  |  |
+| id | INTEGER |  | false | [agent_task_schedule](agent_task_schedule.md) [scheduled_task](scheduled_task.md) |  |  |
 | intervalSeconds | INTEGER |  | true |  |  |  |
 | kind | varchar(16) |  | false |  |  |  |
 | lastFiredAt | datetime(3) |  | true |  |  |  |
@@ -66,6 +66,7 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 ```mermaid
 erDiagram
 
+"agent_task_schedule" |o--|| "scheduled_job" : "FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "scheduled_task" }o--|| "scheduled_job" : "FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "scheduled_job" }o--o| "workflow_published_version" : "FOREIGN KEY (workflowId) REFERENCES workflow_published_version (workflowId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -91,6 +92,12 @@ erDiagram
   varchar_64_ timezone
   datetime_3_ updatedAt
   varchar_36_ workflowId FK
+}
+"agent_task_schedule" {
+  varchar_36_ agentId FK
+  datetime_3_ createdAt
+  INTEGER jobId FK
+  varchar_32_ taskId
 }
 "scheduled_task" {
   INTEGER attempts
