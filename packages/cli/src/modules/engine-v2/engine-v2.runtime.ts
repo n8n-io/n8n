@@ -39,9 +39,9 @@ export class EngineV2Runtime {
 		try {
 			await this.initDb();
 
-			this.engine = this.initEngine();
+			this.initEngine();
 
-			this.server = await this.initServer();
+			await this.initServer();
 		} catch (error) {
 			// A half-started engine holds a connection and its worker loops, and the
 			// host has no handle to it, so roll back before surfacing the failure.
@@ -63,14 +63,12 @@ export class EngineV2Runtime {
 			);
 		}
 
-		// Store the data source before connecting, so a failed connect or migration
-		// still leaves a handle for `shutdown()` to release.
 		this.dataSource = createDataSource(databaseUrl);
 		await this.dataSource.initialize();
 		await this.dataSource.runMigrations();
 	}
 
-	private initEngine(): EngineRuntime {
+	private initEngine(): void {
 		assert(this.dataSource, 'Engine 2.0 cannot start without a data source');
 
 		const engine = createEngineRuntime({
@@ -90,13 +88,13 @@ export class EngineV2Runtime {
 		});
 		engine.start();
 
-		return engine;
+		this.engine = engine;
 	}
 
-	private async initServer(): Promise<Server> {
+	private async initServer(): Promise<void> {
 		const { host, port } = this.engineConfig;
 
-		const server = await new Promise<Server>((resolve, reject) => {
+		this.server = await new Promise<Server>((resolve, reject) => {
 			assert(this.engine, 'Engine 2.0 cannot start without an engine runtime');
 
 			const listener = this.engine.app.listen(port, host);
@@ -107,8 +105,6 @@ export class EngineV2Runtime {
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
 		this.logger.info(`Engine 2.0 listening on http://${shownHost}:${port}`);
-
-		return server;
 	}
 
 	/** Releases each resource `init()` reached, in reverse order of acquisition. */
