@@ -1813,6 +1813,32 @@ describe('OauthService', () => {
 			);
 		});
 
+		it('should not delete scope for typeformOAuth2Api credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'typeformOAuth2Api',
+				isManaged: false,
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			vi.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
 		it('should not delete scope for non-OAuth2 credentials', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',

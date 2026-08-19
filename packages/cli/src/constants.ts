@@ -140,6 +140,7 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'googleTasksOAuth2Api',
 	'googleTranslateOAuth2Api',
 	'youTubeOAuth2Api',
+	'typeformOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {
