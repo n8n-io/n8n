@@ -9,22 +9,30 @@ vi.mock('../utils/file-utils.js', async () => {
 	return {
 		...actual,
 		findNodeSourceFilesOnDisk: vi.fn(),
+		findVersionedNodeImplementationFiles: vi.fn(),
 		readPackageJsonNodes: vi.fn(),
 	};
 });
 
 const mockFindNodeSourceFilesOnDisk = vi.mocked(fileUtils.findNodeSourceFilesOnDisk);
+const mockFindVersionedNodeImplementationFiles = vi.mocked(
+	fileUtils.findVersionedNodeImplementationFiles,
+);
 const mockReadPackageJsonNodes = vi.mocked(fileUtils.readPackageJsonNodes);
 
 const packageJsonPath = '/tmp/package.json';
 const fooNode = '/tmp/nodes/Foo/Foo.node.ts';
 const barNode = '/tmp/nodes/Bar/Bar.node.ts';
+const versionedEntry = '/tmp/nodes/SoterGuard/SoterGuard.node.ts';
+const versionedV1 = '/tmp/nodes/SoterGuard/v1/SoterGuardV1.node.ts';
+const versionedV2 = '/tmp/nodes/SoterGuard/v2/SoterGuardV2.node.ts';
 
 const ruleTester = new RuleTester();
 
-function setup(onDisk: string[], registered: string[]): void {
+function setup(onDisk: string[], registered: string[], versionedImpls: string[] = []): void {
 	mockFindNodeSourceFilesOnDisk.mockReturnValue(onDisk);
 	mockReadPackageJsonNodes.mockReturnValue(registered);
+	mockFindVersionedNodeImplementationFiles.mockReturnValue(versionedImpls);
 }
 
 afterEach(() => {
@@ -45,6 +53,19 @@ ruleTester.run('node-registration-complete', NodeRegistrationCompleteRule, {
 			name: 'non-package.json file is ignored',
 			filename: 'some-config.json',
 			code: '{ "name": "n8n-nodes-example" }',
+		},
+		{
+			name: 'versioned node implementation files are exempted via the registered entry class',
+			filename: packageJsonPath,
+			code: '{ "name": "n8n-nodes-example", "n8n": { "nodes": ["dist/nodes/SoterGuard/SoterGuard.node.js"] } }',
+			before() {
+				// v1/v2 exist on disk but are only imported by the registered entry class.
+				setup(
+					[versionedEntry, versionedV1, versionedV2],
+					[versionedEntry],
+					[versionedV1, versionedV2],
+				);
+			},
 		},
 	],
 	invalid: [
@@ -80,6 +101,20 @@ ruleTester.run('node-registration-complete', NodeRegistrationCompleteRule, {
 			code: '{ "name": "n8n-nodes-example" }',
 			before() {
 				setup([fooNode], []);
+			},
+			errors: [{ messageId: 'nodeNotRegistered', data: { nodeFile: 'nodes/Foo/Foo.node.ts' } }],
+		},
+		{
+			name: 'unrelated unregistered files are still flagged alongside exempted versioned implementations',
+			filename: packageJsonPath,
+			code: '{ "name": "n8n-nodes-example", "n8n": { "nodes": ["dist/nodes/SoterGuard/SoterGuard.node.js"] } }',
+			before() {
+				// The versioned entry exempts its v1/v2 imports, but Foo is genuinely unregistered.
+				setup(
+					[versionedEntry, versionedV1, versionedV2, fooNode],
+					[versionedEntry],
+					[versionedV1, versionedV2],
+				);
 			},
 			errors: [{ messageId: 'nodeNotRegistered', data: { nodeFile: 'nodes/Foo/Foo.node.ts' } }],
 		},

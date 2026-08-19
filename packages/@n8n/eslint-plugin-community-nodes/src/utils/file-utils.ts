@@ -7,6 +7,7 @@ import { dirname, parse as parsePath } from 'node:path';
 import {
 	isCredentialTypeClass,
 	isNodeTypeClass,
+	isVersionedNodeTypeClass,
 	findClassProperty,
 	getStringLiteralValue,
 	findArrayLiteralProperty,
@@ -198,6 +199,98 @@ export function readPackageJsonNodes(packageJsonPath: string): string[] {
 	const n8nConfig = readPackageJsonN8n(packageJsonPath);
 	const nodePaths = n8nConfig.nodes ?? [];
 	return resolveN8nFilePaths(packageJsonPath, nodePaths);
+}
+
+/**
+ * Given the registered node files (resolved absolute source paths), returns the
+ * absolute paths of the per-version `.node.ts` implementation files pulled in by
+ * any `VersionedNodeType` entry class among them.
+ *
+ * Versioned nodes register only the entry/base class (e.g. `Merge.node.ts`) in
+ * `n8n.nodes`; the per-version implementations (`v1/MergeV1.node.ts`, …) are
+ * imported by the entry and never listed directly, so `node-registration-complete`
+ * would otherwise flag them. This follows one level of relative imports from each
+ * versioned entry so those files count as registered.
+ *
+ * Fails safe: files that can't be read or parsed are skipped and contribute
+ * nothing, preserving the rule's original behaviour.
+ */
+export function findVersionedNodeImplementationFiles(registeredNodeFiles: string[]): string[] {
+	const implementationFiles: string[] = [];
+
+	for (const registeredFile of registeredNodeFiles) {
+		const ast = parseSourceFile(registeredFile);
+		if (!ast || !isVersionedNodeEntry(ast)) {
+			continue;
+		}
+
+		implementationFiles.push(...resolveImportedNodeFiles(ast, dirname(registeredFile)));
+	}
+
+	return implementationFiles;
+}
+
+function parseSourceFile(filePath: string): TSESTree.Program | null {
+	try {
+		const sourceCode = readFileSync(filePath, 'utf8');
+		return parse(sourceCode, { jsx: false, range: true });
+	} catch {
+		return null;
+	}
+}
+
+function isVersionedNodeEntry(ast: TSESTree.Program): boolean {
+	let isVersioned = false;
+
+	simpleTraverse(ast, {
+		enter(node: TSESTree.Node) {
+			if (node.type === AST_NODE_TYPES.ClassDeclaration && isVersionedNodeTypeClass(node)) {
+				isVersioned = true;
+			}
+		},
+	});
+
+	return isVersioned;
+}
+
+function resolveImportedNodeFiles(ast: TSESTree.Program, baseDir: string): string[] {
+	const resolved: string[] = [];
+
+	simpleTraverse(ast, {
+		enter(node: TSESTree.Node) {
+			if (node.type !== AST_NODE_TYPES.ImportDeclaration) {
+				return;
+			}
+
+			const specifier = getStringLiteralValue(node.source);
+			const sourcePath = specifier ? resolveNodeSourcePath(baseDir, specifier) : null;
+			if (sourcePath) {
+				resolved.push(sourcePath);
+			}
+		},
+	});
+
+	return resolved;
+}
+
+/**
+ * Resolves a relative import specifier to an absolute `.node.ts` path, but only
+ * when it points at a node implementation file that exists on disk. Non-relative
+ * specifiers and non-node imports are ignored.
+ */
+function resolveNodeSourcePath(baseDir: string, specifier: string): string | null {
+	if (!specifier.startsWith('.')) {
+		return null;
+	}
+
+	if (!specifier.endsWith('.node') && !specifier.endsWith('.node.ts')) {
+		return null;
+	}
+
+	const withExtension = specifier.endsWith('.ts') ? specifier : `${specifier}.ts`;
+	const candidate = path.resolve(baseDir, withExtension);
+
+	return existsSync(candidate) ? candidate : null;
 }
 
 function findFilesRecursively(dir: string, matches: (fileName: string) => boolean): string[] {

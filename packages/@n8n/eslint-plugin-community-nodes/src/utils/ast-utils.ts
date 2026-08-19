@@ -29,6 +29,13 @@ export function isCredentialTypeClass(node: TSESTree.ClassDeclaration): boolean 
 	return implementsInterface(node, 'ICredentialType');
 }
 
+export function isVersionedNodeTypeClass(node: TSESTree.ClassDeclaration): boolean {
+	return (
+		node.superClass?.type === AST_NODE_TYPES.Identifier &&
+		node.superClass.name === 'VersionedNodeType'
+	);
+}
+
 /** Matches this plugin's convention for identifying trigger nodes: class name ends with `Trigger`. */
 export function isTriggerNodeClass(node: TSESTree.ClassDeclaration): boolean {
 	return node.id?.name.endsWith('Trigger') ?? false;

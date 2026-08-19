@@ -6,6 +6,7 @@ import {
 	createRule,
 	findJsonProperty,
 	findNodeSourceFilesOnDisk,
+	findVersionedNodeImplementationFiles,
 	readPackageJsonNodes,
 } from '../utils/index.js';
 
@@ -44,6 +45,12 @@ export const NodeRegistrationCompleteRule = createRule({
 				const registered = new Set(
 					readPackageJsonNodes(context.filename).map((filePath) => path.resolve(filePath)),
 				);
+
+				// Versioned nodes register only their entry class; exempt the per-version
+				// implementation files it imports (e.g. `v1/FooV1.node.ts`).
+				for (const implFile of findVersionedNodeImplementationFiles([...registered])) {
+					registered.add(path.resolve(implFile));
+				}
 
 				const packageDir = path.dirname(context.filename);
 				const reportTarget = resolveReportTarget(node);

@@ -44,3 +44,33 @@ Every node file is registered:
   }
 }
 ```
+
+## Versioned nodes
+
+Nodes that use `VersionedNodeType` register **only** their entry/base class in
+`n8n.nodes`. The per-version implementation files are imported by that entry
+class and are never listed directly, e.g.:
+
+```
+nodes/SoterGuard/SoterGuard.node.ts      // entry class extending VersionedNodeType
+nodes/SoterGuard/v1/SoterGuardV1.node.ts // imported by the entry
+nodes/SoterGuard/v2/SoterGuardV2.node.ts // imported by the entry
+```
+
+```json
+{
+  "name": "n8n-nodes-my-service",
+  "n8n": {
+    "nodes": ["dist/nodes/SoterGuard/SoterGuard.node.js"]
+  }
+}
+```
+
+To avoid false positives, this rule detects registered entry classes that
+extend `VersionedNodeType` and exempts the `.node.ts` files they import via
+relative specifiers (resolving one level of imports). The exemption is
+deliberately narrow — only relative imports ending in `.node`/`.node.ts` that
+exist on disk are exempted, so genuinely unregistered node files are still
+flagged. Import-following is used rather than matching on `vN/` directory names,
+which would over-exempt files that merely live in a version folder without being
+wired up.
