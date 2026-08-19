@@ -15,6 +15,7 @@ import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
 	buildCredentialMap,
 	buildCredentialResolutionNote,
+	isN8nCreditsWalletDepleted,
 	resolveCredentials,
 } from './resolve-credentials';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
@@ -1101,7 +1102,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							? mockResult.resolvedCredentialsByNode
 							: undefined,
 						credentialResolutionNote: hasResolvedCredentials
-							? buildCredentialResolutionNote(mockResult.resolvedCredentialsByNode)
+							? buildCredentialResolutionNote(mockResult.resolvedCredentialsByNode, {
+									n8nCreditsDepleted: await isN8nCreditsWalletDepleted(
+										context,
+										mockResult.resolvedCredentialsByNode,
+									),
+								})
 							: undefined,
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
