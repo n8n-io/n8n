@@ -81,7 +81,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `searchPlaceholder?: string` Placeholder for the search field. Defaults to `t('nds.select.searchPlaceholder')` (`Search`).
 - `searchQuery?: string` Controlled search query (`v-model:searchQuery`). Reset to `''` when the dropdown closes.
 - `position?: 'item-aligned' | 'popper'` Positioning mode for the dropdown. Default: `'item-aligned'`.
-- `sideOffset?: number` Distance in pixels from the trigger when `position` is `'popper'`. Default: `5`.
+- `sideOffset?: number` Distance in pixels from the trigger when `position` is `'popper'`. Default: `4`.
 - `contentClass?: string` Additional CSS class(es) applied to the dropdown content container (portaled).
 
 

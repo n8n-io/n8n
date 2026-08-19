@@ -66,7 +66,7 @@ const props = withDefaults(defineProps<SelectProps<M>>(), {
 	variant: 'default',
 	size: 'small',
 	position: 'item-aligned',
-	sideOffset: 5,
+	sideOffset: 4,
 	clearable: false,
 	searchable: false,
 });
