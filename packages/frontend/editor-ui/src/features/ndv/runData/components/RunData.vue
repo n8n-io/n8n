@@ -2,6 +2,7 @@
 import { useStorage } from '@n8n/composables/useStorage';
 import { saveAs } from 'file-saver';
 import NodeSettingsHint from '@/features/ndv/settings/components/NodeSettingsHint.vue';
+import RunDataHints from '@/features/ndv/runData/components/RunDataHints.vue';
 import type {
 	IBinaryData,
 	IConnectedNode,
@@ -1665,7 +1666,9 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<slot v-if="!displaysMultipleNodes" name="before-data" />
+		</div>
 
+		<div v-show="!binaryDataDisplayVisible" data-test-id="run-data-hints">
 			<div v-if="props.calloutMessage || $slots['callout-message']" :class="$style.hintCallout">
 				<N8nCallout theme="info" data-test-id="run-data-callout">
 					<slot name="callout-message">
@@ -1677,16 +1680,10 @@ defineExpose({ enterEditMode });
 				v-if="!props.disableSettingsHint && props.paneType === 'output'"
 				:node="node"
 			/>
-			<N8nCallout
-				v-for="hint in nodeHints"
-				:key="hint.message"
-				:class="$style.hintCallout"
-				:theme="hint.type || 'info'"
-				data-test-id="node-hint"
-			>
-				<N8nText v-n8n-html="hint.message" size="small"></N8nText>
-			</N8nCallout>
+			<RunDataHints v-if="nodeHints.length > 0" :hints="nodeHints" :class="$style.nodeHints" />
+		</div>
 
+		<div v-show="!binaryDataDisplayVisible">
 			<div
 				v-if="showBranchSwitch && !isExecutionRedacted"
 				:class="$style.outputs"
@@ -2290,7 +2287,9 @@ defineExpose({ enterEditMode });
 .dataContainer {
 	position: relative;
 	overflow-y: auto;
-	height: 100%;
+	/* Keep the data area within the space left by header, hints, and pagination. */
+	flex: 1 1 auto;
+	min-height: 0;
 }
 
 .dataDisplay {
@@ -2478,6 +2477,14 @@ defineExpose({ enterEditMode });
 	margin-bottom: var(--spacing--xs);
 	margin-left: var(--ndv--spacing);
 	margin-right: var(--ndv--spacing);
+
+	.compact & {
+		margin: 0 var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs);
+	}
+}
+
+.nodeHints {
+	margin: 0 var(--ndv--spacing) var(--spacing--xs) var(--ndv--spacing);
 
 	.compact & {
 		margin: 0 var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs);

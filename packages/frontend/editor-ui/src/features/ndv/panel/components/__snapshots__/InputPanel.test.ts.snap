@@ -197,10 +197,18 @@ exports[`InputPanel > should render 1`] = `
       <!--v-if-->
       <!--v-if-->
       <!--v-if-->
+    </div>
+    <div
+      data-test-id="run-data-hints"
+      data-v-5b5900d0=""
+    >
       <!--v-if-->
       <!--v-if-->
-      
-      
+      <!--v-if-->
+    </div>
+    <div
+      data-v-5b5900d0=""
+    >
       <!--v-if-->
     </div>
     <div
