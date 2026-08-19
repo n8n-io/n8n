@@ -235,11 +235,13 @@ const tabOptions = computed(() => [
 
 	.panel {
 		flex: 0 0 auto;
+		order: 1;
 		overflow: visible;
 	}
 
 	.activityPanel {
 		flex: 0 0 auto;
+		order: 1;
 		overflow: visible;
 		max-width: none;
 		margin-inline-end: 0;
