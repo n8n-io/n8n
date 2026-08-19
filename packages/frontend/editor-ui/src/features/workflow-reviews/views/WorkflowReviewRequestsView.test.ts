@@ -30,7 +30,7 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 vi.mock('@/features/workflow-reviews/components/WorkflowReviewChangesSection.vue', () => ({
 	default: {
 		name: 'WorkflowReviewChangesSection',
-		props: ['workflow'],
+		props: ['workflow', 'state', 'decision'],
 		template: '<div data-test-id="workflow-review-changes-section" />',
 	},
 }));
