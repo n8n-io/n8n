@@ -51,3 +51,15 @@ export type TriggerOutputs = StepSlots;
 
 /** Slots recorded for a trigger that fired without a payload: no slots at all. */
 export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
+
+export interface StepKey {
+	nodeId: string;
+	iteration: number;
+}
+
+/** A step key in the string form that keys instance-keyed lookups. */
+export type StepKeyId = string;
+
+export function stepKeyId({ nodeId, iteration }: StepKey): StepKeyId {
+	return `${nodeId}@${iteration}`;
+}

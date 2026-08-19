@@ -3,12 +3,12 @@ import type { ExternalDependencies, IStepExecutor } from '../dependencies';
 import type { GraphEdge, GraphNode } from '../graph';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import { isSettledStatus, type StepSlots } from './execution.types';
+import { stepKeyId, isSettledStatus, type StepKeyId, type StepSlots } from './execution.types';
 import type { StepError, StepRecord, StepStore } from './step-store';
 import { validateStepContext } from './validate-step-context';
 
 /**
- * Handles the `step:ready` step event: claims the step (`queued → running`),
+ * Handles the `step:ready` step event: claims the step (`queued -> running`),
  * runs it through the executor for its step type, records the outcome, and
  * reports back to the orchestration worker with `step:settled`.
  *
@@ -117,9 +117,9 @@ export class StepReadyHandler {
 		validateIncomingEdges(incomingEdges, step);
 
 		const predecessorNodeIds = [...new Set(incomingEdges.map((edge) => edge.from))];
-		const predecessorSteps = await this.stepStore.loadStepsByNodeIds(
+		const predecessorSteps = await this.stepStore.loadStepsByKeys(
 			execution.id,
-			predecessorNodeIds,
+			predecessorNodeIds.map((nodeId) => ({ nodeId, iteration: step.iteration })),
 		);
 
 		// Array of length equal to the highest input slot plus one.
@@ -130,7 +130,7 @@ export class StepReadyHandler {
 		);
 
 		for (const edge of incomingEdges) {
-			inputs[edge.inputIndex] = readEdgeValue(edge, predecessorSteps, step);
+			inputs[edge.inputIndex] = readEdgeValue(edge, step, predecessorSteps);
 		}
 
 		return inputs;
@@ -178,10 +178,10 @@ function validateIncomingEdges(incomingEdges: GraphEdge[], step: StepRecord): vo
  */
 function readEdgeValue(
 	edge: GraphEdge,
-	predecessorSteps: Record<string, StepRecord>,
 	step: StepRecord,
+	predecessorSteps: Record<StepKeyId, StepRecord>,
 ): JsonValue {
-	const row = predecessorSteps[edge.from];
+	const row = predecessorSteps[stepKeyId({ nodeId: edge.from, iteration: step.iteration })];
 	if (!row || !isSettledStatus(row.status)) {
 		// A step is planned only once every predecessor settled, so running on
 		// a fabricated empty input would mask a planner/store inconsistency.

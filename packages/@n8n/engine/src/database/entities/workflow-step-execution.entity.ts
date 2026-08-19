@@ -13,9 +13,12 @@ import type { StepError } from '../../execution/step-store';
 import { generateId } from '../generate-id';
 
 @Entity('workflow_step_execution')
-@Index('uniq_workflow_step_execution_execution_id_node_id', ['executionId', 'nodeId'], {
-	unique: true,
-})
+@Index(
+	'uniq_workflow_step_execution_execution_id_node_id_iteration',
+	['executionId', 'nodeId', 'iteration'],
+	{ unique: true },
+)
+@Index('idx_workflow_step_execution_failed', ['executionId'], { where: "status = 'failed'" })
 export class WorkflowStepExecution {
 	@PrimaryColumn('uuid')
 	id!: string;
@@ -25,6 +28,9 @@ export class WorkflowStepExecution {
 
 	@Column('varchar', { name: 'node_id' })
 	nodeId!: string;
+
+	@Column('int', { default: 0 })
+	iteration!: number;
 
 	@Column('varchar', { length: 32 })
 	status!: StepStatus;

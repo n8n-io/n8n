@@ -5,6 +5,9 @@ import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
+	stepKeyId,
+	type StepKey,
+	type StepKeyId,
 	type StepSlots,
 	type StepStatus,
 } from '../execution/execution.types';
@@ -18,8 +21,26 @@ import {
 } from '../execution/step-store';
 
 /** RETURNING rows come back keyed by database column name (snake_case). */
-type InsertedStepRow = { id: string; node_id: string };
-type ClaimedStepRow = { id: string; execution_id: string; node_id: string };
+type InsertedStepRow = { id: string; node_id: string; iteration: number };
+type ClaimedStepRow = { id: string; execution_id: string; node_id: string; iteration: number };
+
+/**
+ * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
+ * the key filter is a row-value comparison no query-builder helper covers.
+ */
+function stepKeyFilter(keys: StepKey[]): {
+	fragment: string;
+	parameters: Record<string, string | number>;
+} {
+	const tuples: string[] = [];
+	const parameters: Record<string, string | number> = {};
+	keys.forEach(({ nodeId, iteration }, index) => {
+		tuples.push(`(:n${index}, :i${index})`);
+		parameters[`n${index}`] = nodeId;
+		parameters[`i${index}`] = iteration;
+	});
+	return { fragment: `(step.node_id, step.iteration) IN (${tuples.join(', ')})`, parameters };
+}
 
 /** TypeORM-backed `StepStore` adapter. */
 export class TypeOrmStepStore implements StepStore {
@@ -28,7 +49,7 @@ export class TypeOrmStepStore implements StepStore {
 	async createSteps(
 		executionId: string,
 		records: NewStepRecord[],
-	): Promise<Array<{ id: string; nodeId: string }>> {
+	): Promise<Array<{ id: string } & StepKey>> {
 		if (records.length === 0) return [];
 
 		for (const record of records) assertCreatableRecord(record);
@@ -61,10 +82,14 @@ export class TypeOrmStepStore implements StepStore {
 				.into(WorkflowStepExecution)
 				.values(rows)
 				.orIgnore()
-				.returning(['id', 'nodeId'])
+				.returning(['id', 'nodeId', 'iteration'])
 				.execute();
 
-			return (result.raw as InsertedStepRow[]).map(({ id, node_id: nodeId }) => ({ id, nodeId }));
+			return (result.raw as InsertedStepRow[]).map(({ id, node_id: nodeId, iteration }) => ({
+				id,
+				nodeId,
+				iteration,
+			}));
 		});
 	}
 
@@ -106,7 +131,7 @@ export class TypeOrmStepStore implements StepStore {
 					)`,
 					{ executionId: execution.id },
 				)
-				.returning(['id', 'executionId', 'nodeId'])
+				.returning(['id', 'executionId', 'nodeId', 'iteration'])
 				.execute();
 
 			const [row] = result.raw as ClaimedStepRow[];
@@ -116,6 +141,7 @@ export class TypeOrmStepStore implements StepStore {
 				id: row.id,
 				executionId: row.execution_id,
 				nodeId: row.node_id,
+				iteration: row.iteration,
 				status: 'running',
 				outputs: null,
 				error: null,
@@ -165,34 +191,42 @@ export class TypeOrmStepStore implements StepStore {
 		return result.affected === 1;
 	}
 
-	async loadStepsByNodeIds(
+	async loadStepsByKeys(
 		executionId: string,
-		nodeIds: string[],
-	): Promise<Record<string, StepRecord>> {
-		if (nodeIds.length === 0) return {};
+		keys: StepKey[],
+	): Promise<Record<StepKeyId, StepRecord>> {
+		if (keys.length === 0) return {};
 
-		const rows = await this.repo.find({ where: { executionId, nodeId: In(nodeIds) } });
-		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
+		const { fragment, parameters } = stepKeyFilter(keys);
+		const rows = await this.repo
+			.createQueryBuilder('step')
+			.where('step.execution_id = :executionId', { executionId })
+			.andWhere(fragment, parameters)
+			.getMany();
+		return Object.fromEntries(rows.map((row) => [stepKeyId(row), row]));
 	}
 
-	async loadStepSummaries(
+	async loadStepSummariesByKeys(
 		executionId: string,
-		nodeIds: string[],
-	): Promise<Record<string, StepSummary>> {
-		if (nodeIds.length === 0) return {};
+		keys: StepKey[],
+	): Promise<Record<StepKeyId, StepSummary>> {
+		if (keys.length === 0) return {};
 
 		// The per-slot booleans are computed inside the query, so the potentially
 		// large outputs payloads are never transferred. A slot counts as filled
 		// unless it holds JSON null.
+		const { fragment, parameters } = stepKeyFilter(keys);
 		const rows: Array<{
 			id: string;
 			nodeId: string;
+			iteration: number;
 			status: StepStatus;
 			filledOutputSlots: boolean[];
 		}> = await this.repo
 			.createQueryBuilder('step')
 			.select('step.id', 'id')
 			.addSelect('step.node_id', 'nodeId')
+			.addSelect('step.iteration', 'iteration')
 			.addSelect('step.status', 'status')
 			.addSelect(
 				`COALESCE(
@@ -203,10 +237,18 @@ export class TypeOrmStepStore implements StepStore {
 				'filledOutputSlots',
 			)
 			.where('step.execution_id = :executionId', { executionId })
-			.andWhere('step.node_id IN (:...nodeIds)', { nodeIds })
+			.andWhere(fragment, parameters)
 			.getRawMany();
 
-		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
+		return Object.fromEntries(rows.map((row) => [stepKeyId(row), row]));
+	}
+
+	async loadLatestStep(executionId: string, nodeId: string): Promise<StepRecord | null> {
+		// NOTE: `findOne({ where })`, not `findOneBy`, as in `loadStep`.
+		return await this.repo.findOne({
+			where: { executionId, nodeId },
+			order: { iteration: 'DESC' },
+		});
 	}
 
 	async countSettledSteps(executionId: string): Promise<number> {
@@ -228,9 +270,15 @@ const CREATION_STATUSES: readonly StepStatus[] = ['queued', 'completed', 'skippe
  */
 function assertCreatableRecord(record: {
 	nodeId: string;
+	iteration: number;
 	status: StepStatus;
 	outputs?: StepSlots;
 }): void {
+	if (!Number.isInteger(record.iteration) || record.iteration < 0) {
+		throw new UnexpectedError(
+			`step for node ${record.nodeId} is created with iteration ${record.iteration}; iterations are non-negative integers`,
+		);
+	}
 	if (!CREATION_STATUSES.includes(record.status)) {
 		throw new UnexpectedError(
 			`step for node ${record.nodeId} is created ${record.status}, a status only reachable through its transition method`,
