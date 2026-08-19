@@ -37,6 +37,7 @@ export const MODULE_NAMES = [
 	'n8n-packages',
 	'workflow-reviews',
 	'policy-infrastructure',
+	'type-availability-policies',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];
