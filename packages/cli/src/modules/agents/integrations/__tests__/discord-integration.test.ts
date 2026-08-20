@@ -61,6 +61,7 @@ function connectionContext(
 	return {
 		agentId: AGENT_ID,
 		projectId: 'project-1',
+		integration: { type: 'discord', credentialId: CREDENTIAL_ID },
 		credentialId: CREDENTIAL_ID,
 		credential: {
 			botToken: BOT_TOKEN,

@@ -46,7 +46,11 @@ describe('SlackMethodsService', () => {
 			id: 'credential-1',
 		} as never);
 		managementService.connect.mockResolvedValue({
-			integration: { type: 'slack', credentialId: 'credential-1' },
+			integration: {
+				type: 'slack',
+				credentialId: 'credential-1',
+				settings: { messagingExperience: 'agent' },
+			},
 			savedAgent: agent,
 		});
 		await service.connectBotCredential(agent, user as never, 'xoxb-token', {
@@ -75,7 +79,11 @@ describe('SlackMethodsService', () => {
 		expect(managementService.connect).toHaveBeenCalledWith({
 			agent,
 			user,
-			integration: { type: 'slack', credentialId: 'credential-1' },
+			integration: {
+				type: 'slack',
+				credentialId: 'credential-1',
+				settings: { messagingExperience: 'agent' },
+			},
 		});
 	});
 
@@ -85,8 +93,17 @@ describe('SlackMethodsService', () => {
 		const manifest = service.buildManifest('Support Agent', 'project-1', 'agent-1');
 
 		expect(manifest.display_information.name).toBe('Support Agent');
+		expect(manifest.features.agent_view).toEqual({
+			agent_description: 'Chat with Support Agent, an agent powered by n8n.',
+		});
 		expect(manifest.oauth_config).not.toHaveProperty('redirect_urls');
 		expect(manifest.oauth_config.scopes.bot).toContain('chat:write');
+		expect(manifest.settings.event_subscriptions.bot_events).toEqual(
+			expect.arrayContaining(['app_context_changed', 'app_home_opened', 'message.im']),
+		);
+		expect(manifest.settings.event_subscriptions.bot_events).not.toEqual(
+			expect.arrayContaining(['assistant_thread_started', 'assistant_thread_context_changed']),
+		);
 		expect(manifest.settings.event_subscriptions.request_url).toBe(
 			'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
 		);

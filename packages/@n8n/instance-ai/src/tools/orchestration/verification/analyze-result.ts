@@ -11,6 +11,16 @@ import type {
 	WorkflowBuildOutcome,
 	WorkflowLoopState,
 } from '../../../workflow-loop/workflow-loop-state';
+import {
+	buildChatModelFailureGuidance,
+	classifyChatModelFailure,
+	type ChatModelRecoveryContext,
+} from '../../workflows/chat-model-validation';
+
+export type ChatModelRecoveryOptions = Pick<
+	ChatModelRecoveryContext,
+	'suggestionsByNodeName' | 'creditsCoveredNodeNames'
+>;
 
 type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
 
@@ -133,10 +143,72 @@ function messageMatchesAny(normalized: string, keywords: readonly string[]): boo
 	return keywords.some((keyword) => normalized.includes(keyword));
 }
 
+function isChatModelScopedFailure(
+	nodeErrors: ExecutionNodeError[],
+	errorMessage: string | undefined,
+	lastNodeExecuted: string | undefined,
+	chatModelRelatedNodeNames: ReadonlySet<string> | undefined,
+): boolean {
+	if (!chatModelRelatedNodeNames || chatModelRelatedNodeNames.size === 0) return false;
+	if (nodeErrors.some((nodeError) => chatModelRelatedNodeNames.has(nodeError.nodeName))) {
+		return true;
+	}
+	if (lastNodeExecuted && chatModelRelatedNodeNames.has(lastNodeExecuted)) return true;
+	if (!errorMessage) return false;
+	for (const nodeName of chatModelRelatedNodeNames) {
+		if (errorMessage.includes(nodeName)) return true;
+	}
+	return false;
+}
+
+/** Failing node names in match-priority order: erroring nodes first, then the last executed node. */
+function failingNodeCandidates(
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+): string[] {
+	const candidates = nodeErrors.map((nodeError) => nodeError.nodeName);
+	if (lastNodeExecuted) candidates.push(lastNodeExecuted);
+	return candidates;
+}
+
+/**
+ * Suggestions scoped to the identified failing node only. When the failing
+ * node cannot be identified, return none rather than another provider's model
+ * IDs — the guidance then falls back to verified-resource discovery.
+ */
+function replacementSuggestionsForFailure(
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+	suggestionsByNodeName: ChatModelRecoveryOptions['suggestionsByNodeName'] | undefined,
+): string[] {
+	if (!suggestionsByNodeName) return [];
+	for (const name of failingNodeCandidates(nodeErrors, lastNodeExecuted)) {
+		const suggestions = suggestionsByNodeName.get(name);
+		if (suggestions && suggestions.length > 0) return suggestions;
+	}
+	return [];
+}
+
+/** Whether n8n credits cover the identified failing node's credential type. */
+function creditsCoverFailingNode(
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+	creditsCoveredNodeNames: ChatModelRecoveryOptions['creditsCoveredNodeNames'] | undefined,
+): boolean {
+	if (!creditsCoveredNodeNames || creditsCoveredNodeNames.size === 0) return false;
+	return failingNodeCandidates(nodeErrors, lastNodeExecuted).some((name) =>
+		creditsCoveredNodeNames.has(name),
+	);
+}
+
 function classifyVerificationFailure(
 	error: string | undefined,
 	status: string | undefined,
 	buildOutcome: WorkflowBuildOutcome,
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+	chatModelRelatedNodeNames: ReadonlySet<string> | undefined,
+	chatModelRecovery: ChatModelRecoveryOptions | undefined,
 ): RemediationMetadata {
 	if (status === 'waiting') {
 		const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
@@ -168,6 +240,17 @@ function classifyVerificationFailure(
 	}
 
 	if (messageMatchesAny(normalized, CREDENTIAL_FAILURE_KEYWORDS)) {
+		const quotaGuidance =
+			normalized.includes('quota') &&
+			isChatModelScopedFailure(nodeErrors, error, lastNodeExecuted, chatModelRelatedNodeNames)
+				? creditsCoverFailingNode(
+						nodeErrors,
+						lastNodeExecuted,
+						chatModelRecovery?.creditsCoveredNodeNames,
+					)
+					? " If the user's own key or free tier is exhausted, switch the chat-model node to n8n credits or another provider they can run."
+					: " If the user's own key or free tier is exhausted, switch the chat-model node to another provider or key the user can run."
+				: '';
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,
@@ -176,7 +259,7 @@ function classifyVerificationFailure(
 				: 'credential_or_setup_failure',
 			guidance: hasMockedCredentialContext
 				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to workflows(action="setup").'
-				: 'Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflows(action="setup").',
+				: `Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflows(action="setup").${quotaGuidance}`,
 		});
 	}
 
@@ -187,6 +270,33 @@ function classifyVerificationFailure(
 			reason: 'external_service_or_timeout',
 			guidance:
 				'Workflow submitted successfully, but verification is blocked by an external service or timeout. Stop code edits and explain the blocker to the user.',
+		});
+	}
+
+	const modelFailureKind = classifyChatModelFailure(error);
+	if (
+		modelFailureKind !== undefined &&
+		error &&
+		isChatModelScopedFailure(nodeErrors, error, lastNodeExecuted, chatModelRelatedNodeNames)
+	) {
+		return createRemediation({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'chat_model_failure',
+			guidance: buildChatModelFailureGuidance(
+				modelFailureKind,
+				error,
+				replacementSuggestionsForFailure(
+					nodeErrors,
+					lastNodeExecuted,
+					chatModelRecovery?.suggestionsByNodeName,
+				),
+				creditsCoverFailingNode(
+					nodeErrors,
+					lastNodeExecuted,
+					chatModelRecovery?.creditsCoveredNodeNames,
+				),
+			),
 		});
 	}
 
@@ -297,8 +407,25 @@ export function analyzeVerificationResult(args: {
 	haltedGateNames?: string[];
 	stateBefore: WorkflowLoopState | undefined;
 	runId: string;
+	/**
+	 * Chat-model nodes plus parents they feed via `ai_languageModel`. Model
+	 * failure keywords are only applied when the failure is scoped to these
+	 * nodes — never globally.
+	 */
+	chatModelRelatedNodeNames?: ReadonlySet<string>;
+	/** Precomputed replacement suggestions and n8n-credits availability for chat-model recovery guidance. */
+	chatModelRecovery?: ChatModelRecoveryOptions;
 }): VerificationAnalysis {
-	const { result, buildOutcome, simulatedNodes, haltedGateNames, stateBefore, runId } = args;
+	const {
+		result,
+		buildOutcome,
+		simulatedNodes,
+		haltedGateNames,
+		stateBefore,
+		runId,
+		chatModelRelatedNodeNames,
+		chatModelRecovery,
+	} = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
 		result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
@@ -321,6 +448,10 @@ export function analyzeVerificationResult(args: {
 				// Only escalate a clean status; 'waiting' must keep its needs_setup routing.
 				nodeErrors.length > 0 && result.status === 'success' ? 'error' : result.status,
 				buildOutcome,
+				nodeErrors,
+				result.lastNodeExecuted,
+				chatModelRelatedNodeNames,
+				chatModelRecovery,
 			);
 	const budgetRemediation =
 		failureRemediation?.shouldEdit === true
