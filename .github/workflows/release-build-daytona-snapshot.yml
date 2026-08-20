@@ -53,11 +53,6 @@ jobs:
     strategy:
       # Publish to every environment even if one fails, so a partial outage is visible.
       fail-fast: false
-      # Serialize dev and prod: they build byte-identical image content in separate
-      # Daytona orgs, and concurrent builds collide on a Daytona-internal shared
-      # resource ("an operation is already in progress" — observed on 2.36.3, where
-      # the prod build failed inside the dev build's window).
-      max-parallel: 1
       matrix:
         environment: [dev, prod]
     steps:
