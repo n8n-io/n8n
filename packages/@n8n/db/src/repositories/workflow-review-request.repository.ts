@@ -1,4 +1,3 @@
-import type { WorkflowReviewClosedReason } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { WorkflowSharingRole } from '@n8n/permissions';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
@@ -102,12 +101,6 @@ export type InboxStateCounts = {
 	closed: number;
 };
 
-/** An open request the reconciliation sweep closed, and what made its workflow unreviewable. */
-export type ClosedUnreviewableRequest = {
-	id: string;
-	reason: WorkflowReviewClosedReason;
-};
-
 /** One row per (open request, linked workflow); a request with no link left yields one empty row. */
 type OpenRequestWorkflowRow = {
 	requestId: string;
@@ -118,26 +111,16 @@ type OpenRequestWorkflowRow = {
 	owningProjectId: string | null;
 };
 
-/** Most to least definitive: one workflow can be several of these at once. */
-const CLOSE_REASON_PRECEDENCE: WorkflowReviewClosedReason[] = [
-	'workflow-deleted',
-	'workflow-archived',
-	'workflow-moved',
-];
-
-function closeReasonFor(row: OpenRequestWorkflowRow): WorkflowReviewClosedReason | null {
+/** Reviewable: the linked workflow exists, is not archived, and still belongs to the request's project. */
+function isReviewable(row: OpenRequestWorkflowRow): boolean {
 	// Nothing behind the link: either the request has no link row left, or it points at a
 	// workflow that is gone. Both mean the delete cascade got there first.
-	if (row.linkedWorkflowId === null) return 'workflow-deleted';
+	if (row.linkedWorkflowId === null) return false;
 
-	if (row.isArchived) return 'workflow-archived';
+	if (row.isArchived) return false;
 
 	// A workflow with no owning project at all is a broken row, not a move — leave it alone.
-	if (row.owningProjectId !== null && row.owningProjectId !== row.requestProjectId) {
-		return 'workflow-moved';
-	}
-
-	return null;
+	return row.owningProjectId === null || row.owningProjectId === row.requestProjectId;
 }
 
 @Service()
@@ -187,10 +170,10 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	}
 
 	/**
-	 * Closes every open request whose workflow can no longer be reviewed — deleted, archived, or
-	 * moved out of the request's project — reporting each id with the reason that closed it.
+	 * Closes every open request with no reviewable workflow left — every linked workflow deleted,
+	 * archived, or moved out of the request's project — reporting the closed ids.
 	 *
-	 * Matches on the workflow's current state rather than on the mutation that changed it, so it
+	 * Matches on the workflows' current state rather than on the mutation that changed it, so it
 	 * catches what the per-mutation hooks cannot: reviews a delete cascade unlinked before a hook
 	 * could find them by workflow id, mutations that skip the hooks entirely, and hooks whose
 	 * close rolled back after their mutation had already committed.
@@ -198,7 +181,7 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	 * Keys off the ids selected rather than off the state, so the caller must hold the
 	 * review-request lock.
 	 */
-	async closeUnreviewableOpenRequests(ctx: OperationContext): Promise<ClosedUnreviewableRequest[]> {
+	async closeUnreviewableOpenRequests(ctx: OperationContext): Promise<string[]> {
 		const openState: WorkflowReviewRequestState = 'open';
 		const closedState: WorkflowReviewRequestState = 'closed';
 		const ownerRole: WorkflowSharingRole = 'workflow:owner';
@@ -224,32 +207,69 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			.where('review.state = :openState', { openState })
 			.getRawMany<OpenRequestWorkflowRow>();
 
-		const reasonByRequestId = new Map<string, WorkflowReviewClosedReason>();
+		// Same close policy as the per-mutation path: one reviewable workflow keeps the
+		// request open, however many of its siblings are gone.
+		const closableRequestIds = new Set<string>();
+		const requestIdsWithReviewableWorkflow = new Set<string>();
 		for (const row of rows) {
-			const reason = closeReasonFor(row);
-			if (reason === null) continue;
-
-			// A request linked to several workflows gets one row each, so keep the most
-			// definitive reason rather than whichever row the database returned last.
-			const current = reasonByRequestId.get(row.requestId);
-			if (
-				current !== undefined &&
-				CLOSE_REASON_PRECEDENCE.indexOf(current) <= CLOSE_REASON_PRECEDENCE.indexOf(reason)
-			) {
-				continue;
+			if (isReviewable(row)) {
+				requestIdsWithReviewableWorkflow.add(row.requestId);
+			} else {
+				closableRequestIds.add(row.requestId);
 			}
-			reasonByRequestId.set(row.requestId, reason);
+		}
+		for (const requestId of requestIdsWithReviewableWorkflow) {
+			closableRequestIds.delete(requestId);
 		}
 
-		if (reasonByRequestId.size === 0) return [];
+		if (closableRequestIds.size === 0) return [];
 
 		// A system close has no closing user; the decision stays as-is.
-		await manager.update(WorkflowReviewRequest, [...reasonByRequestId.keys()], {
+		await manager.update(WorkflowReviewRequest, [...closableRequestIds], {
 			state: closedState,
 			closedById: null,
 		});
 
-		return [...reasonByRequestId].map(([id, reason]) => ({ id, reason }));
+		return [...closableRequestIds];
+	}
+
+	/**
+	 * Close policy probe: does the request still cover a reviewable workflow — one that exists,
+	 * is not archived, and still belongs to the request's project — outside the given set? The
+	 * caller passes the workflows a mutation just affected; if nothing reviewable remains beyond
+	 * them, the request has nothing left to review and closes.
+	 */
+	async hasReviewableWorkflowOutside(
+		requestId: string,
+		excludedWorkflowIds: string[],
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const ownerRole: WorkflowSharingRole = 'workflow:owner';
+
+		const qb = this.managerFor(ctx)
+			.createQueryBuilder(WorkflowReviewRequest, 'review')
+			.select('1')
+			.innerJoin(WorkflowReviewRequestWorkflow, 'link', 'link.workflowReviewRequestId = review.id')
+			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = link.workflowId')
+			// Left join, like the sweep: a workflow with no owner row is a broken row, not
+			// a move, and {@link isReviewable} keeps it reviewable — dropping it here would
+			// let a targeted close take a request the sweep would leave open.
+			.leftJoin(
+				SharedWorkflow,
+				'shared',
+				'shared.workflowId = link.workflowId AND shared.role = :ownerRole',
+				{ ownerRole },
+			)
+			.where('review.id = :requestId', { requestId })
+			.andWhere('workflow.isArchived = :isArchived', { isArchived: false })
+			.andWhere('(shared.projectId IS NULL OR shared.projectId = review.projectId)')
+			.limit(1);
+
+		if (excludedWorkflowIds.length > 0) {
+			qb.andWhere('link.workflowId NOT IN (:...excludedWorkflowIds)', { excludedWorkflowIds });
+		}
+
+		return (await qb.getRawOne()) !== undefined;
 	}
 
 	async findById(id: string, ctx: OperationContext): Promise<WorkflowReviewRequest | null> {

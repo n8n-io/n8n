@@ -1,3 +1,4 @@
+import type { AgentSessionQueryFilters, AgentSessionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
@@ -75,7 +76,7 @@ export interface ThreadListItem extends Omit<AgentExecutionThread, 'generateId' 
 	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
 	source: string | null;
 	failureSummary: ThreadFailureSummary | null;
-	status: AgentExecutionStatus | null;
+	status: AgentSessionStatus | null;
 }
 
 const TIMELINE_SNAPSHOT_RETRY_DELAY_MS = 1_000;
@@ -503,12 +504,14 @@ export class AgentExecutionService {
 		agentId: string,
 		limit: number,
 		cursor?: string,
+		filters: AgentSessionQueryFilters = {},
 	): Promise<{ threads: ThreadListItem[]; nextCursor: string | null }> {
 		const page = await this.agentExecutionThreadRepository.findByProjectIdPaginated(
 			projectId,
 			agentId,
 			limit,
 			cursor,
+			filters,
 		);
 
 		if (page.threads.length === 0) {
@@ -530,7 +533,7 @@ export class AgentExecutionService {
 				firstMessage: messageMap.get(t.id) ?? null,
 				source: sourceMap.get(t.id) ?? null,
 				failureSummary: failureSummaryMap.get(t.id) ?? null,
-				status: sessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
+				status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
 			})),
 		};
 	}
@@ -610,12 +613,13 @@ export class AgentExecutionService {
 	}
 }
 
-function sessionStatus(
+function toSessionStatus(
 	latestStatus: AgentExecutionStatus | undefined,
 	hasFailureSummary: boolean,
-): AgentExecutionStatus | null {
+): AgentSessionStatus | null {
 	if (!latestStatus) return null;
-	return latestStatus === 'success' && hasFailureSummary ? 'error' : latestStatus;
+	if (latestStatus === 'success') return hasFailureSummary ? 'error' : 'succeeded';
+	return latestStatus;
 }
 
 function cleanUserMessage(message: string | null, agentName: string): string | null {
