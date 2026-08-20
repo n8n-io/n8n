@@ -85,6 +85,30 @@ describe('decorators', () => {
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
 
+	it('should trim whitespace from a direct env value before parsing it with a zod schema', () => {
+		process.env.TEST_VALUE = 'legacy ';
+
+		@Config
+		class TestConfig {
+			@Env('TEST_VALUE', z.enum(['legacy', 'vm']))
+			value: string = 'vm';
+		}
+
+		expect(Container.get(TestConfig).value).toBe('legacy');
+	});
+
+	it('should strip surrounding quotes from an env value before parsing it with a zod schema', () => {
+		process.env.TEST_VALUE = "'legacy'";
+
+		@Config
+		class TestConfig {
+			@Env('TEST_VALUE', z.enum(['legacy', 'vm']))
+			value: string = 'vm';
+		}
+
+		expect(Container.get(TestConfig).value).toBe('legacy');
+	});
+
 	it('should trim trailing newline from _FILE value before parsing it with a zod schema', () => {
 		const filePath = '/path/to/secret';
 		process.env.TEST_VALUE_FILE = filePath;
