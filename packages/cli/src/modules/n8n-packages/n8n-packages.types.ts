@@ -331,21 +331,22 @@ export type ExportPackageEventCounts = {
 };
 
 /**
- * Result of an export: the archive stream plus the true per-entity counts of
- * what actually ended up in the package (after folder bundling and
- * auto-inclusion). Consumers surface these instead of the requested id counts.
+ * Summary of what an export produced: the true per-entity counts of what
+ * actually ended up in the package (after folder bundling and auto-inclusion).
+ * Always available regardless of the sink — consumers surface these instead of
+ * the requested id counts.
  */
-export interface ExportPackageResult {
-	stream: Readable;
+export interface ExportPackageSummary {
 	counts: ExportPackageEventCounts;
 }
 
 /**
- * Result of exporting to a directory (the unzipped format): no stream, since the
- * package is written to disk in place. Consumers surface the same per-entity counts.
+ * Result of an export where the package itself is returned to the caller as an
+ * archive stream, on top of the summary. Contrast with a directory export, which
+ * writes to disk in place and only returns the {@link ExportPackageSummary}.
  */
-export interface ExportPackageToDirectoryResult {
-	counts: ExportPackageEventCounts;
+export interface ExportPackageResult extends ExportPackageSummary {
+	stream: Readable;
 }
 
 /**

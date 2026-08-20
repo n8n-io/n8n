@@ -12,7 +12,7 @@ function normaliseEntryPath(entryPath: string): string {
  * Writes the n8n-packages layout as loose files into a directory (the "unzipped"
  * format), rather than a tar archive.
  */
-export class DirectoryPackageWriter implements PackageWriter<Promise<void>> {
+export class DirectoryPackageWriter implements PackageWriter {
 	constructor(private readonly targetDir: string) {}
 
 	async writeFile(entryPath: string, content: string | Buffer): Promise<void> {

@@ -38,7 +38,7 @@ import {
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageResult,
-	type ExportPackageToDirectoryResult,
+	type ExportPackageSummary,
 	type ImportPackageRequest,
 	type ImportResult,
 } from './n8n-packages.types';
@@ -105,7 +105,7 @@ export class N8nPackagesService {
 	async exportPackageToDirectory(
 		request: ExportPackageRequest,
 		target: { targetDir: string },
-	): Promise<ExportPackageToDirectoryResult> {
+	): Promise<ExportPackageSummary> {
 		const writer = new DirectoryPackageWriter(target.targetDir);
 		const result = await this.writeExport(writer, request);
 		await writer.finalize();
