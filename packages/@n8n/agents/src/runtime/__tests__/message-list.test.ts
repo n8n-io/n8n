@@ -515,3 +515,37 @@ describe('AgentMessageList — setToolCallError', () => {
 		expect((block as unknown as { output?: unknown }).output).toBeUndefined();
 	});
 });
+
+describe('AgentMessageList — markToolCallSuspended', () => {
+	it('stamps suspension info on a pending tool-call block', () => {
+		const list = new AgentMessageList();
+		list.addResponse([makePendingToolCallMsg('id-1')]);
+
+		list.markToolCallSuspended('id-1', { message: 'Edit My Workflow (ID: abc)?', requestId: 'r1' });
+
+		const host = list
+			.turnDelta()
+			.find((m) => 'content' in m && m.content.some((c) => c.type === 'tool-call')) as Message;
+		const block = host.content.find((c) => c.type === 'tool-call') as ContentToolCall & {
+			state: 'pending';
+		};
+		expect(block.state).toBe('pending');
+		expect(block.suspension).toEqual({ message: 'Edit My Workflow (ID: abc)?', requestId: 'r1' });
+	});
+
+	it('is a no-op for settled blocks and unknown ids', () => {
+		const list = new AgentMessageList();
+		list.addResponse([makePendingToolCallMsg('id-1')]);
+		list.setToolCallResult('id-1', { ok: true });
+
+		list.markToolCallSuspended('id-1', { message: 'stale' });
+		list.markToolCallSuspended('missing', { message: 'stale' });
+
+		const host = list
+			.turnDelta()
+			.find((m) => 'content' in m && m.content.some((c) => c.type === 'tool-call')) as Message;
+		const block = host.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(block.state).toBe('resolved');
+		expect('suspension' in block).toBe(false);
+	});
+});
