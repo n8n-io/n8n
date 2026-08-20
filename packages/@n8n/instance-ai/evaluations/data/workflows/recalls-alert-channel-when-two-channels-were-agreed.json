@@ -69,5 +69,15 @@
 	"outcomeExpectations": [
 		"The failure alert is posted to #payments-eu — the channel agreed for live alerts — and not to #payments-weekly or to an invented channel such as #general or #alerts.",
 		"The alert path is driven by an inbound webhook trigger fed by the payment provider's failed-charge callback, not by a schedule."
+	],
+	"contextAssertions": [
+		{
+			"text": "#payments-eu",
+			"note": "the live-alert channel agreed in the thread"
+		},
+		{
+			"text": "#payments-weekly",
+			"note": "the competing roll-up channel — present but must not be the alert target"
+		}
 	]
 }
