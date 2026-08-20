@@ -1,6 +1,11 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { getDatabaseOptionsFromPage } from '../../v2/methods/loadOptions';
+import { getDatabaseIdFromPage, getDatabaseOptionsFromPage } from '../../v2/methods/loadOptions';
+
+vi.mock('../../shared/GenericFunctions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../../shared/GenericFunctions')>()),
+	notionApiRequest: vi.fn().mockResolvedValue({ parent: {}, properties: {} }),
+}));
 
 function createLoadOptionsContext(parameters: Record<string, unknown>): ILoadOptionsFunctions {
 	return {
@@ -15,5 +20,15 @@ describe('Notion V2 load options', () => {
 		const result = await getDatabaseOptionsFromPage.call(context);
 
 		expect(result).toEqual([]);
+	});
+
+	it('does not throw when the page resource locator has not been resolved to a string', async () => {
+		// The `pageId` resource locator defaults to `{ mode: 'url', value: '' }`, and
+		// `extractValue` leaves it as-is when the value does not match the extraction regexp.
+		const context = createLoadOptionsContext({ pageId: { mode: 'url', value: '' } });
+
+		const result = await getDatabaseIdFromPage.call(context).catch((error: unknown) => error);
+
+		expect(result).not.toBeInstanceOf(TypeError);
 	});
 });

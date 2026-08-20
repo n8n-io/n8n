@@ -182,6 +182,18 @@ describe('Test Notion', () => {
 			}
 		});
 	});
+
+	describe('extractPageId with non-string input', () => {
+		// Callers cast the resolved `pageId` parameter with `as string`, so an unresolved
+		// resource locator object (or any other non-string) reaches extractPageId at runtime.
+		it.each([
+			['a resource locator object', { mode: 'url', value: '' }],
+			['null', null],
+			['a number', 42],
+		])('should not throw when the page is %s', (_, page) => {
+			expect(() => extractPageId(page as unknown as string)).not.toThrow();
+		});
+	});
 });
 
 describe('Test Notion resource locator URL regexes', () => {
