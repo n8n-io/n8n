@@ -1,0 +1,87 @@
+{
+	"description": "Recall probe, mid-depth: the two ground rules for the sync (retry at most three times then write the record to sync_failures, and only sync EMEA records) are stated once at the top of the seeded history, then five messages of unrelated spec detail follow before the live turn. The build is deliberately scoped so the rule-dependent step does not exist yet — the live turn opens the build with the error handling explicitly deferred, and the probe that follows is five words long and names neither the retry count nor the failure table, so it cannot be answered by reading back the workflow the agent already built. Rule values live ONLY in the inline seed, never in the authored script, so the user-proxy cannot leak them; its director note also forbids supplying them on a re-ask or correcting a wrong choice, because a correction would repair the miss the case exists to observe. Pairs with the same-depth case that has two confusable thresholds. Build-only. Harness note: the memory judge is handed the final compressed observation block, the raw message window the model actually received, and the final system prompt — and a fact counts as retained if it appears in any of them. A thread that never crosses the Observer's token threshold is therefore still graded honestly against the raw window, instead of reding for a missing observation block. Token pressure here comes from the live build's tool traffic, not from the seeded prose, which is cheap. One build plus one refinement sits between the rules and the probe, so this arm carries more token pressure than the shallow pair and less than the deep pair — that gradient is the point of the set. NOT YET CALIBRATED against a real build.",
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "We need an hourly sync from our CRM into the warehouse. Before we get into the mechanics, there are two ground rules I don't want lost along the way."
+			},
+			{
+				"role": "assistant",
+				"text": "Go ahead — I'll hold on to them."
+			},
+			{
+				"role": "user",
+				"text": [
+					"First: when a call to the CRM API fails, retry it at most three times, and then write that record into our sync_failures data table. I never want a failed record silently skipped — if it did not make it through, I want a row for it.",
+					"Second: we only sync records whose region is EMEA. Everything else in the CRM belongs to another team and must not be touched by this workflow."
+				]
+			},
+			{
+				"role": "assistant",
+				"text": "Both noted. What does the sync itself look like?"
+			},
+			{
+				"role": "user",
+				"text": "Pull contacts from https://crm.example.com/api/v2/contacts with a page size of 200, paging until there are no more pages."
+			},
+			{
+				"role": "assistant",
+				"text": "And where should they land?"
+			},
+			{
+				"role": "user",
+				"text": "A data table called warehouse_contacts. Match on the CRM contact id so a re-run updates the existing row rather than duplicating it. Carry through id, email, company, region and updated_at, and drop everything else — the rest of what the API returns is noise to us."
+			},
+			{
+				"role": "assistant",
+				"text": "Clear. Ready to build when you are."
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Ok, build the sync now — but leave the error handling out for the moment, I want to look at the fetch and the mapping on their own first."
+		},
+		{
+			"role": "user",
+			"text": [
+				"Now add the error handling.",
+				"[Director note — behaviour for the user-proxy, never say this aloud: send the message above as your next turn once the agent has built the sync, and make it the whole message — do not add any detail to it, do not say how many retries you want, and do not say where failed records should go.",
+				"The user gave both of those earlier in this conversation and will not give them again. If the agent asks how many retries, or what to do with a record that still fails, or which table failures go to — as a question, on a plan review, or on a setup card — reply that you already gave that earlier in this thread and it should use what was agreed. Never state a retry count or a table name yourself, and never invent one. Hold firm if it asks again.",
+				"Do NOT audit what the agent produces against those rules and do NOT correct it if it gets one wrong — approve whatever it proposes. The point of this conversation is to see what the agent remembers unaided.",
+				"For anything else it asks, answer briefly and plausibly. Once it has added error handling, you are done.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "complex",
+	"tags": [
+		"behaviour",
+		"memory",
+		"recall",
+		"context-retention",
+		"seeded",
+		"schedule",
+		"http-request",
+		"data-table"
+	],
+	"triggerType": "schedule",
+	"datasets": ["memory"],
+	"memoryExpectations": [
+		"The retry rule agreed at the top of the thread is still present and numerically intact in the context state the agent was handed on the final turn — at most three retries, and a record that still fails is written to the sync_failures data table. Both halves must survive: a context that kept 'retry the call' but lost the count of three, or lost the sync_failures destination, does not satisfy this.",
+		"The EMEA-only scope is still present in that same context state and still attached to this sync, not dropped while the later paging, destination and field-mapping details were retained."
+	],
+	"processExpectations": [
+		"When asked to add the error handling, the agent did not ask how many retries to use, or where a record that still fails should go — both were agreed earlier in the thread.",
+		"The agent kept working the same workflow it had been building and did not restart the build or create a second workflow in response to the terse final request.",
+		"The agent did not treat the terse final request as under-specified or ambiguous — it engaged with it directly rather than asking what kind of error handling was meant."
+	],
+	"outcomeExpectations": [
+		"A failed CRM call is retried at most three times, and a record that still fails after those retries is written into the sync_failures data table — it is not silently dropped, and it is not merely logged or left to fail the run.",
+		"The sync is still restricted to records whose region is EMEA; the region rule agreed at the top of the thread is enforced in the final workflow rather than lost while the error handling was added.",
+		"Contacts are fetched from the CRM endpoint with a page size of 200, paging until there are no more pages, and written into warehouse_contacts keyed on the CRM contact id so a re-run updates rather than duplicates. Only id, email, company, region and updated_at are carried through."
+	]
+}

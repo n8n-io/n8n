@@ -1,0 +1,61 @@
+{
+	"description": "Recall probe, shallow: the two rules the workflow depends on (a 14-day overdue cutoff and a weekday-07:00 schedule) are agreed in the exchange immediately before the live turn, and the live turn is a terse go-ahead that deliberately restates neither. This is the near-ceiling control for the recall family — it isolates 'the probe is answerable' from 'the fact survived', so a red here means the probe itself is broken rather than that recall failed. The rule values live ONLY in the inline seed, never in the authored script: the user-proxy is handed the script but not the seeded history, so it is structurally incapable of leaking the numbers back into the probe, and its director note forbids it from supplying or auditing them. That is deliberate — a proxy that pushed back on a wrong cutoff would repair the memory failure the case exists to observe. Graded on memory expectations first (was each rule still in the context the agent was handed at the final turn), with process/outcome expectations to separate a recall miss from a build miss. Build-only. Harness note: the memory judge is handed the final compressed observation block, the raw message window the model actually received, and the final system prompt — and a fact counts as retained if it appears in any of them. A thread that never crosses the Observer's token threshold is therefore still graded honestly against the raw window, instead of reding for a missing observation block. Token pressure here comes from the live build's tool traffic, not from the seeded prose, which is cheap. This is the shallowest arm and therefore the one most likely to land in the 'never compressed' state; when it does, the verdict describes which tier was carrying the fact, and lowering the observer threshold for this lane is the way to force compression. NOT YET CALIBRATED against a real build.",
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "I want n8n to chase overdue invoices for me automatically. The invoices live in our billing API and the reminders should go out by email."
+			},
+			{
+				"role": "assistant",
+				"text": "Happy to build that. Two things I need before I start: how do you want to decide which invoices get chased, and when should the check run?"
+			},
+			{
+				"role": "user",
+				"text": [
+					"Two rules, and they both matter.",
+					"Only chase an invoice once it is more than 14 days past its due date. Anything newer we leave alone — our customers get annoyed if we chase them early, and 14 days is what we settled on internally.",
+					"And the check runs at 07:00 on weekdays only. Nothing goes out on a Saturday or a Sunday, ever."
+				]
+			},
+			{
+				"role": "assistant",
+				"text": "Understood — I have both rules noted, the overdue condition and the run schedule. Anything else before I build?"
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Nothing else. Go ahead and build it with the two rules we just agreed."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Director note — behaviour for the user-proxy, never say this aloud: the user already gave both rules earlier in this conversation and will not give them again.",
+				"If the agent asks how many days overdue an invoice has to be, or what time and on which days the check should run — as a question, on a plan review, or on a setup card — reply that you already gave those details earlier in this thread and it should use what was agreed. Never state a number of days, a time of day, or which days of the week are in or out yourself, and never invent any of them, however obvious a default looks. Hold firm if it asks again.",
+				"Do NOT audit the agent's plan against those rules and do NOT correct it if it gets one wrong — approve whatever it proposes. The point of this conversation is to see what the agent remembers unaided, so correcting it would hide exactly what is being measured.",
+				"For anything else it asks, answer briefly and plausibly. Once it has built something, you are done.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": ["behaviour", "memory", "recall", "context-retention", "seeded", "schedule", "email"],
+	"triggerType": "schedule",
+	"datasets": ["memory"],
+	"memoryExpectations": [
+		"The 14-day overdue cutoff agreed earlier in the thread is still present, and still stated as 14 days, in the context state the agent was handed on the final turn — carried in the compressed observation block or restated in the final system prompt. It has not been dropped, rounded, or replaced by a generic default such as 30 days or 'past due'.",
+		"The agreed schedule — 07:00, weekdays only, never Saturday or Sunday — is still present and intact in the context state the agent was handed on the final turn, with BOTH halves retained: the 07:00 time of day and the weekday-only restriction. Retaining only one of the two does not satisfy this."
+	],
+	"processExpectations": [
+		"The agent did not ask the user to repeat the overdue cutoff or the run schedule — it treated both as already established earlier in the thread and proceeded.",
+		"The agent did not respond as if this were the start of a new request, and did not claim it was missing details the user had already given."
+	],
+	"outcomeExpectations": [
+		"Reminders are gated so that only invoices more than 14 days past their due date are chased — the cutoff is 14 days, not an invented default such as 7 or 30.",
+		"The workflow runs at 07:00 on weekdays only; Saturday and Sunday are excluded, either by the schedule itself or by an explicit weekday gate downstream of it.",
+		"The reminder is sent by email to the invoice's contact, and the invoices are read from the billing API."
+	]
+}
