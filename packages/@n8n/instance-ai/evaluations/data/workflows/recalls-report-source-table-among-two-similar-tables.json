@@ -148,5 +148,15 @@
 		"The report reads from orders_clean. No node in the final workflow reads orders_raw as the report's data source.",
 		"The settings established before the data read all survive into the final workflow — fail if ANY is missing: a 07:30 Europe/Berlin daily schedule including weekends, a Berlin midnight-to-midnight 'yesterday' window, per-country gross revenue, refunds, net revenue and order count in major units to two decimals with the currency labelled, refunds in their own column as a positive number, countries with no orders omitted, rows sorted descending by net revenue and capped at fifteen, and a single Slack message to #revenue-daily.",
 		"When yesterday's data is not yet complete the report holds off and re-posts an hour later rather than publishing a partial day, and the report includes the day-over-day percentage change in net revenue per country."
+	],
+	"contextAssertions": [
+		{
+			"text": "orders_clean",
+			"note": "the table the report reads from"
+		},
+		{
+			"text": "orders_raw",
+			"note": "the competing landing table"
+		}
 	]
 }

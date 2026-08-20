@@ -160,7 +160,7 @@
 	"contextAssertions": [
 		{
 			"text": "2026-03-01",
-			"note": "the cutover locked in at thread start"
+			"note": "the cutover in its literal ISO form — deliberately a literal-form probe: the fact often survives as prose ('March 2026 cutoff') while this exact string is regenerated, so a fail here means the wording travelled and the value did not"
 		},
 		{
 			"text": "external_id",

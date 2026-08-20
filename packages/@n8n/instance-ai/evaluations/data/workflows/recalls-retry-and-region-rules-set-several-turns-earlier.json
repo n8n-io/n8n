@@ -83,5 +83,15 @@
 		"A failed CRM call is retried at most three times, and a record that still fails after those retries is written into the sync_failures data table — it is not silently dropped, and it is not merely logged or left to fail the run.",
 		"The sync is still restricted to records whose region is EMEA; the region rule agreed at the top of the thread is enforced in the final workflow rather than lost while the error handling was added.",
 		"Contacts are fetched from the CRM endpoint with a page size of 200, paging until there are no more pages, and written into warehouse_contacts keyed on the CRM contact id so a re-run updates rather than duplicates. Only id, email, company, region and updated_at are carried through."
+	],
+	"contextAssertions": [
+		{
+			"text": "sync_failures",
+			"note": "where exhausted retries are written"
+		},
+		{
+			"text": "EMEA",
+			"note": "the region scope agreed at the top of the thread"
+		}
 	]
 }
