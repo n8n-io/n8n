@@ -100,6 +100,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'role:read',
 	'roleMappingRule:create',
 	'roleMappingRule:list',
+	'roleMappingRule:update',
 ];
 
 export const ADMIN_API_KEY_SCOPES: ApiKeyScope[] = OWNER_API_KEY_SCOPES;
