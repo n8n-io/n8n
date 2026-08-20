@@ -2,7 +2,7 @@ operationId: moveRoleMappingRule
 tags:
   - RoleMappingRule
 summary: Move a role-mapping rule
-description: Changes a rule's position in the evaluation order for its type. `targetIndex` is the desired 0-based position within the rule's own `type` sequence; a value beyond the last position moves the rule to the end instead of returning an error.
+description: Changes a rule's position in the evaluation order for its type. `targetIndex` is the desired 0-based position within the rule's own `type` sequence; a value beyond the last position moves the rule to the end.
 x-required-scope: roleMappingRule:update
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler

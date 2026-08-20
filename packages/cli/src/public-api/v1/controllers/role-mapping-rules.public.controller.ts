@@ -109,7 +109,7 @@ export class RoleMappingRulesPublicController {
 	@ApiKeyScope('roleMappingRule:update')
 	@ApiSummary('Move a role-mapping rule')
 	@ApiDescription(
-		"Changes a rule's position in the evaluation order for its type. `targetIndex` is the desired 0-based position within the rule's own `type` sequence; a value beyond the last position moves the rule to the end instead of returning an error.",
+		"Changes a rule's position in the evaluation order for its type. `targetIndex` is the desired 0-based position within the rule's own `type` sequence; a value beyond the last position moves the rule to the end.",
 	)
 	@ApiTags(['RoleMappingRule'])
 	@ApiResponse(200, RoleMappingRulePublicDto)
