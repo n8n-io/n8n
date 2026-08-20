@@ -2,7 +2,7 @@ operationId: updateRoleMappingRule
 tags:
   - RoleMappingRule
 summary: Update a role-mapping rule
-description: Replaces a rule's claim expression, role, type and project assignments. Set `projectIds` when `type` is `project`; omit it when `type` is `instance`. The rule keeps its position in the evaluation order — use the move endpoint to reorder it. Changing `type` moves the rule into the other type's sequence at its current numeric position, which fails with a conflict if that position is already taken.
+description: Replaces a rule's claim expression, role, type and project assignments. The rule keeps its position in the evaluation order — use the move endpoint to reorder it. Changing `type` moves the rule into the other type's sequence at its current numeric position, which fails with a conflict if that position is already taken.
 x-required-scope: roleMappingRule:update
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -39,6 +39,7 @@ requestBody:
           - expression
           - role
           - type
+          - projectIds
 responses:
   '200':
     description: Operation successful.
