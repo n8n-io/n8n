@@ -62,6 +62,54 @@ describe('TriggersAndPollers', () => {
 			expect(result).toEqual({ test: true });
 		});
 
+		describe('closeFunction isolate wrapping', () => {
+			const originalClose = vi.fn(async () => {});
+			const withIsolate = vi.fn(async (fn: () => Promise<void>) => await fn());
+
+			beforeEach(() => {
+				nodeType.trigger = triggerFn;
+				workflow.expression = { withIsolate } as unknown as Workflow['expression'];
+			});
+
+			it('wraps closeFunction so teardown runs inside workflow.expression.withIsolate', async () => {
+				triggerFn.mockResolvedValue({ closeFunction: originalClose });
+
+				const response = await runTriggerHelper();
+
+				expect(response?.closeFunction).not.toBe(originalClose);
+				expect(originalClose).not.toHaveBeenCalled();
+
+				await response!.closeFunction!();
+
+				expect(withIsolate).toHaveBeenCalledTimes(1);
+				expect(originalClose).toHaveBeenCalledTimes(1);
+				const [isolateOrder] = withIsolate.mock.invocationCallOrder;
+				const [closeOrder] = originalClose.mock.invocationCallOrder;
+				expect(isolateOrder).toBeLessThan(closeOrder);
+			});
+
+			it('wraps closeFunction in manual mode too', async () => {
+				triggerFn.mockResolvedValue({ closeFunction: originalClose });
+
+				const response = await runTriggerHelper('manual');
+
+				expect(response?.closeFunction).not.toBe(originalClose);
+				await response!.closeFunction!();
+				expect(withIsolate).toHaveBeenCalledTimes(1);
+				expect(originalClose).toHaveBeenCalledTimes(1);
+			});
+
+			it('propagates a closeFunction rejection through the wrapper', async () => {
+				const closeError = new Error('close failed');
+				originalClose.mockRejectedValueOnce(closeError);
+				triggerFn.mockResolvedValue({ closeFunction: originalClose });
+
+				const response = await runTriggerHelper();
+
+				await expect(response!.closeFunction!()).rejects.toThrow(closeError);
+			});
+		});
+
 		describe('manual mode', () => {
 			const getMockTriggerFunctions = () => getTriggerFunctions.mock.results[0]?.value;
 
