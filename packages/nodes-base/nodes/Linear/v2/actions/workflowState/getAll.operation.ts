@@ -32,7 +32,7 @@ const properties: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
-		options: [TEAM_LOCATOR],
+		options: [{ ...TEAM_LOCATOR, required: false }],
 	},
 ];
 
