@@ -21,11 +21,21 @@ import {
 	WAIT_NODE_TYPE,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
-import type { Readable } from 'stream';
+import { Readable } from 'stream';
 
 import { getBinaryResponse } from './utils/binary';
 import { configuredOutputs } from './utils/outputs';
 import { generatePairedItemData } from '../../utils/utilities';
+
+function isDataObject(value: unknown): value is IDataObject {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		!Array.isArray(value) &&
+		!Buffer.isBuffer(value) &&
+		!(value instanceof Readable)
+	);
+}
 
 const respondWithProperty: INodeProperties = {
 	displayName: 'Respond With',
@@ -434,7 +444,11 @@ export class RespondToWebhook implements INodeType {
 
 				if (shouldStream) {
 					this.sendChunk('begin', 0);
-					this.sendChunk('item', 0, responseBody as IDataObject);
+					if (typeof responseBody === 'string' || isDataObject(responseBody)) {
+						this.sendChunk('item', 0, responseBody);
+					} else if (Array.isArray(responseBody)) {
+						this.sendChunk('item', 0, JSON.stringify(responseBody));
+					}
 					this.sendChunk('end', 0);
 				}
 			} else if (respondWith === 'jwt') {
@@ -459,7 +473,7 @@ export class RespondToWebhook implements INodeType {
 
 					if (shouldStream) {
 						this.sendChunk('begin', 0);
-						this.sendChunk('item', 0, responseBody as IDataObject);
+						this.sendChunk('item', 0, { token });
 						this.sendChunk('end', 0);
 					}
 				} catch (error) {
