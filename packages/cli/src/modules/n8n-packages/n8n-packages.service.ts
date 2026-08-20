@@ -8,6 +8,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
 import { buildImportResult, toPackageSummary } from './engine/import-result';
+import { emitPackageImportedEvent, type ImportOutcome } from './engine/import-telemetry';
 import { N8nPackageParser } from './engine/n8n-package-parser';
 import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
@@ -50,6 +51,7 @@ import {
 	type ImportPackageRequest,
 	type ImportRequest,
 	type ImportResult,
+	type ResolvedImportPackageRequest,
 	createBindings,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
@@ -356,14 +358,30 @@ export class N8nPackagesService {
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
-		return await this.dispatchImport(request, reader, manifest);
+		const { result, scopes } = await this.dispatchImport(request, reader, manifest);
+
+		// A user-facing archive import; the internal directory import does not emit this.
+		// Emit under the folder policy the dispatcher settled on, so analytics see what
+		// the import actually ran under rather than the caller's blank.
+		const resolvedRequest: ResolvedImportPackageRequest = {
+			...request,
+			folderConflictPolicy: resolveFolderConflictPolicy(
+				request,
+				isProjectPackage(manifest) ? 'project' : 'workflow',
+			),
+		};
+		emitPackageImportedEvent(this.eventService, { request: resolvedRequest, manifest, scopes });
+
+		return result;
 	}
 
 	/**
 	 * Imports the unzipped n8n-packages layout from a directory (e.g. a Git
-	 * connection's working copy) rather than a tar archive. The format written by
-	 * {@link exportPackageToDirectory} is always a project package, so a manifest
-	 * with no projects is a valid, empty working copy — nothing to import.
+	 * connection's working copy) rather than a tar archive.
+	 *
+	 * Mirrors {@link exportPackageToDirectory}: the `n8n-package-imported` event
+	 * tracks the user-facing archive import, so this internal directory read does
+	 * not emit it.
 	 */
 	async importPackageFromDirectory(
 		request: ImportRequest,
@@ -372,7 +390,8 @@ export class N8nPackagesService {
 		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
 		if (!isProjectPackage(manifest)) return emptyImportResult(manifest);
-		return await this.dispatchImport(request, reader, manifest);
+		const { result } = await this.dispatchImport(request, reader, manifest);
+		return result;
 	}
 
 	/** Routes a read manifest to the importer for its package shape (project vs workflow). */
@@ -380,7 +399,7 @@ export class N8nPackagesService {
 		request: ImportRequest,
 		reader: PackageReader,
 		manifest: PackageManifest,
-	): Promise<ImportResult> {
+	): Promise<ImportOutcome> {
 		if (isProjectPackage(manifest)) {
 			if (request.variableParentPolicy !== undefined) {
 				throw new BadRequestError(

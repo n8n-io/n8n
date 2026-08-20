@@ -190,13 +190,6 @@ export class GitConnectionsService {
 	}
 
 	async push(connectionId: string, actor: User): Promise<GitConnectionPushResultDto> {
-		return await this.exportProjectsToRepository(connectionId, actor);
-	}
-
-	private async exportProjectsToRepository(
-		connectionId: string,
-		actor: User,
-	): Promise<GitConnectionPushResultDto> {
 		// Validates the connection exists (throws NotFound otherwise) before any export work.
 		await this.getEntity(connectionId);
 		const projectIds =
