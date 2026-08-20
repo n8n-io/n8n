@@ -135,16 +135,36 @@ export class N8NIdentifier implements ITokenIdentifier {
 				const userId = metadataResult.data.subject;
 
 				const executionPath = metadataResult.data.executionPath ?? [];
-				if (executionPath.length > 0) {
-					// bound seal → must resolve inside its own execution (or a sub-workflow of it)
-					if (!executionId || !executionPath.includes(executionId)) {
+				if (executionId) {
+					// Resolving inside an execution: the seal must be bound to it (or a sub-workflow
+					// of it). An unbound seal (empty path) is not valid once an execution exists.
+					if (!executionPath.includes(executionId)) {
 						throw new CredentialResolverError('Sealed identity is not valid for this execution');
 					}
+				} else if (executionPath.length > 0) {
+					// Bound seal but no execution to check it against → fail closed.
+					throw new CredentialResolverError('Sealed identity is not valid for this execution');
 				}
 
+				const grant = metadataResult.data.grant;
+				if (grant) {
+					// Re-take the grant's live workflow:execute decision (token-independent) so a
+					// principal whose access was revoked after sealing stops resolving. This also
+					// covers existence/disabled — a denied user resolves to `false`.
+					const authorized = await this.oauthTokenVerifierProxy.authorizeSealedGrant(userId, grant);
+					if (!authorized) {
+						throw new CredentialResolverError(
+							`Invalid OAuth token for resource ${metadataResult.data.resource}`,
+						);
+					}
+					return userId;
+				}
+
+				// Grant-less sealed carrier (legacy): no execute gate to re-take, so confirm the
+				// principal still exists and is enabled. Keep "missing" and "disabled"
+				// indistinguishable to the caller (no account enumeration) and never surface the
+				// internal user id in the error.
 				const user = await this.userRepository.findOneBy({ id: userId });
-				// Keep "missing" and "disabled" indistinguishable to the caller (no account
-				// enumeration) and never surface the internal user id in the error.
 				if (!user || user.disabled) {
 					throw new CredentialResolverError(
 						`Invalid OAuth token for resource ${metadataResult.data.resource}`,

@@ -25,6 +25,7 @@ describe('N8NIdentifier', () => {
 	beforeEach(() => {
 		mockAuthService = mock<AuthService>();
 		mockOAuthVerifier = mock<OAuthTokenVerifierProxy>();
+		mockOAuthVerifier.authorizeSealedGrant.mockResolvedValue(true);
 		mockUserRepository = mock<UserRepository>();
 		mockUserRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-123', disabled: false }));
 
@@ -500,6 +501,39 @@ describe('N8NIdentifier', () => {
 
 				expect(result).toBe('user-123');
 				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('rejects an unbound seal (empty path) when resolving inside an execution', async () => {
+				await expect(
+					identifier.resolve(sealedContext({ executionPath: [] }), {}, 'exec-root'),
+				).rejects.toThrow(CredentialResolverError);
+			});
+
+			it('re-takes the sealed grant and returns the subject when still authorized', async () => {
+				const grant = { audiences: ['https://host/mcp/wf'], executeAccessWorkflowId: 'wf' };
+
+				const result = await identifier.resolve(sealedContext({ grant }), {}, 'exec-root');
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.authorizeSealedGrant).toHaveBeenCalledWith('user-123', grant);
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('rejects when the sealed grant is no longer authorized', async () => {
+				mockOAuthVerifier.authorizeSealedGrant.mockResolvedValue(false);
+				const grant = { audiences: ['https://host/mcp/wf'], executeAccessWorkflowId: 'wf' };
+
+				await expect(identifier.resolve(sealedContext({ grant }), {}, 'exec-root')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('skips the grant re-take for a grant-less seal and checks the principal locally', async () => {
+				const result = await identifier.resolve(sealedContext(), {}, 'exec-root');
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.authorizeSealedGrant).not.toHaveBeenCalled();
+				expect(mockUserRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-123' });
 			});
 		});
 	});

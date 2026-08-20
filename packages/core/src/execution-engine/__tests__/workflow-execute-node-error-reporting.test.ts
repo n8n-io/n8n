@@ -45,7 +45,7 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 	let mockLogger: { error: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn> };
 	let mockExecutionContextService: {
 		augmentExecutionContextWithHooks: ReturnType<typeof vi.fn>;
-		bindExecutionId: ReturnType<typeof vi.fn>;
+		maybeBindExecutionId: ReturnType<typeof vi.fn>;
 	};
 
 	beforeEach(() => {
@@ -64,7 +64,7 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 			}),
 			// establishExecutionContext also binds the execution id onto an already
 			// established context; pass through so the run isn't aborted.
-			bindExecutionId: vi.fn(async (context) => context),
+			maybeBindExecutionId: vi.fn(async (context) => context),
 		};
 
 		mockContainer.get.mockImplementation((token) => {

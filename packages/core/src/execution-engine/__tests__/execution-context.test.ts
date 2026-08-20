@@ -26,7 +26,7 @@ describe('establishExecutionContext', () => {
 		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
 		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 		encryptedRunnerIdentity: undefined,
-		// No executionId at establishment time; the real (unmocked) bindExecutionId
+		// No executionId at establishment time; the real (unmocked) maybeBindExecutionId
 		// is then a no-op and never tries to decrypt these tests' fake credentials.
 		executionId: undefined,
 	});
@@ -777,9 +777,11 @@ describe('establishExecutionContext', () => {
 
 		beforeEach(() => {
 			mockExecutionContextService = mock<ExecutionContextService>();
-			// bindExecutionId runs on every branch; pass through so this describe only
+			// maybeBindExecutionId runs on every branch; pass through so this describe only
 			// asserts sub-execution augmentation (binding is covered in its own tests).
-			mockExecutionContextService.bindExecutionId.mockImplementation(async (context) => context);
+			mockExecutionContextService.maybeBindExecutionId.mockImplementation(
+				async (context) => context,
+			);
 			Container.set(ExecutionContextService, mockExecutionContextService);
 		});
 
@@ -1234,9 +1236,11 @@ describe('establishExecutionContext', () => {
 					triggerItems: null,
 				}),
 			);
-			// bindExecutionId runs on every branch; pass through so these tests assert
+			// maybeBindExecutionId runs on every branch; pass through so these tests assert
 			// only the manual-injection branch (binding is covered in its own tests).
-			mockExecutionContextService.bindExecutionId.mockImplementation(async (context) => context);
+			mockExecutionContextService.maybeBindExecutionId.mockImplementation(
+				async (context) => context,
+			);
 			Container.set(ExecutionContextService, mockExecutionContextService);
 		});
 
@@ -1404,7 +1408,7 @@ describe('establishExecutionContext', () => {
 				},
 			});
 			// Carrier already bound to a different execution, re-attached to this run.
-			const carried = await service.bindExecutionId(
+			const carried = await service.maybeBindExecutionId(
 				{ version: 1, establishedAt: 1, source: 'webhook', credentials: sealed },
 				'exec-other',
 			);
@@ -1418,6 +1422,44 @@ describe('establishExecutionContext', () => {
 
 			// Path stays pinned to its own execution, so resolution rejects this run.
 			expect(await pathOf(runExecutionData.executionData!.runtimeData)).toEqual(['exec-other']);
+		});
+
+		it('appends the retry execution id, keeping the carrier resolvable on retry', async () => {
+			const sealed = await service.buildTriggerIdentityCredentials(
+				'oauth-token',
+				'https://host/mcp/wf',
+				undefined,
+				'user-123',
+			);
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+			// Original run's carrier, bound to its own execution, reloaded verbatim for the retry.
+			const carried = await service.maybeBindExecutionId(
+				{ version: 1, establishedAt: 1, source: 'webhook', credentials: sealed },
+				'exec-root',
+			);
+			runExecutionData.executionData!.runtimeData = carried;
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				executionId: 'exec-retry',
+				encryptedRunnerIdentity: undefined,
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'retry');
+
+			// Retry id joins the path, so resolution accepts the run.
+			expect(await pathOf(runExecutionData.executionData!.runtimeData)).toEqual([
+				'exec-root',
+				'exec-retry',
+			]);
 		});
 
 		it('leaves a legacy (subject-less) carrier untouched', async () => {

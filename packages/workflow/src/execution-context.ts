@@ -264,7 +264,7 @@ export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
  *
  * `grant` (see {@link OAuthResourceGrant}) is carried by grant-based triggers so a run
  * can re-verify its token after the protected resource stops resolving. It is listed
- * here so `bindExecutionId` preserves it through its parse-and-re-encrypt round-trip;
+ * here so `maybeBindExecutionId` preserves it through its parse-and-re-encrypt round-trip;
  * the identifier validates it against its own local schema.
  */
 export const N8NOAuthMetadataSchema = z.object({

@@ -1319,7 +1319,7 @@ describe('executeWebhook establishTriggerIdentity', () => {
 		executionContextService.buildTriggerIdentityCredentials.mockResolvedValue('sealed-context');
 		// `establishExecutionContext` binds the execution id onto the sealed context; with no
 		// execution id yet (or no sealed subject) it hands the context straight back.
-		executionContextService.bindExecutionId.mockImplementation(async (context) => context);
+		executionContextService.maybeBindExecutionId.mockImplementation(async (context) => context);
 		// `establishExecutionContext` runs the hook pass over the seeded stack.
 		executionContextService.augmentExecutionContextWithHooks.mockImplementation(
 			async (_workflow, _startItem, context) => ({ context, triggerItems: null }),

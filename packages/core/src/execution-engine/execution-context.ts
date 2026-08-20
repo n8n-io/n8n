@@ -120,9 +120,13 @@ export const establishExecutionContext = async (
 		// Bind the now-known executionId to any sealed carrier so credential
 		// resolution can gate on executionPath. No-op for legacy (subject-less)
 		// carriers and when executionId is undefined; idempotent on resume.
-		executionData.runtimeData = await executionContextService.bindExecutionId(
+		// A retry reloads the original run's data under a NEW executionId, so its
+		// id must join the sealed carrier's path (allowInherit) or resolution would
+		// reject it. Resume keeps the same id, so the bind stays a no-op regardless.
+		executionData.runtimeData = await executionContextService.maybeBindExecutionId(
 			executionData.runtimeData,
 			additionalData?.executionId,
+			{ allowInherit: mode === 'retry' },
 		);
 		return;
 	}
@@ -139,7 +143,7 @@ export const establishExecutionContext = async (
 	if (additionalData?.encryptedRunnerIdentity) {
 		executionData.runtimeData.credentials = additionalData.encryptedRunnerIdentity;
 		if (executionData.runtimeData.credentials) {
-			executionData.runtimeData = await executionContextService.bindExecutionId(
+			executionData.runtimeData = await executionContextService.maybeBindExecutionId(
 				executionData.runtimeData,
 				additionalData.executionId,
 			);
@@ -158,7 +162,7 @@ export const establishExecutionContext = async (
 			parentExecutionId: runExecutionData.parentExecution.executionId,
 		};
 
-		executionData.runtimeData = await executionContextService.bindExecutionId(
+		executionData.runtimeData = await executionContextService.maybeBindExecutionId(
 			executionData.runtimeData,
 			additionalData?.executionId,
 			{ allowInherit: true },
@@ -213,7 +217,7 @@ export const establishExecutionContext = async (
 
 		// Bind this execution's id to any inherited sealed carrier so it stays
 		// resolvable within its own execution (mirrors the parentExecution branch).
-		executionData.runtimeData = await executionContextService.bindExecutionId(
+		executionData.runtimeData = await executionContextService.maybeBindExecutionId(
 			executionData.runtimeData,
 			additionalData?.executionId,
 			{ allowInherit: true },

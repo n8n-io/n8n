@@ -450,7 +450,7 @@ describe('ExecutionContextService', () => {
 		});
 	});
 
-	describe('bindExecutionId()', () => {
+	describe('maybeBindExecutionId()', () => {
 		beforeEach(() => {
 			// Symmetric fakes: decrypt is identity, encrypt is JSON.stringify, so we can
 			// read the re-encrypted credentials back with JSON.parse.
@@ -470,7 +470,7 @@ describe('ExecutionContextService', () => {
 			JSON.parse(context.credentials as string).metadata.executionPath;
 
 		it('stamps the current execution id onto a freshly sealed carrier', async () => {
-			const bound = await service.bindExecutionId(
+			const bound = await service.maybeBindExecutionId(
 				contextWith({ source: 'n8n-oauth', resource: 'r', subject: 'user-123' }),
 				'exec-root',
 			);
@@ -479,7 +479,7 @@ describe('ExecutionContextService', () => {
 		});
 
 		it('appends a child execution id, preserving the inherited path', async () => {
-			const bound = await service.bindExecutionId(
+			const bound = await service.maybeBindExecutionId(
 				contextWith({
 					source: 'n8n-oauth',
 					resource: 'r',
@@ -501,7 +501,7 @@ describe('ExecutionContextService', () => {
 				executionPath: ['exec-other'],
 			});
 
-			const bound = await service.bindExecutionId(context, 'exec-current');
+			const bound = await service.maybeBindExecutionId(context, 'exec-current');
 
 			expect(bound).toBe(context);
 			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
@@ -515,7 +515,7 @@ describe('ExecutionContextService', () => {
 				executionPath: ['exec-root'],
 			});
 
-			const bound = await service.bindExecutionId(context, 'exec-root');
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
 
 			expect(bound).toBe(context);
 			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
@@ -524,7 +524,7 @@ describe('ExecutionContextService', () => {
 		it('is a no-op for a non-sealed carrier (no subject)', async () => {
 			const context = contextWith({ source: 'n8n-oauth', resource: 'r' });
 
-			const bound = await service.bindExecutionId(context, 'exec-root');
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
 
 			expect(bound).toBe(context);
 			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
@@ -533,7 +533,7 @@ describe('ExecutionContextService', () => {
 		it('is a no-op when no execution id is provided', async () => {
 			const context = contextWith({ source: 'n8n-oauth', resource: 'r', subject: 'user-123' });
 
-			const bound = await service.bindExecutionId(context, undefined);
+			const bound = await service.maybeBindExecutionId(context, undefined);
 
 			expect(bound).toBe(context);
 			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
@@ -542,7 +542,7 @@ describe('ExecutionContextService', () => {
 		it('is a no-op for a non-n8n-oauth carrier (schema mismatch)', async () => {
 			const context = contextWith({ source: 'manual-execution' });
 
-			const bound = await service.bindExecutionId(context, 'exec-root');
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
 
 			expect(bound).toBe(context);
 			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
@@ -556,7 +556,7 @@ describe('ExecutionContextService', () => {
 				credentials: JSON.stringify({ version: 1, identity: 'oauth-token' }),
 			};
 
-			const bound = await service.bindExecutionId(context, 'exec-root');
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
 
 			expect(bound).toBe(context);
 			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
@@ -565,7 +565,7 @@ describe('ExecutionContextService', () => {
 		it('is a no-op for a context without credentials', async () => {
 			const context: IExecutionContext = { version: 1, establishedAt: 1, source: 'webhook' };
 
-			const bound = await service.bindExecutionId(context, 'exec-root');
+			const bound = await service.maybeBindExecutionId(context, 'exec-root');
 
 			expect(bound).toBe(context);
 			expect(mockCipher.decryptV2).not.toHaveBeenCalled();

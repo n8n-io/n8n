@@ -101,7 +101,7 @@ export class ExecutionContextService {
 		);
 	}
 
-	async bindExecutionId(
+	async maybeBindExecutionId(
 		context: IExecutionContext,
 		executionId: string | undefined,
 		{ allowInherit = false }: { allowInherit?: boolean } = {},
@@ -117,10 +117,11 @@ export class ExecutionContextService {
 				// non-sealed n8n-oauth carrier has nothing that reads its executionPath.
 				if (metadata.success && metadata.data.subject) {
 					const executionPath = metadata.data.executionPath ?? [];
-					// Seed an empty path at mint, or extend it only for a genuine inherited
-					// child (sub-workflow / error workflow). A non-empty path that lacks this
-					// id on a non-inherit bind means the carrier was attached to an execution
-					// it was not minted for — leave it, so credential resolution rejects it.
+					// Seed an empty path at mint, or extend it only for a legitimate re-run of
+					// this carrier's own execution data — an inherited child (sub-workflow /
+					// error workflow) or a retry. A non-empty path that lacks this id on a
+					// non-inherit bind means the carrier was attached to an execution it was
+					// not minted for — leave it, so credential resolution rejects it.
 					const mayBind =
 						!executionPath.includes(executionId) && (executionPath.length === 0 || allowInherit);
 					if (mayBind) {
