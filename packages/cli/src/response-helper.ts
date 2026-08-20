@@ -11,7 +11,6 @@ import picocolors from 'picocolors';
 
 import { classifyHttpError, isResponseError } from './errors/http-error-classifier';
 import { serializeInternalRestError } from './errors/http-error-serializers';
-import { ResponseError } from './errors/response-errors/abstract/response.error';
 
 export function sendSuccessResponse(
 	res: Response,
@@ -97,7 +96,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 export { isUniqueConstraintError };
 
 export function reportError(error: Error, options?: ReportingOptions) {
-	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
+	if (!isResponseError(error) || error.httpStatusCode > 404) {
 		Container.get(ErrorReporter).error(error, options);
 	}
 }

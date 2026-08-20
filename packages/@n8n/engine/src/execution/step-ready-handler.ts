@@ -1,9 +1,17 @@
 import { UnexpectedError, UnimplementedError, type JsonValue } from '../common';
 import type { ExternalDependencies, IStepExecutor } from '../dependencies';
-import type { GraphEdge, GraphNode } from '../graph';
+import { deriveLoops, type GraphEdge, type GraphNode, type WorkflowLoop } from '../graph';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import { stepKeyId, isSettledStatus, type StepKeyId, type StepSlots } from './execution.types';
+import {
+	stepKeyId,
+	isSettledStatus,
+	type StepKey,
+	type StepKeyId,
+	type StepSlots,
+} from './execution.types';
+import { classifyEdge, sourceRow } from './iteration-mapping';
+import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import type { StepError, StepRecord, StepStore } from './step-store';
 import { validateStepContext } from './validate-step-context';
 
@@ -102,7 +110,7 @@ export class StepReadyHandler {
 		return outputs;
 	}
 
-	/** Inputs for `node`, each slot taken from its predecessor's output. */
+	/** Inputs for `node`, each slot taken from the row its edge reads. */
 	private async gatherInputs(execution: ExecutionRecord, step: StepRecord): Promise<StepSlots> {
 		// These are all the edges that feed into the node this step runs.
 		const incomingEdges = execution.graph.edges.filter((edge) => edge.to === step.nodeId);
@@ -114,23 +122,31 @@ export class StepReadyHandler {
 			);
 		}
 
-		validateIncomingEdges(incomingEdges, step);
-
-		const predecessorNodeIds = [...new Set(incomingEdges.map((edge) => edge.from))];
-		const predecessorSteps = await this.stepStore.loadStepsByKeys(
+		const loops = deriveLoops(execution.graph);
+		// Only an exit edge reads the row that ended a loop, so a step with no exit
+		// edge needs no such read at all.
+		const terminalIterations = await loadTerminalIterations(
+			this.stepStore,
 			execution.id,
-			predecessorNodeIds.map((nodeId) => ({ nodeId, iteration: step.iteration })),
+			exitSourcesInto(execution.graph, loops, [step.nodeId]),
 		);
+		const reads = resolveInputReads(incomingEdges, loops, step, terminalIterations);
+
+		// One key per distinct row: a predecessor wired to two input slots is read
+		// twice but loaded once.
+		const rows = await this.stepStore.loadStepsByKeys(execution.id, [
+			...new Map(reads.map(({ key }) => [stepKeyId(key), key])).values(),
+		]);
 
 		// Array of length equal to the highest input slot plus one.
 		// The entries are `null` placeholders filled by the loop immediately below.
 		const inputs: StepSlots = Array.from(
-			{ length: Math.max(...incomingEdges.map((edge) => edge.inputIndex)) + 1 },
+			{ length: Math.max(...reads.map(({ edge }) => edge.inputIndex)) + 1 },
 			() => null,
 		);
 
-		for (const edge of incomingEdges) {
-			inputs[edge.inputIndex] = readEdgeValue(edge, step, predecessorSteps);
+		for (const { edge, key } of reads) {
+			inputs[edge.inputIndex] = readEdgeValue(edge, key, step, rows);
 		}
 
 		return inputs;
@@ -155,11 +171,44 @@ export class StepReadyHandler {
 	}
 }
 
-// Validate that the incoming edges meet our constraints. filledSlots tracks the filled
-// input slots so we can detect multiple edges into the same slot.
-function validateIncomingEdges(incomingEdges: GraphEdge[], step: StepRecord): void {
+/**
+ * Which row each incoming edge reads for this step, one per input slot.
+ *
+ * An edge that connects nothing at this iteration is dropped, which is what lets
+ * a batch node carry both an entry edge and a return edge on slot 0: they never
+ * apply at the same iteration, so per iteration the slot still has one source.
+ * Two edges that do both apply are the unsupported convergence case.
+ */
+export function resolveInputReads(
+	incomingEdges: GraphEdge[],
+	loops: WorkflowLoop[],
+	step: Pick<StepRecord, 'id' | 'nodeId' | 'iteration'>,
+	terminalIterations: Map<string, number>,
+): Array<{ edge: GraphEdge; key: StepKey }> {
+	const reads = incomingEdges.flatMap((edge) => {
+		const source = sourceRow(
+			edge,
+			classifyEdge(edge, loops),
+			step,
+			terminalIterations.get(edge.from),
+		);
+		if (source.kind === 'row') return [{ edge, key: source.key }];
+		if (source.kind === 'none') return [];
+		// The planner queues a step only once every row it reads exists, so a loop
+		// that has not ended means the rows and the plan disagree.
+		throw new UnexpectedError(
+			`step ${step.id} reads node ${edge.from} across a loop that has not ended`,
+		);
+	});
+
+	if (reads.length === 0) {
+		throw new UnexpectedError(
+			`step ${step.id} runs node ${step.nodeId}, which no edge reaches at iteration ${step.iteration}`,
+		);
+	}
+
 	const filledSlots: Set<number> = new Set();
-	for (const edge of incomingEdges) {
+	for (const { edge } of reads) {
 		if (filledSlots.has(edge.inputIndex)) {
 			// TODO(CAT-3982): same-slot convergence gets a defined meaning. We
 			// should have rejected this graph at validation time.
@@ -169,6 +218,8 @@ function validateIncomingEdges(incomingEdges: GraphEdge[], step: StepRecord): vo
 		}
 		filledSlots.add(edge.inputIndex);
 	}
+
+	return reads;
 }
 
 /**
@@ -178,10 +229,11 @@ function validateIncomingEdges(incomingEdges: GraphEdge[], step: StepRecord): vo
  */
 function readEdgeValue(
 	edge: GraphEdge,
+	source: StepKey,
 	step: StepRecord,
-	predecessorSteps: Record<StepKeyId, StepRecord>,
+	rows: Record<StepKeyId, StepRecord>,
 ): JsonValue {
-	const row = predecessorSteps[stepKeyId({ nodeId: edge.from, iteration: step.iteration })];
+	const row = rows[stepKeyId(source)];
 	if (!row || !isSettledStatus(row.status)) {
 		// A step is planned only once every predecessor settled, so running on
 		// a fabricated empty input would mask a planner/store inconsistency.

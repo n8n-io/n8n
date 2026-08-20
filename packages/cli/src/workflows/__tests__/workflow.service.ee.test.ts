@@ -2,6 +2,7 @@ import type {
 	CredentialsEntity,
 	Project,
 	SharedWorkflow,
+	User,
 	WorkflowEntity,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
@@ -382,17 +383,26 @@ describe('EnterpriseWorkflowService', () => {
 			const moved = makeWorkflow('wf-moved', 'proj-source');
 			const folderMoveOnly = makeWorkflow('wf-same-project', 'proj-dest');
 
-			await service['transferWorkflowOwnership']([moved, folderMoveOnly], destinationProject);
+			await service['transferWorkflowOwnership'](
+				mock<User>({ id: 'user-1' }),
+				[moved, folderMoveOnly],
+				destinationProject,
+			);
 
-			expect(workflowMutationHooks.afterWorkflowsTransferred).toHaveBeenCalledExactlyOnceWith([
-				'wf-moved',
-			]);
+			expect(workflowMutationHooks.afterWorkflowsTransferred).toHaveBeenCalledExactlyOnceWith(
+				['wf-moved'],
+				'user-1',
+			);
 		});
 
 		it('does not notify the mutation hook for a same-project folder move', async () => {
 			const folderMoveOnly = makeWorkflow('wf-same-project', 'proj-dest');
 
-			await service['transferWorkflowOwnership']([folderMoveOnly], destinationProject);
+			await service['transferWorkflowOwnership'](
+				mock<User>(),
+				[folderMoveOnly],
+				destinationProject,
+			);
 
 			expect(workflowMutationHooks.afterWorkflowsTransferred).not.toHaveBeenCalled();
 		});

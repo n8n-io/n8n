@@ -1,0 +1,63 @@
+operationId: updateGitConnection
+tags:
+  - GitConnections
+summary: Update a Git connection
+description: Updates only the supplied fields. Secrets are never returned.
+x-required-scope: gitConnection:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: id
+    in: path
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          repositoryUrl:
+            type: string
+            minLength: 1
+          branchName:
+            type: string
+            minLength: 1
+            maxLength: 255
+          connectionType:
+            type: string
+            enum:
+              - ssh
+              - https
+          keyGeneratorType:
+            type: string
+            enum:
+              - ed25519
+              - rsa
+          username:
+            type: string
+            minLength: 1
+          password:
+            type: string
+            minLength: 1
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/gitConnectionPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
