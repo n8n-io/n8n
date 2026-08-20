@@ -6,20 +6,13 @@ describe('workflow publication blocker in OpenAPI', () => {
 	const specRoot = path.join(__dirname, '../spec');
 	const blockerSchemaRef = '../schemas/workflowPublishBlockedError.yml';
 
-	test('documents the blocker for publish, deprecated activate, and active workflow updates', () => {
-		const publishPath = parse(
-			fs.readFileSync(path.join(specRoot, 'paths/workflows.id.publish.yml'), 'utf8'),
-		);
-		const activatePath = parse(
-			fs.readFileSync(path.join(specRoot, 'paths/workflows.id.activate.yml'), 'utf8'),
-		);
-		const workflowPath = parse(
-			fs.readFileSync(path.join(specRoot, 'paths/workflows.id.yml'), 'utf8'),
-		);
+	const readSpec = (relativePath: string) =>
+		parse(fs.readFileSync(path.join(specRoot, relativePath), 'utf8'));
 
-		expect(publishPath.post.responses['409'].content['application/json'].schema.$ref).toBe(
-			blockerSchemaRef,
-		);
+	test('documents the blocker for deprecated activate and active workflow updates', () => {
+		const activatePath = readSpec('paths/workflows.id.activate.yml');
+		const workflowPath = readSpec('paths/workflows.id.yml');
+
 		expect(activatePath.post.responses['409'].content['application/json'].schema.$ref).toBe(
 			blockerSchemaRef,
 		);
@@ -28,10 +21,20 @@ describe('workflow publication blocker in OpenAPI', () => {
 		);
 	});
 
+	// `publish` generates its 409 from `WorkflowPublishBlockedErrorPublicDto`, so the body is inline
+	// rather than a $ref to the hand-written schema the two routes above still use.
+	test('documents the blocker for the generated publish route', () => {
+		const { schema } = readSpec('paths/publishWorkflow.generated.yml').responses['409'].content[
+			'application/json'
+		];
+
+		expect(schema.required).toEqual(['message']);
+		expect(schema.properties.reason.enum).toEqual(['review_pending', 'changes_requested']);
+		expect(schema.properties.workflowReviewRequestId.type).toBe('string');
+	});
+
 	test('documents the review reason and request ID as optional', () => {
-		const schema = parse(
-			fs.readFileSync(path.join(specRoot, 'schemas/workflowPublishBlockedError.yml'), 'utf8'),
-		);
+		const schema = readSpec('schemas/workflowPublishBlockedError.yml');
 
 		expect(schema).toMatchObject({
 			properties: {
@@ -48,9 +51,7 @@ describe('workflow publication blocker in OpenAPI', () => {
 	// the same 409 also carries webhook conflicts, whose body is
 	// `message`-only
 	test('stays satisfiable by a message-only conflict body', () => {
-		const schema = parse(
-			fs.readFileSync(path.join(specRoot, 'schemas/workflowPublishBlockedError.yml'), 'utf8'),
-		);
+		const schema = readSpec('schemas/workflowPublishBlockedError.yml');
 
 		expect(schema.required).toEqual(['message']);
 		expect(schema.additionalProperties).toBeUndefined();

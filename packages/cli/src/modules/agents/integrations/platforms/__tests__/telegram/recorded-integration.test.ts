@@ -165,11 +165,11 @@ describe('Telegram recorded integration replay', () => {
 					channelId: 'telegram:123456789',
 				},
 			});
-			const sentMessages = ctx.apiCalls.filter((call) => call.method === 'sendMessage');
+			const sentMessages = ctx.apiCalls.filter((call) => call.method === 'sendRichMessage');
 			expect(sentMessages).toHaveLength(1);
 			expect(sentMessages[0]?.body).toMatchObject({
 				chat_id: '123456789',
-				text: 'Test response',
+				rich_message: { markdown: 'Test response' },
 			});
 		} finally {
 			await ctx.shutdown();
