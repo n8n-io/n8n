@@ -230,11 +230,15 @@ export interface ExportPackageRequest {
 	credentialExportPolicy?: CredentialExportPolicy;
 }
 
-export type ImportPackageRequest = {
+/**
+ * A source-agnostic import: everything the importers need except where the
+ * package bytes come from. The reader (tar buffer, on-disk directory, …) is
+ * passed alongside, so importers never touch the source format.
+ */
+export type ImportRequest = {
 	user: User;
 	projectId?: string;
 	folderId?: string;
-	packageBuffer: Buffer;
 	bindings?: Partial<PackageImportBindings>;
 	apiKeyScopes?: string[];
 } & ImportCredentialProperties &
@@ -244,6 +248,11 @@ export type ImportPackageRequest = {
 	ImportDataTableProperties &
 	ImportVariableProperties &
 	ImportTagProperties;
+
+/** The tar-based public import: an {@link ImportRequest} carrying the archive bytes. */
+export type ImportPackageRequest = ImportRequest & {
+	packageBuffer: Buffer;
+};
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
@@ -267,7 +276,14 @@ export type ResolvedImportFolderProperties = ImportFolderProperties & {
 	folderConflictPolicy: FolderConflictPolicy;
 };
 
-/** An import request every importer can read without re-deriving what the caller omitted. */
+/**
+ * A source-agnostic import with the folder policy settled — what every importer
+ * reads without re-deriving what the caller omitted. Carries no package bytes, so
+ * it fits the directory read as well as the tar import.
+ */
+export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;
+
+/** The tar-based {@link ResolvedImportRequest}, carrying the archive bytes. */
 export type ResolvedImportPackageRequest = ImportPackageRequest & ResolvedImportFolderProperties;
 
 export type ImportFolderProperties = {
