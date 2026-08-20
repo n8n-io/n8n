@@ -1,3 +1,11 @@
+## [1.123.74](https://github.com/n8n-io/n8n/compare/n8n@1.123.73...n8n@1.123.74) (2026-08-20)
+
+
+### Bug Fixes
+
+* **core:** CAT-3451 ([#36593](https://github.com/n8n-io/n8n/issues/36593)) ([951edd7](https://github.com/n8n-io/n8n/commit/951edd783a596cc9d5f0913e6100cb1e70609cbc))
+
+
 ## [1.123.73](https://github.com/n8n-io/n8n/compare/n8n@1.123.72...n8n@1.123.73) (2026-08-19)
 
 
