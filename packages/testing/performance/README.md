@@ -78,6 +78,7 @@ my operation    20,000   0.04   0.20   0.05   0.10  ±0.5%   10000
 |------|------------------|----------------|
 | Expression Engine | `={{ }}` evaluation speed | Runs for every node parameter |
 | Workflow graph traversal | `getChildNodes` / `getParentNodes` on branching graphs | Runs on every execution (`checkReadyForExecution`) and across the editor; must stay linear in graph size |
+| Memory guard estimator | `estimateItemsSize` on realistic and pathological node outputs | Runs once per output branch per node run when `N8N_MEMORY_GUARD_ENABLED` is set; sampling, walk budget and depth cap must keep it flat as outputs grow |
 
 
 ## Tips

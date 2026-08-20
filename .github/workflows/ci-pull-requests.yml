@@ -117,6 +117,7 @@ jobs:
               packages/testing/performance/**
               packages/workflow/src/**
               packages/@n8n/expression-runtime/src/**
+              packages/cli/src/memory-guard/**
               .github/workflows/test-bench-reusable.yml
             e2e-performance:
               packages/testing/playwright/tests/performance/**
