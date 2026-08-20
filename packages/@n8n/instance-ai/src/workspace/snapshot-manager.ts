@@ -459,7 +459,14 @@ export class SnapshotManager {
 		for (const snapshot of snapshots) {
 			for (;;) {
 				try {
-					await daytona.snapshot.get(snapshot.name);
+					// Race the lookup itself against the wait budget — the SDK's transport
+					// timeout is effectively unbounded, so a stalled request would
+					// otherwise hang past the deadline.
+					await this.withDeadline(
+						daytona.snapshot.get(snapshot.name),
+						waitDeadline,
+						`Timed out waiting for Daytona snapshot "${snapshot.name}" to be removed`,
+					);
 				} catch (error) {
 					if (!(error instanceof DaytonaNotFoundError)) {
 						this.logger.warn('Unexpected error while waiting for snapshot removal', {
