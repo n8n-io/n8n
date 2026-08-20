@@ -146,7 +146,7 @@ export class SlackIntegration extends AgentChatIntegration {
 		// post or DM arrives on the channel-level pseudo-thread (empty threadTs);
 		// anchor it at the message's own id so replies correlate. Already-threaded
 		// messages keep their id.
-		const match = /^slack:([CD][^:]*):(.*)$/.exec(message.threadId);
+		const match = /^slack:([CDG][^:]*):(.*)$/.exec(message.threadId);
 		if (!match) return undefined;
 		const [, channel, threadTs] = match;
 		if (threadTs) return undefined;
