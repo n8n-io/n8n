@@ -601,6 +601,8 @@ export class ExecutionPersistence {
 			lastId?: string;
 			status?: ExecutionStatus;
 			excludedExecutionsIds?: string[];
+			startedAfter?: string;
+			startedBefore?: string;
 		},
 		maxDataSizeBytes?: number,
 	): Promise<IExecutionBase[]> {
