@@ -62,19 +62,29 @@ const typeaheadText = computed(() => props.textValue ?? props.label);
 <style module>
 .itemLeading {
 	flex-shrink: 0;
+	margin-top: var(--spacing--5xs);
 }
 
 .itemText {
 	flex-grow: 1;
+	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	line-height: var(--line-height--md);
+	line-height: var(--line-height--lg);
 }
 
 .itemIndicator,
 .itemTrailing {
 	margin-left: auto;
 	flex-shrink: 0;
+}
+
+.itemIndicator {
+	margin-top: var(--spacing--5xs);
+}
+
+.itemTrailing {
+	align-self: center;
 }
 </style>

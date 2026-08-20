@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { N8nSelect2 } from '@n8n/design-system';
+import { N8nSelect2, N8nText } from '@n8n/design-system';
 import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -61,19 +61,18 @@ function onSelect(value: SelectValue | undefined) {
 			variant="ghost"
 			size="medium"
 			position="popper"
-			:content-class="$style.content"
 			@update:model-value="onSelect"
 		>
 			<template #default>
 				{{ currentMode.label }}
 			</template>
 			<template #item-label="{ item }">
-				<div :class="$style.itemContent">
-					<span>{{ item.label }}</span>
-					<span :class="$style.description">
+				<span :class="$style.itemStack">
+					<N8nText tag="span" size="medium">{{ item.label }}</N8nText>
+					<N8nText tag="span" size="small" color="text-base">
 						{{ (item as ModeSelectItem).description }}
-					</span>
-				</div>
+					</N8nText>
+				</span>
 			</template>
 		</N8nSelect2>
 	</div>
@@ -93,20 +92,9 @@ function onSelect(value: SelectValue | undefined) {
 	}
 }
 
-.content [role='option'] {
-	height: auto;
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-}
-
-.itemContent {
+.itemStack {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
-}
-
-.description {
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-	line-height: var(--line-height--sm);
 }
 </style>

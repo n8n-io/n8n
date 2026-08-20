@@ -272,7 +272,7 @@ export const ItemWithDescription = {
 	},
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
-		components: { Select },
+		components: { Select, N8nText },
 		setup() {
 			const value = ref(args.modelValue);
 			const items = args.items as DescribedOption[];
@@ -290,12 +290,12 @@ export const ItemWithDescription = {
 					{{ current.label }}
 				</template>
 				<template #item-label="{ item }">
-					<div style="display: flex; flex-direction: column; gap: var(--spacing--5xs);">
-						<span>{{ item.label }}</span>
-						<span style="font-size: var(--font-size--3xs); color: var(--color--text--tint-1); line-height: var(--line-height--sm);">
+					<span style="display: flex; flex-direction: column; gap: var(--spacing--5xs);">
+						<N8nText tag="span" size="medium">{{ item.label }}</N8nText>
+						<N8nText tag="span" size="small" color="text-base">
 							{{ items.find((option) => option.value === item.value)?.description }}
-						</span>
-					</div>
+						</N8nText>
+					</span>
 				</template>
 			</Select>
 		</div>

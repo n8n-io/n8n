@@ -922,7 +922,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	line-height: var(--line-height--lg);
 	border-radius: var(--input--radius);
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	min-height: var(--spacing--xl);
 	padding: var(--spacing--2xs);
 	user-select: none;
