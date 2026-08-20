@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
 import type { ICredentialsResponse } from '../credentials.types';
 import * as credentialsApi from '../credentials.api';
 import { useCredentialsStore } from '../credentials.store';
@@ -217,6 +218,102 @@ describe('credentials.store', () => {
 
 			expect(store.allCredentials).toHaveLength(2);
 			expect(store.allCredentials.find((c) => c.id === 'cred-2')?.isGlobal).toBe(true);
+		});
+	});
+
+	describe('fetchAllCredentialsForWorkflow', () => {
+		const credential = (
+			overrides: Partial<ICredentialsResponse> & Pick<ICredentialsResponse, 'id'>,
+		): ICredentialsResponse =>
+			mock<ICredentialsResponse>({
+				name: `Credential ${overrides.id}`,
+				type: 'httpBasicAuth',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				...overrides,
+			});
+
+		const inScope = credential({ id: 'in-scope', name: 'Project credential' });
+		const outOfScope = credential({ id: 'out-of-scope', name: 'Personal credential' });
+
+		it('populates the usable slice and flips the fetched flag', async () => {
+			const store = useCredentialsStore();
+			expect(store.hasFetchedUsableCredentials).toBe(false);
+
+			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
+
+			await store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+
+			expect(credentialsApi.getAllCredentialsForWorkflow).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				{ workflowId: 'wf-1' },
+			);
+			expect(store.hasFetchedUsableCredentials).toBe(true);
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
+			// The flat map keeps its existing replace semantics.
+			expect(store.allCredentials).toEqual([inScope]);
+		});
+
+		it('reads an unfetched slice as empty rather than falling back to the flat map', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue([outOfScope]);
+			await store.fetchAllCredentials();
+
+			expect(store.allCredentials).toEqual([outOfScope]);
+			expect(store.hasFetchedUsableCredentials).toBe(false);
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([]);
+		});
+
+		it('keeps the usable slice when a later unscoped fetch widens the flat map', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
+			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue([inScope, outOfScope]);
+
+			await store.fetchAllCredentialsForWorkflow({ projectId: 'project-1' });
+			await store.fetchAllCredentials();
+
+			expect(store.allCredentials).toHaveLength(2);
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
+		});
+
+		it('keeps the usable slice when the unscoped fetch resolved first', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue([inScope, outOfScope]);
+			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
+
+			await store.fetchAllCredentials();
+			await store.fetchAllCredentialsForWorkflow({ projectId: 'project-1' });
+
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
+		});
+
+		it('returns an empty list for a type with no usable credentials', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
+			await store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+
+			expect(store.getUsableCredentialByType('unknownType')).toEqual([]);
+		});
+
+		it('never yields undefined entries for a node whose types are only partly usable', async () => {
+			const store = useCredentialsStore();
+
+			mockNodeTypesStore.getNodeType.mockReturnValue(
+				mock<INodeTypeDescription>({
+					credentials: [{ name: 'httpBasicAuth' }, { name: 'oAuth2Api' }],
+				}),
+			);
+			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
+			await store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+
+			const credentials = store.allUsableCredentialsForNode(
+				mock<INodeUi>({ type: 'n8n-nodes-base.httpRequest', typeVersion: 1 }),
+			);
+
+			expect(credentials).toEqual([inScope]);
 		});
 	});
 

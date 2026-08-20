@@ -9,6 +9,7 @@ import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue
 import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
@@ -45,6 +46,7 @@ const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const thread = useThread();
 const credentialsStore = useCredentialsStore();
+const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const settingsStore = useInstanceAiSettingsStore();
 
@@ -234,9 +236,11 @@ onMounted(async () => {
 	// the store with credentials from other projects (e.g. personal) that the
 	// picker would then offer.
 	try {
+		const projectId =
+			props.projectId ?? projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
 		await Promise.all([
-			props.projectId
-				? credentialsStore.fetchAllCredentialsForWorkflow({ projectId: props.projectId })
+			projectId
+				? credentialsStore.fetchAllCredentialsForWorkflow({ projectId })
 				: credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
 		]);

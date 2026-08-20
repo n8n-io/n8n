@@ -380,6 +380,10 @@ watch(
 	(types) => {
 		if (props.skipAutoSelect) return;
 		if (types.length === 0) return;
+		// Before the scoped fetch lands there are no options to pick from, which would
+		// read as "no credentials exist" and auto-enable the AI Gateway below. The
+		// watcher re-fires once the fetch populates the slice.
+		if (!credentialsStore.hasFetchedUsableCredentials) return;
 
 		const isInitialEvaluation = !hasEvaluatedCredentials;
 		hasEvaluatedCredentials = true;
@@ -462,6 +466,18 @@ onMounted(() => {
 
 				if (options?.skipStoreUpdate) {
 					return;
+				}
+			}
+
+			// Let the server decide whether the mutated credential is usable here rather
+			// than optimistically inserting it — a credential edited from the command bar
+			// may well belong to another project.
+			const refetchScope = getCredentialFetchScope();
+			if (refetchScope) {
+				try {
+					await credentialsStore.fetchAllCredentialsForWorkflow(refetchScope);
+				} catch {
+					// Fall through with whatever the store already holds.
 				}
 			}
 

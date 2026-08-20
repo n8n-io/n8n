@@ -41,6 +41,20 @@ export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const state = ref<ICredentialsState>({ credentialTypes: {}, credentials: {} });
 
+	/**
+	 * Credentials the backend says are usable in the workflow/project currently open.
+	 * Kept apart from `state.credentials`, which any of ~20 unscoped
+	 * `fetchAllCredentials` callers can replace while a canvas is open — the last
+	 * fetch to resolve would otherwise own the credential picker.
+	 */
+	const usableCredentials = ref<ICredentialMap>({});
+	/**
+	 * An unfetched slice reads as empty, never as a fallback to the flat map —
+	 * falling back is the bug. Callers that must not act on "no credentials yet"
+	 * check this.
+	 */
+	const hasFetchedUsableCredentials = ref(false);
+
 	type CredentialTestStatus = 'pending' | 'success' | 'error';
 	const credentialTestResults = ref(new Map<string, CredentialTestStatus>());
 
@@ -89,19 +103,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	});
 
 	const allUsableCredentialsByType = computed(() => {
-		const credentials = allCredentials.value;
-		const types = allCredentialTypes.value;
+		const byType: { [type: string]: ICredentialsResponse[] } = {};
 
-		return types.reduce(
-			(accu: { [type: string]: ICredentialsResponse[] }, type: ICredentialType) => {
-				accu[type.name] = credentials.filter((cred: ICredentialsResponse) => {
-					return cred.type === type.name;
-				});
+		for (const credential of Object.values(usableCredentials.value)) {
+			(byType[credential.type] ??= []).push(credential);
+		}
 
-				return accu;
-			},
-			{},
-		);
+		for (const credentials of Object.values(byType)) {
+			credentials.sort((a, b) => a.name.localeCompare(b.name));
+		}
+
+		return byType;
 	});
 
 	const allUsableCredentialsForNode = computed(() => {
@@ -110,7 +122,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
 			if (nodeType?.credentials) {
 				nodeType.credentials.forEach((cred) => {
-					credentials = credentials.concat(allUsableCredentialsByType.value[cred.name]);
+					credentials = credentials.concat(allUsableCredentialsByType.value[cred.name] ?? []);
 				});
 			}
 			return credentials.sort((a, b) => {
@@ -333,7 +345,16 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			rootStore.restApiContext,
 			options,
 		);
+		// The flat map keeps replace semantics for its existing consumers; the slice is
+		// what the credential picker reads.
 		setCredentials(credentials);
+		usableCredentials.value = credentials.reduce((accu: ICredentialMap, cred) => {
+			if (cred.id) {
+				accu[cred.id] = cred;
+			}
+			return accu;
+		}, {});
+		hasFetchedUsableCredentials.value = true;
 		return credentials;
 	};
 
@@ -548,6 +569,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	return {
 		state,
+		usableCredentials,
+		hasFetchedUsableCredentials,
 		credentialTestResults,
 		isCredentialTestedOk,
 		isCredentialTestPending,
