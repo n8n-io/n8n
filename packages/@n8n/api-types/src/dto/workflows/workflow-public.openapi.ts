@@ -7,19 +7,11 @@ function alsoNullable(metadata: ZodOpenAPIMetadata): ZodOpenAPIMetadata {
 	return { ...metadata, nullable: true } as ZodOpenAPIMetadata;
 }
 
-/**
- * Documentation for one field: prose, an example, or both. Key order here reaches the generated
- * OpenAPI fragments verbatim, so each literal below keeps the order the published spec already uses.
- */
+// Key order below reaches the generated OpenAPI fragments verbatim, so each literal keeps the
+// order the published spec already uses.
 type FieldDoc = { description?: string; example?: unknown };
 
-/**
- * Per-field documentation, shared by the response descriptors in this file and the strict request
- * schemas in `create-workflow-public.dto.ts`. The descriptors below have to spell out a whole JSON
- * Schema because the response fields validate through `z.custom`, which generates nothing. A strict
- * request schema generates its own structure and needs only this prose. Both read it from here so a
- * field is documented once.
- */
+/** Field prose and examples, read by the descriptors below and by the create request schema. */
 export const workflowNodeFieldDocs = {
 	id: { example: '0f5532f9-36ba-4bef-86c7-30d607400b15' },
 	name: { example: 'Jira' },
@@ -116,7 +108,6 @@ export const workflowSettingsFieldDocs = {
 	},
 } as const satisfies Record<string, FieldDoc>;
 
-/** Documentation for the fields only the create request body has. */
 export const workflowCreateFieldDocs = {
 	name: { example: 'Workflow 1' },
 	nodes: { description: 'Nodes that make up the workflow' },
@@ -293,26 +284,18 @@ export const metaOpenApi: ZodOpenAPIMetadata = alsoNullable({
 	},
 });
 
-/**
- * Assembles a descriptor that nests another descriptor. `ZodOpenAPIMetadata` is a union of the
- * OpenAPI 3.0 and 3.1 schema types, and TypeScript will not assign that union into a nested
- * `properties` slot, so the object is built loosely here — the same reason `alsoNullable` exists.
- */
+/** `ZodOpenAPIMetadata` is a union, which will not assign into a nested `properties` slot. */
 function nestingDescriptor(schema: Record<string, unknown>): ZodOpenAPIMetadata {
 	return schema as ZodOpenAPIMetadata;
 }
 
-/** A `readOnly` timestamp, as every request schema documented one. */
 export const readOnlyTimestampOpenApi = {
 	type: 'string',
 	format: 'date-time',
 	readOnly: true,
 } as const;
 
-/**
- * `node.yml` as the request schemas documented it: strict, with read-only timestamps. Derived from
- * `nodesOpenApi` so the prose and examples stay in one place.
- */
+/** `node.yml` as the request schemas documented it: strict, with read-only timestamps. */
 export const requestNodesOpenApi = nestingDescriptor({
 	...nodesOpenApi,
 	items: {
@@ -341,7 +324,6 @@ export const requestNodesOpenApi = nestingDescriptor({
 	},
 });
 
-/** `workflowNodeGroup.yml` as the request schemas documented it: strict. */
 export const requestNodeGroupsOpenApi = nestingDescriptor({
 	...nodeGroupsOpenApi,
 	items: {
@@ -350,14 +332,7 @@ export const requestNodeGroupsOpenApi = nestingDescriptor({
 	},
 });
 
-/**
- * The fields `workflowCreate.yml` documented as `readOnly`. They stay in the published create
- * request schema, and sending any of them is a 400 — see `readOnlyPublicSchema` in
- * `create-workflow-public.dto.ts`. Each literal carries its own `readOnly: true` so the key lands
- * where the deleted schema had it. `tags` and `activeVersion` reproduce the two files that schema
- * pulled in by `$ref` (`tag.yml` and `activeVersion.yml`); their nested node, connection and node
- * group shapes come from the descriptors above rather than a second copy.
- */
+/** Each literal carries its own `readOnly: true`, to land where the deleted schema had it. */
 export const workflowCreateReadOnlyFieldDocs = {
 	id: { type: 'string', readOnly: true, example: '2tUt1wbLX592XDdX' },
 	active: { type: 'boolean', readOnly: true },

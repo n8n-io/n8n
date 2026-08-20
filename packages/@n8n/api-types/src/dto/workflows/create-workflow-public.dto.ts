@@ -15,37 +15,7 @@ import {
 } from './workflow-public.openapi';
 import { Z } from '../../zod-class';
 
-/**
- * Request body for `POST /api/v1/workflows`.
- *
- * This replaces the hand-written `workflowCreate.yml`, so it has to accept and reject exactly what
- * that schema did. Two rules from the old stack are easy to lose:
- *
- * - Every field the spec marked `readOnly` was a hard 400, not a field that was quietly ignored.
- *   express-openapi-validator registers its own Ajv `readOnly` keyword that fails on the property
- *   being present at all. So `id`, `active`, `createdAt`, `updatedAt`, `isArchived`, `versionId`,
- *   `triggerCount`, `meta`, `tags` and `activeVersion` are declared through
- *   `readOnlyPublicSchema`: still documented, still a 400. The read-only fields nested in
- *   `node.yml` and `sharedWorkflow.yml` are refused by their strict objects instead, matching
- *   those schemas, which never listed them as writable.
- * - `workflowCreate.yml`, `node.yml`, `workflowSettings.yml`, `workflowNodeGroup.yml` and
- *   `sharedWorkflow.yml` all set `additionalProperties: false`, so those objects are strict here.
- *   `sharedWorkflow.yml`'s nested `project` does not, so that one stays open.
- *
- * Field documentation lives in `workflow-public.openapi.ts` alongside the response descriptors, so
- * each field is described once for both directions.
- */
-
-/**
- * A field the deleted `workflowCreate.yml` documented as `readOnly`. The descriptor keeps it in the
- * published request schema; `z.undefined()` refuses any value a caller sends, which is what
- * express-openapi-validator's own `readOnly` keyword did — it failed on the property being present,
- * `null` included. An absent key never reaches the parsed object, so nothing leaks downstream, and
- * the parsed type reads `undefined` rather than `unknown`: the key can only ever be absent.
- *
- * The descriptor must set `type`. That makes the generator describe the field from the metadata
- * instead of from `z.undefined()`, which it has no mapping for and would throw on.
- */
+/** The descriptor must set `type`: the generator has no mapping for `z.undefined()` and throws. */
 const readOnlyPublicSchema = (descriptor: ZodOpenAPIMetadata) =>
 	z.undefined({ invalid_type_error: 'is read-only' }).openapi(descriptor);
 
@@ -56,7 +26,6 @@ const customTelemetryTagPublicSchema = z
 	})
 	.strict();
 
-/** `node.yml`. Every field is optional there, so a bare `{}` is a valid node. */
 const workflowNodeCreatePublicSchema = z
 	.object({
 		id: z.string().optional().openapi(workflowNodeFieldDocs.id),
@@ -92,26 +61,17 @@ const workflowNodeCreatePublicSchema = z
 	})
 	.strict();
 
-/** `workflowNodeGroup.yml`. */
 const workflowNodeGroupCreatePublicSchema = z
 	.object({
 		id: z.string().openapi(workflowNodeGroupFieldDocs.id),
 		name: z.string().openapi(workflowNodeGroupFieldDocs.name),
-		// 155, not the internal `GROUP_DESCRIPTION_MAX_LENGTH` of 145. The public schema has always
-		// rejected at 155, and the internal cap truncates rather than rejects, so lowering this
-		// number here would reject payloads the API accepts today.
+		// 155, not GROUP_DESCRIPTION_MAX_LENGTH (145): the internal cap truncates, this one rejects.
 		description: z.string().max(155).optional().openapi(workflowNodeGroupFieldDocs.description),
 		nodeIds: z.array(z.string()).openapi(workflowNodeGroupFieldDocs.nodeIds),
 	})
 	.strict();
 
-/**
- * `workflowSettings.yml`.
- *
- * `binaryMode` and `credentialResolverId` are derived, internal settings. The spec documents them
- * and the endpoint accepts them, but the stored value is left alone — so the transform drops them
- * after validation instead of the controller deleting them by hand.
- */
+/** `binaryMode` and `credentialResolverId` are documented and accepted, then dropped. */
 const workflowSettingsCreatePublicSchema = z
 	.object({
 		saveExecutionProgress: z.boolean().optional(),
@@ -155,20 +115,12 @@ const workflowSettingsCreatePublicSchema = z
 		({ binaryMode: _binaryMode, credentialResolverId: _resolverId, ...settings }) => settings,
 	);
 
-/**
- * `sharedWorkflow.yml`. Documented, accepted, and then discarded: the owner share is derived from
- * the target project. The shape is still replicated so a payload the old schema rejected keeps
- * being rejected. `createdAt` and `updatedAt` are read-only, so the strict object refuses them by
- * leaving them out; `project` is the one object the old schema left open, and its `id` and `type`
- * are read-only.
- */
+/** Accepted and discarded. `sharedWorkflow.yml` left `project` open, so unknown keys pass there. */
 const sharedWorkflowCreatePublicSchema = z
 	.object({
 		role: z.string().optional().openapi({ example: 'workflow:owner' }),
 		workflowId: z.string().optional().openapi({ example: '2tUt1wbLX592XDdX' }),
 		projectId: z.string().optional().openapi({ example: '2tUt1wbLX592XDdX' }),
-		// The old schema left `project` open, so unknown keys pass; its `id` and `type` were
-		// read-only, so they are declared and refused rather than silently accepted.
 		project: z
 			.object({
 				id: readOnlyPublicSchema({ type: 'string', readOnly: true }),
@@ -182,7 +134,6 @@ const sharedWorkflowCreatePublicSchema = z
 	})
 	.strict();
 
-/** `staticData`: a JSON string, an object, or null. */
 const staticDataCreatePublicSchema = z
 	.union([
 		z
@@ -201,8 +152,7 @@ const staticDataCreatePublicSchema = z
 			.openapi({ format: 'jsonString' }),
 		z.record(z.unknown()),
 	])
-	// `.nullable()` rather than a `z.null()` union member: OpenAPI 3.0 expresses a nullable union by
-	// appending one `{ nullable: true }` branch, and a `z.null()` member would add a second.
+	// `.nullable()`, not a `z.null()` member: that would add a second `{ nullable: true }` branch.
 	.nullable()
 	.openapi(workflowCreateFieldDocs.staticData);
 
@@ -216,8 +166,7 @@ export const createWorkflowPublicShape = {
 	versionId: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.versionId),
 	triggerCount: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.triggerCount),
 	nodes: z.array(workflowNodeCreatePublicSchema).openapi(workflowCreateFieldDocs.nodes),
-	// `type: object` was the whole of the old check, which is what this custom schema does. It keeps
-	// the domain type, so the parsed value needs no cast on the way to the workflow entity.
+	// `type: object` was the whole of the old check, and this keeps the domain type — no cast needed.
 	connections: z
 		.custom<IConnections>(
 			(value) => typeof value === 'object' && value !== null && !Array.isArray(value),

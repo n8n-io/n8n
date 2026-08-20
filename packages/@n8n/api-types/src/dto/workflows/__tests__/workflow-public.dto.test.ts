@@ -153,8 +153,6 @@ describe('CreatedWorkflowPublicDto', () => {
 		}
 	});
 
-	// The create response has always carried the folder relation, so the field is required here
-	// even though no other workflow route returns it.
 	test('rejects a body with no parentFolder key', () => {
 		const result = CreatedWorkflowPublicDto.safeParse(baseWorkflow);
 

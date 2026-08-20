@@ -17,9 +17,6 @@ const validPayload = {
 };
 
 describe('CreateWorkflowPublicDto', () => {
-	// The legacy spec marked these read-only, and express-openapi-validator turned their mere
-	// presence into a 400. Keeping them out of the shape preserves that; a case here fails if
-	// someone adds one back.
 	test.each([
 		['id', '2tUt1wbLX592XDdX'],
 		['active', false],
@@ -52,7 +49,6 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
-	// `shared` is discarded, but the old schema still rejected these, so this one does too.
 	test.each([
 		['createdAt', { createdAt: '2026-01-01T00:00:00.000Z' }],
 		['updatedAt', { updatedAt: '2026-01-01T00:00:00.000Z' }],
@@ -65,7 +61,6 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(false);
 	});
 
-	// `sharedWorkflow.yml` left the nested project open, so an unknown project key is allowed.
 	test('allows an unknown key inside a shared project', () => {
 		const result = CreateWorkflowPublicDto.safeParse({
 			...validPayload,
@@ -114,8 +109,6 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(expected);
 	});
 
-	// 155 is the public limit, not the internal `GROUP_DESCRIPTION_MAX_LENGTH` of 145, which
-	// truncates instead of rejecting.
 	test.each([
 		['accepts', 155, true],
 		['rejects', 156, false],

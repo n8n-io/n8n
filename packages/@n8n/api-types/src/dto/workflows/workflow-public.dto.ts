@@ -137,12 +137,6 @@ export const workflowPublicSchema = z.object({
 
 export class WorkflowPublicDto extends Z.class(workflowPublicSchema.shape) {}
 
-/**
- * `POST /workflows` is the only workflow route whose service call sets `includeParentFolder`, so it
- * is the only one that has ever returned the folder relation. Dropping it would change the response,
- * so the create route gets `workflowPublicSchema` plus that one field rather than reusing
- * `WorkflowPublicDto`.
- */
 export const workflowParentFolderPublicSchema = z.object({
 	id: z.string(),
 	name: z.string(),

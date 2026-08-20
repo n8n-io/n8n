@@ -35,10 +35,6 @@ export interface ZodArrayClass<T, Item extends z.ZodTypeAny = z.ZodTypeAny> {
  * }) {}
  * ```
  */
-/**
- * Shared body for `Z.class` and `Z.strictClass`. Only the schema differs: strictness changes what
- * is accepted, not the parsed output, so both produce the same `ZodClass<Output, T>`.
- */
 const dtoClassFor = <T extends z.ZodRawShape, Unknown extends z.UnknownKeysParam>(
 	shape: T,
 	schema: z.ZodObject<T, Unknown>,
@@ -73,11 +69,7 @@ export const Z = {
 	class: <T extends z.ZodRawShape>(shape: T): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> =>
 		dtoClassFor(shape, z.object(shape)),
 
-	/**
-	 * Like `Z.class`, but an unknown key fails validation instead of being stripped. Use for a
-	 * public API request body whose OpenAPI schema sets `additionalProperties: false`: silently
-	 * dropping an unknown field would widen the contract and hide a caller's typo.
-	 */
+	/** Like `Z.class`, but an unknown key fails validation instead of being stripped. */
 	strictClass: <T extends z.ZodRawShape>(
 		shape: T,
 	): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> =>

@@ -76,7 +76,6 @@ function toPublicTag(tag: TagEntity) {
 	};
 }
 
-/** Only the create response carries the folder relation — see `CreatedWorkflowPublicDto`. */
 function toPublicFolder(folder: Folder) {
 	return {
 		id: folder.id,
@@ -279,13 +278,11 @@ export class WorkflowsPublicController {
 		_res: Response,
 		@Body body: CreateWorkflowPublicDto,
 	): Promise<CreatedWorkflowPublicDto> {
-		// `shared` is documented and accepted, but the owner share comes from the target project.
 		const { projectId, parentFolderId, shared: _shared, ...rest } = body;
 
 		const workflow = createWorkflowEntityFromPayload(rest);
 
-		// Runs before the creation service, so a policy below the instance floor is reported as 422
-		// even when the payload would also fail one of that service's own checks.
+		// Before the creation service, so a below-floor policy is a 422 even when a later check fails.
 		await this.redactionEnforcementService.assertNewPolicyAllowed(body.settings.redactionPolicy);
 
 		const createdWorkflow = await this.workflowCreationService.createWorkflow(req.user, workflow, {

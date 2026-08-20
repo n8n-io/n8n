@@ -2302,12 +2302,8 @@ describe('POST /workflows', () => {
 		});
 	});
 
-	// These cases lock the wire contract of this endpoint so the decorator migration
-	// cannot change it. They pass against the legacy handler and must keep passing.
 	describe('response contract', () => {
-		// The legacy handler serialises the entity the creation service returns, so the body
-		// carries every loaded relation. A migration that builds the body from a DTO drops any
-		// field the DTO forgets, and nothing else in this suite would notice.
+		// A response built from a DTO drops any field the DTO forgets, and only this notices.
 		const expectedResponseKeys = [
 			'active',
 			'activeVersion',
@@ -2406,10 +2402,7 @@ describe('POST /workflows', () => {
 	});
 
 	describe('request contract', () => {
-		// express-openapi-validator registers a custom Ajv `readOnly` keyword that fails whenever
-		// the property is present at all, so every read-only field in the spec is a hard 400 — not
-		// a field that is quietly accepted and ignored. `workflowEntityWriteFields` allows `id` and
-		// `meta`, but only the internal REST controller can ever reach them.
+		// Read-only in the spec means a hard 400 on the field being present, not silently ignored.
 		test.each([
 			{ key: 'id', value: '2tUt1wbLX592XDdX' },
 			{ key: 'active', value: false },
@@ -2429,8 +2422,6 @@ describe('POST /workflows', () => {
 			expect(response.statusCode).toBe(400);
 		});
 
-		// `shared` is the one documented field that is neither read-only nor written: it is
-		// accepted, ignored, and overwritten by the real owner share.
 		test('should accept and ignore a supplied shared list', async () => {
 			const response = await authMemberAgent
 				.post('/workflows')
@@ -2579,9 +2570,7 @@ describe('POST /workflows redaction floor enforcement', () => {
 		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
 	});
 
-	// The floor check runs before the workflow is built, so it wins over any error the
-	// creation service raises later. Keeping that order matters: moving the check into
-	// WorkflowCreationService would turn this 422 into the node-group 400.
+	// The floor check runs first, so it wins over any error the creation service raises later.
 	test('reports the floor violation even when the payload is also otherwise invalid', async () => {
 		const response = await authOwnerAgent.post('/workflows').send({
 			name: 'redaction-floor-precedence',
