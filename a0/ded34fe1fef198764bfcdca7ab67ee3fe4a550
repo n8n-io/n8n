@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-channel-status-reporter.test.ts
+  s_6a17706f71c1c1::t_9250de615e225f 212-243
+packages/cli/src/modules/agents/integrations/agent-channel-reconciler.service.ts
+  s_6a17706f71c1c1::t_1a7ce2a7e8b81e 124-129
+packages/cli/src/modules/agents/integrations/__tests__/agent-channel-reconciler.service.test.ts
+  s_6a17706f71c1c1::t_14cc501ac60a1f 137-143,619-656
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a0ded34fe1fef198764bfcdca7ab67ee3fe4a550",
+  "prompts": {},
+  "sessions": {
+    "s_6a17706f71c1c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc88076d-1702-40dc-821b-87f66b937ff5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

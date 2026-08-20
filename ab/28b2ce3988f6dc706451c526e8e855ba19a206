@@ -1,0 +1,41 @@
+packages/@n8n/permissions/src/utilities/__tests__/get-resource-permissions.test.ts
+  s_91222aac31d016::t_30b32d8b4cfb2c 33,133
+packages/@n8n/permissions/src/scope-information.ts
+  s_91222aac31d016::t_f77667c5f26f80 136-139
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_91222aac31d016::t_54796d10cd4a14 18-19,21-27
+  s_91222aac31d016::t_cae05d404bdf1e 2
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_91222aac31d016::t_9dd5aafb078658 16
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  h_9b272a633435fb 1-43,45-52
+  s_91222aac31d016::t_e61f418a9801e2 44
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_91222aac31d016::t_57691844c76d75 62
+packages/@n8n/permissions/src/constants.ee.ts
+  s_91222aac31d016::t_cba1356367678d 37
+  s_91222aac31d016::t_e20eb8d2d70e5f 111
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_91222aac31d016::t_2a43d6f3ef4407 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ab28b2ce3988f6dc706451c526e8e855ba19a206",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_91222aac31d016": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8683da72-3c4c-49be-8a2f-d9949b95271c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
