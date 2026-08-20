@@ -15,14 +15,12 @@ describe('DirectoryPackageWriter', () => {
 		await rm(targetDir, { recursive: true, force: true });
 	});
 
-	it('flushes buffered files and directories to disk on finalize', async () => {
+	it('writes files and directories directly to disk', async () => {
 		const writer = new DirectoryPackageWriter(targetDir);
 
-		writer.writeFile('manifest.json', '{"packageFormatVersion":"1"}');
-		writer.writeDirectory('projects/alpha/workflows');
-		writer.writeFile('projects/alpha/workflows/wf/workflow.json', '{"id":"wf"}');
-
-		await writer.finalize();
+		await writer.writeFile('manifest.json', '{"packageFormatVersion":"1"}');
+		await writer.writeDirectory('projects/alpha/workflows');
+		await writer.writeFile('projects/alpha/workflows/wf/workflow.json', '{"id":"wf"}');
 
 		expect(await readFile(path.join(targetDir, 'manifest.json'), 'utf-8')).toBe(
 			'{"packageFormatVersion":"1"}',
@@ -33,36 +31,30 @@ describe('DirectoryPackageWriter', () => {
 		expect((await stat(path.join(targetDir, 'projects/alpha/workflows'))).isDirectory()).toBe(true);
 	});
 
-	it('writes nothing to disk before finalize is called', async () => {
+	it('writes files before finalize is called', async () => {
 		const writer = new DirectoryPackageWriter(targetDir);
-		writer.writeFile('manifest.json', '{}');
+		await writer.writeFile('manifest.json', '{}');
 
-		await expect(stat(path.join(targetDir, 'manifest.json'))).rejects.toThrow();
+		expect((await stat(path.join(targetDir, 'manifest.json'))).isFile()).toBe(true);
 	});
 
 	it('creates missing parent directories for a file entry', async () => {
 		const writer = new DirectoryPackageWriter(targetDir);
 		// No explicit writeDirectory for the parents.
-		writer.writeFile('a/b/c/deep.json', '{"deep":true}');
-
-		await writer.finalize();
+		await writer.writeFile('a/b/c/deep.json', '{"deep":true}');
 
 		expect(await readFile(path.join(targetDir, 'a/b/c/deep.json'), 'utf-8')).toBe('{"deep":true}');
 	});
 
 	it('normalises leading "./" entry paths', async () => {
 		const writer = new DirectoryPackageWriter(targetDir);
-		writer.writeFile('./manifest.json', '{}');
-
-		await writer.finalize();
+		await writer.writeFile('./manifest.json', '{}');
 
 		expect(await readFile(path.join(targetDir, 'manifest.json'), 'utf-8')).toBe('{}');
 	});
 
 	it('refuses to write outside the target directory', async () => {
 		const writer = new DirectoryPackageWriter(targetDir);
-		writer.writeFile('../escape.json', '{}');
-
-		await expect(writer.finalize()).rejects.toThrow(/outside the target/);
+		await expect(writer.writeFile('../escape.json', '{}')).rejects.toThrow(/outside the target/);
 	});
 });

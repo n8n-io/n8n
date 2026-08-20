@@ -198,7 +198,7 @@ export class N8nPackagesService {
 				workflowVersionPolicy,
 			});
 
-			autoIncludedExportResult = this.autoIncludedWorkflowExporter.export({
+			autoIncludedExportResult = await this.autoIncludedWorkflowExporter.export({
 				writer,
 				workflows: autoIncludedWorkflowResolution.autoIncludedWorkflows,
 				existingWorkflowEntries: allWorkflowsBeforeAutoInclude,
@@ -283,7 +283,7 @@ export class N8nPackagesService {
 			projectTargetsById,
 		});
 
-		const tagExportResult = this.tagExporter.export({
+		const tagExportResult = await this.tagExporter.export({
 			usages: requirements.tags,
 			writer,
 		});
@@ -318,7 +318,7 @@ export class N8nPackagesService {
 			...(allProjects.length > 0 ? { projects: allProjects } : {}),
 		});
 
-		writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
+		await writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
 
 		const counts: ExportPackageEventCounts = {
 			workflows: allWorkflowsInPackage.length,

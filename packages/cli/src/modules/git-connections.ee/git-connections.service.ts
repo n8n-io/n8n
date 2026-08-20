@@ -8,7 +8,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
-import { rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
@@ -150,37 +150,44 @@ export class GitConnectionsService {
 		await this.getEntity(connectionId);
 		const projectIds =
 			await this.projectConnectionRepository.findProjectIdsByConnection(connectionId);
-		const exportFolder = path.join(this.rootFolder(connectionId), 'repository', EXPORT_SUBFOLDER);
+		const repositoryFolder = path.join(this.rootFolder(connectionId), 'repository');
+		const exportFolder = path.join(repositoryFolder, EXPORT_SUBFOLDER);
 
 		this.logger.info('Exporting projects to Git connection repository', {
 			connectionId,
 			projectCount: projectIds.length,
 		});
 
-		// Replace the previous export wholesale so files for projects that are no
-		// longer linked disappear. Only the n8n-managed subfolder is cleared — `.git`
-		// and any user-committed files at the repository root are left untouched. A
-		// failed export leaves a Git-recoverable working tree, so no backup is needed.
-		await rm(exportFolder, { recursive: true, force: true });
-		const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
-			{
-				user: actor,
-				projectIds,
-				includeVariableValues: true,
-				canExportVariableValues: true,
-				includeTags: true,
-				missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-				workflowVersionPolicy: WorkflowVersionPolicy.Latest,
-			},
-			{ targetDir: exportFolder },
-		);
+		await mkdir(repositoryFolder, { recursive: true });
+		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${EXPORT_SUBFOLDER}-`));
 
-		// TODO: commit the working copy and push to the remote, then surface the
-		// git operation result here.
-		return {
-			connectionId,
-			counts: exportResult.counts,
-		};
+		try {
+			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
+				{
+					user: actor,
+					projectIds,
+					includeVariableValues: true,
+					canExportVariableValues: true,
+					includeTags: true,
+					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
+					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+				},
+				{ targetDir: stagingFolder },
+			);
+
+			// Replace the managed export only after the new package is complete.
+			await rm(exportFolder, { recursive: true, force: true });
+			await rename(stagingFolder, exportFolder);
+
+			// TODO: commit the working copy and push to the remote, then surface the
+			// git operation result here.
+			return {
+				connectionId,
+				counts: exportResult.counts,
+			};
+		} finally {
+			await rm(stagingFolder, { recursive: true, force: true });
+		}
 	}
 
 	private async applyNewAuthentication(

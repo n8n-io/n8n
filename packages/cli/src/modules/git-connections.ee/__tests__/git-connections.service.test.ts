@@ -272,6 +272,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await writeFile(path.join(exportFolder, 'stale.json'), '{}');
 
 			const result = await exportService.push('1', actor);
+			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
 
 			expect(projectConnectionRepository.findProjectIdsByConnection).toHaveBeenCalledWith('1');
 			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalledWith(
@@ -284,8 +285,10 @@ describe('GitConnectionsService (credential state machine)', () => {
 					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
 					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
 				},
-				{ targetDir: exportFolder },
+				{ targetDir: stagingFolder },
 			);
+			expect(path.dirname(stagingFolder)).toBe(repositoryFolder);
+			expect(path.basename(stagingFolder)).toMatch(/^\.n8n-export-/);
 			expect(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')).toBe(
 				'{"projects":[]}',
 			);
@@ -307,23 +310,32 @@ describe('GitConnectionsService (credential state machine)', () => {
 			});
 			// The stale export is gone; only the freshly written package remains.
 			await expect(stat(path.join(exportFolder, 'stale.json'))).rejects.toThrow();
+			await expect(stat(stagingFolder)).rejects.toThrow();
 		});
 
-		it('leaves git metadata and root files intact when export fails', async () => {
+		it('keeps the previous export and repository root intact when export fails', async () => {
 			const repositoryFolder = path.join(n8nFolder, 'git-connections', '1', 'repository');
+			const exportFolder = path.join(repositoryFolder, 'n8n-export');
 			await mkdir(path.join(repositoryFolder, '.git'), { recursive: true });
 			await writeFile(path.join(repositoryFolder, '.git', 'HEAD'), 'ref: refs/heads/main');
 			await writeFile(path.join(repositoryFolder, 'README.md'), '# my repo');
+			await mkdir(exportFolder, { recursive: true });
+			await writeFile(path.join(exportFolder, 'manifest.json'), '{"previous":true}');
 			n8nPackagesService.exportPackageToDirectory.mockRejectedValueOnce(
 				new BadRequestError('A linked project dependency is missing'),
 			);
 
 			await expect(exportService.push('1', actor)).rejects.toThrow(BadRequestError);
+			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
 
 			expect(await readFile(path.join(repositoryFolder, '.git', 'HEAD'), 'utf-8')).toBe(
 				'ref: refs/heads/main',
 			);
 			expect(await readFile(path.join(repositoryFolder, 'README.md'), 'utf-8')).toBe('# my repo');
+			expect(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')).toBe(
+				'{"previous":true}',
+			);
+			await expect(stat(stagingFolder)).rejects.toThrow();
 		});
 
 		it('does not query projects or write files for a missing connection', async () => {

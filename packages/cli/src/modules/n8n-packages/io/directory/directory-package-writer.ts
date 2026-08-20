@@ -4,45 +4,30 @@ import path from 'node:path';
 
 import type { PackageWriter } from '../package-writer';
 
-type Entry = { kind: 'file'; path: string; content: Buffer } | { kind: 'directory'; path: string };
-
 function normaliseEntryPath(entryPath: string): string {
 	return entryPath.startsWith('./') ? entryPath.slice(2) : entryPath;
 }
 
 /**
  * Writes the n8n-packages layout as loose files into a directory (the "unzipped"
- * format), rather than a tar archive. Entries are buffered during the exporters'
- * synchronous `writeFile`/`writeDirectory` calls — matching `TarPackageWriter` —
- * and flushed to disk in the async {@link finalize}.
+ * format), rather than a tar archive.
  */
 export class DirectoryPackageWriter implements PackageWriter<Promise<void>> {
-	private readonly entries: Entry[] = [];
-
 	constructor(private readonly targetDir: string) {}
 
-	writeFile(entryPath: string, content: string | Buffer): void {
-		const buffer = typeof content === 'string' ? Buffer.from(content, 'utf-8') : content;
-		this.entries.push({ kind: 'file', path: normaliseEntryPath(entryPath), content: buffer });
+	async writeFile(entryPath: string, content: string | Buffer): Promise<void> {
+		const destination = this.resolveWithin(this.targetDir, normaliseEntryPath(entryPath));
+		await mkdir(path.dirname(destination), { recursive: true });
+		await writeFile(destination, content);
 	}
 
-	writeDirectory(entryPath: string): void {
-		this.entries.push({ kind: 'directory', path: normaliseEntryPath(entryPath) });
+	async writeDirectory(entryPath: string): Promise<void> {
+		const destination = this.resolveWithin(this.targetDir, normaliseEntryPath(entryPath));
+		await mkdir(destination, { recursive: true });
 	}
 
-	/** Flush every buffered entry to disk under `targetDir`. */
 	async finalize(): Promise<void> {
-		await mkdir(this.targetDir, { recursive: true });
-
-		for (const entry of this.entries) {
-			const destination = this.resolveWithin(this.targetDir, entry.path);
-			if (entry.kind === 'directory') {
-				await mkdir(destination, { recursive: true });
-			} else {
-				await mkdir(path.dirname(destination), { recursive: true });
-				await writeFile(destination, entry.content);
-			}
-		}
+		return;
 	}
 
 	/** Entry paths are exporter-generated slugs, but keep writes inside the base dir defensively. */
