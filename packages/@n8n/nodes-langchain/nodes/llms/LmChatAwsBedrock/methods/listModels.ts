@@ -1,42 +1,24 @@
-import { assertSupportedAwsRegion, getAwsDomain } from 'n8n-nodes-base/aws-credentials';
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
-import type { BedrockInferenceProfileSummary } from '@utils/aws/listBedrockInferenceProfiles';
-import { listBedrockInferenceProfiles } from '@utils/aws/listBedrockInferenceProfiles';
-
-async function resolveBedrockApi(ctx: ILoadOptionsFunctions) {
-	const authentication = ctx.getNodeParameter('authentication', 'iam') as 'iam' | 'assumeRole';
-	const credentialsType = authentication === 'assumeRole' ? 'awsAssumeRole' : 'aws';
-	const { region } = await ctx.getCredentials(credentialsType);
-
-	assertSupportedAwsRegion(region);
-	// Declares the SigV4 service+region; the credential's authenticate step swaps the
-	// host for the Bedrock Endpoint override (PrivateLink) when one is configured.
-	const baseURL = `https://bedrock.${region}.${getAwsDomain(region)}`;
-	return { credentialsType, baseURL } as const;
-}
-
-function toProfileOption(profile: BedrockInferenceProfileSummary): INodePropertyOptions {
-	return {
-		name: profile.inferenceProfileName,
-		value: profile.inferenceProfileId,
-		description: profile.description ?? profile.inferenceProfileArn,
-	};
-}
+import {
+	listBedrockInferenceProfiles,
+	toProfileOption,
+} from '@utils/aws/listBedrockInferenceProfiles';
+import { resolveBedrockApi } from '@utils/aws/resolveBedrockApi';
 
 export async function listModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const { credentialsType, baseURL } = await resolveBedrockApi(this);
+	const api = await resolveBedrockApi(this);
 
 	const [foundationModels, inferenceProfiles] = await Promise.allSettled([
-		this.helpers.httpRequestWithAuthentication.call(this, credentialsType, {
+		this.helpers.httpRequestWithAuthentication.call(this, api.credentialsType, {
 			method: 'GET',
-			baseURL,
+			baseURL: api.baseURL,
 			url: '/foundation-models?&byOutputModality=TEXT&byInferenceType=ON_DEMAND',
 			json: true,
 		}) as Promise<{
 			modelSummaries?: Array<{ modelId: string; modelName: string; modelArn: string }>;
 		}>,
-		listBedrockInferenceProfiles(this, credentialsType, baseURL),
+		listBedrockInferenceProfiles(this, api),
 	]);
 
 	// The credential may lack one of the two list permissions
@@ -75,7 +57,6 @@ export async function listModels(this: ILoadOptionsFunctions): Promise<INodeProp
 export async function listInferenceProfiles(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const { credentialsType, baseURL } = await resolveBedrockApi(this);
-	const profiles = await listBedrockInferenceProfiles(this, credentialsType, baseURL);
+	const profiles = await listBedrockInferenceProfiles(this, await resolveBedrockApi(this));
 	return profiles.map(toProfileOption).sort((a, b) => a.name.localeCompare(b.name));
 }

@@ -31,6 +31,7 @@ describe('listBedrockInferenceProfiles', () => {
 		}) as unknown as ILoadOptionsFunctions;
 
 	const baseURL = 'https://bedrock.eu-central-1.amazonaws.com';
+	const api = { credentialsType: 'aws', baseURL } as const;
 
 	it('merges system-defined and application profiles from both requests', async () => {
 		const httpMock = httpMockFor(
@@ -39,7 +40,7 @@ describe('listBedrockInferenceProfiles', () => {
 		);
 		const ctx = contextFor(httpMock);
 
-		const profiles = await listBedrockInferenceProfiles(ctx, 'aws', baseURL);
+		const profiles = await listBedrockInferenceProfiles(ctx, api);
 
 		expect(profiles).toEqual([systemProfile, applicationProfile]);
 		expect(httpMock).toHaveBeenCalledWith(
@@ -62,7 +63,7 @@ describe('listBedrockInferenceProfiles', () => {
 		});
 		const ctx = contextFor(httpMock);
 
-		const profiles = await listBedrockInferenceProfiles(ctx, 'aws', baseURL);
+		const profiles = await listBedrockInferenceProfiles(ctx, api);
 
 		expect(profiles).toEqual([applicationProfile]);
 		expect(ctx.logger.warn).toHaveBeenCalledWith(
@@ -79,7 +80,7 @@ describe('listBedrockInferenceProfiles', () => {
 		);
 		const ctx = contextFor(httpMock);
 
-		const profiles = await listBedrockInferenceProfiles(ctx, 'aws', baseURL);
+		const profiles = await listBedrockInferenceProfiles(ctx, api);
 
 		expect(profiles).toEqual([systemProfile]);
 		expect(ctx.logger.warn).toHaveBeenCalledWith(
@@ -88,18 +89,27 @@ describe('listBedrockInferenceProfiles', () => {
 		);
 	});
 
-	it('throws the system-defined failure when both requests fail', async () => {
-		const failure = new Error('AccessDenied');
-		const httpMock = httpMockFor(Promise.reject(failure), Promise.reject(new Error('other')));
+	it('throws the system-defined failure when both requests fail, logging both reasons', async () => {
+		const systemFailure = new Error('AccessDenied');
+		const applicationFailure = new Error('Throttled');
+		const httpMock = httpMockFor(Promise.reject(systemFailure), Promise.reject(applicationFailure));
 		const ctx = contextFor(httpMock);
 
-		await expect(listBedrockInferenceProfiles(ctx, 'aws', baseURL)).rejects.toThrow('AccessDenied');
+		await expect(listBedrockInferenceProfiles(ctx, api)).rejects.toThrow('AccessDenied');
+		expect(ctx.logger.warn).toHaveBeenCalledWith(
+			'Bedrock model listing: inference-profiles request failed',
+			{ error: systemFailure, profileType: 'SYSTEM_DEFINED' },
+		);
+		expect(ctx.logger.warn).toHaveBeenCalledWith(
+			'Bedrock model listing: inference-profiles request failed',
+			{ error: applicationFailure, profileType: 'APPLICATION' },
+		);
 	});
 
 	it('tolerates responses without inferenceProfileSummaries', async () => {
 		const httpMock = httpMockFor({}, {});
 		const ctx = contextFor(httpMock);
 
-		await expect(listBedrockInferenceProfiles(ctx, 'aws', baseURL)).resolves.toEqual([]);
+		await expect(listBedrockInferenceProfiles(ctx, api)).resolves.toEqual([]);
 	});
 });

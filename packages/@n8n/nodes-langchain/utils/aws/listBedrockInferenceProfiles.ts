@@ -1,4 +1,6 @@
-import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+
+import type { BedrockApi } from './resolveBedrockApi';
 
 export type BedrockInferenceProfileSummary = {
 	inferenceProfileId: string;
@@ -8,6 +10,14 @@ export type BedrockInferenceProfileSummary = {
 	models?: Array<{ modelArn?: string }>;
 };
 
+export function toProfileOption(profile: BedrockInferenceProfileSummary): INodePropertyOptions {
+	return {
+		name: profile.inferenceProfileName,
+		value: profile.inferenceProfileId,
+		description: profile.description ?? profile.inferenceProfileArn,
+	};
+}
+
 /**
  * Fetches all Bedrock inference profiles. The ListInferenceProfiles API returns only
  * SYSTEM_DEFINED profiles unless type=APPLICATION is passed
@@ -16,8 +26,7 @@ export type BedrockInferenceProfileSummary = {
  */
 export async function listBedrockInferenceProfiles(
 	ctx: ILoadOptionsFunctions,
-	credentialsType: 'aws' | 'awsAssumeRole',
-	baseURL: string,
+	{ credentialsType, baseURL }: BedrockApi,
 ): Promise<BedrockInferenceProfileSummary[]> {
 	const request = async (url: string) =>
 		await (ctx.helpers.httpRequestWithAuthentication.call(ctx, credentialsType, {
@@ -32,22 +41,24 @@ export async function listBedrockInferenceProfiles(
 		request('/inference-profiles?maxResults=1000&type=APPLICATION'),
 	]);
 
+	const results = [
+		['SYSTEM_DEFINED', systemDefined],
+		['APPLICATION', application],
+	] as const;
+
+	const profiles = results.flatMap(([profileType, result]) => {
+		if (result.status === 'fulfilled') return result.value.inferenceProfileSummaries ?? [];
+		// Logged per type before any throw: the two calls can fail for different reasons
+		// (missing IAM action vs throttling) and only one of them can be rethrown.
+		ctx.logger.warn('Bedrock model listing: inference-profiles request failed', {
+			error: result.reason,
+			profileType,
+		});
+		return [];
+	});
+
 	if (systemDefined.status === 'rejected' && application.status === 'rejected') {
 		throw systemDefined.reason;
 	}
-	for (const [profileType, result] of [
-		['SYSTEM_DEFINED', systemDefined],
-		['APPLICATION', application],
-	] as const) {
-		if (result.status === 'rejected') {
-			ctx.logger.warn('Bedrock model listing: inference-profiles request failed', {
-				error: result.reason,
-				profileType,
-			});
-		}
-	}
-
-	return [systemDefined, application].flatMap((result) =>
-		result.status === 'fulfilled' ? (result.value.inferenceProfileSummaries ?? []) : [],
-	);
+	return profiles;
 }
