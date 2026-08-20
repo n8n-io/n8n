@@ -6,11 +6,11 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 	USER_REQUESTED_WORKFLOW_REVIEW: {
 		name: 'User requested workflow review',
 		description:
-			'A workflow was submitted for review, opening a review request that blocks publishing until it is approved. Fires once per opened review; a re-pin to another version reports "User updated workflow review version" instead.',
+			'A workflow was submitted for review, opening a review request that gates publishing. Fires once per opened review, not on a later re-pin.',
 		properties: z.object({
 			user_id: z.string(),
 			workflow_review_request_id: z.string(),
-			project_id: z.string().describe('The project owning the review at the time it was opened'),
+			project_id: z.string().describe('Owning project when the review opened'),
 			workflow_id: z.string(),
 			workflow_version_id: z.string(),
 			reviewer_count: z.number(),
@@ -30,7 +30,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 	USER_DECIDED_WORKFLOW_REVIEW: {
 		name: 'User decided workflow review',
 		description:
-			'A reviewer approved a review or requested changes on it. Both decisions land on this event so approval rate is one query. A review can be decided several times: requesting changes keeps it open, and a re-pin resets it to pending.',
+			'A reviewer approved a review or requested changes on it. A review can be decided several times: requesting changes keeps it open, and a re-pin resets it to pending.',
 		properties: z.object({
 			user_id: z.string(),
 			workflow_review_request_id: z.string(),
@@ -53,7 +53,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 	WORKFLOW_REVIEW_CLOSED: {
 		name: 'Workflow review closed',
 		description:
-			'An open review was closed without a decision because its workflow stopped being reviewable. Nobody performs this: it is the workflow lifecycle hooks and the reconciliation sweep. An approval closes the review too but reports "User decided workflow review" instead.',
+			'An open review was closed without a decision because its workflow stopped being reviewable. No user performs it. An approval also closes the review, but reports "User decided workflow review" instead.',
 		properties: z.object({
 			workflow_review_request_id: z.string(),
 			reason: z
@@ -64,7 +64,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 					'no-reviewable-workflows',
 				])
 				.describe(
-					'What made the workflow unreviewable, or "no-reviewable-workflows" when the reconciliation sweep closed the review and the cause was no longer recoverable. Attribution is best-effort: a cause path whose transaction rolls back leaves the sweep to close the same review as "no-reviewable-workflows", so the distribution is not an exact census of causes',
+					'What made the workflow unreviewable. "no-reviewable-workflows" means the cause was no longer recoverable when the review was closed',
 				),
 			actor_kind: z
 				.enum(['user', 'system'])
@@ -74,7 +74,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 	USER_COMMENTED_ON_WORKFLOW_REVIEW: {
 		name: 'User commented on workflow review',
 		description:
-			'A comment was posted on a review. Comments stay open after the review settles, so this can fire on a closed review. The comment body is never reported.',
+			'A comment was posted on a review. Comments stay open after the review settles, so this can fire on a closed review.',
 		properties: z.object({
 			user_id: z.string(),
 			workflow_review_request_id: z.string(),
