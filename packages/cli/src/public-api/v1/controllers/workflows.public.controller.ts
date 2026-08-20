@@ -46,12 +46,12 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { EventService } from '@/events/event.service';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import {
 	decodeCursor,
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
-import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { TagService } from '@/services/tag.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';

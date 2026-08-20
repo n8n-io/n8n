@@ -102,9 +102,7 @@ describe('PublicApiControllerRegistry', () => {
 	});
 
 	describe('validation failures', () => {
-		// The legacy validator rendered `request/body/<field> <message>` via Ajv's
-		// errorsText({ dataVar: 'request' }). Messages written as fragments have no
-		// subject without the path, so the path has to survive into the 400.
+		// `is read-only` is a fragment: without the path it has no subject.
 		class WidgetBodyDto extends Z.class({
 			name: z.string(),
 			active: z.undefined({ invalid_type_error: 'is read-only' }),

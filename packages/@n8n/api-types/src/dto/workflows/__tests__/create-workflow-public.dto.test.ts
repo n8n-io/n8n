@@ -34,6 +34,24 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(false);
 	});
 
+	// An unoverridden inherited method would silently strip the key instead of rejecting it.
+	test('rejects an unknown key through parse as well as safeParse', () => {
+		const payload = { ...validPayload, notAWorkflowField: 'x' };
+
+		expect(() => CreateWorkflowPublicDto.parse(payload)).toThrow();
+		expect(CreateWorkflowPublicDto.safeParse(payload).success).toBe(false);
+		expect(CreateWorkflowPublicDto.schema.safeParse(payload).success).toBe(false);
+	});
+
+	// The controller reads `body.settings.redactionPolicy` unguarded, so optional would be a 500.
+	test('rejects a payload with no settings', () => {
+		const { settings: _settings, ...withoutSettings } = validPayload;
+
+		const result = CreateWorkflowPublicDto.safeParse(withoutSettings);
+
+		expect(result.success).toBe(false);
+	});
+
 	test('accepts a supplied shared list', () => {
 		const result = CreateWorkflowPublicDto.safeParse({ ...validPayload, shared: [] });
 

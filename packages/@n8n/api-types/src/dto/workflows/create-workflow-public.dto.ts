@@ -71,7 +71,6 @@ const workflowNodeGroupCreatePublicSchema = z
 	})
 	.strict();
 
-/** `binaryMode` and `credentialResolverId` are documented and accepted, then dropped. */
 const workflowSettingsCreatePublicSchema = z
 	.object({
 		saveExecutionProgress: z.boolean().optional(),
@@ -115,7 +114,7 @@ const workflowSettingsCreatePublicSchema = z
 		({ binaryMode: _binaryMode, credentialResolverId: _resolverId, ...settings }) => settings,
 	);
 
-/** Accepted and discarded. `sharedWorkflow.yml` left `project` open, so unknown keys pass there. */
+/** `sharedWorkflow.yml` left `project` open, so unknown keys pass there. */
 const sharedWorkflowCreatePublicSchema = z
 	.object({
 		role: z.string().optional().openapi({ example: 'workflow:owner' }),
@@ -147,7 +146,7 @@ const staticDataCreatePublicSchema = z
 						return false;
 					}
 				},
-				{ message: 'staticData must be a JSON string' },
+				{ message: 'must be a JSON string' },
 			)
 			.openapi({ format: 'jsonString' }),
 		z.record(z.unknown()),
@@ -156,7 +155,7 @@ const staticDataCreatePublicSchema = z
 	.nullable()
 	.openapi(workflowCreateFieldDocs.staticData);
 
-export const createWorkflowPublicShape = {
+const createWorkflowPublicShape = {
 	id: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.id),
 	name: z.string().openapi(workflowCreateFieldDocs.name),
 	active: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.active),
@@ -166,11 +165,11 @@ export const createWorkflowPublicShape = {
 	versionId: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.versionId),
 	triggerCount: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.triggerCount),
 	nodes: z.array(workflowNodeCreatePublicSchema).openapi(workflowCreateFieldDocs.nodes),
-	// `type: object` was the whole of the old check, and this keeps the domain type — no cast needed.
 	connections: z
 		.custom<IConnections>(
 			(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
-			{ message: 'Connections must be an object' },
+			// A fragment: the registry prefixes `request/body/connections`.
+			{ message: 'must be object' },
 		)
 		.openapi(connectionsOpenApi),
 	settings: workflowSettingsCreatePublicSchema,
@@ -194,8 +193,7 @@ export const createWorkflowPublicShape = {
 const createWorkflowPublicSchema = z.object(createWorkflowPublicShape).strict();
 
 // `Z.class` builds a non-strict schema, which strips an unknown field. `workflowCreate.yml` set
-// `additionalProperties: false`, so an unknown field has to stay a 400 — hence the strict schema
-// and the three overrides. `Z.class` still supplies the constructor and the parsed-body type.
+// `additionalProperties: false`, so an unknown field has to stay a 400 — hence the strict overrides.
 export class CreateWorkflowPublicDto extends Z.class(createWorkflowPublicShape) {
 	static schema = createWorkflowPublicSchema;
 

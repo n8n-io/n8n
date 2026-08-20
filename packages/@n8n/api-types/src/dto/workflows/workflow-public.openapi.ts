@@ -10,7 +10,6 @@ function alsoNullable(metadata: ZodOpenAPIMetadata): ZodOpenAPIMetadata {
 // Key order below reaches the generated OpenAPI fragments verbatim, so each literal keeps the
 // order the published spec already uses.
 
-/** Field prose and examples, read by the descriptors below and by the create request schema. */
 export const workflowNodeFieldDocs = {
 	id: { example: '0f5532f9-36ba-4bef-86c7-30d607400b15' },
 	name: { example: 'Jira' },
@@ -294,8 +293,7 @@ export const readOnlyTimestampOpenApi = {
 	readOnly: true,
 } as const;
 
-/** `node.yml` as the request schemas documented it: strict, with read-only timestamps. */
-export const requestNodesOpenApi = nestingDescriptor({
+const requestNodesOpenApi = nestingDescriptor({
 	...nodesOpenApi,
 	items: {
 		...(nodesOpenApi.items as Record<string, unknown>),
@@ -323,7 +321,7 @@ export const requestNodesOpenApi = nestingDescriptor({
 	},
 });
 
-export const requestNodeGroupsOpenApi = nestingDescriptor({
+const requestNodeGroupsOpenApi = nestingDescriptor({
 	...nodeGroupsOpenApi,
 	items: {
 		...(nodeGroupsOpenApi.items as Record<string, unknown>),

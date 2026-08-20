@@ -2595,7 +2595,6 @@ describe('POST /workflows redaction floor enforcement', () => {
 		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
 	});
 
-	// The floor check runs first, so it wins over any error the creation service raises later.
 	test('reports the floor violation even when the payload is also otherwise invalid', async () => {
 		const response = await authOwnerAgent.post('/workflows').send({
 			name: 'redaction-floor-precedence',
