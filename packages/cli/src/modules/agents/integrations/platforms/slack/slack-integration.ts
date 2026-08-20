@@ -132,6 +132,27 @@ export class SlackIntegration extends AgentChatIntegration {
 		await subscribeSlackThread(thread);
 	}
 
+	messageThreadId(
+		message: { id: string; threadId: string },
+		context?: { inbound?: boolean },
+	): string | undefined {
+		// Agent-view DMs are conversation-scoped (`slack:D123:`). Re-anchoring
+		// each inbound top-level message at its own ts would split that into a
+		// new session per message. Outbound still re-anchors so threaded
+		// replies bind at the sent message ts. Threaded inbound already has
+		// thread_ts and is not rewritten below.
+		if (context?.inbound && this.isConversationScopedDm(message.threadId)) return undefined;
+		// Only Slack thread ids are `slack:{channel}:{threadTs}`. A top-level
+		// post or DM arrives on the channel-level pseudo-thread (empty threadTs);
+		// anchor it at the message's own id so replies correlate. Already-threaded
+		// messages keep their id.
+		const match = /^slack:([CD][^:]*):(.*)$/.exec(message.threadId);
+		if (!match) return undefined;
+		const [, channel, threadTs] = match;
+		if (threadTs) return undefined;
+		return `slack:${channel}:${message.id}`;
+	}
+
 	getPlatformAgentContext(chat: ChatInstance): PlatformAgentContext {
 		return getSlackPlatformAgentContext(chat);
 	}

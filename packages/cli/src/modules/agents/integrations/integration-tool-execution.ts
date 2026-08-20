@@ -215,6 +215,19 @@ export async function executeActionToolOperation(params: {
 			persistence.resourceId,
 			messageContext,
 		);
+		// Bind the outbound thread back to this run's session so inbound replies
+		// in that thread continue it. Only explicit sends establish a new
+		// thread worth binding; respond/edit/reaction operate on existing ones.
+		if (
+			(operation.action === 'send_dm' || operation.action === 'send_channel_message') &&
+			descriptor.agentId &&
+			messageContext.target.threadId
+		) {
+			await messageContextStore.bindSession(
+				`${descriptor.agentId}:${messageContext.target.threadId}`,
+				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+			);
+		}
 		actionResult = { ...result, messageContext };
 	}
 
