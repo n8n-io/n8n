@@ -8,7 +8,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
-import { cp, mkdir, rename, rm, stat } from 'node:fs/promises';
+import { cp, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
@@ -24,6 +24,12 @@ import { GitConnection } from './database/entities/git-connection.entity';
 import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from './database/repositories/git-connection.repository';
 import { GitConnectionsGitService } from './git-connections-git.service';
+
+/**
+ * Prefix for the unique-named backups a repository swap leaves behind. Shared by
+ * the swap that creates them and the sweep that reclaims them so the two can't drift.
+ */
+const PREVIOUS_REPOSITORY_PREFIX = 'repository-previous-';
 
 @Service()
 export class GitConnectionsService {
@@ -152,6 +158,7 @@ export class GitConnectionsService {
 		});
 
 		await rm(nextExportFolder, { recursive: true, force: true });
+		await this.sweepPreviousRepositories(rootFolder);
 		try {
 			await this.n8nPackagesService.exportPackageToDirectory(
 				{
@@ -194,7 +201,7 @@ export class GitConnectionsService {
 		// A unique backup never overwrites recovery data left by an earlier failed operation.
 		const previousRepositoryFolder = path.join(
 			path.dirname(repositoryFolder),
-			`repository-previous-${randomUUID()}`,
+			`${PREVIOUS_REPOSITORY_PREFIX}${randomUUID()}`,
 		);
 		// Keep the old tree intact until the complete staged tree is ready to take its place.
 		await rename(repositoryFolder, previousRepositoryFolder);
@@ -223,6 +230,39 @@ export class GitConnectionsService {
 				cleanupError,
 			});
 		}
+	}
+
+	/**
+	 * Best-effort removal of `repository-previous-*` backups left by an earlier
+	 * failed or interrupted swap. Their unique names mean nothing overwrites them
+	 * the way the fixed-name staging folder is, so without this sweep they
+	 * accumulate. Runs under the same push mutex, so it can't race a live swap.
+	 */
+	private async sweepPreviousRepositories(rootFolder: string) {
+		let entries: string[];
+		try {
+			entries = await readdir(rootFolder);
+		} catch (error) {
+			// No root folder yet (first push) means nothing to sweep.
+			if (isErrnoException(error) && error.code === 'ENOENT') return;
+			throw error;
+		}
+
+		const stale = entries.filter((name) => name.startsWith(PREVIOUS_REPOSITORY_PREFIX));
+		await Promise.all(
+			stale.map(async (name) => {
+				try {
+					await rm(path.join(rootFolder, name), { recursive: true, force: true });
+				} catch (cleanupError) {
+					// Cleanup is best-effort; a stuck backup must not fail the export.
+					this.logger.warn('Could not remove stale Git connection repository backup', {
+						rootFolder,
+						name,
+						cleanupError,
+					});
+				}
+			}),
+		);
 	}
 
 	private async pathExists(target: string) {
