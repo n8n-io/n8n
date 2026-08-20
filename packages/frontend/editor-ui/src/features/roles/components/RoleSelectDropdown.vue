@@ -53,7 +53,7 @@ const props = withDefaults(
 		loading: false,
 		disabled: false,
 		testId: 'role-dropdown',
-		variant: 'ghost',
+		variant: 'flush',
 		placeholder: undefined,
 		terminalOption: undefined,
 		permissionCountFn: undefined,
@@ -177,8 +177,6 @@ const isUnavailableRoleItem = (item: SelectOptionBase) =>
 			:placeholder="placeholder"
 			position="popper"
 			:disabled="loading || disabled"
-			:content-class="$style.roleSelectContent"
-			:class="[$style.roleSelect, { [$style.roleSelectGhost]: variant === 'ghost' }]"
 			:data-test-id="testId"
 			@update:model-value="onRoleSelect"
 		>
@@ -189,12 +187,8 @@ const isUnavailableRoleItem = (item: SelectOptionBase) =>
 					placement="top"
 					as-child
 				>
-					<span
-						:class="[$style.triggerContent, { [$style.triggerContentGhost]: variant === 'ghost' }]"
-					>
-						<span :class="[$style.triggerLabel, { [$style.placeholder]: !selectedLabel }]">{{
-							selectedLabel ?? placeholder
-						}}</span>
+					<span>
+						{{ selectedLabel ?? placeholder }}
 						<N8nIcon v-if="loading" icon="spinner" spin size="small" />
 					</span>
 				</N8nTooltip>
@@ -285,52 +279,6 @@ const isUnavailableRoleItem = (item: SelectOptionBase) =>
 	overflow: hidden;
 }
 
-.roleSelect {
-	max-width: 200px;
-	overflow: hidden;
-}
-
-// The `ghost` variant is used inline in table cells (Users settings, Project
-// members) where the trigger should look like plain text, not a boxed
-// control — so its own padding/height are stripped. The bordered `default`
-// variant (SSO provisioning) keeps the design system's normal sizing.
-.roleSelectGhost {
-	padding: 0;
-	background-color: transparent;
-	min-height: auto;
-
-	&:not([data-disabled]):hover {
-		background-color: transparent;
-	}
-}
-
-.triggerContent {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	min-width: 0;
-	overflow: hidden;
-}
-
-// The `ghost` trigger sits inline as plain row text (Users settings, Project
-// members), so its font size matches the surrounding row text rather than the
-// button's own `size` — the bordered `default` variant inherits the trigger
-// button's font size instead, matching sibling form controls.
-.triggerContentGhost {
-	font-size: var(--font-size--sm);
-}
-
-.triggerLabel {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	min-width: 0;
-}
-
-.placeholder {
-	color: var(--color--text--tint-1);
-}
-
 .itemLabel {
 	display: block;
 	overflow: hidden;
@@ -371,9 +319,5 @@ const isUnavailableRoleItem = (item: SelectOptionBase) =>
 	&:hover {
 		background-color: var(--color--background--light-1);
 	}
-}
-
-.roleSelectContent {
-	max-width: 280px;
 }
 </style>
