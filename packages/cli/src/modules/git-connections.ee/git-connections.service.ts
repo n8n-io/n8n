@@ -3,23 +3,36 @@ import type {
 	GitConnectionPublicDto,
 	UpdateGitConnectionDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
+import { mkdir, readdir, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { Logger } from '@n8n/backend-common';
+import pLimit from 'p-limit';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import {
+	MissingWorkflowDependencyPolicy,
+	WorkflowVersionPolicy,
+} from '@/modules/n8n-packages/n8n-packages.types';
 
 import { GitConnection } from './database/entities/git-connection.entity';
+import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from './database/repositories/git-connection.repository';
 import { GitConnectionsGitService } from './git-connections-git.service';
 
 @Service()
 export class GitConnectionsService {
+	private readonly exportMutex = pLimit(1);
+
 	constructor(
 		private readonly repository: GitConnectionRepository,
+		private readonly projectConnectionRepository: GitConnectionProjectRepository,
 		private readonly gitService: GitConnectionsGitService,
+		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly cipher: Cipher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
@@ -115,15 +128,64 @@ export class GitConnectionsService {
 		await this.repository.remove(connection);
 	}
 
-	async push(connectionId: string) {
-		this.logger.info(`Pushing all projects to connection ${connectionId}`);
-		throw new Error('Not implemented');
+	async push(connectionId: string, actor: User): Promise<void> {
+		await this.exportMutex(async () => await this.exportProjectsToRepository(connectionId, actor));
+	}
 
-		// TODO: Implement this
-		// check that the connection credentials are valid
-		// if the repository folder does not exist, clone it
-		// export all the projects to the repository folder
-		// push to the remote repository
+	private async exportProjectsToRepository(connectionId: string, actor: User): Promise<void> {
+		await this.getEntity(connectionId);
+		const projectIds =
+			await this.projectConnectionRepository.findProjectIdsByConnection(connectionId);
+		const rootFolder = this.rootFolder(connectionId);
+		const repositoryFolder = path.join(rootFolder, 'repository');
+		const nextExportFolder = path.join(rootFolder, 'repository-export-next');
+
+		this.logger.info('Exporting projects to Git connection repository', {
+			connectionId,
+			projectCount: projectIds.length,
+		});
+
+		await rm(nextExportFolder, { recursive: true, force: true });
+		try {
+			await this.n8nPackagesService.exportPackageToDirectory(
+				{
+					user: actor,
+					projectIds,
+					includeVariableValues: true,
+					canExportVariableValues: true,
+					includeTags: true,
+					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
+					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+				},
+				{ targetDir: nextExportFolder },
+			);
+			await this.replaceRepositoryContents(repositoryFolder, nextExportFolder);
+		} finally {
+			await rm(nextExportFolder, { recursive: true, force: true });
+		}
+
+		// Git staging and remote synchronization will be added after the package layout is reviewed.
+	}
+
+	private async replaceRepositoryContents(repositoryFolder: string, nextExportFolder: string) {
+		await mkdir(repositoryFolder, { recursive: true });
+		const currentEntries = await readdir(repositoryFolder);
+		await Promise.all(
+			currentEntries
+				.filter((entry) => entry !== '.git')
+				.map(
+					async (entry) =>
+						await rm(path.join(repositoryFolder, entry), { recursive: true, force: true }),
+				),
+		);
+
+		const exportedEntries = await readdir(nextExportFolder);
+		await Promise.all(
+			exportedEntries.map(
+				async (entry) =>
+					await rename(path.join(nextExportFolder, entry), path.join(repositoryFolder, entry)),
+			),
+		);
 	}
 
 	private async applyNewAuthentication(

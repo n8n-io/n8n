@@ -203,10 +203,10 @@ export class GitConnectionsPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200)
 	async pushGitConnectionProjects(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
 	): Promise<void> {
-		return await (await this.gitConnectionsService()).push(id);
+		return await (await this.gitConnectionsService()).push(id, req.user);
 	}
 }

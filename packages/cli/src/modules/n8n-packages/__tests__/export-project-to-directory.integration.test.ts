@@ -66,6 +66,26 @@ describe('exportPackageToDirectory', () => {
 		expect(result.counts.workflows).toBe(1);
 	});
 
+	it('writes multiple projects into one combined package', async () => {
+		const alpha = await createTeamProject('Alpha Project', owner);
+		const beta = await createTeamProject('Beta Project', owner);
+		await createWorkflow({ name: 'Alpha Workflow', nodes: [], connections: {} }, alpha);
+		await createWorkflow({ name: 'Beta Workflow', nodes: [], connections: {} }, beta);
+
+		const result = await service.exportPackageToDirectory(
+			{ user: owner, projectIds: [alpha.id, beta.id] },
+			{ targetDir },
+		);
+
+		const manifest = await readJson('manifest.json');
+		expect(manifest.projects).toEqual([
+			{ id: alpha.id, name: 'Alpha Project', target: 'projects/alpha-project' },
+			{ id: beta.id, name: 'Beta Project', target: 'projects/beta-project' },
+		]);
+		expect(await readdir(targetDir)).toEqual(expect.arrayContaining(['manifest.json', 'projects']));
+		expect(result.counts.workflows).toBe(2);
+	});
+
 	it('nests the package under a subfolder so projects can share a directory', async () => {
 		const project = await createTeamProject('Alpha Project', owner);
 		await createWorkflow({ name: 'WF One', nodes: [], connections: {} }, project);
