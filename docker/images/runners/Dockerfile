@@ -19,7 +19,11 @@ WORKDIR /app/task-runner-javascript
 # already-vetted, already-pinned dependency set; the real supply-chain age
 # policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
 ARG PNPM_VERSION=10.32.1
-RUN corepack enable pnpm && corepack prepare "pnpm@${PNPM_VERSION}" --activate
+# Node >= 25 ships without corepack, so install it explicitly. 0.35.0 is the
+# version Node 24 bundled.
+ARG COREPACK_VERSION=0.35.0
+RUN npm install -g "corepack@${COREPACK_VERSION}" && \
+    corepack enable pnpm && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 
 # Remove `catalog` and `workspace` references from package.json to allow `pnpm add` in extended images
 RUN node -e "const pkg = require('./package.json'); \
@@ -138,8 +142,9 @@ RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
     pip install --no-cache-dir "pip>=26.0" && \
     apk del apk-tools
 
-# Bring corepack and pnpm over, to make the image easier to extend
-COPY --from=node-alpine /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/corepack
+# Bring corepack and pnpm over, to make the image easier to extend. The
+# builder installs corepack itself, since Node >= 25 images do not ship it.
+COPY --from=javascript-runner-builder /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/corepack
 RUN ln -s ../lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack && \
 		ln -s ../lib/node_modules/corepack/dist/pnpm.js /usr/local/bin/pnpm
 

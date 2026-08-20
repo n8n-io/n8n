@@ -34,7 +34,11 @@ WORKDIR /app/task-runner-javascript
 # already-vetted, already-pinned dependency set; the real supply-chain age
 # policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
 ARG PNPM_VERSION=10.32.1
-RUN corepack enable pnpm && corepack prepare "pnpm@${PNPM_VERSION}" --activate
+# Node >= 25 ships without corepack, so install it explicitly. 0.35.0 is the
+# version Node 24 bundled.
+ARG COREPACK_VERSION=0.35.0
+RUN npm install -g "corepack@${COREPACK_VERSION}" && \
+    corepack enable pnpm && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 
 # Remove `catalog` and `workspace` references from package.json to allow `pnpm add`
 RUN node -e "const pkg = require('./package.json'); \
