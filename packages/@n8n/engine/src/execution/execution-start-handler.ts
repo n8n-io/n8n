@@ -7,7 +7,7 @@ import type { StepStore } from './step-store';
 
 /**
  * Handles the `execution:enqueued` orchestration event: claims the execution
- * (`queued → running`), records the trigger as a completed step, and announces
+ * (`queued -> running`), records the trigger as a completed step, and announces
  * that completion. The first step(s) are planned by the step completion handler
  * that handles the trigger completion.
  * NOTE: this means an extra trip through the queue, but it eliminates some
@@ -46,6 +46,7 @@ export class ExecutionStartHandler {
 		const [triggerStep] = await this.stepStore.createSteps(event.executionId, [
 			{
 				nodeId: trigger.id,
+				iteration: 0,
 				status: 'completed',
 				outputs: execution.triggerOutputs ?? DEFAULT_TRIGGER_OUTPUTS,
 			},

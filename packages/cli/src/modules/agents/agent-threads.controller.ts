@@ -1,5 +1,7 @@
+import { ListAgentSessionsQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Delete, Get, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Delete, Get, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
+import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -16,19 +18,19 @@ export class AgentThreadsController {
 	@Get('/:agentId/threads')
 	@ProjectScope('agent:read')
 	async listThreads(
-		req: AuthenticatedRequest<
-			{ projectId: string; agentId: string },
-			{},
-			{},
-			{ cursor?: string; limit?: string }
-		>,
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Query query: ListAgentSessionsQueryDto,
 	) {
-		const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+		const { cursor, limit: requestedLimit, ...filters } = query;
+		const limit = Math.min(Math.max(Number(requestedLimit) || 20, 1), 100);
+
 		return await this.agentExecutionService.getThreads(
 			req.params.projectId,
 			req.params.agentId,
 			limit,
-			req.query.cursor,
+			cursor,
+			filters,
 		);
 	}
 

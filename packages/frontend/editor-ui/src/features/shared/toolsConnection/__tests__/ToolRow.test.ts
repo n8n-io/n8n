@@ -250,4 +250,35 @@ describe('ToolRow', () => {
 		await fireEvent.click(install);
 		expect(emitted().connect).toBeUndefined();
 	});
+
+	describe('disabled rows', () => {
+		const disabledWorkflow: WorkflowConnectionItem = {
+			...baseWorkflow,
+			disabled: true,
+			disabledReason: "Contains nodes that aren't supported as agent tools (Wait, Form)",
+		};
+
+		it('renders a disabled marker instead of a connect/install action', () => {
+			const { getByTestId, queryByTestId } = render(disabledWorkflow);
+
+			expect(getByTestId('tools-connection-row-disabled')).toBeTruthy();
+			// A disabled row never offers a connect or install action.
+			expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+			expect(queryByTestId('tools-connection-row-install')).toBeNull();
+		});
+
+		it('does not emit open-detail when the main row action is clicked', async () => {
+			const { getByTestId, emitted } = render(disabledWorkflow);
+
+			await fireEvent.click(getByTestId('tools-connection-row-main'));
+
+			expect(emitted()['open-detail']).toBeUndefined();
+		});
+
+		it('renders the main action button as disabled', () => {
+			const { getByTestId } = render(disabledWorkflow);
+
+			expect(getByTestId('tools-connection-row-main')).toBeDisabled();
+		});
+	});
 });

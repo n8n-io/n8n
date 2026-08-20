@@ -1,6 +1,27 @@
 {
 	"$comment": "Coverage manifest: n8n node vs n8n public API. When a new endpoint is added to the OpenAPI spec, add it here with status covered/gap/excluded. See test/N8n.api-coverage.test.ts.",
 	"endpoints": {
+		"GET /git-connections": {
+			"status": "gap"
+		},
+		"POST /git-connections": {
+			"status": "gap"
+		},
+		"GET /git-connections/{id}": {
+			"status": "gap"
+		},
+		"PUT /git-connections/{id}": {
+			"status": "gap"
+		},
+		"DELETE /git-connections/{id}": {
+			"status": "gap"
+		},
+		"POST /git-connections/{id}/clone": {
+			"status": "gap"
+		},
+		"POST /git-connections/{id}/disconnect": {
+			"status": "gap"
+		},
 		"POST /audit": {
 			"status": "covered",
 			"nodeOperation": "audit:generate"

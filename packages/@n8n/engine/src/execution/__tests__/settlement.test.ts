@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { GraphEdge, WorkflowGraph } from '../../graph';
 import { getDescendantNodeIds } from '../../graph';
-import type { StepStatus } from '../execution.types';
+import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
 import { decideSuccessors } from '../settlement';
 import type { StepSummary } from '../step-store';
 
@@ -11,11 +11,16 @@ function summary(
 	status: StepStatus,
 	filledOutputSlots: boolean[] = [],
 ): StepSummary {
-	return { id: `step-${nodeId}`, nodeId, status, filledOutputSlots };
+	return { id: `step-${nodeId}`, nodeId, iteration: 0, status, filledOutputSlots };
 }
 
 function makeSteps(...summaries: StepSummary[]): Record<string, StepSummary> {
-	return Object.fromEntries(summaries.map((s) => [s.nodeId, s]));
+	return Object.fromEntries(summaries.map((s) => [stepKeyId(s), s]));
+}
+
+/** Every row in these tests sits at iteration 0; loops are CAT-2875 part 2. */
+function keyFor(nodeId: string): StepKey {
+	return { nodeId, iteration: 0 };
 }
 
 function makeGraph(
@@ -32,7 +37,7 @@ function makeGraph(
 	};
 }
 
-/** trigger → if → {a (out 0), b (out 1)} → m: the conditional diamond. */
+/** trigger -> if -> {a (out 0), b (out 1)} -> m: the conditional diamond. */
 const diamond = makeGraph([
 	{ from: 'trigger', to: 'if' },
 	{ from: 'if', to: 'a', outputIndex: 0 },
@@ -47,11 +52,11 @@ describe('decideSuccessors', () => {
 		// not considered — b's own settled event will examine it.
 		const decisions = decideSuccessors(
 			diamond,
-			'if',
+			keyFor('if'),
 			makeSteps(summary('trigger', 'completed', [true]), summary('if', 'completed', [true, false])),
 		);
 
-		expect(decisions).toEqual({ toQueue: ['a'], toSkip: ['b'] });
+		expect(decisions).toEqual({ toQueue: [keyFor('a')], toSkip: [keyFor('b')] });
 	});
 
 	it('decides a merge once its last predecessor settles', () => {
@@ -59,7 +64,7 @@ describe('decideSuccessors', () => {
 		// edge, so it runs on the live data.
 		const decisions = decideSuccessors(
 			diamond,
-			'a',
+			keyFor('a'),
 			makeSteps(
 				summary('trigger', 'completed', [true]),
 				summary('if', 'completed', [true, false]),
@@ -68,7 +73,7 @@ describe('decideSuccessors', () => {
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: ['m'], toSkip: [] });
+		expect(decisions).toEqual({ toQueue: [keyFor('m')], toSkip: [] });
 	});
 
 	it('leaves a merge undecided while a predecessor is still unsettled', () => {
@@ -76,7 +81,7 @@ describe('decideSuccessors', () => {
 		// yet, and a's own settlement will decide it later.
 		const decisions = decideSuccessors(
 			diamond,
-			'b',
+			keyFor('b'),
 			makeSteps(
 				summary('trigger', 'completed', [true]),
 				summary('if', 'completed', [true, false]),
@@ -89,7 +94,7 @@ describe('decideSuccessors', () => {
 	});
 
 	it('cascades a skip one hop at a time through the event loop', () => {
-		// dead chain b → c → d: each settled event plans exactly the next hop.
+		// dead chain b -> c -> d: each settled event plans exactly the next hop.
 		const graph = makeGraph([
 			{ from: 'trigger', to: 'if' },
 			{ from: 'if', to: 'a', outputIndex: 0 },
@@ -102,13 +107,22 @@ describe('decideSuccessors', () => {
 			summary('if', 'completed', [true, false]),
 		);
 
-		expect(decideSuccessors(graph, 'if', steps)).toEqual({ toQueue: ['a'], toSkip: ['b'] });
+		expect(decideSuccessors(graph, keyFor('if'), steps)).toEqual({
+			toQueue: [keyFor('a')],
+			toSkip: [keyFor('b')],
+		});
 
-		steps.b = summary('b', 'skipped');
-		expect(decideSuccessors(graph, 'b', steps)).toEqual({ toQueue: [], toSkip: ['c'] });
+		steps[stepKeyId(keyFor('b'))] = summary('b', 'skipped');
+		expect(decideSuccessors(graph, keyFor('b'), steps)).toEqual({
+			toQueue: [],
+			toSkip: [keyFor('c')],
+		});
 
-		steps.c = summary('c', 'skipped');
-		expect(decideSuccessors(graph, 'c', steps)).toEqual({ toQueue: [], toSkip: ['d'] });
+		steps[stepKeyId(keyFor('c'))] = summary('c', 'skipped');
+		expect(decideSuccessors(graph, keyFor('c'), steps)).toEqual({
+			toQueue: [],
+			toSkip: [keyFor('d')],
+		});
 	});
 
 	it('skips a node only when every predecessor has settled dead', () => {
@@ -128,10 +142,13 @@ describe('decideSuccessors', () => {
 			summary('b', 'skipped'),
 		);
 
-		expect(decideSuccessors(graph, 'b', steps)).toEqual({ toQueue: [], toSkip: [] });
+		expect(decideSuccessors(graph, keyFor('b'), steps)).toEqual({ toQueue: [], toSkip: [] });
 
-		steps.c = summary('c', 'skipped');
-		expect(decideSuccessors(graph, 'c', steps)).toEqual({ toQueue: [], toSkip: ['d'] });
+		steps[stepKeyId(keyFor('c'))] = summary('c', 'skipped');
+		expect(decideSuccessors(graph, keyFor('c'), steps)).toEqual({
+			toQueue: [],
+			toSkip: [keyFor('d')],
+		});
 	});
 
 	it('does not re-decide a successor that already has a row', () => {
@@ -140,7 +157,7 @@ describe('decideSuccessors', () => {
 		// reconciliation's job (CAT-2938), not this planner's.
 		const decisions = decideSuccessors(
 			diamond,
-			'if',
+			keyFor('if'),
 			makeSteps(
 				summary('trigger', 'completed', [true]),
 				summary('if', 'completed', [true, false]),
@@ -162,14 +179,14 @@ describe('decideSuccessors', () => {
 
 		const decisions = decideSuccessors(
 			graph,
-			'switch',
+			keyFor('switch'),
 			makeSteps(
 				summary('trigger', 'completed', [true]),
 				summary('switch', 'completed', [true, false, true]),
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: ['a', 'c'], toSkip: ['b'] });
+		expect(decisions).toEqual({ toQueue: [keyFor('a'), keyFor('c')], toSkip: [keyFor('b')] });
 	});
 
 	it('treats an output slot beyond the produced list as dead', () => {
@@ -180,11 +197,11 @@ describe('decideSuccessors', () => {
 
 		const decisions = decideSuccessors(
 			graph,
-			'a',
+			keyFor('a'),
 			makeSteps(summary('trigger', 'completed', [true]), summary('a', 'completed', [true])),
 		);
 
-		expect(decisions).toEqual({ toQueue: [], toSkip: ['b'] });
+		expect(decisions).toEqual({ toQueue: [], toSkip: [keyFor('b')] });
 	});
 });
 
@@ -257,18 +274,18 @@ function simulateExecution(
 		if (handleEvent) {
 			const nodeId = settledEvents[0];
 			settledEvents.shift();
-			const { toQueue, toSkip } = decideSuccessors(graph, nodeId, steps);
-			for (const id of toQueue) {
-				steps[id] = summary(id, 'queued');
+			const { toQueue, toSkip } = decideSuccessors(graph, keyFor(nodeId), steps);
+			for (const { nodeId: id } of toQueue) {
+				steps[stepKeyId(keyFor(id))] = summary(id, 'queued');
 				queuedNodes.push(id);
 			}
-			for (const id of toSkip) {
-				steps[id] = summary(id, 'skipped');
+			for (const { nodeId: id } of toSkip) {
+				steps[stepKeyId(keyFor(id))] = summary(id, 'skipped');
 				settledEvents.push(id);
 			}
 		} else {
 			const [nodeId] = queuedNodes.splice(randomInt(rand, queuedNodes.length), 1);
-			steps[nodeId] = summary(nodeId, 'completed', outputs[nodeId]);
+			steps[stepKeyId(keyFor(nodeId))] = summary(nodeId, 'completed', outputs[nodeId]);
 			settledEvents.push(nodeId);
 		}
 	}
@@ -311,7 +328,7 @@ describe('the event loop over decideSuccessors matches the reference evaluator',
 
 			const reachable = ['trigger', ...getDescendantNodeIds(graph, 'trigger')];
 			const actual = Object.fromEntries(
-				reachable.map((id) => [id, terminal[id]?.status ?? 'missing']),
+				reachable.map((id) => [id, terminal[stepKeyId(keyFor(id))]?.status ?? 'missing']),
 			);
 			// rule 1 (the finish predicate): every reachable node settled, and
 			// with exactly the fate the spec assigns

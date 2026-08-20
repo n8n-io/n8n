@@ -24,16 +24,17 @@ catalog:
   '@ai-sdk/otel': ^1.0.54
   '@ai-sdk/provider-utils': ^5.0.22
   '@ai-sdk/xai': ^4.0.18
+  '@asteasolutions/zod-to-openapi': 7.3.4
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
   # Exact pin: the adapters share an internal protocol with `chat`, and a range
   # that resolves higher than the locked `chat` pulls a second copy of it into
   # the tree. Bump this together with `chat` and the other adapters below.
-  '@chat-adapter/discord': 4.28.1
-  '@chat-adapter/linear': ^4.28.1
-  '@chat-adapter/slack': ^4.28.1
-  '@chat-adapter/state-memory': ^4.28.1
-  '@chat-adapter/telegram': ^4.28.1
+  '@chat-adapter/discord': 4.37.0
+  '@chat-adapter/linear': 4.37.0
+  '@chat-adapter/slack': 4.37.0
+  '@chat-adapter/state-memory': 4.37.0
+  '@chat-adapter/telegram': 4.37.0
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1
   '@codemirror/lang-css': 6.3.1
@@ -134,7 +135,7 @@ catalog:
   cache-manager: 5.2.3
   callsites: 3.1.0
   change-case: ^5.4.4
-  chat: ^4.28.1
+  chat: 4.37.0
   cheerio: 1.1.0
   chokidar: 4.0.3
   cron: 4.4.0
@@ -192,7 +193,7 @@ catalog:
   pdfjs-dist: 5.4.296
   pg: 8.21.0
   picocolors: 1.0.1
-  playwright-core: 1.60.0
+  playwright-core: 1.62.1
   posthog-node: 5.33.4
   prettier: 3.6.2
   proxy-from-env: ^1.1.0
@@ -233,10 +234,10 @@ catalogs:
   e2e:
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
-    '@playwright/test': 1.60.0
+    '@playwright/test': 1.62.1
     eslint-plugin-playwright: 2.2.2
-    playwright: 1.60.0
-    playwright-core: 1.60.0
+    playwright: 1.62.1
+    playwright-core: 1.62.1
   frontend:
     '@internationalized/date': ^3.9.0
     '@sentry/vue': ^10.36.0

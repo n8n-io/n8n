@@ -98,6 +98,18 @@ export {
 } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
+export {
+	CloneGitConnectionDto,
+	CreateGitConnectionDto,
+	GitConnectionListPublicDto,
+	GitConnectionPublicDto,
+	ListGitConnectionsQueryDto,
+	UpdateGitConnectionDto,
+	gitConnectionTypeSchema,
+	gitKeyGeneratorTypeSchema,
+	type GitConnectionType,
+	type GitKeyGeneratorType,
+} from './git-connections/git-connections.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
@@ -128,6 +140,7 @@ export {
 } from './workflows/manual-run.dto';
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
+export { TransferWorkflowPublicDto } from './workflows/transfer-workflow-public.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
@@ -335,8 +348,12 @@ export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workfl
 export { DecideWorkflowReviewRequestDto } from './workflow-reviews/decide-workflow-review-request.dto';
 export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
 export {
+	GetWorkflowReviewStatusesDto,
+	type WorkflowReviewStatus,
+	type WorkflowReviewStatusesResponse,
+} from './workflow-reviews/get-workflow-review-statuses.dto';
+export {
 	ListWorkflowReviewRequestsQueryDto,
-	type WorkflowReviewApprovedPublicationState,
 	type WorkflowReviewRequestForWorkflow,
 	type WorkflowReviewRequestList,
 } from './workflow-reviews/list-workflow-review-requests-query.dto';

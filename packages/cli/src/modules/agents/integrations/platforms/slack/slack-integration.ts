@@ -1,4 +1,8 @@
-import type { AgentIntegrationDisconnectWarning, RichCardComponentType } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	AgentIntegrationDisconnectWarning,
+	RichCardComponentType,
+} from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
 import type { Thread } from 'chat';
 
@@ -118,7 +122,13 @@ export class SlackIntegration extends AgentChatIntegration {
 		return await Container.get(SlackManagedSetupService).deleteAppForCredential(ctx);
 	}
 
-	async prepareSentThread(thread: Thread<unknown, unknown>): Promise<void> {
+	async prepareSentThread(
+		thread: Thread<unknown, unknown>,
+		integration: AgentIntegrationConfig,
+	): Promise<void> {
+		if (this.usesAgentMessagingExperience(integration) && this.isConversationScopedDm(thread.id)) {
+			return;
+		}
 		await subscribeSlackThread(thread);
 	}
 
@@ -166,7 +176,11 @@ export class SlackIntegration extends AgentChatIntegration {
 		const botToken = this.extractBotToken(ctx.credential);
 		const signingSecret = this.extractSigningSecret(ctx.credential);
 		const { createSlackAdapter } = await loadSlackAdapter();
-		return createSlackAdapter({ botToken, signingSecret });
+		return createSlackAdapter({
+			botToken,
+			signingSecret,
+			agentView: this.usesAgentMessagingExperience(ctx.integration),
+		});
 	}
 
 	/**
@@ -221,5 +235,13 @@ export class SlackIntegration extends AgentChatIntegration {
 			'The Slack credential is missing a signing secret, which is required for agent integrations. ' +
 				'Edit the credential and add your Slack app\'s "Signing Secret" (found under Basic Information in the Slack API dashboard).',
 		);
+	}
+
+	private usesAgentMessagingExperience(integration: AgentIntegrationConfig): boolean {
+		return integration.type === 'slack' && integration.settings?.messagingExperience === 'agent';
+	}
+
+	private isConversationScopedDm(threadId: string): boolean {
+		return /^slack:D[^:]+:$/.test(threadId);
 	}
 }

@@ -5,9 +5,15 @@ import {
 	workflowReviewVersionUpdatedActivityDataSchema,
 	type WorkflowReviewActivityEntry,
 	type WorkflowReviewEligibleReviewer,
+	type WorkflowReviewRequestSummary,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { User, WorkflowReviewActivity, WorkflowReviewActivityComment } from '@n8n/db';
+import type {
+	User,
+	WorkflowReviewActivity,
+	WorkflowReviewActivityComment,
+	WorkflowReviewRequest,
+} from '@n8n/db';
 import type { z } from 'zod';
 
 /**
@@ -21,6 +27,25 @@ export function toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
 		email: user.email,
 		firstName: user.firstName ?? null,
 		lastName: user.lastName ?? null,
+	};
+}
+
+/**
+ * The minimal review summary every status-bearing response is built from — the
+ * lifecycle mutations and the status batch share it so id, state, decision,
+ * pin, and timestamp serialization cannot drift apart.
+ */
+export function toRequestSummary(
+	request: WorkflowReviewRequest,
+	workflowVersionId: string | null,
+): WorkflowReviewRequestSummary {
+	return {
+		id: request.id,
+		state: request.state,
+		decision: request.decision,
+		workflowVersionId,
+		createdAt: request.createdAt.toISOString(),
+		updatedAt: request.updatedAt.toISOString(),
 	};
 }
 
