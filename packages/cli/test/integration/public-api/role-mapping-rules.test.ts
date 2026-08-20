@@ -617,76 +617,6 @@ describe('Role mapping rules in Public API', () => {
 			expect(list.body.data.map((rule: { id: string }) => rule.id)).toEqual([first.id, second.id]);
 		});
 
-		it('allows a rule to keep its position when order is set explicitly', async () => {
-			const agent = testServer.publicApiAgentFor(owner);
-			const { role, type } = validInstancePayload;
-
-			await createInstanceRule();
-			const second = await createInstanceRule({
-				expression: `${validInstancePayload.expression} || false`,
-			});
-
-			const response = await agent.put(`/role-mapping-rules/${second.id}`).send({
-				expression: second.expression,
-				role,
-				type,
-				order: 1,
-			});
-
-			expect(response.status).toBe(200);
-			expect(response.body.order).toBe(1);
-		});
-
-		it('clamps an order beyond the last position to the end', async () => {
-			const agent = testServer.publicApiAgentFor(owner);
-			const { role, type } = validInstancePayload;
-
-			const first = await createInstanceRule();
-			const second = await createInstanceRule({
-				expression: `${validInstancePayload.expression} || false`,
-			});
-			const third = await createInstanceRule({
-				expression: `${validInstancePayload.expression} || true`,
-			});
-
-			const response = await agent.put(`/role-mapping-rules/${first.id}`).send({
-				expression: validInstancePayload.expression,
-				role,
-				type,
-				order: 999,
-			});
-
-			expect(response.status).toBe(200);
-			expect(response.body.order).toBe(2);
-
-			const list = await agent.get('/role-mapping-rules');
-			expect(list.body.data.map((rule: { id: string }) => rule.id)).toEqual([
-				second.id,
-				third.id,
-				first.id,
-			]);
-		});
-
-		it('rejects with 409 when order collides with another rule of the same type', async () => {
-			const agent = testServer.publicApiAgentFor(owner);
-			const { role, type } = validInstancePayload;
-
-			await createInstanceRule();
-			const second = await createInstanceRule({
-				expression: `${validInstancePayload.expression} || false`,
-			});
-
-			const response = await agent.put(`/role-mapping-rules/${second.id}`).send({
-				expression: second.expression,
-				role,
-				type,
-				order: 0,
-			});
-
-			expect(response.status).toBe(409);
-			expect(response.body.message).toContain('already exists');
-		});
-
 		it('converts an instance rule into a project rule', async () => {
 			const rule = await createInstanceRule();
 
@@ -756,17 +686,6 @@ describe('Role mapping rules in Public API', () => {
 
 			expect(response.status).toBe(400);
 			expect(response.body.message).toBe('String must contain at least 1 character(s)');
-		});
-
-		it('rejects a negative order with 400', async () => {
-			const rule = await createInstanceRule();
-
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.put(`/role-mapping-rules/${rule.id}`)
-				.send({ expression: 'true', role: 'global:member', type: 'instance', order: -1 });
-
-			expect(response.status).toBe(400);
 		});
 
 		it('rejects a project rule without projectIds with 400', async () => {

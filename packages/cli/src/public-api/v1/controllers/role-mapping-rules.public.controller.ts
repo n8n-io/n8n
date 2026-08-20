@@ -138,7 +138,7 @@ export class RoleMappingRulesPublicController {
 	@ApiKeyScope('roleMappingRule:update')
 	@ApiSummary('Update a role-mapping rule')
 	@ApiDescription(
-		"Replaces a rule's claim expression, role, type, order and project assignments. Set `projectIds` when `type` is `project`; omit it when `type` is `instance`. Omitting `order` keeps the rule's current position; setting it moves the rule to that position within its type's evaluation sequence, or use the move endpoint instead. A value beyond the last position is clamped to the end. Setting a position already taken by another rule of the same type fails with a conflict.",
+		"Replaces a rule's claim expression, role, type and project assignments. Set `projectIds` when `type` is `project`; omit it when `type` is `instance`. The rule keeps its position in the evaluation order — use the move endpoint to reorder it. Changing `type` moves the rule into the other type's sequence at its current numeric position, which fails with a conflict if that position is already taken.",
 	)
 	@ApiTags(['RoleMappingRule'])
 	@ApiResponse(200, RoleMappingRulePublicDto)
