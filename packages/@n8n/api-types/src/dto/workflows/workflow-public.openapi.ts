@@ -9,7 +9,6 @@ function alsoNullable(metadata: ZodOpenAPIMetadata): ZodOpenAPIMetadata {
 
 // Key order below reaches the generated OpenAPI fragments verbatim, so each literal keeps the
 // order the published spec already uses.
-type FieldDoc = { description?: string; example?: unknown };
 
 /** Field prose and examples, read by the descriptors below and by the create request schema. */
 export const workflowNodeFieldDocs = {
@@ -26,7 +25,7 @@ export const workflowNodeFieldDocs = {
 	// No `id` in this example: ajv reads a nested `id` as a schema `$id`, and this schema is
 	// inlined at two places, so a duplicate stops the bundle compiling.
 	credentials: { example: { jiraSoftwareCloudApi: { name: 'jiraApi' } } },
-} as const satisfies Record<string, FieldDoc>;
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const workflowNodeGroupFieldDocs = {
 	id: {
@@ -39,7 +38,7 @@ export const workflowNodeGroupFieldDocs = {
 		example: 'Cleans and normalizes incoming records',
 	},
 	nodeIds: { description: 'IDs of the nodes that belong to this group' },
-} as const satisfies Record<string, FieldDoc>;
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const workflowSettingsFieldDocs = {
 	executionTimeout: { example: 3600 },
@@ -106,7 +105,7 @@ export const workflowSettingsFieldDocs = {
 			'responses for reference, but any value sent when creating or updating a workflow is ' +
 			'ignored.',
 	},
-} as const satisfies Record<string, FieldDoc>;
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const workflowCreateFieldDocs = {
 	name: { example: 'Workflow 1' },
@@ -132,7 +131,7 @@ export const workflowCreateFieldDocs = {
 	parentFolder: {
 		description: 'Folder the workflow was placed in, or null at the project root',
 	},
-} as const satisfies Record<string, FieldDoc>;
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const nodesOpenApi: ZodOpenAPIMetadata = {
 	type: 'array',
