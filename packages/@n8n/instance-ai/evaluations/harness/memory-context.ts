@@ -27,6 +27,25 @@ export interface MemoryContextSummary {
 	 * the whole kind useless on exactly the short threads the suite is made of.
 	 */
 	finalMessageWindow: string;
+	/**
+	 * The same three tiers as the model received them at the START of its final run —
+	 * before it produced anything in the turn being graded.
+	 *
+	 * This is the snapshot memory claims are graded against. The agent restates facts
+	 * while it works, and anything it restates lands back in the window, so grading
+	 * the end-of-thread state lets a probe manufacture its own evidence: asking the
+	 * agent to apply a rule makes it narrate the rule, and the narration is then found
+	 * and scored as retention.
+	 *
+	 * Known residual: output from EARLIER runs is still present here, including a
+	 * resume of the same turn. This removes the dominant confound — the agent being
+	 * graded on the very response it just produced — not every trace of restatement.
+	 */
+	atProbeObservations: string | null;
+	atProbeSystemPrompt: string;
+	atProbeMessageWindow: string;
+	/** False when no run carried a step, so the at-probe snapshot fell back to final. */
+	atProbeCaptured: boolean;
 	runCount: number;
 	stepCount: number;
 	/** How many steps carried an observation block — 0 means compression never ran. */
@@ -102,6 +121,34 @@ function segmentsToText(content: string, segments: unknown): string {
  * compression never ran, and the judge is told so explicitly rather than being
  * handed an empty section it might read as a failed assertion.
  */
+/** The value when it carries content, else undefined — so a caller can fall back on
+ *  an empty tier as well as an absent one. */
+function nonEmpty(text: string | undefined): string | undefined {
+	return text !== undefined && text.trim().length > 0 ? text : undefined;
+}
+
+interface StepTiers {
+	observations: string | null;
+	systemPrompt: string;
+	messageWindow: string;
+}
+
+/** One step's three context tiers, as the model received them. */
+function tiersOf(step: { input?: Record<string, unknown> }): StepTiers {
+	const parsed = parseSystemPromptForDisplay(step.input?.system);
+	return {
+		observations: parsed.observations,
+		systemPrompt: parsed.systemBlocks
+			.map((block) => segmentsToText(block.content, block.segments))
+			.filter((text) => text.trim().length > 0)
+			.join('\n\n'),
+		messageWindow: parseMessageBlocks(step.input?.messages)
+			.map((block) => `### ${block.role}\n${segmentsToText(block.content, block.segments)}`)
+			.filter((text) => text.trim().length > 0)
+			.join('\n\n'),
+	};
+}
+
 export function summarizeMemoryContext(
 	runDebug: InstanceAiRunDebugResponse[] | undefined,
 ): MemoryContextSummary | undefined {
@@ -117,33 +164,41 @@ export function summarizeMemoryContext(
 	for (const run of runs) {
 		for (const step of run.steps ?? []) {
 			stepCount++;
-			const parsed = parseSystemPromptForDisplay(step.input?.system);
-			if (parsed.observations) {
-				observations = parsed.observations;
+			const tiers = tiersOf(step);
+			if (tiers.observations) {
+				observations = tiers.observations;
 				observationStepCount++;
 			}
-			const systemText = parsed.systemBlocks
-				.map((block) => segmentsToText(block.content, block.segments))
-				.filter((text) => text.trim().length > 0)
-				.join('\n\n');
-			// Keep the newest non-empty prompt: a trailing step whose system prompt
-			// failed to parse must not blank out the one we'd otherwise report.
-			if (systemText.trim().length > 0) finalSystemPrompt = systemText;
-
-			const windowText = parseMessageBlocks(step.input?.messages)
-				.map((block) => `### ${block.role}\n${segmentsToText(block.content, block.segments)}`)
-				.filter((text) => text.trim().length > 0)
-				.join('\n\n');
-			if (windowText.trim().length > 0) finalMessageWindow = windowText;
+			// Keep the newest non-empty value: a trailing step whose prompt failed to
+			// parse must not blank out the one we'd otherwise report.
+			if (tiers.systemPrompt.trim().length > 0) finalSystemPrompt = tiers.systemPrompt;
+			if (tiers.messageWindow.trim().length > 0) finalMessageWindow = tiers.messageWindow;
 		}
 	}
 
 	if (stepCount === 0) return undefined;
 
+	// The at-probe snapshot: the FIRST step of the LAST run that has any. Anchored
+	// structurally rather than by matching the probe text, which is unreliable — a
+	// follow-up turn is paraphrased by the user proxy, so the sent message need not
+	// match the authored one.
+	const lastRunWithSteps = [...runs].reverse().find((run) => (run.steps ?? []).length > 0);
+	const firstStep = lastRunWithSteps
+		? [...(lastRunWithSteps.steps ?? [])].sort((a, b) => a.stepNumber - b.stepNumber)[0]
+		: undefined;
+	const atProbe = firstStep ? tiersOf(firstStep) : undefined;
+
 	return {
 		observations,
 		finalSystemPrompt,
 		finalMessageWindow,
+		atProbeObservations: atProbe ? atProbe.observations : observations,
+		// Falls back on an EMPTY tier, not just a missing one: a first step whose
+		// prompt or window failed to parse would otherwise blank the snapshot and read
+		// as "the model was given nothing", which is a finding we would be inventing.
+		atProbeSystemPrompt: nonEmpty(atProbe?.systemPrompt) ?? finalSystemPrompt,
+		atProbeMessageWindow: nonEmpty(atProbe?.messageWindow) ?? finalMessageWindow,
+		atProbeCaptured: atProbe !== undefined,
 		runCount: runs.length,
 		stepCount,
 		observationStepCount,
@@ -192,25 +247,25 @@ export function buildMemoryContextBlock(summary: MemoryContextSummary): string {
 	// Named so the judge is told which tier held the fact, without being invited to
 	// treat an absent observation block as an automatic failure.
 	const observations =
-		summary.observations ??
+		summary.atProbeObservations ??
 		'(none — the Observer never compressed this thread, so no facts were moved into observational memory. This is NOT itself a failure: on a thread this short the facts should still be present in the raw message window below, which is what the model actually received.)';
 
 	return [
-		'## Compressed observation block (final state)',
+		'## Compressed observation block (as the probe arrived)',
 		'',
 		observations,
 		'',
-		'## Raw message window (what the model received on its last step)',
+		'## Raw message window (what the model had when the probe arrived)',
 		'',
 		truncateMiddle(
-			summary.finalMessageWindow,
+			summary.atProbeMessageWindow,
 			MAX_MESSAGE_WINDOW_CHARS,
 			'(no message window captured)',
 		),
 		'',
-		'## Final system prompt (what the model saw on the last step)',
+		'## System prompt (as the probe arrived)',
 		'',
-		truncate(summary.finalSystemPrompt, MAX_SYSTEM_PROMPT_CHARS, '(no system prompt captured)'),
+		truncate(summary.atProbeSystemPrompt, MAX_SYSTEM_PROMPT_CHARS, '(no system prompt captured)'),
 		'',
 		'## Capture summary (ground truth — do not recount)',
 		'',
@@ -220,6 +275,9 @@ export function buildMemoryContextBlock(summary: MemoryContextSummary): string {
 				steps: summary.stepCount,
 				stepsCarryingObservations: summary.observationStepCount,
 				compressionRan: summary.observationStepCount > 0,
+				snapshot: summary.atProbeCaptured
+					? 'as the probe arrived, before the agent answered it'
+					: 'end of thread (no per-run snapshot available)',
 			},
 			null,
 			2,

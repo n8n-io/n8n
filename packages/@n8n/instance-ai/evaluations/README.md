@@ -307,11 +307,27 @@ in its attention, but this check has no such limit. That keeps the judge off the
 load-bearing path for exactly the claims where a wrong verdict would be most
 misleading.
 
-Two rules. Assert **atomic** values (`triggerAtHour`, `#ops-alerts`, `2026-03-01`),
-not formatted phrases (`triggerAtHour: 6`) — the same value is serialised with
-different spacing and quoting depending on which tier carries it. And matching is
-case-insensitive, because casing drifts as content is re-rendered through tool
-payloads and a casing difference is never the finding.
+Three rules, all learned from a real run.
+
+**Assert atomic values** (`triggerAtHour`, `#ops-alerts`, `external_id`), not
+formatted phrases (`triggerAtHour: 6`) — the same value is serialised with different
+spacing and quoting depending on which tier carries it. Matching is case-insensitive,
+because casing drifts as content is re-rendered through tool payloads and a casing
+difference is never the finding.
+
+**Assert tokens that survive verbatim, not values that get reworded.** Exact matching
+cannot see paraphrase, and this bites. On one measured run, an assertion on
+`2026-03-01` reported not-retained while the judged expectation on the same fact
+passed, citing *"March 2026 cutoff filter"* in the window — the agent kept the fact in
+prose and regenerated the ISO form later. Both graders were right about different
+things. Identifiers, keys, channel names and node names survive verbatim and are good
+assertions; dates, quantities and anything a model will restate in its own words are
+better left to a `memoryExpectation`.
+
+**A disagreement between the two graders is a finding, not a bug.** The deterministic
+check answers "was this exact token carried forward"; the judge answers "was this fact
+carried forward, however worded". When they diverge, the fact survived semantically but
+not literally — worth knowing, and only visible because both run.
 
 Keep `memoryExpectations` for claims a string search cannot express — "the retrieved
 sibling was the same *kind* of workflow", "the value is present but altered".
@@ -321,6 +337,17 @@ sibling was the same *kind* of workflow", "the value is present but altered".
 Two things make a memory expectation harder to falsify than it looks. Both were measured, not theorised.
 
 **Compression does not run by default.** The Observer only fires past `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` (default 30,000 message tokens) and the Reflector past `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` (default 40,000). No case in the suite reaches either — a 24-message seed is nowhere close — so on a normal run every observational-memory task logs `outcome: "skipped"` and nothing is ever evicted. To exercise the tiers locally, set them far lower on the backend; values observed to work are `2000` for the Observer and `500` for the Reflector (`3000` still never fired). Note the Tier-2 sliding window is **not** tunable: `N8N_INSTANCE_AI_LAST_MESSAGES` appears in `docs/memory.md` and `docs/configuration.md` but is not bound to any config field and nothing reads it.
+
+**Both kinds are graded on the at-probe snapshot.** Context claims are judged against
+the state the model held at the *start of its final run* — before it produced anything
+in the turn being graded — not the end-of-thread state. Without that, a probe
+manufactures its own evidence: asking the agent to apply a rule makes it narrate the
+rule, and the narration is then found and scored as retention. A `contextAssertion`
+that finds its value only in the end state fails and says so explicitly (*"absent when
+the probe arrived… re-derived or restated rather than carried forward"*), which is the
+distinction between measuring the memory subsystem and measuring the agent's habit of
+narrating its own work. Residual: output from *earlier* turns is still in the snapshot,
+which is correct — a fact that travelled across turns was retained.
 
 **Eviction is not sufficient for a fact to be lost.** The agent restates facts while it works — in plans, in verification narration, in summaries — and anything it restates lands back in the raw message window the judge reads. Observed directly: a fact planted ~21 messages back, with compression firing on every turn, still passed because the agent's own output repeated it. That is legitimate evidence of recall (it could not restate what it had forgotten), but it means a probe that invites the agent to narrate the rules it is applying partly manufactures its own evidence.
 

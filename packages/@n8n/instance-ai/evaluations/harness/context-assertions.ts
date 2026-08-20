@@ -49,33 +49,48 @@ export function checkContextAssertions(
 		}));
 	}
 
-	// One haystack across all three tiers: the question is whether the model had the
-	// value at all, not which tier carried it. Untruncated on purpose.
-	const tiers: Array<[string, string]> = [
+	// Graded against the AT-PROBE snapshot: the context as the model received it
+	// before producing anything in the turn being graded. The end-of-thread state is
+	// searched too, but only to tell "never had it" apart from "re-derived it while
+	// answering" — a distinction that is invisible if you grade the final state.
+	const atProbe: Array<[string, string]> = [
+		['observation block', summary.atProbeObservations ?? ''],
+		['message window', summary.atProbeMessageWindow],
+		['system prompt', summary.atProbeSystemPrompt],
+	];
+	const finalTiers: Array<[string, string]> = [
 		['observation block', summary.observations ?? ''],
 		['message window', summary.finalMessageWindow],
 		['system prompt', summary.finalSystemPrompt],
 	];
+	const hits = (tiers: Array<[string, string]>, needle: string) =>
+		tiers.filter(([, text]) => text.toLowerCase().includes(needle)).map(([tier]) => tier);
 
 	return assertions.map((assertion) => {
 		const needle = assertion.text.toLowerCase();
-		const found = tiers
-			.filter(([, text]) => text.toLowerCase().includes(needle))
-			.map(([tier]) => tier);
+		const found = hits(atProbe, needle);
+		const foundLater = found.length === 0 ? hits(finalTiers, needle) : [];
 		const mustAppear = assertion.mustAppear !== false;
 		const pass = mustAppear ? found.length > 0 : found.length === 0;
-		const where = found.length > 0 ? found.join(', ') : 'none';
-		return {
-			expectation: describe(assertion),
-			pass,
-			reason: mustAppear
-				? found.length > 0
-					? `found in: ${where} (exact match, case-insensitive)`
-					: 'not present in the observation block, message window or system prompt'
-				: found.length === 0
-					? 'correctly absent from all three context tiers'
-					: `still present in: ${where}`,
-			kind: 'memory' as const,
-		};
+
+		let reason: string;
+		if (mustAppear) {
+			if (found.length > 0) {
+				reason = `retained — present at the probe in: ${found.join(', ')} (exact match, case-insensitive)`;
+			} else if (foundLater.length > 0) {
+				// The distinction worth surfacing: the memory subsystem did not carry
+				// this, the agent re-produced it while answering.
+				reason = `NOT retained — absent when the probe arrived, but present by the end of the turn in: ${foundLater.join(', ')}. The agent re-derived or restated it rather than carrying it forward.`;
+			} else {
+				reason = 'not present at the probe, nor anywhere by the end of the turn';
+			}
+		} else {
+			reason =
+				found.length === 0
+					? 'correctly absent from all three context tiers at the probe'
+					: `still present at the probe in: ${found.join(', ')}`;
+		}
+
+		return { expectation: describe(assertion), pass, reason, kind: 'memory' as const };
 	});
 }
