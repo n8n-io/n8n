@@ -553,4 +553,421 @@ describe('Role mapping rules in Public API', () => {
 			testServer.license.enable('feat:saml');
 		});
 	});
+
+	describe('PUT /role-mapping-rules/{roleMappingRuleId}', () => {
+		const createInstanceRule = async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/role-mapping-rules')
+				.send(validInstancePayload);
+
+			expect(response.status).toBe(201);
+
+			return response.body as { id: string; order: number };
+		};
+
+		const createProjectRule = async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/role-mapping-rules')
+				.send({
+					expression: 'claims.project === "alpha"',
+					role: 'project:editor',
+					type: 'project',
+					projectIds: [teamProject.id],
+				});
+
+			expect(response.status).toBe(201);
+
+			return response.body as { id: string; order: number };
+		};
+
+		it('replaces an instance rule and returns 200', async () => {
+			const rule = await createInstanceRule();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({
+					expression: 'claims.group === "engineers"',
+					role: 'global:admin',
+					type: 'instance',
+				});
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({
+				id: rule.id,
+				expression: 'claims.group === "engineers"',
+				role: 'global:admin',
+				type: 'instance',
+				order: 0,
+				projectIds: [],
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			});
+
+			const stored = await Container.get(RoleMappingRuleRepository).findOne({
+				where: { id: rule.id },
+				relations: ['projects', 'role'],
+			});
+
+			assert(stored, 'Rule should still be stored in the database');
+
+			expect(stored.expression).toBe('claims.group === "engineers"');
+			expect(stored.role.slug).toBe('global:admin');
+			expect(stored.projects).toHaveLength(0);
+		});
+
+		it('replaces the project assignments of a project rule', async () => {
+			const rule = await createProjectRule();
+			const otherProject = await createTeamProject(undefined, owner);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({
+					expression: 'claims.project === "beta"',
+					role: 'project:editor',
+					type: 'project',
+					projectIds: [otherProject.id],
+				});
+
+			expect(response.status).toBe(200);
+			expect(response.body.projectIds).toEqual([otherProject.id]);
+		});
+
+		it('keeps the rule at its position in the evaluation order', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const { expression, role, type } = validInstancePayload;
+
+			const first = await createInstanceRule();
+			const second = await agent
+				.post('/role-mapping-rules')
+				.send({ expression: `${expression} || false`, role, type });
+
+			const response = await agent.put(`/role-mapping-rules/${second.body.id}`).send({
+				expression: 'claims.group === "engineers"',
+				role: 'global:member',
+				type: 'instance',
+			});
+
+			expect(response.status).toBe(200);
+			expect(response.body.order).toBe(1);
+
+			const list = await agent.get('/role-mapping-rules');
+			expect(list.body.data.map((rule: { id: string }) => rule.id)).toEqual([
+				first.id,
+				second.body.id,
+			]);
+		});
+
+		it('allows a rule to keep its position when order is set explicitly', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const { expression, role, type } = validInstancePayload;
+
+			await createInstanceRule();
+			const second = await agent
+				.post('/role-mapping-rules')
+				.send({ expression: `${expression} || false`, role, type });
+
+			const response = await agent.put(`/role-mapping-rules/${second.body.id}`).send({
+				expression: second.body.expression,
+				role,
+				type,
+				order: 1,
+			});
+
+			expect(response.status).toBe(200);
+			expect(response.body.order).toBe(1);
+		});
+
+		it('clamps an order beyond the last position to the end', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const { expression, role, type } = validInstancePayload;
+
+			const first = await createInstanceRule();
+			const second = await agent
+				.post('/role-mapping-rules')
+				.send({ expression: `${expression} || false`, role, type });
+			const third = await agent
+				.post('/role-mapping-rules')
+				.send({ expression: `${expression} || true`, role, type });
+
+			const response = await agent.put(`/role-mapping-rules/${first.id}`).send({
+				expression: validInstancePayload.expression,
+				role,
+				type,
+				order: 999,
+			});
+
+			expect(response.status).toBe(200);
+			expect(response.body.order).toBe(2);
+
+			const list = await agent.get('/role-mapping-rules');
+			expect(list.body.data.map((rule: { id: string }) => rule.id)).toEqual([
+				second.body.id,
+				third.body.id,
+				first.id,
+			]);
+		});
+
+		it('rejects with 409 when order collides with another rule of the same type', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const { expression, role, type } = validInstancePayload;
+
+			await createInstanceRule();
+			const second = await agent
+				.post('/role-mapping-rules')
+				.send({ expression: `${expression} || false`, role, type });
+
+			const response = await agent.put(`/role-mapping-rules/${second.body.id}`).send({
+				expression: second.body.expression,
+				role,
+				type,
+				order: 0,
+			});
+
+			expect(response.status).toBe(409);
+			expect(response.body.message).toContain('already exists');
+		});
+
+		it('converts an instance rule into a project rule', async () => {
+			const rule = await createInstanceRule();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({
+					expression: 'claims.project === "alpha"',
+					role: 'project:editor',
+					type: 'project',
+					projectIds: [teamProject.id],
+				});
+
+			expect(response.status).toBe(200);
+			expect(response.body.type).toBe('project');
+			expect(response.body.projectIds).toEqual([teamProject.id]);
+		});
+
+		it('rejects with 404 when the rule id is unknown', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/role-mapping-rules/00000000-0000-4000-8000-000000000000')
+				.send({
+					expression: 'claims.group === "engineers"',
+					role: 'global:member',
+					type: 'instance',
+				});
+
+			expect(response.status).toBe(404);
+			expect(response.body.message).toBe('Could not find role mapping rule');
+		});
+
+		it('rejects with 404 when the role slug is unknown', async () => {
+			const rule = await createInstanceRule();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({
+					expression: 'claims.group === "engineers"',
+					role: 'global:nonexistent',
+					type: 'instance',
+				});
+
+			expect(response.status).toBe(404);
+			expect(response.body.message).toBe('Could not find role with slug "global:nonexistent"');
+		});
+
+		it('rejects a partial body with 400', async () => {
+			const rule = await createInstanceRule();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({ expression: 'claims.group === "engineers"' });
+
+			expect(response.status).toBe(400);
+		});
+
+		it('rejects a malformed body with 400', async () => {
+			const rule = await createInstanceRule();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({ expression: '', role: 'global:member', type: 'instance' });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toBe('String must contain at least 1 character(s)');
+		});
+
+		it('rejects a negative order with 400', async () => {
+			const rule = await createInstanceRule();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({ expression: 'true', role: 'global:member', type: 'instance', order: -1 });
+
+			expect(response.status).toBe(400);
+		});
+
+		it('rejects a project rule without projectIds with 400', async () => {
+			const rule = await createInstanceRule();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({ expression: 'true', role: 'project:editor', type: 'project' });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toBe('projectIds is required when type is project');
+		});
+
+		it('rejects an instance rule carrying projectIds with 400', async () => {
+			const rule = await createInstanceRule();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({
+					expression: 'true',
+					role: 'global:member',
+					type: 'instance',
+					projectIds: [teamProject.id],
+				});
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toBe(
+				'projectIds must be omitted or empty when type is instance',
+			);
+		});
+
+		it('rejects a role incompatible with the rule type with 400', async () => {
+			const rule = await createInstanceRule();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({ expression: 'true', role: 'project:editor', type: 'instance' });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toBe('Instance mapping rules must use a global role');
+		});
+
+		it('rejects an unknown project with 400', async () => {
+			const rule = await createProjectRule();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({
+					expression: 'true',
+					role: 'project:editor',
+					type: 'project',
+					projectIds: ['00000000-0000-4000-8000-000000000000'],
+				});
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toBe('One or more projects were not found');
+		});
+
+		it('rejects with 409 when the new type already has a rule at the same position', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const { expression, role, type } = validInstancePayload;
+
+			// Two instance rules, so the second one sits at order 1.
+			await createInstanceRule();
+			const second = await agent
+				.post('/role-mapping-rules')
+				.send({ expression: `${expression} || false`, role, type });
+
+			// Two project rules, so order 1 is taken in the project sequence too.
+			await createProjectRule();
+			await agent.post('/role-mapping-rules').send({
+				expression: 'claims.project === "beta"',
+				role: 'project:editor',
+				type: 'project',
+				projectIds: [teamProject.id],
+			});
+
+			const response = await agent.put(`/role-mapping-rules/${second.body.id}`).send({
+				expression: 'claims.project === "gamma"',
+				role: 'project:editor',
+				type: 'project',
+				projectIds: [teamProject.id],
+			});
+
+			expect(response.status).toBe(409);
+			expect(response.body.message).toContain('already exists');
+		});
+
+		it('rejects with 401 without an API key', async () => {
+			const rule = await createInstanceRule();
+
+			const response = await testServer
+				.publicApiAgentWithoutApiKey()
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({
+					expression: 'claims.group === "engineers"',
+					role: 'global:member',
+					type: 'instance',
+				});
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 401 with an invalid API key', async () => {
+			const rule = await createInstanceRule();
+
+			const response = await testServer
+				.publicApiAgentWithApiKey('invalid-key')
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({
+					expression: 'claims.group === "engineers"',
+					role: 'global:member',
+					type: 'instance',
+				});
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 403 when the key lacks roleMappingRule:update', async () => {
+			const rule = await createInstanceRule();
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['user:read'] });
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({
+					expression: 'claims.group === "engineers"',
+					role: 'global:member',
+					type: 'instance',
+				});
+
+			expect(response.status).toBe(403);
+		});
+
+		it('rejects with 403 when provisioning is not licensed', async () => {
+			const rule = await createInstanceRule();
+
+			testServer.license.disable('feat:saml');
+			testServer.license.disable('feat:oidc');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/role-mapping-rules/${rule.id}`)
+				.send({
+					expression: 'claims.group === "engineers"',
+					role: 'global:member',
+					type: 'instance',
+				});
+
+			expect(response.status).toBe(403);
+			expect(response.body.message).toBe('Provisioning is not licensed');
+
+			testServer.license.enable('feat:saml');
+		});
+	});
 });
