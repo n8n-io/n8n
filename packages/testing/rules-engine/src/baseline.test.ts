@@ -7,6 +7,7 @@ import {
 	generateBaseline,
 	saveBaseline,
 	loadBaseline,
+	newBaselineEntries,
 	filterReportByBaseline,
 } from './baseline.js';
 import type { Report } from './types.js';
@@ -199,5 +200,72 @@ describe('generateBaseline carrying over uncovered rules', () => {
 		const baseline = generateBaseline(reportFor('a-rule', ['only']), '/root');
 
 		expect(baseline.totalViolations).toBe(1);
+	});
+});
+
+describe('newBaselineEntries', () => {
+	function reportFor(rule: string, messages: string[]): Report {
+		return {
+			timestamp: new Date().toISOString(),
+			projectRoot: '/root',
+			rules: { enabled: [rule], disabled: [] },
+			results: [
+				{
+					rule,
+					violations: messages.map((message) => ({
+						file: '/root/src/a.ts',
+						line: 1,
+						column: 1,
+						rule,
+						message,
+						severity: 'error' as const,
+					})),
+					filesAnalyzed: 1,
+					executionTimeMs: 0,
+				},
+			],
+			summary: {
+				totalViolations: messages.length,
+				byRule: { [rule]: messages.length },
+				bySeverity: { error: messages.length, warning: 0, info: 0 },
+				filesAnalyzed: 1,
+			},
+		};
+	}
+
+	it('treats every entry as new when there is no previous baseline', () => {
+		const next = generateBaseline(reportFor('a-rule', ['one', 'two']), '/root');
+
+		const added = newBaselineEntries(null, next);
+
+		expect(added.map((a) => a.entry.message)).toEqual(['one', 'two']);
+		expect(added.every((a) => a.relativePath === 'src/a.ts')).toBe(true);
+	});
+
+	it('returns nothing when the baseline is unchanged', () => {
+		const previous = generateBaseline(reportFor('a-rule', ['one', 'two']), '/root');
+		const next = generateBaseline(reportFor('a-rule', ['one', 'two']), '/root', previous);
+
+		expect(newBaselineEntries(previous, next)).toEqual([]);
+	});
+
+	it('reports only the entries the regeneration adds', () => {
+		const previous = generateBaseline(reportFor('a-rule', ['one']), '/root');
+		const next = generateBaseline(reportFor('a-rule', ['one', 'two']), '/root', previous);
+
+		const added = newBaselineEntries(previous, next);
+
+		expect(added).toHaveLength(1);
+		expect(added[0].entry.message).toBe('two');
+	});
+
+	it('does not report entries an additive regeneration merely carries over', () => {
+		// A rule that did not run this time keeps its entries; those are not "new".
+		const previous = generateBaseline(reportFor('disabled-rule', ['kept']), '/root');
+		const next = generateBaseline(reportFor('other-rule', ['fresh']), '/root', previous);
+
+		const added = newBaselineEntries(previous, next);
+
+		expect(added.map((a) => a.entry.message)).toEqual(['fresh']);
 	});
 });

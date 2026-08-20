@@ -20,6 +20,7 @@ export {
 	loadBaseline,
 	saveBaseline,
 	generateBaseline,
+	newBaselineEntries,
 	filterViolations,
 	filterReportByBaseline,
 } from './baseline.js';

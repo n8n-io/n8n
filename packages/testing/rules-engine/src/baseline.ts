@@ -99,6 +99,30 @@ export function saveBaseline(baseline: BaselineFile, filePath: string): void {
 	fs.writeFileSync(filePath, JSON.stringify(baseline, null, '\t') + '\n');
 }
 
+/**
+ * Entries present in `next` but absent from `previous`, i.e. the violations a regeneration would
+ * newly record. Matching is by hash (path + rule + message), the same key {@link generateBaseline}
+ * dedupes on. Because the baseline is additive, a non-empty result is exactly the condition under
+ * which `totalViolations` grew — the signal the guard gates on.
+ */
+export function newBaselineEntries(
+	previous: BaselineFile | null | undefined,
+	next: BaselineFile,
+): Array<{ relativePath: string; entry: BaselineEntry }> {
+	const known = new Set<string>();
+	for (const entries of Object.values(previous?.violations ?? {})) {
+		for (const entry of entries) known.add(entry.hash);
+	}
+
+	const added: Array<{ relativePath: string; entry: BaselineEntry }> = [];
+	for (const [relativePath, entries] of Object.entries(next.violations)) {
+		for (const entry of entries) {
+			if (!known.has(entry.hash)) added.push({ relativePath, entry });
+		}
+	}
+	return added;
+}
+
 function isInBaseline(violation: Violation, baseline: BaselineFile, rootDir: string): boolean {
 	const relativePath = path.relative(rootDir, violation.file);
 	const fileBaseline = baseline.violations[relativePath];

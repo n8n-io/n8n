@@ -133,6 +133,32 @@ jobs:
         if: ${{ !cancelled() && (github.event_name == 'merge_group' || needs.changes.outputs.janitor == 'true') }}
         run: pnpm --filter=n8n-playwright janitor
 
+  check-baseline-growth:
+    name: Code Health Baseline
+    # Fails if `.code-health-baseline.json` grew (more recorded violations than on the base branch)
+    # without the 'allow-baseline-growth' label. The baseline is a ratchet — silently growing it is
+    # the cheapest way to turn a red Static Analysis check green, so growth must be a labelled choice.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      - name: Check baseline growth
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/quality/check-baseline-growth.mjs
+
   check-do-not-merge:
     name: Do Not Merge
     # Fails while the 'Do Not Merge' label is present. Re-runs on labeled/unlabeled
@@ -150,7 +176,7 @@ jobs:
 
   required-pr-quality-checks:
     name: Required PR Quality Checks
-    needs: [check-pr-size, check-static-analysis, check-do-not-merge]
+    needs: [check-pr-size, check-static-analysis, check-baseline-growth, check-do-not-merge]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

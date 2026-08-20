@@ -27,4 +27,9 @@ describe('parseArgs', () => {
 	it('names the accepted commands when rejecting', () => {
 		expect(() => parseArgs(['nope'])).toThrow(/verify-closure/);
 	});
+
+	it('defaults allowNew to false and sets it with --allow-new', () => {
+		expect(parseArgs(['baseline']).allowNew).toBe(false);
+		expect(parseArgs(['baseline', '--allow-new']).allowNew).toBe(true);
+	});
 });

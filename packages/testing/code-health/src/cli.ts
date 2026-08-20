@@ -4,6 +4,7 @@ import {
 	toJSON,
 	loadBaseline,
 	generateBaseline,
+	newBaselineEntries,
 	saveBaseline,
 	filterReportByBaseline,
 } from '@n8n/rules-engine';
@@ -63,12 +64,33 @@ async function main(): Promise<void> {
 		// Pass the current file through so exceptions for rules this run didn't cover survive.
 		const previous = fs.existsSync(baselinePath) ? loadBaseline(baselinePath) : null;
 		const baseline = generateBaseline(report, rootDir, previous);
+		const added = newBaselineEntries(previous, baseline);
+
+		// The baseline is a ratchet: `baseline` + commit is the cheapest way to turn a red check green,
+		// so growth must be a deliberate, visible act. Print what would be added and, unless the caller
+		// opts in with --allow-new, refuse — the fix is the code change, not recording a new exception.
+		if (added.length > 0) {
+			console.error(`Baseline would gain ${added.length} new violation(s):`);
+			for (const { relativePath, entry } of added) {
+				console.error(`  + ${relativePath} [${entry.rule}] ${entry.message}`);
+			}
+
+			if (!options.allowNew) {
+				console.error(
+					'\nRefusing to grow the baseline. Fix the violation instead of recording it. ' +
+						'If the growth is intended (e.g. a full regeneration), re-run with --allow-new.',
+				);
+				process.exit(1);
+			}
+		}
+
 		saveBaseline(baseline, baselinePath);
 		console.log(
 			JSON.stringify(
 				{
 					action: 'baseline-created',
 					totalViolations: baseline.totalViolations,
+					newViolations: added.length,
 					path: baselinePath,
 				},
 				null,

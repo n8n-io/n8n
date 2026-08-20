@@ -30,16 +30,31 @@ node packages/testing/code-health/dist/cli.js rules
 
 ## Baseline
 
-The baseline (`.code-health-baseline.json` at repo root) snapshots current violations so only **new** violations fail the check.
+The baseline (`.code-health-baseline.json` at repo root) snapshots current violations so only **new**
+violations fail the check. It is a **ratchet**: you can shrink it by fixing violations, but you can't
+grow it without an explicit opt-in.
 
 ```bash
-# Generate/update baseline
+# Regenerate the baseline (prints any entries that would be added)
 node packages/testing/code-health/dist/cli.js baseline
 
 # Commit it
 git add .code-health-baseline.json
 git commit -m "chore: update code-health baseline"
 ```
+
+If the run would **add** entries (the total goes up), `baseline` prints them and exits non-zero. The
+fix is the code change, not recording a new exception. If the growth is genuinely intended — most
+often a full, shrinking regeneration (delete the file, then regenerate with every rule enabled) —
+re-run with `--allow-new`:
+
+```bash
+node packages/testing/code-health/dist/cli.js baseline --allow-new
+```
+
+CI enforces the same ratchet independently: the **Code Health Baseline** check fails a PR whose
+`.code-health-baseline.json` records more violations than the base branch, unless the PR carries the
+`allow-baseline-growth` label. So `baseline` + commit can no longer silently turn a red check green.
 
 ## Output
 

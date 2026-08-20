@@ -7,6 +7,8 @@ export interface CliOptions {
 	rule?: string;
 	file?: string;
 	ignoreBaseline: boolean;
+	/** Allow `baseline` to record new violations. Without it, a run that would grow the baseline fails. */
+	allowNew: boolean;
 	/** Remaining args after the command — interpreted by the `verify-*` subcommands. */
 	args: string[];
 }
@@ -19,6 +21,7 @@ export function parseArgs(args: string[]): CliOptions {
 	const options: CliOptions = {
 		command: 'analyze',
 		ignoreBaseline: false,
+		allowNew: false,
 		args: [],
 	};
 
@@ -42,6 +45,8 @@ export function parseArgs(args: string[]): CliOptions {
 
 		if (arg === '--ignore-baseline') {
 			options.ignoreBaseline = true;
+		} else if (arg === '--allow-new') {
+			options.allowNew = true;
 		} else if (arg.startsWith('--rule=')) {
 			options.rule = arg.slice('--rule='.length);
 		} else if (arg.startsWith('--file=')) {
