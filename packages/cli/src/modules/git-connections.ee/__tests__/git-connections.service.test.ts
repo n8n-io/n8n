@@ -264,7 +264,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 
 				await service.removeProject('1', 'p1');
 
-				expect(gitConnectionProjectRepository.remove).toHaveBeenCalledWith(link);
+				expect(gitConnectionProjectRepository.unlinkProject).toHaveBeenCalledWith('p1', '1');
 			});
 
 			it('is a no-op when the project is not linked', async () => {
@@ -272,7 +272,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 
 				await service.removeProject('1', 'p1');
 
-				expect(gitConnectionProjectRepository.remove).not.toHaveBeenCalled();
+				expect(gitConnectionProjectRepository.unlinkProject).not.toHaveBeenCalled();
 			});
 
 			it('rejects removing a link owned by a different connection', async () => {
@@ -283,7 +283,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 
 				await expect(service.removeProject('1', 'p1')).rejects.toThrow(ConflictError);
 
-				expect(gitConnectionProjectRepository.remove).not.toHaveBeenCalled();
+				expect(gitConnectionProjectRepository.unlinkProject).not.toHaveBeenCalled();
 			});
 		});
 
