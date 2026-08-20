@@ -116,10 +116,13 @@ function makeCase(nodeCount: number, itemCount: number) {
 // together: the ratio between them is what the guard costs. Node count varies so
 // the per-node slope is visible, since the engine's fixed startup cost does not
 // scale with it.
+// `iterations` is tuned per case so the measured callback lands in the hundreds
+// of milliseconds under CodSpeed. Above one second CodSpeed reports two
+// significant figures ("2.4 s"), which cannot express a 1% difference.
 const CASES = [
-	{ nodes: 5, items: 100 },
-	{ nodes: 20, items: 100 },
-	{ nodes: 20, items: 1_000 },
+	{ nodes: 5, items: 100, iterations: 50 },
+	{ nodes: 20, items: 100, iterations: 50 },
+	{ nodes: 20, items: 1_000, iterations: 10 },
 ];
 
 /**
@@ -128,10 +131,13 @@ const CASES = [
  */
 const EXECUTION_BENCH_OPTIONS = { ...BENCH_OPTIONS, time: 5_000, warmupTime: 2_000 };
 
-const runners = CASES.map(({ nodes, items }) => ({ nodes, items, run: makeCase(nodes, items) }));
+const runners = CASES.map((testCase) => ({
+	...testCase,
+	run: makeCase(testCase.nodes, testCase.items),
+}));
 
 /**
- * Executions performed per measured callback.
+ * Each measured callback performs many executions, not one.
  *
  * CodSpeed measures exactly one call of the callback, between
  * `InstrumentHooks.startBenchmark()` and `stopBenchmark()` (see
@@ -140,21 +146,23 @@ const runners = CASES.map(({ nodes, items }) => ({ nodes, items, run: makeCase(n
  * the count. The first two CI runs showed "guard on" beating "guard off", which
  * is impossible, and the small cases swung by a factor of two between runs.
  *
- * Looping here makes the measured window large enough that one GC is a small
- * share of it instead of the whole signal.
+ * Looping makes the measured window large enough that one GC is a small share of
+ * it instead of the whole signal.
  */
-const ITERATIONS = 50;
-
-async function runMany(run: (withGuard: boolean) => Promise<void>, withGuard: boolean) {
-	for (let i = 0; i < ITERATIONS; i++) await run(withGuard);
+async function runMany(
+	run: (withGuard: boolean) => Promise<void>,
+	withGuard: boolean,
+	iterations: number,
+) {
+	for (let i = 0; i < iterations; i++) await run(withGuard);
 }
 
-for (const { nodes, items, run } of runners) {
+for (const { nodes, items, iterations, run } of runners) {
 	describe(`Workflow execution: ${nodes} nodes, ${items} items`, () => {
 		bench(
 			`guard off (${nodes} nodes, ${items} items)`,
 			async () => {
-				await runMany(run, false);
+				await runMany(run, false, iterations);
 			},
 			EXECUTION_BENCH_OPTIONS,
 		);
@@ -162,7 +170,7 @@ for (const { nodes, items, run } of runners) {
 		bench(
 			`guard on (${nodes} nodes, ${items} items)`,
 			async () => {
-				await runMany(run, true);
+				await runMany(run, true, iterations);
 			},
 			EXECUTION_BENCH_OPTIONS,
 		);
