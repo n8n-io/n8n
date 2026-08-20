@@ -861,8 +861,12 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(result).toEqual({ type: 'skipped', reason: 'node-ids-healed' });
 			expect(workflowService.publishAsSystem).toHaveBeenCalledTimes(1);
-			const [workflowId, versionData] = workflowService.publishAsSystem.mock.calls[0];
+			const [workflowId, versionData, expectedActiveVersionId] =
+				workflowService.publishAsSystem.mock.calls[0];
 			expect(workflowId).toBe('wf-1');
+			// Baseline = the version the healed copy was derived from, so a newer
+			// publish in flight resolves as superseded instead of being overwritten.
+			expect(expectedActiveVersionId).toBe('v-2');
 			expect(versionData.connections).toBe(version.connections);
 			expect(versionData.nodeGroups).toBe(version.nodeGroups);
 			const ids = versionData.nodes.map((node: INode) => node.id);

@@ -396,11 +396,17 @@ export class WorkflowPublicationApplier {
 			},
 		);
 
-		const published = await this.workflowService.publishAsSystem(workflow.id, {
-			nodes: healed.nodes,
-			connections: newVersion.connections,
-			nodeGroups: newVersion.nodeGroups,
-		});
+		// Baseline on the version the healed copy was derived from: if anything
+		// newer was published while this record was in flight, the heal must lose.
+		const published = await this.workflowService.publishAsSystem(
+			workflow.id,
+			{
+				nodes: healed.nodes,
+				connections: newVersion.connections,
+				nodeGroups: newVersion.nodeGroups,
+			},
+			newVersion.versionId,
+		);
 
 		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW.NODE_IDS_HEALED, {
 			workflow_id: workflow.id,
