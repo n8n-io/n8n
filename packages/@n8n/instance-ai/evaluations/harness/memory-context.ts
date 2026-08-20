@@ -7,8 +7,9 @@ import { parseMessageBlocks, parseSystemPromptForDisplay } from '@n8n/api-types'
 const MAX_SYSTEM_PROMPT_CHARS = 40_000;
 
 /** Cap on the rendered message window. Tool results dominate the message log, so an
- *  uncapped window would swamp both other sections. */
-const MAX_MESSAGE_WINDOW_CHARS = 40_000;
+ *  uncapped window would swamp both other sections — but the window is where fetched
+ *  context lands, so it gets the largest share of the budget. */
+const MAX_MESSAGE_WINDOW_CHARS = 80_000;
 
 export interface MemoryContextSummary {
 	/** Last non-empty compressed observation block seen across the thread's runs. */
@@ -32,17 +33,61 @@ export interface MemoryContextSummary {
 	observationStepCount: number;
 }
 
+/** Per-payload cap. Tool results carry whole workflows and search hits; without a
+ *  per-segment bound one large result would consume the whole window budget and
+ *  push every other retrieved fact out of view. */
+const MAX_SEGMENT_PAYLOAD_CHARS = 4_000;
+
+function renderPayload(payload: unknown): string {
+	if (payload === undefined || payload === null) return '';
+	const text = typeof payload === 'string' ? payload : safeJson(payload);
+	return text.length > MAX_SEGMENT_PAYLOAD_CHARS
+		? `${text.slice(0, MAX_SEGMENT_PAYLOAD_CHARS)}…[payload truncated]`
+		: text;
+}
+
+function safeJson(value: unknown): string {
+	try {
+		return JSON.stringify(value) ?? String(value);
+	} catch {
+		return String(value);
+	}
+}
+
+/**
+ * Flatten one content block to text.
+ *
+ * Tool-call arguments and tool-result payloads are rendered in full (bounded), not
+ * summarised to a `[tool-result: name]` placeholder. Context the agent fetches on
+ * demand — another workflow, an execution, a doc, a data-table schema — arrives as a
+ * tool result, so dropping payloads would make the judge report "not present" for
+ * exactly the retrieved content a context system exists to deliver.
+ */
 function segmentsToText(content: string, segments: unknown): string {
 	if (!Array.isArray(segments) || segments.length === 0) return content;
 	const parts: string[] = [];
 	for (const segment of segments) {
 		if (typeof segment !== 'object' || segment === null) continue;
-		const seg = segment as { type?: unknown; text?: unknown; name?: unknown };
+		const seg = segment as {
+			type?: unknown;
+			text?: unknown;
+			name?: unknown;
+			label?: unknown;
+			payload?: unknown;
+		};
 		if ((seg.type === 'text' || seg.type === 'reasoning') && typeof seg.text === 'string') {
 			parts.push(seg.text);
-		} else if (typeof seg.name === 'string') {
-			parts.push(`[${String(seg.type)}: ${seg.name}]`);
+			continue;
 		}
+		const label =
+			typeof seg.name === 'string'
+				? seg.name
+				: typeof seg.label === 'string'
+					? seg.label
+					: undefined;
+		const rendered = renderPayload(seg.payload);
+		const header = `[${String(seg.type)}${label ? `: ${label}` : ''}]`;
+		parts.push(rendered ? `${header} ${rendered}` : header);
 	}
 	return parts.length > 0 ? parts.join('\n') : content;
 }
@@ -111,6 +156,26 @@ function truncate(text: string, limit: number, fallback: string): string {
 }
 
 /**
+ * Keep both ends of an oversized window, dropping the middle.
+ *
+ * Presence claims can point anywhere: a fact planted early sits at the head, while
+ * content the agent just fetched sits at the tail. Head-only truncation would hide
+ * fresh tool results, and tail-only would hide the planted facts — so keep both and
+ * say plainly what was dropped, rather than letting the judge read a cut as absence.
+ */
+function truncateMiddle(text: string, limit: number, fallback: string): string {
+	if (text.length === 0) return fallback;
+	if (text.length <= limit) return text;
+	const half = Math.floor(limit / 2);
+	const dropped = text.length - half * 2;
+	return [
+		text.slice(0, half),
+		`\n\n[…${dropped.toLocaleString()} characters of the middle of the window omitted — treat absence here as unknown, not as evidence…]\n\n`,
+		text.slice(text.length - half),
+	].join('');
+}
+
+/**
  * Render the context state as the judge's sole grading input.
  *
  * Carries what the model was actually handed on its final step — the compressed
@@ -137,7 +202,11 @@ export function buildMemoryContextBlock(summary: MemoryContextSummary): string {
 		'',
 		'## Raw message window (what the model received on its last step)',
 		'',
-		truncate(summary.finalMessageWindow, MAX_MESSAGE_WINDOW_CHARS, '(no message window captured)'),
+		truncateMiddle(
+			summary.finalMessageWindow,
+			MAX_MESSAGE_WINDOW_CHARS,
+			'(no message window captured)',
+		),
 		'',
 		'## Final system prompt (what the model saw on the last step)',
 		'',

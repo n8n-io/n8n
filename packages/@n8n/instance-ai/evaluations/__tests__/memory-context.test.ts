@@ -132,13 +132,76 @@ describe('buildMemoryContextBlock', () => {
 		expect(block).toContain('#payments-eu');
 	});
 
-	it('truncates an oversized message window', () => {
+	it('renders tool-result payloads, not just a placeholder', () => {
+		// Context the agent fetches on demand arrives as a tool result. Rendering only
+		// `[tool-result: name]` would make the judge report retrieved facts as absent —
+		// exactly the content a retrieval system exists to deliver.
 		const summary = summarizeMemoryContext([
-			run('r1', 1, [step('sys', 1, [{ role: 'user', content: 'y'.repeat(60_000) }])]),
+			run('r1', 1, [
+				step('sys', 1, [
+					{
+						role: 'assistant',
+						content: [
+							{ type: 'tool-call', toolName: 'workflows', input: { q: 'billing' } },
+							{
+								type: 'tool-result',
+								toolName: 'workflows',
+								output: { name: 'Billing Sync', schedule: '07:00 weekdays' },
+							},
+						],
+					},
+				]),
+			]),
+		]);
+		expect(summary?.finalMessageWindow).toContain('tool-result: workflows');
+		expect(summary?.finalMessageWindow).toContain('Billing Sync');
+		expect(summary?.finalMessageWindow).toContain('07:00 weekdays');
+		// Tool-call arguments matter too — they show what the agent went looking for.
+		expect(summary?.finalMessageWindow).toContain('billing');
+	});
+
+	it('bounds a single huge tool payload so it cannot crowd out the rest', () => {
+		const summary = summarizeMemoryContext([
+			run('r1', 1, [
+				step('sys', 1, [
+					{
+						role: 'assistant',
+						content: [
+							{ type: 'tool-result', toolName: 'big', output: { blob: 'z'.repeat(50_000) } },
+							{ type: 'text', text: 'NEEDLE_AFTER_BIG_PAYLOAD' },
+						],
+					},
+				]),
+			]),
+		]);
+		expect(summary?.finalMessageWindow).toContain('[payload truncated]');
+		// The segment after the giant one must survive.
+		expect(summary?.finalMessageWindow).toContain('NEEDLE_AFTER_BIG_PAYLOAD');
+	});
+
+	it('keeps both ends of an oversized window and labels the gap', () => {
+		// A planted fact sits at the head, a fresh retrieval at the tail; cutting either
+		// end would let the judge read a truncation as absence.
+		const blocks = [
+			{ role: 'user', content: 'HEAD_FACT_MARKER' },
+			{ role: 'user', content: 'x'.repeat(120_000) },
+			{ role: 'user', content: 'TAIL_FACT_MARKER' },
+		];
+		const summary = summarizeMemoryContext([run('r1', 1, [step('sys', 1, blocks)])]);
+		const block = buildMemoryContextBlock(summary!);
+		expect(block).toContain('HEAD_FACT_MARKER');
+		expect(block).toContain('TAIL_FACT_MARKER');
+		expect(block).toContain('omitted');
+		expect(block).toContain('treat absence here as unknown');
+	});
+
+	it('caps an oversized message window', () => {
+		const summary = summarizeMemoryContext([
+			run('r1', 1, [step('sys', 1, [{ role: 'user', content: 'y'.repeat(200_000) }])]),
 		]);
 		const block = buildMemoryContextBlock(summary!);
-		expect(block).toContain('[…truncated]');
-		expect(block.length).toBeLessThan(60_000);
+		expect(block).toContain('omitted');
+		expect(block.length).toBeLessThan(120_000);
 	});
 
 	it('includes the observation block, the system prompt and the counters', () => {
