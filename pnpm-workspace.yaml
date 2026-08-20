@@ -30,11 +30,11 @@ catalog:
   # Exact pin: the adapters share an internal protocol with `chat`, and a range
   # that resolves higher than the locked `chat` pulls a second copy of it into
   # the tree. Bump this together with `chat` and the other adapters below.
-  '@chat-adapter/discord': 4.28.1
-  '@chat-adapter/linear': ^4.28.1
-  '@chat-adapter/slack': ^4.28.1
-  '@chat-adapter/state-memory': ^4.28.1
-  '@chat-adapter/telegram': ^4.28.1
+  '@chat-adapter/discord': 4.37.0
+  '@chat-adapter/linear': 4.37.0
+  '@chat-adapter/slack': 4.37.0
+  '@chat-adapter/state-memory': 4.37.0
+  '@chat-adapter/telegram': 4.37.0
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1
   '@codemirror/lang-css': 6.3.1
@@ -135,7 +135,7 @@ catalog:
   cache-manager: 5.2.3
   callsites: 3.1.0
   change-case: ^5.4.4
-  chat: ^4.28.1
+  chat: 4.37.0
   cheerio: 1.1.0
   chokidar: 4.0.3
   cron: 4.4.0

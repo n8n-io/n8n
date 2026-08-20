@@ -1,7 +1,7 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
-	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
+	getWorkflowToolIncompatibilityReason,
 	type AgentJsonToolConfig,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
@@ -70,8 +70,6 @@ const _assertSupportedTriggersInSync: Record<
 > = SUPPORTED_TRIGGERS;
 void _assertSupportedTriggersInSync;
 
-const INCOMPATIBLE_NODE_TYPES = new Set<string>(INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES);
-
 const DEFAULT_TIMEOUT_MS = 120_000;
 
 function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
@@ -126,15 +124,29 @@ export function detectTriggerNode(workflow: WorkflowEntity): DetectedTrigger {
 // ---------------------------------------------------------------------------
 
 export function validateCompatibility(workflow: WorkflowEntity): void {
-	const nodes = workflow.nodes ?? [];
-	const incompatible = nodes.filter((n) => INCOMPATIBLE_NODE_TYPES.has(n.type));
+	const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
+	if (!incompatibility) return;
 
-	if (incompatible.length > 0) {
-		const names = incompatible.map((n) => `${n.name} (${n.type})`).join(', ');
+	if (incompatibility.reason === 'incompatible_nodes') {
+		// Re-resolve node names here (the shared function only returns types) so the
+		// thrown message stays actionable for a developer reading the agent log.
+		// Skip disabled nodes — they don't execute, so they aren't the problem.
+		const nodes = workflow.nodes ?? [];
+		const names = nodes
+			.filter((n) => !n.disabled && incompatibility.nodeTypes.includes(n.type))
+			.map((n) => `${n.name} (${n.type})`)
+			.join(', ');
 		throw new Error(
-			`Workflow "${workflow.name}" contains incompatible nodes for agent execution: ${names}`,
+			`Workflow "${workflow.name}" contains nodes that aren't supported as agent tools: ${names}. ` +
+				'Remove them or pick another workflow.',
 		);
 	}
+
+	// `no_supported_trigger` — surface the supported set so the message is fixable.
+	throw new Error(
+		`Workflow "${workflow.name}" has no supported trigger node. ` +
+			`Supported triggers: ${Object.keys(SUPPORTED_TRIGGERS).join(', ')}`,
+	);
 }
 
 // ---------------------------------------------------------------------------

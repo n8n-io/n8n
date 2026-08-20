@@ -25,7 +25,11 @@ export const RESOURCES = {
 	license: ['manage'] as const,
 	logStreaming: ['manage'] as const,
 	orchestration: ['read', 'list'] as const,
-	project: [...DEFAULT_OPERATIONS, 'export'] as const,
+	// `manageMembers` gates changes to a project's membership list: adding a member
+	// with a role, changing a member's role, and removing a member. Kept separate
+	// from `update` so a role can edit project details without being able to
+	// hand out project roles.
+	project: [...DEFAULT_OPERATIONS, 'export', 'manageMembers'] as const,
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
@@ -96,7 +100,7 @@ export const API_KEY_RESOURCES = {
 	oidc: ['manage'] as const,
 	otel: ['manage'] as const,
 	ldap: ['manage', 'sync'] as const,
-	project: ['create', 'update', 'delete', 'list', 'export'] as const,
+	project: ['create', 'update', 'delete', 'list', 'export', 'manageMembers'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,
 	testRun: ['read', 'list', 'create', 'cancel'] as const,

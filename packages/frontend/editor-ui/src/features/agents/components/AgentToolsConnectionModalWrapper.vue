@@ -67,6 +67,7 @@ import {
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
+import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
 
 const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
@@ -109,8 +110,13 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
-const { availableToolTypes, availableWorkflows, loadWorkflows, resolveToolNodeType } =
-	useAgentToolCatalog();
+const {
+	availableToolTypes,
+	availableWorkflows,
+	incompatibleWorkflows,
+	loadWorkflows,
+	resolveToolNodeType,
+} = useAgentToolCatalog();
 const { installNode: installCommunityNode } = useInstallNode();
 const usersStore = useUsersStore();
 
@@ -691,6 +697,31 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 	};
 }
 
+function disabledWorkflowItem(
+	workflow: IWorkflowDb,
+	reason: WorkflowToolIncompatibilityReason,
+): WorkflowConnectionItem {
+	return {
+		id: `workflow-disabled:${workflow.id}`,
+		kind: 'workflow',
+		category: 'workflows',
+		workflowId: workflow.id,
+		title: workflow.name,
+		description: workflow.description ?? undefined,
+		status: 'none',
+		credentials: [],
+		disabled: true,
+		disabledReason: disabledWorkflowReasonText(reason),
+	};
+}
+
+function disabledWorkflowReasonText(reason: WorkflowToolIncompatibilityReason): string {
+	if (reason.reason === 'incompatible_nodes') {
+		return i18n.baseText('agents.tools.workflow.disabled.incompatibleNodes');
+	}
+	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger');
+}
+
 /**
  * Canvas parity: unofficial verified community tools are not in the AiTool name
  * index, so they surface only while searching, via the same path NodesMode uses
@@ -758,11 +789,19 @@ const items = computed<ToolConnectionItem[]>(() => {
 	for (const workflow of availableWorkflows.value) {
 		out.push(availableWorkflowItem(workflow));
 	}
+	// Incompatible workflows appear last, greyed out and disabled, so the user
+	// can see why they're missing instead of them simply being absent.
+	for (const { workflow, reason } of incompatibleWorkflows.value) {
+		out.push(disabledWorkflowItem(workflow, reason));
+	}
 
 	return out;
 });
 
 function handleRowActivate(item: ToolConnectionItem) {
+	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
+	// the row's own tooltip already explains why, so activating does nothing.
+	if (item.disabled) return;
 	if (item.status === 'connecting') return;
 	if (hasToolConnection(item.status)) {
 		if (item.id.startsWith('mcp:')) {
