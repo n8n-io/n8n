@@ -22,6 +22,7 @@ import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupt
 import type { DbStore } from '@/executions/execution-data/db-store';
 import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
+import type { ExecutionDataPayload } from '@/executions/execution-data/types';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 describe('ExecutionPersistence', () => {
@@ -781,6 +782,22 @@ describe('ExecutionPersistence', () => {
 				expect(dbStore.read).not.toHaveBeenCalled();
 			});
 
+			it('should read the full bundle on a workflowData-only update', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				dbStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, { workflowData });
+
+				// No `data` was supplied, so the stored run data has to be carried over. The snapshot
+				// read would not return it, so this update reads the whole bundle.
+				expect(dbStore.read).toHaveBeenCalledWith({ workflowId, executionId }, mockTx);
+				expect(dbStore.readWorkflowData).not.toHaveBeenCalled();
+			});
+
 			it('should apply requireStatus condition and skip the db write when no rows match', async () => {
 				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
@@ -810,6 +827,26 @@ describe('ExecutionPersistence', () => {
 
 				await expect(
 					executionPersistence.updateExistingExecution(executionId, { data: runData }),
+				).rejects.toBeInstanceOf(MissingExecutionDataError);
+
+				expect(dbStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should throw MissingExecutionDataError when the db row carries no run data', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				// The row exists, so the read returns it, but its `data` column holds nothing usable.
+				// Distinct from the case above, where there is no row at all.
+				dbStore.read.mockResolvedValue({
+					workflowData: existingBundle.workflowData,
+					workflowVersionId: existingBundle.workflowVersionId,
+				} as unknown as ExecutionDataPayload);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await expect(
+					executionPersistence.updateExistingExecution(executionId, { workflowData }),
 				).rejects.toBeInstanceOf(MissingExecutionDataError);
 
 				expect(dbStore.write).not.toHaveBeenCalled();
@@ -941,6 +978,22 @@ describe('ExecutionPersistence', () => {
 					}),
 					'fs',
 				);
+			});
+
+			it('should read the full bundle on a data-only update', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				jsonStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, { data: runData });
+
+				// Only db mode can select a subset of columns. A blob store fetches whole bundles, so
+				// there is no narrower read to route this to.
+				expect(jsonStore.read).toHaveBeenCalledWith({ workflowId, executionId }, 'fs');
+				expect(dbStore.readWorkflowData).not.toHaveBeenCalled();
 			});
 
 			it('should apply requireStatus condition and skip the fs write when no rows match', async () => {

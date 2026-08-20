@@ -825,33 +825,29 @@ export class ExecutionPersistence {
 				return true;
 			}
 
-			// The merge carries over whatever the caller left out. With `data` supplied the run data is
-			// replaced wholesale, so only the workflow snapshot has to be read: in db mode that leaves the
-			// (often far larger) `data` column unread, which matters because this read runs while the
-			// transaction holds the write connection. Otherwise the stored run data is carried over, so
-			// the whole bundle is read.
 			const stored = await this.trackRead(mode, async () =>
 				data !== undefined && mode === 'db'
-					? await this.dbStore.readWorkflowData(ref, tx)
+					? await this.dbStore.readWorkflowData(ref, tx) // do not load .data, it will be overwritten
 					: await this.readData(mode, ref, tx),
 			);
 			if (!stored) throw new MissingExecutionDataError(ref);
 
-			// A function rather than a value, so `stringify` runs inside the `trackWrite` callback
-			// below. That metric counts serialization together with the write, so resolving the run
-			// data here would leave the serialization out of the reported duration.
-			// The guard restates what the read above already decided: the read is narrowed to the
-			// workflow snapshot exactly when the caller supplied `data`, so the stored run data is
-			// there whenever this needs it. The type system cannot correlate the two on its own.
-			const storedData = () => {
-				if (data !== undefined) return stringify(data); // this may take some time...
-				if (!isExecutionDataPayload(stored)) throw new MissingExecutionDataError(ref);
-				return stored.data;
-			};
-
 			const jsonSizeBytes = await this.trackWrite(mode, ref.workflowId, async () => {
+				let serializedData: string;
+
+				if (data !== undefined) {
+					// the caller replaces it, the stored one was not read
+					serializedData = stringify(data);
+				} else if (isExecutionDataPayload(stored)) {
+					// carried over from the full read
+					serializedData = stored.data;
+				} else {
+					// should not happen, ensures serializedData type safety
+					throw new MissingExecutionDataError(ref);
+				}
+
 				const bundle: ExecutionDataPayload = {
-					data: storedData(),
+					data: serializedData,
 					workflowData: workflowData ? this.toWorkflowSnapshot(workflowData) : stored.workflowData,
 					workflowVersionId: stored.workflowVersionId,
 				};
