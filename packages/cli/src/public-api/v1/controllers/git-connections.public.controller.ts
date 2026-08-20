@@ -223,15 +223,20 @@ export class GitConnectionsPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionProjectPublicDto)
 	@ApiErrorResponse(400)
+	@ApiErrorResponse(403)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	async addProjectToGitConnection(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
 		@Param('projectId') projectId: string,
 	): Promise<GitConnectionProjectPublicDto> {
-		return await (await this.gitConnectionsService()).addProject(id, projectId);
+		return await (await this.gitConnectionsService()).addProject({
+			user: req.user,
+			connectionId: id,
+			projectId,
+		});
 	}
 
 	@Delete('/:id/projects/:projectId')
@@ -241,14 +246,19 @@ export class GitConnectionsPublicController {
 	@ApiSummary('Remove a project from a Git connection')
 	@ApiTags(tags)
 	@ApiResponse(204)
+	@ApiErrorResponse(403)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	async removeProjectFromGitConnection(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
 		@Param('projectId') projectId: string,
 	): Promise<void> {
-		await (await this.gitConnectionsService()).removeProject(id, projectId);
+		await (await this.gitConnectionsService()).removeProject({
+			user: req.user,
+			connectionId: id,
+			projectId,
+		});
 	}
 }

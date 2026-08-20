@@ -5,6 +5,7 @@ import {
 	type GitConnectionPublicDto,
 	type UpdateGitConnectionDto,
 } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
@@ -12,13 +13,21 @@ import path from 'node:path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { GitConnectionProject } from './database/entities/git-connection-project.entity';
 import { GitConnection } from './database/entities/git-connection.entity';
 import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from './database/repositories/git-connection.repository';
 import { GitConnectionsGitService } from './git-connections-git.service';
+
+type ManageProjectLinkOptions = {
+	user: User;
+	connectionId: string;
+	projectId: string;
+};
 
 @Service()
 export class GitConnectionsService {
@@ -119,31 +128,49 @@ export class GitConnectionsService {
 		await this.repository.remove(connection);
 	}
 
-	async addProject(id: string, projectId: string): Promise<GitConnectionProjectPublicDto> {
-		await this.getEntity(id);
+	async addProject({
+		user,
+		connectionId,
+		projectId,
+	}: ManageProjectLinkOptions): Promise<GitConnectionProjectPublicDto> {
+		await this.getEntity(connectionId);
+		await this.assertProjectAccess(user, projectId);
 		await this.assertProjectCanBeAdded(projectId);
 
-		const link = await this.gitConnectionProjectRepository.linkProject(projectId, id);
-		if (link.gitConnectionId !== id) {
+		const link = await this.gitConnectionProjectRepository.linkProject(projectId, connectionId);
+		if (link.gitConnectionId !== connectionId) {
 			throw new ConflictError('Project is already added to another Git connection');
 		}
 		return this.toLinkPublic(link);
 	}
 
-	async removeProject(id: string, projectId: string): Promise<void> {
-		await this.getEntity(id);
+	async removeProject({ user, connectionId, projectId }: ManageProjectLinkOptions): Promise<void> {
+		await this.getEntity(connectionId);
+		await this.assertProjectAccess(user, projectId);
 		const existing = await this.gitConnectionProjectRepository.findByProjectId(projectId);
 		if (!existing) return;
-		if (existing.gitConnectionId !== id) {
+		if (existing.gitConnectionId !== connectionId) {
 			throw new ConflictError('Project is added to another Git connection');
 		}
-		await this.gitConnectionProjectRepository.unlinkProject(projectId, id);
+		await this.gitConnectionProjectRepository.unlinkProject(projectId, connectionId);
 	}
 
 	async listProjects(id: string): Promise<GitConnectionProjectListPublicDto> {
 		await this.getEntity(id);
 		const projectIds = await this.gitConnectionProjectRepository.findProjectIdsByConnection(id);
 		return GitConnectionProjectListPublicDto.parse({ projectIds });
+	}
+
+	/**
+	 * The route only requires the global `gitConnection:manageProjects` scope, so a
+	 * caller who can manage connections could otherwise link any project. Restrict
+	 * the link/unlink to projects the caller can actually edit — a no-op for
+	 * instance owners/admins (who hold `project:update` globally), but a real gate
+	 * once `gitConnection:manageProjects` is granted to a custom role.
+	 */
+	private async assertProjectAccess(user: User, projectId: string) {
+		const allowed = await userHasScopes(user, ['project:update'], false, { projectId });
+		if (!allowed) throw new ForbiddenError('You do not have access to this project');
 	}
 
 	private async assertProjectCanBeAdded(projectId: string) {
