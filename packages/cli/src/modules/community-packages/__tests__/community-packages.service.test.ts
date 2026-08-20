@@ -1041,6 +1041,26 @@ describe('CommunityPackagesService', () => {
 			expect(loadNodesAndCredentials.postProcessLoaders).not.toHaveBeenCalled();
 		});
 
+		test('should not reinstall a package that still has one stale node row', async () => {
+			// A repair-reinstall leaves node rows from the previous version behind, so a package
+			// that dropped a node type keeps a row that never resolves. Reinstalling on that would
+			// run on every boot, and contradict the healthy status `withLoadStatus` reports.
+			const installedPackage = mock<InstalledPackages>({
+				packageName: 'package-1',
+				installedVersion: '1.0.0',
+				installedNodes: [{ type: 'old-dropped-node' }, { type: 'current-node' }],
+			});
+
+			installedPackageRepository.find.mockResolvedValue([installedPackage]);
+			loadNodesAndCredentials.isKnownNode.mockImplementation((type) => type === 'current-node');
+			config.reinstallMissing = true;
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
 		test('should identify missing packages without reinstalling when reinstallMissing is false', async () => {
 			const installedPackages = [installedPackage1, installedPackage2];
 

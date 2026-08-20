@@ -276,14 +276,13 @@ export class CommunityPackagesService {
 		const missingPackages = new Set<{ packageName: string; version: string }>();
 
 		installedPackages.forEach((installedPackage) => {
-			installedPackage.installedNodes.forEach((installedNode) => {
-				if (!this.loadNodesAndCredentials.isKnownNode(installedNode.type)) {
-					// Leave the list ready for installing in case we need.
-					missingPackages.add({
-						packageName: installedPackage.packageName,
-						version: installedPackage.installedVersion,
-					});
-				}
+			// Same rule as `withLoadStatus`, so the UI and this check can't disagree.
+			if (this.areNodesLoaded(installedPackage.installedNodes)) return;
+
+			// Leave the list ready for installing in case we need.
+			missingPackages.add({
+				packageName: installedPackage.packageName,
+				version: installedPackage.installedVersion,
 			});
 		});
 
