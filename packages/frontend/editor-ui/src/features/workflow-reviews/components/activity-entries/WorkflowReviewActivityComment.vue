@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { WorkflowReviewActivityEntry, WorkflowReviewActivityMessage } from '@n8n/api-types';
-import { N8nAvatar, N8nText } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
 import { formatActorName } from '../../workflowReviews.utils';
+import WorkflowReviewActivityActorAvatar from './WorkflowReviewActivityActorAvatar.vue';
 
 defineProps<{
 	entry: Extract<WorkflowReviewActivityEntry, { type: 'comment.created' }>;
@@ -24,12 +25,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 <template>
 	<div :class="$style.entry">
 		<div v-for="message in entry.messages" :key="message.id" :class="$style.message">
-			<N8nAvatar
-				size="xxsmall"
-				:class="$style.avatar"
-				:first-name="message.createdBy?.firstName"
-				:last-name="message.createdBy?.lastName"
-			/>
+			<WorkflowReviewActivityActorAvatar :actor="message.createdBy" />
 			<div :class="$style.content">
 				<div :class="$style.header">
 					<N8nText
@@ -87,10 +83,6 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 
 .message {
 	@include activity-row;
-}
-
-.avatar {
-	@include activity-avatar;
 }
 
 .content {
