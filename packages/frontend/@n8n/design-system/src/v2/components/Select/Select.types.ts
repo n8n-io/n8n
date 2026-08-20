@@ -57,7 +57,7 @@ export type SelectModelValue<M extends boolean = false> = M extends true
 
 export type SelectProps<M extends boolean = false> = Omit<
 	SelectRootProps,
-	'multiple' | 'modelValue' | 'defaultValue' | 'by'
+	'multiple' | 'modelValue' | 'defaultValue' | 'by' | 'side' | 'align'
 > & {
 	id?: string;
 	placeholder?: string;
