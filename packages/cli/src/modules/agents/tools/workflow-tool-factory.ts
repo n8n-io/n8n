@@ -200,8 +200,6 @@ const WORKFLOW_INPUTS = 'workflowInputs';
 const JSON_EXAMPLE = 'jsonExample';
 const PASSTHROUGH = 'passthrough';
 
-const openCatchallSchema = () => z.object({}).catchall(z.unknown());
-
 /**
  * Map an n8n-field primitive type to the matching Zod type.
  * String fields coerce so numeric IDs (e.g. Telegram chatId) do not hard-fail.
@@ -304,13 +302,16 @@ export function inferInputSchema(
 		case 'executeWorkflow': {
 			const inputSource = getExecuteWorkflowInputSource(triggerNode);
 			if (inputSource === PASSTHROUGH) {
-				return openCatchallSchema();
+				return z.object({}).catchall(z.unknown());
 			}
-			return schemaFromFieldDefs(listWorkflowInputFields(triggerNode)) ?? openCatchallSchema();
+			return (
+				schemaFromFieldDefs(listWorkflowInputFields(triggerNode)) ??
+				z.object({}).catchall(z.unknown())
+			);
 		}
 
 		default:
-			return openCatchallSchema();
+			return z.object({}).catchall(z.unknown());
 	}
 }
 
