@@ -20,3 +20,7 @@ test('should instantiate WorkerStatusService during orchestration setup', async 
 
 	expect(containerGetSpy).toHaveBeenCalledWith(WorkerStatusService);
 });
+
+test('worker needs the expression engine', () => {
+	expect(new Worker().needsExpressionEngine).toBe(true);
+});
