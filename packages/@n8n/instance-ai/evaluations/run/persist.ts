@@ -20,6 +20,7 @@ import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
 import { extractErrorMessage } from '../harness/transient-error';
+import { summarizeBuildUsage, totalToolCalls } from '../harness/usage-summary';
 import { rollupCaseVerification } from '../summary';
 import type {
 	BuildExpectationResult,
@@ -45,6 +46,23 @@ export function summarizeMcpBuildSpend(
 		builds: spend.length,
 		totalCostUsd: Math.round(totalCost * 100) / 100,
 		avgTurns: Math.round((totalTurns / spend.length) * 10) / 10,
+	};
+}
+
+/**
+ * Per-iteration token and tool-call fields for `eval-results.json`, or `{}` when the
+ * run captured neither — so a run with no usage data adds no keys to this cross-repo
+ * artifact.
+ */
+function tokenUsageFields(runs: WorkflowTestCaseResult[]): {
+	buildTokensPerRun?: Array<ReturnType<typeof summarizeBuildUsage> | null>;
+	buildToolCallsPerRun?: Array<number | null>;
+} {
+	const tokens = runs.map((run) => summarizeBuildUsage(run.runDebug) ?? null);
+	const toolCalls = runs.map((run) => totalToolCalls(run.transcript) ?? null);
+	return {
+		...(tokens.some((t) => t !== null) ? { buildTokensPerRun: tokens } : {}),
+		...(toolCalls.some((n) => n !== null) ? { buildToolCallsPerRun: toolCalls } : {}),
 	};
 }
 
@@ -443,6 +461,13 @@ export function writeEvalResults(
 						buildTurnsPerRun: tc.runs.map((run) => run.buildTurns ?? null),
 					}
 				: {}),
+			// Cache-aware tokens and tool calls per iteration, summed from the run debug
+			// already captured per build, so a two-arm quality-per-token comparison reads
+			// straight from these files instead of joining every thread in LangSmith.
+			// Omitted rather than emitted all-null when nothing was captured: this file is
+			// a cross-repo artifact, and the cost report treats an all-null array as absent
+			// anyway, so the key would be pure noise.
+			...tokenUsageFields(tc.runs),
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,
