@@ -139,6 +139,7 @@ function buildOAuth2ReconnectError(node: INode, credentialsType: string): NodeOp
 			description:
 				'Access could not be refreshed because the connected account has revoked access, the refresh token expired, or the account password or permissions changed. Open the credential and reconnect it to continue.',
 			level: 'warning',
+			failure: { cause: 'credential-invalid' },
 		},
 	);
 }
