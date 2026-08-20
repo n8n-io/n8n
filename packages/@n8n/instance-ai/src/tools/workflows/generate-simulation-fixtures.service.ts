@@ -27,6 +27,7 @@ import {
 	findOutputParserTargets,
 	parsePinDataResponse,
 	repairStructuredOutput,
+	toEngineConnections,
 } from '@n8n/workflow-sdk';
 import { getParentNodes, mapConnectionsByDestination, type IConnections } from 'n8n-workflow';
 import { z } from 'zod';
@@ -170,7 +171,7 @@ export async function generateSimulationFixtures(
 	const schemaContextByName = new Map(schemaContexts.map((ctx) => [ctx.nodeName, ctx] as const));
 
 	const connectionsByDestination = mapConnectionsByDestination(
-		(input.workflow.connections ?? {}) as IConnections,
+		toEngineConnections(input.workflow.connections),
 	);
 	const userText = [
 		'Generate realistic mock output (pin-data items) for the following simulated n8n nodes.',
