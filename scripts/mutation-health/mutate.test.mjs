@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
 	buildNoTestsSummary,
 	buildSummary,
+	classifyRun,
 	coverageFromCounts,
 	formatMutateArg,
 	isMutableSource,
@@ -158,6 +159,40 @@ describe('buildNoTestsSummary (no covering tests)', () => {
 		assert.equal(summary.files[0].coverage, 0);
 		assert.ok(isFractionInUnitInterval(summary.files[0].coverage));
 		assert.ok(isFractionInUnitInterval(summary.overall.coverage));
+	});
+});
+
+describe('classifyRun', () => {
+	const DONE = 'Instrumented 1 source file(s) with 8 mutant(s)';
+	const NO_TESTS = 'ERROR Stryker No tests were executed. Stryker will exit prematurely.';
+
+	it('is complete when the run wrote a report and exited zero', () => {
+		assert.equal(classifyRun({ exitCode: 0, output: DONE, hasReport: true }), 'complete');
+	});
+
+	it('is partial when the run wrote a report and then exited non-zero', () => {
+		assert.equal(classifyRun({ exitCode: 1, output: DONE, hasReport: true }), 'partial');
+	});
+
+	it('is no-tests when nothing covers the target', () => {
+		assert.equal(classifyRun({ exitCode: 1, output: NO_TESTS, hasReport: false }), 'no-tests');
+	});
+
+	it('is failed when the run produced no report', () => {
+		assert.equal(classifyRun({ exitCode: 1, output: 'SIGABRT', hasReport: false }), 'failed');
+	});
+
+	// The caller deletes the previous reports before each run. Without that, a
+	// crashed run finds the earlier report and is classified `partial`, so it
+	// reports the earlier target and its score instead of failing.
+	it('trusts hasReport as this run only — a report plus a crash is partial, never failed', () => {
+		assert.equal(classifyRun({ exitCode: 3, output: 'SIGABRT', hasReport: true }), 'partial');
+	});
+
+	// Same trap for the no-tests path: a leftover report used to suppress it, and
+	// a genuine score-0 red was reported as the earlier run's passing score.
+	it('still detects no-tests when the run crashed without a report', () => {
+		assert.equal(classifyRun({ exitCode: 3, output: NO_TESTS, hasReport: false }), 'no-tests');
 	});
 });
 
