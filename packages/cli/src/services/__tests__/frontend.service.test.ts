@@ -81,6 +81,7 @@ describe('FrontendService', () => {
 		},
 		aiAssistant: { baseUrl: '' },
 		aiGateway: { enabled: false },
+		queue: { workerPool: { enabled: false } },
 	});
 
 	const instanceSettings = mock<InstanceSettings>({

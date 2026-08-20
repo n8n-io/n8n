@@ -29,15 +29,13 @@ import { CorruptedExecutionDataError } from './execution-data/corrupted-executio
 import { DbStore } from './execution-data/db-store';
 import { ExecutionDataJsonStore } from './execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
-import {
-	isExecutionDataPayload,
-	type BlobStorageLocation,
-	type BundleWorkflowSnapshot,
-	type ExecutionDataPayload,
-	type ExecutionRef,
-	type WorkflowSnapshot,
+import type {
+	BlobStorageLocation,
+	BundleWorkflowSnapshot,
+	ExecutionDataPayload,
+	ExecutionRef,
+	WorkflowSnapshot,
 } from './execution-data/types';
-import { UnreadableRunDataError } from './execution-data/unreadable-run-data.error';
 import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 import { EventService } from '../events/event.service';
@@ -779,13 +777,6 @@ export class ExecutionPersistence {
 		const { data, workflowData } = execution;
 		const updatableColumns = this.pickUpdatableEntityColumns(execution);
 
-		// Skip the read on a full overwrite. Safe only with a known version id, except in db mode:
-		// the DB overwrite leaves that column untouched, whereas a blob write would clobber it with null.
-		const isFullOverwrite =
-			data !== undefined &&
-			workflowData !== undefined &&
-			(workflowVersionId !== null || mode === 'db');
-
 		return await this.executionRepository.manager.transaction(async (tx) => {
 			const whereCondition = this.buildEntityWhereCondition(ref.executionId, conditions);
 
@@ -806,7 +797,13 @@ export class ExecutionPersistence {
 				if (!matchingRow) return false;
 			}
 
-			if (isFullOverwrite) {
+			// Skip the read on a full overwrite. Safe only with a known version id, except in db mode:
+			// the DB overwrite leaves that column untouched, whereas a blob write would clobber it with null.
+			if (
+				data !== undefined &&
+				workflowData !== undefined &&
+				(workflowVersionId !== null || mode === 'db')
+			) {
 				const binaryDataSizeBytes = sumBinaryDataBytes(data);
 				const jsonSizeBytes = await this.trackWrite(mode, ref.workflowId, async () => {
 					const bundle: ExecutionDataPayload = {
@@ -828,36 +825,22 @@ export class ExecutionPersistence {
 				return true;
 			}
 
-			const stored = await this.trackRead(mode, async () =>
-				data !== undefined && mode === 'db'
-					? await this.dbStore.readWorkflowData(ref, tx) // do not load .data, it will be overwritten
-					: await this.readData(mode, ref, tx),
-			);
-			if (!stored) throw new MissingExecutionDataError(ref);
+			// Read the existing bundle to merge the field the caller didn't supply (or to recover the
+			// version id when the entity row doesn't have it).
+			const existing = await this.trackRead(mode, async () => await this.readData(mode, ref, tx));
+			if (!existing) throw new MissingExecutionDataError(ref);
 
 			const jsonSizeBytes = await this.trackWrite(mode, ref.workflowId, async () => {
-				let serializedData: string;
-
-				if (data !== undefined) {
-					// the caller replaces it, the stored one was not read
-					serializedData = stringify(data);
-				} else if (isExecutionDataPayload(stored)) {
-					// carried over from the full read
-					serializedData = stored.data;
-				} else {
-					// should not happen, ensures serializedData type safety
-					throw new UnreadableRunDataError(ref);
-				}
-
 				const bundle: ExecutionDataPayload = {
-					data: serializedData,
-					workflowData: workflowData ? this.toWorkflowSnapshot(workflowData) : stored.workflowData,
-					workflowVersionId: stored.workflowVersionId,
+					data: data !== undefined ? stringify(data) : existing.data,
+					workflowData: workflowData
+						? this.toWorkflowSnapshot(workflowData)
+						: existing.workflowData,
+					workflowVersionId: existing.workflowVersionId,
 				};
 
 				return await this.writeData(mode, ref, bundle, tx);
 			});
-
 			// Binary size is derived from the in-memory run data, so only recompute it when the
 			// caller supplied `data`. A workflowData-only update leaves the column untouched (and
 			// doesn't affect binary anyway), mirroring when `jsonSizeBytes` would have changed.

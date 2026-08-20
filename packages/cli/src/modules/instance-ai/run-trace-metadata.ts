@@ -62,13 +62,7 @@ function getFirstVisibleSummary(events: InstanceAiEvent[]): FirstVisibleSummary 
 			};
 		}
 
-		// A streamed segment reaches this read as deltas mid-run and as one
-		// coalesced `text-block` once it closes (the durable log never persists
-		// deltas), so both spellings have to count as visible assistant text.
-		if (
-			(event.type === 'text-delta' || event.type === 'text-block') &&
-			event.payload.text.trim().length > 0
-		) {
+		if (event.type === 'text-delta' && event.payload.text.trim().length > 0) {
 			return withFirstToolName('assistant_text', firstToolName);
 		}
 

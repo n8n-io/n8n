@@ -372,7 +372,7 @@ export class InstanceAiTerminalOutcomeService {
 		return {
 			status: 'error',
 			reason: 'invalid_confirmation_payload',
-			metadata: await this.tracing.buildMessageTraceMetadata(args.threadId, args.runId, {
+			metadata: this.tracing.buildMessageTraceMetadata(args.threadId, args.runId, {
 				status: 'error',
 			}),
 		};

@@ -230,6 +230,9 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
+	workerPools: {
+		enabled: boolean;
+	};
 	collaboration: {
 		crdt: 'off' | 'local' | 'server';
 	};
