@@ -20,6 +20,24 @@ import type { GitConnectionRepository } from '../database/repositories/git-conne
 import type { GitConnectionsGitService } from '../git-connections-git.service';
 import { GitConnectionsService } from '../git-connections.service';
 
+const { renameFailure } = vi.hoisted(() => ({
+	renameFailure: { source: undefined as string | undefined },
+}));
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('node:fs/promises')>();
+	return {
+		...actual,
+		rename: async (oldPath: string, newPath: string) => {
+			if (renameFailure.source === oldPath) {
+				renameFailure.source = undefined;
+				throw new Error('Injected rename failure');
+			}
+			await actual.rename(oldPath, newPath);
+		},
+	};
+});
+
 describe('GitConnectionsService (credential state machine)', () => {
 	const repository = mock<GitConnectionRepository>();
 	const projectConnectionRepository = mock<GitConnectionProjectRepository>();
@@ -75,6 +93,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		renameFailure.source = undefined;
 		repository.create.mockImplementation((input) => input as GitConnection);
 		repository.save.mockImplementation(async (input) => {
 			const entity = input as GitConnection;
@@ -308,6 +327,28 @@ describe('GitConnectionsService (credential state machine)', () => {
 
 			expect(await readFile(path.join(repositoryFolder, 'current.json'), 'utf-8')).toBe(
 				'{"current":true}',
+			);
+		});
+
+		it('restores the current repository and preserves the staged export when swapping fails', async () => {
+			const rootFolder = path.join(n8nFolder, 'git-connections', '1');
+			const repositoryFolder = path.join(rootFolder, 'repository');
+			const nextExportFolder = path.join(rootFolder, 'repository-export-next');
+			await mkdir(path.join(repositoryFolder, '.git'), { recursive: true });
+			await writeFile(path.join(repositoryFolder, '.git', 'HEAD'), 'ref: refs/heads/main');
+			await writeFile(path.join(repositoryFolder, 'current.json'), '{"current":true}');
+			renameFailure.source = nextExportFolder;
+
+			await expect(exportService.push('1', actor)).rejects.toThrow('Injected rename failure');
+
+			expect(await readFile(path.join(repositoryFolder, 'current.json'), 'utf-8')).toBe(
+				'{"current":true}',
+			);
+			expect(await readFile(path.join(repositoryFolder, '.git', 'HEAD'), 'utf-8')).toBe(
+				'ref: refs/heads/main',
+			);
+			expect(await readFile(path.join(nextExportFolder, 'manifest.json'), 'utf-8')).toBe(
+				'{"projects":[]}',
 			);
 		});
 

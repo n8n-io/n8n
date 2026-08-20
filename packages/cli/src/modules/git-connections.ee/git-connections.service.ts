@@ -7,7 +7,8 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
-import { mkdir, readdir, rename, rm } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { cp, mkdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
@@ -164,10 +165,12 @@ export class GitConnectionsService {
 				},
 				{ targetDir: nextExportFolder },
 			);
-			await this.replaceRepositoryContents(repositoryFolder, nextExportFolder);
-		} finally {
+		} catch (error) {
+			// A failed export can contain an incomplete package, so it is not safe to retain.
 			await rm(nextExportFolder, { recursive: true, force: true });
+			throw error;
 		}
+		await this.replaceRepositoryContents(connectionId, repositoryFolder, nextExportFolder);
 
 		// TODO:
 		// - commit and stage changes
@@ -176,25 +179,61 @@ export class GitConnectionsService {
 		return this.toPublic(connection);
 	}
 
-	private async replaceRepositoryContents(repositoryFolder: string, nextExportFolder: string) {
+	private async replaceRepositoryContents(
+		connectionId: string,
+		repositoryFolder: string,
+		nextExportFolder: string,
+	) {
 		await mkdir(repositoryFolder, { recursive: true });
-		const currentEntries = await readdir(repositoryFolder);
-		await Promise.all(
-			currentEntries
-				.filter((entry) => entry !== '.git')
-				.map(
-					async (entry) =>
-						await rm(path.join(repositoryFolder, entry), { recursive: true, force: true }),
-				),
-		);
+		const gitFolder = path.join(repositoryFolder, '.git');
+		if (await this.pathExists(gitFolder)) {
+			// Include Git metadata before the swap so the new working tree is complete when installed.
+			await cp(gitFolder, path.join(nextExportFolder, '.git'), { recursive: true });
+		}
 
-		const exportedEntries = await readdir(nextExportFolder);
-		await Promise.all(
-			exportedEntries.map(
-				async (entry) =>
-					await rename(path.join(nextExportFolder, entry), path.join(repositoryFolder, entry)),
-			),
+		// A unique backup never overwrites recovery data left by an earlier failed operation.
+		const previousRepositoryFolder = path.join(
+			path.dirname(repositoryFolder),
+			`repository-previous-${randomUUID()}`,
 		);
+		// Keep the old tree intact until the complete staged tree is ready to take its place.
+		await rename(repositoryFolder, previousRepositoryFolder);
+
+		try {
+			await rename(nextExportFolder, repositoryFolder);
+		} catch (error) {
+			try {
+				// Restore service immediately and retain the staged export for inspection or retry.
+				await rename(previousRepositoryFolder, repositoryFolder);
+			} catch (rollbackError) {
+				this.logger.error('Failed to restore Git connection repository after replacement error', {
+					connectionId,
+					rollbackError,
+				});
+			}
+			throw error;
+		}
+
+		try {
+			await rm(previousRepositoryFolder, { recursive: true, force: true });
+		} catch (cleanupError) {
+			// The new tree is already live, so leftover backup cleanup must not turn success into failure.
+			this.logger.warn('Could not remove previous Git connection repository contents', {
+				connectionId,
+				cleanupError,
+			});
+		}
+	}
+
+	private async pathExists(target: string) {
+		try {
+			await stat(target);
+			return true;
+		} catch (error) {
+			// Only absence means false. Permission and I/O errors must stop the replacement.
+			if (isErrnoException(error) && error.code === 'ENOENT') return false;
+			throw error;
+		}
 	}
 
 	private async applyNewAuthentication(
@@ -332,4 +371,14 @@ export class GitConnectionsService {
 		const { publicKey: _, ...summary } = this.toPublic(connection);
 		return summary;
 	}
+}
+
+/** Narrow unknown filesystem errors so callers can inspect standard Node.js error codes safely. */
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'code' in error &&
+		typeof (error as { code: unknown }).code === 'string'
+	);
 }
