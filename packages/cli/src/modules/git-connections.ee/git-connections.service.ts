@@ -1,9 +1,9 @@
-import type {
-	CreateGitConnectionDto,
+import {
+	type CreateGitConnectionDto,
 	GitConnectionProjectListPublicDto,
 	GitConnectionProjectPublicDto,
-	GitConnectionPublicDto,
-	UpdateGitConnectionDto,
+	type GitConnectionPublicDto,
+	type UpdateGitConnectionDto,
 } from '@n8n/api-types';
 import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -143,7 +143,7 @@ export class GitConnectionsService {
 	async listProjects(id: string): Promise<GitConnectionProjectListPublicDto> {
 		await this.getEntity(id);
 		const projectIds = await this.gitConnectionProjectRepository.findProjectIdsByConnection(id);
-		return { projectIds };
+		return GitConnectionProjectListPublicDto.parse({ projectIds });
 	}
 
 	private async assertProjectCanBeAdded(projectId: string) {
@@ -155,7 +155,10 @@ export class GitConnectionsService {
 	}
 
 	private toLinkPublic(link: GitConnectionProject): GitConnectionProjectPublicDto {
-		return { projectId: link.projectId, gitConnectionId: link.gitConnectionId };
+		return GitConnectionProjectPublicDto.parse({
+			projectId: link.projectId,
+			gitConnectionId: link.gitConnectionId,
+		});
 	}
 
 	private async applyNewAuthentication(
