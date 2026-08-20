@@ -858,12 +858,11 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should mint a token pair end-to-end while MCP access is disabled', async () => {
+	test('should keep the OAuth endpoints live but refuse a grant for the unavailable default resource', async () => {
 		const { createHash, randomBytes } = await import('node:crypto');
 		const codeVerifier = randomBytes(32).toString('base64url');
 		const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
 
-		// 1. Dynamic Client Registration
 		const registerResponse = await testServer.restlessAgent.post('/mcp-oauth/register').send({
 			client_name: 'Decoupled Flow Client',
 			redirect_uris: ['https://example.com/callback'],
@@ -871,11 +870,9 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 			token_endpoint_auth_method: 'none',
 		});
 		expect(registerResponse.statusCode).toBe(201);
-		const clientId = registerResponse.body.client_id;
 
-		// 2. Authorize — sets the OAuth session cookie and redirects to consent
 		const authorizeResponse = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
-			client_id: clientId,
+			client_id: registerResponse.body.client_id,
 			redirect_uri: 'https://example.com/callback',
 			response_type: 'code',
 			code_challenge: codeChallenge,
@@ -892,37 +889,15 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 			.find((cookie) => cookie.startsWith('n8n-oauth-session='));
 		expect(sessionCookie).toBeDefined();
 
-		// 3. Consent approval as an authenticated user
+		// A request without an RFC 8707 resource indicator targets the default
+		// resource — the instance MCP server, which is not being served here.
 		const authAgent = testServer.authAgentFor(owner);
 		authAgent.jar.setCookie(sessionCookie ?? '');
 		const consentResponse = await authAgent
 			.post('/consent/approve')
 			.send({ approved: true, scopes: supportedScopes });
-		expect(consentResponse.statusCode).toBe(200);
 
-		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
-		const code = redirectUrl.searchParams.get('code');
-		expect(code).toBeTruthy();
-
-		// 4. Token exchange — the token service functions with MCP access disabled
-		const tokenResponse = await testServer.restlessAgent
-			.post('/mcp-oauth/token')
-			.type('form')
-			.send({
-				grant_type: 'authorization_code',
-				code: code!,
-				client_id: clientId,
-				code_verifier: codeVerifier,
-				redirect_uri: 'https://example.com/callback',
-			});
-		expect(tokenResponse.statusCode).toBe(200);
-		expect(tokenResponse.body).toEqual({
-			access_token: expect.any(String),
-			token_type: 'Bearer',
-			expires_in: 3600,
-			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
-			scope: supportedScopes.join(' '),
-		});
+		expect(consentResponse.statusCode).toBe(403);
 	});
 });
 
