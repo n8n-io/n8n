@@ -64,6 +64,28 @@ export type PushGitConnectionResult = {
 	counts: ExportPackageCounts;
 };
 
+/** Per-entity counts of what a pull changed in the instance, broken down by outcome. */
+export interface ImportPackageCounts {
+	projects: { created: number; updated: number; skipped: number };
+	folders: { created: number; skipped: number };
+	workflows: { created: number; updated: number; skipped: number };
+	credentials: { matched: number; stubbed: number };
+	variables: {
+		matched: number;
+		created: number;
+		updated: number;
+		stubbed: number;
+		missing: number;
+	};
+	tags: { matched: number; created: number; renamed: number; reconciled: number; skipped: number };
+}
+
+/** Outcome of importing a Git connection's working copy into the instance. */
+export type PullGitConnectionResult = {
+	connectionId: string;
+	counts: ImportPackageCounts;
+};
+
 export class ApiError extends Error {
 	constructor(
 		readonly statusCode: number,
@@ -254,6 +276,10 @@ export class N8nClient {
 
 	async pushGitConnectionProjects(id: string) {
 		return await this.post<PushGitConnectionResult>(`/git-connections/${id}/push`);
+	}
+
+	async pullGitConnectionProjects(id: string) {
+		return await this.post<PullGitConnectionResult>(`/git-connections/${id}/pull`);
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────

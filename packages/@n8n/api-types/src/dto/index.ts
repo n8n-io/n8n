@@ -103,6 +103,7 @@ export {
 	CreateGitConnectionDto,
 	GitConnectionListPublicDto,
 	GitConnectionPublicDto,
+	GitConnectionPullResultDto,
 	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,
 	UpdateGitConnectionDto,

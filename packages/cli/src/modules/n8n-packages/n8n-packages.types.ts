@@ -203,11 +203,15 @@ export interface ExportPackageRequest {
 	workflowVersionPolicy?: WorkflowVersionPolicy;
 }
 
-export type ImportPackageRequest = {
+/**
+ * A source-agnostic import: everything the importers need except where the
+ * package bytes come from. The reader (tar buffer, on-disk directory, …) is
+ * passed alongside, so importers never touch the source format.
+ */
+export type ImportRequest = {
 	user: User;
 	projectId?: string;
 	folderId?: string;
-	packageBuffer: Buffer;
 	bindings?: Partial<PackageImportBindings>;
 	apiKeyScopes?: string[];
 } & ImportCredentialProperties &
@@ -217,6 +221,11 @@ export type ImportPackageRequest = {
 	ImportDataTableProperties &
 	ImportVariableProperties &
 	ImportTagProperties;
+
+/** The tar-based public import: an {@link ImportRequest} carrying the archive bytes. */
+export type ImportPackageRequest = ImportRequest & {
+	packageBuffer: Buffer;
+};
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;

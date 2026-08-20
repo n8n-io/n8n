@@ -66,6 +66,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'gitConnection:list',
 	'gitConnection:clone',
 	'gitConnection:push',
+	'gitConnection:pull',
 	'tag:create',
 	'tag:read',
 	'tag:update',

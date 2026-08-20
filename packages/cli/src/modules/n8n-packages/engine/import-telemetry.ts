@@ -6,7 +6,7 @@ import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types'
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PersistedWorkflowOutcome } from '../entities/workflow/workflow-import.types';
 import { VariableParentPolicy } from '../n8n-packages.types';
-import type { ImportContext, ImportPackageRequest } from '../n8n-packages.types';
+import type { ImportContext, ImportRequest } from '../n8n-packages.types';
 import type { ImportContentResult } from './import-orchestrator';
 import { reconcileVariableSummary } from './import-result';
 import type { PackageManifest } from '../spec/manifest.schema';
@@ -24,7 +24,7 @@ export interface PackageImportScope {
 export function emitPackageImportedEvent(
 	eventService: EventService,
 	params: {
-		request: ImportPackageRequest;
+		request: ImportRequest;
 		manifest: PackageManifest;
 		scopes: PackageImportScope[];
 	},

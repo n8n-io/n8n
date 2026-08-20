@@ -161,4 +161,9 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Push Git Connection',
 		description: 'Allows pushing all projects linked to a Git connection to its remote repository.',
 	},
+	'gitConnection:pull': {
+		displayName: 'Pull Git Connection',
+		description:
+			'Allows importing all projects from a Git connection working copy into the instance.',
+	},
 };

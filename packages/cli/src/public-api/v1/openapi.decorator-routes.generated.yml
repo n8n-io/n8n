@@ -24,6 +24,9 @@ paths:
   /git-connections/{id}/push:
     post:
       $ref: ./handlers/git-connections/spec/paths/pushGitConnectionProjects.generated.yml
+  /git-connections/{id}/pull:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/pullGitConnectionProjects.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
