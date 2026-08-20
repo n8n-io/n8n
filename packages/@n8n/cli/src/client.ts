@@ -214,6 +214,38 @@ export class N8nClient {
 		return limit !== undefined ? results.slice(0, limit) : results;
 	}
 
+	// ─── Git connections ───────────────────────────────────────────
+
+	async listGitConnections(limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/git-connections', {}, limit);
+	}
+
+	async getGitConnection(id: string) {
+		return await this.get<Record<string, unknown>>(`/git-connections/${id}`);
+	}
+
+	async createGitConnection(body: unknown) {
+		return await this.post<Record<string, unknown>>('/git-connections', body);
+	}
+
+	async updateGitConnection(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/git-connections/${id}`, body);
+	}
+
+	async cloneGitConnection(id: string, branchName?: string) {
+		return await this.post<Record<string, unknown>>(`/git-connections/${id}/clone`, {
+			...(branchName ? { branchName } : {}),
+		});
+	}
+
+	async disconnectGitConnection(id: string) {
+		return await this.post<Record<string, unknown>>(`/git-connections/${id}/disconnect`);
+	}
+
+	async deleteGitConnection(id: string) {
+		return await this.del<undefined>(`/git-connections/${id}`);
+	}
+
 	// ─── Workflows ─────────────────────────────────────────────────
 
 	async listWorkflows(query: Record<string, string> = {}, limit?: number) {
