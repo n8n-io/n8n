@@ -1,3 +1,4 @@
+import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
@@ -18,7 +19,6 @@ import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import type { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 
-import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
@@ -56,7 +56,15 @@ export type OrchestratorResumeReason =
 
 // The slice of each collaborator the tracing service actually uses. Anchored to
 // the concrete types via `Pick` so the signatures stay in sync with the source.
-export type InstanceAiTracingEventBus = Pick<InProcessEventBus, 'getEventsForRun'>;
+/**
+ * Flag-resolved run-event read: the durable log with `instanceAi.durableLog` on,
+ * the in-memory bus store with it off. Async because the durable read flushes
+ * the thread's open coalesce buffers and then queries — which is what makes the
+ * streamed text of a run visible to `first_visible_state` at all.
+ */
+export type InstanceAiTracingEventReader = {
+	getEventsForRun: (threadId: string, runId: string) => Promise<InstanceAiEvent[]>;
+};
 
 export type InstanceAiTracingRunState = Pick<RunStateRegistry<User>, 'attachTracing'>;
 
@@ -66,7 +74,7 @@ export type InstanceAiTracingAiService = Pick<AiService, 'isProxyEnabled' | 'get
 
 export type InstanceAiTracingServiceOptions = {
 	logger: Logger;
-	eventBus: InstanceAiTracingEventBus;
+	eventReader: InstanceAiTracingEventReader;
 	runState: InstanceAiTracingRunState;
 	dbSnapshotStorage: InstanceAiTracingSnapshotStorage;
 	aiService: InstanceAiTracingAiService;
@@ -100,7 +108,7 @@ export class InstanceAiTracingService {
 
 	private readonly logger: Logger;
 
-	private readonly eventBus: InstanceAiTracingEventBus;
+	private readonly eventReader: InstanceAiTracingEventReader;
 
 	private readonly runState: InstanceAiTracingRunState;
 
@@ -110,7 +118,7 @@ export class InstanceAiTracingService {
 
 	constructor(options: InstanceAiTracingServiceOptions) {
 		this.logger = options.logger;
-		this.eventBus = options.eventBus;
+		this.eventReader = options.eventReader;
 		this.runState = options.runState;
 		this.dbSnapshotStorage = options.dbSnapshotStorage;
 		this.aiService = options.aiService;
@@ -280,11 +288,11 @@ export class InstanceAiTracingService {
 		await this.finalizeMessageTraceRoot(runId, tracing, options);
 	}
 
-	buildMessageTraceMetadata(
+	async buildMessageTraceMetadata(
 		threadId: string,
 		runId: string,
 		options: InstanceAiRunTraceMetadataOptions,
-	): Record<string, unknown> {
+	): Promise<Record<string, unknown>> {
 		const traceOptions = {
 			status: options.status,
 			...(options.cancellationReason !== undefined
@@ -293,12 +301,29 @@ export class InstanceAiTracingService {
 			...(options.runTimeout !== undefined ? { runTimeout: options.runTimeout } : {}),
 		};
 
+		// The events read hits the DB under the durable log, and most callers run
+		// inside a run's terminal catch block — throwing there would skip
+		// run-finish and leave the client spinning until the liveness sweep. This
+		// is a trace annotation, not a correctness input, so degrade instead.
+		let events: InstanceAiEvent[] = [];
+		let eventsUnavailable = false;
+		try {
+			events = await this.eventReader.getEventsForRun(threadId, runId);
+		} catch (error) {
+			eventsUnavailable = true;
+			this.logger.warn('Failed to read run events for Instance AI trace metadata', {
+				runId,
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
+
 		return {
 			completion_source: 'orchestrator',
-			...buildInstanceAiRunTraceMetadata(
-				this.eventBus.getEventsForRun(threadId, runId),
-				traceOptions,
-			),
+			...buildInstanceAiRunTraceMetadata(events, traceOptions),
+			// Without this, a failed read is indistinguishable from a run that
+			// genuinely produced nothing — both report `first_visible_state: empty`.
+			...(eventsUnavailable ? { first_visible_state_unavailable: true } : {}),
 		};
 	}
 
