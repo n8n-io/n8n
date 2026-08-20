@@ -55,6 +55,9 @@ describe('ToolResultRenderer', () => {
 
 		const iframe = container.querySelector('iframe');
 		expect(iframe?.getAttribute('src')).toBe('data:application/pdf;base64,base64-pdf');
+		// An `<embed>` would be refused by `object-src 'none'`.
 		expect(container.querySelector('embed')).not.toBeInTheDocument();
+		// An iframe needs a title where an embed did not.
+		expect(iframe?.getAttribute('title')).toBeTruthy();
 	});
 });
