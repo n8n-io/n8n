@@ -17,6 +17,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
+import { computeChatModelValidationIssues } from './chat-model-validation';
 import { isAiGatewayManagedCredential } from './credential-utils';
 import type { InstanceAiContext, NodeDescription } from '../../types';
 
@@ -562,6 +563,14 @@ async function computeNodeIssues(
 		}
 	}
 
+	if (!ignoreIssues.has('chatModel')) {
+		const chatModelIssues = await computeChatModelValidationIssues(context, node);
+		if (Object.keys(chatModelIssues).length > 0) {
+			issues = issues ?? {};
+			issues.chatModel = chatModelIssues;
+		}
+	}
+
 	if (!ignoreIssues.has('input')) {
 		const inputIssues = await computeInputIssues(
 			context,
@@ -600,7 +609,13 @@ function formatSummaryLines(
 	if (issues.typeUnknown) {
 		pushTo.push(`${nodeName}: typeUnknown: Unknown node type`);
 	}
-	for (const category of ['parameters', 'credentials', 'input', 'aiGateway'] as const) {
+	for (const category of [
+		'parameters',
+		'credentials',
+		'input',
+		'aiGateway',
+		'chatModel',
+	] as const) {
 		const slice = issues[category];
 		if (!slice || typeof slice !== 'object') continue;
 		for (const [key, messages] of Object.entries(slice)) {

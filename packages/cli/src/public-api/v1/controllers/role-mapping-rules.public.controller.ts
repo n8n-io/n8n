@@ -1,4 +1,10 @@
-import { CreateRoleMappingRuleDto, RoleMappingRulePublicDto } from '@n8n/api-types';
+import {
+	CreateRoleMappingRuleDto,
+	MoveRoleMappingRuleDto,
+	RoleMappingRuleListPublicDto,
+	RoleMappingRuleListQueryPublicDto,
+	RoleMappingRulePublicDto,
+} from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -9,13 +15,34 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Get,
+	Param,
 	Post,
 	PublicApiController,
+	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { RoleMappingRuleResponse } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
+import {
+	encodeNextCursor,
+	resolveOffsetPagination,
+} from '@/public-api/v1/shared/services/pagination.service';
+
+function toRoleMappingRulePublicDto(rule: RoleMappingRuleResponse): RoleMappingRulePublicDto {
+	return {
+		id: rule.id,
+		expression: rule.expression,
+		role: rule.role,
+		type: rule.type,
+		order: rule.order,
+		projectIds: rule.projectIds,
+		createdAt: rule.createdAt,
+		updatedAt: rule.updatedAt,
+	};
+}
 
 @PublicApiController('/role-mapping-rules')
 export class RoleMappingRulesPublicController {
@@ -23,6 +50,39 @@ export class RoleMappingRulesPublicController {
 		private readonly roleMappingRuleService: RoleMappingRuleService,
 		private readonly licenseState: LicenseState,
 	) {}
+
+	@Get('/')
+	@ApiKeyScope('roleMappingRule:list')
+	@ApiSummary('Retrieve role-mapping rules')
+	@ApiDescription(
+		"Returns the configured role-mapping rules. `order` is the rule's evaluation position within its own `type`, so instance and project rules each have their own sequence starting at 0 — filter by `type` to retrieve a single evaluation order.",
+	)
+	@ApiTags(['RoleMappingRule'])
+	@ApiResponse(200, RoleMappingRuleListPublicDto)
+	async getRoleMappingRules(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: RoleMappingRuleListQueryPublicDto,
+	): Promise<RoleMappingRuleListPublicDto> {
+		this.assertProvisioningLicensed();
+
+		const { offset, limit } = resolveOffsetPagination(query);
+
+		const { count, items } = await this.roleMappingRuleService.list({
+			skip: offset,
+			take: limit,
+			type: query.type,
+		});
+
+		return {
+			data: items.map(toRoleMappingRulePublicDto),
+			nextCursor: encodeNextCursor({
+				offset,
+				limit,
+				numberOfTotalRecords: count,
+			}),
+		};
+	}
 
 	@Post('/')
 	@ApiKeyScope('roleMappingRule:create')
@@ -38,21 +98,43 @@ export class RoleMappingRulesPublicController {
 		_res: Response,
 		@Body body: CreateRoleMappingRuleDto,
 	): Promise<RoleMappingRulePublicDto> {
-		if (!this.licenseState.isProvisioningLicensed()) {
-			throw new ForbiddenError('Provisioning is not licensed');
-		}
+		this.assertProvisioningLicensed();
 
 		const rule = await this.roleMappingRuleService.create(body, req.user);
 
-		return {
-			id: rule.id,
-			expression: rule.expression,
-			role: rule.role,
-			type: rule.type,
-			order: rule.order,
-			projectIds: rule.projectIds,
-			createdAt: rule.createdAt,
-			updatedAt: rule.updatedAt,
-		};
+		return toRoleMappingRulePublicDto(rule);
+	}
+
+	@Post('/:roleMappingRuleId/move')
+	@ApiKeyScope('roleMappingRule:update')
+	@ApiSummary('Move a role-mapping rule')
+	@ApiDescription(
+		"Changes a rule's position in the evaluation order for its type. `targetIndex` is the desired 0-based position within the rule's own `type` sequence; a value beyond the last position moves the rule to the end.",
+	)
+	@ApiTags(['RoleMappingRule'])
+	@ApiResponse(200, RoleMappingRulePublicDto)
+	@ApiErrorResponse(404)
+	async moveRoleMappingRule(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('roleMappingRuleId') roleMappingRuleId: string,
+		@Body body: MoveRoleMappingRuleDto,
+	): Promise<RoleMappingRulePublicDto> {
+		this.assertProvisioningLicensed();
+
+		const rule = await this.roleMappingRuleService.move({
+			id: roleMappingRuleId,
+			targetIndex: body.targetIndex,
+			userId: req.user.id,
+			userEmail: req.user.email,
+		});
+
+		return toRoleMappingRulePublicDto(rule);
+	}
+
+	private assertProvisioningLicensed(): void {
+		if (!this.licenseState.isProvisioningLicensed()) {
+			throw new ForbiddenError('Provisioning is not licensed');
+		}
 	}
 }

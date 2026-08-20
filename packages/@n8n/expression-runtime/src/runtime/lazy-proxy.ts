@@ -106,7 +106,7 @@ export type ProxyMeta = { kind: 'object'; keys?: string[] } | { kind: 'array'; l
  *
  * @param basePath - Current path in object tree (e.g., ['$json', 'user'])
  * @param meta - Optional shape descriptor (object/array + known keys/length)
- * @param callbacks - ivm.Reference callbacks for cross-isolate communication
+ * @param callbacks - ivm.Callback functions for cross-isolate communication
  * @returns Proxy object with lazy loading behavior
  */
 export function createDeepLazyProxy(
@@ -133,10 +133,7 @@ export function createDeepLazyProxy(
 	function resolveObjectKeys(): string[] {
 		if (objectKeys) return objectKeys;
 		if (fetchedKeys) return fetchedKeys;
-		const value = getValueAtPath.applySync(null, [basePath], {
-			arguments: { copy: true },
-			result: { copy: true },
-		});
+		const value = getValueAtPath(basePath);
 		throwIfErrorSentinel(value);
 		if (isObjectMetadata(value)) {
 			fetchedKeys = value.__keys;
@@ -252,10 +249,7 @@ export function createDeepLazyProxy(
 			if (isArray) {
 				const idx = isInArrayBounds(prop);
 				if (idx === undefined) return undefined;
-				const element = getArrayElement.applySync(null, [basePath, idx], {
-					arguments: { copy: true },
-					result: { copy: true },
-				});
+				const element = getArrayElement(basePath, idx);
 				// Primitives (and null) skip `materializeChild`'s metadata checks.
 				if (element === null || typeof element !== 'object') {
 					targetObj[prop] = element;
@@ -269,12 +263,8 @@ export function createDeepLazyProxy(
 			// materializeChild rebuilds it only inside metadata branches.
 			const path = [...basePath, prop];
 
-			// Call back to host to get metadata/value
-			// Note: getValueAtPath is an ivm.Reference passed via callbacks
-			const value = getValueAtPath.applySync(null, [path], {
-				arguments: { copy: true },
-				result: { copy: true },
-			});
+			// Call back to host to get metadata/value.
+			const value = getValueAtPath(path);
 
 			targetObj[prop] = materializeChild(basePath, prop, value);
 			return targetObj[prop];
@@ -301,10 +291,7 @@ export function createDeepLazyProxy(
 
 			// Build path and check existence via callback
 			const path = [...basePath, prop];
-			const value = getValueAtPath.applySync(null, [path], {
-				arguments: { copy: true },
-				result: { copy: true },
-			});
+			const value = getValueAtPath(path);
 
 			// Handle errors serialized by host-side callbacks — reconstruct and throw
 			// so the isolate's outer try-catch can serialize them back via __reportError

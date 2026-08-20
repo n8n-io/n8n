@@ -14,12 +14,15 @@ const {
 	refreshThreads,
 	loadMore,
 	deleteThread,
+	setFilters,
 } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	storeState: {
 		threads: [] as unknown[],
 		loading: false,
 		nextCursor: null as string | null,
+		autoRefresh: true,
+		filters: { status: 'all', origin: 'all', startDate: '', endDate: '' },
 	},
 	fetchThreads: vi.fn(),
 	startAutoRefresh: vi.fn(),
@@ -27,6 +30,7 @@ const {
 	refreshThreads: vi.fn(),
 	loadMore: vi.fn(),
 	deleteThread: vi.fn(),
+	setFilters: vi.fn(),
 }));
 
 let documentAddEventListenerSpy: ReturnType<typeof vi.spyOn>;
@@ -34,17 +38,29 @@ let documentRemoveEventListenerSpy: ReturnType<typeof vi.spyOn>;
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
-		baseText: (key: string) =>
-			({
-				'agentSessions.viewTrace': 'View session trace',
-				'agentSessions.origin.preview': 'Preview',
-				'agentSessions.origin.instanceAi': 'AI Assistant',
-				'agentSessions.origin.mcp': 'MCP',
-				'agentSessions.origin.subAgent': 'Sub-agent',
-				'agentSessions.origin.schedule': 'Schedule',
-				'agentSessions.origin.workflow': 'Workflow',
-				'agentSessions.empty': 'No agent sessions',
-			})[key] ?? key,
+		baseText: (key: string, options?: { interpolate?: Record<string, string | number> }) => {
+			if (key === 'executionDetails.runningTimeFinished') {
+				return `in ${options?.interpolate?.time}`;
+			}
+			return (
+				{
+					'agentSessions.viewTrace': 'View session trace',
+					'agentSessions.origin.preview': 'Preview',
+					'agentSessions.origin.instanceAi': 'AI Assistant',
+					'agentSessions.origin.mcp': 'MCP',
+					'agentSessions.origin.subAgent': 'Sub-agent',
+					'agentSessions.origin.schedule': 'Schedule',
+					'agentSessions.origin.workflow': 'Workflow',
+					'agentSessions.empty': 'No agent sessions',
+					'agentSessions.emptyWithFilters': 'No sessions match these filters',
+					'agentSessions.status.running': 'Running',
+					'agentSessions.status.succeeded': 'Succeeded',
+					'agentSessions.status.error': 'Error',
+					'agentSessions.status.cancelled': 'Canceled',
+					'agentSessions.status.interrupted': 'Interrupted',
+				}[key] ?? key
+			);
+		},
 	}),
 }));
 
@@ -61,12 +77,21 @@ vi.mock('@n8n/design-system', () => ({
 		emits: ['select'],
 	},
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
+	N8nCheckbox: {
+		props: ['modelValue', 'label'],
+		emits: ['update:modelValue'],
+		template:
+			'<label><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />{{ label }}</label>',
+	},
 	N8nIcon: { template: '<span :data-icon="icon" />', props: ['icon', 'size'] },
 	N8nIconButton: {
 		template: '<button v-bind="$attrs"><slot /></button>',
 	},
 	N8nTableBase: { template: '<table><slot /></table>' },
-	N8nTooltip: { template: '<div><slot /></div>' },
+	N8nText: {
+		props: ['color'],
+		template: '<span :data-color="color"><slot /></span>',
+	},
 }));
 
 vi.mock('../agentSessions.store', () => ({
@@ -80,13 +105,32 @@ vi.mock('../agentSessions.store', () => ({
 		get nextCursor() {
 			return storeState.nextCursor;
 		},
+		get autoRefresh() {
+			return storeState.autoRefresh;
+		},
+		set autoRefresh(value: boolean) {
+			storeState.autoRefresh = value;
+		},
+		get filters() {
+			return storeState.filters;
+		},
 		fetchThreads,
 		startAutoRefresh,
 		stopAutoRefresh,
 		refreshThreads,
 		loadMore,
 		deleteThread,
+		setFilters,
 	}),
+}));
+
+vi.mock('../components/AgentSessionsFilter.vue', () => ({
+	default: {
+		name: 'AgentSessionsFilter',
+		emits: ['filterChanged'],
+		template:
+			"<button data-test-id=\"agent-sessions-filter\" @click=\"$emit('filterChanged', { status: 'error', origin: 'all', startDate: '', endDate: '' })\" />",
+	},
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
@@ -145,6 +189,8 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		createdAt: '2026-07-20T10:00:00.000Z',
 		updatedAt: '2026-07-20T10:05:00.000Z',
 		firstMessage: null,
+		failureSummary: null,
+		status: 'succeeded',
 		...overrides,
 	};
 }
@@ -152,13 +198,16 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 async function mountView({
 	threads = [makeThread()],
 	manageStoreLifecycle = true,
+	filters = { status: 'all', origin: 'all', startDate: '', endDate: '' },
 }: {
 	threads?: AgentExecutionThread[];
 	manageStoreLifecycle?: boolean;
+	filters?: typeof storeState.filters;
 } = {}) {
 	storeState.threads = threads;
 	storeState.loading = false;
 	storeState.nextCursor = null;
+	storeState.filters = filters;
 
 	return mount(AgentSessionsListView, {
 		props: {
@@ -173,8 +222,11 @@ async function mountView({
 
 describe('AgentSessionsListView', () => {
 	beforeEach(() => {
+		storeState.autoRefresh = true;
 		fetchThreads.mockReset();
 		fetchThreads.mockResolvedValue(undefined);
+		setFilters.mockReset();
+		setFilters.mockResolvedValue(undefined);
 		documentAddEventListenerSpy = vi.spyOn(document, 'addEventListener');
 		documentRemoveEventListenerSpy = vi.spyOn(document, 'removeEventListener');
 		vi.clearAllMocks();
@@ -205,12 +257,55 @@ describe('AgentSessionsListView', () => {
 
 		expect(traceButton.element.tagName).toBe('BUTTON');
 		expect(traceButton.attributes('type')).toBe('button');
-		expect(traceButton.text()).toBe('My session');
+		expect(wrapper.get('[data-test-id="agent-session-title"]').text()).toBe('My session');
 
 		routerPush.mockClear();
 		await traceButton.trigger('click');
 
 		expect(routerPush).toHaveBeenCalledExactlyOnceWith(expectedRoute);
+	});
+
+	it.each([
+		['succeeded', 'Succeeded', 'success', true],
+		['error', 'Error', 'danger', true],
+		['cancelled', 'Canceled', 'warning', true],
+		['interrupted', 'Interrupted', 'warning', true],
+		['running', 'Running', 'text-base', false],
+	] as const)('renders the %s session state', async (status, label, color, showsDuration) => {
+		const wrapper = await mountView({
+			threads: [makeThread({ status })],
+		});
+		const indicator = wrapper.get('[data-testid="agent-session-status-indicator"]');
+
+		expect(indicator.text()).toBe(label);
+		expect(indicator.attributes('data-color')).toBe(color);
+		expect(wrapper.find('[data-testid="agent-session-status-duration"]').exists()).toBe(
+			showsDuration,
+		);
+	});
+
+	it('requests filtered results when the filter changes', async () => {
+		const wrapper = await mountView();
+
+		await wrapper.get('[data-test-id="agent-sessions-filter"]').trigger('click');
+
+		expect(setFilters).toHaveBeenCalledWith('project-1', 'agent-1', {
+			status: 'error',
+			origin: 'all',
+			startDate: '',
+			endDate: '',
+		});
+	});
+
+	it('shows the filtered empty state when no sessions match', async () => {
+		const wrapper = await mountView({
+			threads: [],
+			filters: { status: 'error', origin: 'all', startDate: '', endDate: '' },
+		});
+
+		expect(wrapper.get('[data-test-id="agent-sessions-empty"]').text()).toBe(
+			'No sessions match these filters',
+		);
 	});
 
 	it('opens the parent trace in the current tab by default', async () => {
@@ -231,7 +326,7 @@ describe('AgentSessionsListView', () => {
 		});
 	});
 
-	it('fetches, polls, and manages the visibility listener by default', async () => {
+	it('fetches, polls, and refreshes visible tabs only while auto refresh is enabled', async () => {
 		const wrapper = await mountView();
 		await flushPromises();
 
@@ -241,6 +336,13 @@ describe('AgentSessionsListView', () => {
 			(call: unknown[]) => call[0] === 'visibilitychange',
 		);
 		expect(visibilityListenerCall).toBeDefined();
+		const visibilityListener = visibilityListenerCall?.[1] as EventListener;
+		visibilityListener(new Event('visibilitychange'));
+		expect(refreshThreads).toHaveBeenCalledExactlyOnceWith('project-1', 'agent-1');
+
+		storeState.autoRefresh = false;
+		visibilityListener(new Event('visibilitychange'));
+		expect(refreshThreads).toHaveBeenCalledTimes(1);
 
 		wrapper.unmount();
 

@@ -49,6 +49,8 @@ export declare namespace ExecutionRequest {
 			workflowId?: string;
 			lastId?: string;
 			projectId?: string;
+			startedAfter?: string;
+			startedBefore?: string;
 		}
 	>;
 
@@ -138,7 +140,6 @@ export declare namespace WorkflowRequest {
 		{ versionId?: string; name?: string; description?: string },
 		{}
 	>;
-	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
 }
 

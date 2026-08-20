@@ -534,7 +534,6 @@ describe('RelayConnection', () => {
 		});
 
 		it('should return true for agent-created tabs after createTab', async () => {
-			relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
 			(globalThis.chrome.tabs.create as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
 				id: 999,
 				title: 'New',
@@ -660,28 +659,10 @@ describe('RelayConnection', () => {
 		expect(ws.closed).toBe(false);
 	});
 
-	it('should reject createTab when tab creation is disabled', async () => {
-		relay.setSettings({ allowTabCreation: false, allowTabClosing: false });
-
-		ws.onmessage?.({
-			data: JSON.stringify({
-				id: 5,
-				method: 'createTab',
-				params: { url: 'https://example.com' },
-			}),
-		});
-		await tick();
-
-		expect(parseSent(ws)).toEqual(
-			expect.objectContaining({ error: expect.stringContaining('Tab creation is disabled') }),
-		);
-	});
-
-	it('should reject closeTab when tab closing is disabled', async () => {
+	it('should reject closeTab', async () => {
 		chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
 		await relay.addTab(42, 'Test', 'https://test.com');
 		const addedId = relay.getControlledIds()[0].targetId;
-		relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
 		ws.sent.length = 0;
 
 		ws.onmessage?.({
@@ -694,8 +675,9 @@ describe('RelayConnection', () => {
 		await tick();
 
 		expect(parseSent(ws)).toEqual(
-			expect.objectContaining({ error: expect.stringContaining('Tab closing is disabled') }),
+			expect.objectContaining({ error: expect.stringContaining('does not allow closing tabs') }),
 		);
+		expect(relay.getControlledIds()).toHaveLength(1);
 	});
 
 	describe('spawned tab helpers', () => {
@@ -711,14 +693,6 @@ describe('RelayConnection', () => {
 			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
 			await relay.addTab(42, 'Test', 'https://test.com');
 			expect(relay.isControlledTab(42)).toBe(true);
-		});
-
-		it('isTabCreationAllowed reflects current settings', () => {
-			expect(relay.isTabCreationAllowed()).toBe(true);
-			relay.setSettings({ allowTabCreation: false, allowTabClosing: false });
-			expect(relay.isTabCreationAllowed()).toBe(false);
-			relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
-			expect(relay.isTabCreationAllowed()).toBe(true);
 		});
 
 		it('markAsAgentCreated causes isAgentCreatedTab to return true', () => {
@@ -1107,23 +1081,40 @@ describe('RelayConnection', () => {
 
 			expect(ws.closeReason).toBe('debugger_detached');
 		});
+	});
+	describe('document preparation', () => {
+		/** Both attach paths must prepare the tab; only one of them used to. */
+		function preparedTabs() {
+			return chrome.debugger.sendCommand.mock.calls
+				.filter((call) => call[1] === 'Page.addScriptToEvaluateOnNewDocument')
+				.map((call) => (call[0] as { tabId: number }).tabId);
+		}
 
-		it('should close with extension_disconnected when last tab is closed via closeTab', async () => {
-			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
-			await relay.addTab(42, 'Test', 'https://test.com');
-			relay.setSettings({ allowTabCreation: true, allowTabClosing: true });
-			ws.sent.length = 0;
+		it('prepares a lazily attached tab', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(31)]);
+			await relay.registerSelectedTabs([31]);
 
 			ws.onmessage?.({
 				data: JSON.stringify({
 					id: 1,
-					method: 'closeTab',
-					params: { id: targetIdForTab(42) },
+					method: 'forwardCDPCommand',
+					params: { method: 'Page.reload' },
 				}),
 			});
 			await tick();
 
-			expect(ws.closeReason).toBe('extension_disconnected');
+			expect(preparedTabs()).toContain(31);
+		});
+
+		it('prepares an eagerly attached agent-created tab', async () => {
+			chrome.tabs.create.mockResolvedValueOnce({ id: 32, title: 'New', url: 'https://new.com' });
+
+			ws.onmessage?.({
+				data: JSON.stringify({ id: 1, method: 'createTab', params: { url: 'https://new.com' } }),
+			});
+			await tick();
+
+			expect(preparedTabs()).toContain(32);
 		});
 	});
 });
