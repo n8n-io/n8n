@@ -33,6 +33,8 @@ responses:
           required:
             - projectId
             - gitConnectionId
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':

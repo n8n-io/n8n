@@ -222,6 +222,7 @@ export class GitConnectionsPublicController {
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionProjectPublicDto)
+	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	async addProjectToGitConnection(
