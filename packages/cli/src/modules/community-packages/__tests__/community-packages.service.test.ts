@@ -951,13 +951,16 @@ describe('CommunityPackagesService', () => {
 			expect(writeFile).not.toHaveBeenCalled();
 		});
 
-		test('should create package.json if it does not exist', async () => {
+		test('should create package.json if it does not exist, without warning', async () => {
+			// A missing ledger is the normal state before the first install, so warning about
+			// it would flag every fresh instance's first boot as a failure.
 			vi.mocked(readFile).mockRejectedValue(new Error('ENOENT'));
 
 			await communityPackagesService.ensurePackageJson();
 
 			expect(mkdir).toHaveBeenCalledWith(nodesDownloadDir, { recursive: true });
 			expect(writeFile).toHaveBeenCalledWith(packageJsonPath, packageJsonWith({}), 'utf-8');
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		test('should recreate package.json if its content is corrupted', async () => {
@@ -969,15 +972,23 @@ describe('CommunityPackagesService', () => {
 			expect(writeFile).toHaveBeenCalledWith(packageJsonPath, packageJsonWith({}), 'utf-8');
 		});
 
-		test('should warn when the existing package.json cannot be read', async () => {
+		test('should warn when the existing package.json cannot be parsed', async () => {
 			vi.mocked(readFile).mockResolvedValue('{ "name": "installed-nodes", "depende');
 
 			await communityPackagesService.ensurePackageJson();
 
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Failed to read community package ledger',
-				expect.objectContaining({ error: expect.any(Error) }),
+				'Community package ledger is unusable, rebuilding it',
 			);
+		});
+
+		test('should recreate package.json if it parses but has no dependencies', async () => {
+			// `{}` parses fine, so it used to be accepted and then throw on the next mutation.
+			vi.mocked(readFile).mockResolvedValue('{}');
+
+			await communityPackagesService.ensurePackageJson();
+
+			expect(writeFile).toHaveBeenCalledWith(packageJsonPath, packageJsonWith({}), 'utf-8');
 		});
 
 		test('should rebuild dependencies from the database rather than emptying them', async () => {

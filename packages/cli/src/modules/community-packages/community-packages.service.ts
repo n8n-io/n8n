@@ -224,14 +224,22 @@ export class CommunityPackagesService {
 		return this.areNodesLoaded(installedPackage.installedNodes);
 	}
 
-	/** Returns the ledger, or `null` if it is absent or unusable (e.g. truncated by a crash mid-write). */
+	/**
+	 * Returns the ledger, or `null` if it is absent or unusable (e.g. truncated by a crash
+	 * mid-write). Absence is the normal state before the first install, so only an unusable
+	 * ledger is worth a warning.
+	 */
 	private async readPackageJson(): Promise<PackageJson | null> {
-		try {
-			return jsonParse<PackageJson>(await readFile(this.packageJsonPath, 'utf-8'));
-		} catch (error) {
-			this.logger.warn('Failed to read community package ledger', { error: ensureError(error) });
-			return null;
-		}
+		const content = await readFile(this.packageJsonPath, 'utf-8').catch(() => null);
+		if (content === null) return null;
+
+		// Checking `dependencies` rather than just the parse: `{}` parses fine but throws on
+		// the next mutation, and nothing would ever rebuild it.
+		const packageJson = jsonParse<PackageJson | null>(content, { fallbackValue: null });
+		if (packageJson?.dependencies) return packageJson;
+
+		this.logger.warn('Community package ledger is unusable, rebuilding it');
+		return null;
 	}
 
 	/**
