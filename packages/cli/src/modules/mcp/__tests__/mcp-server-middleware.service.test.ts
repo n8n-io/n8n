@@ -13,6 +13,7 @@ import { McpServerApiKeyService } from '../mcp-api-key.service';
 import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
 import { McpProtectedResource } from '../mcp-protected-resource';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
+import { McpSettingsService } from '../mcp.settings.service';
 
 const mockReqWith = (authHeader: string | undefined, body?: any) => {
 	const req = mockDeep<Request>();
@@ -30,6 +31,7 @@ const jwtService = new JwtService(instanceSettings, mock());
 let mcpServerApiKeyService: Mocked<McpServerApiKeyService>;
 let oauthTokenVerifier: Mocked<OAuthTokenVerifierProxy>;
 let mcpProtectedResource: Mocked<McpProtectedResource>;
+let mcpSettingsService: Mocked<McpSettingsService>;
 let telemetry: Mocked<Telemetry>;
 let service: McpServerMiddlewareService;
 
@@ -38,12 +40,14 @@ describe('McpServerMiddlewareService', () => {
 		mcpServerApiKeyService = mockInstance(McpServerApiKeyService) as Mocked<McpServerApiKeyService>;
 		oauthTokenVerifier = mockInstance(OAuthTokenVerifierProxy) as Mocked<OAuthTokenVerifierProxy>;
 		mcpProtectedResource = mockInstance(McpProtectedResource) as Mocked<McpProtectedResource>;
+		mcpSettingsService = mockInstance(McpSettingsService) as Mocked<McpSettingsService>;
 		telemetry = mockInstance(Telemetry);
 
 		service = new McpServerMiddlewareService(
 			mcpServerApiKeyService,
 			oauthTokenVerifier,
 			mcpProtectedResource,
+			mcpSettingsService,
 			jwtService,
 			telemetry,
 		);
@@ -146,6 +150,36 @@ describe('McpServerMiddlewareService', () => {
 			const result = await service.getUserForToken(apiKeyToken);
 
 			expect(result).toMatchObject({ user: null });
+		});
+	});
+
+	describe('getEnabledMiddleware', () => {
+		const runMiddleware = async (enabled: boolean) => {
+			mcpSettingsService.getEnabled.mockResolvedValue(enabled);
+			const res = mockDeep<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+			const next = vi.fn() as NextFunction;
+
+			await service.getEnabledMiddleware()(mockReqWith(undefined), res, next);
+
+			return { res, next };
+		};
+
+		it('should pass the request through when MCP access is enabled', async () => {
+			const { res, next } = await runMiddleware(true);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.status).not.toHaveBeenCalled();
+		});
+
+		it('should return 404 without an authentication challenge when MCP access is disabled', async () => {
+			const { res, next } = await runMiddleware(false);
+
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
+			expect(res.header).not.toHaveBeenCalledWith('WWW-Authenticate', expect.anything());
+			expect(next).not.toHaveBeenCalled();
 		});
 	});
 

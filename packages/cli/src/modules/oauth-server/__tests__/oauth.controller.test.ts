@@ -41,11 +41,12 @@ const makeRes = () => {
 const makeReq = (resourcePath: string | string[], originalUrl?: string): Request =>
 	({ params: { resourcePath }, originalUrl }) as unknown as Request;
 
-const resource = (scopes: string[]): ProtectedResource => ({
+const resource = (scopes: string[], isAvailable?: () => Promise<boolean>): ProtectedResource => ({
 	id: 'instance-mcp',
 	getResourceUrl: () => 'https://n8n.test/mcp-server/http',
 	getAudiences: () => ['https://n8n.test/mcp-server/http'],
 	authorize: async () => true,
+	isAvailable,
 	scopes,
 });
 
@@ -128,6 +129,44 @@ describe('OAuthController', () => {
 			const res = makeRes();
 
 			await controller.protectedResourceMetadata(makeReq(['nope']), res);
+
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'Unknown protected resource' }),
+			);
+		});
+
+		test('responds 404 for a resource that is currently unavailable', async () => {
+			registry.getByResourcePath.mockResolvedValue(resource([], async () => false));
+			const res = makeRes();
+
+			await controller.protectedResourceMetadata(makeReq(['mcp-server', 'http']), res);
+
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'Unknown protected resource' }),
+			);
+		});
+	});
+
+	describe('defaultProtectedResourceMetadata', () => {
+		test('returns the metadata document of the default resource', async () => {
+			registry.getDefaultResource.mockReturnValue(resource([], async () => true));
+			const res = makeRes();
+
+			await controller.defaultProtectedResourceMetadata(makeReq([]), res);
+
+			expect(res.status).not.toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith(
+				expect.objectContaining({ resource: 'https://n8n.test/mcp-server/http' }),
+			);
+		});
+
+		test('responds 404 when the default resource is currently unavailable', async () => {
+			registry.getDefaultResource.mockReturnValue(resource([], async () => false));
+			const res = makeRes();
+
+			await controller.defaultProtectedResourceMetadata(makeReq([]), res);
 
 			expect(res.status).toHaveBeenCalledWith(404);
 			expect(res.json).toHaveBeenCalledWith(
