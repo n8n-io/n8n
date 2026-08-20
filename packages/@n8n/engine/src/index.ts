@@ -1,6 +1,8 @@
 export { createEngineRuntime } from './runtime';
 export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 
+export type { EngineErrorResponse } from './server';
+
 export type { JsonObject, JsonValue } from './common';
 
 export type {
