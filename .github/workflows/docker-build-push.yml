@@ -222,6 +222,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
             BUILDER_IMAGE=n8nio/node-pc:26.5.1-dev@sha256:9ecfe9d5c7ea835bccc604d06c3cb76a837b64496d4a999338cb8b53a50bb0bd
             RUNTIME_IMAGE=n8nio/node-pc:26.5.1@sha256:e535408e7815904c98f81fb0203f7f657047d7db3d4edc77de44d2ea72c6bf18
+            IMAGE_DESCRIPTION=Workflow Automation Tool (pointer-compressed variant, internal to n8n Cloud, no support or stability guarantees)
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: true

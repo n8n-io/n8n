@@ -49,6 +49,7 @@ FROM ${RUNTIME_IMAGE}
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
+ARG IMAGE_DESCRIPTION="Workflow Automation Tool"
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
@@ -70,7 +71,7 @@ USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
 
 LABEL org.opencontainers.image.title="n8n" \
-      org.opencontainers.image.description="Workflow Automation Tool" \
+      org.opencontainers.image.description="${IMAGE_DESCRIPTION}" \
       org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
       org.opencontainers.image.url="https://n8n.io" \
       org.opencontainers.image.version=${N8N_VERSION}
