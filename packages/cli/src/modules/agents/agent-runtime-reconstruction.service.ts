@@ -198,6 +198,8 @@ export class AgentRuntimeReconstructionService {
 		instrumentation?: AgentRuntimeInstrumentation,
 		workflowToolExecutionMode: WorkflowToolExecutionMode = 'manual',
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
+		/** Pass false when the caller cannot resume a suspended run (workflow executions). */
+		supportsHitl?: boolean,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		let config = agentEntity.schema;
 		if (!config) {
@@ -237,6 +239,7 @@ export class AgentRuntimeReconstructionService {
 			toolCodeByName: toolsByName,
 			skills: agentEntity.skills ?? {},
 			runtimeProfile: 'top-level',
+			supportsHitl,
 			runType,
 			workflowToolExecutionMode,
 			parentAgentIdForDelegation: agentEntity.id,
@@ -351,6 +354,11 @@ export class AgentRuntimeReconstructionService {
 		toolCodeByName: Record<string, string>;
 		skills: Record<string, AgentSkill>;
 		runtimeProfile: AgentRuntimeProfile;
+		/**
+		 * Whether the caller can resume a suspended tool. False for workflow-driven
+		 * runs, where HITL tools report status instead of parking forever.
+		 */
+		supportsHitl?: boolean;
 		runType: AgentRunTelemetryType;
 		workflowToolExecutionMode?: WorkflowToolExecutionMode;
 		parentAgentIdForDelegation?: string;
@@ -372,6 +380,7 @@ export class AgentRuntimeReconstructionService {
 			runtimeProfile,
 			runType,
 			workflowToolExecutionMode = 'manual',
+			supportsHitl,
 			parentAgentIdForDelegation,
 			integrationType,
 			credentialIntegrations,
@@ -383,8 +392,16 @@ export class AgentRuntimeReconstructionService {
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
 		const toolResolver = this.makeToolResolver(
-			projectId,
-			workflowToolExecutionMode,
+			{
+				projectId,
+				workflowToolExecutionMode,
+				agentId: memoryOwnerAgentId,
+				integrationType,
+				userId: user?.id,
+				// Sub-agent checkpoints are rejected on resume and inline agents have no
+				// checkpoint storage, so neither can be woken again.
+				supportsHitl: supportsHitl ?? runtimeProfile === 'top-level',
+			},
 			instrumentation,
 		);
 		const resolvedTools: BuiltTool[] = [];
@@ -539,10 +556,18 @@ export class AgentRuntimeReconstructionService {
 		};
 	}
 	private makeToolResolver(
-		projectId: string,
-		workflowToolExecutionMode: WorkflowToolExecutionMode,
+		runIdentity: {
+			projectId: string;
+			workflowToolExecutionMode: WorkflowToolExecutionMode;
+			agentId?: string;
+			integrationType?: string;
+			userId?: string;
+			supportsHitl: boolean;
+		},
 		instrumentation?: AgentRuntimeInstrumentation,
 	): ToolResolver {
+		const { projectId, workflowToolExecutionMode, agentId, integrationType, userId, supportsHitl } =
+			runIdentity;
 		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
@@ -555,6 +580,10 @@ export class AgentRuntimeReconstructionService {
 					executionMode: workflowToolExecutionMode,
 					webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
 					instrumentToolAdditionalData,
+					agentId,
+					integrationType,
+					userId,
+					supportsHitl,
 				});
 			}
 

@@ -11,6 +11,7 @@ import type {
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
 	IWorkflowExecutionDataProcess,
+	RelatedAgentRun,
 	RelatedExecution,
 	StartNodeData,
 } from '..';
@@ -55,6 +56,8 @@ export interface IRunExecutionDataV1 {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/** Suspended agent tool call to resume once this execution finishes. */
+	parentAgentRun?: RelatedAgentRun;
 	/**
 	 * Random token used to validate waiting webhook/form requests.
 	 * Generated when execution starts. Presence signals validation is required.

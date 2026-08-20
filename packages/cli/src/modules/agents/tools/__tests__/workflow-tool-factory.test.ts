@@ -1,13 +1,14 @@
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	IExecuteResponsePromiseData,
 	INode,
 	IRun,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { createRunExecutionData } from 'n8n-workflow';
+import { createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -15,7 +16,14 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
-import { executeWorkflow, type WorkflowToolContext } from '../workflow-tool-factory';
+import {
+	executeWorkflow,
+	resolveWorkflowTool,
+	type WorkflowToolContext,
+} from '../workflow-tool-factory';
+import type { WorkflowToolWorkflowLoader } from '../workflow-tool-workflow-loader.service';
+
+vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
 
 const triggerNode: INode = {
 	id: 'trigger-1',
@@ -354,5 +362,303 @@ describe('executeWorkflow → webhook response', () => {
 		body.self = body;
 
 		expect(await responseBodyOf(body)).toEqual({ _truncated: true });
+	});
+});
+
+describe('workflow tool → Wait-node handoff', () => {
+	const waitWorkflow = {
+		id: 'wf-1',
+		name: 'Approval workflow',
+		nodes: [triggerNode],
+		connections: {},
+	} as unknown as WorkflowEntity;
+
+	const RESUME_URL = 'https://n8n.example.com/webhook-waiting/exec-1?signature=tok-123';
+
+	/** Parked at a Wait node. Carries the signed URL so the leak test has something to catch. */
+	const parkedData = (
+		waitTill: Date,
+		metadata: Record<string, string> = { resumeUrl: RESUME_URL },
+	) =>
+		createRunExecutionData({
+			resultData: {
+				runData: {
+					Wait: [
+						{
+							data: { main: [[]] },
+							executionIndex: 0,
+							startTime: 0,
+							executionTime: 1,
+							source: [],
+							metadata,
+						},
+					],
+				},
+				lastNodeExecuted: 'Wait',
+			},
+			waitTill,
+		});
+
+	const parkedRun = (waitTill: Date, metadata?: Record<string, string>): IRun => ({
+		mode: 'integrated',
+		status: 'waiting',
+		finished: false,
+		startedAt: new Date(),
+		storedAt: 'db',
+		waitTill,
+		data: parkedData(waitTill, metadata),
+	});
+
+	const parkedInDb = (waitTill: Date) => ({ status: 'waiting', data: parkedData(waitTill) });
+
+	const settledInDb = () => ({
+		status: 'success',
+		data: createRunExecutionData({
+			resultData: {
+				runData: {
+					Result: [
+						{
+							data: { main: [[{ json: { approved: true } }]] },
+							executionIndex: 0,
+							startTime: 0,
+							executionTime: 1,
+							source: [],
+						},
+					],
+				},
+			},
+		}),
+	});
+
+	function setPersistence(...results: unknown[]) {
+		const findSingleExecution = vi.fn();
+		for (const result of results) findSingleExecution.mockResolvedValueOnce(result);
+		// Repeat the last result for any further poll.
+		findSingleExecution.mockResolvedValue(results[results.length - 1]);
+		Container.set(ExecutionPersistence, {
+			findSingleExecution,
+		} as unknown as ExecutionPersistence);
+		return findSingleExecution;
+	}
+
+	async function buildWaitTool(activeExecutions: ActiveExecutions) {
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(waitWorkflow);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Approval workflow' }, {
+			...buildContext(run, { workflowLoader, activeExecutions }),
+			executionMode: 'integrated',
+		} as WorkflowToolContext);
+		return { tool, run };
+	}
+
+	const activeExecutionsParkedAt = (waitTill: Date, metadata?: Record<string, string>) =>
+		({
+			has: vi.fn().mockReturnValue(true),
+			getPostExecutePromise: vi.fn().mockResolvedValue(parkedRun(waitTill, metadata)),
+		}) as unknown as ActiveExecutions;
+
+	function makeCtx(overrides: Record<string, unknown> = {}) {
+		const suspend = vi.fn().mockResolvedValue(undefined);
+		return { ctx: { suspend, ...overrides } as never, suspend };
+	}
+
+	const suspendedCard = (suspend: ReturnType<typeof vi.fn>) =>
+		suspend.mock.calls[0][0] as {
+			title: string;
+			components: Array<Record<string, unknown>>;
+		};
+
+	beforeEach(() => {
+		vi.mocked(sleep).mockClear().mockResolvedValue(undefined);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+		Container.reset();
+	});
+
+	it('parks the agent run when the workflow waits indefinitely', async () => {
+		setPersistence(parkedInDb(WAIT_INDEFINITELY));
+		const { tool } = await buildWaitTool(activeExecutionsParkedAt(WAIT_INDEFINITELY));
+		const { ctx, suspend } = makeCtx();
+
+		await tool.handler?.({}, ctx);
+
+		expect(suspend).toHaveBeenCalledTimes(1);
+		expect(suspend.mock.calls[0][1]).toEqual({ continuation: { executionId: 'exec-1' } });
+
+		const card = suspendedCard(suspend);
+		expect(card.title).toBe('Waiting on "Approval workflow"');
+		// An indefinite wait has no deadline to report.
+		expect(card.components.some((component) => component.type === 'fields')).toBe(false);
+	});
+
+	// Delivering that URL to the right recipient is the waiting workflow's job.
+	it('never puts the signed resume URL in the card', async () => {
+		setPersistence(parkedInDb(WAIT_INDEFINITELY));
+		const { tool } = await buildWaitTool(activeExecutionsParkedAt(WAIT_INDEFINITELY));
+		const { ctx, suspend } = makeCtx();
+
+		await tool.handler?.({}, ctx);
+
+		expect(JSON.stringify(suspendedCard(suspend))).not.toContain(RESUME_URL);
+	});
+
+	// No resumable checkpoint (inline, sub-agent) or a context that throws on suspend.
+	it('reports the waiting status instead of parking when the run cannot be resumed', async () => {
+		setPersistence(parkedInDb(WAIT_INDEFINITELY));
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(waitWorkflow);
+		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Approval workflow' }, {
+			...buildContext(vi.fn().mockResolvedValue('exec-1'), {
+				workflowLoader,
+				activeExecutions: activeExecutionsParkedAt(WAIT_INDEFINITELY),
+				supportsHitl: false,
+			}),
+			executionMode: 'integrated',
+		} as WorkflowToolContext);
+		const { ctx, suspend } = makeCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(result).toEqual({ executionId: 'exec-1', status: 'waiting' });
+	});
+
+	it('polls a bounded wait through and returns the final output in the same call', async () => {
+		const waitTill = new Date(Date.now() + 30_000);
+		const findSingleExecution = setPersistence(settledInDb());
+		const { tool } = await buildWaitTool(activeExecutionsParkedAt(waitTill));
+		const { ctx, suspend } = makeCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(suspend).not.toHaveBeenCalled();
+		// One status probe, then one full read for the output.
+		expect(findSingleExecution).toHaveBeenCalledTimes(2);
+		expect(result).toEqual({
+			executionId: 'exec-1',
+			status: 'success',
+			data: { Result: [{ approved: true }] },
+		});
+	});
+
+	it('hands off to the user when a bounded wait outlasts the poll budget', async () => {
+		const waitTill = new Date(Date.now() + 30_000);
+		setPersistence(parkedInDb(waitTill));
+		// Advance a virtual clock per sleep so the poll budget is reached without waiting.
+		let now = Date.now();
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+		vi.mocked(sleep).mockImplementation(async (ms: number) => {
+			await Promise.resolve();
+			now += ms;
+		});
+		const { tool } = await buildWaitTool(activeExecutionsParkedAt(waitTill));
+		const { ctx, suspend } = makeCtx();
+
+		await tool.handler?.({}, ctx);
+
+		expect(vi.mocked(sleep).mock.calls.length).toBeGreaterThan(1);
+		expect(suspend).toHaveBeenCalledTimes(1);
+	});
+
+	it('returns the settled output on resume without re-running the workflow', async () => {
+		setPersistence(settledInDb());
+		const { tool, run } = await buildWaitTool(mock<ActiveExecutions>());
+		const { ctx, suspend } = makeCtx({ continuation: { executionId: 'exec-1' } });
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(run).not.toHaveBeenCalled();
+		expect(suspend).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			executionId: 'exec-1',
+			status: 'success',
+			data: { Result: [{ approved: true }] },
+		});
+	});
+
+	it('parks again when the workflow is still waiting on resume', async () => {
+		setPersistence(parkedInDb(WAIT_INDEFINITELY));
+		const { tool, run } = await buildWaitTool(mock<ActiveExecutions>());
+		const { ctx, suspend } = makeCtx({ continuation: { executionId: 'exec-1' } });
+
+		await tool.handler?.({}, ctx);
+
+		expect(run).not.toHaveBeenCalled();
+		expect(suspend).toHaveBeenCalledTimes(1);
+		expect(suspend.mock.calls[0][1]).toEqual({ continuation: { executionId: 'exec-1' } });
+	});
+});
+
+describe('workflow tool → parentAgentRun stamping', () => {
+	const agentCtx = {
+		suspend: vi.fn().mockResolvedValue(undefined),
+		runId: 'run-1',
+		toolCallId: 'call-1',
+		persistence: { threadId: 'agent-1:slack:C123', resourceId: 'user-1' },
+	};
+
+	async function runToolWith(contextExtras: Partial<WorkflowToolContext>, ctx: object) {
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Lookup workflow' }, {
+			...buildContext(run, { workflowLoader, ...contextExtras }),
+			projectId: 'project-1',
+			executionMode: 'integrated',
+		} as WorkflowToolContext);
+		await tool.handler?.({}, ctx as never);
+		return (run.mock.calls[0][0] as IWorkflowExecutionDataProcess).executionData;
+	}
+
+	beforeEach(() => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi
+				.fn()
+				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
+		} as unknown as ExecutionPersistence);
+	});
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('stamps the agent run onto the sub-execution so a Wait node can resume it', async () => {
+		const executionData = await runToolWith(
+			{ agentId: 'agent-1', integrationType: 'slack' },
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			threadId: 'agent-1:slack:C123',
+			runId: 'run-1',
+			toolCallId: 'call-1',
+			integrationType: 'slack',
+		});
+	});
+
+	it('omits the integration type for a run with no chat platform', async () => {
+		const executionData = await runToolWith({ agentId: 'agent-1' }, agentCtx);
+
+		expect(executionData?.parentAgentRun).toEqual(
+			expect.objectContaining({ agentId: 'agent-1', threadId: 'agent-1:slack:C123' }),
+		);
+		expect(executionData?.parentAgentRun).not.toHaveProperty('integrationType');
+	});
+
+	// A partial marker would leave the resume path guessing, so it is not written at all.
+	it.each([
+		['no agentId (inline agent)', {}, agentCtx],
+		['no thread', { agentId: 'agent-1' }, { ...agentCtx, persistence: undefined }],
+		['no runId', { agentId: 'agent-1' }, { ...agentCtx, runId: undefined }],
+		['no toolCallId', { agentId: 'agent-1' }, { ...agentCtx, toolCallId: undefined }],
+	])('writes no marker when there is %s', async (_label, contextExtras, ctx) => {
+		const executionData = await runToolWith(contextExtras, ctx);
+
+		expect(executionData?.parentAgentRun).toBeUndefined();
 	});
 });

@@ -13,6 +13,10 @@ export class AgentsModule implements ModuleInterface {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
+		// Imported for its `@OnLifecycleEvent` registration, which happens at
+		// class-decoration time — nothing else references this service.
+		await import('./agent-workflow-tool-resume.service.js');
+
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
 		await import('./agents.controller.js');

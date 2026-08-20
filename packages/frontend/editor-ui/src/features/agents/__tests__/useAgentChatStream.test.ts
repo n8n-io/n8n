@@ -1,6 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, effectScope } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, type AgentSseEvent } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -18,6 +19,22 @@ vi.mock('@n8n/composables/useToast', () => ({
 const getChatMessagesMock = vi.fn();
 const getTestChatMessagesMock = vi.fn();
 const cancelAgentChatRunMock = vi.fn();
+
+const pushListeners: Array<(event: unknown) => void> = [];
+const pushConnectMock = vi.fn();
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: pushConnectMock,
+		addEventListener: (handler: (event: unknown) => void) => {
+			pushListeners.push(handler);
+			return () => {
+				const index = pushListeners.indexOf(handler);
+				if (index >= 0) pushListeners.splice(index, 1);
+			};
+		},
+	}),
+}));
 
 vi.mock('../composables/useAgentApi', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../composables/useAgentApi')>();
@@ -2266,5 +2283,113 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('cancelled');
 		// No backend cancel call — there is no runId/suspension to cancel.
 		expect(cancelAgentChatRunMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('useAgentChatStream — transcript push', () => {
+	/** The subscription is eager, so an effect scope is enough — no mount needed. */
+	function scopedHook(continueSessionId?: string) {
+		const scope = effectScope();
+		const hook = scope.run(() => buildHook(continueSessionId))!;
+		return { hook, dispose: () => scope.stop() };
+	}
+
+	const update = (overrides: Record<string, unknown> = {}) => ({
+		type: 'agentExecutionUpdated',
+		data: {
+			projectId: 'p1',
+			agentId: 'a1',
+			threadId: 'thread-1',
+			executionId: 'exec-1',
+			...overrides,
+		},
+	});
+
+	const emitPush = (event: unknown) => {
+		for (const listener of [...pushListeners]) listener(event);
+	};
+
+	beforeEach(() => {
+		pushListeners.length = 0;
+		pushConnectMock.mockClear();
+		getTestChatMessagesMock.mockReset();
+		getChatMessagesMock.mockReset();
+		getTestChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
+		getChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
+	});
+
+	// The turn was recorded server-side with no stream attached — re-reading the
+	// transcript is the only way the answer reaches the open chat.
+	it('re-reads the transcript when this agent’s thread is updated', async () => {
+		const { dispose } = scopedHook();
+
+		emitPush(update());
+		await flushPromises();
+
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(1);
+		dispose();
+	});
+
+	it.each([
+		['another agent', { agentId: 'other-agent' }],
+		['another project', { projectId: 'other-project' }],
+	])('ignores an update for %s', async (_label, overrides) => {
+		const { dispose } = scopedHook();
+
+		emitPush(update(overrides));
+		await flushPromises();
+
+		expect(getTestChatMessagesMock).not.toHaveBeenCalled();
+		dispose();
+	});
+
+	it('ignores unrelated push messages', async () => {
+		const { dispose } = scopedHook();
+
+		emitPush({ type: 'executionFinished', data: { projectId: 'p1', agentId: 'a1' } });
+		await flushPromises();
+
+		expect(getTestChatMessagesMock).not.toHaveBeenCalled();
+		dispose();
+	});
+
+	// A continued session shows one thread, so an update to a sibling is not it.
+	it('ignores an update for a different thread of a continued session', async () => {
+		const { dispose } = scopedHook('thread-1');
+		getChatMessagesMock.mockClear();
+
+		emitPush(update({ threadId: 'thread-2' }));
+		await flushPromises();
+
+		expect(getChatMessagesMock).not.toHaveBeenCalled();
+
+		emitPush(update({ threadId: 'thread-1' }));
+		await flushPromises();
+
+		expect(getChatMessagesMock).toHaveBeenCalledTimes(1);
+		dispose();
+	});
+
+	// Updates are broadcast per record and again on finalize, for every surface of
+	// the agent, so bursts are the norm rather than the exception.
+	it('coalesces a burst of updates into one trailing refetch', async () => {
+		const { dispose } = scopedHook();
+
+		emitPush(update());
+		emitPush(update());
+		emitPush(update());
+		await flushPromises();
+
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(2);
+		dispose();
+	});
+
+	it('stops listening once the chat is torn down', () => {
+		const { dispose } = scopedHook();
+		expect(pushListeners).toHaveLength(1);
+
+		dispose();
+
+		expect(pushListeners).toHaveLength(0);
 	});
 });

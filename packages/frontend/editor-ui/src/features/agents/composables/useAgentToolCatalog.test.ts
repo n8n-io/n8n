@@ -196,17 +196,36 @@ describe('useAgentToolCatalog', () => {
 	it('loads and filters project workflows for agent-tool compatibility', async () => {
 		const compatible = makeWorkflow({ id: 'ok' });
 		const archived = makeWorkflow({ id: 'archived', isArchived: true });
-		const waitBody = makeWorkflow({
-			id: 'wait',
+		const manualTrigger = {
+			id: 't',
+			name: 'Manual Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
+		const formBody = makeWorkflow({
+			id: 'form',
 			nodes: [
+				manualTrigger,
 				{
-					id: 't',
-					name: 'Manual Trigger',
-					type: 'n8n-nodes-base.manualTrigger',
+					id: 'f',
+					name: 'Form',
+					type: 'n8n-nodes-base.form',
 					typeVersion: 1,
 					position: [0, 0],
 					parameters: {},
 				},
+			],
+			// Form is reachable from the trigger, so it actually runs and must be flagged.
+			connections: { 'Manual Trigger': { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
+		});
+		// A reachable Wait node no longer blocks a workflow: the tool hands its
+		// suspension off to HITL, so this one is selectable.
+		const waitBody = makeWorkflow({
+			id: 'wait',
+			nodes: [
+				manualTrigger,
 				{
 					id: 'w',
 					name: 'Wait',
@@ -216,7 +235,6 @@ describe('useAgentToolCatalog', () => {
 					parameters: {},
 				},
 			],
-			// Wait is reachable from the trigger, so it actually runs and must be flagged.
 			connections: { 'Manual Trigger': { main: [[{ node: 'Wait', type: 'main', index: 0 }]] } },
 		});
 		const noTrigger = makeWorkflow({
@@ -234,20 +252,21 @@ describe('useAgentToolCatalog', () => {
 		});
 		workflowsListStore.searchWorkflows = vi
 			.fn()
-			.mockResolvedValue([compatible, archived, waitBody, noTrigger]);
+			.mockResolvedValue([compatible, archived, formBody, waitBody, noTrigger]);
 
 		const { availableWorkflows, incompatibleWorkflows, loadWorkflows } = useAgentToolCatalog();
 		await loadWorkflows('p-1');
 
-		// Compatible workflows surface as selectable; archived ones are excluded entirely.
-		expect(availableWorkflows.value.map((wf) => wf.id)).toEqual(['ok']);
+		// Compatible workflows surface as selectable; archived ones are excluded
+		// entirely. A wait-bearing workflow is now among the selectable ones.
+		expect(availableWorkflows.value.map((wf) => wf.id)).toEqual(['ok', 'wait']);
 
 		// Incompatible workflows surface with their reason, greyed out at the
 		// bottom of the picker. Archived ones are not surfaced as incompatible.
 		expect(incompatibleWorkflows.value).toEqual([
 			{
-				workflow: expect.objectContaining({ id: 'wait' }),
-				reason: { reason: 'incompatible_nodes', nodeTypes: ['n8n-nodes-base.wait'] },
+				workflow: expect.objectContaining({ id: 'form' }),
+				reason: { reason: 'incompatible_nodes', nodeTypes: ['n8n-nodes-base.form'] },
 			},
 			{
 				workflow: expect.objectContaining({ id: 'no-trigger' }),

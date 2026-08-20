@@ -305,6 +305,47 @@ describe('workflow tool compatibility', () => {
 		expect(() => validateCompatibility(workflow)).not.toThrow();
 	});
 
+	// A Wait node parks the sub-execution, which the tool hands off to HITL.
+	it('allows a reachable Wait node in workflow tools', () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				makeManualTriggerNode(),
+				{
+					id: 'wait-node-id',
+					name: 'Wait',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					position: [0, 0],
+					parameters: { resume: 'webhook' },
+				},
+			],
+			connections: { 'Manual Trigger': { main: [[{ node: 'Wait', type: 'main', index: 0 }]] } },
+		});
+
+		expect(() => validateCompatibility(workflow)).not.toThrow();
+	});
+
+	// The Form node has no equivalent path — it needs an interactive browser
+	// session part-way through the execution.
+	it('rejects a reachable Form node in workflow tools', () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				makeManualTriggerNode(),
+				{
+					id: 'form-node-id',
+					name: 'Form',
+					type: 'n8n-nodes-base.form',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: { 'Manual Trigger': { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
+		});
+
+		expect(() => validateCompatibility(workflow)).toThrow("aren't supported as agent tools");
+	});
+
 	it('attaches metadata with triggerType "webhook" for a webhook trigger workflow', async () => {
 		const workflow = makeWorkflow(
 			{ id: 'wf-webhook-1', name: 'Webhook Workflow' },
