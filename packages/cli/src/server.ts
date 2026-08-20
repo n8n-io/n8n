@@ -1,7 +1,7 @@
 import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
 import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { SecurityConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
@@ -27,10 +27,7 @@ import { PostHogClient } from '@/posthog';
 import { loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
-import {
-	HTML_NONCE_PLACEHOLDER,
-	resolveContentSecurityPolicies,
-} from '@/security/content-security-policy';
+import { resolveContentSecurityPolicies } from '@/security/content-security-policy';
 import type { FrontendService } from '@/services/frontend.service';
 import { Telemetry } from '@/telemetry';
 

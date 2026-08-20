@@ -7,12 +7,6 @@ import { DEFAULT_CONTENT_SECURITY_POLICY } from '@n8n/config';
  */
 export const NONCE_PLACEHOLDER = '<nonce>';
 
-/**
- * Placeholder baked into the built HTML at build time (see the `csp-nonce` Vite
- * plugin), replaced with the per-request nonce when the page is served.
- */
-export const HTML_NONCE_PLACEHOLDER = '{{CSP_NONCE}}';
-
 /** Value either policy variable accepts to mean n8n's own policy, as n8n changes it. */
 export const DEFAULT_POLICY_KEYWORD = 'default';
 

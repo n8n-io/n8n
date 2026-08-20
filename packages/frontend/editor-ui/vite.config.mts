@@ -16,6 +16,8 @@ import browserslist from 'browserslist';
 import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 import { nodePopularityPlugin } from './vite/vite-plugin-node-popularity.mjs';
 import { editorUiAliases } from './vite/aliases.mjs';
+// Imported from source, not from `@n8n/constants`: this file must resolve with no build step.
+import { HTML_NONCE_PLACEHOLDER } from '../../@n8n/constants/src/csp';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
@@ -102,13 +104,15 @@ const plugins: UserConfig['plugins'] = [
 		},
 	},
 	{
-		// Marks the scripts n8n ships, so the backend can give them the request's nonce
-		// (`HTML_NONCE_PLACEHOLDER` in packages/cli). Build output only: the dev server
-		// serves no CSP.
+		// Marks the scripts n8n ships, so the backend can give them the request's nonce.
+		// Build output only: the dev server serves no CSP.
 		name: 'csp-nonce',
 		transformIndexHtml(html, ctx) {
 			if (ctx.server) return html;
-			return html.replace(/<script(?![^>]*\bnonce=)([^>]*)>/g, '<script nonce="{{CSP_NONCE}}"$1>');
+			return html.replace(
+				/<script(?![^>]*\bnonce=)([^>]*)>/g,
+				`<script nonce="${HTML_NONCE_PLACEHOLDER}"$1>`,
+			);
 		},
 	},
 	// For sanitize-html

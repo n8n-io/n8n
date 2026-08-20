@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
 import {
 	AuthRolesService,
 	DeploymentKeyRepository,
@@ -38,7 +38,6 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
-import { HTML_NONCE_PLACEHOLDER } from '@/security/content-security-policy';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
