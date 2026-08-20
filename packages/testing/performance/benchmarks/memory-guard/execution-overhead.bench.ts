@@ -128,9 +128,27 @@ const CASES = [
  */
 const EXECUTION_BENCH_OPTIONS = { ...BENCH_OPTIONS, time: 5_000, warmupTime: 2_000 };
 
-for (const { nodes, items } of CASES) {
-	const run = makeCase(nodes, items);
+const runners = CASES.map(({ nodes, items }) => ({ nodes, items, run: makeCase(nodes, items) }));
 
+/**
+ * Warm both paths before any measurement, at module load.
+ *
+ * `bench()` runs in declaration order, so "guard off" always went first and paid
+ * the JIT cost that "guard on" then inherited. Under CodSpeed that does not wash
+ * out: simulation mode counts instructions over few iterations, and vitest's own
+ * `warmupIterations` does not apply. The first report showed "guard on" beating
+ * "guard off" by 3%, which is impossible, because "on" does strictly more work.
+ *
+ * Warming both here means each measured run starts from the same compiled state.
+ */
+for (const { run } of runners) {
+	for (let i = 0; i < 30; i++) {
+		await run(false);
+		await run(true);
+	}
+}
+
+for (const { nodes, items, run } of runners) {
 	describe(`Workflow execution: ${nodes} nodes, ${items} items`, () => {
 		bench(
 			`guard off (${nodes} nodes, ${items} items)`,
