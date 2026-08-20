@@ -15,6 +15,7 @@ import type { AgentTestRunService } from '../agent-test-run.service';
 import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 
 const agentRun: RelatedAgentRun = {
@@ -40,6 +41,8 @@ function setup() {
 	const userRepository = mock<UserRepository>();
 	const agentTestRunService = mock<AgentTestRunService>();
 	const broadcaster = mock<AgentExecutionUpdateBroadcaster>();
+	const messageContextService = mock<IntegrationMessageContextService>();
+	messageContextService.getLatest.mockResolvedValue(null);
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const publisher = mock<Publisher>();
 	const instanceSettings = mock<InstanceSettings>({ isWorker: false });
@@ -53,6 +56,7 @@ function setup() {
 		userRepository,
 		agentTestRunService,
 		chatIntegrationService,
+		messageContextService,
 		broadcaster,
 		checkpointStorage,
 		instanceSettings,
@@ -69,6 +73,7 @@ function setup() {
 		checkpointStorage,
 		publisher,
 		instanceSettings,
+		messageContextService,
 	};
 }
 
@@ -181,6 +186,38 @@ describe('AgentWorkflowToolResumeService → chat platforms', () => {
 			expect.any(String),
 			{ type: 'workflow_finished', value: 'error' },
 		);
+	});
+
+	// An agent with two connections on one platform must reply through the one the
+	// thread came in on, not whichever is found first.
+	it('resolves the bridge by the credential the thread came in on', async () => {
+		const { service, bridge, chatIntegrationService, messageContextService } = setup();
+		messageContextService.getLatest.mockResolvedValue({
+			integrationConnectionId: 'slack:cred-2',
+			platform: 'slack',
+		} as never);
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+
+		await service.resume(agentRun, 'success');
+
+		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith('agent-1', 'slack', 'cred-2');
+	});
+
+	it.each([
+		['there is no message context', null],
+		[
+			'the context belongs to another platform',
+			{ integrationConnectionId: 'discord:c', platform: 'discord' },
+		],
+		['no credential is bound yet', { integrationConnectionId: 'slack', platform: 'slack' }],
+	])('falls back to any ingress bridge when %s', async (_label, context) => {
+		const { service, bridge, chatIntegrationService, messageContextService } = setup();
+		messageContextService.getLatest.mockResolvedValue(context as never);
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+
+		await service.resume(agentRun, 'success');
+
+		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith('agent-1', 'slack', undefined);
 	});
 
 	it('does nothing for a run with no chat surface at all', async () => {

@@ -42,7 +42,10 @@ export function useAgentExecutionUpdates(
 			queued = true;
 			return;
 		}
-		inFlight = Promise.resolve(onUpdate())
+		// `.then(onUpdate)` rather than `Promise.resolve(onUpdate())` so a callback that
+		// throws synchronously is caught here instead of escaping into push dispatch.
+		inFlight = Promise.resolve()
+			.then(onUpdate)
 			.catch(() => {})
 			.finally(() => {
 				inFlight = undefined;

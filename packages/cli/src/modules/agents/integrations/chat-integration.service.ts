@@ -605,7 +605,18 @@ export class ChatIntegrationService {
 	 * Every main builds its own bridge, so whichever one handles a resume can drive
 	 * the reply. Only ingress connections carry one, hence the predicate.
 	 */
-	getBridge(agentId: string, integrationType: string): AgentChatBridge | undefined {
+	getBridge(
+		agentId: string,
+		integrationType: string,
+		credentialId?: string,
+	): AgentChatBridge | undefined {
+		// Pin to the originating credential when the caller knows it: an agent with two
+		// connections on one platform would otherwise reply into the wrong workspace.
+		// No fallback in that case, for the same reason.
+		if (credentialId !== undefined) {
+			return this.connections.get(this.connectionKey(agentId, integrationType, credentialId))
+				?.bridge;
+		}
 		return this.findConnection(agentId, integrationType, (c) => c.bridge !== undefined)?.bridge;
 	}
 

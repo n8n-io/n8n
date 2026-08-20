@@ -544,6 +544,29 @@ describe('workflow tool → Wait-node handoff', () => {
 		});
 	});
 
+	// A resumed execution passes through `running` before it finishes; stopping there
+	// would hand the model a `running` status and no output.
+	it('keeps polling through the running status until the workflow finishes', async () => {
+		const waitTill = new Date(Date.now() + 30_000);
+		const findSingleExecution = setPersistence(
+			{ status: 'running', data: parkedData(waitTill) },
+			settledInDb(),
+		);
+		const { tool } = await buildWaitTool(activeExecutionsParkedAt(waitTill));
+		const { ctx, suspend } = makeCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(suspend).not.toHaveBeenCalled();
+		// Two status probes (running, then success) plus the full read for the output.
+		expect(findSingleExecution).toHaveBeenCalledTimes(3);
+		expect(result).toEqual({
+			executionId: 'exec-1',
+			status: 'success',
+			data: { Result: [{ approved: true }] },
+		});
+	});
+
 	it('hands off to the user when a bounded wait outlasts the poll budget', async () => {
 		const waitTill = new Date(Date.now() + 30_000);
 		setPersistence(parkedInDb(waitTill));

@@ -118,7 +118,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function refreshHistory({
 		clearOnNotFound = false,
 		silent = false,
-	}: { clearOnNotFound?: boolean; silent?: boolean } = {}): Promise<boolean> {
+		abortIfStale,
+	}: {
+		clearOnNotFound?: boolean;
+		silent?: boolean;
+		/** Checked after the fetch — drop the result rather than overwrite newer state. */
+		abortIfStale?: () => boolean;
+	} = {}): Promise<boolean> {
 		const continueId = params.continueSessionId?.value;
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
@@ -141,6 +147,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 			}
+			if (abortIfStale?.()) return false;
 			messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
 			return true;
 		} catch (error) {
@@ -173,10 +180,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			...(params.continueSessionId ? { threadId: params.continueSessionId } : {}),
 		},
 		async () => {
-			// A live stream is already writing the transcript — let it finish.
+			// A live stream is already writing the transcript — let it finish. Checked
+			// again after the fetch, since a send can start while it is in flight.
 			if (isStreaming.value) return;
 			// Nobody asked for this refetch, so a transient failure must stay quiet.
-			await refreshHistory({ silent: true });
+			await refreshHistory({ silent: true, abortIfStale: () => isStreaming.value });
 		},
 	);
 
