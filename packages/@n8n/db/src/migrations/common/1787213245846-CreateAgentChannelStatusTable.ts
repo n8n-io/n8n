@@ -10,7 +10,7 @@ const CHANNEL_STATUSES = ['connected', 'error'];
  * registry, and constraining it here would mean a migration every time a
  * platform is added — for a table that only reports what happened.
  */
-export class CreateAgentChannelStatusTable1786700409439 implements ReversibleMigration {
+export class CreateAgentChannelStatusTable1787213245846 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('agent_channel_status')
 			.withColumns(
