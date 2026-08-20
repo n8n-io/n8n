@@ -84,6 +84,9 @@ const testCaseSchema = z.object({
 	buildTurnsPerRun: z.array(z.number().nullable()).optional(),
 	buildTokensPerRun: z.array(buildTokensSchema.nullable()).optional(),
 	buildToolCallsPerRun: z.array(z.number().nullable()).optional(),
+	/** Per-iteration context/build cross, written by the harness. Non-strict on the
+	 *  outcome string so a future cell name does not break an older report. */
+	contextOutcomePerRun: z.array(z.object({ outcome: z.string() }).nullable()).optional(),
 	buildExpectationResultsPerRun: z.array(z.array(unitVerdictSchema).nullable()).optional(),
 	scenarios: z.array(z.object({ name: z.string(), runs: z.array(scenarioRunSchema) })).optional(),
 });
@@ -242,10 +245,30 @@ export interface CaseCost {
 	meanCacheReadTokens?: number;
 	greenIterations: number;
 	evaluatedIterations: number;
+	/** How many iterations landed in each context/build cell. The headline number for
+	 *  a memory A/B: a working approach moves iterations OUT of `retrieval-gap`, and
+	 *  it must not move them INTO `unattributed-success`, which is where a system
+	 *  gets credited for builds something else carried.
+	 *
+	 *  Optional because a results file recorded before the harness wrote the
+	 *  classification genuinely has none — absent means "not measured", which must not
+	 *  be rendered as an empty tally. */
+	contextOutcomes?: Record<string, number>;
 }
 
 function caseSlug(tc: ReportTestCase): string {
 	return tc.testCaseFile ?? tc.name;
+}
+
+/** Count iterations per context/build cell, skipping the ones that could not be
+ *  classified (no gradable claim on both axes). */
+function contextOutcomesOf(tc: ReportTestCase): Record<string, number> {
+	const tally: Record<string, number> = {};
+	for (const entry of tc.contextOutcomePerRun ?? []) {
+		if (!entry || entry.outcome === 'unclassified') continue;
+		tally[entry.outcome] = (tally[entry.outcome] ?? 0) + 1;
+	}
+	return tally;
 }
 
 /** An iteration is green when every evaluated unit of it passed (scenario runs
@@ -359,6 +382,7 @@ export function persistedSpendCosts(results: EvalResults): CaseCost[] {
 			meanToolCalls: meanToolCallsOf(tc),
 			greenIterations: green,
 			evaluatedIterations: evaluated,
+			contextOutcomes: contextOutcomesOf(tc),
 		};
 	});
 }
@@ -410,6 +434,7 @@ export async function threadJoinCosts(
 			costPerIteration: perIteration,
 			meanTurns: mean(known.map((c) => c.turns)),
 			meanTokens: mean(known.map((c) => c.tokens)),
+			contextOutcomes: contextOutcomesOf(results.testCases[caseIndex]),
 			greenIterations: green,
 			evaluatedIterations: evaluated,
 		};
@@ -464,10 +489,55 @@ function armTotals(arm: ArmSummary): string[] {
 	];
 }
 
+/**
+ * Per-arm context/build tally, in the order that reads as a diagnosis.
+ *
+ * The headline for a memory A/B: a working approach moves iterations out of
+ * `retrieval-gap`. It must not move them into `unattributed-success` — that cell is
+ * the build succeeding while the context lacked the fact, so something other than the
+ * context system carried it, and crediting the system there would flatter it.
+ */
+const OUTCOME_ORDER = [
+	'retrieval-gap',
+	'context-ignored',
+	'working',
+	'unattributed-success',
+] as const;
+
+const OUTCOME_SHORT: Record<string, string> = {
+	'retrieval-gap': 'never retrieved',
+	'context-ignored': 'present but unused',
+	working: 'context used',
+	'unattributed-success': 'passed without it',
+};
+
+function contextOutcomeLine(arm: ArmSummary): string | undefined {
+	const total: Record<string, number> = {};
+	for (const c of arm.cases) {
+		for (const [outcome, n] of Object.entries(c.contextOutcomes ?? {})) {
+			total[outcome] = (total[outcome] ?? 0) + n;
+		}
+	}
+	const parts = OUTCOME_ORDER.filter((o) => total[o]).map(
+		(o) => `${OUTCOME_SHORT[o]} ${String(total[o])}`,
+	);
+	// Any cell the harness reports that this report has not been taught to order.
+	for (const [o, n] of Object.entries(total)) {
+		if (!OUTCOME_ORDER.includes(o as (typeof OUTCOME_ORDER)[number])) {
+			parts.push(`${o} ${String(n)}`);
+		}
+	}
+	return parts.length > 0 ? parts.join(' · ') : undefined;
+}
+
 export function renderMarkdown(arms: ArmSummary[]): string {
 	const lines: string[] = ['# Build-cost report — builder arms compared', ''];
 	for (const arm of arms) {
 		lines.push(`- **${arm.label}** (${arm.source}): ${armTotals(arm).join(', ')}`);
+		const outcomes = contextOutcomeLine(arm);
+		// Cost alone cannot tell a better context system from a cheaper one that
+		// delivers nothing, so this sits directly under each arm's cost summary.
+		if (outcomes) lines.push(`  - context: ${outcomes}`);
 	}
 	lines.push('');
 
