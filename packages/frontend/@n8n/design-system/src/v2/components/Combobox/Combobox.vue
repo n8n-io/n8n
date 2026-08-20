@@ -9,6 +9,7 @@ import {
 	useCssModule,
 	useId,
 	useTemplateRef,
+	watch,
 } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
@@ -290,6 +291,29 @@ function getSelectedItem(
 
 	return optionItems.value.find((item) => item.value === value);
 }
+
+/**
+ * Reka only reapplies `displayValue` when `modelValue` changes, not when `items`
+ * do. Sync the closed input once a matching label becomes available so a value
+ * set before async items load does not stay as the raw id.
+ */
+watch(
+	optionItems,
+	() => {
+		const label = getSelectedItem(rootModelValue.value)?.label;
+		if (!label) {
+			return;
+		}
+
+		const element = getInputElement();
+		if (!element || document.activeElement === element || element.value === label) {
+			return;
+		}
+
+		element.value = label;
+	},
+	{ flush: 'post' },
+);
 
 function showClearButton(value: ComboboxValue | ComboboxValue[] | undefined): boolean {
 	return props.clearable && !props.disabled && hasValue(value);

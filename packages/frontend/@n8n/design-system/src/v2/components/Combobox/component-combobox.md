@@ -37,7 +37,7 @@ Use `type: 'group'` for sections. The `label` is optional. Each group maps to it
 - `placeholder?: string` — Shown in the input when no value is selected | `default: t('combobox.placeholder')`
 - `emptyText?: string` — Shown when filtering returns no matches | `default: t('combobox.emptyText')`
 - `autoFocus?: boolean` — Focus the input on mount
-- `items?: ComboboxItem[]` — Array of options to render (see [Item shapes](#item-shapes) below)
+- `items?: ComboboxItem[]` — Array of options to render (see [Item shapes](#item-shapes) below). If `modelValue` is set before items resolve, the input shows the raw value until a matching item is available, then updates to that item's `label`. There is no built-in pending/skeleton state — wrap the field at the call site if you need one.
 - `defaultValue?: ComboboxValue | ComboboxValue[]` — Initial value when uncontrolled. Seeds the selection used for tags, the clear button, leading icon, and `data-empty` (same as a controlled `modelValue`).
 - `modelValue?: ComboboxValue | ComboboxValue[]` — Controlled value. Bind with `v-model`
 - `multiple?: boolean` — Allow selecting multiple options. Selected values render as removable tags via embedded `N8nTagsInput2` (search input stays empty; filtering still works while typing)

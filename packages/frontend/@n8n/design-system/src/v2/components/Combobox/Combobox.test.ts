@@ -744,6 +744,59 @@ describe('v2/components/Combobox', () => {
 			});
 		});
 
+		it('should resolve the display label when items load after the value is set', async () => {
+			const items = ref<ComboboxItem[]>([]);
+			const value = ref('in_progress');
+
+			const wrapper = render({
+				components: { Combobox },
+				setup() {
+					return { value, items };
+				},
+				template: `
+					<Combobox
+						v-model="value"
+						:items="items"
+					/>
+				`,
+			});
+
+			expect(getComboboxInput(wrapper)).toHaveValue('in_progress');
+
+			items.value = [{ value: 'in_progress', label: 'In Progress' }];
+
+			await waitFor(() => {
+				expect(getComboboxInput(wrapper)).toHaveValue('In Progress');
+			});
+		});
+
+		it('should resolve tag labels when items load after values are set', async () => {
+			const items = ref<ComboboxItem[]>([]);
+			const value = ref(['in_progress']);
+
+			const wrapper = render({
+				components: { Combobox },
+				setup() {
+					return { value, items };
+				},
+				template: `
+					<Combobox
+						v-model="value"
+						:items="items"
+						multiple
+					/>
+				`,
+			});
+
+			expect(wrapper.getByText('in_progress')).toBeVisible();
+
+			items.value = [{ value: 'in_progress', label: 'In Progress' }];
+
+			await waitFor(() => {
+				expect(wrapper.getByText('In Progress')).toBeVisible();
+			});
+		});
+
 		it('should keep the selection when the input is cleared to search again', async () => {
 			const value = ref('Apple');
 			const items = options('Apple', 'Banana', 'Orange');

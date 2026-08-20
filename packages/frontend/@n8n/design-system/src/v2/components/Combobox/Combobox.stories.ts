@@ -341,6 +341,68 @@ export const Empty = {
 	},
 } satisfies Story;
 
+export const AsyncItems = {
+	name: 'Async Items',
+	render: () => ({
+		components: { Combobox, N8nButton },
+		setup() {
+			const value = ref('in_progress');
+			const items = ref<ComboboxItemType[]>([]);
+			const loading = ref(false);
+			const loadCount = ref(0);
+
+			async function loadItems(remount = false) {
+				loading.value = true;
+				items.value = [];
+				if (remount) {
+					loadCount.value += 1;
+				}
+
+				await new Promise((resolve) => setTimeout(resolve, 1500));
+				items.value = itemsWithDisabledOption;
+				loading.value = false;
+			}
+
+			void loadItems();
+
+			return { value, items, loading, loadCount, loadItems };
+		},
+		template: `
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
+			<p style="margin: 0; font-size: var(--font-size--sm); color: var(--text-color--subtle);">
+				<code>v-model</code> is already <code>in_progress</code> while <code>items</code> is empty.
+				After 1.5s the options arrive and the input should update from the raw id to
+				<strong>In Progress</strong>.
+			</p>
+			<Combobox
+				:key="loadCount"
+				v-model="value"
+				:items="items"
+				placeholder="Search status..."
+			/>
+			<N8nButton
+				:label="loading ? 'Loading items…' : 'Reload items'"
+				:disabled="loading"
+				variant="outline"
+				@click="loadItems(true)"
+			/>
+			<p style="margin: 0; font-size: var(--font-size--sm);">
+				Selected: <strong>{{ value }}</strong>
+				· Items: <strong>{{ items.length }}</strong>
+			</p>
+		</div>
+		`,
+	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Simulates a selected value arriving before async options. The input falls back to the raw value until items resolve, then updates to the matching label. Reload remounts the field so you can watch the handoff again.',
+			},
+		},
+	},
+} satisfies Story;
+
 export const Multiple = {
 	render: (args) => ({
 		components: { Combobox },
