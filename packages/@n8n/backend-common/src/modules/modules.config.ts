@@ -36,6 +36,7 @@ export const MODULE_NAMES = [
 	'runtime-credentials',
 	'n8n-packages',
 	'workflow-reviews',
+	'engine-v2',
 	'policy-infrastructure',
 ] as const;
 
