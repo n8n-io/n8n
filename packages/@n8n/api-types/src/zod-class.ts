@@ -35,45 +35,34 @@ export interface ZodArrayClass<T, Item extends z.ZodTypeAny = z.ZodTypeAny> {
  * }) {}
  * ```
  */
-const dtoClassFor = <T extends z.ZodRawShape, Unknown extends z.UnknownKeysParam>(
-	shape: T,
-	schema: z.ZodObject<T, Unknown>,
-): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> => {
-	type Output = z.objectOutputType<T, z.ZodTypeAny>;
-
-	const DtoClass = class {
-		static schema = schema;
-
-		constructor(data: Output) {
-			const parsed = schema.parse(data);
-			Object.assign(this, parsed);
-		}
-
-		static safeParse(data: unknown) {
-			return schema.safeParse(data);
-		}
-
-		static parse(data: unknown): Output {
-			return schema.parse(data) as Output;
-		}
-
-		static extend<U extends z.ZodRawShape>(additionalShape: U) {
-			return dtoClassFor({ ...shape, ...additionalShape }, schema.extend(additionalShape));
-		}
-	};
-
-	return DtoClass as unknown as ZodClass<Output, T>;
-};
-
 export const Z = {
-	class: <T extends z.ZodRawShape>(shape: T): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> =>
-		dtoClassFor(shape, z.object(shape)),
+	class: <T extends z.ZodRawShape>(shape: T): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> => {
+		const schema = z.object(shape);
+		type Output = z.objectOutputType<T, z.ZodTypeAny>;
 
-	/** Like `Z.class`, but an unknown key fails validation instead of being stripped. */
-	strictClass: <T extends z.ZodRawShape>(
-		shape: T,
-	): ZodClass<z.objectOutputType<T, z.ZodTypeAny>, T> =>
-		dtoClassFor(shape, z.object(shape).strict()),
+		const DtoClass = class {
+			static schema = schema;
+
+			constructor(data: Output) {
+				const parsed = schema.parse(data);
+				Object.assign(this, parsed);
+			}
+
+			static safeParse(data: unknown) {
+				return schema.safeParse(data);
+			}
+
+			static parse(data: unknown): Output {
+				return schema.parse(data);
+			}
+
+			static extend<U extends z.ZodRawShape>(additionalShape: U) {
+				return Z.class({ ...shape, ...additionalShape });
+			}
+		};
+
+		return DtoClass as unknown as ZodClass<Output, T>;
+	},
 
 	/**
 	 * Array-rooted counterpart to `Z.class`, for endpoints whose request body or response is a bare

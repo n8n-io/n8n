@@ -191,4 +191,19 @@ export const createWorkflowPublicShape = {
 	activeVersion: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.activeVersion),
 } as const;
 
-export class CreateWorkflowPublicDto extends Z.strictClass(createWorkflowPublicShape) {}
+const createWorkflowPublicSchema = z.object(createWorkflowPublicShape).strict();
+
+// `Z.class` builds a non-strict schema, which strips an unknown field. `workflowCreate.yml` set
+// `additionalProperties: false`, so an unknown field has to stay a 400 — hence the strict schema
+// and the three overrides. `Z.class` still supplies the constructor and the parsed-body type.
+export class CreateWorkflowPublicDto extends Z.class(createWorkflowPublicShape) {
+	static schema = createWorkflowPublicSchema;
+
+	static safeParse(data: unknown) {
+		return createWorkflowPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return createWorkflowPublicSchema.parse(data);
+	}
+}
