@@ -23,6 +23,7 @@ import type { DbStore } from '@/executions/execution-data/db-store';
 import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionDataPayload } from '@/executions/execution-data/types';
+import { UnreadableRunDataError } from '@/executions/execution-data/unreadable-run-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 describe('ExecutionPersistence', () => {
@@ -832,7 +833,7 @@ describe('ExecutionPersistence', () => {
 				expect(dbStore.write).not.toHaveBeenCalled();
 			});
 
-			it('should throw MissingExecutionDataError when the db row carries no run data', async () => {
+			it('should throw UnreadableRunDataError when the db row carries no run data', async () => {
 				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
 				// The row exists, so the read returns it, but its `data` column holds nothing usable.
@@ -847,7 +848,7 @@ describe('ExecutionPersistence', () => {
 
 				await expect(
 					executionPersistence.updateExistingExecution(executionId, { workflowData }),
-				).rejects.toBeInstanceOf(MissingExecutionDataError);
+				).rejects.toBeInstanceOf(UnreadableRunDataError);
 
 				expect(dbStore.write).not.toHaveBeenCalled();
 			});

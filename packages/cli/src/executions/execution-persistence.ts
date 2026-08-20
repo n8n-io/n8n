@@ -37,6 +37,7 @@ import {
 	type ExecutionRef,
 	type WorkflowSnapshot,
 } from './execution-data/types';
+import { UnreadableRunDataError } from './execution-data/unreadable-run-data.error';
 import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 import { EventService } from '../events/event.service';
@@ -843,7 +844,7 @@ export class ExecutionPersistence {
 					serializedData = stored.data;
 				} else {
 					// should not happen, ensures serializedData type safety
-					throw new MissingExecutionDataError(ref);
+					throw new UnreadableRunDataError(ref);
 				}
 
 				const bundle: ExecutionDataPayload = {
