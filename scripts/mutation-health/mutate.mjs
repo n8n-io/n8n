@@ -46,7 +46,7 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -108,6 +108,25 @@ export function coverageFromCounts(c) {
 	const total = covered + (c.noCoverage ?? 0);
 	if (total === 0) return 0;
 	return +Math.min(1, Math.max(0, covered / total)).toFixed(4);
+}
+
+/**
+ * What a finished Stryker run produced. `hasReport` must describe THIS run:
+ * the caller deletes the previous reports first, because a file left by an
+ * earlier run makes a crashed run look complete and report the earlier target.
+ *
+ *   complete  — the run finished and wrote a report.
+ *   partial   — the run wrote a report, then exited non-zero. Untested mutants
+ *               can still be survivors, so this never passes the gate.
+ *   no-tests  — no test covers the target. A result, not an error: the score is
+ *               zero and every mutant has no coverage. See DEVP-414.
+ *   failed    — no report. The caller reports a toolchain failure.
+ */
+export function classifyRun({ exitCode, output, hasReport }) {
+	if (!hasReport) {
+		return /no tests were executed/i.test(output) ? 'no-tests' : 'failed';
+	}
+	return exitCode === 0 ? 'complete' : 'partial';
 }
 
 // A run is only "passing" when the score meets the floor AND every unkilled
@@ -347,6 +366,17 @@ function packageUsesVitest(pkgRoot) {
 	}
 }
 
+// Why a package cannot be scored, or null when it can. Both planners call this,
+// so a named target and a --diff target always get the same answer.
+function ineligibleReason(pkgRoot) {
+	const pkgName = packageNameOf(pkgRoot) || path.relative(repoRoot, pkgRoot);
+	if (BLOCKED_PACKAGES.has(packageNameOf(pkgRoot))) {
+		return `${pkgName} is blocked: the isolated-vm engine crashes Stryker's dry run (DEVP-257)`;
+	}
+	if (!packageUsesVitest(pkgRoot)) return `${pkgName} is not a vitest package`;
+	return null;
+}
+
 function planFromDiff(base) {
 	// Diff the merge base against the working tree, not against HEAD. This also
 	// scores uncommitted edits. On a PR checkout the tree is clean, thus the
@@ -377,16 +407,9 @@ function planFromDiff(base) {
 			skipped.push([file, 'no enclosing package']);
 			continue;
 		}
-		const pkgName = packageNameOf(pkgRoot);
-		if (BLOCKED_PACKAGES.has(pkgName)) {
-			skipped.push([file, `${pkgName} is blocked`]);
-			continue;
-		}
-		if (!packageUsesVitest(pkgRoot)) {
-			skipped.push([
-				file,
-				`${pkgName || path.relative(repoRoot, pkgRoot)} is not a vitest package`,
-			]);
+		const reason = ineligibleReason(pkgRoot);
+		if (reason) {
+			skipped.push([file, reason]);
 			continue;
 		}
 
@@ -473,6 +496,12 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 	const summaryJsonPath = path.join(reportDir, 'summary.json');
 	await mkdir(reportDir, { recursive: true });
 
+	// Delete the previous reports first. The code below reads "raw.json exists"
+	// as "this run wrote a report". A file from an earlier run makes a crashed
+	// run report the earlier target and its score, and it also hides the
+	// no-covering-tests result. After this, a report on disk is always this run's.
+	await Promise.all([rm(rawJsonPath, { force: true }), rm(summaryJsonPath, { force: true })]);
+
 	process.stderr.write(
 		`\nRunning Stryker on ${packageDir} — ${targets.length} target(s) ` +
 			`(config: ${path.relative(repoRoot, configPath)}, threshold: ${THRESHOLD}%)\n`,
@@ -521,14 +550,13 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 	const strykerOutput = Buffer.concat(strykerOutputChunks).toString('utf8');
 	const target = mutateArg;
 
-	// Stryker writes "No tests were executed" when no test covers the target.
-	// This is a result, not an error: the score is zero and each mutant has no
-	// coverage. Record it as red. See DEVP-414.
-	const noTestsExecuted = /no tests were executed/i.test(strykerOutput) && !existsSync(rawJsonPath);
+	const outcome = classifyRun({
+		exitCode: strykerExitCode,
+		output: strykerOutput,
+		hasReport: existsSync(rawJsonPath),
+	});
 
-	// Keep a report that Stryker wrote before a non-zero exit. The code below
-	// makes a partial summary from it. Fail only when no report exists.
-	if (strykerExitCode !== 0 && !noTestsExecuted && !existsSync(rawJsonPath)) {
+	if (outcome === 'failed') {
 		process.stderr.write(
 			`✗ ${packageDir}: Stryker exited ${strykerExitCode} without producing ` +
 				`${path.relative(repoRoot, rawJsonPath)}\n`,
@@ -536,7 +564,7 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 		return { packageDir, summaryJsonPath, failed: true };
 	}
 
-	if (noTestsExecuted) {
+	if (outcome === 'no-tests') {
 		const mutantMatch = strykerOutput.match(
 			/Instrumented\s+\d+\s+source file\(s\)\s+with\s+(\d+)\s+mutant/i,
 		);
@@ -550,20 +578,13 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 		return { packageDir, summaryJsonPath, summary, noTests: true };
 	}
 
-	if (!existsSync(rawJsonPath)) {
-		process.stderr.write(`✗ ${packageDir}: Stryker did not produce ${rawJsonPath}\n`);
-		return { packageDir, summaryJsonPath, failed: true };
-	}
-
 	const raw = JSON.parse(await readFile(rawJsonPath, 'utf8'));
 	const summary = buildSummary(raw, {
 		threshold: THRESHOLD,
 		target,
 		generatedAt: new Date().toISOString(),
 	});
-	// A report with a non-zero exit means the run stopped early. Mark it, because
-	// the survivor list can be incomplete.
-	if (strykerExitCode !== 0) summary.partial = true;
+	if (outcome === 'partial') summary.partial = true;
 
 	await writeFile(summaryJsonPath, JSON.stringify(summary, null, 2));
 	return { packageDir, summaryJsonPath, summary };
@@ -572,7 +593,9 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 function reportJob({ packageDir, summaryJsonPath, summary, noTests, failed }) {
 	if (failed) return;
 	if (noTests) {
-		process.stderr.write(`✗ ${packageDir}  0.00%  (no covering tests — recorded as score-0 red)\n`);
+		process.stderr.write(
+			`✗ ${packageDir} ${summary.target}  0.00%  (no covering tests — recorded as score-0 red)\n`,
+		);
 		process.stderr.write(`  summary: ${path.relative(repoRoot, summaryJsonPath)}\n`);
 		return;
 	}
@@ -644,6 +667,10 @@ function planFromTarget(targetArg, packageDirArg) {
 	if (!isMutableSource(rel)) {
 		die(2, `Not a mutable source file (test/declaration/config/build output): ${rel}`);
 	}
+	// --diff skips an ineligible package. A named target must refuse for the same
+	// reason, or it starts a run that is known to crash.
+	const reason = ineligibleReason(pkgRoot);
+	if (reason) die(2, `Cannot mutate ${rel}: ${reason}`);
 
 	return {
 		pkgRoot,
