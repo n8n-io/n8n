@@ -1503,4 +1503,66 @@ describe('execute-workflow MCP tool', () => {
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 	});
+
+	// Reproduces IAM-855: a workflow whose redaction setting is "do not redact"
+	// (redactionPolicy 'none') must never have its execution output redacted, yet
+	// executions started via MCP come back redacted.
+	//
+	// The webhook trigger path stamps the triggering user's identity onto the run
+	// via `runData.encryptedRunnerIdentity` (see webhook-helpers.ts). During
+	// context establishment that identity becomes `runtimeData.credentials`, and
+	// when the run resolves a private/dynamic credential the engine records the
+	// user in `runtimeData.executedByUserId`. At read time the redaction layer
+	// grants that user access to their own execution
+	// (ExecutionRedactionService.isOwnDynamicCredentialsExecution), so a run they
+	// triggered is never redacted from them.
+	//
+	// The MCP execute path builds its runData without that identity, so an
+	// execution that resolves a dynamic credential is attributable to nobody and
+	// is force-redacted at read time for the very user who ran it — even though the
+	// workflow's redactionPolicy is 'none'. This is the ticket's symptom: the
+	// workflow settings say "do not redact" but MCP-triggered executions are
+	// redacted, in both manual and production mode.
+	describe('execution runner identity for redaction (IAM-855)', () => {
+		test('MCP execution carries the triggering user identity so their own runs are not redacted', async () => {
+			const workflow = createWorkflow({
+				activeVersionId: null,
+				settings: { availableInMCP: true, redactionPolicy: 'none' },
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: MANUAL_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+						credentials: { httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' } },
+					} as INode,
+				],
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+			(workflowRunner.run as Mock).mockResolvedValue('execution-id');
+
+			await executeWorkflow(
+				user,
+				workflowFinderService,
+				workflowRunner,
+				mcpService,
+				workflowsConfig,
+				workflowPublishedDataService,
+				'wf-1',
+				undefined,
+				'manual',
+			);
+
+			const runCall = (workflowRunner.run as Mock).mock
+				.calls[0][0] as IWorkflowExecutionDataProcess;
+
+			// The run must carry the triggering user's identity — the same way the
+			// webhook trigger path does — so the redaction layer can attribute the
+			// execution to the user who started it and never redact their own output.
+			expect(runCall.encryptedRunnerIdentity).toBeDefined();
+		});
+	});
 });
