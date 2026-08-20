@@ -1,5 +1,5 @@
-import type { InstanceAiPermissions } from '@n8n/api-types';
 import { isZodSchema, zodToJsonSchema } from '@n8n/agents';
+import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
