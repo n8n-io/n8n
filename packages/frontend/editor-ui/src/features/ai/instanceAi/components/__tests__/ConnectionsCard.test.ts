@@ -198,6 +198,19 @@ describe('ConnectionsCard', () => {
 		);
 	});
 
+	it('stops reporting a connect once the flow has finished', () => {
+		// A silent connect that succeeded and was then disconnected must not leave the row
+		// spinning against a "Disconnected" subtitle.
+		browserConnectStatus.value = 'connected';
+
+		const { getByTestId } = renderComponent();
+
+		expect(getByTestId('connection-row-browser-use-row')).not.toHaveAttribute(
+			'data-status',
+			'connecting',
+		);
+	});
+
 	it('leaves the row alone while the extension popup awaits the user', () => {
 		browserConnectStatus.value = 'waiting';
 

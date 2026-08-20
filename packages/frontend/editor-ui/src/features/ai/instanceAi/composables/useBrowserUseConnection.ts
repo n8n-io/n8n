@@ -81,7 +81,10 @@ export function useBrowserUseConnection() {
 		return true;
 	}
 
-	/** Bounded by the attempt itself, which lands on `failed` if the relay never attaches. */
+	/**
+	 * Bounded by the attempt landing on `failed`. Not bounded when the extension reports
+	 * success but the backend push never arrives — see the follow-up on adding a timeout.
+	 */
 	async function waitForSilentConnect(): Promise<boolean> {
 		await until(() => settingsStore.browserConnected || status.value === 'failed').toBe(true, {
 			throwOnTimeout: false,

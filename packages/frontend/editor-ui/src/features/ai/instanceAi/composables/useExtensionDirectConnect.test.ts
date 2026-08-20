@@ -158,7 +158,7 @@ describe('useExtensionDirectConnect', () => {
 		expect(status.value).toBe('failed');
 	});
 
-	it('stays waiting when the extension reports a successful connect', async () => {
+	it('settles on a terminal state when the extension reports a successful connect', async () => {
 		const { status, attempt } = useExtensionDirectConnect();
 		const pending = attempt(CONNECT_URL);
 		await settle();
@@ -166,7 +166,9 @@ describe('useExtensionDirectConnect', () => {
 		heldCallbacks[0]({ connected: true });
 		await pending;
 
-		expect(status.value).toBe('waiting');
+		// A finished flow left on an in-progress status makes every later reader — the
+		// connections row especially — believe a connect is still running.
+		expect(status.value).toBe('connected');
 	});
 
 	it('fails when no connect result arrives in time', async () => {

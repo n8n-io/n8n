@@ -23,8 +23,12 @@ const { status, isFlowActive, attempt } = useExtensionDirectConnect();
 const connectUrl = ref<string | null>(null);
 // A remembered host attaches with no popup, so it must not be told to confirm one.
 const inFlightTextKey = computed(() => {
-	if (status.value === 'connecting') return 'instanceAi.browserUse.directConnect.connecting';
 	if (status.value === 'waiting') return 'instanceAi.browserUse.directConnect.waiting';
+	// `connected` keeps the spinner up until the parent swaps to its connected view, which
+	// happens on a separate push — otherwise the connect action flashes back in between.
+	if (status.value === 'connecting' || status.value === 'connected') {
+		return 'instanceAi.browserUse.directConnect.connecting';
+	}
 	return null;
 });
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;

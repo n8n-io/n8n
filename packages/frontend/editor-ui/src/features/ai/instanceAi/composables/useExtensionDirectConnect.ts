@@ -2,8 +2,17 @@ import { readonly, ref, type Ref } from 'vue';
 
 export const DIRECT_CONNECT_CONFIRMATION_TIMEOUT_MS = 15_000;
 
-/** `waiting` needs the user to act on a popup; `connecting` is attaching with no prompt. */
-export type DirectConnectStatus = 'idle' | 'unsupported' | 'waiting' | 'connecting' | 'failed';
+/**
+ * `waiting` needs the user to act on a popup; `connecting` is attaching with no prompt.
+ * `connected` and `failed` are terminal — the flow is over and nothing more will change it.
+ */
+export type DirectConnectStatus =
+	| 'idle'
+	| 'unsupported'
+	| 'waiting'
+	| 'connecting'
+	| 'connected'
+	| 'failed';
 
 interface ExtensionRuntime {
 	sendMessage: (
@@ -130,9 +139,9 @@ export function useExtensionDirectConnect() {
 			]);
 			connected = isRecord(result) && result.connected === true;
 		} catch {}
-		if (!connected) {
-			status.value = 'failed';
-		}
+		// Land on a terminal state either way. Leaving a finished flow on an in-progress
+		// status makes every later reader believe a connect is still running.
+		status.value = connected ? 'connected' : 'failed';
 	}
 
 	return {
