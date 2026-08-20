@@ -276,6 +276,11 @@ const closeOnSave = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
 });
 
+const onCredentialCreated = computed<NewCredentialsModal['onCredentialCreated']>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) ? modalState.onCredentialCreated : undefined;
+});
+
 const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
 	if (props.mode !== 'new') return undefined;
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
@@ -708,6 +713,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			credentialDetails.usageScope = presetUsageScope.value;
 		}
 		credential = await createCredential(credentialDetails, homeProject.value);
+		if (credential) onCredentialCreated.value?.(credential);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			credentialDetails.sharedWithProjects = credentialData.value

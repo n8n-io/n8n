@@ -499,7 +499,7 @@ describe('AgentModelSelector', () => {
 			undefined,
 			undefined,
 			undefined,
-			{ hideAskAssistant: true },
+			{ hideAskAssistant: true, onCredentialCreated: expect.any(Function) },
 		);
 	});
 
@@ -517,7 +517,11 @@ describe('AgentModelSelector', () => {
 			undefined,
 			undefined,
 			undefined,
-			{ hideAskAssistant: true, appendToBody: true },
+			{
+				hideAskAssistant: true,
+				appendToBody: true,
+				onCredentialCreated: expect.any(Function),
+			},
 		);
 	});
 

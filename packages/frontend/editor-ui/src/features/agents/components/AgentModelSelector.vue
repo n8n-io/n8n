@@ -470,7 +470,7 @@ const filteredMenu = computed(() => {
 	});
 });
 
-function openNewCredential(credentialType: string) {
+function openNewCredential(provider: AgentModelProvider, credentialType: string) {
 	if (!disabled && canCreateCredentials.value) {
 		uiStore.openNewCredential(
 			credentialType,
@@ -482,6 +482,9 @@ function openNewCredential(credentialType: string) {
 			undefined,
 			{
 				hideAskAssistant: true,
+				onCredentialCreated: function selectCreatedCredential(credential) {
+					emit('selectCredential', provider, credential.id);
+				},
 				...(credentialModalAppendToBody ? { appendToBody: true } : {}),
 			},
 		);
@@ -497,7 +500,7 @@ async function onSelect(id: string) {
 
 	if (action === 'configure') {
 		emit('configureCredential', providerId);
-		openNewCredential(value);
+		openNewCredential(providerId, value);
 		return;
 	}
 
