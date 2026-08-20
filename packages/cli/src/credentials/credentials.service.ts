@@ -2053,14 +2053,15 @@ export class CredentialsService {
 	 * `credential:create` on the target project. A supplied `id` preserves source identity.
 	 */
 	async createStubCredential(
-		opts: { id?: string; name: string; type: string; projectId: string },
+		opts: { id?: string; name: string; type: string; projectId: string; data?: ICredentialDataDecryptedObject },
 		user: User,
 	): Promise<CredentialsEntity> {
+		const data = opts.data ?? {};
 		const encryptedCredential = await this.createEncryptedData({
 			id: opts.id ?? null,
 			name: opts.name,
 			type: opts.type,
-			data: {},
+			data,
 		});
 
 		const credentialEntity = this.credentialsRepository.create({
@@ -2075,7 +2076,7 @@ export class CredentialsService {
 				encryptedCredential,
 				user,
 				opts.projectId,
-				{},
+				data,
 			);
 		} catch (error) {
 			if (error instanceof CredentialIdConflictError) {

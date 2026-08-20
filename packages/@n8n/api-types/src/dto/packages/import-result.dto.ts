@@ -144,6 +144,10 @@ const importCredentialSummarySchema = z
 			description:
 				'Source credential ids for which empty placeholder credentials were created in the target project.',
 		}),
+		seeded: z.array(z.string()).openapi({
+			description:
+				'Source credential ids for which credentials were created with bundled expression values in the target project.',
+		}),
 	})
 	.openapi({
 		description:

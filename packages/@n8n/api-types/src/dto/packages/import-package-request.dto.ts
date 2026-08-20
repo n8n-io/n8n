@@ -108,7 +108,7 @@ export class ImportPackageRequestDto extends Z.class(
 			['id-only', 'name-and-type', 'type-only'],
 			'id-only',
 		).openapi(importPackageRequestFieldDocs.credentialMatchingMode),
-		credentialMissingMode: optionalEnum(['must-preexist', 'create-stub'], 'create-stub').openapi(
+		credentialMissingMode: optionalEnum(['must-preexist', 'create-stub', 'create-with-values'], 'create-stub').openapi(
 			importPackageRequestFieldDocs.credentialMissingMode,
 		),
 		bindings: bindingsSchema.openapi(importPackageRequestFieldDocs.bindings),

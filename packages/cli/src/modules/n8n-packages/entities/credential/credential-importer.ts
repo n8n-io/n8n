@@ -1,15 +1,20 @@
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { CredentialMatcherFactory } from './credential-matcher-factory';
-import { credentialBlockingFailures, credentialsToStub } from './credential-missing-mode';
+import {
+	credentialBlockingFailures,
+	credentialMissingModeUsesPackageData,
+	credentialsToStub,
+} from './credential-missing-mode';
 import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
 	CredentialResolution,
 	CredentialResolutionFailure,
+	PlacedCredentialRequirement,
 } from './credential.types';
 import type { ImportBindingMap, ImportContext } from '../../n8n-packages.types';
 
@@ -50,12 +55,6 @@ export class CredentialImporter {
 		return credentialBlockingFailures(request.missingMode, resolution);
 	}
 
-	/**
-	 * Creates stub credentials for unresolved `not_found` references under
-	 * `create-stub`, then returns the full source→target binding map.
-	 * {@link CredentialsService.createStubCredential} enforces `credential:create`
-	 * on the target project, and the `credentialSave` policy again after the plan checked it.
-	 */
 	async apply(
 		context: ImportContext,
 		request: CredentialBindingRequest,
@@ -64,6 +63,11 @@ export class CredentialImporter {
 		const bindings: ImportBindingMap = new Map(resolution.successes);
 		const matched = [...resolution.successes.keys()];
 		const stubbed: string[] = [];
+		const seeded: string[] = [];
+
+		const packageData = credentialMissingModeUsesPackageData(request.missingMode)
+			? packageDataBySourceId(request.requirements)
+			: new Map<string, ICredentialDataDecryptedObject>();
 
 		for (const credential of credentialsToStub(request.missingMode, resolution)) {
 			const { sourceId, type, name } = credential;
@@ -73,6 +77,7 @@ export class CredentialImporter {
 				);
 			}
 
+			const data = packageData.get(sourceId);
 			const stubCredential = await this.credentialsService.createStubCredential(
 				{
 					// Preserve source identity only when matching by id.
@@ -80,14 +85,30 @@ export class CredentialImporter {
 					name: name ?? sourceId,
 					type,
 					projectId: context.projectId,
+					...(data !== undefined ? { data } : {}),
 				},
 				context.user,
 			);
 
 			bindings.set(sourceId, stubCredential.id);
-			stubbed.push(sourceId);
+			(data !== undefined ? seeded : stubbed).push(sourceId);
 		}
 
-		return { bindings, matched, stubbed };
+		return { bindings, matched, stubbed, seeded };
 	}
+}
+
+/** Non-empty bundled expression data per source id; empty data means an empty stub. */
+function packageDataBySourceId(
+	requirements: PlacedCredentialRequirement[] | undefined,
+): Map<string, ICredentialDataDecryptedObject> {
+	const data = new Map<string, ICredentialDataDecryptedObject>();
+	for (const requirement of requirements ?? []) {
+		if (requirement.packageData !== undefined && Object.keys(requirement.packageData).length > 0) {
+			// Zod-validated plain JSON is what Cipher encrypts at rest, but CredentialInformation
+			// cannot type a mixed-element array, so the compatibility is asserted, not inferred.
+			data.set(requirement.id, requirement.packageData as ICredentialDataDecryptedObject);
+		}
+	}
+	return data;
 }
