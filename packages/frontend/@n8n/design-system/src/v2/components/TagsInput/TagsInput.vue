@@ -17,8 +17,8 @@ import type {
 	TagsInputSlots,
 	TagsInputValue,
 } from './TagsInput.types';
-import type { IconSize } from '../../../types/icon';
 import Icon from '../../../components/N8nIcon/Icon.vue';
+import type { IconSize } from '../../../types/icon';
 
 defineOptions({ inheritAttrs: false });
 
