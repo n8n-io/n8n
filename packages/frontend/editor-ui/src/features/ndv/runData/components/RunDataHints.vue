@@ -153,7 +153,7 @@ function toggle(entry: HintEntry) {
 					:class="hasLabels(entry) ? $style.labels : $style.messages"
 					data-test-id="node-hint-details"
 				>
-					<li v-for="hint in entry.hints" :key="hint.message" data-test-id="node-hint-message">
+					<li v-for="hint in entry.hints" :key="hintKey(hint)" data-test-id="node-hint-message">
 						<N8nText v-if="hint.group?.label" size="small">{{ hint.group.label }}</N8nText>
 						<N8nText v-else v-n8n-html="hint.message" size="small" />
 					</li>
