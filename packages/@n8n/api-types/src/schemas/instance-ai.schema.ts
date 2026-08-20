@@ -526,6 +526,12 @@ export const plannedTaskArgSchema = z.object({
 export const workflowOverviewSchema = z.object({
 	/** What sets the workflow off, and when/how often. */
 	triggers: z.string(),
+	/**
+	 * Individual trigger clauses, present when derived deterministically from
+	 * the workflow structure. UIs render these as an any-of list; `triggers`
+	 * stays the joined-sentence fallback for consumers that don't.
+	 */
+	triggerClauses: z.array(z.string()).optional(),
 	/** One plain sentence saying what happens in between. */
 	steps: z.string(),
 	/** What the user ends up with, described concretely. */

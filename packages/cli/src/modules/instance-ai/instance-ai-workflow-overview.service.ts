@@ -3,13 +3,19 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { summarizeWorkflowStructure } from '@n8n/instance-ai';
+import {
+	extractTriggerFacts,
+	formatTriggersPane,
+	summarizeWorkflowStructure,
+	triggerPaneClauses,
+} from '@n8n/instance-ai';
 import type { WorkflowAiOverview } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { InstanceAiModelService } from './instance-ai-model.service';
+import { InstanceAiNodeMetaAdapter } from './instance-ai-node-meta.adapter';
 import { generateWorkflowOverviewTraced } from './workflow-overview-instrumentation';
 
 /**
@@ -24,6 +30,7 @@ export class InstanceAiWorkflowOverviewService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly modelService: InstanceAiModelService,
+		private readonly nodeMeta: InstanceAiNodeMetaAdapter,
 		private readonly logger: Logger,
 	) {}
 
@@ -62,6 +69,13 @@ export class InstanceAiWorkflowOverviewService {
 		);
 		const previous = workflow.meta?.aiOverview;
 
+		// Spike: deterministic Triggers pane. When the graph yields trigger facts
+		// the pane is not generated at all — the generator receives it as known
+		// context (so Steps/Results stay consistent with it) and produces only
+		// the other two panes. No facts → the LLM generates all three as before.
+		const triggerFacts = extractTriggerFacts(workflow.nodes, this.nodeMeta);
+		const deterministicTriggers = formatTriggersPane(triggerFacts);
+
 		let failureReason: string | undefined;
 		const overview = await generateWorkflowOverviewTraced(
 			{
@@ -76,6 +90,7 @@ export class InstanceAiWorkflowOverviewService {
 				subject: 'workflow',
 				conversation: [],
 				builtWorkflowSummary: `Workflow "${workflow.name}" (id: ${workflow.id}):\n${structure}`,
+				...(deterministicTriggers !== null ? { knownTriggers: deterministicTriggers } : {}),
 				previousOverview: previous
 					? { triggers: previous.triggers, steps: previous.steps, results: previous.results }
 					: null,
@@ -95,8 +110,18 @@ export class InstanceAiWorkflowOverviewService {
 			return { ...toOverviewResponse(previous), failureReason };
 		}
 
+		const finalOverview =
+			deterministicTriggers === null
+				? overview
+				: {
+						...overview,
+						triggers: deterministicTriggers,
+						// Clause list for the UI's stacked any-of rendering.
+						triggerClauses: triggerPaneClauses(triggerFacts),
+					};
+
 		const aiOverview: WorkflowAiOverview = {
-			...overview,
+			...finalOverview,
 			updatedAt: new Date().toISOString(),
 		};
 		// Meta-only update that pins the entity's `updatedAt`: a generated
@@ -116,7 +141,14 @@ function toOverviewResponse(
 ): InstanceAiWorkflowOverviewResponse {
 	if (!stored) return { overview: null, updatedAt: null };
 	return {
-		overview: { triggers: stored.triggers, steps: stored.steps, results: stored.results },
+		overview: {
+			triggers: stored.triggers,
+			...(stored.triggerClauses && stored.triggerClauses.length > 0
+				? { triggerClauses: stored.triggerClauses }
+				: {}),
+			steps: stored.steps,
+			results: stored.results,
+		},
 		updatedAt: stored.updatedAt,
 	};
 }

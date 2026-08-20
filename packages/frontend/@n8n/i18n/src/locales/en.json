@@ -6771,6 +6771,7 @@
 	"instanceAi.workflowOverview.triggers": "Triggers",
 	"instanceAi.workflowOverview.steps": "Steps",
 	"instanceAi.workflowOverview.results": "Results",
+	"instanceAi.workflowOverview.triggerSeparator": "or",
 	"instanceAi.workflowOverview.empty": "Not defined yet",
 	"instanceAi.workflowOverview.emptyState": "No overview for this workflow yet. Generate one from its current structure.",
 	"instanceAi.workflowOverview.generate": "Generate overview",

@@ -35,6 +35,13 @@ export interface WorkflowOverviewBundle {
 	planTaskSpec?: string;
 	/** Compact facts about a workflow already built in this thread, if any. */
 	builtWorkflowSummary?: string;
+	/**
+	 * Triggers pane already derived deterministically from the workflow
+	 * structure — only meaningful with subject 'workflow'. When set, the model
+	 * does not generate that pane: it receives the value as authoritative
+	 * context and produces only Steps/Results.
+	 */
+	knownTriggers?: string;
 	/** The overview currently shown to the user, for stability + only-on-change. */
 	previousOverview?: WorkflowOverview | null;
 }
@@ -67,6 +74,9 @@ const generationSchema = z.object({
 				'filled in the form", "A new row in the Leads sheet"). "" when not known yet.',
 		),
 });
+
+/** Variant used when the caller supplies the Triggers pane: no `triggers` field to generate. */
+const generationSchemaWithoutTriggers = generationSchema.omit({ triggers: true });
 
 const SHARED_RULES = [
 	'- steps: exactly one plain sentence; never mention n8n node names or technical jargon.',
@@ -110,6 +120,20 @@ const WORKFLOW_INSTRUCTIONS = [
 	'- skip=true only when <built-workflow> is missing or too incomplete to describe. With skip=true set every pane to "".',
 ].join('\n');
 
+const WORKFLOW_KNOWN_TRIGGERS_INSTRUCTIONS = [
+	'You produce the Steps and Results panes of a compact three-pane "Workflow overview" (Triggers / Steps / Results) for an EXISTING saved n8n workflow.',
+	'The Triggers pane was derived directly from the workflow structure and is provided in <known-triggers>. Do not produce or restate it — treat it as authoritative context so Steps and Results stay consistent with it.',
+	"The <built-workflow> section contains the workflow's actual structure — it is the SOLE source of truth; any conversation context is secondary.",
+	'',
+	'Rules:',
+	'- Re-derive both panes from the current structure on every call. A <previous-overview>, when present, is only a phrasing and language reference — never keep a pane the structure no longer supports: changed behavior and changed destinations must always be reflected.',
+	"- One short sentence per pane, in the same language as the workflow's node names and text where evident, otherwise English.",
+	'- Present tense, describing what the workflow does ("Posts a summary to Slack").',
+	'- Use "" for a pane the workflow structure genuinely does not determine. Never invent details.',
+	...SHARED_RULES,
+	'- skip=true only when <built-workflow> is missing or too incomplete to describe. With skip=true set every pane to "".',
+].join('\n');
+
 const MAX_CONVERSATION_MESSAGES = 12;
 const MAX_MESSAGE_CHARS = 600;
 const MAX_SECTION_CHARS = 4000;
@@ -146,6 +170,12 @@ function renderBundle(bundle: WorkflowOverviewBundle): string {
 	if (bundle.planTaskSpec) {
 		sections.push(
 			`<plan-task-spec>\n${clip(bundle.planTaskSpec, MAX_SECTION_CHARS)}\n</plan-task-spec>`,
+		);
+	}
+
+	if (bundle.knownTriggers) {
+		sections.push(
+			`<known-triggers>\n${clip(bundle.knownTriggers, MAX_SECTION_CHARS)}\n</known-triggers>`,
 		);
 	}
 
@@ -219,10 +249,28 @@ export async function generateWorkflowOverview(
 		const { generateObject } = await import('ai');
 		const model = createModel(modelId);
 		const telemetry = await resolveBuiltTelemetry(options?.telemetry);
+
+		// A caller-supplied Triggers pane skips generating that field entirely:
+		// smaller output schema, and the value is prompt context instead.
+		const knownTriggers =
+			bundle.subject === 'workflow' && bundle.knownTriggers?.trim()
+				? bundle.knownTriggers.trim()
+				: undefined;
+		type GenerationOutput = { skip: boolean; triggers?: string; steps: string; results: string };
+		const activeSchema: z.ZodType<GenerationOutput> = knownTriggers
+			? generationSchemaWithoutTriggers
+			: generationSchema;
+		const instructions =
+			bundle.subject === 'workflow'
+				? knownTriggers
+					? WORKFLOW_KNOWN_TRIGGERS_INSTRUCTIONS
+					: WORKFLOW_INSTRUCTIONS
+				: PLAN_INSTRUCTIONS;
+
 		const result = await generateObject({
 			model,
-			schema: generationSchema,
-			instructions: bundle.subject === 'workflow' ? WORKFLOW_INSTRUCTIONS : PLAN_INSTRUCTIONS,
+			schema: activeSchema,
+			instructions,
 			messages: [{ role: 'user', content: renderBundle(bundle) }],
 			...toSdkTelemetry(telemetry),
 		});
@@ -232,7 +280,7 @@ export async function generateWorkflowOverview(
 			totalTokens: result.usage.totalTokens,
 		});
 
-		const parsed = generationSchema.safeParse(result.object);
+		const parsed = activeSchema.safeParse(result.object);
 		if (!parsed.success) {
 			options?.onFailure?.('invalid_output', parsed.error.message);
 			return null;
@@ -243,11 +291,16 @@ export async function generateWorkflowOverview(
 		}
 
 		const overview: WorkflowOverview = {
-			triggers: parsed.data.triggers.trim(),
+			triggers: knownTriggers ?? parsed.data.triggers?.trim() ?? '',
 			steps: parsed.data.steps.trim(),
 			results: parsed.data.results.trim(),
 		};
-		if (!overview.triggers && !overview.steps && !overview.results) {
+		// With caller-supplied triggers the model only produced steps/results —
+		// both empty means it generated nothing, regardless of the free pane.
+		const emptyOutput = knownTriggers
+			? !overview.steps && !overview.results
+			: !overview.triggers && !overview.steps && !overview.results;
+		if (emptyOutput) {
 			options?.onFailure?.('empty_output');
 			return null;
 		}

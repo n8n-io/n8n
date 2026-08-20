@@ -23,16 +23,23 @@ interface OverviewStep {
 	icon: IconName;
 	label: string;
 	text: string;
+	/** Structured any-of clauses (deterministic triggers) — rendered stacked with "or" separators. */
+	clauses?: string[];
 }
 
 const steps = computed<OverviewStep[]>(() => {
 	if (!props.overview) return [];
+	const triggerClauses = (props.overview.triggerClauses ?? [])
+		.map((clause) => clause.trim())
+		.filter((clause) => clause.length > 0);
 	return [
 		{
 			key: 'triggers',
 			icon: 'zap',
 			label: i18n.baseText('instanceAi.workflowOverview.triggers'),
 			text: props.overview.triggers.trim(),
+			// A single clause reads better as the plain joined sentence.
+			...(triggerClauses.length > 1 ? { clauses: triggerClauses } : {}),
 		},
 		{
 			key: 'steps',
@@ -78,12 +85,28 @@ const generateLabel = computed(() =>
 								{{ step.label }}
 							</N8nHeading>
 						</div>
-						<N8nText v-if="step.text" size="small" :class="$style.stepText">
-							{{ step.text }}
-						</N8nText>
-						<N8nText v-else size="small" :class="$style.stepEmpty">
-							{{ i18n.baseText('instanceAi.workflowOverview.empty') }}
-						</N8nText>
+						<div :class="$style.stepBody">
+							<div
+								v-if="step.clauses"
+								:class="$style.clauseList"
+								:data-test-id="`instance-ai-workflow-overview-preview-${step.key}-clauses`"
+							>
+								<template v-for="(clause, clauseIndex) in step.clauses" :key="clauseIndex">
+									<div v-if="clauseIndex > 0" :class="$style.clauseSeparator" aria-hidden="true">
+										{{ i18n.baseText('instanceAi.workflowOverview.triggerSeparator') }}
+									</div>
+									<N8nText size="small" :class="[$style.stepText, $style.clause]">
+										{{ clause }}
+									</N8nText>
+								</template>
+							</div>
+							<N8nText v-else-if="step.text" size="small" :class="$style.stepText">
+								{{ step.text }}
+							</N8nText>
+							<N8nText v-else size="small" :class="$style.stepEmpty">
+								{{ i18n.baseText('instanceAi.workflowOverview.empty') }}
+							</N8nText>
+						</div>
 					</section>
 				</template>
 			</div>
@@ -178,6 +201,18 @@ const generateLabel = computed(() =>
 	gap: var(--spacing--2xs);
 }
 
+/*
+ * Cards in the row stretch to the tallest sibling (the stacked triggers
+ * list), so center each card's body in the leftover space; headers stay
+ * pinned to the top so labels align across cards.
+ */
+.stepBody {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	flex: 1 1 auto;
+}
+
 .stepIcon {
 	color: var(--text-color--subtle);
 	flex-shrink: 0;
@@ -198,6 +233,37 @@ const generateLabel = computed(() =>
 .stepEmpty {
 	font-style: italic;
 	color: var(--text-color--subtle);
+}
+
+.clauseList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+.clause {
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--color--background--light-2);
+	text-align: center;
+}
+
+.clauseSeparator {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--3xs);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+
+	&::before,
+	&::after {
+		content: '';
+		flex: 1;
+		border-top: var(--border);
+	}
 }
 
 .emptyState {

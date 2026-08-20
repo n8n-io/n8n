@@ -3795,6 +3795,8 @@ export interface IWorkflowSettings {
 export interface WorkflowAiOverview {
 	/** What sets the workflow off, and when/how often. */
 	triggers: string;
+	/** Individual trigger clauses when derived deterministically from structure. */
+	triggerClauses?: string[];
 	/** One plain sentence saying what happens in between. */
 	steps: string;
 	/** What the user ends up with, described concretely. */
