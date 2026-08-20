@@ -182,6 +182,21 @@ describe('Test Notion', () => {
 			}
 		});
 	});
+
+	describe('extractPageId with a non-string value', () => {
+		// The `page = ''` default only kicks in for `undefined`, so any other non-string
+		// value still reaches `page.includes`. Callers cast the resource locator value
+		// with `as string`, so unresolved values arrive here at runtime.
+		test.each([
+			['an unresolved resource locator object', { mode: 'url', value: '' }],
+			['an empty object', {}],
+			['a number', 4610],
+			['null', null],
+		])('should return an empty id for %s instead of throwing', (_, page) => {
+			expect(() => extractPageId(page as unknown as string)).not.toThrow();
+			expect(extractPageId(page as unknown as string)).toBe('');
+		});
+	});
 });
 
 describe('Test Notion resource locator URL regexes', () => {
