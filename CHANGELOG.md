@@ -1,3 +1,14 @@
+## [2.36.3](https://github.com/n8n-io/n8n/compare/n8n@2.36.2...n8n@2.36.3) (2026-08-20)
+
+
+### Bug Fixes
+
+* **core:** Avoid restarting task runners that are only slow ([#36609](https://github.com/n8n-io/n8n/issues/36609)) ([4aa1fa6](https://github.com/n8n-io/n8n/commit/4aa1fa67d7f7dfa098bb7d4b12b37c21865726cb))
+* **core:** Only init the expression engine for commands that evaluate expressions ([#36647](https://github.com/n8n-io/n8n/issues/36647)) ([f212a8e](https://github.com/n8n-io/n8n/commit/f212a8e27a183af3f2d5d08f087a3766ea885cdf))
+* **core:** Release test-webhook isolate only after teardown completes ([#36631](https://github.com/n8n-io/n8n/issues/36631)) ([3c52e79](https://github.com/n8n-io/n8n/commit/3c52e79293274ececf0aa38016af7ff3845b0a31))
+* **editor:** Restore Edit Fields type selector styles ([#36627](https://github.com/n8n-io/n8n/issues/36627)) ([be46cc8](https://github.com/n8n-io/n8n/commit/be46cc8c825b131ef7b54188fd6bf66e8185e0a3))
+
+
 ## [2.36.2](https://github.com/n8n-io/n8n/compare/n8n@2.36.0...n8n@2.36.2) (2026-08-19)
 
 
