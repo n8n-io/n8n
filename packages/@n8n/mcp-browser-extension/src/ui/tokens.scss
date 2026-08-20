@@ -6,6 +6,9 @@
 	color-scheme: light dark;
 	@include primitives.primitives;
 	@include tokens.theme;
+
+	// Shared icon column, so info rows and tab rows keep one text edge and one icon centre
+	--row-marker-size: 40px;
 }
 
 @media (prefers-color-scheme: dark) {
