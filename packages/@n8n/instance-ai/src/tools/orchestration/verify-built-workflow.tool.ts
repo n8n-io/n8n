@@ -20,6 +20,7 @@ import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
 import { executionNodeErrorSchema } from '../../workflow-loop/workflow-loop-state';
+import { collectChatModelRecoveryContext } from '../workflows/chat-model-validation';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
 
@@ -158,6 +159,19 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			}
 			const { prepared } = preparedResult;
 
+			const chatModelRecovery = await target.domainContext.workflowService
+				.getAsWorkflowJSON(workflowId)
+				.then(
+					async (workflow) =>
+						await collectChatModelRecoveryContext(
+							target.domainContext,
+							workflow.nodes ?? [],
+							workflow.connections,
+						),
+				)
+				.catch(() => undefined);
+			const chatModelRelatedNodeNames = chatModelRecovery?.relatedNodeNames;
+
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
 			const { result, analysis } = prepared.gateScript
@@ -172,6 +186,8 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						buildOutcome,
 						stateBefore: target.stateBefore,
 						runId: context.runId,
+						chatModelRelatedNodeNames,
+						chatModelRecovery,
 					})
 				: await (async () => {
 						const runResult = await target.domainContext.executionService.run(
@@ -193,6 +209,8 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 								haltedGateNames: prepared.haltedGateNames,
 								stateBefore: target.stateBefore,
 								runId: context.runId,
+								chatModelRelatedNodeNames,
+								chatModelRecovery,
 							}),
 						};
 					})();

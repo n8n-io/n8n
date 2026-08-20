@@ -8,7 +8,22 @@
 		"GET /roles": {
 			"status": "gap"
 		},
+		"GET /roles/{slug}": {
+			"status": "gap"
+		},
 		"POST /roles": {
+			"status": "gap"
+		},
+		"PUT /roles/{slug}": {
+			"status": "gap"
+		},
+		"DELETE /roles/{slug}": {
+			"status": "gap"
+		},
+		"GET /role-mapping-rules": {
+			"status": "gap"
+		},
+		"POST /role-mapping-rules": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

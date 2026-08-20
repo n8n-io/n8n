@@ -26,8 +26,12 @@ import {
 	NODE_SPACING_X,
 	DEFAULT_Y,
 	START_X,
+	DEFAULT_STICKY_SIZE,
+	STICKY_PADDING,
+	STICKY_HEADER_HEIGHT,
+	MAX_STICKY_SEPARATION_STEPS,
 } from './constants';
-import type { GraphNode } from '../types/base';
+import { isAnchoredStickyNote, type GraphNode } from '../types/base';
 
 // ===========================================================================
 // BFS Layout (default)
@@ -197,12 +201,41 @@ function calculateNodeHeight(mainInputCount: number, mainOutputCount: number): n
 	return DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
 }
 
+/** Whether a sticky carries its own width, rather than relying on the default. */
+function declaresOwnWidth(graphNode: GraphNode): boolean {
+	return typeof graphNode.instance.config?.parameters?.width === 'number';
+}
+
+/** Whether a sticky carries its own height, rather than relying on the default. */
+function declaresOwnHeight(graphNode: GraphNode): boolean {
+	return typeof graphNode.instance.config?.parameters?.height === 'number';
+}
+
+/**
+ * A sticky's own width/height parameters, falling back to the StickyNote node defaults.
+ * Sticky notes are sized by their parameters, not by the node-canvas defaults.
+ */
+function declaredStickySize(graphNode: GraphNode): { width: number; height: number } {
+	const parameters = graphNode.instance.config?.parameters;
+	const width = parameters?.width;
+	const height = parameters?.height;
+	return {
+		width: typeof width === 'number' ? width : DEFAULT_STICKY_SIZE[0],
+		height: typeof height === 'number' ? height : DEFAULT_STICKY_SIZE[1],
+	};
+}
+
 export function getNodeDimensions(
 	nodeName: string,
 	aiParentNames: Set<string>,
 	aiConfigNames: Set<string>,
 	nodes: ReadonlyMap<string, GraphNode>,
 ): { width: number; height: number } {
+	const graphNode = nodes.get(nodeName);
+	if (graphNode?.instance.type === STICKY_NODE_TYPE) {
+		return declaredStickySize(graphNode);
+	}
+
 	if (aiConfigNames.has(nodeName)) {
 		return { width: CONFIGURATION_NODE_SIZE[0], height: CONFIGURATION_NODE_SIZE[1] };
 	}
@@ -414,6 +447,156 @@ function repositionStickyNotes(
 
 		result.set(stickyName, [snapToGrid(newX), snapToGrid(newY)]);
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Sticky note geometry
+// ---------------------------------------------------------------------------
+
+export interface StickyGeometry {
+	position: [number, number];
+	/**
+	 * Only set when this resolver sized the sticky (i.e. it wraps anchors). Stickies that
+	 * carry their own size keep it — overwriting would break workflow round-trips.
+	 */
+	size?: { width: number; height: number };
+}
+
+function boxesOverlap(a: BoundingBox, b: BoundingBox): boolean {
+	return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+function toPoint(position?: [number, number]): { x: number; y: number } | undefined {
+	return position && { x: position[0], y: position[1] };
+}
+
+/** The box that wraps a sticky's anchors, with room above for the note's own text. */
+function wrappingBoxFor(anchorBoxes: BoundingBox[]): BoundingBox | undefined {
+	if (anchorBoxes.length === 0) return undefined;
+	const wrapped = compositeBoundingBox(anchorBoxes);
+	return {
+		x: snapToGrid(wrapped.x - STICKY_PADDING),
+		y: snapToGrid(wrapped.y - STICKY_PADDING - STICKY_HEADER_HEIGHT),
+		width: snapToGrid(wrapped.width + STICKY_PADDING * 2),
+		height: snapToGrid(wrapped.height + STICKY_PADDING * 2 + STICKY_HEADER_HEIGHT),
+	};
+}
+
+/** Push a box down until it clears every box already placed. */
+function separateFrom(placed: BoundingBox[], box: BoundingBox): BoundingBox {
+	let separated = box;
+	for (let step = 0; step < MAX_STICKY_SEPARATION_STEPS; step++) {
+		const collision = placed.find((placedBox) => boxesOverlap(placedBox, separated));
+		if (!collision) break;
+		separated = {
+			...separated,
+			y: snapToGrid(collision.y + collision.height + NODE_Y_SPACING),
+		};
+	}
+	return separated;
+}
+
+/**
+ * Resolve the final position and size of every sticky note.
+ *
+ * `sticky(content, [nodes])` can only record which nodes it wraps — when it runs,
+ * layout has not happened and the anchors have no positions yet. So the box is
+ * computed here, from wherever the anchors actually landed. Stickies that were given
+ * an explicit position keep it; the rest are nudged apart so they never stack.
+ *
+ * @param nodes - the workflow graph, keyed by the name each node is serialized under
+ * @param positions - positions chosen by the active layout, keyed the same way
+ */
+export function resolveStickyGeometry(
+	nodes: ReadonlyMap<string, GraphNode>,
+	positions: ReadonlyMap<string, [number, number]>,
+): Map<string, StickyGeometry> {
+	const geometryByName = new Map<string, StickyGeometry>();
+
+	const stickyNames = [...nodes.keys()].filter(
+		(name) => nodes.get(name)?.instance.type === STICKY_NODE_TYPE,
+	);
+	if (stickyNames.length === 0) return geometryByName;
+
+	const aiParentNames = getAiParentNames(nodes);
+	const aiConfigNames = getAiConfigNames(nodes);
+
+	// Anchors are recorded by node ID, since a node can be renamed on its way in.
+	const nameById = new Map<string, string>();
+	for (const [name, graphNode] of nodes) {
+		nameById.set(graphNode.instance.id, name);
+	}
+
+	const boxOfNode = (name: string): BoundingBox | undefined => {
+		const graphNode = nodes.get(name);
+		if (!graphNode) return undefined;
+		const position = graphNode.instance.config?.position ?? positions.get(name);
+		if (!position) return undefined;
+		const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+		return { x: position[0], y: position[1], width, height };
+	};
+
+	const resolved = stickyNames.flatMap((name) => {
+		const graphNode = nodes.get(name);
+		if (!graphNode) return [];
+
+		const { instance } = graphNode;
+		const explicitPosition = instance.config?.position;
+
+		const anchorBoxes = isAnchoredStickyNote(instance)
+			? instance.stickyAnchorIds
+					.map((id) => nameById.get(id))
+					.filter((anchorName): anchorName is string => anchorName !== undefined)
+					.map(boxOfNode)
+					.filter((box): box is BoundingBox => box !== undefined)
+			: [];
+
+		const wrappingBox = wrappingBoxFor(anchorBoxes);
+
+		// Whatever the caller declared wins, dimension by dimension; the anchors only
+		// fill in what is missing, so a declared width still gets a wrapping height.
+		const declared = declaredStickySize(graphNode);
+		const ownWidth = declaresOwnWidth(graphNode);
+		const ownHeight = declaresOwnHeight(graphNode);
+		const size = {
+			width: !ownWidth && wrappingBox ? wrappingBox.width : declared.width,
+			height: !ownHeight && wrappingBox ? wrappingBox.height : declared.height,
+		};
+		const sizedByAnchors = wrappingBox !== undefined && !(ownWidth && ownHeight);
+
+		const origin = toPoint(explicitPosition) ??
+			(wrappingBox && { x: wrappingBox.x, y: wrappingBox.y }) ??
+			toPoint(positions.get(name)) ?? { x: START_X, y: DEFAULT_Y };
+
+		// A sticky is pinned when the author placed it or when it wraps anchors — moving
+		// either one would take it away from the thing it is meant to sit on.
+		const pinned = explicitPosition !== undefined || wrappingBox !== undefined;
+
+		return [{ name, box: { ...origin, ...size }, sizedByAnchors, pinned }];
+	});
+
+	const record = (name: string, box: BoundingBox, sizedByAnchors: boolean): void => {
+		geometryByName.set(name, {
+			position: [box.x, box.y],
+			...(sizedByAnchors && { size: { width: box.width, height: box.height } }),
+		});
+	};
+
+	const placed = resolved.filter((sticky) => sticky.pinned).map(({ box }) => box);
+	for (const { name, box, sizedByAnchors, pinned } of resolved) {
+		if (pinned) {
+			record(name, box, sizedByAnchors);
+			continue;
+		}
+
+		// Free-floating notes have nowhere they need to be, so they give way to
+		// everything already placed rather than stacking on it.
+		const separated = separateFrom(placed, box);
+		placed.push(separated);
+		record(name, separated, sizedByAnchors);
+	}
+
+	return geometryByName;
 }
 
 // ---------------------------------------------------------------------------

@@ -88,6 +88,9 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init task runner. */
 	protected needsTaskRunner = false;
 
+	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
+	protected needsExpressionEngine = false;
+
 	/**
 	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
 	 * Only server processes hold the encryption key these are derived from.
@@ -226,17 +229,31 @@ export abstract class BaseCommand<F = never> {
 		await Container.get(TelemetryEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 
-		const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
-			this.globalConfig.expressionEngine;
-		await Expression.initExpressionEngine({
-			engine,
-			poolSize,
-			maxCodeCacheSize,
-			bridgeTimeout,
-			bridgeMemoryLimit,
-			idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
-			observability: Container.get(ExpressionObservabilityProvider),
-		});
+		if (this.needsExpressionEngine) {
+			const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =
+				this.globalConfig.expressionEngine;
+			const observability = Container.get(ExpressionObservabilityProvider);
+			try {
+				await Expression.initExpressionEngine({
+					engine,
+					poolSize,
+					maxCodeCacheSize,
+					bridgeTimeout,
+					bridgeMemoryLimit,
+					idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
+					observability,
+				});
+			} catch (error) {
+				await this.exitWithCrash(
+					'Could not initialize the vm expression engine (see errors above for details). If they point at isolated-vm, check that it installed correctly, e.g. that native build scripts were not skipped.',
+					error,
+				);
+			}
+		} else {
+			// Record the configured engine so an unexpected expression evaluation on a
+			// vm-configured instance fails loudly instead of silently using the legacy engine
+			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
+		}
 	}
 
 	protected async stopProcess() {
@@ -270,7 +287,9 @@ export abstract class BaseCommand<F = never> {
 		}
 	}
 
-	protected async exitWithCrash(message: string, error: unknown) {
+	protected async exitWithCrash(message: string, error: unknown): Promise<never> {
+		// the error reporter only sends to Sentry when a DSN is configured, so also log to the console
+		this.logger.error(message, { error });
 		this.errorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
 		await sleep(2000);
 		process.exit(1);

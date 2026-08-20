@@ -108,11 +108,53 @@ function buildDispatcherFromProxy(
 		return new Agent({ ...agentOptions, ...secureConnect(ssrf) });
 	}
 	if (proxy === 'env') {
+		// The environment's proxies are part of the deployment, not of a request,
+		// so the policy does not decide them (see `buildNodeAgents`).
 		return new EnvHttpProxyAgent({ ...agentOptions, ...secureConnect(ssrf) });
 	}
-	// Explicit proxy URL: no direct path, so no connect-time lookup is injected —
-	// the proxy resolves the target. Mirrors `buildNodeAgents`.
-	return new ProxyAgent({ uri: proxy, ...agentOptions });
+	assertProxyHostAllowed(ssrf, proxy);
+	return new ProxyAgent({
+		uri: proxy,
+		...agentOptions,
+		...secureProxyConnect(ssrf),
+	});
+}
+
+/**
+ * A connect-time secure DNS lookup for the socket opened to a proxy.
+ *
+ * undici builds the connector for the proxy socket from `proxyTls`.
+ * A caller's `connect` does not reach it: `ProxyAgent` overwrites that with its own
+ * tunnel handshake.
+ */
+function secureProxyConnect(ssrf: SsrfOption) {
+	return ssrf === 'disabled' ? {} : { proxyTls: { lookup: ssrf.createSecureLookup() } };
+}
+
+/**
+ * Catches an IP-literal proxy host, which no lookup sees.
+ * Applies to an explicit proxy URI, the one form that can come from a request.
+ */
+function assertProxyHostAllowed(ssrf: SsrfOption, proxyUri: string): void {
+	if (ssrf === 'disabled') {
+		return;
+	}
+	const hostname = proxyHostname(proxyUri);
+	if (hostname === undefined) {
+		return;
+	}
+	const result = ssrf.validateConnectionHost(hostname);
+	if (!result.ok) {
+		throw result.error;
+	}
+}
+
+function proxyHostname(uri: string): string | undefined {
+	try {
+		return new URL(uri).hostname;
+	} catch {
+		return undefined;
+	}
 }
 
 /**
@@ -174,8 +216,11 @@ function lazyValue<T>(factory: () => T): () => T {
  * `fetch` re-dispatches through this dispatcher for each redirect hop, so this
  * validates the initial request **and** every redirect target (both hostname
  * and direct-IP targets), unlike a connect-time DNS lookup which never fires for
- * IP-literal targets. Validation runs against the request target, never the
- * proxy, so it is proxy-agnostic.
+ * IP-literal targets.
+ *
+ * This interceptor does not validate a proxy's own host.
+ * That host is fixed for the dispatcher rather than per request, so
+ * {@link buildDispatcherFromProxy} decides it where the dispatcher is built.
  */
 export function createSsrfInterceptor(bridge: SsrfBridge): Dispatcher.DispatcherComposeInterceptor {
 	return (dispatch) => (opts, handler) => {

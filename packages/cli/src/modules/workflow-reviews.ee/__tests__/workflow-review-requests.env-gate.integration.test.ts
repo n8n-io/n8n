@@ -50,6 +50,13 @@ describe('workflow-review-requests (env flag off)', () => {
 		await ownerAgent.get('/workflow-review-requests/inbox').expect(404);
 	});
 
+	test('POST statuses is unreachable (404)', async () => {
+		await ownerAgent
+			.post('/workflow-review-requests/statuses')
+			.send({ workflowIds: ['wf-1'] })
+			.expect(404);
+	});
+
 	test('GET summary is unreachable (404)', async () => {
 		await ownerAgent.get('/workflow-review-requests/summary').expect(404);
 	});
@@ -60,6 +67,13 @@ describe('workflow-review-requests (env flag off)', () => {
 
 	test('GET activity is unreachable (404)', async () => {
 		await ownerAgent.get('/workflow-review-requests/some-id/activity').expect(404);
+	});
+
+	test('POST comment is unreachable (404)', async () => {
+		await ownerAgent
+			.post('/workflow-review-requests/some-id/comments')
+			.send({ body: 'Hello' })
+			.expect(404);
 	});
 });
 

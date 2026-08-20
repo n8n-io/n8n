@@ -7,10 +7,15 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { getWorkflow } from '@/app/api/workflows';
+import { VIEWS } from '@/app/constants';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { SAMPLE_SUBWORKFLOW_TRIGGER_ID } from '@/app/constants/samples';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import type { ToolConnectionItem } from '@/features/shared/toolsConnection/types';
 import type { IWorkflowDb } from '@/Interface';
@@ -20,12 +25,18 @@ import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
+const routerResolveMock = vi.hoisted(() => vi.fn(() => ({ href: '/workflow/new-workflow-id' })));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: showErrorMock,
 		showMessage: showMessageMock,
 		showToast: vi.fn(),
 	}),
+}));
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({ resolve: routerResolveMock }),
 }));
 
 vi.mock('@/app/api/workflows', () => ({
@@ -146,7 +157,14 @@ function emitSearch(query: string) {
 	(listener as (value: string) => void)(query);
 }
 
+function emitCreateWorkflow() {
+	const listener = modalAttrs.onCreateWorkflow;
+	if (typeof listener !== 'function') throw new Error('Missing onCreateWorkflow');
+	(listener as () => void)();
+}
+
 const MODAL_NAME = 'agentToolsModal';
+const PROJECT_ID = 'project-1';
 
 const renderComponent = createComponentRenderer(AgentToolsConnectionModalWrapper, {
 	global: {
@@ -160,6 +178,8 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
+	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let windowOpenMock: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -170,6 +190,14 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		uiStore = mockedStore(useUIStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
+		mockedStore(useProjectsStore).myProjects = [
+			{
+				id: PROJECT_ID,
+				scopes: ['workflow:create'],
+			},
+		] as never;
+		mockedStore(useSourceControlStore).preferences = { branchReadOnly: false } as never;
 
 		nodeTypesStore.getNodeType = vi.fn().mockImplementation((name: string) => {
 			if (name === SLACK.name) return SLACK;
@@ -180,6 +208,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			[NodeConnectionTypes.AiTool]: [SLACK.name, WIKIPEDIA.name],
 		};
 		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([]);
+		workflowsStore.createNewWorkflow.mockReset();
 		mockedStore(useUsersStore).isAdminOrOwner = true;
 
 		uiStore.modalStateById = {
@@ -189,6 +218,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		uiStore.closeModal = vi.fn();
 		uiStore.openModalWithData = vi.fn();
 		showMessageMock.mockReset();
+		showErrorMock.mockReset();
+		routerResolveMock.mockReset().mockReturnValue({ href: '/workflow/new-workflow-id' });
+		windowOpenMock = vi.spyOn(window, 'open').mockImplementation(() => null);
 		installNodeMock.mockReset().mockResolvedValue({ success: true });
 		filterAndSearchNodesMock.mockReset().mockReturnValue([]);
 	});
@@ -210,11 +242,12 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		tools: AgentJsonToolRef[] = [],
 		onConfirm = vi.fn(),
 		mcpServers: AgentJsonMcpServerConfig[] = [],
+		projectId?: string,
 	) {
 		return renderComponent({
 			props: {
 				modalName: MODAL_NAME,
-				data: { tools, mcpServers, onConfirm },
+				data: { tools, mcpServers, onConfirm, projectId },
 			},
 		});
 	}
@@ -395,9 +428,10 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		await flushPromises();
 
 		const items = getItems();
-		const connected = items.filter((item) => item.isConnected);
+		const connected = items.filter((item) => item.status === 'connected');
 		const availableSlack = items.filter(
-			(item) => !item.isConnected && item.kind === 'node' && item.id === `nodeType:${SLACK.name}`,
+			(item) =>
+				item.status === 'none' && item.kind === 'node' && item.id === `nodeType:${SLACK.name}`,
 		);
 
 		expect(connected).toHaveLength(1);
@@ -459,7 +493,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		render([toolRef(SLACK.name)], onConfirm);
 		await flushPromises();
 
-		const connected = getItems().find((item) => item.isConnected);
+		const connected = getItems().find((item) => item.status === 'connected');
 		emitConnect(connected!);
 
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -474,7 +508,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		render([toolRef(SLACK.name)], onConfirm);
 		await flushPromises();
 
-		const connected = getItems().find((item) => item.isConnected);
+		const connected = getItems().find((item) => item.status === 'connected');
 		emitConnect(connected!);
 
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -547,6 +581,138 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			await flushPromises();
 			return getItems().find((item) => item.id === `workflow:${WORKFLOW.id}`)!;
 		}
+
+		it('surfaces incompatible workflows as disabled items with a reason', async () => {
+			workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([
+				WORKFLOW,
+				{
+					id: 'wf-wait',
+					name: 'Has Wait',
+					isArchived: false,
+					nodes: [
+						{ type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'When called' },
+						{ type: 'n8n-nodes-base.wait', name: 'Wait' },
+					],
+				},
+				{
+					id: 'wf-no-trigger',
+					name: 'No Trigger',
+					isArchived: false,
+					nodes: [{ type: 'n8n-nodes-base.set', name: 'Set' }],
+				},
+			]);
+			render();
+			await flushPromises();
+
+			const items = getItems();
+			const compatible = items.find((i) => i.id === 'workflow:wf-1');
+			const waitDisabled = items.find((i) => i.id === 'workflow-disabled:wf-wait');
+			const noTriggerDisabled = items.find((i) => i.id === 'workflow-disabled:wf-no-trigger');
+
+			// Compatible workflow remains selectable.
+			expect(compatible?.disabled).toBeFalsy();
+
+			// Incompatible workflows are visible but disabled, with a reason.
+			expect(waitDisabled).toBeTruthy();
+			expect(waitDisabled?.disabled).toBe(true);
+			expect(waitDisabled?.disabledReason).toContain("aren't supported as agent tools");
+
+			expect(noTriggerDisabled).toBeTruthy();
+			expect(noTriggerDisabled?.disabled).toBe(true);
+			expect(noTriggerDisabled?.disabledReason).toContain('No supported trigger node');
+
+			// Disabled items appear after compatible ones within the category.
+			const workflowItems = items.filter((i) => i.kind === 'workflow');
+			const compatibleIdx = workflowItems.findIndex((i) => i.id === 'workflow:wf-1');
+			const waitIdx = workflowItems.findIndex((i) => i.id === 'workflow-disabled:wf-wait');
+			const noTriggerIdx = workflowItems.findIndex(
+				(i) => i.id === 'workflow-disabled:wf-no-trigger',
+			);
+			expect(compatibleIdx).toBeLessThan(waitIdx);
+			expect(compatibleIdx).toBeLessThan(noTriggerIdx);
+		});
+
+		it('creates a compatible workflow and attaches it after configuration is saved', async () => {
+			const existingTool = toolRef(WIKIPEDIA.name);
+			const onConfirm = vi.fn();
+			workflowsStore.createNewWorkflow.mockResolvedValueOnce({
+				...WORKFLOW,
+				id: 'new-workflow-id',
+				name: 'My workflow 1',
+			} as unknown as IWorkflowDb);
+
+			render([existingTool], onConfirm, [], PROJECT_ID);
+			await flushPromises();
+
+			emitCreateWorkflow();
+			await flushPromises();
+
+			expect(workflowsStore.createNewWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: 'My workflow 1',
+					projectId: PROJECT_ID,
+					nodes: expect.arrayContaining([
+						expect.objectContaining({
+							type: 'n8n-nodes-base.executeWorkflowTrigger',
+						}),
+					]),
+				}),
+			);
+			expect(onConfirm).not.toHaveBeenCalled();
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
+			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+			expect(payload).toMatchObject({
+				name: 'agentToolConfigModal',
+				data: {
+					projectId: PROJECT_ID,
+					toolRef: {
+						type: 'workflow',
+						workflowId: 'new-workflow-id',
+						workflow: 'My workflow 1',
+						name: 'My workflow 1',
+						description: '',
+						allOutputs: false,
+					},
+				},
+			});
+
+			const configuredRef: AgentJsonToolRef = {
+				...payload.data.toolRef,
+				description: 'Create the daily sales digest',
+			};
+			payload.data.onConfirm(configuredRef);
+
+			expect(onConfirm).toHaveBeenCalledWith({
+				tools: [existingTool, configuredRef],
+				mcpServers: [],
+			});
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+			expect(routerResolveMock).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW,
+				params: {
+					workflowId: 'new-workflow-id',
+					nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID,
+				},
+			});
+			expect(windowOpenMock).toHaveBeenCalledWith('/workflow/new-workflow-id', '_blank');
+		});
+
+		it('does not attach or open a workflow when creation fails', async () => {
+			const error = new Error('network down');
+			const onConfirm = vi.fn();
+			workflowsStore.createNewWorkflow.mockRejectedValueOnce(error);
+
+			render([], onConfirm, [], PROJECT_ID);
+			await flushPromises();
+			emitCreateWorkflow();
+			await flushPromises();
+
+			expect(onConfirm).not.toHaveBeenCalled();
+			expect(windowOpenMock).not.toHaveBeenCalled();
+			expect(showErrorMock).toHaveBeenCalledWith(error, expect.any(String), {
+				message: expect.any(String),
+			});
+		});
 
 		it('refuses a workflow whose body contains an incompatible node', async () => {
 			const onConfirm = vi.fn();

@@ -4,13 +4,14 @@ import {
 	WorkflowHistory,
 	WorkflowHistoryRepository,
 	WorkflowPublicationOutbox,
+	WorkflowPublicationReason,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	type WorkflowPublicationTriggerKind,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { INode } from 'n8n-workflow';
+import type { INode, WorkflowActivateMode } from 'n8n-workflow';
 
 import type {
 	PublicationResult,
@@ -21,8 +22,24 @@ import {
 	WorkflowTriggerActivator,
 	type TriggerActivationFailure,
 	type TriggerActivationOutcome,
+	type TriggerOperationAbort,
 } from '@/workflows/triggers/workflow-trigger-activator';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
+/**
+ * The activation mode reported to trigger nodes for each enqueue reason, so
+ * e.g. the n8n Trigger's "Instance Started" event fires exactly for the
+ * leader's startup pass. Records from before the `reason` column existed
+ * default to `publish` at the DB level, i.e. today's `update` behavior.
+ * A first publication overrides `publish` → `activate`; see
+ * {@link WorkflowPublicationApplier.resolveActivationMode}.
+ */
+const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActivateMode> = {
+	[WorkflowPublicationReason.Publish]: 'update',
+	[WorkflowPublicationReason.Startup]: 'init',
+	[WorkflowPublicationReason.LeadershipTakeover]: 'leadershipChange',
+	[WorkflowPublicationReason.Reconcile]: 'update',
+};
 
 /**
  * Reconciles a workflow's triggers to a published version, one outbox record at
@@ -67,7 +84,10 @@ export class WorkflowPublicationApplier {
 	 *   must correspond to that version; otherwise the wrong triggers are
 	 *   (de)registered.
 	 */
-	async apply(record: WorkflowPublicationOutbox): Promise<PublicationResult> {
+	async apply(
+		record: WorkflowPublicationOutbox,
+		abort: TriggerOperationAbort,
+	): Promise<PublicationResult> {
 		const { workflow, oldVersion, newVersion } = await this.resolveVersions(record);
 
 		if (!workflow) return { type: 'skipped', reason: 'workflow-not-found' };
@@ -76,12 +96,12 @@ export class WorkflowPublicationApplier {
 		// A null `activeVersionId` means the workflow has been unpublished, so we
 		// reconcile its triggers down to nothing rather than to a target version.
 		if (workflow.activeVersionId === null) {
-			return await this.unpublish(workflow, oldVersion, record);
+			return await this.unpublish(workflow, oldVersion, record, abort);
 		}
 
 		if (!newVersion) return { type: 'version-missing' };
 
-		return await this.publish(workflow, oldVersion, newVersion, record);
+		return await this.publish(workflow, oldVersion, newVersion, record, abort);
 	}
 
 	/**
@@ -97,6 +117,7 @@ export class WorkflowPublicationApplier {
 		oldVersion: WorkflowHistory | null,
 		newVersion: WorkflowHistory,
 		record: WorkflowPublicationOutbox,
+		abort: TriggerOperationAbort,
 	): Promise<PublicationResult> {
 		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
@@ -141,18 +162,31 @@ export class WorkflowPublicationApplier {
 			};
 		}
 
+		// Abort only before the trigger (de)activation phases — those run node
+		// code and can be slow; every state they leave behind on a mid-apply stop
+		// is one a crashed leader could also leave, which retries already handle.
+		abort.signal.throwIfAborted();
+
 		// Must happen BEFORE advancing the version, using the currently published
 		// version so the right webhooks are deregistered. A teardown failure here
 		// bubbles up so the version is not advanced.
 		if (toRemove.size > 0 && oldVersion) {
-			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove);
+			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort);
 		}
 
 		await this.advancePublishedVersion(record);
 
 		try {
+			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
-				const outcome = await this.workflowTriggerActivator.activate(workflow, newVersion, toAdd);
+				const activationMode = this.resolveActivationMode(record, oldVersion);
+				const outcome = await this.workflowTriggerActivator.activate(
+					workflow,
+					newVersion,
+					toAdd,
+					activationMode,
+					abort,
+				);
 				return this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds);
 			}
 
@@ -170,6 +204,19 @@ export class WorkflowPublicationApplier {
 				failures: [],
 			}),
 		};
+	}
+
+	/**
+	 * A first publication (no old version) reports `activate`, so the n8n Trigger's
+	 * "Workflow Published" event fires; otherwise the mode follows the record's reason.
+	 */
+	private resolveActivationMode(
+		record: WorkflowPublicationOutbox,
+		oldVersion: WorkflowHistory | null,
+	): WorkflowActivateMode {
+		const reason = record.reason ?? WorkflowPublicationReason.Publish;
+		if (reason === WorkflowPublicationReason.Publish && oldVersion === null) return 'activate';
+		return ACTIVATION_MODE_BY_REASON[reason];
 	}
 
 	/**
@@ -191,6 +238,7 @@ export class WorkflowPublicationApplier {
 		workflow: WorkflowEntity,
 		oldVersion: WorkflowHistory | null,
 		record: WorkflowPublicationOutbox,
+		abort: TriggerOperationAbort,
 	): Promise<PublicationResult> {
 		// If there is no oldVersion we may be retrying an unpublish that was
 		// interrupted after removing the mapping: nothing to tear down, but we
@@ -200,7 +248,8 @@ export class WorkflowPublicationApplier {
 		);
 
 		if (oldVersion && toRemove.size > 0) {
-			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove);
+			abort.signal.throwIfAborted();
+			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort);
 		}
 
 		// Invalidate before the mapping is removed, so reads fall through to the
