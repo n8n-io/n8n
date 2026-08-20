@@ -43,8 +43,11 @@ describe('N8nClient packages', () => {
 	});
 
 	describe('pushGitConnectionProjects', () => {
-		it('returns the updated Git connection', async () => {
-			const response = { id: 'connection-id', baseCommit: null };
+		it('POSTs to the push endpoint and returns the connection id and export counts', async () => {
+			const response = {
+				connectionId: 'connection-id',
+				counts: { workflows: 0, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+			};
 			fetchMock.mockResolvedValue(jsonResponse(200, response));
 
 			await expect(client.pushGitConnectionProjects('connection-id')).resolves.toEqual(response);
