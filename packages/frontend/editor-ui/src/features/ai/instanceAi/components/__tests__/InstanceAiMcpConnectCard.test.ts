@@ -4,7 +4,7 @@ import { nextTick, reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '@/app/constants/modals';
+import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../../constants';
 import type { ToolConnectionCredentialAdapter } from '@/features/shared/toolsConnection/types';
 import InstanceAiMcpConnectCard from '../InstanceAiMcpConnectCard.vue';
 
@@ -104,6 +104,7 @@ const BRAVE_CONNECTION = {
 	serverSlug: 'brave',
 	credentialId: 'cred-1',
 	credentialType: 'braveMcpOAuth2Api',
+	status: 'connected' as const,
 };
 
 function makeMcpStore(overrides: Record<string, unknown> = {}) {
@@ -111,7 +112,7 @@ function makeMcpStore(overrides: Record<string, unknown> = {}) {
 		catalog: [BRAVE_CATALOG_ENTRY],
 		connections: [] as Array<Record<string, unknown>>,
 		fetchCatalogLazy: vi.fn(),
-		fetchConnections: vi.fn(),
+		fetchConnectionsLazy: vi.fn(),
 		disconnect: vi.fn(),
 		...overrides,
 	});

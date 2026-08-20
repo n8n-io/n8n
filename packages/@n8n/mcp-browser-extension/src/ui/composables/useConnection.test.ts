@@ -35,6 +35,8 @@ const chromeMock = {
 	},
 	tabs: {
 		get: vi.fn(),
+		getCurrent: vi.fn(),
+		remove: vi.fn(),
 		onCreated: {
 			addListener: vi.fn((fn: TabCreatedHandler) => tabCreatedListeners.push(fn)),
 			removeListener: vi.fn((fn: TabCreatedHandler) => {
@@ -56,6 +58,9 @@ const chromeMock = {
 				if (i >= 0) tabUpdatedListeners.splice(i, 1);
 			}),
 		},
+	},
+	windows: {
+		getCurrent: vi.fn(),
 	},
 };
 
@@ -126,7 +131,6 @@ beforeEach(() => {
 
 	// Default background responses
 	chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
-		if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 		if (msg.type === 'getRelayUrl') return null;
 		if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
 		if (msg.type === 'getTabs') return [makeTab(1)];
@@ -137,6 +141,7 @@ beforeEach(() => {
 	});
 
 	chromeMock.tabs.get.mockImplementation(async (id: number) => await Promise.resolve(makeTab(id)));
+	chromeMock.windows.getCurrent.mockResolvedValue({ type: 'normal' } as chrome.windows.Window);
 });
 
 // ---------------------------------------------------------------------------
@@ -159,7 +164,6 @@ describe('useConnection', () => {
 		it('loads available tabs from background on mount', async () => {
 			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
 				if (msg.type === 'getTabs') return [makeTab(10), makeTab(11)];
-				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 				if (msg.type === 'getRelayUrl') return null;
 				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
 				return await Promise.resolve({});
@@ -177,7 +181,6 @@ describe('useConnection', () => {
 			const controlled = [makeControlledTabId(5), makeControlledTabId(6)];
 			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
 				if (msg.type === 'getStatus') return { connected: true, tabIds: controlled };
-				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 				if (msg.type === 'getRelayUrl') return null;
 				if (msg.type === 'getTabs') return [makeTab(1)];
 				return await Promise.resolve({});
@@ -193,12 +196,58 @@ describe('useConnection', () => {
 		});
 	});
 
+	describe('connected instance', () => {
+		const RELAY_URL = 'wss://acme.app.n8n.cloud/relay';
+
+		it('names the instance reported by the background on mount', async () => {
+			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
+				if (msg.type === 'getStatus') return { connected: true, tabIds: [], relayUrl: RELAY_URL };
+				if (msg.type === 'getRelayUrl') return null;
+				if (msg.type === 'getTabs') return [makeTab(1)];
+				return await Promise.resolve({});
+			});
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			expect(result().relayHost.value).toBe('acme.app.n8n.cloud');
+
+			wrapper.unmount();
+		});
+
+		it('names the instance when a connection starts while the view is open', async () => {
+			const { wrapper, result } = mountComposable();
+			await flush();
+			expect(result().relayHost.value).toBeNull();
+
+			pushMessage({ type: 'statusChanged', connected: true, tabIds: [], relayUrl: RELAY_URL });
+			await flush();
+
+			expect(result().relayHost.value).toBe('acme.app.n8n.cloud');
+
+			wrapper.unmount();
+		});
+
+		it('forgets the instance once disconnected', async () => {
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			pushMessage({ type: 'statusChanged', connected: true, tabIds: [], relayUrl: RELAY_URL });
+			await flush();
+			await result().disconnect();
+			await flush();
+
+			expect(result().relayHost.value).toBeNull();
+
+			wrapper.unmount();
+		});
+	});
+
 	describe('statusChanged broadcast', () => {
 		it('shows controlled tabs immediately when statusChanged arrives with new tab', async () => {
 			// Tab 42 must be in the registry (returned by getTabs) for controlledTabDetails to resolve it
 			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
 				if (msg.type === 'getTabs') return [makeTab(1), makeTab(42)];
-				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 				if (msg.type === 'getRelayUrl') return null;
 				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
 				return await Promise.resolve({});
@@ -239,7 +288,6 @@ describe('useConnection', () => {
 		it('updates controlled tabs when a second tab is added', async () => {
 			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
 				if (msg.type === 'getTabs') return [makeTab(1), makeTab(2)];
-				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 				if (msg.type === 'getRelayUrl') return null;
 				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
 				return await Promise.resolve({});
@@ -371,7 +419,6 @@ describe('useConnection', () => {
 		it('transitions to connected and populates controlled tabs', async () => {
 			const controlled = [makeControlledTabId(7)];
 			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
-				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 				if (msg.type === 'getRelayUrl') return 'ws://localhost:1234';
 				if (msg.type === 'getStatus') return { connected: true, tabIds: controlled };
 				if (msg.type === 'getTabs') return [makeTab(1), makeTab(7)];
@@ -394,7 +441,6 @@ describe('useConnection', () => {
 
 		it('stays disconnected and shows error on connect failure', async () => {
 			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
-				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 				if (msg.type === 'getRelayUrl') return 'ws://localhost:1234';
 				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
 				if (msg.type === 'getTabs') return [makeTab(1)];
@@ -413,9 +459,43 @@ describe('useConnection', () => {
 			wrapper.unmount();
 		});
 
+		// Runs a successful connect and reports whether the page closed itself.
+		async function connectAndCheckWindowClosed(windowType: string): Promise<boolean> {
+			chromeMock.windows.getCurrent.mockResolvedValue({
+				type: windowType,
+			} as chrome.windows.Window);
+			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
+				if (msg.type === 'getRelayUrl') return 'ws://localhost:1234';
+				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
+				if (msg.type === 'getTabs') return [makeTab(1)];
+				if (msg.type === 'connect') return { success: true };
+				if (msg.type === 'clearRelayUrl') return { success: true };
+				return await Promise.resolve({});
+			});
+			const closeSpy = vi.spyOn(window, 'close').mockImplementation(() => {});
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			await result().connect();
+			await flush();
+
+			const closed = closeSpy.mock.calls.length > 0;
+			closeSpy.mockRestore();
+			wrapper.unmount();
+			return closed;
+		}
+
+		it('closes the window after connecting when opened as a popup', async () => {
+			expect(await connectAndCheckWindowClosed('popup')).toBe(true);
+		});
+
+		it('keeps the window open after connecting in a regular tab', async () => {
+			expect(await connectAndCheckWindowClosed('normal')).toBe(false);
+		});
+
 		it('does nothing when no relay URL is available', async () => {
 			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
-				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 				if (msg.type === 'getRelayUrl') return null;
 				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
 				if (msg.type === 'getTabs') return [makeTab(1)];
@@ -466,7 +546,6 @@ describe('useConnection', () => {
 				'/?autoConnect=1&mcpRelayUrl=' + encodeURIComponent('ws://127.0.0.1:9000/ext'),
 			);
 			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
-				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 				if (msg.type === 'getRelayUrl') return null;
 				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
 				if (msg.type === 'getTabs') return [makeTab(1), makeTab(2)];
@@ -493,7 +572,6 @@ describe('useConnection', () => {
 				'/?autoConnect=1&mcpRelayUrl=' + encodeURIComponent('wss://attacker.example/relay'),
 			);
 			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
-				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 				if (msg.type === 'getRelayUrl') return null;
 				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
 				if (msg.type === 'getTabs') return [makeTab(1)];
@@ -521,7 +599,6 @@ describe('useConnection', () => {
 					'/?autoConnect=1&mcpRelayUrl=' + encodeURIComponent(`ws://${host}/ext`),
 				);
 				chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
-					if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 					if (msg.type === 'getRelayUrl') return null;
 					if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
 					if (msg.type === 'getTabs') return [makeTab(1)];
@@ -547,7 +624,6 @@ describe('useConnection', () => {
 				'/?mcpRelayUrl=' + encodeURIComponent('ws://127.0.0.1:9000/ext'),
 			);
 			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
-				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
 				if (msg.type === 'getRelayUrl') return null;
 				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
 				if (msg.type === 'getTabs') return [makeTab(1)];
@@ -574,35 +650,46 @@ describe('useConnection', () => {
 
 			result().toggleTab(1);
 			expect(result().selectedTabIds.has(1)).toBe(true);
-			expect(result().someSelected.value).toBe(true);
 
 			result().toggleTab(1);
 			expect(result().selectedTabIds.has(1)).toBe(false);
-			expect(result().someSelected.value).toBe(false);
 
 			wrapper.unmount();
 		});
+	});
 
-		it('toggleAll selects all available tabs', async () => {
-			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
-				if (msg.type === 'getTabs') return [makeTab(1), makeTab(2), makeTab(3)];
-				if (msg.type === 'getSettings') return { allowTabCreation: true, allowTabClosing: false };
-				if (msg.type === 'getRelayUrl') return null;
-				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
-				return await Promise.resolve({});
-			});
+	describe('decline', () => {
+		it('clears the relay URL and closes the current tab', async () => {
+			chromeMock.tabs.getCurrent.mockResolvedValue(makeTab(33));
 
 			const { wrapper, result } = mountComposable();
 			await flush();
 
-			result().toggleAll();
-			expect(result().allSelected.value).toBe(true);
-			expect(result().selectedTabIds.size).toBe(3);
+			pushMessage({ type: 'relayUrlReady', relayUrl: 'ws://localhost:9999' });
+			await flush();
 
-			result().toggleAll();
-			expect(result().allSelected.value).toBe(false);
-			expect(result().selectedTabIds.size).toBe(0);
+			await result().decline();
 
+			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({ type: 'clearRelayUrl' });
+			expect(result().relayUrl.value).toBeNull();
+			expect(chromeMock.tabs.remove).toHaveBeenCalledWith(33);
+
+			wrapper.unmount();
+		});
+
+		it('closes the window when the page is not a tab (action popover)', async () => {
+			chromeMock.tabs.getCurrent.mockResolvedValue(undefined);
+			const closeSpy = vi.spyOn(window, 'close').mockImplementation(() => {});
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			await result().decline();
+
+			expect(chromeMock.tabs.remove).not.toHaveBeenCalled();
+			expect(closeSpy).toHaveBeenCalled();
+
+			closeSpy.mockRestore();
 			wrapper.unmount();
 		});
 	});

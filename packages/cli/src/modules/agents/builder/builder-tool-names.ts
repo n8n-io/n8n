@@ -24,6 +24,8 @@ export const BUILDER_TOOLS = {
 	READ_SKILL: 'read_skill',
 	UPDATE_SKILL: 'update_skill',
 	CREATE_TASKS: 'create_tasks',
+	LIST_TASKS: 'list_tasks',
+	UPDATE_TASK: 'update_task',
 	FINISH_SETUP: 'finish_setup',
 	GET_RESOURCE_LOCATOR_OPTIONS: 'get_resource_locator_options',
 	LIST_WORKFLOWS: 'list_workflows',

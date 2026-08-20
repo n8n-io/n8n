@@ -365,6 +365,22 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).not.toContain('add-plan-item');
 	});
 
+	it('loads the bundled one-off-operations skill', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find((entry) => entry.name === 'one-off-operations');
+
+		expect(skill?.description).toContain('one-off operations');
+		expect(skill?.description).toContain('direct-one-off-build-succeeded');
+
+		const loaded = await source.loadSkill('one-off-operations');
+		// Normalize whitespace so assertions survive markdown re-wrapping.
+		const flattened = loaded?.instructions.replace(/\s+/g, ' ');
+		expect(flattened).toContain('executionIntent: "one-off"');
+		expect(flattened).toContain('not required and never the completion criterion');
+		expect(flattened).toContain('get-node-output');
+		expect(flattened).toContain('keep the workflow for future reuse or delete');
+	});
+
 	it('loads the bundled post-build-flow skill and trigger input reference', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find((entry) => entry.name === 'post-build-flow');
@@ -385,10 +401,10 @@ describe('Instance AI runtime skills', () => {
 			'ask once whether the user wants to build an error workflow for that workflow',
 		);
 		expect(loaded?.instructions).toContain(
-			'Do not replace this explicit opt-in with a generic "add\n   anything else?", publish, or test question.',
+			'Do not replace this explicit opt-in with a generic "add\n    anything else?", publish, or test question.',
 		);
 		expect(loaded?.instructions).toMatch(
-			/ask only that question now; do not also ask about the error\s+workflow/,
+			/ask only whether the user wants the live test\. Do not\s+mention publishing or ask about the error workflow/,
 		);
 		expect(loaded?.instructions).toContain(
 			'The error workflow must be published before it can be assigned',
@@ -413,6 +429,15 @@ describe('Instance AI runtime skills', () => {
 		);
 		expect(loaded?.instructions).toContain(
 			'Only call `workflows(action="publish")` when the user explicitly asks',
+		);
+		expect(loaded?.instructions).toContain(
+			'Do not proactively offer, recommend, or mention publishing until a successful',
+		);
+		expect(loaded?.instructions).toContain(
+			'A user-run execution satisfies the publishing gate only',
+		);
+		expect(loaded?.instructions).toContain(
+			'Do not offer publishing as an alternative or describe the workflow as ready to\nuse or publish',
 		);
 
 		const loadTool = createSkillLoadTool(source);

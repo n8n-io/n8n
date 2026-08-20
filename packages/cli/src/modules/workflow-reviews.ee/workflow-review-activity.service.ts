@@ -5,17 +5,20 @@ import type {
 	WorkflowReviewActivityEntry,
 	WorkflowReviewEligibleReviewer,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import {
 	TransactionRunner,
 	UserRepository,
 	WorkflowReviewActivityCommentRepository,
 	WorkflowReviewActivityRepository,
+	WorkflowReviewRequestRepository,
 	type User,
 	type WorkflowReviewActivityFeedEntry,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { WorkflowReviewAccessService } from './workflow-review-access.service';
@@ -31,8 +34,10 @@ export class WorkflowReviewActivityService {
 		private readonly eligibilityService: WorkflowReviewEligibilityService,
 		private readonly activityRepository: WorkflowReviewActivityRepository,
 		private readonly activityCommentRepository: WorkflowReviewActivityCommentRepository,
+		private readonly requestRepository: WorkflowReviewRequestRepository,
 		private readonly userRepository: UserRepository,
 		private readonly txRunner: TransactionRunner,
+		private readonly logger: Logger,
 	) {}
 
 	async listActivity(
@@ -70,7 +75,6 @@ export class WorkflowReviewActivityService {
 			workflowReviewRequestId,
 		);
 
-		// No lifecycle guard on purpose: a settled review stays open to discussion.
 		const eligibility = await this.eligibilityService.resolveViewerEligibility(user, access);
 		if (!eligibility.canComment) {
 			throw new ForbiddenError('You are not allowed to comment on this review');
@@ -80,6 +84,15 @@ export class WorkflowReviewActivityService {
 		// pooled connection while the transaction holds one — a deadlock on a
 		// single-connection pool.
 		const { activity, message } = await this.txRunner.run({}, async (ctx) => {
+			// Re-read inside the transaction, not from the pre-transaction access lookup, so a
+			// close committed in between is seen. A close that commits between this read and
+			// the comment commit can still slip one comment in — accepted: closing that window
+			// would serialize every comment instance-wide for a benign outcome.
+			const request = await this.requestRepository.findById(workflowReviewRequestId, ctx);
+			if (!request || request.state === 'closed') {
+				throw new ConflictError('The review request is no longer open');
+			}
+
 			const activity = await this.activityRepository.createActivity(
 				{
 					workflowReviewRequestId,
@@ -96,7 +109,12 @@ export class WorkflowReviewActivityService {
 			return { activity, message };
 		});
 
-		return toActivityEntry(activity, [message], new Map([[user.id, toEligibleReviewer(user)]]));
+		return toActivityEntry(
+			activity,
+			[message],
+			new Map([[user.id, toEligibleReviewer(user)]]),
+			this.logger,
+		);
 	}
 
 	private async hydrate(
@@ -109,7 +127,9 @@ export class WorkflowReviewActivityService {
 			]),
 		);
 
-		return entries.map((entry) => toActivityEntry(entry.activity, entry.messages, usersById));
+		return entries.map((entry) =>
+			toActivityEntry(entry.activity, entry.messages, usersById, this.logger),
+		);
 	}
 
 	private async hydrateAuthors(

@@ -29,10 +29,20 @@ describe('createEngineStepDataLoader', () => {
 		} as unknown as ExecutionStore;
 		const stepStore = {
 			// the trigger's completed row carries its payload as output slot 0
-			loadStepOutputs: vi.fn().mockResolvedValue({
-				t: [{ body: { hello: 'world' } }],
-				a: [[{ json: { from: 'a' } }]],
-				b: null,
+			loadStepsByKeys: vi.fn().mockResolvedValue({
+				't@0': {
+					nodeId: 't',
+					iteration: 0,
+					status: 'completed',
+					outputs: [{ body: { hello: 'world' } }],
+				},
+				'a@0': {
+					nodeId: 'a',
+					iteration: 0,
+					status: 'completed',
+					outputs: [[{ json: { from: 'a' } }]],
+				},
+				'b@0': { nodeId: 'b', iteration: 0, status: 'running', outputs: null },
 			}),
 		} as unknown as StepStore;
 
@@ -40,7 +50,11 @@ describe('createEngineStepDataLoader', () => {
 		const stepData = await loadStepData(context);
 
 		expect(executionStore.loadExecution).toHaveBeenCalledWith('exec-1');
-		expect(stepStore.loadStepOutputs).toHaveBeenCalledWith('exec-1', ['t', 'a', 'b']);
+		expect(stepStore.loadStepsByKeys).toHaveBeenCalledWith('exec-1', [
+			{ nodeId: 't', iteration: 0 },
+			{ nodeId: 'a', iteration: 0 },
+			{ nodeId: 'b', iteration: 0 },
+		]);
 		expect(stepData.graph).toBe(graph);
 		// incomplete steps are omitted, not mapped to null, so expressions
 		// referencing them fail as "hasn't been executed"

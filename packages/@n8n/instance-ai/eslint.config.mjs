@@ -71,6 +71,19 @@ export default defineConfig(
 		},
 	},
 	{
+		// The eval harness is dev-only tooling: tsconfig.build.json compiles
+		// `src/**` only and `files` ships `dist/**`, so nothing under evaluations/
+		// reaches an installed n8n. Its dev-only imports (playwright-core for the
+		// credential-setup browser lane) therefore belong in devDependencies, and
+		// the default rule — which treats every non-test file as production —
+		// would otherwise force them into `dependencies` and ship them to every
+		// install. Same arrangement as @n8n/ai-workflow-builder.ee's evaluations.
+		files: ['evaluations/**/*.ts'],
+		rules: {
+			'import-x/no-extraneous-dependencies': ['error', { devDependencies: true }],
+		},
+	},
+	{
 		files: ['evaluations/computer-use/report-html.ts'],
 		rules: {
 			// Large template literal + inline CSS: type-aware `no-unsafe-*` rules

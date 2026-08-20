@@ -27,7 +27,6 @@ import type {
 	ITaskData,
 	ITaskDataConnections,
 	ITaskMetadata,
-	NodeApiError,
 	NodeOperationError,
 	Workflow,
 	IRunExecutionData,
@@ -39,6 +38,7 @@ import type {
 	INodeIssues,
 	INodeType,
 	ITaskStartedData,
+	JsonObject,
 	AiAgentRequest,
 	IWorkflowExecutionDataProcess,
 	EngineRequest,
@@ -55,6 +55,7 @@ import {
 	UnexpectedError,
 	UserError,
 	OperationalError,
+	NodeApiError,
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
@@ -103,6 +104,14 @@ interface RunWorkflowOptions {
 	 * By default run() executes only destinationNode and its parents, others are not allowed to run
 	 */
 	additionalRunFilterNodes?: string[];
+}
+
+function normalizeUnhandledAxiosError(error: unknown, node: INode): ExecutionBaseError {
+	if (isAxiosError(error)) {
+		return new NodeApiError(node, error as JsonObject);
+	}
+
+	return error as ExecutionBaseError;
 }
 
 export class WorkflowExecute {
@@ -2010,7 +2019,7 @@ export class WorkflowExecute {
 								});
 							}
 
-							const e = error as unknown as ExecutionBaseError;
+							const e = normalizeUnhandledAxiosError(error, executionNode);
 
 							executionError = { ...e, message: e.message, stack: e.stack };
 
@@ -2755,9 +2764,10 @@ export class WorkflowExecute {
 				let errorData: GenericValue | undefined;
 				if (item.error) {
 					errorData = item.error;
-				} else if (item.json.error && Object.keys(item.json).length === 1) {
-					errorData = item.json.error;
-				} else if (item.json.error && item.json.message && Object.keys(item.json).length === 2) {
+				} else if (
+					item.json.error &&
+					Object.keys(item.json).every((key) => ['error', 'message', 'details'].includes(key))
+				) {
 					errorData = item.json.error;
 				}
 

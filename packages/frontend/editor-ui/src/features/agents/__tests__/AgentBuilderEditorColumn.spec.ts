@@ -114,7 +114,7 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 vi.mock('../views/AgentSessionsListView.vue', () => ({
 	default: {
 		name: 'AgentSessionsListView',
-		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab', 'manageStoreLifecycle'],
+		props: ['embedded', 'projectId', 'agentId', 'manageStoreLifecycle'],
 		template: '<div />',
 	},
 }));
@@ -301,7 +301,6 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props()).toMatchObject({
 			embedded: true,
 			manageStoreLifecycle: false,
-			openSessionInNewTab: false,
 		});
 	});
 

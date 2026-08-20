@@ -73,6 +73,8 @@ describe('model-discovery', () => {
 					{ id: 'gpt-5' },
 					{ id: 'whisper-1' },
 					{ id: 'dall-e-3' },
+					{ id: 'gpt-image-2' },
+					{ id: 'gpt-4o-transcribe' },
 					{ id: 'text-embedding-3-small' },
 					{ id: 'gpt-4o' },
 				],

@@ -1,5 +1,9 @@
-import { Service } from '@n8n/di';
-import type { RichCardComponentType } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	AgentIntegrationDisconnectWarning,
+	RichCardComponentType,
+} from '@n8n/api-types';
+import { Container, Service } from '@n8n/di';
 import type { Thread } from 'chat';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -8,6 +12,7 @@ import { AgentRepository } from '../../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
+	type AgentIntegrationRemovalContext,
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
@@ -17,11 +22,11 @@ import {
 } from '../../agent-chat-integration';
 import type { ChatInstance } from '../../chat-integration.service';
 import { loadSlackAdapter } from '../../esm-loader';
+import { connectionUnavailable } from '../../integration-helpers';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
 } from '../../integration-tool-definitions';
-import { connectionUnavailable } from '../../integration-helpers';
 import type { ReplyExpectation } from '../../integration-tools';
 import {
 	createSlackBridgeExecutionContext,
@@ -30,6 +35,7 @@ import {
 	getSlackReplyExpectation,
 	prepareSlackInboundText,
 } from './slack-bridge-behavior';
+import { SlackManagedSetupService } from './slack-managed-setup.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
 
 /**
@@ -39,7 +45,7 @@ import { executeSlackContextQuery, subscribeSlackThread } from './slack-operatio
  */
 @Service()
 export class SlackIntegration extends AgentChatIntegration {
-	constructor(private readonly agentRepository?: AgentRepository) {
+	constructor(private readonly agentRepository: AgentRepository) {
 		super();
 	}
 
@@ -99,7 +105,6 @@ export class SlackIntegration extends AgentChatIntegration {
 	]);
 
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		if (!this.agentRepository) return;
 		const others = await this.agentRepository.findByIntegrationCredential(
 			this.type,
 			ctx.credentialId,
@@ -111,7 +116,19 @@ export class SlackIntegration extends AgentChatIntegration {
 		}
 	}
 
-	async prepareSentThread(thread: Thread<unknown, unknown>): Promise<void> {
+	async onRemove(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<AgentIntegrationDisconnectWarning | undefined> {
+		return await Container.get(SlackManagedSetupService).deleteAppForCredential(ctx);
+	}
+
+	async prepareSentThread(
+		thread: Thread<unknown, unknown>,
+		integration: AgentIntegrationConfig,
+	): Promise<void> {
+		if (this.usesAgentMessagingExperience(integration) && this.isConversationScopedDm(thread.id)) {
+			return;
+		}
 		await subscribeSlackThread(thread);
 	}
 
@@ -159,7 +176,11 @@ export class SlackIntegration extends AgentChatIntegration {
 		const botToken = this.extractBotToken(ctx.credential);
 		const signingSecret = this.extractSigningSecret(ctx.credential);
 		const { createSlackAdapter } = await loadSlackAdapter();
-		return createSlackAdapter({ botToken, signingSecret });
+		return createSlackAdapter({
+			botToken,
+			signingSecret,
+			agentView: this.usesAgentMessagingExperience(ctx.integration),
+		});
 	}
 
 	/**
@@ -214,5 +235,13 @@ export class SlackIntegration extends AgentChatIntegration {
 			'The Slack credential is missing a signing secret, which is required for agent integrations. ' +
 				'Edit the credential and add your Slack app\'s "Signing Secret" (found under Basic Information in the Slack API dashboard).',
 		);
+	}
+
+	private usesAgentMessagingExperience(integration: AgentIntegrationConfig): boolean {
+		return integration.type === 'slack' && integration.settings?.messagingExperience === 'agent';
+	}
+
+	private isConversationScopedDm(threadId: string): boolean {
+		return /^slack:D[^:]+:$/.test(threadId);
 	}
 }
