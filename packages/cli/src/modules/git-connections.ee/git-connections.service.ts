@@ -161,13 +161,8 @@ export class GitConnectionsService {
 		return GitConnectionProjectListPublicDto.parse({ projectIds });
 	}
 
-	/**
-	 * The route only requires the global `gitConnection:manageProjects` scope, so a
-	 * caller who can manage connections could otherwise link any project. Restrict
-	 * the link/unlink to projects the caller can actually edit — a no-op for
-	 * instance owners/admins (who hold `project:update` globally), but a real gate
-	 * once `gitConnection:manageProjects` is granted to a custom role.
-	 */
+	// Only let the caller manage links for projects they can edit, on top of the
+	// route's global `gitConnection:manageProjects` scope.
 	private async assertProjectAccess(user: User, projectId: string) {
 		const allowed = await userHasScopes(user, ['project:update'], false, { projectId });
 		if (!allowed) throw new ForbiddenError('You do not have access to this project');
