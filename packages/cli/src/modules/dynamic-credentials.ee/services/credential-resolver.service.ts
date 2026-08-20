@@ -9,10 +9,11 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Not } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
-import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
+import { collectSecretFieldNames, restoreSecretConfig } from '../config-redaction';
 import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../constants';
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
@@ -285,37 +286,25 @@ export class DynamicCredentialResolverService {
 		await resolverImplementation.validateOptions(resolvedConfig);
 	}
 
-	/** Names of the config fields the resolver type marks as secret (`typeOptions.password`). */
-	private getSecretFieldNames(type: string): string[] {
-		return (this.registry.getResolverByTypename(type)?.metadata.options ?? [])
-			.filter((p) => p.typeOptions?.password === true)
-			.map((p) => p.name);
-	}
-
 	/**
 	 * A redacted config GET returns the blanking sentinel for secret fields. When the
-	 * editor round-trips that config back on save, restore each sentinel secret from the
-	 * stored config so it is not overwritten with the placeholder.
+	 * editor round-trips that config back on save, restore each sentinel secret (including
+	 * fields nested in collections) from the stored config so it is not overwritten with
+	 * the placeholder.
 	 */
 	private async restoreRedactedSecrets(
 		existing: DynamicCredentialResolver,
 		incoming: CredentialResolverConfiguration,
 	): Promise<CredentialResolverConfiguration> {
-		const secretFields = this.getSecretFieldNames(existing.type);
-		if (!secretFields.some((f) => incoming[f] === CREDENTIAL_BLANKING_VALUE)) {
+		const secretFields = collectSecretFieldNames(
+			this.registry.getResolverByTypename(existing.type)?.metadata.options,
+		);
+		if (secretFields.size === 0) {
 			return incoming;
 		}
 
 		const stored = await this.decryptConfig(existing.config);
-		const result = { ...incoming };
-		for (const field of secretFields) {
-			// ponytail: only restore fields present in the stored config; a changed
-			// resolver type gets fresh fields from the editor, so no sentinel appears there.
-			if (result[field] === CREDENTIAL_BLANKING_VALUE && field in stored) {
-				result[field] = stored[field];
-			}
-		}
-		return result;
+		return restoreSecretConfig(incoming, stored, secretFields);
 	}
 
 	/**

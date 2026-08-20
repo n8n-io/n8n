@@ -24,12 +24,12 @@ import {
 	CredentialResolverValidationError,
 } from '@n8n/decorators';
 import { Response } from 'express';
-import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { collectSecretFieldNames, redactSecretConfig } from './config-redaction';
 import { CredentialResolutionError } from './errors/credential-resolution.error';
 import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
 import { SystemResolverModificationError } from './errors/system-resolver-modification.error';
@@ -41,9 +41,10 @@ export class CredentialResolversController {
 
 	/**
 	 * Blank the resolver's secret config fields before returning it over HTTP.
-	 * Secret fields are those the resolver type marks with `typeOptions.password`;
-	 * non-secret fields stay intact so the editor can still prefill them. The raw
-	 * secret remains reachable only through the internal resolution path.
+	 * Secret fields are those the resolver type marks with `typeOptions.password`
+	 * (including fields nested in collections); non-secret fields stay intact so the
+	 * editor can still prefill them. The raw secret remains reachable only through the
+	 * internal resolution path.
 	 */
 	private redactSecrets(resolver: CredentialResolver): CredentialResolver {
 		const type = this.service.getAvailableTypes().find((t) => t.metadata.name === resolver.type);
@@ -55,18 +56,13 @@ export class CredentialResolversController {
 			return { ...rest, config: '' };
 		}
 
-		const secretFields = (type.metadata.options ?? [])
-			.filter((p) => p.typeOptions?.password === true)
-			.map((p) => p.name);
+		const secretFields = collectSecretFieldNames(type.metadata.options);
 
-		const decryptedConfig = { ...resolver.decryptedConfig };
-		for (const field of secretFields) {
-			if (field in decryptedConfig) {
-				decryptedConfig[field] = CREDENTIAL_BLANKING_VALUE;
-			}
-		}
-
-		return { ...resolver, config: '', decryptedConfig };
+		return {
+			...resolver,
+			config: '',
+			decryptedConfig: redactSecretConfig(resolver.decryptedConfig, secretFields),
+		};
 	}
 
 	@Get('/')
