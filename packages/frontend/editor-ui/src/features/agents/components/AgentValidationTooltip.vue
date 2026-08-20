@@ -53,44 +53,22 @@ const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
 };
 
-const CORE_ISSUE_KEYS: Record<string, BaseTextKey> = {
-	'instructions.missing_required':
-		'agents.builder.validation.tooltip.instructionsRequired' as BaseTextKey,
-	'model.missing_required': 'agents.builder.validation.tooltip.modelRequired' as BaseTextKey,
-	'model.invalid_value': 'agents.builder.validation.tooltip.modelInvalid' as BaseTextKey,
-	'credential.missing_credential':
-		'agents.builder.validation.tooltip.credentialRequired' as BaseTextKey,
-	'credential.invalid_credential':
-		'agents.builder.validation.tooltip.credentialInvalid' as BaseTextKey,
-	'credential.incompatible_credential':
-		'agents.builder.validation.tooltip.credentialIncompatible' as BaseTextKey,
+const CORE_PATH_KEYS: Record<string, BaseTextKey> = {
+	instructions: 'agents.chat.misconfigured.missing.instructions' as BaseTextKey,
+	model: 'agents.chat.misconfigured.missing.model' as BaseTextKey,
+	credential: 'agents.chat.misconfigured.missing.credential' as BaseTextKey,
 };
 
 const CAPABILITY_KEYS: Record<AgentCapabilityKind, BaseTextKey> = {
-	agent: 'agents.builder.validation.capability.agent' as BaseTextKey,
-	channel: 'agents.builder.validation.capability.channel' as BaseTextKey,
-	tool: 'agents.builder.validation.capability.tool' as BaseTextKey,
-	mcpServer: 'agents.builder.validation.capability.mcpServer' as BaseTextKey,
-	skill: 'agents.builder.validation.capability.skill' as BaseTextKey,
-	task: 'agents.builder.validation.capability.task' as BaseTextKey,
-	subAgent: 'agents.builder.validation.capability.subAgent' as BaseTextKey,
-	vectorStore: 'agents.builder.validation.capability.vectorStore' as BaseTextKey,
+	agent: 'agents.chat.misconfigured.missing.agent' as BaseTextKey,
+	channel: 'agents.builder.triggers.title' as BaseTextKey,
+	tool: 'agents.chat.misconfigured.missing.tools' as BaseTextKey,
+	mcpServer: 'agents.chat.misconfigured.missing.mcpServers' as BaseTextKey,
+	skill: 'agents.builder.sections.skills' as BaseTextKey,
+	task: 'agents.builder.tasks.title' as BaseTextKey,
+	subAgent: 'agents.chat.misconfigured.missing.subAgents.agents' as BaseTextKey,
+	vectorStore: 'agents.builder.vectorStores.panel.title' as BaseTextKey,
 };
-
-const NAMED_CAPABILITIES = new Set<AgentCapabilityKind>([
-	'channel',
-	'tool',
-	'mcpServer',
-	'vectorStore',
-]);
-
-const heading = computed(() =>
-	i18n.baseText(
-		(props.action === 'publish'
-			? 'agents.builder.validation.tooltip.publish'
-			: 'agents.builder.validation.tooltip.preview') as BaseTextKey,
-	),
-);
 
 function isPreviewIssue(issue: AgentConfigValidationIssue): boolean {
 	if (issue.capability.kind === 'channel' || issue.capability.kind === 'task') return false;
@@ -100,29 +78,11 @@ function isPreviewIssue(issue: AgentConfigValidationIssue): boolean {
 }
 
 function capabilityLabel(issue: AgentConfigValidationIssue): string {
-	const type = i18n.baseText(CAPABILITY_KEYS[issue.capability.kind]);
-	const name = issue.capability.id?.trim();
-	if (name && NAMED_CAPABILITIES.has(issue.capability.kind)) {
-		return i18n.baseText('agents.builder.validation.capability.named' as BaseTextKey, {
-			interpolate: { type, name },
-		});
-	}
-
-	if (issue.capability.index !== undefined && issue.capability.kind === 'tool') {
-		return i18n.baseText('agents.builder.validation.capability.numbered' as BaseTextKey, {
-			interpolate: { type, number: issue.capability.index + 1 },
-		});
-	}
-
-	return type;
+	const corePathKey = issue.capability.kind === 'agent' ? CORE_PATH_KEYS[issue.path] : undefined;
+	return i18n.baseText(corePathKey ?? CAPABILITY_KEYS[issue.capability.kind]);
 }
 
 function issueMessage(issue: AgentConfigValidationIssue): string {
-	if (issue.capability.kind === 'agent') {
-		const coreKey = CORE_ISSUE_KEYS[`${issue.path}.${issue.code}`];
-		if (coreKey) return i18n.baseText(coreKey);
-	}
-
 	const { kind, toolType, id } = issue.capability;
 	const key =
 		(issue.code === 'invalid_value' && issue.path.endsWith('.node.nodeParameters.url')
@@ -136,9 +96,7 @@ function issueMessage(issue: AgentConfigValidationIssue): string {
 		GENERIC_ISSUE_KEYS[issue.code];
 	const message = i18n.baseText(key, { interpolate: { id: id ?? '' } });
 
-	return i18n.baseText('agents.builder.validation.tooltip.item' as BaseTextKey, {
-		interpolate: { area: capabilityLabel(issue), issue: message },
-	});
+	return `${capabilityLabel(issue)}: ${message}`;
 }
 
 const details = computed(() => {
@@ -151,7 +109,7 @@ const details = computed(() => {
 	<N8nTooltip :disabled="props.disabled" :content="props.fallback" :content-class="$style.tooltip">
 		<template #content>
 			<div v-if="details.length > 0" :class="$style.content">
-				<div :class="$style.heading">{{ heading }}</div>
+				<div :class="$style.heading">{{ props.fallback }}</div>
 				<ul :class="$style.list">
 					<li v-for="detail in details" :key="detail">{{ detail }}</li>
 				</ul>
