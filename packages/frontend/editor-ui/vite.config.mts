@@ -103,18 +103,6 @@ const plugins: UserConfig['plugins'] = [
 				: html;
 		},
 	},
-	{
-		// Marks the scripts n8n ships, so the backend can give them the request's nonce.
-		// Build output only: the dev server serves no CSP.
-		name: 'csp-nonce',
-		transformIndexHtml(html, ctx) {
-			if (ctx.server) return html;
-			return html.replace(
-				/<script(?![^>]*\bnonce=)([^>]*)>/g,
-				`<script nonce="${HTML_NONCE_PLACEHOLDER}"$1>`,
-			);
-		},
-	},
 	// For sanitize-html
 	// nodePolyfills({
 	// 	include: ['fs', 'path', 'url', 'util', 'timers'],
@@ -176,6 +164,11 @@ export default defineConfig({
 		BASE_PATH: `'${publicPath}'`,
 	},
 	plugins,
+	// Marks every script, style and stylesheet link Vite emits, so the backend can swap in
+	// the request's nonce when it serves the page. Vite stamps these last, after plugins
+	// like `@vitejs/plugin-legacy` have appended their own tags, which a plugin of ours
+	// could not reach.
+	html: { cspNonce: HTML_NONCE_PLACEHOLDER },
 	resolve: { alias, dedupe: singleInstanceDedupe },
 	base: publicPath,
 	envPrefix: ['VUE', 'N8N_ENV_FEAT'],
