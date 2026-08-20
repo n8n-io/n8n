@@ -1,11 +1,14 @@
-import { useI18n } from '@n8n/i18n';
 import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 
 import { OTEL_SETTINGS_VIEW } from './otel.constants';
 
 const i18n = useI18n();
 
+// typescript-eslint reads an SFC import as `any`, because only vue-tsc can type one.
+// `pnpm turbo typecheck` is what checks this component for real.
+// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 const SettingsOpenTelemetryView = async () => await import('./SettingsOpenTelemetryView.vue');
 
 export const OtelModule: FrontendModuleDescription = {

@@ -1,8 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
 
 import * as otelApi from './otel.api';
-import { useOtelStore, headersStringToPairs, headersPairsToString } from './otel.store';
 import type { OtelSettingsResponse } from './otel.api';
+import { useOtelStore, headersStringToPairs, headersPairsToString } from './otel.store';
 
 vi.mock('./otel.api', () => ({
 	getOtelSettings: vi.fn(),
@@ -138,7 +138,7 @@ describe('useOtelStore', () => {
 
 			store.settings.exporterEndpoint = 'https://changed.io';
 
-			expect(store.savedSettings!.exporterEndpoint).toBe('https://original.io');
+			expect(store.savedSettings.exporterEndpoint).toBe('https://original.io');
 		});
 
 		it('sets loading to true during the call and resets it after', async () => {
