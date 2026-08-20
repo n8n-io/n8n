@@ -1,0 +1,88 @@
+{
+	"description": "Session-boundary baseline. In a PRIOR session the user states one standing preference — failure alerts always go to #ops-escalations — and an unrelated workflow already exists on the instance. The graded turn runs in a NEW session and asks for a new sync without restating the preference. EXPECTED TO FAIL TODAY, deliberately: every Instance AI memory tier is thread-scoped (docs/memory.md), so a preference stated in another session cannot reach this one. There is nowhere for it to live. This is a red baseline for context work, not a regression guard — it should turn green when, and only when, preferences actually persist across sessions. The seeded workflow is present so the prior session is realistic, not as a graded control: whether an artifact reaches the agent's CONTEXT depends on the agent choosing to call the workflows tool, and this task gives it no reason to. Artifact reachability across a boundary belongs in a case whose request requires consulting siblings. NOT YET CALIBRATED against a real build.",
+	"seed": {
+		"mode": "inline",
+		"sessionBoundary": true,
+		"messages": [
+			{
+				"role": "user",
+				"text": "Before we start on anything else — one standing rule for this instance. Whenever a workflow fails, the alert goes to #ops-escalations. Always that channel, never anywhere else, on every workflow you build for me."
+			},
+			{
+				"role": "assistant",
+				"text": "Understood — failure alerts go to #ops-escalations on everything I build here."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfNightlyOrdersSd01",
+				"name": "Nightly Orders Sync",
+				"nodes": [
+					{
+						"id": "b2c3d4e5-0001-4d01-9a01-000000000001",
+						"name": "Nightly Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 2
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "b2c3d4e5-0002-4d01-9a01-000000000002",
+						"name": "Fetch Orders",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/orders",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Nightly Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Orders",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Set up a daily sync that pulls invoices from https://api.example.com/v1/invoices and keeps the invoice id. Make sure I hear about it if a run fails."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["memory", "session-boundary", "user-preference"],
+	"messageBudget": 6,
+	"contextAssertions": [
+		{
+			"text": "#ops-escalations",
+			"note": "conversation half — the preference was stated only in the prior session, so today it must NOT be present; this failing is the baseline"
+		}
+	],
+	"processExpectations": [
+		"The agent did not silently invent an alert destination. Having no knowledge of any standing preference, the honest behaviours are to ask the user where failure alerts should go, or to surface the choice on a setup card — not to pick a channel unprompted and present it as settled."
+	],
+	"outcomeExpectations": [
+		"Failure alerts from the new workflow are routed to the #ops-escalations channel, matching the standing preference the user gave in the earlier session."
+	],
+	"datasets": ["memory"]
+}

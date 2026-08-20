@@ -643,6 +643,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		const projectId = await client.getPersonalProjectId();
 		await client.ensureThread(threadId, projectId);
+		// `restore-thread` asserts access to an EXISTING thread rather than creating
+		// one, so the prior session has to be created before the seed can land in it.
+		// Same project, so its artifacts are visible from the graded thread.
+		if (sessionBoundary) await client.ensureThread(seedThreadId, projectId);
 
 		// Pin the thread's credential view to the case's declared set (empty by
 		// default) before the first message, so every build-workflow call inside
