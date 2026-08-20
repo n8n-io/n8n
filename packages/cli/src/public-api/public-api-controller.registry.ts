@@ -5,6 +5,7 @@ import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decor
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
+import type { ZodError } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -20,6 +21,20 @@ import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
+
+/**
+ * Names the offending field in a validation failure, the way the legacy validator did:
+ * Ajv's `errorsText(errors, { dataVar: 'request' })` renders `request/body/active is read-only`.
+ * Without the path, a message written as a fragment ("is read-only", "Required") has no subject.
+ */
+function formatValidationError(location: 'body' | 'query', error: ZodError): string {
+	const issue = error.errors[0];
+	if (!issue) return 'Invalid request';
+
+	const path = issue.path.length > 0 ? `/${issue.path.join('/')}` : '';
+
+	return `request/${location}${path} ${issue.message}`;
+}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -68,7 +83,7 @@ export class PublicApiControllerRegistry {
 						if (output.success) {
 							args.push(output.data);
 						} else {
-							throw new BadRequestError(output.error.errors[0]?.message ?? 'Invalid request');
+							throw new BadRequestError(formatValidationError(arg.type, output.error));
 						}
 					}
 				}

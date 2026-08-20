@@ -1,9 +1,19 @@
-import { ApiResponse, ControllerRegistryMetadata, Deprecated, Get } from '@n8n/decorators';
+import { Z } from '@n8n/api-types';
+import {
+	ApiResponse,
+	Body,
+	ControllerRegistryMetadata,
+	Deprecated,
+	Get,
+	Post,
+	Query,
+} from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import express from 'express';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
+import { z } from 'zod';
 
 import type { EventService } from '@/events/event.service';
 import { markPublicApiController } from '@/public-api/__tests__/public-api-controller-test-utils';
@@ -18,6 +28,7 @@ describe('PublicApiControllerRegistry', () => {
 
 	function activate(): express.Express {
 		const app = express();
+		app.use(express.json());
 		const router = express.Router({ mergeParams: true });
 		new PublicApiControllerRegistry(
 			Container.get(ControllerRegistryMetadata),
@@ -88,5 +99,78 @@ describe('PublicApiControllerRegistry', () => {
 		const response = await request(activate()).get('/widgets').expect(200);
 
 		expect(response.headers.deprecation).toBeUndefined();
+	});
+
+	describe('validation failures', () => {
+		// The legacy validator rendered `request/body/<field> <message>` via Ajv's
+		// errorsText({ dataVar: 'request' }). Messages written as fragments have no
+		// subject without the path, so the path has to survive into the 400.
+		class WidgetBodyDto extends Z.class({
+			name: z.string(),
+			active: z.undefined({ invalid_type_error: 'is read-only' }),
+			nested: z.object({ label: z.string() }).optional(),
+		}) {}
+
+		class WidgetQueryDto extends Z.class({ limit: z.coerce.number() }) {}
+
+		function widgetsApp(): express.Express {
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				create(_req: express.Request, _res: express.Response, @Body _body: WidgetBodyDto) {
+					return { ok: true };
+				}
+
+				@Get('/')
+				@ApiResponse(200)
+				list(_req: express.Request, _res: express.Response, @Query _query: WidgetQueryDto) {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+			return activate();
+		}
+
+		it('names the offending body field', async () => {
+			const response = await request(widgetsApp()).post('/widgets').send({ name: 1 }).expect(400);
+
+			expect(response.body.message).toBe('request/body/name Expected string, received number');
+		});
+
+		it('gives a fragment message its subject', async () => {
+			const response = await request(widgetsApp())
+				.post('/widgets')
+				.send({ name: 'w', active: false })
+				.expect(400);
+
+			expect(response.body.message).toBe('request/body/active is read-only');
+		});
+
+		it('joins a nested path with slashes', async () => {
+			const response = await request(widgetsApp())
+				.post('/widgets')
+				.send({ name: 'w', nested: { label: 1 } })
+				.expect(400);
+
+			expect(response.body.message).toBe(
+				'request/body/nested/label Expected string, received number',
+			);
+		});
+
+		it('reports the location alone when the issue has no path', async () => {
+			const response = await request(widgetsApp()).post('/widgets').send([]).expect(400);
+
+			expect(response.body.message).toBe('request/body Expected object, received array');
+		});
+
+		it('names the offending query parameter', async () => {
+			const response = await request(widgetsApp())
+				.get('/widgets')
+				.query({ limit: 'abc' })
+				.expect(400);
+
+			expect(response.body.message).toBe('request/query/limit Expected number, received nan');
+		});
 	});
 });

@@ -2444,6 +2444,7 @@ describe('POST /workflows', () => {
 				.send({ ...mockPostWorkflowPayload(), [key]: value });
 
 			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe(`request/body/${key} is read-only`);
 		});
 
 		test('should accept and ignore a supplied shared list', async () => {
