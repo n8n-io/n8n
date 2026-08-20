@@ -58,6 +58,23 @@ describe('Confluence router', () => {
 		]);
 	});
 
+	it('dispatches attachment:delete and returns the deletion report', async () => {
+		apiRequest.mockResolvedValue('');
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'attachment',
+				operation: 'delete',
+				attachmentId: 'att123',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/attachments/att123');
+		expect(result).toEqual([
+			[{ json: { deleted: true, attachmentId: 'att123', purged: false }, pairedItem: { item: 0 } }],
+		]);
+	});
+
 	it('dispatches attachment:getMany and pairs the emitted items', async () => {
 		apiRequest.mockResolvedValue({ results: [{ id: 'a1', title: 'notes.txt' }] });
 
