@@ -50,6 +50,18 @@ async function timeout(ms: number): Promise<undefined> {
 // the live status instead of firing a second request the extension would throttle.
 const status: Ref<DirectConnectStatus> = ref('idle');
 const isAttempting = ref(false);
+// `isAttempting` only spans the extension round trip. An orchestrated flow outlives it —
+// it runs until the browser attaches — so anything asking "is a connect already under way?"
+// must read this instead, or it will start a second one in the gap.
+const isFlowActive = ref(false);
+
+/** Marks an orchestrated flow as running; call the returned function when it settles. */
+export function beginConnectFlow(): () => void {
+	isFlowActive.value = true;
+	return () => {
+		isFlowActive.value = false;
+	};
+}
 
 /**
  * Clears the shared flow state. A finished flow leaves a terminal status behind, which the
@@ -58,6 +70,7 @@ const isAttempting = ref(false);
 export function resetExtensionDirectConnect(): void {
 	status.value = 'idle';
 	isAttempting.value = false;
+	isFlowActive.value = false;
 }
 
 /**
@@ -122,5 +135,10 @@ export function useExtensionDirectConnect() {
 		}
 	}
 
-	return { status, isAttempting: readonly(isAttempting), attempt };
+	return {
+		status,
+		isAttempting: readonly(isAttempting),
+		isFlowActive: readonly(isFlowActive),
+		attempt,
+	};
 }

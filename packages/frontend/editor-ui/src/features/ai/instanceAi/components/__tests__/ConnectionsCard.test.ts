@@ -105,16 +105,16 @@ function makeMcpStore(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-const { ensureBrowserConnected, isBrowserAttempting } = vi.hoisted(() => ({
+const { ensureBrowserConnected, browserConnectStatus } = vi.hoisted(() => ({
 	ensureBrowserConnected: vi.fn(),
-	isBrowserAttempting: { value: false },
+	browserConnectStatus: { value: 'idle' as string },
 }));
 
 vi.mock('../../composables/useBrowserUseConnection', () => ({
 	useBrowserUseConnection: () => ({ ensureConnected: ensureBrowserConnected }),
 }));
 vi.mock('../../composables/useExtensionDirectConnect', () => ({
-	useExtensionDirectConnect: () => ({ isAttempting: isBrowserAttempting }),
+	useExtensionDirectConnect: () => ({ status: browserConnectStatus }),
 }));
 
 const renderComponent = createComponentRenderer(ConnectionsCard, {
@@ -158,7 +158,7 @@ describe('ConnectionsCard', () => {
 		mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
-		isBrowserAttempting.value = false;
+		browserConnectStatus.value = 'idle';
 		settingsStoreMock.mockReturnValue(makeSettingsStore());
 		mcpStoreMock.mockReturnValue(makeMcpStore());
 	});
@@ -188,11 +188,23 @@ describe('ConnectionsCard', () => {
 	});
 
 	it('reports a silent connect on the row, which otherwise shows nothing happening', () => {
-		isBrowserAttempting.value = true;
+		browserConnectStatus.value = 'connecting';
 
 		const { getByTestId } = renderComponent();
 
 		expect(getByTestId('connection-row-browser-use-row')).toHaveAttribute(
+			'data-status',
+			'connecting',
+		);
+	});
+
+	it('leaves the row alone while the extension popup awaits the user', () => {
+		browserConnectStatus.value = 'waiting';
+
+		const { getByTestId } = renderComponent();
+
+		// A spinner here would imply nothing is required of them.
+		expect(getByTestId('connection-row-browser-use-row')).not.toHaveAttribute(
 			'data-status',
 			'connecting',
 		);

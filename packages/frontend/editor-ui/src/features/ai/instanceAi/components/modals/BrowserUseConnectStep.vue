@@ -18,7 +18,7 @@ const props = withDefaults(defineProps<{ autoConnect?: boolean }>(), { autoConne
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
-const { status, isAttempting, attempt } = useExtensionDirectConnect();
+const { status, isFlowActive, attempt } = useExtensionDirectConnect();
 
 const connectUrl = ref<string | null>(null);
 // A remembered host attaches with no popup, so it must not be told to confirm one.
@@ -61,13 +61,16 @@ async function refreshConnectUrl(): Promise<void> {
 }
 
 onMounted(async () => {
+	// Read before any await: an outer flow can settle while the URL is being fetched, and
+	// both decisions below must reflect the state at the moment this view opened.
+	const joinedOuterFlow = isFlowActive.value;
 	// Don't inherit the leftover status of a flow that already finished.
-	if (!isAttempting.value) resetExtensionDirectConnect();
+	if (!joinedOuterFlow) resetExtensionDirectConnect();
 
 	await refreshConnectUrl();
 	if (!props.autoConnect || !connectUrl.value) return;
-	// An outer caller may have started this flow; join it rather than re-requesting.
-	if (isAttempting.value) return;
+	// The outer flow is already driving this; render its status rather than re-requesting.
+	if (joinedOuterFlow) return;
 	telemetry.trackDirectConnectRequested();
 	await attempt(connectUrl.value);
 });
@@ -78,7 +81,6 @@ onMounted(async () => {
  * activation still permits `window.open`.
  */
 async function connect(): Promise<void> {
-	if (!connectUrl.value) await refreshConnectUrl();
 	if (!connectUrl.value) return;
 	telemetry.trackDirectConnectRequested();
 	await attempt(connectUrl.value);

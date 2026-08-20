@@ -34,12 +34,16 @@ const store = useInstanceAiSettingsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
 const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
-const { isAttempting: isBrowserConnecting } = useExtensionDirectConnect();
+const { status: browserConnectStatus } = useExtensionDirectConnect();
 
 /** A silent connect shows no UI of its own, so the row has to report it is working. */
 function singletonRowStatus(type: SingletonConnectionType, status: ConnectionStatus) {
+	// Only the silent case: when the extension is showing its own popup the user has
+	// something to do, and a spinner here would say otherwise.
 	const isPendingBrowserUse =
-		type === BROWSER_USE_CONNECTION_TYPE && status !== 'connected' && isBrowserConnecting.value;
+		type === BROWSER_USE_CONNECTION_TYPE &&
+		status !== 'connected' &&
+		browserConnectStatus.value === 'connecting';
 	return isPendingBrowserUse ? 'connecting' : status;
 }
 const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();

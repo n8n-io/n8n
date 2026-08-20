@@ -134,13 +134,16 @@ export function useConnection() {
 			return;
 		}
 
-		log.debug('connect: relay URL =', relayUrl.value, 'selectedTabs:', selectedTabIds.size);
+		// Pinned before any await: a new request can replace `relayUrl` mid-handshake, and the
+		// approval must record the host the user was actually shown.
+		const approvedUrl = relayUrl.value;
+		log.debug('connect: relay URL =', approvedUrl, 'selectedTabs:', selectedTabIds.size);
 		status.value = 'connecting';
 		errorMessage.value = '';
 
 		const raw: unknown = await chrome.runtime.sendMessage({
 			type: 'connect',
-			relayUrl: relayUrl.value,
+			relayUrl: approvedUrl,
 			selectedTabIds: [...selectedTabIds],
 		});
 		log.debug('connect response:', raw);
@@ -149,7 +152,7 @@ export function useConnection() {
 			status.value = 'connected';
 			// The eval harness connects unattended — it must not write user-facing trust state.
 			if (rememberInstance.value && !isAutoConnect.value) {
-				approvedHosts.value = await rememberHost(relayUrl.value);
+				approvedHosts.value = await rememberHost(approvedUrl);
 			}
 			await chrome.runtime.sendMessage({ type: 'clearRelayUrl' });
 			// Fetch controlled IDs — controlledTabDetails computed auto-resolves from registry
@@ -210,6 +213,8 @@ export function useConnection() {
 		if (message.type === 'relayUrlReady' && message.relayUrl) {
 			log.debug('relayUrlReady received:', message.relayUrl);
 			relayUrl.value = message.relayUrl;
+			// A different instance is asking now, so its approval has to be given afresh.
+			rememberInstance.value = false;
 			// Drop the now-stale connection params from the page URL. The live value lives in
 			// relayUrl + session storage, so a manual reload reads the fresh URL, not the old token.
 			window.history.replaceState(null, '', window.location.pathname);

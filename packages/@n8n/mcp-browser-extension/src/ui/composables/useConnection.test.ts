@@ -557,6 +557,47 @@ describe('useConnection', () => {
 			wrapper.unmount();
 		});
 
+		it('stores the host the user approved even if the live URL changes mid-handshake', async () => {
+			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
+				if (msg.type === 'getRelayUrl') return RELAY_URL;
+				if (msg.type === 'getStatus') return { connected: false, tabIds: [] };
+				if (msg.type === 'getTabs') return [makeTab(1)];
+				if (msg.type === 'connect') {
+					// The session drops mid-handshake, which clears the live relay URL.
+					pushMessage({ type: 'statusChanged', connected: false });
+					return { success: true };
+				}
+				if (msg.type === 'clearRelayUrl') return { success: true };
+				return await Promise.resolve({});
+			});
+
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			result().rememberInstance.value = true;
+			await result().connect();
+			await flush();
+
+			expect(chromeMock.storage.local.set).toHaveBeenCalledWith({
+				[APPROVED_KEY]: ['localhost:1234'],
+			});
+
+			wrapper.unmount();
+		});
+
+		it('clears the opt-in when a different instance takes over the page', async () => {
+			const { wrapper, result } = mountComposable();
+			await flush();
+
+			result().rememberInstance.value = true;
+			pushMessage({ type: 'relayUrlReady', relayUrl: 'ws://other.host:9999/ext' });
+			await flush();
+
+			expect(result().rememberInstance.value).toBe(false);
+
+			wrapper.unmount();
+		});
+
 		it('stores nothing by default — auto-connect is opt-in', async () => {
 			stubSuccessfulConnect();
 

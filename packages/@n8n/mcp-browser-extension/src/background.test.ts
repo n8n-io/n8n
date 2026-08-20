@@ -130,6 +130,11 @@ beforeEach(() => {
 	vi.clearAllMocks();
 });
 
+// In an `afterEach` so a failed assertion can't leak the stub into later cases.
+afterEach(() => {
+	vi.unstubAllGlobals();
+});
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -293,8 +298,6 @@ describe('external messages (direct connect flow)', () => {
 		expect(response()).toEqual({ accepted: true, confirmationRequired: false });
 		expect(chromeMock.windows.create).not.toHaveBeenCalled();
 		expect(chromeMock.tabs.update).not.toHaveBeenCalled();
-
-		vi.unstubAllGlobals();
 	});
 
 	it('rejects a relay URL that is not a recognized n8n instance', async () => {

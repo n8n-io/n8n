@@ -52,6 +52,7 @@ vi.mock('../../instanceAiBrowserUse.telemetry', () => ({
 	useInstanceAiBrowserUseTelemetry: () => telemetryMock,
 }));
 vi.mock('../useExtensionDirectConnect', () => ({
+	beginConnectFlow: () => () => {},
 	useExtensionDirectConnect: () => ({
 		status: directConnectStatus,
 		isAttempting,
@@ -123,6 +124,21 @@ describe('useBrowserUseConnection', () => {
 		await expect(result).resolves.toBe(true);
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_KEY);
 		expect(toastMock.showMessage).toHaveBeenCalledTimes(1);
+	});
+
+	it('resolves when the browser attaches before the modal listeners are set up', async () => {
+		// The extension asked for confirmation and the user approved it fast, so the state is
+		// already true by the time the modal opens — a plain watch would never fire.
+		attemptMock.mockImplementation(async () => {
+			directConnectStatus.value = 'waiting';
+			settingsStore.browserConnected = true;
+		});
+
+		const result = useBrowserUseConnection().ensureConnected();
+		await vi.advanceTimersByTimeAsync(0);
+
+		await expect(result).resolves.toBe(true);
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_KEY);
 	});
 
 	it('reports failure when the user dismisses the modal', async () => {

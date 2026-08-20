@@ -7,7 +7,7 @@ import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useInstanceAiBrowserUseTelemetry } from '../instanceAiBrowserUse.telemetry';
-import { useExtensionDirectConnect } from './useExtensionDirectConnect';
+import { beginConnectFlow, useExtensionDirectConnect } from './useExtensionDirectConnect';
 
 /** Safety net only — the extension answers in milliseconds, or not at all. */
 const EXTENSION_REPLY_TIMEOUT_MS = 5_000;
@@ -30,9 +30,13 @@ export function useBrowserUseConnection() {
 
 	/** Resolves true once the browser is attached, false if the user backed out. */
 	async function ensureConnected(): Promise<boolean> {
-		inFlight ??= run().finally(() => {
-			inFlight = null;
-		});
+		if (inFlight === null) {
+			const endFlow = beginConnectFlow();
+			inFlight = run().finally(() => {
+				inFlight = null;
+				endFlow();
+			});
+		}
 		return await inFlight;
 	}
 
@@ -86,6 +90,10 @@ export function useBrowserUseConnection() {
 	}
 
 	async function waitForConnectedOrDismissed(): Promise<boolean> {
+		// Level-triggered: the browser may have attached during the setup work above, and a
+		// plain `watch` would never fire for a value that is already true.
+		if (settingsStore.browserConnected) return true;
+
 		// The flow outlives the surface that started it, so these can't rely on it staying mounted.
 		const listeners = effectScope(true);
 		return await new Promise<boolean>((resolve) => {

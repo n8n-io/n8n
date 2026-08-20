@@ -285,9 +285,11 @@ async function handleExternalConnect(
 	const askedByRelayHost = getRelayHostKey(senderOrigin) === getRelayHostKey(relayUrl);
 	if (askedByRelayHost && (await isHostApproved(relayUrl))) {
 		log.debug('relay host previously approved, connecting without confirmation:', relayUrl);
-		pendingConnectFlow = { relayUrl, tabId: null, notify: null };
+		const flow: PendingConnectFlow = { relayUrl, tabId: null, notify: null };
+		pendingConnectFlow = flow;
 		void connectToRelay(relayUrl, []).then((result) => {
-			if (!result.success) settleConnectFlow(false);
+			// A newer request may already own the pending flow; only settle our own.
+			if (!result.success && pendingConnectFlow === flow) settleConnectFlow(false);
 		});
 		return { accepted: true, confirmationRequired: false };
 	}
