@@ -21,7 +21,7 @@ export const WorkflowReviewsModule: FrontendModuleDescription = {
 			beforeEnter() {
 				return (
 					useWorkflowReviewsFeature().isWorkflowReviewsEnabled.value || {
-						name: VIEWS.NOT_FOUND,
+						name: VIEWS.HOMEPAGE,
 					}
 				);
 			},

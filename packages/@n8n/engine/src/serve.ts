@@ -1,64 +1,27 @@
 import { EngineConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { DataSource } from '@n8n/typeorm';
 
 import { AllowAllAdmittance } from './admittance';
-import { createDataSource, createStores } from './database';
-import {
-	ExecutionStartHandler,
-	OrchestrationWorker,
-	StepSettledHandler,
-	StepReadyHandler,
-	StepWorker,
-} from './execution';
-import { InMemoryWorkQueue } from './queue';
-import type { OrchestrationMessage, StepMessage } from './queue';
-import { createEngineServer } from './server';
+import { createDataSource } from './database';
+import { createEngineRuntime } from './runtime';
 
 async function main(): Promise<void> {
 	const config = Container.get(EngineConfig);
 
-	let dataSource: DataSource | undefined;
-	if (config.databaseUrl) {
-		dataSource = createDataSource(config.databaseUrl);
-		await dataSource.initialize();
-		await dataSource.runMigrations();
-	} else {
-		console.warn(
-			'engine: N8N_ENGINE_DATABASE_URL not set; running in healthcheck-only mode (workflow execution endpoints disabled)',
-		);
+	// Refused rather than degraded: an engine with nowhere to record an execution
+	// would report healthy while being unable to run one.
+	if (!config.databaseUrl) {
+		throw new Error('engine: N8N_ENGINE_DATABASE_URL is not set');
 	}
 
-	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
-	const stepQueue = new InMemoryWorkQueue<StepMessage>();
+	const dataSource = createDataSource(config.databaseUrl);
+	await dataSource.initialize();
+	await dataSource.runMigrations();
 
-	let orchestrationWorker: OrchestrationWorker | undefined;
-	let stepWorker: StepWorker | undefined;
-	if (dataSource) {
-		const { executionStore, stepStore } = createStores(dataSource);
-		orchestrationWorker = new OrchestrationWorker(
-			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
-		);
-		// No executors here: the v1 one lives in `@n8n/node-engine-compatibility`,
-		// which depends on this package, so only an integrated host can supply it.
-		// `v1-node` steps therefore fail as unimplemented in standalone mode.
-		stepWorker = new StepWorker(
-			stepQueue,
-			new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {}),
-		);
-		orchestrationWorker.start();
-		stepWorker.start();
-	}
+	const runtime = createEngineRuntime({ dataSource, admittance: new AllowAllAdmittance() });
+	runtime.start();
 
-	const { app } = createEngineServer(
-		dataSource
-			? { dataSource, admittance: new AllowAllAdmittance(), workQueue: orchestrationQueue }
-			: undefined,
-	);
-
-	const server = app.listen(config.port, config.host, () => {
+	const server = runtime.app.listen(config.port, config.host, () => {
 		console.log(`engine: listening on http://${config.host}:${config.port}`);
 	});
 
@@ -70,12 +33,8 @@ async function main(): Promise<void> {
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
 		});
-		// TODO(CAT-3882): drain in-flight work instead. Stopping the workers waits
-		// only for whatever each is mid-handling; anything queued behind it is
-		// dropped, since the in-memory queues die with the process.
-		if (orchestrationWorker) await orchestrationWorker.stop();
-		if (stepWorker) await stepWorker.stop();
-		if (dataSource?.isInitialized) await dataSource.destroy();
+		await runtime.stop();
+		if (dataSource.isInitialized) await dataSource.destroy();
 		process.exit(0);
 	};
 

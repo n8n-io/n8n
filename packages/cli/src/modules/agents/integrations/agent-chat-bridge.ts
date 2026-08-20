@@ -515,6 +515,7 @@ export class AgentChatBridge {
 				chat: this.chat,
 				thread,
 				message,
+				integration: this.integration,
 				logger: this.logger,
 				agentId: this.agentId,
 				statusRetry,

@@ -78,9 +78,22 @@ describe('WorkflowReviewEligibilityService', () => {
 			});
 		});
 
-		it('stops an author from approving their own review even when assigned', async () => {
+		it('lets an assigned reviewer decide even when they authored a version', async () => {
 			authorRepository.isAuthor.mockResolvedValue(true);
 			reviewerRepository.isReviewer.mockResolvedValue(true);
+
+			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
+
+			expect(eligibility).toEqual({
+				canDecide: true,
+				decisionIneligibilityReason: null,
+				canComment: true,
+			});
+		});
+
+		it('stops a non-assigned author from approving their own review', async () => {
+			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(false);
 
 			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
 
@@ -129,6 +142,7 @@ describe('WorkflowReviewEligibilityService', () => {
 
 		it('still stops an author whose project-admin rights are in another project', async () => {
 			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(false);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['other-proj']);
 
 			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
