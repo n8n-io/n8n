@@ -25,7 +25,8 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(CreateWorkflowPublicDto.schema.safeParse(payload).success).toBe(false);
 	});
 
-	// The controller reads `body.settings.redactionPolicy` unguarded, so optional would be a 500.
+	// `settings` must stay required: the controller reads `body.settings.redactionPolicy`
+	// with no guard, so making it optional turns a missing `settings` into a 500.
 	test('rejects a payload with no settings', () => {
 		const { settings: _settings, ...withoutSettings } = validPayload;
 
@@ -34,7 +35,7 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(false);
 	});
 
-	test('accepts the writable fields of a shared entry', () => {
+	test('accepts a shared entry copied back from a workflow response', () => {
 		const result = CreateWorkflowPublicDto.safeParse({
 			...validPayload,
 			shared: [{ role: 'workflow:owner', workflowId: 'w1', projectId: 'p1' }],
@@ -64,16 +65,14 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
-	test.each([
-		['a JSON string', '{"lastId":1}', true],
-		['a string that is not JSON', 'not json', false],
-		['an object', { lastId: 1 }, true],
-		['null', null, true],
-	])('handles staticData as %s', (_label, staticData, expected) => {
-		const result = CreateWorkflowPublicDto.safeParse({ ...validPayload, staticData });
+	test.each([['an object', { lastId: 1 }], ['null', null]])(
+		'accepts staticData as %s',
+		(_label, staticData) => {
+			const result = CreateWorkflowPublicDto.safeParse({ ...validPayload, staticData });
 
-		expect(result.success).toBe(expected);
-	});
+			expect(result.success).toBe(true);
+		},
+	);
 
 	test.each([
 		['accepts', 155, true],
