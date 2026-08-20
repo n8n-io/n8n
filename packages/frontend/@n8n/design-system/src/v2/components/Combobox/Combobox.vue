@@ -270,6 +270,8 @@ function getDisplayValue(value: unknown): string {
 	return '';
 }
 
+const searchTerm = ref(getDisplayValue(rootModelValue.value));
+
 function hasValue(value: ComboboxValue | ComboboxValue[] | undefined): boolean {
 	if (props.multiple) {
 		return Array.isArray(value) && value.length > 0;
@@ -306,11 +308,11 @@ watch(
 		}
 
 		const element = getInputElement();
-		if (!element || document.activeElement === element || element.value === label) {
+		if ((element && document.activeElement === element) || searchTerm.value === label) {
 			return;
 		}
 
-		element.value = label;
+		searchTerm.value = label;
 	},
 	{ flush: 'post' },
 );
@@ -410,6 +412,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				v-else
 				:id="inputId"
 				ref="input"
+				v-model="searchTerm"
 				:class="$style.comboboxInput"
 				:placeholder="placeholder"
 				:auto-focus="props.autoFocus"
