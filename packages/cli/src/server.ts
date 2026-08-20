@@ -203,8 +203,12 @@ export class Server extends AbstractServer {
 			next();
 		});
 
-		// Installed here on purpose: `AbstractServer` already registered the webhook and
-		// form routes, which serve their own `sandbox` policy.
+		// Installed here on purpose, and the order is the mechanism: `AbstractServer` has
+		// already registered the webhook and form routes, so they never reach this
+		// middleware. Those pages serve HTML that a workflow author wrote, which the
+		// instance policy must not constrain - including when the `sandbox` policy is
+		// switched off with `N8N_INSECURE_DISABLE_*_SANDBOX`, where they carry no policy
+		// at all. Moving this line above `AbstractServer` would silently change that.
 		const securityConfig = Container.get(SecurityConfig);
 		this.app.use(
 			createContentSecurityPolicyMiddleware(
@@ -464,7 +468,7 @@ export class Server extends AbstractServer {
 				// placeholders intact, and no script on it could run under the CSP.
 				if (
 					method === 'GET' &&
-					(!accept || accept.includes('text/html') || accept.includes('*/*')) &&
+					(!accept || req.accepts('html') || accept.includes('*/*')) &&
 					!req.path.endsWith('.wasm') &&
 					!nonUIRoutesRegex.test(req.path)
 				) {

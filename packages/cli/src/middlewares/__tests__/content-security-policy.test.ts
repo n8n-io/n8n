@@ -171,4 +171,37 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			expect(response.headers[ENFORCED]).toBe("script-src 'self'");
 		});
 	});
+
+	// `Server` installs this middleware only after `AbstractServer` has registered the
+	// webhook and form routes, so those pages never reach it. That ordering is what keeps
+	// the instance policy off HTML a workflow author wrote - including when the `sandbox`
+	// policy is switched off and such a page carries no policy of its own to defer to.
+	describe('routes registered before the middleware', () => {
+		const app = express();
+
+		// Stands in for a form or webhook page served with `N8N_INSECURE_DISABLE_*_SANDBOX`
+		// on: HTML that sets no policy at all.
+		app.get('/webhook/unsandboxed', (_req, res) => {
+			res.type('html').send('<p>author HTML</p>');
+		});
+
+		app.use(createContentSecurityPolicyMiddleware({ enforced: "script-src 'self'" }));
+
+		app.get('/page', (_req, res) => {
+			res.type('html').send('<p>page</p>');
+		});
+
+		it('should serve no policy, even on an HTML response that sets none', async () => {
+			const response = await request(app).get('/webhook/unsandboxed');
+
+			expect(response.headers[ENFORCED]).toBeUndefined();
+			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+
+		it('should still serve the policy on a route registered after it', async () => {
+			const response = await request(app).get('/page');
+
+			expect(response.headers[ENFORCED]).toBe("script-src 'self'");
+		});
+	});
 });
