@@ -36,6 +36,11 @@ type ExportPackageRequest = AuthenticatedRequest<
 		includeVariableValues?: boolean;
 		includeTags?: boolean;
 		missingWorkflowDependencyPolicy?: 'fail' | 'reference-only' | 'include-in-package';
+		workflowVersionPolicy?:
+			| 'published-strict'
+			| 'prefer-published'
+			| 'ignore-unpublished'
+			| 'latest';
 	}
 >;
 
@@ -150,6 +155,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					canExportVariableValues: apiKeyScopes.includes('variable:list'),
 					includeTags: payload.data.includeTags,
 					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
+					workflowVersionPolicy: payload.data.workflowVersionPolicy,
 				});
 
 				return await streamPackageExport(res, exportResult);
@@ -205,11 +211,13 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
 					workflowIdPolicy: payload.data.workflowIdPolicy,
 					missingNodeTypeMode: payload.data.missingNodeTypeMode,
+					projectConflictPolicy: payload.data.projectConflictPolicy,
 					folderConflictPolicy: payload.data.folderConflictPolicy,
 					dataTableMatchingMode: payload.data.dataTableMatchingMode,
 					dataTableMissingMode: payload.data.dataTableMissingMode,
 					dataTableSchemaConflictPolicy: payload.data.dataTableSchemaConflictPolicy,
 					variableMissingMode: payload.data.variableMissingMode,
+					variableConflictPolicy: payload.data.variableConflictPolicy,
 					variableParentPolicy: payload.data.variableParentPolicy,
 					tagMissingMode: payload.data.tagMissingMode,
 					tagConflictPolicy: payload.data.tagConflictPolicy,

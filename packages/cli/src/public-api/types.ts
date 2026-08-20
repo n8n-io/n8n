@@ -49,6 +49,8 @@ export declare namespace ExecutionRequest {
 			workflowId?: string;
 			lastId?: string;
 			projectId?: string;
+			startedAfter?: string;
+			startedBefore?: string;
 		}
 	>;
 
@@ -107,17 +109,6 @@ export declare namespace TestRunRequest {
 }
 
 export declare namespace TagRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-		}
-	>;
-
 	type Create = AuthenticatedRequest<{}, {}, TagEntity>;
 	type Get = AuthenticatedRequest<{ id: string }>;
 	type Delete = Get;
@@ -129,24 +120,6 @@ export declare namespace CredentialTypeRequest {
 }
 
 export declare namespace WorkflowRequest {
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			tags?: string;
-			status?: ExecutionStatus;
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			workflowId?: number;
-			active: boolean;
-			name?: string;
-			projectId?: string;
-			excludePinnedData?: boolean;
-		}
-	>;
-
 	type Create = AuthenticatedRequest<
 		{},
 		{},
@@ -159,7 +132,7 @@ export declare namespace WorkflowRequest {
 		{ id: string },
 		{},
 		WorkflowEntity & { parentFolderId?: string | null },
-		{}
+		{ publishIfActive?: boolean }
 	>;
 	type Activate = AuthenticatedRequest<
 		{ id: string },
@@ -167,9 +140,6 @@ export declare namespace WorkflowRequest {
 		{ versionId?: string; name?: string; description?: string },
 		{}
 	>;
-	type GetTags = Get;
-	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
-	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
 }
 

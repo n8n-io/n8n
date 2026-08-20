@@ -169,7 +169,6 @@ test.describe(
 				const foundWorkflow = result.data.find((w) => w.id === workflowId);
 				expect(foundWorkflow).toBeDefined();
 				expect(foundWorkflow!.active).toBe(true);
-				expect(foundWorkflow!.scopes).toBeDefined();
 				expect(foundWorkflow!.availableInMCP).toBe(true);
 			});
 
@@ -218,7 +217,7 @@ test.describe(
 				expect(result.data[0].id).toBe(workflowId);
 			});
 
-			test('should return workflow metadata (id, name, scopes)', async ({ api }) => {
+			test('should return workflow metadata (id, name)', async ({ api }) => {
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-basic.json',
 				);
@@ -232,8 +231,6 @@ test.describe(
 
 				expect(foundWorkflow!.id).toBe(workflowId);
 				expect(foundWorkflow!.name).toBeTruthy();
-				expect(foundWorkflow!.scopes).toBeInstanceOf(Array);
-				expect(typeof foundWorkflow!.canExecute).toBe('boolean');
 				expect(typeof foundWorkflow!.availableInMCP).toBe('boolean');
 			});
 		});
@@ -339,13 +336,18 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production', {
-					type: 'webhook',
-					webhookData: {
-						method: 'POST',
-						body: { message: 'Hello from MCP test' },
+				const result = await api.mcp.internalMcpExecuteWorkflow(
+					apiKey,
+					workflowId,
+					'production',
+					{
+						webhookData: {
+							method: 'POST',
+							body: { message: 'Hello from MCP test' },
+						},
 					},
-				});
+					'Webhook',
+				);
 
 				expect(result.status).toBe('started');
 				expect(result.executionId).toBeTruthy();
@@ -432,7 +434,7 @@ test.describe(
 			test('should handle malformed JSON-RPC messages', async ({ api }) => {
 				const { apiKey } = await api.rotateMcpApiKey();
 
-				// Missing required 'jsonrpc: "2.0"' field
+				// Valid JSON but not a valid JSON-RPC request (missing `jsonrpc: "2.0"`)
 				const malformedMessage = {
 					id: nanoid(),
 					method: 'tools/list',
@@ -440,12 +442,14 @@ test.describe(
 
 				const response = await api.mcp.internalMcpSendMessage(apiKey, malformedMessage);
 
-				// Server returns 400 Bad Request for malformed JSON-RPC
+				// Server returns 400 Bad Request for an invalid JSON-RPC request
 				expect(response.status()).toBe(400);
 
 				const body = await response.json();
 				expect(body.error).toBeDefined();
-				expect(body.error.code).toBe(-32700); // Parse error
+				// Well-formed JSON that isn't a valid request object is Invalid Request
+				// (-32600), not Parse error (-32700, which is for unparseable JSON).
+				expect(body.error.code).toBe(-32600); // Invalid Request
 				expect(body.error.message).toBeTruthy();
 			});
 

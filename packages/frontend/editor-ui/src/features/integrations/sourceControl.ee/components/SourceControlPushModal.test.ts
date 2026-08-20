@@ -12,7 +12,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { reactive } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 
 const eventBus = createEventBus();
@@ -42,10 +42,9 @@ vi.mock('vue-router', () => ({
 	},
 }));
 
-vi.mock('@n8n/composables/useTelemetry', async (importOriginal) => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
-		...(await importOriginal<typeof import('@n8n/composables/useTelemetry')>()),
 		useTelemetry: () => {
 			return {
 				track,

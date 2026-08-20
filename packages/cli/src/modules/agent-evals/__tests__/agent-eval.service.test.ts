@@ -33,6 +33,8 @@ vi.mock('../agent-eval-case-generation.service', () => ({
 
 const AGENT_ID = 'agent-1';
 const PROJECT_ID = 'proj-1';
+// What `PaginationDto` hands the service once the route has defaulted it.
+const PAGE = { take: 10, skip: 0 };
 
 describe('AgentEvalService', () => {
 	const user = mock<User>({ id: 'user-1' });
@@ -93,6 +95,8 @@ describe('AgentEvalService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<Agent>({ id: AGENT_ID }));
 		datasetRepository.findByIdAndAgentId.mockResolvedValue(makeDataset());
 		runRepository.findByIdAndAgentId.mockResolvedValue(makeRun());
+		runRepository.findAndCountByDatasetIdAndAgentId.mockResolvedValue([[], 0]);
+		resultRepository.findAndCountByRunId.mockResolvedValue([[], 0]);
 
 		service = new AgentEvalService(
 			moduleRegistry,
@@ -132,8 +136,8 @@ describe('AgentEvalService', () => {
 				async () => await service.generateDraftCases(user, AGENT_ID, PROJECT_ID, {}),
 			],
 			['startRun', async () => await service.startRun(user, AGENT_ID, PROJECT_ID, 'ds-1', {})],
-			['listRuns', async () => await service.listRuns(AGENT_ID, PROJECT_ID, 'ds-1')],
-			['getRunDetail', async () => await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1')],
+			['listRuns', async () => await service.listRuns(AGENT_ID, PROJECT_ID, 'ds-1', PAGE)],
+			['getRunDetail', async () => await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1', PAGE)],
 			['getRunSummary', async () => await service.getRunSummary(AGENT_ID, PROJECT_ID, 'run-1')],
 			['cancelRun', async () => await service.cancelRun(AGENT_ID, PROJECT_ID, 'run-1')],
 		];
@@ -155,11 +159,14 @@ describe('AgentEvalService', () => {
 
 		// The agent lookup below reads a module entity, so the dependency check has
 		// to land before it — otherwise TypeORM raises missing metadata first.
+		// Not-found, not bad-request: with `agents` off there is no agent to address,
+		// matching the 404 that module's own unregistered routes already give.
 		it.each(callsRequiringAnAgent)(
-			'%s reports the inactive module instead of querying the agent',
+			'%s reports the inactive module as not-found instead of querying the agent',
 			async (_, call) => {
 				moduleRegistry.isActive.mockImplementation((name) => name !== 'agents');
 
+				await expect(call()).rejects.toThrow(NotFoundError);
 				await expect(call()).rejects.toThrow('Agent evals require these modules to be active');
 				expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 			},
@@ -181,10 +188,10 @@ describe('AgentEvalService', () => {
 		it('404s a run belonging to another agent, and reads no results for it', async () => {
 			runRepository.findByIdAndAgentId.mockResolvedValue(null);
 
-			await expect(service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-other')).rejects.toThrow(
+			await expect(service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-other', PAGE)).rejects.toThrow(
 				NotFoundError,
 			);
-			expect(resultRepository.findByRunId).not.toHaveBeenCalled();
+			expect(resultRepository.findAndCountByRunId).not.toHaveBeenCalled();
 		});
 
 		it('refuses to start a run on another agent’s dataset, without touching the runner', async () => {
@@ -326,9 +333,7 @@ describe('AgentEvalService', () => {
 
 	describe('response mapping', () => {
 		it('serializes dates as ISO strings and keeps run coordination columns off the wire', async () => {
-			resultRepository.findByRunId.mockResolvedValue([]);
-
-			const detail = await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1');
+			const detail = await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1', PAGE);
 
 			expect(detail.runAt).toBe('2026-01-03T00:00:00.000Z');
 			expect(detail.createdAt).toBe('2026-01-03T00:00:00.000Z');
@@ -379,28 +384,73 @@ describe('AgentEvalService', () => {
 			);
 		});
 
-		it('includes every per-case result in a run detail', async () => {
-			resultRepository.findByRunId.mockResolvedValue([
-				mock<AgentEvalResult>({
-					id: 'res-1',
-					runId: 'run-1',
-					status: 'success',
-					runAt: new Date('2026-01-03T00:00:01.000Z'),
-					completedAt: new Date('2026-01-03T00:00:02.000Z'),
-					createdAt: new Date('2026-01-03T00:00:00.000Z'),
-					updatedAt: new Date('2026-01-03T00:00:02.000Z'),
-				}),
+		it('maps every per-case result on the requested page of a run detail', async () => {
+			resultRepository.findAndCountByRunId.mockResolvedValue([
+				[
+					mock<AgentEvalResult>({
+						id: 'res-1',
+						runId: 'run-1',
+						status: 'success',
+						runAt: new Date('2026-01-03T00:00:01.000Z'),
+						completedAt: new Date('2026-01-03T00:00:02.000Z'),
+						createdAt: new Date('2026-01-03T00:00:00.000Z'),
+						updatedAt: new Date('2026-01-03T00:00:02.000Z'),
+					}),
+				],
+				1,
 			]);
 
-			const detail = await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1');
+			const detail = await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1', PAGE);
 
-			expect(detail.results).toHaveLength(1);
-			expect(detail.results[0]).toMatchObject({
+			expect(detail.results.data).toHaveLength(1);
+			expect(detail.results.data[0]).toMatchObject({
 				id: 'res-1',
 				status: 'success',
 				runAt: '2026-01-03T00:00:01.000Z',
 				completedAt: '2026-01-03T00:00:02.000Z',
 			});
+		});
+	});
+
+	// The window has to reach the repositories: slicing in memory would still
+	// grow without bound as a dataset ages.
+	describe('pagination', () => {
+		it('passes the run-list window to the repository and reports the total', async () => {
+			runRepository.findAndCountByDatasetIdAndAgentId.mockResolvedValue([[makeRun()], 342]);
+
+			const page = await service.listRuns(AGENT_ID, PROJECT_ID, 'ds-1', { take: 25, skip: 50 });
+
+			expect(runRepository.findAndCountByDatasetIdAndAgentId).toHaveBeenCalledWith(
+				'ds-1',
+				AGENT_ID,
+				{ take: 25, skip: 50 },
+			);
+			expect(page).toMatchObject({ count: 342 });
+			expect(page.data).toHaveLength(1);
+		});
+
+		it('passes the run-detail window to the repository and reports the case total', async () => {
+			resultRepository.findAndCountByRunId.mockResolvedValue([[], 500]);
+
+			const detail = await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1', {
+				take: 25,
+				skip: 50,
+			});
+
+			expect(resultRepository.findAndCountByRunId).toHaveBeenCalledWith('run-1', {
+				take: 25,
+				skip: 50,
+			});
+			expect(detail.results).toEqual({ count: 500, data: [] });
+		});
+
+		// A client sizing its pager off `data.length` would misread the total.
+		it('reports a total larger than the page it returned', async () => {
+			runRepository.findAndCountByDatasetIdAndAgentId.mockResolvedValue([[makeRun()], 342]);
+
+			const page = await service.listRuns(AGENT_ID, PROJECT_ID, 'ds-1', { take: 1, skip: 0 });
+
+			expect(page.count).toBeGreaterThan(page.data.length);
 		});
 	});
 

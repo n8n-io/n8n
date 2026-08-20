@@ -8,11 +8,15 @@ import { TagService } from '@/services/tag.service';
 
 import { decideTagImportAction } from './tag-import-decision';
 import type { TagDecisionFailure } from './tag-import-decision';
-import type { TagImportPlan, TagImportRequest, TagRef, TagResolutionFailure } from './tag.types';
+import { sortedUnique } from './tag.types';
+import type {
+	ReferencingWorkflow,
+	TagImportPlan,
+	TagImportRequest,
+	TagRef,
+	TagResolutionFailure,
+} from './tag.types';
 import type { ImportContext } from '../../n8n-packages.types';
-import type { PreparedWorkflow } from '../workflow/workflow-import.types';
-
-type ReferencingWorkflow = Pick<PreparedWorkflow, 'sourceWorkflowId' | 'tagIds'>;
 
 @Service()
 export class TagImporter {
@@ -36,6 +40,7 @@ export class TagImporter {
 			matched: [],
 			creations: [],
 			renames: [],
+			reconciles: [],
 			dropped: [],
 			failures: [],
 		};
@@ -79,6 +84,7 @@ export class TagImporter {
 			if (effect.action === 'attach') plan.matched.push(effect.target);
 			else if (effect.action === 'create') plan.creations.push(effect.tag);
 			else if (effect.action === 'rename') plan.renames.push(effect.rename);
+			else if (effect.action === 'reconcile') plan.reconciles.push(effect.reconcile);
 			else if (effect.action === 'drop') plan.dropped.push(effect.tag);
 			else decisionFailures.push(effect.failure);
 		}
@@ -106,13 +112,10 @@ export class TagImporter {
 				),
 			);
 		}
-		if (plan.renames.length > 0 && !hasGlobalScope(context.user, 'tag:update')) {
+		const updatedTagIds = [...plan.renames, ...plan.reconciles].map(({ id }) => id);
+		if (updatedTagIds.length > 0 && !hasGlobalScope(context.user, 'tag:update')) {
 			plan.failures.push(
-				permissionFailure(
-					'tag:update',
-					plan.renames.map(({ id }) => id),
-					sourceWorkflowIdsReferencing,
-				),
+				permissionFailure('tag:update', updatedTagIds, sourceWorkflowIdsReferencing),
 			);
 		}
 
@@ -120,20 +123,25 @@ export class TagImporter {
 	}
 
 	/**
-	 * Idempotent create-if-absent / rename-if-differs, so several scopes of a
-	 * project package can carry the same plan for one global tag: the first
-	 * apply writes, later ones no-op.
+	 * Idempotent create-if-absent / rename-if-differs / reconcile-if-not-yet,
+	 * so several scopes of a project package can carry the same plan for one
+	 * global tag: the first apply writes, later ones no-op.
 	 */
 	async apply(context: ImportContext, plan: TagImportPlan): Promise<void> {
-		if (plan.creations.length === 0 && plan.renames.length === 0) return;
+		if (plan.creations.length === 0 && plan.renames.length === 0 && plan.reconciles.length === 0) {
+			return;
+		}
 
 		// Defense in depth: the plan phase already reports a missing scope as a
 		// blocking issue, but apply re-checks before writing anything.
 		if (plan.creations.length > 0 && !hasGlobalScope(context.user, 'tag:create')) {
 			throw new ForbiddenError('User is missing a scope required to create a tag');
 		}
-		if (plan.renames.length > 0 && !hasGlobalScope(context.user, 'tag:update')) {
-			throw new ForbiddenError('User is missing a scope required to rename a tag');
+		if (
+			(plan.renames.length > 0 || plan.reconciles.length > 0) &&
+			!hasGlobalScope(context.user, 'tag:update')
+		) {
+			throw new ForbiddenError('User is missing a scope required to rename or reconcile a tag');
 		}
 
 		const existingById = new Map(
@@ -141,6 +149,7 @@ export class TagImporter {
 				await this.tagService.getByIds([
 					...plan.creations.map(({ id }) => id),
 					...plan.renames.map(({ id }) => id),
+					...plan.reconciles.flatMap(({ id, oldId }) => [id, oldId]),
 				])
 			).map((tag) => [tag.id, tag]),
 		);
@@ -157,15 +166,20 @@ export class TagImporter {
 				'update',
 			);
 		}
+		for (const reconcile of plan.reconciles) {
+			if (existingById.has(reconcile.id)) continue;
+			// Only a concurrent actor deleting the tag between plan and apply can
+			// leave the old id missing here — package-content contradictions that
+			// consume it are gated package-wide at plan time. Same residual race
+			// class as renames.
+			if (!existingById.has(reconcile.oldId)) continue;
+			await this.tagService.reconcileTagId(reconcile.oldId, reconcile.id);
+		}
 	}
 }
 
 function toTagRef(tag: { id: string; name: string }): TagRef {
 	return { id: tag.id, name: tag.name };
-}
-
-function sortedUnique(values: string[]): string[] {
-	return [...new Set(values)].sort();
 }
 
 /**

@@ -299,7 +299,9 @@ const urlValue = computedAsync(async () => {
 
 	if (currentMode.value.url) {
 		const value = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
-		if (typeof value === 'string') {
+		// The value is spliced into the mode's url expression template and resolved,
+		// so only build a link from a literal value, never one carrying `{{ }}`.
+		if (typeof value === 'string' && !value.includes('{{') && !value.includes('}}')) {
 			const expression = currentMode.value.url.replace(/\{\{\$value\}\}/g, value);
 			const resolved = await workflowHelpers.resolveExpression(
 				expression,

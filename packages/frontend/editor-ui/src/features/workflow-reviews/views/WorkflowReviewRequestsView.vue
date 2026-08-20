@@ -3,33 +3,57 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { WorkflowReviewRequestState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
 
+import WorkflowReviewDetailTabs from '../components/WorkflowReviewDetailTabs.vue';
+import type { WorkflowReviewDetailTab } from '../components/WorkflowReviewDetailTabs.vue';
 import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsSidebar.vue';
+import type { ReviewInboxSidebarSection } from '../components/WorkflowReviewRequestsSidebar.vue';
+import WorkflowReviewStatusDot from '../components/WorkflowReviewStatusDot.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
-import { useReviewInboxStore } from '../reviewInbox.store';
+import { useReviewActivityStore } from '../reviewActivity.store';
+import { useReviewInboxStore, type ReviewInboxSectionKey } from '../reviewInbox.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 
 const store = useReviewInboxStore();
+// The tab round trip destroys the feed subtree, so its lifecycle lives here; the
+// feed and the composer read the store themselves.
+const activityStore = useReviewActivityStore();
 const {
 	probeSettled,
 	showSidebar,
-	items,
 	activeTab,
 	detail,
 	detailLoading,
 	detailNotFound,
-	loading,
-	loadingMore,
-	hasMore,
 	isEmpty,
 	openCount,
 	closedCount,
 } = storeToRefs(store);
+
+// `storeToRefs` does not reach into the nested `sections` object; Pinia already
+// unwraps the slice refs, so read them through the store.
+function toSidebarSection(key: ReviewInboxSectionKey): ReviewInboxSidebarSection {
+	const slice = store.sections[key];
+	return {
+		key,
+		items: slice.items,
+		loading: slice.loading,
+		loadingMore: slice.loadingMore,
+		hasMore: slice.hasMore,
+		error: slice.error,
+	};
+}
+
+const sidebarSections = computed<ReviewInboxSidebarSection[]>(() =>
+	activeTab.value === 'closed'
+		? [toSidebarSection('closed')]
+		: [toSidebarSection('waiting'), toSidebarSection('authored')],
+);
 
 const route = useRoute();
 const router = useRouter();
@@ -41,15 +65,28 @@ function firstParam(value: string | string[] | undefined): string | null {
 
 const selectedReviewId = computed(() => firstParam(route.params.reviewRequestId));
 
+/**
+ * Watchers and resolved requests below both reach this view after the viewer may have left it,
+ * where the query params it writes mean something else entirely.
+ */
+function isOnInbox() {
+	return route.name === WORKFLOW_REVIEW_REQUESTS_VIEW;
+}
+
 function stateFromQuery(value: unknown): WorkflowReviewRequestState {
 	return value === 'closed' ? 'closed' : 'open';
 }
 
+// Clear on entry, not exit: a discarded layout-swap copy can unmount after the live
+// one has started probing, and a teardown clear would invalidate that probe.
+store.reset();
+activityStore.reset();
+
 // Hydrate the tab before probing so the first list fetch uses the URL state.
 store.activeTab = stateFromQuery(route.query[REVIEW_INBOX_QUERY_PARAM.state]);
 
-const selectedListItem = computed(
-	() => items.value.find((item) => item.id === selectedReviewId.value) ?? null,
+const selectedListItem = computed(() =>
+	selectedReviewId.value ? store.findItemById(selectedReviewId.value) : null,
 );
 const selectedItem = computed(() => detail.value ?? selectedListItem.value);
 
@@ -69,9 +106,15 @@ function handleListError(error: unknown) {
 watch(
 	selectedReviewId,
 	(id) => {
-		if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
-		if (id) void store.fetchDetail(id).catch(handleListError);
-		else store.clearDetail();
+		if (!isOnInbox()) return;
+		if (id) {
+			void store.fetchDetail(id).catch(handleListError);
+			// Failures surface in the feed's own error row, never as a second toast.
+			void activityStore.fetchFeed(id);
+		} else {
+			store.clearDetail();
+			activityStore.reset();
+		}
 	},
 	{ immediate: true },
 );
@@ -79,13 +122,16 @@ watch(
 watch(
 	() => route.query[REVIEW_INBOX_QUERY_PARAM.state],
 	(next) => {
-		if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
+		if (!isOnInbox()) return;
 		void store.setActiveTab(stateFromQuery(next)).catch(handleListError);
 	},
 );
 
 function onSelect(id: string) {
-	void router.replace({ params: { reviewRequestId: id }, query: route.query });
+	// Switching reviews lands on Activity tab. Deep links still win.
+	const query = { ...route.query };
+	if (id !== selectedReviewId.value) delete query[REVIEW_INBOX_QUERY_PARAM.tab];
+	void router.replace({ params: { reviewRequestId: id }, query });
 }
 
 function onClearSelection() {
@@ -99,11 +145,31 @@ function onActiveTabChange(tab: WorkflowReviewRequestState) {
 	void router.replace({ query });
 }
 
-async function onLoadMore() {
+const detailTab = computed<WorkflowReviewDetailTab>(() =>
+	route.query[REVIEW_INBOX_QUERY_PARAM.tab] === 'changes' ? 'changes' : 'activity',
+);
+
+function onDetailTabChange(tab: WorkflowReviewDetailTab) {
+	if (!isOnInbox()) return;
+	const query = { ...route.query };
+	if (tab === 'changes') query[REVIEW_INBOX_QUERY_PARAM.tab] = tab;
+	else delete query[REVIEW_INBOX_QUERY_PARAM.tab];
+	void router.replace({ query });
+}
+
+async function onLoadMore(section: ReviewInboxSectionKey) {
 	try {
-		await store.loadMore();
+		await store.loadMore(section);
 	} catch (error) {
-		await handleListError(error);
+		handleListError(error);
+	}
+}
+
+async function onRetrySection(section: ReviewInboxSectionKey) {
+	try {
+		await store.retry(section);
+	} catch (error) {
+		handleListError(error);
 	}
 }
 
@@ -122,6 +188,7 @@ function asSentence(message: string) {
  * refetches the list from here.
  */
 function followClosedReview(id: string) {
+	if (!isOnInbox()) return;
 	if (activeTab.value === 'closed') return;
 	void router.replace({
 		params: { reviewRequestId: id },
@@ -129,13 +196,26 @@ function followClosedReview(id: string) {
 	});
 }
 
-async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
+async function onDecide(id: string, input: WorkflowReviewDecisionInput) {
 	deciding.value = true;
 	try {
-		const { autoPublish, state } = await store.decideOnReview(id, decision);
-		if (state === 'closed') {
-			followClosedReview(id);
+		const { autoPublish, state } = await store.decideOnReview(id, input);
+		// The selection does not change, so the `selectedReviewId` watcher never refires and the
+		// entry this decision just wrote needs an explicit refetch. Guarded because the await
+		// above lets the viewer pick another review meanwhile: refetching the old one would wipe
+		// its feed and discard the newer review's in-flight page, and following it to the closed
+		// tab would yank the viewer off the review they are now typing on.
+		if (selectedReviewId.value === id) {
+			activityStore.clearDecisionNote(input.note ?? '');
+			void activityStore.fetchFeed(id);
+			if (state === 'closed') {
+				followClosedReview(id);
+			}
 		}
+
+		// The view can be gone by now, and a toast — the sticky publish warning above all —
+		// would sit on an unrelated page.
+		if (!isMounted) return;
 
 		if (autoPublish?.status === 'published') {
 			showMessage({
@@ -156,18 +236,24 @@ async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
 			});
 		}
 	} catch (error) {
+		// `onUnmounted` has already reset both stores, so there is nothing left to refresh and
+		// nowhere for the toast to land but an unrelated page.
+		if (!isMounted) return;
 		showError(error, i18n.baseText('workflowReviews.decision.error.title'));
 		// The decision failed because someone else already decided (409), so
 		// refetch. Otherwise the item keeps showing as open and every retry
 		// re-fails.
 		try {
 			await Promise.all([
-				store.fetchList({ reset: true }),
+				store.fetchActiveTab(),
 				selectedReviewId.value ? store.fetchDetail(selectedReviewId.value) : undefined,
 			]);
 		} catch (refetchError) {
 			handleListError(refetchError);
 		}
+		// The feed too, or the panel keeps one missing the decision that beat this one. The
+		// note stays: the reviewer may want to retry with it.
+		if (selectedReviewId.value === id) void activityStore.fetchFeed(id);
 	} finally {
 		deciding.value = false;
 	}
@@ -184,41 +270,41 @@ onMounted(async () => {
 
 onUnmounted(() => {
 	isMounted = false;
-	store.reset();
 });
 </script>
 
 <template>
-	<PageViewLayout data-test-id="workflow-review-requests-view">
+	<PageViewLayout full-width data-test-id="workflow-review-requests-view">
 		<div :class="$style.content">
 			<WorkflowReviewRequestsSidebar
 				v-if="showSidebar"
-				:items="items"
+				:sections="sidebarSections"
 				:active-tab="activeTab"
 				:open-count="openCount"
 				:closed-count="closedCount"
 				:selected-id="selectedReviewId"
-				:loading="loading"
-				:loading-more="loadingMore"
-				:has-more="hasMore"
-				:is-empty="isEmpty"
 				@select="onSelect"
 				@clear="onClearSelection"
 				@update:active-tab="onActiveTabChange"
 				@load-more="onLoadMore"
+				@retry="onRetrySection"
 			/>
 
 			<div :class="$style.main">
 				<div :class="$style.columnTitle">
-					<N8nHeading
+					<div
 						v-if="showSidebar && selectedItem"
-						bold
-						tag="h2"
-						size="xlarge"
-						data-test-id="workflow-review-request-title"
+						:class="$style.reviewTitle"
+						data-test-id="workflow-review-request-title-row"
 					>
-						{{ selectedItem.title }}
-					</N8nHeading>
+						<WorkflowReviewStatusDot
+							:state="selectedItem.state"
+							:decision="selectedItem.decision"
+						/>
+						<N8nHeading bold tag="h2" size="xlarge" data-test-id="workflow-review-request-title">
+							{{ selectedItem.title }}
+						</N8nHeading>
+					</div>
 					<N8nHeading
 						v-else-if="!showSidebar"
 						bold
@@ -246,36 +332,14 @@ onUnmounted(() => {
 					<!-- Must precede the selectedItem branch: on a deep link the review is not
 						in the list yet, so selectedItem is null while the detail loads. -->
 					<N8nLoading v-else-if="selectedReviewId && detailLoading" :loading="true" :rows="3" />
-					<div v-else-if="selectedItem">
-						<N8nText
-							color="text-light"
-							size="medium"
-							data-test-id="workflow-review-request-detail-stub"
-						>
-							{{ i18n.baseText('workflowReviews.detail.placeholder') }}
-						</N8nText>
-						<!-- TODO(LIGO-892): placeholder actions with intentionally hardcoded copy.
-							Real design: disabled-with-explanation for non-admin authors ("you
-							contributed a version to this review"), i18n, and a `viewerCanDecide`
-							capability field from the backend. -->
-						<div v-if="selectedItem.state === 'open'" :class="$style.decisionActions">
-							<N8nButton
-								:disabled="deciding"
-								data-test-id="workflow-review-approve-button"
-								@click="onDecide(selectedItem.id, 'approved')"
-							>
-								Approve
-							</N8nButton>
-							<N8nButton
-								type="secondary"
-								:disabled="deciding"
-								data-test-id="workflow-review-request-changes-button"
-								@click="onDecide(selectedItem.id, 'changes_requested')"
-							>
-								Request changes
-							</N8nButton>
-						</div>
-					</div>
+					<WorkflowReviewDetailTabs
+						v-else-if="selectedItem"
+						:review="selectedItem"
+						:tab="detailTab"
+						:deciding="deciding"
+						@update:tab="onDetailTabChange"
+						@decide="onDecide(selectedItem.id, $event)"
+					/>
 					<N8nText
 						v-else-if="!showSidebar"
 						color="text-light"
@@ -308,6 +372,12 @@ onUnmounted(() => {
 
 <style lang="scss" module>
 .content {
+	--review-tab-bar--height: var(--height--sm);
+	--review-tab-bar--indicator-overhang: 11px;
+	--review-tab-bar--gap: calc(var(--spacing--sm) + var(--review-tab-bar--indicator-overhang));
+
+	--review-callout--max-width: 34rem;
+
 	display: flex;
 	width: 100%;
 	min-height: 0;
@@ -332,15 +402,16 @@ onUnmounted(() => {
 	padding-bottom: var(--spacing--sm);
 }
 
+.reviewTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
 .mainBody {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-}
-
-.decisionActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--sm);
 }
 </style>

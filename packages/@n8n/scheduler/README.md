@@ -180,6 +180,42 @@ The filter looks only at the *previous* run, with no stored counter. So any serv
 in the cluster can compute the next run on its own, and a restart never loses the
 cadence.
 
+## Misfires and late runs
+
+A **misfire** is a run that came due while nothing was there to fire it, and is now
+past its grace window (`misfireGraceSeconds`); while still inside that window a late
+instant is simply queued and run late, no policy involved. Once the oldest overdue
+instant is past its window, the job's **misfire policy** decides what happens to the
+rest of the backlog:
+
+| Policy | What it does |
+|---|---|
+| `skip` | Records nothing for the backlog; the rule resumes from its next future instant. |
+| `coalesce` | Records one **late run** for that job, standing in for the whole backlog. |
+| `coalesce_owner` | Records one late run for the whole **owner** (see below), across every job that shares it. |
+
+A late run is a normal task, queued at the most recent missed instant and
+claimable immediately, so a backlog fires once rather than N times back to back. The
+job's clock advances past the backlog in the same transaction as the late run, so
+no two servers can disagree about what a backlog produced.
+
+### Why `coalesce_owner` exists
+
+`coalesce` operates per job, so a Schedule Trigger with several rules on one node
+still produces one late run per rule after downtime, N fires in a row.
+`coalesce_owner` closes that gap: jobs that share an **owner** (`ownerKey`, an opaque
+per-job key the scheduler only compares for equality; in n8n, the trigger node) group
+unconditionally, and only the one with the latest missed instant survives a planning
+pass (ties break on the lowest job id).
+
+Grouping only sees jobs claimed together in one pass, so it is best-effort, not a
+guarantee of one fire per owner: a sibling not yet due, or one whose backlog exceeds
+`maxPerJob`, still records its own late run on a later pass.
+
+Schedule and poll triggers both use `skip`: it matches what n8n did before the
+durable scheduler, where a missed run was never replayed. Running late is opt-in
+per job, which is where `coalesce` and `coalesce_owner` come in.
+
 ## Durable and distributed
 
 Two properties describe the whole design, and everything else follows from them.

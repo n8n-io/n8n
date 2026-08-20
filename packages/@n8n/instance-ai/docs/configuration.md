@@ -11,9 +11,14 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. Must be set for the module to enable. |
+| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. Must be set for the module to enable. Opus 5: `anthropic/claude-opus-5`. Vertex Claude: `google-vertex-anthropic/claude-opus-4-8`. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | API key for the custom model endpoint. Optional — some local servers don't require one. |
+| `N8N_INSTANCE_AI_VERTEX_PROJECT_ID` | string | `''` | Google Cloud project for `google-vertex-anthropic/*`. Falls back to `GOOGLE_VERTEX_PROJECT`, then `project_id` in the service-account JSON. |
+| `N8N_INSTANCE_AI_VERTEX_LOCATION` | string | `''` | Vertex location for `google-vertex-anthropic/*` (e.g. `global`, `us-east5`). Empty falls back to `GOOGLE_VERTEX_LOCATION`, then `global`. |
+| `N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON` | string | `''` | Service-account JSON for Vertex Claude. Omit to use ADC (`gcloud auth application-default login`). |
+| `N8N_INSTANCE_AI_REASONING_EFFORT` | string | unset | Optional reasoning effort for `custom/*` (`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`). Unset = known-model map in `src/utils/custom-model-defaults.ts`; still unresolved = omit. |
+| `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS` | string | unset | Optional `true`/`false` for `custom/*` structured-output support. Unset = known-model map; still unresolved = omit. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
 
@@ -32,6 +37,7 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | boolean | `false` | Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel and eval LLM debug reports. |
 | `N8N_INSTANCE_AI_EVAL_TIMING` | boolean | `false` | When `true`, logs a per-execution `[EvalMock][timing]` phase breakdown (hints / bypass-pin / http-mock / ai-turn) for the eval mock-execution path, to attribute mocked-execution latency. A no-op otherwise. |
+| `EVAL_MODAL_LLM_HEADERS` | string | `''` | Eval-only JSON object of extra HTTP headers for Modal (or other custom) LLM endpoints. Used by eval helpers (`createEvalAgent`, mock generation, verification) with `N8N_INSTANCE_AI_MODEL_URL`. |
 
 ### Memory
 
@@ -190,7 +196,10 @@ are never persisted. Rows cascade-delete with their thread
 (`N8N_INSTANCE_AI_THREAD_TTL_DAYS`). Setting it to `false` is the rollback
 switch until the legacy paths sunset at Gate B: events then live only in a
 bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted; ids
-reset on restart, so replay does not survive a restart).
+reset on restart, so replay does not survive a restart). That bound is
+per-thread only: a buffer is released when its thread is deleted or expires,
+so a main's memory scales with the number of threads it has served until the
+process restarts. The main logs a warning at boot when the switch is set.
 
 Runtime behavior:
 - One active run per thread. Additional `POST /instance-ai/chat/:threadId`
@@ -235,6 +244,13 @@ N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 N8N_INSTANCE_AI_MODEL=your-tool-capable-model
 N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
 
+# Direct Google Vertex Claude (no AI assistant proxy)
+# Keep N8N_AI_ASSISTANT_BASE_URL unset/empty.
+N8N_INSTANCE_AI_MODEL=google-vertex-anthropic/claude-opus-4-8
+N8N_INSTANCE_AI_VERTEX_PROJECT_ID=my-gcp-project
+N8N_INSTANCE_AI_VERTEX_LOCATION=global
+N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
+
 # Output filtering — secrets + email only, with a custom placeholder
 N8N_INSTANCE_AI_OUTPUT_REDACTION_PII=email
 N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER=‹redacted›
@@ -254,6 +270,10 @@ Add `N8N_INSTANCE_AI_SEARXNG_URL` pointing to your SearXNG service:
 services:
   searxng:
     image: searxng/searxng:latest
+    environment:
+      SEARXNG_SECRET: replace-with-a-random-string
+    volumes:
+      - ./searxng-settings.yml:/etc/searxng/settings.yml:ro
     ports:
       - "8888:8080"  # optional: expose to host
   n8n:
@@ -262,13 +282,15 @@ services:
       N8N_INSTANCE_AI_SEARXNG_URL: http://searxng:8080
 ```
 
-SearXNG must have JSON format enabled in its `settings.yml`:
+The stock `searxng/searxng` image serves HTML only — `format=json` requests
+return `403 Forbidden` — so Instance AI's web search needs a mounted
+`settings.yml` that enables the JSON API:
 
 ```yaml
+# searxng-settings.yml
+use_default_settings: true
 search:
   formats:
     - html
     - json   # required for Instance AI
 ```
-
-Most SearXNG Docker images enable JSON format by default.

@@ -19,11 +19,13 @@ export interface ImportPackageFields {
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
 	missingNodeTypeMode?: string;
+	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
 	variableMissingMode?: string;
+	variableConflictPolicy?: string;
 	variableParentPolicy?: string;
 	tagMissingMode?: string;
 	tagConflictPolicy?: string;
@@ -36,6 +38,7 @@ export interface ExportPackageFields {
 	includeVariableValues?: boolean;
 	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: string;
+	workflowVersionPolicy?: string;
 }
 
 /** True per-entity counts of what ended up in an exported package. */
@@ -209,6 +212,38 @@ export class N8nClient {
 		} while (cursor && (limit === undefined || results.length < limit));
 
 		return limit !== undefined ? results.slice(0, limit) : results;
+	}
+
+	// ─── Git connections ───────────────────────────────────────────
+
+	async listGitConnections(limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/git-connections', {}, limit);
+	}
+
+	async getGitConnection(id: string) {
+		return await this.get<Record<string, unknown>>(`/git-connections/${id}`);
+	}
+
+	async createGitConnection(body: unknown) {
+		return await this.post<Record<string, unknown>>('/git-connections', body);
+	}
+
+	async updateGitConnection(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/git-connections/${id}`, body);
+	}
+
+	async cloneGitConnection(id: string, branchName?: string) {
+		return await this.post<Record<string, unknown>>(`/git-connections/${id}/clone`, {
+			...(branchName ? { branchName } : {}),
+		});
+	}
+
+	async disconnectGitConnection(id: string) {
+		return await this.post<Record<string, unknown>>(`/git-connections/${id}/disconnect`);
+	}
+
+	async deleteGitConnection(id: string) {
+		return await this.del<undefined>(`/git-connections/${id}`);
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────
@@ -470,6 +505,7 @@ export class N8nClient {
 			includeVariableValues?: boolean;
 			includeTags?: boolean;
 			missingWorkflowDependencyPolicy?: string;
+			workflowVersionPolicy?: string;
 		} = {};
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
@@ -479,6 +515,7 @@ export class N8nClient {
 		body.includeTags = fields.includeTags;
 		if (fields.missingWorkflowDependencyPolicy)
 			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
+		if (fields.workflowVersionPolicy) body.workflowVersionPolicy = fields.workflowVersionPolicy;
 
 		let counts: ExportPackageCounts | undefined;
 		const archive = await this.request<Buffer>('POST', '/n8n-packages/export', {

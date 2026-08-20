@@ -2,6 +2,7 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
@@ -31,10 +32,7 @@ export interface AgentCapabilitiesTelemetry {
 	trackOpenedToolFromList?: (toolType: string) => void;
 	trackOpenedSkillFromList?: (skillId: string) => void;
 	trackOpenedAddSkillModal?: () => void;
-	trackTriggerListChanged?: (triggers: string[]) => void;
 	trackTriggerAdded?: (payload: { triggerType: string; triggers: string[] }) => void;
-	trackRemovedTool?: (ref: AgentJsonToolConfig) => void;
-	trackRemovedMcpServer?: (server: AgentJsonMcpServerConfig) => void;
 }
 
 export interface UseAgentCapabilitiesActionsDeps {
@@ -81,6 +79,13 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * don't support suspend/resume — the config modals hide the toggle.
 	 */
 	supportsToolApproval?: boolean;
+	/**
+	 * Creates the agent row if the host is still showing an unsaved agent, so a
+	 * handler that calls an agent-scoped API has something to call it against.
+	 * Hosts whose agent always exists omit it.
+	 */
+	ensureAgentPersisted?: () => Promise<void>;
+	validationIssues?: Ref<AgentConfigValidationIssue[]> | ComputedRef<AgentConfigValidationIssue[]>;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
 
@@ -101,6 +106,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		scheduleSkillSave,
 		localSkills,
 		supportsToolApproval,
+		ensureAgentPersisted,
+		validationIssues,
 		telemetry,
 	} = deps;
 
@@ -169,6 +176,9 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					projectId: projectId.value,
 					agentId: agentId.value,
 					supportsToolApproval,
+					validationIssues: validationIssues?.value.filter(
+						(issue) => issue.capability.kind === 'tool' && issue.capability.index === toolIndex,
+					),
 					existingToolNames: tools
 						.map((toolRef, i) =>
 							i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name,
@@ -225,7 +235,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						(_, i) => i !== mcpServerIndex,
 					);
 					scheduleConfigUpdate({ mcpServers: nextMcpServers });
-					telemetry?.trackRemovedMcpServer?.(mcpServer);
 				},
 			},
 		});
@@ -303,12 +312,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							[skillId]: sanitizedSkill,
 						},
 					};
-					const nextSkills = [...(localConfig.value?.skills ?? [])];
-					const skillRefIndex = nextSkills.findIndex((skillRef) => skillRef.id === id);
-					if (skillRefIndex !== -1) {
-						nextSkills[skillRefIndex] = { type: 'skill', id: skillId };
-						scheduleConfigUpdate({ skills: nextSkills });
-					}
 					scheduleSkillSave({ skillId, skill: sanitizedSkill });
 				},
 			},
@@ -334,6 +337,15 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					icon: 'globe',
 				});
 			}
+		}
+
+		for (const server of localConfig.value?.mcpServers ?? []) {
+			if (!server.name) continue;
+			tools.push({
+				name: server.name,
+				label: formatToolNameForDisplay(server.name) || server.name,
+				icon: 'mcp',
+			});
 		}
 
 		return tools;
@@ -375,10 +387,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	function onRemoveTool(index: number) {
 		const currentTools = localConfig.value?.tools ?? [];
 		if (index < 0 || index >= currentTools.length) return;
-		const removed = currentTools[index];
 		const nextTools = currentTools.filter((_, i) => i !== index);
 		scheduleConfigUpdate({ tools: nextTools });
-		telemetry?.trackRemovedTool?.(removed);
 	}
 
 	function onRemoveSkill(id: string) {
@@ -435,6 +445,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						let versionId: string | null;
 						let skillId: string;
 						try {
+							await ensureAgentPersisted?.();
 							const result = await createAgentSkill(
 								rootStore.restApiContext,
 								targetProjectId,
@@ -472,7 +483,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	function onConnectedTriggersUpdate(triggers: string[]) {
 		connectedTriggers.value = triggers;
-		telemetry?.trackTriggerListChanged?.(triggers);
 	}
 
 	function onTriggerAdded(payload: { triggerType: string; triggers: string[] }) {

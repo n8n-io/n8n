@@ -1,14 +1,14 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
-import type { JsonObject } from '../common';
-import type { WorkflowGraph } from '../graph';
+import { validateExecutableGraph, type WorkflowGraph } from '../graph';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
-import type { ExecutionMode } from './execution.types';
+import type { ExecutionMode, TriggerOutputs } from './execution.types';
 
 export interface StartExecutionRequest {
 	workflowId: string;
 	graph: WorkflowGraph;
-	triggerPayload?: JsonObject | null;
+	/** Trigger step's output slots, one entry per output. */
+	triggerOutputs?: TriggerOutputs | null;
 	mode?: ExecutionMode;
 }
 
@@ -21,9 +21,14 @@ export class StartExecutionService {
 		private readonly admittance: AdmittanceService,
 		private readonly executionStore: ExecutionStore,
 		private readonly workQueue: WorkQueue<OrchestrationMessage>,
+		private readonly validateGraph: (graph: WorkflowGraph) => void = validateExecutableGraph,
 	) {}
 
 	async start(request: StartExecutionRequest): Promise<StartExecutionResult> {
+		// Rejected before admittance: a graph that can never run shouldn't spend
+		// admittance capacity, and nothing is persisted for it.
+		this.validateGraph(request.graph);
+
 		const decision = await this.admittance.evaluate({ workflowId: request.workflowId });
 		if (!decision.accept) {
 			throw new AdmittanceRejectedError(decision.reason);
@@ -35,7 +40,7 @@ export class StartExecutionService {
 			status: 'queued',
 			mode: request.mode ?? 'production',
 			graph: request.graph,
-			triggerPayload: request.triggerPayload ?? null,
+			triggerOutputs: request.triggerOutputs ?? null,
 		});
 
 		// TODO(CAT-2938): the persist above and this publish aren't atomic — a

@@ -28,6 +28,7 @@ import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
+import type { AgentFixWithAssistantEvent, AgentFixWithAssistantFailure } from '../types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
 const props = defineProps<{
@@ -41,7 +42,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
-	sendToAssistant: [executionId?: string];
+	sendToAssistant: [event?: AgentFixWithAssistantEvent];
 }>();
 
 const i18n = useI18n();
@@ -49,9 +50,10 @@ const canSendToAssistant = computed(() =>
 	Boolean(props.canSendToAssistant && props.agentId && props.sessionId),
 );
 
-function onFixWithAssistant(group: DisplayGroup) {
+function onFixWithAssistant(group: DisplayGroup, failures: AgentFixWithAssistantFailure[]) {
 	const executionId = group.kind === 'toolRun' ? group.executionId : group.message.executionId;
-	emit('sendToAssistant', executionId);
+	if (!executionId || failures.length === 0) return;
+	emit('sendToAssistant', { executionId, failures });
 }
 
 function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
@@ -436,7 +438,7 @@ onBeforeUnmount(() => {
 						:project-id="projectId"
 						:can-fix-with-assistant="canSendToAssistant"
 						:execution-id="group.executionId"
-						@fix-with-assistant="onFixWithAssistant(group)"
+						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<template v-for="tc in group.toolCalls" :key="`wait-${tc.toolCallId}`">
 						<N8nText
@@ -529,7 +531,7 @@ onBeforeUnmount(() => {
 						:project-id="projectId"
 						:can-fix-with-assistant="canSendToAssistant"
 						:execution-id="group.message.executionId"
-						@fix-with-assistant="onFixWithAssistant(group)"
+						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<template v-for="tc in group.message.toolCalls ?? []" :key="`wait-${tc.toolCallId}`">
 						<N8nText
@@ -643,6 +645,7 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .messages {
 	flex: 1;
+	width: 100%;
 	min-height: 0;
 	overflow-y: auto;
 	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
@@ -651,8 +654,10 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	scrollbar-width: none;
+	max-width: 800px;
+	margin: 0 auto;
 
-	mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
 
 	&::-webkit-scrollbar {
 		display: none;
@@ -713,7 +718,7 @@ onBeforeUnmount(() => {
 .chatMessageUser {
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
-	background-color: var(--background--subtle);
+	background: var(--assistant--color--background--user-bubble);
 	white-space: pre-wrap;
 	width: fit-content;
 	max-width: 100%;

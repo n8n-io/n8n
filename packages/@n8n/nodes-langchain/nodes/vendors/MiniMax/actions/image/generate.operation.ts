@@ -134,7 +134,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body.seed = options.seed;
 	}
 
-	const response = (await apiRequest.call(this, 'POST', '/image_generation', {
+	const response = (await apiRequest.call(this, 'POST', '/v1/image_generation', {
 		body,
 	})) as ImageGenerationResponse;
 

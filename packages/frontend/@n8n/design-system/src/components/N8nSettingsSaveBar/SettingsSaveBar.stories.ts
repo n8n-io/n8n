@@ -24,7 +24,7 @@ const storyComponents = {
 };
 
 const meta = {
-	title: 'Instance Settings/Settings Save Bar',
+	title: 'Areas/Settings/Settings Save Bar',
 	component: N8nSettingsSaveBar,
 	parameters: {
 		docs: {

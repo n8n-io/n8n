@@ -45,15 +45,40 @@ export function loadBaseline(filePath: string): BaselineFile | null {
 	}
 }
 
-export function generateBaseline(report: Report, rootDir: string): BaselineFile {
+/**
+ * Merge `report`'s violations into `previous` and return the combined baseline.
+ *
+ * Additive on purpose. A violation absent from the report may have been fixed, but it may equally
+ * never have been looked at — the rule was disabled, or scoped to changed files and none of its
+ * files changed. Those two cases are indistinguishable from a report, so dropping entries would
+ * let a regeneration meant to record one new exception silently un-baseline unrelated rules.
+ * Matching is by hash, so an entry for a violation that no longer exists is inert.
+ *
+ * To shrink the baseline, delete the file and regenerate it in a run that covers every rule.
+ */
+export function generateBaseline(
+	report: Report,
+	rootDir: string,
+	previous?: BaselineFile | null,
+): BaselineFile {
 	const violations: Record<string, BaselineEntry[]> = {};
+	const seen = new Set<string>();
+
+	// The hash covers path, rule and message, so it dedupes across previous and report alike.
+	const add = (relativePath: string, entry: BaselineEntry): void => {
+		if (seen.has(entry.hash)) return;
+		seen.add(entry.hash);
+		violations[relativePath] ??= [];
+		violations[relativePath].push(entry);
+	};
+
+	for (const [relativePath, entries] of Object.entries(previous?.violations ?? {})) {
+		for (const entry of entries) add(relativePath, entry);
+	}
 
 	for (const result of report.results) {
 		for (const violation of result.violations) {
-			const relativePath = path.relative(rootDir, violation.file);
-			if (!violations[relativePath]) violations[relativePath] = [];
-
-			violations[relativePath].push({
+			add(path.relative(rootDir, violation.file), {
 				rule: violation.rule,
 				line: violation.line,
 				message: violation.message,
@@ -65,7 +90,7 @@ export function generateBaseline(report: Report, rootDir: string): BaselineFile 
 	return {
 		version: BASELINE_VERSION,
 		generated: new Date().toISOString(),
-		totalViolations: report.summary.totalViolations,
+		totalViolations: seen.size,
 		violations,
 	};
 }

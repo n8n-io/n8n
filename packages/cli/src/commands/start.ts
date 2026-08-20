@@ -10,11 +10,11 @@ import {
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
+import { sleep } from '@n8n/utils/sleep';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
 import { BinaryDataConfig } from 'n8n-core';
-import { sleep } from '@n8n/utils/sleep';
 import { jsonParse } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
@@ -42,8 +42,8 @@ import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
-import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { UrlService } from '@/services/url.service';
+import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
 
 import { BaseCommand } from './base-command';
@@ -67,6 +67,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	protected server = Container.get(Server);
 
 	override needsCommunityPackages = true;
+
+	override needsExpressionEngine = true;
 
 	override needsTaskRunner = true;
 
@@ -417,9 +419,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		// Start to get active workflows and run their triggers
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			const { PublishedWorkflowEnqueuer } = await import(
-				'@/workflows/publication/published-workflow-enqueuer.js'
-			);
 			const { WorkflowPublicationOutboxConsumer } = await import(
 				'@/workflows/publication/workflow-publication-outbox-consumer.js'
 			);
@@ -438,12 +437,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			// wake-up) after the earlier PubSubRegistry.init() calls already wired
 			// listeners, so rewire to pick them up.
 			Container.get(PubSubRegistry).init();
-
-			// Enqueue needs to happen before outbox consumer init, so it can activate
-			// everything on the first drain
-			if (this.instanceSettings.isLeader) {
-				await Container.get(PublishedWorkflowEnqueuer).enqueueActiveWorkflows();
-			}
 
 			// Don't await: the immediate drain activates every trigger and can take a
 			// while, so let it run in the background instead of blocking startup.

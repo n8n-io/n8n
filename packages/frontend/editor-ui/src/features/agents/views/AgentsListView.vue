@@ -22,8 +22,9 @@ import {
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentResource } from '../types';
-import { AGENT_BUILDER_VIEW } from '../constants';
+import { AGENT_BUILDER_VIEW, AGENT_PREVIEW_VIEW, NEW_SESSION_PARAM } from '../constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import AgentCard from '../components/AgentCard.vue';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 
@@ -112,6 +113,14 @@ function onSelectAgent(agentId: string, agentProjectId: string) {
 	});
 }
 
+function onNewAgentChat(agentId: string, agentProjectId: string) {
+	void router.push({
+		name: AGENT_PREVIEW_VIEW,
+		params: { projectId: agentProjectId, agentId },
+		query: { [NEW_SESSION_PARAM]: 'true' },
+	});
+}
+
 function onAgentPublished(updated: AgentResource) {
 	allAgents.value = allAgents.value.map((a) => (a.id === updated.id ? updated : a));
 	void fetchAgents();
@@ -164,9 +173,10 @@ async function setPaginationAndSort(payload: SortingAndPaginationUpdates) {
 }
 
 function onCreateAgentClick() {
-	agentTelemetry.trackClickedNewAgent('button');
+	const agentId = generateNanoId();
+	agentTelemetry.trackClickedNewAgent('button', agentId);
 	const targetProjectId = projectId.value ?? projectsStore.personalProject?.id ?? '';
-	void router.push(instanceAiCreateAgentRoute(targetProjectId));
+	void router.push(instanceAiCreateAgentRoute(targetProjectId, agentId));
 }
 
 onMounted(async () => {
@@ -223,6 +233,7 @@ onMounted(async () => {
 				:agent="data"
 				:project-id="data.projectId"
 				@select="onSelectAgent(data.id, data.projectId)"
+				@new-chat="onNewAgentChat"
 				@published="onAgentPublished"
 				@unpublished="onAgentUnpublished"
 				@deleted="onAgentDeleted"

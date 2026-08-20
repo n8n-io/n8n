@@ -49,11 +49,34 @@ Narrow any run with `--filter <slug>` (filename substring, comma = OR),
 `--tier <name>`, and `--exclude`. `--keep-workflows` leaves built workflows for
 inspection; `--iterations N` runs each case N times for pass@k / pass^k.
 
+**Seeded cases and `--keep-workflows`.** A seeded case's live turn addresses its
+workflow the way a user would — by name, often loosely ("the batch image
+workflow"). So a leftover copy is something the agent can rationally pick instead
+of its own, and it prefers the one with failed executions when the message
+mentions a failure; the judge then grades a different workflow than the agent
+edited. That produces false greens as readily as false reds, so it doesn't
+announce itself.
+
+Restore now defends against this on both sides: each restored workflow gets a
+`[seed <8 hex>]` name suffix so copies are distinguishable, and any leftover
+carrying that suffix with the same base name is deleted before the next restore.
+You'll see `Evicted N leftover seed workflow(s) before restore` when it fires.
+Workflows without the suffix — real ones, and anything the agent built — are never
+touched. So `--keep-workflows` is safe to use on a seeded case; the leftover is
+cleaned up by the next run rather than contaminating it.
+
+**Seeded agents are not evicted** — they get a fresh id per run but keep their
+authored name, so `--keep-workflows` on an agent-seeding case leaves one behind
+and they accumulate under the same name. That can't misdirect a later run (the
+live turn is bound to its own agent by id), but it does clutter what the `agents`
+tool lists. Delete them yourself when calibrating:
+`DELETE /rest/projects/<projectId>/agents/v2/<agentId>`.
+
 ## Case source: disk vs langtracer
 
 | Source | When to use it |
 |---|---|
-| **`disk`** (default) | **Preferred for local development** — authoring and calibrating the case in front of you: drop the JSON into `data/workflows/`, `--filter` it, iterate. Also the only home of the `agents` tier and the seeded carve-out cases; since the corpus migration the directory holds only those, not the full suite. |
+| **`disk`** (default) | **Preferred for local development** — authoring and calibrating the case in front of you: drop the JSON into `data/workflows/`, `--filter` it, iterate. Also the only home of the `agents` tier and of a `replay`-seeded case (reconstructed from a trace at run time, so no suite can hold it); since the corpus migration the directory holds only those, not the full suite. |
 | **`langtracer`** (`--source langtracer --suite baseline`) | Bigger runs (the full corpus or a whole tier), re-running specific cases that already live in the suite, and CI — which always runs this way. Needs `LANGTRACER_URL`/`LANGTRACER_API_KEY` in your env. |
 
 ## Configuration & secrets
@@ -188,7 +211,7 @@ server-side filter. The two that matter for CI:
   capability diversity.
 
 Other values group cases logically (e.g. `behaviour` for conversation-behaviour
-cases, `seeded` for transient `seedThread` cases kept out of CI). For a new
+cases, `seeded` for transient `replay` cases kept out of CI). For a new
 local case, put the value in its `datasets` array before pushing; for a case
 already in LangTracer, edit `datasets` there — `eval:langtracer-push`
 deliberately does not re-sync tier-only edits to an existing case. **Only

@@ -65,10 +65,9 @@ export class AgentSetupCompletionService {
 
 	/**
 	 * Publish path. Publishing already asserted the configuration is valid, so
-	 * only the capability check is left. Acts as a backstop for writes that
-	 * bypass the config-save path — connecting a chat channel publishes the
-	 * agent in the same request — keeping "setup completed" a superset of
-	 * "published".
+	 * only the capability check is left. Acts as a backstop when explicit
+	 * publish is the first path to observe a completed setup, keeping "setup
+	 * completed" a superset of "published".
 	 *
 	 * `config` is the snapshot that was actually validated, which for a
 	 * historical republish is the version's schema rather than the draft.

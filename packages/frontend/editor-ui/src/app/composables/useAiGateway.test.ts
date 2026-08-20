@@ -30,9 +30,13 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const mockIsAiGatewayEnabled = ref(false);
+const mockIsAiGatewayCloudUbbEnabled = ref(false);
 
-vi.mock('@/app/stores/settings.store', () => ({
-	useSettingsStore: vi.fn(() => ({ isAiGatewayEnabled: mockIsAiGatewayEnabled.value })),
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: vi.fn(() => ({
+		isAiGatewayEnabled: mockIsAiGatewayEnabled.value,
+		isAiGatewayCloudUbbEnabled: mockIsAiGatewayCloudUbbEnabled.value,
+	})),
 }));
 
 describe('useAiGateway', () => {
@@ -40,6 +44,7 @@ describe('useAiGateway', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		mockIsAiGatewayEnabled.value = false;
+		mockIsAiGatewayCloudUbbEnabled.value = false;
 		mockGetGatewayConfig.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
 	});
 
@@ -56,7 +61,11 @@ describe('useAiGateway', () => {
 
 		it('should fetch and update balance and budget when enabled', async () => {
 			mockIsAiGatewayEnabled.value = true;
-			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
+			mockGetGatewayWallet.mockResolvedValue({
+				balance: 7,
+				budget: 10,
+				hasEverToppedUp: false,
+			});
 
 			const { fetchWallet, balance, budget } = useAiGateway();
 

@@ -1,10 +1,12 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
 
+import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
 	AgentChatIntegration,
@@ -13,9 +15,11 @@ import {
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
 import type { IntegrationMessageContextService } from '../integration-message-context.service';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
+
+import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
@@ -236,7 +240,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new BufferingTestIntegration());
 		registry.register(new StreamingTestIntegration());
 		registry.register(new FormattedBufferedTestIntegration());
-		registry.register(new SlackIntegration());
+		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 
@@ -396,10 +400,16 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenNthCalledWith(3, { markdown: 'After resume.' });
 		});
 
-		it('includes tool approval details when posting a suspension card', async () => {
+		it('posts tool approval cards without raw JSON input', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+			const resumeSchema = {
+				type: 'object' as const,
+				properties: { approved: { type: 'boolean' as const } },
+				required: ['approved'],
+				additionalProperties: false,
+			};
 
 			const agentExecutor = makeAgentExecutor([
 				{
@@ -407,6 +417,7 @@ describe('AgentChatBridge — consumeStream', () => {
 					runId: 'run-1',
 					toolCallId: 'tool-1',
 					toolName: 'approval',
+					resumeSchema,
 					suspendPayload: {
 						type: 'approval',
 						toolName: 'giphy-gif-search',
@@ -439,13 +450,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						},
 						{
 							type: 'fields',
-							fields: [
-								{ label: 'Tool', value: 'GIPHY GIF Search' },
-								{
-									label: 'Input',
-									value: '{\n  "query": "project status",\n  "limit": 3\n}',
-								},
-							],
+							fields: [{ label: 'Tool', value: 'GIPHY GIF Search' }],
 						},
 						{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
 						{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
@@ -453,7 +458,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				},
 				'run-1',
 				'tool-1',
-				undefined,
+				resumeSchema,
 				undefined,
 				'test-buffered',
 			);
@@ -609,14 +614,17 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
-		it('does not post a fallback for a cardless integration action suspension', async () => {
+		it('drops buffered card preamble but keeps text emitted after suspension', async () => {
 			const thread = await runMention(bufferedIntegration, [
+				{ type: 'text-delta', id: 't1', delta: 'Here is the approval card.' },
 				integrationActionSuspension,
+				{ type: 'text-delta', id: 't2', delta: 'The action was approved.' },
 				finishChunk,
 			]);
 
 			expect(componentMapper.toCard).not.toHaveBeenCalled();
-			expect(thread.post).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'The action was approved.' });
 		});
 
 		it('does not post an error when a failed tool call is retried successfully', async () => {
@@ -656,6 +664,12 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenNthCalledWith(
 				1,
 				expect.objectContaining({
+					sandboxPrincipalHash: hashAgentSandboxPrincipal({
+						type: 'integration-user',
+						connectionId: 'cred-1',
+						platform: 'test-streaming',
+						platformUserId: 'u1',
+					}),
 					memory: expect.objectContaining({
 						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
 						resourceId: 'integration:test-streaming:u1',
@@ -738,6 +752,8 @@ describe('AgentChatBridge — consumeStream', () => {
 		function makeBridge(
 			agentExecutor: ReturnType<typeof makeAgentExecutor>,
 			attachmentService: ReturnType<typeof makeAttachmentService>,
+			integration: AgentIntegrationConfig = streamingIntegration,
+			discordHttpClient?: HttpRequestClient,
 		) {
 			const { bot, handlers } = makeBot();
 			new AgentChatBridge(
@@ -747,9 +763,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				componentMapper,
 				logger,
 				'project-1',
-				streamingIntegration,
+				integration,
 				undefined,
 				attachmentService as never,
+				discordHttpClient,
 			);
 			return handlers;
 		}
@@ -793,6 +810,64 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: 'look at this',
+					attachments: [
+						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
+					],
+				}),
+			);
+		});
+
+		it('downloads Discord CDN attachments without fetching untrusted URLs', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const request = vi.fn().mockResolvedValue({
+				body: pngBytes,
+				headers: {},
+				statusCode: 200,
+			});
+			const httpClient = { request } as unknown as HttpRequestClient;
+			const handlers = makeBridge(
+				agentExecutor,
+				attachmentService,
+				{
+					type: 'discord',
+					credentialId: 'cred-discord',
+				} as unknown as AgentIntegrationConfig,
+				httpClient,
+			);
+			const attachmentUrl = 'https://cdn.discordapp.com/attachments/123/456/photo.png?ex=signed';
+
+			await handlers.mention!(makeThread(), {
+				text: 'what is this?',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						url: attachmentUrl,
+						name: 'photo.png',
+						mimeType: 'image/png',
+					},
+					{
+						type: 'image',
+						url: 'http://127.0.0.1/internal.png',
+						name: 'internal.png',
+						mimeType: 'image/png',
+					},
+				],
+			});
+
+			expect(request).toHaveBeenCalledOnce();
+			expect(request).toHaveBeenCalledWith(expect.objectContaining({ url: attachmentUrl }));
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					source: 'discord',
+					fileName: 'photo.png',
+					mimeType: 'image/png',
+				}),
+			);
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'what is this?\n[Attachment "internal.png" could not be processed]',
 					attachments: [
 						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
 					],
@@ -1278,6 +1353,50 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
 		});
 
+		it('uses the user message as a ready thread root for Agent view DMs', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() =>
+					toStream([
+						{ type: 'text-delta', id: 't1', delta: 'Hello' },
+						{ type: 'finish', finishReason: 'stop' },
+					]),
+				),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience: 'agent' },
+				},
+			);
+
+			await handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(setAssistantStatus).toHaveBeenCalledWith('D123', '1779466577.518139', '');
+		});
+
 		it('retries top-level Slack assistant status when Slack has not materialized the thread yet', async () => {
 			vi.useFakeTimers();
 			const { bot, handlers } = makeBot();
@@ -1580,7 +1699,15 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
 				'agent-1:thread-1',
 				'u1',
-				expect.objectContaining({ replyExpectation: 'optional' }),
+				expect.objectContaining({
+					replyExpectation: 'optional',
+					replyTarget: {
+						type: 'thread',
+						threadId: 'thread-1',
+						channelId: 'channel-1',
+					},
+					replyMessageId: 'message-2',
+				}),
 			);
 		});
 
@@ -1801,7 +1928,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 
 	beforeEach(() => {
 		const registry = new ChatIntegrationRegistry();
-		registry.register(new SlackIntegration());
+		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 	});
 

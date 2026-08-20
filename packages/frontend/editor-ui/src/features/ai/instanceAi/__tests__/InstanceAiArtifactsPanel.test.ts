@@ -4,7 +4,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { IconBodyLoaderKey } from '@n8n/design-system';
 import { defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { TaskList } from '@n8n/api-types';
+import type { InstanceAiHandoffContext, TaskList } from '@n8n/api-types';
 import type { ResourceEntry } from '../useResourceRegistry';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 
@@ -216,7 +216,7 @@ describe('InstanceAiArtifactsPanel', () => {
 	});
 
 	it('renders pending handoff context from the composer before any message is sent', () => {
-		const pendingComposerContext = ref({
+		const pendingComposerContext = ref<InstanceAiHandoffContext | null>({
 			source: 'agent-preview' as const,
 			agentId: 'agent-1',
 			threadId: 'preview-thread-1',
@@ -267,18 +267,23 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(getAllByTestId('instance-ai-context-row')).toHaveLength(1);
 	});
 
-	it('clears pending handoff context on dismiss and persists the dismissed key', async () => {
-		const pendingComposerContext = ref({
+	it('asks the composer owner to clear a pending handoff on dismiss', async () => {
+		const pendingComposerContext = ref<InstanceAiHandoffContext | null>({
 			source: 'agent-preview' as const,
 			agentId: 'agent-1',
 			threadId: 'preview-thread-1',
 			agentName: 'SEO Auditor',
+		});
+		const dismissPendingComposerContext = vi.fn((key: string) => {
+			pendingComposerContext.value = null;
+			return key === 'agent-preview:agent-1:preview-thread-1:';
 		});
 
 		const { getByTestId, queryByText } = renderComponent({
 			global: {
 				provide: {
 					pendingComposerContext,
+					dismissPendingComposerContext,
 				},
 			},
 		});
@@ -286,18 +291,23 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
 
 		expect(pendingComposerContext.value).toBeNull();
-		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
-			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
-		});
+		expect(dismissPendingComposerContext).toHaveBeenCalledWith(
+			'agent-preview:agent-1:preview-thread-1:',
+		);
+		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
 		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
 	});
 
-	it('dismisses pending context that is also present on a user message', async () => {
-		const pendingComposerContext = ref({
+	it('keeps sent context visible when its pending copy is dismissed', async () => {
+		const pendingComposerContext = ref<InstanceAiHandoffContext | null>({
 			source: 'agent-preview' as const,
 			agentId: 'agent-1',
 			threadId: 'preview-thread-1',
 			agentName: 'SEO Auditor',
+		});
+		const dismissPendingComposerContext = vi.fn(() => {
+			pendingComposerContext.value = null;
+			return true;
 		});
 		storeState.messages = [
 			{
@@ -315,6 +325,7 @@ describe('InstanceAiArtifactsPanel', () => {
 			global: {
 				provide: {
 					pendingComposerContext,
+					dismissPendingComposerContext,
 				},
 			},
 		});
@@ -322,10 +333,34 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
 
 		expect(pendingComposerContext.value).toBeNull();
-		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
-			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
+		expect(dismissPendingComposerContext).toHaveBeenCalledWith(
+			'agent-preview:agent-1:preview-thread-1:',
+		);
+		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
+		expect(queryByText('SEO Auditor session')).toBeInTheDocument();
+	});
+
+	it('does not partially dismiss pending context without its composer owner', async () => {
+		const pendingComposerContext = ref<InstanceAiHandoffContext | null>({
+			source: 'agent-preview',
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+			agentName: 'SEO Auditor',
 		});
-		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
+
+		const { getByTestId, getByText } = renderComponent({
+			global: {
+				provide: {
+					pendingComposerContext,
+				},
+			},
+		});
+
+		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
+
+		expect(pendingComposerContext.value).not.toBeNull();
+		expect(getByText('SEO Auditor session')).toBeInTheDocument();
+		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
 	});
 
 	it('renders pending credential handoff context before any message is sent', () => {
@@ -414,6 +449,52 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		expect(wasNotPrevented).toBe(false);
 		expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'proj-1');
+	});
+
+	it('keeps pending agents in the preview without exposing a standalone link', () => {
+		const openAgentPreview = vi.fn();
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'New Agent',
+					pending: true,
+				},
+			],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				provide: {
+					openAgentPreview,
+				},
+			},
+		});
+
+		const artifactLink = getByRole('link', { name: 'Open New Agent' });
+		expect(artifactLink).toHaveAttribute('href', '#');
+
+		const normalClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+		expect(artifactLink.dispatchEvent(normalClick)).toBe(false);
+		expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'proj-1');
+
+		openAgentPreview.mockClear();
+		let wasDefaultPreventedByComponent: boolean | undefined;
+		artifactLink.addEventListener('click', (event) => {
+			wasDefaultPreventedByComponent = event.defaultPrevented;
+		});
+		const modifiedClick = new MouseEvent('click', {
+			bubbles: true,
+			cancelable: true,
+			metaKey: true,
+		});
+		artifactLink.dispatchEvent(modifiedClick);
+
+		expect(wasDefaultPreventedByComponent).toBe(true);
+		expect(openAgentPreview).not.toHaveBeenCalled();
 	});
 
 	it('leaves modified agent artifact clicks to the browser', () => {

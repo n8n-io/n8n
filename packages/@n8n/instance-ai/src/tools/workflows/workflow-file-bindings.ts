@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
+import { rememberObservedWorkflowChecksum } from './observed-workflow-checksums';
 import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
 import { readWorkspaceFile } from '../../workspace/workspace-files';
@@ -26,8 +27,14 @@ export function hashWorkflowSource(source: string): string {
 	return createHash('sha256').update(source).digest('hex');
 }
 
-export function normalizeWorkflowSourceFilePath(filePath: string): string {
-	return normalizeWorkspaceRelativePath(filePath, { resourceLabel: 'Workflow source file' });
+export function normalizeWorkflowSourceFilePath(
+	filePath: string,
+	options: { workspaceRoot?: string } = {},
+): string {
+	return normalizeWorkspaceRelativePath(filePath, {
+		resourceLabel: 'Workflow source file',
+		workspaceRoot: options.workspaceRoot,
+	});
 }
 
 function parseBindings(raw: unknown): Record<string, WorkflowSourceFileBinding> {
@@ -141,6 +148,11 @@ export async function refreshWorkflowSourceFileBindingFromSave(
 	workflowId: string,
 	saved: { versionId: string; checksum?: string },
 ): Promise<void> {
+	// Every agent-side save routes through here, so this is also where the
+	// conversation's view of the workflow (used by `workflows(action="update")`)
+	// stays in step with the DB.
+	await rememberObservedWorkflowChecksum(context, workflowId, saved.checksum);
+
 	const threadBindings = await readThreadBindings(context);
 	const fallback = getFallbackBindings(context);
 	const entries: WorkflowSourceFileBinding[] = [];

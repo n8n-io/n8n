@@ -127,6 +127,7 @@ describe('SourceControlImportService', () => {
 			mock(), // activeWorkflowManager
 			mock(), // executionPersistence
 			mock(), // workflowPublishGuard
+			mock(), // workflowMutationHooks
 		);
 	});
 

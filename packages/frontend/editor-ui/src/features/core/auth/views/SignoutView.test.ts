@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { useRouter } from 'vue-router';
 import SignoutView from './SignoutView.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 
 const SIGNIN_HREF = '/signin';

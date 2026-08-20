@@ -5,7 +5,8 @@ import markdownEmoji from 'markdown-it-emoji';
 import markdownLink from 'markdown-it-link-attributes';
 import markdownTaskLists from 'markdown-it-task-lists';
 import { computed, ref } from 'vue';
-import xss, { whiteList } from 'xss';
+import type { IWhiteList } from 'xss';
+import xss from 'xss';
 
 import { markdownYoutubeEmbed, YOUTUBE_EMBED_SRC_REGEX, type YoutubeEmbedConfig } from './youtube';
 import { toggleCheckbox, serializeAttr } from '../../utils/markdown';
@@ -72,6 +73,12 @@ const md = new Markdown(options.markdown)
 	.use(markdownEmoji)
 	.use(markdownTaskLists, options.tasklists)
 	.use(markdownYoutubeEmbed, options.youtube);
+
+// `xss` is CJS with no `exports` map. Node's lexer cannot see `whiteList` as a
+// named export, so `import { whiteList }` throws at link time under native ESM
+// once a consumer loads our `dist`. At runtime `module.exports` is the filter
+// function with the helpers hung off it, which the shipped typings don't model.
+const { whiteList } = xss as unknown as { whiteList: IWhiteList };
 
 const xssWhiteList = {
 	...whiteList,

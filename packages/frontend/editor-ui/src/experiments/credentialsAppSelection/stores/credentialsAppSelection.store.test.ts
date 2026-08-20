@@ -11,7 +11,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 }));
 
 const storageRef = ref<string | null>(null);
-vi.mock('@/app/composables/useStorage', () => ({
+vi.mock('@n8n/composables/useStorage', () => ({
 	useStorage: vi.fn(() => storageRef),
 }));
 

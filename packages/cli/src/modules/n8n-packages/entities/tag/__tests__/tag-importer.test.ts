@@ -60,6 +60,22 @@ describe('TagImporter.plan', () => {
 			{ kind: 'permission-denied', missingScope: 'tag:update', usedByWorkflows: ['wf-1'] },
 		]);
 	});
+
+	it('fails with permission-denied when the user lacks tag:update for a planned reconcile', async () => {
+		const { importer, tagService } = makeImporter();
+		tagService.getByNames.mockResolvedValue([mock<TagEntity>({ id: 'tag-9', name: 'prod' })]);
+
+		const plan = await importer.plan(
+			contextFor(['tag:create']),
+			{ ...request, conflictPolicy: 'rename' },
+			appliedWorkflows,
+		);
+
+		expect(plan.reconciles).toEqual([{ id: 'tag-1', name: 'prod', oldId: 'tag-9' }]);
+		expect(plan.failures).toEqual([
+			{ kind: 'permission-denied', missingScope: 'tag:update', usedByWorkflows: ['wf-1'] },
+		]);
+	});
 });
 
 describe('TagImporter.apply', () => {
@@ -69,6 +85,7 @@ describe('TagImporter.apply', () => {
 			matched: [],
 			creations: [{ id: 'tag-1', name: 'prod' }],
 			renames: [],
+			reconciles: [],
 			dropped: [],
 			failures: [],
 		};

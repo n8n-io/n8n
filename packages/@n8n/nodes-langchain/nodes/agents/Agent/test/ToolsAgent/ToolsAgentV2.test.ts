@@ -1,6 +1,7 @@
 import { AgentExecutor } from '@langchain/classic/agents';
 import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { AIMessage, AIMessageChunk } from '@langchain/core/messages';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -372,6 +373,93 @@ describe('toolsAgentExecute', () => {
 		});
 	});
 
+	it('should surface a useful message when a tool throws a plain Error("Error") with continueOnFail', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = vi.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		const mockTools = [mock<Tool>()];
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'options.batching.batchSize') return 1;
+			if (param === 'options.batching.delayBetweenBatches') return 0;
+			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		mockContext.continueOnFail.mockReturnValue(true);
+
+		const mockExecutor = {
+			invoke: vi.fn().mockRejectedValue(new Error('Error')),
+		};
+
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
+
+		const result = await toolsAgentExecute.call(mockContext);
+
+		expect(result[0][0].json.error).not.toBe('Error');
+		expect(result[0][0].json.error).toBe('Agent execution failed');
+	});
+
+	it('should throw a NodeOperationError with a useful message when a tool throws Error("Error") without continueOnFail', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = vi.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		const mockTools = [mock<Tool>()];
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'options.batching.batchSize') return 1;
+			if (param === 'options.batching.delayBetweenBatches') return 0;
+			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		mockContext.continueOnFail.mockReturnValue(false);
+
+		const mockExecutor = {
+			invoke: vi.fn().mockRejectedValue(new Error('Error')),
+		};
+
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
+
+		await expect(toolsAgentExecute.call(mockContext)).rejects.toThrow('Agent execution failed');
+	});
+
 	it('should fetch output parser with correct item index', async () => {
 		const mockNode = mock<INode>();
 		mockNode.typeVersion = 2;
@@ -606,19 +694,15 @@ describe('toolsAgentExecute', () => {
 			const mockStreamEvents = async function* () {
 				yield {
 					event: 'on_chat_model_stream',
-					data: {
-						chunk: {
-							content: 'Hello ',
-						},
-					},
+					data: { chunk: new AIMessageChunk({ content: 'Hello ' }) },
 				};
 				yield {
 					event: 'on_chat_model_stream',
-					data: {
-						chunk: {
-							content: 'world!',
-						},
-					},
+					data: { chunk: new AIMessageChunk({ content: 'world!' }) },
+				};
+				yield {
+					event: 'on_chat_model_end',
+					data: { output: new AIMessage({ content: 'Hello world!' }) },
 				};
 			};
 
@@ -662,32 +746,18 @@ describe('toolsAgentExecute', () => {
 				return defaultValue;
 			});
 
-			// Simulate an AIMessage class instance (has toJSON and direct properties)
-			const fakeAIMessage = {
+			const fakeAIMessage = new AIMessage({
 				content: 'I need to call a tool',
 				tool_calls: [
 					{
 						id: 'call_123',
 						name: 'TestTool',
 						args: { input: 'test data' },
-						type: 'function',
+						type: 'tool_call',
 					},
 				],
-				additional_kwargs: {},
-				response_metadata: {},
 				id: 'msg_abc',
-				toJSON() {
-					return {
-						lc: 1,
-						type: 'constructor',
-						id: ['langchain_core', 'messages', 'AIMessage'],
-						kwargs: {
-							content: this.content,
-							tool_calls: this.tool_calls,
-						},
-					};
-				},
-			};
+			});
 
 			// Mock async generator for streamEvents with tool calls
 			const mockStreamEvents = async function* () {
@@ -709,11 +779,11 @@ describe('toolsAgentExecute', () => {
 				// Final LLM response
 				yield {
 					event: 'on_chat_model_stream',
-					data: {
-						chunk: {
-							content: 'Final response',
-						},
-					},
+					data: { chunk: new AIMessageChunk({ content: 'Final response' }) },
+				};
+				yield {
+					event: 'on_chat_model_end',
+					data: { output: new AIMessage({ content: 'Final response' }) },
 				};
 			};
 
@@ -739,15 +809,109 @@ describe('toolsAgentExecute', () => {
 			expect(step.action.tool).toBe('TestTool');
 			expect(step.action.toolInput).toEqual({ input: 'test data' });
 			expect(step.action.toolCallId).toBe('call_123');
-			expect(step.action.type).toBe('function');
+			expect(step.action.type).toBe('tool_call');
 			expect(step.action.messageLog).toBeDefined();
 			expect(step.observation).toBe('Tool execution result');
 
 			const messageLogEntry = step.action.messageLog[0];
 			expect(messageLogEntry.content).toBe('I need to call a tool');
 			expect(messageLogEntry.tool_calls).toEqual([
-				{ id: 'call_123', name: 'TestTool', args: { input: 'test data' }, type: 'function' },
+				{ id: 'call_123', name: 'TestTool', args: { input: 'test data' }, type: 'tool_call' },
 			]);
+		});
+
+		it('should not stream text from a turn that also requested tools', async () => {
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			mockContext.isStreaming.mockReturnValue(true);
+
+			// A turn that announces itself before calling a tool, then the real answer
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_stream',
+					run_id: 'run-1',
+					data: { chunk: new AIMessageChunk({ content: 'Room 1101' }) },
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'run-1',
+					data: {
+						output: new AIMessage({
+							content: [{ type: 'text', text: 'Room 1101' }],
+							tool_calls: [{ id: 'call_1', name: 'TestTool', args: {}, type: 'tool_call' }],
+						}),
+					},
+				};
+				yield {
+					event: 'on_tool_end',
+					name: 'TestTool',
+					run_id: 'run-1',
+					data: { output: 'created' },
+				};
+				yield {
+					event: 'on_chat_model_stream',
+					run_id: 'run-2',
+					data: { chunk: new AIMessageChunk({ content: 'Work order created successfully!' }) },
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'run-2',
+					data: { output: new AIMessage({ content: 'Work order created successfully!' }) },
+				};
+			};
+
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig({
+					streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
+				}) as any,
+			);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(result[0][0].json.output).toBe('Work order created successfully!');
+			expect(mockContext.sendChunk).not.toHaveBeenCalledWith('item', 0, 'Room 1101');
+			expect(mockContext.sendChunk).toHaveBeenCalledWith(
+				'item',
+				0,
+				'Work order created successfully!',
+			);
+		});
+
+		it('should discard text from a model run that never completed', async () => {
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			mockContext.isStreaming.mockReturnValue(true);
+
+			// A run that streams then never ends, as happens when a primary model fails
+			// before a fallback takes over
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_stream',
+					run_id: 'failed-run',
+					data: { chunk: new AIMessageChunk({ content: 'partial ' }) },
+				};
+				yield {
+					event: 'on_chat_model_stream',
+					run_id: 'fallback-run',
+					data: { chunk: new AIMessageChunk({ content: 'Complete answer' }) },
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'fallback-run',
+					data: { output: new AIMessage({ content: 'Complete answer' }) },
+				};
+			};
+
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig({
+					streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
+				}) as any,
+			);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(result[0][0].json.output).toBe('Complete answer');
+			expect(mockContext.sendChunk).not.toHaveBeenCalledWith('item', 0, 'partial ');
 		});
 
 		it('should use regular execution on version 2.2 when enableStreaming is false', async () => {
@@ -866,15 +1030,19 @@ describe('toolsAgentExecute', () => {
 				yield {
 					event: 'on_chat_model_stream',
 					data: {
-						chunk: {
+						chunk: new AIMessageChunk({
 							content: [
 								{ type: 'text', text: 'Hello ' },
 								{ type: 'thinking', content: 'This is thinking content' },
 								{ type: 'text', text: 'world!' },
 								{ type: 'image', url: 'data:image/png;base64,abc123' },
 							],
-						},
+						}),
 					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					data: { output: { content: 'Hello world!' } },
 				};
 			};
 
@@ -904,11 +1072,11 @@ describe('toolsAgentExecute', () => {
 			const mockStreamEvents = async function* () {
 				yield {
 					event: 'on_chat_model_stream',
-					data: {
-						chunk: {
-							content: 'Direct string content',
-						},
-					},
+					data: { chunk: new AIMessageChunk({ content: 'Direct string content' }) },
+				};
+				yield {
+					event: 'on_chat_model_end',
+					data: { output: new AIMessage({ content: 'Direct string content' }) },
 				};
 			};
 
@@ -939,14 +1107,18 @@ describe('toolsAgentExecute', () => {
 				yield {
 					event: 'on_chat_model_stream',
 					data: {
-						chunk: {
+						chunk: new AIMessageChunk({
 							content: [
 								{ type: 'thinking', content: 'This is thinking content' },
 								{ type: 'image', url: 'data:image/png;base64,abc123' },
 								{ type: 'audio', data: 'audio-data' },
 							],
-						},
+						}),
 					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					data: { output: new AIMessage({ content: '' }) },
 				};
 			};
 
