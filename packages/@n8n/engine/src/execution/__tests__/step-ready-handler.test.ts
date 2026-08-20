@@ -78,6 +78,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 			.mockResolvedValue({ [at('trigger')]: stepRow('trigger', 'completed', [{}]) }),
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
+		loadAllSteps: vi.fn().mockResolvedValue([]),
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
 		...overrides,
@@ -128,6 +129,7 @@ describe('StepReadyHandler', () => {
 				stepId: 'step-a',
 				workflowId: 'wf-1',
 				mode: 'production',
+				iteration: 0,
 			},
 		});
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
@@ -760,12 +762,6 @@ describe('StepReadyHandler over loop iterations', () => {
 		);
 	});
 
-	/**
-	 * A batch node's slot 0 carries both its entry edge and its return edge, which
-	 * the old check rejected outright as two edges into one slot. Asserted on the
-	 * resolution rather than through the handler, since running a batch step needs
-	 * an executor that does not exist yet.
-	 */
 	it('reads the batch node from the entry edge at iteration 0 and the return edge after it', () => {
 		const loops = deriveLoops(loopGraph);
 		const intoB = loopGraph.edges.filter((edge) => edge.to === 'B');
@@ -814,7 +810,6 @@ describe('StepReadyHandler over loop iterations', () => {
 	});
 
 	it('throws, running nothing, when the loop it reads across has not ended', async () => {
-		// only the planner should queue such a step, so the rows and the plan disagree
 		const executor = makeExecutor();
 		const stepStore = makeStepStore(
 			{ id: 'step-d-0', nodeId: 'd', iteration: 0 },
