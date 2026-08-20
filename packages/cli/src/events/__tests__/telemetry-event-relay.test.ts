@@ -3871,12 +3871,14 @@ describe('TelemetryEventRelay', () => {
 		it('should track a review closed because its workflow stopped being reviewable', () => {
 			eventService.emit('workflow-review-closed', {
 				workflowReviewRequestId: 'review-1',
-				reason: 'workflow-archived',
+				reason: 'no-reviewable-workflows',
+				actorKind: 'system',
 			});
 
 			const payload = {
 				workflow_review_request_id: 'review-1',
-				reason: 'workflow-archived',
+				reason: 'no-reviewable-workflows',
+				actor_kind: 'system',
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED,

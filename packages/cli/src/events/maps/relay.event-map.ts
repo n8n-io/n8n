@@ -3,7 +3,6 @@ import type {
 	DecideWorkflowReviewRequestDto,
 	ProjectRelation,
 	RedactionFloor,
-	WorkflowReviewClosedReason,
 } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
@@ -1144,13 +1143,21 @@ export type RelayEventMap = {
 	};
 
 	/**
-	 * Closed without a decision, by the auto-close hooks. An approval closes the
-	 * request too but emits 'workflow-review-decided' instead, never both: both close
-	 * paths filter `state = 'open'` and `decide()` closes in-line.
+	 * Closed without a decision, by the workflow lifecycle hooks or the reconciliation
+	 * sweep. An approval closes the request too but emits 'workflow-review-decided'
+	 * instead, never both: every close path filters `state = 'open'` and `decide()`
+	 * closes in-line.
 	 */
 	'workflow-review-closed': {
 		workflowReviewRequestId: string;
-		reason: WorkflowReviewClosedReason;
+		/**
+		 * Deliberately not `WorkflowReviewClosedReason` from `@n8n/api-types`: that names the
+		 * activity feed's effect entry, and sharing 'no-reviewable-workflows' with it is a
+		 * coincidence rather than one vocabulary.
+		 */
+		reason: 'workflow-archived' | 'workflow-moved' | 'workflow-deleted' | 'no-reviewable-workflows';
+		/** 'system' means no actor was recorded for the cause, not that automation acted. */
+		actorKind: 'user' | 'system';
 	};
 
 	'workflow-review-comment-created': {

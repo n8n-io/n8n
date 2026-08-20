@@ -2,6 +2,9 @@ import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
 
+const SINGLE_WORKFLOW_PER_REVIEW =
+	'The one workflow the review covers. Reviews spanning several workflows would add a "workflow_ids" property alongside this one, never change its type';
+
 export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 	USER_REQUESTED_WORKFLOW_REVIEW: {
 		name: 'User requested workflow review',
@@ -11,7 +14,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 			user_id: z.string(),
 			workflow_review_request_id: z.string(),
 			project_id: z.string().describe('The project owning the review at the time it was opened'),
-			workflow_id: z.string(),
+			workflow_id: z.string().describe(SINGLE_WORKFLOW_PER_REVIEW),
 			workflow_version_id: z.string(),
 			reviewer_count: z.number(),
 		}),
@@ -23,7 +26,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: z.string(),
 			workflow_review_request_id: z.string(),
-			workflow_id: z.string(),
+			workflow_id: z.string().describe(SINGLE_WORKFLOW_PER_REVIEW),
 			workflow_version_id: z.string().describe('The newly pinned version, not the previous one'),
 		}),
 	},
@@ -34,7 +37,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: z.string(),
 			workflow_review_request_id: z.string(),
-			workflow_id: z.string(),
+			workflow_id: z.string().describe(SINGLE_WORKFLOW_PER_REVIEW),
 			workflow_version_id: z
 				.string()
 				.nullable()
@@ -55,12 +58,24 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 	WORKFLOW_REVIEW_CLOSED: {
 		name: 'Workflow review closed',
 		description:
-			'An open review was closed without a decision because its workflow stopped being reviewable. Nobody performs this: it is the auto-close hooks and the reconciliation sweep. An approval closes the review too but reports "User decided workflow review" instead.',
+			'An open review was closed without a decision because its workflow stopped being reviewable. Nobody performs this: it is the workflow lifecycle hooks and the reconciliation sweep. An approval closes the review too but reports "User decided workflow review" instead.',
 		properties: z.object({
 			workflow_review_request_id: z.string(),
 			reason: z
-				.enum(['workflow-archived', 'workflow-moved', 'workflow-deleted'])
-				.describe('What made the workflow unreviewable'),
+				.enum([
+					'workflow-archived',
+					'workflow-moved',
+					'workflow-deleted',
+					'no-reviewable-workflows',
+				])
+				.describe(
+					'What made the workflow unreviewable, or "no-reviewable-workflows" when the reconciliation sweep closed the review and the cause was no longer recoverable. Attribution is best-effort: a cause path whose transaction rolls back leaves the sweep to close the same review as "no-reviewable-workflows", so the distribution is not an exact census of causes. The review activity feed uses a different vocabulary for the same concept — its "review.closed" entry always records "no-reviewable-workflows" — so the two are not comparable',
+				),
+			actor_kind: z
+				.enum(['user', 'system'])
+				.describe(
+					'"system" means no actor was recorded for the cause, not that automation acted. "no-reviewable-workflows" is therefore always "system", so this field only carries information on the three cause reasons',
+				),
 		}),
 	},
 	USER_COMMENTED_ON_WORKFLOW_REVIEW: {

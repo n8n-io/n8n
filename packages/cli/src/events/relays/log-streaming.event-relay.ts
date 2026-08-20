@@ -1220,14 +1220,15 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	/** Not `@Redactable()`: the auto-close hooks have no actor. */
+	/** Not `@Redactable()`: no close path names a user, so there is nothing to redact. */
 	private workflowReviewClosed({
 		workflowReviewRequestId,
 		reason,
+		actorKind,
 	}: RelayEventMap['workflow-review-closed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow-review.closed',
-			payload: { workflowReviewRequestId, reviewClosedReason: reason },
+			payload: { workflowReviewRequestId, reason, actorKind },
 		});
 	}
 

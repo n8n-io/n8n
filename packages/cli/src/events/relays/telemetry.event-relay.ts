@@ -2187,10 +2187,12 @@ export class TelemetryEventRelay extends EventRelay {
 	private workflowReviewClosed({
 		workflowReviewRequestId,
 		reason,
+		actorKind,
 	}: RelayEventMap['workflow-review-closed']) {
 		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED, {
 			workflow_review_request_id: workflowReviewRequestId,
 			reason,
+			actor_kind: actorKind,
 		});
 	}
 

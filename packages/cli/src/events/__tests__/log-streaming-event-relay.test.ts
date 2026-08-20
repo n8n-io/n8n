@@ -3114,13 +3114,15 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('workflow-review-closed', {
 				workflowReviewRequestId: 'review-1',
 				reason: 'workflow-archived',
+				actorKind: 'user',
 			});
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.audit.workflow-review.closed',
 				payload: {
 					workflowReviewRequestId: 'review-1',
-					reviewClosedReason: 'workflow-archived',
+					reason: 'workflow-archived',
+					actorKind: 'user',
 				},
 			});
 		});
