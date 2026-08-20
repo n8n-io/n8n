@@ -29,20 +29,28 @@ const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
 };
 
 // Status codes an `@ApiErrorResponse` can declare backed by hand-written schemas
-export const ERROR_RESPONSE_REFS: Record<number, { $ref: string }> = {
+export const ERROR_RESPONSE_REFS = {
 	400: { $ref: '../../../../shared/spec/responses/badRequest.yml' },
 	401: { $ref: '../../../../shared/spec/responses/unauthorized.yml' },
 	402: { $ref: '../../../../shared/spec/responses/paymentRequired.yml' },
 	403: { $ref: '../../../../shared/spec/responses/forbidden.yml' },
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
-};
+} as const satisfies Record<number, { $ref: string }>;
+
+/** The statuses `@ApiErrorResponse` can document, i.e. those with a shared response file. */
+type DocumentedErrorStatus = keyof typeof ERROR_RESPONSE_REFS;
+
+function isDocumentedErrorStatus(status: number): status is DocumentedErrorStatus {
+	return status in ERROR_RESPONSE_REFS;
+}
 
 /**
  * The wording each file in `ERROR_RESPONSE_REFS` carries, for the one case that cannot `$ref` it.
- * `error-response-descriptions.test.ts` asserts the two stay in step.
+ * The key type keeps both maps covering the same statuses; `error-response-descriptions.test.ts`
+ * keeps the text itself in step with the files it was copied from.
  */
-export const ERROR_RESPONSE_DESCRIPTIONS: Record<number, string> = {
+export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> = {
 	400: 'The request is invalid or provides malformed data.',
 	401: 'Unauthorized',
 	402: 'Payment required',
@@ -211,14 +219,15 @@ function buildResponses(
 	}
 
 	for (const { status, dto, description } of route.errorResponses ?? []) {
-		const ref = ERROR_RESPONSE_REFS[status];
-		if (!ref) {
+		if (!isDocumentedErrorStatus(status)) {
 			throw new UnexpectedError(
 				`@ApiErrorResponse(${status}) on ${route.controllerName}.${route.handlerName} has no ` +
 					'matching shared response file in ERROR_RESPONSE_REFS - add one to shared/spec/responses/ ' +
 					'and register it there.',
 			);
 		}
+
+		const ref = ERROR_RESPONSE_REFS[status];
 
 		// A `$ref` cannot carry siblings, so either extra means writing the description out here
 		// instead of pointing at the shared file that would have supplied it.
