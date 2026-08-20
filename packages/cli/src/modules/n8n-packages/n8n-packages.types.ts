@@ -91,6 +91,13 @@ export const WorkflowVersionPolicy = {
 	Latest: 'latest',
 } as const;
 
+export const CredentialExportPolicy = {
+	/** Bundles only expression-valued fields from credential data; literal values never travel. */
+	ExpressionValuesOnly: 'expression-values-only',
+	/** Keeps credential data out of the package; credential.json carries id, name and type only. */
+	NoValues: 'no-values',
+} as const;
+
 export const DataTableMatchingMode = {
 	/** Matches a package table to the target-project table with the same id. Never falls back to name matching. */
 	ById: 'by-id',
@@ -172,6 +179,9 @@ export type MissingWorkflowDependencyPolicy =
 export type WorkflowVersionPolicy =
 	(typeof WorkflowVersionPolicy)[keyof typeof WorkflowVersionPolicy];
 
+export type CredentialExportPolicy =
+	(typeof CredentialExportPolicy)[keyof typeof CredentialExportPolicy];
+
 export type DataTableMatchingMode =
 	(typeof DataTableMatchingMode)[keyof typeof DataTableMatchingMode];
 
@@ -201,6 +211,7 @@ export interface ExportPackageRequest {
 	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
 	workflowVersionPolicy?: WorkflowVersionPolicy;
+	credentialExportPolicy?: CredentialExportPolicy;
 }
 
 export type ImportPackageRequest = {

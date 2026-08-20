@@ -1103,7 +1103,11 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private packageExported({ user, counts }: RelayEventMap['n8n-package-exported']) {
+	private packageExported({
+		user,
+		counts,
+		credentialExportPolicy,
+	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
 			workflow_count: counts.workflows,
@@ -1112,6 +1116,7 @@ export class TelemetryEventRelay extends EventRelay {
 			data_table_count: counts.dataTables,
 			variable_count: counts.variables,
 			tag_count: counts.tags,
+			credential_export_policy: credentialExportPolicy,
 		});
 	}
 

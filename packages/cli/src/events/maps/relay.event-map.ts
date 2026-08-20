@@ -15,6 +15,7 @@ import type {
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import type { CredentialAuthProbeOutcome } from '@/services/credentials-tester.service';
 import type {
+	CredentialExportPolicy,
 	ExportPackageEventCounts,
 	ImportAuditCredentialIds,
 	ImportPackageEventCounts,
@@ -118,6 +119,7 @@ export type RelayEventMap = {
 		folderIds?: string[];
 		projectIds?: string[];
 		counts: ExportPackageEventCounts;
+		credentialExportPolicy: CredentialExportPolicy;
 	};
 
 	'n8n-package-export-failed': {

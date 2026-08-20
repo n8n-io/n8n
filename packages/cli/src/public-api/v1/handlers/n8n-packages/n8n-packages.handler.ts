@@ -41,6 +41,7 @@ type ExportPackageRequest = AuthenticatedRequest<
 			| 'prefer-published'
 			| 'ignore-unpublished'
 			| 'latest';
+		credentialExportPolicy?: 'expression-values-only' | 'no-values';
 	}
 >;
 
@@ -156,6 +157,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					includeTags: payload.data.includeTags,
 					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
 					workflowVersionPolicy: payload.data.workflowVersionPolicy,
+					credentialExportPolicy: payload.data.credentialExportPolicy,
 				});
 
 				return await streamPackageExport(res, exportResult);

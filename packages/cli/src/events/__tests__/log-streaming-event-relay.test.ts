@@ -186,6 +186,8 @@ describe('LogStreamingEventRelay', () => {
 					variables: 1,
 					tags: 1,
 				},
+				// Telemetry-only; must not appear in the audit payload below.
+				credentialExportPolicy: 'expression-values-only',
 			};
 
 			eventService.emit('n8n-package-exported', event);
