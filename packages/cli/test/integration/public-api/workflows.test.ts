@@ -2327,7 +2327,6 @@ describe('POST /workflows', () => {
 	});
 
 	describe('response contract', () => {
-		// A response built from a DTO drops any field the DTO forgets, and only this notices.
 		const expectedResponseKeys = [
 			'active',
 			'activeVersion',
@@ -2426,7 +2425,6 @@ describe('POST /workflows', () => {
 	});
 
 	describe('request contract', () => {
-		// Read-only in the spec means a hard 400 on the field being present, not silently ignored.
 		test.each([
 			{ key: 'id', value: '2tUt1wbLX592XDdX' },
 			{ key: 'active', value: false },

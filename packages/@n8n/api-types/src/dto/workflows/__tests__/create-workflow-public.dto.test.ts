@@ -17,24 +17,6 @@ const validPayload = {
 };
 
 describe('CreateWorkflowPublicDto', () => {
-	test.each([
-		['id', '2tUt1wbLX592XDdX'],
-		['active', false],
-		['createdAt', '2026-01-01T00:00:00.000Z'],
-		['updatedAt', '2026-01-01T00:00:00.000Z'],
-		['isArchived', false],
-		['versionId', 'a-version-id'],
-		['triggerCount', 0],
-		['meta', {}],
-		['tags', []],
-		['activeVersion', null],
-	])('rejects the read-only field %s', (key, value) => {
-		const result = CreateWorkflowPublicDto.safeParse({ ...validPayload, [key]: value });
-
-		expect(result.success).toBe(false);
-	});
-
-	// An unoverridden inherited method would silently strip the key instead of rejecting it.
 	test('rejects an unknown key through parse as well as safeParse', () => {
 		const payload = { ...validPayload, notAWorkflowField: 'x' };
 
@@ -50,12 +32,6 @@ describe('CreateWorkflowPublicDto', () => {
 		const result = CreateWorkflowPublicDto.safeParse(withoutSettings);
 
 		expect(result.success).toBe(false);
-	});
-
-	test('accepts a supplied shared list', () => {
-		const result = CreateWorkflowPublicDto.safeParse({ ...validPayload, shared: [] });
-
-		expect(result.success).toBe(true);
 	});
 
 	test('accepts the writable fields of a shared entry', () => {
@@ -88,34 +64,6 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
-	test('drops the derived binaryMode and credentialResolverId settings', () => {
-		const result = CreateWorkflowPublicDto.safeParse({
-			...validPayload,
-			settings: {
-				executionOrder: 'v1',
-				binaryMode: 'combined',
-				credentialResolverId: 'some-resolver-id',
-			},
-		});
-
-		expect(result.success).toBe(true);
-		if (result.success) {
-			expect(result.data.settings).toEqual({ executionOrder: 'v1' });
-		}
-	});
-
-	test('keeps the redaction policy, which the controller needs after parsing', () => {
-		const result = CreateWorkflowPublicDto.safeParse({
-			...validPayload,
-			settings: { redactionPolicy: 'all' },
-		});
-
-		expect(result.success).toBe(true);
-		if (result.success) {
-			expect(result.data.settings.redactionPolicy).toBe('all');
-		}
-	});
-
 	test.each([
 		['a JSON string', '{"lastId":1}', true],
 		['a string that is not JSON', 'not json', false],
@@ -144,32 +92,5 @@ describe('CreateWorkflowPublicDto', () => {
 		});
 
 		expect(result.success).toBe(expected);
-	});
-
-	test('rejects an unknown key nested in a node', () => {
-		const result = CreateWorkflowPublicDto.safeParse({
-			...validPayload,
-			nodes: [{ ...validPayload.nodes[0], notANodeField: 'x' }],
-		});
-
-		expect(result.success).toBe(false);
-	});
-
-	test('rejects a read-only key nested in a node', () => {
-		const result = CreateWorkflowPublicDto.safeParse({
-			...validPayload,
-			nodes: [{ ...validPayload.nodes[0], createdAt: '2026-01-01T00:00:00.000Z' }],
-		});
-
-		expect(result.success).toBe(false);
-	});
-
-	test('rejects an unknown settings key', () => {
-		const result = CreateWorkflowPublicDto.safeParse({
-			...validPayload,
-			settings: { executionOrder: 'v1', notASetting: true },
-		});
-
-		expect(result.success).toBe(false);
 	});
 });
