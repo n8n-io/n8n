@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue';
-import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nCheckbox,
@@ -17,11 +18,12 @@ import {
 	N8nSettingsSection,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@n8n/composables/useToast';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useOtelStore, headersStringToPairs, headersPairsToString } from './otel.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { computed, ref, watch, onMounted } from 'vue';
+import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
+
 import { OTEL_FIELD_ENV_VARS, OTEL_TEST_SPAN_NAME } from './otel.constants';
+import { useOtelStore, headersStringToPairs, headersPairsToString } from './otel.store';
 import { createSampleRateFormat } from './otel.utils';
 import OtelSettingsRow from './OtelSettingsRow.vue';
 import OtelStatusControl from './OtelStatusControl.vue';
@@ -31,7 +33,12 @@ const OTEL_DOCS_URL = 'https://docs.n8n.io/hosting/logging-monitoring/openteleme
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const toast = useToast();
-const documentTitle = useDocumentTitle();
+// The shell's wrapper adds a claim guard for `setDocumentTitle`, which only the
+// canvas calls. This view calls `set`, so it uses the platform composable directly
+// and passes the release channel the wrapper would have supplied.
+const documentTitle = useDocumentTitle({
+	releaseChannel: useSettingsStore().settings.releaseChannel,
+});
 const otelStore = useOtelStore();
 
 const headerPairs = ref<Array<{ key: string; value: string }>>([]);

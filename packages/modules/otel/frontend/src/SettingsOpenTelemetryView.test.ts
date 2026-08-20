@@ -1,10 +1,11 @@
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
+import { waitFor } from '@testing-library/vue';
+
+import { createComponentRenderer } from './__tests__/render';
+import type { OtelSettingsResponse } from './otel.api';
 import { useOtelStore } from './otel.store';
 import SettingsOpenTelemetryView from './SettingsOpenTelemetryView.vue';
-import type { OtelSettingsResponse } from './otel.api';
 
 const showMessage = vi.fn();
 const showError = vi.fn();
@@ -15,10 +16,6 @@ vi.mock('@n8n/composables/useToast', () => ({
 const telemetryTrack = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
-}));
-
-vi.mock('@/app/composables/useDocumentTitle', () => ({
-	useDocumentTitle: () => ({ set: vi.fn() }),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -38,14 +35,18 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-const getOtelSettingsMock = vi.fn();
-const updateOtelSettingsMock = vi.fn();
-const sendOtelTestTraceMock = vi.fn();
+// Typed, so the factory below returns `Promise<unknown>` rather than the `any` a bare
+// `vi.fn()` yields — the module package lints `no-unsafe-return` at error level.
+type ApiMock = (...args: unknown[]) => Promise<unknown>;
+
+const getOtelSettingsMock = vi.fn<ApiMock>();
+const updateOtelSettingsMock = vi.fn<ApiMock>();
+const sendOtelTestTraceMock = vi.fn<ApiMock>();
 
 vi.mock('./otel.api', () => ({
-	getOtelSettings: (...args: unknown[]) => getOtelSettingsMock(...args),
-	updateOtelSettings: (...args: unknown[]) => updateOtelSettingsMock(...args),
-	sendOtelTestTrace: (...args: unknown[]) => sendOtelTestTraceMock(...args),
+	getOtelSettings: async (...args: unknown[]) => await getOtelSettingsMock(...args),
+	updateOtelSettings: async (...args: unknown[]) => await updateOtelSettingsMock(...args),
+	sendOtelTestTrace: async (...args: unknown[]) => await sendOtelTestTraceMock(...args),
 }));
 
 const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettingsResponse => ({
@@ -198,7 +199,7 @@ describe('SettingsOpenTelemetryView', () => {
 
 		await waitFor(() => {
 			expect(showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
-			expect(store.settings!.enabled).toBe(false);
+			expect(store.settings.enabled).toBe(false);
 		});
 	});
 
@@ -375,7 +376,7 @@ describe('SettingsOpenTelemetryView', () => {
 		await userEvent.type(keyInput, 'x-api-key');
 
 		await waitFor(() => {
-			expect(store.settings!.exporterHeaders).toContain('x-api-key');
+			expect(store.settings.exporterHeaders).toContain('x-api-key');
 		});
 	});
 

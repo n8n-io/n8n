@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, useCssModule } from 'vue';
 import { N8nButton, N8nDropdownMenu, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { computed, useCssModule } from 'vue';
+
 import OtelStatusDot from './OtelStatusDot.vue';
 
 /*
@@ -22,6 +23,8 @@ withDefaults(
 );
 
 const emit = defineEmits<{
+	// Vue's `v-model:enabled` contract fixes this name, and no naming format allows a colon.
+	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'update:enabled': [enabled: boolean];
 }>();
 
