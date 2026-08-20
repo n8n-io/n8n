@@ -189,13 +189,7 @@ describe('Commenting on a review', () => {
 		});
 		// The comment body never leaves the feed.
 		expect(emit).toHaveBeenCalledWith('workflow-review-comment-created', {
-			user: {
-				id: member.id,
-				email: member.email,
-				firstName: member.firstName,
-				lastName: member.lastName,
-				role: { slug: member.role.slug },
-			},
+			user: expect.objectContaining({ id: member.id }),
 			workflowReviewRequestId: request.id,
 		});
 	});

@@ -25,7 +25,7 @@ import { EventService } from '@/events/event.service';
 import { WorkflowReviewAccessService } from './workflow-review-access.service';
 import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
-import { toActivityEntry, toEligibleReviewer, toEventUser } from './workflow-review.mapper';
+import { toActivityEntry, toEligibleReviewer } from './workflow-review.mapper';
 
 @Service()
 export class WorkflowReviewActivityService {
@@ -112,7 +112,7 @@ export class WorkflowReviewActivityService {
 		});
 
 		this.eventService.emit('workflow-review-comment-created', {
-			user: toEventUser(user),
+			user,
 			workflowReviewRequestId,
 		});
 

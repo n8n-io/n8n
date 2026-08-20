@@ -47,7 +47,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowReviewAccessService } from './workflow-review-access.service';
 import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
-import { toEligibleReviewer, toEventUser, toRequestSummary } from './workflow-review.mapper';
+import { toEligibleReviewer, toRequestSummary } from './workflow-review.mapper';
 /** Omitted stays omitted (column untouched); an empty/whitespace string clears to null. */
 function normalizeVersionDescription(description: string | undefined): string | null | undefined {
 	if (description === undefined) return undefined;
@@ -422,7 +422,7 @@ export class WorkflowReviewRequestService {
 		this.broadcastReviewStateChanged(workflowId);
 
 		this.eventService.emit('workflow-review-requested', {
-			user: toEventUser(user),
+			user,
 			workflowReviewRequestId: request.id,
 			projectId: project.id,
 			workflowId,
@@ -637,7 +637,7 @@ export class WorkflowReviewRequestService {
 		// Only a real re-pin, never a description-only save, which also sets `changed`.
 		if (versionUpdated) {
 			this.eventService.emit('workflow-review-version-updated', {
-				user: toEventUser(user),
+				user,
 				workflowReviewRequestId,
 				workflowId: dto.workflowId,
 				workflowVersionId: dto.workflowVersionId,
@@ -830,7 +830,7 @@ export class WorkflowReviewRequestService {
 		this.broadcastReviewStateChanged(workflowRow.workflowId);
 
 		this.eventService.emit('workflow-review-decided', {
-			user: toEventUser(user),
+			user,
 			workflowReviewRequestId,
 			workflowId: workflowRow.workflowId,
 			workflowVersionId: pinnedVersionId,
