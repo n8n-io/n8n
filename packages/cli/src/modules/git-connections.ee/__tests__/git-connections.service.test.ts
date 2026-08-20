@@ -20,24 +20,6 @@ import type { GitConnectionRepository } from '../database/repositories/git-conne
 import type { GitConnectionsGitService } from '../git-connections-git.service';
 import { GitConnectionsService } from '../git-connections.service';
 
-const { renameFailure } = vi.hoisted(() => ({
-	renameFailure: { source: undefined as string | undefined },
-}));
-
-vi.mock('node:fs/promises', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('node:fs/promises')>();
-	return {
-		...actual,
-		rename: async (oldPath: string, newPath: string) => {
-			if (renameFailure.source === oldPath) {
-				renameFailure.source = undefined;
-				throw new Error('Injected rename failure');
-			}
-			await actual.rename(oldPath, newPath);
-		},
-	};
-});
-
 describe('GitConnectionsService (credential state machine)', () => {
 	const repository = mock<GitConnectionRepository>();
 	const projectConnectionRepository = mock<GitConnectionProjectRepository>();
@@ -93,7 +75,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		renameFailure.source = undefined;
 		repository.create.mockImplementation((input) => input as GitConnection);
 		repository.save.mockImplementation(async (input) => {
 			const entity = input as GitConnection;
@@ -279,11 +260,16 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await rm(n8nFolder, { recursive: true, force: true });
 		});
 
-		it('exports all linked projects as one package at the repository root', async () => {
+		it('exports all linked projects into the n8n-export subfolder, leaving the root untouched', async () => {
 			const repositoryFolder = path.join(n8nFolder, 'git-connections', '1', 'repository');
+			const exportFolder = path.join(repositoryFolder, 'n8n-export');
 			await mkdir(path.join(repositoryFolder, '.git'), { recursive: true });
 			await writeFile(path.join(repositoryFolder, '.git', 'HEAD'), 'ref: refs/heads/main');
-			await writeFile(path.join(repositoryFolder, 'stale.json'), '{}');
+			// A file the user keeps at the repository root must survive the export.
+			await writeFile(path.join(repositoryFolder, 'README.md'), '# my repo');
+			// A stale export from a project that is no longer linked must be removed.
+			await mkdir(exportFolder, { recursive: true });
+			await writeFile(path.join(exportFolder, 'stale.json'), '{}');
 
 			const result = await exportService.push('1', actor);
 
@@ -298,16 +284,16 @@ describe('GitConnectionsService (credential state machine)', () => {
 					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
 					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
 				},
-				{
-					targetDir: path.join(n8nFolder, 'git-connections', '1', 'repository-export-next'),
-				},
+				{ targetDir: exportFolder },
 			);
-			expect(await readFile(path.join(repositoryFolder, 'manifest.json'), 'utf-8')).toBe(
+			expect(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')).toBe(
 				'{"projects":[]}',
 			);
+			// `.git` and user files at the root are untouched.
 			expect(await readFile(path.join(repositoryFolder, '.git', 'HEAD'), 'utf-8')).toBe(
 				'ref: refs/heads/main',
 			);
+			expect(await readFile(path.join(repositoryFolder, 'README.md'), 'utf-8')).toBe('# my repo');
 			expect(result).toEqual({
 				connectionId: '1',
 				counts: {
@@ -319,47 +305,25 @@ describe('GitConnectionsService (credential state machine)', () => {
 					tags: 0,
 				},
 			});
-			await expect(stat(path.join(repositoryFolder, 'stale.json'))).rejects.toThrow();
-			await expect(
-				stat(path.join(n8nFolder, 'git-connections', '1', 'repository-export-next')),
-			).rejects.toThrow();
+			// The stale export is gone; only the freshly written package remains.
+			await expect(stat(path.join(exportFolder, 'stale.json'))).rejects.toThrow();
 		});
 
-		it('leaves the current repository contents unchanged when export fails', async () => {
+		it('leaves git metadata and root files intact when export fails', async () => {
 			const repositoryFolder = path.join(n8nFolder, 'git-connections', '1', 'repository');
-			await mkdir(repositoryFolder, { recursive: true });
-			await writeFile(path.join(repositoryFolder, 'current.json'), '{"current":true}');
+			await mkdir(path.join(repositoryFolder, '.git'), { recursive: true });
+			await writeFile(path.join(repositoryFolder, '.git', 'HEAD'), 'ref: refs/heads/main');
+			await writeFile(path.join(repositoryFolder, 'README.md'), '# my repo');
 			n8nPackagesService.exportPackageToDirectory.mockRejectedValueOnce(
 				new BadRequestError('A linked project dependency is missing'),
 			);
 
 			await expect(exportService.push('1', actor)).rejects.toThrow(BadRequestError);
 
-			expect(await readFile(path.join(repositoryFolder, 'current.json'), 'utf-8')).toBe(
-				'{"current":true}',
-			);
-		});
-
-		it('restores the current repository and preserves the staged export when swapping fails', async () => {
-			const rootFolder = path.join(n8nFolder, 'git-connections', '1');
-			const repositoryFolder = path.join(rootFolder, 'repository');
-			const nextExportFolder = path.join(rootFolder, 'repository-export-next');
-			await mkdir(path.join(repositoryFolder, '.git'), { recursive: true });
-			await writeFile(path.join(repositoryFolder, '.git', 'HEAD'), 'ref: refs/heads/main');
-			await writeFile(path.join(repositoryFolder, 'current.json'), '{"current":true}');
-			renameFailure.source = nextExportFolder;
-
-			await expect(exportService.push('1', actor)).rejects.toThrow('Injected rename failure');
-
-			expect(await readFile(path.join(repositoryFolder, 'current.json'), 'utf-8')).toBe(
-				'{"current":true}',
-			);
 			expect(await readFile(path.join(repositoryFolder, '.git', 'HEAD'), 'utf-8')).toBe(
 				'ref: refs/heads/main',
 			);
-			expect(await readFile(path.join(nextExportFolder, 'manifest.json'), 'utf-8')).toBe(
-				'{"projects":[]}',
-			);
+			expect(await readFile(path.join(repositoryFolder, 'README.md'), 'utf-8')).toBe('# my repo');
 		});
 
 		it('does not query projects or write files for a missing connection', async () => {

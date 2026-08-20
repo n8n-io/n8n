@@ -8,8 +8,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
-import { randomUUID } from 'node:crypto';
-import { cp, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
@@ -27,10 +26,11 @@ import { GitConnectionRepository } from './database/repositories/git-connection.
 import { GitConnectionsGitService } from './git-connections-git.service';
 
 /**
- * Prefix for the unique-named backups a repository swap leaves behind. Shared by
- * the swap that creates them and the sweep that reclaims them so the two can't drift.
+ * Subfolder of the working copy that holds the n8n-managed export. Keeping it
+ * separate from the repository root leaves `.git` and any files the user commits
+ * at the root untouched, and scopes the export's cleanup to a single directory.
  */
-const PREVIOUS_REPOSITORY_PREFIX = 'repository-previous-';
+const EXPORT_SUBFOLDER = 'n8n-export';
 
 @Service()
 export class GitConnectionsService {
@@ -150,37 +150,30 @@ export class GitConnectionsService {
 		await this.getEntity(connectionId);
 		const projectIds =
 			await this.projectConnectionRepository.findProjectIdsByConnection(connectionId);
-		const rootFolder = this.rootFolder(connectionId);
-		const repositoryFolder = path.join(rootFolder, 'repository');
-		const nextExportFolder = path.join(rootFolder, 'repository-export-next');
+		const exportFolder = path.join(this.rootFolder(connectionId), 'repository', EXPORT_SUBFOLDER);
 
 		this.logger.info('Exporting projects to Git connection repository', {
 			connectionId,
 			projectCount: projectIds.length,
 		});
 
-		await rm(nextExportFolder, { recursive: true, force: true });
-		await this.sweepPreviousRepositories(rootFolder);
-		let exportResult;
-		try {
-			exportResult = await this.n8nPackagesService.exportPackageToDirectory(
-				{
-					user: actor,
-					projectIds,
-					includeVariableValues: true,
-					canExportVariableValues: true,
-					includeTags: true,
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
-				},
-				{ targetDir: nextExportFolder },
-			);
-		} catch (error) {
-			// A failed export can contain an incomplete package, so it is not safe to retain.
-			await rm(nextExportFolder, { recursive: true, force: true });
-			throw error;
-		}
-		await this.replaceRepositoryContents(connectionId, repositoryFolder, nextExportFolder);
+		// Replace the previous export wholesale so files for projects that are no
+		// longer linked disappear. Only the n8n-managed subfolder is cleared — `.git`
+		// and any user-committed files at the repository root are left untouched. A
+		// failed export leaves a Git-recoverable working tree, so no backup is needed.
+		await rm(exportFolder, { recursive: true, force: true });
+		const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
+			{
+				user: actor,
+				projectIds,
+				includeVariableValues: true,
+				canExportVariableValues: true,
+				includeTags: true,
+				missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
+				workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+			},
+			{ targetDir: exportFolder },
+		);
 
 		// TODO: commit the working copy and push to the remote, then surface the
 		// git operation result here.
@@ -188,96 +181,6 @@ export class GitConnectionsService {
 			connectionId,
 			counts: exportResult.counts,
 		};
-	}
-
-	private async replaceRepositoryContents(
-		connectionId: string,
-		repositoryFolder: string,
-		nextExportFolder: string,
-	) {
-		await mkdir(repositoryFolder, { recursive: true });
-		const gitFolder = path.join(repositoryFolder, '.git');
-		if (await this.pathExists(gitFolder)) {
-			// Include Git metadata before the swap so the new working tree is complete when installed.
-			await cp(gitFolder, path.join(nextExportFolder, '.git'), { recursive: true });
-		}
-
-		// A unique backup never overwrites recovery data left by an earlier failed operation.
-		const previousRepositoryFolder = path.join(
-			path.dirname(repositoryFolder),
-			`${PREVIOUS_REPOSITORY_PREFIX}${randomUUID()}`,
-		);
-		// Keep the old tree intact until the complete staged tree is ready to take its place.
-		await rename(repositoryFolder, previousRepositoryFolder);
-
-		try {
-			await rename(nextExportFolder, repositoryFolder);
-		} catch (error) {
-			try {
-				// Restore service immediately and retain the staged export for inspection or retry.
-				await rename(previousRepositoryFolder, repositoryFolder);
-			} catch (rollbackError) {
-				this.logger.error('Failed to restore Git connection repository after replacement error', {
-					connectionId,
-					rollbackError,
-				});
-			}
-			throw error;
-		}
-
-		try {
-			await rm(previousRepositoryFolder, { recursive: true, force: true });
-		} catch (cleanupError) {
-			// The new tree is already live, so leftover backup cleanup must not turn success into failure.
-			this.logger.warn('Could not remove previous Git connection repository contents', {
-				connectionId,
-				cleanupError,
-			});
-		}
-	}
-
-	/**
-	 * Best-effort removal of `repository-previous-*` backups left by an earlier
-	 * failed or interrupted swap. Their unique names mean nothing overwrites them
-	 * the way the fixed-name staging folder is, so without this sweep they
-	 * accumulate. Runs under the same push mutex, so it can't race a live swap.
-	 */
-	private async sweepPreviousRepositories(rootFolder: string) {
-		let entries: string[];
-		try {
-			entries = await readdir(rootFolder);
-		} catch (error) {
-			// No root folder yet (first push) means nothing to sweep.
-			if (isErrnoException(error) && error.code === 'ENOENT') return;
-			throw error;
-		}
-
-		const stale = entries.filter((name) => name.startsWith(PREVIOUS_REPOSITORY_PREFIX));
-		await Promise.all(
-			stale.map(async (name) => {
-				try {
-					await rm(path.join(rootFolder, name), { recursive: true, force: true });
-				} catch (cleanupError) {
-					// Cleanup is best-effort; a stuck backup must not fail the export.
-					this.logger.warn('Could not remove stale Git connection repository backup', {
-						rootFolder,
-						name,
-						cleanupError,
-					});
-				}
-			}),
-		);
-	}
-
-	private async pathExists(target: string) {
-		try {
-			await stat(target);
-			return true;
-		} catch (error) {
-			// Only absence means false. Permission and I/O errors must stop the replacement.
-			if (isErrnoException(error) && error.code === 'ENOENT') return false;
-			throw error;
-		}
 	}
 
 	private async applyNewAuthentication(
@@ -415,14 +318,4 @@ export class GitConnectionsService {
 		const { publicKey: _, ...summary } = this.toPublic(connection);
 		return summary;
 	}
-}
-
-/** Narrow unknown filesystem errors so callers can inspect standard Node.js error codes safely. */
-function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
-	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'code' in error &&
-		typeof (error as { code: unknown }).code === 'string'
-	);
 }
