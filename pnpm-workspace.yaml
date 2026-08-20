@@ -240,7 +240,7 @@ catalogs:
     playwright-core: 1.62.1
   frontend:
     '@internationalized/date': ^3.9.0
-    '@sentry/vue': ^10.36.0
+    '@sentry/vue': 10.70.0
     '@testing-library/dom': ^10.4.0
     '@testing-library/jest-dom': ^6.6.3
     '@testing-library/user-event': ^14.6.1
