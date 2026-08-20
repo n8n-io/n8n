@@ -99,7 +99,7 @@ export {
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
 export {
-	ConnectGitConnectionDto,
+	CloneGitConnectionDto,
 	CreateGitConnectionDto,
 	GitConnectionListPublicDto,
 	GitConnectionPublicDto,
