@@ -46,6 +46,14 @@ export interface BaseConnectionItem {
 	installing?: boolean;
 	/** Non-admin cannot install; the action is disabled with a contact-admin tooltip. */
 	installDisabled?: boolean;
+	/**
+	 * Row is visible but not selectable. Used to surface incompatible items
+	 * (e.g. a workflow with a Wait node) at the bottom of a category so the user
+	 * can see why they're missing instead of the row simply being absent.
+	 */
+	disabled?: boolean;
+	/** Human-readable explanation shown as a tooltip when `disabled` is true. */
+	disabledReason?: string;
 }
 
 export interface NodeConnectionItem extends BaseConnectionItem {

@@ -320,8 +320,9 @@ export class Expression {
 	 *
 	 * WARNING: This is a global setting — switching engines mid-execution could
 	 * cause a workflow to evaluate some expressions with one engine and some with
-	 * another. Only use this in benchmarks and tests, never in production code.
-	 * In production, set `N8N_EXPRESSION_ENGINE` before process startup instead.
+	 * another. Only call this during process startup (or in benchmarks and tests),
+	 * never mid-execution. In production, set `N8N_EXPRESSION_ENGINE` before
+	 * process startup instead.
 	 */
 	static setExpressionEngine(engine: 'legacy' | 'vm'): void {
 		this.expressionEngine = engine;
