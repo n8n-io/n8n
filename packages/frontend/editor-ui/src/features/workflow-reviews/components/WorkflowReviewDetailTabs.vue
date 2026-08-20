@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
-import { N8nButton, N8nCallout, N8nTabs, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nCallout, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
 import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
+import WorkflowReviewCommentComposer from './WorkflowReviewCommentComposer.vue';
+import WorkflowReviewDecisionPopover from './WorkflowReviewDecisionPopover.vue';
 import WorkflowReviewDetailMetadata from './WorkflowReviewDetailMetadata.vue';
 
 export type WorkflowReviewDetailTab = 'activity' | 'changes';
@@ -19,7 +21,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:tab': [tab: WorkflowReviewDetailTab];
-	decide: [decision: WorkflowReviewDecisionInput];
+	decide: [input: WorkflowReviewDecisionInput];
 }>();
 
 const i18n = useI18n();
@@ -29,6 +31,7 @@ const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 );
 
 const viewerCanDecide = computed(() => detail.value?.viewerCanDecide ?? false);
+const viewerCanComment = computed(() => detail.value?.viewerCanComment ?? false);
 
 const ineligibilityHint = computed(() => {
 	if (!detail.value || detail.value.viewerCanDecide) return '';
@@ -65,27 +68,14 @@ const tabOptions = computed(() => [
 			<!-- Gated on `detail`, not `review`: eligibility only arrives with the
 				detail payload, so the list item alone can't say who may decide. -->
 			<div v-if="detail?.state === 'open'" :class="$style.decisionActions">
-				<N8nTooltip :disabled="!ineligibilityHint" :content="ineligibilityHint" :show-after="300">
-					<N8nButton
-						size="small"
-						:disabled="deciding || !viewerCanDecide"
-						data-test-id="workflow-review-approve-button"
-						@click="emit('decide', 'approved')"
-					>
-						{{ i18n.baseText('workflowReviews.detail.decision.approve') }}
-					</N8nButton>
-				</N8nTooltip>
-				<N8nTooltip :disabled="!ineligibilityHint" :content="ineligibilityHint" :show-after="300">
-					<N8nButton
-						size="small"
-						type="secondary"
-						:disabled="deciding || !viewerCanDecide"
-						data-test-id="workflow-review-request-changes-button"
-						@click="emit('decide', 'changes_requested')"
-					>
-						{{ i18n.baseText('workflowReviews.detail.decision.requestChanges') }}
-					</N8nButton>
-				</N8nTooltip>
+				<WorkflowReviewDecisionPopover
+					:deciding="deciding"
+					:viewer-can-decide="viewerCanDecide"
+					:viewer-can-comment="viewerCanComment"
+					:ineligibility-hint="ineligibilityHint"
+					@decide="emit('decide', $event)"
+					@comment-posted="emit('update:tab', 'activity')"
+				/>
 			</div>
 		</div>
 
@@ -95,40 +85,42 @@ const tabOptions = computed(() => [
 				:class="$style.activityPanel"
 				data-test-id="workflow-review-activity-panel"
 			>
-				<div :class="$style.activityHeader">
-					<N8nText
-						v-if="detail?.description"
-						color="text-base"
-						size="medium"
-						:class="$style.description"
-						data-test-id="workflow-review-description"
-					>
-						{{ detail.description }}
-					</N8nText>
-					<N8nText
-						v-else
-						color="text-light"
-						size="medium"
-						data-test-id="workflow-review-no-description"
-					>
-						{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
-					</N8nText>
-				</div>
+				<WorkflowReviewActivityFeed :key="review.id">
+					<template #header>
+						<!-- Carded and labelled so the review's own words are not mistaken for the
+							first entry of the feed below it. -->
+						<div :class="$style.descriptionCard">
+							<N8nText tag="h3" bold color="text-light" size="medium">
+								{{ i18n.baseText('workflowReviews.detail.activity.description') }}
+							</N8nText>
+							<N8nText
+								v-if="detail?.description"
+								color="text-base"
+								size="medium"
+								:class="$style.description"
+								data-test-id="workflow-review-description"
+							>
+								{{ detail.description }}
+							</N8nText>
+							<N8nText
+								v-else
+								color="text-light"
+								size="medium"
+								:class="$style.noDescription"
+								data-test-id="workflow-review-no-description"
+							>
+								{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
+							</N8nText>
+						</div>
+					</template>
+				</WorkflowReviewActivityFeed>
 
-				<WorkflowReviewActivityFeed :key="review.id" />
+				<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
 			</div>
 
 			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
 				<N8nCallout
-					v-if="review.state === 'closed'"
-					theme="info"
-					:class="$style.callout"
-					data-test-id="workflow-review-changes-closed"
-				>
-					{{ i18n.baseText('workflowReviews.changes.closed.body') }}
-				</N8nCallout>
-				<N8nCallout
-					v-else-if="!detail"
+					v-if="!detail"
 					theme="warning"
 					:class="$style.callout"
 					data-test-id="workflow-review-changes-unavailable"
@@ -140,16 +132,19 @@ const tabOptions = computed(() => [
 						v-for="workflow in detail.workflows"
 						:key="workflow.workflowId"
 						:workflow="workflow"
+						:state="detail.state"
+						:decision="detail.decision"
 					/>
 				</template>
-				<N8nText
+				<!-- No rows left: the workflow was deleted, or the requester lost access to it. -->
+				<N8nCallout
 					v-else
-					color="text-light"
-					size="medium"
-					data-test-id="workflow-review-changes-empty"
+					theme="warning"
+					:class="$style.callout"
+					data-test-id="workflow-review-changes-workflow-unavailable"
 				>
-					{{ i18n.baseText('workflowReviews.changes.empty') }}
-				</N8nText>
+					{{ i18n.baseText('workflowReviews.changes.workflowUnavailable') }}
+				</N8nCallout>
 			</div>
 
 			<WorkflowReviewDetailMetadata :review="review" />
@@ -158,11 +153,15 @@ const tabOptions = computed(() => [
 </template>
 
 <style module lang="scss">
+@use './activity-card' as *;
+
 .container {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
+	container-name: review-detail;
+	container-type: inline-size;
 }
 
 .tabRow {
@@ -170,6 +169,10 @@ const tabOptions = computed(() => [
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+
+	> :global(.n8n-tabs) {
+		transform: translateY(var(--spacing--xs));
+	}
 }
 
 .detailBody {
@@ -186,52 +189,61 @@ const tabOptions = computed(() => [
 	overflow: auto;
 }
 
-/* Separate from `.panel`: the feed brings its own scroll container. */
+/* Separate from `.panel`: the feed brings its own scroll container, and the
+	composer must stay out of it. */
 .activityPanel {
 	display: flex;
 	flex-direction: column;
 	flex: 1;
 	min-height: 0;
 	overflow: hidden;
+	max-width: var(--review-activity--max-width, 48rem);
+	margin-inline-end: auto;
 }
 
-/* Capped so a long description cannot crowd out the feed. */
-.activityHeader {
-	flex-shrink: 0;
-	max-height: 30%;
-	overflow: auto;
-	padding-bottom: var(--spacing--sm);
+.descriptionCard {
+	@include activity-card;
+
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .callout {
 	max-width: var(--review-callout--max-width, 34rem);
 }
 
+/* `pre-wrap` alone does not break a pasted URL, which is the one thing that could scroll the
+	card sideways. */
 .description {
 	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.noDescription {
+	font-style: italic;
 }
 
 .decisionActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
 	flex-shrink: 0;
 }
 
-@media (max-width: 60rem) {
+@container review-detail (max-width: 44rem) {
 	.detailBody {
 		flex-direction: column;
 		overflow: auto;
 	}
 
 	.panel {
-		flex: 0 0 auto;
+		flex: 1 0 auto;
 		overflow: visible;
 	}
 
 	.activityPanel {
-		flex: 0 0 auto;
+		flex: 1 1 0%;
 		overflow: visible;
+		max-width: none;
+		margin-inline-end: 0;
 	}
 }
 </style>

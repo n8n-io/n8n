@@ -1,7 +1,7 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
-	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
+	getWorkflowToolIncompatibilityReason,
 	type AgentJsonToolConfig,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
@@ -70,11 +70,7 @@ const _assertSupportedTriggersInSync: Record<
 > = SUPPORTED_TRIGGERS;
 void _assertSupportedTriggersInSync;
 
-const INCOMPATIBLE_NODE_TYPES = new Set<string>(INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES);
-
 const DEFAULT_TIMEOUT_MS = 120_000;
-const MAX_RESULT_CHARS = 20_000;
-const MAX_NODE_OUTPUT_BYTES = 5_000;
 
 function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
 	return isRecord(value) && ('body' in value || 'headers' in value || 'statusCode' in value);
@@ -128,15 +124,29 @@ export function detectTriggerNode(workflow: WorkflowEntity): DetectedTrigger {
 // ---------------------------------------------------------------------------
 
 export function validateCompatibility(workflow: WorkflowEntity): void {
-	const nodes = workflow.nodes ?? [];
-	const incompatible = nodes.filter((n) => INCOMPATIBLE_NODE_TYPES.has(n.type));
+	const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
+	if (!incompatibility) return;
 
-	if (incompatible.length > 0) {
-		const names = incompatible.map((n) => `${n.name} (${n.type})`).join(', ');
+	if (incompatibility.reason === 'incompatible_nodes') {
+		// Re-resolve node names here (the shared function only returns types) so the
+		// thrown message stays actionable for a developer reading the agent log.
+		// Skip disabled nodes — they don't execute, so they aren't the problem.
+		const nodes = workflow.nodes ?? [];
+		const names = nodes
+			.filter((n) => !n.disabled && incompatibility.nodeTypes.includes(n.type))
+			.map((n) => `${n.name} (${n.type})`)
+			.join(', ');
 		throw new Error(
-			`Workflow "${workflow.name}" contains incompatible nodes for agent execution: ${names}`,
+			`Workflow "${workflow.name}" contains nodes that aren't supported as agent tools: ${names}. ` +
+				'Remove them or pick another workflow.',
 		);
 	}
+
+	// `no_supported_trigger` — surface the supported set so the message is fixable.
+	throw new Error(
+		`Workflow "${workflow.name}" has no supported trigger node. ` +
+			`Supported triggers: ${Object.keys(SUPPORTED_TRIGGERS).join(', ')}`,
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -438,7 +448,7 @@ function collectResultData(runData: IRunData, allOutputs: boolean): Record<strin
 		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 			const outputItems = outputItemsFromNodeRuns(nodeRuns);
 			if (outputItems.length > 0) {
-				resultData[nodeName] = truncateNodeOutput(outputItems);
+				resultData[nodeName] = outputItems;
 			}
 		}
 		return resultData;
@@ -449,7 +459,7 @@ function collectResultData(runData: IRunData, allOutputs: boolean): Record<strin
 	if (lastNodeName) {
 		const outputItems = outputItemsFromNodeRuns(runData[lastNodeName]);
 		if (outputItems.length > 0) {
-			resultData[lastNodeName] = truncateNodeOutput(outputItems);
+			resultData[lastNodeName] = outputItems;
 		}
 	}
 	return resultData;
@@ -467,7 +477,7 @@ function formatResult(
 	return {
 		executionId,
 		status: normaliseExecutionStatus(status),
-		data: Object.keys(resultData).length > 0 ? truncateResultData(resultData) : undefined,
+		data: Object.keys(resultData).length > 0 ? resultData : undefined,
 		error: data?.resultData?.error?.message,
 	};
 }
@@ -494,34 +504,12 @@ export async function extractResult(
 }
 
 // ---------------------------------------------------------------------------
-// Truncation helpers (following Instance AI patterns)
+// Webhook response safeguards
 // ---------------------------------------------------------------------------
 
-function truncateNodeOutput(items: unknown[]): unknown {
-	const serialized = JSON.stringify(items);
-	if (serialized.length <= MAX_NODE_OUTPUT_BYTES) return items;
-
-	const truncated: unknown[] = [];
-	let size = 2; // account for "[]"
-	for (const item of items) {
-		const itemStr = JSON.stringify(item);
-		if (size + itemStr.length + 2 > MAX_NODE_OUTPUT_BYTES) break;
-		truncated.push(item);
-		size += itemStr.length + 1;
-	}
-
-	return {
-		items: truncated,
-		truncated: true,
-		totalItems: items.length,
-		shownItems: truncated.length,
-		message: `Output truncated: showing ${truncated.length} of ${items.length} items.`,
-	};
-}
-
 /**
- * Caps a webhook response's body at {@link MAX_RESULT_CHARS}, describing it
- * instead of carrying it once over. Headers and status code pass through.
+ * Describes webhook bodies that cannot safely enter the textual result path.
+ * Headers and status code pass through.
  *
  * @remarks A Buffer body is described without being serialized at all:
  * `JSON.stringify` turns it into one array element per byte, which costs about
@@ -530,59 +518,18 @@ function truncateNodeOutput(items: unknown[]): unknown {
  * length nor preview.
  */
 function truncateWebhookResponse(response: IExecuteResponsePromiseData): unknown {
-	if (!isRecord(response)) {
-		return response;
-	}
-
 	const { body, ...rest } = response;
 
 	if (Buffer.isBuffer(body)) {
 		return { ...rest, body: { _truncated: true, _byteLength: body.length } };
 	}
 
-	let serialized: string;
 	try {
-		serialized = JSON.stringify(body) ?? '';
+		JSON.stringify(body);
 	} catch {
 		return { ...rest, body: { _truncated: true } };
 	}
-	if (serialized.length <= MAX_RESULT_CHARS) {
-		return response;
-	}
-
-	return {
-		...rest,
-		body: {
-			_truncated: true,
-			_charLength: serialized.length,
-			_preview: serialized.slice(0, MAX_RESULT_CHARS),
-		},
-	};
-}
-
-function truncateResultData(data: Record<string, unknown>): Record<string, unknown> {
-	const serialized = JSON.stringify(data);
-	if (serialized.length <= MAX_RESULT_CHARS) return data;
-
-	const truncated: Record<string, unknown> = {};
-	for (const [nodeName, rawItems] of Object.entries(data)) {
-		if (!Array.isArray(rawItems) || rawItems.length === 0) {
-			truncated[nodeName] = rawItems;
-			continue;
-		}
-
-		const items = rawItems as unknown[];
-		const firstItem = items[0];
-		const itemStr = JSON.stringify(firstItem);
-		const preview = itemStr.length > 1_000 ? `${itemStr.slice(0, 1_000)}…` : firstItem;
-
-		truncated[nodeName] = {
-			_itemCount: items.length,
-			_truncated: true,
-			_firstItemPreview: preview,
-		};
-	}
-	return truncated;
+	return response;
 }
 
 // ---------------------------------------------------------------------------
@@ -605,10 +552,7 @@ async function buildWorkflowTool(
 		workflowName,
 		...(descriptor.workflowId !== undefined ? { workflowId: descriptor.workflowId } : {}),
 	};
-	const workflow = await context.workflowLoader.loadPublishedWorkflow(
-		context.projectId,
-		initialReference,
-	);
+	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, initialReference);
 	if (!workflow) {
 		throw new Error(`Workflow "${workflowName}" not found`);
 	}
@@ -660,7 +604,7 @@ async function buildWorkflowTool(
 					}) as never,
 			)
 			.handler(async (input: Record<string, unknown>) => {
-				const current = await loadCurrentPublishedWorkflow(context, reference, triggerType);
+				const current = await loadCurrentWorkflow(context, reference, triggerType);
 				const parsedInput = inferInputSchema(current.triggerNode, current.triggerType).parse(input);
 				const formUrl = getFormUrl(current.workflow, current.triggerNode, context.webhookBaseUrl);
 				const reason = parsedInput.reason;
@@ -699,7 +643,7 @@ async function buildWorkflowTool(
 			}),
 		)
 		.handler(async (input: Record<string, unknown>) => {
-			const current = await loadCurrentPublishedWorkflow(context, reference, triggerType);
+			const current = await loadCurrentWorkflow(context, reference, triggerType);
 			const parsedInput = inferInputSchema(current.triggerNode, current.triggerType).parse(input);
 			return await executeWorkflow(
 				current.workflow,
@@ -724,14 +668,14 @@ async function buildWorkflowTool(
 	};
 }
 
-async function loadCurrentPublishedWorkflow(
+async function loadCurrentWorkflow(
 	context: WorkflowToolContext,
 	reference: WorkflowToolWorkflowReference,
 	expectedTriggerType: string,
 ) {
-	const workflow = await context.workflowLoader.loadPublishedWorkflow(context.projectId, reference);
+	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, reference);
 	if (!workflow) {
-		throw new Error(`Workflow "${reference.workflowName}" is no longer published or accessible`);
+		throw new Error(`Workflow "${reference.workflowName}" is no longer accessible`);
 	}
 
 	validateCompatibility(workflow);

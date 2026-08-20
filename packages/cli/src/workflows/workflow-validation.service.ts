@@ -23,7 +23,7 @@ import type {
 } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
-import { isFormOAuth2Enabled, isWebhookOAuth2Enabled } from '@/constants/oauth2-triggers';
+import { isFormOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
@@ -230,6 +230,53 @@ export class WorkflowValidationService {
 	}
 
 	/**
+	 * Rejects trigger nodes whose ids do not uniquely identify them.
+	 *
+	 * Publication records one `workflow_publication_trigger_status` row per
+	 * enabled trigger node, keyed by the composite primary key
+	 * `(workflowId, nodeId)`. A shared or absent id therefore collapses two
+	 * triggers onto one key: the diff in `computeTriggerDiff` loses one of them,
+	 * and the row insert fails on the constraint. Catching it here turns a
+	 * constraint violation raised mid-publication into a message naming the
+	 * offending nodes.
+	 *
+	 * An absent id is the same defect as a shared one — `undefined` is just an id
+	 * that every id-less node has in common — so both are reported together.
+	 */
+	validateTriggerNodeIds(triggerNodes: INode[]): WorkflowValidationResult {
+		const violations: string[] = [];
+		const namesById = new Map<string, string[]>();
+
+		for (const node of triggerNodes) {
+			if (!node.id) {
+				violations.push(`trigger "${node.name}" has no node ID`);
+				continue;
+			}
+
+			const names = namesById.get(node.id);
+			if (names) {
+				names.push(node.name);
+			} else {
+				namesById.set(node.id, [node.name]);
+			}
+		}
+
+		for (const [nodeId, names] of namesById) {
+			if (names.length < 2) continue;
+
+			const nameList = names.map((name) => `"${name}"`).join(', ');
+			violations.push(`triggers ${nameList} share the node ID "${nodeId}"`);
+		}
+
+		if (violations.length === 0) return { isValid: true };
+
+		return {
+			isValid: false,
+			error: `Cannot publish workflow: ${violations.join('; ')}. Remove and re-add the affected nodes to give them new IDs.`,
+		};
+	}
+
+	/**
 	 * Returns the credential types that are actively in use on a node — the
 	 * subset of `node.credentials` keys we should validate against.
 	 *
@@ -356,10 +403,10 @@ export class WorkflowValidationService {
 		const { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity } = triggers;
 
 		if (workflowResolverId === this.dynamicCredentialsProxy.getSystemResolverId()) {
-			// System resolver: every trigger must establish the n8n user identity. Form and
-			// webhook are only listed while their respective OAuth2 flags are enabled —
-			// without them neither establishes an identity, so listing them would advertise
-			// a fix that doesn't work.
+			// System resolver: every trigger must establish the n8n user identity. The form
+			// trigger is only listed while the form OAuth2 flag is enabled — without it a
+			// form establishes no identity, so listing it would advertise a fix that
+			// doesn't work.
 			if (allTriggersProvideN8nIdentity) return undefined;
 
 			const triggersList = this.getN8nUserAuthTriggersList();
@@ -373,21 +420,14 @@ export class WorkflowValidationService {
 
 	/**
 	 * Describes which triggers the system resolver currently accepts, for the
-	 * publish-error copy. Manual, chat, MCP, and sub-workflow triggers always
-	 * qualify; form and webhook only join the list while their respective OAuth2
-	 * flags are enabled, mirroring `classifyTriggerIdentities`.
+	 * publish-error copy. Manual, chat, MCP, sub-workflow, and webhook triggers
+	 * always qualify; form only joins the list while the form OAuth2 flag is
+	 * enabled, mirroring `classifyTriggerIdentities`.
 	 */
 	private getN8nUserAuthTriggersList(): string {
-		const n8nUserAuthTriggers = [
-			isFormOAuth2Enabled() && 'form',
-			isWebhookOAuth2Enabled() && 'webhook',
-		]
-			.filter((trigger): trigger is string => Boolean(trigger))
-			.join(' or ');
+		const formTrigger = isFormOAuth2Enabled() ? 'form or ' : '';
 
-		return n8nUserAuthTriggers
-			? `manual, chat, MCP, sub-workflow, and ${n8nUserAuthTriggers} triggers with n8n user authentication`
-			: 'manual, chat, MCP, and sub-workflow triggers';
+		return `manual, chat, MCP, sub-workflow, and ${formTrigger}webhook triggers with n8n user authentication`;
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
@@ -430,7 +470,6 @@ export class WorkflowValidationService {
 		let allTriggersProvideN8nIdentity = true;
 		let hasTrigger = false;
 		const formOAuth2Enabled = isFormOAuth2Enabled();
-		const webhookOAuth2Enabled = isWebhookOAuth2Enabled();
 
 		for (const node of nodes) {
 			if (node.disabled) continue;
@@ -446,7 +485,7 @@ export class WorkflowValidationService {
 			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
 				node.type,
 				node.parameters,
-				{ isFormOAuth2Enabled: formOAuth2Enabled, isWebhookOAuth2Enabled: webhookOAuth2Enabled },
+				{ isFormOAuth2Enabled: formOAuth2Enabled },
 			);
 			allTriggersProvideExternalIdentity &&= providesExternalIdentity;
 			allTriggersProvideN8nIdentity &&= providesN8nIdentity;

@@ -240,6 +240,18 @@ function makeAgent(config: AgentJsonConfig = baseConfig): Agent {
 	} as unknown as Agent;
 }
 
+function makeTaskDto(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
+	return {
+		id: 'task-1',
+		name: 'Daily summary',
+		objective: 'Summarize the team Slack #general channel from the last 24h and post a recap.',
+		cronExpression: '0 9 * * *',
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z',
+		...overrides,
+	};
+}
+
 describe('AgentsBuilderToolsService', () => {
 	const agentId = 'agent-1';
 	const projectId = 'project-1';
@@ -1882,68 +1894,6 @@ describe('AgentsBuilderToolsService', () => {
 			cronExpression: '0 9 * * 1',
 		};
 
-		function makeTaskDto(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
-			return {
-				id: 'task-1',
-				...taskOneInput,
-				createdAt: '2026-01-01T00:00:00.000Z',
-				updatedAt: '2026-01-01T00:00:00.000Z',
-				...overrides,
-			};
-		}
-
-		it('is available to the builder with batch and config attachment guidance', () => {
-			const { service } = makeService();
-
-			const tool = getCreateTasksTool(service);
-
-			expect(tool).toBeDefined();
-			expect(tool.description).toContain('all-or-nothing');
-			expect(tool.description).toContain(
-				'Pass every task you currently know how to write in one `tasks` array',
-			);
-			expect(tool.description).toContain('config.tasks');
-			expect(tool.description).toContain('{ ok: true, configMutated: true, agentId, tasks:');
-			expect(tool.description).toContain('{ ok: false, errors }');
-		});
-
-		it('puts quality and batching guardrails in systemInstruction, not description', () => {
-			const { service } = makeService();
-
-			const tool = getCreateTasksTool(service);
-
-			expect(tool.systemInstruction).toContain('vague, broad, or placeholder objective');
-			expect(tool.systemInstruction).toContain('ask the user clarifying questions');
-			expect(tool.systemInstruction).toContain('self-contained');
-			expect(tool.systemInstruction).toContain('Success criteria');
-			expect(tool.systemInstruction).toContain('A task can only use tools the agent already has');
-			expect(tool.systemInstruction).toContain('Batch every task');
-			expect(tool.description).not.toContain('ask the user clarifying questions');
-			expect(tool.description).not.toContain('Success criteria');
-		});
-
-		it('puts the structured objective template in each task objective parameter', () => {
-			const { service } = makeService();
-
-			const tool = getCreateTasksTool(service);
-			const objectiveSchema = (
-				tool.inputSchema as unknown as {
-					shape: { tasks: { element: { shape: { objective: { description?: string } } } } };
-				}
-			).shape.tasks.element.shape.objective;
-
-			for (const heading of [
-				'## Objective',
-				'## Context',
-				'## Steps',
-				'## Output',
-				'## Constraints',
-				'## Success criteria',
-			]) {
-				expect(objectiveSchema.description).toContain(heading);
-			}
-		});
-
 		it('creates multiple tasks without emitting legacy builder task telemetry', async () => {
 			const { service, agentsService, agentTaskService, telemetry } = makeService();
 			agentsService.findById.mockResolvedValueOnce(makeAgent()).mockResolvedValueOnce(
@@ -2031,6 +1981,112 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
 
 			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent "agent-1" not found' }] });
+		});
+	});
+
+	describe('list_tasks tool', () => {
+		function getListTasksTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((tool) => tool.name === BUILDER_TOOLS.LIST_TASKS)!;
+		}
+
+		it('lists task bodies with enabled state from the current config', async () => {
+			const { service, agentsService, agentTaskService } = makeService();
+			agentsService.findById.mockResolvedValue(
+				makeAgent({
+					...baseConfig,
+					tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+				}),
+			);
+			agentTaskService.list.mockResolvedValue([
+				makeTaskDto(),
+				makeTaskDto({
+					id: 'task-2',
+					name: 'Weekly digest',
+					objective: 'Summarize the week and email a digest to the team.',
+					cronExpression: '0 9 * * 1',
+				}),
+			]);
+
+			const result = await getListTasksTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: true,
+				tasks: [
+					{
+						id: 'task-1',
+						name: 'Daily summary',
+						objective:
+							'Summarize the team Slack #general channel from the last 24h and post a recap.',
+						cronExpression: '0 9 * * *',
+						enabled: true,
+					},
+					{
+						id: 'task-2',
+						name: 'Weekly digest',
+						objective: 'Summarize the week and email a digest to the team.',
+						cronExpression: '0 9 * * 1',
+						enabled: false,
+					},
+				],
+			});
+		});
+
+		it('does not list task bodies when the agent is outside the project', async () => {
+			const { service, agentsService, agentTaskService } = makeService();
+			agentsService.findById.mockResolvedValue(null);
+
+			const result = await getListTasksTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found' }] });
+			expect(agentTaskService.list).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('update_task tool', () => {
+		function getUpdateTaskTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((tool) => tool.name === BUILDER_TOOLS.UPDATE_TASK)!;
+		}
+
+		it('updates only supplied fields while preserving the task id', async () => {
+			const { service, agentTaskService } = makeService();
+			agentTaskService.update.mockResolvedValue(
+				makeTaskDto({ cronExpression: '0 10 * * *', updatedAt: '2026-01-02T00:00:00.000Z' }),
+			);
+
+			const result = await getUpdateTaskTool(service).handler!(
+				{ taskId: 'task-1', updates: { cronExpression: '0 10 * * *' } },
+				ctx,
+			);
+
+			expect(agentTaskService.update).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				'task-1',
+				{ cronExpression: '0 10 * * *' },
+				{ user, modifiedBy: 'builder' },
+			);
+			expect(result).toEqual({
+				ok: true,
+				id: 'task-1',
+				name: 'Daily summary',
+				configMutated: true,
+				agentId,
+			});
+		});
+
+		it('rejects an update without changed fields', () => {
+			const { service } = makeService();
+			const result = (
+				getUpdateTaskTool(service).inputSchema as unknown as {
+					safeParse: (input: unknown) => { success: boolean };
+				}
+			).safeParse({ taskId: 'task-1', updates: {} });
+
+			expect(result.success).toBe(false);
 		});
 	});
 

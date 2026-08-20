@@ -163,6 +163,66 @@ describe('selectTests — fail-open contract', () => {
 		expect(result.uncovered).toBeUndefined();
 	});
 
+	// Regression (#35670): enabling a module by default broke the specs asserting
+	// its off-branch, which the map can't reach. A scoped answer looks legitimate
+	// here because the registry HAS an entry — just a partial one.
+	it('module-registry change → broad, even though the map has a (partial) entry', () => {
+		const map: ImpactMap = {
+			'packages/@n8n/backend-common/src/modules/module-registry.ts': {
+				'17': ['tests/e2e/a.spec.ts'],
+			},
+		};
+		const mapPath = path.join(tempDir, 'map-registry.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: [
+				'packages/@n8n/backend-common/src/modules/module-registry.ts',
+				'packages/cli/src/modules/instance-ai/instance-ai.module.ts',
+			],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+		});
+		expect(result.mode).toBe('broad');
+		// b.spec.ts — the off-branch spec with no coverage link to the registry — runs.
+		expect(result.specs).toEqual([...ALL_SPECS].sort());
+		expect(result.uncovered).toBeUndefined();
+	});
+
+	describe('config default change', () => {
+		const CONFIG = 'packages/@n8n/config/src/configs/ai.config.ts';
+		const cfg = (init: string) =>
+			`@Config\nexport class C {\n\t@Env('N8N_AI')\n\ta: boolean = ${init};\n}`;
+
+		const select = (configs?: Record<string, { before: string; after: string }>) => {
+			const map: ImpactMap = { [CONFIG]: { '5': ['tests/e2e/a.spec.ts'] } };
+			const mapPath = path.join(tempDir, `map-cfg-${configs ? 'diff' : 'none'}.json`);
+			fs.writeFileSync(mapPath, JSON.stringify(map));
+			return selectTests({
+				changedFiles: [CONFIG],
+				mapFile: mapPath,
+				allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+				configs,
+			});
+		};
+
+		it('changed default → broad', () => {
+			const result = select({ [CONFIG]: { before: cfg('false'), after: cfg('true') } });
+			expect(result.mode).toBe('broad');
+			expect(result.specs).toEqual([...ALL_SPECS].sort());
+		});
+
+		it('new field (additive) → falls through to the map, stays scoped', () => {
+			const after = cfg('false').replace('\n}', "\n\t@Env('N8N_NEW')\n\tb: number = 1;\n}");
+			const result = select({ [CONFIG]: { before: cfg('false'), after } });
+			expect(result.mode).toBe('scoped');
+			expect(result.specs).toEqual(['tests/e2e/a.spec.ts']);
+		});
+
+		it('no diff metadata (local dev) → conservative broad', () => {
+			expect(select().mode).toBe('broad');
+		});
+	});
+
 	it('package.json change with NO dependency change (version) → uncovered, not broad', () => {
 		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
 		const mapPath = path.join(tempDir, 'map-ver.json');

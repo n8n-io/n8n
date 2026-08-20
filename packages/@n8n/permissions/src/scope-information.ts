@@ -90,6 +90,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Export Project',
 		description: 'Allows including projects in a portable package export.',
 	},
+	'project:manageMembers': {
+		displayName: 'Manage Project Members',
+		description:
+			"Allows adding members to a project, changing a member's project role, and removing members.",
+	},
 	'credential:unshare': {
 		displayName: 'Unshare Credential',
 		description: 'Allows removing credential shares.',

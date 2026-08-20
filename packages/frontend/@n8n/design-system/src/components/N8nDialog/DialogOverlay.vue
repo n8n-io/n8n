@@ -6,13 +6,17 @@ export interface DialogOverlayProps {
 	 * Force mount for animation control
 	 */
 	forceMount?: boolean;
+	/**
+	 * Render above another open dialog
+	 */
+	stacked?: boolean;
 }
 
 defineProps<DialogOverlayProps>();
 </script>
 
 <template>
-	<DialogOverlay :class="$style.overlay" />
+	<DialogOverlay :class="[$style.overlay, stacked && $style.stacked]" />
 </template>
 
 <style module lang="scss">
@@ -40,6 +44,10 @@ defineProps<DialogOverlayProps>();
 	background-color: light-dark(var(--color--black-alpha-300), var(--color--black-alpha-600));
 	backdrop-filter: blur(8px);
 	z-index: 1949; // See APP_Z_INDEXES in useStyles.ts
+}
+
+.stacked {
+	z-index: 1951;
 }
 
 .overlay[data-state='open'] {
