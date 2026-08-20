@@ -2,7 +2,7 @@ operationId: pushGitConnectionProjects
 tags:
   - GitConnections
 summary: Push all projects linked to a Git connection
-description: Push all projects linked to a Git connection to the remote repository
+description: Work in progress. Exports all linked projects to the local repository working copy. It does not commit or push changes to the selected branch yet.
 x-required-scope: gitConnection:push
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler

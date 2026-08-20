@@ -199,7 +199,9 @@ export class GitConnectionsPublicController {
 	@ApiKeyScope('gitConnection:push')
 	@GlobalScope('gitConnection:push')
 	@ApiSummary('Push all projects linked to a Git connection')
-	@ApiDescription('Push all projects linked to a Git connection to the remote repository')
+	@ApiDescription(
+		'Work in progress. Exports all linked projects to the local repository working copy. It does not commit or push changes to the selected branch yet.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionPublicDto)
 	async pushGitConnectionProjects(

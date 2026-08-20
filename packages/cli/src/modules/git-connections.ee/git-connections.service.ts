@@ -169,7 +169,10 @@ export class GitConnectionsService {
 			await rm(nextExportFolder, { recursive: true, force: true });
 		}
 
-		// Git staging and remote synchronization will be added after the package layout is reviewed.
+		// TODO:
+		// - commit and stage changes
+		// - push changes to the remote repository
+		// - return the git operation result
 		return this.toPublic(connection);
 	}
 

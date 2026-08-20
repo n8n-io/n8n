@@ -4,7 +4,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class GitConnectionsPush extends BaseCommand {
 	static override description =
-		'Push all projects linked to a Git connection to the remote repository';
+		'Export linked projects to a Git connection working copy (work in progress; does not commit or push)';
 	static override args = {
 		id: Args.string({ description: 'ID of the Git connection', required: true }),
 	};
@@ -14,10 +14,16 @@ export default class GitConnectionsPush extends BaseCommand {
 		const { args, flags } = await this.parse(GitConnectionsPush);
 		await this.execute(async () => {
 			await this.getClient(flags).pushGitConnectionProjects(args.id);
-			this.succeed(`Git connection ${args.id} projects pushed to the remote repository`, flags, {
-				id: args.id,
-				pushed: true,
-			});
+			this.succeed(
+				`Projects exported to the local working copy for Git connection ${args.id}. This work-in-progress command did not commit or push changes to the selected branch.`,
+				flags,
+				{
+					id: args.id,
+					exported: true,
+					committed: false,
+					pushed: false,
+				},
+			);
 		});
 	}
 }
