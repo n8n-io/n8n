@@ -112,6 +112,9 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 
 	position: relative;
 	isolation: isolate;
+	// Match canvas nodes: their surface stops at the padding edge so the
+	// rotating gradient remains visible through the transparent border.
+	background-clip: padding-box;
 }
 
 /* stylelint-disable */

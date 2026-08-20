@@ -1,4 +1,8 @@
-import type { AgentCapabilitySummary, AgentCapabilityTool } from '@n8n/api-types';
+import {
+	sanitizeAgentToolName,
+	type AgentCapabilitySummary,
+	type AgentCapabilityTool,
+} from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { formatToolNameForDisplay } from '@/features/agents/utils/toolDisplayName';
 import { MIN_GROUPED_TOOLS_PER_TYPE } from '@/features/agents/components/AgentCapabilitiesSection.utils';
@@ -42,12 +46,14 @@ const TOOL_ICONS = {
 } as const satisfies Record<AgentCapabilityTool['type'], IconName>;
 
 function individualToolChip(tool: AgentCapabilityTool, index: number): AgentCardChip {
+	const activityName = tool.type === 'workflow' ? sanitizeAgentToolName(tool.name) : tool.name;
+
 	return {
 		key: `tool:${tool.type}:${tool.name}:${index}`,
 		icon: TOOL_ICONS[tool.type],
 		// Mirror the agent edit page, which humanizes every tool name.
 		label: formatToolNameForDisplay(tool.name),
-		activityKeys: [toolActivityKey(tool.name)],
+		activityKeys: [toolActivityKey(activityName)],
 		nodeType: tool.nodeType,
 		nodeTypeVersion: tool.nodeTypeVersion,
 	};

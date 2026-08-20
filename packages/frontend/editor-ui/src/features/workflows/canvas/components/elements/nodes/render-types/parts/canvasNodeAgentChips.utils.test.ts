@@ -44,6 +44,17 @@ describe('buildAgentCardChips', () => {
 		});
 	});
 
+	it('tracks workflow tools by their runtime-safe name while preserving the display label', () => {
+		const summary = makeSummary({
+			tools: [{ type: 'workflow', name: 'Lookup Orders & Returns' }],
+		});
+
+		expect(buildAgentCardChips(summary)[0]).toMatchObject({
+			label: 'Lookup orders & returns',
+			activityKeys: ['tool:lookup-orders-returns'],
+		});
+	});
+
 	it('orders MCP servers between tools and skills, with the MCP icon', () => {
 		const summary = makeSummary({
 			tools: [{ type: 'node', name: 'get_prs' }],
