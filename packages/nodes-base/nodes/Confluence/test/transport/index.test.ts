@@ -5,7 +5,7 @@ import { mockDeep } from 'vitest-mock-extended';
 
 import { clearAtlassianCloudIdCache } from '@utils/atlassian';
 
-import { confluenceApiRequest } from '../../transport';
+import { confluenceApiRequest, confluenceApiRequestBinary } from '../../transport';
 
 const accessibleResources = [
 	{ id: 'cloud-1', url: 'https://example.atlassian.net', name: 'example' },
@@ -172,5 +172,93 @@ describe('confluenceApiRequest', () => {
 		await expect(promise).rejects.toThrow(NodeOperationError);
 		await expect(promise).rejects.toThrow('Site URL');
 		expect(mockHttpRequestWithAuthentication).not.toHaveBeenCalled();
+	});
+});
+
+describe('confluenceApiRequestBinary', () => {
+	let ctx: Mocked<IExecuteFunctions>;
+	let mockHttpRequestWithAuthentication: Mock;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		clearAtlassianCloudIdCache();
+		ctx = mockDeep<IExecuteFunctions>();
+		mockHttpRequestWithAuthentication = vi.fn().mockResolvedValue(accessibleResources);
+		ctx.helpers.httpRequestWithAuthentication = mockHttpRequestWithAuthentication;
+		ctx.getNode.mockReturnValue({
+			id: 'test-node',
+			name: 'Test Confluence Node',
+			type: 'n8n-nodes-base.confluence',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		});
+		ctx.getCredentials.mockResolvedValue({ domain: 'https://example.atlassian.net/wiki' });
+	});
+
+	it('fetches the endpoint through the gateway as a Buffer', async () => {
+		const bytes = Buffer.from('file-bytes');
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockResolvedValueOnce(bytes);
+
+		const data = await confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/a.txt');
+
+		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
+			2,
+			'confluenceCloudOAuth2Api',
+			expect.objectContaining({
+				method: 'GET',
+				url: 'https://api.atlassian.com/ex/confluence/cloud-1/wiki/download/attachments/9/a.txt',
+				encoding: 'arraybuffer',
+			}),
+		);
+		expect(data).toBe(bytes);
+	});
+
+	it('coerces non-Buffer binary responses to a Buffer', async () => {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockResolvedValueOnce('plain-text-body');
+
+		const data = await confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/a.txt');
+
+		expect(Buffer.isBuffer(data)).toBe(true);
+		expect(data.toString()).toBe('plain-text-body');
+	});
+
+	it('coerces an ArrayBuffer response to a Buffer', async () => {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockResolvedValueOnce(new TextEncoder().encode('ab-bytes').buffer);
+
+		const data = await confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/a.txt');
+
+		expect(Buffer.isBuffer(data)).toBe(true);
+		expect(data.toString()).toBe('ab-bytes');
+	});
+
+	it('rejects an unusable binary response with a NodeOperationError', async () => {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockResolvedValueOnce({ unexpected: true });
+
+		await expect(
+			confluenceApiRequestBinary.call(ctx, '/wiki/download/attachments/9/a.txt'),
+		).rejects.toThrow('Confluence returned an unexpected binary response');
+	});
+
+	it('wraps request failures in NodeApiError, keeping the status', async () => {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockRejectedValueOnce({ message: 'boom', response: { status: 404 } });
+
+		const error = await confluenceApiRequestBinary
+			.call(ctx, '/wiki/download/attachments/9/a.txt')
+			.then(() => null)
+			.catch((thrown: NodeApiError) => thrown);
+
+		expect(error).toBeInstanceOf(NodeApiError);
+		expect(error?.httpCode).toBe('404');
 	});
 });
