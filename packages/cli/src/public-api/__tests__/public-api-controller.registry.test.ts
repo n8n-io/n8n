@@ -162,6 +162,21 @@ describe('PublicApiControllerRegistry', () => {
 			expect(response.body.message).toBe('request/body Expected object, received array');
 		});
 
+		it('names a missing field the way the legacy validator did', async () => {
+			const response = await request(widgetsApp()).post('/widgets').send({}).expect(400);
+
+			expect(response.body.message).toBe("request/body must have required property 'name'");
+		});
+
+		it('attributes a missing nested field to its parent object', async () => {
+			const response = await request(widgetsApp())
+				.post('/widgets')
+				.send({ name: 'w', nested: {} })
+				.expect(400);
+
+			expect(response.body.message).toBe("request/body/nested must have required property 'label'");
+		});
+
 		it('names the offending query parameter', async () => {
 			const response = await request(widgetsApp())
 				.get('/widgets')
