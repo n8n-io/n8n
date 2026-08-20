@@ -15,7 +15,7 @@ import { GitConnectionsService } from '../git-connections.service';
 
 describe('GitConnectionsService (credential state machine)', () => {
 	const repository = mock<GitConnectionRepository>();
-	const projectLinkRepository = mock<GitConnectionProjectRepository>();
+	const gitConnectionProjectRepository = mock<GitConnectionProjectRepository>();
 	const projectRepository = mock<ProjectRepository>();
 	const gitService = mock<GitConnectionsGitService>();
 	const cipher = mock<Cipher>();
@@ -23,7 +23,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 
 	const service = new GitConnectionsService(
 		repository,
-		projectLinkRepository,
+		gitConnectionProjectRepository,
 		projectRepository,
 		gitService,
 		cipher,
@@ -216,20 +216,20 @@ describe('GitConnectionsService (credential state machine)', () => {
 		describe('addProject', () => {
 			it('creates a link for a team project', async () => {
 				projectRepository.findOneBy.mockResolvedValue(teamProject as never);
-				projectLinkRepository.linkProject.mockResolvedValue({
+				gitConnectionProjectRepository.linkProject.mockResolvedValue({
 					projectId: 'p1',
 					gitConnectionId: '1',
 				} as never);
 
 				const result = await service.addProject('1', 'p1');
 
-				expect(projectLinkRepository.linkProject).toHaveBeenCalledWith('p1', '1');
+				expect(gitConnectionProjectRepository.linkProject).toHaveBeenCalledWith('p1', '1');
 				expect(result).toEqual({ projectId: 'p1', gitConnectionId: '1' });
 			});
 
 			it('rejects re-adding a project linked to a different connection', async () => {
 				projectRepository.findOneBy.mockResolvedValue(teamProject as never);
-				projectLinkRepository.linkProject.mockResolvedValue({
+				gitConnectionProjectRepository.linkProject.mockResolvedValue({
 					projectId: 'p1',
 					gitConnectionId: 'other',
 				} as never);
@@ -260,36 +260,36 @@ describe('GitConnectionsService (credential state machine)', () => {
 		describe('removeProject', () => {
 			it('removes a link that belongs to this connection', async () => {
 				const link = { projectId: 'p1', gitConnectionId: '1' };
-				projectLinkRepository.findByProjectId.mockResolvedValue(link as never);
+				gitConnectionProjectRepository.findByProjectId.mockResolvedValue(link as never);
 
 				await service.removeProject('1', 'p1');
 
-				expect(projectLinkRepository.remove).toHaveBeenCalledWith(link);
+				expect(gitConnectionProjectRepository.remove).toHaveBeenCalledWith(link);
 			});
 
 			it('is a no-op when the project is not linked', async () => {
-				projectLinkRepository.findByProjectId.mockResolvedValue(null);
+				gitConnectionProjectRepository.findByProjectId.mockResolvedValue(null);
 
 				await service.removeProject('1', 'p1');
 
-				expect(projectLinkRepository.remove).not.toHaveBeenCalled();
+				expect(gitConnectionProjectRepository.remove).not.toHaveBeenCalled();
 			});
 
 			it('rejects removing a link owned by a different connection', async () => {
-				projectLinkRepository.findByProjectId.mockResolvedValue({
+				gitConnectionProjectRepository.findByProjectId.mockResolvedValue({
 					projectId: 'p1',
 					gitConnectionId: 'other',
 				} as never);
 
 				await expect(service.removeProject('1', 'p1')).rejects.toThrow(ConflictError);
 
-				expect(projectLinkRepository.remove).not.toHaveBeenCalled();
+				expect(gitConnectionProjectRepository.remove).not.toHaveBeenCalled();
 			});
 		});
 
 		describe('listProjects', () => {
 			it('returns the linked project IDs', async () => {
-				projectLinkRepository.findProjectIdsByConnection.mockResolvedValue(['p1', 'p2']);
+				gitConnectionProjectRepository.findProjectIdsByConnection.mockResolvedValue(['p1', 'p2']);
 
 				const result = await service.listProjects('1');
 

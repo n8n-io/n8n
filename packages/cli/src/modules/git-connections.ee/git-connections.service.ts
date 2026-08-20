@@ -24,7 +24,7 @@ import { GitConnectionsGitService } from './git-connections-git.service';
 export class GitConnectionsService {
 	constructor(
 		private readonly repository: GitConnectionRepository,
-		private readonly projectConnectionRepository: GitConnectionProjectRepository,
+		private readonly gitConnectionProjectRepository: GitConnectionProjectRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly gitService: GitConnectionsGitService,
 		private readonly cipher: Cipher,
@@ -123,7 +123,7 @@ export class GitConnectionsService {
 		await this.getEntity(id);
 		await this.assertProjectCanBeAdded(projectId);
 
-		const link = await this.projectConnectionRepository.linkProject(projectId, id);
+		const link = await this.gitConnectionProjectRepository.linkProject(projectId, id);
 		if (link.gitConnectionId !== id) {
 			throw new ConflictError('Project is already added to another Git connection');
 		}
@@ -132,17 +132,17 @@ export class GitConnectionsService {
 
 	async removeProject(id: string, projectId: string): Promise<void> {
 		await this.getEntity(id);
-		const existing = await this.projectConnectionRepository.findByProjectId(projectId);
+		const existing = await this.gitConnectionProjectRepository.findByProjectId(projectId);
 		if (!existing) return;
 		if (existing.gitConnectionId !== id) {
 			throw new ConflictError('Project is added to another Git connection');
 		}
-		await this.projectConnectionRepository.remove(existing);
+		await this.gitConnectionProjectRepository.remove(existing);
 	}
 
 	async listProjects(id: string): Promise<GitConnectionProjectListPublicDto> {
 		await this.getEntity(id);
-		const projectIds = await this.projectConnectionRepository.findProjectIdsByConnection(id);
+		const projectIds = await this.gitConnectionProjectRepository.findProjectIdsByConnection(id);
 		return { projectIds };
 	}
 
