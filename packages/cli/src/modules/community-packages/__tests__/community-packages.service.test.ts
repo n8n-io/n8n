@@ -9,7 +9,7 @@ import { access, constants, mkdir, readFile, rename, rm, writeFile } from 'node:
 import path, { join } from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
-import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD } from '@/constants';
+import { NPM_PACKAGE_STATUS_GOOD } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -223,30 +223,36 @@ describe('CommunityPackagesService', () => {
 		});
 	});
 
+	/** `mockPackagePair()`'s node-repository mock ignores its input and returns one shared
+	 *  `type` per test, so tests that need distinct/specific node types build fixtures directly. */
+	const installedPackageWithNodeTypes = (nodeTypes: string[]) =>
+		Object.assign(new InstalledPackages(), {
+			packageName: mockPackageName(),
+			installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
+			installedNodes: nodeTypes.map((type) =>
+				Object.assign(new InstalledNodes(), { name: type, type, latestVersion: 1 }),
+			),
+		});
+
 	describe('matchMissingPackages()', () => {
-		test('should not match failed packages that do not exist', () => {
-			const fakePkgs = mockPackagePair();
-			setMissingPackages([
-				`${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0`,
-				`${NODE_PACKAGE_PREFIX}another-very-long-name-that-never-is-seen`,
+		test('should not flag packages whose nodes are all known', () => {
+			const pkgA = installedPackageWithNodeTypes(['node-a']);
+			const pkgB = installedPackageWithNodeTypes(['node-b1', 'node-b2']);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(true);
+
+			const [matchedPkgA, matchedPkgB] = communityPackagesService.matchMissingPackages([
+				pkgA,
+				pkgB,
 			]);
 
-			const matchedPackages = communityPackagesService.matchMissingPackages(fakePkgs);
-
-			expect(matchedPackages).toEqual(fakePkgs);
-
-			const [first, second] = matchedPackages;
-
-			expect(first.failedLoading).toBeUndefined();
-			expect(second.failedLoading).toBeUndefined();
+			expect(matchedPkgA.failedLoading).toBe(false);
+			expect(matchedPkgB.failedLoading).toBe(false);
 		});
 
-		test('should match failed packages that should be present', () => {
-			const [pkgA, pkgB] = mockPackagePair();
-			setMissingPackages([
-				`${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0`,
-				`${pkgA.packageName}@${pkgA.installedVersion}`,
-			]);
+		test('should flag a package none of whose nodes are known', () => {
+			const pkgA = installedPackageWithNodeTypes(['node-a']);
+			const pkgB = installedPackageWithNodeTypes(['node-b']);
+			loadNodesAndCredentials.isKnownNode.mockImplementation((type) => type === 'node-b');
 
 			const [matchedPkgA, matchedPkgB] = communityPackagesService.matchMissingPackages([
 				pkgA,
@@ -254,22 +260,31 @@ describe('CommunityPackagesService', () => {
 			]);
 
 			expect(matchedPkgA.failedLoading).toBe(true);
-			expect(matchedPkgB.failedLoading).toBeUndefined();
+			expect(matchedPkgB.failedLoading).toBe(false);
 		});
 
-		test('should match failed packages even if version is wrong', () => {
-			const [pkgA, pkgB] = mockPackagePair();
-			setMissingPackages([
-				`${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0`,
-				`${pkgA.packageName}@123.456.789`,
-			]);
-			const [matchedPkgA, matchedPkgB] = communityPackagesService.matchMissingPackages([
-				pkgA,
-				pkgB,
-			]);
+		test('should not flag a package that still has one stale node row from a dropped node type', () => {
+			// Simulates a repair-reinstall through `saveInstalledPackageWithNodes`, which (unlike
+			// `replaceInstalledPackageWithNodes`) doesn't delete node rows from a previous version,
+			// so a package that dropped a node type keeps a row that will never resolve again.
+			const pkg = installedPackageWithNodeTypes(['old-dropped-node', 'current-node']);
+			loadNodesAndCredentials.isKnownNode.mockImplementation((type) => type === 'current-node');
 
-			expect(matchedPkgA.failedLoading).toBe(true);
-			expect(matchedPkgB.failedLoading).toBeUndefined();
+			const [matched] = communityPackagesService.matchMissingPackages([pkg]);
+
+			expect(loadNodesAndCredentials.isKnownNode).toHaveBeenCalledWith('old-dropped-node');
+			expect(matched.failedLoading).toBe(false);
+		});
+
+		test('reflects the current loader state rather than a snapshot, with no install call in between', () => {
+			const pkg = installedPackageWithNodeTypes(['node-a']);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+
+			expect(communityPackagesService.matchMissingPackages([pkg])[0].failedLoading).toBe(true);
+
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(true);
+
+			expect(communityPackagesService.matchMissingPackages([pkg])[0].failedLoading).toBe(false);
 		});
 	});
 
@@ -308,54 +323,27 @@ describe('CommunityPackagesService', () => {
 		});
 	});
 
-	describe('hasPackageLoadedSuccessfully()', () => {
-		test('should return true when failed package list does not exist', () => {
-			setMissingPackages([]);
-			expect(communityPackagesService.hasPackageLoaded('package')).toBe(true);
+	describe('hasPackageLoaded()', () => {
+		test('should return true for a package with no installed nodes', () => {
+			const installedPackage = installedPackageWithNodeTypes([]);
+
+			expect(communityPackagesService.hasPackageLoaded(installedPackage)).toBe(true);
 		});
 
-		test('should return true when package is not in the list of missing packages', () => {
-			setMissingPackages(['packageA@0.1.0', 'packageB@0.1.0']);
-			expect(communityPackagesService.hasPackageLoaded('packageC')).toBe(true);
+		test('should return true when at least one installed node is known', () => {
+			const installedPackage = installedPackageWithNodeTypes(['node-a', 'node-b']);
+			loadNodesAndCredentials.isKnownNode.mockImplementation((type) => type === 'node-b');
+
+			expect(communityPackagesService.hasPackageLoaded(installedPackage)).toBe(true);
 		});
 
-		test('should return false when package is in the list of missing packages', () => {
-			setMissingPackages(['packageA@0.1.0', 'packageB@0.1.0']);
-			expect(communityPackagesService.hasPackageLoaded('packageA')).toBe(false);
-		});
-	});
+		test('should return false when no installed node is known', () => {
+			const installedPackage = installedPackageWithNodeTypes(['node-a']);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 
-	describe('removePackageFromMissingList()', () => {
-		test('should do nothing if key does not exist', () => {
-			setMissingPackages([]);
-			communityPackagesService.removePackageFromMissingList('packageA');
-
-			expect(communityPackagesService.missingPackages).toBeEmptyArray();
-		});
-
-		test('should remove only correct package from list', () => {
-			setMissingPackages(['packageA@0.1.0', 'packageB@0.2.0', 'packageC@0.2.0']);
-
-			communityPackagesService.removePackageFromMissingList('packageB');
-
-			expect(communityPackagesService.missingPackages).toEqual([
-				'packageA@0.1.0',
-				'packageC@0.2.0',
-			]);
-		});
-
-		test('should not remove if package is not in the list', () => {
-			const failedToLoadList = ['packageA@0.1.0', 'packageB@0.2.0', 'packageB@0.2.0'];
-			setMissingPackages(failedToLoadList);
-			communityPackagesService.removePackageFromMissingList('packageC');
-
-			expect(communityPackagesService.missingPackages).toEqual(failedToLoadList);
+			expect(communityPackagesService.hasPackageLoaded(installedPackage)).toBe(false);
 		});
 	});
-
-	const setMissingPackages = (missingPackages: string[]) => {
-		Object.assign(communityPackagesService, { missingPackages });
-	};
 
 	describe('updatePackage', () => {
 		const PACKAGE_NAME = 'n8n-nodes-test';
@@ -961,7 +949,7 @@ describe('CommunityPackagesService', () => {
 			vi.mocked(getCommunityNodeTypes).mockResolvedValue([]);
 		});
 
-		test('should set missingPackages to empty array when no packages are missing', async () => {
+		test('should not attempt to reinstall when no packages are missing', async () => {
 			const installedPackages = [installedPackage1];
 
 			installedPackageRepository.find.mockResolvedValue(installedPackages);
@@ -969,7 +957,6 @@ describe('CommunityPackagesService', () => {
 
 			await communityPackagesService.checkForMissingPackages();
 
-			expect(communityPackagesService.missingPackages).toEqual([]);
 			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
 			expect(loadNodesAndCredentials.postProcessLoaders).not.toHaveBeenCalled();
 		});
@@ -985,7 +972,6 @@ describe('CommunityPackagesService', () => {
 
 			await communityPackagesService.checkForMissingPackages();
 
-			expect(communityPackagesService.missingPackages).toEqual(['package-1@1.0.0']);
 			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
 			expect(loadNodesAndCredentials.postProcessLoaders).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalled();
@@ -1006,13 +992,12 @@ describe('CommunityPackagesService', () => {
 				undefined,
 			);
 			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
-			expect(communityPackagesService.missingPackages).toEqual([]);
 			expect(logger.info).toHaveBeenCalledWith(
 				'Packages reinstalled successfully. Resuming regular initialization.',
 			);
 		});
 
-		test('should handle failed reinstallations and record missing packages', async () => {
+		test('should log an error for a failed reinstallation', async () => {
 			const installedPackages = [installedPackage1];
 
 			installedPackageRepository.find.mockResolvedValue(installedPackages);
@@ -1032,7 +1017,6 @@ describe('CommunityPackagesService', () => {
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to reinstall community package package-1: Installation failed',
 			);
-			expect(communityPackagesService.missingPackages).toEqual(['package-1@1.0.0']);
 		});
 
 		test('should continue reinstalling remaining packages after one fails', async () => {
@@ -1063,8 +1047,6 @@ describe('CommunityPackagesService', () => {
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to reinstall community package package-1: Installation failed',
 			);
-			// Only package-1 should be in missingPackages since package-2 succeeded
-			expect(communityPackagesService.missingPackages).toEqual(['package-1@1.0.0']);
 			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
 		});
 
@@ -1442,7 +1424,6 @@ describe('CommunityPackagesService', () => {
 
 			expect(installedPackageRepository.saveInstalledPackageWithNodes).toHaveBeenCalled();
 			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith('pkg-other');
-			expect(communityPackagesService.missingPackages).toEqual([]);
 		});
 
 		test('serializes handleUninstallEvent against a concurrent handleInstallEvent for a different package', async () => {

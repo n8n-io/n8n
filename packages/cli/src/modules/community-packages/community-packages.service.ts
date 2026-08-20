@@ -53,8 +53,6 @@ type PackageJson = {
 
 @Service()
 export class CommunityPackagesService {
-	missingPackages: string[] = [];
-
 	private readonly downloadFolder = this.instanceSettings.nodesDownloadDir;
 
 	private readonly packageJsonPath = join(this.downloadFolder, 'package.json');
@@ -85,19 +83,11 @@ export class CommunityPackagesService {
 		await this.checkForMissingPackages();
 	}
 
-	get hasMissingPackages() {
-		return this.missingPackages.length > 0;
-	}
-
 	async findInstalledPackage(packageName: string) {
 		return await this.installedPackageRepository.findOne({
 			where: { packageName },
 			relations: ['installedNodes'],
 		});
-	}
-
-	async isPackageInstalled(packageName: string) {
-		return await this.installedPackageRepository.exist({ where: { packageName } });
 	}
 
 	async getAllInstalledPackages() {
@@ -191,32 +181,24 @@ export class CommunityPackagesService {
 		}, []);
 	}
 
-	matchMissingPackages(installedPackages: PublicInstalledPackage[]) {
-		const missingPackagesList = this.missingPackages
-			.map((name) => {
-				try {
-					// Strip away versions but maintain scope and package name
-					const parsedPackageData = this.parseNpmPackageName(name);
-					return parsedPackageData.packageName;
-				} catch {
-					return;
-				}
-			})
-			.filter((i): i is string => i !== undefined);
+	/**
+	 * `some`, not `every`: a repair-reinstall (`saveInstalledPackageWithNodes`, unlike
+	 * `replaceInstalledPackageWithNodes`) doesn't delete `installedNodes` rows from a
+	 * previous version, so a package that dropped a node type keeps a stale row that
+	 * will never resolve. `every` would flag that package as failed forever.
+	 */
+	private hasNodesLoaded(installedNodes: Array<{ type: string }>) {
+		return (
+			installedNodes.length === 0 ||
+			installedNodes.some((node) => this.loadNodesAndCredentials.isKnownNode(node.type))
+		);
+	}
 
-		const packages: PublicInstalledPackage[] = [];
-
-		for (const installedPackage of installedPackages) {
-			const pkg = { ...installedPackage };
-
-			if (missingPackagesList.includes(pkg.packageName)) {
-				pkg.failedLoading = true;
-			}
-
-			packages.push(pkg);
-		}
-
-		return packages;
+	matchMissingPackages(installedPackages: PublicInstalledPackage[]): PublicInstalledPackage[] {
+		return installedPackages.map((installedPackage) => ({
+			...installedPackage,
+			failedLoading: !this.hasNodesLoaded(installedPackage.installedNodes),
+		}));
 	}
 
 	async checkNpmPackageStatus(packageName: string) {
@@ -238,26 +220,8 @@ export class CommunityPackagesService {
 		return { status: NPM_PACKAGE_STATUS_GOOD };
 	}
 
-	hasPackageLoaded(packageName: string) {
-		if (!this.missingPackages.length) return true;
-
-		return !this.missingPackages.some(
-			(packageNameAndVersion) =>
-				packageNameAndVersion.startsWith(packageName) &&
-				packageNameAndVersion.replace(packageName, '').startsWith('@'),
-		);
-	}
-
-	removePackageFromMissingList(packageName: string) {
-		try {
-			this.missingPackages = this.missingPackages.filter(
-				(packageNameAndVersion) =>
-					!packageNameAndVersion.startsWith(packageName) ||
-					!packageNameAndVersion.replace(packageName, '').startsWith('@'),
-			);
-		} catch {
-			// do nothing
-		}
+	hasPackageLoaded(installedPackage: InstalledPackages) {
+		return this.hasNodesLoaded(installedPackage.installedNodes);
 	}
 
 	async ensurePackageJson() {
@@ -289,8 +253,6 @@ export class CommunityPackagesService {
 				}
 			});
 		});
-
-		this.missingPackages = [];
 
 		if (missingPackages.size === 0) return;
 
@@ -362,10 +324,6 @@ export class CommunityPackagesService {
 				'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
 			);
 		}
-
-		this.missingPackages = [...missingPackages].map(
-			(missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`,
-		);
 	}
 
 	async installPackage(
