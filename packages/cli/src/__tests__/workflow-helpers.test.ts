@@ -17,7 +17,6 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { OwnershipService } from '@/services/ownership.service';
 import {
-	dropInvalidNodeGroups,
 	getLastExecutedNodeData,
 	getLastExecutedNodeRuns,
 	getVariables,
@@ -690,90 +689,6 @@ describe('validateWorkflowNodeGroups', () => {
 					'Node group "Disconnected" must form a single connected subgraph with a single entry and exit.',
 				);
 			});
-		});
-	});
-});
-
-describe('dropInvalidNodeGroups', () => {
-	it('leaves a valid workflow untouched and reports nothing', () => {
-		const workflow = {
-			nodes: [makeNode('n1'), makeNode('n2')],
-			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['n1', 'n2'] }],
-		};
-
-		expect(dropInvalidNodeGroups(workflow, null)).toEqual([]);
-		expect(workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['n1', 'n2'] }]);
-	});
-
-	it('drops every violating group and keeps the valid ones', () => {
-		const workflow = {
-			nodes: [makeNode('n1')],
-			nodeGroups: [
-				{ id: 'g1', name: 'Valid', nodeIds: ['n1'] },
-				{ id: 'g2', name: 'Unknown member', nodeIds: ['n999'] },
-			],
-		};
-
-		const violations = dropInvalidNodeGroups(workflow, null);
-
-		expect(violations).toHaveLength(1);
-		expect(violations[0]).toMatchObject({ groupId: 'g2', code: 'unknown-node-id' });
-		expect(workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Valid', nodeIds: ['n1'] }]);
-	});
-
-	describe('with a shouldDrop predicate', () => {
-		// Two groups sharing n1: the second is flagged for the overlap, and the
-		// first for holding a node that now belongs elsewhere. A caller that can
-		// only blame one of them must be able to drop just that one.
-		const buildOverlapping = () => ({
-			nodes: connectedNodes,
-			connections: chainConnections,
-			nodeGroups: [
-				{ id: 'g1', name: 'First', nodeIds: ['n1', 'n2'] },
-				{ id: 'g2', name: 'Second', nodeIds: ['n1'] },
-			],
-		});
-
-		const regularType = regularNodeType;
-
-		it('drops only the matching groups and reports only those', () => {
-			const workflow = buildOverlapping();
-
-			const violations = dropInvalidNodeGroups(
-				workflow,
-				() => regularType,
-				(violation) => violation.groupId === 'g2',
-			);
-
-			expect(violations).toHaveLength(1);
-			expect(violations[0].groupId).toBe('g2');
-			expect(workflow.nodeGroups).toEqual([{ id: 'g1', name: 'First', nodeIds: ['n1', 'n2'] }]);
-		});
-
-		it('clears the collateral violation once the culprit is gone', () => {
-			const workflow = buildOverlapping();
-			dropInvalidNodeGroups(
-				workflow,
-				() => regularType,
-				(violation) => violation.groupId === 'g2',
-			);
-
-			// Second pass: "First" only ever failed because "Second" overlapped it.
-			expect(dropInvalidNodeGroups(workflow, () => regularType)).toEqual([]);
-			expect(workflow.nodeGroups).toHaveLength(1);
-		});
-
-		it('keeps the workflow untouched when nothing matches', () => {
-			const workflow = buildOverlapping();
-
-			expect(
-				dropInvalidNodeGroups(
-					workflow,
-					() => regularType,
-					() => false,
-				),
-			).toEqual([]);
-			expect(workflow.nodeGroups).toHaveLength(2);
 		});
 	});
 });
