@@ -161,6 +161,7 @@ export const establishExecutionContext = async (
 		executionData.runtimeData = await executionContextService.bindExecutionId(
 			executionData.runtimeData,
 			additionalData?.executionId,
+			{ allowInherit: true },
 		);
 
 		// The child inherits the parent's context, but its OWN execution record must
@@ -215,6 +216,7 @@ export const establishExecutionContext = async (
 		executionData.runtimeData = await executionContextService.bindExecutionId(
 			executionData.runtimeData,
 			additionalData?.executionId,
+			{ allowInherit: true },
 		);
 		return;
 	}

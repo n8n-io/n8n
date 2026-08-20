@@ -104,6 +104,7 @@ export class ExecutionContextService {
 	async bindExecutionId(
 		context: IExecutionContext,
 		executionId: string | undefined,
+		{ allowInherit = false }: { allowInherit?: boolean } = {},
 	): Promise<IExecutionContext> {
 		if (!executionId) {
 			return context;
@@ -115,9 +116,15 @@ export class ExecutionContextService {
 				// Only sealed carriers (a resolved subject) need execution binding; a
 				// non-sealed n8n-oauth carrier has nothing that reads its executionPath.
 				if (metadata.success && metadata.data.subject) {
-					metadata.data.executionPath = metadata.data.executionPath ?? [];
-					if (!metadata.data.executionPath.includes(executionId)) {
-						metadata.data.executionPath.push(executionId);
+					const executionPath = metadata.data.executionPath ?? [];
+					// Seed an empty path at mint, or extend it only for a genuine inherited
+					// child (sub-workflow / error workflow). A non-empty path that lacks this
+					// id on a non-inherit bind means the carrier was attached to an execution
+					// it was not minted for — leave it, so credential resolution rejects it.
+					const mayBind =
+						!executionPath.includes(executionId) && (executionPath.length === 0 || allowInherit);
+					if (mayBind) {
+						metadata.data.executionPath = [...executionPath, executionId];
 						decryptedContext.credentials.metadata = metadata.data;
 						return await this.encryptExecutionContext(decryptedContext);
 					}

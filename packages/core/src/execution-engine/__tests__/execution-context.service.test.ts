@@ -487,9 +487,24 @@ describe('ExecutionContextService', () => {
 					executionPath: ['exec-root'],
 				}),
 				'exec-child',
+				{ allowInherit: true },
 			);
 
 			expect(pathOf(bound)).toEqual(['exec-root', 'exec-child']);
+		});
+
+		it('leaves a populated path untouched for an unrelated execution', async () => {
+			const context = contextWith({
+				source: 'n8n-oauth',
+				resource: 'r',
+				subject: 'user-123',
+				executionPath: ['exec-other'],
+			});
+
+			const bound = await service.bindExecutionId(context, 'exec-current');
+
+			expect(bound).toBe(context);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
 		});
 
 		it('is idempotent when the execution id is already in the path (retry/resume)', async () => {

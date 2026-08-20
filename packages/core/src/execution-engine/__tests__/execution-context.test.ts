@@ -1385,6 +1385,41 @@ describe('establishExecutionContext', () => {
 			expect(await pathOf(runExecutionData.executionData!.runtimeData)).toEqual(['exec-real']);
 		});
 
+		it('does not extend a populated path when the carrier belongs to another execution', async () => {
+			const sealed = await service.buildTriggerIdentityCredentials(
+				'oauth-token',
+				'https://host/mcp/wf',
+				undefined,
+				'user-123',
+			);
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+			// Carrier already bound to a different execution, re-attached to this run.
+			const carried = await service.bindExecutionId(
+				{ version: 1, establishedAt: 1, source: 'webhook', credentials: sealed },
+				'exec-other',
+			);
+			runExecutionData.executionData!.runtimeData = carried;
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				executionId: 'exec-real',
+				encryptedRunnerIdentity: undefined,
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'webhook');
+
+			// Path stays pinned to its own execution, so resolution rejects this run.
+			expect(await pathOf(runExecutionData.executionData!.runtimeData)).toEqual(['exec-other']);
+		});
+
 		it('leaves a legacy (subject-less) carrier untouched', async () => {
 			const legacy = await service.buildTriggerIdentityCredentials(
 				'oauth-token',
