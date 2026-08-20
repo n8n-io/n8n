@@ -3,13 +3,17 @@
 // eval-results.json, any pairing: MCP vs AIA, AIA vs AIA (builder-model A/Bs),
 // MCP vs MCP (ANTHROPIC_MODEL A/Bs), or a single arm alone.
 //
-// The cost source is auto-detected per file:
+// The cost source is auto-detected per file, in this order:
 //   - `buildCostUsdPerRun` present → persisted `claude` spend
 //     (--build-via-mcp runs; attempts summed).
+//   - `buildTokensPerRun` present → cache-aware token counts the harness summed
+//     from each build's run debug, priced locally with the --rate-* flags. No
+//     credentials, no network, no trace-retention window.
 //   - non-null `threadIds` → backend builder cost summed from LangSmith:
 //     each case's threads resolve to root runs (one per build turn) in the
 //     backend trace project (default `instance-ai-evals`, eval workspace),
 //     whose `total_cost` LangSmith prices cache-aware from the traced usage.
+//     The fallback for runs recorded before token persistence existed.
 // Every arm also gets per-iteration green verdicts (every evaluated scenario
 // run and build expectation passed) → cost per green iteration.
 //
@@ -20,10 +24,21 @@
 //     [--label mcp-opus48 --label aia-opus48] \
 //     [--trace-project instance-ai-evals] [--out build-cost-report.md]
 //
+// Comparing two memory approaches (the quality-per-token verdict) — both arms
+// come from persisted tokens, so LangSmith is not involved and dotenvx is only
+// needed if the run itself needed it:
+//   pnpm tsx evaluations/cli/build-cost-report.ts \
+//     --results runs/baseline/eval-results.json --results runs/candidate/eval-results.json \
+//     --label baseline --label candidate --out memory-ab.md
+// Run each arm with the SAME case set and --iterations >= 5 (default is 1, which
+// cannot separate two approaches from judge noise), then read cost per green
+// iteration alongside mean tool calls: a better memory approach often ties on
+// pass rate while spending materially less.
+//
 // Labels default to each run's experimentName. `--probe-thread <id>` skips the
-// report and prints one thread's cost — a connectivity spot-check. Reads
-// LANGSMITH_ENDPOINT / LANGSMITH_API_KEY and pins reads to the eval workspace
-// (Staging) exactly like the harness does.
+// report and prints one thread's cost — a connectivity spot-check. The LangSmith
+// path reads LANGSMITH_ENDPOINT / LANGSMITH_API_KEY and pins reads to the eval
+// workspace (Staging) exactly like the harness does.
 // ---------------------------------------------------------------------------
 
 import { jsonParse } from 'n8n-workflow';
@@ -46,6 +61,19 @@ const scenarioRunSchema = z.object({
 	incomplete: z.boolean().optional(),
 });
 
+/** Cache-aware token totals the harness now persists per build (see
+ *  `harness/usage-summary.ts`), so an AIA arm no longer needs the LangSmith join. */
+const buildTokensSchema = z.object({
+	uncachedInput: z.number().min(0),
+	cacheRead: z.number().min(0),
+	cacheWrite: z.number().min(0),
+	output: z.number().min(0),
+	totalTokens: z.number().min(0),
+	steps: z.number().min(0),
+});
+
+export type BuildTokens = z.infer<typeof buildTokensSchema>;
+
 const testCaseSchema = z.object({
 	name: z.string(),
 	testCaseFile: z.string().nullish(),
@@ -54,6 +82,8 @@ const testCaseSchema = z.object({
 	threadIds: z.array(z.string().nullable()).optional(),
 	buildCostUsdPerRun: z.array(z.number().nullable()).optional(),
 	buildTurnsPerRun: z.array(z.number().nullable()).optional(),
+	buildTokensPerRun: z.array(buildTokensSchema.nullable()).optional(),
+	buildToolCallsPerRun: z.array(z.number().nullable()).optional(),
 	buildExpectationResultsPerRun: z.array(z.array(unitVerdictSchema).nullable()).optional(),
 	scenarios: z.array(z.object({ name: z.string(), runs: z.array(scenarioRunSchema) })).optional(),
 });
@@ -65,6 +95,14 @@ const evalResultsSchema = z.object({
 });
 
 export type EvalResults = z.infer<typeof evalResultsSchema>;
+
+/** Parse an `eval-results.json` payload with this report's own schema. Exported so
+ *  the producer↔consumer contract can be tested against the real schema rather than
+ *  a hand-written copy of it, which would not catch a field rename on either side. */
+export function parseEvalResults(payload: unknown): EvalResults {
+	return evalResultsSchema.parse(payload);
+}
+
 export type ReportTestCase = z.infer<typeof testCaseSchema>;
 
 // ---------------------------------------------------------------------------
@@ -196,6 +234,12 @@ export interface CaseCost {
 	meanTurns?: number;
 	/** AIA only: mean tokens per build. */
 	meanTokens?: number;
+	/** Mean tool calls per build. The first place a memory change that cuts
+	 *  re-reads of instance state shows up. */
+	meanToolCalls?: number;
+	/** Mean cache-read tokens per build — separated because cache hit rate usually
+	 *  moves more than raw input does when context handling changes. */
+	meanCacheReadTokens?: number;
 	greenIterations: number;
 	evaluatedIterations: number;
 }
@@ -237,6 +281,72 @@ function median(values: number[]): number | undefined {
 	return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
+/**
+ * Per-million-token rates used to price persisted token counts, in USD.
+ *
+ * Overridable via `--rate-*` so an arm on a different model can be priced without
+ * an edit. Defaults are Sonnet-class list prices; cache reads and writes are priced
+ * separately because that split is the whole reason to persist the breakdown — a
+ * memory change usually moves cache hit rate before it moves raw input.
+ */
+export interface TokenRates {
+	uncachedInput: number;
+	cacheRead: number;
+	cacheWrite: number;
+	output: number;
+}
+
+export const DEFAULT_TOKEN_RATES: TokenRates = {
+	uncachedInput: 3,
+	cacheRead: 0.3,
+	cacheWrite: 3.75,
+	output: 15,
+};
+
+export function priceTokens(tokens: BuildTokens, rates: TokenRates): number {
+	return (
+		(tokens.uncachedInput * rates.uncachedInput +
+			tokens.cacheRead * rates.cacheRead +
+			tokens.cacheWrite * rates.cacheWrite +
+			tokens.output * rates.output) /
+		1_000_000
+	);
+}
+
+/**
+ * Arm priced from the token counts the harness persisted per build.
+ *
+ * Preferred over the LangSmith thread join: it needs no credentials, no network and
+ * no trace retention, so a two-arm comparison reads straight from two
+ * `eval-results.json` files. The join stays as the fallback for runs recorded before
+ * these fields existed.
+ */
+export function persistedTokenCosts(results: EvalResults, rates: TokenRates): CaseCost[] {
+	return results.testCases.map((tc) => {
+		const { green, evaluated } = greenStats(tc);
+		const perRun = tc.buildTokensPerRun ?? [];
+		const known = perRun.filter((t): t is BuildTokens => t !== null);
+		return {
+			slug: caseSlug(tc),
+			costPerIteration: Array.from({ length: tc.totalRuns }, (_, i) => {
+				const tokens = perRun[i];
+				return tokens ? priceTokens(tokens, rates) : null;
+			}),
+			meanTokens: mean(known.map((t) => t.totalTokens)),
+			meanToolCalls: meanToolCallsOf(tc),
+			meanCacheReadTokens: mean(known.map((t) => t.cacheRead)),
+			greenIterations: green,
+			evaluatedIterations: evaluated,
+		};
+	});
+}
+
+/** Mean tool calls per build. Emitted independently of any cost source, so every arm
+ *  reports it when the field is present rather than only the token-priced one. */
+function meanToolCallsOf(tc: ReportTestCase): number | undefined {
+	return mean((tc.buildToolCallsPerRun ?? []).filter((n): n is number => n !== null));
+}
+
 /** Arm whose cost the harness persisted per case (`--build-via-mcp` runs). */
 export function persistedSpendCosts(results: EvalResults): CaseCost[] {
 	return results.testCases.map((tc) => {
@@ -246,6 +356,7 @@ export function persistedSpendCosts(results: EvalResults): CaseCost[] {
 			slug: caseSlug(tc),
 			costPerIteration: tc.buildCostUsdPerRun ?? Array.from({ length: tc.totalRuns }, () => null),
 			meanTurns: mean(turns),
+			meanToolCalls: meanToolCallsOf(tc),
 			greenIterations: green,
 			evaluatedIterations: evaluated,
 		};
@@ -333,12 +444,21 @@ function armTotals(arm: ArmSummary): string[] {
 	const green = arm.cases.reduce((sum, c) => sum + c.greenIterations, 0);
 	const evaluated = arm.cases.reduce((sum, c) => sum + c.evaluatedIterations, 0);
 	const total = costs.reduce((a, b) => a + b, 0);
+	// Cache reads are called out at arm level rather than per case: it is an
+	// aggregate signal, and a context change usually moves cache hit rate before it
+	// moves anything else.
+	const cacheReads = arm.cases
+		.map((c) => c.meanCacheReadTokens)
+		.filter((n): n is number => n !== undefined);
 	return [
 		`${arm.cases.length} cases`,
 		`${costs.length} builds with cost`,
 		`total ${fmtUsd(total)}`,
 		`mean/build ${fmtUsd(mean(costs))}`,
 		`median/build ${fmtUsd(median(costs))}`,
+		...(cacheReads.length > 0
+			? [`mean cache-read tokens/build ${Math.round(mean(cacheReads) ?? 0).toLocaleString()}`]
+			: []),
 		`green ${green}/${evaluated} iterations`,
 		`cost per green iteration ${green > 0 ? fmtUsd(total / green) : '—'}`,
 	];
@@ -354,11 +474,19 @@ export function renderMarkdown(arms: ArmSummary[]): string {
 	const slugs = [...new Set(arms.flatMap((arm) => arm.cases.map((c) => c.slug)))].sort();
 	const byArm = arms.map((arm) => new Map(arm.cases.map((c) => [c.slug, c])));
 
+	// Which optional columns an arm earns, decided once per arm so the header and
+	// every row stay in step — they silently desynchronise if each recomputes it.
+	const columns = arms.map((arm) => ({
+		tokens: arm.cases.some((c) => c.meanTokens !== undefined),
+		toolCalls: arm.cases.some((c) => c.meanToolCalls !== undefined),
+	}));
+
 	const header = ['case'];
-	for (const arm of arms) {
+	arms.forEach((arm, a) => {
 		header.push(`${arm.label} $/build`, `${arm.label} green`, `${arm.label} turns`);
-		if (arm.cases.some((c) => c.meanTokens !== undefined)) header.push(`${arm.label} tokens`);
-	}
+		if (columns[a].tokens) header.push(`${arm.label} tokens`);
+		if (columns[a].toolCalls) header.push(`${arm.label} tools`);
+	});
 	lines.push(`| ${header.join(' | ')} |`);
 	lines.push(`|${header.map(() => '---').join('|')}|`);
 
@@ -368,7 +496,8 @@ export function renderMarkdown(arms: ArmSummary[]): string {
 			const c = byArm[a].get(slug);
 			if (!c) {
 				row.push('missing', '—', '—');
-				if (arms[a].cases.some((x) => x.meanTokens !== undefined)) row.push('—');
+				if (columns[a].tokens) row.push('—');
+				if (columns[a].toolCalls) row.push('—');
 				continue;
 			}
 			row.push(
@@ -376,17 +505,20 @@ export function renderMarkdown(arms: ArmSummary[]): string {
 				`${c.greenIterations}/${c.evaluatedIterations}`,
 				fmtNum(c.meanTurns),
 			);
-			if (arms[a].cases.some((x) => x.meanTokens !== undefined)) {
+			if (columns[a].tokens) {
 				row.push(c.meanTokens === undefined ? '—' : Math.round(c.meanTokens).toLocaleString());
 			}
+			if (columns[a].toolCalls) row.push(fmtNum(c.meanToolCalls));
 		}
 		lines.push(`| ${row.join(' | ')} |`);
 	}
 	lines.push('');
 	lines.push(
 		'_Cost sources are listed per arm above: persisted `claude` spend is Anthropic-billed' +
-			' `total_cost_usd` (attempts summed); thread pricing is LangSmith cache-aware pricing' +
-			' over the build thread’s root runs. Comparable at list price, not identical accountants._',
+			' `total_cost_usd` (attempts summed); persisted tokens are the harness’s own cache-aware' +
+			' counts priced locally at the --rate-* values; thread pricing is LangSmith cache-aware' +
+			' pricing over the build thread’s root runs. Comparable at list price, not identical' +
+			' accountants — do not mix sources across arms you intend to compare on cost._',
 	);
 	return lines.join('\n');
 }
@@ -450,6 +582,22 @@ async function main(): Promise<void> {
 		);
 	}
 
+	const rateFlag = (key: keyof TokenRates, flagName: string): number => {
+		const raw = single(flags, flagName);
+		if (raw === undefined) return DEFAULT_TOKEN_RATES[key];
+		const parsed = Number(raw);
+		if (!Number.isFinite(parsed) || parsed < 0) {
+			throw new Error(`--${flagName} must be a non-negative number (USD per million tokens)`);
+		}
+		return parsed;
+	};
+	const rates: TokenRates = {
+		uncachedInput: rateFlag('uncachedInput', 'rate-input'),
+		cacheRead: rateFlag('cacheRead', 'rate-cache-read'),
+		cacheWrite: rateFlag('cacheWrite', 'rate-cache-write'),
+		output: rateFlag('output', 'rate-output'),
+	};
+
 	// LangSmith access is resolved once, lazily — only when some arm needs the
 	// thread join (a persisted-spend-only comparison runs without credentials).
 	let ls: LangSmithConfig | undefined;
@@ -460,11 +608,22 @@ async function main(): Promise<void> {
 		const results = loadResults(resultPaths[i]);
 		const label = labels[i] ?? results.experimentName ?? `arm${String(i + 1)}`;
 		const hasPersistedSpend = results.testCases.some((tc) => tc.buildCostUsdPerRun !== undefined);
+		const hasPersistedTokens = results.testCases.some((tc) =>
+			(tc.buildTokensPerRun ?? []).some((t) => t !== null),
+		);
 		const hasThreads = results.testCases.some((tc) =>
 			(tc.threadIds ?? []).some((id) => id !== null),
 		);
 		if (hasPersistedSpend) {
 			arms.push({ label, source: 'persisted `claude` spend', cases: persistedSpendCosts(results) });
+		} else if (hasPersistedTokens) {
+			// Preferred over the thread join below: no credentials, no network, no trace
+			// retention window — two result files are enough.
+			arms.push({
+				label,
+				source: 'persisted tokens (priced locally)',
+				cases: persistedTokenCosts(results, rates),
+			});
 		} else if (hasThreads) {
 			ls ??= await langsmithConfig();
 			projectId ??= await resolveTraceProjectId(ls, traceProject);

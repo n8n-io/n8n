@@ -5,6 +5,11 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 import type { CheckOutcome } from '../binaryChecks/types';
+import {
+	DEFAULT_TOKEN_RATES,
+	parseEvalResults,
+	persistedTokenCosts,
+} from '../cli/build-cost-report';
 import { aggregateResults } from '../run/aggregator';
 import { writeEvalResults } from '../run/persist';
 import type {
@@ -280,5 +285,57 @@ describe('eval-results.json — dispatcher contract', () => {
 		const tc = report.testCases[0];
 		expect(tc.buildCostUsdPerRun).toEqual([0.31, null]);
 		expect(tc.buildTurnsPerRun).toEqual([5, null]);
+	});
+	// Producer→consumer contract for the quality-per-token comparison: the fields
+	// persist.ts writes must be the fields build-cost-report reads. A rename on
+	// either side would silently price every build at zero, which reads as a free
+	// memory approach rather than as a broken join.
+	it('emits token and tool-call fields that build-cost-report can price without LangSmith', () => {
+		const runDebug = [
+			{
+				threadId: 'thread-1',
+				runId: 'run-1',
+				startedAt: 1,
+				steps: [
+					{
+						stepNumber: 0,
+						output: {
+							usage: {
+								inputTokens: 1_000_000,
+								outputTokens: 0,
+								totalTokens: 1_000_000,
+								inputTokenDetails: { noCacheTokens: 1_000_000 },
+							},
+						},
+					},
+				],
+				workflowCode: [],
+			},
+		];
+		const evaluation = aggregateResults([[{ ...iteration1(), runDebug }], [iteration2()]], 2);
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-tokens-'));
+		const { jsonPath } = writeEvalResults(
+			evaluation,
+			1234,
+			dir,
+			'exp-tokens',
+			undefined,
+			undefined,
+			new Map([[testCase, 'daily-digest']]),
+			undefined,
+			undefined,
+		);
+		const raw = readFileSync(jsonPath, 'utf8');
+
+		// Parsed with the REPORT's own schema, not a hand-written shape.
+		const parsed = parseEvalResults(jsonParse(raw));
+		const [caseCost] = persistedTokenCosts(parsed, DEFAULT_TOKEN_RATES);
+
+		// 1M uncached input at $3/M, and the second iteration captured nothing.
+		expect(caseCost.costPerIteration[0]).toBeCloseTo(3, 6);
+		expect(caseCost.costPerIteration[1]).toBeNull();
+		expect(caseCost.meanTokens).toBe(1_000_000);
+		// iteration1's transcript has exactly one tool call; iteration2 has no transcript.
+		expect(caseCost.meanToolCalls).toBe(1);
 	});
 });

@@ -207,6 +207,43 @@ Every run produces:
 - **`.data/workflow-eval-report.html`** — self-contained debugging view with a green/red stage review for prompt, planner, builder, and verifier behavior, generalized prompt-improvement suggestions for failures, per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
 - **LangSmith experiment** — only when `LANGSMITH_API_KEY` is set. See the caveat in [Environment variables](#environment-variables).
 
+### Cost per case, and comparing two arms on quality per token
+
+Every run records cache-aware token totals and a tool-call count per iteration in
+`eval-results.json`, summed from the run debug the harness already captures per build:
+
+- **`buildTokensPerRun`** — `{ uncachedInput, cacheRead, cacheWrite, output, totalTokens, steps }` per iteration, or `null` where a build captured nothing. Cache reads are kept separate because they are an order of magnitude cheaper than uncached input, so folding them together hides the term a context change usually moves most.
+- **`buildToolCallsPerRun`** — tool calls the evaluated run made, excluding seeded turns (restored fixture is not work this run did).
+
+Pass/fail is the wrong primary metric for a context or memory change. An agent with
+weaker memory can compensate by re-reading instance state — sometimes the *desired*
+behaviour — so two approaches can tie on pass rate while differing sharply in spend.
+That difference only shows up in these fields.
+
+To compare two arms, run each with the **same case set** and the same `--iterations`,
+then join the two result files:
+
+```bash
+# from packages/@n8n/instance-ai
+pnpm tsx evaluations/cli/build-cost-report.ts \
+  --results runs/baseline/eval-results.json \
+  --results runs/candidate/eval-results.json \
+  --label baseline --label candidate \
+  --out memory-ab.md
+```
+
+The report prices these token counts locally, so **no LangSmith access is needed** —
+it falls back to the LangSmith thread join only for runs recorded before these fields
+existed. Rates default to Sonnet-class list prices and are overridable with
+`--rate-input`, `--rate-cache-read`, `--rate-cache-write` and `--rate-output` (USD per
+million tokens). Read **cost per green iteration** alongside mean tool calls.
+
+Two caveats worth stating plainly. `--iterations` defaults to **1**, which cannot
+separate two approaches from judge noise — use at least 5 for a comparison. And don't
+mix cost sources across arms you intend to compare: the report labels each arm's
+source, and persisted `claude` spend, locally-priced tokens and LangSmith pricing are
+comparable at list price but are not the same accountant.
+
 ### Workflow checks (per built workflow)
 
 After every successful build, the eval grades the workflow JSON against the binary-check rubric in `binaryChecks/checks/`. Each named check is yes/no with a structured N/A for "no subject to evaluate in this workflow" (e.g. an agent-only check on a workflow with no agent).
@@ -465,8 +502,9 @@ How it differs from the manifest flow:
   `summary.mcpBuild` totals. For builder cost comparisons across any runs
   (MCP vs AIA, builder-model A/Bs), the un-wired helper
   `evaluations/cli/build-cost-report.ts` (run via `pnpm tsx`, one `--results`
-  per arm) auto-detects each arm's cost source — these persisted fields, or
-  the backend build threads priced in LangSmith.
+  per arm) auto-detects each arm's cost source — these persisted fields, the
+  per-case token counts priced locally (see [Cost per case](#cost-per-case-and-comparing-two-arms-on-quality-per-token)),
+  or the backend build threads priced in LangSmith.
 
 **Prerequisites**: `LANGSMITH_API_KEY` set — MCP builds only run on the
 LangSmith path, whose lane allocator caps builds at 4 per lane globally (the
