@@ -7,14 +7,23 @@ import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type {
-	AgentExecutionStatus,
 	AgentExecutionThread,
+	AgentSessionFilters,
+	AgentSessionStatus,
 } from '@/features/agents/composables/useAgentThreadsApi';
+import AgentSessionsFilter from '@/features/agents/components/AgentSessionsFilter.vue';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nIcon, N8nTableBase, N8nText } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nCheckbox,
+	N8nIcon,
+	N8nTableBase,
+	N8nText,
+} from '@n8n/design-system';
 import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
@@ -48,13 +57,17 @@ let managesStoreLifecycle = false;
 
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
+const hasActiveFilters = computed(() => {
+	const { status, origin, startDate, endDate } = sessionsStore.filters;
+	return status !== 'all' || origin !== 'all' || Boolean(startDate) || Boolean(endDate);
+});
 
 function onVisibilityChange() {
 	// Refresh as soon as the user returns to the tab — auto-refresh is
 	// throttled while the document is hidden, so a silent merge-refresh on
 	// return closes the gap before the next interval tick without flashing
 	// the load-more button or dropping paginated pages.
-	if (document.visibilityState !== 'visible') return;
+	if (document.visibilityState !== 'visible' || !sessionsStore.autoRefresh) return;
 	if (!projectId.value || !agentId.value) return;
 	void sessionsStore.refreshThreads(projectId.value, agentId.value);
 }
@@ -95,21 +108,21 @@ function formatDuration(ms: number): string {
 	return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
 }
 
-function statusColor(status: AgentExecutionStatus): 'success' | 'danger' | 'warning' | 'text-base' {
-	if (status === 'success') return 'success';
+function statusColor(status: AgentSessionStatus): 'success' | 'danger' | 'warning' | 'text-base' {
+	if (status === 'succeeded') return 'success';
 	if (status === 'error') return 'danger';
 	if (status === 'running') return 'text-base';
 	return 'warning';
 }
 
-function statusLabel(status: AgentExecutionStatus): string {
+function statusLabel(status: AgentSessionStatus): string {
 	switch (status) {
 		case 'running':
 			return i18n.baseText('agentSessions.status.running');
-		case 'success':
-			return i18n.baseText('agentSessions.success');
+		case 'succeeded':
+			return i18n.baseText('agentSessions.status.succeeded');
 		case 'error':
-			return i18n.baseText('agentSessions.timeline.error');
+			return i18n.baseText('agentSessions.status.error');
 		case 'cancelled':
 			return i18n.baseText('agentSessions.status.cancelled');
 		case 'interrupted':
@@ -230,17 +243,40 @@ async function loadMore() {
 		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 	}
 }
+
+function onAutoRefreshChange(enabled: boolean) {
+	if (enabled) sessionsStore.startAutoRefresh();
+	else sessionsStore.stopAutoRefresh();
+}
+
+async function onFiltersChange(value: AgentSessionFilters) {
+	try {
+		await sessionsStore.setFilters(projectId.value, agentId.value, value);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
+	}
+}
 </script>
 
 <template>
 	<div :class="[$style.wrapper, { [$style.embedded]: props.embedded }]">
+		<div :class="$style.filters">
+			<N8nCheckbox
+				v-model="sessionsStore.autoRefresh"
+				data-test-id="agent-sessions-auto-refresh-checkbox"
+				:label="i18n.baseText('executionsList.autoRefresh')"
+				@update:model-value="onAutoRefreshChange"
+			/>
+			<AgentSessionsFilter :model-value="sessionsStore.filters" @filter-changed="onFiltersChange" />
+		</div>
 		<div :class="$style.tableContainer">
 			<N8nTableBase :class="$style.sessionsTable">
 				<tbody>
 					<tr
 						v-for="thread in sessionsStore.threads"
 						:key="thread.id"
-						:class="[$style.clickableRow, thread.status === 'error' && $style.errorRow]"
+						:class="$style.clickableRow"
+						:data-status="thread.status"
 						data-test-id="agent-session-list-item"
 						@click="onViewTrace({ agentId, threadId: thread.id })"
 					>
@@ -311,7 +347,11 @@ async function loadMore() {
 						<td :colspan="5" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
 								<span data-test-id="agent-sessions-empty">
-									{{ i18n.baseText('agentSessions.empty') }}
+									{{
+										i18n.baseText(
+											hasActiveFilters ? 'agentSessions.emptyWithFilters' : 'agentSessions.empty',
+										)
+									}}
 								</span>
 							</template>
 						</td>
@@ -385,6 +425,12 @@ async function loadMore() {
 	td:last-child {
 		padding-right: var(--spacing--sm);
 	}
+}
+
+.filters {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 }
 
 .titleCell {
@@ -486,21 +532,28 @@ async function loadMore() {
 
 	.titleCell {
 		border-left: var(--spacing--4xs) var(--border-style)
-			var(--execution-card--border-color--success);
+			var(--execution-card--border-color--unknown);
 	}
 
 	.actionCell {
 		text-align: right;
 	}
 
+	&[data-status='succeeded'] .titleCell {
+		border-left-color: var(--execution-card--border-color--success);
+	}
+
+	&[data-status='error'] .titleCell {
+		border-left-color: var(--execution-card--border-color--error);
+	}
+
+	&[data-status='cancelled'] .titleCell,
+	&[data-status='interrupted'] .titleCell {
+		border-left-color: var(--border-color--warning);
+	}
+
 	&:hover {
 		background-color: var(--execution-card--color--background--hover);
-	}
-}
-
-.sessionsTable .errorRow {
-	.titleCell {
-		border-left-color: var(--execution-card--border-color--error);
 	}
 }
 

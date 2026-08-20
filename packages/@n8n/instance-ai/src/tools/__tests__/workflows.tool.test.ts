@@ -214,12 +214,12 @@ describe('workflows tool', () => {
 			expect(context.workflowService.publish).not.toHaveBeenCalled();
 		});
 
-		it('should allow code inspection but reject raw update on orchestrator surface', () => {
+		it('should allow code inspection but reject raw workflow actions on orchestrator surface', () => {
 			const context = createMockContext();
 			const tool = createWorkflowsTool(context, 'orchestrator');
 			const schema = getInputSchema(tool);
 
-			expect(schema.safeParse({ action: 'get-json', workflowId: 'w1' }).success).toBe(true);
+			expect(schema.safeParse({ action: 'get-json', workflowId: 'w1' }).success).toBe(false);
 			expect(schema.safeParse({ action: 'get-as-code', workflowId: 'w1' }).success).toBe(true);
 			expect(
 				schema.safeParse({
@@ -228,6 +228,8 @@ describe('workflows tool', () => {
 					workflow: { name: 'WF', nodes: [], connections: {} },
 				}).success,
 			).toBe(false);
+			expect(getDescription(tool)).toContain('TypeScript SDK code');
+			expect(getDescription(tool)).not.toContain('WorkflowJSON');
 		});
 	});
 
@@ -646,6 +648,8 @@ describe('workflows tool', () => {
 				structure: '// generated code',
 				note: STRUCTURE_ONLY_NOTE,
 			});
+			expect(STRUCTURE_ONLY_NOTE).toContain('get-as-code');
+			expect(STRUCTURE_ONLY_NOTE).not.toContain('get-json');
 			const codegenInput = vi.mocked(generateWorkflowCode).mock.calls[0][0];
 			expect(codegenInput).toMatchObject({ name: 'Test WF' });
 			expect(JSON.stringify(codegenInput)).not.toContain('conditions');
