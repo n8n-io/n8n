@@ -409,6 +409,72 @@ describe('useExecutionDebugging()', () => {
 		);
 	});
 
+	it('should pin the unredacted data when copying a redacted execution to the editor', async () => {
+		// When the "redact execution data" policy is enabled, the standard
+		// `/executions/:id` fetch returns redacted data: every item's `json` is
+		// emptied to `{}` and a redaction marker is attached (see
+		// FullItemRedactionStrategy). Copying such an execution to the editor must
+		// still pin the real payload, not the empty redacted placeholder.
+		const redactedExecution = {
+			data: {
+				resultData: {
+					runData: {
+						TriggerNode: [
+							{
+								data: {
+									main: [
+										[
+											{
+												json: {},
+												redaction: { redacted: true, reason: 'workflow_redaction_policy' },
+											},
+										],
+									],
+								},
+							},
+						],
+					},
+				},
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			},
+		} as unknown as IExecutionResponse;
+
+		// The real, unredacted payload the editor should actually pin, available
+		// via `fetchExecutionDataById(id, { redactExecutionData: false })`.
+		const unredactedExecution = {
+			data: {
+				resultData: {
+					runData: {
+						TriggerNode: [
+							{
+								data: {
+									main: [[{ json: { real: 'data' } }]],
+								},
+							},
+						],
+					},
+				},
+				redactionInfo: { isRedacted: false, reason: '', canReveal: true },
+			},
+		} as unknown as IExecutionResponse;
+
+		const workflowStore = mockedStore(useWorkflowsStore);
+		mockWorkflowDocumentStore.allNodes = [{ name: 'TriggerNode' }] as INodeUi[];
+		workflowStore.getExecution.mockResolvedValueOnce(redactedExecution);
+		workflowStore.fetchExecutionDataById.mockResolvedValueOnce(unredactedExecution);
+
+		await executionDebugging.applyExecutionData('1');
+
+		// The editor must pin the real execution data...
+		expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalledWith('TriggerNode', [
+			{ json: { real: 'data' } },
+		]);
+		// ...and must never silently pin the empty redacted placeholder item.
+		expect(mockWorkflowDocumentStore.pinNodeData).not.toHaveBeenCalledWith('TriggerNode', [
+			{ json: {}, redaction: { redacted: true, reason: 'workflow_redaction_policy' } },
+		]);
+	});
+
 	it('should not mark workflow state dirty when nothing is pinned or unpinned', async () => {
 		const mockExecution = {
 			data: {
