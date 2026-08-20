@@ -7,6 +7,8 @@ import path from 'node:path';
 
 import { createOwner } from '@test-integration/db/users';
 
+import { EventService } from '@/events/event.service';
+
 import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
 
@@ -84,6 +86,19 @@ describe('exportPackageToDirectory', () => {
 		]);
 		expect(await readdir(targetDir)).toEqual(expect.arrayContaining(['manifest.json', 'projects']));
 		expect(result.counts.workflows).toBe(2);
+	});
+
+	it('does not emit the user package-export event', async () => {
+		const project = await createTeamProject('Alpha Project', owner);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		await service.exportPackageToDirectory(
+			{ user: owner, projectIds: [project.id] },
+			{ targetDir },
+		);
+
+		expect(emitSpy).not.toHaveBeenCalledWith('n8n-package-exported', expect.anything());
+		emitSpy.mockRestore();
 	});
 
 	it('nests the package under a subfolder so projects can share a directory', async () => {

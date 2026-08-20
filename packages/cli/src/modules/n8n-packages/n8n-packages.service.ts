@@ -50,6 +50,13 @@ import {
 } from './spec/manifest.schema';
 import type { PackageRequirements } from './spec/requirements.schema';
 
+interface WrittenExport {
+	counts: ExportPackageEventCounts;
+	workflowIds: string[];
+	folderIds: string[];
+	projectIds: string[];
+}
+
 @Service()
 export class N8nPackagesService {
 	constructor(
@@ -75,8 +82,19 @@ export class N8nPackagesService {
 
 	async exportPackage(request: ExportPackageRequest): Promise<ExportPackageResult> {
 		const writer = new TarPackageWriter();
-		const counts = await this.writeExport(writer, request);
-		return { stream: writer.finalize(), counts };
+		const result = await this.writeExport(writer, request);
+		const stream = writer.finalize();
+
+		// This event represents a user-facing archive export, not an internal directory write.
+		this.eventService.emit('n8n-package-exported', {
+			user: request.user,
+			...(result.workflowIds.length ? { workflowIds: result.workflowIds } : {}),
+			...(result.folderIds.length ? { folderIds: result.folderIds } : {}),
+			...(result.projectIds.length ? { projectIds: result.projectIds } : {}),
+			counts: result.counts,
+		});
+
+		return { stream, counts: result.counts };
 	}
 
 	/**
@@ -91,15 +109,15 @@ export class N8nPackagesService {
 		target: { targetDir: string; subfolder?: string },
 	): Promise<ExportPackageToDirectoryResult> {
 		const writer = new DirectoryPackageWriter(target.targetDir, target.subfolder);
-		const counts = await this.writeExport(writer, request);
+		const result = await this.writeExport(writer, request);
 		await writer.finalize();
-		return { counts };
+		return { counts: result.counts };
 	}
 
 	private async writeExport(
 		writer: PackageWriter,
 		request: ExportPackageRequest,
-	): Promise<ExportPackageEventCounts> {
+	): Promise<WrittenExport> {
 		const { missingWorkflowDependencyPolicy } = request;
 		const isReferenceOnly =
 			missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly;
@@ -313,17 +331,12 @@ export class N8nPackagesService {
 			tags: tagExportResult.entries.length,
 		};
 
-		this.eventService.emit('n8n-package-exported', {
-			user: request.user,
-			...(allWorkflowsInPackage.length
-				? { workflowIds: allWorkflowsInPackage.map(({ id }) => id) }
-				: {}),
-			...(allFolders.length ? { folderIds: allFolders.map(({ id }) => id) } : {}),
-			...(allProjects.length ? { projectIds: allProjects.map(({ id }) => id) } : {}),
+		return {
 			counts,
-		});
-
-		return counts;
+			workflowIds: allWorkflowsInPackage.map(({ id }) => id),
+			folderIds: allFolders.map(({ id }) => id),
+			projectIds: allProjects.map(({ id }) => id),
+		};
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
