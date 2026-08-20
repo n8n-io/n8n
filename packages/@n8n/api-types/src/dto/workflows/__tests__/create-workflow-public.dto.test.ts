@@ -64,14 +64,14 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
-	test.each([['an object', { lastId: 1 }], ['null', null]])(
-		'accepts staticData as %s',
-		(_label, staticData) => {
-			const result = CreateWorkflowPublicDto.safeParse({ ...validPayload, staticData });
+	test.each([
+		['an object', { lastId: 1 }],
+		['null', null],
+	])('accepts staticData as %s', (_label, staticData) => {
+		const result = CreateWorkflowPublicDto.safeParse({ ...validPayload, staticData });
 
-			expect(result.success).toBe(true);
-		},
-	);
+		expect(result.success).toBe(true);
+	});
 
 	test.each([
 		['accepts', 155, true],
