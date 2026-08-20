@@ -69,16 +69,17 @@ jobs:
               ;;
           esac
 
+      # Checking out `base-branch` directly (rather than fetching everything and switching
+      # afterwards) keeps that case to a single-commit fetch. scope=changed does need history back
+      # to `base-ref`, but only to diff it: `git diff --name-only --no-renames` reads trees, so the
+      # blobs can stay on the server. Nothing after this step reads an object outside the working
+      # tree, which the checkout materializes in full.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          fetch-depth: 0
+          ref: ${{ inputs.base-branch }}
+          fetch-depth: ${{ inputs.base-branch != '' && 1 || 0 }}
+          filter: blob:none
           persist-credentials: false
-
-      - name: Switch to base branch
-        if: inputs.base-branch != ''
-        env:
-          BASE_BRANCH: ${{ inputs.base-branch }}
-        run: git checkout "$BASE_BRANCH"
 
       # A `base-branch` can point at a release line that predates this tooling (the v1 patch track
       # is the live case), where there is simply nothing to verify. Without a base-branch the ref is
@@ -100,8 +101,8 @@ jobs:
           fi
 
       # Only the verifier's own closure needs compiling. The check reads package.json out of the
-      # npm-install graph, so the packed tarballs' contents don't matter, and the two packages with
-      # a prepack hook build themselves.
+      # npm-install graph, so the packed tarballs' contents don't matter — packing skips lifecycle
+      # scripts, and the workspace install exists so `pnpm pack` can resolve `workspace:` specs.
       - name: Setup and Build
         if: steps.verifier.outputs.present == 'true'
         uses: ./.github/actions/setup-nodejs
