@@ -80,7 +80,7 @@
     "luxon": "catalog:",
     "mammoth": "1.12.1",
     "n8n-workflow": "workspace:*",
-    "nanoid": "catalog:",
+    "nanoid": "catalog:nanoid-v6",
     "pdf-parse": "catalog:",
     "psl": "1.15.0",
     "source-map-support": "catalog:",
