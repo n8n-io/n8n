@@ -557,6 +557,35 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 	}
 }
 
+/**
+ * Pinned-data summary for agent visibility. Pins live on the saved workflow but
+ * never inside the WorkflowJSON the agent round-trips (see
+ * `InstanceAiWorkflowService.getPinnedDataSummary`), so without this report the
+ * agent cannot tell that test runs feed nodes from saved pins instead of
+ * executing them. Failures degrade to "no report" — it must never break a read.
+ */
+async function getPinnedNodesReport(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<
+	| { pinnedNodes: Array<{ nodeName: string; itemCount: number }>; pinnedDataNote: string }
+	| undefined
+> {
+	try {
+		const pinnedNodes = await context.workflowService.getPinnedDataSummary?.(workflowId);
+		if (!pinnedNodes?.length) return undefined;
+		return {
+			pinnedNodes,
+			pinnedDataNote:
+				'These nodes have pinned data saved on the workflow (not part of the JSON). ' +
+				'Test executions output the pinned items instead of running these nodes, so such runs are not live tests of them. ' +
+				'If the pins are stale or AI-simulated sample data, ask the user to unpin them; rebuilding the workflow also clears them.',
+		};
+	} catch {
+		return undefined;
+	}
+}
+
 async function handleGetJson(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-json' }>,
@@ -568,7 +597,10 @@ async function handleGetJson(
 		if (!input.versionId) {
 			await rememberCurrentWorkflowChecksum(context, input.workflowId);
 		}
-		return json;
+		const pinnedReport = input.versionId
+			? undefined
+			: await getPinnedNodesReport(context, input.workflowId);
+		return pinnedReport ? { ...json, ...pinnedReport } : json;
 	} catch (error) {
 		return {
 			workflowId: input.workflowId,
@@ -1210,10 +1242,14 @@ async function handleValidate(
 	input: Extract<Input, { action: 'validate' }>,
 ) {
 	try {
-		return await validateWorkflowConfig(context, {
+		const result = await validateWorkflowConfig(context, {
 			workflowId: input.workflowId,
 			ignoreIssues: input.ignoreIssues,
 		});
+		// Pins are not validity issues, but a "valid" report that hides them lets
+		// the agent misread pin-fed test runs as live ones (INS-1216).
+		const pinnedReport = await getPinnedNodesReport(context, input.workflowId);
+		return pinnedReport ? { ...result, ...pinnedReport } : result;
 	} catch (error) {
 		return {
 			workflowId: input.workflowId,
