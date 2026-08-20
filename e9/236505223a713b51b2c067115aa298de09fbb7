@@ -1,0 +1,23 @@
+packages/cli/src/scheduling/poll-trigger-node/durable-poller-chain.ts
+  s_f0e6264a74d006::t_a8c5c186df761a 1-21
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_f0e6264a74d006::t_ed0ad3d3a58404 14,39-41,44
+packages/cli/src/scheduling/poll-trigger-node/poll-job-provider.ts
+  s_f0e6264a74d006::t_ed0ad3d3a58404 6,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e9236505223a713b51b2c067115aa298de09fbb7",
+  "prompts": {},
+  "sessions": {
+    "s_f0e6264a74d006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74b342e3-35da-44fb-bc35-d5aa260834e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
