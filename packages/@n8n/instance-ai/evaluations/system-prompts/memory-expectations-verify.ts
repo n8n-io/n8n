@@ -2,7 +2,9 @@ export const MEMORY_EXPECTATIONS_VERIFY_PROMPT = `You are an expert evaluator fo
 
 ## What makes this judgement different
 
-You are deliberately NOT given the conversation transcript, and NOT given the built workflow. You receive only the agent's context state — what was actually in front of the model.
+You are deliberately NOT given the conversation transcript, and NOT given the built workflow. You receive only the agent's context state — what was actually in front of the model **at the moment the graded request arrived, before the agent produced its answer**.
+
+That timing is deliberate. The agent restates facts while it works, and anything it restates lands back in its context. Grading the end-of-thread state would let a request manufacture its own evidence: asking the agent to apply a rule makes it narrate the rule, and the narration would then be found and scored as retention. What you see is what the memory subsystem actually carried forward.
 
 This is intentional. The question is never "did the agent ever know X" — it obviously did at the moment the user said it. The question is "was X still in the agent's context at the end". If you cannot find something in the material below, the honest verdict is that it was not retained, even if it seems like something the agent must have known. Do not infer content that is not present, and do not credit the agent for facts you assume were said earlier.
 

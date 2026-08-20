@@ -156,5 +156,15 @@
 		"The write path only writes records created on or after 2026-03-01; the cutover agreed at the start of the thread is enforced, not omitted and not replaced with a different date or a relative window.",
 		"Writes into warehouse_customers upsert on external_id, so a second run updates the existing row instead of inserting a duplicate. There is no blind-insert path into that table.",
 		"The settings established before the write step all survive into the final workflow — fail if ANY is missing: a four-hourly schedule, cursor paging at 250 per page following `next` until it is null, only the seven agreed fields, lowercased and trimmed email with display_name's casing preserved, timestamps stored as UTC, the empty-email drop, and the two-attempt fetch retry that fails the run rather than writing a partial batch."
+	],
+	"contextAssertions": [
+		{
+			"text": "2026-03-01",
+			"note": "the cutover locked in at thread start"
+		},
+		{
+			"text": "external_id",
+			"note": "the upsert key locked in at thread start"
+		}
 	]
 }

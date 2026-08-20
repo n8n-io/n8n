@@ -122,3 +122,90 @@ describe('checkContextAssertions', () => {
 		expect(v.expectation).toContain('the cutover agreed at thread start');
 	});
 });
+
+/**
+ * The distinction the at-probe snapshot exists to make. Fixtures are multi-run so
+ * the snapshot (first step of the LAST run) genuinely differs from the end state —
+ * a single-step fixture would pass either way and prove nothing.
+ */
+describe('checkContextAssertions — retained vs re-derived', () => {
+	const step = (stepNumber: number, windowText: string) => ({
+		stepNumber,
+		input: { system: 'sys', messages: [{ role: 'user', content: windowText }] },
+	});
+
+	const twoRuns = (
+		firstRunWindow: string,
+		lastRunFirstStep: string,
+		lastRunLaterStep: string,
+	): InstanceAiRunDebugResponse[] => [
+		{
+			threadId: 't1',
+			runId: 'run-1',
+			startedAt: 100,
+			steps: [step(0, firstRunWindow)],
+			workflowCode: [],
+		},
+		{
+			threadId: 't1',
+			runId: 'run-2',
+			startedAt: 200,
+			steps: [step(0, lastRunFirstStep), step(1, lastRunLaterStep)],
+			workflowCode: [],
+		},
+	];
+
+	it('fails a value the agent only produced while answering, and says it was re-derived', () => {
+		const debug = twoRuns(
+			'earlier turn, no cutover mentioned',
+			'now add the write step',
+			'I am applying the 2026-03-01 cutover as agreed',
+		);
+		const [v] = checkContextAssertions([{ text: '2026-03-01' }], debug);
+		expect(v.pass).toBe(false);
+		expect(v.reason).toContain('NOT retained');
+		expect(v.reason).toContain('re-derived');
+	});
+
+	it('passes a value the memory subsystem actually carried to the probe', () => {
+		const debug = twoRuns(
+			'earlier turn',
+			'the 2026-03-01 cutover still applies; now add the write step',
+			'building it now',
+		);
+		const [v] = checkContextAssertions([{ text: '2026-03-01' }], debug);
+		expect(v.pass).toBe(true);
+		expect(v.reason).toContain('retained');
+		expect(v.reason).not.toContain('NOT retained');
+	});
+
+	it('counts a fact carried across turns as retained, not re-derived', () => {
+		// Restated in an earlier turn and still present when the probe arrived: it did
+		// travel, which is retention. Only same-turn restatement is the confound.
+		const debug = twoRuns(
+			'agreed: cutover 2026-03-01',
+			'2026-03-01 is still in the window; now add the write step',
+			'done',
+		);
+		const [v] = checkContextAssertions([{ text: '2026-03-01' }], debug);
+		expect(v.pass).toBe(true);
+		expect(v.reason).toContain('present at the probe');
+	});
+
+	it('distinguishes never-had-it from re-derived-it', () => {
+		const never = twoRuns('nothing relevant', 'now add the write step', 'still nothing');
+		const [v] = checkContextAssertions([{ text: '2026-03-01' }], never);
+		expect(v.pass).toBe(false);
+		expect(v.reason).toContain('nor anywhere by the end');
+		expect(v.reason).not.toContain('re-derived');
+	});
+
+	it('judges must-NOT-appear against the probe snapshot too', () => {
+		// A stale value the agent re-introduced while answering did not survive INTO
+		// the probe, so the absence claim holds at the moment that matters.
+		const debug = twoRuns('old column email_address', 'now dedupe them', 'using email_address');
+		const [v] = checkContextAssertions([{ text: 'email_address', mustAppear: false }], debug);
+		expect(v.pass).toBe(true);
+		expect(v.reason).toContain('correctly absent');
+	});
+});
