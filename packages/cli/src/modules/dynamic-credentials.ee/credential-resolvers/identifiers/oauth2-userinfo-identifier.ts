@@ -9,7 +9,7 @@ import { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
-import { audienceFailureMessage, checkAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
+import { assertAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 
 // Cap at 5 minutes to ensure periodic revalidation
 const MAX_TOKEN_CACHE_TIMEOUT = 5 * Time.minutes.toMilliseconds;
@@ -248,9 +248,19 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 			// `kid`. Refetch once so a rotation does not black out verification until the
 			// cached copy expires. Rate limited, because the key lookup happens before any
 			// signature check and so is reachable with an unauthenticated token.
-			const refreshed = isNoMatchingKeyError(error)
-				? await this.refreshJwks(metadata.jwks_uri)
-				: undefined;
+			let refreshed: JSONWebKeySet | undefined;
+			if (isNoMatchingKeyError(error)) {
+				try {
+					refreshed = await this.refreshJwks(metadata.jwks_uri);
+				} catch (refreshError) {
+					// The refetch itself failed, on transport or on a malformed key set. Report
+					// it as a resolution failure rather than let a raw error leave the resolver.
+					this.logger.error('Failed to refresh the key set', { error: refreshError });
+					throw new IdentifierValidationError('Access token verification failed', {
+						cause: refreshError,
+					});
+				}
+			}
 
 			if (!refreshed) {
 				this.logger.error('Access token verification failed', { error });
@@ -273,7 +283,8 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 
 		// Reached by both the cached and the refreshed key set, so an audience failure is
 		// never caught by the retry above and relabelled as a verification failure.
-		return this.assertTokenAudience(payload, expectedAudience, metadata);
+		assertAudience(payload, expectedAudience);
+		return payload;
 	}
 
 	/** `jwks_uri` is third-party controlled, so it goes through the SSRF-guarded client. */
@@ -322,26 +333,6 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 		}
 		await this.cache.set(cooldownKey, true, JWKS_REFRESH_COOLDOWN);
 		return await this.fetchJwks(jwksUri, true);
-	}
-
-	private assertTokenAudience(
-		payload: JWTPayload,
-		expectedAudience: string,
-		metadata: OAuth2Metadata,
-	): JWTPayload {
-		// Checked outside the verification catch so an audience failure is not relabelled
-		// as a verification failure. Always strict, unlike introspection's fallback:
-		// reaching here means the admin configured the audience, never an inferred value.
-		const result = checkAudience(payload, expectedAudience);
-		if (result !== 'matched') {
-			this.logger.error('Access token failed the audience check', {
-				issuer: metadata.issuer,
-				result,
-			});
-			throw new IdentifierValidationError(audienceFailureMessage(result));
-		}
-
-		return payload;
 	}
 
 	private async queryUserInfo(

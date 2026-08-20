@@ -272,17 +272,19 @@ describe('OAuth2UserInfoIdentifier', () => {
 			).resolves.toBe('user-123');
 		});
 
-		test('should accept a token whose azp matches when aud names a resource', async () => {
+		test('should not accept azp in place of an audience', async () => {
+			// `azp` names the client that requested the token, not who it is for. Honouring
+			// it would admit a token minted for another application of the same client.
 			stubEndpoints();
 			const token = await signToken({
 				sub: 'user-123',
-				aud: 'https://api.example.com',
+				aud: 'https://other-service.example.com',
 				azp: AUDIENCE,
 			});
 
 			await expect(
 				identifier.resolve({ ...mockContext, identity: token }, boundOptions),
-			).resolves.toBe('user-123');
+			).rejects.toThrow('Token was not issued for the expected audience');
 		});
 
 		test('should reject a token issued for a different party', async () => {
@@ -454,6 +456,30 @@ describe('OAuth2UserInfoIdentifier', () => {
 			await expect(
 				identifier.resolve({ ...mockContext, identity: token }, boundOptions),
 			).rejects.toThrow('Token was not issued for the expected audience');
+		});
+
+		test('should surface a failed refetch as a resolution error', async () => {
+			// A raw transport error escaping here would bypass the resolver's error handling.
+			let fetches = 0;
+			request.mockImplementation(async (options: IHttpRequestOptions) => {
+				if (options.url === validOptions.metadataUri) {
+					return { statusCode: 200, body: validMetadata };
+				}
+				if (options.url === validMetadata.jwks_uri) {
+					fetches += 1;
+					if (fetches === 1) return { statusCode: 200, body: staleJwks };
+					throw new Error('connect ECONNREFUSED 127.0.0.1:443');
+				}
+				throw new Error(`Unexpected request to ${String(options.url)}`);
+			});
+			const token = await signToken({ sub: 'user-123', aud: AUDIENCE });
+
+			const error = await identifier
+				.resolve({ ...mockContext, identity: token }, boundOptions)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(IdentifierValidationError);
+			expect(fetches).toBe(2);
 		});
 
 		test('should not refetch while the refresh cooldown is held', async () => {

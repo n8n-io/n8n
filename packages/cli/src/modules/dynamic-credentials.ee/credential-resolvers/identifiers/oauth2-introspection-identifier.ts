@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
-import { audienceFailureMessage, checkAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
+import { assertAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -113,7 +113,7 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 
 		// Fold the options that decide the subject into the key, so a reconfigured
 		// resolver cannot keep serving subjects cached under its previous settings.
-		const optionsFingerprint = sha256(`${options.subjectClaim}:${this.expectedAudience(options)}`);
+		const optionsFingerprint = sha256(`${options.subjectClaim}:${options.expectedAudience ?? ''}`);
 		const identifierCacheKey = `${CACHE_PREFIX}:subject:${metadata.issuer}:${optionsFingerprint}:${hashedToken}`;
 		const cached = await this.cache.get<string>(identifierCacheKey);
 		if (cached) {
@@ -136,53 +136,6 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 	}
 
 	// ------------------------ Private Methods ----------------------- //
-
-	/**
-	 * The audience a token issued to this instance is expected to carry. Defaults to
-	 * our own client id, which is what most IdPs put in `aud` or `azp`; the override
-	 * exists for IdPs that name a separate resource identifier there instead.
-	 */
-	private expectedAudience(options: OAuth2IntrospectionOptions): string {
-		return options.expectedAudience ?? options.clientId;
-	}
-
-	/**
-	 * Enforcement is opt-in.
-	 *
-	 * Without an explicit expected audience the comparison falls back to the client id,
-	 * which authenticates our call to the introspection endpoint — not necessarily the
-	 * client the caller's token was issued to. The two coincide in the common setup,
-	 * but a deployment that introspects with a dedicated service client, or that serves
-	 * several caller applications, would legitimately not match. Enforcing on an
-	 * inferred value would break those on upgrade, so the fallback only reports.
-	 *
-	 * Once an audience is configured the admin has stated what to expect, and any
-	 * outcome other than a match is rejected.
-	 */
-	private assertAudience(
-		claims: Record<string, unknown>,
-		options: OAuth2IntrospectionOptions,
-		metadata: OAuth2Metadata,
-	): void {
-		const result = checkAudience(claims, this.expectedAudience(options));
-		if (result === 'matched') {
-			return;
-		}
-
-		if (!options.expectedAudience) {
-			this.logger.warn(
-				`${audienceFailureMessage(result)}. Access tokens are not bound to this instance; set an expected audience on the resolver.`,
-				{ issuer: metadata.issuer, result },
-			);
-			return;
-		}
-
-		this.logger.error('Introspected token failed the audience check', {
-			issuer: metadata.issuer,
-			result,
-		});
-		throw new IdentifierValidationError(audienceFailureMessage(result));
-	}
 
 	private parseOptions(options: Record<string, unknown>): OAuth2IntrospectionOptions {
 		try {
@@ -300,8 +253,16 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 		}
 
 		// Client authentication proves the IdP will answer us; `active` proves the token
-		// is live. Neither says it was minted for us, so bind it before trusting a subject.
-		this.assertAudience(introspectionData, options, metadata);
+		// is live. Neither says it was addressed to us, so bind it before trusting a
+		// subject. Opt-in: with no audience configured there is nothing to compare against.
+		if (options.expectedAudience) {
+			assertAudience(introspectionData, options.expectedAudience);
+		} else {
+			this.logger.warn(
+				'OAuth2 resolver has no expected audience configured, so access tokens are not bound to this instance. Set an expected audience on the resolver.',
+				{ issuer: metadata.issuer },
+			);
+		}
 
 		const subject = introspectionData[options.subjectClaim];
 		if (!subject) {

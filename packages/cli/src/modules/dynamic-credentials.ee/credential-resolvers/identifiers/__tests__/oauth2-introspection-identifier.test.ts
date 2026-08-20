@@ -201,58 +201,14 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 	});
 
 	describe('Audience', () => {
-		test('should accept a token whose client_id matches the configured clientId', async () => {
-			stubFlow(validMetadata, { ...validIntrospectionResponse, client_id: 'test-client' });
-
-			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
-		});
-
-		test('should accept a token whose aud matches the configured clientId', async () => {
-			const response = { active: true, sub: 'user-123', aud: 'test-client' };
-			stubFlow(validMetadata, response);
-
-			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
-		});
-
-		test('should accept a token whose aud array contains the configured clientId', async () => {
-			const response = { active: true, sub: 'user-123', aud: ['other-app', 'test-client'] };
-			stubFlow(validMetadata, response);
-
-			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
-		});
-
-		test('should accept a token whose azp matches when aud names a resource', async () => {
-			const response = {
-				active: true,
-				sub: 'user-123',
-				aud: 'https://api.example.com',
-				azp: 'test-client',
-			};
-			stubFlow(validMetadata, response);
-
-			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
-		});
-
-		test('should keep resolving and warn on a mismatch while falling back to clientId', async () => {
-			// The fallback compares against the introspection client id, which a valid
-			// deployment may legitimately differ from, so it reports instead of enforcing.
-			const response = { active: true, sub: 'user-123', aud: 'other-app', client_id: 'other-app' };
+		test('should not check the audience when none is configured', async () => {
+			// Opt-in: the client id is not an audience, so there is nothing to compare to.
+			const response = { active: true, sub: 'user-123', aud: 'someone-else' };
 			stubFlow(validMetadata, response);
 
 			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
 			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('not issued for the expected audience'),
-				expect.any(Object),
-			);
-		});
-
-		test('should keep resolving and warn when the provider declares no audience', async () => {
-			const response = { active: true, sub: 'user-123' };
-			stubFlow(validMetadata, response);
-
-			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('declares no audience'),
+				expect.stringContaining('no expected audience configured'),
 				expect.any(Object),
 			);
 		});
@@ -260,17 +216,33 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		test('should treat a blank expectedAudience as not configured', async () => {
 			// The form sends every rendered property, so an untouched field arrives as ''.
 			const options = { ...validOptions, expectedAudience: '   ' };
-			const response = { active: true, sub: 'user-123', aud: 'other-app' };
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'someone-else' });
+
+			await expect(identifier.resolve(mockContext, options)).resolves.toBe('user-123');
+		});
+
+		test('should accept a token whose aud matches the expected audience', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'https://api.example.com' });
+
+			await expect(identifier.resolve(mockContext, options)).resolves.toBe('user-123');
+		});
+
+		test('should accept a token whose aud array contains the expected audience', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			const response = {
+				active: true,
+				sub: 'user-123',
+				aud: ['other-app', 'https://api.example.com'],
+			};
 			stubFlow(validMetadata, response);
 
 			await expect(identifier.resolve(mockContext, options)).resolves.toBe('user-123');
-			expect(logger.warn).toHaveBeenCalled();
 		});
 
-		test('should reject a mismatch once expectedAudience is configured', async () => {
+		test('should reject a token addressed to a different party', async () => {
 			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
-			const response = { active: true, sub: 'user-123', aud: 'other-app', client_id: 'other-app' };
-			stubFlow(validMetadata, response);
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'other-app' });
 
 			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
 				IdentifierValidationError,
@@ -280,7 +252,7 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			);
 		});
 
-		test('should reject an undeclared audience once expectedAudience is configured', async () => {
+		test('should reject a token that declares no audience', async () => {
 			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
 			stubFlow(validMetadata, { active: true, sub: 'user-123' });
 
@@ -289,17 +261,18 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			);
 		});
 
-		test('should match against expectedAudience instead of clientId when configured', async () => {
-			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
-			const response = { active: true, sub: 'user-123', aud: 'https://api.example.com' };
+		test('should not accept azp or client_id in place of an audience', async () => {
+			// They name the client that requested the token, not who it is for. Honouring
+			// them would admit a token minted for another application of the same client.
+			const options = { ...validOptions, expectedAudience: 'test-client' };
+			const response = {
+				active: true,
+				sub: 'user-123',
+				aud: 'https://other-service.example.com',
+				azp: 'test-client',
+				client_id: 'test-client',
+			};
 			stubFlow(validMetadata, response);
-
-			await expect(identifier.resolve(mockContext, options)).resolves.toBe('user-123');
-		});
-
-		test('should reject a clientId-only audience once expectedAudience is configured', async () => {
-			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
-			stubFlow(validMetadata, validIntrospectionResponse);
 
 			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
 				'Token was not issued for the expected audience',
@@ -307,16 +280,20 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 		});
 
 		test('should not reuse a cached subject after expectedAudience changes', async () => {
-			stubFlow(validMetadata, validIntrospectionResponse);
-			await identifier.resolve(mockContext, validOptions);
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'https://api.example.com' });
+			await identifier.resolve(mockContext, {
+				...validOptions,
+				expectedAudience: 'https://api.example.com',
+			});
 
 			const firstKey = cache.set.mock.calls.find((call) => call[0].includes(':subject:'))![0];
 			cache.set.mockClear();
 
-			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
-			const response = { active: true, sub: 'user-123', aud: 'https://api.example.com' };
-			stubFlow(validMetadata, response);
-			await identifier.resolve(mockContext, options);
+			stubFlow(validMetadata, { active: true, sub: 'user-123', aud: 'https://other.example.com' });
+			await identifier.resolve(mockContext, {
+				...validOptions,
+				expectedAudience: 'https://other.example.com',
+			});
 
 			const secondKey = cache.set.mock.calls.find((call) => call[0].includes(':subject:'))![0];
 			expect(secondKey).not.toBe(firstKey);

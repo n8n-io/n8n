@@ -1,11 +1,13 @@
 import crypto from 'crypto';
 import z from 'zod';
 
+import { IdentifierValidationError } from './identifier-interface';
+
 export const OAuth2OptionsSchema = z.object({
 	metadataUri: z.string().url(),
 	subjectClaim: z.string().optional().default('sub'),
 	/**
-	 * The audience a token must carry. See {@link checkAudience}.
+	 * The `aud` value a token must carry. See {@link assertAudience}.
 	 *
 	 * Left blank the field arrives as an empty string, since the form sends every
 	 * property it renders. That means "not configured", so it is normalised away
@@ -25,26 +27,25 @@ export function sha256(token: string): string {
 }
 
 /**
- * Collects every claim an IdP may use to name the party a token was issued for.
+ * Reads the `aud` claim, which may be a single value or a list.
  *
- * IdPs disagree on which claim carries this: Auth0 and Okta put a resource identifier
- * in `aud` and the client id in `azp`, while Keycloak commonly puts the client id
- * straight into `aud`. Gathering all of them keeps both shapes working without asking
- * the admin to know which their IdP uses.
+ * Deliberately only `aud`. It is the one claim that names who a token is *for*
+ * (RFC 7519 s4.1.3, RFC 9068 s2.2); `azp` and `client_id` name the client that
+ * *requested* it. Where one client serves several applications, honouring those two
+ * would accept a token minted for a different application of that client, which is
+ * the confusion this check exists to prevent. A provider that issues no audience
+ * should be configured to issue one rather than have us infer it.
  */
 function collectAudienceClaims(claims: Record<string, unknown>): string[] {
-	const values: string[] = [];
+	const value = claims.aud;
 
-	for (const claim of ['aud', 'azp', 'client_id'] as const) {
-		const value = claims[claim];
-		if (typeof value === 'string') {
-			values.push(value);
-		} else if (Array.isArray(value)) {
-			values.push(...value.filter((entry): entry is string => typeof entry === 'string'));
-		}
+	if (typeof value === 'string') {
+		return [value];
 	}
-
-	return values;
+	if (Array.isArray(value)) {
+		return value.filter((entry): entry is string => typeof entry === 'string');
+	}
+	return [];
 }
 
 export const AUDIENCE_NOT_DECLARED_MESSAGE =
@@ -52,39 +53,24 @@ export const AUDIENCE_NOT_DECLARED_MESSAGE =
 
 export const AUDIENCE_MISMATCH_MESSAGE = 'Token was not issued for the expected audience';
 
-/** Outcome of comparing a token's audience claims against the expected audience. */
-export type AudienceCheckResult =
-	/** The claims name us as the intended relying party. */
-	| 'matched'
-	/** The claims name a different party. */
-	| 'mismatched'
-	/** The provider reported no audience at all, so there was nothing to compare. */
-	| 'not-declared';
-
 /**
- * Compares a token's audience claims against the audience expected for this instance.
+ * Asserts that a token names this instance as its intended audience.
  *
  * An IdP recognising a token says only that the token is one of its own. Identity is
- * only trustworthy once the token is also bound to us as the intended relying party.
+ * only trustworthy once the token is also addressed to us.
  *
- * Reports rather than decides: whether a given outcome is fatal depends on how the
- * caller learned what to expect. An audience the admin configured carries more weight
- * than one inferred from other settings, so the callers apply their own policy.
+ * @throws {IdentifierValidationError} When the audience names a different party, or
+ * when there is none to compare. Only reached once an audience has been configured,
+ * which is the admin asking for the check, so both outcomes are failures.
  */
-export function checkAudience(
-	claims: Record<string, unknown>,
-	expectedAudience: string,
-): AudienceCheckResult {
+export function assertAudience(claims: Record<string, unknown>, expectedAudience: string): void {
 	const audiences = collectAudienceClaims(claims);
 
 	if (audiences.length === 0) {
-		return 'not-declared';
+		throw new IdentifierValidationError(AUDIENCE_NOT_DECLARED_MESSAGE);
 	}
 
-	return audiences.includes(expectedAudience) ? 'matched' : 'mismatched';
-}
-
-/** The failure to report for a non-matching {@link checkAudience} result. */
-export function audienceFailureMessage(result: Exclude<AudienceCheckResult, 'matched'>): string {
-	return result === 'not-declared' ? AUDIENCE_NOT_DECLARED_MESSAGE : AUDIENCE_MISMATCH_MESSAGE;
+	if (!audiences.includes(expectedAudience)) {
+		throw new IdentifierValidationError(AUDIENCE_MISMATCH_MESSAGE);
+	}
 }
