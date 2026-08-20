@@ -69,7 +69,7 @@ describe('CanvasNodeAgentChips', () => {
 		expect(queryByTestId('chip-node-icon')).toBeNull();
 	});
 
-	it('marks a matching inline capability as active and busy', () => {
+	it('animates a matching inline capability with the canvas running state', () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				chips: [chip('Lookup', { activityKeys: ['tool:lookup'] })],
@@ -79,7 +79,20 @@ describe('CanvasNodeAgentChips', () => {
 
 		const activeChip = getByTestId('canvas-node-agent-chip');
 		expect(activeChip).toHaveAttribute('aria-busy', 'true');
-		expect(activeChip.className).toContain('active');
+		expect(activeChip.className).toContain('running');
+	});
+
+	it('does not animate an inactive inline capability', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				chips: [chip('Lookup', { activityKeys: ['tool:lookup'] })],
+				activeCapabilityKeys: new Set(),
+			},
+		});
+
+		const inactiveChip = getByTestId('canvas-node-agent-chip');
+		expect(inactiveChip).toHaveAttribute('aria-busy', 'false');
+		expect(inactiveChip.className).not.toContain('running');
 	});
 
 	it('marks the overflow pill active when a hidden capability is active', () => {
@@ -97,5 +110,6 @@ describe('CanvasNodeAgentChips', () => {
 
 		const overflowChip = getByTestId('canvas-node-agent-chips-overflow');
 		expect(overflowChip).toHaveAttribute('aria-busy', 'true');
+		expect(overflowChip.className).toContain('running');
 	});
 });

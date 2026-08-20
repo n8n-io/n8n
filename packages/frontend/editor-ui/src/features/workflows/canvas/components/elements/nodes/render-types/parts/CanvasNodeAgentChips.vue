@@ -52,7 +52,8 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			:key="chip.key"
 			:icon="chip.nodeTypeDescription ? undefined : chip.icon"
 			:clickable="false"
-			:active="isChipActive(chip)"
+			:busy="isChipActive(chip)"
+			:class="{ [$style.running]: isChipActive(chip) }"
 			data-test-id="canvas-node-agent-chip"
 		>
 			<template v-if="chip.nodeTypeDescription" #icon>
@@ -63,7 +64,8 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 		<AgentChipButton
 			v-if="overflowChips.length && isReadOnly"
 			:clickable="false"
-			:active="isOverflowActive"
+			:busy="isOverflowActive"
+			:class="{ [$style.running]: isOverflowActive }"
 			data-test-id="canvas-node-agent-chips-overflow"
 		>
 			{{
@@ -80,7 +82,7 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			data-test-id="canvas-node-agent-chips-overflow"
 		>
 			<template #activator>
-				<AgentChipButton :active="isOverflowActive">
+				<AgentChipButton :busy="isOverflowActive" :class="{ [$style.running]: isOverflowActive }">
 					{{
 						i18n.baseText('agentNode.card.moreChips', {
 							interpolate: { count: overflowChips.length },
@@ -93,6 +95,8 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 </template>
 
 <style lang="scss" module>
+@use '../_canvasNodeStyles.scss' as styles;
+
 .chips {
 	display: flex;
 	flex-wrap: wrap;
@@ -102,4 +106,23 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 .nodeIcon {
 	flex-shrink: 0;
 }
+
+.running {
+	@include styles.status-running-border;
+
+	position: relative;
+	isolation: isolate;
+}
+
+/* stylelint-disable */
+.running::after {
+	@include styles.status-animated-after;
+	@include styles.status-running-animation;
+
+	border-radius: inherit;
+	pointer-events: none;
+}
+
+@include styles.status-animation-definitions;
+/* stylelint-enable */
 </style>
