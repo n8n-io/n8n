@@ -533,6 +533,76 @@ export const Multiple = {
 	},
 } satisfies Story;
 
+export const AsyncItems = {
+	name: 'Async Items',
+	render: () => ({
+		components: { Select, N8nButton, N8nText },
+		setup() {
+			const value = ref('in_progress');
+			const items = ref<SelectItem[]>([]);
+			const loading = ref(false);
+			const loadCount = ref(0);
+
+			const resolvedItems: SelectItem[] = [
+				{ label: 'Backlog', value: 'backlog' },
+				{ label: 'Todo', value: 'todo' },
+				{ label: 'In Progress', value: 'in_progress' },
+				{ label: 'Done', value: 'done' },
+			];
+
+			async function loadItems(remount = false) {
+				loading.value = true;
+				items.value = [];
+				if (remount) {
+					loadCount.value += 1;
+				}
+
+				await new Promise((resolve) => setTimeout(resolve, 1500));
+				items.value = resolvedItems;
+				loading.value = false;
+			}
+
+			void loadItems();
+
+			return { value, items, loading, loadCount, loadItems };
+		},
+		template: `
+		<div style="padding: 40px; max-width: 400px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+			<N8nText size="small" color="text-light" tag="p" style="margin: 0;">
+				<code>v-model</code> is already <code>in_progress</code> while <code>items</code> is empty.
+				After 1.5s the options arrive and the trigger should update from the raw id to
+				<strong>In Progress</strong>.
+			</N8nText>
+			<Select
+				:key="loadCount"
+				v-model="value"
+				:items="items"
+				placeholder="Select a status"
+				:style="{ width: '240px' }"
+			/>
+			<N8nButton
+				:label="loading ? 'Loading items…' : 'Reload items'"
+				:disabled="loading"
+				variant="outline"
+				@click="loadItems(true)"
+			/>
+			<N8nText size="small" tag="p" style="margin: 0;">
+				Selected: <strong>{{ value }}</strong>
+				· Items: <strong>{{ items.length }}</strong>
+			</N8nText>
+		</div>
+		`,
+	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Simulates a selected value arriving before async options. The trigger falls back to the raw value until items resolve, then updates to the matching label. Reload remounts the field so you can watch the handoff again.',
+			},
+		},
+	},
+} satisfies Story;
+
 type StatusOption = SelectItem & { color?: string };
 
 const statusItemsWithSwatches: StatusOption[] = [
