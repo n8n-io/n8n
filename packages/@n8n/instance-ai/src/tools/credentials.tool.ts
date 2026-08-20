@@ -444,14 +444,14 @@ const suspendSchema = z.object({
 	credentialFlow: z.object({ stage: z.enum(['generic', 'finalize']) }).optional(),
 });
 
-const resumeSchema = z.object({
+export const credentialsResumeSchema = z.object({
 	approved: z.boolean(),
 	credentials: z.record(z.string()).optional(),
 	autoSetup: z.object({ credentialType: z.string(), attemptId: z.string().optional() }).optional(),
 });
 
 interface CredentialToolContext {
-	resumeData: z.infer<typeof resumeSchema> | undefined;
+	resumeData: z.infer<typeof credentialsResumeSchema> | undefined;
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
 }
 
@@ -771,7 +771,7 @@ export function createCredentialsTool(
 		.description(getToolDescription(options))
 		.input(inputSchema)
 		.suspend(suspendSchema)
-		.resume(resumeSchema)
+		.resume(credentialsResumeSchema)
 		.handler(async (input, ctx) => {
 			const parsedInput = inputSchema.parse(input) as Input;
 			switch (parsedInput.action) {

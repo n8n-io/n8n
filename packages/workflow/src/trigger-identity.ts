@@ -93,7 +93,9 @@ export function classifyTriggerIdentity(
 		return { providesN8nIdentity: true, providesExternalIdentity: true };
 	}
 
-	// Manual/chat/MCP triggers run with the n8n user identity.
+	// Manual triggers run with the executing n8n user's identity (attached from the
+	// session by the manual-run endpoint). Chat and MCP triggers must NOT match here:
+	// outside the branches above they establish no identity at runtime.
 	if (MANUAL_TRIGGER_NODE_TYPES.includes(nodeType)) {
 		return { providesN8nIdentity: true, providesExternalIdentity: false };
 	}
