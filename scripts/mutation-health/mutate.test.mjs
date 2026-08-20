@@ -203,11 +203,17 @@ describe('isMutableSource', () => {
 		assert.ok(isMutableSource('packages/nodes-base/nodes/Slack/Slack.node.ts'));
 		assert.ok(isMutableSource('packages/nodes-base/credentials/SlackApi.credentials.ts'));
 		assert.ok(isMutableSource('packages/frontend/editor-ui/src/stores/ui.store.ts'));
+		// `[cm]?` in the extension test is there for the ESM/CJS variants.
+		assert.ok(isMutableSource('packages/@n8n/db/src/index.mts'));
+		assert.ok(isMutableSource('packages/@n8n/db/src/index.cts'));
 	});
 
 	it('rejects tests, declarations, configs and build output', () => {
 		assert.equal(isMutableSource('packages/workflow/src/cron.test.ts'), false);
 		assert.equal(isMutableSource('packages/workflow/src/cron.spec.ts'), false);
+		// The ESM/CJS variants are accepted as source, so they have to be
+		// excluded as tests too.
+		assert.equal(isMutableSource('packages/workflow/src/cron.test.mts'), false);
 		assert.equal(isMutableSource('packages/workflow/src/__tests__/cron.ts'), false);
 		assert.equal(isMutableSource('packages/workflow/src/__mocks__/cron.ts'), false);
 		assert.equal(isMutableSource('packages/workflow/src/types.d.ts'), false);
@@ -216,6 +222,10 @@ describe('isMutableSource', () => {
 		assert.equal(isMutableSource('packages/workflow/test/helper.ts'), false);
 		assert.equal(isMutableSource('packages/@n8n/db/src/migrations/sqlite/x.ts'), false);
 		assert.equal(isMutableSource('packages/design-system/src/Button.stories.ts'), false);
+		// The extension test is anchored: `.ts` has to end the path, not merely
+		// appear in it. Committed snapshots sit next to their source and would
+		// otherwise be handed to Stryker as mutable TypeScript.
+		assert.equal(isMutableSource('packages/cli/src/__snapshots__/foo.test.ts.snap'), false);
 	});
 
 	// .vue stays out. Each SFC package crashed Stryker's mutate step in the
@@ -238,11 +248,24 @@ describe('parseHunkRanges', () => {
 			'+const a = 1;',
 			'@@ -40,2 +44,2 @@',
 			'+const b = 2;',
+			// Counts run past one digit on both sides for any hunk of ten lines
+			// or more, which is most of them.
+			'@@ -80,12 +90,14 @@',
+			'+const c = 3;',
 		].join('\n');
 		assert.deepEqual(parseHunkRanges(diff), [
 			{ start: 13, end: 16 },
 			{ start: 44, end: 45 },
+			{ start: 90, end: 103 },
 		]);
+	});
+
+	// `git diff` of a file that itself talks about diffs (a patch fixture, this
+	// very test file) carries hunk-header text inside `+`/`-` content lines.
+	// Only a header at the start of a line is a header.
+	it('ignores hunk-header text that appears inside a content line', () => {
+		const diff = ['@@ -1,0 +5,1 @@', "+const H = '@@ -1,2 +300,4 @@';"].join('\n');
+		assert.deepEqual(parseHunkRanges(diff), [{ start: 5, end: 5 }]);
 	});
 
 	it('treats a header with no new-side count as a single line', () => {
