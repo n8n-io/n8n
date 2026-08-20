@@ -88,8 +88,7 @@ test.describe(
 					new URL(response.url()).pathname === '/rest/credentials' &&
 					response.request().method() === 'GET',
 			);
-			await n8n.canvas.clickWorkflowMenu();
-			await n8n.page.getByTestId('workflow-menu-item-change-owner').click();
+			await n8n.workflowMenu.openChangeOwner();
 			await unscopedFetch;
 			await n8n.page.keyboard.press('Escape');
 
