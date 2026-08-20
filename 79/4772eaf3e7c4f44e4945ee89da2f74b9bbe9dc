@@ -1,11 +1,10 @@
-packages/cli/src/modules/instance-ai/instance-ai.service.ts
-  s_45e2f6fac3868c::t_4ec4f6b06c0ad0 883,4361,5621,5708,5785,6460
-  ai_agent 4281-4283,4435-4437
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  s_45e2f6fac3868c::t_8e6f770b7546e4 41,175,634
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.5.2",
-  "base_commit_sha": "befb9477b5b6438f16ce9fc565fd5da2fc9e10c8",
+  "base_commit_sha": "794772eaf3e7c4f44e4945ee89da2f74b9bbe9dc",
   "prompts": {},
   "sessions": {
     "s_45e2f6fac3868c": {

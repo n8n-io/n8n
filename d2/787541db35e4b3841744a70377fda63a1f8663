@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_da18386a9930c0::t_bec8ff63f91c7b 27,670-672,674
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d2787541db35e4b3841744a70377fda63a1f8663",
+  "prompts": {},
+  "sessions": {
+    "s_da18386a9930c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "036af95a-e433-49fd-afd4-648c48e9f64b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
