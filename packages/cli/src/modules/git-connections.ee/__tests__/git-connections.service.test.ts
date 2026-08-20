@@ -290,6 +290,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			it('removes a link that belongs to this connection', async () => {
 				const link = { projectId: 'p1', gitConnectionId: '1' };
 				gitConnectionProjectRepository.findByProjectId.mockResolvedValue(link as never);
+				gitConnectionProjectRepository.unlinkProject.mockResolvedValue(1);
 
 				await service.removeProject({ user, connectionId: '1', projectId: 'p1' });
 
@@ -328,6 +329,32 @@ describe('GitConnectionsService (credential state machine)', () => {
 				).rejects.toThrow(ConflictError);
 
 				expect(gitConnectionProjectRepository.unlinkProject).not.toHaveBeenCalled();
+			});
+
+			it('rejects when the link is reassigned to another connection before the delete', async () => {
+				gitConnectionProjectRepository.findByProjectId
+					.mockResolvedValueOnce({ projectId: 'p1', gitConnectionId: '1' } as never)
+					.mockResolvedValueOnce({ projectId: 'p1', gitConnectionId: 'other' } as never);
+				gitConnectionProjectRepository.unlinkProject.mockResolvedValue(0);
+
+				await expect(
+					service.removeProject({ user, connectionId: '1', projectId: 'p1' }),
+				).rejects.toThrow(ConflictError);
+
+				expect(gitConnectionProjectRepository.unlinkProject).toHaveBeenCalledWith('p1', '1');
+			});
+
+			it('is a no-op when the link is removed by a concurrent request before the delete', async () => {
+				gitConnectionProjectRepository.findByProjectId
+					.mockResolvedValueOnce({ projectId: 'p1', gitConnectionId: '1' } as never)
+					.mockResolvedValueOnce(null);
+				gitConnectionProjectRepository.unlinkProject.mockResolvedValue(0);
+
+				await expect(
+					service.removeProject({ user, connectionId: '1', projectId: 'p1' }),
+				).resolves.toBeUndefined();
+
+				expect(gitConnectionProjectRepository.unlinkProject).toHaveBeenCalledWith('p1', '1');
 			});
 		});
 

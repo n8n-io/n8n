@@ -27,10 +27,13 @@ export class GitConnectionProjectRepository extends Repository<GitConnectionProj
 	 * Unlinks a project only if it still belongs to the given connection. The entity's
 	 * primary key is `projectId` alone, so an entity-based `remove` would delete
 	 * whichever link currently holds the project — including one reassigned to another
-	 * connection after the caller's read.
+	 * connection after the caller's read. Returns the number of links removed, which is
+	 * 0 when the link no longer belongs to this connection, so the caller can tell a
+	 * lost race from a successful unlink.
 	 */
-	async unlinkProject(projectId: string, gitConnectionId: string): Promise<void> {
-		await this.delete({ projectId, gitConnectionId });
+	async unlinkProject(projectId: string, gitConnectionId: string): Promise<number> {
+		const result = await this.delete({ projectId, gitConnectionId });
+		return result.affected ?? 0;
 	}
 
 	/** Project IDs linked to a connection, ordered for a stable response. */

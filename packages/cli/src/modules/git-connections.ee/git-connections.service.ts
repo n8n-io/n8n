@@ -152,7 +152,18 @@ export class GitConnectionsService {
 		if (existing.gitConnectionId !== connectionId) {
 			throw new ConflictError('Project is added to another Git connection');
 		}
-		await this.gitConnectionProjectRepository.unlinkProject(projectId, connectionId);
+		const removed = await this.gitConnectionProjectRepository.unlinkProject(
+			projectId,
+			connectionId,
+		);
+		if (removed === 0) {
+			// The link changed between our read and the delete. Re-read: a different
+			// owner is a conflict; a missing link stays a no-op.
+			const current = await this.gitConnectionProjectRepository.findByProjectId(projectId);
+			if (current && current.gitConnectionId !== connectionId) {
+				throw new ConflictError('Project is added to another Git connection');
+			}
+		}
 	}
 
 	async listProjects(id: string): Promise<GitConnectionProjectListPublicDto> {
