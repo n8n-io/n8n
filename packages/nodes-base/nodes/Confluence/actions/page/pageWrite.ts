@@ -55,16 +55,31 @@ export async function fetchPageForWrite(
 		});
 	}
 
-	const bodyEnvelope =
-		bodyFormat === undefined
-			? undefined
-			: ((page.body as IDataObject | undefined)?.[bodyFormat] as IDataObject | undefined);
+	let bodyValue = '';
+	if (bodyFormat !== undefined) {
+		const bodyEnvelope = (page.body as IDataObject | undefined)?.[bodyFormat] as
+			| IDataObject
+			| undefined;
+		// Empty pages still return value: '' — a missing value must not be
+		// mistaken for one, or the write would overwrite the page
+		if (typeof bodyEnvelope?.value !== 'string') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Could not read the current content of the page',
+				{
+					itemIndex,
+					description: `The API response did not include the page body in the "${bodyFormat}" format. The page was not changed.`,
+				},
+			);
+		}
+		bodyValue = bodyEnvelope.value;
+	}
 
 	return {
 		status,
 		title: typeof page.title === 'string' ? page.title : '',
 		versionNumber,
-		bodyValue: typeof bodyEnvelope?.value === 'string' ? bodyEnvelope.value : '',
+		bodyValue,
 	};
 }
 

@@ -77,13 +77,22 @@ describe('page:append', () => {
 
 	it('appends onto an empty page body', async () => {
 		apiRequest
-			.mockResolvedValueOnce({ ...storagePage, body: {} })
+			.mockResolvedValueOnce({ ...storagePage, body: { storage: { value: '' } } })
 			.mockResolvedValueOnce({ id: '123' });
 
 		await execute.call(mockExecuteCtx(baseParams), 0);
 
 		const [, , body] = apiRequest.mock.calls[1];
 		expect(body).toMatchObject({ body: { representation: 'storage', value: '<p>More</p>' } });
+	});
+
+	it('fails without saving when the response lacks the requested representation', async () => {
+		apiRequest.mockResolvedValueOnce({ ...storagePage, body: {} });
+
+		await expect(execute.call(mockExecuteCtx(baseParams), 0)).rejects.toThrow(
+			'Could not read the current content of the page',
+		);
+		expect(apiRequest).toHaveBeenCalledTimes(1);
 	});
 
 	it('merges an ADF input by concatenating the documents content arrays', async () => {
