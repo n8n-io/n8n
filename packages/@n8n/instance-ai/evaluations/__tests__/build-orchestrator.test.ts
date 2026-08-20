@@ -1,3 +1,4 @@
+import { verifyMemoryExpectations } from '../build-expectations/memory-verifier';
 import { verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
 import type { N8nClient } from '../clients/n8n-client';
@@ -64,6 +65,18 @@ vi.mock('../build-expectations/verifier', async (importOriginal) => {
 		verifyBuildExpectations: vi
 			.fn()
 			.mockResolvedValue([{ expectation: 'sends a digest', pass: true, reason: 'ok' }]),
+	};
+});
+
+vi.mock('../build-expectations/memory-verifier', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../build-expectations/memory-verifier')>();
+	return {
+		...actual,
+		verifyMemoryExpectations: vi
+			.fn()
+			.mockResolvedValue([
+				{ expectation: 'the channel survived', pass: true, reason: 'present', kind: 'memory' },
+			]),
 	};
 });
 
@@ -150,6 +163,12 @@ function makeDeps(
 		...overrides,
 	};
 }
+
+/** A transcript carrying real agent output — required for process/memory
+ *  expectations to be judged rather than recorded as ungraded. */
+const transcriptWithOutput = [
+	{ userMessage: 'build it', steps: [{ kind: 'agent-text' as const, text: 'Done.' }] },
+];
 
 /** The eviction handler runs on a microtask after getOrBuild resolves. */
 async function settleMicrotasks(): Promise<void> {
@@ -385,6 +404,81 @@ describe('createBuildOrchestrator', () => {
 		expect(verdicts?.[0].pass).toBe(false);
 		expect(verdicts?.[0].incomplete).toBe(true);
 		expect(verdicts?.[0].reason).toContain('no agent output');
+	});
+
+	it('merges memory verdicts alongside conversation verdicts on a full build', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const tracedBuild = vi
+			.fn()
+			.mockResolvedValue(okBuild({ threadId: 'thread-9', transcript: transcriptWithOutput }));
+		const deps = makeDeps([makeLane(1, tracedBuild)], {
+			testCaseByFileSlug: new Map([
+				[
+					'case-a',
+					baseCase({
+						outcomeExpectations: ['sends a digest'],
+						memoryExpectations: ['the channel survived'],
+					}),
+				],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+
+		// Both judges ran and BOTH sets survived the merge. The old early-return shape
+		// could only ever record one, which would silently shrink the denominator.
+		expect(vi.mocked(verifyBuildExpectations)).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(verifyMemoryExpectations)).toHaveBeenCalledTimes(1);
+		expect(verdicts?.map((v) => [v.expectation, v.kind])).toEqual([
+			['sends a digest', undefined],
+			['the channel survived', 'memory'],
+		]);
+	});
+
+	it('reads the run debug stashed for this build when judging memory expectations', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const tracedBuild = vi
+			.fn()
+			.mockResolvedValue(okBuild({ threadId: 'thread-9', transcript: transcriptWithOutput }));
+		const deps = makeDeps([makeLane(1, tracedBuild)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ memoryExpectations: ['the channel survived'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+		await deps.buildExpectationsByKey.get('0:case-a');
+
+		// stashRunDebug must run BEFORE stashBuildExpectations, or the judge would be
+		// handed undefined and report "no context state" on every case.
+		expect(deps.runDebugByThreadId.has('thread-9')).toBe(true);
+		expect(vi.mocked(verifyMemoryExpectations)).toHaveBeenCalledWith(['the channel survived'], []);
+	});
+
+	it('keeps memory verdicts tagged when the memory judge rejects', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		vi.mocked(verifyMemoryExpectations).mockRejectedValueOnce(new Error('judge exploded'));
+		const tracedBuild = vi
+			.fn()
+			.mockResolvedValue(okBuild({ threadId: 'thread-9', transcript: transcriptWithOutput }));
+		const deps = makeDeps([makeLane(1, tracedBuild)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ memoryExpectations: ['the channel survived'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+
+		// An untagged verdict here would be reported as a conversation miss.
+		expect(verdicts).toHaveLength(1);
+		expect(verdicts?.[0].kind).toBe('memory');
+		expect(verdicts?.[0].incomplete).toBe(true);
+		expect(verdicts?.[0].reason).toContain('memory judge error');
 	});
 
 	it('serves prebuilt workflows by fetching them, never invoking the builder', async () => {

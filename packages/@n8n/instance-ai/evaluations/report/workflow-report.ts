@@ -1268,7 +1268,10 @@ function renderBuildExpectations(results: BuildExpectationResult[] | undefined):
 		const judgment = r.reason
 			? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
 			: '';
-		return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
+		// Memory verdicts are graded against the context state, not the conversation —
+		// tagged so a recall miss is not read as a build miss.
+		const kindTag = r.kind === 'memory' ? '<span class="badge badge-tag">memory</span>' : '';
+		return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${kindTag}${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
 	});
 }
 

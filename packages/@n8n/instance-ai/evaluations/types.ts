@@ -259,6 +259,12 @@ export interface WorkflowTestCase {
 	 *  absence and content ("an agent was created and no workflow", "the agent instructions mention
 	 *  escalating refunds"). Also run in prebuilt/MCP runs. Counted toward the pass rate. */
 	outcomeExpectations?: string[];
+	/** Optional NL assertions about the agent's CONTEXT STATE — what survived compression, and what
+	 *  retrieval put in front of the model. LLM-judged from the captured run debug (the compressed
+	 *  observation block plus the final system prompt) rather than from the transcript or the
+	 *  workflow, so a miss is attributable to recall rather than to the build. Requires run debug,
+	 *  so skipped in prebuilt/MCP runs. Counted toward the pass rate. */
+	memoryExpectations?: string[];
 	/**
 	 * Credentials visible to this case's build. Created for real before the build
 	 * and pinned as the thread's entire credential view — cases without this
@@ -322,6 +328,12 @@ export interface BuildExpectationResult {
 	/** Who owns a failed expectation. Stamped where the verdicts are attached to
 	 *  a row (the only place that also knows whether the build died on infra). */
 	attribution?: EvalAttribution;
+	/** Set on verdicts graded against the CONTEXT STATE rather than the conversation
+	 *  or the workflow. Present so a memory miss is identifiable in the report and in
+	 *  `eval-results.json` without matching expectation strings back to the case file —
+	 *  the whole point of the kind being separate. Conversation-judged verdicts are
+	 *  left untagged, so absence means "process or outcome". */
+	kind?: 'memory';
 }
 
 export interface WorkflowTestCaseResult {

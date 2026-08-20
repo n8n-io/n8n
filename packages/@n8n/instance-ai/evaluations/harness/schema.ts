@@ -148,6 +148,12 @@ const evalTestCaseObjectSchema = z
 		 *  and from the rendered agent/config-eval context when the build produced one, so they also
 		 *  cover artifact existence/absence/content. Also run in prebuilt/MCP runs. Counted as units. */
 		outcomeExpectations: z.array(z.string().min(1)).optional(),
+		/** Optional NL assertions about the agent's CONTEXT STATE — what survived compression, and
+		 *  what retrieval put in front of the model. LLM-judged from the captured run debug (the
+		 *  compressed observation block plus the final system prompt), so a miss is attributable to
+		 *  recall rather than to the build. Needs run debug, so skipped in prebuilt/MCP runs.
+		 *  Counted as units. */
+		memoryExpectations: z.array(z.string().min(1)).optional(),
 		/**
 		 * Removed in favour of the process/outcome split. Declared as a forbidden key (rather
 		 * than dropped from the shape) so a legacy fixture fails loudly with a migration hint,
@@ -296,16 +302,18 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		//
 		// A case needs at least one gradable unit. Execution scenarios grade the built workflow;
 		// process/outcome expectations grade the conversation, the workflow, and any non-workflow
-		// artifact (agent, config-eval) rendered into the judge context.
+		// artifact (agent, config-eval) rendered into the judge context; memory expectations grade
+		// the captured context state.
 		if (
 			(c.executionScenarios?.length ?? 0) === 0 &&
 			(c.processExpectations?.length ?? 0) === 0 &&
-			(c.outcomeExpectations?.length ?? 0) === 0
+			(c.outcomeExpectations?.length ?? 0) === 0 &&
+			(c.memoryExpectations?.length ?? 0) === 0
 		) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message:
-					'a case needs at least one executionScenario, or a process/outcome expectation to grade it',
+					'a case needs at least one executionScenario, or a process/outcome/memory expectation to grade it',
 			});
 		}
 	});
