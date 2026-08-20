@@ -96,7 +96,7 @@ export class CommunityPackagesLifecycleService {
 			pendingUpdates,
 		);
 
-		return this.communityPackagesService.matchMissingPackages(packages);
+		return this.communityPackagesService.withLoadStatus(packages);
 	}
 
 	async install(
@@ -149,7 +149,7 @@ export class CommunityPackagesLifecycleService {
 			parsed.packageName,
 		);
 
-		if (existingPackage && this.communityPackagesService.hasPackageLoaded(existingPackage)) {
+		if (existingPackage && this.communityPackagesService.isPackageLoaded(existingPackage)) {
 			const alreadyMessage =
 				presentation === 'ui'
 					? [

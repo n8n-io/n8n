@@ -235,16 +235,13 @@ describe('CommunityPackagesService', () => {
 			),
 		});
 
-	describe('matchMissingPackages()', () => {
+	describe('withLoadStatus()', () => {
 		test('should not flag packages whose nodes are all known', () => {
 			const pkgA = installedPackageWithNodeTypes(['node-a']);
 			const pkgB = installedPackageWithNodeTypes(['node-b1', 'node-b2']);
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(true);
 
-			const [matchedPkgA, matchedPkgB] = communityPackagesService.matchMissingPackages([
-				pkgA,
-				pkgB,
-			]);
+			const [matchedPkgA, matchedPkgB] = communityPackagesService.withLoadStatus([pkgA, pkgB]);
 
 			expect(matchedPkgA.failedLoading).toBe(false);
 			expect(matchedPkgB.failedLoading).toBe(false);
@@ -255,10 +252,7 @@ describe('CommunityPackagesService', () => {
 			const pkgB = installedPackageWithNodeTypes(['node-b']);
 			loadNodesAndCredentials.isKnownNode.mockImplementation((type) => type === 'node-b');
 
-			const [matchedPkgA, matchedPkgB] = communityPackagesService.matchMissingPackages([
-				pkgA,
-				pkgB,
-			]);
+			const [matchedPkgA, matchedPkgB] = communityPackagesService.withLoadStatus([pkgA, pkgB]);
 
 			expect(matchedPkgA.failedLoading).toBe(true);
 			expect(matchedPkgB.failedLoading).toBe(false);
@@ -271,7 +265,7 @@ describe('CommunityPackagesService', () => {
 			const pkg = installedPackageWithNodeTypes(['old-dropped-node', 'current-node']);
 			loadNodesAndCredentials.isKnownNode.mockImplementation((type) => type === 'current-node');
 
-			const [matched] = communityPackagesService.matchMissingPackages([pkg]);
+			const [matched] = communityPackagesService.withLoadStatus([pkg]);
 
 			expect(loadNodesAndCredentials.isKnownNode).toHaveBeenCalledWith('old-dropped-node');
 			expect(matched.failedLoading).toBe(false);
@@ -281,11 +275,11 @@ describe('CommunityPackagesService', () => {
 			const pkg = installedPackageWithNodeTypes(['node-a']);
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 
-			expect(communityPackagesService.matchMissingPackages([pkg])[0].failedLoading).toBe(true);
+			expect(communityPackagesService.withLoadStatus([pkg])[0].failedLoading).toBe(true);
 
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(true);
 
-			expect(communityPackagesService.matchMissingPackages([pkg])[0].failedLoading).toBe(false);
+			expect(communityPackagesService.withLoadStatus([pkg])[0].failedLoading).toBe(false);
 		});
 	});
 
@@ -324,25 +318,25 @@ describe('CommunityPackagesService', () => {
 		});
 	});
 
-	describe('hasPackageLoaded()', () => {
+	describe('isPackageLoaded()', () => {
 		test('should return true for a package with no installed nodes', () => {
 			const installedPackage = installedPackageWithNodeTypes([]);
 
-			expect(communityPackagesService.hasPackageLoaded(installedPackage)).toBe(true);
+			expect(communityPackagesService.isPackageLoaded(installedPackage)).toBe(true);
 		});
 
 		test('should return true when at least one installed node is known', () => {
 			const installedPackage = installedPackageWithNodeTypes(['node-a', 'node-b']);
 			loadNodesAndCredentials.isKnownNode.mockImplementation((type) => type === 'node-b');
 
-			expect(communityPackagesService.hasPackageLoaded(installedPackage)).toBe(true);
+			expect(communityPackagesService.isPackageLoaded(installedPackage)).toBe(true);
 		});
 
 		test('should return false when no installed node is known', () => {
 			const installedPackage = installedPackageWithNodeTypes(['node-a']);
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 
-			expect(communityPackagesService.hasPackageLoaded(installedPackage)).toBe(false);
+			expect(communityPackagesService.isPackageLoaded(installedPackage)).toBe(false);
 		});
 	});
 
@@ -938,15 +932,12 @@ describe('CommunityPackagesService', () => {
 
 	describe('ensurePackageJson', () => {
 		const packageJsonPath = join(nodesDownloadDir, 'package.json');
-		const defaultPackageJson = JSON.stringify(
-			{
-				name: 'installed-nodes',
-				private: true,
-				dependencies: {},
-			},
-			null,
-			2,
-		);
+		const packageJsonWith = (dependencies: Record<string, string>) =>
+			JSON.stringify({ name: 'installed-nodes', private: true, dependencies }, null, 2);
+
+		beforeEach(() => {
+			installedPackageRepository.find.mockResolvedValue([]);
+		});
 
 		test('should not recreate package.json if its content is valid', async () => {
 			vi.mocked(readFile).mockResolvedValue(
@@ -966,7 +957,7 @@ describe('CommunityPackagesService', () => {
 			await communityPackagesService.ensurePackageJson();
 
 			expect(mkdir).toHaveBeenCalledWith(nodesDownloadDir, { recursive: true });
-			expect(writeFile).toHaveBeenCalledWith(packageJsonPath, defaultPackageJson, 'utf-8');
+			expect(writeFile).toHaveBeenCalledWith(packageJsonPath, packageJsonWith({}), 'utf-8');
 		});
 
 		test('should recreate package.json if its content is corrupted', async () => {
@@ -975,7 +966,36 @@ describe('CommunityPackagesService', () => {
 			await communityPackagesService.ensurePackageJson();
 
 			expect(mkdir).toHaveBeenCalledWith(nodesDownloadDir, { recursive: true });
-			expect(writeFile).toHaveBeenCalledWith(packageJsonPath, defaultPackageJson, 'utf-8');
+			expect(writeFile).toHaveBeenCalledWith(packageJsonPath, packageJsonWith({}), 'utf-8');
+		});
+
+		test('should warn when the existing package.json cannot be read', async () => {
+			vi.mocked(readFile).mockResolvedValue('{ "name": "installed-nodes", "depende');
+
+			await communityPackagesService.ensurePackageJson();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to read community package ledger',
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		test('should rebuild dependencies from the database rather than emptying them', async () => {
+			// An empty `dependencies` leaves `npm outdated` nothing to compare, so every
+			// package silently loses its available-update indicator.
+			vi.mocked(readFile).mockResolvedValue('{ "name": "installed-nodes", "depende');
+			installedPackageRepository.find.mockResolvedValue([
+				mock<InstalledPackages>({ packageName: 'n8n-nodes-a', installedVersion: '1.2.3' }),
+				mock<InstalledPackages>({ packageName: 'n8n-nodes-b', installedVersion: '4.5.6' }),
+			]);
+
+			await communityPackagesService.ensurePackageJson();
+
+			expect(writeFile).toHaveBeenCalledWith(
+				packageJsonPath,
+				packageJsonWith({ 'n8n-nodes-a': '1.2.3', 'n8n-nodes-b': '4.5.6' }),
+				'utf-8',
+			);
 		});
 	});
 
@@ -1302,12 +1322,29 @@ describe('CommunityPackagesService', () => {
 			);
 		});
 
-		test('should create file and update package dependencies', async () => {
+		test('should rebuild an unreadable ledger from the database and still apply the mutation', async () => {
+			// Without this the mutation throws on the corrupt file, so every install and
+			// uninstall stays broken until the process restarts.
+			vi.mocked(readFile).mockResolvedValue('{ "dependencies": { "n8n-nodes-a": "1.0.0"');
+			installedPackageRepository.find.mockResolvedValue([
+				mock<InstalledPackages>({ packageName: 'n8n-nodes-a', installedVersion: '1.0.0' }),
+			]);
+
+			const rebuiltPackageJson = JSON.stringify(
+				{
+					name: 'installed-nodes',
+					private: true,
+					dependencies: { 'n8n-nodes-a': '1.0.0', 'test-package': '1.0.0' },
+				},
+				null,
+				2,
+			);
+
 			await communityPackagesService.updatePackageJsonDependency('test-package', '1.0.0');
 
 			expect(writeFile).toHaveBeenCalledWith(
 				path.join(nodesDownloadDir, 'package.json'),
-				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
+				rebuiltPackageJson,
 				'utf-8',
 			);
 		});

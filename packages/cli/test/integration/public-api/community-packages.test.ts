@@ -61,7 +61,7 @@ describe('Community packages (Public API)', () => {
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
-		communityPackagesService.matchMissingPackages.mockImplementation((packages) => packages);
+		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 		communityNodeTypesService.findVetted.mockResolvedValue(mockedVettedPackage);
 		await testDb.truncate(['User']);
 		const ownerUser = await createOwner();
@@ -173,7 +173,7 @@ describe('Community packages (Public API)', () => {
 
 		it('should return 400 when package is already installed and loaded', async () => {
 			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
-			communityPackagesService.hasPackageLoaded.mockReturnValue(true);
+			communityPackagesService.isPackageLoaded.mockReturnValue(true);
 			communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
 			const response = await testServer

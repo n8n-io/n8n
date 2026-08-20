@@ -62,7 +62,7 @@ describe('CommunityPackagesLifecycleService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		communityPackagesService.matchMissingPackages.mockImplementation((packages) => packages);
+		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 	});
 
 	describe('install', () => {
@@ -132,7 +132,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				version: undefined,
 			});
 			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage('1.0.0'));
-			communityPackagesService.hasPackageLoaded.mockReturnValue(true);
+			communityPackagesService.isPackageLoaded.mockReturnValue(true);
 
 			await expect(lifecycle.install({ name: 'n8n-nodes-test' }, user, 'ui')).rejects.toThrow(
 				'already installed',
@@ -152,7 +152,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				version: '1.0.0',
 			});
 			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage('1.0.0'));
-			communityPackagesService.hasPackageLoaded.mockReturnValue(false);
+			communityPackagesService.isPackageLoaded.mockReturnValue(false);
 			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
 			communityPackagesService.installPackage.mockResolvedValue(
 				mock<InstalledPackages>({ installedNodes: [] }),

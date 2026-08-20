@@ -52,7 +52,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	vi.resetAllMocks();
-	communityPackagesService.matchMissingPackages.mockImplementation((packages) => packages);
+	communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 });
 
 describe('GET /community-packages', () => {
@@ -177,7 +177,7 @@ describe('POST /community-packages', () => {
 
 	test('should reject if package is duplicate', async () => {
 		communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
-		communityPackagesService.hasPackageLoaded.mockReturnValue(true);
+		communityPackagesService.isPackageLoaded.mockReturnValue(true);
 		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
 		const {
@@ -189,7 +189,7 @@ describe('POST /community-packages', () => {
 
 	test('should allow installing packages that could not be loaded', async () => {
 		communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
-		communityPackagesService.hasPackageLoaded.mockReturnValue(false);
+		communityPackagesService.isPackageLoaded.mockReturnValue(false);
 		communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
 		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 		communityPackagesService.installPackage.mockResolvedValue(mockPackage());

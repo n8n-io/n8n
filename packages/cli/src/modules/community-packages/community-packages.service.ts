@@ -187,17 +187,17 @@ export class CommunityPackagesService {
 	 * previous version, so a package that dropped a node type keeps a stale row that
 	 * will never resolve. `every` would flag that package as failed forever.
 	 */
-	private hasNodesLoaded(installedNodes: Array<{ type: string }>) {
+	private areNodesLoaded(installedNodes: Array<{ type: string }>) {
 		return (
 			installedNodes.length === 0 ||
 			installedNodes.some((node) => this.loadNodesAndCredentials.isKnownNode(node.type))
 		);
 	}
 
-	matchMissingPackages(installedPackages: PublicInstalledPackage[]): PublicInstalledPackage[] {
+	withLoadStatus(installedPackages: PublicInstalledPackage[]): PublicInstalledPackage[] {
 		return installedPackages.map((installedPackage) => ({
 			...installedPackage,
-			failedLoading: !this.hasNodesLoaded(installedPackage.installedNodes),
+			failedLoading: !this.areNodesLoaded(installedPackage.installedNodes),
 		}));
 	}
 
@@ -220,28 +220,47 @@ export class CommunityPackagesService {
 		return { status: NPM_PACKAGE_STATUS_GOOD };
 	}
 
-	hasPackageLoaded(installedPackage: InstalledPackages) {
-		return this.hasNodesLoaded(installedPackage.installedNodes);
+	isPackageLoaded(installedPackage: InstalledPackages) {
+		return this.areNodesLoaded(installedPackage.installedNodes);
+	}
+
+	/** Returns the ledger, or `null` if it is absent or unusable (e.g. truncated by a crash mid-write). */
+	private async readPackageJson(): Promise<PackageJson | null> {
+		try {
+			return jsonParse<PackageJson>(await readFile(this.packageJsonPath, 'utf-8'));
+		} catch (error) {
+			this.logger.warn('Failed to read community package ledger', { error: ensureError(error) });
+			return null;
+		}
 	}
 
 	/**
-	 * Missing and corrupted (e.g. left truncated by a crash mid-write) both fall
-	 * through to the same rewrite: nothing besides this ledger's own read-modify-write
-	 * cycle ever reads it back, so resetting it on corruption is safe.
+	 * Rebuilds the ledger from the database, the source of truth for what is installed.
+	 * Writing an empty `dependencies` instead would leave `npm outdated` with nothing
+	 * to compare, silently hiding available updates for every package.
 	 */
+	private async buildPackageJsonFromDatabase(): Promise<PackageJson> {
+		const installedPackages = await this.getAllInstalledPackages();
+
+		return {
+			name: 'installed-nodes',
+			private: true,
+			dependencies: Object.fromEntries(
+				installedPackages.map(({ packageName, installedVersion }) => [
+					packageName,
+					installedVersion,
+				]),
+			),
+		};
+	}
+
 	async ensurePackageJson() {
-		try {
-			const existingContent = await readFile(this.packageJsonPath, 'utf-8');
-			jsonParse<PackageJson>(existingContent);
-		} catch {
-			await mkdir(this.downloadFolder, { recursive: true });
-			const packageJson: PackageJson = {
-				name: 'installed-nodes',
-				private: true,
-				dependencies: {},
-			};
-			await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
-		}
+		if (await this.readPackageJson()) return;
+
+		const packageJson = await this.buildPackageJsonFromDatabase();
+
+		await mkdir(this.downloadFolder, { recursive: true });
+		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 	}
 
 	async checkForMissingPackages() {
@@ -762,8 +781,11 @@ export class CommunityPackagesService {
 	private async mutatePackageJsonDependencies(
 		mutate: (dependencies: PackageJson['dependencies']) => void,
 	) {
-		const existingContent = await readFile(this.packageJsonPath, 'utf-8');
-		const packageJson = jsonParse<PackageJson>(existingContent);
+		// Heal here too, not just at boot: an unreadable ledger would otherwise fail
+		// every install and uninstall until the process is restarted.
+		const packageJson =
+			(await this.readPackageJson()) ?? (await this.buildPackageJsonFromDatabase());
+
 		mutate(packageJson.dependencies);
 		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 	}
