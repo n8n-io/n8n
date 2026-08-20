@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_da18386a9930c0::t_d88bcb47ecacfa 121-127,183-184,187
+  s_da18386a9930c0::t_7a6855e498531c 150
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_da18386a9930c0::t_ae570b31a4f82d 547-569
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_da18386a9930c0::t_94a0e1f49e5b19 2387-2393,2396-2411
+  s_da18386a9930c0::t_b19f382b1c5ff0 2394-2395
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_da18386a9930c0::t_d7b020a3c88b98 531-542
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_da18386a9930c0::t_04fc09a396ef34 15
+  s_da18386a9930c0::t_237ed9d49ccb3e 30,105-108,112,115-116,120,134-141,143-153
+  s_da18386a9930c0::t_d7b020a3c88b98 142
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_da18386a9930c0::t_d2caa07320d255 14,87-98,683-685
+packages/frontend/editor-ui/src/features/agents/composables/useAgentExecutionUpdates.ts
+  s_da18386a9930c0::t_d88bcb47ecacfa 45-48
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_da18386a9930c0::t_e1769e4f944123 18,44-45,59,76,191-207,212-220
+  s_da18386a9930c0::t_b19f382b1c5ff0 208-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2a6038759dea4b5c75ac8161e821843e5e379fcb",
+  "prompts": {},
+  "sessions": {
+    "s_da18386a9930c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "036af95a-e433-49fd-afd4-648c48e9f64b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
