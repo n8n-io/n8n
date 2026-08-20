@@ -45,7 +45,7 @@ const properties: INodeProperties[] = [
 				typeOptions: { rows: 4 },
 				default: '',
 			},
-			LEAD_LOCATOR,
+			{ ...LEAD_LOCATOR, required: false },
 			{
 				displayName: 'Status',
 				name: 'state',

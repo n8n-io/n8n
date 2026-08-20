@@ -32,7 +32,7 @@ const properties: INodeProperties[] = [
 				default: '',
 				description: 'The document content in markdown format',
 			},
-			PROJECT_LOCATOR,
+			{ ...PROJECT_LOCATOR, required: false },
 		],
 	},
 ];

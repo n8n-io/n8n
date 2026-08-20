@@ -38,4 +38,14 @@ describe('Linear v2 → resource locators', () => {
 			expect(modes).toContain('id');
 		}
 	});
+
+	it('never marks a locator inside a collection as required', () => {
+		const requiredNested = node.description.properties
+			.filter((property) => property.type === 'collection' || property.type === 'fixedCollection')
+			.flatMap((property) => (property.options ?? []) as INodeProperties[])
+			.filter((option) => option.type === 'resourceLocator' && option.required)
+			.map((option) => option.name);
+
+		expect(requiredNested).toEqual([]);
+	});
 });

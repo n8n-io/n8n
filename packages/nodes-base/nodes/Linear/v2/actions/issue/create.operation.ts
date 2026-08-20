@@ -37,8 +37,8 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Field',
 		default: {},
 		options: [
-			ASSIGNEE_LOCATOR,
-			CYCLE_LOCATOR,
+			{ ...ASSIGNEE_LOCATOR, required: false },
+			{ ...CYCLE_LOCATOR, required: false },
 			{
 				displayName: 'Description',
 				name: 'description',
@@ -83,7 +83,7 @@ const properties: INodeProperties[] = [
 				options: PRIORITY_OPTIONS,
 				default: 0,
 			},
-			PROJECT_LOCATOR,
+			{ ...PROJECT_LOCATOR, required: false },
 			{
 				displayName: 'Project Milestone ID',
 				name: 'projectMilestoneId',
@@ -91,7 +91,7 @@ const properties: INodeProperties[] = [
 				default: '',
 				description: 'The ID of the project milestone to assign the issue to',
 			},
-			STATE_LOCATOR,
+			{ ...STATE_LOCATOR, required: false },
 			{
 				displayName: 'Subscriber Names or IDs',
 				name: 'subscriberIds',

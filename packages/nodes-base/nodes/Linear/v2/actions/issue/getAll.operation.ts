@@ -43,8 +43,8 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		default: {},
 		options: [
-			ASSIGNEE_LOCATOR,
-			CYCLE_LOCATOR,
+			{ ...ASSIGNEE_LOCATOR, required: false },
+			{ ...CYCLE_LOCATOR, required: false },
 			{
 				displayName: 'Label Name or ID',
 				name: 'labelId',
@@ -61,9 +61,9 @@ const properties: INodeProperties[] = [
 				options: PRIORITY_OPTIONS,
 				default: 0,
 			},
-			PROJECT_LOCATOR,
-			STATE_LOCATOR,
-			TEAM_LOCATOR,
+			{ ...PROJECT_LOCATOR, required: false },
+			{ ...STATE_LOCATOR, required: false },
+			{ ...TEAM_LOCATOR, required: false },
 		],
 	},
 ];

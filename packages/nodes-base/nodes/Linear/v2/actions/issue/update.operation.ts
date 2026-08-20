@@ -31,8 +31,8 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Field',
 		default: {},
 		options: [
-			ASSIGNEE_LOCATOR,
-			CYCLE_LOCATOR,
+			{ ...ASSIGNEE_LOCATOR, required: false },
+			{ ...CYCLE_LOCATOR, required: false },
 			{
 				displayName: 'Description',
 				name: 'description',
@@ -77,7 +77,7 @@ const properties: INodeProperties[] = [
 				options: PRIORITY_OPTIONS,
 				default: 0,
 			},
-			PROJECT_LOCATOR,
+			{ ...PROJECT_LOCATOR, required: false },
 			{
 				displayName: 'Project Milestone ID',
 				name: 'projectMilestoneId',
@@ -85,7 +85,7 @@ const properties: INodeProperties[] = [
 				default: '',
 				description: 'The ID of the project milestone to assign the issue to',
 			},
-			STATE_LOCATOR,
+			{ ...STATE_LOCATOR, required: false },
 			{
 				displayName: 'Subscriber Names or IDs',
 				name: 'subscriberIds',
@@ -95,7 +95,7 @@ const properties: INodeProperties[] = [
 				typeOptions: { loadOptionsMethod: 'getUsers' },
 				default: [],
 			},
-			TEAM_LOCATOR,
+			{ ...TEAM_LOCATOR, required: false },
 			{
 				displayName: 'Title',
 				name: 'title',
@@ -122,12 +122,11 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
-		const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-		extractLocatorIds(this, updateFields, 'updateFields', i);
-		normalizeTimelessDates(updateFields);
-
 		try {
+			const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
+			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+			extractLocatorIds(this, updateFields, 'updateFields', i);
+			normalizeTimelessDates(updateFields);
 			const body = {
 				query: `mutation IssueUpdate(
 					$issueId: String!,
