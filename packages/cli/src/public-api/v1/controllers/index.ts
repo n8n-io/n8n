@@ -4,6 +4,7 @@
  * scope-parity / discover run.
  */
 import './git-connections.public.controller';
+import './instance-git-settings.public.controller';
 import './role-mapping-rules.public.controller';
 import './roles.public.controller';
 import './tags.public.controller';

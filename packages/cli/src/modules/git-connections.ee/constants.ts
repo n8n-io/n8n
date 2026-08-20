@@ -1,6 +1,9 @@
 /** Comment embedded in generated SSH keys (visible when added as a deploy key). */
 export const GIT_KEY_COMMENT = 'n8n git connection';
 
+/** Settings key holding the singleton instance-level Git connection preferences. */
+export const INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY = 'features.gitConnections.instance';
+
 // Timeouts that bound how long a stalled Git operation can hang. Transport-level
 // limits (SSH, HTTP) fire first based on real network inactivity; the process
 // stall timeout is a transport-agnostic backstop.

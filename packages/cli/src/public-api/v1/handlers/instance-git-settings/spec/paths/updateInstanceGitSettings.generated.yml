@@ -1,0 +1,53 @@
+operationId: updateInstanceGitSettings
+tags:
+  - GitConnections
+summary: Update the instance Git connection settings
+description: Updates only the supplied fields. Enabling requires a fully configured connection. Secrets are never returned.
+x-required-scope: gitConnection:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+          repositoryUrl:
+            type: string
+            minLength: 1
+          branchName:
+            type: string
+            minLength: 1
+            maxLength: 255
+          connectionType:
+            type: string
+            enum:
+              - ssh
+              - https
+          keyGeneratorType:
+            type: string
+            enum:
+              - ed25519
+              - rsa
+          username:
+            type: string
+            minLength: 1
+          password:
+            type: string
+            minLength: 1
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/instanceGitSettingsPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

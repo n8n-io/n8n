@@ -28,6 +28,8 @@ import GitConnectionsCreate from './commands/git-connections/create';
 import GitConnectionsDelete from './commands/git-connections/delete';
 import GitConnectionsDisconnect from './commands/git-connections/disconnect';
 import GitConnectionsGet from './commands/git-connections/get';
+import GitConnectionsInstanceGet from './commands/git-connections/instance/get';
+import GitConnectionsInstanceSet from './commands/git-connections/instance/set';
 import GitConnectionsList from './commands/git-connections/list';
 import GitConnectionsListProjects from './commands/git-connections/list-projects';
 import GitConnectionsPush from './commands/git-connections/push';
@@ -101,6 +103,8 @@ export const commands = {
 	'git-connections:list-projects': GitConnectionsListProjects,
 	'git-connections:add-project': GitConnectionsAddProject,
 	'git-connections:remove-project': GitConnectionsRemoveProject,
+	'git-connections:instance:get': GitConnectionsInstanceGet,
+	'git-connections:instance:set': GitConnectionsInstanceSet,
 
 	'credential:list': CredentialList,
 	'credential:get': CredentialGet,
