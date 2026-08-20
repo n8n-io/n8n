@@ -167,13 +167,22 @@ describe('OAuthConsentView', () => {
 		expect(allowButton).not.toBeDisabled();
 	});
 
-	it('should show the redirect URL inside the warning callout', async () => {
+	it('should show the redirect URL inside the redirect callout', async () => {
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
 
 		expect(getByTestId('consent-redirect-warning')).toBeVisible();
 		expect(getByTestId('consent-redirect-uri')).toHaveTextContent(
 			'https://legitimate-client.com/callback',
+		);
+	});
+
+	it('should render the trust checkbox outside the redirect callout', async () => {
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(getByTestId('consent-redirect-warning')).not.toContainElement(
+			getByTestId('consent-redirect-confirm'),
 		);
 	});
 
@@ -204,7 +213,7 @@ describe('OAuthConsentView', () => {
 			expect(getByTestId('consent-allow-button')).not.toBeDisabled();
 		});
 
-		it('should not show the redirect URL or the warning callout', async () => {
+		it('should not show the redirect URL or the redirect callout', async () => {
 			const { queryByTestId } = renderComponent();
 			await waitAllPromises();
 
@@ -288,6 +297,20 @@ describe('OAuthConsentView', () => {
 				'workflow:write',
 				'execution:read',
 			]);
+		});
+
+		it('should keep a custom scope selection when the trust checkbox is toggled', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-mode-custom'));
+			await userEvent.click(getByTestId('scope-group-executions'));
+			expect(getByTestId('scopes-count')).toHaveTextContent('1 of 3 scopes selected');
+
+			await userEvent.click(getByLabelText('I recognize and trust this URL'));
+
+			expect(getByTestId('scopes-count')).toHaveTextContent('1 of 3 scopes selected');
+			expect(getByTestId('scopes-mode-custom')).toBeChecked();
 		});
 
 		it('should show a tool count pill per scope group when scope tools are provided', async () => {
