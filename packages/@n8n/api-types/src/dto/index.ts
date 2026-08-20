@@ -98,6 +98,18 @@ export {
 } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
+export {
+	CloneGitConnectionDto,
+	CreateGitConnectionDto,
+	GitConnectionListPublicDto,
+	GitConnectionPublicDto,
+	ListGitConnectionsQueryDto,
+	UpdateGitConnectionDto,
+	gitConnectionTypeSchema,
+	gitKeyGeneratorTypeSchema,
+	type GitConnectionType,
+	type GitKeyGeneratorType,
+} from './git-connections/git-connections.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
@@ -142,13 +154,23 @@ export {
 	WorkflowPublicDto,
 	CreatedWorkflowPublicDto,
 	WorkflowListPublicDto,
+	WorkflowPublishPublicDto,
 	workflowPublicSchema,
 	createdWorkflowPublicSchema,
+	workflowPublishPublicSchema,
 	workflowListItemPublicSchema,
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 	workflowParentFolderPublicSchema,
 } from './workflows/workflow-public.dto';
+export {
+	PublishWorkflowPublicDto,
+	publishWorkflowPublicSchema,
+} from './workflows/publish-workflow-public.dto';
+export {
+	WorkflowPublishBlockedErrorPublicDto,
+	workflowPublishBlockedErrorPublicSchema,
+} from './workflows/workflow-publish-blocked-error-public.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';

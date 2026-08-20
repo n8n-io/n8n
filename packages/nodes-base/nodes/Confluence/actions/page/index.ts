@@ -1,9 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import * as append from './append.operation';
 import * as create from './create.operation';
 import * as get from './get.operation';
+import * as update from './update.operation';
 
-export { create, get };
+export { append, create, get, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -18,6 +20,12 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Append',
+				value: 'append',
+				description: 'Append content to the bottom of an existing page',
+				action: 'Append content to a page',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new page in a space',
@@ -29,9 +37,17 @@ export const description: INodeProperties[] = [
 				description: 'Retrieve a page, optionally with its full sub-tree',
 				action: 'Get a page',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Replace the title and body of an existing page',
+				action: 'Update a page',
+			},
 		],
 		default: 'create',
 	},
+	...append.description,
 	...create.description,
 	...get.description,
+	...update.description,
 ];

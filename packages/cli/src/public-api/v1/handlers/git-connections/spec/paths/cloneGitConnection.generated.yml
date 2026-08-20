@@ -1,0 +1,40 @@
+operationId: cloneGitConnection
+tags:
+  - GitConnections
+summary: Clone a Git connection
+description: Clones the repository into local storage. Safe to call repeatedly.
+x-required-scope: gitConnection:clone
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: id
+    in: path
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          branchName:
+            type: string
+            minLength: 1
+            maxLength: 255
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/gitConnectionPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

@@ -39,12 +39,17 @@ describe('classifyTriggerIdentity', () => {
 			});
 		});
 
-		it('provides the n8n identity only when availableInChat is not set', () => {
-			expect(classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, {})).toEqual({
-				providesN8nIdentity: true,
-				providesExternalIdentity: false,
-			});
-		});
+		// Only Chat Hub injects an identity at runtime; the canvas chat test and the
+		// public chat URL establish none, so publish must reject these configs (IAM-1238).
+		it.each([{}, { availableInChat: false }])(
+			'provides no identity when not available in Chat Hub (%o)',
+			(parameters) => {
+				expect(classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, parameters)).toEqual({
+					providesN8nIdentity: false,
+					providesExternalIdentity: false,
+				});
+			},
+		);
 	});
 
 	describe('MCP Trigger', () => {
@@ -54,11 +59,17 @@ describe('classifyTriggerIdentity', () => {
 			).toEqual({ providesN8nIdentity: true, providesExternalIdentity: true });
 		});
 
-		it('provides the n8n identity only for other authentication modes', () => {
-			expect(
-				classifyTriggerIdentity(MCP_TRIGGER_NODE_TYPE, { authentication: 'bearerAuth' }),
-			).toEqual({ providesN8nIdentity: true, providesExternalIdentity: false });
-		});
+		// The node only establishes an identity on the n8nOAuth2 branch; every other
+		// auth mode runs identity-less and must not pass publish (IAM-1238).
+		it.each(['bearerAuth', 'headerAuth', 'none'])(
+			'provides no identity for authentication %s',
+			(authentication) => {
+				expect(classifyTriggerIdentity(MCP_TRIGGER_NODE_TYPE, { authentication })).toEqual({
+					providesN8nIdentity: false,
+					providesExternalIdentity: false,
+				});
+			},
+		);
 	});
 
 	describe('Form Trigger', () => {
@@ -161,5 +172,15 @@ describe('classifyTriggerIdentity', () => {
 				providesExternalIdentity: false,
 			});
 		});
+
+		it.each([CHAT_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE])(
+			'provides the external identity for %s with a context establishment hook',
+			(type) => {
+				expect(classifyTriggerIdentity(type, hooksParameters)).toEqual({
+					providesN8nIdentity: false,
+					providesExternalIdentity: true,
+				});
+			},
+		);
 	});
 });

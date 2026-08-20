@@ -807,6 +807,8 @@ export class ExecutionService {
 			status?: ExecutionStatus;
 			excludeRunning?: boolean;
 			maxDataSizeBytes?: number;
+			startedAfter?: string;
+			startedBefore?: string;
 		},
 	): Promise<{ executions: IExecutionBase[]; count: number }> {
 		const excludedExecutionsIds = options.excludeRunning
@@ -822,6 +824,8 @@ export class ExecutionService {
 			lastId: options.lastId,
 			status: options.status,
 			excludedExecutionsIds,
+			startedAfter: options.startedAfter,
+			startedBefore: options.startedBefore,
 		};
 
 		const executions = await this.executionPersistence.findManyInWorkflows(
