@@ -1,15 +1,25 @@
-import type { WorkflowReviewRequestForWorkflow, WorkflowReviewRequestList } from '@n8n/api-types';
+import type {
+	WorkflowReviewStatus,
+	WorkflowReviewRequestForWorkflow,
+	WorkflowReviewRequestList,
+	WorkflowReviewStatusesResponse,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { createPinia, setActivePinia } from 'pinia';
 
-import { fetchWorkflowReviewRequests } from '@/features/workflow-reviews/workflowReviews.api';
+import {
+	fetchWorkflowReviewRequests,
+	fetchWorkflowReviewStatuses,
+} from '@/features/workflow-reviews/workflowReviews.api';
 import { useWorkflowReviewStatusStore } from './reviewStatus.store';
 
 vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
 	fetchWorkflowReviewRequests: vi.fn(),
+	fetchWorkflowReviewStatuses: vi.fn(),
 }));
 
 const fetchMock = vi.mocked(fetchWorkflowReviewRequests);
+const fetchStatusesMock = vi.mocked(fetchWorkflowReviewStatuses);
 
 const review = (
 	overrides: Partial<WorkflowReviewRequestForWorkflow> = {},
@@ -22,7 +32,7 @@ const review = (
 	createdAt: '2026-07-20T10:00:00.000Z',
 	updatedAt: '2026-07-20T10:00:00.000Z',
 	decisionBy: null,
-	approvedVersionPublicationState: null,
+	viewerCanOpen: false,
 	...overrides,
 });
 
@@ -83,11 +93,7 @@ describe('reviewStatus.store', () => {
 
 	it('does not treat a latest approved review as open, but keeps it as the latest', async () => {
 		const store = useWorkflowReviewStatusStore();
-		const approved = review({
-			state: 'closed',
-			decision: 'approved',
-			approvedVersionPublicationState: 'not_published',
-		});
+		const approved = review({ state: 'closed', decision: 'approved' });
 		fetchMock.mockResolvedValue(listOf(approved));
 
 		await store.fetchStatus('workflow-1');
@@ -123,13 +129,13 @@ describe('reviewStatus.store', () => {
 			review({
 				id: 'req-9',
 				workflowVersionId: 'ver-9',
+				// The caller just opened this review, so they may open it too
+				viewerCanOpen: true,
 			}),
 		);
 		expect(store.hasOpenReview('workflow-1')).toBe(true);
 	});
 
-	// R1 (P2): the mutation response has no description, so the creating dialog
-	// supplies what it submitted — see LIGO-979_review.md.
 	it('keeps the description the caller submitted with a freshly created review', () => {
 		const store = useWorkflowReviewStatusStore();
 
@@ -272,5 +278,198 @@ describe('reviewStatus.store', () => {
 
 		expect(store.hasOpenReview('workflow-1')).toBe(false);
 		expect(store.latestReviewByWorkflowId).toHaveProperty('workflow-1', null);
+	});
+
+	describe('card statuses', () => {
+		const cardStatus = (
+			overrides: Partial<WorkflowReviewStatus['summary']> = {},
+			viewerCanOpen = false,
+		): WorkflowReviewStatus => ({
+			summary: {
+				id: 'req-1',
+				state: 'open',
+				decision: 'pending',
+				workflowVersionId: 'ver-1',
+				createdAt: '2026-07-20T10:00:00.000Z',
+				updatedAt: '2026-07-20T10:00:00.000Z',
+				...overrides,
+			},
+			viewerCanOpen,
+		});
+
+		const responseOf = (
+			data: WorkflowReviewStatusesResponse['data'],
+		): WorkflowReviewStatusesResponse => ({ data });
+
+		it('fetches one batch and stores each result, null included', async () => {
+			const store = useWorkflowReviewStatusStore();
+			fetchStatusesMock.mockResolvedValue(
+				responseOf({ 'workflow-1': cardStatus({}, true), 'workflow-2': null }),
+			);
+
+			await store.fetchReviewStatuses(['workflow-1', 'workflow-2']);
+
+			expect(fetchStatusesMock).toHaveBeenCalledExactlyOnceWith(expect.anything(), [
+				'workflow-1',
+				'workflow-2',
+			]);
+			expect(store.reviewStatus('workflow-1')).toEqual(cardStatus({}, true));
+			expect(store.reviewStatus('workflow-2')).toBeNull();
+		});
+
+		it('does not call the API for an empty batch', async () => {
+			const store = useWorkflowReviewStatusStore();
+
+			await store.fetchReviewStatuses([]);
+
+			expect(fetchStatusesMock).not.toHaveBeenCalled();
+		});
+
+		it('deduplicates the requested ids', async () => {
+			const store = useWorkflowReviewStatusStore();
+			fetchStatusesMock.mockResolvedValue(responseOf({ 'workflow-1': null }));
+
+			await store.fetchReviewStatuses(['workflow-1', 'workflow-1']);
+
+			expect(fetchStatusesMock).toHaveBeenCalledExactlyOnceWith(expect.anything(), ['workflow-1']);
+		});
+
+		it('reports no open review for a requested id the response omitted', async () => {
+			const store = useWorkflowReviewStatusStore();
+			fetchStatusesMock.mockResolvedValue(responseOf({ 'workflow-1': cardStatus() }));
+
+			await store.fetchReviewStatuses(['workflow-1', 'workflow-2']);
+
+			expect(store.reviewStatus('workflow-2')).toBeNull();
+		});
+
+		it('keeps the previous status visible while a refresh is in flight — no flicker', async () => {
+			const store = useWorkflowReviewStatusStore();
+			fetchStatusesMock.mockResolvedValueOnce(responseOf({ 'workflow-1': cardStatus() }));
+			await store.fetchReviewStatuses(['workflow-1']);
+
+			let resolveSecond!: (value: WorkflowReviewStatusesResponse) => void;
+			fetchStatusesMock.mockReturnValueOnce(
+				new Promise<WorkflowReviewStatusesResponse>((resolve) => {
+					resolveSecond = resolve;
+				}),
+			);
+			const secondFetch = store.fetchReviewStatuses(['workflow-1']);
+
+			// Mid-flight, the old value is still there.
+			expect(store.reviewStatus('workflow-1')).toEqual(cardStatus());
+
+			resolveSecond(responseOf({ 'workflow-1': null }));
+			await secondFetch;
+			expect(store.reviewStatus('workflow-1')).toBeNull();
+		});
+
+		it('clears the requested ids to no open review on failure, silently', async () => {
+			const store = useWorkflowReviewStatusStore();
+			fetchStatusesMock.mockResolvedValueOnce(responseOf({ 'workflow-1': cardStatus() }));
+			await store.fetchReviewStatuses(['workflow-1']);
+
+			fetchStatusesMock.mockRejectedValueOnce(new ResponseError('gone', { httpStatusCode: 403 }));
+			await store.fetchReviewStatuses(['workflow-1']);
+
+			expect(store.reviewStatus('workflow-1')).toBeNull();
+		});
+
+		it('keeps the last known status when the batch fails transiently', async () => {
+			const store = useWorkflowReviewStatusStore();
+			const status = cardStatus();
+			fetchStatusesMock.mockResolvedValueOnce(responseOf({ 'workflow-1': status }));
+			await store.fetchReviewStatuses(['workflow-1']);
+
+			fetchStatusesMock.mockRejectedValueOnce(new Error('network down'));
+			await store.fetchReviewStatuses(['workflow-1']);
+
+			expect(store.reviewStatus('workflow-1')).toEqual(status);
+		});
+
+		it('clears cached statuses on reset, so a new session starts empty', async () => {
+			const store = useWorkflowReviewStatusStore();
+			fetchStatusesMock.mockResolvedValue(responseOf({ 'workflow-1': cardStatus() }));
+			await store.fetchReviewStatuses(['workflow-1']);
+			expect(store.reviewStatus('workflow-1')).not.toBeNull();
+
+			store.reset();
+
+			expect(store.reviewStatus('workflow-1')).toBeNull();
+		});
+
+		it('drops a response still in flight when reset happens, so it cannot write after logout', async () => {
+			const store = useWorkflowReviewStatusStore();
+
+			let resolveInFlight!: (value: WorkflowReviewStatusesResponse) => void;
+			fetchStatusesMock.mockReturnValueOnce(
+				new Promise<WorkflowReviewStatusesResponse>((resolve) => {
+					resolveInFlight = resolve;
+				}),
+			);
+			const inFlight = store.fetchReviewStatuses(['workflow-1']);
+
+			store.reset();
+
+			// The previous session's response lands after the reset and must be ignored.
+			resolveInFlight(responseOf({ 'workflow-1': cardStatus() }));
+			await inFlight;
+
+			expect(store.reviewStatus('workflow-1')).toBeNull();
+		});
+
+		it('drops an out-of-order response so an older batch cannot restore stale status', async () => {
+			const store = useWorkflowReviewStatusStore();
+
+			let resolveFirst!: (value: WorkflowReviewStatusesResponse) => void;
+			fetchStatusesMock.mockReturnValueOnce(
+				new Promise<WorkflowReviewStatusesResponse>((resolve) => {
+					resolveFirst = resolve;
+				}),
+			);
+			const firstFetch = store.fetchReviewStatuses(['workflow-1']);
+
+			fetchStatusesMock.mockResolvedValueOnce(responseOf({ 'workflow-1': null }));
+			await store.fetchReviewStatuses(['workflow-1']);
+
+			resolveFirst(responseOf({ 'workflow-1': cardStatus() }));
+			await firstFetch;
+
+			expect(store.reviewStatus('workflow-1')).toBeNull();
+		});
+
+		it('lets overlapping batches each write the workflows the other did not touch', async () => {
+			const store = useWorkflowReviewStatusStore();
+
+			let resolveFirst!: (value: WorkflowReviewStatusesResponse) => void;
+			fetchStatusesMock.mockReturnValueOnce(
+				new Promise<WorkflowReviewStatusesResponse>((resolve) => {
+					resolveFirst = resolve;
+				}),
+			);
+			const firstFetch = store.fetchReviewStatuses(['workflow-1', 'workflow-2']);
+
+			// A newer batch covering only workflow-2 supersedes the first one there.
+			fetchStatusesMock.mockResolvedValueOnce(responseOf({ 'workflow-2': cardStatus() }));
+			await store.fetchReviewStatuses(['workflow-2']);
+
+			resolveFirst(responseOf({ 'workflow-1': cardStatus({}, true), 'workflow-2': null }));
+			await firstFetch;
+
+			// workflow-1 was only requested by the first batch, so its result lands...
+			expect(store.reviewStatus('workflow-1')).toEqual(cardStatus({}, true));
+			// ...while workflow-2 keeps the newer batch's value.
+			expect(store.reviewStatus('workflow-2')).toEqual(cardStatus());
+		});
+
+		it('keeps card statuses apart from the editor status', async () => {
+			const store = useWorkflowReviewStatusStore();
+			fetchStatusesMock.mockResolvedValue(responseOf({ 'workflow-1': cardStatus() }));
+
+			await store.fetchReviewStatuses(['workflow-1']);
+
+			expect(store.latestReviewRequest('workflow-1')).toBeNull();
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
 	});
 });

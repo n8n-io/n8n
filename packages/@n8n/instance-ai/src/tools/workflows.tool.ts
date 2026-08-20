@@ -168,6 +168,15 @@ const setupAction = z.object({
 		.describe(
 			'Set ONLY when the user explicitly chose a plain generic auth type (Bearer/Header/Query/Custom Auth) for a new credential, or the workflow pre-existed with it. Otherwise setup rejects new plain generic credentials on HTTP Request nodes in favor of Simplified Custom Auth.',
 		),
+	preferNewCredentials: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Credential types (e.g. ["slackApi"]) the user explicitly asked to create fresh — pass ONLY on an ' +
+				'explicit request like "create a new Slack credential", never as a default. The card opens with ' +
+				'nothing preselected so the user lands on credential creation; existing credentials of the type ' +
+				'stay listed in case they change their mind. Pass the same list you passed to build-workflow.',
+		),
 	reopenSkipped: z
 		.array(z.string())
 		.optional()
@@ -190,7 +199,17 @@ const validateAction = z.object({
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	ignoreIssues: z
-		.array(z.enum(['parameters', 'credentials', 'input', 'execution', 'typeUnknown']))
+		.array(
+			z.enum([
+				'parameters',
+				'credentials',
+				'input',
+				'execution',
+				'typeUnknown',
+				'aiGateway',
+				'chatModel',
+			]),
+		)
 		.optional()
 		.describe('Issue categories to suppress from the result'),
 });
@@ -265,12 +284,12 @@ const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
 // Resume: setup-specific fields plus optional session scope for generic approvals
 // (e.g. update "always allow" → persist `workflows:update:<id>`).
-const resumeSchema = setupResumeSchema.extend({
+export const workflowsResumeSchema = setupResumeSchema.extend({
 	scope: z.enum(['once', 'session']).optional(),
 });
 
 interface WorkflowToolContext {
-	resumeData: z.infer<typeof resumeSchema> | undefined;
+	resumeData: z.infer<typeof workflowsResumeSchema> | undefined;
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
 }
 
@@ -374,7 +393,7 @@ function getSupportedWorkflowActionSchemas(
 	return {
 		list: listAction,
 		get: getAction,
-		'get-json': getJsonAction,
+		...(surface !== 'orchestrator' ? { 'get-json': getJsonAction } : {}),
 		'get-as-code': getAsCodeAction,
 		delete: deleteAction,
 		unarchive: unarchiveAction,
@@ -695,6 +714,19 @@ function collectCredentialTestFailures(
 	return failures;
 }
 
+/**
+ * Carry the "user asked for a fresh credential" types into every setup analysis
+ * of this call, so no re-analysis (trigger test, apply) quietly reinstates the
+ * auto-applied credential the first analysis withheld.
+ */
+function preferNewCredentialOptions(input: Extract<Input, { action: 'setup' }>): {
+	preferNewCredentialTypes?: readonly string[];
+} {
+	return input.preferNewCredentials?.length
+		? { preferNewCredentialTypes: input.preferNewCredentials }
+		: {};
+}
+
 /** Setup state 3: persist setup, run the trigger, and re-suspend with the refreshed requests. */
 async function handleSetupTestTrigger(
 	context: InstanceAiContext,
@@ -724,9 +756,12 @@ async function handleSetupTestTrigger(
 
 	const triggerTestResult = await runTriggerTest(context, input.workflowId, testTriggerNode);
 
-	const refreshedRequests = await analyzeWorkflow(context, input.workflowId, {
-		[testTriggerNode]: triggerTestResult,
-	});
+	const refreshedRequests = await analyzeWorkflow(
+		context,
+		input.workflowId,
+		{ [testTriggerNode]: triggerTestResult },
+		preferNewCredentialOptions(input),
+	);
 	// Re-derived from scratch, so it has to be partitioned again: this is the second path that
 	// builds the panel, and without it a trigger test mid-session puts back the cards state 1
 	// left out.
@@ -831,6 +866,7 @@ async function handleSetupApply(
 		// a bound credential is settled for routing even when its test fails.
 		const remainingRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
 			includeSettled: true,
+			...preferNewCredentialOptions(input),
 		});
 		const completedNodes = buildCompletedReport(
 			resumeData.credentials,
@@ -964,7 +1000,12 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
-		const allSetupRequests = await analyzeWorkflow(context, input.workflowId);
+		const allSetupRequests = await analyzeWorkflow(
+			context,
+			input.workflowId,
+			undefined,
+			preferNewCredentialOptions(input),
+		);
 
 		// The user asked to come back to something they skipped, so that decision no longer
 		// holds — drop it before partitioning so the card renders again. Scoped to what they
@@ -1615,7 +1656,7 @@ export function createWorkflowsTool(
 		.description(getToolDescription(context, options))
 		.input(inputSchema)
 		.suspend(suspendSchema)
-		.resume(resumeSchema)
+		.resume(workflowsResumeSchema)
 		.handler(async (input, ctx) => {
 			const workflowInput = input as Input;
 			switch (workflowInput.action) {

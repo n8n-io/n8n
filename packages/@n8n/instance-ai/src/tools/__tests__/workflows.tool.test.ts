@@ -213,12 +213,12 @@ describe('workflows tool', () => {
 			expect(context.workflowService.publish).not.toHaveBeenCalled();
 		});
 
-		it('should allow code inspection but reject raw update on orchestrator surface', () => {
+		it('should allow code inspection but reject raw workflow actions on orchestrator surface', () => {
 			const context = createMockContext();
 			const tool = createWorkflowsTool(context, 'orchestrator');
 			const schema = getInputSchema(tool);
 
-			expect(schema.safeParse({ action: 'get-json', workflowId: 'w1' }).success).toBe(true);
+			expect(schema.safeParse({ action: 'get-json', workflowId: 'w1' }).success).toBe(false);
 			expect(schema.safeParse({ action: 'get-as-code', workflowId: 'w1' }).success).toBe(true);
 			expect(
 				schema.safeParse({
@@ -227,6 +227,8 @@ describe('workflows tool', () => {
 					workflow: { name: 'WF', nodes: [], connections: {} },
 				}).success,
 			).toBe(false);
+			expect(getDescription(tool)).toContain('TypeScript SDK code');
+			expect(getDescription(tool)).not.toContain('WorkflowJSON');
 		});
 	});
 
@@ -645,6 +647,8 @@ describe('workflows tool', () => {
 				structure: '// generated code',
 				note: STRUCTURE_ONLY_NOTE,
 			});
+			expect(STRUCTURE_ONLY_NOTE).toContain('get-as-code');
+			expect(STRUCTURE_ONLY_NOTE).not.toContain('get-json');
 			const codegenInput = vi.mocked(generateWorkflowCode).mock.calls[0][0];
 			expect(codegenInput).toMatchObject({ name: 'Test WF' });
 			expect(JSON.stringify(codegenInput)).not.toContain('conditions');
@@ -1756,6 +1760,24 @@ describe('workflows tool', () => {
 			expect(applyNodeChanges).not.toHaveBeenCalled();
 		});
 
+		// INS-361: without this the analysis auto-applies an existing credential and
+		// the card preselects it, contradicting the user's "create a new one".
+		it('forwards preferNewCredentials to the setup analysis', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([]);
+
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{ action: 'setup', workflowId: 'wf1', preferNewCredentials: ['slackApi'] },
+				{ suspend: vi.fn(), resumeData: undefined } as never,
+			);
+
+			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+				preferNewCredentialTypes: ['slackApi'],
+			});
+		});
+
 		it('should analyze workflow and suspend for user setup', async () => {
 			const setupRequests = [
 				{
@@ -1775,7 +1797,7 @@ describe('workflows tool', () => {
 				resumeData: undefined,
 			} as never);
 
-			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1');
+			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {});
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: 'Configure credentials for your workflow',

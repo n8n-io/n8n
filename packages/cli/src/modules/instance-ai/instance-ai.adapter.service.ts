@@ -3951,7 +3951,7 @@ function toWorkflowJSON(
 			typeVersion: n.typeVersion,
 			position: n.position,
 			parameters: redact ? {} : n.parameters,
-			credentials: n.credentials as Record<string, { id?: string; name: string }> | undefined,
+			credentials: n.credentials,
 			webhookId: n.webhookId,
 			disabled: n.disabled,
 			notes: n.notes,

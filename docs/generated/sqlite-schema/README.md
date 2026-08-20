@@ -16,13 +16,13 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 15 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
-| [agent_execution](agent_execution.md) | 20 |  | table |
+| [agent_execution](agent_execution.md) | 21 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
-| [agent_task_definition](agent_task_definition.md) | 7 |  | table |
+| [agent_task_definition](agent_task_definition.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
-| [agent_task_snapshot](agent_task_snapshot.md) | 8 |  | table |
+| [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
 | [agents](agents.md) | 14 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
 | [agents_memory_entry_cursors](agents_memory_entry_cursors.md) | 6 |  | table |
@@ -63,6 +63,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 6 |  | table |
 | [folder_tag](folder_tag.md) | 2 |  | table |
+| [git_connection](git_connection.md) | 13 |  | table |
+| [git_connection_project](git_connection_project.md) | 4 |  | table |
 | [insights_by_period](insights_by_period.md) | 6 |  | table |
 | [insights_metadata](insights_metadata.md) | 5 |  | table |
 | [insights_raw](insights_raw.md) | 5 |  | table |
@@ -127,7 +129,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_publication_trigger_status](workflow_publication_trigger_status.md) | 8 |  | table |
 | [workflow_publish_history](workflow_publish_history.md) | 6 |  | table |
 | [workflow_published_version](workflow_published_version.md) | 4 |  | table |
-| [workflow_review_activity](workflow_review_activity.md) | 8 |  | table |
+| [workflow_review_activity](workflow_review_activity.md) | 7 |  | table |
 | [workflow_review_activity_comment](workflow_review_activity_comment.md) | 8 |  | table |
 | [workflow_review_request](workflow_review_request.md) | 12 |  | table |
 | [workflow_review_request_authors](workflow_review_request_authors.md) | 2 |  | table |
@@ -230,6 +232,8 @@ erDiagram
 "folder" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "folder_tag" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "folder_tag" |o--|| "folder" : "FOREIGN KEY (folderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"git_connection_project" }o--|| "git_connection" : "FOREIGN KEY (gitConnectionId) REFERENCES git_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"git_connection_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "insights_by_period" }o--|| "insights_metadata" : "FOREIGN KEY (metaId) REFERENCES insights_metadata (metaId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "insights_metadata" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "insights_metadata" }o--o| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -311,9 +315,8 @@ erDiagram
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"workflow_review_activity" }o--o| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"workflow_review_activity" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_activity" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_activity" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_activity_comment" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_activity_comment" }o--|| "workflow_review_activity" : "FOREIGN KEY (activityId) REFERENCES workflow_review_activity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (closedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -428,6 +431,7 @@ erDiagram
   datetime_3_ createdAt
   INTEGER duration
   TEXT error
+  TEXT failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
@@ -492,6 +496,7 @@ erDiagram
   varchar_32_ id PK
   varchar_128_ name
   TEXT objective
+  varchar_64_ timezone
   datetime_3_ updatedAt
 }
 "agent_task_run_lock" {
@@ -509,6 +514,7 @@ erDiagram
   varchar_128_ name
   TEXT objective
   varchar_32_ taskId PK
+  varchar_64_ timezone
   datetime_3_ updatedAt
   varchar_36_ versionId PK
 }
@@ -892,6 +898,27 @@ erDiagram
 "folder_tag" {
   varchar_36_ folderId PK
   varchar_36_ tagId PK
+}
+"git_connection" {
+  varchar_64_ baseCommit
+  varchar_255_ branchName
+  varchar_16_ connectionType
+  datetime_3_ createdAt
+  TEXT encryptedPassword
+  TEXT encryptedPrivateKey
+  TEXT encryptedUsername
+  varchar_36_ id PK
+  varchar_16_ keyGeneratorType
+  varchar_128_ name
+  TEXT publicKey
+  TEXT repositoryUrl
+  datetime_3_ updatedAt
+}
+"git_connection_project" {
+  datetime_3_ createdAt
+  varchar_36_ gitConnectionId FK
+  varchar_36_ projectId PK
+  datetime_3_ updatedAt
 }
 "insights_by_period" {
   INTEGER id
@@ -1523,7 +1550,6 @@ erDiagram
   INTEGER id
   varchar_64_ type
   INTEGER typeVersion
-  varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK
 }
 "workflow_review_activity_comment" {
