@@ -47,6 +47,16 @@ export interface TriggerNodeMetaProvider {
 	): { isTrigger: boolean; displayName: string } | undefined;
 }
 
+/*
+ * English-only on purpose, like every string in this module. When clause
+ * localization lands (ICU message templates), DAY_NAMES, formatTime and
+ * joinList swap to their platform equivalents in the same change —
+ * Intl.DateTimeFormat ({ weekday: 'long' } over a known-Sunday anchor date,
+ * and { hour, minute }) and Intl.ListFormat — so days, times and joins
+ * localize coherently rather than piecemeal. Swapping any of them alone
+ * produces mixed-language clauses ("every Montag at 09:00").
+ * Index order is cron day-of-week: 0 = Sunday (see Schedule GenericFunctions).
+ */
 const DAY_NAMES = [
 	'Sunday',
 	'Monday',
