@@ -1403,7 +1403,7 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 		const context = {
 			source: 'credential-modal' as const,
 			credential: {
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 				documentationUrl:
 					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
