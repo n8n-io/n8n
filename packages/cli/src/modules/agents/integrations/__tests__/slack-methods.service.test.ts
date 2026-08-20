@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
+import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
-import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CacheService } from '@/services/cache/cache.service';
@@ -16,31 +17,46 @@ describe('SlackMethodsService', () => {
 	function makeService() {
 		const credentialsService = mock<CredentialsService>();
 		const managementService = mock<AgentIntegrationManagementService>();
+		const agentRepository = mock<AgentRepository>();
 		const urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://hooks.example/');
 		return {
 			service: new SlackMethodsService(
 				credentialsService,
-				mock<AgentRepository>(),
+				agentRepository,
 				managementService,
 				urlService,
 				mock<OutboundHttp>(),
 				mock<CacheService>(),
 				mock<Cipher>(),
+				mock<Logger>(),
 			),
 			credentialsService,
 			managementService,
+			agentRepository,
 		};
 	}
 
+	const agent = {
+		id: 'agent-1',
+		projectId: 'project-1',
+		name: 'Support Agent',
+		activeVersionId: 'version-1',
+	} as unknown as Agent;
+
+	const session = {
+		projectId: 'project-1',
+		agentId: 'agent-1',
+		userId: 'user-1',
+		appId: 'app-1',
+		clientId: 'client-1',
+		clientSecret: 'client-secret',
+		signingSecret: 'signing-secret',
+		redirectUrl: 'https://n8n.example/callback',
+	};
+
 	it('creates a bot credential and delegates activation to integration management', async () => {
 		const { service, credentialsService, managementService } = makeService();
-		const agent = {
-			id: 'agent-1',
-			projectId: 'project-1',
-			name: 'Support Agent',
-			activeVersionId: 'version-1',
-		} as unknown as Agent;
 		const user = { id: 'user-1' };
 		credentialsService.createUnmanagedCredential.mockResolvedValue({
 			id: 'credential-1',
@@ -53,16 +69,7 @@ describe('SlackMethodsService', () => {
 			},
 			savedAgent: agent,
 		});
-		await service.connectBotCredential(agent, user as never, 'xoxb-token', {
-			projectId: 'project-1',
-			agentId: 'agent-1',
-			userId: 'user-1',
-			appId: 'app-1',
-			clientId: 'client-1',
-			clientSecret: 'client-secret',
-			signingSecret: 'signing-secret',
-			redirectUrl: 'https://n8n.example/callback',
-		});
+		await service.connectBotCredential(agent, user as never, 'xoxb-token', session);
 
 		expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(
 			{
@@ -84,6 +91,64 @@ describe('SlackMethodsService', () => {
 				credentialId: 'credential-1',
 				settings: { messagingExperience: 'agent' },
 			},
+		});
+		expect(credentialsService.delete).not.toHaveBeenCalled();
+	});
+
+	describe('when the connect fails', () => {
+		const user = { id: 'user-1' };
+
+		function arrangeFailedConnect() {
+			const context = makeService();
+			context.credentialsService.createUnmanagedCredential.mockResolvedValue({
+				id: 'credential-1',
+			} as never);
+			context.managementService.connect.mockRejectedValue(new Error('startup failed'));
+			return context;
+		}
+
+		it('deletes the credential it created when nothing references it', async () => {
+			const { service, credentialsService, agentRepository } = arrangeFailedConnect();
+			agentRepository.findIntegrationState.mockResolvedValue({
+				integrations: [],
+				versionId: 'version-1',
+				activeVersionId: 'version-1',
+			} as never);
+
+			await expect(
+				service.connectBotCredential(agent, user as never, 'xoxb-token', session),
+			).rejects.toThrow('startup failed');
+
+			expect(credentialsService.delete).toHaveBeenCalledWith(user, 'credential-1');
+		});
+
+		it('keeps the credential when the agent durably references it', async () => {
+			const { service, credentialsService, agentRepository } = arrangeFailedConnect();
+			agentRepository.findIntegrationState.mockResolvedValue({
+				integrations: [{ type: 'slack', credentialId: 'credential-1' }],
+				versionId: 'version-1',
+				activeVersionId: 'version-1',
+			} as never);
+
+			await expect(
+				service.connectBotCredential(agent, user as never, 'xoxb-token', session),
+			).rejects.toThrow('startup failed');
+
+			expect(credentialsService.delete).not.toHaveBeenCalled();
+		});
+
+		it('reports the setup failure even when the cleanup itself fails', async () => {
+			const { service, credentialsService, agentRepository } = arrangeFailedConnect();
+			agentRepository.findIntegrationState.mockResolvedValue({
+				integrations: [],
+				versionId: 'version-1',
+				activeVersionId: 'version-1',
+			} as never);
+			credentialsService.delete.mockRejectedValue(new Error('credential is in use'));
+
+			await expect(
+				service.connectBotCredential(agent, user as never, 'xoxb-token', session),
+			).rejects.toThrow('startup failed');
 		});
 	});
 

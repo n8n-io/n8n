@@ -227,7 +227,10 @@ export type { Logger } from './logger';
 export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAccessTracker =
 	lazyFunction(() => loadDomainAccess().createDomainAccessTracker);
 export type { DomainAccessTracker } from './domain-access';
-export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
+export type {
+	BrowserExtensionTraceContext,
+	SubmitLangsmithUserFeedbackOptions,
+} from './tracing/langsmith-tracing';
 
 export const emitAgentSnapshotTraceEvent: typeof AgentSnapshotEventMod.emitAgentSnapshotTraceEvent =
 	lazyFunction(() => loadAgentSnapshotEvent().emitAgentSnapshotTraceEvent);
