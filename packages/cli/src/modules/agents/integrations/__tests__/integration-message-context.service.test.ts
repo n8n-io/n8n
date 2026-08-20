@@ -1,7 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 
-import { AgentResourceRepository } from '../../repositories/agent-resource.repository';
-import { AgentThreadRepository } from '../../repositories/agent-thread.repository';
+import type { AgentResourceRepository } from '../../repositories/agent-resource.repository';
+import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { IntegrationMessageContextService } from '../integration-message-context.service';
 import type { IntegrationMessageContext } from '../integration-tools';
 
