@@ -13,6 +13,7 @@ import path from 'path';
 import { getTestCaseAnchorId } from './report-anchors';
 import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
+import { CONTEXT_OUTCOME_LABEL, classifyContextOutcome } from '../run/context-outcome';
 import { getCaseRunStatus, getCaseRunStatusLabel, getRunScoredCounts } from '../summary';
 import type {
 	BuildExpectationResult,
@@ -1261,6 +1262,24 @@ function renderChecklistSection<T extends { pass: boolean; incomplete?: boolean 
 	return `<details class="section" ${openAttr}><summary>${title} <span class="${statusClass}">${summary}</span></summary><ul class="check-list">${items}</ul></details>`;
 }
 
+/**
+ * The context/build cross for one iteration.
+ *
+ * Rendered above the expectation list because it changes how the list should be
+ * read: the same red expectation means "never fetched it" or "had it and ignored
+ * it" depending on this line, and those have opposite fixes.
+ */
+function renderContextOutcome(results: BuildExpectationResult[] | undefined): string {
+	const c = classifyContextOutcome(results);
+	if (c.outcome === 'unclassified') return '';
+	const cls = c.outcome === 'working' ? 'pass' : c.outcome === 'retrieval-gap' ? 'fail' : 'n_a';
+	return `<div class="context-outcome"><span class="badge badge-${cls}">${escapeHtml(
+		CONTEXT_OUTCOME_LABEL[c.outcome],
+	)}</span> <span class="muted">context ${String(c.contextPassed)}/${String(
+		c.contextGraded,
+	)} · build ${String(c.buildPassed)}/${String(c.buildGraded)}</span></div>`;
+}
+
 function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
 	return renderChecklistSection('Build expectations', results, (r) => {
 		const cls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
@@ -1470,6 +1489,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			<details class="section"><summary>Prompt</summary><div class="prompt-text">${escapeHtml(prompt)}</div></details>
 			${renderConversationMetrics(result.conversationMetrics)}
 			${renderConversationTranscript(result.transcript)}
+			${renderContextOutcome(result.buildExpectationResults)}
 			${renderBuildExpectations(result.buildExpectationResults)}
 			${renderWorkflowChecks(result.workflowChecks)}
 			${renderWorkflowSummary(result)}
@@ -1615,6 +1635,7 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.check-kind-llm { color: var(--color-purple); }
 	.expectation { padding: 5px 0; display: flex; align-items: baseline; gap: 8px; list-style: none; line-height: 1.5; }
 	.expectation-text { font-size: 12px; }
+	.context-outcome { margin: 6px 0; font-size: 12px; }
 	.expectation-judgment { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
 
 	/* Error and warning boxes */
