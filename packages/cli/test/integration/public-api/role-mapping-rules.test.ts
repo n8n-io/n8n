@@ -352,4 +352,205 @@ describe('Role mapping rules in Public API', () => {
 			testServer.license.enable('feat:saml');
 		});
 	});
+
+	describe('POST /role-mapping-rules/{roleMappingRuleId}/move', () => {
+		it('moves a rule to an earlier position and returns 200', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const { expression, role, type } = validInstancePayload;
+
+			const first = await agent.post('/role-mapping-rules').send(validInstancePayload);
+			const second = await agent
+				.post('/role-mapping-rules')
+				.send({ expression: `${expression} || false`, role, type });
+
+			const response = await agent
+				.post(`/role-mapping-rules/${second.body.id}/move`)
+				.send({ targetIndex: 0 });
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({
+				id: second.body.id,
+				expression: second.body.expression,
+				role: 'global:member',
+				type: 'instance',
+				order: 0,
+				projectIds: [],
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			});
+
+			const list = await agent.get('/role-mapping-rules');
+			expect(list.body.data.map((rule: { id: string }) => rule.id)).toEqual([
+				second.body.id,
+				first.body.id,
+			]);
+		});
+
+		it('renumbers sibling rules of the same type', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const { expression, role, type } = validInstancePayload;
+
+			const first = await agent.post('/role-mapping-rules').send(validInstancePayload);
+			const second = await agent
+				.post('/role-mapping-rules')
+				.send({ expression: `${expression} || false`, role, type });
+			const third = await agent
+				.post('/role-mapping-rules')
+				.send({ expression: `${expression} || true`, role, type });
+
+			await agent.post(`/role-mapping-rules/${third.body.id}/move`).send({ targetIndex: 0 });
+
+			const list = await agent.get('/role-mapping-rules');
+			expect(
+				list.body.data.map((rule: { id: string; order: number }) => ({
+					id: rule.id,
+					order: rule.order,
+				})),
+			).toEqual([
+				{ id: third.body.id, order: 0 },
+				{ id: first.body.id, order: 1 },
+				{ id: second.body.id, order: 2 },
+			]);
+		});
+
+		it("only renumbers the moved rule's own type", async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const { expression, role, type } = validInstancePayload;
+
+			await agent.post('/role-mapping-rules').send(validInstancePayload);
+			const secondInstance = await agent
+				.post('/role-mapping-rules')
+				.send({ expression: `${expression} || false`, role, type });
+
+			const firstProject = await agent.post('/role-mapping-rules').send({
+				expression: 'claims.project === "alpha"',
+				role: 'project:editor',
+				type: 'project',
+				projectIds: [teamProject.id],
+			});
+			const secondProject = await agent.post('/role-mapping-rules').send({
+				expression: 'claims.project === "beta"',
+				role: 'project:editor',
+				type: 'project',
+				projectIds: [teamProject.id],
+			});
+
+			await agent
+				.post(`/role-mapping-rules/${secondInstance.body.id}/move`)
+				.send({ targetIndex: 0 });
+
+			const projectRules = await agent.get('/role-mapping-rules').query({ type: 'project' });
+			expect(
+				projectRules.body.data.map((rule: { id: string; order: number }) => ({
+					id: rule.id,
+					order: rule.order,
+				})),
+			).toEqual([
+				{ id: firstProject.body.id, order: 0 },
+				{ id: secondProject.body.id, order: 1 },
+			]);
+		});
+
+		it('clamps a targetIndex beyond the last position to the end', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const { expression, role, type } = validInstancePayload;
+
+			const first = await agent.post('/role-mapping-rules').send(validInstancePayload);
+			const second = await agent
+				.post('/role-mapping-rules')
+				.send({ expression: `${expression} || false`, role, type });
+
+			const response = await agent
+				.post(`/role-mapping-rules/${first.body.id}/move`)
+				.send({ targetIndex: 99 });
+
+			expect(response.status).toBe(200);
+			expect(response.body.order).toBe(1);
+
+			const list = await agent.get('/role-mapping-rules');
+			expect(list.body.data.map((rule: { id: string }) => rule.id)).toEqual([
+				second.body.id,
+				first.body.id,
+			]);
+		});
+
+		it('rejects a negative targetIndex with 400', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const created = await agent.post('/role-mapping-rules').send(validInstancePayload);
+
+			const response = await agent
+				.post(`/role-mapping-rules/${created.body.id}/move`)
+				.send({ targetIndex: -1 });
+
+			expect(response.status).toBe(400);
+		});
+
+		it('rejects a missing targetIndex with 400', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const created = await agent.post('/role-mapping-rules').send(validInstancePayload);
+
+			const response = await agent.post(`/role-mapping-rules/${created.body.id}/move`).send({});
+
+			expect(response.status).toBe(400);
+		});
+
+		it('rejects an unknown rule id with 404', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/role-mapping-rules/does-not-exist/move')
+				.send({ targetIndex: 0 });
+
+			expect(response.status).toBe(404);
+		});
+
+		it('rejects with 401 without an API key', async () => {
+			const response = await testServer
+				.publicApiAgentWithoutApiKey()
+				.post('/role-mapping-rules/does-not-exist/move')
+				.send({ targetIndex: 0 });
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 401 with an invalid API key', async () => {
+			const response = await testServer
+				.publicApiAgentWithApiKey('invalid-key')
+				.post('/role-mapping-rules/does-not-exist/move')
+				.send({ targetIndex: 0 });
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 403 when the key lacks roleMappingRule:update', async () => {
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['user:read'] });
+			const created = await testServer
+				.publicApiAgentFor(owner)
+				.post('/role-mapping-rules')
+				.send(validInstancePayload);
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.post(`/role-mapping-rules/${created.body.id}/move`)
+				.send({ targetIndex: 0 });
+
+			expect(response.status).toBe(403);
+		});
+
+		it('rejects with 403 when provisioning is not licensed', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const created = await agent.post('/role-mapping-rules').send(validInstancePayload);
+
+			testServer.license.disable('feat:saml');
+			testServer.license.disable('feat:oidc');
+
+			const response = await agent
+				.post(`/role-mapping-rules/${created.body.id}/move`)
+				.send({ targetIndex: 0 });
+
+			expect(response.status).toBe(403);
+			expect(response.body.message).toBe('Provisioning is not licensed');
+
+			testServer.license.enable('feat:saml');
+		});
+	});
 });

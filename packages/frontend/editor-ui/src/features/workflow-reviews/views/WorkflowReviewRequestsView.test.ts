@@ -874,12 +874,13 @@ describe('WorkflowReviewRequestsView', () => {
 		expect(showError).not.toHaveBeenCalled();
 	});
 
-	it('resets the store on unmount', async () => {
-		const { unmount } = renderComponent();
-		await waitAllPromises();
-		unmount();
+	it('clears the stores on entry, before probing', async () => {
+		renderComponent();
 
 		expect(store.reset).toHaveBeenCalledTimes(1);
+		expect(store.reset.mock.invocationCallOrder[0]).toBeLessThan(
+			store.probeInbox.mock.invocationCallOrder[0],
+		);
 	});
 });
 

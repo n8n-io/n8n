@@ -1353,6 +1353,50 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
 		});
 
+		it('uses the user message as a ready thread root for Agent view DMs', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() =>
+					toStream([
+						{ type: 'text-delta', id: 't1', delta: 'Hello' },
+						{ type: 'finish', finishReason: 'stop' },
+					]),
+				),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience: 'agent' },
+				},
+			);
+
+			await handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(setAssistantStatus).toHaveBeenCalledWith('D123', '1779466577.518139', '');
+		});
+
 		it('retries top-level Slack assistant status when Slack has not materialized the thread yet', async () => {
 			vi.useFakeTimers();
 			const { bot, handlers } = makeBot();

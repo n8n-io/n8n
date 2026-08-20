@@ -816,7 +816,7 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('getThreads', () => {
-		it('returns latest run statuses with recovered failures marked as errors', async () => {
+		it('returns composite statuses and aggregated failure summaries', async () => {
 			const failedThread = makeThread({ id: 'thread-failed' });
 			const cleanThread = makeThread({ id: 'thread-clean' });
 			const runningThread = makeThread({ id: 'thread-running' });
@@ -852,8 +852,16 @@ describe('AgentExecutionService', () => {
 
 			expect(result.threads).toEqual([
 				expect.objectContaining({ id: failedThread.id, failureSummary, status: 'error' }),
-				expect.objectContaining({ id: cleanThread.id, failureSummary: null, status: 'success' }),
-				expect.objectContaining({ id: runningThread.id, failureSummary: null, status: 'running' }),
+				expect.objectContaining({
+					id: cleanThread.id,
+					failureSummary: null,
+					status: 'succeeded',
+				}),
+				expect.objectContaining({
+					id: runningThread.id,
+					failureSummary: null,
+					status: 'running',
+				}),
 				expect.objectContaining({ id: emptyThread.id, failureSummary: null, status: null }),
 			]);
 		});
