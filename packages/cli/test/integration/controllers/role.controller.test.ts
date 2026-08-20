@@ -15,12 +15,14 @@ describe('RoleController', () => {
 	const testServer = setupTestServer({ endpointGroups: ['role'] });
 	let ownerAgent: SuperAgentTest;
 	let memberAgent: SuperAgentTest;
+	let ownerId: string;
 
 	beforeAll(async () => {
 		const owner = await createOwner();
 		const member = await createMember();
 		ownerAgent = testServer.authAgentFor(owner);
 		memberAgent = testServer.authAgentFor(member);
+		ownerId = owner.id;
 	});
 
 	beforeEach(() => {
@@ -1160,7 +1162,11 @@ describe('RoleController', () => {
 			//
 			// ASSERT
 			//
-			expect(roleService.removeCustomRole).toHaveBeenCalledWith(roleSlug, 'global:member');
+			expect(roleService.removeCustomRole).toHaveBeenCalledWith({
+				slug: roleSlug,
+				reassignRoleSlug: 'global:member',
+				userId: ownerId,
+			});
 		});
 
 		it('should reject reassignment to the owner role', async () => {
@@ -1197,7 +1203,11 @@ describe('RoleController', () => {
 			//
 			// ASSERT
 			//
-			expect(roleService.removeCustomRole).toHaveBeenCalledWith(roleSlug, undefined);
+			expect(roleService.removeCustomRole).toHaveBeenCalledWith({
+				slug: roleSlug,
+				reassignRoleSlug: undefined,
+				userId: ownerId,
+			});
 		});
 
 		it('should handle service errors gracefully', async () => {

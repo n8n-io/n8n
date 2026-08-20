@@ -276,6 +276,15 @@ describe('FrontendService', () => {
 			);
 		});
 
+		it('should expose excluded node types from NODES_EXCLUDE', async () => {
+			globalConfig.nodes.exclude = ['n8n-nodes-base.executeWorkflow'];
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.excludeNodes).toEqual(['n8n-nodes-base.executeWorkflow']);
+		});
+
 		it('should enable the AI Gateway when configured and licensed', async () => {
 			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
 			globalConfig.aiGateway.enabled = true;

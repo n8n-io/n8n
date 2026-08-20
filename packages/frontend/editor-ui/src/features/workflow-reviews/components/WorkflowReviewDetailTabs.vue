@@ -120,15 +120,7 @@ const tabOptions = computed(() => [
 
 			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
 				<N8nCallout
-					v-if="review.state === 'closed'"
-					theme="info"
-					:class="$style.callout"
-					data-test-id="workflow-review-changes-closed"
-				>
-					{{ i18n.baseText('workflowReviews.changes.closed.body') }}
-				</N8nCallout>
-				<N8nCallout
-					v-else-if="!detail"
+					v-if="!detail"
 					theme="warning"
 					:class="$style.callout"
 					data-test-id="workflow-review-changes-unavailable"
@@ -140,16 +132,19 @@ const tabOptions = computed(() => [
 						v-for="workflow in detail.workflows"
 						:key="workflow.workflowId"
 						:workflow="workflow"
+						:state="detail.state"
+						:decision="detail.decision"
 					/>
 				</template>
-				<N8nText
+				<!-- No rows left: the workflow was deleted, or the requester lost access to it. -->
+				<N8nCallout
 					v-else
-					color="text-light"
-					size="medium"
-					data-test-id="workflow-review-changes-empty"
+					theme="warning"
+					:class="$style.callout"
+					data-test-id="workflow-review-changes-workflow-unavailable"
 				>
-					{{ i18n.baseText('workflowReviews.changes.empty') }}
-				</N8nText>
+					{{ i18n.baseText('workflowReviews.changes.workflowUnavailable') }}
+				</N8nCallout>
 			</div>
 
 			<WorkflowReviewDetailMetadata :review="review" />
@@ -165,6 +160,8 @@ const tabOptions = computed(() => [
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
+	container-name: review-detail;
+	container-type: inline-size;
 }
 
 .tabRow {
@@ -172,6 +169,10 @@ const tabOptions = computed(() => [
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+
+	> :global(.n8n-tabs) {
+		transform: translateY(var(--spacing--xs));
+	}
 }
 
 .detailBody {
@@ -227,19 +228,19 @@ const tabOptions = computed(() => [
 	flex-shrink: 0;
 }
 
-@media (max-width: 60rem) {
+@container review-detail (max-width: 44rem) {
 	.detailBody {
 		flex-direction: column;
 		overflow: auto;
 	}
 
 	.panel {
-		flex: 0 0 auto;
+		flex: 1 0 auto;
 		overflow: visible;
 	}
 
 	.activityPanel {
-		flex: 0 0 auto;
+		flex: 1 1 0%;
 		overflow: visible;
 		max-width: none;
 		margin-inline-end: 0;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useStorage } from '@vueuse/core';
-import { useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -82,6 +82,7 @@ import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { INSTANCE_AI_PENDING_AGENT_ID_STATE } from '@/features/ai/instanceAi/constants';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
@@ -164,6 +165,17 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
+const pendingAgentIdFromHistory = (history.state as Record<string, unknown>)[
+	INSTANCE_AI_PENDING_AGENT_ID_STATE
+];
+const routePendingAgentId = ref(
+	typeof pendingAgentIdFromHistory === 'string' ? pendingAgentIdFromHistory : null,
+);
+const isRouteAgentPending = computed(() => {
+	if (isArtifactMode.value) return false;
+	return routePendingAgentId.value === agentId.value;
+});
+const isAgentPending = computed(() => props.artifactAgentPending || isRouteAgentPending.value);
 const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
 	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
 });
@@ -727,6 +739,16 @@ interface McpAvailabilitySnapshot {
  */
 const persistFlights = new Map<string, Promise<void>>();
 const persistedAgentsByTarget = new Map<string, AgentResource>();
+
+function clearRoutePendingState(targetAgentId: string) {
+	if (isArtifactMode.value) return;
+	const historyState = history.state as Record<string, unknown>;
+	if (historyState[INSTANCE_AI_PENDING_AGENT_ID_STATE] !== targetAgentId) return;
+	const { [INSTANCE_AI_PENDING_AGENT_ID_STATE]: _, ...state } = historyState;
+	history.replaceState(state, '');
+	if (routePendingAgentId.value === targetAgentId) routePendingAgentId.value = null;
+}
+
 async function ensureAgentPersisted(): Promise<void> {
 	if (!isUnsaved.value) return;
 	const targetProjectId = projectId.value;
@@ -736,6 +758,7 @@ async function ensureAgentPersisted(): Promise<void> {
 	if (persistedAgent) {
 		isUnsaved.value = false;
 		agent.value = persistedAgent;
+		clearRoutePendingState(targetAgentId);
 		emit('persisted', persistedAgent);
 		return;
 	}
@@ -750,12 +773,12 @@ async function ensureAgentPersisted(): Promise<void> {
 			);
 			persistedAgentsByTarget.set(targetKey, created);
 			upsertProjectAgentsListCache(targetProjectId, created);
+			clearRoutePendingState(targetAgentId);
 			if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 			isUnsaved.value = false;
 			agent.value = created;
-			// Lets the artifact host record that this agent is real now. Without it a
-			// reload would re-enter draft mode and overwrite the saved config with an
-			// empty one, since the pending marker itself cannot be deleted.
+			// Lets an artifact host replace its pending metadata. Route-backed drafts
+			// clear their history marker after the create succeeds instead.
 			emit('persisted', created);
 		})();
 		persistFlights.set(targetKey, flight);
@@ -929,6 +952,21 @@ async function flushAutosave() {
 		mcpAutosave.flushAutosave(),
 	]);
 }
+
+async function flushPendingRouteDraftBeforeNavigation() {
+	if (!isRouteAgentPending.value || !isUnsaved.value) return;
+	await flushAutosave();
+}
+
+onBeforeRouteLeave(flushPendingRouteDraftBeforeNavigation);
+onBeforeRouteUpdate(async (to) => {
+	const nextProjectId = Array.isArray(to.params.projectId)
+		? to.params.projectId[0]
+		: to.params.projectId;
+	const nextAgentId = Array.isArray(to.params.agentId) ? to.params.agentId[0] : to.params.agentId;
+	if (nextProjectId === projectId.value && nextAgentId === agentId.value) return;
+	await flushPendingRouteDraftBeforeNavigation();
+});
 
 async function beforePreviewSend() {
 	// Autosave failures already use their config/skill/MCP-specific error toasts.
@@ -1342,11 +1380,26 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 	};
 }
 
+/**
+ * True while a genuine target switch still owes the autosave-loop reset.
+ * Set synchronously when a switching `initialize()` begins; cleared only by
+ * `resetAutosaveLoops()`, so a same-target preserveState init that supersedes
+ * the switching init inherits the obligation instead of dropping it.
+ */
+let autosaveResetPending = false;
+
+function resetAutosaveLoops() {
+	configAutosave.reset();
+	skillAutosave.reset();
+	mcpAutosave.reset();
+	autosaveResetPending = false;
+}
+
 async function initialize({ preserveState = false }: { preserveState?: boolean } = {}) {
 	const sessionsFetchRequestId = ++latestSessionsFetchRequestId;
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
-	const targetArtifactPending = props.artifactAgentPending;
+	const targetAgentPending = isAgentPending.value;
 	const isCurrentInitialization = () =>
 		!disposed && sessionsFetchRequestId === latestSessionsFetchRequestId;
 	clearTimeout(externalRefreshTimer);
@@ -1361,6 +1414,13 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 	pendingExternalRefresh.value = false;
 	try {
 		if (preserveState) {
+			// A same-ID pending → persisted hydration can supersede a genuine
+			// A→B switch whose drain is still in flight. That switch's reset is
+			// still owed — without it B inherits A's indicator and the flush
+			// below would rethrow A's lastSaveError and abort B's init. The
+			// loops only hold A's residue here (B can't schedule edits while
+			// `initialized` is false), so resetting first is safe.
+			if (autosaveResetPending) resetAutosaveLoops();
 			// Same-agent hydration (pending → persisted): flush queued
 			// config/skill/MCP snapshots before fetching so settle doesn't
 			// drop a pending debounce. When AI-locked, flush cancels stale
@@ -1368,14 +1428,28 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			await flushAutosave();
 			await settleAutosave();
 		} else {
+			// The reset obligation belongs to the target switch, not this init
+			// instance: a same-target preserveState init that supersedes us
+			// picks it up via this flag. Only `resetAutosaveLoops` clears it.
+			autosaveResetPending = true;
 			// Persist a pending MCP toggle before the new agent can replace its
 			// snapshot. Other pending edits remain governed by their existing
 			// switch/revert behavior.
-			await Promise.all([
-				configAutosave.settleAutosave(),
-				skillAutosave.settleAutosave(),
-				mcpAutosave.flushAutosave(),
-			]);
+			try {
+				await Promise.all([
+					configAutosave.settleAutosave(),
+					skillAutosave.settleAutosave(),
+					mcpAutosave.flushAutosave(),
+				]);
+			} finally {
+				// Genuine A→B switch: always detach A's autosave loop from
+				// `saveStatus`/`lastSaveError`, even when the drain throws —
+				// otherwise B inherits A's indicator and A's lastSaveError
+				// would abort B's later flush/publish. A stale init must not
+				// reset: a newer genuine switch owns its own reset, and a newer
+				// same-target hydration takes this one over via the flag.
+				if (isCurrentInitialization()) resetAutosaveLoops();
+			}
 		}
 		if (!isCurrentInitialization()) return;
 		if (!preserveState) {
@@ -1397,7 +1471,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		// blank config the backend would have written, and let the first edit
 		// create it (see `ensureAgentPersisted`). The personalisation backfill is
 		// skipped too — it schedules a save, which would persist on mount alone.
-		isUnsaved.value = targetArtifactPending;
+		isUnsaved.value = targetAgentPending;
 		if (isUnsaved.value) {
 			const draftConfig: AgentJsonConfig = {
 				name: locale.baseText('agents.new.defaultName'),
@@ -1506,7 +1580,7 @@ watch(
 // When a pending artifact becomes persisted under the same id, hydrate its
 // agent-scoped state without unmounting the editor or any in-flight setup UI.
 watch(
-	[projectId, agentId, () => props.artifactAgentPending],
+	[projectId, agentId, isAgentPending],
 	([nextProjectId, nextAgentId, pending], [previousProjectId, previousAgentId]) => {
 		const sameTarget = nextProjectId === previousProjectId && nextAgentId === previousAgentId;
 		void initialize({ preserveState: sameTarget && !pending });

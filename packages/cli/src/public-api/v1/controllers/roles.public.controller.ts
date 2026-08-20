@@ -1,5 +1,6 @@
 import {
 	CreateRoleDto,
+	RoleDeleteQueryDto,
 	RoleGetPublicDto,
 	RoleListPublicDto,
 	RoleListQueryPublicDto,
@@ -16,6 +17,7 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Get,
 	Licensed,
 	Param,
@@ -29,7 +31,7 @@ import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { assertCanManageRoleType } from '@/services/role-authorization';
+import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';
 
 type PublicRoleNamespace = Extract<RoleNamespace, 'global' | 'project'>;
@@ -131,7 +133,11 @@ export class RolesPublicController {
 		_res: Response,
 		@Body createRole: CreateRoleDto,
 	): Promise<RolePublicDto> {
-		assertCanManageRoleType(req.user, createRole.roleType);
+		assertCanManageRoleType({
+			apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
+			roleType: createRole.roleType,
+			user: req.user,
+		});
 
 		const role = await this.roleService.createCustomRole(createRole);
 
@@ -164,11 +170,58 @@ export class RolesPublicController {
 		if (!isPublicRole(role)) {
 			throw new NotFoundError('Role not found');
 		}
-		assertCanManageRoleType(req.user, role.roleType);
+
+		assertCanManageRoleType({
+			apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
+			roleType: role.roleType,
+			user: req.user,
+		});
 
 		const result = await this.roleService.updateCustomRole({
 			slug,
 			newRole: updateRole,
+			userId: req.user.id,
+		});
+
+		return toRolePublicDto({ ...result, roleType: role.roleType });
+	}
+
+	@Delete('/:slug')
+	@ApiKeyScope({ anyOf: ['role:manage', 'role:manageProject'] })
+	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
+	@ApiSummary('Delete a custom role')
+	@ApiDescription(
+		'Deletes a custom role. System roles cannot be deleted. A role with users assigned cannot be deleted unless `reassignRoleSlug` is set to move those users to another role first.',
+	)
+	@ApiTags(['Role'])
+	@ApiResponse(200, RolePublicDto)
+	@ApiErrorResponse(404)
+	async deleteRole(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('slug') slug: string,
+		@Query query: RoleDeleteQueryDto,
+	): Promise<RolePublicDto> {
+		const role = await this.roleService.getRole(slug);
+		if (!isPublicRole(role)) {
+			throw new NotFoundError('Role not found');
+		}
+
+		const apiKeyScopes = req.tokenGrant?.apiKeyScopes ?? [];
+
+		assertCanManageRoleType({
+			apiKeyScopes,
+			roleType: role.roleType,
+			user: req.user,
+		});
+
+		const reassignRoleSlug = canReassignUsers({ apiKeyScopes, role, user: req.user })
+			? query.reassignRoleSlug
+			: undefined;
+
+		const result = await this.roleService.removeCustomRole({
+			slug,
+			reassignRoleSlug,
 			userId: req.user.id,
 		});
 

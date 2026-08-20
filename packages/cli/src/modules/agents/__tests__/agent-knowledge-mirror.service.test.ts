@@ -145,9 +145,9 @@ describe('AgentKnowledgeMirrorService', () => {
 			makeAgentFile({ id: 'file-delta', fileName: 'delta.md' }),
 		];
 
-		function makeGlobService(): AgentKnowledgeMirrorService {
+		function makeGlobService(files: AgentFile[] = fixtureFiles): AgentKnowledgeMirrorService {
 			const agentFileRepository = mock<AgentFileRepository>();
-			agentFileRepository.findByAgentId.mockResolvedValue(fixtureFiles);
+			agentFileRepository.findByAgentId.mockResolvedValue(files);
 			const agentRepository = mock<AgentRepository>();
 			agentRepository.existsBy.mockResolvedValue(true);
 			return makeService({ runtimeService, agentFileRepository, agentRepository });
@@ -203,6 +203,21 @@ describe('AgentKnowledgeMirrorService', () => {
 			await expect(
 				service.globKnowledgeFiles(projectId, agentId, { pattern: '../secrets' }),
 			).rejects.toThrow('Invalid knowledge file pattern');
+		});
+
+		it('propagates glob matching timeouts', async () => {
+			const service = makeGlobService(
+				Array.from({ length: 200 }, (_, index) =>
+					makeAgentFile({
+						id: `file-quarterly-${index}`,
+						fileName: `quarterly-knowledge-${index}.pdf`,
+					}),
+				),
+			);
+
+			await expect(
+				service.globKnowledgeFiles(projectId, agentId, { pattern: '******Z' }),
+			).rejects.toThrow('Regular expression execution timed out');
 		});
 	});
 

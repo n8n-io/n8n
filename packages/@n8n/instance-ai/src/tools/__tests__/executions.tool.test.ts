@@ -16,7 +16,7 @@ function createMockContext(
 		userId: 'user-1',
 		workflowService: {
 			get: vi.fn().mockResolvedValue({ id: 'wf-1', name: 'Fetched Name' }),
-			list: vi.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue({ workflows: [], total: 0, totalInScope: 0 }),
 		} as unknown as InstanceAiContext['workflowService'],
 		executionService: {
 			list: vi.fn(),
@@ -558,9 +558,11 @@ describe('executions tool', () => {
 						allowedRunWorkflowNames: new Set(['Replay Created WF']),
 					});
 					(context.workflowService.get as Mock).mockRejectedValue(new Error('not found'));
-					(context.workflowService.list as Mock).mockResolvedValue([
-						{ id: 'wf-current', name: 'Replay Created WF' },
-					]);
+					(context.workflowService.list as Mock).mockResolvedValue({
+						workflows: [{ id: 'wf-current', name: 'Replay Created WF' }],
+						total: 1,
+						totalInScope: 1,
+					});
 					(context.executionService.run as Mock).mockResolvedValue({
 						executionId: 'exec-1',
 						status: 'success',

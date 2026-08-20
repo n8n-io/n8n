@@ -20,7 +20,10 @@ const routerResolve = vi.fn((to: { name?: string; params?: Record<string, string
 	href: `/${to.name ?? ''}/${Object.values(to.params ?? {}).join('/')}`,
 }));
 const routeQuery = reactive<Record<string, string | undefined>>({});
+const routeParams = reactive({ projectId: 'p1', agentId: 'a1' });
 let routeName = 'AgentBuilderView';
+type RouteGuard = (to: { params: Record<string, string> }) => void | Promise<void>;
+const routeGuards: { leave?: RouteGuard; update?: RouteGuard } = {};
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 const showMessageMock = vi.fn();
@@ -56,11 +59,15 @@ vi.mock('vue-router', () => ({
 	}),
 	useRoute: () => ({
 		name: routeName,
-		params: { projectId: 'p1', agentId: 'a1' },
+		params: routeParams,
 		query: routeQuery,
 	}),
-	onBeforeRouteLeave: vi.fn(),
-	onBeforeRouteUpdate: vi.fn(),
+	onBeforeRouteLeave: (guard: RouteGuard) => {
+		routeGuards.leave = guard;
+	},
+	onBeforeRouteUpdate: (guard: RouteGuard) => {
+		routeGuards.update = guard;
+	},
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 
@@ -468,7 +475,7 @@ const commonStubs = {
 	AgentBuilderHeader: {
 		name: 'AgentBuilderHeader',
 		template:
-			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName" :data-artifact-mode="String(artifactMode)" :data-config-validation-status="String(configValidationStatus)"></div>',
+			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName" :data-artifact-mode="String(artifactMode)" :data-config-validation-status="String(configValidationStatus)" :data-save-status="String(saveStatus)"></div>',
 		props: [
 			'agent',
 			'projectId',
@@ -479,6 +486,7 @@ const commonStubs = {
 			'artifactMode',
 			'isPreviewOpen',
 			'configValidationStatus',
+			'saveStatus',
 			'beforePublish',
 		],
 		emits: [
@@ -633,12 +641,17 @@ function resetViewMocks() {
 	openModalWithDataMock.mockReset();
 	closeModalMock.mockReset();
 	routeName = 'AgentBuilderView';
+	routeParams.projectId = 'p1';
+	routeParams.agentId = 'a1';
+	routeGuards.leave = undefined;
+	routeGuards.update = undefined;
 	agentEvalsFlagMock.enabled = false;
 	generateDraftCasesMock.mockReset();
 	generateDraftCasesMock.mockResolvedValue({ cases: [] });
 	for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 	sessionThreads.length = 0;
 	fetchedSessionThreads.length = 0;
+	history.replaceState({}, '');
 	sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
 	// Reset to a built agent; tests that need an unbuilt agent override locally.
 	intendedConfig = {
@@ -700,6 +713,70 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
+	});
+
+	it('persists a route-backed agent only after its first configuration change', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		expect(getAgentMock).not.toHaveBeenCalled();
+		expect(fetchConfigMock).not.toHaveBeenCalled();
+		expect(createAgentMock).not.toHaveBeenCalled();
+		expect(editor.props('agentUnsaved')).toBe(true);
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+		expect(createAgentMock).toHaveBeenCalledOnce();
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+			id: 'a1',
+		});
+		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
+		await vi.waitFor(() => expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1'));
+		expect(fetchSessionThreadsMock).toHaveBeenCalledWith('p1', 'a1');
+	});
+
+	it('settles a route-backed create before switching agents', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const pendingCreate = Promise.withResolvers<ReturnType<typeof makeAgentResponse>>();
+		createAgentMock.mockReturnValueOnce(pendingCreate.promise);
+		getAgentMock.mockImplementation(async (_context, projectId: string, id: string) =>
+			makeAgentResponse({ id, projectId }),
+		);
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await nextTick();
+		expect(routeGuards.update).toBeDefined();
+		const navigation = routeGuards.update?.({
+			params: { projectId: 'p1', agentId: 'a2' },
+		});
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
+
+		pendingCreate.resolve(makeAgentResponse({ id: 'a1' }));
+		await navigation;
+		await flushPromises();
+
+		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
+		const agentAHistoryState = { ...history.state };
+		getAgentMock.mockClear();
+
+		history.replaceState({}, '');
+		routeParams.agentId = 'a2';
+		await vi.waitFor(() =>
+			expect(getAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a2'),
+		);
+
+		getAgentMock.mockClear();
+		history.replaceState(agentAHistoryState, '');
+		routeParams.agentId = 'a1';
+		await vi.waitFor(() =>
+			expect(getAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1'),
+		);
+		expect(editor.props('agentUnsaved')).toBe(false);
 	});
 
 	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {
@@ -2110,6 +2187,166 @@ describe('AgentBuilderView — three-column shell', () => {
 			await flushPromises();
 
 			expect(toggleAgentMcpAccess).toHaveBeenCalledExactlyOnceWith('a1', true);
+		} finally {
+			vi.useRealTimers();
+			wrapper.unmount();
+		}
+	});
+
+	it('resets the autosave save status when the artifact agent target changes', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		vi.useFakeTimers();
+		try {
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { name: 'Agent A edit' });
+			await nextTick();
+			// Let the debounced config autosave fire and resolve — status lands on
+			// 'saved' for A with a `saved → idle` hold timer queued.
+			await vi.advanceTimersByTimeAsync(500);
+			await flushPromises();
+			expect(header.props('saveStatus')).toBe('saved');
+
+			// Genuine A→B switch: initialize() drains A's autosave loop, then
+			// reset() clears the inherited 'saved' indicator before B can show it.
+			await wrapper.setProps({ artifactAgentId: 'a3' });
+			await flushPromises();
+
+			expect(header.props('saveStatus')).toBe('idle');
+
+			// The `saved → idle` hold timer A queued must not fire for B.
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(header.props('saveStatus')).toBe('idle');
+		} finally {
+			vi.useRealTimers();
+			wrapper.unmount();
+		}
+	});
+
+	it('resets autosave save status on target change even when the previous agent drain fails', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockRejectedValue(new Error('mcp save failed'));
+
+		vi.useFakeTimers();
+		try {
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { name: 'Agent A edit' });
+			await nextTick();
+			await vi.advanceTimersByTimeAsync(500);
+			await flushPromises();
+			expect(header.props('saveStatus')).toBe('saved');
+
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('toggle-mcp-access', true);
+			await nextTick();
+
+			await wrapper.setProps({ artifactAgentId: 'a3' });
+			await flushPromises();
+
+			expect(header.props('saveStatus')).toBe('idle');
+			await expect(
+				(wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave(),
+			).resolves.toBeUndefined();
+		} finally {
+			vi.useRealTimers();
+			wrapper.unmount();
+		}
+	});
+
+	it('retains the autosave save status when a pending artifact persists under the same id', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p1',
+				artifactAgentId: 'aBcDeFgHiJkLmNoP',
+				artifactAgentPending: true,
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		vi.useFakeTimers();
+		try {
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { instructions: 'first edit' });
+			await nextTick();
+			await vi.advanceTimersByTimeAsync(500);
+			await flushPromises();
+			expect(header.props('saveStatus')).toBe('saved');
+
+			// Same-id pending → persisted hydrates without unmounting and must not
+			// reset the autosave loop's status.
+			await wrapper.setProps({ artifactAgentPending: false });
+			await flushPromises();
+
+			expect(header.props('saveStatus')).toBe('saved');
+		} finally {
+			vi.useRealTimers();
+			wrapper.unmount();
+		}
+	});
+
+	it('still resets autosave state when a pending-target hydration supersedes the switch mid-drain', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		vi.useFakeTimers();
+		try {
+			// A's save hangs so the A→B switch's drain stays in flight.
+			let rejectSave: (error: Error) => void = () => {};
+			updateConfigMock.mockImplementationOnce(
+				async () =>
+					await new Promise((_resolve, reject) => {
+						rejectSave = reject;
+					}),
+			);
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { name: 'Agent A edit' });
+			await nextTick();
+			await vi.advanceTimersByTimeAsync(500);
+
+			// Genuine switch to a pending B: the switching init starts draining
+			// A's hanging save and cannot reach its reset yet.
+			await wrapper.setProps({ artifactAgentId: 'a3', artifactAgentPending: true });
+			// B persists while that drain is still in flight: the same-target
+			// hydration supersedes the switching init and must take over the
+			// owed reset.
+			await wrapper.setProps({ artifactAgentPending: false });
+
+			// A's save eventually fails; it belongs to A and must stay detached.
+			rejectSave(new Error('save for A failed'));
+			await flushPromises();
+
+			expect(header.props('saveStatus')).toBe('idle');
+			// B's flush must not rethrow A's error.
+			await expect(
+				(wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave(),
+			).resolves.toBeUndefined();
 		} finally {
 			vi.useRealTimers();
 			wrapper.unmount();
