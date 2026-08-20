@@ -2038,6 +2038,87 @@ describe('AgentChatBridge — consumeStream', () => {
 				}),
 			);
 		});
+
+		it('keeps a conversation-scoped Slack group DM on that thread id', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:G123:');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.mention!(thread, {
+				id: '1001',
+				text: 'hello from a group dm',
+				author: { userId: 'u1', userName: 'user1' },
+				raw: { channel_type: 'mpim', channel: 'G123' },
+			});
+
+			expect(bot.thread).not.toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:slack:G123:' }),
+					}),
+				}),
+			);
+		});
+
+		it('re-anchors a top-level Slack private channel post at the message ts', async () => {
+			const { bot, handlers } = makeBot();
+			const inbound = makeThread('slack:G123:');
+			const anchored = makeThread('slack:G123:456.789');
+			bot.thread = vi.fn().mockReturnValue(anchored);
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.mention!(inbound, {
+				id: '456.789',
+				text: 'hello private channel',
+				author: { userId: 'u1', userName: 'user1' },
+				raw: { channel_type: 'group', channel: 'G123' },
+			});
+
+			expect(bot.thread).toHaveBeenCalledWith('slack:G123:456.789');
+			expect(anchored.subscribe).toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:slack:G123:456.789' }),
+					}),
+				}),
+			);
+		});
 	});
 
 	describe('status handle cleanup', () => {

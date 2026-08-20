@@ -4,6 +4,7 @@ import type {
 	RichCardComponentType,
 } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -133,15 +134,16 @@ export class SlackIntegration extends AgentChatIntegration {
 	}
 
 	messageThreadId(
-		message: { id: string; threadId: string },
+		message: { id: string; threadId: string; raw?: unknown },
 		context?: { inbound?: boolean },
 	): string | undefined {
-		// Agent-view DMs are conversation-scoped (`slack:D123:`). Re-anchoring
+		// 1:1 DMs and group DMs (MPIMs) are conversation-scoped. Re-anchoring
 		// each inbound top-level message at its own ts would split that into a
-		// new session per message. Outbound still re-anchors so threaded
-		// replies bind at the sent message ts. Threaded inbound already has
-		// thread_ts and is not rewritten below.
-		if (context?.inbound && this.isConversationScopedDm(message.threadId)) return undefined;
+		// new session per message. Private-channel G ids still re-anchor below.
+		// Outbound still re-anchors so threaded replies bind at the sent
+		// message ts. Threaded inbound already has thread_ts and is not
+		// rewritten below.
+		if (context?.inbound && this.isConversationScopedInbound(message)) return undefined;
 		// Only Slack thread ids are `slack:{channel}:{threadTs}`. A top-level
 		// post or DM arrives on the channel-level pseudo-thread (empty threadTs);
 		// anchor it at the message's own id so replies correlate. Already-threaded
@@ -264,5 +266,16 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	private isConversationScopedDm(threadId: string): boolean {
 		return /^slack:D[^:]+:$/.test(threadId);
+	}
+
+	private isConversationScopedInbound(message: { threadId: string; raw?: unknown }): boolean {
+		if (this.isConversationScopedDm(message.threadId)) return true;
+		// G is shared by MPIMs and legacy private channels; only MPIMs are
+		// one conversation. Missing channel_type is treated as a channel.
+		return (
+			/^slack:G[^:]+:$/.test(message.threadId) &&
+			isRecord(message.raw) &&
+			message.raw.channel_type === 'mpim'
+		);
 	}
 }

@@ -279,12 +279,12 @@ export class AgentChatBridge {
 	/**
 	 * Re-anchor an inbound conversation at the message's own thread on platforms
 	 * where a top-level post arrives through the channel-level pseudo-thread
-	 * (e.g. a Slack channel message). Conversation-scoped DMs stay on their
-	 * inbound thread so Agent-view chat remains one session.
+	 * (e.g. a Slack channel message). Conversation-scoped DMs and group DMs stay
+	 * on their inbound thread so Agent-view chat remains one session.
 	 */
 	private anchorInboundThread(thread: Thread, message: Message): Thread {
 		const anchored = this.integrationImpl?.messageThreadId?.(
-			{ id: message.id, threadId: thread.id },
+			{ id: message.id, threadId: thread.id, raw: message.raw },
 			{ inbound: true },
 		);
 		return anchored ? this.chat.thread(anchored) : thread;

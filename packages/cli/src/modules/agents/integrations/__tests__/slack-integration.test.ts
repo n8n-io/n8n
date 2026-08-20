@@ -157,6 +157,9 @@ describe('SlackIntegration', () => {
 			expect(integration.messageThreadId({ id: '123.456', threadId: 'slack:D123:' })).toBe(
 				'slack:D123:123.456',
 			);
+			expect(integration.messageThreadId({ id: '123.456', threadId: 'slack:G123:' })).toBe(
+				'slack:G123:123.456',
+			);
 		});
 
 		it('returns undefined when the message is already in an anchored thread', () => {
@@ -165,6 +168,9 @@ describe('SlackIntegration', () => {
 			).toBeUndefined();
 			expect(
 				integration.messageThreadId({ id: '123.457', threadId: 'slack:D123:123.456' }),
+			).toBeUndefined();
+			expect(
+				integration.messageThreadId({ id: '123.457', threadId: 'slack:G123:123.456' }),
 			).toBeUndefined();
 		});
 
@@ -184,6 +190,24 @@ describe('SlackIntegration', () => {
 			expect(
 				integration.messageThreadId({ id: '123.456', threadId: 'slack:C123:' }, { inbound: true }),
 			).toBe('slack:C123:123.456');
+		});
+
+		it('does not re-anchor inbound group DMs, but re-anchors private channels', () => {
+			expect(
+				integration.messageThreadId(
+					{ id: '123.456', threadId: 'slack:G123:', raw: { channel_type: 'mpim' } },
+					{ inbound: true },
+				),
+			).toBeUndefined();
+			expect(
+				integration.messageThreadId(
+					{ id: '123.456', threadId: 'slack:G123:', raw: { channel_type: 'group' } },
+					{ inbound: true },
+				),
+			).toBe('slack:G123:123.456');
+			expect(
+				integration.messageThreadId({ id: '123.456', threadId: 'slack:G123:' }, { inbound: true }),
+			).toBe('slack:G123:123.456');
 		});
 	});
 
