@@ -173,7 +173,13 @@ export class AgentIntegrationManagementService {
 		// `connect` restarts a connection that is already live — a settings-only
 		// save, or re-connecting the same credential — so a rollback has to know
 		// whether step 1 created this connection or merely replaced it.
-		const wasLive = !!add && this.chatService.isChannelLive(agent.id, add);
+		//
+		// An unpublished agent has no live channel to begin with: it never receives
+		// events, so nothing was started for it to restore. The publication check is
+		// what makes that explicit — `isChannelLive` reports a leader-routed channel
+		// as live without being able to inspect the leader, so on its own it would
+		// have a draft's failed pre-connect validation start a runtime.
+		const wasLive = !!add && publishedBefore && this.chatService.isChannelLive(agent.id, add);
 		const persistedBefore =
 			add && state
 				? (state.integrations ?? []).find((entry) => matchesIntegrationRef(entry, add))

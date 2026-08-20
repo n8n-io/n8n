@@ -282,6 +282,27 @@ describe('AgentIntegrationManagementService', () => {
 			expect(chatService.connect).not.toHaveBeenCalled();
 			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
 		});
+
+		it('starts no runtime when a draft channel fails its pre-connect validation', async () => {
+			// A leader-only channel on a follower reports as live without the follower
+			// being able to check — so without the publication gate, the rollback below
+			// would start a poller for an agent that must not receive events.
+			const { service, chatService, agentRepository } = makeService();
+			const persistedEntry = { type: 'slack', credentialId: 'credential-1' } as const;
+			const agent = makeAgent({ activeVersionId: null, integrations: [persistedEntry] });
+			stubRow(agentRepository, [persistedEntry], null);
+			chatService.isChannelLive.mockReturnValue(true);
+			chatService.validateBeforeConnect.mockRejectedValue(
+				new Error('credential is already connected to another agent'),
+			);
+
+			await expect(service.connect({ agent, user: user as never, integration })).rejects.toThrow(
+				'credential is already connected to another agent',
+			);
+
+			// Nothing was running, so there is nothing to put back.
+			expect(chatService.connect).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('publication state changing mid-request', () => {
