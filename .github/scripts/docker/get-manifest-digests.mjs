@@ -7,6 +7,7 @@
  *
  * Environment variables:
  *   N8N_TAG              - Full image reference for n8n image
+ *   N8N_PC_TAG           - Full image reference for the pointer-compressed n8n image
  *   RUNNERS_TAG          - Full image reference for runners image
  *   DISTROLESS_TAG       - Full image reference for runners-distroless image
  *   GITHUB_OUTPUT        - Path to GitHub Actions output file (optional)
@@ -64,5 +65,6 @@ console.log(`runners-distroless: ${results.runners_distroless.digest || 'N/A'}`)
 console.log('');
 console.log('=== Image Names ===');
 console.log(`n8n: ${results.n8n.image || 'N/A'}`);
+console.log(`n8n-pc: ${results.n8n_pc.image || 'N/A'}`);
 console.log(`runners: ${results.runners.image || 'N/A'}`);
 console.log(`runners-distroless: ${results.runners_distroless.image || 'N/A'}`);
