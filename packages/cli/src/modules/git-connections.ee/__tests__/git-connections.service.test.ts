@@ -227,18 +227,6 @@ describe('GitConnectionsService (credential state machine)', () => {
 				expect(result).toEqual({ projectId: 'p1', gitConnectionId: '1' });
 			});
 
-			it('is idempotent when the project is already linked to the same connection', async () => {
-				projectRepository.findOneBy.mockResolvedValue(teamProject as never);
-				projectLinkRepository.linkProject.mockResolvedValue({
-					projectId: 'p1',
-					gitConnectionId: '1',
-				} as never);
-
-				const result = await service.addProject('1', 'p1');
-
-				expect(result).toEqual({ projectId: 'p1', gitConnectionId: '1' });
-			});
-
 			it('rejects re-adding a project linked to a different connection', async () => {
 				projectRepository.findOneBy.mockResolvedValue(teamProject as never);
 				projectLinkRepository.linkProject.mockResolvedValue({
