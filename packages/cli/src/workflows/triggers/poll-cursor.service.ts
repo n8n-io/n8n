@@ -1,4 +1,5 @@
-import { PollerConfig } from '@n8n/config';
+import { Logger } from '@n8n/backend-common';
+import { PollerConfig, SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type { CreateExecutionPayload, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { PollerStateRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -10,8 +11,7 @@ import type {
 	PollCursorCommitResult,
 } from '@/events/maps/poll-trigger-metrics.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-
-import { DurablePollerGateService } from './durable-poller-gate.service';
+import { isDurablePollerChainEnabled } from '@/scheduling/poll-trigger-node/durable-poller-chain';
 
 /** Narrows a stored cursor, which the persistence layer types more loosely. */
 const toPollCursor = (cursor: PollerCursor): PollCursor => cursor as PollCursor;
@@ -19,13 +19,30 @@ const toPollCursor = (cursor: PollerCursor): PollCursor => cursor as PollCursor;
 @Service()
 export class PollCursorService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly pollerStateRepository: PollerStateRepository,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly pollerConfig: PollerConfig,
-		private readonly durablePollerGateService: DurablePollerGateService,
+		private readonly schedulerConfig: SchedulerConfig,
+		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly eventService: EventService,
-	) {}
+	) {
+		if (this.pollerConfig.durableCursorsEnabled && !this.schedulerChainEnabled) {
+			this.logger.warn(
+				'N8N_POLLER_DURABLE_CURSORS_ENABLED requires N8N_SCHEDULER_ENABLED, N8N_SCHEDULER_POLL_TRIGGERS_ENABLED and N8N_USE_WORKFLOW_PUBLICATION_SERVICE; durable poll cursors stay disabled.',
+			);
+		}
+	}
+
+	/**
+	 * Cursors additionally require the publication service because cursor rows
+	 * are only healthy where activation heals node ids — legacy activation must
+	 * never create them.
+	 */
+	private get schedulerChainEnabled(): boolean {
+		return isDurablePollerChainEnabled(this.schedulerConfig, this.workflowsConfig);
+	}
 
 	/**
 	 * Runs a cursor commit and emits its outcome and latency as a metrics event.
@@ -60,7 +77,7 @@ export class PollCursorService {
 	}
 
 	get enabled(): boolean {
-		return this.pollerConfig.durableCursorsEnabled && this.durablePollerGateService.allowed;
+		return this.pollerConfig.durableCursorsEnabled && this.schedulerChainEnabled;
 	}
 
 	/**
