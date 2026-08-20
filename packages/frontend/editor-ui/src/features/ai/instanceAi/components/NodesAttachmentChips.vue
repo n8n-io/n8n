@@ -36,7 +36,6 @@ const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value || 'unknown')),
 );
 
-// name → node-type, built once per render instead of a linear scan per chip.
 const nodeTypeByName = computed(() => {
 	const map = new Map<string, INodeTypeDescription | null>();
 	for (const node of workflowDocumentStore.value.allNodes) {
@@ -47,12 +46,6 @@ const nodeTypeByName = computed(() => {
 const nodeTypeForName = (name: string | undefined) =>
 	name ? (nodeTypeByName.value.get(name) ?? null) : null;
 
-/**
- * A single rendered chip. The whole group/bundle/named/explode decision is made
- * here so the template just iterates — one shape, no per-branch markup.
- * `setIndex` (and `nodeIndex` for exploded/panel rows) point back at the source
- * data so removal edits the right slice.
- */
 interface ChipVM {
 	key: string;
 	testid: 'nodes-chip-group' | 'nodes-chip-bundle' | 'nodes-chip-node';
@@ -60,16 +53,13 @@ interface ChipVM {
 	icon?: 'layers';
 	nodeType?: INodeTypeDescription | null;
 	setIndex: number;
-	/** Present only for exploded single-node chips — removes one node, not the set. */
 	nodeIndex?: number;
-	/** Bundle-only: the per-node rows shown in the expand panel. */
 	panel?: Array<{ id: string; name: string; nodeType: INodeTypeDescription | null }>;
 }
 
 const chips = computed<ChipVM[]>(() => {
 	const sets = props.attachment.sets;
 
-	// One lone, small, ungrouped set → explode to one chip per node.
 	const only = sets[0];
 	if (
 		sets.length === 1 &&
@@ -96,8 +86,6 @@ const chips = computed<ChipVM[]>(() => {
 				setIndex,
 			};
 		}
-		// >1 node → bundle with expand panel. (A single small set already
-		// exploded above; a single large set has length > 1, so it lands here too.)
 		if (set.nodes.length > 1) {
 			return {
 				key: `set-${setIndex}`,
@@ -154,15 +142,13 @@ function removeNode(setIndex: number, nodeIndex: number) {
 	emit('update:attachment', { ...props.attachment, sets });
 }
 
-/** A chip's remove button: exploded chips drop one node, everything else drops the set. */
 function removeChip(chip: ChipVM) {
 	if (chip.nodeIndex !== undefined) removeNode(chip.setIndex, chip.nodeIndex);
 	else removeSet(chip.setIndex);
 }
 
-// Native <button> already handles Enter/Space for remove; X/Delete/Backspace and
-// arrow-key row navigation are wired here. stopPropagation keeps the canvas/logs
-// panel's own document-level shortcuts from also firing (see NodeChip.vue).
+// stopPropagation keeps the canvas/logs panel's document-level shortcuts from
+// also firing (see NodeChip.vue).
 function handlePanelRowKeydown(setIndex: number, nodeIndex: number, event: KeyboardEvent) {
 	if (isNodeChipRemovalKey(event.key)) {
 		event.preventDefault();
@@ -183,7 +169,7 @@ function handlePanelRowKeydown(setIndex: number, nodeIndex: number, event: Keybo
 	if (event.key === 'Escape') {
 		event.preventDefault();
 		event.stopPropagation();
-		closePanel(event.currentTarget as HTMLElement);
+		closePanel();
 	}
 }
 
@@ -193,66 +179,81 @@ function focusAdjacentPanelRow(currentRow: HTMLElement, direction: 1 | -1) {
 	nextRow?.focus(); // out of range → no-op, focus stays on the current row
 }
 
-// After a keyboard removal, focus what took the removed row's place — the row
-// that shifted up into its index, or the new last row if it was the bottom one.
 async function focusPanelRowAfterRemoval(removedIndex: number) {
 	await nextTick();
 	const rows = Array.from(
-		containerRef.value?.querySelectorAll('[data-testid="nodes-chip-panel-row"]') ?? [],
+		panelRef.value?.querySelectorAll('[data-testid="nodes-chip-panel-row"]') ?? [],
 	) as HTMLElement[];
 
 	if (!rows.length) {
-		// the set (and its panel) was removed along with the last node
 		return;
 	}
 	const focusIndex = Math.min(removedIndex, rows.length - 1);
 	rows[focusIndex]?.focus();
 }
 
-// Closes the panel and hands focus back to the chip that opened it (the
-// panel's previous sibling within their shared anchor — see the template).
-function closePanel(row: HTMLElement) {
+function closePanel() {
 	expandedSetIndex.value = null;
-	const panel = row.closest('[data-testid="nodes-chip-panel"]');
-	(panel?.previousElementSibling as HTMLElement | null)?.focus();
+	openChipAnchor.value?.querySelector<HTMLElement>('[data-testid]')?.focus();
 }
 
-// Close the panel once focus leaves the chip+panel pair (e.g. Tab out), so it
-// doesn't stay floating open over whatever's focused now. Deferred to a
-// macrotask — a keyboard removal destroys the focused row and fires this with
-// a null relatedTarget an instant before its own refocus lands.
-function handlePanelFocusOut(setIndex: number, event: FocusEvent) {
+// Deferred to a macrotask: a keyboard removal destroys the focused row and
+// fires this with a null relatedTarget an instant before its own refocus lands.
+// The panel is teleported out to <body>, so "inside" means the chip anchor OR
+// the panel — not a single DOM subtree.
+function handlePanelFocusOut(setIndex: number) {
 	if (expandedSetIndex.value !== setIndex) {
 		return;
 	}
-	const anchor = event.currentTarget as HTMLElement;
 	setTimeout(() => {
 		if (expandedSetIndex.value !== setIndex) {
 			return;
 		}
-		if (anchor.contains(document.activeElement)) {
+		const active = document.activeElement;
+		if (openChipAnchor.value?.contains(active) || panelRef.value?.contains(active)) {
 			return; // focus landed back inside the chip/panel — stays open
 		}
 		expandedSetIndex.value = null;
 	}, 0);
 }
 
-// which bundled set's panel is open (index into attachment.sets), null = none open
 const expandedSetIndex = ref<number | null>(null);
-const containerRef = ref<HTMLElement | null>(null);
-function toggleExpanded(index: number) {
-	expandedSetIndex.value = expandedSetIndex.value === index ? null : index;
+const panelRef = ref<HTMLElement | null>(null);
+// Chip anchors keyed by setIndex — the open one's rect positions the teleported
+// panel, and it's where focus returns on close.
+const chipAnchors = new Map<number, HTMLElement>();
+const openChipAnchor = ref<HTMLElement | null>(null);
+const panelStyle = ref<Record<string, string>>({});
+
+function setChipAnchor(setIndex: number, el: Element | null) {
+	if (el) chipAnchors.set(setIndex, el as HTMLElement);
+	else chipAnchors.delete(setIndex);
 }
 
-// ArrowDown on a collapsed chip: open its panel (if needed) and jump straight
-// into the first row, instead of requiring a separate Enter to expand first.
+function positionPanel(setIndex: number) {
+	const anchor = chipAnchors.get(setIndex) ?? null;
+	openChipAnchor.value = anchor;
+	if (!anchor) return;
+	const rect = anchor.getBoundingClientRect();
+	panelStyle.value = { top: `${rect.bottom + 4}px`, left: `${rect.left}px` };
+}
+
+function toggleExpanded(index: number) {
+	if (expandedSetIndex.value === index) {
+		expandedSetIndex.value = null;
+		return;
+	}
+	positionPanel(index);
+	expandedSetIndex.value = index;
+}
+
 async function enterPanel(setIndex: number) {
+	positionPanel(setIndex);
 	expandedSetIndex.value = setIndex;
 	await nextTick();
-	containerRef.value?.querySelector<HTMLElement>('[data-testid="nodes-chip-panel-row"]')?.focus();
+	panelRef.value?.querySelector<HTMLElement>('[data-testid="nodes-chip-panel-row"]')?.focus();
 }
 
-// Collapse/expand toggle only earns its keep once there's enough chips to skim past.
 const COLLAPSE_CHIP_THRESHOLD = 6;
 const isCollapsed = ref(false);
 const showCollapseToggle = computed(() => chips.value.length > COLLAPSE_CHIP_THRESHOLD);
@@ -264,7 +265,7 @@ const totalNodeCount = computed(() =>
 </script>
 
 <template>
-	<div ref="containerRef" :class="$style.container">
+	<div :class="$style.container">
 		<NodeChip
 			v-if="isCollapsed"
 			testid="nodes-chips-collapsed-summary"
@@ -275,14 +276,16 @@ const totalNodeCount = computed(() =>
 			"
 			icon="layers"
 			:removable="isRemovable"
+			:expanded="null"
 			@remove="emit('remove-all')"
 		/>
 		<template v-else>
 			<span
 				v-for="chip in chips"
 				:key="chip.key"
+				:ref="(el) => setChipAnchor(chip.setIndex, el as Element | null)"
 				:class="$style.chipAnchor"
-				@focusout="handlePanelFocusOut(chip.setIndex, $event)"
+				@focusout="handlePanelFocusOut(chip.setIndex)"
 			>
 				<NodeChip
 					:label="chip.label"
@@ -295,36 +298,43 @@ const totalNodeCount = computed(() =>
 					@toggle-expand="toggleExpanded(chip.setIndex)"
 					@enter-panel="enterPanel(chip.setIndex)"
 				/>
-				<div
-					v-if="chip.panel && expandedSetIndex === chip.setIndex"
-					:class="$style.panel"
-					data-testid="nodes-chip-panel"
-				>
+				<!-- Teleported to <body>: the chip lives inside the chat input's
+				overflow-clipped `.leading` slot, which would otherwise crop the panel. -->
+				<Teleport to="body">
 					<div
-						v-for="(node, nodeIndex) in chip.panel"
-						:key="node.id"
-						:class="$style.panelRow"
-						data-testid="nodes-chip-panel-row"
-						tabindex="-1"
-						role="option"
-						:aria-label="node.name"
-						@keydown="handlePanelRowKeydown(chip.setIndex, nodeIndex, $event)"
+						v-if="chip.panel && expandedSetIndex === chip.setIndex"
+						:ref="(el) => (panelRef = el as HTMLElement | null)"
+						:class="$style.panel"
+						:style="panelStyle"
+						data-testid="nodes-chip-panel"
+						@focusout="handlePanelFocusOut(chip.setIndex)"
 					>
-						<NodeIcon v-if="node.nodeType" :node-type="node.nodeType" :size="12" />
-						<N8nIcon v-else icon="crosshair" size="xsmall" />
-						<span :class="$style.panelRowName">{{ node.name }}</span>
-						<button
-							v-if="isRemovable"
-							:class="$style.panelRemove"
-							data-testid="nodes-chip-panel-remove"
+						<div
+							v-for="(node, nodeIndex) in chip.panel"
+							:key="node.id"
+							:class="$style.panelRow"
+							data-testid="nodes-chip-panel-row"
 							tabindex="-1"
-							:aria-label="i18n.baseText('generic.delete')"
-							@click.stop="removeNode(chip.setIndex, nodeIndex)"
+							role="option"
+							:aria-label="node.name"
+							@keydown="handlePanelRowKeydown(chip.setIndex, nodeIndex, $event)"
 						>
-							<N8nIcon icon="x" size="xsmall" />
-						</button>
+							<NodeIcon v-if="node.nodeType" :node-type="node.nodeType" :size="12" />
+							<N8nIcon v-else icon="crosshair" size="xsmall" />
+							<span :class="$style.panelRowName">{{ node.name }}</span>
+							<button
+								v-if="isRemovable"
+								:class="$style.panelRemove"
+								data-testid="nodes-chip-panel-remove"
+								tabindex="-1"
+								:aria-label="i18n.baseText('generic.delete')"
+								@click.stop="removeNode(chip.setIndex, nodeIndex)"
+							>
+								<N8nIcon icon="x" size="xsmall" />
+							</button>
+						</div>
 					</div>
-				</div>
+				</Teleport>
 			</span>
 		</template>
 		<button
@@ -350,18 +360,14 @@ const totalNodeCount = computed(() =>
 	gap: var(--spacing--4xs);
 }
 
-// Anchors the absolutely-positioned expand panel to its chip.
 .chipAnchor {
-	position: relative;
 	display: inline-flex;
 }
 
 .panel {
-	position: absolute;
-	top: 100%;
-	left: 0;
-	z-index: 1;
-	margin-top: var(--spacing--4xs);
+	// Teleported to <body>; positioned via inline top/left from the chip's rect.
+	position: fixed;
+	z-index: 9999;
 	padding: var(--spacing--3xs);
 	border: var(--border);
 	border-radius: var(--radius);

@@ -87,13 +87,12 @@ describe('NodesAttachmentChips', () => {
 		});
 		expect(queryByTestId('nodes-chip-panel')).toBeNull();
 		await fireEvent.click(getByTestId('nodes-chip-expand'));
-		expect(getByTestId('nodes-chip-panel')).toBeTruthy(); // still open (no mouseout close)
+		expect(getByTestId('nodes-chip-panel')).toBeTruthy();
 		await fireEvent.click(getByTestId('nodes-chip-expand'));
 		expect(queryByTestId('nodes-chip-panel')).toBeNull();
 	});
 
 	it('collapsing many sets shows a total-count summary chip, not a bare toggle', async () => {
-		// 7 lone sets (> COLLAPSE_CHIP_THRESHOLD) → collapse toggle appears.
 		const sets = nodeRefs('A', 'B', 'C', 'D', 'E', 'F', 'G').map((n) => ({ nodes: [n] }));
 		const { getByTestId, queryByTestId, getAllByTestId } = renderComponent(NodesAttachmentChips, {
 			props: { attachment: att(sets), isRemovable: true },
@@ -103,10 +102,12 @@ describe('NodesAttachmentChips', () => {
 
 		await fireEvent.click(getByTestId('nodes-chips-collapse'));
 
-		// Collapsed: individual chips gone, one summary chip with the total count.
 		expect(queryByTestId('nodes-chip-node')).toBeNull();
 		const summary = getByTestId('nodes-chips-collapsed-summary');
 		expect(summary.textContent).toContain('7 nodes');
+		// No expand caret on the summary — "Expand" is the only toggle. (Vue casts
+		// an omitted `boolean | null` prop to false, so it must be passed null.)
+		expect(queryByTestId('nodes-chip-expand')).toBeNull();
 	});
 
 	it('the collapsed summary X clears all sets at once (emits remove-all)', async () => {
@@ -115,7 +116,6 @@ describe('NodesAttachmentChips', () => {
 			props: { attachment: att(sets), isRemovable: true },
 		});
 		await fireEvent.click(getByTestId('nodes-chips-collapse'));
-		// The summary is a NodeChip, so its remove button carries the shared testid.
 		await fireEvent.click(getByTestId('nodes-chip-remove'));
 		expect(emitted()['remove-all']).toBeTruthy();
 	});
@@ -152,7 +152,6 @@ describe('NodesAttachmentChips', () => {
 		const rows = getAllByTestId('nodes-chip-panel-row');
 		expect(document.activeElement).toBe(rows[0]);
 
-		// ArrowUp on the first row is a no-op — cannot escape the panel upward.
 		await fireEvent.keyDown(rows[0], { key: 'ArrowUp' });
 		expect(document.activeElement).toBe(rows[0]);
 
@@ -162,7 +161,6 @@ describe('NodesAttachmentChips', () => {
 		await fireEvent.keyDown(rows[2], { key: 'ArrowDown' });
 		expect(document.activeElement).toBe(rows[3]);
 
-		// ArrowDown on the last row is a no-op — cannot escape the panel downward.
 		await fireEvent.keyDown(rows[3], { key: 'ArrowDown' });
 		expect(document.activeElement).toBe(rows[3]);
 	});

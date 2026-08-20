@@ -5,16 +5,12 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { isNodeChipRemovalKey } from '../constants';
 
-// A single chip: a node-type (or fallback) icon, a name, and optional caret/remove
-// buttons. The parent owns all state — this only renders and emits clicks.
 const props = defineProps<{
 	label: string;
 	nodeType?: INodeTypeDescription | null;
 	testid: string;
-	/** 'layers' for group/bundle chips; unset → node-type icon or crosshair fallback. */
 	icon?: 'layers';
 	removable?: boolean;
-	/** null → no caret; boolean → caret shown, reflecting open state. */
 	expanded?: boolean | null;
 }>();
 
@@ -22,8 +18,7 @@ const emit = defineEmits<{ remove: []; 'toggle-expand': []; 'enter-panel': [] }>
 
 const i18n = useI18n();
 
-// The chip itself is the tab stop; inner buttons are tabindex="-1".
-// stopPropagation prevents the canvas/logs panel's own document-level
+// stopPropagation prevents the canvas/logs panel's document-level
 // Arrow/Enter/Escape shortcuts from also firing (see shouldIgnoreCanvasShortcut).
 function handleKeydown(event: KeyboardEvent) {
 	const isExpandable = props.expanded !== null && props.expanded !== undefined;

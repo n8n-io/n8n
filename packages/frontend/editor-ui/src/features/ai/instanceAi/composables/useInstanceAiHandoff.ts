@@ -218,11 +218,6 @@ export function clearPendingAgentAttachment(threadId: string): void {
 const pendingDraftAttachmentKey = (threadId: string) =>
 	`n8n-instance-ai-draft-attachment:${threadId}`;
 
-/**
- * Stash a canvas node selection made before navigating into the thread view (the
- * composer doesn't exist yet to hold it). The thread view consumes it once on mount
- * and stages it into the store, where the composer's chip watcher picks it up.
- */
 export function stashPendingDraftAttachment(
 	threadId: string,
 	sets: InstanceAiNodesAttachment['sets'],
@@ -475,13 +470,6 @@ export function useInstanceAiHandoff() {
 		}
 	}
 
-	/**
-	 * Mint an empty thread the caller stages a draft into. When `workflow` is given,
-	 * also open the workflow in the thread's preview pane (same machinery as the
-	 * editor's "open in assistant" button): an empty greeting message carries the
-	 * workflow attachment so the thread view auto-opens the canvas, and the snapshot
-	 * seeds the preview without a refetch. The node chips stay in the composer, unsent.
-	 */
 	async function openThreadForDraft(workflow?: {
 		id: string;
 		name?: string;

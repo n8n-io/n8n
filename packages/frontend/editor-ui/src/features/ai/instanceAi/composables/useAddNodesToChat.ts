@@ -10,12 +10,6 @@ import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { buildNodesAttachment, type BuilderWorkflow } from '../utils/buildNodesAttachment';
 import type { IWorkflowDb } from '@/Interface';
 
-/**
- * Shared entry point for both canvas triggers (toolbar button, context menu) that add
- * selected nodes to the AI chat. Context A (already inside the thread view) stages the
- * attachment directly into the live composer; Context B (standalone editor) mints a
- * thread, stashes the draft for it to pick up on mount, and navigates there.
- */
 export function useAddNodesToChat() {
 	const posthog = usePostHog();
 	const store = useInstanceAiStore();
@@ -32,9 +26,7 @@ export function useAddNodesToChat() {
 		workflow: BuilderWorkflow;
 		isInsideThread: boolean;
 		threadId?: string;
-		onStaged?: () => void; // Context A: view supplies focus/un-expand
-		// Context B: workflow display name + snapshot so the thread view can open the
-		// canvas preview alongside the chat (keeps workflow context on hand-off).
+		onStaged?: () => void;
 		workflowName?: string;
 		workflowSnapshot?: IWorkflowDb;
 	}): Promise<void> {
@@ -54,8 +46,6 @@ export function useAddNodesToChat() {
 			return;
 		}
 
-		// Context B: open a thread with the workflow canvas alongside the chat and the
-		// node chips pre-staged in the composer, unsent.
 		const threadId = await handoff.openThreadForDraft({
 			id: params.workflowId,
 			name: params.workflowName,

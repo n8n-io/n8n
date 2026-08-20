@@ -19,8 +19,6 @@ const emit = defineEmits<{
 
 const loading = ref(true);
 
-// A `nodes` attachment carries one or more sets of canvas-selected nodes —
-// delegated entirely to NodesAttachmentChips for kind/granularity handling.
 const nodesAttachment = computed(() =>
 	props.attachment?.type === 'nodes' ? props.attachment : undefined,
 );

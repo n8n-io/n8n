@@ -10,7 +10,7 @@ describe('pending draft attachment stash', () => {
 		stashPendingDraftAttachment('t1', sets, 'w1');
 		const first = consumePendingDraftAttachment('t1');
 		expect(first).toMatchObject({ type: 'nodes', workflowId: 'w1', sets });
-		expect(consumePendingDraftAttachment('t1')).toBeNull(); // consumed once
+		expect(consumePendingDraftAttachment('t1')).toBeNull();
 	});
 
 	it('returns null when nothing was stashed', () => {

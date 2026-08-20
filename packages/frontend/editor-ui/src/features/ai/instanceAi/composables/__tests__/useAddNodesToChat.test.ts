@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 
-// Mock the collaborators so we assert wiring, not their internals.
 const stageNodeSets = vi.fn();
 const stash = vi.fn();
 const openThreadForDraft = vi.fn();

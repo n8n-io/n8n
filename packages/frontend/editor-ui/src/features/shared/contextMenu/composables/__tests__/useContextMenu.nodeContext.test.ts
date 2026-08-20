@@ -163,7 +163,6 @@ describe('useContextMenu - add_nodes_to_chat (node context) gating', () => {
 
 		const item = actions.value.find((action) => action.id === 'add_nodes_to_chat');
 		expect(item?.disabled).toBeFalsy();
-		// Sanity check that read-only is actually in effect for mutating items.
 		expect(actions.value.find((action) => action.id === 'rename')?.disabled).toBe(true);
 	});
 
@@ -173,7 +172,6 @@ describe('useContextMenu - add_nodes_to_chat (node context) gating', () => {
 		const { open, actions } = useContextMenu();
 		open(mockEvent, { source: 'canvas', nodeIds: nodes.map((n) => n.id) });
 
-		// Both items are shown independently under gates that are each satisfied here.
 		expect(actions.value.some((action) => action.id === 'focus_ai_on_selected')).toBe(true);
 		expect(actions.value.some((action) => action.id === 'add_nodes_to_chat')).toBe(true);
 	});

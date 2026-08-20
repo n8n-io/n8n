@@ -324,7 +324,6 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 	}
 
 	trackSelectedSuggestionSubmitted(message);
-	// Clear the canvas selection once node context is actually sent (Context A).
 	if (attachments?.some((a) => a.type === 'nodes')) {
 		instanceAiStore.requestClearCanvasSelection();
 	}
@@ -373,8 +372,6 @@ function removeResource(index: number) {
 	attachedResources.value = attachedResources.value.filter((_, i) => i !== index);
 }
 
-// Canvas → composer bridge (Phase 2): pick up sets staged from a canvas
-// selection. Never touches inputText — the user's typed draft is untouched.
 watch(
 	() => instanceAiStore.pendingComposerAttachments,
 	(pending) => {
@@ -382,8 +379,6 @@ watch(
 		const consumed = instanceAiStore.consumePendingAttachments();
 		for (const attachment of consumed) {
 			if (attachment.type === 'file') continue;
-			// Fold a nodes attachment into the existing one for the same workflow so
-			// re-adding the same selection dedups instead of stacking duplicate chips.
 			if (attachment.type === 'nodes') {
 				const existing = attachedResources.value.find(
 					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>

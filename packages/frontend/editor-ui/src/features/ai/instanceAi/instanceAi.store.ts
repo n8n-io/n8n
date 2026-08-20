@@ -291,8 +291,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	// Canvas → composer bridge: sets staged from a canvas selection, waiting for the
-	// composer to pick them up. Appends across repeated "add to chat" actions.
 	const pendingComposerAttachments = ref<InstanceAiAttachment[]>([]);
 
 	function stageNodeSets(workflowId: string, newSets: InstanceAiNodesAttachment['sets']): void {
@@ -315,13 +313,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return staged;
 	}
 
-	// Bumped to ask the thread view to un-expand any preview and focus the composer (Context A).
 	const composerFocusRequest = ref(0);
 	function requestComposerFocus(): void {
 		composerFocusRequest.value++;
 	}
 
-	// Bumped after a message with node attachments is sent, so the canvas clears its selection.
 	const clearCanvasSelectionRequest = ref(0);
 	function requestClearCanvasSelection(): void {
 		clearCanvasSelectionRequest.value++;

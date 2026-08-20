@@ -23,7 +23,6 @@ function wf(over: Partial<BuilderWorkflow> = {}): BuilderWorkflow {
 	};
 }
 
-// Helpers: build a name-keyed IConnections for simple main-type chains.
 function chain(...pairs: Array<[string, string]>): IConnections {
 	const c: IConnections = {};
 	for (const [from, to] of pairs) {
@@ -50,7 +49,6 @@ describe('orderSelectionIntoSet', () => {
 	});
 
 	it('includes a sub-node picked with its parent (non-main connection)', () => {
-		// Model —ai_languageModel→ Agent, plus a main chain Trigger → Agent.
 		const conns: IConnections = {
 			Trigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
 			Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
@@ -176,7 +174,6 @@ describe('buildNodesAttachment', () => {
 	});
 
 	it('drops a neighbor that names a node absent from workflow.nodes (orphan connection endpoint)', () => {
-		// "Ghost" is a connection endpoint but not in workflow.nodes — an orphan.
 		const w = wf({ connections: chain(['Ghost', 'A'], ['A', 'B']) });
 		const res = buildNodesAttachment('w1', ['n1', 'n2'], w);
 		expect(instanceAiNodesAttachmentSchema.safeParse(res!.attachment).success).toBe(true);

@@ -2,41 +2,32 @@ import type { IConnections } from 'n8n-workflow';
 import { mapConnectionsByDestination, getChildNodes, getParentNodes } from 'n8n-workflow';
 import type { InstanceAiNodesAttachment } from '@n8n/api-types';
 
-/** Minimal node info the builder needs — caller maps canvas nodes to this. */
 export interface BuilderNode {
 	id: string;
 	name: string;
 	type: string;
 }
 
-/** Plain workflow data the builder reads — no store, no reactivity. */
 export interface BuilderWorkflow {
-	/** All nodes in the workflow, so ids can be translated to names and back. */
 	nodes: BuilderNode[];
 	/** `workflow.connections`, keyed by source node NAME. */
 	connections: IConnections;
-	/** `id -> { id, name }` for canvas groups; empty if none. */
 	groupsById: Map<string, { id: string; name: string }>;
-	/** `nodeId -> groupId` reverse index. */
 	nodeIdToGroupId: Map<string, string>;
 }
 
-/** One partitioned set, in NAME-space, before schema serialization. */
 export interface NodeSet {
-	/** Node names, ordered input→output. */
 	nodeNames: string[];
 }
 
 export type NodesAttachmentSet = InstanceAiNodesAttachment['sets'][number];
 
-/** Identity of a set = its node ids (order-independent), so re-adding the same selection dedups. */
 const setSignature = (set: NodesAttachmentSet) =>
 	set.nodes
 		.map((n) => n.id)
 		.sort()
 		.join('\n');
 
-/** Append incoming sets to existing ones, dropping any whose node membership is already present. */
 export function mergeNodeSets(
 	existing: InstanceAiNodesAttachment['sets'],
 	incoming: InstanceAiNodesAttachment['sets'],

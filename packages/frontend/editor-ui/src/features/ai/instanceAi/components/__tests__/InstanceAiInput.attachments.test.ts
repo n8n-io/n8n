@@ -48,7 +48,6 @@ describe('InstanceAiInput — staged node attachments', () => {
 
 		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
 
-		// The composer's watcher drains the store's staging area into its own draft ref.
 		await waitFor(() => expect(store.pendingComposerAttachments).toHaveLength(0));
 
 		expect(textbox).toHaveValue('my question');
@@ -61,12 +60,10 @@ describe('InstanceAiInput — staged node attachments', () => {
 		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
 		await findAllByTestId('nodes-chip-node');
 
-		// Same selection again → no new chip.
 		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
 		await waitFor(() => expect(store.pendingComposerAttachments).toHaveLength(0));
 		expect(queryAllByTestId('nodes-chip-node')).toHaveLength(1);
 
-		// A different node → a second chip.
 		store.stageNodeSets('w1', [{ nodes: [{ id: 'n2', name: 'B' }] }]);
 		await waitFor(() => expect(queryAllByTestId('nodes-chip-node')).toHaveLength(2));
 	});
@@ -97,7 +94,6 @@ describe('InstanceAiInput — staged node attachments', () => {
 		expect(attachments).toEqual([expect.objectContaining({ type: 'nodes', workflowId: 'w1' })]);
 		expect(queryAllByTestId('nodes-chip-node')).toHaveLength(0);
 
-		// A failed send hands the chips back via the restore callback.
 		expect(restoreDraft()).toBe(true);
 		await findAllByTestId('nodes-chip-node');
 	});

@@ -654,8 +654,6 @@ watch(chatInputRef, (el) => {
 	}
 });
 
-// Context A: canvas "add to chat" staged a node-context attachment directly
-// into this thread's composer — un-expand the preview and focus the input.
 watch(
 	() => store.composerFocusRequest,
 	() => {

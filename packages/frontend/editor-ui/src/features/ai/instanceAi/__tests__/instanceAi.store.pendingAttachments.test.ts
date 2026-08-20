@@ -46,8 +46,8 @@ describe('instanceAi store — pending composer attachments', () => {
 			},
 		];
 		store.stageNodeSets('w1', twoNodes);
-		store.stageNodeSets('w1', sameReordered); // same selection, ignored
-		store.stageNodeSets('w1', setsB); // genuinely new, appended
+		store.stageNodeSets('w1', sameReordered);
+		store.stageNodeSets('w1', setsB);
 		const consumed = store.consumePendingAttachments();
 		const nodesAtt = consumed[0];
 		expect(nodesAtt.type === 'nodes' && nodesAtt.sets).toEqual([...twoNodes, ...setsB]);

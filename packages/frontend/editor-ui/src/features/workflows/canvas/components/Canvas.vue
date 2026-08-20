@@ -617,8 +617,6 @@ function buildBuilderWorkflow(): BuilderWorkflow {
 	};
 }
 
-// Toolbar path: no arg — read Canvas.vue's own group-expanded selection.
-// Context-menu path (Task 4.4): pass the menu's nodeIds directly.
 async function onAddNodesToChat(ids: string[] = selectedNodeIdsWithGroupMembers.value) {
 	const doc = workflowDocumentStore.value;
 	await addSelectedNodesToChat({
@@ -627,8 +625,6 @@ async function onAddNodesToChat(ids: string[] = selectedNodeIdsWithGroupMembers.
 		workflow: buildBuilderWorkflow(),
 		isInsideThread: !instanceAiCapability.openWorkflow,
 		onStaged: () => instanceAiStore.requestComposerFocus(),
-		// Context B: seed the thread's canvas preview with the current workflow so it
-		// opens alongside the chat.
 		workflowName: doc.name,
 		workflowSnapshot: doc.getSnapshot(),
 	});
@@ -1118,8 +1114,6 @@ function clearSelectedNodes() {
 	removeSelectedNodes(selectedNodesAndGroups.value);
 }
 
-// Clear the selection once the composer sends a message carrying these nodes as
-// context, so a stale highlight doesn't linger after "add to chat".
 watch(
 	() => instanceAiStore.clearCanvasSelectionRequest,
 	() => clearSelectedNodes(),

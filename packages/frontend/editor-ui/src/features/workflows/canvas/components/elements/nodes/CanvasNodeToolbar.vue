@@ -102,8 +102,6 @@ const isDeleteNodeVisible = computed(() => !props.readOnly);
 
 const isFocusNodeVisible = computed(() => experimentalNdvStore.isZoomedViewEnabled);
 
-// Instance AI "add this node to chat" — shown for real nodes (not stickies) when
-// the flag is on, independent of the legacy assistant/builder gating.
 const isAddToChatVisible = computed(
 	() => isNodeContextEnabled.value && render.value.type !== CanvasNodeRenderType.StickyNote,
 );
