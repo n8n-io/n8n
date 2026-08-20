@@ -32,6 +32,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			let responseItems: INodeExecutionData[] | undefined;
 
 			switch (`${resource}:${operation}`) {
+				case 'attachment:delete':
+					responseData = await attachment.delete.execute.call(this, i);
+					break;
 				case 'attachment:getMany':
 					responseItems = await attachment.getMany.execute.call(this, i);
 					break;
