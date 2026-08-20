@@ -8,6 +8,7 @@ import { Router as createRouter } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-media-type.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -20,6 +21,20 @@ import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
+
+/**
+ * The legacy validator answered 415 for any `Content-Type` other than JSON - including when the
+ * body was empty - and allowed a request that sent none at all. A migrated route matches that, so
+ * the behaviour and the published spec stay in step.
+ */
+function assertJsonRequestBody(req: Request) {
+	const contentType = req.headers['content-type'];
+	if (!contentType) return;
+
+	if (contentType.split(';')[0].trim().toLowerCase() !== 'application/json') {
+		throw new UnsupportedMediaTypeError(`unsupported media type ${contentType}`);
+	}
+}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -58,7 +73,11 @@ export class PublicApiControllerRegistry {
 				route.successStatus,
 			);
 
+			const expectsJsonBody = resolvedArgs.some((arg) => arg.type === 'body');
+
 			const handler = async (req: Request, res: Response) => {
+				if (expectsJsonBody) assertJsonRequestBody(req);
+
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {
 					if (arg.type === 'param') {
