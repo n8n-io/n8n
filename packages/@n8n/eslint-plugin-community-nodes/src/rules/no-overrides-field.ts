@@ -12,7 +12,7 @@ export const NoOverridesFieldRule = createRule({
 		},
 		messages: {
 			overridesForbidden:
-				'The "overrides" field is not allowed in community node packages. Each community package installs into an isolated dependency tree, so overrides do not affect other nodes or n8n core — in practice they are copy-pasted boilerplate with no useful effect. Use the helpers on the execute context (this.helpers.httpRequest, etc.) instead; most community nodes do not need third-party runtime libraries.',
+				'The "overrides"/"resolutions" fields are not allowed in community node packages. Each community package installs into an isolated dependency tree, so overrides do not affect other nodes or n8n core — in practice they are copy-pasted boilerplate with no useful effect, and can silently force a transitive dependency to an arbitrary version or tarball. Use the helpers on the execute context (this.helpers.httpRequest, etc.) instead; most community nodes do not need third-party runtime libraries.',
 		},
 		schema: [],
 	},
@@ -28,15 +28,18 @@ export const NoOverridesFieldRule = createRule({
 					return;
 				}
 
-				const overridesProp = findJsonProperty(node, 'overrides');
-				if (!overridesProp) {
-					return;
+				// `resolutions` is the Yarn equivalent of npm's `overrides`; both force
+				// a transitive dependency to an arbitrary version/tarball, so treat them
+				// the same way.
+				for (const field of ['overrides', 'resolutions']) {
+					const prop = findJsonProperty(node, field);
+					if (prop) {
+						context.report({
+							node: prop,
+							messageId: 'overridesForbidden',
+						});
+					}
 				}
-
-				context.report({
-					node: overridesProp,
-					messageId: 'overridesForbidden',
-				});
 			},
 		};
 	},
