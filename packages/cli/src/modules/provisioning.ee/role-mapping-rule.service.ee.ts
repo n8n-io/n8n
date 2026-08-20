@@ -178,7 +178,7 @@ export class RoleMappingRuleService {
 		throw new ConflictError('Could not create role mapping rule due to an order conflict');
 	}
 
-	async patch({
+	async update({
 		id,
 		dto,
 		userId,

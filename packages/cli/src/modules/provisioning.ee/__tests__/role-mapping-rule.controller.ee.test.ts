@@ -144,12 +144,12 @@ describe('RoleMappingRuleController', () => {
 			};
 
 			licenseState.isProvisioningLicensed.mockReturnValue(true);
-			roleMappingRuleService.patch.mockResolvedValue(updated);
+			roleMappingRuleService.update.mockResolvedValue(updated);
 
 			const result = await controller.patch(req, res, patchBody, ruleId);
 
 			expect(result).toEqual(updated);
-			expect(roleMappingRuleService.patch).toHaveBeenCalledWith({
+			expect(roleMappingRuleService.update).toHaveBeenCalledWith({
 				id: ruleId,
 				dto: patchBody,
 				userId: req.user.id,

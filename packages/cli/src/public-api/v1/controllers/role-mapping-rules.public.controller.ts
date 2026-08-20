@@ -151,7 +151,7 @@ export class RoleMappingRulesPublicController {
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
 
-		const rule = await this.roleMappingRuleService.patch({
+		const rule = await this.roleMappingRuleService.update({
 			id: roleMappingRuleId,
 			dto: body,
 			userId: req.user.id,

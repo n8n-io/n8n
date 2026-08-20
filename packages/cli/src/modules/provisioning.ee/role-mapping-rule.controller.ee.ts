@@ -96,7 +96,7 @@ export class RoleMappingRuleController {
 			return res.status(403).json({ message: 'Provisioning is not licensed' });
 		}
 
-		return await this.roleMappingRuleService.patch({
+		return await this.roleMappingRuleService.update({
 			id,
 			dto: body,
 			userId: req.user.id,
