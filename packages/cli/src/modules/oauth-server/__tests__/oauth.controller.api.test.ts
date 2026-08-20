@@ -49,6 +49,14 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 		});
 	});
 
+	test('should stay available when MCP access is disabled, for the other protected resources', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.get('/.well-known/oauth-authorization-server');
+
+		expect(response.statusCode).toBe(200);
+	});
+
 	test('should return metadata with correct base URL', async () => {
 		const response = await testServer.restlessAgent.get('/.well-known/oauth-authorization-server');
 
@@ -92,6 +100,25 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 });
 
 describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	test('should return 404 when MCP access is disabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.get(
+			'/.well-known/oauth-protected-resource/mcp-server/http',
+		);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Unknown protected resource' });
+	});
+
 	test('should return protected resource metadata', async () => {
 		const response = await testServer.restlessAgent.get(
 			'/.well-known/oauth-protected-resource/mcp-server/http',
@@ -149,6 +176,23 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 });
 
 describe('GET /.well-known/oauth-protected-resource (bare path)', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	test('should return 404 when the default resource is disabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.get('/.well-known/oauth-protected-resource');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Unknown protected resource' });
+	});
+
 	test('resolves to the default registered resource', async () => {
 		const response = await testServer.restlessAgent.get('/.well-known/oauth-protected-resource');
 
@@ -581,6 +625,14 @@ describe('POST /mcp-oauth/revoke', () => {
 });
 
 describe('OAuth Discovery - Cross-validation', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
 	test('should have consistent URLs between authorization server and protected resource metadata', async () => {
 		const authServerResponse = await testServer.restlessAgent.get(
 			'/.well-known/oauth-authorization-server',
@@ -792,16 +844,18 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 		await mcpSettingsService.setEnabled(false);
 	});
 
-	test('should serve discovery documents while MCP access is disabled', async () => {
-		const authServerResponse = await testServer.restlessAgent.get(
-			'/.well-known/oauth-authorization-server',
-		);
-		const protectedResourceResponse = await testServer.restlessAgent.get(
+	test('should serve the authorization server metadata while MCP access is disabled', async () => {
+		const response = await testServer.restlessAgent.get('/.well-known/oauth-authorization-server');
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('should stop advertising the instance MCP resource while MCP access is disabled', async () => {
+		const response = await testServer.restlessAgent.get(
 			'/.well-known/oauth-protected-resource/mcp-server/http',
 		);
 
-		expect(authServerResponse.statusCode).toBe(200);
-		expect(protectedResourceResponse.statusCode).toBe(200);
+		expect(response.statusCode).toBe(404);
 	});
 
 	test('should mint a token pair end-to-end while MCP access is disabled', async () => {

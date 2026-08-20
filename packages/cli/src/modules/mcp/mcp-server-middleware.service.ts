@@ -14,7 +14,11 @@ import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpProtectedResource } from './mcp-protected-resource';
-import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
+import {
+	USER_CONNECTED_TO_MCP_EVENT,
+	UNAUTHORIZED_ERROR_MESSAGE,
+	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
+} from './mcp.constants';
 import type { McpAuthenticatedRequest } from './mcp.types';
 import { getClientInfo, getProtocolVersion } from './mcp.utils';
 
@@ -58,6 +62,22 @@ export class McpServerMiddlewareService {
 		}
 
 		return await this.mcpServerApiKeyService.verifyApiKey(token);
+	}
+
+	/**
+	 * Express middleware hiding the MCP server while instance MCP access is off.
+	 * Answers 404 instead of an authentication challenge, so OAuth-aware clients
+	 * don't send their users through a login for a server that isn't there.
+	 */
+	getEnabledMiddleware() {
+		return async (_req: Request, res: Response, next: NextFunction) => {
+			if (await this.mcpProtectedResource.isAvailable()) {
+				next();
+				return;
+			}
+
+			res.status(404).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
+		};
 	}
 
 	/**

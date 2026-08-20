@@ -159,6 +159,36 @@ describe('McpServerMiddlewareService', () => {
 		});
 	});
 
+	describe('getEnabledMiddleware', () => {
+		const runMiddleware = async (enabled: boolean) => {
+			mcpProtectedResource.isAvailable.mockResolvedValue(enabled);
+			const res = mockDeep<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+			const next = vi.fn() as NextFunction;
+
+			await service.getEnabledMiddleware()(mockReqWith(undefined), res, next);
+
+			return { res, next };
+		};
+
+		it('should pass the request through when MCP access is enabled', async () => {
+			const { res, next } = await runMiddleware(true);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.status).not.toHaveBeenCalled();
+		});
+
+		it('should return 404 without an authentication challenge when MCP access is disabled', async () => {
+			const { res, next } = await runMiddleware(false);
+
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
+			expect(res.header).not.toHaveBeenCalledWith('WWW-Authenticate', expect.anything());
+			expect(next).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getAuthMiddleware', () => {
 		it('should return 401 with WWW-Authenticate header when authorization header is missing', async () => {
 			const req = mockReqWith(undefined);
