@@ -1,5 +1,4 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import { createToolRegistry } from '../../../tool-registry';
 import type {
 	CheckpointSettleResult,
 	OrchestrationContext,
@@ -42,7 +41,6 @@ function makeContext(
 			getEventsForRuns: vi.fn().mockReturnValue([]),
 		},
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: { get: vi.fn(), save: vi.fn() },
 		plannedTaskService: service,

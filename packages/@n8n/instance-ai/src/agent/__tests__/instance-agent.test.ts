@@ -51,20 +51,23 @@ const mockBuiltTool = (name: string, marker?: string) => ({
 });
 
 vi.mock('../../tools', () => ({
-	createAllTools: vi.fn(
-		(context: { runLabel?: string }) =>
-			new Map([
-				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
-				['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
-				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
-				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
-			]),
+	getActiveOrchestratorDomainToolNames: vi.fn(
+		(context: {
+			evaluationConfigService?: unknown;
+			mcpService?: unknown;
+			currentUserAttachments?: unknown[];
+		}) => {
+			const names = ['workflows', 'research', 'n8n-docs', 'nodes', 'executions', 'build-workflow'];
+			if (context.evaluationConfigService) names.push('eval-config');
+			if (context.mcpService) names.push('mcp-servers');
+			if (context.currentUserAttachments?.length) names.push('parse-file');
+			return new Set(names);
+		},
 	),
 	createOrchestratorDomainTools: vi.fn(
 		(context: { runLabel?: string }) =>
 			new Map([
 				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
-				['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['n8n-docs', mockBuiltTool(`n8n-docs-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
@@ -187,8 +190,6 @@ describe('createInstanceAgent', () => {
 		const secondRunAttachedTools = getAttachedTools(1);
 		expect(attachedTools['create-tasks-run-1']).toBeUndefined();
 		expect(deferredTools['create-tasks-run-1']).toMatchObject({ name: 'create-tasks-run-1' });
-		expect(attachedTools['evals-run-1']).toBeUndefined();
-		expect(deferredTools['evals-run-1']).toMatchObject({ name: 'evals-run-1' });
 		expect(attachedTools['plan-run-1']).toBeUndefined();
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
 		expect(attachedTools['build-workflow-run-1']).toMatchObject({
@@ -652,9 +653,7 @@ describe('createInstanceAgent', () => {
 			['github_workflows', mockBuiltTool('github_workflows', 'github-workflows')],
 			['custom_plan', mockBuiltTool('custom_plan', 'custom-plan')],
 		]);
-		const orchestrationContext: Record<string, unknown> = {
-			runId: 'local-priority',
-		};
+		const orchestrationContext: Record<string, unknown> = { runId: 'local-priority' };
 		createToolsFromLocalMcpServer.mockReturnValue(localTools);
 
 		await createInstanceAgent({
@@ -672,43 +671,67 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		const agentTools = getDeferredTools();
-		const mcpContextTools = orchestrationContext.mcpTools as Map<
-			string,
-			ReturnType<typeof mockBuiltTool>
-		>;
-
 		expect(agentTools.shared_tool).toMatchObject({ marker: 'local-shared' });
 		expect(agentTools.github_workflows).toMatchObject({ marker: 'github-workflows' });
 		expect(agentTools.custom_plan).toMatchObject({ marker: 'custom-plan' });
-		expect(mcpContextTools.get('shared_tool')).toMatchObject({ marker: 'local-shared' });
-		expect(mcpContextTools.get('github_workflows')).toMatchObject({ marker: 'github-workflows' });
 	});
 
-	it('defers evals behind tool search so the first prompt stays smaller', async () => {
-		const memoryConfig = {} as never;
-
+	it('keeps MCP tools whose conditional native counterparts are inactive', async () => {
 		await createInstanceAgent({
 			modelId: 'test-model',
 			context: {
-				runLabel: 'evals-test',
+				runLabel: 'inactive-native-tools',
 				localGatewayStatus: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
+				logger: mockLogger,
 			},
-			orchestrationContext: {
-				runId: 'evals-test',
-			},
-			memoryConfig,
-			mcpManager: createMcpManagerStub(),
+			orchestrationContext: { runId: 'inactive-native-tools' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(
+				new Map([
+					['eval-config', mockBuiltTool('eval-config')],
+					['parse_file', mockBuiltTool('parse_file')],
+					['mcp-servers', mockBuiltTool('mcp-servers')],
+				]),
+			),
 		} as never);
 
-		const attachedTools = getAttachedTools();
-		const deferredTools = getDeferredTools();
-
-		expect(attachedTools['evals-evals-test']).toBeUndefined();
-		expect(deferredTools['evals-evals-test']).toMatchObject({
-			name: 'evals-evals-test',
+		expect(getDeferredTools()).toMatchObject({
+			'eval-config': { name: 'eval-config' },
+			parse_file: { name: 'parse_file' },
 		});
+		expect(getAttachedTools()['mcp-servers']).toMatchObject({ name: 'mcp-servers' });
+	});
+
+	it('rejects normalized MCP collisions with active conditional native tools', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'active-native-tools',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+				logger: mockLogger,
+				evaluationConfigService: {},
+				mcpService: {},
+				currentUserAttachments: [{ type: 'file' }],
+			},
+			orchestrationContext: { runId: 'active-native-tools' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(
+				new Map([
+					['eval-config', mockBuiltTool('eval-config')],
+					['parse_file', mockBuiltTool('parse_file')],
+					['mcp-servers', mockBuiltTool('mcp-servers')],
+				]),
+			),
+		} as never);
+
+		const deferredTools = getDeferredTools();
+		expect(deferredTools['eval-config']).toBeUndefined();
+		expect(deferredTools.parse_file).toBeUndefined();
+		expect(deferredTools['mcp-servers']).toBeUndefined();
 	});
 
 	it('configures observational memory on the Memory builder when provided', async () => {
@@ -829,8 +852,8 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('sticks Modal endpoint requests to the conversation thread via Modal-Session-ID', async () => {
-		// Sub-agents (build-agent, eval-setup, etc.) reuse context.modelId / orchestration
-		// context.modelId, so mutating the sticky header here covers those paths too.
+		// Embedded specialist agents reuse context.modelId / orchestration context.modelId,
+		// so mutating the sticky header here covers those paths too.
 		const modalModel = {
 			id: 'custom/moonshotai/Kimi-K3' as const,
 			url: 'https://n8ngmbh--ep-kimi-k3-server.us-west.modal.direct/v1',
