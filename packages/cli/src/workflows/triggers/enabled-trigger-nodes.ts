@@ -1,7 +1,17 @@
-import type { IConnections, INode, INodeTypes } from 'n8n-workflow';
+import type { IConnections, INode, INodeType, INodeTypes } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
 export type WorkflowTriggerVersion = { nodes: INode[]; connections: IConnections };
+
+/**
+ * Whether a node type drives trigger registration: active, poll, schedule or
+ * webhook triggers. The single criterion shared by trigger registration and
+ * every check that must agree with it on which nodes get per-node trigger
+ * state.
+ */
+export function isTriggerLikeNodeType(nodeType: INodeType): boolean {
+	return !!nodeType.trigger || !!nodeType.poll || !!nodeType.webhook;
+}
 
 /**
  * Returns the enabled trigger-like nodes (active, poll, schedule and webhook
@@ -30,7 +40,5 @@ export function getEnabledTriggerNodes(
 		nodeTypes,
 	});
 
-	return workflow.queryNodes(
-		(nodeType) => !!nodeType.trigger || !!nodeType.poll || !!nodeType.webhook,
-	);
+	return workflow.queryNodes(isTriggerLikeNodeType);
 }

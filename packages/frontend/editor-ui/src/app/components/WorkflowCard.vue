@@ -19,6 +19,8 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
+import WorkflowReviewStatusBadge from '@/features/workflow-reviews/components/WorkflowReviewStatusBadge.vue';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -131,10 +133,12 @@ const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
 const mcp = useMcp();
 const workflowActivate = useWorkflowActivate();
+const reviewStatusStore = useWorkflowReviewStatusStore();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
+const reviewStatus = computed(() => reviewStatusStore.reviewStatus(props.data.id));
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
 
@@ -676,6 +680,7 @@ const tags = computed(
 					source="workflow_card"
 					data-test-id="workflow-card-dependencies"
 				/>
+				<WorkflowReviewStatusBadge v-if="reviewStatus" :status="reviewStatus" />
 				<ProjectCardBadge
 					v-if="showOwnershipBadge"
 					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"

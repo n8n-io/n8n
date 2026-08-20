@@ -401,7 +401,7 @@ describe('Instance AI runtime skills', () => {
 			'ask once whether the user wants to build an error workflow for that workflow',
 		);
 		expect(loaded?.instructions).toContain(
-			'Do not replace this explicit opt-in with a generic "add\n   anything else?", publish, or test question.',
+			'Do not replace this explicit opt-in with a generic "add\n    anything else?", publish, or test question.',
 		);
 		expect(loaded?.instructions).toMatch(
 			/ask only whether the user wants the live test\. Do not\s+mention publishing or ask about the error workflow/,

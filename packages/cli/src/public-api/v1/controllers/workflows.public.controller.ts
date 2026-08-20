@@ -2,9 +2,13 @@ import {
 	GetWorkflowQueryDto,
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
+	PublishWorkflowPublicDto,
 	TagIdsPublicDto,
+	TransferWorkflowPublicDto,
 	WorkflowListPublicDto,
 	WorkflowPublicDto,
+	WorkflowPublishBlockedErrorPublicDto,
+	WorkflowPublishPublicDto,
 	WorkflowTagsPublicDto,
 	WorkflowVersionHistoryListPublicDto,
 } from '@n8n/api-types';
@@ -27,6 +31,7 @@ import {
 	Body,
 	Get,
 	Param,
+	Post,
 	ProjectScope,
 	PublicApiController,
 	Put,
@@ -47,6 +52,11 @@ import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+
+const PUBLISH_CONFLICT_DESCRIPTION =
+	'Conflict, e.g. publication blocked by an open workflow review (then `reason` and ' +
+	'`workflowReviewRequestId` are present) or a webhook path conflict.';
 
 function toPublicJson(value: unknown): Record<string, unknown> | null {
 	return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -151,10 +161,11 @@ export class WorkflowsPublicController {
 	constructor(
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowService: WorkflowService,
+		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
-		private readonly workflowService: WorkflowService,
 	) {}
 
 	private get workflowTagsEnabled(): boolean {
@@ -279,11 +290,83 @@ export class WorkflowsPublicController {
 		return this.toWorkflowPublicDto(workflow, { excludePinnedData: query.excludePinnedData });
 	}
 
-	/** Builds the public response shape for a single workflow, from the internal entity n8n stores. */
-	private toWorkflowPublicDto(
+	@Post('/:workflowId/archive')
+	@ApiKeyScope('workflow:delete')
+	@ProjectScope('workflow:delete')
+	@ApiSummary('Archive a workflow')
+	@ApiDescription(
+		'Soft-deletes a workflow by archiving it. Idempotent: archiving an already ' +
+			'archived workflow returns 200 with the current workflow.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(404)
+	async archiveWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowPublicDto> {
+		const workflow = await this.workflowService.archiveForPublicApi(req.user, workflowId);
+
+		if (!workflow) {
+			throw new NotFoundError('Workflow not found');
+		}
+
+		return this.toWorkflowPublicDto(workflow);
+	}
+
+	@Post('/:workflowId/unarchive')
+	@ApiKeyScope('workflow:delete')
+	@ProjectScope('workflow:delete')
+	@ApiSummary('Unarchive a workflow')
+	@ApiDescription('Restores an archived workflow.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	async unarchiveWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowPublicDto> {
+		const workflow = await this.workflowService.unarchiveForPublicApi(req.user, workflowId);
+
+		if (!workflow) {
+			throw new NotFoundError('Workflow not found');
+		}
+
+		return this.toWorkflowPublicDto(workflow);
+	}
+
+	@Put('/:workflowId/transfer')
+	@ApiKeyScope('workflow:move')
+	@ProjectScope('workflow:move')
+	@ApiSummary('Transfer a workflow to another project')
+	@ApiDescription('Transfer a workflow to another project.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async transferWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body body: TransferWorkflowPublicDto,
+	): Promise<void> {
+		await this.enterpriseWorkflowService.transferWorkflow(
+			req.user,
+			workflowId,
+			body.destinationProjectId,
+		);
+	}
+
+	/**
+	 * Every public workflow field except `shared`. Publishing re-reads the workflow without that
+	 * relation, so reading it here would throw for those routes.
+	 */
+	private toWorkflowPublishPublicDto(
 		workflow: WorkflowEntity,
 		options: { excludePinnedData?: boolean } = {},
-	): WorkflowPublicDto {
+	): WorkflowPublishPublicDto {
 		return {
 			id: workflow.id,
 			name: workflow.name,
@@ -305,9 +388,69 @@ export class WorkflowsPublicController {
 			meta: toPublicJson(workflow.meta),
 			...(options.excludePinnedData ? {} : { pinData: toPublicJson(workflow.pinData) }),
 			...(workflow.tags ? { tags: workflow.tags.map(toPublicTag) } : {}),
-			shared: workflow.shared.map(toPublicSharedWorkflow),
 			activeVersion: workflow.activeVersion ? toPublicActiveVersion(workflow.activeVersion) : null,
 		};
+	}
+
+	/** Builds the public response shape for a single workflow, from the internal entity n8n stores. */
+	private toWorkflowPublicDto(
+		workflow: WorkflowEntity,
+		options: { excludePinnedData?: boolean } = {},
+	): WorkflowPublicDto {
+		return {
+			...this.toWorkflowPublishPublicDto(workflow, options),
+			shared: workflow.shared.map(toPublicSharedWorkflow),
+		};
+	}
+
+	@Post('/:workflowId/publish')
+	@ApiKeyScope('workflow:activate')
+	@ProjectScope('workflow:publish')
+	@ApiSummary('Publish a workflow')
+	@ApiDescription('Publish a workflow. In n8n v1, this action was termed activating a workflow.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublishPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409, {
+		dto: WorkflowPublishBlockedErrorPublicDto,
+		description: PUBLISH_CONFLICT_DESCRIPTION,
+	})
+	async publishWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body body: PublishWorkflowPublicDto,
+	): Promise<WorkflowPublishPublicDto> {
+		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
+			versionId: body.versionId,
+			name: body.name,
+			description: body.description,
+			source: 'api',
+		});
+
+		return this.toWorkflowPublishPublicDto(workflow);
+	}
+
+	@Post('/:workflowId/unpublish')
+	@ApiKeyScope('workflow:deactivate')
+	@ProjectScope('workflow:unpublish')
+	@ApiSummary('Unpublish a workflow')
+	@ApiDescription(
+		'Unpublish a workflow. In n8n v1, this action was termed deactivating a workflow.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(404)
+	async unpublishWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowPublicDto> {
+		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId, {
+			source: 'api',
+		});
+
+		return this.toWorkflowPublicDto(workflow);
 	}
 
 	@Get('/:workflowId/history')

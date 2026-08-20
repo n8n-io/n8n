@@ -30,11 +30,11 @@ import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
 
 const mockWindowSizeState = vi.hoisted(() => ({
-	width: { value: 1200 },
+	width: { value: 1200 } as Ref<number>,
 }));
 
 const mockThreadAreaSizeState = vi.hoisted(() => ({
-	width: { value: 1600 },
+	width: { value: 1600 } as Ref<number>,
 }));
 
 const planEditSubmitState = vi.hoisted(() => ({
@@ -134,12 +134,21 @@ vi.mock('vue-router', async (importOriginal) => ({
 	}),
 }));
 
-vi.mock('@vueuse/core', async (importOriginal) => ({
-	...(await importOriginal()),
-	useScroll: () => ({ arrivedState: { bottom: true } }),
-	useWindowSize: () => ({ width: mockWindowSizeState.width }),
-	useElementSize: () => ({ width: mockThreadAreaSizeState.width }),
-}));
+vi.mock('@vueuse/core', async (importOriginal) => {
+	const [{ ref: createRef }, original] = await Promise.all([
+		import('vue'),
+		importOriginal<typeof import('@vueuse/core')>(),
+	]);
+	mockWindowSizeState.width = createRef(mockWindowSizeState.width.value);
+	mockThreadAreaSizeState.width = createRef(mockThreadAreaSizeState.width.value);
+
+	return {
+		...original,
+		useScroll: () => ({ arrivedState: { bottom: true } }),
+		useWindowSize: () => ({ width: mockWindowSizeState.width }),
+		useElementSize: () => ({ width: mockThreadAreaSizeState.width }),
+	};
+});
 
 const inputFocusSpy = vi.fn();
 const inputSetTextSpy = vi.fn();
@@ -1686,6 +1695,30 @@ describe('InstanceAiThreadView', () => {
 		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 		expect(routerPushSpy).not.toHaveBeenCalled();
+	});
+
+	it('restores the default or preferred preview width when available space grows', async () => {
+		const { getByTestId } = await renderAgentArtifact({ threadAreaWidth: 1200 });
+		const previewPanel = getByTestId('instance-ai-preview-panel');
+
+		expect(previewPanel.style.width).toBe('600px');
+
+		mockThreadAreaSizeState.width.value = 800;
+		await vi.waitFor(() => expect(previewPanel.style.width).toBe('560px'));
+
+		mockThreadAreaSizeState.width.value = 1200;
+		await vi.waitFor(() => expect(previewPanel.style.width).toBe('600px'));
+
+		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
+		await fireEvent.mouseMove(window, { clientX: 120 });
+		await fireEvent.mouseUp(window);
+		expect(previewPanel.style.width).toBe('480px');
+
+		mockThreadAreaSizeState.width.value = 600;
+		await vi.waitFor(() => expect(previewPanel.style.width).toBe('420px'));
+
+		mockThreadAreaSizeState.width.value = 1200;
+		await vi.waitFor(() => expect(previewPanel.style.width).toBe('480px'));
 	});
 
 	it('keeps expanded preview state independent from the agent dock', async () => {
