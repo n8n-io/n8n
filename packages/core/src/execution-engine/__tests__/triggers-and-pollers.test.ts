@@ -63,8 +63,8 @@ describe('TriggersAndPollers', () => {
 		});
 
 		describe('closeFunction isolate wrapping', () => {
-			const originalClose = vi.fn(async () => {});
-			const withIsolate = vi.fn(async (fn: () => Promise<void>) => await fn());
+			const originalClose = jest.fn(async () => {});
+			const withIsolate = jest.fn(async (fn: () => Promise<void>) => await fn());
 
 			beforeEach(() => {
 				nodeType.trigger = triggerFn;
