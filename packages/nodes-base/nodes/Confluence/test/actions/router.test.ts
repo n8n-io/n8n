@@ -89,6 +89,26 @@ describe('Confluence router', () => {
 		]);
 	});
 
+	it.each(['update', 'append'])('dispatches page:%s', async (operation) => {
+		apiRequest
+			.mockResolvedValueOnce({
+				id: '222',
+				status: 'current',
+				title: 'My Page',
+				version: { number: 1 },
+				body: { storage: { value: '<p>Old</p>' } },
+			})
+			.mockResolvedValueOnce({ id: '222' });
+
+		const result = await router.call(
+			mockExecuteCtx({ ...createParams, operation, page: { mode: 'id', value: '222' }, title: '' }),
+		);
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(apiRequest.mock.calls[1][0]).toBe('PUT');
+		expect(result).toEqual([[{ json: { id: '222' }, pairedItem: { item: 0 } }]]);
+	});
+
 	it('dispatches search:query and fans the results out into items', async () => {
 		apiRequest.mockResolvedValue({ results: [{ title: 'A' }, { title: 'B' }] });
 

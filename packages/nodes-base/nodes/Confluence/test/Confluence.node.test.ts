@@ -25,8 +25,10 @@ describe('Confluence Node', () => {
 		]);
 
 		expect(operationOptions('page')).toEqual([
+			expect.objectContaining({ value: 'append' }),
 			expect.objectContaining({ value: 'create' }),
 			expect.objectContaining({ value: 'get' }),
+			expect.objectContaining({ value: 'update' }),
 		]);
 		expect(operationOptions('search')).toEqual([expect.objectContaining({ value: 'query' })]);
 	});
