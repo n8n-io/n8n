@@ -287,6 +287,8 @@ jobs:
     outputs:
       n8n_digest: ${{ steps.get-digests.outputs.n8n_digest }}
       n8n_image: ${{ steps.get-digests.outputs.n8n_image }}
+      n8n_pc_digest: ${{ steps.get-digests.outputs.n8n_pc_digest }}
+      n8n_pc_image: ${{ steps.get-digests.outputs.n8n_pc_image }}
       runners_digest: ${{ steps.get-digests.outputs.runners_digest }}
       runners_image: ${{ steps.get-digests.outputs.runners_image }}
       runners_distroless_digest: ${{ steps.get-digests.outputs.runners_distroless_digest }}
@@ -427,6 +429,7 @@ jobs:
         id: get-digests
         env:
           N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
+          N8N_PC_TAG: ${{ needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag }}
           RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
           DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
         run: node .github/scripts/docker/get-manifest-digests.mjs
@@ -461,6 +464,25 @@ jobs:
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  provenance-n8n-pc:
+    name: SLSA Provenance (n8n-pc)
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      needs.create_multi_arch_manifest.result == 'success' &&
+      needs.create_multi_arch_manifest.outputs.n8n_pc_digest != ''
+    permissions:
+      id-token: write
+      packages: write
+      actions: read
+    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image: ${{ needs.create_multi_arch_manifest.outputs.n8n_pc_image }}
+      digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_pc_digest }}
       registry-username: ${{ github.actor }}
     secrets:
       registry-password: ${{ secrets.GITHUB_TOKEN }}
@@ -512,6 +534,7 @@ jobs:
         build-and-push-docker,
         create_multi_arch_manifest,
         provenance-n8n,
+        provenance-n8n-pc,
         provenance-runners,
         provenance-runners-distroless,
       ]
@@ -547,6 +570,14 @@ jobs:
             --predicate security/vex.openvex.json \
             ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
 
+      - name: Attest VEX to n8n-pc image
+        if: needs.create_multi_arch_manifest.outputs.n8n_pc_digest != ''
+        run: |
+          cosign attest --yes \
+            --type openvex \
+            --predicate security/vex.openvex.json \
+            ${{ needs.create_multi_arch_manifest.outputs.n8n_pc_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_pc_digest }}
+
       - name: Attest VEX to runners image
         if: needs.create_multi_arch_manifest.outputs.runners_digest != ''
         run: |
@@ -577,6 +608,7 @@ jobs:
         build-and-push-docker,
         create_multi_arch_manifest,
         provenance-n8n,
+        provenance-n8n-pc,
         provenance-runners,
         provenance-runners-distroless,
       ]
@@ -616,6 +648,8 @@ jobs:
         env:
           N8N_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
           N8N_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
+          N8N_PC_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.n8n_pc_image }}
+          N8N_PC_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.n8n_pc_digest }}
           RUNNERS_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
           RUNNERS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
           DISTROLESS_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
@@ -633,6 +667,19 @@ jobs:
     uses: ./.github/workflows/security-trivy-scan-callable.yml
     with:
       image_ref: ${{ needs.build-and-push-docker.outputs.image_ref }}
+    secrets: inherit
+
+  security-scan-pc:
+    name: Security Scan (n8n-pc)
+    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    if: |
+      success() &&
+      (needs.determine-build-context.outputs.release_type == 'stable' ||
+       needs.determine-build-context.outputs.release_type == 'nightly' ||
+       needs.determine-build-context.outputs.release_type == 'rc')
+    uses: ./.github/workflows/security-trivy-scan-callable.yml
+    with:
+      image_ref: ${{ needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag }}
     secrets: inherit
 
   security-scan-runners:
