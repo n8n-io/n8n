@@ -57,7 +57,20 @@ export const execute: ConfluenceOperation = async function (
 					'The connected user needs the "Delete pages" permission in the page\'s space; no OAuth scope change can grant it.',
 			});
 		}
-		throw error;
+		const notFound = error instanceof NodeApiError && error.httpCode === '404';
+		// Confluence masks permission failures on this endpoint as 404
+		if (notFound && !purge) {
+			throw new NodeOperationError(this.getNode(), 'Confluence could not delete the page', {
+				itemIndex,
+				description:
+					'The page may not exist or may already be in the trash, the connected user may lack view or "Delete pages" permission in the page\'s space (Confluence reports permission failures as "not found"), or the page is an unsaved draft.',
+			});
+		}
+		// A page that is already in the trash 404s on the plain DELETE; when purging,
+		// continue so the purge request still runs (a missing page 404s again there)
+		if (!notFound) {
+			throw error;
+		}
 	}
 
 	// The API only purges pages that are already trashed, so purge is a second request

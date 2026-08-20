@@ -110,6 +110,54 @@ describe('Confluence page:delete operation', () => {
 		expect(result).toEqual({ deleted: true, pageId: '777', purged: false });
 	});
 
+	it('still purges a page that is already in the trash', async () => {
+		apiRequest
+			.mockRejectedValueOnce(
+				new NodeApiError(mockNode, { message: 'Not found' }, { httpCode: '404' }),
+			)
+			.mockResolvedValueOnce({});
+		const ctx = createContext({ page: { mode: 'id', value: '123' }, purge: true });
+
+		const result = await execute.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'DELETE',
+			'/wiki/api/v2/pages/123',
+			{},
+			{ purge: true },
+		);
+		expect(result).toEqual({ deleted: true, pageId: '123', purged: true });
+	});
+
+	it('surfaces the purge-step error when a purged page does not exist at all', async () => {
+		const notFound = () =>
+			new NodeApiError(mockNode, { message: 'Not found' }, { httpCode: '404' });
+		apiRequest.mockRejectedValueOnce(notFound());
+		const purgeError = notFound();
+		apiRequest.mockRejectedValueOnce(purgeError);
+		const ctx = createContext({ page: { mode: 'id', value: '123' }, purge: true });
+
+		await expect(execute.call(ctx, 0)).rejects.toBe(purgeError);
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+	});
+
+	it('lists the masked-permission causes when a plain delete is not found', async () => {
+		apiRequest.mockRejectedValueOnce(
+			new NodeApiError(mockNode, { message: 'Not found' }, { httpCode: '404' }),
+		);
+		const ctx = createContext({ page: { mode: 'id', value: '123' }, purge: false });
+
+		const promise = execute.call(ctx, 0);
+
+		await expect(promise).rejects.toThrow(NodeOperationError);
+		await expect(promise).rejects.toThrow('Confluence could not delete the page');
+		await expect(promise).rejects.toMatchObject({
+			description: expect.stringContaining('Confluence reports permission failures as "not found"'),
+		});
+	});
+
 	it('does not attempt the purge when the trash step fails', async () => {
 		apiRequest.mockRejectedValueOnce(new Error('boom'));
 		const ctx = createContext({ page: { mode: 'id', value: '123' }, purge: true });
