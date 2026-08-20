@@ -1,0 +1,39 @@
+post:
+  x-eov-operation-id: push
+  x-required-scope: sourceControl:push
+  x-eov-operation-handler: v1/handlers/source-control/source-control.handler
+  tags:
+    - SourceControl
+  summary: Push local changes to the remote repository
+  description: |
+    Exports all eligible workflows, credentials stubs, variables stubs, and
+    tags to the configured Git repository and pushes the resulting commit.
+    Requires the Source Control feature to be licensed and connected to a
+    repository. When `fileNames` is omitted the push includes every local
+    change the caller is authorised to push.
+  requestBody:
+    description: Push options
+    required: false
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/push.yml'
+  responses:
+    '200':
+      description: Push succeeded. Returns the pushed files and commit information.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/pushResult.yml'
+    '409':
+      description: |
+        Conflict detected. One or more files have local modifications that
+        conflict with the remote. Retry with `force=true` to overwrite.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/pushResult.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      description: Source Control feature is not licensed.
