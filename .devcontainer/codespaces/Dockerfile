@@ -3,7 +3,7 @@ ARG NODE_VERSION=24
 # Debian, not Alpine: Playwright browsers and the agent CLIs need glibc
 FROM node:${NODE_VERSION}-bookworm
 
-ARG PLAYWRIGHT_VERSION=1.60.0
+ARG PLAYWRIGHT_VERSION=1.62.1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tmux sudo less jq ripgrep postgresql-client \

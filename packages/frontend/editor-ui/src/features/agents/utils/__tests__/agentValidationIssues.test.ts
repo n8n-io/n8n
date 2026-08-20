@@ -38,6 +38,32 @@ describe('agentValidationIssueMessage', () => {
 		);
 	});
 
+	it('resolves reason-specific copy before the tool-type copy', () => {
+		const issue: AgentConfigValidationIssue = {
+			code: 'incompatible_reference',
+			path: 'tools.0.workflow',
+			capability: { kind: 'tool', id: 'wf-1', index: 0, toolType: 'workflow' },
+			reason: 'incompatible_nodes',
+		};
+
+		expect(agentValidationIssueMessage(issue, i18n)).toBe(
+			'agents.builder.validation.issue.tool.workflow.incompatibleNodes(wf-1)',
+		);
+	});
+
+	it('ignores an unrecognised reason and keeps the tool-type copy', () => {
+		const issue: AgentConfigValidationIssue = {
+			code: 'incompatible_reference',
+			path: 'tools.0.workflow',
+			capability: { kind: 'tool', id: 'wf-1', index: 0, toolType: 'workflow' },
+			reason: 'some_future_reason',
+		};
+
+		expect(agentValidationIssueMessage(issue, i18n)).toBe(
+			'agents.builder.validation.issue.tool.workflow.incompatibleReference(wf-1)',
+		);
+	});
+
 	it('falls back to the generic code copy for an unmapped kind', () => {
 		const issue: AgentConfigValidationIssue = {
 			code: 'missing_credential',

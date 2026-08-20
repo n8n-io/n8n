@@ -12,7 +12,6 @@ import type {
 	ExtensionMessage,
 	ExternalConnectResponse,
 	ExternalConnectResultResponse,
-	TabManagementSettings,
 } from './types';
 import { isExternalMessage } from './types';
 
@@ -26,27 +25,46 @@ interface ConnectionState {
 let activeConnection: ConnectionState | null = null;
 
 // ---------------------------------------------------------------------------
-// Settings
-// ---------------------------------------------------------------------------
-
-const SETTINGS_KEY = 'tabManagementSettings';
-
-const DEFAULT_SETTINGS: TabManagementSettings = {
-	allowTabCreation: true,
-	allowTabClosing: false,
-};
-
-async function loadSettings(): Promise<TabManagementSettings> {
-	const result = await chrome.storage.local.get(SETTINGS_KEY);
-	return (result[SETTINGS_KEY] as TabManagementSettings) ?? DEFAULT_SETTINGS;
-}
-
-// ---------------------------------------------------------------------------
 // Relay URL storage (for deduplicating connect.html tabs)
 // ---------------------------------------------------------------------------
 
 const CONNECT_PAGE = 'connect.html';
 const RELAY_URL_KEY = 'pendingRelayUrl';
+
+// ---------------------------------------------------------------------------
+// Action drawer — clicking the extension icon opens drawer.html. While a
+// connect confirmation page is open, the drawer is disabled so the icon click
+// falls through to onClicked, which focuses the pending page instead of
+// showing the same connect view twice.
+// ---------------------------------------------------------------------------
+
+const DRAWER_PAGE = 'drawer.html';
+
+function setDrawerEnabled(enabled: boolean): void {
+	void chrome.action.setPopup({ popup: enabled ? DRAWER_PAGE : '' });
+}
+
+// The disabled state persists across service-worker restarts while the pending
+// flow does not — reset on startup so the drawer can't get stuck disabled.
+setDrawerEnabled(true);
+
+chrome.action.onClicked.addListener(() => {
+	void focusPendingConnectPage();
+});
+
+async function focusPendingConnectPage(): Promise<void> {
+	const tabId = pendingConnectFlow?.tabId;
+	if (tabId === null || tabId === undefined) return;
+	try {
+		const tab = await chrome.tabs.get(tabId);
+		await chrome.tabs.update(tabId, { active: true });
+		if (tab.windowId !== undefined) {
+			await chrome.windows.update(tab.windowId, { focused: true });
+		}
+	} catch {
+		// Pending page already gone — the next settle re-enables the drawer
+	}
+}
 
 // ---------------------------------------------------------------------------
 // Message handling from connect.html UI
@@ -83,18 +101,8 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 			return {
 				connected: activeConnection !== null,
 				tabIds: activeConnection?.relay.getControlledIds() ?? [],
+				relayUrl: activeConnection?.relayUrl,
 			};
-
-		case 'updateSettings': {
-			await chrome.storage.local.set({ [SETTINGS_KEY]: message.settings });
-			if (activeConnection) {
-				activeConnection.relay.setSettings(message.settings);
-			}
-			return { success: true };
-		}
-
-		case 'getSettings':
-			return await loadSettings();
 
 		case 'getRelayUrl': {
 			const stored = await chrome.storage.session.get(RELAY_URL_KEY);
@@ -191,8 +199,8 @@ async function deliverRelayUrl(
 // ---------------------------------------------------------------------------
 
 const EXTERNAL_CONNECT_THROTTLE_MS = 1000;
-const CONNECT_POPUP_WIDTH = 620;
-const CONNECT_POPUP_HEIGHT = 640;
+const CONNECT_POPUP_WIDTH = 540;
+const CONNECT_POPUP_HEIGHT = 700;
 
 let lastExternalConnectAt = 0;
 
@@ -211,6 +219,7 @@ function settleConnectFlow(connected: boolean): void {
 		pendingConnectFlow.notify?.({ connected });
 	} finally {
 		pendingConnectFlow = null;
+		setDrawerEnabled(true);
 	}
 }
 
@@ -266,6 +275,7 @@ async function handleExternalConnect(relayUrl: string): Promise<ExternalConnectR
 	const existing = await deliverRelayUrl(relayUrl);
 	const tabId = existing?.id ?? (await openConnectPopup(relayUrl));
 	pendingConnectFlow = { relayUrl, tabId, notify: null };
+	setDrawerEnabled(false);
 	return { accepted: true };
 }
 
@@ -331,7 +341,6 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 
 	const relay = activeConnection.relay;
 	const sourceIsControlled = relay.isControlledTab(details.sourceTabId);
-	const tabCreationAllowed = relay.isTabCreationAllowed();
 
 	log.debug(
 		'[onCreatedNavigationTarget] tabId:',
@@ -342,11 +351,9 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 		details.url,
 		'sourceIsControlled:',
 		sourceIsControlled,
-		'tabCreationAllowed:',
-		tabCreationAllowed,
 	);
 
-	if (!sourceIsControlled || !tabCreationAllowed) return;
+	if (!sourceIsControlled) return;
 
 	// Mark as agent-created so onUpdated listener also tracks URL changes
 	relay.markAsAgentCreated(details.tabId);
@@ -442,10 +449,6 @@ async function connectToRelay(
 		try {
 			// Eagerly attach debugger to selected tabs and resolve CDP targetIds
 			await relay.registerSelectedTabs(selectedTabIds);
-
-			// Load and apply settings
-			const settings = await loadSettings();
-			relay.setSettings(settings);
 		} catch (error) {
 			relay.close('network_error');
 			throw error;
@@ -493,7 +496,8 @@ function disconnect(): void {
 function broadcastStatusChange(): void {
 	const connected = activeConnection !== null;
 	const tabIds = activeConnection?.relay.getControlledIds() ?? [];
-	chrome.runtime.sendMessage({ type: 'statusChanged', connected, tabIds }).catch(() => {
+	const relayUrl = activeConnection?.relayUrl;
+	chrome.runtime.sendMessage({ type: 'statusChanged', connected, tabIds, relayUrl }).catch(() => {
 		// No receivers — this is fine if the popup/tab is not open
 	});
 }
@@ -506,26 +510,4 @@ function updateBadge(tabCount: number): void {
 	const text = tabCount > 0 ? String(tabCount) : '';
 	void chrome.action.setBadgeText({ text });
 	void chrome.action.setBadgeBackgroundColor({ color: tabCount > 0 ? '#4CAF50' : '#999' });
-}
-
-// ---------------------------------------------------------------------------
-// Extension icon click — open or focus the connect tab
-// ---------------------------------------------------------------------------
-
-chrome.action.onClicked.addListener(() => {
-	void openOrFocusConnectTab();
-});
-
-async function openOrFocusConnectTab(): Promise<void> {
-	const connectUrl = chrome.runtime.getURL(CONNECT_PAGE);
-	const existing = await chrome.tabs.query({ url: `${connectUrl}*` });
-
-	if (existing.length > 0 && existing[0].id !== undefined) {
-		await chrome.tabs.update(existing[0].id, { active: true });
-		if (existing[0].windowId !== undefined) {
-			await chrome.windows.update(existing[0].windowId, { focused: true });
-		}
-	} else {
-		await chrome.tabs.create({ url: connectUrl });
-	}
 }

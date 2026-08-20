@@ -50,6 +50,20 @@ const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.validation.issue.mcpServer.incompatibleCredential' as BaseTextKey,
 };
 
+/**
+ * Reason-specific overrides for issues that carry a `reason` discriminator
+ * (currently workflow tools). Keyed by the `reason` string emitted by the
+ * backend, and taking precedence over the kind/code key so the message names
+ * the actual problem (e.g. "contains a Wait node") instead of the generic
+ * "can't be used as an agent tool".
+ */
+const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
+	incompatible_nodes:
+		'agents.builder.validation.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
+	no_supported_trigger:
+		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
+};
+
 /** Element labels for the toast — the agent's own fields name themselves. */
 const CAPABILITY_LABEL_KEYS: Partial<
 	Record<AgentConfigValidationIssue['capability']['kind'], BaseTextKey>
@@ -69,6 +83,7 @@ export function agentValidationIssueMessage(
 ): string {
 	const { kind, toolType, id } = issue.capability;
 	const key =
+		(issue.reason ? REASON_SPECIFIC_KEYS[issue.reason] : undefined) ??
 		(kind === 'tool' && toolType
 			? SPECIFIC_ISSUE_KEYS[`tool.${toolType}.${issue.code}`]
 			: undefined) ??

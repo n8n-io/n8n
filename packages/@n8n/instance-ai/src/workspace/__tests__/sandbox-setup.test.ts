@@ -106,7 +106,7 @@ function createSetupContext(
 			listSearchable: vi.fn().mockResolvedValue([]),
 		},
 		workflowService: {
-			list: vi.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue({ workflows: [], total: 0, totalInScope: 0 }),
 			get: vi.fn(),
 		},
 		...(templatesBundle
@@ -448,10 +448,10 @@ describe('setupSandboxWorkspace', () => {
 		>(async () => {});
 		const context = createSetupContext();
 		const workflowService = context.workflowService as unknown as {
-			list: Mock<(...args: [{ limit: number }]) => Promise<Array<{ id: string }>>>;
+			list: Mock<(...args: [{ limit: number }]) => Promise<{ workflows: Array<{ id: string }> }>>;
 			get: Mock<(...args: [string]) => Promise<Record<string, unknown>>>;
 		};
-		workflowService.list.mockResolvedValue([{ id: '../escape' }]);
+		workflowService.list.mockResolvedValue({ workflows: [{ id: '../escape' }] });
 		workflowService.get.mockResolvedValue({ id: '../escape' });
 
 		await expect(

@@ -11,10 +11,11 @@ import {
 } from '@/features/agents/constants';
 import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
-import type {
-	AgentExecution,
-	AgentExecutionThread,
-	ThreadDetail,
+import {
+	defaultAgentSessionFilters,
+	type AgentExecution,
+	type AgentExecutionThread,
+	type ThreadDetail,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
@@ -95,6 +96,9 @@ const triggerIcon = computed((): IconName => {
 const triggerLabel = computed((): string => {
 	const source = triggerSource.value;
 	if (!source) return '';
+	if (source === 'chat' || source === 'n8n_chat') {
+		return i18n.baseText('agentSessions.origin.preview');
+	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
@@ -195,7 +199,9 @@ watch(
 			const [loadedAgent] = await Promise.all([
 				getAgent(rootStore.restApiContext, nextProjectId, nextAgentId),
 				fetchConfig(nextProjectId, nextAgentId),
-				sessionsStore.fetchThreads(nextProjectId, nextAgentId),
+				sessionsStore.fetchThreads(nextProjectId, nextAgentId, {
+					filters: defaultAgentSessionFilters(),
+				}),
 			]);
 			if (requestId === previewLoadRequestId) agent.value = loadedAgent;
 		} finally {

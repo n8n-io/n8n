@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 
+import { computeChatModelValidationIssues } from './chat-model-validation';
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
@@ -56,6 +57,7 @@ import {
 	normalizeWorkflowSourceFilePath,
 	readWorkflowSourceFile,
 	saveWorkflowSourceFileBinding,
+	type WorkflowSourceFileBinding,
 } from './workflow-file-bindings';
 import {
 	ensureUniqueNodeIds,
@@ -141,7 +143,7 @@ export const buildWorkflowInputSchema = z
 					'Pass a workspace-relative path like src/workflows/my-workflow.workflow.ts.',
 			})
 			.describe(
-				'Workspace-relative path to the workflow source file to build, e.g. src/workflows/my-workflow.workflow.ts. Supports TypeScript SDK files and WorkflowJSON .json files.',
+				'Workspace-relative path to the TypeScript SDK workflow source file to build, e.g. src/workflows/my-workflow.workflow.ts.',
 			),
 		sourceCode: z
 			.string()
@@ -172,6 +174,15 @@ export const buildWorkflowInputSchema = z
 			.describe(
 				'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
 					'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
+			),
+		preferNewCredentials: z
+			.array(z.string())
+			.optional()
+			.describe(
+				'Credential types (e.g. ["slackApi"]) the user explicitly asked to create fresh — pass ONLY on ' +
+					'an explicit request like "create a new Slack credential", never as a default. Those slots are ' +
+					'left unresolved instead of being filled from an existing credential or n8n credits, so ' +
+					'credential setup can offer to create one. Pass the same list to workflows(action="setup").',
 			),
 		executionIntent: z
 			.enum(['one-off', 'reusable'])
@@ -334,6 +345,86 @@ function directPostBuildFlowHandoff(
 	};
 }
 
+interface ValidationFailureArgs {
+	context: InstanceAiContext;
+	blocking: ValidationWarning[];
+	informational: ValidationWarning[];
+	reason: string;
+	guidance: string;
+	summary: string;
+	binding: WorkflowSourceFileBinding;
+	sourceHash: string;
+	targetWorkflowId?: string;
+	filePath: string;
+	resolvedWorkItemId: string;
+	resolvedTaskId: string;
+	plannedTaskId?: string;
+	owner: WorkflowBuildOutcome['owner'];
+	isSupportingWorkflow?: boolean;
+	isAuxiliarySupportingWorkflow?: boolean;
+	withEscalation: (errors: string[]) => string[];
+}
+
+async function handleValidationFailure(args: ValidationFailureArgs) {
+	const {
+		context,
+		blocking,
+		informational,
+		reason,
+		guidance,
+		summary,
+		binding: initialBinding,
+		sourceHash,
+		targetWorkflowId,
+		filePath,
+		resolvedWorkItemId,
+		resolvedTaskId,
+		plannedTaskId,
+		owner,
+		isSupportingWorkflow = false,
+		isAuxiliarySupportingWorkflow = false,
+		withEscalation,
+	} = args;
+
+	const formattedErrors = withEscalation(
+		blocking.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
+	);
+	const remediation = createCodeFixableRemediation({ reason, guidance });
+	const binding = await markSourceBuildFailed(context, initialBinding, sourceHash);
+	await reportFailedWorkflowBuildOutcome(context, {
+		targetWorkflowId,
+		sourceFilePath: filePath,
+		workItemId: resolvedWorkItemId,
+		taskId: resolvedTaskId,
+		plannedTaskId,
+		owner,
+		remediation,
+		errors: formattedErrors,
+		summary,
+		storeOnRunContext: !isAuxiliarySupportingWorkflow,
+	});
+	trackWorkflowSourceBuild(context, {
+		result: 'failure',
+		stage: 'validation',
+		binding,
+		targetWorkflowId,
+		isSupportingWorkflow,
+		isAuxiliarySupportingWorkflow,
+		remediation,
+		errorCount: formattedErrors.length,
+		warningCount: informational.length,
+	});
+	return {
+		success: false as const,
+		...sourceResponseBase(binding),
+		workflowId: targetWorkflowId,
+		workItemId: resolvedWorkItemId,
+		errors: formattedErrors,
+		remediation,
+		warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
+	};
+}
+
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
 
@@ -342,7 +433,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			'Build and save a workflow from workflow source. ' +
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
 				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
-				'Use TypeScript SDK source for new workflows, or WorkflowJSON .json source for existing workflow edits. ' +
+				'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
 				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
 				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)
@@ -781,49 +872,26 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			informational = partitionedWarnings.informational;
 
 			if (partitionedWarnings.blocking.length > 0) {
-				const formattedErrors = withEscalation(
-					partitionedWarnings.blocking.map(
-						(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
-					),
-				);
-				const remediation = createCodeFixableRemediation({
+				return await handleValidationFailure({
+					context,
+					blocking: partitionedWarnings.blocking,
+					informational,
 					reason: 'workflow_source_validation_failed',
 					guidance:
 						'Edit the workspace source file using the validation diagnostics, then call build-workflow again with the same filePath.',
-				});
-				binding = await markSourceBuildFailed(context, binding, sourceHash);
-				await reportFailedWorkflowBuildOutcome(context, {
+					summary: 'Workflow source failed validation.',
+					binding,
+					sourceHash,
 					targetWorkflowId,
-					sourceFilePath: filePath,
-					workItemId: resolvedWorkItemId,
-					taskId: resolvedTaskId,
+					filePath,
+					resolvedWorkItemId,
+					resolvedTaskId,
 					plannedTaskId,
 					owner,
-					remediation,
-					errors: formattedErrors,
-					summary: 'Workflow source failed validation.',
-					storeOnRunContext: !isAuxiliarySupportingWorkflow,
-				});
-				trackWorkflowSourceBuild(context, {
-					result: 'failure',
-					stage: 'validation',
-					binding,
-					targetWorkflowId,
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
-					remediation,
-					errorCount: formattedErrors.length,
-					warningCount: informational.length,
+					withEscalation,
 				});
-				return {
-					success: false,
-					...sourceResponseBase(binding),
-					workflowId: targetWorkflowId,
-					workItemId: resolvedWorkItemId,
-					errors: formattedErrors,
-					remediation,
-					warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
-				};
 			}
 
 			const json = compiled.workflow;
@@ -873,14 +941,21 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			const credentialMap = await buildCredentialMap(context.credentialService);
-			const mockResult = await resolveCredentials(json, targetWorkflowId, context, credentialMap);
+			const mockResult = await resolveCredentials(
+				json,
+				targetWorkflowId,
+				context,
+				credentialMap,
+				input.preferNewCredentials,
+			);
 
 			// Deterministic backstop for a builder that never checked credentials:
 			// a chat-model node for a provider the user has no credential for gets
 			// flagged with the LLM credentials they do have. Nodes the resolver
 			// covered with n8n credits are exempt — they run as built.
+			const chatModelBlocking: ValidationWarning[] = [];
 			for (const message of buildChatModelProviderMismatchWarnings(
-				json.nodes ?? [],
+				(json.nodes ?? []).filter((node) => !node.disabled),
 				[...credentialMap.values()].flat(),
 				mockResult.resolvedCredentialsByNode,
 			)) {
@@ -888,6 +963,49 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					code: 'chat_model_provider_mismatch',
 					message,
 					severity: 'informational',
+				});
+			}
+
+			for (const node of json.nodes ?? []) {
+				if (!node.name || node.disabled) continue;
+				const chatModelIssues = await computeChatModelValidationIssues(context, node);
+				for (const messages of Object.values(chatModelIssues)) {
+					for (const message of messages) {
+						chatModelBlocking.push({
+							code: 'chat_model_validation',
+							message: `${node.name}: ${message}`,
+							nodeName: node.name,
+							severity: 'error',
+						});
+					}
+				}
+			}
+
+			const partitionedChatModelWarnings = partitionWarnings(
+				downgradeUnchangedNodeBlockers(chatModelBlocking, json, savedWorkflowSnapshot),
+			);
+			informational.push(...partitionedChatModelWarnings.informational);
+
+			if (partitionedChatModelWarnings.blocking.length > 0) {
+				return await handleValidationFailure({
+					context,
+					blocking: partitionedChatModelWarnings.blocking,
+					informational,
+					reason: 'chat_model_validation_failed',
+					guidance:
+						'Fix the chat-model configuration using nodes(action="explore-resources") to pick a model the connected credential supports, then call build-workflow again.',
+					summary: 'Workflow uses a chat model or parameter the connected credential cannot run.',
+					binding,
+					sourceHash,
+					targetWorkflowId,
+					filePath,
+					resolvedWorkItemId,
+					resolvedTaskId,
+					plannedTaskId,
+					owner,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					withEscalation,
 				});
 			}
 
@@ -920,6 +1038,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 				const hasMockedCredentialNodes = mockResult.mockedNodeNames.length > 0;
 				const hasResolvedCredentials = Object.keys(mockResult.resolvedCredentialsByNode).length > 0;
+				// Reported by the resolver rather than inferred from the mocked types, so a
+				// slot the source omitted entirely — held by the required-type pass, which
+				// mocks nothing — still carries the request into the setup call.
+				const heldForNewCredentialTypes = mockResult.heldForNewCredentialTypes;
 				const referencedWorkflowIds = getReferencedWorkflowIds(json);
 				const triggerNodes = (json.nodes ?? [])
 					.filter((n) => isTriggerNodeType(n.type))
@@ -945,7 +1067,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					saved: { id: string; versionId: string; checksum?: string },
 					operation: 'create' | 'update',
 				) => {
-					const setupRequests = await analyzeWorkflow(context, saved.id);
+					const setupRequests = await analyzeWorkflow(context, saved.id, undefined, {
+						...(input.preferNewCredentials
+							? { preferNewCredentialTypes: input.preferNewCredentials }
+							: {}),
+					});
 					// Two independent filters over the same list: `isInSetupScope` drops nodes this
 					// build never touched, the skip partition drops cards the user declined. A node
 					// only re-arms the setup follow-up when it survives both.
@@ -1100,9 +1226,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						resolvedCredentialsByNode: hasResolvedCredentials
 							? mockResult.resolvedCredentialsByNode
 							: undefined,
-						credentialResolutionNote: hasResolvedCredentials
-							? buildCredentialResolutionNote(mockResult.resolvedCredentialsByNode)
-							: undefined,
+						credentialResolutionNote:
+							hasResolvedCredentials || heldForNewCredentialTypes.length > 0
+								? buildCredentialResolutionNote(
+										mockResult.resolvedCredentialsByNode,
+										heldForNewCredentialTypes,
+									)
+								: undefined,
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,

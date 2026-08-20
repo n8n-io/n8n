@@ -7,3 +7,12 @@
  * role type (`global:*`, `project:*`), including custom roles.
  */
 export const BLOCK_ACCESS_ASSIGNMENT = 'block:access';
+
+/**
+ * Query parameter the SSO callbacks add when redirecting a denied login back to
+ * the sign-in page, so the UI can explain the denial instead of surfacing it as
+ * a failed login.
+ */
+export const SSO_ERROR_QUERY_PARAM = 'ssoError';
+
+export const SSO_ERROR_ACCESS_DENIED = 'access-denied';
