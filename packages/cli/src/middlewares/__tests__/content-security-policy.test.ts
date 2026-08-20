@@ -25,6 +25,31 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 		res.type('html').send('<p>sandboxed</p>');
 	});
 
+	// Handlers that pass their headers to `writeHead` rather than setting them on `res`,
+	// as the streaming webhook and chat responses do.
+	app.get('/raw-page', (_req, res) => {
+		res.writeHead(200, { 'Content-Type': 'text/html' });
+		res.end(`<script nonce="${res.locals.cspNonce}"></script>`);
+	});
+
+	app.get('/raw-page-with-status-message', (_req, res) => {
+		res.writeHead(200, 'OK', { 'Content-Type': 'text/html' });
+		res.end('<p>page</p>');
+	});
+
+	app.get('/raw-sandboxed', (_req, res) => {
+		res.writeHead(200, {
+			'Content-Type': 'text/html',
+			'Content-Security-Policy': 'sandbox allow-scripts',
+		});
+		res.end('<p>sandboxed</p>');
+	});
+
+	app.get('/raw-stream', (_req, res) => {
+		res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+		res.end('{"ok":true}');
+	});
+
 	return app;
 };
 
@@ -67,6 +92,36 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			const response = await request(app).get('/sandboxed');
 
 			expect(response.headers[ENFORCED]).toBe('sandbox allow-scripts');
+			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+	});
+
+	describe('headers passed to writeHead instead of set on the response', () => {
+		const app = setupApp({ enforced: "script-src <nonce> 'strict-dynamic'" });
+
+		it('should serve the policy when writeHead carries the html content type', async () => {
+			const response = await request(app).get('/raw-page');
+
+			expect(response.headers[ENFORCED]).toMatch(/^script-src 'nonce-[\w-]+' 'strict-dynamic'$/);
+			expect(response.text).toContain(`nonce="${nonceOf(response.headers[ENFORCED])}"`);
+		});
+
+		it('should serve the policy when writeHead also carries a status message', async () => {
+			const response = await request(app).get('/raw-page-with-status-message');
+
+			expect(response.headers[ENFORCED]).toMatch(/^script-src 'nonce-[\w-]+' 'strict-dynamic'$/);
+		});
+
+		it('should leave a policy that writeHead carries untouched', async () => {
+			const response = await request(app).get('/raw-sandboxed');
+
+			expect(response.headers[ENFORCED]).toBe('sandbox allow-scripts');
+		});
+
+		it('should not serve a policy when writeHead carries a non-html content type', async () => {
+			const response = await request(app).get('/raw-stream');
+
+			expect(response.headers[ENFORCED]).toBeUndefined();
 			expect(response.headers[REPORT_ONLY]).toBeUndefined();
 		});
 	});
