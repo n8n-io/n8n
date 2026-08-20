@@ -140,6 +140,7 @@ export class RoleMappingRulesPublicController {
 	@ApiDescription(
 		"Replaces a rule's claim expression, role, type, order and project assignments. Set `projectIds` when `type` is `project`; omit it when `type` is `instance`. Omitting `order` keeps the rule's current position; setting it moves the rule to that position within its type's evaluation sequence, or use the move endpoint instead. A value beyond the last position is clamped to the end. Setting a position already taken by another rule of the same type fails with a conflict.",
 	)
+	@ApiTags(['RoleMappingRule'])
 	@ApiResponse(200, RoleMappingRulePublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
