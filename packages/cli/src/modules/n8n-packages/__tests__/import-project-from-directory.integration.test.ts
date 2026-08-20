@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { EventService } from '@/events/event.service';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 
@@ -99,6 +100,23 @@ describe('importPackageFromDirectory', () => {
 		expect(result.projects).toHaveLength(1);
 		expect(result.projects[0]).toMatchObject({ name: 'Alpha Project', status: 'created' });
 		expect(result.workflows.map((w) => w.name)).toEqual(['WF One']);
+	});
+
+	it('does not emit the user package-import event', async () => {
+		const project = await createTeamProject('Alpha Project', owner);
+		await createWorkflow({ name: 'WF One', nodes: [], connections: {} }, project);
+		await service.exportPackageToDirectory(
+			{ user: owner, projectIds: [project.id] },
+			{ targetDir: sourceDir },
+		);
+		await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'ProjectRelation', 'Project']);
+
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		await service.importPackageFromDirectory({ user: owner, ...importPolicy }, { sourceDir });
+
+		expect(emitSpy).not.toHaveBeenCalledWith('n8n-package-imported', expect.anything());
+		emitSpy.mockRestore();
 	});
 
 	it('is a no-op for a working copy with no projects', async () => {
