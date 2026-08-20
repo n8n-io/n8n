@@ -54,6 +54,9 @@ describe('isNonImpactful', () => {
 		// tsconfig can carry module-resolution keys → routed via tsconfigForcesBroad
 		'tsconfig.json',
 		'packages/cli/tsconfig.build.json',
+		// Instance AI ships these md files as runtime content
+		'packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md',
+		'packages/@n8n/instance-ai/knowledge-base/reference/trigger-input-data-shapes.md',
 	])('treats %s as impactful', (file) => {
 		expect(isNonImpactful(file)).toBe(false);
 	});

@@ -60,6 +60,9 @@ jobs:
               !**/*.md
               !**/LICENSE
               !**/CHANGELOG.md
+              # Runtime content read by unit tests — re-include after the md exclusion.
+              packages/@n8n/instance-ai/skills/**
+              packages/@n8n/instance-ai/knowledge-base/**
             runtime:
               **
               !packages/@n8n/task-runner-python/**
@@ -78,6 +81,9 @@ jobs:
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
+              # Shipped in the package (see its "files") — md changes here change runtime behavior.
+              packages/@n8n/instance-ai/skills/**
+              packages/@n8n/instance-ai/knowledge-base/**
             unit:
               **
               !packages/@n8n/task-runner-python/**
@@ -93,6 +99,9 @@ jobs:
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
+              # Runtime content read by unit tests — re-include after the md exclusion.
+              packages/@n8n/instance-ai/skills/**
+              packages/@n8n/instance-ai/knowledge-base/**
             e2e:
               .github/workflows/test-e2e-*.yml
               .github/workflows/prepare-docker-reusable.yml
@@ -129,6 +138,8 @@ jobs:
               .github/workflows/test-e2e-performance-reusable.yml
             instance-ai-workflow-eval:
               packages/@n8n/instance-ai/src/**
+              packages/@n8n/instance-ai/skills/**
+              packages/@n8n/instance-ai/knowledge-base/**
               packages/@n8n/instance-ai/evaluations/**
               packages/cli/src/modules/instance-ai/**
               packages/core/src/execution-engine/eval-mock-helpers.ts

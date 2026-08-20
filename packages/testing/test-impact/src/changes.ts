@@ -26,8 +26,11 @@ const NON_IMPACTFUL: Array<(f: string) => boolean> = [
 		/(^|\/)\.(editorconfig|gitattributes|gitignore|npmrc|nvmrc|prettierignore|eslintignore)$/.test(
 			f,
 		),
-	// Docs + dictionaries + doc assets
-	(f) => /\.mdx?$/.test(f) || /(^|\/)(LICENSE|CHANGELOG\.md)$/.test(f),
+	// Docs + dictionaries + doc assets. Instance AI skills/knowledge-base md is
+	// shipped runtime content (see the package's "files"), not docs.
+	(f) =>
+		(/\.mdx?$/.test(f) || /(^|\/)(LICENSE|CHANGELOG\.md)$/.test(f)) &&
+		!/^packages\/@n8n\/instance-ai\/(skills|knowledge-base)\//.test(f),
 	(f) => /cspell|\.dic$/i.test(f),
 	(f) => /^(docs|assets)\/.*\.(png|jpe?g|gif|svg|webp)$/.test(f),
 	// Repo automation scripts (not shipped, not exercised by E2E)
