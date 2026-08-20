@@ -166,7 +166,8 @@ N8N_INSTANCE_AI_MCP_SERVERS="github=https://mcp.github.com/sse,database=https://
 ```
 
 Each MCP server's tools are merged with the native tools and made available to
-the orchestrator agent. Sub-agents currently do not receive MCP tools.
+the orchestrator agent. The embedded Agent Builder receives the same validated,
+approval-wrapped MCP tools; specialized background agents do not.
 
 ## Storage
 
