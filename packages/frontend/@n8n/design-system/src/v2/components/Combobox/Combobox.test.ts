@@ -349,7 +349,7 @@ describe('v2/components/Combobox', () => {
 			expect(within(popover).getByRole('option', { name: 'Carrot' })).toBeVisible();
 		});
 
-		it('should render separator items', async () => {
+		it('should split unlabeled options into sibling groups without a separator node', async () => {
 			const items: ComboboxItem[] = [
 				{ value: '1', label: 'Option 1' },
 				{ type: 'separator' },
@@ -363,9 +363,10 @@ describe('v2/components/Combobox', () => {
 			});
 
 			const { popover } = await getPopoverContainer();
-			// Decorative only (we set aria-hidden); role="separator" is invalid inside listbox.
+			// Dividers are CSS on sibling groups; a separator node is invalid inside listbox
+			// and would remain visible when Reka hides a filtered group.
 			expect(popover.querySelectorAll('[role="separator"]')).toHaveLength(0);
-			expect(popover.querySelectorAll('[aria-hidden="true"]')).toHaveLength(1);
+			expect(popover.querySelectorAll('[role="group"]')).toHaveLength(2);
 			expect(within(popover).getByRole('option', { name: 'Option 1' })).toBeVisible();
 			expect(within(popover).getByRole('option', { name: 'Option 2' })).toBeVisible();
 		});
@@ -502,6 +503,44 @@ describe('v2/components/Combobox', () => {
 				expect(wrapper.getByText('United States')).toBeVisible();
 				expect(wrapper.getByText('United Kingdom')).toBeVisible();
 			});
+		});
+
+		it('should hide groups with no matches without leaving a separator', async () => {
+			const items: ComboboxItem[] = [
+				{
+					type: 'group',
+					label: 'Fruits',
+					items: [{ value: 'apple', label: 'Apple' }],
+				},
+				{ type: 'separator' },
+				{
+					type: 'group',
+					label: 'Vegetables',
+					items: [{ value: 'carrot', label: 'Carrot' }],
+				},
+			];
+
+			const wrapper = render(Combobox, {
+				props: { items, defaultOpen: true },
+			});
+
+			const { popover } = await getPopoverContainer();
+			const input = getComboboxInput(wrapper);
+			await userEvent.type(input, 'carrot');
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('option', { name: 'Carrot' })).toBeVisible();
+			});
+
+			expect(within(popover).queryByRole('option', { name: 'Apple' })).not.toBeInTheDocument();
+			expect(within(popover).getByText('Fruits')).not.toBeVisible();
+			expect(within(popover).getByText('Vegetables')).toBeVisible();
+			expect(popover.querySelectorAll('[role="separator"]')).toHaveLength(0);
+
+			const groupElements = popover.querySelectorAll('[role="group"]');
+			expect(groupElements).toHaveLength(2);
+			expect(groupElements[0]).toHaveAttribute('hidden');
+			expect(groupElements[1]).not.toHaveAttribute('hidden');
 		});
 
 		it('should not filter items when ignoreFilter is true', async () => {

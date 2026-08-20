@@ -35,7 +35,6 @@ import {
 	ComboboxLabel,
 	ComboboxPortal,
 	ComboboxRoot,
-	ComboboxSeparator,
 	ComboboxTrigger,
 	ComboboxViewport,
 	useForwardPropsEmits,
@@ -171,15 +170,11 @@ function normaliseOption(item: ComboboxOptionBase): ComboboxOptionBase | undefin
 	};
 }
 
-type ComboboxSection =
-	| {
-			type: 'group';
-			/** Present when this section came from an explicit `type: 'group'` entry. */
-			group?: ComboboxGroupItem;
-			label?: string;
-			items: ComboboxOptionBase[];
-	  }
-	| { type: 'separator' };
+type ComboboxSection = {
+	group?: ComboboxGroupItem;
+	label?: string;
+	items: ComboboxOptionBase[];
+};
 
 const sections = computed<ComboboxSection[]>(() => {
 	if (!props.items?.length) return [];
@@ -191,7 +186,7 @@ const sections = computed<ComboboxSection[]>(() => {
 		if (pendingOptions.length === 0) {
 			return;
 		}
-		result.push({ type: 'group', items: pendingOptions });
+		result.push({ items: pendingOptions });
 		pendingOptions = [];
 	};
 
@@ -213,7 +208,6 @@ const sections = computed<ComboboxSection[]>(() => {
 			}
 
 			result.push({
-				type: 'group',
 				group: item,
 				label,
 				items: groupItems,
@@ -223,7 +217,6 @@ const sections = computed<ComboboxSection[]>(() => {
 
 		if (isSeparatorItem(item)) {
 			flushPendingOptions();
-			result.push({ type: 'separator' });
 			continue;
 		}
 
@@ -237,9 +230,7 @@ const sections = computed<ComboboxSection[]>(() => {
 	return result;
 });
 
-const optionItems = computed(() =>
-	sections.value.flatMap((section) => (section.type === 'group' ? section.items : [])),
-);
+const optionItems = computed(() => sections.value.flatMap((section) => section.items));
 
 const anchorRef = useTemplateRef<InstanceType<typeof ComboboxAnchor>>('anchor');
 
@@ -441,42 +432,38 @@ function onTagsUpdate(value: TagsInputValue[]) {
 						{{ emptyText }}
 					</ComboboxEmpty>
 
-					<template v-for="(section, sectionIndex) in sections" :key="`section-${sectionIndex}`">
-						<ComboboxSeparator
-							v-if="section.type === 'separator'"
-							:class="$style.comboboxSeparator"
-							aria-hidden="true"
-						/>
+					<ComboboxGroup
+						v-for="(section, sectionIndex) in sections"
+						:key="`section-${sectionIndex}`"
+						:class="$style.comboboxGroup"
+					>
+						<ComboboxLabel v-if="section.label && section.group" :class="$style.comboboxLabel">
+							<slot name="label" :item="section.group">
+								{{ section.label }}
+							</slot>
+						</ComboboxLabel>
 
-						<ComboboxGroup v-else>
-							<ComboboxLabel v-if="section.label && section.group" :class="$style.comboboxLabel">
-								<slot name="label" :item="section.group">
-									{{ section.label }}
-								</slot>
-							</ComboboxLabel>
-
-							<template
-								v-for="item in section.items"
-								:key="`section-${sectionIndex}-item-${String(item.value)}`"
-							>
-								<slot name="item" :item="item">
-									<N8nComboboxItem v-bind="item">
-										<template v-if="$slots['item-leading']" #item-leading="{ ui }">
-											<slot name="item-leading" :item="item" :ui="ui" />
-										</template>
-										<template #item-label>
-											<slot name="item-label" :item="item">
-												{{ item.label }}
-											</slot>
-										</template>
-										<template v-if="$slots['item-trailing']" #item-trailing="{ ui }">
-											<slot name="item-trailing" :item="item" :ui="ui" />
-										</template>
-									</N8nComboboxItem>
-								</slot>
-							</template>
-						</ComboboxGroup>
-					</template>
+						<template
+							v-for="item in section.items"
+							:key="`section-${sectionIndex}-item-${String(item.value)}`"
+						>
+							<slot name="item" :item="item">
+								<N8nComboboxItem v-bind="item">
+									<template v-if="$slots['item-leading']" #item-leading="{ ui }">
+										<slot name="item-leading" :item="item" :ui="ui" />
+									</template>
+									<template #item-label>
+										<slot name="item-label" :item="item">
+											{{ item.label }}
+										</slot>
+									</template>
+									<template v-if="$slots['item-trailing']" #item-trailing="{ ui }">
+										<slot name="item-trailing" :item="item" :ui="ui" />
+									</template>
+								</N8nComboboxItem>
+							</slot>
+						</template>
+					</ComboboxGroup>
 				</ComboboxViewport>
 			</ComboboxContent>
 		</ComboboxPortal>
@@ -725,13 +712,19 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	font-size: var(--font-size--2xs);
 }
 
-.comboboxSeparator {
+.comboboxGroup {
 	--combobox-separator-outline-inset: 1px;
 
-	margin-block: var(--combobox-viewport--padding);
-	margin-inline: calc(
-		-1 * var(--combobox-viewport--padding) + var(--combobox-separator-outline-inset)
-	);
-	border-top: 1px solid var(--border-color);
+	&:not([hidden]) ~ &:not([hidden]) {
+		border-top: 1px solid var(--border-color);
+		margin-block-start: var(--combobox-viewport--padding);
+		margin-inline: calc(
+			-1 * var(--combobox-viewport--padding) + var(--combobox-separator-outline-inset)
+		);
+		padding-block-start: var(--combobox-viewport--padding);
+		padding-inline: calc(
+			var(--combobox-viewport--padding) - var(--combobox-separator-outline-inset)
+		);
+	}
 }
 </style>

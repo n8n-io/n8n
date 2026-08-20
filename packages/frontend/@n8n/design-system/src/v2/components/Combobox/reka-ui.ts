@@ -22,7 +22,6 @@ export {
 	ComboboxLabel,
 	ComboboxPortal,
 	ComboboxRoot,
-	ComboboxSeparator,
 	ComboboxTrigger,
 	ComboboxViewport,
 	useForwardPropsEmits,
