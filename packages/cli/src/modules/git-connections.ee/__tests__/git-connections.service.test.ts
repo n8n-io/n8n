@@ -308,7 +308,17 @@ describe('GitConnectionsService (credential state machine)', () => {
 			expect(await readFile(path.join(repositoryFolder, '.git', 'HEAD'), 'utf-8')).toBe(
 				'ref: refs/heads/main',
 			);
-			expect(result).toMatchObject({ id: '1', baseCommit: null });
+			expect(result).toEqual({
+				connectionId: '1',
+				counts: {
+					workflows: 0,
+					folders: 0,
+					credentials: 0,
+					dataTables: 0,
+					variables: 0,
+					tags: 0,
+				},
+			});
 			await expect(stat(path.join(repositoryFolder, 'stale.json'))).rejects.toThrow();
 			await expect(
 				stat(path.join(n8nFolder, 'git-connections', '1', 'repository-export-next')),

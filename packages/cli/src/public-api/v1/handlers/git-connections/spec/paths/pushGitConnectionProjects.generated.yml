@@ -21,49 +21,39 @@ responses:
         schema:
           type: object
           properties:
-            id:
+            connectionId:
               type: string
-            name:
-              type: string
-            repositoryUrl:
-              type: string
-            branchName:
-              type: string
-              nullable: true
-            connectionType:
-              type: string
-              enum:
-                - ssh
-                - https
-            publicKey:
-              type: string
-              nullable: true
-            keyGeneratorType:
-              type: string
-              nullable: true
-              enum:
-                - ed25519
-                - rsa
-            baseCommit:
-              type: string
-              nullable: true
-            createdAt:
-              type: string
-              format: date-time
-            updatedAt:
-              type: string
-              format: date-time
+            counts:
+              type: object
+              properties:
+                workflows:
+                  type: integer
+                  minimum: 0
+                folders:
+                  type: integer
+                  minimum: 0
+                credentials:
+                  type: integer
+                  minimum: 0
+                dataTables:
+                  type: integer
+                  minimum: 0
+                variables:
+                  type: integer
+                  minimum: 0
+                tags:
+                  type: integer
+                  minimum: 0
+              required:
+                - workflows
+                - folders
+                - credentials
+                - dataTables
+                - variables
+                - tags
           required:
-            - id
-            - name
-            - repositoryUrl
-            - branchName
-            - connectionType
-            - publicKey
-            - keyGeneratorType
-            - baseCommit
-            - createdAt
-            - updatedAt
+            - connectionId
+            - counts
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

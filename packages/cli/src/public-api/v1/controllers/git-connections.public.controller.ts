@@ -3,6 +3,7 @@ import {
 	CreateGitConnectionDto,
 	GitConnectionListPublicDto,
 	GitConnectionPublicDto,
+	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,
 	MAX_ITEMS_PER_PAGE,
 	UpdateGitConnectionDto,
@@ -203,7 +204,7 @@ export class GitConnectionsPublicController {
 		'Work in progress. Exports all linked projects to the local repository working copy. It does not commit or push changes to the selected branch yet.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, GitConnectionPublicDto)
+	@ApiResponse(200, GitConnectionPushResultDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
@@ -211,7 +212,7 @@ export class GitConnectionsPublicController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
-	): Promise<GitConnectionPublicDto> {
+	): Promise<GitConnectionPushResultDto> {
 		return await (await this.gitConnectionsService()).push(id, req.user);
 	}
 }

@@ -1,6 +1,7 @@
 import type {
 	CreateGitConnectionDto,
 	GitConnectionPublicDto,
+	GitConnectionPushResultDto,
 	UpdateGitConnectionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -135,7 +136,7 @@ export class GitConnectionsService {
 		await this.repository.remove(connection);
 	}
 
-	async push(connectionId: string, actor: User): Promise<GitConnectionPublicDto> {
+	async push(connectionId: string, actor: User): Promise<GitConnectionPushResultDto> {
 		return await this.exportMutex(
 			async () => await this.exportProjectsToRepository(connectionId, actor),
 		);
@@ -144,8 +145,9 @@ export class GitConnectionsService {
 	private async exportProjectsToRepository(
 		connectionId: string,
 		actor: User,
-	): Promise<GitConnectionPublicDto> {
-		const connection = await this.getEntity(connectionId);
+	): Promise<GitConnectionPushResultDto> {
+		// Validates the connection exists (throws NotFound otherwise) before any export work.
+		await this.getEntity(connectionId);
 		const projectIds =
 			await this.projectConnectionRepository.findProjectIdsByConnection(connectionId);
 		const rootFolder = this.rootFolder(connectionId);
@@ -159,8 +161,9 @@ export class GitConnectionsService {
 
 		await rm(nextExportFolder, { recursive: true, force: true });
 		await this.sweepPreviousRepositories(rootFolder);
+		let exportResult;
 		try {
-			await this.n8nPackagesService.exportPackageToDirectory(
+			exportResult = await this.n8nPackagesService.exportPackageToDirectory(
 				{
 					user: actor,
 					projectIds,
@@ -179,11 +182,12 @@ export class GitConnectionsService {
 		}
 		await this.replaceRepositoryContents(connectionId, repositoryFolder, nextExportFolder);
 
-		// TODO:
-		// - commit and stage changes
-		// - push changes to the remote repository
-		// - return the git operation result
-		return this.toPublic(connection);
+		// TODO: commit the working copy and push to the remote, then surface the
+		// git operation result here.
+		return {
+			connectionId,
+			counts: exportResult.counts,
+		};
 	}
 
 	private async replaceRepositoryContents(

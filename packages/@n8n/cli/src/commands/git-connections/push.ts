@@ -13,16 +13,11 @@ export default class GitConnectionsPush extends BaseCommand {
 	async run() {
 		const { args, flags } = await this.parse(GitConnectionsPush);
 		await this.execute(async () => {
-			await this.getClient(flags).pushGitConnectionProjects(args.id);
+			const result = await this.getClient(flags).pushGitConnectionProjects(args.id);
 			this.succeed(
 				`Projects exported to the local working copy for Git connection ${args.id}. This work-in-progress command did not commit or push changes to the selected branch.`,
 				flags,
-				{
-					id: args.id,
-					exported: true,
-					committed: false,
-					pushed: false,
-				},
+				result,
 			);
 		});
 	}
