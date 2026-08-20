@@ -156,7 +156,7 @@ describe('workflow package import — node groups', () => {
 		expect(imported.nodeGroups).toEqual([]);
 	});
 
-	it('drops groups that reference nodes the workflow does not have, keeping the import', async () => {
+	it('drops only the groups that reference nodes the workflow does not have, keeping the rest', async () => {
 		const owner = await createOwner();
 
 		const result = await importPackage({
@@ -165,7 +165,11 @@ describe('workflow package import — node groups', () => {
 				serializedWorkflow({
 					id: 'wf-broken-groups',
 					name: 'Workflow with broken groups',
-					nodeGroups: [{ id: 'group-1', name: 'Ingest', nodeIds: ['node-that-is-not-here'] }],
+					nodes,
+					nodeGroups: [
+						{ id: 'group-1', name: 'Ingest', nodeIds: ['node-that-is-not-here'] },
+						{ id: 'group-2', name: 'Shape', nodeIds: ['set-node'] },
+					],
 				}),
 			]),
 		});
@@ -173,7 +177,7 @@ describe('workflow package import — node groups', () => {
 		const imported = await workflowRepository.findOneByOrFail({
 			id: result.workflows[0].localId,
 		});
-		expect(imported.nodeGroups).toEqual([]);
+		expect(imported.nodeGroups).toEqual([{ id: 'group-2', name: 'Shape', nodeIds: ['set-node'] }]);
 	});
 
 	it('drops groups that break a canvas grouping rule, keeping the import', async () => {
