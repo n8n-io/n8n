@@ -3,7 +3,6 @@ import type {
 	User,
 	UserRepository,
 	WorkflowHistory,
-	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -64,7 +63,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const accessService = mock<WorkflowReviewAccessService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
-	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
@@ -78,7 +76,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		accessService,
 		mock<WorkflowFinderService>(),
 		workflowHistoryService,
-		publishedVersionRepository,
 		requestRepository,
 		workflowRepository,
 		reviewerRepository,
@@ -106,7 +103,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		reviewerRepository.findByRequestIds.mockResolvedValue([]);
 		authorRepository.findByRequestIds.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
-		publishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
 		workflowHistoryService.findVersion.mockResolvedValue(null);
 		eligibilityService.resolveViewerEligibility.mockResolvedValue({
 			canDecide: true,
@@ -121,12 +117,14 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		workflowName = 'My workflow',
 		baselineVersionId: string | null = null,
 		requestState: WorkflowReviewRequestState = 'open',
+		activeVersionId: string | null = null,
 	) {
 		mockGate([
 			{
 				workflowId,
 				workflowName,
 				workflowVersionId: pinnedVersionId,
+				activeVersionId,
 				baselineVersionId,
 				requestState,
 			},
@@ -328,8 +326,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 	describe('the two versions to compare', () => {
 		it('returns the version under review and the published version to compare it against', async () => {
-			mockChildRow('ver-pinned');
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-published');
+			mockChildRow('ver-pinned', 'My workflow', null, 'open', 'ver-published');
 			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
 				historyVersion(versionId),
 			);
@@ -344,12 +341,12 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 				nodeGroups: [],
 				createdAt: '2026-06-01T00:00:00.000Z',
 			});
+			expect(detail.workflows[0]?.publishedVersionId).toBe('ver-published');
 			expect(detail.workflows[0]?.baselineVersion).toMatchObject({ versionId: 'ver-published' });
 		});
 
 		it('has nothing to compare against when the workflow was never published', async () => {
 			mockChildRow('ver-pinned');
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
 			workflowHistoryService.findVersion.mockResolvedValue(historyVersion('ver-pinned'));
 
 			const detail = await service.getDetail(requester, requestId);
@@ -359,8 +356,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		});
 
 		it('has nothing to compare against when the published version is no longer stored', async () => {
-			mockChildRow('ver-pinned');
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-published');
+			mockChildRow('ver-pinned', 'My workflow', null, 'open', 'ver-published');
 			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
 				versionId === 'ver-pinned' ? historyVersion(versionId) : null,
 			);
@@ -408,6 +404,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 						workflowId,
 						workflowName: 'My workflow',
 						workflowVersionId: 'ver-pinned',
+						activeVersionId: 'ver-live-now',
 						baselineVersionId: 'ver-frozen',
 						requestState: 'closed',
 					},
@@ -415,7 +412,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 				pinnedWorkflowId: workflowId,
 				canReadPinnedWorkflow: true,
 			});
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-live-now');
 			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
 				historyVersion(versionId),
 			);
@@ -423,7 +419,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.workflows[0]?.baselineVersion).toMatchObject({ versionId: 'ver-frozen' });
-			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
+			expect(detail.workflows[0]?.publishedVersionId).toBe('ver-live-now');
 		});
 
 		it('uses a frozen baseline whatever state accompanies it', async () => {
@@ -435,6 +431,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 						workflowId,
 						workflowName: 'My workflow',
 						workflowVersionId: 'ver-pinned',
+						activeVersionId: 'ver-live-now',
 						baselineVersionId: 'ver-frozen',
 						requestState: 'open',
 					},
@@ -442,7 +439,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 				pinnedWorkflowId: workflowId,
 				canReadPinnedWorkflow: true,
 			});
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-pinned');
 			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
 				historyVersion(versionId),
 			);
@@ -450,7 +446,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.workflows[0]?.baselineVersion).toMatchObject({ versionId: 'ver-frozen' });
-			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
 		});
 
 		it('returns no baseline for a closed review when none was captured', async () => {
@@ -461,6 +456,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 						workflowId,
 						workflowName: 'My workflow',
 						workflowVersionId: 'ver-pinned',
+						activeVersionId: 'ver-live-now',
 						baselineVersionId: null,
 						requestState: 'closed',
 					},
@@ -468,7 +464,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 				pinnedWorkflowId: workflowId,
 				canReadPinnedWorkflow: true,
 			});
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-live-now');
 			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
 				historyVersion(versionId),
 			);
@@ -476,7 +471,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.workflows[0]?.baselineVersion).toBeNull();
-			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
 		});
 
 		it('keeps a captured null null when the request row was read before the approval', async () => {
@@ -490,6 +484,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 						workflowId,
 						workflowName: 'My workflow',
 						workflowVersionId: 'ver-pinned',
+						activeVersionId: 'ver-pinned',
 						baselineVersionId: null,
 						requestState: 'closed',
 					},
@@ -497,7 +492,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 				pinnedWorkflowId: workflowId,
 				canReadPinnedWorkflow: true,
 			});
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-pinned');
 			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
 				historyVersion(versionId),
 			);
@@ -505,7 +499,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.workflows[0]?.baselineVersion).toBeNull();
-			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
 		});
 
 		it('returns no baseline for a closed review that was never approved', async () => {
@@ -516,6 +509,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 						workflowId,
 						workflowName: 'My workflow',
 						workflowVersionId: 'ver-pinned',
+						activeVersionId: 'ver-live-now',
 						baselineVersionId: null,
 						requestState: 'closed',
 					},
@@ -523,7 +517,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 				pinnedWorkflowId: workflowId,
 				canReadPinnedWorkflow: true,
 			});
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-live-now');
 			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
 				historyVersion(versionId),
 			);
@@ -533,7 +526,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.state).toBe('closed');
 			expect(detail.decision).toBe('pending');
 			expect(detail.workflows[0]?.baselineVersion).toBeNull();
-			expect(publishedVersionRepository.getPublishedVersionId).not.toHaveBeenCalled();
 		});
 	});
 });

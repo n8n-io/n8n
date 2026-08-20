@@ -141,7 +141,7 @@ describe('BrowserUseConnectStep', () => {
 		expect(openSpy).toHaveBeenCalledWith(
 			CONNECT_URL,
 			'n8n-browser-use-connect',
-			expect.stringMatching(/^popup,width=620,height=640,left=\d+,top=\d+$/),
+			expect.stringMatching(/^popup,width=540,height=700,left=\d+,top=\d+$/),
 		);
 
 		openSpy.mockRestore();

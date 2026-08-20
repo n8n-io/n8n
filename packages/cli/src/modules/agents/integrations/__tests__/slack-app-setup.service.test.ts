@@ -283,8 +283,8 @@ describe('Slack setup services', () => {
 		expect(manifest.settings.event_subscriptions.request_url).toBe(webhookUrl);
 		expect(manifest.settings.event_subscriptions.bot_events).toEqual([
 			'app_mention',
-			'assistant_thread_started',
-			'assistant_thread_context_changed',
+			'app_context_changed',
+			'app_home_opened',
 			'message.channels',
 			'message.groups',
 			'message.im',
@@ -426,7 +426,11 @@ describe('Slack setup services', () => {
 			},
 			user,
 		);
-		const integration = { type: 'slack', credentialId: 'cred-slack' };
+		const integration = {
+			type: 'slack',
+			credentialId: 'cred-slack',
+			settings: { messagingExperience: 'agent' },
+		};
 		expect(integrationManagementService.connect).toHaveBeenCalledWith({
 			agent,
 			user,
@@ -481,7 +485,11 @@ describe('Slack setup services', () => {
 		expect(integrationManagementService.connect).toHaveBeenCalledWith({
 			agent,
 			user,
-			integration: { type: 'slack', credentialId: 'cred-slack' },
+			integration: {
+				type: 'slack',
+				credentialId: 'cred-slack',
+				settings: { messagingExperience: 'agent' },
+			},
 		});
 	});
 
@@ -515,7 +523,11 @@ describe('Slack setup services', () => {
 			state,
 		});
 
-		const integration = { type: 'slack', credentialId: 'cred-slack' };
+		const integration = {
+			type: 'slack',
+			credentialId: 'cred-slack',
+			settings: { messagingExperience: 'agent' },
+		};
 		expect(integrationManagementService.connect).toHaveBeenCalledWith({
 			agent: unpublishedAgent,
 			user,
