@@ -1,5 +1,6 @@
 import {
 	getRelayHost,
+	getRelayHostKey,
 	isAllowedPageOrigin,
 	isAllowedRelayUrl,
 	isLocalhostRelay,
@@ -19,6 +20,8 @@ describe('isAllowedRelayUrl', () => {
 
 	it('allows localhost relays for local development', () => {
 		expect(isAllowedRelayUrl('ws://localhost:5680/browser-use/cdp/s')).toBe(true);
+		// Plaintext is loopback-only, so a stored approval can't be spent over one.
+		expect(isAllowedRelayUrl('ws://acme.app.n8n.cloud/x')).toBe(false);
 		expect(isAllowedRelayUrl('ws://127.0.0.1:5680/x')).toBe(true);
 		expect(isAllowedRelayUrl('ws://[::1]:5680/x')).toBe(true);
 	});
@@ -94,5 +97,22 @@ describe('getRelayHost', () => {
 		expect(getRelayHost('not a url')).toBeNull();
 		expect(getRelayHost(null)).toBeNull();
 		expect(getRelayHost(undefined)).toBeNull();
+	});
+});
+
+describe('getRelayHostKey', () => {
+	it('keeps the port so two local instances stay distinct', () => {
+		expect(getRelayHostKey('ws://localhost:5678/x')).toBe('localhost:5678');
+		expect(getRelayHostKey('ws://localhost:5679/x')).toBe('localhost:5679');
+	});
+
+	it('matches the hostname when the URL carries no explicit port', () => {
+		expect(getRelayHostKey('wss://acme.app.n8n.cloud/x')).toBe('acme.app.n8n.cloud');
+	});
+
+	it('returns null for malformed or empty input', () => {
+		expect(getRelayHostKey('not a url')).toBeNull();
+		expect(getRelayHostKey(null)).toBeNull();
+		expect(getRelayHostKey(undefined)).toBeNull();
 	});
 });

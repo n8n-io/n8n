@@ -16,6 +16,8 @@ import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import ConnectionRow, { type ConnectionStatus } from './ConnectionRow.vue';
+import { useBrowserUseConnection } from '../composables/useBrowserUseConnection';
+import { useExtensionDirectConnect } from '../composables/useExtensionDirectConnect';
 import { iconForTool } from '../toolIcons';
 import {
 	BROWSER_USE_CONNECTION_TYPE,
@@ -31,6 +33,15 @@ const uiStore = useUIStore();
 const store = useInstanceAiSettingsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
+const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
+const { isAttempting: isBrowserConnecting } = useExtensionDirectConnect();
+
+/** A silent connect shows no UI of its own, so the row has to report it is working. */
+function singletonRowStatus(type: SingletonConnectionType, status: ConnectionStatus) {
+	const isPendingBrowserUse =
+		type === BROWSER_USE_CONNECTION_TYPE && status !== 'connected' && isBrowserConnecting.value;
+	return isPendingBrowserUse ? 'connecting' : status;
+}
 const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
 const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
 const { isFeatureEnabled: isComputerUseEnabled } = useInstanceAiComputerUseExperiment();
@@ -115,6 +126,28 @@ async function openSingletonModal(type: SingletonConnectionType) {
 	}
 }
 
+/** Connecting is not the same as opening settings: a remembered instance needs no modal. */
+async function connectSingleton(type: SingletonConnectionType) {
+	if (type === BROWSER_USE_CONNECTION_TYPE) {
+		await ensureBrowserConnected();
+		return;
+	}
+	await openSingletonModal(type);
+}
+
+/**
+ * The row body emits `open-settings` on any click, so for a disconnected Browser Use row
+ * that has to mean "connect" — routing it to the modal would skip the shared flow that
+ * owns the success toast and closing.
+ */
+async function openSingletonDetail(type: SingletonConnectionType) {
+	if (type === BROWSER_USE_CONNECTION_TYPE && !store.isBrowserUseConnected) {
+		await connectSingleton(type);
+		return;
+	}
+	await openSingletonModal(type);
+}
+
 function openToolsConnectionModal() {
 	mcpTelemetry.trackToolsListOpened();
 	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
@@ -176,12 +209,12 @@ function openMcpSettings(connectionId: string) {
 				:name="conn.name"
 				:subtitle="conn.subtitle"
 				:icon="ICON_MAP[conn.type]"
-				:status="conn.status"
+				:status="singletonRowStatus(conn.type, conn.status)"
 				:actions="getSingletonRowActions(conn.type, conn.status)"
 				:dropdown-portal-target="props.dropdownPortalTarget"
-				@connect="openSingletonModal(conn.type)"
+				@connect="connectSingleton(conn.type)"
 				@disconnect="handleSingletonDisconnect(conn.type)"
-				@open-settings="openSingletonModal(conn.type)"
+				@open-settings="openSingletonDetail(conn.type)"
 				@remove="handleSingletonRemove(conn.type)"
 			/>
 			<ConnectionRow

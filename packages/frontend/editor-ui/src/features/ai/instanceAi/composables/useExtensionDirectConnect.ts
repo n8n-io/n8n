@@ -1,8 +1,9 @@
-import { ref, type Ref } from 'vue';
+import { readonly, ref, type Ref } from 'vue';
 
 export const DIRECT_CONNECT_CONFIRMATION_TIMEOUT_MS = 15_000;
 
-export type DirectConnectStatus = 'idle' | 'unsupported' | 'waiting' | 'failed';
+/** `waiting` needs the user to act on a popup; `connecting` is attaching with no prompt. */
+export type DirectConnectStatus = 'idle' | 'unsupported' | 'waiting' | 'connecting' | 'failed';
 
 interface ExtensionRuntime {
 	sendMessage: (
@@ -44,6 +45,21 @@ async function timeout(ms: number): Promise<undefined> {
 	return await new Promise((resolve) => setTimeout(() => resolve(undefined), ms));
 }
 
+// Module-scoped because a flow outlives the component that starts it: the credential card
+// kicks off an attempt and the setup modal mounts mid-flight. Sharing lets that modal show
+// the live status instead of firing a second request the extension would throttle.
+const status: Ref<DirectConnectStatus> = ref('idle');
+const isAttempting = ref(false);
+
+/**
+ * Clears the shared flow state. A finished flow leaves a terminal status behind, which the
+ * next view to mount would otherwise inherit as a spinner for a connect that already ended.
+ */
+export function resetExtensionDirectConnect(): void {
+	status.value = 'idle';
+	isAttempting.value = false;
+}
+
 /**
  * Direct Browser Use connect flow: asks the installed extension (via
  * `externally_connectable` messaging) to show its connect confirmation in an
@@ -51,16 +67,15 @@ async function timeout(ms: number): Promise<undefined> {
  * the extension did not open the popup — callers show the link-based flow.
  */
 export function useExtensionDirectConnect() {
-	const status: Ref<DirectConnectStatus> = ref('idle');
-	let isAttempting = false;
-
 	async function attempt(connectUrl: string): Promise<void> {
-		if (isAttempting) return;
-		isAttempting = true;
+		if (isAttempting.value) return;
+		isAttempting.value = true;
+		// Before any await, so a caller watching this doesn't read the last flow's outcome.
+		status.value = 'idle';
 		try {
 			await runAttempt(connectUrl);
 		} finally {
-			isAttempting = false;
+			isAttempting.value = false;
 		}
 	}
 
@@ -78,18 +93,21 @@ export function useExtensionDirectConnect() {
 			return;
 		}
 
+		let needsConfirmation = true;
 		try {
 			const response = await sendToExtension(runtime, extensionId, { type: 'connect', relayUrl });
 			if (!isRecord(response) || response.accepted !== true) {
 				status.value = 'unsupported';
 				return;
 			}
+			// Older extensions omit the flag; assume the popup was shown.
+			needsConfirmation = response.confirmationRequired !== false;
 		} catch {
 			status.value = 'unsupported';
 			return;
 		}
 
-		status.value = 'waiting';
+		status.value = needsConfirmation ? 'waiting' : 'connecting';
 
 		let connected = false;
 		try {
@@ -104,5 +122,5 @@ export function useExtensionDirectConnect() {
 		}
 	}
 
-	return { status, attempt };
+	return { status, isAttempting: readonly(isAttempting), attempt };
 }

@@ -1,10 +1,13 @@
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
-import { useExtensionDirectConnect } from '../../composables/useExtensionDirectConnect';
+import {
+	resetExtensionDirectConnect,
+	useExtensionDirectConnect,
+} from '../../composables/useExtensionDirectConnect';
 
 const CONNECT_URL_REFRESH_MARGIN_MS = 30_000;
 const CONNECT_POPUP_WIDTH = 540;
@@ -15,9 +18,15 @@ const props = withDefaults(defineProps<{ autoConnect?: boolean }>(), { autoConne
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
-const { status, attempt } = useExtensionDirectConnect();
+const { status, isAttempting, attempt } = useExtensionDirectConnect();
 
 const connectUrl = ref<string | null>(null);
+// A remembered host attaches with no popup, so it must not be told to confirm one.
+const inFlightTextKey = computed(() => {
+	if (status.value === 'connecting') return 'instanceAi.browserUse.directConnect.connecting';
+	if (status.value === 'waiting') return 'instanceAi.browserUse.directConnect.waiting';
+	return null;
+});
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
 function clearRefreshTimer(): void {
@@ -27,9 +36,20 @@ function clearRefreshTimer(): void {
 	}
 }
 
+/**
+ * Minting rotates the relay token server-side, killing any connect already in flight — so
+ * reuse a stored link while it has life left in it.
+ */
+function usableStoredConnectUrl(): string | null {
+	const url = store.browserConnectUrl;
+	const expiresAt = store.browserConnectUrlExpiresAt;
+	if (!url || !expiresAt) return null;
+	return Date.parse(expiresAt) - Date.now() > CONNECT_URL_REFRESH_MARGIN_MS ? url : null;
+}
+
 async function refreshConnectUrl(): Promise<void> {
 	clearRefreshTimer();
-	connectUrl.value = await store.fetchBrowserConnectUrl();
+	connectUrl.value = usableStoredConnectUrl() ?? (await store.fetchBrowserConnectUrl());
 
 	const expiresAt = store.browserConnectUrlExpiresAt;
 	if (!connectUrl.value || !expiresAt) return;
@@ -41,17 +61,28 @@ async function refreshConnectUrl(): Promise<void> {
 }
 
 onMounted(async () => {
+	// Don't inherit the leftover status of a flow that already finished.
+	if (!isAttempting.value) resetExtensionDirectConnect();
+
 	await refreshConnectUrl();
 	if (!props.autoConnect || !connectUrl.value) return;
+	// An outer caller may have started this flow; join it rather than re-requesting.
+	if (isAttempting.value) return;
 	telemetry.trackDirectConnectRequested();
 	await attempt(connectUrl.value);
 });
 
-async function retry(): Promise<void> {
+/**
+ * Let the extension own the confirmation first — a remembered instance connects with no
+ * window at all. The unreachable case resolves fast enough that the click's transient
+ * activation still permits `window.open`.
+ */
+async function connect(): Promise<void> {
 	if (!connectUrl.value) await refreshConnectUrl();
 	if (!connectUrl.value) return;
 	telemetry.trackDirectConnectRequested();
 	await attempt(connectUrl.value);
+	if (status.value === 'unsupported') openConnectPage();
 }
 
 function openConnectPage(): void {
@@ -85,13 +116,13 @@ onBeforeUnmount(() => {
 		</N8nText>
 
 		<div
-			v-if="status === 'waiting'"
+			v-if="inFlightTextKey"
 			:class="$style.waiting"
 			data-test-id="browser-use-direct-connect-waiting"
 		>
 			<N8nIcon icon="spinner" color="primary" spin size="small" />
 			<N8nText color="text-light" size="small">
-				{{ i18n.baseText('instanceAi.browserUse.directConnect.waiting') }}
+				{{ i18n.baseText(inFlightTextKey) }}
 			</N8nText>
 		</div>
 
@@ -104,7 +135,7 @@ onBeforeUnmount(() => {
 				variant="solid"
 				size="medium"
 				data-test-id="browser-use-direct-connect-retry"
-				@click="retry"
+				@click="connect"
 			/>
 		</template>
 
@@ -118,7 +149,7 @@ onBeforeUnmount(() => {
 				size="medium"
 				:disabled="!connectUrl"
 				data-test-id="browser-use-open-connect-page"
-				@click="openConnectPage"
+				@click="connect"
 			/>
 		</template>
 	</div>

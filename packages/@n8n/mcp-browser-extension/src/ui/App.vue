@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { N8nButton, N8nIcon, N8nLogo } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nLogo } from '@n8n/design-system';
 import { useConnection } from './composables/useConnection';
 import InfoRow from './components/InfoRow.vue';
+import RememberedHosts from './components/RememberedHosts.vue';
 import TabList from './components/TabList.vue';
 
 const {
@@ -14,11 +15,15 @@ const {
 	relayHost,
 	isRelayAllowed,
 	isAutoConnect,
+	relayHostKey,
+	rememberInstance,
+	approvedHosts,
 	controlledTabs,
 	toggleTab,
 	connect,
 	decline,
 	disconnect,
+	forgetHost,
 } = useConnection();
 
 const showTabSelection = ref(false);
@@ -52,6 +57,7 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 						<TabList :tabs="controlledTabs" />
 					</template>
 				</div>
+				<RememberedHosts :hosts="approvedHosts" @forget="forgetHost" />
 			</template>
 
 			<template v-else-if="showConnectPrompt">
@@ -62,11 +68,18 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 						icon="shield"
 						:title="`Connecting to ${relayHost}`"
 						description="Only continue if you initiated this connection"
-					/>
+					>
+						<N8nCheckbox
+							v-if="!isAutoConnect"
+							v-model="rememberInstance"
+							class="remember"
+							:label="`Always allow ${relayHostKey}`"
+						/>
+					</InfoRow>
 					<InfoRow
 						icon="lock"
 						title="Browser access"
-						description="n8n can access tabs it opens. Select existing tabs below to grant additional access"
+						description="n8n can access tabs it opens. Tabs you select below are shared for this connection only"
 					>
 						<button
 							v-if="tabs.length"
@@ -108,13 +121,14 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 						description="Initiate the connection from your n8n instance to get started"
 					/>
 				</div>
+				<RememberedHosts :hosts="approvedHosts" @forget="forgetHost" />
 			</template>
 
 			<p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 		</div>
 
 		<div v-if="isConnected" class="footer">
-			<N8nButton variant="ghost" size="large" @click="disconnect">Disconnect</N8nButton>
+			<N8nButton variant="outline" size="large" @click="disconnect">Disconnect</N8nButton>
 		</div>
 		<div v-else-if="showConnectPrompt" class="footer">
 			<N8nButton variant="ghost" size="large" @click="decline">Decline</N8nButton>
@@ -196,17 +210,6 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 	margin: 0 0 var(--spacing--sm);
 }
 
-.panel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--lg);
-	background: var(--background--surface);
-	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--lg);
-	min-height: 0;
-}
-
 .divider {
 	border: none;
 	border-top: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
@@ -230,6 +233,11 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 	&:hover {
 		background: var(--color--background);
 	}
+}
+
+.remember {
+	--checkbox--label--font-size: var(--font-size--xs);
+	margin-top: var(--spacing--sm);
 }
 
 .footer {

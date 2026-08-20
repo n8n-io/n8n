@@ -5,8 +5,9 @@
  * and tracks tab lifecycle for agent-created tabs only.
  */
 
+import { isHostApproved } from './approvedHosts';
 import { createLogger } from './logger';
-import { isAllowedPageOrigin, isAllowedRelayUrl } from './relayAllowlist';
+import { getRelayHostKey, isAllowedPageOrigin, isAllowedRelayUrl } from './relayAllowlist';
 import { RelayConnection, isEligibleTab } from './relayConnection';
 import type {
 	ExtensionMessage,
@@ -237,10 +238,13 @@ chrome.runtime.onMessageExternal.addListener(
 		log.debug('external message received:', message.type, 'from', sender.origin);
 
 		if (message.type === 'connect') {
-			void handleExternalConnect(message.relayUrl).then(sendResponse, (error: unknown) => {
-				log.warn('external connect failed:', error);
-				sendResponse({ accepted: false });
-			});
+			void handleExternalConnect(message.relayUrl, sender.origin).then(
+				sendResponse,
+				(error: unknown) => {
+					log.warn('external connect failed:', error);
+					sendResponse({ accepted: false });
+				},
+			);
 			return true;
 		}
 
@@ -257,7 +261,10 @@ chrome.runtime.onMessageExternal.addListener(
 	},
 );
 
-async function handleExternalConnect(relayUrl: string): Promise<ExternalConnectResponse> {
+async function handleExternalConnect(
+	relayUrl: string,
+	senderOrigin: string | undefined,
+): Promise<ExternalConnectResponse> {
 	if (!isAllowedRelayUrl(relayUrl)) {
 		log.warn('refusing external connect to disallowed relay:', relayUrl);
 		return { accepted: false };
@@ -272,11 +279,24 @@ async function handleExternalConnect(relayUrl: string): Promise<ExternalConnectR
 
 	settleConnectFlow(false);
 
+	// Approved host asked for by its own instance — connect straight through. Pending is set
+	// before the handshake so a `connectResult` arriving mid-flight can attach its callback,
+	// and the drawer stays enabled because there is no confirmation page to focus.
+	const askedByRelayHost = getRelayHostKey(senderOrigin) === getRelayHostKey(relayUrl);
+	if (askedByRelayHost && (await isHostApproved(relayUrl))) {
+		log.debug('relay host previously approved, connecting without confirmation:', relayUrl);
+		pendingConnectFlow = { relayUrl, tabId: null, notify: null };
+		void connectToRelay(relayUrl, []).then((result) => {
+			if (!result.success) settleConnectFlow(false);
+		});
+		return { accepted: true, confirmationRequired: false };
+	}
+
 	const existing = await deliverRelayUrl(relayUrl);
 	const tabId = existing?.id ?? (await openConnectPopup(relayUrl));
 	pendingConnectFlow = { relayUrl, tabId, notify: null };
 	setDrawerEnabled(false);
-	return { accepted: true };
+	return { accepted: true, confirmationRequired: true };
 }
 
 async function openConnectPopup(relayUrl: string): Promise<number | null> {
@@ -507,7 +527,8 @@ function broadcastStatusChange(): void {
 // ---------------------------------------------------------------------------
 
 function updateBadge(tabCount: number): void {
-	const text = tabCount > 0 ? String(tabCount) : '';
+	// A prompt-free connect shows no UI at all, so mark the icon even before any tab attaches.
+	const text = tabCount > 0 ? String(tabCount) : activeConnection ? '•' : '';
 	void chrome.action.setBadgeText({ text });
 	void chrome.action.setBadgeBackgroundColor({ color: tabCount > 0 ? '#4CAF50' : '#999' });
 }

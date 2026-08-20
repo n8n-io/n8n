@@ -105,6 +105,18 @@ function makeMcpStore(overrides: Record<string, unknown> = {}) {
 	};
 }
 
+const { ensureBrowserConnected, isBrowserAttempting } = vi.hoisted(() => ({
+	ensureBrowserConnected: vi.fn(),
+	isBrowserAttempting: { value: false },
+}));
+
+vi.mock('../../composables/useBrowserUseConnection', () => ({
+	useBrowserUseConnection: () => ({ ensureConnected: ensureBrowserConnected }),
+}));
+vi.mock('../../composables/useExtensionDirectConnect', () => ({
+	useExtensionDirectConnect: () => ({ isAttempting: isBrowserAttempting }),
+}));
+
 const renderComponent = createComponentRenderer(ConnectionsCard, {
 	global: {
 		stubs: {
@@ -115,14 +127,22 @@ const renderComponent = createComponentRenderer(ConnectionsCard, {
 						data-test-stub="connection-row"
 						:data-test-id="\`connection-row-\${name}\`"
 						:data-status="status"
+						@click="$emit('open-settings')"
 					>
 						<span>{{ name }}</span>
 						<button
 							v-if="actions?.includes('settings')"
 							:data-test-id="\`connection-row-settings-\${name}\`"
-							@click="$emit('open-settings')"
+							@click.stop="$emit('open-settings')"
 						>
 							settings
+						</button>
+						<button
+							v-if="actions?.includes('connect')"
+							:data-test-id="\`connection-row-connect-\${name}\`"
+							@click.stop="$emit('connect')"
+						>
+							connect
 						</button>
 					</div>
 				`,
@@ -138,6 +158,7 @@ describe('ConnectionsCard', () => {
 		mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		isBrowserAttempting.value = false;
 		settingsStoreMock.mockReturnValue(makeSettingsStore());
 		mcpStoreMock.mockReturnValue(makeMcpStore());
 	});
@@ -145,6 +166,36 @@ describe('ConnectionsCard', () => {
 	it('renders the browser use row when the experiment is enabled', () => {
 		const { getByText } = renderComponent();
 		expect(getByText('browser-use-row')).toBeVisible();
+	});
+
+	it('connects browser use through the shared flow rather than opening the modal', async () => {
+		const { getByTestId } = renderComponent();
+
+		await fireEvent.click(getByTestId('connection-row-connect-browser-use-row'));
+
+		expect(ensureBrowserConnected).toHaveBeenCalled();
+		// A remembered instance needs no modal; the flow decides that, not this card.
+		expect(uiStoreMock.openModal).not.toHaveBeenCalled();
+	});
+
+	it('treats a click on a disconnected browser use row as connect, not settings', async () => {
+		const { getByTestId } = renderComponent();
+
+		await fireEvent.click(getByTestId('connection-row-browser-use-row'));
+
+		expect(ensureBrowserConnected).toHaveBeenCalled();
+		expect(uiStoreMock.openModal).not.toHaveBeenCalled();
+	});
+
+	it('reports a silent connect on the row, which otherwise shows nothing happening', () => {
+		isBrowserAttempting.value = true;
+
+		const { getByTestId } = renderComponent();
+
+		expect(getByTestId('connection-row-browser-use-row')).toHaveAttribute(
+			'data-status',
+			'connecting',
+		);
 	});
 
 	it('renders the computer use row when the experiment is enabled', () => {
