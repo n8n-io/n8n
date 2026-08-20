@@ -4,9 +4,14 @@ import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
+	extractResultFacts,
 	extractTriggerFacts,
+	formatResultFactsContext,
+	formatResultsPane,
 	formatTriggersPane,
+	resultPaneClauses,
 	summarizeWorkflowStructure,
+	summarizeWorkflowStructureCompact,
 	triggerPaneClauses,
 } from '@n8n/instance-ai';
 import type { WorkflowAiOverview } from 'n8n-workflow';
@@ -42,7 +47,7 @@ export class InstanceAiWorkflowOverviewService {
 			'workflow:read',
 		]);
 		if (!workflow) throw new NotFoundError(`Workflow ${workflowId} not found`);
-		return toOverviewResponse(workflow.meta?.aiOverview);
+		return toOverviewResponse(workflow.meta?.aiOverview, workflow.versionId);
 	}
 
 	/**
@@ -61,13 +66,23 @@ export class InstanceAiWorkflowOverviewService {
 		]);
 		if (!workflow) throw new NotFoundError(`Workflow ${workflowId} not found`);
 
-		const modelId = await this.modelService.resolveOverviewModelConfig(user);
-		const structure = await summarizeWorkflowStructure(
-			workflow.name,
-			workflow.nodes,
-			workflow.connections,
-		);
 		const previous = workflow.meta?.aiOverview;
+
+		// Overviews derive from structure alone, and `versionId` changes on
+		// every workflow save (the meta-only overview write below does not
+		// touch it) — an unchanged versionId means regeneration cannot produce
+		// anything new, so the refresh is free.
+		if (
+			previous?.workflowVersionId &&
+			workflow.versionId &&
+			previous.workflowVersionId === workflow.versionId
+		) {
+			this.logger.debug('Workflow overview up to date; skipping generation', {
+				workflowId,
+				workflowVersionId: workflow.versionId,
+			});
+			return { ...toOverviewResponse(previous, workflow.versionId), cached: true };
+		}
 
 		// Spike: deterministic Triggers pane. When the graph yields trigger facts
 		// the pane is not generated at all — the generator receives it as known
@@ -75,6 +90,23 @@ export class InstanceAiWorkflowOverviewService {
 		// the other two panes. No facts → the LLM generates all three as before.
 		const triggerFacts = extractTriggerFacts(workflow.nodes, this.nodeMeta);
 		const deterministicTriggers = formatTriggersPane(triggerFacts);
+
+		// Spike: deterministic Results pane, gated on full node classification.
+		// Complete → the pane is known ('' = known-empty) and not generated.
+		// Gate tripped → the LLM generates it, grounded with the partial facts.
+		const resultExtraction = extractResultFacts(workflow.nodes, this.nodeMeta);
+		const deterministicResults = formatResultsPane(resultExtraction);
+		const resultFactsContext =
+			deterministicResults === null ? formatResultFactsContext(resultExtraction) : null;
+
+		const modelId = await this.modelService.resolveOverviewModelConfig(user);
+		// With both panes known the model only writes the Steps sentence — the
+		// bare node/edge digest carries enough signal for that at roughly half
+		// the input tokens of the SDK-code rendering.
+		const structure =
+			deterministicTriggers !== null && deterministicResults !== null
+				? summarizeWorkflowStructureCompact(workflow.nodes, workflow.connections)
+				: await summarizeWorkflowStructure(workflow.name, workflow.nodes, workflow.connections);
 
 		let failureReason: string | undefined;
 		const overview = await generateWorkflowOverviewTraced(
@@ -91,6 +123,8 @@ export class InstanceAiWorkflowOverviewService {
 				conversation: [],
 				builtWorkflowSummary: `Workflow "${workflow.name}" (id: ${workflow.id}):\n${structure}`,
 				...(deterministicTriggers !== null ? { knownTriggers: deterministicTriggers } : {}),
+				...(deterministicResults !== null ? { knownResults: deterministicResults } : {}),
+				...(resultFactsContext !== null ? { resultFactsContext } : {}),
 				previousOverview: previous
 					? { triggers: previous.triggers, steps: previous.steps, results: previous.results }
 					: null,
@@ -107,21 +141,23 @@ export class InstanceAiWorkflowOverviewService {
 				workflowId,
 				failureReason,
 			});
-			return { ...toOverviewResponse(previous), failureReason };
+			return { ...toOverviewResponse(previous, workflow.versionId), failureReason };
 		}
 
-		const finalOverview =
-			deterministicTriggers === null
-				? overview
-				: {
-						...overview,
-						triggers: deterministicTriggers,
-						// Clause list for the UI's stacked any-of rendering.
-						triggerClauses: triggerPaneClauses(triggerFacts),
-					};
+		const finalOverview = {
+			...overview,
+			// Clause lists feed the UI's stacked any-of / all-of rendering.
+			...(deterministicTriggers !== null
+				? { triggers: deterministicTriggers, triggerClauses: triggerPaneClauses(triggerFacts) }
+				: {}),
+			...(deterministicResults !== null
+				? { results: deterministicResults, resultClauses: resultPaneClauses(resultExtraction) }
+				: {}),
+		};
 
 		const aiOverview: WorkflowAiOverview = {
 			...finalOverview,
+			...(workflow.versionId ? { workflowVersionId: workflow.versionId } : {}),
 			updatedAt: new Date().toISOString(),
 		};
 		// Meta-only update that pins the entity's `updatedAt`: a generated
@@ -132,12 +168,13 @@ export class InstanceAiWorkflowOverviewService {
 			aiOverview,
 		});
 
-		return toOverviewResponse(aiOverview);
+		return toOverviewResponse(aiOverview, workflow.versionId);
 	}
 }
 
 function toOverviewResponse(
 	stored: WorkflowAiOverview | undefined,
+	currentWorkflowVersionId?: string,
 ): InstanceAiWorkflowOverviewResponse {
 	if (!stored) return { overview: null, updatedAt: null };
 	return {
@@ -148,7 +185,17 @@ function toOverviewResponse(
 				: {}),
 			steps: stored.steps,
 			results: stored.results,
+			...(stored.resultClauses && stored.resultClauses.length > 0
+				? { resultClauses: stored.resultClauses }
+				: {}),
 		},
 		updatedAt: stored.updatedAt,
+		// Same predicate as the generation gate: an unchanged versionId means a
+		// regenerate would return this exact overview.
+		upToDate: Boolean(
+			stored.workflowVersionId &&
+				currentWorkflowVersionId &&
+				stored.workflowVersionId === currentWorkflowVersionId,
+		),
 	};
 }

@@ -42,6 +42,19 @@ export interface WorkflowOverviewBundle {
 	 * context and produces only Steps/Results.
 	 */
 	knownTriggers?: string;
+	/**
+	 * Deterministically derived Results pane — only meaningful with subject
+	 * 'workflow'. Present means the pane is KNOWN, including '' ("the workflow
+	 * produces no user-visible outputs"): the model does not generate it and
+	 * receives the value as authoritative context.
+	 */
+	knownResults?: string;
+	/**
+	 * Partial result facts (completeness gate tripped): the model still
+	 * generates the Results pane, grounded by these authoritative fragments.
+	 * Mutually exclusive with `knownResults`.
+	 */
+	resultFactsContext?: string;
 	/** The overview currently shown to the user, for stability + only-on-change. */
 	previousOverview?: WorkflowOverview | null;
 }
@@ -75,14 +88,18 @@ const generationSchema = z.object({
 		),
 });
 
-/** Variant used when the caller supplies the Triggers pane: no `triggers` field to generate. */
+/** Variants used when the caller supplies panes: known panes have no field to generate. */
 const generationSchemaWithoutTriggers = generationSchema.omit({ triggers: true });
+const generationSchemaWithoutResults = generationSchema.omit({ results: true });
+const generationSchemaStepsOnly = generationSchema.omit({ triggers: true, results: true });
 
-const SHARED_RULES = [
-	'- steps: exactly one plain sentence; never mention n8n node names or technical jargon.',
-	'- results: concrete user-visible outcomes, never vague ("a notification" is too vague; "a Slack message in #support with the ticket summary" is right).',
-	'- Never answer the user or produce anything except the JSON object.',
-];
+const STEPS_RULE =
+	'- steps: exactly one plain sentence; never mention n8n node names or technical jargon.';
+const RESULTS_RULE =
+	'- results: concrete user-visible outcomes, never vague ("a notification" is too vague; "a Slack message in #support with the ticket summary" is right).';
+const OUTPUT_ONLY_RULE = '- Never answer the user or produce anything except the JSON object.';
+
+const SHARED_RULES = [STEPS_RULE, RESULTS_RULE, OUTPUT_ONLY_RULE];
 
 const PLAN_INSTRUCTIONS = [
 	'You maintain a compact three-pane "Workflow overview" panel shown beside an AI workflow-builder chat.',
@@ -106,33 +123,74 @@ const PLAN_INSTRUCTIONS = [
 	'- skip=true when the conversation is not about building/editing one workflow, when it coordinates multiple workflows, or when no pane would change. With skip=true set every pane to "".',
 ].join('\n');
 
-const WORKFLOW_INSTRUCTIONS = [
-	'You produce a compact three-pane "Workflow overview" (Triggers / Steps / Results) for an EXISTING saved n8n workflow.',
-	"The <built-workflow> section contains the workflow's actual structure — it is the SOLE source of truth; any conversation context is secondary.",
-	'',
-	'Rules:',
-	'- Re-derive every pane from the current structure on every call. A <previous-overview>, when present, is only a phrasing and language reference — never keep a pane the structure no longer supports: added or removed triggers, changed schedules, and changed destinations must always be reflected.',
-	'- triggers: account for ALL trigger nodes present (e.g. "Runs every day at 9:00, or manually on demand").',
-	"- One short sentence per pane, in the same language as the workflow's node names and text where evident, otherwise English.",
-	'- Present tense, describing what the workflow does ("Runs every Monday at 9:00", "Posts a summary to Slack").',
-	'- Use "" for a pane the workflow structure genuinely does not determine. Never invent details.',
-	...SHARED_RULES,
-	'- skip=true only when <built-workflow> is missing or too incomplete to describe. With skip=true set every pane to "".',
-].join('\n');
+interface WorkflowInstructionOptions {
+	hasKnownTriggers: boolean;
+	/** How the Results pane is handled: generated, generated-but-grounded, or caller-known. */
+	results: 'generate' | 'grounded' | 'known' | 'knownEmpty';
+}
 
-const WORKFLOW_KNOWN_TRIGGERS_INSTRUCTIONS = [
-	'You produce the Steps and Results panes of a compact three-pane "Workflow overview" (Triggers / Steps / Results) for an EXISTING saved n8n workflow.',
-	'The Triggers pane was derived directly from the workflow structure and is provided in <known-triggers>. Do not produce or restate it — treat it as authoritative context so Steps and Results stay consistent with it.',
-	"The <built-workflow> section contains the workflow's actual structure — it is the SOLE source of truth; any conversation context is secondary.",
-	'',
-	'Rules:',
-	'- Re-derive both panes from the current structure on every call. A <previous-overview>, when present, is only a phrasing and language reference — never keep a pane the structure no longer supports: changed behavior and changed destinations must always be reflected.',
-	"- One short sentence per pane, in the same language as the workflow's node names and text where evident, otherwise English.",
-	'- Present tense, describing what the workflow does ("Posts a summary to Slack").',
-	'- Use "" for a pane the workflow structure genuinely does not determine. Never invent details.',
-	...SHARED_RULES,
-	'- skip=true only when <built-workflow> is missing or too incomplete to describe. With skip=true set every pane to "".',
-].join('\n');
+/**
+ * Workflow-subject instructions, assembled around which panes the model
+ * actually produces — caller-known panes (deterministic triggers/results) are
+ * authoritative context instead of generation targets.
+ */
+function buildWorkflowInstructions(opts: WorkflowInstructionOptions): string {
+	const resultsKnown = opts.results === 'known' || opts.results === 'knownEmpty';
+	const producedPanes = [
+		...(opts.hasKnownTriggers ? [] : ['Triggers']),
+		'Steps',
+		...(resultsKnown ? [] : ['Results']),
+	];
+	const header =
+		producedPanes.length === 3
+			? 'You produce a compact three-pane "Workflow overview" (Triggers / Steps / Results) for an EXISTING saved n8n workflow.'
+			: `You produce the ${producedPanes.join(' and ')} pane${producedPanes.length > 1 ? 's' : ''} of a compact three-pane "Workflow overview" (Triggers / Steps / Results) for an EXISTING saved n8n workflow.`;
+
+	const context: string[] = [];
+	if (opts.hasKnownTriggers) {
+		context.push(
+			'The Triggers pane was derived directly from the workflow structure and is provided in <known-triggers>. Do not produce or restate it — treat it as authoritative context so the panes you produce stay consistent with it.',
+		);
+	}
+	if (opts.results === 'known') {
+		context.push(
+			'The Results pane was derived directly from the workflow structure and is provided in <known-results>. Do not produce or restate it — treat it as authoritative context so the panes you produce stay consistent with it.',
+		);
+	} else if (opts.results === 'knownEmpty') {
+		context.push(
+			'The workflow structure shows no user-visible outputs, so the Results pane is fixed empty — do not describe outcomes in the panes you produce.',
+		);
+	} else if (opts.results === 'grounded') {
+		context.push(
+			"Part of the workflow's outputs were derived directly from its structure and are provided in <known-result-facts>. They are authoritative for the results pane: rephrase them freely, never contradict or drop them, and only add outcomes the rest of the structure supports.",
+		);
+	}
+
+	const tenseExamples = opts.hasKnownTriggers
+		? '("Posts a summary to Slack")'
+		: '("Runs every Monday at 9:00", "Posts a summary to Slack")';
+
+	return [
+		header,
+		...context,
+		"The <built-workflow> section contains the workflow's actual structure — it is the SOLE source of truth; any conversation context is secondary.",
+		'',
+		'Rules:',
+		'- Re-derive every pane you produce from the current structure on every call. A <previous-overview>, when present, is only a phrasing and language reference — never keep a pane the structure no longer supports: added or removed triggers, changed schedules, changed behavior, and changed destinations must always be reflected.',
+		...(opts.hasKnownTriggers
+			? []
+			: [
+					'- triggers: account for ALL trigger nodes present (e.g. "Runs every day at 9:00, or manually on demand").',
+				]),
+		"- One short sentence per pane, in the same language as the workflow's node names and text where evident, otherwise English.",
+		`- Present tense, describing what the workflow does ${tenseExamples}.`,
+		'- Use "" for a pane the workflow structure genuinely does not determine. Never invent details.',
+		STEPS_RULE,
+		...(resultsKnown ? [] : [RESULTS_RULE]),
+		OUTPUT_ONLY_RULE,
+		'- skip=true only when <built-workflow> is missing or too incomplete to describe. With skip=true set every pane to "".',
+	].join('\n');
+}
 
 const MAX_CONVERSATION_MESSAGES = 12;
 const MAX_MESSAGE_CHARS = 600;
@@ -176,6 +234,19 @@ function renderBundle(bundle: WorkflowOverviewBundle): string {
 	if (bundle.knownTriggers) {
 		sections.push(
 			`<known-triggers>\n${clip(bundle.knownTriggers, MAX_SECTION_CHARS)}\n</known-triggers>`,
+		);
+	}
+
+	if (bundle.knownResults) {
+		sections.push(
+			`<known-results>\n${clip(bundle.knownResults, MAX_SECTION_CHARS)}\n</known-results>`,
+		);
+	}
+
+	// Grounding fragments only make sense while the pane is still generated.
+	if (bundle.knownResults === undefined && bundle.resultFactsContext) {
+		sections.push(
+			`<known-result-facts>\n${clip(bundle.resultFactsContext, MAX_SECTION_CHARS)}\n</known-result-facts>`,
 		);
 	}
 
@@ -250,21 +321,40 @@ export async function generateWorkflowOverview(
 		const model = createModel(modelId);
 		const telemetry = await resolveBuiltTelemetry(options?.telemetry);
 
-		// A caller-supplied Triggers pane skips generating that field entirely:
-		// smaller output schema, and the value is prompt context instead.
+		// Caller-supplied panes skip generating those fields entirely: smaller
+		// output schema, and the values are prompt context instead. knownResults
+		// distinguishes '' (known-empty pane) from undefined (generate it).
 		const knownTriggers =
 			bundle.subject === 'workflow' && bundle.knownTriggers?.trim()
 				? bundle.knownTriggers.trim()
 				: undefined;
-		type GenerationOutput = { skip: boolean; triggers?: string; steps: string; results: string };
-		const activeSchema: z.ZodType<GenerationOutput> = knownTriggers
-			? generationSchemaWithoutTriggers
-			: generationSchema;
+		const knownResults =
+			bundle.subject === 'workflow' && bundle.knownResults !== undefined
+				? bundle.knownResults.trim()
+				: undefined;
+		const hasKnownResults = knownResults !== undefined;
+		const grounded = !hasKnownResults && Boolean(bundle.resultFactsContext?.trim());
+		type GenerationOutput = { skip: boolean; triggers?: string; steps: string; results?: string };
+		const activeSchema: z.ZodType<GenerationOutput> =
+			knownTriggers && hasKnownResults
+				? generationSchemaStepsOnly
+				: knownTriggers
+					? generationSchemaWithoutTriggers
+					: hasKnownResults
+						? generationSchemaWithoutResults
+						: generationSchema;
 		const instructions =
 			bundle.subject === 'workflow'
-				? knownTriggers
-					? WORKFLOW_KNOWN_TRIGGERS_INSTRUCTIONS
-					: WORKFLOW_INSTRUCTIONS
+				? buildWorkflowInstructions({
+						hasKnownTriggers: knownTriggers !== undefined,
+						results: hasKnownResults
+							? knownResults
+								? 'known'
+								: 'knownEmpty'
+							: grounded
+								? 'grounded'
+								: 'generate',
+					})
 				: PLAN_INSTRUCTIONS;
 
 		const result = await generateObject({
@@ -293,13 +383,16 @@ export async function generateWorkflowOverview(
 		const overview: WorkflowOverview = {
 			triggers: knownTriggers ?? parsed.data.triggers?.trim() ?? '',
 			steps: parsed.data.steps.trim(),
-			results: parsed.data.results.trim(),
+			results: knownResults ?? parsed.data.results?.trim() ?? '',
 		};
-		// With caller-supplied triggers the model only produced steps/results —
-		// both empty means it generated nothing, regardless of the free pane.
-		const emptyOutput = knownTriggers
-			? !overview.steps && !overview.results
-			: !overview.triggers && !overview.steps && !overview.results;
+		// Emptiness is judged over the panes the model actually produced —
+		// caller-known panes don't count as generated output.
+		const generatedPanes = [
+			...(knownTriggers ? [] : [overview.triggers]),
+			overview.steps,
+			...(hasKnownResults ? [] : [overview.results]),
+		];
+		const emptyOutput = generatedPanes.every((pane) => !pane);
 		if (emptyOutput) {
 			options?.onFailure?.('empty_output');
 			return null;

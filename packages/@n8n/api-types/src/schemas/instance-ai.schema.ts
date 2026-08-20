@@ -536,6 +536,12 @@ export const workflowOverviewSchema = z.object({
 	steps: z.string(),
 	/** What the user ends up with, described concretely. */
 	results: z.string(),
+	/**
+	 * Individual result clauses, present when derived deterministically from
+	 * the workflow structure. UIs render these as an all-of list; `results`
+	 * stays the joined-sentence fallback for consumers that don't.
+	 */
+	resultClauses: z.array(z.string()).optional(),
 });
 
 export type WorkflowOverview = z.infer<typeof workflowOverviewSchema>;
@@ -547,6 +553,17 @@ export interface InstanceAiWorkflowOverviewResponse {
 	updatedAt: string | null;
 	/** PoC diagnostics: why generation yielded no overview (generate endpoint only). */
 	failureReason?: string;
+	/**
+	 * True when a generate request returned the stored overview untouched
+	 * because the workflow's `versionId` has not changed since it was built.
+	 */
+	cached?: boolean;
+	/**
+	 * True when the stored overview was generated from the workflow's current
+	 * saved version — regenerating would return the same overview, so UIs can
+	 * disable their refresh action.
+	 */
+	upToDate?: boolean;
 }
 
 export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;

@@ -63,6 +63,28 @@ function summarizeConnections(connections: Record<string, unknown>): string[] {
 }
 
 /**
+ * Minimal node/edge digest — no SDK codegen, sticky notes dropped. Used for
+ * prompts that only need the graph's shape, e.g. workflow-overview generation
+ * when triggers and results are already deterministically known and the model
+ * only writes the Steps sentence: roughly half the input tokens of the
+ * SDK-code rendering on medium workflows.
+ */
+export function summarizeWorkflowStructureCompact(
+	nodes: Array<{ name: string; type: string; disabled?: boolean }>,
+	connections: Record<string, unknown>,
+): string {
+	const listed = nodes.filter((node) => node.type !== 'n8n-nodes-base.stickyNote');
+	return [
+		'Nodes:',
+		...listed.map(
+			(node) => `- ${node.name} (${node.type})${node.disabled === true ? ' [disabled]' : ''}`,
+		),
+		'Connections:',
+		...summarizeConnections(connections).map((edge) => `- ${edge}`),
+	].join('\n');
+}
+
+/**
  * Render a workflow's structure as SDK code with node parameters stripped —
  * the same format the agent reads from get-as-code, minus the config payloads.
  * Falls back to a plain node/edge listing when codegen rejects the graph.

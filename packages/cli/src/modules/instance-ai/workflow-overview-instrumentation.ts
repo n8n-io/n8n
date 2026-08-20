@@ -47,9 +47,16 @@ export async function generateWorkflowOverviewTraced(
 	};
 
 	// The composed overview merges caller-supplied panes back in, so record
-	// where the triggers pane came from — otherwise traces look like the model
-	// generated a pane it never produced.
+	// where each pane came from — otherwise traces look like the model
+	// generated a pane it never produced. Results has a middle rung: the model
+	// generated the pane but was grounded with deterministic partial facts.
 	const triggersSource = bundle.knownTriggers ? 'deterministic' : 'generated';
+	const resultsSource =
+		bundle.knownResults !== undefined
+			? 'deterministic'
+			: bundle.resultFactsContext
+				? 'grounded'
+				: 'generated';
 
 	const logOutcome = (overview: WorkflowOverview | null) => {
 		ctx.logger.debug('Workflow overview generation finished', {
@@ -57,6 +64,7 @@ export async function generateWorkflowOverviewTraced(
 			conversationKey: ctx.conversationKey,
 			generated: overview !== null,
 			triggersSource,
+			resultsSource,
 			inputTokens: usage?.inputTokens,
 			outputTokens: usage?.outputTokens,
 			totalTokens: usage?.totalTokens,
@@ -107,7 +115,9 @@ export async function generateWorkflowOverviewTraced(
 			await tracing.finishRun(tracing.rootRun, {
 				outputs: {
 					generated: overview !== null,
-					...(overview ? { overview, triggers_source: triggersSource } : {}),
+					...(overview
+						? { overview, triggers_source: triggersSource, results_source: resultsSource }
+						: {}),
 					...(usage ? { usage } : {}),
 				},
 				metadata: {

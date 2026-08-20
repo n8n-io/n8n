@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { WorkflowOverview } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
-import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -10,6 +10,8 @@ const props = defineProps<{
 	/** Whether the on-demand generate/refresh action is available. */
 	canGenerate?: boolean;
 	isGenerating?: boolean;
+	/** The shown overview matches the latest saved workflow version — refresh is a no-op and gets disabled. */
+	upToDate?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -23,15 +25,20 @@ interface OverviewStep {
 	icon: IconName;
 	label: string;
 	text: string;
-	/** Structured any-of clauses (deterministic triggers) — rendered stacked with "or" separators. */
+	/** Structured clauses (deterministic panes) — rendered stacked with `separator` between rows. */
 	clauses?: string[];
+	/** Divider word between clause rows: "or" (any-of triggers), "and" (all-of results). */
+	separator?: string;
+}
+
+function cleanClauses(clauses: string[] | undefined): string[] {
+	return (clauses ?? []).map((clause) => clause.trim()).filter((clause) => clause.length > 0);
 }
 
 const steps = computed<OverviewStep[]>(() => {
 	if (!props.overview) return [];
-	const triggerClauses = (props.overview.triggerClauses ?? [])
-		.map((clause) => clause.trim())
-		.filter((clause) => clause.length > 0);
+	const triggerClauses = cleanClauses(props.overview.triggerClauses);
+	const resultClauses = cleanClauses(props.overview.resultClauses);
 	return [
 		{
 			key: 'triggers',
@@ -39,7 +46,12 @@ const steps = computed<OverviewStep[]>(() => {
 			label: i18n.baseText('instanceAi.workflowOverview.triggers'),
 			text: props.overview.triggers.trim(),
 			// A single clause reads better as the plain joined sentence.
-			...(triggerClauses.length > 1 ? { clauses: triggerClauses } : {}),
+			...(triggerClauses.length > 1
+				? {
+						clauses: triggerClauses,
+						separator: i18n.baseText('instanceAi.workflowOverview.triggerSeparator'),
+					}
+				: {}),
 		},
 		{
 			key: 'steps',
@@ -52,6 +64,12 @@ const steps = computed<OverviewStep[]>(() => {
 			icon: 'circle-check',
 			label: i18n.baseText('instanceAi.workflowOverview.results'),
 			text: props.overview.results.trim(),
+			...(resultClauses.length > 1
+				? {
+						clauses: resultClauses,
+						separator: i18n.baseText('instanceAi.workflowOverview.resultSeparator'),
+					}
+				: {}),
 		},
 	];
 });
@@ -93,7 +111,7 @@ const generateLabel = computed(() =>
 							>
 								<template v-for="(clause, clauseIndex) in step.clauses" :key="clauseIndex">
 									<div v-if="clauseIndex > 0" :class="$style.clauseSeparator" aria-hidden="true">
-										{{ i18n.baseText('instanceAi.workflowOverview.triggerSeparator') }}
+										{{ step.separator }}
 									</div>
 									<N8nText size="small" :class="[$style.stepText, $style.clause]">
 										{{ clause }}
@@ -110,17 +128,21 @@ const generateLabel = computed(() =>
 					</section>
 				</template>
 			</div>
-			<N8nButton
-				v-if="canGenerate"
-				type="secondary"
-				size="small"
-				:loading="isGenerating"
-				:disabled="isGenerating"
-				data-test-id="instance-ai-workflow-overview-refresh"
-				@click="emit('generate')"
-			>
-				{{ generateLabel }}
-			</N8nButton>
+			<N8nTooltip v-if="canGenerate" :disabled="!upToDate" placement="top">
+				<template #content>
+					{{ i18n.baseText('instanceAi.workflowOverview.upToDateTooltip') }}
+				</template>
+				<N8nButton
+					type="secondary"
+					size="small"
+					:loading="isGenerating"
+					:disabled="isGenerating || upToDate"
+					data-test-id="instance-ai-workflow-overview-refresh"
+					@click="emit('generate')"
+				>
+					{{ generateLabel }}
+				</N8nButton>
+			</N8nTooltip>
 		</div>
 
 		<div v-else :class="$style.emptyState" data-test-id="instance-ai-workflow-overview-empty">

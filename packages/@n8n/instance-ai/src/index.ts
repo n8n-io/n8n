@@ -36,6 +36,7 @@ import type * as EvalAgentsMod from './utils/eval-agents';
 import type * as StreamHelpersMod from './utils/stream-helpers';
 import type * as WorkflowLoopMod from './workflow-loop';
 import type * as WorkflowLoopRuntimeMod from './workflow-loop/runtime';
+import type * as ResultFactsMod from './workflow-overview/result-facts';
 import type * as TriggerFactsMod from './workflow-overview/trigger-facts';
 import type * as WorkflowOverviewGeneratorMod from './workflow-overview/workflow-overview-generator';
 import type * as WorkflowOverviewSidecarMod from './workflow-overview/workflow-overview-sidecar';
@@ -129,6 +130,9 @@ const loadSummarizeWorkflow = lazyModule(
 );
 const loadTriggerFacts = lazyModule(
 	() => require('./workflow-overview/trigger-facts') as typeof TriggerFactsMod,
+);
+const loadResultFacts = lazyModule(
+	() => require('./workflow-overview/result-facts') as typeof ResultFactsMod,
 );
 const loadStreamHelpers = lazyModule(
 	() => require('./utils/stream-helpers') as typeof StreamHelpersMod,
@@ -405,8 +409,27 @@ export const formatTriggersPane: typeof TriggerFactsMod.formatTriggersPane = laz
 export const triggerPaneClauses: typeof TriggerFactsMod.triggerPaneClauses = lazyFunction(
 	() => loadTriggerFacts().triggerPaneClauses,
 );
+export type {
+	ResultExtraction,
+	ResultFact,
+	ResultNodeMetaProvider,
+	ResultSourceNode,
+} from './workflow-overview/result-facts';
+export const extractResultFacts: typeof ResultFactsMod.extractResultFacts = lazyFunction(
+	() => loadResultFacts().extractResultFacts,
+);
+export const formatResultsPane: typeof ResultFactsMod.formatResultsPane = lazyFunction(
+	() => loadResultFacts().formatResultsPane,
+);
+export const formatResultFactsContext: typeof ResultFactsMod.formatResultFactsContext =
+	lazyFunction(() => loadResultFacts().formatResultFactsContext);
+export const resultPaneClauses: typeof ResultFactsMod.resultPaneClauses = lazyFunction(
+	() => loadResultFacts().resultPaneClauses,
+);
 export const summarizeWorkflowStructure: typeof SummarizeWorkflowMod.summarizeWorkflowStructure =
 	lazyFunction(() => loadSummarizeWorkflow().summarizeWorkflowStructure);
+export const summarizeWorkflowStructureCompact: typeof SummarizeWorkflowMod.summarizeWorkflowStructureCompact =
+	lazyFunction(() => loadSummarizeWorkflow().summarizeWorkflowStructureCompact);
 export const mapAgentChunkToEvent: typeof MapChunkMod.mapAgentChunkToEvent = lazyFunction(
 	() => loadMapChunk().mapAgentChunkToEvent,
 );

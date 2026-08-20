@@ -3801,6 +3801,14 @@ export interface WorkflowAiOverview {
 	steps: string;
 	/** What the user ends up with, described concretely. */
 	results: string;
+	/** Individual result clauses when derived deterministically from structure. */
+	resultClauses?: string[];
+	/**
+	 * `versionId` of the workflow this overview was generated from. When it
+	 * still matches the workflow's current `versionId`, regeneration is
+	 * skipped — the structure cannot have changed.
+	 */
+	workflowVersionId?: string;
 	/** ISO timestamp of the last on-demand generation. */
 	updatedAt: string;
 }

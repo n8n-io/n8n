@@ -263,8 +263,9 @@ function serviceLabelFromType(type: string): string {
 /**
  * Prefer the registry's curated display name ("RSS Feed Trigger" → "RSS Feed")
  * over camelCase-splitting the type id — it gets acronyms and branding right.
+ * Shared with result-facts (module-internal: not re-exported from the package).
  */
-function serviceLabel(type: string, displayName?: string): string {
+export function serviceLabel(type: string, displayName?: string): string {
 	if (displayName) {
 		const stripped = displayName.replace(/\s*Trigger$/i, '').trim();
 		if (stripped.length > 0) return stripped;

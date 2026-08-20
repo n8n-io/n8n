@@ -15,11 +15,16 @@ const rootStore = useRootStore();
 const overview = ref<WorkflowOverview | null>(null);
 const isLoading = ref(true);
 const isGenerating = ref(false);
+// Backend-computed: the stored overview was built from the workflow's current
+// saved version, so a refresh would be a no-op. Refetched on every tab entry
+// (this is a routed view), which keeps it in step with saves made on the canvas.
+const upToDate = ref(false);
 
 onMounted(async () => {
 	try {
 		const response = await getWorkflowOverviewApi(rootStore.restApiContext, props.workflowId);
 		overview.value = response.overview;
+		upToDate.value = response.upToDate === true;
 	} catch {
 		// No stored overview / no access — the empty state offers generation.
 	} finally {
@@ -33,6 +38,7 @@ async function generate() {
 	try {
 		const response = await generateWorkflowOverviewApi(rootStore.restApiContext, props.workflowId);
 		if (response.overview) overview.value = response.overview;
+		upToDate.value = response.upToDate === true;
 	} catch {
 		// Keep whatever is shown; the button stays available for a retry.
 	} finally {
@@ -48,6 +54,7 @@ async function generate() {
 			:overview="overview"
 			can-generate
 			:is-generating="isGenerating"
+			:up-to-date="upToDate"
 			@generate="generate"
 		/>
 	</div>
