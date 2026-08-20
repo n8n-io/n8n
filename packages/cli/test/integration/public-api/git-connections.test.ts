@@ -140,7 +140,7 @@ describe('Git connections in Public API', () => {
 		expect(await Container.get(GitConnectionRepository).count()).toBe(0);
 	});
 
-	describe('adding and removing projects', () => {
+	describe('managing projects', () => {
 		async function createConnection(name = 'Connection') {
 			const response = await testServer.publicApiAgentFor(owner).post('/git-connections').send({
 				name,
