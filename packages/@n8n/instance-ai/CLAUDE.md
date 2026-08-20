@@ -67,5 +67,5 @@ See `docs/e2e-tests.md` for the full recording/replay architecture.
 - **SSE `/events/:threadId`** delivers all events — replay via `Last-Event-ID` header or `?lastEventId` query param
 - **Run lifecycle**: `run-start` (first) → events → `run-finish` (last, carries status)
 - **Planned tasks**: `plan` tool for multi-step work; tasks run detached as background agents
-- **Sub-agents**: stateless, native domain tools only, no MCP, no recursive delegation
+- **Specialized background agents**: stateless, native domain tools only, no MCP, no recursive delegation. The embedded Agent Builder inherits the orchestrator's safe MCP tools.
 - **Memory**: observational memory = thread-scoped, working memory is disabled
