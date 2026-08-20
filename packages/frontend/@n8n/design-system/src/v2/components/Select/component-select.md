@@ -1,7 +1,7 @@
 # Component specification
 
 Allows users to choose one or more options from a predefined list. It supports both single and multiple selection modes via the `multiple` prop.
-Built-in search (`searchable`) filters the dropdown by `textValue` (falling back to `label`) and `keywords` (case-insensitive substring). Closing the menu clears the query. Groups and separators without a matching item are dropped from the filtered list. When search is off, Reka typeahead matches the prefix of `textValue` (falling back to `label`); `keywords` are not used. For larger datasets that need typeahead in the trigger itself, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done).
+Reka typeahead matches the prefix of `textValue` (falling back to `label`) while the menu is open. For larger datasets that need typeahead in the trigger itself, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done).
 
 - **Component Name:** N8nSelect2
 - **Related export:** N8nSelect2Item (default menu row; use when replacing the `item` slot)
@@ -26,8 +26,7 @@ type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
 	label: string;
 	icon?: IconName;
 	disabled?: boolean;
-	textValue?: string; // search / typeahead text; defaults to label (use for slot-rendered labels)
-	keywords?: string[]; // extra searchable terms (synonyms); not used by typeahead
+	textValue?: string; // typeahead text; defaults to label (use for slot-rendered labels)
 	onSelect?: (event: Event) => void; // preventDefault() keeps the value from updating
 };
 
@@ -77,10 +76,6 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `dir?: 'ltr' | 'rtl'` Reading direction. When omitted, inherits from `ConfigProvider` or defaults to LTR.
 - `icon?: IconName` Fallback leading icon on the trigger when nothing is selected, or the selected item has no leading visual. In single select, a selected item's `#item-leading` (or its `icon`) is shown on the trigger instead.
 - `clearable?: boolean` When `true`, shows a clear button when a value is selected. Hidden when `disabled` or the value is empty. Default: `false`. The button's accessible name is `t('nds.select.clear')` (`Clear selection`).
-- `searchable?: boolean` When `true`, shows a search field in the dropdown and filters items by `textValue` (falling back to `label`) and `keywords`. Default: `false`. Opening autofocuses the field. ArrowDown moves to the first option; ArrowUp from the first option returns to search; typing on an option appends into the field.
-- `searchPlaceholder?: string` Placeholder for the search field. Defaults to `t('nds.select.searchPlaceholder')` (`Search`). Not used as the accessible name.
-- `searchAriaLabel?: string` Accessible name for the search field. Defaults to `t('nds.select.searchAriaLabel')` (`Search options`).
-- `searchQuery?: string` Controlled search query (`v-model:searchQuery`). Reset to `''` when the dropdown closes.
 - `position?: 'item-aligned' | 'popper'` Positioning mode for the dropdown. Default: `'item-aligned'`.
 - `sideOffset?: number` Distance in pixels from the trigger when `position` is `'popper'`. Default: `4`.
 - `contentClass?: string` Additional CSS class(es) applied to the dropdown content container (portaled).
@@ -95,7 +90,6 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 
 - `update:modelValue(value: SelectValue | SelectValue[] | undefined)` — single clear emits `undefined`; multiple clear emits `[]`
 - `update:open(value: boolean)`
-- `update:searchQuery(value: string)`
 - `clear()`
 
 **Slots**
@@ -106,9 +100,9 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `item-leading`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`). In single select, the same slot is reused on the trigger for the selected value, even when the item has no `icon`. Not used on the trigger in `multiple` mode.
 - `item-label`: `{ item: SelectOptionBase }`
 - `item-trailing`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom trailing content
-- `header?: ()` — rendered below the search field (when `searchable`) and above the list
+- `header?: ()` — rendered above the list
 - `footer?: ()`
-- `empty?: ()` — shown when there are no selectable items (e.g. search with no matches). Defaults to `t('nds.select.noResults')` (`No results found`)
+- `empty?: ()` — shown when there are no selectable items. Defaults to `t('nds.select.noResults')` (`No results found`)
 
 **Expose**
 
@@ -219,7 +213,7 @@ const current = computed(() => items.find((item) => item.value === value.value) 
 </template>
 ```
 
-**Searchable (`textValue` + `keywords`):**
+**Typeahead (`textValue`):**
 
 ```vue
 <script setup lang="ts">
@@ -227,14 +221,14 @@ import { ref } from 'vue'
 import { N8nSelect2 } from '@n8n/design-system'
 
 const items = ref([
-	{ value: 'us', label: 'United States', keywords: ['USA', 'America'] },
+	{ value: 'us', label: 'United States' },
 	{ value: 'de', label: 'Germany', textValue: 'Deutschland' },
 ])
 const value = ref<string>()
 </script>
 
 <template>
-  <N8nSelect2 v-model="value" :items="items" searchable clearable />
+  <N8nSelect2 v-model="value" :items="items" clearable />
 </template>
 ```
 

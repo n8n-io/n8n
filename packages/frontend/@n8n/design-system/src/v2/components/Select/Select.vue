@@ -15,18 +15,8 @@ import {
 	useForwardProps,
 } from 'reka-ui';
 import type { AcceptableValue } from 'reka-ui';
-import {
-	computed,
-	getCurrentInstance,
-	nextTick,
-	ref,
-	useAttrs,
-	useCssModule,
-	useTemplateRef,
-	watch,
-} from 'vue';
+import { computed, getCurrentInstance, ref, useAttrs, useCssModule, useTemplateRef } from 'vue';
 
-import N8nInput from '@n8n/design-system/components/N8nInput';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
 
 import type {
@@ -68,7 +58,6 @@ const props = withDefaults(defineProps<SelectProps<M>>(), {
 	position: 'item-aligned',
 	sideOffset: 4,
 	clearable: false,
-	searchable: false,
 });
 const emit = defineEmits<SelectEmits<M>>();
 defineSlots<SelectSlots<M>>();
@@ -93,112 +82,6 @@ function rootBind() {
 }
 
 const triggerRef = useTemplateRef<InstanceType<typeof SelectTrigger>>('trigger');
-const searchInputRef = ref<{ focus: () => void } | null>(null);
-const internalSearchQuery = ref('');
-
-const searchQuery = computed(() => props.searchQuery ?? internalSearchQuery.value);
-
-function setSearchQuery(value: string | number) {
-	const next = String(value);
-	internalSearchQuery.value = next;
-	emit('update:searchQuery', next);
-}
-
-function clearSearch() {
-	setSearchQuery('');
-}
-
-function isSearchNavigationKey(key: string) {
-	return key === 'ArrowDown' || key === 'ArrowUp';
-}
-
-function isTypingKey(event: KeyboardEvent) {
-	return (
-		!event.ctrlKey && !event.altKey && !event.metaKey && event.key.length === 1 && event.key !== ' '
-	);
-}
-
-function onSearchKeydown(event: KeyboardEvent) {
-	if (event.key === 'Escape' || isSearchNavigationKey(event.key)) {
-		if (isSearchNavigationKey(event.key)) {
-			// Avoid moving the caret; Reka will focus the first/last option.
-			event.preventDefault();
-		}
-		return;
-	}
-
-	event.stopPropagation();
-}
-
-function getEnabledOptions(contentEl: HTMLElement): HTMLElement[] {
-	return Array.from(
-		contentEl.querySelectorAll<HTMLElement>('[role="option"]:not([data-disabled])'),
-	);
-}
-
-async function focusSearchInput() {
-	await nextTick();
-	requestAnimationFrame(() => {
-		searchInputRef.value?.focus();
-	});
-}
-
-function onContentKeydown(event: KeyboardEvent) {
-	if (!props.searchable) {
-		return;
-	}
-
-	const contentEl = event.currentTarget;
-	if (!(contentEl instanceof HTMLElement)) {
-		return;
-	}
-
-	const target = event.target;
-	if (!(target instanceof HTMLElement) || target.getAttribute('role') !== 'option') {
-		return;
-	}
-
-	if (event.key === 'ArrowUp') {
-		const firstOption = getEnabledOptions(contentEl)[0];
-		if (target === firstOption) {
-			event.preventDefault();
-			void focusSearchInput();
-		}
-		return;
-	}
-
-	if (!isTypingKey(event)) {
-		return;
-	}
-
-	// Capture-phase listener stops Reka typeahead; append into the search field.
-	event.preventDefault();
-	event.stopPropagation();
-	setSearchQuery(`${searchQuery.value}${event.key}`);
-	void focusSearchInput();
-}
-
-async function handleOpenUpdate(isOpen: boolean) {
-	emit('update:open', isOpen);
-
-	if (!isOpen) {
-		clearSearch();
-		return;
-	}
-
-	if (props.searchable) {
-		await focusSearchInput();
-	}
-}
-
-watch(
-	() => props.searchQuery,
-	(value) => {
-		if (value !== undefined) {
-			internalSearchQuery.value = value;
-		}
-	},
-);
 
 defineExpose({
 	triggerRef,
@@ -343,59 +226,12 @@ const sections = computed<SelectSection[]>(() => {
 	return result;
 });
 
-function itemMatchesQuery(item: SelectOptionBase, query: string): boolean {
-	if ((item.textValue ?? item.label).toLowerCase().includes(query)) {
-		return true;
-	}
-
-	return (item.keywords ?? []).some((keyword) => keyword.toLowerCase().includes(query));
-}
-
-function filterSections(currentSections: SelectSection[], query: string): SelectSection[] {
-	const normalizedQuery = query.toLowerCase().trim();
-	if (!normalizedQuery) {
-		return currentSections;
-	}
-
-	const result: SelectSection[] = [];
-	let pendingSeparator: Extract<SelectSection, { type: 'separator' }> | undefined;
-
-	for (const section of currentSections) {
-		if (section.type === 'separator') {
-			pendingSeparator = section;
-			continue;
-		}
-
-		const items = section.items.filter((item) => itemMatchesQuery(item, normalizedQuery));
-		if (items.length === 0) {
-			continue;
-		}
-
-		if (pendingSeparator) {
-			result.push(pendingSeparator);
-			pendingSeparator = undefined;
-		}
-
-		result.push({ ...section, items });
-	}
-
-	return result;
-}
-
 const optionItems = computed(() =>
 	sections.value.flatMap((section) => (section.type === 'group' ? section.items : [])),
 );
 
-const visibleSections = computed(() => {
-	if (!props.searchable) {
-		return sections.value;
-	}
-
-	return filterSections(sections.value, searchQuery.value);
-});
-
 const hasSelectableItems = computed(() =>
-	visibleSections.value.some((section) => section.type === 'group' && section.items.length > 0),
+	sections.value.some((section) => section.type === 'group' && section.items.length > 0),
 );
 
 function hasValue(value: unknown): boolean {
@@ -412,14 +248,6 @@ function showClearButton(value: unknown): boolean {
 
 function resolvedPlaceholder() {
 	return props.placeholder ?? t('nds.select.placeholder');
-}
-
-function resolvedSearchPlaceholder() {
-	return props.searchPlaceholder ?? t('nds.select.searchPlaceholder');
-}
-
-function resolvedSearchAriaLabel() {
-	return props.searchAriaLabel ?? t('nds.select.searchAriaLabel');
 }
 
 function iconStrokeWidth() {
@@ -521,7 +349,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 		v-bind="rootBind()"
 		:model-value="rootModelValue"
 		@update:model-value="handleModelValueUpdate"
-		@update:open="handleOpenUpdate"
+		@update:open="emit('update:open', $event)"
 	>
 		<SelectTrigger
 			:id="id"
@@ -585,23 +413,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				:position="position"
 				side="bottom"
 				:side-offset="sideOffset"
-				@keydown.capture="onContentKeydown"
 			>
-				<div v-if="searchable" :class="$style.searchHeader" data-test-id="select-search">
-					<N8nInput
-						ref="searchInputRef"
-						:model-value="searchQuery"
-						:placeholder="resolvedSearchPlaceholder()"
-						:aria-label="resolvedSearchAriaLabel()"
-						size="medium"
-						clearable
-						:class="$style.searchInput"
-						@update:model-value="setSearchQuery"
-						@click.stop
-						@keydown="onSearchKeydown"
-					/>
-				</div>
-
 				<slot name="header" />
 
 				<div :class="$style.viewportRegion">
@@ -621,7 +433,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 						</div>
 						<template v-else>
 							<template
-								v-for="(section, sectionIndex) in visibleSections"
+								v-for="(section, sectionIndex) in sections"
 								:key="`section-${sectionIndex}`"
 							>
 								<RSelectSeparator
@@ -872,26 +684,6 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
 	text-align: center;
-}
-
-.searchHeader {
-	flex-shrink: 0;
-	border-bottom: var(--border);
-}
-
-.searchInput {
-	width: 100%;
-	--input--height: var(--height--xl);
-	--input--radius--top-left: var(--input--radius);
-	--input--radius--top-right: var(--input--radius);
-	--input--radius--bottom-right: 0;
-	--input--radius--bottom-left: 0;
-	--input--color--background: transparent;
-	--input--border-color: transparent;
-	--input--border-color--hover: transparent;
-	--input--border-color--focus: transparent;
-	--input--border--shadow--focus: 0 0 0 0 transparent;
-	--focus--outline-color: transparent;
 }
 
 .footer {

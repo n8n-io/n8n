@@ -44,11 +44,6 @@ const meta = {
 			description:
 				'Positioning mode for the dropdown. `item-aligned` aligns the selected item with the trigger (default); `popper` opens below the trigger.',
 		},
-		searchable: {
-			control: 'boolean',
-			description:
-				'Shows a search field and filters items by `textValue` (falling back to `label`) and `keywords`.',
-		},
 		clearable: {
 			control: 'boolean',
 			description: 'Shows a clear button when a value is selected. Hidden when disabled or empty.',
@@ -792,21 +787,21 @@ export const ShortItems = {
 } satisfies Story;
 
 const systemRoles = [
-	{ value: 'admin', label: 'Admin', keywords: ['owner', 'superuser'] },
-	{ value: 'member', label: 'Member', keywords: ['user'] },
-	{ value: 'viewer', label: 'Viewer', keywords: ['read-only', 'readonly'] },
+	{ value: 'admin', label: 'Admin' },
+	{ value: 'member', label: 'Member' },
+	{ value: 'viewer', label: 'Viewer' },
 ];
 
 const customRoles = [
-	{ value: 'developer', label: 'Developer', keywords: ['engineer'] },
-	{ value: 'billing-manager', label: 'Billing Manager', keywords: ['finance', 'invoice'] },
-	{ value: 'support-lead', label: 'Support Lead', keywords: ['helpdesk'] },
+	{ value: 'developer', label: 'Developer' },
+	{ value: 'billing-manager', label: 'Billing Manager' },
+	{ value: 'support-lead', label: 'Support Lead' },
 ];
 
 const ADD_CUSTOM_ROLE_VALUE = '__add_custom_role__';
 
-const SelectSearchAndFooterDemo = defineComponent({
-	name: 'SelectSearchAndFooterDemo',
+const SelectFooterDemo = defineComponent({
+	name: 'SelectFooterDemo',
 	setup() {
 		const value = ref<string | undefined>('member');
 		const open = ref(false);
@@ -861,14 +856,13 @@ const SelectSearchAndFooterDemo = defineComponent({
 	template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--sm);">
 			<component :is="N8nText" size="small" color="text-light" tag="p" style="margin: 0;">
-				Search matches labels and keywords — try "owner" or "finance". "Add custom role" uses onSelect + preventDefault so it never becomes the value.
+				"Add custom role" uses onSelect + preventDefault so it never becomes the value.
 			</component>
 			<component
 				:is="Select"
 				v-model="value"
 				v-model:open="open"
 				:items="items"
-				searchable
 				:style="{ width: '220px' }"
 				@update:model-value="onUpdate"
 			>
@@ -896,18 +890,18 @@ const SelectSearchAndFooterDemo = defineComponent({
 	`,
 });
 
-export const WithSearchAndFooter: Story = {
+export const WithFooter: Story = {
 	parameters: {
 		docs: {
 			description: {
 				story:
-					'Search filters by label/`textValue` and `keywords`. Footer actions stay inside the listbox as options — use `onSelect` with `event.preventDefault()` so they do not update `modelValue`. Closing the menu clears the query.',
+					'Footer actions stay inside the listbox as options — use `onSelect` with `event.preventDefault()` so they do not update `modelValue`.',
 			},
 		},
 	},
 	render: () => ({
-		components: { SelectSearchAndFooterDemo },
-		template: '<SelectSearchAndFooterDemo />',
+		components: { SelectFooterDemo },
+		template: '<SelectFooterDemo />',
 	}),
 };
 
@@ -977,7 +971,7 @@ export const TerminalOption: Story = {
 		docs: {
 			description: {
 				story:
-					'A trailing option after a separator that **does** update `modelValue` (e.g. a sentinel like Block access). Omit `onSelect` / `preventDefault()`. Contrast with With search and footer, where the trailing item is an action.',
+					'A trailing option after a separator that **does** update `modelValue` (e.g. a sentinel like Block access). Omit `onSelect` / `preventDefault()`. Contrast with With footer, where the trailing item is an action.',
 			},
 		},
 	},
@@ -1074,7 +1068,6 @@ const FormExampleDemo = defineComponent({
 					v-model="country"
 					:items="countryItems"
 					placeholder="Select a country"
-					searchable
 					clearable
 				/>
 			</N8nInputLabel>

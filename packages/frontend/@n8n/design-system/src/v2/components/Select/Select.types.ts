@@ -11,17 +11,11 @@ export type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
 	icon?: IconName;
 	disabled?: boolean;
 	/**
-	 * String used for search filtering and typeahead. Defaults to `label`.
-	 * Set this when the filter text should differ from the displayed label
+	 * String used for typeahead. Defaults to `label`.
+	 * Set this when the typeahead text should differ from the displayed label
 	 * (e.g. a slot-rendered label).
 	 */
 	textValue?: string;
-	/**
-	 * Extra strings matched during `searchable` filtering (e.g. synonyms).
-	 * Does not replace `textValue`. Not used by typeahead, which matches the
-	 * prefix of `textValue` / `label`.
-	 */
-	keywords?: string[];
 	/**
 	 * Called when the item is chosen. Call `event.preventDefault()` to keep the
 	 * selection from updating (e.g. footer actions that open a modal).
@@ -74,26 +68,6 @@ export type SelectProps<M extends boolean = false> = Omit<
 	clearable?: boolean;
 
 	/**
-	 * When `true`, shows a search field at the top of the dropdown and filters
-	 * items by `textValue` (falling back to `label`) and `keywords`. Groups and
-	 * separators without a matching item are dropped from the filtered list.
-	 * @defaultValue false
-	 */
-	searchable?: boolean;
-
-	/** Placeholder for the search field when `searchable` is true. */
-	searchPlaceholder?: string;
-
-	/**
-	 * Accessible name for the search field when `searchable` is true.
-	 * Placeholder is visual-only and is not used as the accessible name.
-	 */
-	searchAriaLabel?: string;
-
-	/** Controlled search query. Use with `update:searchQuery` / `v-model:searchQuery`. */
-	searchQuery?: string;
-
-	/**
 	 * The positioning mode for the dropdown content.
 	 * `item-aligned` aligns the selected item with the trigger (default).
 	 * `popper` opens below the trigger at trigger width.
@@ -110,7 +84,6 @@ export type SelectProps<M extends boolean = false> = Omit<
 
 export type SelectEmits<M extends boolean = false> = Omit<SelectRootEmits, 'update:modelValue'> & {
 	'update:modelValue': [value: SelectModelValue<M> | undefined];
-	'update:searchQuery': [value: string];
 	clear: [];
 };
 

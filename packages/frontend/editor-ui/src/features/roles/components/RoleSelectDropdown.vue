@@ -176,8 +176,6 @@ const isUnavailableRoleItem = (item: SelectOptionBase) =>
 			:variant="variant"
 			:placeholder="placeholder"
 			position="popper"
-			searchable
-			:search-placeholder="i18n.baseText('generic.search')"
 			:disabled="loading || disabled"
 			:content-class="$style.roleSelectContent"
 			:class="[$style.roleSelect, { [$style.roleSelectGhost]: variant === 'ghost' }]"
@@ -200,10 +198,6 @@ const isUnavailableRoleItem = (item: SelectOptionBase) =>
 						<N8nIcon v-if="loading" icon="spinner" spin size="small" />
 					</span>
 				</N8nTooltip>
-			</template>
-
-			<template #empty>
-				{{ i18n.baseText('projects.settings.role.selector.noResults') }}
 			</template>
 
 			<template #item-label="{ item }">
