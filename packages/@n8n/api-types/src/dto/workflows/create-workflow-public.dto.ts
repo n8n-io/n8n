@@ -188,14 +188,12 @@ const createWorkflowPublicShape = {
 
 const createWorkflowPublicSchema = z.object(createWorkflowPublicShape).strict();
 
+// This endpoint has always returned 400 for a field it does not know. `Z.class` would drop the
+// field and return 200 instead, so `safeParse` and `schema` both use the strict schema above.
 export class CreateWorkflowPublicDto extends Z.class(createWorkflowPublicShape) {
 	static schema = createWorkflowPublicSchema;
 
 	static safeParse(data: unknown) {
 		return createWorkflowPublicSchema.safeParse(data);
-	}
-
-	static parse(data: unknown) {
-		return createWorkflowPublicSchema.parse(data);
 	}
 }

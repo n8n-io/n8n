@@ -2358,13 +2358,29 @@ describe('POST /workflows', () => {
 
 			expect(response.statusCode).toBe(200);
 			expect(Object.keys(response.body).sort()).toEqual(expectedResponseKeys);
-		});
-
-		test('should return parentFolder as null at the project root', async () => {
-			const response = await authMemberAgent.post('/workflows').send(mockPostWorkflowPayload());
-
-			expect(response.statusCode).toBe(200);
 			expect(response.body.parentFolder).toBeNull();
+			expect(response.body.tags).toEqual([]);
+			expect(response.body.activeVersion).toBeNull();
+			expect(response.body.shared).toHaveLength(1);
+			expect(Object.keys(response.body.shared[0]).sort()).toEqual([
+				'createdAt',
+				'project',
+				'projectId',
+				'role',
+				'updatedAt',
+				'workflowId',
+			]);
+			expect(Object.keys(response.body.shared[0].project).sort()).toEqual([
+				'createdAt',
+				'creatorId',
+				'customTelemetryTags',
+				'description',
+				'icon',
+				'id',
+				'name',
+				'type',
+				'updatedAt',
+			]);
 		});
 
 		test('should return the parent folder when parentFolderId is given', async () => {
@@ -2387,40 +2403,6 @@ describe('POST /workflows', () => {
 				name: 'Response Folder',
 				parentFolderId: null,
 			});
-		});
-
-		test('should return an empty tag list and no active version', async () => {
-			const response = await authMemberAgent.post('/workflows').send(mockPostWorkflowPayload());
-
-			expect(response.statusCode).toBe(200);
-			expect(response.body.tags).toEqual([]);
-			expect(response.body.activeVersion).toBeNull();
-		});
-
-		test('should return the owning share with its project', async () => {
-			const response = await authMemberAgent.post('/workflows').send(mockPostWorkflowPayload());
-
-			expect(response.statusCode).toBe(200);
-			expect(response.body.shared).toHaveLength(1);
-			expect(Object.keys(response.body.shared[0]).sort()).toEqual([
-				'createdAt',
-				'project',
-				'projectId',
-				'role',
-				'updatedAt',
-				'workflowId',
-			]);
-			expect(Object.keys(response.body.shared[0].project).sort()).toEqual([
-				'createdAt',
-				'creatorId',
-				'customTelemetryTags',
-				'description',
-				'icon',
-				'id',
-				'name',
-				'type',
-				'updatedAt',
-			]);
 		});
 	});
 

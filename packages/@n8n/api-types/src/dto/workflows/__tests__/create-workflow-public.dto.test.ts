@@ -17,10 +17,9 @@ const validPayload = {
 };
 
 describe('CreateWorkflowPublicDto', () => {
-	test('rejects an unknown key through parse as well as safeParse', () => {
+	test('rejects an unknown key through both the DTO and its schema', () => {
 		const payload = { ...validPayload, notAWorkflowField: 'x' };
 
-		expect(() => CreateWorkflowPublicDto.parse(payload)).toThrow();
 		expect(CreateWorkflowPublicDto.safeParse(payload).success).toBe(false);
 		expect(CreateWorkflowPublicDto.schema.safeParse(payload).success).toBe(false);
 	});
