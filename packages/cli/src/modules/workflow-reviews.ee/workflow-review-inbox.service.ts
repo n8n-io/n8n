@@ -13,7 +13,6 @@ import type {
 } from '@n8n/api-types';
 import {
 	UserRepository,
-	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
@@ -51,7 +50,6 @@ export class WorkflowReviewInboxService {
 		private readonly accessService: WorkflowReviewAccessService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
-		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
@@ -246,11 +244,12 @@ export class WorkflowReviewInboxService {
 		// approval writes one. Null on a closed review can mean never published,
 		// approved while unpublished, or closed without an approval — callers tell those
 		// apart via `state` + `decision`.
+		//
+		// The live baseline comes from the workflow row: both publication paths maintain
+		// `activeVersionId`, while the publication-service table exists only on the
+		// outbox path — reading it there left the baseline empty on the default path.
 		const baselineVersionId =
-			row.baselineVersionId ??
-			(row.requestState === 'closed'
-				? null
-				: await this.workflowPublishedVersionRepository.getPublishedVersionId(row.workflowId));
+			row.baselineVersionId ?? (row.requestState === 'closed' ? null : row.activeVersionId);
 
 		const [pinnedVersion, baselineVersion] = await Promise.all([
 			this.findVersionSnapshot(row.workflowId, row.workflowVersionId),
@@ -262,6 +261,7 @@ export class WorkflowReviewInboxService {
 			workflowName: row.workflowName,
 			workflowVersionId: row.workflowVersionId,
 			pinnedVersion,
+			publishedVersionId: row.activeVersionId,
 			baselineVersion,
 		};
 	}
