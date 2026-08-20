@@ -139,13 +139,18 @@ export interface StepStore {
 	): Promise<Record<StepKeyId, StepSummary>>;
 
 	/**
-	 * Planning view of the node's highest-iteration row, or `null` when it has
-	 * none. For a batch node this is the row that says whether its loop has ended,
-	 * read on every settlement, and the row ending a loop holds everything that
-	 * loop accumulated, so this returns the same slim view as
-	 * `loadStepSummariesByKeys` rather than the whole row.
+	 * Planning view of each named node's highest-iteration row, keyed by node id,
+	 * omitting the nodes with no row. For a batch node this is the row that says
+	 * whether its loop has ended.
+	 *
+	 * One query for every node asked about, since a settlement can span several
+	 * loops. The row ending a loop holds everything that loop accumulated, so this
+	 * returns the same slim view as `loadStepSummariesByKeys`, not the whole row.
 	 */
-	loadLatestStepSummary(executionId: string, nodeId: string): Promise<StepSummary | null>;
+	loadLatestStepSummaries(
+		executionId: string,
+		nodeIds: string[],
+	): Promise<Record<string, StepSummary>>;
 
 	/**
 	 * How many of the execution's steps have settled (completed, failed,

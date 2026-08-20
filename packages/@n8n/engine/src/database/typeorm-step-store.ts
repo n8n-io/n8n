@@ -247,21 +247,27 @@ export class TypeOrmStepStore implements StepStore {
 		return Object.fromEntries(rows.map((row) => [stepKeyId(row), row]));
 	}
 
-	async loadLatestStepSummary(executionId: string, nodeId: string): Promise<StepSummary | null> {
-		const row: StepSummaryRow | undefined = await this.repo
+	async loadLatestStepSummaries(
+		executionId: string,
+		nodeIds: string[],
+	): Promise<Record<string, StepSummary>> {
+		if (nodeIds.length === 0) return {};
+
+		const rows: StepSummaryRow[] = await this.repo
 			.createQueryBuilder('step')
+			.distinctOn(['step.node_id'])
 			.select('step.id', 'id')
 			.addSelect('step.node_id', 'nodeId')
 			.addSelect('step.iteration', 'iteration')
 			.addSelect('step.status', 'status')
 			.addSelect(FILLED_OUTPUT_SLOTS, 'filledOutputSlots')
 			.where('step.execution_id = :executionId', { executionId })
-			.andWhere('step.node_id = :nodeId', { nodeId })
-			.orderBy('step.iteration', 'DESC')
-			.limit(1)
-			.getRawOne();
+			.andWhere('step.node_id IN (:...nodeIds)', { nodeIds })
+			.orderBy('step.node_id')
+			.addOrderBy('step.iteration', 'DESC')
+			.getRawMany();
 
-		return row ?? null;
+		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
 	}
 
 	async countSettledSteps(executionId: string): Promise<number> {

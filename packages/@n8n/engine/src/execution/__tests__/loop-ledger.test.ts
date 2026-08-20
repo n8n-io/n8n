@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { deriveLoops, type WorkflowGraph } from '../../graph';
-import { endsLoop, exitSourcesInto, isTerminalRow, loadTerminalIterations } from '../loop-ledger';
+import { endsLoop, exitSourcesInto, isTerminalStep, loadTerminalIterations } from '../loop-ledger';
 import type { StepStore, StepSummary } from '../step-store';
 
 function tip(iteration: number, filledOutputSlots: boolean[], status = 'completed' as const) {
@@ -44,17 +44,17 @@ describe('endsLoop', () => {
 	});
 });
 
-describe('isTerminalRow', () => {
+describe('isTerminalStep', () => {
 	it('is terminal when the row fired the done slot', () => {
-		expect(isTerminalRow(tip(2, [true, false]))).toBe(true);
+		expect(isTerminalStep(tip(2, [true, false]))).toBe(true);
 	});
 
 	it('is not terminal when the row fired the loop slot', () => {
-		expect(isTerminalRow(tip(2, [false, true]))).toBe(false);
+		expect(isTerminalStep(tip(2, [false, true]))).toBe(false);
 	});
 
 	it('is terminal when the row fired nothing at all', () => {
-		expect(isTerminalRow(tip(2, []))).toBe(true);
+		expect(isTerminalStep(tip(2, []))).toBe(true);
 	});
 });
 
@@ -74,33 +74,48 @@ describe('exitSourcesInto', () => {
 });
 
 describe('loadTerminalIterations', () => {
-	function makeStepStore(row: StepSummary | null): StepStore {
-		return { loadLatestStepSummary: vi.fn().mockResolvedValue(row) } as unknown as StepStore;
+	function makeStepStore(latest: Record<string, StepSummary>): StepStore {
+		return { loadLatestStepSummaries: vi.fn().mockResolvedValue(latest) } as unknown as StepStore;
 	}
 
-	it('reports the tip iteration of a loop that has ended', async () => {
-		const stepStore = makeStepStore(tip(3, [true, false]));
+	it('reports the terminal iteration of a loop that has ended', async () => {
+		const stepStore = makeStepStore({ B: tip(3, [true, false]) });
 
 		expect(await loadTerminalIterations(stepStore, 'exec-1', ['B'])).toEqual(new Map([['B', 3]]));
-		expect(stepStore.loadLatestStepSummary).toHaveBeenCalledExactlyOnceWith('exec-1', 'B');
+		expect(stepStore.loadLatestStepSummaries).toHaveBeenCalledExactlyOnceWith('exec-1', ['B']);
 	});
 
 	it('omits a loop still running, so its exit stays undecidable', async () => {
-		const stepStore = makeStepStore(tip(3, [false, true]));
+		const stepStore = makeStepStore({ B: tip(3, [false, true]) });
 
 		expect(await loadTerminalIterations(stepStore, 'exec-1', ['B'])).toEqual(new Map());
 	});
 
 	it('omits a loop with no rows yet', async () => {
-		const stepStore = makeStepStore(null);
+		const stepStore = makeStepStore({});
 
 		expect(await loadTerminalIterations(stepStore, 'exec-1', ['B'])).toEqual(new Map());
 	});
 
+	it('reads several loops in one query, ended and running alike', async () => {
+		const stepStore = makeStepStore({
+			B1: { ...tip(2, [true, false]), nodeId: 'B1' },
+			B2: { ...tip(5, [false, true]), nodeId: 'B2' },
+		});
+
+		expect(await loadTerminalIterations(stepStore, 'exec-1', ['B1', 'B2'])).toEqual(
+			new Map([['B1', 2]]),
+		);
+		expect(stepStore.loadLatestStepSummaries).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			'B1',
+			'B2',
+		]);
+	});
+
 	it('reads nothing when no loop is named', async () => {
-		const stepStore = makeStepStore(null);
+		const stepStore = makeStepStore({});
 
 		expect(await loadTerminalIterations(stepStore, 'exec-1', [])).toEqual(new Map());
-		expect(stepStore.loadLatestStepSummary).not.toHaveBeenCalled();
+		expect(stepStore.loadLatestStepSummaries).not.toHaveBeenCalled();
 	});
 });

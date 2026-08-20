@@ -77,7 +77,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 			.fn()
 			.mockResolvedValue({ [at('trigger')]: stepRow('trigger', 'completed', [{}]) }),
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
-		loadLatestStepSummary: vi.fn().mockResolvedValue(null),
+		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
 		...overrides,
@@ -787,7 +787,7 @@ describe('StepReadyHandler over loop iterations', () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-d-0', nodeId: 'd', iteration: 0 },
 			{
-				loadLatestStepSummary: vi.fn().mockResolvedValue(tipAt(4, [true, false])),
+				loadLatestStepSummaries: vi.fn().mockResolvedValue({ B: tipAt(4, [true, false]) }),
 				loadStepsByKeys: vi.fn().mockResolvedValue({
 					[stepKeyId({ nodeId: 'B', iteration: 4 })]: rowAt('B', 4, [
 						[{ json: { done: true } }],
@@ -818,7 +818,7 @@ describe('StepReadyHandler over loop iterations', () => {
 		const executor = makeExecutor();
 		const stepStore = makeStepStore(
 			{ id: 'step-d-0', nodeId: 'd', iteration: 0 },
-			{ loadLatestStepSummary: vi.fn().mockResolvedValue(tipAt(4, [false, true])) },
+			{ loadLatestStepSummaries: vi.fn().mockResolvedValue({ B: tipAt(4, [false, true]) }) },
 		);
 		const handler = new StepReadyHandler(
 			makeExecutionStore({ graph: loopGraph }),

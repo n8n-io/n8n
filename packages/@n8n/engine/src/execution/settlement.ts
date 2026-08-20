@@ -1,20 +1,24 @@
 import type { GraphEdge, WorkflowGraph, WorkflowLoop } from '../graph';
 import { stepKeyId, isSettledStatus, type StepKey, type StepKeyId } from './execution.types';
 import { classifyEdge, sourceRow, targetKey, type EdgeClass } from './iteration-mapping';
-import { isTerminalRow } from './loop-ledger';
+import { isTerminalStep } from './loop-ledger';
 import type { StepSummary } from './step-store';
 
 /**
+ * A **step** is one run of one node, identified by `StepKey`, which is
+ * `(nodeId, iteration)`. Outside a loop a node has a single step, at iteration
+ * 0. A loop member has one step per pass.
+ *
  * Settlement rules (design: CAT-2874):
  *
- * 1. Every row the execution creates eventually settles: completed, failed,
+ * 1. Every step the execution creates eventually settles: completed, failed,
  *    skipped, or cancelled. Settled fates are immutable. The execution is
- *    finished exactly when every row it owes has settled, and `completion.ts`
- *    is what counts those.
+ *    finished exactly when every step it owes has settled, which
+ *    `completion.ts` counts.
  * 2. An edge is live iff its source completed and filled the edge's output
  *    slot; it is dead if the source settled any other way, or left the slot
  *    null. An edge whose source is unsettled is neither yet.
- * 3. A row is decidable once every row its incoming edges read has settled.
+ * 3. A step is decidable once every step its incoming edges read has settled.
  *    Decidable with at least one live incoming edge -> it runs (queued).
  *    Decidable with none -> it is skipped: settled at birth, its own out-edges
  *    all dead.
@@ -22,41 +26,41 @@ import type { StepSummary } from './step-store';
  *    event loop. A skip is announced as settled like any other settlement,
  *    and its handler decides the next hop.
  * 5. A planner commits its decisions in one batch, then announces only the
- *    rows it created. A settlement whose announcement is lost is detectable
- *    from rows alone — a settled row with decidable but rowless successors —
- *    and re-announced by reconciliation (CAT-2938).
+ *    steps it created. A settlement whose announcement is lost is detectable
+ *    from the steps alone — a settled one whose successors are decidable but
+ *    absent — and re-announced by reconciliation (CAT-2938).
  *
- * Fates are pure functions of settled rows, so any planner, at any time,
+ * Fates are pure functions of settled steps, so any planner, at any time,
  * recomputes the same decisions; duplicates and races converge instead of
  * corrupting.
  *
- * Loops extend those rules rather than replacing them (CAT-2875). Rows are
- * identified per `(nodeId, iteration)`, and `iteration-mapping.ts` decides which
- * iterations an edge connects. Two consequences belong to loops alone:
+ * Loops extend those rules rather than replacing them (CAT-2875).
+ * `iteration-mapping.ts` decides which iterations an edge connects, and two
+ * consequences belong to loops alone:
  *
- * - A batch row decides one side of its loop. While the loop runs it decides the
- *   body, and on the terminal row, the one whose loop slot stayed dead, it
- *   decides the nodes after the loop instead. Deciding the other side from the
- *   wrong row would skip it, and a later row could not take that back.
- * - Body rows exist for running iterations only. The terminal iteration has no
- *   body rows at all, not even skipped ones, or those skips would cascade
- *   through the body into a further iteration, and on forever. The exclusion
- *   lives in `decideNodeFate`, so anything recomputing from rows reaches the
- *   same answer, reconciliation included.
+ * - A batch node's step decides one side of its loop. While the loop runs it
+ *   decides the body, and on the terminal step, the one whose loop slot stayed
+ *   dead, it decides the nodes after the loop instead. Deciding the other side
+ *   too early would skip it, and a later step could not take that back.
+ * - Body steps exist for running iterations only. The terminal iteration has
+ *   none at all, not even skipped ones, or those skips would cascade through
+ *   the body into a further iteration, and on forever. The exclusion lives in
+ *   `decideNodeFate`, so anything recomputing fates reaches the same answer,
+ *   reconciliation included.
  */
 
 export interface SuccessorDecisions {
-	/** Successor rows with a live input, to enqueue — in edge order. */
+	/** Successor steps with a live input, to enqueue — in edge order. */
 	toQueue: StepKey[];
-	/** Successor rows with settled but all-dead inputs, to record as skipped. */
+	/** Successor steps with settled but all-dead inputs, to record as skipped. */
 	toSkip: StepKey[];
 }
 
 /**
  * Decides the direct successors of the settled step (rules 2–4).
  *
- * `steps` holds the rows `decisionKeys` names, keyed by `stepKeyId`. Anything
- * less and a decision reads an absent row as one that has not settled, leaving
+ * `steps` holds the steps `decisionKeys` names, keyed by `stepKeyId`. Anything
+ * less and a decision reads an absent step as one that has not settled, leaving
  * the successor undecided forever. `terminalIterations` holds each loop's
  * terminal iteration by batch node id, omitting the loops that have not ended.
  */
@@ -68,19 +72,20 @@ export function decideSuccessors(
 	terminalIterations: Map<string, number>,
 ): SuccessorDecisions {
 	const decisions: SuccessorDecisions = { toQueue: [], toSkip: [] };
-	const batchRow = loops.some((loop) => loop.batchNodeId === settled.nodeId)
+	const batchStep = loops.some((loop) => loop.batchNodeId === settled.nodeId)
 		? steps[stepKeyId(settled)]
 		: undefined;
 	const decided = new Set<StepKeyId>();
+	const outgoingEdges = graph.edges.filter((edge) => edge.from === settled.nodeId);
 
-	for (const edge of graph.edges.filter((e) => e.from === settled.nodeId)) {
+	for (const edge of outgoingEdges) {
 		const edgeClass = classifyEdge(edge, loops);
-		if (batchRow && !batchRowDecides(edgeClass, batchRow)) continue;
+		if (batchStep && !batchStepDecides(edgeClass, batchStep)) continue;
 
 		const target = targetKey(edge, edgeClass, settled);
 		const targetId = stepKeyId(target);
-		// An existing row was decided by an earlier settlement, which announced it.
-		// Two edges into one row are one candidate, so it is decided once.
+		// An existing step was decided by an earlier settlement, which announced it.
+		// Two edges into one step are one candidate, decided once.
 		if (steps[targetId] || decided.has(targetId)) continue;
 		decided.add(targetId);
 
@@ -92,18 +97,18 @@ export function decideSuccessors(
 	return decisions;
 }
 
-/** Which side of its loop a batch row decides: the body, or what comes after. */
-function batchRowDecides(edgeClass: EdgeClass, batchRow: StepSummary): boolean {
-	return isTerminalRow(batchRow) ? edgeClass === 'exit' : edgeClass !== 'exit';
+/** Which side of its loop a batch step decides: the body, or what follows. */
+function batchStepDecides(edgeClass: EdgeClass, batchStep: StepSummary): boolean {
+	return isTerminalStep(batchStep) ? edgeClass === 'exit' : edgeClass !== 'exit';
 }
 
 /**
  * One candidate's fate under rules 2–3.
  *
  * `undecidable` covers a predecessor that has not settled and a loop that has
- * not ended alike, since either way the row an edge reads does not exist yet.
+ * not ended alike, since either way the step an edge reads does not exist yet.
  * `outside` means the candidate is not part of the execution at this iteration
- * and gets no row at all, which is what keeps a loop that has ended from
+ * and gets no step at all, which is what keeps a loop that has ended from
  * cascading skips through its own body.
  */
 function decideNodeFate(
@@ -117,8 +122,9 @@ function decideNodeFate(
 
 	let applicable = 0;
 	let live = false;
+	const incomingEdges = graph.edges.filter((edge) => edge.to === candidate.nodeId);
 
-	for (const edge of graph.edges.filter((e) => e.to === candidate.nodeId)) {
+	for (const edge of incomingEdges) {
 		const source = sourceRow(
 			edge,
 			classifyEdge(edge, loops),
@@ -129,21 +135,21 @@ function decideNodeFate(
 		if (source.kind === 'pending') return 'undecidable';
 
 		applicable += 1;
-		const row = steps[stepKeyId(source.key)];
-		if (!row || !isSettledStatus(row.status)) return 'undecidable';
-		if (isLive(row, edge)) live = true;
+		const sourceStep = steps[stepKeyId(source.key)];
+		if (!sourceStep || !isSettledStatus(sourceStep.status)) return 'undecidable';
+		if (isLive(sourceStep, edge)) live = true;
 	}
 
-	// No edge connects to this row at this iteration, so nothing would produce it.
+	// No edge connects to this step at this iteration, so nothing produces it.
 	if (applicable === 0) return 'outside';
 
 	return live ? 'queued' : 'skipped';
 }
 
 /**
- * Whether the candidate is a body row of a loop that has already ended. Read from
- * the batch row rather than from `terminalIterations`, so the exclusion holds for
- * anything recomputing fates from rows alone.
+ * Whether the candidate is a body step of a loop that has already ended. Read
+ * from the batch step rather than from `terminalIterations`, so the exclusion
+ * holds for anything recomputing fates from the steps alone.
  */
 function isPastLoopEnd(
 	loops: WorkflowLoop[],
@@ -153,8 +159,8 @@ function isPastLoopEnd(
 	const loop = loops.find((l) => l.memberIds.has(candidate.nodeId));
 	if (!loop || candidate.nodeId === loop.batchNodeId) return false;
 
-	const batchRow = steps[stepKeyId({ nodeId: loop.batchNodeId, iteration: candidate.iteration })];
-	return batchRow !== undefined && isTerminalRow(batchRow);
+	const batchStep = steps[stepKeyId({ nodeId: loop.batchNodeId, iteration: candidate.iteration })];
+	return batchStep !== undefined && isTerminalStep(batchStep);
 }
 
 /** Rule 2. A slot beyond the produced list reads undefined — dead, like null. */
@@ -163,12 +169,12 @@ function isLive(source: StepSummary, edge: GraphEdge): boolean {
 }
 
 /**
- * The rows `decideSuccessors` reads for this settlement:
+ * The steps `decideSuccessors` reads for this settlement:
  *
- * - the settled row, which for a batch node says which side of its loop to decide
- * - each candidate successor, since an existing row means it was decided already
- * - the rows each candidate's own incoming edges read
- * - for a candidate inside a loop, that loop's batch row at the same iteration
+ * - the settled step, which for a batch node says which side to decide
+ * - each candidate successor, since an existing one means it was decided already
+ * - the steps each candidate's own incoming edges read
+ * - for a candidate inside a loop, that loop's batch step at the same iteration
  *
  * Derived from the same mapping the decision uses, so a caller cannot load a
  * different set from the one that gets read.
@@ -182,11 +188,15 @@ export function decisionKeys(
 	const keys = new Map<StepKeyId, StepKey>([[stepKeyId(settled), settled]]);
 	const add = (key: StepKey) => keys.set(stepKeyId(key), key);
 
-	for (const edge of graph.edges.filter((e) => e.from === settled.nodeId)) {
+	const outgoingEdges = graph.edges.filter((edge) => edge.from === settled.nodeId);
+
+	for (const edge of outgoingEdges) {
 		const target = targetKey(edge, classifyEdge(edge, loops), settled);
 		add(target);
 
-		for (const inEdge of graph.edges.filter((e) => e.to === target.nodeId)) {
+		const incomingEdges = graph.edges.filter((inEdge) => inEdge.to === target.nodeId);
+
+		for (const inEdge of incomingEdges) {
 			const source = sourceRow(
 				inEdge,
 				classifyEdge(inEdge, loops),

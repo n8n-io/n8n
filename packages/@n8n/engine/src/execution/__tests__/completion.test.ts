@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { WorkflowLoop } from '../../graph';
-import { expectedSettledRows } from '../completion';
+import { countExpectedSettledSteps } from '../completion';
 
 function loop(batchNodeId: string, memberIds: string[]): WorkflowLoop {
 	return {
@@ -13,9 +13,9 @@ function loop(batchNodeId: string, memberIds: string[]): WorkflowLoop {
 	};
 }
 
-describe('expectedSettledRows', () => {
+describe('countExpectedSettledSteps', () => {
 	it('counts one row per node when there are no loops', () => {
-		expect(expectedSettledRows([], new Set(['trigger', 'a', 'b']), new Map())).toBe(3);
+		expect(countExpectedSettledSteps([], new Set(['trigger', 'a', 'b']), new Map())).toBe(3);
 	});
 
 	it('counts a loop that ran three iterations', () => {
@@ -24,7 +24,7 @@ describe('expectedSettledRows', () => {
 		const loops = [loop('B', ['x'])];
 		const reachable = new Set(['trigger', 'B', 'x', 'd']);
 
-		expect(expectedSettledRows(loops, reachable, new Map([['B', 3]]))).toBe(2 + 4 + 3);
+		expect(countExpectedSettledSteps(loops, reachable, new Map([['B', 3]]))).toBe(2 + 4 + 3);
 	});
 
 	it('counts a loop that ended immediately', () => {
@@ -32,7 +32,7 @@ describe('expectedSettledRows', () => {
 		const loops = [loop('B', ['x'])];
 		const reachable = new Set(['trigger', 'B', 'x', 'd']);
 
-		expect(expectedSettledRows(loops, reachable, new Map([['B', 0]]))).toBe(2 + 1 + 0);
+		expect(countExpectedSettledSteps(loops, reachable, new Map([['B', 0]]))).toBe(2 + 1 + 0);
 	});
 
 	it('counts each member of a longer body per iteration', () => {
@@ -40,14 +40,14 @@ describe('expectedSettledRows', () => {
 		const reachable = new Set(['trigger', 'B', 'x', 'y', 'z']);
 
 		// B: 0..2 is 3 rows, and x, y and z have 2 rows each
-		expect(expectedSettledRows(loops, reachable, new Map([['B', 2]]))).toBe(1 + 3 + 6);
+		expect(countExpectedSettledSteps(loops, reachable, new Map([['B', 2]]))).toBe(1 + 3 + 6);
 	});
 
 	it('owes an unknown number of rows while a loop is still running', () => {
 		const loops = [loop('B', ['x'])];
 		const reachable = new Set(['trigger', 'B', 'x', 'd']);
 
-		expect(expectedSettledRows(loops, reachable, new Map())).toBeUndefined();
+		expect(countExpectedSettledSteps(loops, reachable, new Map())).toBeUndefined();
 	});
 
 	it('ignores a loop the trigger cannot reach, which never receives rows', () => {
@@ -56,16 +56,16 @@ describe('expectedSettledRows', () => {
 		const loops = [loop('B', ['x']), loop('orphan', ['other'])];
 		const reachable = new Set(['trigger', 'B', 'x']);
 
-		expect(expectedSettledRows(loops, reachable, new Map([['B', 1]]))).toBe(1 + 2 + 1);
+		expect(countExpectedSettledSteps(loops, reachable, new Map([['B', 1]]))).toBe(1 + 2 + 1);
 	});
 
 	it('waits on every reachable loop, not just the first', () => {
 		const loops = [loop('B1', ['x']), loop('B2', ['y'])];
 		const reachable = new Set(['trigger', 'B1', 'x', 'B2', 'y']);
 
-		expect(expectedSettledRows(loops, reachable, new Map([['B1', 1]]))).toBeUndefined();
+		expect(countExpectedSettledSteps(loops, reachable, new Map([['B1', 1]]))).toBeUndefined();
 		expect(
-			expectedSettledRows(
+			countExpectedSettledSteps(
 				loops,
 				reachable,
 				new Map([

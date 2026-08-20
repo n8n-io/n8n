@@ -1,7 +1,7 @@
 import { UnexpectedError } from '../common';
 import { deriveLoops, findTriggerNode, getDescendantNodeIds, getSuccessorNodeIds } from '../graph';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
-import { expectedSettledRows } from './completion';
+import { countExpectedSettledSteps } from './completion';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import { stepKeyId, type StepKey, type StepKeyId } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
@@ -13,7 +13,7 @@ import { validateStepContext } from './validate-step-context';
  * Handles the `step:settled` orchestration event: decides the fate of the
  * settled step's direct successors — queued when a live edge feeds them,
  * skipped when every input is settled dead (see the rules in `settlement.ts`)
- * — and records the execution's outcome once every row the execution owes has
+ * — and records the execution's outcome once every step the execution owes has
  * settled. Skips are settlements too: each one is announced back onto the
  * orchestration queue, and handling it here decides the next hop, so a dead
  * region cascades through the event loop one settlement at a time.
@@ -130,11 +130,11 @@ export class StepSettledHandler {
 	}
 
 	/**
-	 * Records the execution's outcome once every row it owes has settled: `failed`
-	 * if any step failed, `completed` otherwise. Rows are unique per
+	 * Records the execution's outcome once every step it owes has settled: `failed`
+	 * if any step failed, `completed` otherwise. Steps are unique per
 	 * `(node, iteration)`, only exist for reachable nodes, and never unsettle, so
 	 * the count comparison cannot pass early — in-flight events and unplanned
-	 * successors both leave rows outstanding.
+	 * successors both leave steps outstanding.
 	 */
 	private async finishExecutionIfDone(execution: ExecutionRecord): Promise<void> {
 		const reachable = this.reachableNodeIds(execution);
@@ -148,8 +148,8 @@ export class StepSettledHandler {
 				.filter((loop) => reachable.has(loop.batchNodeId))
 				.map((loop) => loop.batchNodeId),
 		);
-		const expected = expectedSettledRows(loops, reachable, terminalIterations);
-		// A loop still running owes an unknown number of rows, so there is nothing
+		const expected = countExpectedSettledSteps(loops, reachable, terminalIterations);
+		// A loop still running owes an unknown number of steps, so there is nothing
 		// to compare against yet.
 		if (expected === undefined) return;
 
