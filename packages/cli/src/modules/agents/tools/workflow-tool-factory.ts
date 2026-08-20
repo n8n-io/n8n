@@ -11,7 +11,6 @@ import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import type {
-	ExecutionStatus,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	INode,
@@ -25,6 +24,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	createRunExecutionData,
+	isTerminalExecutionStatus,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -83,18 +83,6 @@ const WAIT_POLL_ELIGIBLE_MS = 60_000;
 const WAIT_TRACKER_SWEEP_MS = 60_000;
 
 const WAIT_POLL_INTERVAL_MS = 2_000;
-
-/**
- * Statuses a poll can stop on. A resumed execution passes through `running`
- * before it finishes, so stopping at "no longer waiting" would hand the model a
- * `running` status and no output.
- */
-const TERMINAL_EXECUTION_STATUSES = new Set<ExecutionStatus>([
-	'success',
-	'error',
-	'crashed',
-	'canceled',
-]);
 
 /** `buildSuspendCardPayload` passes this through verbatim, so it doubles as the HITL card spec. */
 const WAIT_SUSPEND_SCHEMA = z.object({
@@ -783,10 +771,11 @@ async function pollWaitingExecution(
 		} catch {
 			return undefined; // Aborted mid-sleep; `sleep` rejects rather than resolving.
 		}
+		// Stop only once the execution is truly finished: a resumed one passes through
+		// `running` first, so stopping at "no longer waiting" would hand the model a
+		// `running` status and no output.
 		const status = (await persistence.findSingleExecution(executionId))?.status;
-		if (status && TERMINAL_EXECUTION_STATUSES.has(status)) {
-			return await extractResult(executionId, allOutputs);
-		}
+		if (isTerminalExecutionStatus(status)) return await extractResult(executionId, allOutputs);
 	}
 
 	return undefined;
