@@ -759,6 +759,35 @@ describe('v2/components/Select', () => {
 			});
 		});
 
+		it('should give the search input an accessible name', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: roleItems,
+					searchable: true,
+				},
+			});
+
+			await userEvent.click(wrapper.getByTestId('select-trigger'));
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+
+			expect(within(popover).getByRole('textbox', { name: 'Search options' })).toBeInTheDocument();
+		});
+
+		it('should use searchAriaLabel as the search input accessible name', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: roleItems,
+					searchable: true,
+					searchAriaLabel: 'Filter roles',
+				},
+			});
+
+			await userEvent.click(wrapper.getByTestId('select-trigger'));
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+
+			expect(within(popover).getByRole('textbox', { name: 'Filter roles' })).toBeInTheDocument();
+		});
+
 		it('should filter items by label and show empty state when nothing matches', async () => {
 			const wrapper = render(Select, {
 				props: {

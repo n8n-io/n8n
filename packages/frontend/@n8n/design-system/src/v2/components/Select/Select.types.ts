@@ -84,6 +84,12 @@ export type SelectProps<M extends boolean = false> = Omit<
 	/** Placeholder for the search field when `searchable` is true. */
 	searchPlaceholder?: string;
 
+	/**
+	 * Accessible name for the search field when `searchable` is true.
+	 * Placeholder is visual-only and is not used as the accessible name.
+	 */
+	searchAriaLabel?: string;
+
 	/** Controlled search query. Use with `update:searchQuery` / `v-model:searchQuery`. */
 	searchQuery?: string;
 

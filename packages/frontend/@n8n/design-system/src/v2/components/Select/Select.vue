@@ -418,6 +418,10 @@ function resolvedSearchPlaceholder() {
 	return props.searchPlaceholder ?? t('nds.select.searchPlaceholder');
 }
 
+function resolvedSearchAriaLabel() {
+	return props.searchAriaLabel ?? t('nds.select.searchAriaLabel');
+}
+
 function iconStrokeWidth() {
 	return props.size === 'mini' || props.size === 'small' ? 1 : 1.5;
 }
@@ -589,6 +593,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 						ref="searchInputRef"
 						:model-value="searchQuery"
 						:placeholder="resolvedSearchPlaceholder()"
+						:aria-label="resolvedSearchAriaLabel()"
 						size="medium"
 						clearable
 						:class="$style.searchInput"

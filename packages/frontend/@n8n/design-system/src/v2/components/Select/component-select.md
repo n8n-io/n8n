@@ -78,7 +78,8 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `icon?: IconName` Fallback leading icon on the trigger when nothing is selected, or the selected item has no leading visual. In single select, a selected item's `#item-leading` (or its `icon`) is shown on the trigger instead.
 - `clearable?: boolean` When `true`, shows a clear button when a value is selected. Hidden when `disabled` or the value is empty. Default: `false`. The button's accessible name is `t('nds.select.clear')` (`Clear selection`).
 - `searchable?: boolean` When `true`, shows a search field in the dropdown and filters items by `textValue` (falling back to `label`) and `keywords`. Default: `false`. Opening autofocuses the field. ArrowDown moves to the first option; ArrowUp from the first option returns to search; typing on an option appends into the field.
-- `searchPlaceholder?: string` Placeholder for the search field. Defaults to `t('nds.select.searchPlaceholder')` (`Search`).
+- `searchPlaceholder?: string` Placeholder for the search field. Defaults to `t('nds.select.searchPlaceholder')` (`Search`). Not used as the accessible name.
+- `searchAriaLabel?: string` Accessible name for the search field. Defaults to `t('nds.select.searchAriaLabel')` (`Search options`).
 - `searchQuery?: string` Controlled search query (`v-model:searchQuery`). Reset to `''` when the dropdown closes.
 - `position?: 'item-aligned' | 'popper'` Positioning mode for the dropdown. Default: `'item-aligned'`.
 - `sideOffset?: number` Distance in pixels from the trigger when `position` is `'popper'`. Default: `4`.

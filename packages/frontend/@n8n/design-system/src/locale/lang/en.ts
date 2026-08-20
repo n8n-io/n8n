@@ -15,6 +15,7 @@ export default {
 	'nds.select.clear': 'Clear selection',
 	'nds.select.noResults': 'No results found',
 	'nds.select.searchPlaceholder': 'Search',
+	'nds.select.searchAriaLabel': 'Search options',
 	'nds.inputNumber.increase': 'Increase',
 	'nds.inputNumber.decrease': 'Decrease',
 	'notice.showMore': 'Show more',
