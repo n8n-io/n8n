@@ -880,12 +880,17 @@ describe('useNodeHelpers()', () => {
 			// incompatible-trigger issue is copy about the workflow, so it doesn't read
 			// anything off the trigger's node type.
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn(() => notionNodeType);
+			mockedStore(useSettingsStore).settings.envFeatureFlags = {
+				N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2: 'false',
+			};
 		});
 
 		afterEach(() => {
 			mockDocumentStore.workflowTriggerNodes = [];
 			mockDocumentStore.settings = {};
-			mockedStore(useSettingsStore).settings.envFeatureFlags = {};
+			mockedStore(useSettingsStore).settings.envFeatureFlags = {
+				N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2: 'false',
+			};
 		});
 
 		describe('not connected', () => {
@@ -1032,14 +1037,16 @@ describe('useNodeHelpers()', () => {
 				expect(result).toBeNull();
 			});
 
-			it('does not warn when a private credential is used under a chat trigger', () => {
+			it('warns when a private credential is used under a chat trigger not available in Chat Hub', () => {
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(CHAT_TRIGGER)];
 
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-				expect(result).toBeNull();
+				expect(result?.credentials?.[NOTION_API]).toEqual([
+					"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Sub-workflow, Chat available in n8n Chat Hub, and MCP or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+				]);
 			});
 
 			it('does not warn when a private credential is used under an execute workflow trigger', () => {
@@ -1074,13 +1081,33 @@ describe('useNodeHelpers()', () => {
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
 				expect(result?.credentials?.[NOTION_API]).toEqual([
+<<<<<<< HEAD
 					"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, and Sub-workflow. To use another trigger, switch this credential to Fixed.",
+=======
+					"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Sub-workflow, Chat available in n8n Chat Hub, and MCP or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+>>>>>>> bf700d13 (fix(core): Validate chat and MCP trigger auth modes for end-user credentials (#36534))
 				]);
 			});
 
-			it('does not warn when a private credential is used under an MCP trigger', () => {
+			it('warns when a private credential is used under an MCP trigger without n8n user auth', () => {
 				mockConnectedPrivateCred(true);
-				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(MCP_TRIGGER)];
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode(MCP_TRIGGER, { parameters: { authentication: 'bearerAuth' } }),
+				];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result?.credentials?.[NOTION_API]).toEqual([
+					"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Sub-workflow, Chat available in n8n Chat Hub, and MCP or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+				]);
+			});
+
+			it('does not warn when a private credential is used under an MCP trigger with n8n user auth', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode(MCP_TRIGGER, { parameters: { authentication: 'n8nOAuth2' } }),
+				];
 
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
@@ -1158,7 +1185,11 @@ describe('useNodeHelpers()', () => {
 					const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
 					expect(result?.credentials?.[NOTION_API]).toEqual([
+<<<<<<< HEAD
 						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, Sub-workflow, and Form with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+=======
+						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Sub-workflow, Chat available in n8n Chat Hub, and MCP, Form, or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+>>>>>>> bf700d13 (fix(core): Validate chat and MCP trigger auth modes for end-user credentials (#36534))
 					]);
 				});
 
@@ -1173,6 +1204,7 @@ describe('useNodeHelpers()', () => {
 					const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
 					expect(result?.credentials?.[NOTION_API]).toEqual([
+<<<<<<< HEAD
 						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, and Sub-workflow. To use another trigger, switch this credential to Fixed.",
 					]);
 				});
@@ -1188,6 +1220,9 @@ describe('useNodeHelpers()', () => {
 
 					expect(result?.credentials?.[NOTION_API]).toEqual([
 						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, Sub-workflow, and Form or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+=======
+						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Sub-workflow, Chat available in n8n Chat Hub, and MCP or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+>>>>>>> bf700d13 (fix(core): Validate chat and MCP trigger auth modes for end-user credentials (#36534))
 					]);
 				});
 			});
@@ -1409,7 +1444,11 @@ describe('useNodeHelpers()', () => {
 					const result = getNodeCredentialIssues(buildGenericAuthNode(), httpRequestWithSslAuth);
 
 					expect(result?.credentials?.[OAUTH2_API]).toEqual([
+<<<<<<< HEAD
 						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, and Sub-workflow. To use another trigger, switch this credential to Fixed.",
+=======
+						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Sub-workflow, Chat available in n8n Chat Hub, and MCP or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+>>>>>>> bf700d13 (fix(core): Validate chat and MCP trigger auth modes for end-user credentials (#36534))
 					]);
 				});
 
@@ -1441,7 +1480,11 @@ describe('useNodeHelpers()', () => {
 					const result = getNodeCredentialIssues(buildPredefinedAuthNode(), httpRequestWithSslAuth);
 
 					expect(result?.credentials?.[OAUTH2_API]).toEqual([
+<<<<<<< HEAD
 						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, and Sub-workflow. To use another trigger, switch this credential to Fixed.",
+=======
+						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Sub-workflow, Chat available in n8n Chat Hub, and MCP or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+>>>>>>> bf700d13 (fix(core): Validate chat and MCP trigger auth modes for end-user credentials (#36534))
 					]);
 				});
 
