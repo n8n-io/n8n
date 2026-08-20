@@ -1,7 +1,6 @@
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
-import { createToolRegistry } from '../../tool-registry';
 import type { OrchestrationContext } from '../../types';
 import { createTaskControlTool } from '../task-control.tool';
 
@@ -19,7 +18,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 			subscribe: vi.fn(),
 		},
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
-		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {
 			get: vi.fn(),

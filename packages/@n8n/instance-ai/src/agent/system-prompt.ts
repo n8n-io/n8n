@@ -63,7 +63,7 @@ function getToolDiscoverySection(
 
 ${mcpSearchGuidance}When the available tools do not cover the user's request, remember that you have access to more tools. Use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation. When a loaded skill names a tool you do not see, search for that tool name and load it before proceeding.
 
-Examples: ${mcpExamples}search "create tasks" for \`create-tasks\`, search "eval" for \`evals\`.
+Example: ${mcpExamples}search "create tasks" for \`create-tasks\`.
 
 For questions about n8n itself — how a node behaves, the shape of its output, what a parameter does, product semantics — prefer \`n8n-docs\` and the node type definitions, both already loaded and needing no search, over web search, which is for third-party services and APIs.
 `;

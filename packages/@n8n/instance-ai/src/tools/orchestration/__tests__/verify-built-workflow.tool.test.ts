@@ -1,7 +1,6 @@
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import { createToolRegistry } from '../../../tool-registry';
 import type {
 	InstanceAiDataTableService,
 	InstanceAiWorkflowService,
@@ -70,7 +69,6 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 			warn: vi.fn(),
 			error: vi.fn(),
 		} as unknown as OrchestrationContext['logger'],
-		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {} as OrchestrationContext['taskStorage'],
 		workflowTaskService,
