@@ -2384,6 +2384,31 @@ describe('useAgentChatStream — transcript push', () => {
 		dispose();
 	});
 
+	// The send may start while the refetch is in flight, so the guard has to hold
+	// after the fetch too — otherwise stale history overwrites the live transcript.
+	it('drops a background refetch that lands after a send has started', async () => {
+		const { hook, dispose } = scopedHook();
+		let release!: () => void;
+		getTestChatMessagesMock.mockReturnValueOnce(
+			new Promise((resolve) => {
+				release = () =>
+					resolve({ messages: [{ role: 'user', content: 'stale' }], openSuspensions: [] });
+			}),
+		);
+
+		emitPush(update());
+		await flushPromises();
+
+		// A send begins before the refetch resolves.
+		hook.messages.value = [{ role: 'user', content: 'live' }] as never;
+		(hook.isStreaming as { value: boolean }).value = true;
+		release();
+		await flushPromises();
+
+		expect(hook.messages.value).toEqual([{ role: 'user', content: 'live' }]);
+		dispose();
+	});
+
 	it('stops listening once the chat is torn down', () => {
 		const { dispose } = scopedHook();
 		expect(pushListeners).toHaveLength(1);

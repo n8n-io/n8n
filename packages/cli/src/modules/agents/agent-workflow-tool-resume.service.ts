@@ -12,6 +12,7 @@ import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadc
 import { AgentTestRunService } from './agent-test-run.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 
 /**
  * Wakes the agent tool call a finished sub-execution belongs to, from the
@@ -26,6 +27,7 @@ export class AgentWorkflowToolResumeService {
 		private readonly userRepository: UserRepository,
 		private readonly agentTestRunService: AgentTestRunService,
 		private readonly chatIntegrationService: ChatIntegrationService,
+		private readonly messageContextService: IntegrationMessageContextService,
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly instanceSettings: InstanceSettings,
@@ -100,14 +102,22 @@ export class AgentWorkflowToolResumeService {
 			return;
 		}
 
+		// Reply through the connection the thread actually came in on. An agent with
+		// two connections on one platform would otherwise post into whichever
+		// workspace happened to be found first.
+		const credentialId = await this.originatingCredentialId(agentRun);
 		const bridge = this.chatIntegrationService.getBridge(
 			agentRun.agentId,
 			agentRun.integrationType,
+			credentialId,
 		);
 		if (!bridge) {
+			// The checkpoint stays suspended and the suspension card stays clickable,
+			// so the run is recoverable once the integration reconnects.
 			this.logger.warn('No live chat bridge to resume the agent run into', {
 				agentId: agentRun.agentId,
 				integrationType: agentRun.integrationType,
+				credentialId,
 				runId: agentRun.runId,
 			});
 			return;
@@ -119,6 +129,28 @@ export class AgentWorkflowToolResumeService {
 			agentRun.toolCallId,
 			resumeData,
 		);
+	}
+
+	/**
+	 * The credential of the connection this thread last exchanged a message on, as
+	 * recorded in the thread's message context. Undefined when unknown, which
+	 * leaves the lookup to fall back to any ingress bridge for the platform.
+	 */
+	private async originatingCredentialId(agentRun: RelatedAgentRun): Promise<string | undefined> {
+		try {
+			const context = await this.messageContextService.getLatest(agentRun.threadId);
+			if (!context || context.platform !== agentRun.integrationType) return undefined;
+			// `integrationConnectionId` is `type` alone for a single-connection agent,
+			// or `type:credentialId` once a credential is bound.
+			const [, credentialId] = context.integrationConnectionId.split(':');
+			return credentialId;
+		} catch (error) {
+			this.logger.warn('Could not read the thread message context for an agent resume', {
+				runId: agentRun.runId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
 	}
 
 	/**
