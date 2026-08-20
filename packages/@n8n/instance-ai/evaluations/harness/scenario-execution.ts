@@ -15,7 +15,11 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { attributionForScenario } from './attribution';
 import type { EvalLogger } from './logger';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
-import { isTransientExecutionAbort, MAX_EXEC_ATTEMPTS } from './transient-error';
+import {
+	throwIfServerBudgetStop,
+	isTransientExecutionAbort,
+	MAX_EXEC_ATTEMPTS,
+} from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
 import { isMockableTriggerNodeType } from '../../src/tools/workflows/workflow-json-utils';
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
@@ -306,6 +310,9 @@ async function runScenario(
 			pinNodes,
 		);
 	}
+	// Killed for time, not by the builder — throw so the timeout path classifies it.
+	throwIfServerBudgetStop(evalResult);
+
 	const execMs = Date.now() - execStart;
 
 	const pinTag = pinNodes ? ` pinned=${pinNodes.join(',')}` : '';

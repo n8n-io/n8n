@@ -5,6 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiToolsConnectionModalWrapper from '../InstanceAiToolsConnectionModalWrapper.vue';
 import type {
 	McpServerConnectionItem,
+	ToolConnectionCredentialAdapter,
 	ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 
@@ -32,7 +33,13 @@ const { mockConnect, mockUpdateConnection, mcpStoreMock } = vi.hoisted(() => {
 		mockConnect,
 		mockUpdateConnection,
 		mcpStoreMock: {
-			connections: [] as Array<{ id: string; serverSlug: string; credentialId?: string }>,
+			connections: [] as Array<{
+				id: string;
+				serverSlug: string;
+				credentialId: string;
+				status: 'connecting' | 'connected' | 'disconnected';
+				toolFilter: null;
+			}>,
 			catalog: [] as Array<{
 				slug: string;
 				title: string;
@@ -48,7 +55,7 @@ const { mockConnect, mockUpdateConnection, mcpStoreMock } = vi.hoisted(() => {
 			connectionsByServerSlug: new Map(),
 			connectionToolsById: new Map(),
 			fetchCatalogLazy: vi.fn(),
-			fetchConnections: vi.fn(),
+			fetchConnectionsLazy: vi.fn(),
 			fetchConnectionToolsLazy: vi.fn(),
 			connect: mockConnect,
 			updateConnection: mockUpdateConnection,
@@ -64,6 +71,13 @@ vi.mock('../../../composables/useMcpServerConnect', () => ({
 	useMcpServerConnect: () => ({
 		connectServer: vi.fn().mockResolvedValue(null),
 		connectWithCredential: vi.fn().mockResolvedValue(null),
+		createCredentialAdapter: (
+			openNewCredential: ToolConnectionCredentialAdapter['openNewCredential'],
+		) => ({
+			getCredentialsByType: () => [],
+			openNewCredential,
+			openExistingCredential: uiStoreMock.openExistingCredential,
+		}),
 	}),
 }));
 
@@ -90,6 +104,7 @@ const { telemetryMock, uiStoreMock } = vi.hoisted(() => ({
 			instanceAiToolsConnection: { open: true, data: {} },
 		},
 		closeModal: vi.fn(),
+		setModalData: vi.fn(),
 		openNewCredential: vi.fn(),
 		openExistingCredential: vi.fn(),
 		appliedTheme: 'light',
@@ -129,7 +144,7 @@ const linearItem: McpServerConnectionItem = {
 	id: 'linear',
 	kind: 'mcp-server',
 	title: 'Linear',
-	isConnected: false,
+	status: 'none',
 	credentials: [{ authType: 'mcpOAuth2Api', required: true }],
 	availableTools: [],
 };
@@ -137,7 +152,7 @@ const linearItem: McpServerConnectionItem = {
 const connectedLinearItem: McpServerConnectionItem = {
 	...linearItem,
 	id: 'conn-1',
-	isConnected: true,
+	status: 'connected',
 	credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1', required: true }],
 };
 
@@ -148,12 +163,15 @@ const toolSettings: ToolConnectionSettings = {
 };
 
 let modalListeners: Record<string, unknown> = {};
+let modalProps: Record<string, unknown> = {};
 
 const ToolsConnectionModalStub = defineComponent({
 	name: 'ToolsConnectionModal',
 	inheritAttrs: false,
-	setup(_, { attrs }) {
+	props: ['detailItem', 'detailMode'],
+	setup(props, { attrs }) {
 		modalListeners = attrs;
+		modalProps = props;
 		return {};
 	},
 	template: '<div data-test-id="tools-connection-modal-stub" />',
@@ -201,6 +219,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		modalListeners = {};
+		modalProps = {};
 		mcpStoreMock.connections = [];
 		mcpStoreMock.catalog = [
 			{
@@ -257,6 +276,50 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		await flushPromises();
 
 		expect(uiStoreMock.closeModal).not.toHaveBeenCalled();
+	});
+
+	it('retries tools when a disconnected connection is opened', async () => {
+		const connection = {
+			id: 'conn-1',
+			serverSlug: 'linear',
+			credentialId: 'cred-1',
+			status: 'disconnected' as const,
+			toolFilter: null,
+		};
+		mcpStoreMock.connections = [connection];
+		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
+
+		renderComponent();
+		await flushPromises();
+
+		expect(modalProps.detailItem).toMatchObject({
+			id: 'conn-1',
+			status: 'disconnected',
+		});
+		expect(modalProps.detailMode).toBe('settings');
+		expect(mcpStoreMock.fetchConnectionToolsLazy).toHaveBeenCalledWith('conn-1');
+	});
+
+	// Through the store, because what it resolves is derived state — an assignment
+	// onto that is discarded, so the next open would reuse the stale connection id.
+	it('clears the modal data through the store on unmount', () => {
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
+
+		renderComponent().unmount();
+
+		expect(uiStoreMock.setModalData).toHaveBeenCalledWith({
+			name: 'instanceAiToolsConnection',
+			data: {},
+		});
+	});
+
+	it('leaves the store alone on unmount when there is no data to clear', () => {
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = {};
+
+		renderComponent().unmount();
+
+		expect(uiStoreMock.setModalData).not.toHaveBeenCalled();
 	});
 
 	it('tracks first credential connection start', () => {

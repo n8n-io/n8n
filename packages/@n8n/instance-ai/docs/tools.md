@@ -180,13 +180,31 @@ List workflows accessible to the current user.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `query` | string | no | — | Filter workflows by name |
+| `query` | string | no | — | Substring filter on the workflow name only — omit for inventory questions |
 | `limit` | number | no | 50 | Max results (1–100) |
 | `status` | `"active" \| "archived" \| "all"` | no | `"active"` | Which workflows to list |
+| `scope` | `"project" \| "instance"` | no | `"project"` | Which project(s) to search |
+| `projectId` | string | no | — | Read one specific project, overriding `scope` |
 
-**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt }] }`
+**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt, project? }], total, totalInScope, note? }`
 
 `activeVersionId` is `null` when the workflow is unpublished.
+
+`total` is how many workflows match every filter; `totalInScope` is how many the
+same status and scope hold with `query` dropped. When a name filter or `limit`
+left workflows out, `note` says so — a filtered page must never be read as the
+project's full inventory.
+
+`project` (`{ id, name }`) is the owning project, present only when the listing
+can span more than one — i.e. neither `projectId` nor a bound project narrowed it
+to one. It is what makes membership readable in a cross-project listing instead
+of guessable by comparing per-scope counts.
+
+`projectId` is a read-only narrowing: the adapter passes it as a filter on a query
+that still resolves readability from the caller's own project and workflow roles,
+so it cannot reach a project the user can't read (`scope: "instance"` already
+returns that whole readable set). Writes ignore it and stay locked to the thread's
+bound project.
 
 ### `get-workflow`
 
@@ -272,7 +290,9 @@ configure it interactively.
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow to set up |
 
-**Returns**: `{ completedNodes, skippedNodes, failedNodes }`
+**Returns**: `{ completedNodes, nodesStillNeedingSetup, skippedByUser, failedNodes }` —
+`nodesStillNeedingSetup` is what nobody has configured yet, `skippedByUser` what the user
+actively dismissed and the agent must not re-open (see `reopenSkipped`).
 
 ### `publish-workflow`
 
@@ -480,10 +500,12 @@ The LLM never sees secrets — the user interacts with the n8n frontend directly
 **Returns**: `{ credentialId, credentialType, needsBrowserSetup? }`
 
 **HITL**: Suspends execution and renders the credential setup UI. When a single
-matching credential already exists, the card auto-selects it and resolves
-without user input — a `success` result with a credentials map means setup is
-already complete, and the card is never open once a result is returned. When
-`needsBrowserSetup=true`, the orchestrator should load the
+matching *service-scoped* credential already exists, the card auto-selects it
+and resolves without user input — a `success` result with a credentials map
+means setup is already complete, and the card is never open once a result is
+returned. Generic auth types (bearer/header/query/basic/etc.) stay preselected
+but always require an explicit Continue, since the type alone does not identify
+a service. When `needsBrowserSetup=true`, the orchestrator should load the
 `credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
 directly, then call `setup-credentials` again to finalize.
 
@@ -604,7 +626,7 @@ require `workspaceService.listFolders`.
 
 | Tool | Description |
 |------|-------------|
-| `list-projects` | List projects accessible to the user |
+| `list-projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
 | `tag-workflow` | Apply tags to a workflow |
 | `list-tags` | List available tags |
 | `cleanup-test-executions` | Remove test execution data |
@@ -685,11 +707,15 @@ Delegates agent building to the agents-module builder chat
 turn per call. Registered in `createOrchestrationTools` only when the host
 provides `builderDelegate` (agents module active). The builder's own prompt
 and tools drive the build, including its interactive tools (`ask_questions`,
-`ask_credential`, `ask_embedding_credential`, `configure_channel`) and
+`ask_credential`, `ask_embedding_credential`, `configure_channel`, and
+`call_agent` target-tool approvals) and
 lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
 the sub-agent session no longer excludes them. Forward publish/unpublish/
 activate/make-live intents to `build-agent`; never tell the user to open the
-agent editor and click Publish. Builder session state is keyed to
+agent editor and click Publish. The builder also inherits the orchestrator's
+validated, approval-wrapped MCP connector tools so it can use the same external
+context while designing the agent; connector tools that conflict with a native
+builder tool name are skipped. Builder session state is keyed to
 instance-AI-scoped threads (`ia-builder:<threadId>:<agentId>`) and never
 appears in the agents-module builder UI.
 
@@ -712,8 +738,9 @@ starts (agents module not configured, missing `name`/`agentId`, no project
 context to bind `agentId`, or a resume whose suspend payload has no
 checkpoint ref to carry).
 
-**Interactive questions:** when the builder suspends on one of its interactive
-tools (batched questions, a credential picker, or channel setup), this tool
+**Interactive requests:** when the builder suspends on one of its interactive
+tools (batched questions, a credential picker, channel setup, or a standard SDK
+approval requested by a target-agent test run), this tool
 cascades the suspension through its own suspend/resume so it renders as a
 chat card directly in the assistant conversation — no manual relaying, and the
 suspension survives a process restart. On resume, the tool takes the target
@@ -746,6 +773,33 @@ adapter). Use it to answer questions about existing agents and to find the
 `agentId` for `build-agent` when editing an agent not built in this
 conversation. Creation and editing stay on `build-agent`.
 
+## MCP Registry Tool
+
+### `mcp-servers` *(domain tool — conditional)*
+
+Tool to interact with connected and available MCP servers, and to let the user connect one from the chat.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `action` | `'connected' \| 'details' \| 'search' \| 'connect'` | yes | Discriminator |
+| `slug` | string | `details` | Server slug, as returned by `connected` |
+| `queries` | string[] | `search` | Free-text queries matched against server name, title, description |
+| `serverSlugs` | string[] | `connect` | Slugs returned by `search`, best match first, max 3 |
+| `reason` | string | `connect` | One sentence for the confirmation record |
+
+**`connected`** → `{ servers: [{ slug, toolCount }], hint? }`. Every connected MCP
+server, counts only — names are `details`' job.
+
+**`details`** → `{ slug, tools, hint? }`. One server's tool names. `hint` tells an
+unconnected slug apart from a connected server that loaded no tools.
+
+**`search`** → `{ results: [{ slug, title, description, tools }], hint? }`, capped
+at 5, most relevant first. Only servers the user has *not* connected come back.
+
+**`connect`** → `{ connectedSlugs, message }`. Suspends to render the inline
+**Available tools** card, resuming when the user connects or skips. `connectedSlugs`
+are the ones the server confirms on resume, not the ones the client claimed.
+
 ## Other Domain Tools
 
 | Tool | Description |
@@ -777,6 +831,10 @@ only the domain tools wired into that agent.
 | Sandbox-backed internals (`build-workflow` TypeScript compilation, `materialize-node-type`) | ✅ | ❌ |
 | MCP tools | ✅ | ❌ |
 | Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ |
+
+The embedded Agent Builder is an exception to the specialized-background-agent
+column: it inherits the orchestrator's safe MCP connector tools. Eval setup and
+other specialized background agents do not.
 
 ---
 

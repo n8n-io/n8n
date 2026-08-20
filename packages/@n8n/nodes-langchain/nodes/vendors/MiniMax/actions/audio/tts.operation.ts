@@ -226,7 +226,7 @@ export async function execute(
 		body.language_boost = options.languageBoost;
 	}
 
-	const response = (await apiRequest.call(this, 'POST', '/t2a_v2', {
+	const response = (await apiRequest.call(this, 'POST', '/v1/t2a_v2', {
 		body,
 	})) as T2AResponse;
 

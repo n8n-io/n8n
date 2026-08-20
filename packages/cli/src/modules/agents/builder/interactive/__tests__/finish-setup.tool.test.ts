@@ -73,6 +73,7 @@ describe('finish_setup tool', () => {
 				],
 			},
 		]);
+		expect(payload.projectId).toBe('project-1');
 		expect(
 			(payload.finishSetupChain as { collected: { credentials: unknown } }).collected.credentials,
 		).toEqual({
@@ -101,6 +102,51 @@ describe('finish_setup tool', () => {
 			completed: true,
 			credentials: { airtableApi: { id: 'c1', name: 'My Airtable' } },
 		});
+	});
+
+	it('drops credential slots already covered by an n8n Connect managed credential', async () => {
+		const credentialProvider = makeProvider([]);
+		const tool = buildFinishSetupTool({
+			...BASE_DEPS,
+			credentialProvider,
+			// The agent's node tools already run pdfcoApi on n8n credits.
+			listAiGatewayManagedCredentialTypes: async () => ['pdfcoApi'],
+		});
+		const ctx = makeCtx();
+
+		const result = await tool.handler!(
+			{ credentialRequests: [{ credentialType: 'pdfcoApi', purpose: 'PDF.co tools' }] },
+			ctx as never,
+		);
+
+		// No card, nothing pending — the managed slot needs no user setup.
+		expect(ctx.suspend).not.toHaveBeenCalled();
+		expect(result).toEqual({ completed: true });
+	});
+
+	it('still shows a card for an uncovered slot when another slot is managed-covered', async () => {
+		const credentialProvider = makeProvider([]);
+		const tool = buildFinishSetupTool({
+			...BASE_DEPS,
+			credentialProvider,
+			listAiGatewayManagedCredentialTypes: async () => ['pdfcoApi'],
+		});
+		const ctx = makeCtx();
+
+		const payload = (await tool.handler!(
+			{
+				credentialRequests: [
+					{ credentialType: 'pdfcoApi', purpose: 'PDF.co tools' },
+					{ credentialType: 'airtableApi', purpose: 'Airtable log' },
+				],
+			},
+			ctx as never,
+		)) as Record<string, unknown>;
+
+		// Only the uncovered airtable slot survives into the credential card.
+		expect(payload.credentialRequests).toEqual([
+			{ credentialType: 'airtableApi', reason: 'Airtable log', existingCredentials: [] },
+		]);
 	});
 
 	it('chains through questions and credentials to a merged result', async () => {
@@ -333,8 +379,8 @@ describe('finish_setup tool', () => {
 		const ctx = makeCtx();
 
 		await expect(
-			tool.handler!({ channels: [{ integrationType: 'discord' }] }, ctx as never),
-		).rejects.toThrow('Unsupported chat channel "discord"');
+			tool.handler!({ channels: [{ integrationType: 'carrier-pigeon' }] }, ctx as never),
+		).rejects.toThrow('Unsupported chat channel "carrier-pigeon"');
 		expect(ctx.suspend).not.toHaveBeenCalled();
 	});
 });

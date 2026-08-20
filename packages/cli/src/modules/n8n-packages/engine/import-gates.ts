@@ -17,23 +17,25 @@ export function assertPackageImportApiKeyScopes(
 }
 
 /**
- * Gated on what the import will create, not on what the package requires: a package whose variables
- * all resolve creates nothing, so it needs neither the licence nor the scope. Mirrors the variables UI.
+ * Gated on what the import will write, not on what the package requires: a package whose variables
+ * all resolve writes nothing, so it needs neither the licence nor a scope. Mirrors the variables UI.
  */
-export function assertVariableCreationAllowed(options: {
+export function assertVariableWritesAllowed(options: {
 	licenseState: LicenseState;
 	apiKeyScopes: string[] | undefined;
 	hasCreations: boolean;
+	hasOverwrites: boolean;
 }): void {
-	const { licenseState, apiKeyScopes, hasCreations } = options;
-	if (!hasCreations) return;
+	const { licenseState, apiKeyScopes, hasCreations, hasOverwrites } = options;
+	if (!hasCreations && !hasOverwrites) return;
 
 	if (!licenseState.isVariablesLicensed()) {
 		throw new ForbiddenError(
-			'Your license does not allow variables. Importing a package that creates variables requires a license that supports variables.',
+			'Your license does not allow variables. Importing a package that writes variables requires a license that supports variables.',
 		);
 	}
-	assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:create']);
+	if (hasCreations) assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:create']);
+	if (hasOverwrites) assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:update']);
 }
 
 /**

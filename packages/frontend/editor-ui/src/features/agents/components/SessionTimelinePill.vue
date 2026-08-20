@@ -29,9 +29,13 @@ const icon = computed((): IconName => {
 			return 'workflow';
 		case 'node':
 			return 'box';
+		case 'execution-error':
+			return 'circle-x';
 		case 'suspension':
 		case 'idle':
 			return 'clock';
+		case 'hitl-response':
+			return 'message-square';
 		default:
 			return 'info';
 	}

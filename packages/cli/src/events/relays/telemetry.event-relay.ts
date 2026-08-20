@@ -147,6 +147,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'credentials-updated': (event) => this.credentialsUpdated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
 			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
+			'credentials-probed': (event) => this.credentialsProbed(event),
 			'private-credential-created': (event) => this.privateCredentialCreated(event),
 			'private-credential-toggled-to-private': (event) =>
 				this.privateCredentialToggledToPrivate(event),
@@ -216,6 +217,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'instance-ai-mcp-registry-connection-deleted': (event) =>
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
+			'runner-disconnected': (event) => this.runnerDisconnected(event),
 		});
 	}
 
@@ -736,6 +738,14 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	private credentialsProbed({ user, credentialId, outcome }: RelayEventMap['credentials-probed']) {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_PROBED_CREDENTIAL, {
+			user_id: user.id,
+			credential_id: credentialId,
+			outcome,
+		});
+	}
+
 	private privateCredentialCreated({
 		user,
 		credentialId,
@@ -1065,6 +1075,7 @@ export class TelemetryEventRelay extends EventRelay {
 			data_table_missing_mode: options.dataTableMissingMode,
 			data_table_schema_conflict_policy: options.dataTableSchemaConflictPolicy,
 			variable_missing_mode: options.variableMissingMode,
+			variable_conflict_policy: options.variableConflictPolicy,
 			variable_parent_policy: options.variableParentPolicy,
 			tag_missing_mode: options.tagMissingMode,
 			tag_conflict_policy: options.tagConflictPolicy,
@@ -1081,6 +1092,7 @@ export class TelemetryEventRelay extends EventRelay {
 			variables_missing: counts.variables.missing,
 			variables_with_value_created: counts.variables.created,
 			variables_stubs_created: counts.variables.stubbed,
+			variables_updated: counts.variables.updated,
 			variables_required: counts.variables.requirements,
 			tags_matched: counts.tags.matched,
 			tags_created: counts.tags.created,
@@ -1513,11 +1525,16 @@ export class TelemetryEventRelay extends EventRelay {
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
 			multi_main_setup_enabled: this.globalConfig.multiMainSetup.enabled,
 			instance_ai: {
-				// Which sandbox and AIA search providers are configured (booleans/names only, never key values)
+				// Which model, sandbox and AIA search providers are configured via env vars
+				// (booleans/names only, never key values)
 				sandbox_enabled: this.globalConfig.instanceAi.sandboxEnabled,
 				sandbox_provider: this.globalConfig.instanceAi.sandboxProvider,
 				search_brave_set: this.globalConfig.instanceAi.braveSearchApiKey !== '',
 				search_searxng_set: this.globalConfig.instanceAi.searxngUrl !== '',
+				model_env_set:
+					this.globalConfig.instanceAi.modelApiKey !== '' ||
+					this.globalConfig.instanceAi.modelUrl !== '',
+				model_id: this.globalConfig.instanceAi.model,
 			},
 			metrics: {
 				metrics_enabled: this.globalConfig.endpoints.metrics.enable,
@@ -1681,6 +1698,10 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private instanceStopped() {
 		this.telemetry.track('User instance stopped');
+	}
+
+	private runnerDisconnected({ reason, mode }: RelayEventMap['runner-disconnected']) {
+		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED, { reason, mode });
 	}
 
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {

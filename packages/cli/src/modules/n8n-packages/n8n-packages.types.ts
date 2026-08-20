@@ -4,6 +4,7 @@ import type { Readable } from 'node:stream';
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
 import type { TagResolutionFailure } from './entities/tag/tag.types';
 import type {
+	VariableConflict,
 	VariableLimitFailure,
 	VariableResolutionFailure,
 } from './entities/variable/variable.types';
@@ -43,6 +44,19 @@ export const WorkflowIdPolicy = {
 	Source: 'source',
 } as const;
 
+export const ProjectConflictPolicy = {
+	/** Reuses a matched project (by id) as-is — its name, description, icon and tags stay untouched — and merges the package's contents into it. */
+	Merge: 'merge',
+	/** Fails the import if any package project already exists on this instance. */
+	Fail: 'fail',
+	/**
+	 * Replaces a matched project's own details with the package's, then merges the package's contents
+	 * into it. Only the details the package carries are written — a detail the package omits (an
+	 * unset description or icon, or a field a package predating it never had) is left as it is.
+	 */
+	Overwrite: 'overwrite',
+} as const;
+
 export const FolderConflictPolicy = {
 	/** Reuses an already-imported folder (matched by id) as-is and merges the package's children into it; otherwise creates it. */
 	Merge: 'merge',
@@ -64,6 +78,17 @@ export const MissingWorkflowDependencyPolicy = {
 	ReferenceOnly: 'reference-only',
 	/** Automatically adds missing workflow dependencies to the package. */
 	IncludeInPackage: 'include-in-package',
+} as const;
+
+export const WorkflowVersionPolicy = {
+	/** Exports the latest published version, failing if any workflow has none. */
+	PublishedStrict: 'published-strict',
+	/** Exports the latest published version where there is one, the latest version otherwise. */
+	PreferPublished: 'prefer-published',
+	/** Exports only published workflows, leaving unpublished ones out of the package. */
+	IgnoreUnpublished: 'ignore-unpublished',
+	/** Exports the latest version of every workflow, published or not. */
+	Latest: 'latest',
 } as const;
 
 export const DataTableMatchingMode = {
@@ -98,6 +123,15 @@ export const VariableMissingMode = {
 	CreateWithValue: 'create-with-value',
 } as const;
 
+export const VariableConflictPolicy = {
+	/** Leaves the target value alone, even when the package bundles a different one. */
+	KeepExisting: 'keep-existing',
+	/** Replaces the target value with the package's, at whichever scope the variable was found. */
+	Overwrite: 'overwrite',
+	/** Rejects the import when the package bundles a value that differs from the target's. */
+	Fail: 'fail',
+} as const;
+
 export const VariableParentPolicy = {
 	Project: 'project',
 	Global: 'global',
@@ -125,12 +159,18 @@ export type WorkflowConflictPolicy =
 
 export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
 
+export type ProjectConflictPolicy =
+	(typeof ProjectConflictPolicy)[keyof typeof ProjectConflictPolicy];
+
 export type FolderConflictPolicy = (typeof FolderConflictPolicy)[keyof typeof FolderConflictPolicy];
 
 export type MissingNodeTypeMode = (typeof MissingNodeTypeMode)[keyof typeof MissingNodeTypeMode];
 
 export type MissingWorkflowDependencyPolicy =
 	(typeof MissingWorkflowDependencyPolicy)[keyof typeof MissingWorkflowDependencyPolicy];
+
+export type WorkflowVersionPolicy =
+	(typeof WorkflowVersionPolicy)[keyof typeof WorkflowVersionPolicy];
 
 export type DataTableMatchingMode =
 	(typeof DataTableMatchingMode)[keyof typeof DataTableMatchingMode];
@@ -141,6 +181,9 @@ export type DataTableSchemaConflictPolicy =
 	(typeof DataTableSchemaConflictPolicy)[keyof typeof DataTableSchemaConflictPolicy];
 
 export type VariableMissingMode = (typeof VariableMissingMode)[keyof typeof VariableMissingMode];
+
+export type VariableConflictPolicy =
+	(typeof VariableConflictPolicy)[keyof typeof VariableConflictPolicy];
 
 export type VariableParentPolicy = (typeof VariableParentPolicy)[keyof typeof VariableParentPolicy];
 
@@ -157,6 +200,7 @@ export interface ExportPackageRequest {
 	canExportVariableValues?: boolean;
 	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
+	workflowVersionPolicy?: WorkflowVersionPolicy;
 }
 
 export type ImportPackageRequest = {
@@ -168,6 +212,7 @@ export type ImportPackageRequest = {
 	apiKeyScopes?: string[];
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
+	ImportProjectProperties &
 	ImportFolderProperties &
 	ImportDataTableProperties &
 	ImportVariableProperties &
@@ -185,6 +230,11 @@ export type ImportWorkflowProperties = {
 	missingNodeTypeMode: MissingNodeTypeMode;
 };
 
+/** Only project packages define projects; a workflow package imports into an existing project. */
+export type ImportProjectProperties = {
+	projectConflictPolicy: ProjectConflictPolicy;
+};
+
 export type ImportFolderProperties = {
 	folderConflictPolicy: FolderConflictPolicy;
 };
@@ -197,6 +247,7 @@ export type ImportDataTableProperties = {
 
 export type ImportVariableProperties = {
 	variableMissingMode: VariableMissingMode;
+	variableConflictPolicy: VariableConflictPolicy;
 	variableParentPolicy?: VariableParentPolicy;
 };
 
@@ -256,6 +307,7 @@ export type ImportPackageEventCounts = {
 		missing: number;
 		created: number;
 		stubbed: number;
+		updated: number;
 		requirements: number;
 	};
 	tags: {
@@ -316,8 +368,9 @@ export interface ImportedFolderSummary {
 export interface ImportedProjectSummary {
 	sourceProjectId: string;
 	localId: string;
+	/** The project's name on the target — the package's under `overwrite`, the existing one under `merge`. */
 	name: string;
-	status: 'created' | 'updated';
+	status: 'created' | 'updated' | 'skipped';
 }
 
 /**
@@ -340,10 +393,12 @@ export type BlockingIssue =
 			actualType?: string;
 			usedByWorkflows: string[];
 	  }
+	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
 	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
 	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
+	| ({ type: 'variable-conflict' } & VariableConflict)
 	| ({ type: 'variable-limit-exceeded' } & VariableLimitFailure)
 	| {
 			type: 'missing-node-type';
@@ -352,6 +407,12 @@ export type BlockingIssue =
 			typeVersion: number;
 			usedByWorkflows: string[];
 	  };
+
+export interface ProjectConflict {
+	kind: 'fail-policy';
+	sourceProjectId: string;
+	name: string;
+}
 
 export interface FolderConflict {
 	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';
@@ -417,6 +478,7 @@ export interface ImportVariableSummary {
 	missing: string[];
 	created: string[];
 	stubbed: string[];
+	updated: string[];
 }
 
 /** Tag names (not ids), grouped by how the import resolved them. */

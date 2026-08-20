@@ -85,21 +85,29 @@ export function reconcileVariableSummary(input: {
 	created: Iterable<string>;
 	stubbed: Iterable<string>;
 	skipped: Iterable<string>;
+	updated: Iterable<string>;
 }): ImportVariableSummary {
 	const matched = new Set(input.matched);
 	const created = new Set(input.created);
 	const stubbed = new Set(input.stubbed);
 	const skipped = new Set(input.skipped);
+	const updated = new Set(input.updated);
 
 	// A skipped name that no scope of this import created genuinely pre-existed, so it counts as matched.
 	for (const name of skipped) {
 		if (!created.has(name) && !stubbed.has(name)) matched.add(name);
 	}
 
+	// An overwritten name matched first, but the import rewrote it, so `updated` wins.
+	for (const name of updated) {
+		matched.delete(name);
+	}
+
 	return {
 		matched: [...matched],
 		created: [...created],
 		stubbed: [...stubbed],
+		updated: [...updated],
 		missing: [...new Set(input.missing)].filter(
 			(name) => !created.has(name) && !stubbed.has(name) && !skipped.has(name),
 		),
@@ -116,6 +124,7 @@ export function toVariableSummary(
 		created: result.created,
 		stubbed: result.stubbed,
 		skipped: result.skippedExisting,
+		updated: result.updated,
 	});
 }
 

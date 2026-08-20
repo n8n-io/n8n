@@ -140,6 +140,9 @@ describe('TelemetryEventRelay', () => {
 			sandboxProvider: 'n8n-sandbox',
 			braveSearchApiKey: '',
 			searxngUrl: '',
+			model: 'anthropic/claude-sonnet-4',
+			modelApiKey: '',
+			modelUrl: '',
 		},
 		instanceSettingsLoader: getDefaultInstanceSettingsLoaderConfig(),
 	});
@@ -1083,6 +1086,35 @@ describe('TelemetryEventRelay', () => {
 				credential_type: 'github',
 				credential_id: 'cred123',
 			});
+		});
+
+		it('should track on `credentials-probed` event', () => {
+			const event: RelayEventMap['credentials-probed'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialId: 'cred123',
+				outcome: 'rejected',
+			};
+
+			eventService.emit('credentials-probed', event);
+
+			const payload = {
+				user_id: 'user123',
+				credential_id: 'cred123',
+				outcome: 'rejected',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_PROBED_CREDENTIAL,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.CREDENTIALS.USER_PROBED_CREDENTIAL.getValidationError(payload),
+			).toBeNull();
 		});
 
 		it('should track on `private-credential-created` event', () => {
@@ -2259,6 +2291,7 @@ describe('TelemetryEventRelay', () => {
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
 					variableMissingMode: 'create-stub',
+					variableConflictPolicy: 'overwrite',
 					variableParentPolicy: 'global',
 					tagMissingMode: 'create',
 					tagConflictPolicy: 'rename',
@@ -2291,6 +2324,7 @@ describe('TelemetryEventRelay', () => {
 						missing: 1,
 						created: 3,
 						stubbed: 2,
+						updated: 4,
 						requirements: 2,
 					},
 					tags: {
@@ -2318,6 +2352,7 @@ describe('TelemetryEventRelay', () => {
 				data_table_missing_mode: 'create',
 				data_table_schema_conflict_policy: 'keep-existing',
 				variable_missing_mode: 'create-stub',
+				variable_conflict_policy: 'overwrite',
 				variable_parent_policy: 'global',
 				tag_missing_mode: 'create',
 				tag_conflict_policy: 'rename',
@@ -2334,6 +2369,7 @@ describe('TelemetryEventRelay', () => {
 				variables_missing: 1,
 				variables_with_value_created: 3,
 				variables_stubs_created: 2,
+				variables_updated: 4,
 				variables_required: 2,
 				tags_matched: 6,
 				tags_created: 7,
@@ -2897,6 +2933,8 @@ describe('TelemetryEventRelay', () => {
 						sandbox_provider: 'daytona',
 						search_brave_set: true,
 						search_searxng_set: false,
+						model_env_set: false,
+						model_id: 'anthropic/claude-sonnet-4',
 					},
 				}),
 			);
@@ -3834,6 +3872,25 @@ describe('TelemetryEventRelay', () => {
 				is_approved: true,
 				is_authorized: false,
 			});
+		});
+	});
+
+	describe('runner events', () => {
+		it('should track on `runner-disconnected` event', () => {
+			const event: RelayEventMap['runner-disconnected'] = {
+				reason: 'failed-heartbeat-check',
+				mode: 'internal',
+			};
+
+			eventService.emit('runner-disconnected', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED,
+				{
+					reason: 'failed-heartbeat-check',
+					mode: 'internal',
+				},
+			);
 		});
 	});
 });

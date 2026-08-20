@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor, type RenderResult } from '@testing-library/vue';
 import { VIEWS } from '@/app/constants';
 import { useRolesStore } from '@n8n/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRoleView from './ProjectRoleView.vue';
 

@@ -444,6 +444,7 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/unbound-method': 'off',
 			'n8n-local-rules/no-skipped-tests': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
 			'n8n-local-rules/no-error-instance-in-to-throw': 'error',
+			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
 	},
 );

@@ -474,6 +474,23 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			session_id: sessionId,
 		}),
 	},
+	USER_ADDED_AGENT_NODE: {
+		name: 'User added agent node',
+		description:
+			'The user added a Message an Agent node to the workflow canvas. agent_source distinguishes the inline agent variant from calling an existing agent.',
+		properties: z.object({
+			agent_source: z
+				.enum(['inline', 'referenced'])
+				.optional()
+				.describe(
+					"Omitted when the node was added without the agents panel preset (treat as 'referenced')",
+				),
+			agent_id: z.string().optional().describe('Referenced agent ID, when one was picked'),
+			workflow_id: z.string(),
+			node_id: z.string(),
+			node_version: z.number(),
+		}),
+	},
 	USER_OPENED_AGENT_TOOL: {
 		name: 'User opened agent tool',
 		description: 'The user opened a tool from the builder capabilities list.',
@@ -516,7 +533,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_STARTED_ADDING_AGENT_TOOL: {
 		name: 'User started adding agent tool',
 		description:
-			'The user clicked Connect on an available row in the tools modal, starting a new tool flow.',
+			'The user started adding an available tool manually by connecting it or creating a workflow.',
 		properties: z.object({
 			tool_type: z.enum(['custom', 'workflow', 'node']),
 			source: z.literal('manual'),

@@ -24,6 +24,8 @@ import type {
 	WorkflowListEventMap,
 } from '@/features/core/folders/folders.types';
 import { useDependencies } from '@/app/composables/useDependencies';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { useFolders } from '@/features/core/folders/composables/useFolders';
 import { useMessage } from '@/app/composables/useMessage';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
@@ -69,7 +71,7 @@ import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -88,7 +90,7 @@ import {
 	type ProjectSharingData,
 	ProjectTypes,
 } from '@/features/collaboration/projects/projects.types';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -176,6 +178,8 @@ const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
 const { next: nextFetch } = useLatestFetch();
 const { fetchDependencyCounts } = useDependencies();
+const { isWorkflowReviewsEnabled } = useWorkflowReviewsFeature();
+const reviewStatusStore = useWorkflowReviewStatusStore();
 const { readOnlyEnv, projectPermissions } = useWorkflowsEmptyState();
 const { hasKnownInstanceContent } = useEmptyStateDetection();
 const emptinessResolved = ref(false);
@@ -915,6 +919,11 @@ const fetchWorkflows = async () => {
 			.map((r) => r.id);
 		if (workflowIds.length > 0) {
 			void fetchDependencyCounts(workflowIds, 'workflow');
+			// Same fire-and-forget pattern for the review badges. Gated up front so a
+			// disabled feature issues no review request at all.
+			if (isWorkflowReviewsEnabled.value) {
+				void reviewStatusStore.fetchReviewStatuses(workflowIds);
+			}
 		}
 
 		// Toggle ownership cards visibility only after we have fetched the workflows

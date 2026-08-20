@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import AskAssistantButton from './AskAssistantButton.vue';
 
 export default {
-	title: 'Assistant/AskAssistantButton',
+	title: 'Areas/Assistant/AskAssistantButton',
 	component: AskAssistantButton,
 	argTypes: {},
 };

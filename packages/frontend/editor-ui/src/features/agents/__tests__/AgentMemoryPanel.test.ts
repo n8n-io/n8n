@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { computed, ref } from 'vue';
 
 import { defaultSettings } from '@/__tests__/defaults';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
 import type { AgentJsonConfig } from '../types';
 

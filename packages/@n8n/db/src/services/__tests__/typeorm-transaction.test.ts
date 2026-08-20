@@ -4,7 +4,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { BaseRepository } from '../../repositories/base-repository';
-import type { OperationContext, Transaction } from '../transaction';
+import type { OperationContext, Transaction, TransactionRunner } from '../transaction';
 import { TypeOrmTransaction, TypeOrmTransactionRunner } from '../typeorm-transaction';
 
 describe('TypeOrmTransactionRunner', () => {
@@ -121,7 +121,7 @@ describe('BaseRepository.managerFor', () => {
 	}
 
 	const defaultManager = mock<EntityManager>();
-	const repository = new TestRepository(class Dummy {}, defaultManager);
+	const repository = new TestRepository(class Dummy {}, defaultManager, mock<TransactionRunner>());
 
 	it('returns the default manager when the context has no transaction', () => {
 		expect(repository.resolve({})).toBe(defaultManager);
