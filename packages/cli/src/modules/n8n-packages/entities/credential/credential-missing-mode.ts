@@ -10,14 +10,17 @@ export function canStubNotFoundFailure(failure: CredentialResolutionFailure): bo
  * Classifies which unresolved credential references block the import, per missing-mode
  * policy. Read-only — never writes.
  */
+const rescueStubbable = (resolution: CredentialResolution): CredentialResolutionFailure[] =>
+	resolution.failures.filter((failure) => !canStubNotFoundFailure(failure));
+
 /* eslint-disable @typescript-eslint/naming-convention -- API credential missing mode keys */
 const BLOCKING_FAILURES: Record<
 	CredentialMissingMode,
 	(resolution: CredentialResolution) => CredentialResolutionFailure[]
 > = {
 	'must-preexist': (resolution) => resolution.failures,
-	'create-stub': (resolution) =>
-		resolution.failures.filter((failure) => !canStubNotFoundFailure(failure)),
+	'create-stub': rescueStubbable,
+	'create-with-values': rescueStubbable,
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -26,6 +29,16 @@ export function credentialBlockingFailures(
 	resolution: CredentialResolution,
 ): CredentialResolutionFailure[] {
 	return BLOCKING_FAILURES[mode](resolution);
+}
+
+/** Whether the mode fills an unresolved reference by creating the credential. */
+export function credentialMissingModeCreates(mode: CredentialMissingMode): boolean {
+	return mode === 'create-stub' || mode === 'create-with-values';
+}
+
+/** Whether the mode seeds created credentials from the package's bundled expression data. */
+export function credentialMissingModeUsesPackageData(mode: CredentialMissingMode): boolean {
+	return mode === 'create-with-values';
 }
 
 /** Package workflow ids that should not be published because they use stubbed credentials. */

@@ -28,7 +28,12 @@ import type {
 import { mergeBindings } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
-import { needsBundledVariableValues, placeByLayout } from './package-layout';
+import {
+	needsBundledCredentialData,
+	needsBundledVariableValues,
+	placeByLayout,
+	placeCredentialData,
+} from './package-layout';
 import {
 	ImportOrchestrator,
 	type ImportContentResult,
@@ -48,6 +53,7 @@ import {
 import { emitPackageImportedEvent, type PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import type { SerializedCredential } from '../spec/serialized/credential.schema';
 import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
 @Service()
@@ -90,6 +96,12 @@ export class ProjectPackageImporter {
 		)
 			? await this.packageParser.getVariables(reader)
 			: undefined;
+		const bundledCredentials = needsBundledCredentialData(
+			request,
+			(manifest.requirements?.credentials?.length ?? 0) > 0,
+		)
+			? await this.packageParser.getCredentials(reader)
+			: undefined;
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
 		// so publish is always allowed and the project need not exist while its contents are planned.
 		const pendingCreateIds = new Set(
@@ -109,6 +121,7 @@ export class ProjectPackageImporter {
 				project,
 				pendingCreateIds.has(project.id),
 				bundledVariables,
+				bundledCredentials,
 			);
 			const plan = await this.importOrchestrator.plan(input);
 			planned.push({ project, plan });
@@ -163,6 +176,7 @@ export class ProjectPackageImporter {
 		const scopedBindings: PackageImportBindings[] = [];
 		const matched: string[] = [];
 		const stubbed: string[] = [];
+		const seeded: string[] = [];
 		const variablesMatched: string[] = [];
 		const variablesMissing: string[] = [];
 		const variablesCreated: string[] = [];
@@ -182,6 +196,7 @@ export class ProjectPackageImporter {
 			scopedBindings.push(content.bindings);
 			matched.push(...content.credentialResult.matched);
 			stubbed.push(...content.credentialResult.stubbed);
+			seeded.push(...content.credentialResult.seeded);
 			variablesMatched.push(...content.variablePlan.matched);
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
@@ -209,7 +224,7 @@ export class ProjectPackageImporter {
 			folders,
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
-			credentials: { matched, stubbed },
+			credentials: { matched, stubbed, seeded },
 			variables: reconcileVariableSummary({
 				matched: variablesMatched,
 				missing: variablesMissing,
@@ -229,6 +244,7 @@ export class ProjectPackageImporter {
 		project: ManifestEntry,
 		projectPendingCreation: boolean,
 		bundledVariables: Map<string, SerializedVariable> | undefined,
+		bundledCredentials: Map<string, SerializedCredential> | undefined,
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
@@ -238,7 +254,11 @@ export class ProjectPackageImporter {
 		// binding is not seen as an orphan here (which would block the whole multi-project import).
 		const requirements = identifyRequirements(manifest.requirements?.credentials, workflows);
 		const credentialRequest: CredentialBindingRequest = {
-			requirements,
+			requirements: placeCredentialData({
+				requirements,
+				manifestCredentials: manifest.credentials,
+				bundledCredentials,
+			}),
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
 			credentialBindings: scopeCredentialBindingsToRequirements(

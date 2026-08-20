@@ -237,6 +237,7 @@ describe('CredentialImporter', () => {
 				bindings: new Map([['missing-cred', 'stub-1']]),
 				matched: [],
 				stubbed: ['missing-cred'],
+				seeded: [],
 			});
 		});
 
@@ -257,6 +258,7 @@ describe('CredentialImporter', () => {
 				bindings: new Map(),
 				matched: [],
 				stubbed: [],
+				seeded: [],
 			});
 		});
 
@@ -311,6 +313,90 @@ describe('CredentialImporter', () => {
 					},
 				),
 			).rejects.toBeInstanceOf(ForbiddenError);
+		});
+	});
+
+	describe('create-with-values', () => {
+		it('apply seeds a created credential from the requirement package data', async () => {
+			credentialsService.createStubCredential.mockResolvedValue({ id: 'created-1' } as never);
+
+			const missingCredential = packageCredential({
+				id: 'missing-cred',
+				packageData: { token: '={{ $secrets.github.token }}' },
+			});
+
+			const result = await importer.apply(
+				context,
+				bindingRequest([missingCredential], { missingMode: 'create-with-values' }),
+				{
+					successes: new Map(),
+					failures: [notFoundFailure(missingCredential)],
+				},
+			);
+
+			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
+				{
+					name: 'Source GitHub',
+					type: 'githubApi',
+					projectId: 'project-target',
+					data: { token: '={{ $secrets.github.token }}' },
+				},
+				user,
+			);
+			expect(result).toEqual({
+				bindings: new Map([['missing-cred', 'created-1']]),
+				matched: [],
+				stubbed: [],
+				seeded: ['missing-cred'],
+			});
+		});
+
+		it('apply falls back to an empty stub when the package carries no data', async () => {
+			credentialsService.createStubCredential.mockResolvedValue({ id: 'created-1' } as never);
+
+			const withoutData = packageCredential({ id: 'no-data-cred' });
+			const withEmptyData = packageCredential({ id: 'empty-data-cred', packageData: {} });
+
+			const result = await importer.apply(
+				context,
+				bindingRequest([withoutData, withEmptyData], { missingMode: 'create-with-values' }),
+				{
+					successes: new Map(),
+					failures: [notFoundFailure(withoutData), notFoundFailure(withEmptyData)],
+				},
+			);
+
+			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
+				{ name: 'Source GitHub', type: 'githubApi', projectId: 'project-target' },
+				user,
+			);
+			expect(result.stubbed).toEqual(['no-data-cred', 'empty-data-cred']);
+			expect(result.seeded).toEqual([]);
+		});
+
+		it('apply never seeds under create-stub even when the package carries data', async () => {
+			credentialsService.createStubCredential.mockResolvedValue({ id: 'created-1' } as never);
+
+			const missingCredential = packageCredential({
+				id: 'missing-cred',
+				packageData: { token: '={{ $secrets.github.token }}' },
+			});
+
+			const result = await importer.apply(
+				context,
+				bindingRequest([missingCredential], { missingMode: 'create-stub' }),
+				{
+					successes: new Map(),
+					failures: [notFoundFailure(missingCredential)],
+				},
+			);
+
+			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
+				{ name: 'Source GitHub', type: 'githubApi', projectId: 'project-target' },
+				user,
+			);
+			expect(result.stubbed).toEqual(['missing-cred']);
+			expect(result.seeded).toEqual([]);
 		});
 	});
 });

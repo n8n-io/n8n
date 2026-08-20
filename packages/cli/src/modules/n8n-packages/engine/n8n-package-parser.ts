@@ -16,6 +16,10 @@ import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
+import {
+	serializedCredentialSchema,
+	type SerializedCredential,
+} from '../spec/serialized/credential.schema';
 import { serializedDataTableSchema } from '../spec/serialized/data-table.schema';
 import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
 import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
@@ -93,6 +97,18 @@ export class N8nPackageParser {
 			projects.push(await this.readProject(reader, entry));
 		}
 		return projects;
+	}
+
+	/** Bundled credential files, keyed by manifest target. */
+	async getCredentials(reader: PackageReader): Promise<Map<string, SerializedCredential>> {
+		const manifest = await this.getManifest(reader);
+		const credentials = new Map<string, SerializedCredential>();
+
+		for (const entry of manifest.credentials ?? []) {
+			credentials.set(entry.target, await this.readCredential(reader, entry));
+		}
+
+		return credentials;
 	}
 
 	/** Bundled variable files, keyed by manifest target. */
@@ -246,6 +262,34 @@ export class N8nPackageParser {
 				? { customTelemetryTags: project.customTelemetryTags }
 				: {}),
 		};
+	}
+
+	private async readCredential(
+		reader: PackageReader,
+		entry: ManifestEntry,
+	): Promise<SerializedCredential> {
+		const path = `${entry.target}/credential.json`;
+		const wire = await this.readJson(reader, path, 'credential');
+
+		let credential: SerializedCredential;
+		try {
+			credential = serializedCredentialSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package credential file at ${path} failed schema validation.`, {
+					cause,
+				});
+			}
+			throw cause;
+		}
+
+		if (credential.id !== entry.id) {
+			throw new UserError(
+				`Package credential at ${path} declares id "${credential.id}" but the manifest lists it as "${entry.id}".`,
+			);
+		}
+
+		return credential;
 	}
 
 	private async readVariable(

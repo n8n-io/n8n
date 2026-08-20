@@ -4,6 +4,12 @@ import type {
 	CredentialMissingMode,
 } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+import type { SerializedCredentialData } from '../../spec/serialized/credential.schema';
+
+/** A requirement enriched with the expression data the package bundles for it, when any. */
+export type PlacedCredentialRequirement = PackageCredentialRequirement & {
+	packageData?: SerializedCredentialData;
+};
 
 export interface WorkflowCredentialRequirement {
 	workflowId: string;
@@ -40,10 +46,11 @@ export interface CredentialApplyResult {
 	bindings: ImportBindingMap;
 	matched: string[];
 	stubbed: string[];
+	seeded: string[];
 }
 
 export interface CredentialBindingRequest {
-	requirements: PackageCredentialRequirement[] | undefined;
+	requirements: PlacedCredentialRequirement[] | undefined;
 	matchingMode: CredentialMatchingMode;
 	missingMode: CredentialMissingMode;
 	credentialBindings?: ImportBindingMap;
