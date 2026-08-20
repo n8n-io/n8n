@@ -378,7 +378,7 @@ watch(
 // frame lists the previously opened scope's credentials.
 const initialFetchScope = props.skipCredentialsFetch ? undefined : getCredentialFetchScope();
 if (initialFetchScope) {
-	void credentialsStore.fetchAllCredentialsForWorkflow(initialFetchScope);
+	void credentialsStore.fetchUsableCredentials(initialFetchScope);
 }
 
 let hasEvaluatedCredentials = false;
@@ -484,7 +484,7 @@ onMounted(() => {
 			const refetchScope = getCredentialFetchScope();
 			if (refetchScope) {
 				try {
-					await credentialsStore.fetchAllCredentialsForWorkflow(refetchScope);
+					await credentialsStore.fetchUsableCredentials(refetchScope);
 				} catch {
 					// Fall through with whatever the store already holds.
 				}

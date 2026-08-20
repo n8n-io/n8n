@@ -221,7 +221,7 @@ describe('credentials.store', () => {
 		});
 	});
 
-	describe('fetchAllCredentialsForWorkflow', () => {
+	describe('fetchUsableCredentials', () => {
 		const credential = (
 			overrides: Partial<ICredentialsResponse> & Pick<ICredentialsResponse, 'id'>,
 		): ICredentialsResponse =>
@@ -239,11 +239,11 @@ describe('credentials.store', () => {
 			const store = useCredentialsStore();
 			expect(store.hasFetchedUsableCredentials).toBe(false);
 
-			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
 
-			await store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
 
-			expect(credentialsApi.getAllCredentialsForWorkflow).toHaveBeenCalledWith(
+			expect(credentialsApi.getUsableCredentials).toHaveBeenCalledWith(
 				mockRootStore.restApiContext,
 				{ workflowId: 'wf-1' },
 			);
@@ -267,10 +267,10 @@ describe('credentials.store', () => {
 		it('keeps the usable slice when a later unscoped fetch widens the flat map', async () => {
 			const store = useCredentialsStore();
 
-			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
 			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue([inScope, outOfScope]);
 
-			await store.fetchAllCredentialsForWorkflow({ projectId: 'project-1' });
+			await store.fetchUsableCredentials({ projectId: 'project-1' });
 			await store.fetchAllCredentials();
 
 			expect(store.allCredentials).toHaveLength(2);
@@ -281,10 +281,10 @@ describe('credentials.store', () => {
 			const store = useCredentialsStore();
 
 			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue([inScope, outOfScope]);
-			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
 
 			await store.fetchAllCredentials();
-			await store.fetchAllCredentialsForWorkflow({ projectId: 'project-1' });
+			await store.fetchUsableCredentials({ projectId: 'project-1' });
 
 			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
 		});
@@ -292,8 +292,8 @@ describe('credentials.store', () => {
 		it('returns an empty list for a type with no usable credentials', async () => {
 			const store = useCredentialsStore();
 
-			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
-			await store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
 
 			expect(store.getUsableCredentialByType('unknownType')).toEqual([]);
 		});
@@ -306,8 +306,8 @@ describe('credentials.store', () => {
 					credentials: [{ name: 'httpBasicAuth' }, { name: 'oAuth2Api' }],
 				}),
 			);
-			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
-			await store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
 
 			const credentials = store.allUsableCredentialsForNode(
 				mock<INodeUi>({ type: 'n8n-nodes-base.httpRequest', typeVersion: 1 }),
@@ -319,16 +319,16 @@ describe('credentials.store', () => {
 		it('drops the slice while a different scope is in flight', async () => {
 			const store = useCredentialsStore();
 
-			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
-			await store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
 
 			let resolveSecond: (credentials: ICredentialsResponse[]) => void = () => {};
-			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockReturnValue(
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockReturnValue(
 				new Promise((resolve) => {
 					resolveSecond = resolve;
 				}),
 			);
-			const pending = store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-2' });
+			const pending = store.fetchUsableCredentials({ workflowId: 'wf-2' });
 
 			// The previous workflow's credentials must not stand in for the new scope.
 			expect(store.hasFetchedUsableCredentials).toBe(false);
@@ -345,15 +345,15 @@ describe('credentials.store', () => {
 			const store = useCredentialsStore();
 
 			let resolveFirst: (credentials: ICredentialsResponse[]) => void = () => {};
-			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockReturnValueOnce(
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockReturnValueOnce(
 				new Promise((resolve) => {
 					resolveFirst = resolve;
 				}),
 			);
-			const stale = store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+			const stale = store.fetchUsableCredentials({ workflowId: 'wf-1' });
 
-			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
-			await store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-2' });
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-2' });
 
 			resolveFirst([outOfScope]);
 			await stale;
@@ -367,18 +367,15 @@ describe('credentials.store', () => {
 			// A refresh — the one a quick connect triggers, say — can overtake a fetch the
 			// same scope started earlier; the newest answer has to win.
 			let resolveFirst: (credentials: ICredentialsResponse[]) => void = () => {};
-			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockReturnValueOnce(
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockReturnValueOnce(
 				new Promise((resolve) => {
 					resolveFirst = resolve;
 				}),
 			);
-			const stale = store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+			const stale = store.fetchUsableCredentials({ workflowId: 'wf-1' });
 
-			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([
-				inScope,
-				outOfScope,
-			]);
-			await store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope, outOfScope]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
 
 			resolveFirst([inScope]);
 			await stale;
@@ -389,10 +386,10 @@ describe('credentials.store', () => {
 		it('keeps the slice when the same scope is fetched again', async () => {
 			const store = useCredentialsStore();
 
-			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([inScope]);
-			await store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
 
-			const pending = store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+			const pending = store.fetchUsableCredentials({ workflowId: 'wf-1' });
 
 			expect(store.hasFetchedUsableCredentials).toBe(true);
 			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
@@ -416,9 +413,9 @@ describe('credentials.store', () => {
 			const store = useCredentialsStore();
 
 			const fetchSpy = vi
-				.spyOn(credentialsApi, 'getAllCredentialsForWorkflow')
+				.spyOn(credentialsApi, 'getUsableCredentials')
 				.mockResolvedValue([inScope]);
-			await store.fetchAllCredentialsForWorkflow({ projectId: 'project-1' });
+			await store.fetchUsableCredentials({ projectId: 'project-1' });
 
 			fetchSpy.mockResolvedValue([inScope, connected]);
 			await store.refreshUsableCredentials();
@@ -432,7 +429,7 @@ describe('credentials.store', () => {
 		it('does nothing when no scoped fetch has happened', async () => {
 			const store = useCredentialsStore();
 
-			const fetchSpy = vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow');
+			const fetchSpy = vi.spyOn(credentialsApi, 'getUsableCredentials');
 			await store.refreshUsableCredentials();
 
 			expect(fetchSpy).not.toHaveBeenCalled();

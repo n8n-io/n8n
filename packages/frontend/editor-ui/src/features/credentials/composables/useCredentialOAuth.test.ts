@@ -68,15 +68,15 @@ describe('useCredentialOAuth', () => {
 			const connected = credential();
 
 			// The picker starts on a scope that does not know the credential yet.
-			vi.mocked(credentialsApi.getAllCredentialsForWorkflow).mockResolvedValue([]);
-			await store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+			vi.mocked(credentialsApi.getUsableCredentials).mockResolvedValue([]);
+			await store.fetchUsableCredentials({ workflowId: 'wf-1' });
 			expect(store.getUsableCredentialByType('oAuth2Api')).toEqual([]);
 
-			vi.mocked(credentialsApi.getAllCredentialsForWorkflow).mockResolvedValue([connected]);
+			vi.mocked(credentialsApi.getUsableCredentials).mockResolvedValue([connected]);
 			const success = await useCredentialOAuth().authorizeNewCredential(connected);
 
 			expect(success).toBe(true);
-			expect(credentialsApi.getAllCredentialsForWorkflow).toHaveBeenLastCalledWith(
+			expect(credentialsApi.getUsableCredentials).toHaveBeenLastCalledWith(
 				mockRootStore.restApiContext,
 				{ workflowId: 'wf-1' },
 			);
@@ -89,7 +89,7 @@ describe('useCredentialOAuth', () => {
 
 			await useCredentialOAuth().authorizeNewCredential(connected);
 
-			expect(credentialsApi.getAllCredentialsForWorkflow).not.toHaveBeenCalled();
+			expect(credentialsApi.getUsableCredentials).not.toHaveBeenCalled();
 			expect(store.hasFetchedUsableCredentials).toBe(false);
 			// The flat map still learns about the credential, as it did before.
 			expect(store.getCredentialById('new-cred')?.id).toBe('new-cred');

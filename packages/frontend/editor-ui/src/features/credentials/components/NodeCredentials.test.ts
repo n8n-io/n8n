@@ -210,7 +210,7 @@ describe('NodeCredentials', () => {
 
 		credentialsStore = mockedStore(useCredentialsStore);
 		// Component triggers this on mount; avoid a real XHR with stubActions: false.
-		credentialsStore.fetchAllCredentialsForWorkflow = vi
+		credentialsStore.fetchUsableCredentials = vi
 			.fn()
 			.mockImplementation(async () => Object.values(credentialsStore.usableCredentials));
 
@@ -324,7 +324,7 @@ describe('NodeCredentials', () => {
 
 		renderComponent();
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			workflowId: '1',
 		});
 	});
@@ -338,7 +338,7 @@ describe('NodeCredentials', () => {
 
 		renderComponent({ props: { skipCredentialsFetch: true } });
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).not.toHaveBeenCalled();
+		expect(credentialsStore.fetchUsableCredentials).not.toHaveBeenCalled();
 	});
 
 	it('should fetch credentials scoped to the project for an unsaved workflow', () => {
@@ -349,7 +349,7 @@ describe('NodeCredentials', () => {
 
 		renderComponent();
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			projectId: 'project-1',
 		});
 	});
@@ -363,7 +363,7 @@ describe('NodeCredentials', () => {
 
 		renderComponent();
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			projectId: 'personal-project',
 		});
 	});

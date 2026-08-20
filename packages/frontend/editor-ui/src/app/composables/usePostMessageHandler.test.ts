@@ -63,7 +63,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 const mockFetchAllCredentialsForWorkflow = vi.hoisted(() => vi.fn());
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: vi.fn(() => ({
-		fetchAllCredentialsForWorkflow: mockFetchAllCredentialsForWorkflow,
+		fetchUsableCredentials: mockFetchAllCredentialsForWorkflow,
 	})),
 }));
 

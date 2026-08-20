@@ -1,5 +1,6 @@
 import type { INodeUi } from '@/Interface';
 import type {
+	CredentialFetchScope,
 	ICredentialMap,
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
@@ -38,8 +39,7 @@ const TYPES_WITH_DEFAULT_NAME = ['httpBasicAuth', 'oAuth2Api', 'httpDigestAuth',
 
 export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 
-/** What the picker's credential list is narrowed to: an open workflow, else a project. */
-export type CredentialFetchScope = { workflowId: string } | { projectId: string };
+export type { CredentialFetchScope };
 
 const scopeKey = (scope: CredentialFetchScope): string =>
 	'workflowId' in scope ? `workflow:${scope.workflowId}` : `project:${scope.projectId}`;
@@ -354,7 +354,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		return credentials;
 	};
 
-	const fetchAllCredentialsForWorkflow = async (
+	const fetchUsableCredentials = async (
 		options: CredentialFetchScope,
 	): Promise<ICredentialsResponse[]> => {
 		const requestedScope = scopeKey(options);
@@ -366,7 +366,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		}
 		const requestId = ++usableCredentialsRequestId;
 
-		const credentials = await credentialsApi.getAllCredentialsForWorkflow(
+		const credentials = await credentialsApi.getUsableCredentials(
 			rootStore.restApiContext,
 			options,
 		);
@@ -402,7 +402,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const refreshUsableCredentials = async (): Promise<void> => {
 		const scope = usableCredentialsScope.value;
 		if (!scope) return;
-		await fetchAllCredentialsForWorkflow(scope);
+		await fetchUsableCredentials(scope);
 	};
 
 	const getCredentialData = async ({
@@ -647,7 +647,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		upsertCredential,
 		fetchCredentialTypes,
 		fetchAllCredentials,
-		fetchAllCredentialsForWorkflow,
+		fetchUsableCredentials,
 		createNewCredential,
 		updateCredential,
 		getCredentialData,

@@ -113,7 +113,7 @@ export function useWorkflowInitialization() {
 			options = { projectId };
 		}
 
-		await credentialsStore.fetchAllCredentialsForWorkflow(options);
+		await credentialsStore.fetchUsableCredentials(options);
 	}
 
 	/**

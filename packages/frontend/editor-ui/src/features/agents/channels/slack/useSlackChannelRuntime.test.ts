@@ -28,7 +28,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		setCredentials: vi.fn(),
-		fetchAllCredentialsForWorkflow: mocks.fetchCredentials,
+		fetchUsableCredentials: mocks.fetchCredentials,
 		deleteCredential: vi.fn(),
 	}),
 }));

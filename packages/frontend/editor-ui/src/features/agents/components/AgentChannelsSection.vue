@@ -110,7 +110,7 @@ async function loadChannelDetails() {
 
 	try {
 		credentialsStore.setCredentials([]);
-		const credentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+		const credentials = await credentialsStore.fetchUsableCredentials({
 			projectId: props.projectId,
 		});
 		credentialNamesById.value = Object.fromEntries(
