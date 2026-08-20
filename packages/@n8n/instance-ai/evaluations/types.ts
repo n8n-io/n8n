@@ -393,6 +393,10 @@ export interface TranscriptTurn {
 	/** True for turns restored from a conversation seed — context that predates
 	 *  the evaluated run, as opposed to behaviour captured live. */
 	seeded?: boolean;
+	/** True when this seeded turn belongs to a DIFFERENT session than the graded
+	 *  turn (`seed.sessionBoundary`). The agent never saw it in this thread, so the
+	 *  judge must not read it as earlier turns of one continuous conversation. */
+	priorSession?: boolean;
 }
 
 /** One ordered step within a turn: a slice of agent narration or a tool interaction. */

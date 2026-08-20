@@ -505,7 +505,9 @@ function textOf(blocks: unknown[]): string {
 
 export function transcriptPrefixFromSeed(
 	messages: Array<Record<string, unknown>>,
+	options: { priorSession?: boolean } = {},
 ): TranscriptTurn[] {
+	const priorSession = options.priorSession === true ? { priorSession: true } : {};
 	const turns: TranscriptTurn[] = [];
 	const lastTurn = () => turns[turns.length - 1];
 
@@ -513,12 +515,17 @@ export function transcriptPrefixFromSeed(
 		if (message.type === 'custom' || !Array.isArray(message.content)) continue;
 
 		if (message.role === 'user') {
-			turns.push({ userMessage: textOf(message.content), steps: [], seeded: true });
+			turns.push({
+				userMessage: textOf(message.content),
+				steps: [],
+				seeded: true,
+				...priorSession,
+			});
 			continue;
 		}
 		if (message.role !== 'assistant') continue;
 
-		if (turns.length === 0) turns.push({ steps: [], seeded: true });
+		if (turns.length === 0) turns.push({ steps: [], seeded: true, ...priorSession });
 		const steps: TranscriptStep[] = lastTurn().steps;
 		const text = textOf(message.content);
 		if (text) steps.push({ kind: 'agent-text', text });

@@ -488,6 +488,12 @@ export function workflowExpectedForCase(
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
 	const threadId = crypto.randomUUID();
+	// A session boundary restores the seed into its OWN thread, so the live turn below
+	// starts with an empty conversation. Seeded artifacts are instance-scoped and are
+	// unaffected, which is the point: artifacts cross the boundary, the conversation
+	// does not. Without a boundary this is the same thread, as before.
+	const sessionBoundary = config.seed?.mode === 'inline' && config.seed.sessionBoundary === true;
+	const seedThreadId = sessionBoundary ? crypto.randomUUID() : threadId;
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
@@ -780,7 +786,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					remapped.agents.length > 0;
 				const restoreResult = hasThreadScopedSeed
 					? await client.restoreThread(
-							threadId,
+							seedThreadId,
 							remapped.messages,
 							remapped.workflows,
 							remapped.dataTables,
@@ -794,7 +800,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// the harness has to grade that same one — array order is an authoring
 				// artifact and `findAgentArtifactRef` takes the first ref it sees.
 				seedActiveAgentId = activeSeedAgentId(remapped);
-				seededTranscript = transcriptPrefixFromSeed(remapped.messages);
+				seededTranscript = transcriptPrefixFromSeed(remapped.messages, {
+					priorSession: sessionBoundary,
+				});
 				const dtSuffix =
 					restoredDataTableIds.length > 0
 						? `, ${String(restoredDataTableIds.length)} data table(s)`
@@ -806,8 +814,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// silently didn't land has to be readable from the log alone.
 				const projectSuffix =
 					seededProjectIds.length > 0 ? `, ${String(seededProjectIds.length)} project(s)` : '';
+				// Name the boundary in the log: a run whose seeded history is invisible to
+				// the graded turn looks like a broken seed unless you know it was asked for.
+				const boundarySuffix = sessionBoundary
+					? ` into a SEPARATE session (${seedThreadId.slice(0, 8)}); live turn runs in ${threadId.slice(0, 8)}`
+					: '';
 				logger.info(
-					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${projectSuffix}${config.laneTag ?? ''}`,
+					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${projectSuffix}${boundarySuffix}${config.laneTag ?? ''}`,
 				);
 			} catch (error: unknown) {
 				seedingFailed = true;

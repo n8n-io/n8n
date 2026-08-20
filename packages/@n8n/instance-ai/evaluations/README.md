@@ -283,6 +283,40 @@ A test case can declare optional natural-language assertions, split by what they
 
 `memoryExpectations` deliberately do **not** see the full conversation transcript or the built workflow. The raw message window is not the transcript: messages evicted from the window do not appear in it, which is precisely why it can be trusted as a record of what the agent *still had*. Grading against the transcript instead would let the judge satisfy "the agent still knew X" from the turn where X was first said even after the fact had fallen out of context — the confound this kind exists to remove. Keeping the inputs disjoint from the build is what makes a miss attributable to **recall**, so write them as claims about what the *context* contains, not about what the agent *did*. Their verdicts are tagged `kind: "memory"` in `eval-results.json` and badged `memory` in the HTML report. The Observer only compresses once a thread crosses its token threshold, so on a short thread the observation block is legitimately empty while every fact is still in the raw window — the judge is told this explicitly, and an absent observation block is **never** on its own a reason to fail. That matters: grading on the observation block alone would fail every memory expectation for a structural reason on exactly the short threads the suite is mostly made of. Which tier held the fact is reported in the verdict, since that is the interesting detail when comparing two memory approaches.
 
+#### Session boundaries (`seed.sessionBoundary`)
+
+By default a seed restores prior messages into the **same** thread the graded turn
+runs in, so "long-term memory" is really earlier turns of one conversation. That
+conflates three different effects — window eviction, Observer compression, and genuine
+cross-session recall — and you cannot tell them apart.
+
+Set `sessionBoundary: true` on an inline seed and the messages are restored into their
+own thread, while the graded turn runs in a fresh one:
+
+```json
+"seed": { "mode": "inline", "sessionBoundary": true, "messages": [...], "workflows": [...] }
+```
+
+**Artifacts cross the boundary; the conversation does not.** Seeded workflows, data
+tables and agents are instance-scoped, so the agent's tools can still find them — that
+is the external-memory arm. The messages are thread-scoped, so nothing about the prior
+session is recoverable from the conversation.
+
+Two things to know before writing one:
+
+- **Today's product has no cross-session memory at all** (every tier is thread-scoped,
+  see `docs/memory.md`), so a boundary case that expects recall will fail 100%. That is
+  useful as a deliberate red baseline, but write the expectations for it: with no memory
+  of the prior session, the honest behaviour is to *ask*, not to guess and quietly get
+  it wrong.
+- **The seeded turns are labelled `PREVIOUS SESSION` in the graded transcript.** Without
+  that the judge reads them as earlier turns of this conversation and penalises the
+  agent for not remembering something it never received. Same-thread seeding stays
+  unlabelled, because there it genuinely is one conversation.
+
+Not valid on a `replay` seed, which reconstructs a single real thread — the strict
+schema rejects it rather than silently dropping the flag.
+
 #### `contextAssertions` — the deterministic alternative
 
 For a **concrete value**, prefer this over a `memoryExpectation`. It asks the same

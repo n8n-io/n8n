@@ -105,6 +105,23 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 	ConversationSeedSchema.extend({
 		mode: z.literal('inline'),
 		messages: inlineSeedMessagesSchema.default([]),
+		/**
+		 * Restore the seeded conversation into a SEPARATE thread, and run the live turn
+		 * in a fresh one — a real session boundary rather than earlier turns of the same
+		 * conversation.
+		 *
+		 * Artifacts cross the boundary and the conversation does not. Seeded workflows,
+		 * data tables and agents are instance-scoped, so they are still discoverable by
+		 * the agent's tools; the messages are not, so nothing about the prior session is
+		 * recoverable from the thread. That is what separates cross-session recall from
+		 * window eviction and compression, which one-thread seeding conflates.
+		 *
+		 * Write expectations accordingly: on today's product there is no cross-session
+		 * memory at all, so the honest behaviour is to ask rather than to guess. The
+		 * seeded turns are marked as a prior session in the graded transcript so the
+		 * judge does not expect continuity the agent cannot have.
+		 */
+		sessionBoundary: z.boolean().optional(),
 	}).strict(),
 	/** Reproduce a real conversation from its LangSmith trace at run time (seed =
 	 *  before the live turn, live = that turn). Commits only the thread id;
