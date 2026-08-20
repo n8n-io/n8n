@@ -811,6 +811,17 @@ export class InstanceAiAdapterService {
 				return toWorkflowJSON(wf, { redactParameters, graph: version });
 			},
 
+			async getPinnedDataSummary(workflowId: string) {
+				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				if (!wf) throw new WorkflowNotFoundError(workflowId);
+				return Object.entries(wf.pinData ?? {}).map(([nodeName, items]) => ({
+					nodeName,
+					itemCount: Array.isArray(items) ? items.length : 0,
+				}));
+			},
+
 			async getWorkflowHead(workflowId: string) {
 				const head = await workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
 					'workflow:read',
@@ -1057,6 +1068,9 @@ export class InstanceAiAdapterService {
 					});
 				}
 
+				// Tell open editors to reload so a clean canvas picks up state this
+				// save replaced (e.g. cleared pinned data). A dirty canvas keeps its
+				// local changes and resolves them via the conflict dialog (INS-1216).
 				await notifyWorkflowUpdated(workflowId);
 
 				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
@@ -1492,7 +1506,12 @@ export class InstanceAiAdapterService {
 					const result = await extractExecutionResult(executionId, allowSendingParameterValues);
 					await pruneVerificationPins(result.executedNodeNames);
 					trackBuilderExecutedWorkflow(result.status, result.error);
-					return result;
+					// Saved workflow pins fed this run (they ride every instance-ai run) —
+					// report them so callers don't mistake pin-fed nodes for live ones.
+					const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
+					return workflowPinnedNodeNames.length > 0
+						? { ...result, workflowPinnedNodeNames }
+						: result;
 				} catch (error) {
 					// A failure to launch (or any other unsettled error) is still an
 					// errored builder run — track it before rethrowing so it isn't

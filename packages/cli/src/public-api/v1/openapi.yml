@@ -39,6 +39,8 @@ tags:
     description: Operations about executions
   - name: Folders
     description: Operations about folders
+  - name: GitConnections
+    description: Operations about Git connections
   - name: Insights
     description: Operations about insights
   - name: LogStreaming

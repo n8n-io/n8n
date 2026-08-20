@@ -34,7 +34,7 @@ export class UpdateGitConnectionDto extends Z.class({
 	password: z.string().min(1).optional(),
 }) {}
 
-export class ConnectGitConnectionDto extends Z.class({
+export class CloneGitConnectionDto extends Z.class({
 	branchName: branchNameSchema.optional(),
 }) {}
 

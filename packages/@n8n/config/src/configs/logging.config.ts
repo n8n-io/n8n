@@ -53,6 +53,7 @@ export const LOG_SCOPES = [
 	'metrics',
 	'scheduler',
 	'enqueued-execution-recovery',
+	'engine-v2',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

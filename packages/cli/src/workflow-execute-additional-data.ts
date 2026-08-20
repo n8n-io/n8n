@@ -399,8 +399,7 @@ export async function executeAgent(
 		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
 	}
 
-	// Scope session threads by workflow
-	const scopedThreadId = `wf:${additionalData.workflowId}:${threadId}`;
+	const scopedThreadId = `workflow:project-${projectId}:${threadId}`;
 
 	if (source.inlineAgent) {
 		return await agentWorkflowExecutionService.executeInlineForWorkflow(
@@ -422,8 +421,8 @@ export async function executeAgent(
 		workflowContext?.hasCallerSessionId === true
 			? {
 					principalHash: hashAgentSandboxPrincipal({
-						type: 'workflow-session',
-						workflowId: additionalData.workflowId,
+						type: 'project-session',
+						projectId,
 						sessionId: threadId,
 					}),
 				}

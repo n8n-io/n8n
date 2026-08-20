@@ -27,6 +27,8 @@ import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
 import * as validateUtil from '../utils/validate-value-against-schema';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 describe('ExecuteContext', () => {
 	const testCredentialType = 'testCredential';
 	const nodeType = mock<INodeType>({
@@ -464,7 +466,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				agentAdditionalData,
 				'manual',
 				undefined,
@@ -502,7 +504,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				agentAdditionalData,
 				'manual',
 				undefined,
@@ -550,7 +552,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-1',
+				expect.stringMatching(UUID_PATTERN),
 				twoItemAdditionalData,
 				'manual',
 				undefined,
@@ -594,7 +596,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				twoItemAdditionalData,
 				'manual',
 				undefined,
@@ -641,7 +643,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				multiBranchAdditionalData,
 				'manual',
 				undefined,
@@ -688,7 +690,7 @@ describe('ExecuteContext', () => {
 				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-5',
+				expect.stringMatching(UUID_PATTERN),
 				outOfRangeAdditionalData,
 				'manual',
 				undefined,
