@@ -37,9 +37,13 @@ export class CredentialDependencyService {
 
 	private async resolveProviderIdsFromCredentialData(
 		decryptedCredentialData: ICredentialDataDecryptedObject,
+		entityManager: EntityManager,
 	): Promise<string[]> {
 		const providerKeys = [...extractProviderKeysFromCredentialData(decryptedCredentialData)];
-		return await this.secretsProviderConnectionRepository.findIdsByProviderKeys(providerKeys);
+		return await this.secretsProviderConnectionRepository.findIdsByProviderKeys(
+			providerKeys,
+			entityManager,
+		);
 	}
 
 	async upsertExternalSecretProviderDependenciesForCredential({
@@ -51,7 +55,10 @@ export class CredentialDependencyService {
 		decryptedCredentialData: ICredentialDataDecryptedObject;
 		entityManager: EntityManager;
 	}): Promise<void> {
-		const dependencyIds = await this.resolveProviderIdsFromCredentialData(decryptedCredentialData);
+		const dependencyIds = await this.resolveProviderIdsFromCredentialData(
+			decryptedCredentialData,
+			entityManager,
+		);
 		await this.credentialDependencyRepository.upsertDependenciesForCredential({
 			credentialId,
 			dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
@@ -69,7 +76,10 @@ export class CredentialDependencyService {
 		decryptedCredentialData: ICredentialDataDecryptedObject;
 		entityManager: EntityManager;
 	}): Promise<void> {
-		const dependencyIds = await this.resolveProviderIdsFromCredentialData(decryptedCredentialData);
+		const dependencyIds = await this.resolveProviderIdsFromCredentialData(
+			decryptedCredentialData,
+			entityManager,
+		);
 		await this.credentialDependencyRepository.syncDependenciesForCredential({
 			credentialId,
 			dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,

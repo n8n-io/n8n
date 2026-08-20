@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 
 import { SecretsProviderConnection, SharedCredentials } from '../entities';
 
@@ -22,10 +23,14 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 		return connection ? connection.id.toString() : null;
 	}
 
-	async findIdsByProviderKeys(providerKeys: string[]): Promise<string[]> {
+	/** Pass the active transaction's manager to avoid acquiring a second pool connection mid-transaction. */
+	async findIdsByProviderKeys(
+		providerKeys: string[],
+		entityManager?: EntityManager,
+	): Promise<string[]> {
 		if (providerKeys.length === 0) return [];
 
-		const connections = await this.find({
+		const connections = await (entityManager ?? this.manager).find(SecretsProviderConnection, {
 			select: ['id'],
 			where: { providerKey: In(providerKeys) },
 		});
