@@ -1,6 +1,6 @@
 import type { CreateRoleMappingRuleDto, RoleMappingRulePublicDto } from '@n8n/api-types';
 import { createTeamProject, testDb } from '@n8n/backend-test-utils';
-import { RoleMappingRuleRepository, type Project, type User } from '@n8n/db';
+import { ProjectRepository, RoleMappingRuleRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import assert from 'node:assert';
 
@@ -778,6 +778,124 @@ describe('Role mapping rules in Public API', () => {
 				.publicApiAgentFor(owner)
 				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({ expression: 'claims.group === "engineers"' });
+
+			expect(response.status).toBe(403);
+			expect(response.body.message).toBe('Provisioning is not licensed');
+
+			testServer.license.enable('feat:saml');
+		});
+	});
+
+	describe('DELETE /role-mapping-rules/:roleMappingRuleId', () => {
+		const createRule = async (payload: CreateRoleMappingRuleDto) => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/role-mapping-rules')
+				.send(payload)
+				.expect(201);
+
+			return response.body.id as string;
+		};
+
+		it('deletes a rule and returns 204 with no content', async () => {
+			const ruleId = await createRule(validInstancePayload);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/role-mapping-rules/${ruleId}`);
+
+			expect(response.status).toBe(204);
+			expect(response.body).toEqual({});
+
+			const stored = await Container.get(RoleMappingRuleRepository).findOneBy({ id: ruleId });
+			expect(stored).toBeNull();
+		});
+
+		it('closes the gap in the evaluation order of the remaining rules', async () => {
+			const { expression, role, type } = validInstancePayload;
+
+			const first = await createRule(validInstancePayload);
+			const second = await createRule({ expression, role, type, order: 1 });
+			const third = await createRule({ expression, role, type, order: 2 });
+
+			await testServer.publicApiAgentFor(owner).delete(`/role-mapping-rules/${second}`).expect(204);
+
+			const remaining = await testServer
+				.publicApiAgentFor(owner)
+				.get('/role-mapping-rules?type=instance')
+				.expect(200);
+
+			expect(remaining.body.data).toEqual([
+				expect.objectContaining({ id: first, order: 0 }),
+				expect.objectContaining({ id: third, order: 1 }),
+			]);
+		});
+
+		it('deletes a project rule without deleting the projects it referenced', async () => {
+			const ruleId = await createRule({
+				expression: 'claims.project === "alpha"',
+				role: 'project:editor',
+				type: 'project',
+				projectIds: [teamProject.id],
+			});
+
+			await testServer.publicApiAgentFor(owner).delete(`/role-mapping-rules/${ruleId}`).expect(204);
+
+			const stored = await Container.get(RoleMappingRuleRepository).findOneBy({ id: ruleId });
+			expect(stored).toBeNull();
+
+			const project = await Container.get(ProjectRepository).findOneBy({ id: teamProject.id });
+			expect(project).not.toBeNull();
+		});
+
+		it('rejects an unknown rule id with 404', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete('/role-mapping-rules/00000000-0000-4000-8000-000000000000');
+
+			expect(response.status).toBe(404);
+		});
+
+		it('rejects with 401 without an API key', async () => {
+			const ruleId = await createRule(validInstancePayload);
+
+			const response = await testServer
+				.publicApiAgentWithoutApiKey()
+				.delete(`/role-mapping-rules/${ruleId}`);
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 401 with an invalid API key', async () => {
+			const ruleId = await createRule(validInstancePayload);
+
+			const response = await testServer
+				.publicApiAgentWithApiKey('invalid-key')
+				.delete(`/role-mapping-rules/${ruleId}`);
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 403 when the key lacks roleMappingRule:delete', async () => {
+			const ruleId = await createRule(validInstancePayload);
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['user:read'] });
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.delete(`/role-mapping-rules/${ruleId}`);
+
+			expect(response.status).toBe(403);
+		});
+
+		it('rejects with 403 when provisioning is not licensed', async () => {
+			const ruleId = await createRule(validInstancePayload);
+
+			testServer.license.disable('feat:saml');
+			testServer.license.disable('feat:oidc');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/role-mapping-rules/${ruleId}`);
 
 			expect(response.status).toBe(403);
 			expect(response.body.message).toBe('Provisioning is not licensed');

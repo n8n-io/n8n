@@ -225,11 +225,13 @@ describe('RoleMappingRuleController', () => {
 			const result = await controller.delete(req, res, ruleId);
 
 			expect(result).toEqual({ success: true });
-			expect(roleMappingRuleService.delete).toHaveBeenCalledWith(ruleId);
-			expect(eventService.emit).toHaveBeenCalledWith(
-				'role-mapping-rule-deleted',
-				expect.objectContaining({ ruleId, ruleType: 'instance' }),
-			);
+			expect(roleMappingRuleService.delete).toHaveBeenCalledWith({
+				id: ruleId,
+				userId: req.user.id,
+				userEmail: req.user.email,
+			});
+			// The service owns the `role-mapping-rule-deleted` emission now.
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 });
