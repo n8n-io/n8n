@@ -519,7 +519,6 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	<SelectRoot
 		v-slot="{ open: isMenuOpen, modelValue: selectedValue }"
 		v-bind="rootBind()"
-		:default-value="isModelControlled ? defaultValue : undefined"
 		:model-value="rootModelValue"
 		@update:model-value="handleModelValueUpdate"
 		@update:open="handleOpenUpdate"
