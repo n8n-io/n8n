@@ -47,6 +47,7 @@ watch(
 			size="xsmall"
 			:aria-label="i18n.baseText('generic.dismiss')"
 			:class="$style.dismiss"
+			style="--button--radius: var(--radius--full)"
 			data-test-id="instance-ai-free-nudge-dismiss"
 			@click="store.dismiss"
 		/>
@@ -72,7 +73,6 @@ watch(
 }
 
 .dismiss {
-	--button--radius: var(--radius--full);
 	--button--color: var(--icon-color--success);
 	--button--color--background-hover: color-mix(
 		in srgb,
