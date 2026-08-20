@@ -56,6 +56,7 @@
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "node scripts/os-normalize.mjs --dir packages/cli/bin n8n",
     "mutate": "node scripts/mutation-health/mutate.mjs",
+    "mutate:diff": "node scripts/mutation-health/mutate.mjs --diff",
     "test": "turbo run test",
     "test:ci": "turbo run test --continue --concurrency=1",
     "test:ci:frontend": "turbo run test --continue --filter='./packages/frontend/**' --filter='./packages/modules/**'",
