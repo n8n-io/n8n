@@ -31,7 +31,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
-import { useCredentialsStore } from '../credentials.store';
+import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 import QuickConnectButton from '../quickConnect/components/QuickConnectButton.vue';
@@ -372,6 +372,15 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+// Started here rather than in `onMounted`: the request drops the slice held for a
+// different workflow or project synchronously, and that has to happen before the
+// watchers below and the first render read it — otherwise the picker's opening
+// frame lists the previously opened scope's credentials.
+const initialFetchScope = props.skipCredentialsFetch ? undefined : getCredentialFetchScope();
+if (initialFetchScope) {
+	void credentialsStore.fetchAllCredentialsForWorkflow(initialFetchScope);
+}
+
 let hasEvaluatedCredentials = false;
 
 // Select most recent credential by default
@@ -434,7 +443,7 @@ watch(
 	{ immediate: true },
 );
 
-function getCredentialFetchScope(): { workflowId: string } | { projectId: string } | undefined {
+function getCredentialFetchScope(): CredentialFetchScope | undefined {
 	const workflowId = workflowDocumentStore?.value.workflowId;
 	if (workflowId && !workflowsStore.isNewWorkflow) {
 		return { workflowId };
@@ -526,11 +535,6 @@ onMounted(() => {
 	});
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
-
-	const scope = props.skipCredentialsFetch ? undefined : getCredentialFetchScope();
-	if (scope) {
-		void credentialsStore.fetchAllCredentialsForWorkflow(scope);
-	}
 
 	void aiGateway.fetchConfig();
 	void aiGateway.fetchWallet();

@@ -38,6 +38,12 @@ const TYPES_WITH_DEFAULT_NAME = ['httpBasicAuth', 'oAuth2Api', 'httpDigestAuth',
 
 export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 
+/** What the picker's credential list is narrowed to: an open workflow, else a project. */
+export type CredentialFetchScope = { workflowId: string } | { projectId: string };
+
+const scopeKey = (scope: CredentialFetchScope): string =>
+	'workflowId' in scope ? `workflow:${scope.workflowId}` : `project:${scope.projectId}`;
+
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const state = ref<ICredentialsState>({ credentialTypes: {}, credentials: {} });
 
@@ -54,6 +60,16 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	 * check this.
 	 */
 	const hasFetchedUsableCredentials = ref(false);
+	/** The scope the slice currently holds, so it can be refreshed and invalidated. */
+	const usableCredentialsScope = ref<CredentialFetchScope | null>(null);
+	/** The most recently requested scope, so a response we've navigated away from is dropped. */
+	let requestedUsableCredentialsScope: string | null = null;
+
+	const clearUsableCredentials = () => {
+		usableCredentials.value = {};
+		usableCredentialsScope.value = null;
+		hasFetchedUsableCredentials.value = false;
+	};
 
 	type CredentialTestStatus = 'pending' | 'success' | 'error';
 	const credentialTestResults = ref(new Map<string, CredentialTestStatus>());
@@ -339,8 +355,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const fetchAllCredentialsForWorkflow = async (
-		options: { workflowId: string } | { projectId: string },
+		options: CredentialFetchScope,
 	): Promise<ICredentialsResponse[]> => {
+		const requestedScope = scopeKey(options);
+		// Opening another workflow or project invalidates the slice up front: while the
+		// new scope is in flight consumers must read "not fetched yet", never the
+		// previous scope's credentials.
+		if (usableCredentialsScope.value && scopeKey(usableCredentialsScope.value) !== requestedScope) {
+			clearUsableCredentials();
+		}
+		requestedUsableCredentialsScope = requestedScope;
+
 		const credentials = await credentialsApi.getAllCredentialsForWorkflow(
 			rootStore.restApiContext,
 			options,
@@ -348,14 +373,34 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		// The flat map keeps replace semantics for its existing consumers; the slice is
 		// what the credential picker reads.
 		setCredentials(credentials);
+
+		// A response for a scope we have since left must not publish — two scoped
+		// fetches can be in flight at once, and the later one owns the slice.
+		if (requestedUsableCredentialsScope !== requestedScope) {
+			return credentials;
+		}
+
 		usableCredentials.value = credentials.reduce((accu: ICredentialMap, cred) => {
 			if (cred.id) {
 				accu[cred.id] = cred;
 			}
 			return accu;
 		}, {});
+		usableCredentialsScope.value = options;
 		hasFetchedUsableCredentials.value = true;
 		return credentials;
+	};
+
+	/**
+	 * Re-reads the slice for the scope it was last fetched for. Flows that create a
+	 * credential outside a scoped fetch (OAuth quick connect) call this instead of
+	 * inserting locally: only the server can say whether the new credential is usable
+	 * in the scope currently open.
+	 */
+	const refreshUsableCredentials = async (): Promise<void> => {
+		const scope = usableCredentialsScope.value;
+		if (!scope) return;
+		await fetchAllCredentialsForWorkflow(scope);
 	};
 
 	const getCredentialData = async ({
@@ -571,6 +616,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		state,
 		usableCredentials,
 		hasFetchedUsableCredentials,
+		refreshUsableCredentials,
 		credentialTestResults,
 		isCredentialTestedOk,
 		isCredentialTestPending,
