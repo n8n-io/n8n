@@ -544,6 +544,7 @@ defineExpose({
 	<N8nAiModelSelectorDropdown
 		ref="dropdownRef"
 		:items="filteredMenu"
+		:is-loading="isLoading"
 		:selected-label="selectedLabel"
 		:selected-credential-name="selectedCredentialName"
 		:credentials-missing="isCredentialsMissing"
