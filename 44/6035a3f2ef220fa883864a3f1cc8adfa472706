@@ -1,0 +1,94 @@
+packages/cli/src/workflows/triggers/__tests__/durable-poller-gate.service.test.ts
+  s_5c28558b5e8d58::t_85bcb1052f1193 175,182-206,243-248,250-255,257
+  s_5c28558b5e8d58::t_3c6a2835ab11be 1-6
+  s_5c28558b5e8d58::t_beabccfcfd56a4 38
+  s_5c28558b5e8d58::t_608e5c0cd2f516 7,10-11
+  s_5c28558b5e8d58::t_057271f1d7547e 8-9,12,17-23,26-37,40-49,51,53-149,259-260
+  s_5c28558b5e8d58::t_8c417589e619a2 13-16
+  s_5c28558b5e8d58::t_2cce65294183e8 25
+  s_5c28558b5e8d58::t_d16b039df033fb 39
+  s_5c28558b5e8d58::t_68b9af41dade04 150-174,176-181,258
+  s_5c28558b5e8d58::t_4f43a1b37eb962 24
+  s_5c28558b5e8d58::t_0908c756c3394b 50,52
+  s_5c28558b5e8d58::t_7ac7668e6eced4 207-241
+  s_5c28558b5e8d58::t_308130cf83237b 242,249,256
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-job-provider.test.ts
+  s_5c28558b5e8d58::t_98ec371b08c0b7 9-10,25,33,42,49,56,63-70,74-81
+  s_5c28558b5e8d58::t_6b15cacde72e76 82-87
+packages/cli/src/workflows/triggers/durable-poller-gate.service.ts
+  s_5c28558b5e8d58::t_7392333223fd00 51,53-54,60,62,64,75-77,87-88,92-93,95-97,99
+  s_5c28558b5e8d58::t_d1c43b93fd6edf 42-48
+  s_5c28558b5e8d58::t_1b5c486c206910 39-41
+  s_5c28558b5e8d58::t_759d26186b27b3 49-50
+  s_5c28558b5e8d58::t_96548a3a0e5400 100
+  s_5c28558b5e8d58::t_3cee44765c604a 1-4,6-13,21-22,24-28,30-38,101-102
+  s_5c28558b5e8d58::t_cba0c38f6ddf65 5,14-20,23,29,52,55-59,61,63,65-74,78-86
+  s_5c28558b5e8d58::t_06af74ee015b0b 89-91,94,98
+packages/cli/src/workflows/triggers/__tests__/poll-cursor.service.test.ts
+  s_5c28558b5e8d58::t_1f1e3e80c5edd7 14
+  s_5c28558b5e8d58::t_c11f9719a54b8f 52-56
+  s_5c28558b5e8d58::t_31fb19832a8186 23,34
+  s_5c28558b5e8d58::t_c9837e8608a111 95-108
+packages/cli/src/commands/__tests__/start.test.ts
+  s_5c28558b5e8d58::t_0c63d91ba8c7dd 140
+  s_5c28558b5e8d58::t_ad155af8a1ac6c 33
+  s_5c28558b5e8d58::t_6e344031cb359f 194-199
+  s_5c28558b5e8d58::t_bac906beadfe77 77
+packages/cli/test/integration/workflows/durable-poller-gate.test.ts
+  s_5c28558b5e8d58::t_062090fad60426 1-12,14-27,29-116,139-158
+  s_5c28558b5e8d58::t_5b2b536336d339 159,165-166
+  s_5c28558b5e8d58::t_952857c4dc2c26 117-138
+  s_5c28558b5e8d58::t_152e466eeb9807 28
+  s_5c28558b5e8d58::t_e8bd85743bf3f1 13
+  s_5c28558b5e8d58::t_f7fe0740e9f782 160-164
+packages/@n8n/db/src/repositories/poller-state.repository.ts
+  s_5c28558b5e8d58::t_5d62db3d65462a 3,135-136
+  s_5c28558b5e8d58::t_13049710e67356 123,128
+  s_5c28558b5e8d58::t_62e99a3babc8a1 124-127,129,131-134
+  s_5c28558b5e8d58::t_6629afa264d0d5 130
+packages/@n8n/telemetry/src/events/instance.ts
+  s_5c28558b5e8d58::t_1083330023d85f 100-102,104-107,111-112
+  s_5c28558b5e8d58::t_c5345f8387bbc0 103
+  s_5c28558b5e8d58::t_93ebc8a7a9cb66 108-110
+packages/cli/src/commands/start.ts
+  s_5c28558b5e8d58::t_35e173bf4a67eb 220
+  s_5c28558b5e8d58::t_28256a724c5505 219
+  s_5c28558b5e8d58::t_bece5a38918ede 13,46,48
+packages/cli/src/scheduling/poll-trigger-node/poll-job-provider.ts
+  s_5c28558b5e8d58::t_9afe9101c35037 6-7,23,32-35
+  s_5c28558b5e8d58::t_adf667a1590a3a 8-9
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_5c28558b5e8d58::t_316bef9850dc6b 9-10,21,25
+packages/cli/src/workflows/triggers/__tests__/trigger-test-utils.ts
+  s_5c28558b5e8d58::t_391d72ccb40803 28-32
+packages/cli/test/integration/executions/poll-cursor-atomicity.test.ts
+  s_5c28558b5e8d58::t_17a960f04b47b1 23,28-30
+  s_5c28558b5e8d58::t_81da9287994e02 1
+  s_5c28558b5e8d58::t_3b503021fb90fb 31
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_5c28558b5e8d58::t_0ded794c93e246 142-160
+  s_5c28558b5e8d58::t_df0a8f6e18b797 13
+  s_5c28558b5e8d58::t_2d0161d74dd184 29-35,42
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_5c28558b5e8d58::t_57e1881f9a222a 15
+  s_5c28558b5e8d58::t_a69b48186c3e0f 44,53-66
+packages/cli/test/integration/database/repositories/poller-state.repository.test.ts
+  s_5c28558b5e8d58::t_66495e7f755742 15,22
+  s_5c28558b5e8d58::t_2c91c6cf1e6a8c 112-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "446035a3f2ef220fa883864a3f1cc8adfa472706",
+  "prompts": {},
+  "sessions": {
+    "s_5c28558b5e8d58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ebdd8402-ff44-4aa2-a4cd-54dcb8c3a3e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
