@@ -1905,6 +1905,20 @@ describe('AgentChatBridge — consumeStream', () => {
 					}),
 				}),
 			);
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:slack:D123:1001',
+				'u1',
+				expect.objectContaining({ messageId: '1002', interactingUserId: 'u1' }),
+			);
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'task-1-uuid',
+				'task:task-1',
+				expect.objectContaining({
+					messageId: '1002',
+					interactingUserId: 'u1',
+					target: expect.objectContaining({ threadId: 'slack:D123:1001' }),
+				}),
+			);
 		});
 
 		it('starts a fresh session when no binding exists', async () => {

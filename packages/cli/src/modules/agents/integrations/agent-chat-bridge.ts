@@ -374,13 +374,30 @@ export class AgentChatBridge {
 				this.messageContextBridge.resolveSubject(message),
 			]);
 			statusHandle = onceStatusHandle(bridgeExecutionContext.statusHandle);
-			await this.messageContextBridge.updateLatest(threadId.id, message.author.userId, thread, {
+			const latestContextOptions = {
 				messageId: message.id,
 				interactingUserId: message.author.userId,
 				...bridgeExecutionContext.platformAgentContext,
 				subject,
 				replyExpectation,
-			});
+			};
+			await this.messageContextBridge.updateLatest(
+				threadId.id,
+				message.author.userId,
+				thread,
+				latestContextOptions,
+			);
+			// Tools look up context on persistence.threadId (the execution
+			// session). When a bound reply continues a task, that is the origin
+			// thread, not the Slack thread — store this turn there too.
+			if (memoryThreadId.id !== threadId.id) {
+				await this.messageContextBridge.updateLatest(
+					memoryThreadId.id,
+					memoryResourceId,
+					thread,
+					latestContextOptions,
+				);
+			}
 			// threadId.id is agent-prefixed for observation storage; resourceId keeps
 			// the platform user identity so episodic recall works across threads for
 			// the same user while staying isolated between users.
