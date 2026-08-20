@@ -4130,19 +4130,19 @@ importers:
         version: 4.8.0
       '@chat-adapter/discord':
         specifier: 'catalog:'
-        version: 4.37.0(ai@7.0.54(zod@3.25.76))(bufferutil@4.0.9)(utf-8-validate@5.0.10)(zod@3.25.76)
+        version: 4.37.0(ai@7.0.66(zod@3.25.76))(bufferutil@4.0.9)(utf-8-validate@5.0.10)(zod@3.25.76)
       '@chat-adapter/linear':
         specifier: 'catalog:'
-        version: 4.37.0(ai@7.0.54(zod@3.25.76))(graphql@16.11.0)(zod@3.25.76)
+        version: 4.37.0(ai@7.0.66(zod@3.25.76))(graphql@16.11.0)(zod@3.25.76)
       '@chat-adapter/slack':
         specifier: 'catalog:'
-        version: 4.37.0(ai@7.0.54(zod@3.25.76))(bufferutil@4.0.9)(utf-8-validate@5.0.10)(zod@3.25.76)
+        version: 4.37.0(ai@7.0.66(zod@3.25.76))(bufferutil@4.0.9)(utf-8-validate@5.0.10)(zod@3.25.76)
       '@chat-adapter/state-memory':
         specifier: 'catalog:'
-        version: 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
+        version: 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
       '@chat-adapter/telegram':
         specifier: 'catalog:'
-        version: 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
+        version: 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
       '@daytona/sdk':
         specifier: 'catalog:'
         version: 0.204.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -4325,7 +4325,7 @@ importers:
         version: 5.4.4
       chat:
         specifier: 'catalog:'
-        version: 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
+        version: 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
       class-transformer:
         specifier: 0.5.1
         version: 0.5.1
@@ -26386,10 +26386,10 @@ snapshots:
 
   '@cfworker/json-schema@4.1.0': {}
 
-  '@chat-adapter/discord@4.37.0(ai@7.0.54(zod@3.25.76))(bufferutil@4.0.9)(utf-8-validate@5.0.10)(zod@3.25.76)':
+  '@chat-adapter/discord@4.37.0(ai@7.0.66(zod@3.25.76))(bufferutil@4.0.9)(utf-8-validate@5.0.10)(zod@3.25.76)':
     dependencies:
-      '@chat-adapter/shared': 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
-      chat: 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
+      '@chat-adapter/shared': 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
+      chat: 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
       discord-api-types: 0.37.120
       discord-interactions: 4.4.0
       discord.js: 14.27.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -26401,11 +26401,11 @@ snapshots:
       - workflow
       - zod
 
-  '@chat-adapter/linear@4.37.0(ai@7.0.54(zod@3.25.76))(graphql@16.11.0)(zod@3.25.76)':
+  '@chat-adapter/linear@4.37.0(ai@7.0.66(zod@3.25.76))(graphql@16.11.0)(zod@3.25.76)':
     dependencies:
-      '@chat-adapter/shared': 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
+      '@chat-adapter/shared': 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
       '@linear/sdk': 76.0.0(graphql@16.11.0)
-      chat: 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
+      chat: 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
     transitivePeerDependencies:
       - ai
       - graphql
@@ -26413,21 +26413,21 @@ snapshots:
       - workflow
       - zod
 
-  '@chat-adapter/shared@4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)':
+  '@chat-adapter/shared@4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      chat: 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
+      chat: 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
     transitivePeerDependencies:
       - ai
       - supports-color
       - workflow
       - zod
 
-  '@chat-adapter/slack@4.37.0(ai@7.0.54(zod@3.25.76))(bufferutil@4.0.9)(utf-8-validate@5.0.10)(zod@3.25.76)':
+  '@chat-adapter/slack@4.37.0(ai@7.0.66(zod@3.25.76))(bufferutil@4.0.9)(utf-8-validate@5.0.10)(zod@3.25.76)':
     dependencies:
-      '@chat-adapter/shared': 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
+      '@chat-adapter/shared': 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
       '@slack/socket-mode': 2.0.7(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       '@slack/web-api': 7.19.0
-      chat: 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
+      chat: 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
     transitivePeerDependencies:
       - ai
       - bufferutil
@@ -26437,19 +26437,19 @@ snapshots:
       - workflow
       - zod
 
-  '@chat-adapter/state-memory@4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)':
+  '@chat-adapter/state-memory@4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      chat: 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
+      chat: 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
     transitivePeerDependencies:
       - ai
       - supports-color
       - workflow
       - zod
 
-  '@chat-adapter/telegram@4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)':
+  '@chat-adapter/telegram@4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)':
     dependencies:
-      '@chat-adapter/shared': 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
-      chat: 4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76)
+      '@chat-adapter/shared': 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
+      chat: 4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76)
     transitivePeerDependencies:
       - ai
       - supports-color
@@ -33958,7 +33958,7 @@ snapshots:
     dependencies:
       '@kurkle/color': 0.3.2
 
-  chat@4.37.0(ai@7.0.54(zod@3.25.76))(zod@3.25.76):
+  chat@4.37.0(ai@7.0.66(zod@3.25.76))(zod@3.25.76):
     dependencies:
       '@workflow/serde': 4.1.0-beta.2
       mdast-util-to-string: 4.0.0
@@ -33968,7 +33968,7 @@ snapshots:
       remend: 1.3.0
       unified: 11.0.5
     optionalDependencies:
-      ai: 7.0.54(zod@3.25.76)
+      ai: 7.0.66(zod@3.25.76)
       zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
