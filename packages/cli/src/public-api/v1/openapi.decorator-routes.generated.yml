@@ -26,6 +26,9 @@ paths:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
     post:
       $ref: ./handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
+  /role-mapping-rules/{roleMappingRuleId}/move:
+    post:
+      $ref: ./handlers/role-mapping-rules/spec/paths/moveRoleMappingRule.generated.yml
   /roles:
     get:
       $ref: ./handlers/roles/spec/paths/getAllRoles.generated.yml
@@ -56,6 +59,12 @@ paths:
   /workflows/{workflowId}/transfer:
     put:
       $ref: ./handlers/workflows/spec/paths/transferWorkflow.generated.yml
+  /workflows/{workflowId}/publish:
+    post:
+      $ref: ./handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  /workflows/{workflowId}/unpublish:
+    post:
+      $ref: ./handlers/workflows/spec/paths/unpublishWorkflow.generated.yml
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
