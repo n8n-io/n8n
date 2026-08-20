@@ -1016,7 +1016,7 @@ const TerminalOptionDemo = defineComponent({
 	template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--sm);">
 			<component :is="N8nText" size="small" color="text-light" tag="p" style="margin: 0;">
-				"Block access" is a real selectable value after a separator — unlike the Add custom role action in With search and footer, it updates modelValue.
+				"Block access" is a real selectable value after a separator — unlike the Add custom role action in With footer, it updates modelValue.
 			</component>
 			<component
 				:is="Select"
