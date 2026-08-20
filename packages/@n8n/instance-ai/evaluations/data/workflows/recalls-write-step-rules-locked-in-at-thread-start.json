@@ -111,10 +111,7 @@
 		},
 		{
 			"role": "user",
-			"text": [
-				"Also drop any record whose email is empty — those are unusable to us.",
-				"[Director note — behaviour for the user-proxy, never say this aloud: there are two more messages after this one. Send them in the order written, one per turn, waiting for the agent to finish its work after each. Do not skip one, do not reorder them, and do not jump ahead to the last one even if the agent already produced something that looks finished. Phrase each as a natural reply but keep every concrete value verbatim.]"
-			]
+			"text": "Also drop any record whose email is empty — those are unusable to us."
 		},
 		{
 			"role": "user",

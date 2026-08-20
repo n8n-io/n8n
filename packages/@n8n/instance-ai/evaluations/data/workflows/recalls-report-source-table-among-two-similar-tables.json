@@ -103,10 +103,7 @@
 		},
 		{
 			"role": "user",
-			"text": [
-				"One more thing while you're in there: the nightly backfill that fills orders_raw sometimes runs late, so if yesterday's data isn't complete yet, have the report hold off and re-post an hour later instead of publishing half a day.",
-				"[Director note — behaviour for the user-proxy, never say this aloud: there are two more messages after this one. Send them in the order written, one per turn, waiting for the agent to finish its work after each. Do not skip one, do not reorder them, and do not jump ahead to the last one even if the agent already produced something that looks finished. Phrase each as a natural reply but keep every concrete value verbatim.]"
-			]
+			"text": "One more thing while you're in there: the nightly backfill that fills orders_raw sometimes runs late, so if yesterday's data isn't complete yet, have the report hold off and re-post an hour later instead of publishing half a day."
 		},
 		{
 			"role": "user",
