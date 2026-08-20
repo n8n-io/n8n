@@ -42,18 +42,25 @@ type CheckOutcome =
  * — abort the query, drop the request — and the race covers the ones that don't, which would
  * otherwise carry on in the background while we've stopped waiting.
  */
-async function withDeadline<T>(start: (signal: AbortSignal) => Promise<T>, ms: number) {
+export async function withDeadline<T>(start: (signal: AbortSignal) => Promise<T>, ms: number) {
 	const controller = new AbortController();
+	let expired: OperationalError | undefined;
 	let timer: NodeJS.Timeout | undefined;
 
 	try {
 		return await Promise.race([
-			start(controller.signal),
+			// Aborting can make a check answer, so re-check after it settles: an answer that
+			// arrives once the deadline has passed is not an answer.
+			start(controller.signal).then((result) => {
+				if (expired) throw expired;
+
+				return result;
+			}),
 			new Promise<never>((_, reject) => {
 				timer = setTimeout(() => {
-					const expired = new OperationalError(`Deadline of ${ms}ms exceeded`);
-					controller.abort(expired);
+					expired = new OperationalError(`Deadline of ${ms}ms exceeded`);
 					reject(expired);
+					controller.abort(expired);
 				}, ms);
 			}),
 		]);

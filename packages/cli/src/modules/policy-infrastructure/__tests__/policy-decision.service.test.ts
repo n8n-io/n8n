@@ -17,7 +17,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 import { PolicyCheckFailedError } from '../policy-check-failed.error';
-import { PolicyDecisionService } from '../policy-decision.service';
+import { PolicyDecisionService, withDeadline } from '../policy-decision.service';
 
 const slackBlocked = {
 	kind: 'node-type-unavailable',
@@ -290,5 +290,37 @@ describe('PolicyDecisionService', () => {
 			expect(JSON.stringify(body)).not.toContain('policy store');
 			expect(body.meta).toEqual({ correlationIds: [expect.any(String)] });
 		});
+	});
+});
+
+describe('withDeadline', () => {
+	const afterDeadline = async (work: (signal: AbortSignal) => Promise<unknown>) => {
+		vi.useFakeTimers();
+
+		try {
+			const pending = withDeadline(work, 250).catch((e: unknown) => e);
+			await vi.advanceTimersByTimeAsync(250);
+
+			return await pending;
+		} finally {
+			vi.useRealTimers();
+		}
+	};
+
+	it('rejects when a check resolves from its abort handler', async () => {
+		const resolvesOnAbort = async (signal: AbortSignal) =>
+			await new Promise((resolve) => signal.addEventListener('abort', () => resolve('too late')));
+
+		expect(await afterDeadline(resolvesOnAbort)).toBeInstanceOf(OperationalError);
+	});
+
+	it('rejects when a check ignores the signal entirely', async () => {
+		const ignoresSignal = async () => await new Promise(() => {});
+
+		expect(await afterDeadline(ignoresSignal)).toBeInstanceOf(OperationalError);
+	});
+
+	it('returns the answer when the check beats the deadline', async () => {
+		expect(await withDeadline(async () => 'in time', 250)).toBe('in time');
 	});
 });
