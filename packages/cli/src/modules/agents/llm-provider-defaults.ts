@@ -67,6 +67,19 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 		provider: 'vercel',
 		defaultModel: 'anthropic/claude-sonnet-5',
 	},
+	moonshotApi: {
+		provider: 'moonshotai',
+		defaultModel: 'kimi-k3',
+	},
+	alibabaCloudApi: {
+		provider: 'alibaba',
+		// Rolling alias that Alibaba keeps pointed at the current plus model
+		defaultModel: 'qwen-plus',
+	},
+	minimaxApi: {
+		provider: 'minimax',
+		defaultModel: 'MiniMax-M3',
+	},
 };
 
 /** Order in which resolve_llm auto-picks a provider when credentials span multiple providers. */
@@ -82,4 +95,7 @@ export const LLM_PROVIDER_PRIORITY: string[] = [
 	'openrouter',
 	'nvidia',
 	'vercel',
+	'moonshotai',
+	'alibaba',
+	'minimax',
 ];

@@ -51,6 +51,9 @@ export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 	mistral: { displayName: 'Mistral' },
 	vercel: { displayName: 'Vercel AI Gateway', isAggregator: true },
 	nvidia: { displayName: 'NVIDIA' },
+	moonshotai: { displayName: 'Moonshot' },
+	alibaba: { displayName: 'Qwen Cloud' },
+	minimax: { displayName: 'MiniMax' },
 } satisfies Record<
 	AgentModelProvider,
 	{

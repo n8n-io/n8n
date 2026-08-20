@@ -91,6 +91,7 @@
     "fixtures:generate": "tsx src/__tests__/fixtures/generate-bulk-vector-fixture.ts"
   },
   "dependencies": {
+    "@ai-sdk/alibaba": "catalog:",
     "@ai-sdk/amazon-bedrock": "catalog:",
     "@ai-sdk/anthropic": "catalog:",
     "@ai-sdk/azure": "catalog:",
@@ -100,7 +101,9 @@
     "@ai-sdk/google": "catalog:",
     "@ai-sdk/google-vertex": "catalog:",
     "@ai-sdk/groq": "catalog:",
+    "@ai-sdk/minimax": "catalog:",
     "@ai-sdk/mistral": "catalog:",
+    "@ai-sdk/moonshotai": "catalog:",
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/otel": "catalog:",
