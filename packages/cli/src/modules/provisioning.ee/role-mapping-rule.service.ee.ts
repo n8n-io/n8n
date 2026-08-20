@@ -206,6 +206,10 @@ export class RoleMappingRuleService {
 			throw new NotFoundError('Could not find role mapping rule');
 		}
 
+		if (dto.type !== undefined && dto.type !== rule.type) {
+			throw new BadRequestError("A role mapping rule's type cannot be changed");
+		}
+
 		const originalType = rule.type as 'instance' | 'project';
 		const mergedType = dto.type ?? originalType;
 		const mergedOrder = dto.order ?? rule.order;

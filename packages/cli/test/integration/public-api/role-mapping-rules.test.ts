@@ -619,7 +619,7 @@ describe('Role mapping rules in Public API', () => {
 			expect(list.body.data.map((rule: { id: string }) => rule.id)).toEqual([first.id, second.id]);
 		});
 
-		it('converts an instance rule into a project rule', async () => {
+		it('rejects an attempt to change an instance rule to project with 400', async () => {
 			const rule = await createInstanceRule();
 
 			const response = await testServer
@@ -632,9 +632,8 @@ describe('Role mapping rules in Public API', () => {
 					projectIds: [teamProject.id],
 				});
 
-			expect(response.status).toBe(200);
-			expect(response.body.type).toBe('project');
-			expect(response.body.projectIds).toEqual([teamProject.id]);
+			expect(response.status).toBe(400);
+			expect(response.body.message).toBe("A role mapping rule's type cannot be changed");
 		});
 
 		it('rejects with 404 when the rule id is unknown', async () => {
@@ -749,30 +748,6 @@ describe('Role mapping rules in Public API', () => {
 
 			expect(response.status).toBe(400);
 			expect(response.body.message).toBe('One or more projects were not found');
-		});
-
-		it('rejects with 409 when the new type already has a rule at the same position', async () => {
-			const agent = testServer.publicApiAgentFor(owner);
-
-			// Two instance rules, so the second one sits at order 1.
-			await createInstanceRule();
-			const second = await createInstanceRule({
-				expression: `${validInstancePayload.expression} || false`,
-			});
-
-			// Two project rules, so order 1 is taken in the project sequence too.
-			await createProjectRule();
-			await createProjectRule({ expression: 'claims.project === "beta"' });
-
-			const response = await agent.put(`/role-mapping-rules/${second.id}`).send({
-				expression: 'claims.project === "gamma"',
-				role: 'project:editor',
-				type: 'project',
-				projectIds: [teamProject.id],
-			});
-
-			expect(response.status).toBe(409);
-			expect(response.body.message).toContain('already exists');
 		});
 
 		it('rejects with 401 without an API key', async () => {
