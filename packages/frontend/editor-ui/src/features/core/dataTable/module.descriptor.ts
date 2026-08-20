@@ -10,6 +10,8 @@ import {
 	DATA_TABLE_MODALS,
 } from '@/features/core/dataTable/modals';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const i18n = useI18n();
 
@@ -33,9 +35,17 @@ export const DataTableModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'custom'],
 			},
 			beforeEnter: (_to, _from, next) => {
+				if (!hasPermission(['rbac'], { rbac: { scope: 'dataTable:list' } })) {
+					const projectsStore = useProjectsStore();
+					const personalProjectId = projectsStore.personalProject?.id;
+					if (personalProjectId) {
+						next({ name: PROJECT_DATA_TABLES, params: { projectId: personalProjectId } });
+						return;
+					}
+				}
+
 				const insightsStore = useInsightsStore();
 				if (insightsStore.isSummaryEnabled) {
-					// refresh the weekly summary when entering the datatables route
 					void insightsStore.weeklySummary.execute();
 				}
 				next();
