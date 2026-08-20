@@ -388,6 +388,10 @@ export class N8nPackagesService {
 		source: { sourceDir: string },
 	): Promise<ImportResult> {
 		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
+		// The working copy is untrusted, so enforce the package-wide size and count
+		// limits over the whole tree before reading any entry. The tar reader gets this
+		// for free while parsing; the directory reader reads lazily, so validate up front.
+		await reader.listEntries();
 		const manifest = await this.packageParser.getManifest(reader);
 		if (!isProjectPackage(manifest)) return emptyImportResult(manifest);
 		const { result } = await this.dispatchImport(request, reader, manifest);

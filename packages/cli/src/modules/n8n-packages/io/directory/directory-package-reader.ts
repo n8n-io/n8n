@@ -26,7 +26,9 @@ export interface DirectoryReaderLimits {
  *
  * The directory originates from a remote Git repository, so it is untrusted: the
  * same path-safety and size guards as the tar reader apply. Entry paths must stay
- * within `baseDir`, and a single file may not exceed `maxEntryBytes`.
+ * within `baseDir`, and a single file may not exceed `maxEntryBytes`. Because reads
+ * are lazy, callers must validate the whole tree up front via {@link listEntries}
+ * to enforce the package-wide `maxEntries` and `maxUncompressedBytes` limits.
  */
 export class DirectoryPackageReader implements PackageReader {
 	constructor(
@@ -66,6 +68,11 @@ export class DirectoryPackageReader implements PackageReader {
 			}
 			if (relativePath.length > this.limits.maxPathLength) {
 				throw new BadRequestError('Package entry path exceeds the maximum allowed length');
+			}
+			if (size > this.limits.maxEntryBytes) {
+				throw new BadRequestError(
+					`Package entry "${relativePath}" exceeds the maximum allowed uncompressed size per entry`,
+				);
 			}
 			totalBytes += size;
 			if (totalBytes > this.limits.maxUncompressedBytes) {
