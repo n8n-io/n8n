@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 const quote = (names: string[]) => names.map((name) => `"${name}"`).join(', ');
 
@@ -52,15 +52,17 @@ export class MalformedStepConfigError extends UserError {
 	}
 }
 
-export class UnknownNodeTypeError extends UserError {
-	constructor(nodeType: string) {
-		super(`Unknown node type "${nodeType}"`);
-	}
-}
-
 export class UnsupportedNodeTypeError extends UserError {
 	constructor(nodeType: string) {
 		super(`Node type "${nodeType}" has no execute method and cannot run as a step`);
+	}
+}
+
+export class VmExpressionEngineRequiredError extends UnexpectedError {
+	constructor() {
+		super(
+			'V1StepExecutor requires the VM expression engine. Initialize it via `Expression.initExpressionEngine()` before executing steps.',
+		);
 	}
 }
 

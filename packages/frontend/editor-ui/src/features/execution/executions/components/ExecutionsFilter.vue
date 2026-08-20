@@ -8,7 +8,7 @@ import { EnterpriseEditionFeature } from '@/app/constants';
 import type { IWorkflowDb, IWorkflowShortResponse } from '@/Interface';
 import type { ExecutionFilterMetadata, ExecutionFilterType } from '../executions.types';
 import { i18n as locale } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';

@@ -9,6 +9,7 @@ import {
 	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
+	PollerStateRepository,
 	ScheduledJobRepository,
 	SettingsRepository,
 	UserRepository,
@@ -33,6 +34,8 @@ import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
+import { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -47,6 +50,7 @@ const tablesToTruncate = [
 	'execution_entity',
 	'installed_nodes',
 	'installed_packages',
+	'poller_state',
 	'project',
 	'project_relation',
 	'role',
@@ -101,6 +105,7 @@ export class E2EController {
 		[LICENSE_FEATURES.LOG_STREAMING]: false,
 		[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
 		[LICENSE_FEATURES.SOURCE_CONTROL]: false,
+		[LICENSE_FEATURES.GIT_CONNECTIONS]: false,
 		[LICENSE_FEATURES.VARIABLES]: false,
 		[LICENSE_FEATURES.API_DISABLED]: false,
 		[LICENSE_FEATURES.EXTERNAL_SECRETS]: false,
@@ -121,6 +126,7 @@ export class E2EController {
 		[LICENSE_FEATURES.ASK_AI]: false,
 		[LICENSE_FEATURES.AI_CREDITS]: false,
 		[LICENSE_FEATURES.AI_GATEWAY]: false,
+		[LICENSE_FEATURES.AI_GATEWAY_CLOUD_UBB]: false,
 		[LICENSE_FEATURES.FOLDERS]: false,
 		[LICENSE_FEATURES.INSIGHTS_VIEW_SUMMARY]: false,
 		[LICENSE_FEATURES.INSIGHTS_VIEW_DASHBOARD]: false,
@@ -196,6 +202,9 @@ export class E2EController {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly logStreamingDestinationsService: LogStreamingDestinationService,
 		private readonly scheduledJobRepository: ScheduledJobRepository,
+		private readonly pollerStateRepository: PollerStateRepository,
+		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly taskBroker: TaskBroker,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -261,6 +270,28 @@ export class E2EController {
 		return { count };
 	}
 
+	/**
+	 * A poll node's stored cursor, so a test can assert on it directly instead of
+	 * inferring it from execution behaviour.
+	 */
+	@Get('/poller-state', { skipAuth: true })
+	async getPollerState(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
+		const { workflowId, nodeId } = req.query;
+		const cursor = await this.pollerStateRepository.findCursor(workflowId, nodeId);
+		return { cursor };
+	}
+
+	/**
+	 * Wipes a workflow's static data, the store an unmigrated poll cursor lives in.
+	 * The workflow DTOs deliberately drop `staticData` writes, so a test has no way
+	 * to reset that state through the workflow API.
+	 */
+	@Post('/workflow-static-data/clear', { skipAuth: true })
+	async clearWorkflowStaticData(req: Request<{}, {}, { workflowId: string }>) {
+		await this.workflowStaticDataService.saveStaticDataById(req.body.workflowId, {});
+		return { success: true };
+	}
+
 	/** Lets a test observe a real scheduled dispatch without waiting out the job's cron interval. */
 	@Post('/scheduled-jobs/fire-now', { skipAuth: true })
 	async fireScheduledJobsNow(req: Request<{}, {}, { workflowId: string; nodeId: string }>) {
@@ -280,6 +311,16 @@ export class E2EController {
 		const { workflowId, nodeId, secondsAgo } = req.body;
 		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, secondsAgo);
 		return { success: true };
+	}
+
+	/**
+	 * Number of task runners currently registered with the broker, so a test can
+	 * wait for a runner to be ready instead of racing its startup.
+	 */
+	@Get('/task-runners/count', { skipAuth: true })
+	countTaskRunners() {
+		const count = this.taskBroker.getKnownRunners().size;
+		return { count };
 	}
 
 	@Get('/env-feature-flags', { skipAuth: true })

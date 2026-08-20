@@ -97,7 +97,7 @@ const mockCurrentUser = {
 	},
 };
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({
 		get currentUser() {
 			return mockCurrentUser.value;
@@ -107,7 +107,7 @@ vi.mock('@/features/settings/users/users.store', () => ({
 
 const mockIsAiCreditsEnabled = { value: true };
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		get isAiCreditsEnabled() {
 			return mockIsAiCreditsEnabled.value;

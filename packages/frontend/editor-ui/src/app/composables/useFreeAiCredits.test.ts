@@ -36,11 +36,11 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => credentialsStore,
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => settingsStore,
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => usersStore,
 }));
 

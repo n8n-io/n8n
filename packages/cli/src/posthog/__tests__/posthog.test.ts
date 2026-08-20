@@ -1,11 +1,13 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import type { Application, Request, RequestHandler, Response } from 'express';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags } from 'n8n-workflow';
 import { PostHog } from 'posthog-node';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { N8N_VERSION } from '@/constants';
 import { PostHogClient } from '@/posthog';
 
 vi.mock('posthog-node');
@@ -161,6 +163,8 @@ describe('PostHog', () => {
 			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`${instanceId}#${userId}`, {
 				personProperties: {
 					created_at_timestamp: createdAt.getTime().toString(),
+					instance_id: instanceId,
+					version_cli: N8N_VERSION,
 				},
 				groups: { company: instanceId },
 			});
@@ -221,6 +225,9 @@ describe('PostHog', () => {
 				globalConfig.evaluation.collectionsEnabled = false;
 				globalConfig.evaluation.configEvalsEnabled = false;
 				globalConfig.evaluation.agentEvalsEnabled = false;
+				globalConfig.instanceAi.mcpConnectionsEnabled = false;
+				globalConfig.instanceAi.canvasNodeContextEnabled = false;
+				globalConfig.featureFlags.override = {};
 			});
 
 			it('force-enables the eval-collections flag when N8N_EVAL_COLLECTIONS_ENABLED is set', async () => {
@@ -238,6 +245,84 @@ describe('PostHog', () => {
 			it('force-enables the config-evaluations variant when N8N_CONFIG_EVALS_ENABLED is set', async () => {
 				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
 				globalConfig.evaluation.configEvalsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '088_config_evaluations': 'variant' });
+			});
+
+			it('force-enables the MCP-connections variant when N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.instanceAi.mcpConnectionsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '089_instance_ai_mcp_connections': 'variant' });
+			});
+
+			it('applies the generic override map on top of resolved flags', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ 'some-other-flag': true }),
+				);
+				globalConfig.featureFlags.override = {
+					'multivariate-flag': 'variant',
+					'boolean-flag': true,
+				};
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({
+					'some-other-flag': true,
+					'multivariate-flag': 'variant',
+					'boolean-flag': true,
+				});
+			});
+
+			it('overrides a flag PostHog resolved to a different value', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ 'contested-flag': 'control' }),
+				);
+				globalConfig.featureFlags.override = { 'contested-flag': 'variant' };
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({ 'contested-flag': 'variant' });
+			});
+
+			// Unlike the per-feature envs (force-enable only), the generic map is
+			// also a kill switch — it must be able to turn an enabled flag off.
+			it('force-disables a flag PostHog resolved to true', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ 'live-flag': true }),
+				);
+				globalConfig.featureFlags.override = { 'live-flag': false };
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({ 'live-flag': false });
+			});
+
+			// A dedicated per-feature env var must have the final say, so the
+			// generic map cannot undo a feature an operator enabled explicitly.
+			it('does not override a per-feature env override for the same flag', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.evaluation.configEvalsEnabled = true;
+				globalConfig.featureFlags.override = { '088_config_evaluations': false };
 
 				const ph = new PostHogClient(instanceSettings, globalConfig);
 				await ph.init();
@@ -295,6 +380,148 @@ describe('PostHog', () => {
 
 				expect(flags).toEqual({ '101_agent_evals': true });
 			});
+
+			it('force-enables the canvas-node-context flag when N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+
+				globalConfig.instanceAi.canvasNodeContextEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '104_canvas_aia_node_context': true });
+			});
+
+			it('leaves the canvas-node-context flag untouched when the override is off', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ '104_canvas_aia_node_context': true }),
+				);
+
+				globalConfig.instanceAi.canvasNodeContextEnabled = false;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({ '104_canvas_aia_node_context': true });
+			});
+
+			it('applies all env overrides independently when several are set at once', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+
+				globalConfig.evaluation.collectionsEnabled = true;
+				globalConfig.evaluation.configEvalsEnabled = true;
+				globalConfig.evaluation.agentEvalsEnabled = true;
+				globalConfig.instanceAi.mcpConnectionsEnabled = true;
+				globalConfig.instanceAi.canvasNodeContextEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({
+					'084_eval_collections': true,
+					'088_config_evaluations': 'variant',
+					'101_agent_evals': true,
+					'089_instance_ai_mcp_connections': 'variant',
+					'104_canvas_aia_node_context': true,
+				});
+			});
+		});
+	});
+
+	describe('setupExpressSessionContext', () => {
+		function createApp() {
+			const handlers: RequestHandler[] = [];
+			const app = {
+				use: (handler: RequestHandler) => handlers.push(handler),
+			} as unknown as Application;
+
+			return { app, handlers };
+		}
+
+		function createRequest(sessionId?: string) {
+			return { get: () => sessionId } as unknown as Request;
+		}
+
+		async function setupWithApp() {
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			const { app, handlers } = createApp();
+			ph.setupExpressSessionContext(app);
+
+			return handlers;
+		}
+
+		beforeEach(() => {
+			globalConfig.deployment.type = 'cloud';
+			(PostHog.prototype.withContext as Mock).mockImplementation(
+				(_context: unknown, fn: () => unknown) => fn(),
+			);
+		});
+
+		it('attaches the browser session ID to the PostHog context', async () => {
+			const [handler] = await setupWithApp();
+			const next = vi.fn();
+
+			void handler(createRequest('0192f1c2-session'), mock<Response>(), next);
+
+			expect(PostHog.prototype.withContext).toHaveBeenCalledWith(
+				{ sessionId: '0192f1c2-session' },
+				next,
+			);
+			expect(next).toHaveBeenCalled();
+		});
+
+		it('passes the request through when the session header is absent', async () => {
+			const [handler] = await setupWithApp();
+			const next = vi.fn();
+
+			void handler(createRequest(undefined), mock<Response>(), next);
+
+			expect(PostHog.prototype.withContext).not.toHaveBeenCalled();
+			expect(next).toHaveBeenCalled();
+		});
+
+		it('strips non-printable characters from the session ID', async () => {
+			const [handler] = await setupWithApp();
+			const next = vi.fn();
+
+			// A NUL and a newline, spelled out so they survive a trip through an editor.
+			const hostile = `0192${String.fromCharCode(0)}-abc${String.fromCharCode(10)}`;
+
+			void handler(createRequest(hostile), mock<Response>(), next);
+
+			expect(PostHog.prototype.withContext).toHaveBeenCalledWith({ sessionId: '0192-abc' }, next);
+		});
+
+		it('caps the length of the session ID', async () => {
+			const [handler] = await setupWithApp();
+			const next = vi.fn();
+
+			void handler(createRequest('a'.repeat(1500)), mock<Response>(), next);
+
+			expect(PostHog.prototype.withContext).toHaveBeenCalledWith(
+				{ sessionId: 'a'.repeat(1000) },
+				next,
+			);
+		});
+
+		it('does not register the middleware outside cloud deployments', async () => {
+			globalConfig.deployment.type = 'default';
+
+			expect(await setupWithApp()).toHaveLength(0);
+		});
+
+		it('does not register the middleware when diagnostics are disabled', async () => {
+			globalConfig.diagnostics.enabled = false;
+
+			expect(await setupWithApp()).toHaveLength(0);
 		});
 	});
 });

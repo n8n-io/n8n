@@ -70,8 +70,8 @@ export function classifyTriggerIdentity(
 		nodeType === CHAT_TRIGGER_NODE_TYPE && parameters?.availableInChat === true;
 	const isMcpTrigger =
 		nodeType === MCP_TRIGGER_NODE_TYPE && parameters?.authentication === 'n8nOAuth2';
-	// The Webhook node's opt-in "n8n User Auth (OAuth2)" mode injects the caller's
-	// n8n identity the same way the MCP trigger does — sharing the `n8nOAuth2` value.
+	// The Webhook node's "n8n User Auth (OAuth2)" mode injects the caller's n8n
+	// identity the same way the MCP trigger does — sharing the `n8nOAuth2` value.
 	const isOAuth2Webhook =
 		nodeType === WEBHOOK_NODE_TYPE && parameters?.authentication === 'n8nOAuth2';
 	// The form trigger only establishes an identity through its OAuth2 flow, so callers
@@ -93,7 +93,9 @@ export function classifyTriggerIdentity(
 		return { providesN8nIdentity: true, providesExternalIdentity: true };
 	}
 
-	// Manual/chat/MCP triggers run with the n8n user identity.
+	// Manual triggers run with the executing n8n user's identity (attached from the
+	// session by the manual-run endpoint). Chat and MCP triggers must NOT match here:
+	// outside the branches above they establish no identity at runtime.
 	if (MANUAL_TRIGGER_NODE_TYPES.includes(nodeType)) {
 		return { providesN8nIdentity: true, providesExternalIdentity: false };
 	}

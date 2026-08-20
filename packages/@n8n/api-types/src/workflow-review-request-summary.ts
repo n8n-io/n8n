@@ -21,3 +21,13 @@ export type WorkflowReviewRequestSummary = {
 	createdAt: Iso8601DateTimeString;
 	updatedAt: Iso8601DateTimeString;
 };
+
+export type WorkflowReviewAutoPublishOutcome =
+	| { status: 'published' }
+	| { status: 'failed'; message: string };
+
+/** Superset of the summary so consumers of the decision endpoint keep working. */
+export type DecideWorkflowReviewRequestResponse = WorkflowReviewRequestSummary & {
+	/** Only present on approval: result of auto-publishing the pinned version. */
+	autoPublish?: WorkflowReviewAutoPublishOutcome;
+};

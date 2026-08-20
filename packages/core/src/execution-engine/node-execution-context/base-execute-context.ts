@@ -37,7 +37,10 @@ import {
 	createEnvProviderState,
 	applyDynamicCredentialsUsage,
 	takeAttachedDynamicCredentialsUsage,
+	shouldRedactConsoleOutput,
+	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 import { deepMerge } from '@/utils/deep-merge';
@@ -210,7 +213,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 
 		const callerSessionId = agentInfo.sessionId?.trim();
-		const threadId = callerSessionId || `${executionId}-${itemIndex}`;
+		const threadId = callerSessionId || randomUUID();
 
 		const inputDataScope = agentInfo.inputDataScope ?? 'item';
 		const mainBranches = this.inputData?.main ?? [];
@@ -295,10 +298,39 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		).getDataProxy();
 	}
 
+	/**
+	 * Console output never passes through the execution-data redaction pipeline,
+	 * so the push/stdout sinks gate on this before emitting. Fails closed: an
+	 * error while resolving the policy redacts rather than emits.
+	 */
+	isConsoleOutputRedacted(): boolean {
+		try {
+			return shouldRedactConsoleOutput(
+				this.runExecutionData.executionData?.runtimeData?.redaction,
+				this.workflow.settings,
+				this.mode,
+			);
+		} catch {
+			return true;
+		}
+	}
+
+	/**
+	 * `args` unchanged, or just the redaction marker when console output is
+	 * redacted for this run. Shared by the stdout branch of `logNodeOutput` in
+	 * `ExecuteContext` and `SupplyDataContext`.
+	 */
+	protected redactedConsoleArgs(args: unknown[]): unknown[] {
+		return this.isConsoleOutputRedacted() ? [CONSOLE_OUTPUT_REDACTED_MESSAGE] : args;
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	sendMessageToUI(...args: any[]): void {
 		if (this.mode !== 'manual') {
 			return;
+		}
+		if (this.isConsoleOutputRedacted()) {
+			args = [CONSOLE_OUTPUT_REDACTED_MESSAGE];
 		}
 		try {
 			if (this.additionalData.sendDataToUI) {

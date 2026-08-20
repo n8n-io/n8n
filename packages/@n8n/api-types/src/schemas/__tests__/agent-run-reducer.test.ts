@@ -135,6 +135,11 @@ function makeConfirmationRequest(
 			args: {},
 			severity: 'warning',
 			message: 'Are you sure?',
+			targetApproval: {
+				toolName: 'delete_record',
+				displayName: 'Delete record',
+				args: { id: 'record-1' },
+			},
 		},
 	};
 }
@@ -715,6 +720,11 @@ describe('agent-run-reducer', () => {
 				requestId: 'req-1',
 				severity: 'warning',
 				message: 'Are you sure?',
+				targetApproval: {
+					toolName: 'delete_record',
+					displayName: 'Delete record',
+					args: { id: 'record-1' },
+				},
 			});
 		});
 
@@ -769,6 +779,33 @@ describe('agent-run-reducer', () => {
 				severity: 'info',
 				message: 'Select credentials',
 				projectId: 'proj-456',
+			});
+		});
+
+		it('confirmation-request preserves explicit credential selection on replay', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'setup-credentials'));
+			reduceEvent(state, {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					requestId: 'req-2',
+					toolCallId: 'tc-1',
+					toolName: 'setup-credentials',
+					args: {},
+					severity: 'info',
+					message: 'Select credentials',
+					requireUserSelection: true,
+				},
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.confirmation).toEqual({
+				requestId: 'req-2',
+				severity: 'info',
+				message: 'Select credentials',
+				requireUserSelection: true,
 			});
 		});
 	});

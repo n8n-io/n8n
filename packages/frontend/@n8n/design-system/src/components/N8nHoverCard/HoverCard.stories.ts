@@ -36,7 +36,7 @@ const WorkflowPreviewTemplate: StoryFn = (args) => ({
 		<div style="padding: 96px; display: flex; justify-content: center;">
 			<N8nHoverCard v-bind="args">
 				<template #trigger>
-					<N8nButton type="secondary">Customer onboarding</N8nButton>
+					<N8nButton>Customer onboarding</N8nButton>
 				</template>
 				<template #content>
 					<section style="width: 360px; padding: var(--spacing--sm); display: flex; flex-direction: column; gap: var(--spacing--sm);">
@@ -335,7 +335,7 @@ const ScrollableTemplate: StoryFn = (args) => ({
 		<div style="padding: 96px; display: flex; justify-content: center;">
 			<N8nHoverCard v-bind="args">
 				<template #trigger>
-					<N8nButton type="secondary">Recent executions</N8nButton>
+					<N8nButton>Recent executions</N8nButton>
 				</template>
 				<template #content>
 					<section style="width: 380px; padding: var(--spacing--sm); display: flex; flex-direction: column; gap: var(--spacing--sm);">

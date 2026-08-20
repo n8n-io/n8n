@@ -30,7 +30,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { hasRole } from '@/app/utils/rbac/checks/hasRole';
 import nodePopularity from 'virtual:node-popularity-data';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
 	isNodePreviewKey,

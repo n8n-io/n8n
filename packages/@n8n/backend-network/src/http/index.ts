@@ -19,11 +19,14 @@ export {
 	type HttpTransportOptions,
 	type TypedHttpFullResponse,
 } from './outbound-http';
+export { markNonRetryable, retryabilityFromError, type Retryability } from './retryability';
 export {
 	httpStatusFromError,
 	isAxiosError,
 	isConnectionRefusedError,
+	isDnsFailure,
 	isHttpRequestError,
+	isTransportFailure,
 	markHttpRequestError,
 	type HttpRequestError,
 } from './client-request-error';

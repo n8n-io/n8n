@@ -55,6 +55,10 @@ export type WorkflowPublicationMetricsEventMap = {
 		surplusCount: number;
 		/** Workflows re-enqueued because their published version diverged from the active version. */
 		versionSkewCount: number;
+		/** Workflows re-enqueued because a trigger-status row was recorded for a version other than the active one. */
+		statusDriftCount: number;
+		/** Published workflows re-enqueued because no publication ever reported trigger statuses for them. */
+		unreportedCount: number;
 		durationMs: number;
 	};
 

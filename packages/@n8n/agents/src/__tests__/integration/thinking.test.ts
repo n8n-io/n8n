@@ -43,10 +43,9 @@ describeAnthropic('reasoning stream (Anthropic)', () => {
 describeAnthropic('reasoning stream (Anthropic, adaptive thinking)', () => {
 	/**
 	 * Adaptive-thinking models (Sonnet 5, Opus 4.6+) return thinking blocks with
-	 * empty text unless the request asks for `display: 'summarized'`, which the
-	 * SDK's mapping of the generic reasoning level does not do. The cassette
-	 * pins the outgoing request, so an SDK upgrade that stops sending the flag
-	 * fails here instead of silently emptying every trace.
+	 * empty text unless the request asks for `display: 'summarized'`. The cassette
+	 * pins the AI SDK's generic reasoning mapping, so an SDK regression that stops
+	 * sending the flag fails here instead of silently emptying every trace.
 	 *
 	 * High effort because adaptive models decide per request whether to think at
 	 * all, and at lower effort they routinely answer this prompt without it.

@@ -1,18 +1,25 @@
 import {
+	CreateWorkflowReviewCommentDto,
 	CreateWorkflowReviewRequestDto,
 	DecideWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
+	GetWorkflowReviewStatusesDto,
+	type WorkflowReviewStatusesResponse,
+	ListWorkflowReviewActivityQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	UpdateWorkflowReviewRequestVersionDto,
 	type GetWorkflowReviewInboxSummaryResponse,
+	type ListWorkflowReviewActivityResponse,
 	type ListWorkflowReviewInboxResponse,
 	ListWorkflowReviewInboxQueryDto,
+	type WorkflowReviewActivityEntry,
 	type WorkflowReviewRequestDetail,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Param, Post, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { WorkflowReviewActivityService } from './workflow-review-activity.service';
 import { WorkflowReviewInboxService } from './workflow-review-inbox.service';
 import { WorkflowReviewRequestService } from './workflow-review-request.service';
 
@@ -21,6 +28,7 @@ export class WorkflowReviewRequestsController {
 	constructor(
 		private readonly workflowReviewRequestService: WorkflowReviewRequestService,
 		private readonly workflowReviewInboxService: WorkflowReviewInboxService,
+		private readonly workflowReviewActivityService: WorkflowReviewActivityService,
 	) {}
 
 	@Get('/')
@@ -97,6 +105,20 @@ export class WorkflowReviewRequestsController {
 		return await this.workflowReviewInboxService.listForInbox(req.user, query);
 	}
 
+	/**
+	 * Batched open-review statuses for a page of workflows. POST for the body
+	 * only — a read that avoids one request per workflow and long query strings.
+	 */
+	@Post('/statuses')
+	@Licensed('feat:workflowReviews')
+	async getStatuses(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: GetWorkflowReviewStatusesDto,
+	): Promise<WorkflowReviewStatusesResponse> {
+		return await this.workflowReviewInboxService.getStatusesForWorkflows(req.user, dto);
+	}
+
 	@Get('/summary')
 	@Licensed('feat:workflowReviews')
 	async getSummary(
@@ -104,6 +126,38 @@ export class WorkflowReviewRequestsController {
 		_res: Response,
 	): Promise<GetWorkflowReviewInboxSummaryResponse> {
 		return await this.workflowReviewInboxService.getInboxSummaryForUser(req.user);
+	}
+
+	@Get('/:workflowReviewRequestId/activity')
+	@Licensed('feat:workflowReviews')
+	async listActivity(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+		@Query query: ListWorkflowReviewActivityQueryDto,
+	): Promise<ListWorkflowReviewActivityResponse> {
+		return await this.workflowReviewActivityService.listActivity(
+			req.user,
+			workflowReviewRequestId,
+			query,
+		);
+	}
+
+	@Post('/:workflowReviewRequestId/comments')
+	@Licensed('feat:workflowReviews')
+	async createComment(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+		@Body dto: CreateWorkflowReviewCommentDto,
+	): Promise<WorkflowReviewActivityEntry> {
+		const entry = await this.workflowReviewActivityService.createComment(
+			req.user,
+			workflowReviewRequestId,
+			dto,
+		);
+		res.status(201);
+		return entry;
 	}
 
 	/**

@@ -5,7 +5,7 @@
 // loader uses, so shape regressions surface here rather than at eval time.
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import { basename, join, resolve } from 'path';
 import { z } from 'zod';
 
@@ -504,7 +504,7 @@ async function main(): Promise<void> {
 			casesBySlug.set(slug, testCaseSchema.parse(readJson(file, `test case ${slug}`)).conversation);
 		}
 	}
-	// Drop cases with no user turn to build from (e.g. seedThread-only).
+	// Drop cases with no user turn to build from (e.g. `replay`-seeded only).
 	for (const [slug, conv] of [...casesBySlug]) {
 		if (!conv.some((t) => t.role === 'user' && t.text.trim().length > 0)) {
 			console.log(`  [${slug}] skip: no user turn to build from`);
@@ -523,14 +523,8 @@ async function main(): Promise<void> {
 		repoRoot,
 		repoRoot ? undefined : process.cwd(),
 	]);
+	// Removed on process exit by the staging module itself.
 	const mcpConfigPath = stageMcpConfigFromClaudeJson(args.mcpServerName, projectScopes);
-	process.on('exit', () => {
-		try {
-			unlinkSync(mcpConfigPath);
-		} catch {
-			// best-effort
-		}
-	});
 
 	const tasks: Array<{ slug: string; iteration: number }> = [];
 	for (const slug of args.slugs) {

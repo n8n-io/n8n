@@ -117,19 +117,14 @@ export default defineConfig(
 		// migration to the `@PublicApiController` + service pattern (API-70). NEVER add to this
 		// list — a new violation must fail CI. Entries are removed as each file migrates.
 		files: [
-			'./src/public-api/v1/handlers/credentials/credentials.handler.ts',
-			'./src/public-api/v1/handlers/credentials/credentials.service.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.service.ts',
 			'./src/public-api/v1/handlers/discover/discover.handler.ts',
 			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
-			'./src/public-api/v1/handlers/executions/executions.handler.ts',
-			'./src/public-api/v1/handlers/executions/executions.service.ts',
 			'./src/public-api/v1/handlers/projects/projects.handler.ts',
 			'./src/public-api/v1/handlers/users/users.handler.ee.ts',
 			'./src/public-api/v1/handlers/users/users.service.ee.ts',
 			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
-			'./src/public-api/v1/handlers/workflows/workflows.service.ts',
 		],
 		rules: {
 			'n8n-local-rules/no-repository-in-public-api-handler': 'off',
@@ -249,7 +244,6 @@ export default defineConfig(
 			'./src/eventbus/message-event-bus/message-event-bus.ts',
 			'./src/evaluation.ee/evaluation-collection.service.ts',
 			'./src/evaluation.ee/test-runner/test-runner.service.ee.ts',
-			'./src/public-api/v1/handlers/executions/executions.handler.ts',
 			'./src/public-api/v1/handlers/tags/tags.handler.ts',
 			'./src/public-api/v1/handlers/users/users.service.ee.ts',
 			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',

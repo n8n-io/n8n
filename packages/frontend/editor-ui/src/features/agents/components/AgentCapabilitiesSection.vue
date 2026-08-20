@@ -6,7 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -35,6 +35,8 @@ const props = withDefaults(
 		isPublished: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
+		/** No agent row exists yet — an unsaved agent has no tasks to load. */
+		agentUnsaved?: boolean;
 
 		/** Structured backend validation issues — drives the invalid state on capability chips. */
 		validationIssues?: AgentConfigValidationIssue[];
@@ -166,9 +168,24 @@ const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.validation.issue.mcpServer.incompatibleCredential' as BaseTextKey,
 };
 
+/**
+ * Reason-specific overrides for `incompatible_reference` issues that carry a
+ * `reason` discriminator (currently workflow tools). Keyed by the `reason`
+ * string emitted by the backend. Takes precedence over the kind/code key so
+ * the message names the actual problem (e.g. "contains a Wait node") instead
+ * of the generic "can't be used as an agent tool".
+ */
+const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
+	incompatible_nodes:
+		'agents.builder.validation.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
+	no_supported_trigger:
+		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
+};
+
 function issueMessage(issue: AgentConfigValidationIssue): string {
 	const { kind, toolType, id } = issue.capability;
 	const key =
+		(issue.reason ? REASON_SPECIFIC_KEYS[issue.reason] : undefined) ??
 		(kind === 'tool' && toolType
 			? SPECIFIC_ISSUE_KEYS[`tool.${toolType}.${issue.code}`]
 			: undefined) ??
@@ -219,6 +236,10 @@ const subAgentIssueMessages = computed(() =>
 
 async function reloadTasks() {
 	taskErrorMessage.value = '';
+	if (props.agentUnsaved) {
+		taskBodies.value = [];
+		return;
+	}
 	try {
 		taskBodies.value = await getAgentTasks(
 			rootStore.restApiContext,
@@ -417,7 +438,12 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 	return tool.tools.map((item) => ({
 		id: toTargetKey(item.openTarget),
 		label: item.label,
-		data: { nodeType: item.nodeType, openTarget: item.openTarget },
+		data: {
+			nodeType: item.nodeType,
+			openTarget: item.openTarget,
+			invalid: item.invalid,
+			invalidReasons: item.invalidReasons,
+		},
 	}));
 }
 
@@ -543,6 +569,24 @@ function openExistingSubAgentModal(subAgent: {
 									:size="16"
 									:class="ui.class"
 								/>
+							</template>
+							<template #item-trailing="{ item }">
+								<N8nTooltip
+									v-if="item.data?.invalid"
+									:disabled="(item.data.invalidReasons ?? []).length === 0"
+									placement="top"
+								>
+									<N8nIcon
+										icon="triangle-alert"
+										:size="14"
+										data-testid="agent-capabilities-tool-menu-invalid-icon"
+									/>
+									<template #content>
+										<div v-for="reason in item.data.invalidReasons" :key="reason">
+											{{ reason }}
+										</div>
+									</template>
+								</N8nTooltip>
 							</template>
 						</N8nDropdownMenu>
 						<AgentChipButton
@@ -835,18 +879,19 @@ function openExistingSubAgentModal(subAgent: {
 	align-items: center;
 	flex-wrap: nowrap;
 	gap: var(--spacing--3xs);
-	max-width: 100%;
 	min-width: 0;
+	/** Truncates chip to stop overly-long labels **/
+	max-width: min(var(--spacing--5xl), 100%);
+
+	> .capabilityChip {
+		width: 100%;
+	}
 }
 
 .addButtonEmpty {
 	--button--color: var(--text-color--subtler);
 	margin-left: calc(-1 * var(--spacing--xs));
 	margin-top: calc(-1 * var(--spacing--4xs));
-}
-
-.capabilityChip {
-	max-width: min(12rem, 100%);
 }
 
 .groupChipLabel {

@@ -1,5 +1,6 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createDataSource } from '../data-source';
@@ -10,7 +11,7 @@ describe('workflow_execution table (integration)', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer('postgres:18-alpine').start();
+		container = await new PostgreSqlContainer(postgresVersions.primary).start();
 		dataSource = createDataSource(container.getConnectionUri());
 		await dataSource.initialize();
 		await dataSource.runMigrations();
@@ -29,18 +30,21 @@ describe('workflow_execution table (integration)', () => {
 			status: 'running',
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
-			triggerPayload: { foo: 'bar' },
+			triggerOutputs: [{ foo: 'bar' }],
 			finishedAt: null,
 		});
 		await repo.save(created);
 
-		const found = await repo.findOneByOrFail({ id: created.id });
+		// NOTE: `findOne({ where })`, not `findOneByOrFail`: the latter's overload
+		// exceeds TypeScript's instantiation depth on the recursive `triggerOutputs`
+		// column type.
+		const found = await repo.findOneOrFail({ where: { id: created.id } });
 
 		expect(found.id).toBeTruthy();
 		expect(found.workflowId).toBe('wf-1');
 		expect(found.status).toBe('running');
 		expect(found.mode).toBe('production');
-		expect(found.triggerPayload).toEqual({ foo: 'bar' });
+		expect(found.triggerOutputs).toEqual([{ foo: 'bar' }]);
 		expect(found.finishedAt).toBeNull();
 		expect(found.createdAt).toBeInstanceOf(Date);
 		expect(found.updatedAt).toBeInstanceOf(Date);
@@ -55,7 +59,7 @@ describe('workflow_execution table (integration)', () => {
 				status: 'running',
 				mode: 'production',
 				graph: { nodes: [], edges: [] },
-				triggerPayload: null,
+				triggerOutputs: null,
 				finishedAt: null,
 			}),
 		);
@@ -65,7 +69,7 @@ describe('workflow_execution table (integration)', () => {
 				status: 'completed',
 				mode: 'production',
 				graph: { nodes: [], edges: [] },
-				triggerPayload: null,
+				triggerOutputs: null,
 				finishedAt: new Date(),
 			}),
 		);

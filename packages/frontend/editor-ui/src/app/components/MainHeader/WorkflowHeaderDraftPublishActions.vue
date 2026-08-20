@@ -1,10 +1,7 @@
 <script lang="ts" setup>
-import ActionsDropdownMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
-import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
-import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
 	VIEWS,
 	WORKFLOW_PUBLISH_MODAL_KEY,
@@ -22,9 +19,9 @@ import {
 	N8nSpinner,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
@@ -68,15 +65,10 @@ import {
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
-	tags: readonly string[];
-	name: IWorkflowDb['name'];
-	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
 	isNewWorkflow: boolean;
 	workflowPermissions: PermissionsRecord['workflow'];
 }>();
-
-const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
 
 const uiStore = useUIStore();
 const workflowDocumentStore = computed(() =>
@@ -119,8 +111,21 @@ const showWorkflowReviewControls = computed(
 
 const latestReviewRequest = computed(() => reviewStatusStore.latestReviewRequest(props.id));
 
+const openReviewRequest = computed(() => reviewStatusStore.openReviewRequest(props.id));
+
 /** Saved version of the working copy — what a review is pinned to, or diverges from. */
 const savedVersionId = computed(() => workflowDocumentStore.value.versionId || undefined);
+
+/** Whether the open review already contains the current saved workflow version. */
+const reviewContainsSavedVersion = computed(() => {
+	const reviewVersionId = openReviewRequest.value?.workflowVersionId;
+	return !!reviewVersionId && reviewVersionId === savedVersionId.value;
+});
+
+/** Unsaved workflow edits can still produce a new version when Publish saves first. */
+const isReviewUpdateBlocked = computed(
+	() => reviewContainsSavedVersion.value && !uiStore.hasUnsavedWorkflowChanges,
+);
 
 const autoSaveForPublish = ref(false);
 const isSaving = ref(false);
@@ -129,7 +134,6 @@ const showSubmitForReviewDialog = ref(false);
 const showReviewSubmittedDialog = ref(false);
 const submittedReviewRequestId = ref<string>();
 const showUpdateReviewDialog = ref(false);
-const isRetryingPublish = ref(false);
 
 watch(
 	() => props.id,
@@ -154,8 +158,6 @@ const onSaveButtonClick = async () => {
 	}
 };
 
-const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
-
 const foundTriggers = computed(() =>
 	getActivatableTriggerNodes(workflowDocumentStore.value.workflowTriggerNodes),
 );
@@ -169,6 +171,20 @@ const nodesWithValidationIssues = computed(
 );
 
 const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
+
+const isWorkflowPublishable = computed(() => containsTrigger.value && !hasNodeIssues.value);
+
+/** Why publishing is blocked, or '' when it is not. Same copy as the Publish tooltip. */
+const publishBlockedReason = computed(() => {
+	if (isWorkflowPublishable.value) return '';
+
+	return !containsTrigger.value
+		? i18n.baseText('workflows.publishModal.noTriggerMessage')
+		: i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
+				interpolate: { count: nodesWithValidationIssues.value.length },
+				adjustToNumber: nodesWithValidationIssues.value.length,
+			});
+});
 
 type WorkflowPublishState =
 	| 'not-published-not-eligible' // No trigger nodes or has errors
@@ -200,8 +216,7 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 
 	// Not published states
 	if (!hasBeenPublished) {
-		const canPublish = containsTrigger.value && !hasNodeIssues.value;
-		return canPublish ? 'not-published-eligible' : 'not-published-not-eligible';
+		return isWorkflowPublishable.value ? 'not-published-eligible' : 'not-published-not-eligible';
 	}
 
 	// Published states
@@ -224,14 +239,22 @@ const hasUnpublishPermission = computed(() => props.workflowPermissions.unpublis
 const isPersonalSpace = computed(() => projectStore.currentProject?.type === ProjectTypes.Personal);
 
 /**
- * Submitting changes and retrying a publish both need publish rights and write
- * access. An archived workflow keeps the status readable but rejects both writes.
+ * Submitting changes needs publish rights and write access. An archived workflow
+ * keeps the status readable but rejects writes. It also clears the same
+ * publishability bar as the Publish button, so the two cannot drift apart.
  */
 const canActOnReview = computed(
-	() => !!hasPublishPermission.value && !collaborationReadOnly.value && !props.isArchived,
+	() =>
+		!!hasPublishPermission.value &&
+		!collaborationReadOnly.value &&
+		!props.isArchived &&
+		isWorkflowPublishable.value,
 );
 
-const canOpenReview = computed(() => !!hasPublishPermission.value);
+// Backend-computed involvement rule (admin, author, or assigned reviewer):
+// publish permission alone no longer opens a review, and a link the detail
+// endpoint would 404 must not render.
+const canOpenReview = computed(() => latestReviewRequest.value?.viewerCanOpen ?? false);
 
 /**
  * Cancel autosave if scheduled or wait for it to finish if in progress
@@ -280,27 +303,53 @@ const flushSaveForReview = async (): Promise<string | undefined> => {
 	return workflowDocumentStore.value.versionId || undefined;
 };
 
+const showReviewToast = (titleKey: BaseTextKey, reviewRequestId: string) => {
+	const reviewRoute = {
+		name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+		params: { reviewRequestId },
+	};
+	const reviewUrl = router.resolve(reviewRoute).href;
+
+	toast.showToast({
+		type: 'success',
+		title: i18n.baseText(titleKey),
+		message: `<a href="${reviewUrl}">${i18n.baseText('workflowReviews.editorBanner.openReview')}</a>`,
+		onClick: (event: MouseEvent | undefined) => {
+			if (!(event?.target instanceof HTMLAnchorElement)) return;
+			if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; // let the browser open a new tab
+
+			event.preventDefault();
+			void router.push(reviewRoute);
+		},
+	});
+};
+
 const onReviewSubmitted = (workflowReviewRequestId: string) => {
 	submittedReviewRequestId.value = workflowReviewRequestId;
-	toast.showMessage({
-		type: 'success',
-		title: i18n.baseText('workflowReviews.submitted.toast'),
-	});
+	showReviewToast('workflowReviews.submitted.title', workflowReviewRequestId);
 
 	if (!submittedDialogDismissed.value) {
 		showReviewSubmittedDialog.value = true;
 	}
 };
 
-const onReviewUpdated = () => {
-	toast.showMessage({
-		type: 'success',
-		title: i18n.baseText('workflowReviews.updateReview.toast'),
-	});
+const onReviewUpdated = (workflowReviewRequestId: string) => {
+	showReviewToast('workflowReviews.updateReview.toast', workflowReviewRequestId);
 };
 
 /** The submit dialog hit a 409: an open review exists, so offer updating it instead. */
 const onReviewConflict = () => {
+	showUpdateReviewDialog.value = true;
+};
+
+/**
+ * Save before opening. The dialog prefills the version name from the current
+ * `versionId`, but submitting flushes a dirty editor into a *new* version, so
+ * opening dirty would name the new version after the old one.
+ */
+const onSubmitChangesFromBanner = async () => {
+	if (!(await ensureWorkflowSaved())) return;
+	if (reviewContainsSavedVersion.value) return;
 	showUpdateReviewDialog.value = true;
 };
 
@@ -319,29 +368,6 @@ const onOpenReviewFromBanner = async () => {
 	});
 };
 
-/**
- * Publish the approved pinned version — not the working copy, which may already
- * have moved on and was never reviewed.
- */
-const onRetryPublishFromBanner = async () => {
-	const pinnedVersionId = latestReviewRequest.value?.workflowVersionId;
-	if (!pinnedVersionId || isRetryingPublish.value) return;
-
-	isRetryingPublish.value = true;
-	try {
-		// Errors are surfaced by the shared activation error handling; the banner
-		// stays put because the review status is unchanged on failure.
-		const { success } = await workflowActivate.publishWorkflow(props.id, pinnedVersionId);
-		if (success) {
-			// The active-version watcher covers the usual case, but a retry that
-			// lands on an unchanged active version must still clear the banner.
-			await refetchReviewStatus();
-		}
-	} finally {
-		isRetryingPublish.value = false;
-	}
-};
-
 const onPublishButtonClick = async () => {
 	if (!(await ensureWorkflowSaved())) return;
 
@@ -351,6 +377,7 @@ const onPublishButtonClick = async () => {
 		// on-mount fetch resolves) reads as "no open review" — accepted, since
 		// only backend enforcement can close that hole.
 		if (reviewStatusStore.hasOpenReview(props.id)) {
+			if (reviewContainsSavedVersion.value) return;
 			showUpdateReviewDialog.value = true;
 			return;
 		}
@@ -401,7 +428,7 @@ const publishButtonConfig = computed(() => {
 	if (props.isNewWorkflow) {
 		return {
 			text: i18n.baseText('workflows.publish'),
-			enabled: containsTrigger.value && !hasNodeIssues.value,
+			enabled: isWorkflowPublishable.value,
 			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
@@ -495,7 +522,7 @@ const publishButtonConfig = computed(() => {
 		},
 		'publication-partial': {
 			text: i18n.baseText('workflows.publish'),
-			enabled: true,
+			enabled: isWorkflowPublishable.value,
 			loading: false,
 			showIndicator: true,
 			indicatorClass: 'partial',
@@ -504,7 +531,7 @@ const publishButtonConfig = computed(() => {
 		},
 		'publication-failed': {
 			text: i18n.baseText('workflows.publish'),
-			enabled: true,
+			enabled: isWorkflowPublishable.value,
 			loading: false,
 			showIndicator: true,
 			indicatorClass: 'error',
@@ -526,7 +553,8 @@ const shouldDisablePublishButton = computed(() => {
 		props.isNewWorkflow ||
 		collaborationReadOnly.value ||
 		!publishButtonConfig.value.enabled ||
-		!hasPublishPermission.value
+		!hasPublishPermission.value ||
+		(isWorkflowReviewsEnabled.value && isReviewUpdateBlocked.value)
 	);
 });
 
@@ -752,10 +780,6 @@ onBeforeUnmount(() => {
 	nodeViewEventBus.off('publishWorkflow', onPublishButtonClick);
 	nodeViewEventBus.off('unpublishWorkflow', onUnpublish);
 });
-
-defineExpose({
-	importFileRef,
-});
 </script>
 
 <template>
@@ -765,7 +789,6 @@ defineExpose({
 			v-if="showSaveButton && !isArchived && workflowPermissions.update"
 			:loading="isSaving"
 			:disabled="!uiStore.stateIsDirty || collaborationReadOnly"
-			type="secondary"
 			data-test-id="workflow-save-button"
 			@click="onSaveButtonClick"
 		>
@@ -778,12 +801,10 @@ defineExpose({
 				:review="latestReviewRequest"
 				:saved-version-id="savedVersionId"
 				:can-submit-changes="canActOnReview"
-				:can-retry-publish="canActOnReview"
+				:submit-blocked-reason="publishBlockedReason"
 				:can-open-review="canOpenReview"
-				:is-publishing="isRetryingPublish"
 				@open-review="onOpenReviewFromBanner"
-				@submit-changes="showUpdateReviewDialog = true"
-				@retry-publish="onRetryPublishFromBanner"
+				@submit-changes="onSubmitChangesFromBanner"
 			/>
 		</div>
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
@@ -876,17 +897,6 @@ defineExpose({
 				</N8nActionDropdown>
 			</div>
 		</div>
-		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
-		<ActionsDropdownMenu
-			:id="id"
-			ref="actionsMenu"
-			:workflow-permissions="workflowPermissions"
-			:is-new-workflow="isNewWorkflow"
-			:is-archived="isArchived"
-			:name="name"
-			:tags="tags"
-			:current-folder="currentFolder"
-		/>
 		<template v-if="isWorkflowReviewsEnabled">
 			<WorkflowPublishChoiceDialog
 				v-model:open="showPublishChoiceDialog"
@@ -909,6 +919,7 @@ defineExpose({
 				v-model:open="showUpdateReviewDialog"
 				:workflow-id="props.id"
 				:flush-save="flushSaveForReview"
+				:can-submit="!isReviewUpdateBlocked"
 				@updated="onReviewUpdated"
 			/>
 		</template>
@@ -944,7 +955,6 @@ defineExpose({
 .publishButtonWrapper {
 	position: relative;
 	display: inline-flex;
-	margin-inline: var(--spacing--2xs);
 }
 
 .buttonGroup {

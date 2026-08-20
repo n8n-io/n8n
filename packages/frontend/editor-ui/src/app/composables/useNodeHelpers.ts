@@ -48,7 +48,7 @@ import { EnableNodeToggleCommand } from '@/app/models/history';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
@@ -428,7 +428,10 @@ export function useNodeHelpers() {
 	//
 	// A workflow with no triggers is left un-warned: it's a transient state while
 	// building. The backend still catches it at publish time.
-	function getBlockingTrigger(): { isSystemResolver: boolean; formOAuth2Enabled: boolean } | null {
+	function getBlockingTrigger(): {
+		isSystemResolver: boolean;
+		formOAuth2Enabled: boolean;
+	} | null {
 		const triggers = workflowDocumentStore.value.workflowTriggerNodes.filter(
 			(trigger) => !trigger.disabled,
 		);
@@ -470,16 +473,17 @@ export function useNodeHelpers() {
 			// merely-not-yet-connected credential is surfaced via the callout/banner.
 			// The message depends on the resolver: the system resolver needs a trigger
 			// that establishes the n8n user identity, a custom resolver needs one that
-			// extracts an external identity. The form is only listed as supported while
-			// form-trigger OAuth2 is on — without it a form establishes no identity, so
-			// listing it would advertise a fix that doesn't work.
+			// extracts an external identity. Form is only listed as supported while its
+			// OAuth2 flag is on — without it the form establishes no identity, so listing
+			// it would advertise a fix that doesn't work.
 			if (blockingTrigger) {
-				let messageKey: BaseTextKey = 'nodeIssues.credentials.privateRequiresIdentityTrigger';
+				let messageKey: BaseTextKey =
+					'nodeIssues.credentials.privateRequiresIdentityTriggerWithWebhook';
 
 				if (!blockingTrigger.isSystemResolver) {
 					messageKey = 'nodeIssues.credentials.privateRequiresIdentityExtractor';
 				} else if (blockingTrigger.formOAuth2Enabled) {
-					messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithForm';
+					messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithFormAndWebhook';
 				}
 				foundIssues[credTypeName] = [i18n.baseText(messageKey)];
 			}

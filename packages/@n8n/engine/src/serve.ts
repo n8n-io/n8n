@@ -1,57 +1,27 @@
 import { EngineConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { DataSource } from '@n8n/typeorm';
 
 import { AllowAllAdmittance } from './admittance';
-import {
-	createDataSource,
-	TypeOrmExecutionStore,
-	TypeOrmStepStore,
-	WorkflowExecution,
-	WorkflowStepExecution,
-} from './database';
-import { ExecutionStartHandler, OrchestrationWorker } from './execution';
-import { InMemoryWorkQueue } from './queue';
-import type { OrchestrationMessage, StepMessage } from './queue';
-import { createEngineServer } from './server';
+import { createDataSource } from './database';
+import { createEngineRuntime } from './runtime';
 
 async function main(): Promise<void> {
 	const config = Container.get(EngineConfig);
 
-	let dataSource: DataSource | undefined;
-	if (config.databaseUrl) {
-		dataSource = createDataSource(config.databaseUrl);
-		await dataSource.initialize();
-		await dataSource.runMigrations();
-	} else {
-		console.warn(
-			'engine: N8N_ENGINE_DATABASE_URL not set; running in healthcheck-only mode (workflow execution endpoints disabled)',
-		);
+	// Refused rather than degraded: an engine with nowhere to record an execution
+	// would report healthy while being unable to run one.
+	if (!config.databaseUrl) {
+		throw new Error('engine: N8N_ENGINE_DATABASE_URL is not set');
 	}
 
-	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
-	// Published to but not yet consumed — the step worker is CAT-2870. Queued
-	// messages dispatch as soon as it registers.
-	const stepQueue = new InMemoryWorkQueue<StepMessage>();
+	const dataSource = createDataSource(config.databaseUrl);
+	await dataSource.initialize();
+	await dataSource.runMigrations();
 
-	let worker: OrchestrationWorker | undefined;
-	if (dataSource) {
-		const executionStore = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
-		const stepStore = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		worker = new OrchestrationWorker(
-			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, stepQueue),
-		);
-		worker.start();
-	}
+	const runtime = createEngineRuntime({ dataSource, admittance: new AllowAllAdmittance() });
+	runtime.start();
 
-	const { app } = createEngineServer(
-		dataSource
-			? { dataSource, admittance: new AllowAllAdmittance(), workQueue: orchestrationQueue }
-			: undefined,
-	);
-
-	const server = app.listen(config.port, config.host, () => {
+	const server = runtime.app.listen(config.port, config.host, () => {
 		console.log(`engine: listening on http://${config.host}:${config.port}`);
 	});
 
@@ -63,8 +33,8 @@ async function main(): Promise<void> {
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
 		});
-		if (worker) await worker.stop();
-		if (dataSource?.isInitialized) await dataSource.destroy();
+		await runtime.stop();
+		if (dataSource.isInitialized) await dataSource.destroy();
 		process.exit(0);
 	};
 

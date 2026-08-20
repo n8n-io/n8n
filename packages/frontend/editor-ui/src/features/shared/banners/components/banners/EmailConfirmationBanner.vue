@@ -2,7 +2,7 @@
 import BaseBanner from './BaseBanner.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { i18n as locale } from '@n8n/i18n';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { computed } from 'vue';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 

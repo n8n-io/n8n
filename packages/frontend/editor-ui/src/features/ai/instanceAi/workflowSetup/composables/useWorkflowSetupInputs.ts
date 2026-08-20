@@ -155,11 +155,27 @@ export function useWorkflowSetupInputs(deps: {
 
 		const nodeCredentials = buildNodeCredentials(includeCredential);
 		const nodeParameters = buildNodeParameters(includeParams);
+		const skippedNodes = buildSkippedNodeNames();
 
 		return {
 			...(Object.keys(nodeCredentials).length > 0 ? { nodeCredentials } : {}),
 			...(Object.keys(nodeParameters).length > 0 ? { nodeParameters } : {}),
+			...(skippedNodes.length > 0 ? { skippedNodes } : {}),
 		};
+	}
+
+	/**
+	 * Every node behind a skipped section — a credential section can cover several nodes, and
+	 * the backend keys the decision off node names.
+	 */
+	function buildSkippedNodeNames(): string[] {
+		const names = new Set<string>();
+		for (const section of deps.sections.value) {
+			if (!isSectionSkipped(section)) continue;
+			names.add(section.targetNodeName);
+			for (const target of section.credentialTargetNodes) names.add(target.name);
+		}
+		return [...names];
 	}
 
 	function buildNodeCredentials(

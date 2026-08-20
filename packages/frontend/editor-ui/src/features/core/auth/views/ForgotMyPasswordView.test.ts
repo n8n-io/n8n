@@ -4,8 +4,8 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import ForgotMyPasswordView from './ForgotMyPasswordView.vue';
 import { useToast } from '@n8n/composables/useToast';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
