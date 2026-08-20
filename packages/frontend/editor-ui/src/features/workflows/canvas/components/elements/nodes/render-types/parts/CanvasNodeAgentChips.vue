@@ -47,33 +47,39 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 
 <template>
 	<div :class="$style.chips" data-test-id="canvas-node-agent-chips">
-		<AgentChipButton
+		<span
 			v-for="chip in inlineChips"
 			:key="chip.key"
-			:icon="chip.nodeTypeDescription ? undefined : chip.icon"
-			:clickable="false"
-			:busy="isChipActive(chip)"
-			:class="{ [$style.running]: isChipActive(chip) }"
-			data-test-id="canvas-node-agent-chip"
+			:class="[$style.chipWrapper, { [$style.running]: isChipActive(chip) }]"
 		>
-			<template v-if="chip.nodeTypeDescription" #icon>
-				<NodeIcon :node-type="chip.nodeTypeDescription" :size="16" :class="$style.nodeIcon" />
-			</template>
-			{{ chip.label }}
-		</AgentChipButton>
-		<AgentChipButton
+			<AgentChipButton
+				:icon="chip.nodeTypeDescription ? undefined : chip.icon"
+				:clickable="false"
+				:busy="isChipActive(chip)"
+				data-test-id="canvas-node-agent-chip"
+			>
+				<template v-if="chip.nodeTypeDescription" #icon>
+					<NodeIcon :node-type="chip.nodeTypeDescription" :size="16" :class="$style.nodeIcon" />
+				</template>
+				{{ chip.label }}
+			</AgentChipButton>
+		</span>
+		<span
 			v-if="overflowChips.length && isReadOnly"
-			:clickable="false"
-			:busy="isOverflowActive"
-			:class="{ [$style.running]: isOverflowActive }"
-			data-test-id="canvas-node-agent-chips-overflow"
+			:class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]"
 		>
-			{{
-				i18n.baseText('agentNode.card.moreChips', {
-					interpolate: { count: overflowChips.length },
-				})
-			}}
-		</AgentChipButton>
+			<AgentChipButton
+				:clickable="false"
+				:busy="isOverflowActive"
+				data-test-id="canvas-node-agent-chips-overflow"
+			>
+				{{
+					i18n.baseText('agentNode.card.moreChips', {
+						interpolate: { count: overflowChips.length },
+					})
+				}}
+			</AgentChipButton>
+		</span>
 		<N8nActionDropdown
 			v-else-if="overflowChips.length"
 			:items="overflowItems"
@@ -82,13 +88,15 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			data-test-id="canvas-node-agent-chips-overflow"
 		>
 			<template #activator>
-				<AgentChipButton :busy="isOverflowActive" :class="{ [$style.running]: isOverflowActive }">
-					{{
-						i18n.baseText('agentNode.card.moreChips', {
-							interpolate: { count: overflowChips.length },
-						})
-					}}
-				</AgentChipButton>
+				<span :class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]">
+					<AgentChipButton :busy="isOverflowActive">
+						{{
+							i18n.baseText('agentNode.card.moreChips', {
+								interpolate: { count: overflowChips.length },
+							})
+						}}
+					</AgentChipButton>
+				</span>
 			</template>
 		</N8nActionDropdown>
 	</div>
@@ -107,14 +115,11 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 	flex-shrink: 0;
 }
 
-.running {
-	@include styles.status-running-border;
-
+.chipWrapper {
+	display: inline-flex;
 	position: relative;
 	isolation: isolate;
-	// Match canvas nodes: their surface stops at the padding edge so the
-	// rotating gradient remains visible through the transparent border.
-	background-clip: padding-box;
+	border-radius: var(--radius--full);
 }
 
 /* stylelint-disable */
