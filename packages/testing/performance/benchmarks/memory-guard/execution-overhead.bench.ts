@@ -131,21 +131,22 @@ const EXECUTION_BENCH_OPTIONS = { ...BENCH_OPTIONS, time: 5_000, warmupTime: 2_0
 const runners = CASES.map(({ nodes, items }) => ({ nodes, items, run: makeCase(nodes, items) }));
 
 /**
- * Warm both paths before any measurement, at module load.
+ * Executions performed per measured callback.
  *
- * `bench()` runs in declaration order, so "guard off" always went first and paid
- * the JIT cost that "guard on" then inherited. Under CodSpeed that does not wash
- * out: simulation mode counts instructions over few iterations, and vitest's own
- * `warmupIterations` does not apply. The first report showed "guard on" beating
- * "guard off" by 3%, which is impossible, because "on" does strictly more work.
+ * CodSpeed measures exactly one call of the callback, between
+ * `InstrumentHooks.startBenchmark()` and `stopBenchmark()` (see
+ * `@codspeed/vitest-plugin/dist/analysis.mjs`). One workflow run takes a few
+ * milliseconds and allocates, so whether a GC lands inside that window decides
+ * the count. The first two CI runs showed "guard on" beating "guard off", which
+ * is impossible, and the small cases swung by a factor of two between runs.
  *
- * Warming both here means each measured run starts from the same compiled state.
+ * Looping here makes the measured window large enough that one GC is a small
+ * share of it instead of the whole signal.
  */
-for (const { run } of runners) {
-	for (let i = 0; i < 30; i++) {
-		await run(false);
-		await run(true);
-	}
+const ITERATIONS = 50;
+
+async function runMany(run: (withGuard: boolean) => Promise<void>, withGuard: boolean) {
+	for (let i = 0; i < ITERATIONS; i++) await run(withGuard);
 }
 
 for (const { nodes, items, run } of runners) {
@@ -153,7 +154,7 @@ for (const { nodes, items, run } of runners) {
 		bench(
 			`guard off (${nodes} nodes, ${items} items)`,
 			async () => {
-				await run(false);
+				await runMany(run, false);
 			},
 			EXECUTION_BENCH_OPTIONS,
 		);
@@ -161,7 +162,7 @@ for (const { nodes, items, run } of runners) {
 		bench(
 			`guard on (${nodes} nodes, ${items} items)`,
 			async () => {
-				await run(true);
+				await runMany(run, true);
 			},
 			EXECUTION_BENCH_OPTIONS,
 		);
