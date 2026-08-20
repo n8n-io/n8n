@@ -1,7 +1,12 @@
 import { allFailVerdicts } from './assertion-judge';
 import { asMemoryVerdicts, collectAllExpectations, collectExpectations } from './collect';
 import type { EvalLogger } from '../harness/logger';
-import type { BuildExpectationResult, TranscriptTurn, WorkflowTestCase } from '../types';
+import type {
+	BuildExpectationResult,
+	ContextAssertion,
+	TranscriptTurn,
+	WorkflowTestCase,
+} from '../types';
 import { conversationUserTurnsAsText } from '../utils/conversation-text';
 
 /** Recorded on expectations we refuse to judge, so the reason reaches the report. */
@@ -15,7 +20,12 @@ const NO_CONTEXT_STATE_REASON =
 export interface SelectAuthorExpectationsArgs {
 	testCase: Pick<
 		WorkflowTestCase,
-		'processExpectations' | 'outcomeExpectations' | 'memoryExpectations' | 'conversation' | 'seed'
+		| 'processExpectations'
+		| 'outcomeExpectations'
+		| 'memoryExpectations'
+		| 'contextAssertions'
+		| 'conversation'
+		| 'seed'
 	>;
 	/** Captured build transcript, if any. Empty/absent for prebuilt/MCP builds. */
 	transcript: TranscriptTurn[] | undefined;
@@ -56,6 +66,9 @@ export function selectAuthorExpectations(args: SelectAuthorExpectationsArgs): {
 	/** Expectations for the context-state judge, which grades them against the
 	 *  captured run debug rather than the transcript. */
 	memoryExpectations: string[];
+	/** Deterministic context claims, checked by substring search rather than judged.
+	 *  Gated exactly like memoryExpectations: both need captured run debug. */
+	contextAssertions: ContextAssertion[];
 	transcript: TranscriptTurn[];
 	/** Expectations deliberately left ungraded, already shaped as `incomplete`
 	 *  verdicts. Recording them keeps the case's unit count stable across runs (so
@@ -94,11 +107,18 @@ export function selectAuthorExpectations(args: SelectAuthorExpectationsArgs): {
 		return {
 			expectations: [],
 			memoryExpectations: [],
+			contextAssertions: [],
 			transcript,
 			unjudged: [
 				...allFailVerdicts(collectExpectations(testCase), NO_AGENT_OUTPUT_REASON),
 				...asMemoryVerdicts(
-					allFailVerdicts(testCase.memoryExpectations ?? [], NO_AGENT_OUTPUT_REASON),
+					allFailVerdicts(
+						[
+							...(testCase.memoryExpectations ?? []),
+							...contextAssertionLabels(testCase.contextAssertions),
+						],
+						NO_AGENT_OUTPUT_REASON,
+					),
 				),
 			],
 		};
@@ -115,17 +135,35 @@ export function selectAuthorExpectations(args: SelectAuthorExpectationsArgs): {
 	// us the process expectations but not the memory ones; if the run debug really is
 	// missing, the judge records that specific reason itself.
 	const authoredMemory = testCase.memoryExpectations ?? [];
-	if (authoredMemory.length > 0 && isPrebuilt) {
+	const authoredAssertions = testCase.contextAssertions ?? [];
+	if ((authoredMemory.length > 0 || authoredAssertions.length > 0) && isPrebuilt) {
+		const ungraded = [...authoredMemory, ...contextAssertionLabels(authoredAssertions)];
 		logger.warn(
-			`  Prebuilt/MCP build — leaving ${String(authoredMemory.length)} memory expectation(s) ungraded; this run ran no instance-ai thread`,
+			`  Prebuilt/MCP build — leaving ${String(ungraded.length)} context check(s) ungraded; this run ran no instance-ai thread`,
 		);
 		return {
 			expectations,
 			memoryExpectations: [],
+			contextAssertions: [],
 			transcript,
-			unjudged: asMemoryVerdicts(allFailVerdicts(authoredMemory, NO_CONTEXT_STATE_REASON)),
+			unjudged: asMemoryVerdicts(allFailVerdicts(ungraded, NO_CONTEXT_STATE_REASON)),
 		};
 	}
 
-	return { expectations, memoryExpectations: authoredMemory, transcript, unjudged: [] };
+	return {
+		expectations,
+		memoryExpectations: authoredMemory,
+		contextAssertions: authoredAssertions,
+		transcript,
+		unjudged: [],
+	};
+}
+
+/** Verdict labels for assertions, matching what `checkContextAssertions` produces, so
+ *  an ungraded assertion is named the same way on every path. */
+function contextAssertionLabels(assertions: ContextAssertion[] | undefined): string[] {
+	return (assertions ?? []).map(
+		(a) =>
+			`context ${a.mustAppear === false ? 'excludes' : 'contains'} "${a.text}"${a.note ? ` (${a.note})` : ''}`,
+	);
 }
