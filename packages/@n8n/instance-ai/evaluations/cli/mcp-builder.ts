@@ -185,6 +185,10 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// transcript-less MCP builds there); declaring them needs no build-side setup.
 	processExpectations: 'supported',
 	outcomeExpectations: 'supported',
+	// Same shape as processExpectations: judged by the harness after the build and
+	// skipped there for MCP builds (which run no instance-ai thread, so capture no
+	// context state), and declaring them needs no build-side setup.
+	memoryExpectations: 'supported',
 	// Forbidden legacy key — the schema rejects it at load, so it can never
 	// reach this check; classified only to keep the map schema-complete.
 	buildExpectations: 'supported',
