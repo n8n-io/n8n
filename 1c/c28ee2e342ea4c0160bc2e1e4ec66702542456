@@ -1,0 +1,56 @@
+packages/@n8n/instance-ai/evaluations/harness/usage-summary.ts
+  s_d7dc19b022f345::t_15b45692736da1 87,97-99
+  s_d7dc19b022f345::t_ae854f12a10ea5 54-62
+  s_d7dc19b022f345::t_225cf8e75944ca 115-118,128-137,139-141
+  s_d7dc19b022f345::t_308bfd672a5e5b 30-32,38-42
+  s_d7dc19b022f345::t_59c7c61f6b3f6c 3
+  ai_agent 33,100
+  s_d7dc19b022f345::t_6c7db05bbcae8d 1-2,4-29,34-37,43-53,63-86,88-96,101-114,142
+  s_d7dc19b022f345::t_4946b1ee68850f 119-127,138
+packages/@n8n/instance-ai/evaluations/__tests__/eval-results-dispatcher-contract.test.ts
+  s_d7dc19b022f345::t_17fa46baadebab 279-320,322-329
+  s_d7dc19b022f345::t_44b094f706b71e 8-12,321
+packages/@n8n/instance-ai/evaluations/__tests__/build-cost-report.test.ts
+  s_d7dc19b022f345::t_e3714e5ffd418a 5,8-9,224-292,298-312
+  s_d7dc19b022f345::t_9e042a14ab3ee2 346-406
+  ai_agent 293-297
+packages/@n8n/instance-ai/evaluations/cli/build-cost-report.ts
+  s_d7dc19b022f345::t_15cfae84f25d5f 67-72,336,344-349,359
+  s_d7dc19b022f345::t_b6c4883f5435ce 105
+  s_d7dc19b022f345::t_20f3638d914b25 98-104
+  s_d7dc19b022f345::t_41931e23abb699 611-613,619-626
+  s_d7dc19b022f345::t_e176f321bfac8d 6,9-11,16,27-37,39-41
+  s_d7dc19b022f345::t_17e9db7165708c 447-452,459-461
+  s_d7dc19b022f345::t_295861a10b7af6 237-242
+  s_d7dc19b022f345::t_19ea3b5fe1a1b3 585-600
+  s_d7dc19b022f345::t_c5e557dd5e72c0 64-66,73-76,85-86
+  s_d7dc19b022f345::t_d76625c81d1486 477-483,485,487-489,499-500,508,511
+  s_d7dc19b022f345::t_88c28498ae7c61 518-521
+  s_d7dc19b022f345::t_c16ec3be98730a 284-335,337-343
+packages/@n8n/instance-ai/evaluations/run/persist.ts
+  s_d7dc19b022f345::t_0903e316545c28 23
+  s_d7dc19b022f345::t_37157f2e62af61 466
+  s_d7dc19b022f345::t_7ba14be86dc47f 52-68
+  s_d7dc19b022f345::t_a5d64b09e19ed7 464-465,467-470
+packages/@n8n/instance-ai/evaluations/README.md
+  s_d7dc19b022f345::t_ff9afb16f8e41f 210-246,505-507
+packages/@n8n/instance-ai/evaluations/__tests__/usage-summary.test.ts
+  s_d7dc19b022f345::t_b54a570ceb53e6 1-81,97-136,153-155,157-171,185-190
+  s_d7dc19b022f345::t_b6c4883f5435ce 137-152,156,172-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1cc28ee2e342ea4c0160bc2e1e4ec66702542456",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
