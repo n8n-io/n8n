@@ -74,6 +74,31 @@ type ParseResult =
 
 const invalid = (message: string): ParseResult => ({ ok: false, message });
 
+/**
+ * Characters `res.setHeader` refuses with `ERR_INVALID_CHAR` - anything outside tab,
+ * printable ASCII and the latin1 high range. A policy carrying one would throw while
+ * serving every HTML response, so it is rejected here instead: exactly the values Node
+ * refuses, so a policy that works today keeps working.
+ */
+const HEADER_UNSAFE_CHARACTER = /[^\t\x20-\x7e\x80-\xff]/;
+
+/**
+ * Reject a policy an HTTP header cannot carry, naming the character by code point rather
+ * than echoing it: the message reaches a log, where a newline of its own would let the
+ * offending value forge log lines.
+ */
+const checkHeaderCharacters = (policy: string): ParseResult => {
+	const offender = HEADER_UNSAFE_CHARACTER.exec(policy);
+	if (offender === null) return { ok: true, policy };
+
+	const codePoint = offender[0].codePointAt(0) ?? 0;
+	const hex = codePoint.toString(16).padStart(4, '0');
+
+	return invalid(
+		`the policy contains U+${hex.toUpperCase()}, which an HTTP header cannot carry (offset ${offender.index})`,
+	);
+};
+
 /** Reject a value that the browser cannot read as the author meant it. */
 const checkDirectiveValue = (directive: string, value: string) => {
 	if (MUST_BE_QUOTED.has(value) || MUST_BE_QUOTED_PREFIXES.some((p) => value.startsWith(p))) {
@@ -153,20 +178,8 @@ const checkPolicyString = (policy: string): ParseResult => {
 	return { ok: true, policy };
 };
 
-/**
- * Parse a policy from an env var, in either the historical helmet.js directives object
- * or a policy string.
- */
-export const parseContentSecurityPolicy = (rawValue: string): ParseResult => {
-	const value = rawValue.trim();
-
-	if (value === '' || value === NO_POLICY_KEYWORD) return { ok: true, policy: undefined };
-	if (value.toLowerCase() === DEFAULT_POLICY_KEYWORD) {
-		return { ok: true, policy: DEFAULT_CONTENT_SECURITY_POLICY };
-	}
-
-	if (!value.startsWith('{')) return checkPolicyString(value);
-
+/** Parse the historical helmet.js directives object. */
+const parseDirectivesJson = (value: string): ParseResult => {
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(value);
@@ -179,6 +192,28 @@ export const parseContentSecurityPolicy = (rawValue: string): ParseResult => {
 	}
 
 	return serializeDirectives(parsed);
+};
+
+/**
+ * Parse a policy from an env var, in either the historical helmet.js directives object
+ * or a policy string.
+ */
+export const parseContentSecurityPolicy = (rawValue: string): ParseResult => {
+	const value = rawValue.trim();
+
+	if (value === '' || value === NO_POLICY_KEYWORD) return { ok: true, policy: undefined };
+	if (value.toLowerCase() === DEFAULT_POLICY_KEYWORD) {
+		return { ok: true, policy: DEFAULT_CONTENT_SECURITY_POLICY };
+	}
+
+	const result = value.startsWith('{') ? parseDirectivesJson(value) : checkPolicyString(value);
+
+	// Both formats end up here, and the check runs on the whole policy rather than on each
+	// value: `checkPolicyString` hands back the string the user wrote, where a newline
+	// between two directives is swallowed as whitespace by the per-value checks.
+	if (!result.ok || result.policy === undefined) return result;
+
+	return checkHeaderCharacters(result.policy);
 };
 
 /**
