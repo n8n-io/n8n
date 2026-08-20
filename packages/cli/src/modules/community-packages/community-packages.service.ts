@@ -224,9 +224,15 @@ export class CommunityPackagesService {
 		return this.hasNodesLoaded(installedPackage.installedNodes);
 	}
 
+	/**
+	 * Missing and corrupted (e.g. left truncated by a crash mid-write) both fall
+	 * through to the same rewrite: nothing besides this ledger's own read-modify-write
+	 * cycle ever reads it back, so resetting it on corruption is safe.
+	 */
 	async ensurePackageJson() {
 		try {
-			await access(this.packageJsonPath, constants.F_OK);
+			const existingContent = await readFile(this.packageJsonPath, 'utf-8');
+			jsonParse<PackageJson>(existingContent);
 		} catch {
 			await mkdir(this.downloadFolder, { recursive: true });
 			const packageJson: PackageJson = {

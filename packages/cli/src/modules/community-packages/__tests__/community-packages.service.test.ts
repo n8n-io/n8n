@@ -5,7 +5,7 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
-import { access, constants, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
@@ -896,37 +896,44 @@ describe('CommunityPackagesService', () => {
 
 	describe('ensurePackageJson', () => {
 		const packageJsonPath = join(nodesDownloadDir, 'package.json');
+		const defaultPackageJson = JSON.stringify(
+			{
+				name: 'installed-nodes',
+				private: true,
+				dependencies: {},
+			},
+			null,
+			2,
+		);
 
-		test('should not create package.json if it already exists', async () => {
-			vi.mocked(access).mockResolvedValue(undefined);
+		test('should not recreate package.json if its content is valid', async () => {
+			vi.mocked(readFile).mockResolvedValue(
+				JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }),
+			);
 
 			await communityPackagesService.ensurePackageJson();
 
-			expect(access).toHaveBeenCalledWith(packageJsonPath, constants.F_OK);
+			expect(readFile).toHaveBeenCalledWith(packageJsonPath, 'utf-8');
 			expect(mkdir).not.toHaveBeenCalled();
 			expect(writeFile).not.toHaveBeenCalled();
 		});
 
 		test('should create package.json if it does not exist', async () => {
-			vi.mocked(access).mockRejectedValue(new Error('ENOENT'));
+			vi.mocked(readFile).mockRejectedValue(new Error('ENOENT'));
 
 			await communityPackagesService.ensurePackageJson();
 
-			expect(access).toHaveBeenCalledWith(packageJsonPath, constants.F_OK);
 			expect(mkdir).toHaveBeenCalledWith(nodesDownloadDir, { recursive: true });
-			expect(writeFile).toHaveBeenCalledWith(
-				packageJsonPath,
-				JSON.stringify(
-					{
-						name: 'installed-nodes',
-						private: true,
-						dependencies: {},
-					},
-					null,
-					2,
-				),
-				'utf-8',
-			);
+			expect(writeFile).toHaveBeenCalledWith(packageJsonPath, defaultPackageJson, 'utf-8');
+		});
+
+		test('should recreate package.json if its content is corrupted', async () => {
+			vi.mocked(readFile).mockResolvedValue('{ "name": "installed-nodes", "depende');
+
+			await communityPackagesService.ensurePackageJson();
+
+			expect(mkdir).toHaveBeenCalledWith(nodesDownloadDir, { recursive: true });
+			expect(writeFile).toHaveBeenCalledWith(packageJsonPath, defaultPackageJson, 'utf-8');
 		});
 	});
 
