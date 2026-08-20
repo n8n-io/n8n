@@ -1,7 +1,7 @@
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -99,42 +99,5 @@ describe('exportPackageToDirectory', () => {
 
 		expect(emitSpy).not.toHaveBeenCalledWith('n8n-package-exported', expect.anything());
 		emitSpy.mockRestore();
-	});
-
-	it('nests the package under a subfolder so projects can share a directory', async () => {
-		const project = await createTeamProject('Alpha Project', owner);
-		await createWorkflow({ name: 'WF One', nodes: [], connections: {} }, project);
-
-		await service.exportPackageToDirectory(
-			{ user: owner, projectIds: [project.id] },
-			{ targetDir, subfolder: project.id },
-		);
-
-		const manifest = await readJson(project.id, 'manifest.json');
-		expect(manifest.projects![0].id).toBe(project.id);
-		expect(
-			(await stat(path.join(targetDir, project.id, 'projects/alpha-project'))).isDirectory(),
-		).toBe(true);
-	});
-
-	it('keeps sibling subfolders isolated when exporting different projects', async () => {
-		const alpha = await createTeamProject('Alpha Project', owner);
-		const beta = await createTeamProject('Beta Project', owner);
-		await createWorkflow({ name: 'A', nodes: [], connections: {} }, alpha);
-		await createWorkflow({ name: 'B', nodes: [], connections: {} }, beta);
-
-		await service.exportPackageToDirectory(
-			{ user: owner, projectIds: [alpha.id] },
-			{ targetDir, subfolder: alpha.id },
-		);
-		await service.exportPackageToDirectory(
-			{ user: owner, projectIds: [beta.id] },
-			{ targetDir, subfolder: beta.id },
-		);
-
-		const subfolders = (await readdir(targetDir)).sort();
-		expect(subfolders).toEqual([alpha.id, beta.id].sort());
-		expect((await readJson(alpha.id, 'manifest.json')).projects![0].id).toBe(alpha.id);
-		expect((await readJson(beta.id, 'manifest.json')).projects![0].id).toBe(beta.id);
 	});
 });

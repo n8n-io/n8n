@@ -40,22 +40,6 @@ describe('DirectoryPackageWriter', () => {
 		await expect(stat(path.join(targetDir, 'manifest.json'))).rejects.toThrow();
 	});
 
-	it('nests every entry under the subfolder when provided', async () => {
-		const writer = new DirectoryPackageWriter(targetDir, 'project-id-123');
-
-		writer.writeFile('manifest.json', '{}');
-		writer.writeFile('projects/alpha/project.json', '{}');
-
-		await writer.finalize();
-
-		expect(await readFile(path.join(targetDir, 'project-id-123/manifest.json'), 'utf-8')).toBe(
-			'{}',
-		);
-		expect(
-			await readFile(path.join(targetDir, 'project-id-123/projects/alpha/project.json'), 'utf-8'),
-		).toBe('{}');
-	});
-
 	it('creates missing parent directories for a file entry', async () => {
 		const writer = new DirectoryPackageWriter(targetDir);
 		// No explicit writeDirectory for the parents.

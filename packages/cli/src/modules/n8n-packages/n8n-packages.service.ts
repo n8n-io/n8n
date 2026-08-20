@@ -99,16 +99,14 @@ export class N8nPackagesService {
 
 	/**
 	 * Exports the same n8n-packages layout as {@link exportPackage}, but as loose
-	 * files on disk (the unzipped format) under `target.targetDir` — optionally
-	 * namespaced by `target.subfolder` so several packages can share a directory —
-	 * instead of a tar stream. Reuses the full export orchestration; only the
-	 * writer differs.
+	 * files on disk (the unzipped format) under `target.targetDir` instead of a tar
+	 * stream. Reuses the full export orchestration; only the writer differs.
 	 */
 	async exportPackageToDirectory(
 		request: ExportPackageRequest,
-		target: { targetDir: string; subfolder?: string },
+		target: { targetDir: string },
 	): Promise<ExportPackageToDirectoryResult> {
-		const writer = new DirectoryPackageWriter(target.targetDir, target.subfolder);
+		const writer = new DirectoryPackageWriter(target.targetDir);
 		const result = await this.writeExport(writer, request);
 		await writer.finalize();
 		return { counts: result.counts };

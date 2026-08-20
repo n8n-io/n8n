@@ -15,18 +15,11 @@ function normaliseEntryPath(entryPath: string): string {
  * format), rather than a tar archive. Entries are buffered during the exporters'
  * synchronous `writeFile`/`writeDirectory` calls — matching `TarPackageWriter` —
  * and flushed to disk in the async {@link finalize}.
- *
- * An optional `subfolder` prefixes every entry, so several packages can live side
- * by side under one `targetDir` (e.g. one project per subfolder) without their
- * `manifest.json` files colliding.
  */
 export class DirectoryPackageWriter implements PackageWriter<Promise<void>> {
 	private readonly entries: Entry[] = [];
 
-	constructor(
-		private readonly targetDir: string,
-		private readonly subfolder?: string,
-	) {}
+	constructor(private readonly targetDir: string) {}
 
 	writeFile(entryPath: string, content: string | Buffer): void {
 		const buffer = typeof content === 'string' ? Buffer.from(content, 'utf-8') : content;
@@ -37,13 +30,12 @@ export class DirectoryPackageWriter implements PackageWriter<Promise<void>> {
 		this.entries.push({ kind: 'directory', path: normaliseEntryPath(entryPath) });
 	}
 
-	/** Flush every buffered entry to disk under `<targetDir>/<subfolder?>`. */
+	/** Flush every buffered entry to disk under `targetDir`. */
 	async finalize(): Promise<void> {
-		const baseDir = this.subfolder ? path.join(this.targetDir, this.subfolder) : this.targetDir;
-		await mkdir(baseDir, { recursive: true });
+		await mkdir(this.targetDir, { recursive: true });
 
 		for (const entry of this.entries) {
-			const destination = this.resolveWithin(baseDir, entry.path);
+			const destination = this.resolveWithin(this.targetDir, entry.path);
 			if (entry.kind === 'directory') {
 				await mkdir(destination, { recursive: true });
 			} else {
