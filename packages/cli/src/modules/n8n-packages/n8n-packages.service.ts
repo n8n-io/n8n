@@ -7,6 +7,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
+import { buildImportResult, toPackageSummary } from './engine/import-result';
 import { N8nPackageParser } from './engine/n8n-package-parser';
 import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
@@ -31,7 +32,9 @@ import {
 import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
+import { DirectoryPackageReader } from './io/directory/directory-package-reader';
 import { DirectoryPackageWriter } from './io/directory/directory-package-writer';
+import type { PackageReader } from './io/package-reader';
 import type { PackageWriter } from './io/package-writer';
 import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
@@ -45,7 +48,9 @@ import {
 	type ExportPackageResult,
 	type ExportPackageSummary,
 	type ImportPackageRequest,
+	type ImportRequest,
 	type ImportResult,
+	createBindings,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
 import {
@@ -351,6 +356,31 @@ export class N8nPackagesService {
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
+		return await this.dispatchImport(request, reader, manifest);
+	}
+
+	/**
+	 * Imports the unzipped n8n-packages layout from a directory (e.g. a Git
+	 * connection's working copy) rather than a tar archive. The format written by
+	 * {@link exportPackageToDirectory} is always a project package, so a manifest
+	 * with no projects is a valid, empty working copy — nothing to import.
+	 */
+	async importPackageFromDirectory(
+		request: ImportRequest,
+		source: { sourceDir: string },
+	): Promise<ImportResult> {
+		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
+		const manifest = await this.packageParser.getManifest(reader);
+		if (!isProjectPackage(manifest)) return emptyImportResult(manifest);
+		return await this.dispatchImport(request, reader, manifest);
+	}
+
+	/** Routes a read manifest to the importer for its package shape (project vs workflow). */
+	private async dispatchImport(
+		request: ImportRequest,
+		reader: PackageReader,
+		manifest: PackageManifest,
+	): Promise<ImportResult> {
 		if (isProjectPackage(manifest)) {
 			if (request.variableParentPolicy !== undefined) {
 				throw new BadRequestError(
@@ -414,4 +444,20 @@ export class N8nPackagesService {
 
 function isProjectPackage(manifest: PackageManifest): boolean {
 	return (manifest.projects?.length ?? 0) > 0;
+}
+
+/** A successful import that touched nothing — used for an empty working copy. */
+function emptyImportResult(manifest: PackageManifest): ImportResult {
+	return buildImportResult({
+		package: toPackageSummary(manifest),
+		workflows: [],
+		removedWorkflows: [],
+		removedFolders: [],
+		folders: [],
+		projects: [],
+		bindings: createBindings(),
+		credentials: { matched: [], stubbed: [] },
+		variables: { matched: [], created: [], stubbed: [], updated: [], missing: [] },
+		tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
+	});
 }

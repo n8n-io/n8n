@@ -20,7 +20,7 @@ import { VariableParentPolicy } from '../n8n-packages.types';
 import type {
 	ImportContext,
 	ImportResult,
-	ResolvedImportPackageRequest,
+	ResolvedImportRequest,
 } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
@@ -54,7 +54,7 @@ export class WorkflowPackageImporter {
 	) {}
 
 	async import(
-		request: ResolvedImportPackageRequest,
+		request: ResolvedImportRequest,
 		reader: PackageReader,
 		manifest: PackageManifest,
 	): Promise<ImportResult> {
