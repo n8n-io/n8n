@@ -344,8 +344,8 @@ function getInputClass(isEmpty: boolean): string {
 
 	&[data-state='active'],
 	&[aria-current='true'] {
-		background-color: var(--tag--color--background--hover);
-		border-color: var(--tag--border-color--hover);
+		background-color: var(--tag--color--background--active);
+		border-color: var(--tag--border-color--active);
 	}
 }
 
