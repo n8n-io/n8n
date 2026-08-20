@@ -42,6 +42,19 @@ describe('N8nClient packages', () => {
 		vi.unstubAllGlobals();
 	});
 
+	describe('pushGitConnectionProjects', () => {
+		it('returns the updated Git connection', async () => {
+			const response = { id: 'connection-id', baseCommit: null };
+			fetchMock.mockResolvedValue(jsonResponse(200, response));
+
+			await expect(client.pushGitConnectionProjects('connection-id')).resolves.toEqual(response);
+
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/git-connections/connection-id/push');
+			expect(init.method).toBe('POST');
+		});
+	});
+
 	describe('exportPackage', () => {
 		it('posts the workflow IDs as JSON and returns the archive bytes', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1, 2, 3])));

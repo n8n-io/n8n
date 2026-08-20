@@ -247,7 +247,7 @@ export class N8nClient {
 	}
 
 	async pushGitConnectionProjects(id: string) {
-		return await this.post<undefined>(`/git-connections/${id}/push`);
+		return await this.post<Record<string, unknown>>(`/git-connections/${id}/push`);
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────

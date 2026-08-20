@@ -45,6 +45,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		name: 'c',
 		repositoryUrl: 'git@github.com:o/r.git',
 		branchName: 'main',
+		baseCommit: null,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	});
@@ -265,7 +266,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			await writeFile(path.join(repositoryFolder, '.git', 'HEAD'), 'ref: refs/heads/main');
 			await writeFile(path.join(repositoryFolder, 'stale.json'), '{}');
 
-			await exportService.push('1', actor);
+			const result = await exportService.push('1', actor);
 
 			expect(projectConnectionRepository.findProjectIdsByConnection).toHaveBeenCalledWith('1');
 			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalledWith(
@@ -288,6 +289,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			expect(await readFile(path.join(repositoryFolder, '.git', 'HEAD'), 'utf-8')).toBe(
 				'ref: refs/heads/main',
 			);
+			expect(result).toMatchObject({ id: '1', baseCommit: null });
 			await expect(stat(path.join(repositoryFolder, 'stale.json'))).rejects.toThrow();
 			await expect(
 				stat(path.join(n8nFolder, 'git-connections', '1', 'repository-export-next')),

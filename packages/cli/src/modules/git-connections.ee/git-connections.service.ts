@@ -128,12 +128,17 @@ export class GitConnectionsService {
 		await this.repository.remove(connection);
 	}
 
-	async push(connectionId: string, actor: User): Promise<void> {
-		await this.exportMutex(async () => await this.exportProjectsToRepository(connectionId, actor));
+	async push(connectionId: string, actor: User): Promise<GitConnectionPublicDto> {
+		return await this.exportMutex(
+			async () => await this.exportProjectsToRepository(connectionId, actor),
+		);
 	}
 
-	private async exportProjectsToRepository(connectionId: string, actor: User): Promise<void> {
-		await this.getEntity(connectionId);
+	private async exportProjectsToRepository(
+		connectionId: string,
+		actor: User,
+	): Promise<GitConnectionPublicDto> {
+		const connection = await this.getEntity(connectionId);
 		const projectIds =
 			await this.projectConnectionRepository.findProjectIdsByConnection(connectionId);
 		const rootFolder = this.rootFolder(connectionId);
@@ -165,6 +170,7 @@ export class GitConnectionsService {
 		}
 
 		// Git staging and remote synchronization will be added after the package layout is reviewed.
+		return this.toPublic(connection);
 	}
 
 	private async replaceRepositoryContents(repositoryFolder: string, nextExportFolder: string) {

@@ -201,12 +201,12 @@ export class GitConnectionsPublicController {
 	@ApiSummary('Push all projects linked to a Git connection')
 	@ApiDescription('Push all projects linked to a Git connection to the remote repository')
 	@ApiTags(tags)
-	@ApiResponse(200)
+	@ApiResponse(200, GitConnectionPublicDto)
 	async pushGitConnectionProjects(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
-	): Promise<void> {
+	): Promise<GitConnectionPublicDto> {
 		return await (await this.gitConnectionsService()).push(id, req.user);
 	}
 }
