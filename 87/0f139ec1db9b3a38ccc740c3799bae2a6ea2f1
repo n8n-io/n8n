@@ -1,0 +1,28 @@
+packages/cli/src/modules/dynamic-credentials.ee/config-redaction.ts
+  s_c96fcfaca170a2::t_48833c95070289 1-102
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/config-redaction.test.ts
+  s_c96fcfaca170a2::t_ec174b2dfd2397 1-106
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers.controller.ts
+  s_c96fcfaca170a2::t_af2a3f1c799e22 32
+  s_c96fcfaca170a2::t_28201cf5e7d4f0 44-47,59,61-65
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts
+  s_c96fcfaca170a2::t_76e0314f3690ca 291-293,299-302,307
+  s_c96fcfaca170a2::t_3fbd35fb47bdf6 12
+  s_c96fcfaca170a2::t_ae94e31f6296ad 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "870f139ec1db9b3a38ccc740c3799bae2a6ea2f1",
+  "prompts": {},
+  "sessions": {
+    "s_c96fcfaca170a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bb1e44e-2ec6-4ca9-83eb-26a3d926e11f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
