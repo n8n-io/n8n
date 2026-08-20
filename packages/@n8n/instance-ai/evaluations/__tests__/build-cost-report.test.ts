@@ -405,3 +405,40 @@ describe('renderMarkdown', () => {
 		expect(cellCount(missingRow!)).toBe(cellCount(lines[0]));
 	});
 });
+
+describe('renderMarkdown — context outcome tally', () => {
+	const armWith = (label: string, outcomes: Record<string, number>): ArmSummary => ({
+		label,
+		source: 'persisted tokens (priced locally)',
+		cases: [
+			{
+				slug: 'case-a',
+				costPerIteration: [0.1],
+				greenIterations: 1,
+				evaluatedIterations: 1,
+				contextOutcomes: outcomes,
+			},
+		],
+	});
+
+	it('shows each arm whether context arrived, not just what it cost', () => {
+		const md = renderMarkdown([
+			armWith('baseline', { 'retrieval-gap': 4, working: 1 }),
+			armWith('candidate', { working: 4, 'unattributed-success': 1 }),
+		]);
+		expect(md).toContain('never retrieved 4');
+		expect(md).toContain('context used 4');
+		// The cell that would flatter a useless system must be visible.
+		expect(md).toContain('passed without it 1');
+	});
+
+	it('omits the line for an arm with no classified iterations', () => {
+		const md = renderMarkdown([armWith('spend-arm', {})]);
+		expect(md).not.toContain('context:');
+	});
+
+	it('still reports a cell name it was not taught to order', () => {
+		const md = renderMarkdown([armWith('future', { 'some-new-cell': 2 })]);
+		expect(md).toContain('some-new-cell 2');
+	});
+});
