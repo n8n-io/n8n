@@ -58,10 +58,9 @@ export type OrchestratorResumeReason =
 // The slice of each collaborator the tracing service actually uses. Anchored to
 // the concrete types via `Pick` so the signatures stay in sync with the source.
 /**
- * Flag-resolved run-event read: the durable log with `instanceAi.durableLog` on,
- * the in-memory bus store with it off. Async because the durable read flushes
- * the thread's open coalesce buffers and then queries — which is what makes the
- * streamed text of a run visible to `first_visible_state` at all.
+ * Run-event read from the durable log. Async because it flushes the thread's
+ * open coalesce buffers and then queries — which is what makes the streamed
+ * text of a run visible to `first_visible_state` at all.
  */
 export type InstanceAiTracingEventReader = {
 	getEventsForRun: (threadId: string, runId: string) => Promise<InstanceAiEvent[]>;

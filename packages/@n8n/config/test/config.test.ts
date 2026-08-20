@@ -365,7 +365,6 @@ describe('GlobalConfig', () => {
 			outputRedactionPlaceholder: '[REDACTED]',
 			runDebugEnabled: false,
 			thinkingEnabled: true,
-			durableLog: true,
 			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
 			activationCapped: false,

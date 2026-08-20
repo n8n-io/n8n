@@ -391,19 +391,16 @@ export class InstanceAiMemoryService {
 		// in-flight message merge below.
 		const activeCheckpoints = await this.loadActiveCheckpoints(threadId);
 
-		// Durable-log flag (fold-on-read): history trees derive from the event
-		// log; the stored snapshots (the flag-off and rollback path) are only
-		// loaded when the fold needs its pre-log/failure fallback, keeping the
-		// heaviest instance-ai table out of the flag-on hot path.
-		const snapshots = this.instanceAiConfig.durableLog
-			? await this.foldSnapshotsFromLog(
-					threadId,
-					loadStoredSnapshots,
-					collectSuspendedHostRunIds(activeCheckpoints),
-					options?.excludeRunIds,
-					options?.excludeMessageGroupIds,
-				)
-			: await loadStoredSnapshots();
+		// Fold-on-read: history trees derive from the event log. Stored snapshots
+		// are only loaded for the fold's pre-log/failure fallback, keeping the
+		// heaviest instance-ai table out of the hot path.
+		const snapshots = await this.foldSnapshotsFromLog(
+			threadId,
+			loadStoredSnapshots,
+			collectSuspendedHostRunIds(activeCheckpoints),
+			options?.excludeRunIds,
+			options?.excludeMessageGroupIds,
+		);
 
 		// Surface the in-flight messages from any suspended checkpoint. The
 		// user's prompt is persisted to memory on receipt, but the intermediate
