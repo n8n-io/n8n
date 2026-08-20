@@ -330,6 +330,15 @@ export class GitConnectionsService {
 			{ sourceDir: importFolder },
 		);
 
+		// Reconcile the connection's project links to the imported set: newly
+		// imported projects get linked (so a later push exports them instead of
+		// overwriting the working copy with an empty export), and projects deleted
+		// upstream get unlinked (so the next push doesn't resurrect them).
+		await this.gitConnectionProjectRepository.syncConnectionProjects(
+			connectionId,
+			result.projects.map((project) => project.localId),
+		);
+
 		return { connectionId, counts: this.toImportCounts(result) };
 	}
 

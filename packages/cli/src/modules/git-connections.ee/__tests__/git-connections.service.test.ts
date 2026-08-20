@@ -527,7 +527,10 @@ describe('GitConnectionsService (credential state machine)', () => {
 		const importResult = () =>
 			({
 				package: { sourceN8nVersion: '1.0.0', sourceId: 'src', exportedAt: 'now' },
-				projects: [{ status: 'created' }, { status: 'updated' }],
+				projects: [
+					{ status: 'created', localId: 'p1' },
+					{ status: 'updated', localId: 'p2' },
+				],
 				folders: [{ status: 'created' }, { status: 'skipped' }, { status: 'created' }],
 				workflows: [{ status: 'created' }, { status: 'created' }, { status: 'updated' }],
 				bindings: { workflows: {}, credentials: {} },
@@ -595,6 +598,17 @@ describe('GitConnectionsService (credential state machine)', () => {
 					tags: { matched: 0, created: 1, renamed: 1, reconciled: 0, skipped: 0 },
 				},
 			});
+		});
+
+		it('reconciles the connection links to every imported project', async () => {
+			await mkdir(exportFolder, { recursive: true });
+
+			await importService.pull('1', actor);
+
+			expect(gitConnectionProjectRepository.syncConnectionProjects).toHaveBeenCalledWith('1', [
+				'p1',
+				'p2',
+			]);
 		});
 
 		it('fails with a clear error when there is no exported working copy', async () => {
