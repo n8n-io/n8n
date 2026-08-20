@@ -97,7 +97,6 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'eventBusDestination:test',
 			'variable:list',
 			'variable:read',
-			'dataTable:list',
 			'chatHub:manage', // Chat
 			'chatHub:message', // needed for model listing on the Chat settings page
 			'aiAssistant:manage', // AI Assistant
@@ -143,6 +142,9 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 	},
 	insights: {
 		View: ['insights:read', 'insights:list'],
+	},
+	dataTable: {
+		View: ['dataTable:list'],
 	},
 } as const satisfies InstanceScopeGroups;
 

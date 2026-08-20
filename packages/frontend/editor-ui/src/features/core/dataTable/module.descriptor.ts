@@ -30,7 +30,8 @@ export const DataTableModule: FrontendModuleDescription = {
 			path: '/home/datatables',
 			component: DataTableView,
 			meta: {
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated', 'rbac', 'custom'],
+				middlewareOptions: { rbac: { scope: ['dataTable:list'] } },
 			},
 			beforeEnter: (_to, _from, next) => {
 				const insightsStore = useInsightsStore();

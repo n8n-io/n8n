@@ -200,7 +200,10 @@ export async function initializeAuthenticatedFeatures(
 			});
 	}
 
-	if (settingsStore.isDataTableFeatureEnabled) {
+	if (
+		settingsStore.isDataTableFeatureEnabled &&
+		hasPermission(['rbac'], { rbac: { scope: 'dataTable:list' } })
+	) {
 		void dataTableStore
 			.fetchDataTableSize()
 			.then(({ quotaStatus }) => {

@@ -123,6 +123,12 @@ describe('useDataTableNavigationCommands', () => {
 	});
 
 	describe('create data table command', () => {
+		beforeEach(() => {
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: true,
+			});
+		});
+
 		it('should include create data table command when not in read-only mode', () => {
 			const { commands } = useDataTableNavigationCommands({
 				lastQuery: ref(''),
@@ -163,27 +169,32 @@ describe('useDataTableNavigationCommands', () => {
 			expect(createCommand).toBeUndefined();
 		});
 
-		it('should still include the open data table command for a role without create permission', () => {
-			// e.g. a Project Chat User: opening/searching their own accessible data
-			// tables is authorized per-project by the backend, independent of create.
+		it('should not include any data table commands when user is chat user', () => {
 			vi.mocked(permissionsModule).getResourcePermissions.mockReturnValue({
 				dataTable: {
 					create: false,
 				},
 			} as unknown as permissionsModule.PermissionsRecord);
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: false,
+			});
 
 			const { commands } = useDataTableNavigationCommands({
 				lastQuery: ref(''),
 				activeNodeId: ref(null),
 				currentProjectName: ref('Team Project'),
 			});
-
-			expect(commands.value.find((cmd) => cmd.id === 'create-data-table')).toBeUndefined();
-			expect(commands.value.find((cmd) => cmd.id === 'open-data-table')).toBeDefined();
+			expect(commands.value.length).toBe(0);
 		});
 	});
 
 	describe('open data table command', () => {
+		beforeEach(() => {
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: true,
+			});
+		});
+
 		it('should include open data table command', () => {
 			const { commands } = useDataTableNavigationCommands({
 				lastQuery: ref(''),
@@ -229,6 +240,9 @@ describe('useDataTableNavigationCommands', () => {
 
 	describe('data table search and filtering', () => {
 		beforeEach(() => {
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: true,
+			});
 			mockDataTableStore.dataTables = [
 				createMockDataTable('dt-1', 'Customer Data', 'project-1', 'Team Project'),
 				createMockDataTable('dt-2', 'Product Catalog', 'personal-1', 'Personal', 'personal'),
@@ -239,6 +253,10 @@ describe('useDataTableNavigationCommands', () => {
 		it('should filter data tables based on search query', async () => {
 			const activeNodeId = ref<string | null>('open-data-table');
 			const lastQuery = ref('');
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: true,
+			});
+
 			const { commands, handlers } = useDataTableNavigationCommands({
 				lastQuery,
 				activeNodeId,
@@ -289,6 +307,9 @@ describe('useDataTableNavigationCommands', () => {
 
 	describe('root data table items', () => {
 		beforeEach(() => {
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: true,
+			});
 			mockDataTableStore.dataTables = [
 				createMockDataTable('dt-1', 'Customer Data', 'project-1', 'Team Project'),
 			];
@@ -332,6 +353,9 @@ describe('useDataTableNavigationCommands', () => {
 
 	describe('data table command handler', () => {
 		it('should navigate to data table details when clicked', async () => {
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: true,
+			});
 			mockDataTableStore.dataTables = [
 				createMockDataTable('dt-1', 'Customer Data', 'project-1', 'Team Project'),
 			];
@@ -361,6 +385,9 @@ describe('useDataTableNavigationCommands', () => {
 
 	describe('data table project suffix', () => {
 		it('should show personal project suffix for personal data tables', async () => {
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: true,
+			});
 			mockDataTableStore.dataTables = [
 				createMockDataTable('dt-1', 'Personal DataTbl', 'personal-1', 'Personal', 'personal'),
 			];
@@ -388,6 +415,9 @@ describe('useDataTableNavigationCommands', () => {
 		});
 
 		it('should show project name for team project data tables', async () => {
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: true,
+			});
 			mockDataTableStore.dataTables = [
 				createMockDataTable('dt-1', 'Team DataTbl', 'project-1', 'Team Project', 'team'),
 			];
@@ -415,6 +445,9 @@ describe('useDataTableNavigationCommands', () => {
 		});
 
 		it('should show empty suffix when data table has no project', async () => {
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: true,
+			});
 			mockDataTableStore.dataTables = [createMockDataTable('dt-1', 'Orphan DataTbl')];
 
 			const activeNodeId = ref<string | null>('open-data-table');
@@ -441,6 +474,12 @@ describe('useDataTableNavigationCommands', () => {
 	});
 
 	describe('onCommandBarNavigateTo handler', () => {
+		beforeEach(() => {
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: true,
+			});
+		});
+
 		it('should set loading state when navigating to open-data-table', () => {
 			const { isLoading, handlers } = useDataTableNavigationCommands({
 				lastQuery: ref(''),
@@ -483,6 +522,9 @@ describe('useDataTableNavigationCommands', () => {
 
 	describe('onCommandBarChange handler', () => {
 		beforeEach(() => {
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: true,
+			});
 			mockDataTableStore.dataTables = [
 				createMockDataTable('dt-1', 'Customer Data', 'project-1', 'Team Project'),
 			];
@@ -532,6 +574,9 @@ describe('useDataTableNavigationCommands', () => {
 
 	describe('error handling', () => {
 		it('should handle fetch errors gracefully', async () => {
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
+				value: true,
+			});
 			Object.defineProperty(mockDataTableStore, 'fetchDataTables', {
 				value: vi.fn().mockRejectedValue(new Error('Network error')),
 			});

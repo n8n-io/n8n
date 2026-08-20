@@ -9,8 +9,7 @@ import type { Project, User } from '@n8n/db';
 import { DateTime } from 'luxon';
 
 import { createDataTable } from '@test-integration/db/data-tables';
-import { createOwner, createMember, createAdmin, createUser } from '@test-integration/db/users';
-import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
@@ -362,39 +361,5 @@ describe('GET /data-tables-global', () => {
 		expect(response.body.data.count).toBe(1);
 		expect(response.body.data.data).toHaveLength(1);
 		expect(response.body.data.data[0].columns).toHaveLength(2);
-	});
-
-	test('should list own accessible data tables for a role with no dataTable scopes at all', async () => {
-		const noDataTableRole = await createCustomRoleWithScopeSlugs(['insights:list'], {
-			roleType: 'global',
-		});
-		const viewer = await createUser({ role: noDataTableRole });
-		const authViewerAgent = testServer.authAgentFor(viewer);
-
-		const project = await createTeamProject('viewer project', owner);
-		await linkUserToProject(viewer, project, 'project:editor');
-		await createDataTable(project, { name: 'Viewer Accessible Table' });
-		await createDataTable(ownerProject, { name: 'Inaccessible Table' });
-
-		const response = await authViewerAgent.get('/data-tables-global').expect(200);
-
-		expect(response.body.data.count).toBe(1);
-		expect(response.body.data.data[0].name).toBe('Viewer Accessible Table');
-	});
-});
-
-describe('GET /data-tables-global/limits', () => {
-	test('reports storage usage for a role with no dataTable scopes at all', async () => {
-		const noDataTableRole = await createCustomRoleWithScopeSlugs(['insights:list'], {
-			roleType: 'global',
-		});
-		const viewer = await createUser({ role: noDataTableRole });
-		const authViewerAgent = testServer.authAgentFor(viewer);
-
-		const project = await createTeamProject('viewer project', owner);
-		await linkUserToProject(viewer, project, 'project:editor');
-		await createDataTable(project, { name: 'Viewer Accessible Table' });
-
-		await authViewerAgent.get('/data-tables-global/limits').expect(200);
 	});
 });
