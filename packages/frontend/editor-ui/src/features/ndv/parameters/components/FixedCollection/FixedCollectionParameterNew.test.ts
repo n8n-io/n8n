@@ -8,6 +8,7 @@ import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
 import { flushPromises } from '@vue/test-utils';
+import type { INodeParameters } from 'n8n-workflow';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -173,6 +174,80 @@ describe('FixedCollectionParameterNew.vue', () => {
 
 			// The wrapper should be expanded - check that the nested content is visible
 			expect(rendered.getByTestId('fixed-collection-add-nested-button')).toBeVisible();
+		});
+
+		it('emits valueChanged when adding to an empty nested fixedCollection (GitHub #36507)', async () => {
+			const rendered = renderComponent({
+				props: {
+					...baseProps,
+					isNested: true,
+					isNewlyAdded: true,
+					values: { values: [] },
+					nodeValues: {
+						parameters: {
+							additionalOptions: {
+								filters: { values: [] },
+							},
+						},
+					},
+					path: 'parameters.additionalOptions.filters',
+					parameter: {
+						...baseProps.parameter,
+						name: 'filters',
+						displayName: 'Filters',
+						placeholder: 'Add Filter',
+					},
+				},
+			});
+
+			await userEvent.click(rendered.getByTestId('fixed-collection-add-nested-button'));
+			await flushPromises();
+
+			expect(rendered.emitted('valueChanged')).toEqual([
+				[
+					{
+						name: 'parameters.additionalOptions.filters.values',
+						value: [{ outputKey: 'Default Output Name' }],
+					},
+				],
+			]);
+		});
+
+		it('handles non-array existing values when adding nested items (GitHub #36507)', async () => {
+			const rendered = renderComponent({
+				props: {
+					...baseProps,
+					isNested: true,
+					isNewlyAdded: true,
+					values: { values: {} as unknown as INodeParameters[] },
+					nodeValues: {
+						parameters: {
+							additionalOptions: {
+								filters: { values: {} },
+							},
+						},
+					},
+					path: 'parameters.additionalOptions.filters',
+					parameter: {
+						...baseProps.parameter,
+						name: 'filters',
+						displayName: 'Filters',
+						placeholder: 'Add Filter',
+					},
+				},
+			});
+
+			await userEvent.click(rendered.getByTestId('fixed-collection-add-nested-button'));
+			await flushPromises();
+
+			expect(rendered.emitted('valueChanged')).toEqual([
+				[
+					{
+						name: 'parameters.additionalOptions.filters.values',
+						value: [{ outputKey: 'Default Output Name' }],
+					},
+				],
+			]);
 		});
 
 		it('does not expand by default when there are multiple items', () => {

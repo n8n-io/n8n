@@ -207,6 +207,74 @@ describe('CollectionParameterNew.vue', () => {
 			await userEvent.click(option);
 			expect(emitted('valueChanged')).toBeTruthy();
 		});
+
+		it('initializes nested fixedCollection options with empty arrays (GitHub #36507)', async () => {
+			const baserowLikeProps: Props = {
+				...baseProps,
+				parameter: {
+					displayName: 'Options',
+					name: 'additionalOptions',
+					type: 'collection',
+					placeholder: 'Add option',
+					default: {},
+					options: [
+						{
+							displayName: 'Filters',
+							name: 'filters',
+							type: 'fixedCollection',
+							placeholder: 'Add Filter',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'fields',
+									displayName: 'Field',
+									values: [
+										{
+											displayName: 'Field Name or ID',
+											name: 'field',
+											type: 'options',
+											default: '',
+											options: [],
+										},
+										{
+											displayName: 'Filter',
+											name: 'operator',
+											type: 'options',
+											default: 'equal',
+											options: [{ name: 'Equal', value: 'equal' }],
+										},
+										{
+											displayName: 'Value',
+											name: 'value',
+											type: 'string',
+											default: '',
+										},
+									],
+								},
+							],
+						},
+					],
+				},
+				path: 'parameters.additionalOptions',
+			};
+
+			const { getByTestId, emitted } = renderComponent({ props: baserowLikeProps });
+
+			await userEvent.click(getByTestId('collection-parameter-add-header'));
+			await userEvent.click(await screen.findByText('Filters'));
+
+			expect(emitted('valueChanged')).toEqual([
+				[
+					{
+						name: 'parameters.additionalOptions.filters',
+						value: { fields: [] },
+					},
+				],
+			]);
+		});
 	});
 
 	describe('Deleting items', () => {

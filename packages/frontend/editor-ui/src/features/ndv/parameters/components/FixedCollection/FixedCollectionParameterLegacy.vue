@@ -370,10 +370,16 @@ const optionSelected = async (optionName: string) => {
 		return acc;
 	}, {});
 
-	const existingValues = get(props.nodeValues, name, []) as INodeParameters[];
+	const rawExistingValues = mutableValues.value[option.name] ?? get(props.nodeValues, name, []);
+	const existingValues = Array.isArray(rawExistingValues) ? rawExistingValues : [];
 	const newValue: NodeParameterValueType = multipleValues.value
 		? [...existingValues, newParameterValue]
 		: newParameterValue;
+
+	mutableValues.value = {
+		...mutableValues.value,
+		[option.name]: multipleValues.value ? (newValue as INodeParameters[]) : newValue,
+	};
 
 	emit('valueChanged', { name, value: newValue });
 	selectedOption.value = undefined;
