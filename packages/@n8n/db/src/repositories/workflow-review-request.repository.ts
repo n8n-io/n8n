@@ -6,6 +6,7 @@ import { DataSource } from '@n8n/typeorm';
 import { BaseRepository } from './base-repository';
 import { SharedWorkflow } from '../entities/shared-workflow';
 import { WorkflowEntity } from '../entities/workflow-entity';
+import { WorkflowHistory } from '../entities/workflow-history';
 import { WorkflowReviewRequestAuthor } from '../entities/workflow-review-request-author.ee';
 import { WorkflowReviewRequestReviewer } from '../entities/workflow-review-request-reviewer.ee';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
@@ -76,7 +77,8 @@ export type FindManyForInboxOptions = {
 
 /**
  * Projection for the workflow-scoped list: the request fields the use case
- * needs plus the version pinned for the workflow the query was scoped to.
+ * needs plus the version pinned for the workflow the query was scoped to, and
+ * the name that version was given.
  */
 export type WorkflowReviewRequestForWorkflowRow = Pick<
 	WorkflowReviewRequest,
@@ -90,6 +92,7 @@ export type WorkflowReviewRequestForWorkflowRow = Pick<
 	| 'updatedAt'
 > & {
 	workflowVersionId: string | null;
+	workflowVersionName: string | null;
 };
 
 export type CountByStateForInboxOptions = {
@@ -288,6 +291,12 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 				'requestWorkflow.workflowReviewRequestId = request.id',
 			)
 			.addSelect('requestWorkflow.workflowVersionId', 'pinnedWorkflowVersionId')
+			.leftJoin(
+				WorkflowHistory,
+				'pinnedVersion',
+				'pinnedVersion.workflowId = requestWorkflow.workflowId AND pinnedVersion.versionId = requestWorkflow.workflowVersionId',
+			)
+			.addSelect('pinnedVersion.name', 'pinnedWorkflowVersionName')
 			.where('requestWorkflow.workflowId = :workflowId', { workflowId })
 			.orderBy('request.createdAt', 'DESC')
 			// Ids are random, so this only breaks ties deterministically: callers ask
@@ -306,7 +315,11 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 		}
 
 		const [{ entities, raw }, count] = await Promise.all([
-			qb.getRawAndEntities<{ request_id: string; pinnedWorkflowVersionId: string | null }>(),
+			qb.getRawAndEntities<{
+				request_id: string;
+				pinnedWorkflowVersionId: string | null;
+				pinnedWorkflowVersionName: string | null;
+			}>(),
 			qb.getCount(),
 		]);
 
@@ -314,6 +327,9 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 		// but key by id instead of index to stay independent of entity deduplication.
 		const versionIdByRequestId = new Map(
 			raw.map((row) => [row.request_id, row.pinnedWorkflowVersionId ?? null]),
+		);
+		const versionNameByRequestId = new Map(
+			raw.map((row) => [row.request_id, row.pinnedWorkflowVersionName ?? null]),
 		);
 		const requests = entities.map((entity) => ({
 			id: entity.id,
@@ -325,6 +341,7 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
 			workflowVersionId: versionIdByRequestId.get(entity.id) ?? null,
+			workflowVersionName: versionNameByRequestId.get(entity.id) ?? null,
 		}));
 
 		return [requests, count];
