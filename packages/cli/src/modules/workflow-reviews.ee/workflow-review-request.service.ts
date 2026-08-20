@@ -424,6 +424,7 @@ export class WorkflowReviewRequestService {
 		this.eventService.emit('workflow-review-requested', {
 			user: toEventUser(user),
 			workflowReviewRequestId: request.id,
+			projectId: project.id,
 			workflowId,
 			workflowVersionId,
 			reviewerCount: reviewerUserIds.length,
@@ -724,7 +725,6 @@ export class WorkflowReviewRequestService {
 		const {
 			request: saved,
 			pinnedVersionId,
-			decidedByAuthor,
 			decidedAsAssignedReviewer,
 		} = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
@@ -822,7 +822,6 @@ export class WorkflowReviewRequestService {
 				return {
 					request: savedRequest,
 					pinnedVersionId: currentRow.workflowVersionId,
-					decidedByAuthor: isAuthorNow,
 					decidedAsAssignedReviewer: isAssignedReviewerNow,
 				};
 			},
@@ -841,7 +840,6 @@ export class WorkflowReviewRequestService {
 			// The override is deliberately resolved pre-lock (see the note there), so this names
 			// the role that authorized the decision, not one re-asserted at commit time.
 			decidedVia: decidedAsAssignedReviewer ? 'assigned-reviewer' : 'admin-override',
-			decidedByAuthor,
 			msSinceReviewOpened: Date.now() - saved.createdAt.getTime(),
 		});
 

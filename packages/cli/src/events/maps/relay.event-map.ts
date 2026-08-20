@@ -4,7 +4,6 @@ import type {
 	ProjectRelation,
 	RedactionFloor,
 	WorkflowReviewClosedReason,
-	WorkflowReviewDecidedVia,
 } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
@@ -1111,6 +1110,8 @@ export type RelayEventMap = {
 	'workflow-review-requested': {
 		user: UserLike;
 		workflowReviewRequestId: string;
+		/** The project owning the review when it was opened. */
+		projectId: string;
 		workflowId: string;
 		workflowVersionId: string;
 		reviewerCount: number;
@@ -1134,12 +1135,7 @@ export type RelayEventMap = {
 		 * Which authority allowed the decision. A caller can hold both; the emit site
 		 * reports assignment, because that is what the review asked for.
 		 */
-		decidedVia: WorkflowReviewDecidedVia;
-		/**
-		 * A reviewer who synced a version becomes an author too, so this is not
-		 * exclusive with `decidedVia: 'assigned-reviewer'`.
-		 */
-		decidedByAuthor: boolean;
+		decidedVia: 'assigned-reviewer' | 'admin-override';
 		/**
 		 * Wall clock from `review.opened` to this decision. A review can be decided
 		 * several times: `updateVersion` resets the decision to pending.
@@ -1154,9 +1150,6 @@ export type RelayEventMap = {
 	 */
 	'workflow-review-closed': {
 		workflowReviewRequestId: string;
-		projectId: string;
-		/** Null only for the orphan the sweep finds with no workflow row behind its link. */
-		workflowId: string | null;
 		reason: WorkflowReviewClosedReason;
 	};
 

@@ -38,7 +38,6 @@ describe('WorkflowReviewAutoCloseService', () => {
 	const openRequest = (overrides: Partial<WorkflowReviewRequest> = {}) =>
 		mock<WorkflowReviewRequest>({
 			id: 'req-1',
-			projectId: 'proj-1',
 			state: 'open',
 			decision: 'pending',
 			closedById: null,
@@ -74,15 +73,13 @@ describe('WorkflowReviewAutoCloseService', () => {
 		// reported once, not once per pass.
 		expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-closed', {
 			workflowReviewRequestId: 'req-1',
-			projectId: 'proj-1',
-			workflowId: 'wf-1',
 			reason: 'workflow-archived',
 		});
 	});
 
 	it('closes each open request on transfer and broadcasts once per affected workflow', async () => {
 		const first = openRequest({ id: 'req-1' });
-		const second = openRequest({ id: 'req-2', projectId: 'proj-2' });
+		const second = openRequest({ id: 'req-2' });
 		requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
 			{
 				request: first,
@@ -106,19 +103,14 @@ describe('WorkflowReviewAutoCloseService', () => {
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-1');
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-2');
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-3');
-		// One report per review, each naming its own review and project — never the
-		// batch of workflows the move touched.
+		// One report per review, never one per workflow the move touched.
 		expect(eventService.emit).toHaveBeenCalledTimes(2);
 		expect(eventService.emit).toHaveBeenCalledWith('workflow-review-closed', {
 			workflowReviewRequestId: 'req-1',
-			projectId: 'proj-1',
-			workflowId: 'wf-1',
 			reason: 'workflow-moved',
 		});
 		expect(eventService.emit).toHaveBeenCalledWith('workflow-review-closed', {
 			workflowReviewRequestId: 'req-2',
-			projectId: 'proj-2',
-			workflowId: 'wf-3',
 			reason: 'workflow-moved',
 		});
 	});
@@ -134,8 +126,6 @@ describe('WorkflowReviewAutoCloseService', () => {
 		expect(request.state).toBe('closed');
 		expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-closed', {
 			workflowReviewRequestId: 'req-1',
-			projectId: 'proj-1',
-			workflowId: 'wf-1',
 			reason: 'workflow-deleted',
 		});
 	});
@@ -197,7 +187,7 @@ describe('WorkflowReviewAutoCloseService', () => {
 	describe('reconciliation sweep', () => {
 		it('closes the requests the delete orphaned and explains each of them', async () => {
 			requestRepository.closeUnreviewableOpenRequests.mockResolvedValue([
-				{ id: 'req-9', projectId: 'proj-9', reason: 'workflow-deleted', workflowId: null },
+				{ id: 'req-9', reason: 'workflow-deleted' },
 			]);
 			activityRepository.createActivity.mockResolvedValue(mock<WorkflowReviewActivity>());
 
@@ -225,16 +215,11 @@ describe('WorkflowReviewAutoCloseService', () => {
 				expect.any(String),
 				expect.objectContaining({
 					workflowIds: ['wf-1', 'wf-2'],
-					closedRequests: [
-						{ id: 'req-9', projectId: 'proj-9', reason: 'workflow-deleted', workflowId: null },
-					],
+					closedRequests: [{ id: 'req-9', reason: 'workflow-deleted' }],
 				}),
 			);
-			// The workflow is already gone, so the review is all there is left to name.
 			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-closed', {
 				workflowReviewRequestId: 'req-9',
-				projectId: 'proj-9',
-				workflowId: null,
 				reason: 'workflow-deleted',
 			});
 		});
@@ -243,8 +228,8 @@ describe('WorkflowReviewAutoCloseService', () => {
 		// archive next to one left by a move.
 		it('explains each request with the reason the sweep reported for it', async () => {
 			requestRepository.closeUnreviewableOpenRequests.mockResolvedValue([
-				{ id: 'req-1', projectId: 'proj-1', reason: 'workflow-archived', workflowId: 'wf-1' },
-				{ id: 'req-2', projectId: 'proj-2', reason: 'workflow-moved', workflowId: 'wf-2' },
+				{ id: 'req-1', reason: 'workflow-archived' },
+				{ id: 'req-2', reason: 'workflow-moved' },
 			]);
 			activityRepository.createActivity.mockResolvedValue(mock<WorkflowReviewActivity>());
 
@@ -267,14 +252,10 @@ describe('WorkflowReviewAutoCloseService', () => {
 			expect(eventService.emit).toHaveBeenCalledTimes(2);
 			expect(eventService.emit).toHaveBeenCalledWith('workflow-review-closed', {
 				workflowReviewRequestId: 'req-1',
-				projectId: 'proj-1',
-				workflowId: 'wf-1',
 				reason: 'workflow-archived',
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('workflow-review-closed', {
 				workflowReviewRequestId: 'req-2',
-				projectId: 'proj-2',
-				workflowId: 'wf-2',
 				reason: 'workflow-moved',
 			});
 		});
@@ -293,7 +274,7 @@ describe('WorkflowReviewAutoCloseService', () => {
 		// so there is nothing left to fail.
 		it('leaves a review it cannot explain to the next sweep', async () => {
 			requestRepository.closeUnreviewableOpenRequests.mockResolvedValue([
-				{ id: 'req-9', projectId: 'proj-9', reason: 'workflow-deleted', workflowId: null },
+				{ id: 'req-9', reason: 'workflow-deleted' },
 			]);
 			activityRepository.createActivity.mockRejectedValue(new Error('db down'));
 
@@ -321,7 +302,7 @@ describe('WorkflowReviewAutoCloseService', () => {
 		// not surface as a failed mutation.
 		it('swallows a reporting failure too', async () => {
 			requestRepository.closeUnreviewableOpenRequests.mockResolvedValue([
-				{ id: 'req-9', projectId: 'proj-9', reason: 'workflow-deleted', workflowId: null },
+				{ id: 'req-9', reason: 'workflow-deleted' },
 			]);
 			activityRepository.createActivity.mockResolvedValue(mock<WorkflowReviewActivity>());
 			eventService.emit.mockImplementation(() => {

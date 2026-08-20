@@ -299,7 +299,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			// Being an author does not take away the assignment that entitled them to decide.
 			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
 				'workflow-review-decided',
-				expect.objectContaining({ decidedVia: 'assigned-reviewer', decidedByAuthor: true }),
+				expect.objectContaining({ decidedVia: 'assigned-reviewer' }),
 			);
 		});
 
@@ -345,7 +345,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			);
 			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
 				'workflow-review-decided',
-				expect.objectContaining({ decidedVia: 'admin-override', decidedByAuthor: true }),
+				expect.objectContaining({ decidedVia: 'admin-override' }),
 			);
 		});
 
@@ -417,7 +417,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 			workflowVersionId: 'ver-1',
 			decision: 'approved',
 			decidedVia: 'assigned-reviewer',
-			decidedByAuthor: false,
 			msSinceReviewOpened: 5_400_000,
 		});
 	});
@@ -468,7 +467,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 			workflowVersionId: 'ver-1',
 			decision: 'changes_requested',
 			decidedVia: 'assigned-reviewer',
-			decidedByAuthor: false,
 			msSinceReviewOpened: 5_400_000,
 		});
 	});

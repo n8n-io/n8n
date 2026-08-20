@@ -223,12 +223,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private workflowActivated({
-		user,
-		workflowId,
-		workflow,
-		source,
-	}: RelayEventMap['workflow-activated']) {
+	private workflowActivated({ user, workflowId, workflow }: RelayEventMap['workflow-activated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.activated',
 			payload: {
@@ -236,7 +231,6 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName: workflow.name,
 				activeVersionId: workflow.activeVersionId,
-				...(source && { source }),
 			},
 		});
 	}
@@ -1173,12 +1167,19 @@ export class LogStreamingEventRelay extends EventRelay {
 	private workflowReviewRequested({
 		user,
 		workflowReviewRequestId,
+		projectId,
 		workflowId,
 		workflowVersionId,
 	}: RelayEventMap['workflow-review-requested']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow-review.requested',
-			payload: { ...user, workflowId, versionId: workflowVersionId, workflowReviewRequestId },
+			payload: {
+				...user,
+				projectId,
+				workflowId,
+				versionId: workflowVersionId,
+				workflowReviewRequestId,
+			},
 		});
 	}
 
@@ -1203,7 +1204,6 @@ export class LogStreamingEventRelay extends EventRelay {
 		workflowVersionId,
 		decision,
 		decidedVia,
-		decidedByAuthor,
 	}: RelayEventMap['workflow-review-decided']) {
 		void this.eventBus.sendAuditEvent({
 			eventName:
@@ -1216,7 +1216,6 @@ export class LogStreamingEventRelay extends EventRelay {
 				...(workflowVersionId !== null && { versionId: workflowVersionId }),
 				workflowReviewRequestId,
 				decidedVia,
-				decidedByAuthor,
 			},
 		});
 	}
@@ -1224,18 +1223,11 @@ export class LogStreamingEventRelay extends EventRelay {
 	/** Not `@Redactable()`: the auto-close hooks have no actor. */
 	private workflowReviewClosed({
 		workflowReviewRequestId,
-		projectId,
-		workflowId,
 		reason,
 	}: RelayEventMap['workflow-review-closed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow-review.closed',
-			payload: {
-				workflowReviewRequestId,
-				projectId,
-				reviewClosedReason: reason,
-				...(workflowId !== null && { workflowId }),
-			},
+			payload: { workflowReviewRequestId, reviewClosedReason: reason },
 		});
 	}
 

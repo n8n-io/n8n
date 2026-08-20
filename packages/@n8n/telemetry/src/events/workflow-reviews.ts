@@ -10,6 +10,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: z.string(),
 			workflow_review_request_id: z.string(),
+			project_id: z.string().describe('The project owning the review at the time it was opened'),
 			workflow_id: z.string(),
 			workflow_version_id: z.string(),
 			reviewer_count: z.number(),
@@ -44,11 +45,6 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					"'assigned-reviewer' = the decider was assigned to this review; 'admin-override' = they decided through an instance or project admin role. Assignment wins when both apply",
 				),
-			decided_by_author: z
-				.boolean()
-				.describe(
-					'Whether the decider also authored a version of this review. Not exclusive with assigned-reviewer: a reviewer who syncs a version becomes an author too',
-				),
 			ms_since_review_opened: z
 				.number()
 				.describe(
@@ -62,15 +58,6 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 			'An open review was closed without a decision because its workflow stopped being reviewable. Nobody performs this: it is the auto-close hooks and the reconciliation sweep. An approval closes the review too but reports "User decided workflow review" instead.',
 		properties: z.object({
 			workflow_review_request_id: z.string(),
-			project_id: z
-				.string()
-				.describe(
-					"The review's own project, which on a 'workflow-moved' close is the project the workflow left, not the one it moved to",
-				),
-			workflow_id: z
-				.string()
-				.nullable()
-				.describe("Null only when no workflow row is left behind the review's link"),
 			reason: z
 				.enum(['workflow-archived', 'workflow-moved', 'workflow-deleted'])
 				.describe('What made the workflow unreviewable'),

@@ -487,6 +487,7 @@ describe('WorkflowReviewRequestService', () => {
 				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-requested', {
 					user: expect.objectContaining({ id: 'user-1' }),
 					workflowReviewRequestId: 'req-1',
+					projectId: 'project-1',
 					workflowId: 'wf-1',
 					workflowVersionId: 'ver-1',
 					reviewerCount: 1,

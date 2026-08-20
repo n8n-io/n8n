@@ -27,7 +27,6 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { EventService } from '@/events/event.service';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -190,7 +189,6 @@ describe('auto-close on workflow archive', () => {
 	test('a review stranded open on an archived workflow is closed by the next sweep', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 		const request = await createOpenReview(workflow.id, versionId);
-		const emit = vi.spyOn(Container.get(EventService), 'emit');
 		vi.spyOn(activityRepository, 'createActivity')
 			.mockRejectedValueOnce(new Error('write failed'))
 			.mockRejectedValueOnce(new Error('write failed'));
@@ -209,13 +207,6 @@ describe('auto-close on workflow archive', () => {
 		expect(await getActivityEntries(request.id)).toEqual([
 			expect.objectContaining({ type: 'review.closed', data: { reason: 'workflow-archived' } }),
 		]);
-		// The sweep names the review's project and the workflow it was still linked to.
-		expect(emit).toHaveBeenCalledWith('workflow-review-closed', {
-			workflowReviewRequestId: request.id,
-			projectId: ownerProject.id,
-			workflowId: workflow.id,
-			reason: 'workflow-archived',
-		});
 	});
 
 	test('unarchiving does not reopen the review, and the workflow is no longer publish-blocked', async () => {
@@ -345,7 +336,6 @@ describe('auto-close on workflow hard delete', () => {
 	test('a review orphaned by a delete that skipped the hooks is closed by the next delete', async () => {
 		const orphaned = await createReviewableWorkflow();
 		const request = await createOpenReview(orphaned.workflow.id, orphaned.versionId);
-		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		// Delete the row straight from the repository, as a folder-hierarchy cascade does:
 		// no hook fires, so the request is left open with its link row cascaded away.
@@ -365,13 +355,6 @@ describe('auto-close on workflow hard delete', () => {
 		expect(await getActivityEntries(request.id)).toEqual([
 			expect.objectContaining({ type: 'review.closed', data: { reason: 'workflow-deleted' } }),
 		]);
-		// Nothing is left behind the link, so the review is all the event can name.
-		expect(emit).toHaveBeenCalledWith('workflow-review-closed', {
-			workflowReviewRequestId: request.id,
-			projectId: ownerProject.id,
-			workflowId: null,
-			reason: 'workflow-deleted',
-		});
 	});
 
 	test('leaves a review whose workflow still exists open', async () => {

@@ -356,44 +356,6 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		// This is what ties a publish to the review approval that caused it.
-		it('should log what published the workflow when the activation names a source', () => {
-			const event: RelayEventMap['workflow-activated'] = {
-				user: {
-					id: '123',
-					email: 'john@n8n.io',
-					firstName: 'John',
-					lastName: 'Doe',
-					role: { slug: 'owner' },
-				},
-				workflowId: 'wf123',
-				workflow: mock<IWorkflowDb>({
-					id: 'wf123',
-					name: 'Test Workflow',
-					activeVersionId: 'version-abc-123',
-				}),
-				publicApi: false,
-				source: 'review-approval',
-			};
-
-			eventService.emit('workflow-activated', event);
-
-			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.audit.workflow.activated',
-				payload: {
-					userId: '123',
-					_email: 'john@n8n.io',
-					_firstName: 'John',
-					_lastName: 'Doe',
-					globalRole: 'owner',
-					workflowId: 'wf123',
-					workflowName: 'Test Workflow',
-					activeVersionId: 'version-abc-123',
-					source: 'review-approval',
-				},
-			});
-		});
-
 		it('should log on `workflow-deactivated` event', () => {
 			const event: RelayEventMap['workflow-deactivated'] = {
 				user: {
@@ -3065,6 +3027,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('workflow-review-requested', {
 				user: reviewer,
 				workflowReviewRequestId: 'review-1',
+				projectId: 'project-1',
 				workflowId: 'wf-1',
 				workflowVersionId: 'ver-1',
 				reviewerCount: 2,
@@ -3074,6 +3037,7 @@ describe('LogStreamingEventRelay', () => {
 				eventName: 'n8n.audit.workflow-review.requested',
 				payload: {
 					...redactedReviewer,
+					projectId: 'project-1',
 					workflowId: 'wf-1',
 					versionId: 'ver-1',
 					workflowReviewRequestId: 'review-1',
@@ -3108,7 +3072,6 @@ describe('LogStreamingEventRelay', () => {
 				workflowVersionId: 'ver-1',
 				decision: 'approved',
 				decidedVia: 'assigned-reviewer',
-				decidedByAuthor: false,
 				msSinceReviewOpened: 3_600_000,
 			});
 
@@ -3120,7 +3083,6 @@ describe('LogStreamingEventRelay', () => {
 					versionId: 'ver-1',
 					workflowReviewRequestId: 'review-1',
 					decidedVia: 'assigned-reviewer',
-					decidedByAuthor: false,
 				},
 			});
 		});
@@ -3134,7 +3096,6 @@ describe('LogStreamingEventRelay', () => {
 				workflowVersionId: null,
 				decision: 'changes_requested',
 				decidedVia: 'admin-override',
-				decidedByAuthor: true,
 				msSinceReviewOpened: 120_000,
 			});
 
@@ -3145,7 +3106,6 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-1',
 					workflowReviewRequestId: 'review-1',
 					decidedVia: 'admin-override',
-					decidedByAuthor: true,
 				},
 			});
 		});
@@ -3153,8 +3113,6 @@ describe('LogStreamingEventRelay', () => {
 		it('should log `workflow-review.closed` with no user, since nobody closed it', () => {
 			eventService.emit('workflow-review-closed', {
 				workflowReviewRequestId: 'review-1',
-				projectId: 'project-1',
-				workflowId: 'wf-1',
 				reason: 'workflow-archived',
 			});
 
@@ -3162,27 +3120,7 @@ describe('LogStreamingEventRelay', () => {
 				eventName: 'n8n.audit.workflow-review.closed',
 				payload: {
 					workflowReviewRequestId: 'review-1',
-					projectId: 'project-1',
 					reviewClosedReason: 'workflow-archived',
-					workflowId: 'wf-1',
-				},
-			});
-		});
-
-		it('should log `workflow-review.closed` without a workflow when the workflow is already gone', () => {
-			eventService.emit('workflow-review-closed', {
-				workflowReviewRequestId: 'review-1',
-				projectId: 'project-1',
-				workflowId: null,
-				reason: 'workflow-deleted',
-			});
-
-			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.audit.workflow-review.closed',
-				payload: {
-					workflowReviewRequestId: 'review-1',
-					projectId: 'project-1',
-					reviewClosedReason: 'workflow-deleted',
 				},
 			});
 		});

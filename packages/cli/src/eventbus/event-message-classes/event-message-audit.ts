@@ -1,4 +1,4 @@
-import type { WorkflowReviewClosedReason, WorkflowReviewDecidedVia } from '@n8n/api-types';
+import type { WorkflowReviewClosedReason } from '@n8n/api-types';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import type { JsonObject, JsonValue, WorkflowSettings } from 'n8n-workflow';
 
@@ -38,8 +38,6 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	rejectionReason?: string;
 	workflowReviewRequestId?: string;
 	reviewClosedReason?: WorkflowReviewClosedReason;
-	decidedVia?: WorkflowReviewDecidedVia;
-	decidedByAuthor?: boolean;
 }
 
 export interface EventMessageAuditOptions extends AbstractEventMessageOptions {

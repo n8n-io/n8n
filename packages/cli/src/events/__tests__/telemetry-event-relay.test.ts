@@ -3762,6 +3762,7 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('workflow-review-requested', {
 				user: { id: 'user123' },
 				workflowReviewRequestId: 'review-1',
+				projectId: 'project-1',
 				workflowId: 'wf-1',
 				workflowVersionId: 'ver-1',
 				reviewerCount: 2,
@@ -3770,6 +3771,7 @@ describe('TelemetryEventRelay', () => {
 			const payload = {
 				user_id: 'user123',
 				workflow_review_request_id: 'review-1',
+				project_id: 'project-1',
 				workflow_id: 'wf-1',
 				workflow_version_id: 'ver-1',
 				reviewer_count: 2,
@@ -3816,7 +3818,6 @@ describe('TelemetryEventRelay', () => {
 				workflowVersionId: 'ver-1',
 				decision: 'approved',
 				decidedVia: 'assigned-reviewer',
-				decidedByAuthor: false,
 				msSinceReviewOpened: 3_600_000,
 			});
 
@@ -3827,7 +3828,6 @@ describe('TelemetryEventRelay', () => {
 				workflow_version_id: 'ver-1',
 				decision: 'approved',
 				decided_via: 'assigned-reviewer',
-				decided_by_author: false,
 				ms_since_review_opened: 3_600_000,
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -3847,7 +3847,6 @@ describe('TelemetryEventRelay', () => {
 				workflowVersionId: null,
 				decision: 'changes_requested',
 				decidedVia: 'admin-override',
-				decidedByAuthor: true,
 				msSinceReviewOpened: 120_000,
 			});
 
@@ -3858,7 +3857,6 @@ describe('TelemetryEventRelay', () => {
 				workflow_version_id: null,
 				decision: 'changes_requested',
 				decided_via: 'admin-override',
-				decided_by_author: true,
 				ms_since_review_opened: 120_000,
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -3873,39 +3871,12 @@ describe('TelemetryEventRelay', () => {
 		it('should track a review closed because its workflow stopped being reviewable', () => {
 			eventService.emit('workflow-review-closed', {
 				workflowReviewRequestId: 'review-1',
-				projectId: 'project-1',
-				workflowId: 'wf-1',
 				reason: 'workflow-archived',
 			});
 
 			const payload = {
 				workflow_review_request_id: 'review-1',
-				project_id: 'project-1',
-				workflow_id: 'wf-1',
 				reason: 'workflow-archived',
-			};
-			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED,
-				payload,
-			);
-			expect(
-				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED.getValidationError(payload),
-			).toBeNull();
-		});
-
-		it('should track a review closed whose workflow is already gone', () => {
-			eventService.emit('workflow-review-closed', {
-				workflowReviewRequestId: 'review-1',
-				projectId: 'project-1',
-				workflowId: null,
-				reason: 'workflow-deleted',
-			});
-
-			const payload = {
-				workflow_review_request_id: 'review-1',
-				project_id: 'project-1',
-				workflow_id: null,
-				reason: 'workflow-deleted',
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED,

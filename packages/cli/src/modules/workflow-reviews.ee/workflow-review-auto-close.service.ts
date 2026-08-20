@@ -16,7 +16,6 @@ import type { WorkflowMutationHooks } from '@/workflows/workflow-mutation-hooks-
 /** One review the per-mutation close closed, with the workflows it covered. */
 type ClosedRequestWithWorkflows = {
 	id: string;
-	projectId: string;
 	workflowIds: string[];
 };
 
@@ -126,11 +125,9 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 		// next to one left by a move. Reporting must never fail the mutation, which has
 		// already committed by the time the sweep runs.
 		try {
-			for (const { id, projectId, workflowId, reason } of closedRequests) {
+			for (const { id, reason } of closedRequests) {
 				this.eventService.emit('workflow-review-closed', {
 					workflowReviewRequestId: id,
-					projectId,
-					workflowId,
 					reason,
 				});
 			}
@@ -184,7 +181,6 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 
 						closed.push({
 							id: request.id,
-							projectId: request.projectId,
 							workflowIds: links.map((link) => link.workflowId),
 						});
 					}
@@ -219,14 +215,9 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 		// Reporting a close must never fail the mutation: the pre-delete hook propagates
 		// what it catches, and an archive or a move has already committed.
 		try {
-			for (const { id, projectId, workflowIds: closedWorkflowIds } of closedRequests) {
+			for (const { id } of closedRequests) {
 				this.eventService.emit('workflow-review-closed', {
 					workflowReviewRequestId: id,
-					projectId,
-					// One workflow per open review is enforced today; the event reports the pin
-					// rather than a bundle. Null is the sweep's orphan path: here the repository
-					// inner-joins, so `links` is never empty and the fallback is only totality.
-					workflowId: closedWorkflowIds[0] ?? null,
 					reason,
 				});
 			}
