@@ -10,7 +10,6 @@ import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { mkdir, mkdtemp, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
-import pLimit from 'p-limit';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -34,8 +33,6 @@ const EXPORT_SUBFOLDER = 'n8n-export';
 
 @Service()
 export class GitConnectionsService {
-	private readonly exportMutex = pLimit(1);
-
 	constructor(
 		private readonly repository: GitConnectionRepository,
 		private readonly projectConnectionRepository: GitConnectionProjectRepository,
@@ -137,9 +134,7 @@ export class GitConnectionsService {
 	}
 
 	async push(connectionId: string, actor: User): Promise<GitConnectionPushResultDto> {
-		return await this.exportMutex(
-			async () => await this.exportProjectsToRepository(connectionId, actor),
-		);
+		return await this.exportProjectsToRepository(connectionId, actor);
 	}
 
 	private async exportProjectsToRepository(
