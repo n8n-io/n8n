@@ -35,6 +35,13 @@ jobs:
   build-snapshot:
     name: Build versioned Daytona snapshot (${{ matrix.environment }})
     runs-on: ubuntu-latest
+    # Serialize builds per version+environment: overlapping creates for the same
+    # snapshot name make Daytona reject with "an operation is already in progress"
+    # and leave the record in a failed state. Queue instead of cancel — a live
+    # build must finish, and the newer run then lands on the idempotent path.
+    concurrency:
+      group: daytona-snapshot-${{ inputs.n8n_version }}-${{ matrix.environment }}
+      cancel-in-progress: false
     # Checkout + monorepo build (~10 min) run before the snapshot script, whose
     # own budgets are 30 min create/verify + 5 min prune — keep headroom beyond
     # that sum so the script's in-process timeouts always fire before the

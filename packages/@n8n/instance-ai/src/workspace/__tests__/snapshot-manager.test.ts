@@ -331,19 +331,170 @@ describe('SnapshotManager.createSnapshot', () => {
 		expect(result).toBe(SNAPSHOT_NAME);
 	});
 
-	it('throws when the created snapshot is in a failed state', async () => {
+	it('deletes an unusable snapshot, rebuilds once, and throws when the rebuild also fails', async () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
-		daytona.snapshot.get.mockResolvedValue({
+		// Every build lands in a failed state; the record 404s while deleted.
+		let record: FakeSnapshot | undefined = {
 			name: SNAPSHOT_NAME,
 			state: 'build_failed',
 			errorReason: 'npm install exited 1',
+		};
+		daytona.snapshot.create.mockImplementation(async () => {
+			record = { name: SNAPSHOT_NAME, state: 'build_failed', errorReason: 'npm install exited 1' };
+			return await Promise.resolve({ name: SNAPSHOT_NAME });
+		});
+		daytona.snapshot.get.mockImplementation(async () => {
+			if (!record) throw new DaytonaNotFoundError('removed');
+			return await Promise.resolve(record);
+		});
+		daytona.snapshot.delete.mockImplementation(async () => {
+			record = undefined;
+			await Promise.resolve();
 		});
 
-		await expect(manager.createSnapshot(daytona as never)).rejects.toThrow(
-			`Versioned Daytona snapshot "${SNAPSHOT_NAME}" exists but is unusable (state: build_failed, reason: npm install exited 1)`,
-		);
+		await manager.ensureImage();
+		vi.useFakeTimers();
+		try {
+			const assertion = expect(manager.createSnapshot(daytona as never)).rejects.toThrow(
+				`Versioned Daytona snapshot "${SNAPSHOT_NAME}" exists but is unusable (state: build_failed, reason: npm install exited 1)`,
+			);
+			await vi.runAllTimersAsync();
+			await assertion;
+			expect(daytona.snapshot.delete).toHaveBeenCalledTimes(1);
+			expect(daytona.snapshot.create).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('deletes the failed record left by a concurrent operation and retries the create', async () => {
+		// The 2.36.3 incident: the SDK's create poll saw the record land in `error`
+		// with "An operation is already in progress for this resource" and threw a
+		// synthesized DaytonaError without a statusCode. The failed record blocks
+		// every retry until deleted (previously a manual step in the Daytona UI).
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
+		const daytona = makeFakeDaytona();
+		let record: FakeSnapshot | undefined;
+		daytona.snapshot.create
+			.mockImplementationOnce(async () => {
+				await Promise.resolve();
+				record = {
+					name: SNAPSHOT_NAME,
+					state: 'error',
+					errorReason: 'An operation is already in progress for this resource',
+				};
+				throw new DaytonaError(
+					`Failed to create snapshot. Name: ${SNAPSHOT_NAME} Reason: An operation is already in progress for this resource`,
+				);
+			})
+			.mockImplementationOnce(async () => {
+				record = { name: SNAPSHOT_NAME, state: 'active' };
+				return await Promise.resolve({ name: SNAPSHOT_NAME });
+			});
+		daytona.snapshot.get.mockImplementation(async () => {
+			if (!record) throw new DaytonaNotFoundError('removed');
+			return await Promise.resolve(record);
+		});
+		daytona.snapshot.delete.mockImplementation(async () => {
+			record = undefined;
+			await Promise.resolve();
+		});
+
+		await manager.ensureImage();
+		vi.useFakeTimers();
+		try {
+			const promise = manager.createSnapshot(daytona as never);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toBe(SNAPSHOT_NAME);
+			expect(daytona.snapshot.delete).toHaveBeenCalledTimes(1);
+			expect(daytona.snapshot.create).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('recovers a re-run blocked by a leftover failed record', async () => {
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
+		const daytona = makeFakeDaytona();
+		let record: FakeSnapshot | undefined = {
+			name: SNAPSHOT_NAME,
+			state: 'error',
+			errorReason: 'An operation is already in progress for this resource',
+		};
+		daytona.snapshot.create
+			.mockImplementationOnce(async () => {
+				await Promise.resolve();
+				throw new DaytonaError('already exists', 409);
+			})
+			.mockImplementationOnce(async () => {
+				record = { name: SNAPSHOT_NAME, state: 'active' };
+				return await Promise.resolve({ name: SNAPSHOT_NAME });
+			});
+		daytona.snapshot.get.mockImplementation(async () => {
+			if (!record) throw new DaytonaNotFoundError('removed');
+			return await Promise.resolve(record);
+		});
+		daytona.snapshot.delete.mockImplementation(async () => {
+			record = undefined;
+			await Promise.resolve();
+		});
+
+		await manager.ensureImage();
+		vi.useFakeTimers();
+		try {
+			const promise = manager.createSnapshot(daytona as never);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toBe(SNAPSHOT_NAME);
+			expect(daytona.snapshot.delete).toHaveBeenCalledTimes(1);
+			expect(daytona.snapshot.create).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('bounds failed-record cleanups and surfaces the create failure', async () => {
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
+		const daytona = makeFakeDaytona();
+		let record: FakeSnapshot | undefined;
+		// Every create attempt re-registers a record that lands in `error`.
+		daytona.snapshot.create.mockImplementation(async () => {
+			await Promise.resolve();
+			record = {
+				name: SNAPSHOT_NAME,
+				state: 'error',
+				errorReason: 'An operation is already in progress for this resource',
+			};
+			throw new DaytonaError(
+				`Failed to create snapshot. Name: ${SNAPSHOT_NAME} Reason: An operation is already in progress for this resource`,
+			);
+		});
+		daytona.snapshot.get.mockImplementation(async () => {
+			if (!record) throw new DaytonaNotFoundError('removed');
+			return await Promise.resolve(record);
+		});
+		daytona.snapshot.delete.mockImplementation(async () => {
+			record = undefined;
+			await Promise.resolve();
+		});
+
+		await manager.ensureImage();
+		vi.useFakeTimers();
+		try {
+			const assertion = expect(manager.createSnapshot(daytona as never)).rejects.toThrow(
+				/Failed to create snapshot/,
+			);
+			await vi.runAllTimersAsync();
+			await assertion;
+			// 1 initial attempt + 2 cleanup retries, then give up.
+			expect(daytona.snapshot.create).toHaveBeenCalledTimes(3);
+			expect(daytona.snapshot.delete).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('waits for an existing snapshot that is still building', async () => {

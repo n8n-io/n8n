@@ -59,6 +59,12 @@ const DEFAULT_SNAPSHOT_VERIFY_TIMEOUT_S = 1_800;
 const SNAPSHOT_NAME_PREFIX = 'n8n/instance-ai:';
 const MAX_TRANSIENT_CREATE_RETRIES = 3;
 const TRANSIENT_CREATE_RETRY_BACKOFF_MS = 5_000;
+/**
+ * Times a failed (`error`/`build_failed`) record for the target version is deleted and
+ * the create retried before giving up. Automates the manual "delete the broken snapshot
+ * in the Daytona UI and re-run" remediation.
+ */
+const MAX_FAILED_SNAPSHOT_CLEANUPS = 2;
 const SNAPSHOT_LIST_PAGE_SIZE = 100;
 const MAX_SNAPSHOT_LIST_PAGES = 20;
 // Bound for the post-publish prune: it runs after the snapshot is verified, so
@@ -84,6 +90,32 @@ function isAlreadyExistsError(error: unknown): error is TDaytonaError {
 	if (!(error instanceof DaytonaError)) return false;
 	if (error.statusCode === 409) return true;
 	return /already exists/i.test(error.message);
+}
+
+/**
+ * The SDK's `snapshot.create` polls the new record and synthesizes this error (no
+ * statusCode) when the record lands in `error`/`build_failed` — e.g. "Reason: An
+ * operation is already in progress for this resource" when concurrent publishes race.
+ * The failed record persists under the version's name and blocks every retry until
+ * it is deleted.
+ */
+function isCreateFailedStateError(error: unknown): boolean {
+	const { DaytonaError } = loadDaytona();
+	return error instanceof DaytonaError && /^failed to create snapshot\b/i.test(error.message);
+}
+
+/**
+ * Internal signal from {@link SnapshotManager.verifySnapshot}: the record exists in a
+ * state that can never become active. Carries the state so the publish loop can decide
+ * whether deleting and rebuilding is worthwhile (failed states only).
+ */
+class SnapshotUnusableError extends Error {
+	constructor(
+		message: string,
+		readonly snapshotState: string,
+	) {
+		super(message);
+	}
 }
 
 /**
@@ -235,8 +267,28 @@ export class SnapshotManager {
 				: DEFAULT_SNAPSHOT_VERIFY_TIMEOUT_S;
 		const deadline = Date.now() + timeoutS * 1000;
 
-		await this.createWithRecovery(daytona, name, deadline, options);
-		await this.verifySnapshot(daytona, name, deadline);
+		// One rebuild when the published record turns out unusable: a build that
+		// finished in a failed state (e.g. broken by a concurrent operation) blocks
+		// this version until its record is deleted, so delete it and publish again.
+		for (let rebuilds = 0; ; rebuilds++) {
+			await this.createWithRecovery(daytona, name, deadline, options);
+			try {
+				await this.verifySnapshot(daytona, name, deadline);
+				break;
+			} catch (error) {
+				const rebuildable =
+					error instanceof SnapshotUnusableError &&
+					SNAPSHOT_FAILED_STATES.has(error.snapshotState) &&
+					rebuilds < 1 &&
+					Date.now() < deadline;
+				if (!rebuildable) throw error;
+				this.logger.warn('Published Daytona snapshot is unusable; deleting it and rebuilding', {
+					name,
+					state: error.snapshotState,
+				});
+				await this.reconcileFailedSnapshotRecord(daytona, name, deadline);
+			}
+		}
 		try {
 			// Best-effort and time-boxed: neither a prune failure nor a hung
 			// Daytona call may fail a release that just published a healthy
@@ -271,6 +323,7 @@ export class SnapshotManager {
 	): Promise<void> {
 		const createOptions = { timeout: options?.timeout, onLogs: options?.onLogs };
 		let transientRetries = 0;
+		let failedCleanups = 0;
 		let prunedForQuota = false;
 		for (;;) {
 			try {
@@ -287,7 +340,26 @@ export class SnapshotManager {
 				this.logger.info('Created versioned Daytona snapshot; verifying it is usable', { name });
 				return;
 			} catch (error) {
+				if (isCreateFailedStateError(error)) {
+					// The build landed in `error`/`build_failed` (e.g. broken by a concurrent
+					// operation on the same name). The failed record blocks every retry of
+					// this version, so delete it and retry instead of requiring a manual
+					// deletion in the Daytona UI.
+					if (failedCleanups < MAX_FAILED_SNAPSHOT_CLEANUPS) {
+						const record = await this.reconcileFailedSnapshotRecord(daytona, name, deadline);
+						if (record !== 'usable') {
+							failedCleanups++;
+							await sleep(
+								Math.min(TRANSIENT_CREATE_RETRY_BACKOFF_MS * failedCleanups, deadline - Date.now()),
+							);
+							if (Date.now() >= deadline) throw error;
+							continue;
+						}
+					}
+					throw error;
+				}
 				if (isAlreadyExistsError(error)) {
+					// A pre-existing failed record is handled by the verify + rebuild loop.
 					this.logger.info('Versioned Daytona snapshot already exists; verifying it is usable', {
 						name,
 					});
@@ -332,6 +404,44 @@ export class SnapshotManager {
 				throw error;
 			}
 		}
+	}
+
+	/**
+	 * Look up the record for `name` and, when it sits in a failed state, delete it and
+	 * wait for the removal — a failed record permanently blocks republishing the version.
+	 * Returns 'cleaned' when a failed record was deleted, 'absent' when no record exists
+	 * (create can be retried directly), and 'usable' when the record is in any live state.
+	 */
+	private async reconcileFailedSnapshotRecord(
+		daytona: Daytona,
+		name: string,
+		deadline: number,
+	): Promise<'cleaned' | 'absent' | 'usable'> {
+		const { DaytonaNotFoundError } = loadDaytona();
+		let snapshot: DaytonaSnapshot;
+		try {
+			snapshot = await this.withDeadline(
+				daytona.snapshot.get(name),
+				deadline,
+				`Timed out fetching state of Daytona snapshot "${name}"`,
+			);
+		} catch (error) {
+			if (error instanceof DaytonaNotFoundError) return 'absent';
+			throw error;
+		}
+		if (!SNAPSHOT_FAILED_STATES.has(snapshot.state)) return 'usable';
+		this.logger.warn('Versioned Daytona snapshot is in a failed state; deleting it to retry', {
+			name,
+			state: snapshot.state,
+			...(snapshot.errorReason ? { reason: snapshot.errorReason } : {}),
+		});
+		await this.withDeadline(
+			daytona.snapshot.delete(snapshot),
+			deadline,
+			`Timed out deleting failed Daytona snapshot "${name}"`,
+		);
+		await this.waitForSnapshotRemoval(daytona, [snapshot], deadline);
+		return 'cleaned';
 	}
 
 	/**
@@ -447,8 +557,9 @@ export class SnapshotManager {
 			}
 			if (!SNAPSHOT_BUILDING_STATES.has(snapshot.state)) {
 				const reason = snapshot.errorReason ? `, reason: ${snapshot.errorReason}` : '';
-				throw new Error(
+				throw new SnapshotUnusableError(
 					`Versioned Daytona snapshot "${name}" exists but is unusable (state: ${snapshot.state}${reason})`,
+					snapshot.state,
 				);
 			}
 			if (Date.now() >= deadline) {
