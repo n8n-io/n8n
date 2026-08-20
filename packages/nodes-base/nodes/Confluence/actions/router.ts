@@ -27,6 +27,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'page:create':
 					responseData = await page.create.execute.call(this, i);
 					break;
+				case 'page:delete':
+					responseData = await page.delete.execute.call(this, i);
+					break;
 				case 'page:get':
 					responseData = await page.get.execute.call(this, i);
 					break;

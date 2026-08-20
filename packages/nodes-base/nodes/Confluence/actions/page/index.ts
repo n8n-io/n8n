@@ -1,9 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as create from './create.operation';
+import * as del from './delete.operation';
 import * as get from './get.operation';
 
-export { create, get };
+export { create, del as delete, get };
 
 export const description: INodeProperties[] = [
 	{
@@ -24,6 +25,12 @@ export const description: INodeProperties[] = [
 				action: 'Create a page',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Move a page to trash, or permanently delete it',
+				action: 'Delete a page',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a page, optionally with its full sub-tree',
@@ -33,5 +40,6 @@ export const description: INodeProperties[] = [
 		default: 'create',
 	},
 	...create.description,
+	...del.description,
 	...get.description,
 ];
