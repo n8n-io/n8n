@@ -121,6 +121,7 @@ export const execute: ConfluenceOperation = async function (
 
 	const results: IDataObject[] = [];
 	let pageParam: NextPageParam | undefined;
+	const seenPageParams = new Set<string>();
 	let emptyPages = 0;
 	for (;;) {
 		const pageQs: IDataObject = {
@@ -144,12 +145,9 @@ export const execute: ConfluenceOperation = async function (
 		if (emptyPages >= MAX_CONSECUTIVE_EMPTY_PAGES) break;
 
 		const next = extractNextPageParam(response);
-		const repeats =
-			pageParam !== undefined &&
-			next !== undefined &&
-			next.key === pageParam.key &&
-			next.value === pageParam.value;
-		if (next === undefined || repeats) break;
+		// A next link revisiting any earlier page would loop forever under Return All
+		if (next === undefined || seenPageParams.has(`${next.key}:${next.value}`)) break;
+		seenPageParams.add(`${next.key}:${next.value}`);
 		pageParam = next;
 	}
 

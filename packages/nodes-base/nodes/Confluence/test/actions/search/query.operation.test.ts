@@ -144,6 +144,18 @@ describe('search:query', () => {
 		expect(result).toEqual([]);
 	});
 
+	it('stops when the next links cycle between earlier cursors', async () => {
+		apiRequest
+			.mockResolvedValueOnce(searchPage(['1'], '/rest/api/search?cursor=a'))
+			.mockResolvedValueOnce(searchPage(['2'], '/rest/api/search?cursor=b'))
+			.mockResolvedValue(searchPage(['3'], '/rest/api/search?cursor=a'));
+
+		const result = await runSearch({ returnAll: true });
+
+		expect(apiRequest).toHaveBeenCalledTimes(3);
+		expect(result).toEqual([{ id: '1' }, { id: '2' }, { id: '3' }]);
+	});
+
 	it('stops after a run of consecutive empty pages even when cursors keep changing', async () => {
 		let page = 0;
 		apiRequest.mockImplementation(async () => searchPage([], `/rest/api/search?cursor=c${++page}`));
