@@ -1,5 +1,7 @@
+import type { LdapConfig } from '@n8n/constants';
 import { Get, Post, Put, RestController, GlobalScope, Licensed } from '@n8n/decorators';
 import pick from 'lodash/pick';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
@@ -20,7 +22,15 @@ export class LdapController {
 	@Licensed('feat:ldap')
 	@GlobalScope('ldap:manage')
 	async getConfig() {
-		return await this.ldapService.loadConfig();
+		return this.redactConfig(await this.ldapService.loadConfig());
+	}
+
+	/** Blank the bind password before returning the config over HTTP. */
+	private redactConfig(config: LdapConfig): LdapConfig {
+		return {
+			...config,
+			bindingAdminPassword: config.bindingAdminPassword ? CREDENTIAL_BLANKING_VALUE : '',
+		};
 	}
 
 	@Post('/test-connection')
@@ -51,7 +61,7 @@ export class LdapController {
 			...pick(data, NON_SENSIBLE_LDAP_CONFIG_PROPERTIES),
 		});
 
-		return data;
+		return this.redactConfig(data);
 	}
 
 	@Get('/sync')
