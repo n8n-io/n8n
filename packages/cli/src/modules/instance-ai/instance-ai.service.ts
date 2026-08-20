@@ -877,14 +877,11 @@ export class InstanceAiService {
 		});
 		this.tracing = new InstanceAiTracingService({
 			logger: this.logger,
-			// Flag-resolved read: `first_visible_state` has to see the run's
-			// streamed text, which under the durable log lives in the log (as
-			// coalesced blocks), never in the bus cache.
+			// `first_visible_state` has to see the run's streamed text, which under
+			// the durable log lives in the log (as coalesced blocks), never in the
+			// bus cache.
 			eventReader: {
-				getEventsForRun: async (threadId, runId) =>
-					this.instanceAiConfig.durableLog
-						? await this.readDurableEventsForRuns(threadId, [runId])
-						: this.eventBus.getEventsForRun(threadId, runId),
+				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
 			},
 			runState: this.runState,
 			dbSnapshotStorage: this.dbSnapshotStorage,
@@ -901,19 +898,13 @@ export class InstanceAiService {
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
 			durableLog: globalConfig.instanceAi.durableLog,
-			// Flag-resolved reads: the terminal guard and outcome-replay dedup must
-			// see the run's events after a restart too, which only the durable log
-			// can provide (the bus cache is empty in a fresh process).
+			// The terminal guard and outcome-replay dedup must see the run's events
+			// after a restart too, which only the durable log can provide (the bus
+			// cache is empty in a fresh process).
 			eventBus: {
 				publish: (threadId, event) => this.eventBus.publish(threadId, event),
-				getEventsForRun: async (threadId, runId) =>
-					this.instanceAiConfig.durableLog
-						? await this.readDurableEventsForRuns(threadId, [runId])
-						: this.eventBus.getEventsForRun(threadId, runId),
-				getEventsForRuns: async (threadId, runIds) =>
-					this.instanceAiConfig.durableLog
-						? await this.readDurableEventsForRuns(threadId, runIds)
-						: this.eventBus.getEventsForRuns(threadId, runIds),
+				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
+				getEventsForRuns: async (threadId, runIds) => await this.readRunEvents(threadId, runIds),
 			},
 			dbSnapshotStorage: this.dbSnapshotStorage,
 			agentMemory: this.agentMemory,
@@ -6792,16 +6783,18 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Read-own-writes barrier for decision reads from the durable log: settle
-	 * the thread's drain (including open coalesce buffers) so everything
-	 * published before this call is visible to the read. Used at run
-	 * boundaries — terminal-guard inputs and snapshot builds — where closing
-	 * the open segment early is correct anyway.
+	 * The one place the run-event source is chosen. With the durable log on it
+	 * is a read-own-writes barrier: settle the thread's drain (including open
+	 * coalesce buffers) so everything published before this call is visible,
+	 * then read the log. With it off the in-memory bus store is the only
+	 * source. Every caller is a run boundary — terminal-guard inputs, trace
+	 * metadata, snapshot builds — where closing the open segment early is
+	 * correct anyway.
 	 */
-	private async readDurableEventsForRuns(
-		threadId: string,
-		runIds: string[],
-	): Promise<InstanceAiEvent[]> {
+	private async readRunEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
+		if (!this.instanceAiConfig.durableLog) {
+			return this.eventBus.getEventsForRuns(threadId, runIds);
+		}
 		await this.eventLog.flush(threadId);
 		return await this.eventLog.getEventsForRuns(threadId, runIds);
 	}
@@ -6828,13 +6821,9 @@ export class InstanceAiService {
 					const snapshot = await snapshotStorage.getLatest(threadId, { messageGroupId, runId });
 					groupRunIds = snapshot?.runIds?.length ? snapshot.runIds : [runId];
 				}
-				events = this.instanceAiConfig.durableLog
-					? await this.readDurableEventsForRuns(threadId, groupRunIds)
-					: this.eventBus.getEventsForRuns(threadId, groupRunIds);
+				events = await this.readRunEvents(threadId, groupRunIds);
 			} else {
-				events = this.instanceAiConfig.durableLog
-					? await this.readDurableEventsForRuns(threadId, [runId])
-					: this.eventBus.getEventsForRun(threadId, runId);
+				events = await this.readRunEvents(threadId, [runId]);
 			}
 			// Durable-log flag on: the tree input comes from the DB, so long runs can
 			// no longer out-evict their own snapshot input (the empty-agentTree bug
