@@ -810,31 +810,12 @@ are the ones the server confirms on resume, not the ones the client claimed.
 
 ## Tool Distribution
 
-The orchestrator has access to the full native and orchestration surface.
-Specialized background agents (for example `eval-setup-with-agent`) receive
-only the domain tools wired into that agent.
-
-| Tool Category | Orchestrator | Specialized background agents |
-|---------------|:---:|:---:|
-| Orchestration tools (`create-tasks`, etc.) | ✅ | ❌ |
-| Docs search (`n8n-docs`) | ✅ (search/load) | ❌ |
-| Eval tools (`evals`) | ✅ (search/load) | ❌ |
-| Workflow tools | ✅ | ✅ (eval-setup) |
-| Execution tools | ✅ | ❌ |
-| Credential tools | ✅ | ✅ (eval-setup — setup only) |
-| Node discovery tools | ✅ | ✅ (eval-setup) |
-| Data table tools | ✅ (direct, via `data-table-manager` skill) | ✅ (eval-setup) |
-| Workspace tools | ✅ | ❌ |
-| Filesystem tools | ✅ (conditional) | ❌ |
-| Web research tools | ✅ | ❌ |
-| Knowledge base (best practices & templates via workspace) | ✅ | ✅ (eval-setup) |
-| Sandbox-backed internals (`build-workflow` TypeScript compilation, `materialize-node-type`) | ✅ | ❌ |
-| MCP tools | ✅ | ❌ |
-| Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ |
-
-The embedded Agent Builder is an exception to the specialized-background-agent
-column: it inherits the orchestrator's safe MCP connector tools. Eval setup and
-other specialized background agents do not.
+The orchestrator receives the native domain tools and orchestration tools from
+`src/tools/index.ts`. External and local MCP tools are added after their names
+are checked against the native tools active for the current request. The
+embedded Agent Builder uses the agents-module builder's own tool surface through
+`build-agent`; it does not receive the Instance AI domain registry, but it
+inherits the orchestrator's safe MCP connector tools.
 
 ---
 
@@ -843,10 +824,10 @@ other specialized background agents do not.
 1. Create a file in `src/tools/<domain>/` following the naming convention `<verb>-<noun>.tool.ts`
 2. Define input/output schemas with Zod (`.describe()` on fields — these are the LLM's parameter docs)
 3. Export a factory function that takes the service context and returns an `@n8n/agents` tool
-4. Register the tool in `src/tools/index.ts` (in `createAllTools` or `createOrchestrationTools`)
+4. Register the tool in `src/tools/index.ts` (in `createOrchestratorDomainTools` or `createOrchestrationTools`)
 5. If the tool requires a new service method, add it to the interface in `src/types.ts`
    and implement it in the backend adapter
-6. New native domain tools registered in `createAllTools` are available to the orchestrator immediately
+6. New native domain tools registered in `createOrchestratorDomainTools` are available to the orchestrator immediately
 7. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles
    the suspension/resume lifecycle automatically
 8. Tool handlers are wrapped at registry registration time so Stop races

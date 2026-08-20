@@ -156,7 +156,7 @@ and let replan take over.
 ## Background task completed
 
 When `<background-task-completed>` is present, a detached background task
-finished (for example eval setup). The `result` field holds the task's
+finished. The `result` field holds the task's
 authoritative summary of what was actually done. **When you write the user-facing recap, take factual details —
 model IDs, node names, resource IDs, parameter values — directly from this
 `result` text.** Do not substitute values from conversation history or training

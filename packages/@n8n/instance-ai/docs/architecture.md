@@ -7,8 +7,7 @@ natural language interface to workflows, executions, credentials, and nodes — 
 the goal that most users never need to interact with workflows directly.
 
 The system follows the **deep agent architecture** — an orchestrator with explicit
-planning, orchestrator-led workflow building, a specialized eval-setup background
-agent, observational memory, and structured prompts. The LLM controls the
+planning, orchestrator-led workflow building, observational memory, and structured prompts. The LLM controls the
 execution loop; the architecture provides the primitives.
 
 The system is LLM-agnostic and designed to work with any capable language model.
@@ -38,17 +37,10 @@ graph TB
         OrcAgent --> DirectTools[Domain Tools]
         OrcAgent --> MCPTools[MCP Tools]
         OrcAgent --> Memory[Memory System]
-        OrcAgent --> EvalSetupTool[eval-setup-with-agent]
-    end
-
-    subgraph BackgroundAgents ["Background Agents"]
-        EvalSetupTool -->|spawns| EvalSetupAgent[Eval Setup Agent]
-        EvalSetupAgent --> EvalTools[Workflow + Node Tools]
     end
 
     subgraph EventSystem ["Event System"]
         OrcAgent -->|publishes| EventBus
-        EvalSetupAgent -->|publishes| EventBus
         EventBus --> ThreadStorage[Thread Event Storage]
     end
 
@@ -105,15 +97,9 @@ Plans are stored in thread-scoped storage (see ADR-017).
 
 ### 2. Orchestrator-Led Execution
 
-Most work runs in the orchestrator itself: workflow building via the
+Work runs in the orchestrator itself: workflow building via the
 `workflow-builder` skill and `build-workflow`, data-table operations, web
-research, credential setup with Computer Use, and MCP tools.
-
-The only remaining detached background agent is the **eval-setup agent**
-(`eval-setup-with-agent`). It patches workflows with EvaluationTrigger and
-Evaluation nodes after the user approves an eval proposal. It receives a
-focused tool subset, publishes events directly to the event bus (ADR-014), and
-cannot spawn further agents.
+research, credential setup with Computer Use, config-based evaluations, and MCP tools.
 
 ### 3. Observational Memory
 
@@ -125,8 +111,7 @@ degradation over 50+ step autonomous loops (see ADR-016).
 ### 4. Structured System Prompt
 
 The orchestrator's system prompt covers planning discipline, loop behavior, and
-tool usage guidelines. The eval-setup background agent gets a focused, task-specific
-prompt.
+tool usage guidelines.
 
 ## Agent Hierarchy
 
@@ -139,7 +124,6 @@ graph TD
     O -->|direct| T3[get-execution]
     O -->|direct| T4[create-tasks]
     O -->|direct| T5[data-tables]
-    O -->|eval-setup-with-agent| S5[Eval Setup Agent]
 
     S3 -->|kind: build-workflow| S4[Orchestrator Follow-Up]
     S3 -->|kind: checkpoint| S6[Orchestrator Follow-Up]
@@ -147,12 +131,10 @@ graph TD
     S4 -->|tools| T8[search-nodes]
     S4 -->|tools| T9[workspace files]
     S4 -->|tools| T10
-    S5 -->|tools| T11[workflows + nodes]
 
     style O fill:#f9f,stroke:#333
     style S3 fill:#ffa,stroke:#333
     style S4 fill:#bbf,stroke:#333
-    style S5 fill:#bbf,stroke:#333
     style S6 fill:#bbf,stroke:#333
 ```
 
@@ -163,6 +145,7 @@ graph TD
 - Workflow building (`workflow-builder` skill + workspace files + `build-workflow`)
 - Verification and credential application (verify-built-workflow, apply-workflow-credentials)
 - Data-table work (`data-table-manager` skill + `data-tables` / `parse-file`)
+- Config-based evaluations (`config-evals` skill + `eval-config`)
 
 **Planned tasks** (`planning` skill + `create-tasks`):
 - Dependency-aware task graphs with parallel execution
@@ -172,10 +155,6 @@ graph TD
 - Workflow runtime verification is tracked separately as a workflow-loop
   obligation, so routine "verify workflow" checkpoints are not required
 
-**Eval setup** (`eval-setup-with-agent`):
-- Detached background agent that patches eval nodes into an existing workflow
-- Triggered after `evals(action="propose")` returns `shouldDelegateToEvalSetupAgent: true`
-
 ## Package Responsibilities
 
 ### `@n8n/instance-ai` (Core)
@@ -183,8 +162,8 @@ graph TD
 The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
-- **Sub-agent factory** (`agent/`) — creates the eval-setup background agent and shared sub-agent protocol
-- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `eval-setup-with-agent`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
+- **Sub-agent factory** (`agent/`) — shared protocol for embedded specialist agents
+- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `build-agent`
 - **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, and web research
 - **Knowledge base** (`knowledge-base/`, `workspace/`) — best-practices guides and curated templates materialized in the builder sandbox for workspace tools to read
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
@@ -264,13 +243,12 @@ intentional:
 - MCP server configuration can change between requests
 - User context (permissions) is request-scoped
 - Memory is handled externally (storage-backed), not in-agent
-- Background agents (eval-setup) are created within the request lifecycle
 
 ### 3. Pub/Sub Streaming
 
 The event bus decouples agent execution from event delivery:
 
-- All agents (orchestrator + eval-setup background agent) publish to a per-thread channel
+- Agent runs publish to a per-thread channel
 - Frontend subscribes via SSE with `Last-Event-ID` for reconnect/replay
 - All events carry `runId` (correlates to triggering message) and `agentId`
 - SSE events use monotonically increasing per-thread `id` values for replay
@@ -281,7 +259,6 @@ The event bus decouples agent execution from event delivery:
   memory-only; off (the rollback switch until Gate B), events live only in a
   bounded in-memory buffer (500 events / 2 MB per thread, FIFO-evicted, ids
   reset on restart)
-- No need to pipe sub-agent streams through orchestrator tool execution
 - One active run per thread (additional `POST /chat` is rejected while active)
 - Cancellation via `POST /instance-ai/chat/:threadId/cancel` (idempotent)
 
@@ -310,15 +287,15 @@ streamAgentRun() → agent.stream() → executeResumableStream()
 
 The `executeResumableStream()` loop consumes agent chunks, translates them to
 canonical `InstanceAiEvent` schema, publishes to the event bus, and handles HITL
-suspension/resume cycles. Two control modes:
+suspension/resume cycles. It supports two control modes:
 
 - **Manual** — returns suspension to caller (used by the orchestrator's main run)
-- **Auto** — waits for confirmation and resumes automatically (used by the eval-setup background agent)
+- **Auto** — waits for confirmation and resumes automatically
 
 ### Background Task Manager
 
-Long-running eval-setup tasks run as background tasks with concurrency limits
-(default: 5 per thread). Features:
+The generic background task manager enforces concurrency limits (default: 5 per
+thread). Features:
 
 - **Correction queueing** — users can steer running tasks mid-flight via
   `correct-background-task`
@@ -416,8 +393,7 @@ The cli's `InstanceAiService` holds one manager instance and passes it to
 
 The embedded Agent Builder receives the same per-run, approval-wrapped MCP tool
 registry as the orchestrator. Builder-native tool names remain reserved, so an
-MCP connector cannot shadow configuration or lifecycle tools. Specialized
-background agents such as eval setup remain isolated from MCP tools.
+MCP connector cannot shadow configuration or lifecycle tools.
 
 The local Computer Use server is separate from external MCP configuration. Its
 browser tools are available directly to the orchestrator and are guided by the
@@ -450,9 +426,6 @@ allowing the user to approve or deny access to specific hosts.
 - **Domain access gating** — external URL fetches require per-domain user approval
 - **Memory isolation** — messages, observations, plans, and event history are
   thread-scoped. Cross-user isolation is enforced.
-- **Sub-agent containment** — the eval-setup background agent cannot spawn further
-  agents, receives only its wired tool subset (no MCP tools), and has a bounded
-  `maxIterations`. A mandatory protocol prevents cascading delegation.
 - **MCP tool isolation** — MCP tools are name-checked against reserved domain tool
   names to prevent malicious shadowing. Schema sanitization prevents schema-based attacks.
 - **Sandbox isolation** — when enabled, code execution runs in isolated Daytona

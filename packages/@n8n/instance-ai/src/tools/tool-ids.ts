@@ -2,7 +2,6 @@ import { isAgentFeatureEnabled } from '../utils/agent-feature-enabled';
 
 export const DOMAIN_TOOL_IDS = {
 	WORKFLOWS: 'workflows',
-	EVALS: 'evals',
 	EVAL_CONFIG: 'eval-config',
 	EXECUTIONS: 'executions',
 	CREDENTIALS: 'credentials',
@@ -31,8 +30,6 @@ export const AGENT_SNAPSHOT_TRACE_RUN_NAME = 'agent-snapshot';
 export const ORCHESTRATION_TOOL_IDS = {
 	CREATE_TASKS: 'create-tasks',
 	TASK_CONTROL: 'task-control',
-	EVAL_SETUP_WITH_AGENT: 'eval-setup-with-agent',
-	EVAL_DATA: 'eval-data',
 	COMPLETE_CHECKPOINT: 'complete-checkpoint',
 	VERIFY_BUILT_WORKFLOW: 'verify-built-workflow',
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',

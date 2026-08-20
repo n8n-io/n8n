@@ -139,7 +139,7 @@ describe('useResourceRegistry', () => {
 			);
 		});
 
-		test('registers successful workflow updates from workflowId in args', async () => {
+		test('replays historical raw workflow update results', async () => {
 			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
@@ -166,7 +166,7 @@ describe('useResourceRegistry', () => {
 			);
 		});
 
-		test('registers workflow document returned by workflows get-json', async () => {
+		test('replays historical workflows get-json results', async () => {
 			const { messages, producedArtifacts, resourceNameIndex } = setup();
 
 			messages.value = [

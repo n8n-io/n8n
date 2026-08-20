@@ -3,9 +3,8 @@
 ## Overview
 
 Instance AI uses a pub/sub event bus to deliver agent events to the frontend
-in real-time. All agents — the orchestrator and eval-setup background agent —
-publish events to a per-thread channel. The frontend subscribes independently
-via SSE.
+in real-time. Agent runs publish events to a per-thread channel. The frontend
+subscribes independently via SSE.
 
 The protocol is designed for minimal time-to-first-token, progressive rendering
 of multi-agent activity, and resilient reconnection.
@@ -73,7 +72,7 @@ Every event follows this schema:
 The `runId` correlates all events belonging to one user message → assistant
 response cycle. It is returned by the POST endpoint and carried on every event.
 
-The `agentId` identifies which agent branch (orchestrator or background agent) the
+The `agentId` identifies which agent branch (orchestrator or child agent) the
 event belongs to. The frontend uses this to render an agent activity tree.
 
 For the full TypeScript type definitions, see
@@ -203,8 +202,7 @@ A tool has failed.
 
 ### `agent-spawned`
 
-The orchestrator has started a detached background agent (for example via
-`eval-setup-with-agent`).
+The orchestrator has started a child or embedded specialist agent.
 
 ```json
 {
@@ -220,12 +218,12 @@ The orchestrator has started a detached background agent (for example via
 ```
 
 The frontend adds a new node to the agent activity tree under the parent.
-For this event type, `agentId` is the spawned background agent ID; `payload.parentId`
-links it to the orchestrator.
+For this event type, `agentId` is the child agent ID; `payload.parentId` links it
+to the orchestrator. Historical detached-agent events use the same shape.
 
 ### `agent-completed`
 
-A background agent has finished its work.
+A child or embedded specialist agent has finished its work.
 
 ```json
 {
@@ -239,7 +237,7 @@ A background agent has finished its work.
 }
 ```
 
-The frontend marks the background agent node as completed.
+The frontend marks the child agent node as completed.
 
 ### `confirmation-request`
 
@@ -362,7 +360,7 @@ When a run errors:
 ← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
 ```
 
-### Autonomous Loop (With Planned Tasks and Background Agent)
+### Autonomous Loop (With Planned Tasks)
 
 ```
 ← run-start       {runId: "r1", agentId: "a1", payload: {messageId: "m1"}}
@@ -374,11 +372,6 @@ When a run errors:
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: {executionId: "exec-456"}}}
 ← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "get-execution"}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: {status: "error"}}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "eval-setup-with-agent", toolCallId: "tc5"}}
-← agent-spawned   {runId: "r1", agentId: "a2", payload: {parentId: "a1", role: "eval-setup"}}
-← tool-call       {runId: "r1", agentId: "a2", payload: {toolName: "workflows"}}
-← agent-completed {runId: "r1", agentId: "a2", payload: {result: "Added eval nodes"}}
-← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc5", result: "Eval setup complete"}}
 ← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "create-tasks", args: {planningContext: {source: "replan"}}}}
 ← ...loop continues...
 ← text-delta      {runId: "r1", agentId: "a1", payload: {text: "Done! I created a workflow..."}}

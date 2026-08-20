@@ -76,6 +76,25 @@ describe('instanceAiEventSchema', () => {
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
 	});
+
+	it('parses historical eval-setup agent events', () => {
+		const event = {
+			type: 'agent-spawned',
+			runId: 'run-legacy-eval',
+			agentId: 'agent-legacy-eval',
+			payload: {
+				parentId: 'agent-root',
+				role: 'evaluation setup',
+				tools: ['workflows'],
+				taskId: 'task-legacy-eval',
+				kind: 'eval-setup',
+				title: 'Setting up evaluations',
+				targetResource: { type: 'workflow', id: 'workflow-1' },
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
 });
 
 describe('errorPayloadSchema', () => {

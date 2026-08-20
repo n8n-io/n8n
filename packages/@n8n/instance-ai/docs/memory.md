@@ -10,7 +10,7 @@ The memory system serves two purposes:
 - **Conversation history** — recent messages for the current thread
   (thread-scoped)
 
-Sub-agents are stateless — context is passed via the briefing only.
+Embedded specialist agents do not share the orchestrator's observational memory.
 
 ## Tiers
 
@@ -89,14 +89,10 @@ All memory is thread-scoped (isolated per conversation):
 - **Observational memory** — compressed operational history
 - **Plan** — the current execution plan
 
-### Sub-agent memory
+### Embedded agent memory
 
-The eval-setup background agent is fully stateless — context is passed via its
-task briefing and optional `conversationContext` on `eval-setup-with-agent`.
-
-Past failed attempts are tracked via the `IterationLog` (stored in thread
-metadata) and appended to background-agent briefings on retry, providing
-cross-attempt context without persistent memory.
+The Agent Builder owns its session state separately from the orchestrator's
+observational memory. Generic background-task state stays thread-scoped.
 
 ### Cross-user isolation
 
