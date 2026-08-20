@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
@@ -42,12 +43,15 @@ const webhook = mock<IWebhookData>({
 	userId,
 });
 
+const flushMicrotasks = async () => await new Promise(jest.requireActual('timers').setImmediate);
+
 describe('TestWebhooks', () => {
+	const logger = mock<Logger>();
 	const registrations = mock<TestWebhookRegistrationsService>();
 	const webhookService = mock<WebhookService>();
 
 	const testWebhooks = new TestWebhooks(
-		mock(),
+		logger,
 		mock(),
 		mock(),
 		registrations,
@@ -184,6 +188,95 @@ describe('TestWebhooks', () => {
 
 			await expect(promise).rejects.toThrowError(NotFoundError);
 		});
+
+		test('releases isolate only after deactivateWebhooks completes on successful execution', async () => {
+			const expression = mock<Expression>();
+			const workflowStartNode = mock<ReturnType<Workflow['getNode']>>({
+				type: 'n8n-nodes-base.noOp',
+			});
+			const workflow = mock<Workflow>({
+				id: workflowEntity.id,
+				expression,
+				getNode: jest.fn().mockReturnValue(workflowStartNode),
+			});
+
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			jest.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
+			registrations.get.mockResolvedValueOnce({
+				version: 1,
+				workflowEntity,
+				webhook,
+			} as TestWebhookRegistration);
+			const deactivateSpy = jest
+				.spyOn(testWebhooks, 'deactivateWebhooks')
+				.mockResolvedValue(undefined);
+
+			jest
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(async (...args: unknown[]) => {
+					const onDone = args[10] as (error: Error | null, data: unknown) => void;
+					onDone(null, { noWebhookResponse: true });
+					return 'execution-id';
+				});
+
+			await testWebhooks.executeWebhook(
+				mock<WebhookRequest>({ params: { path }, method: httpMethod }),
+				mock<express.Response>(),
+			);
+			await flushMicrotasks();
+
+			expect(deactivateSpy).toHaveBeenCalledWith(workflow);
+			expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
+			expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
+			const [acquireOrder] = (expression.acquireIsolate as jest.Mock).mock.invocationCallOrder;
+			const [deactivateOrder] = deactivateSpy.mock.invocationCallOrder;
+			const [releaseOrder] = (expression.releaseIsolate as jest.Mock).mock.invocationCallOrder;
+			expect(acquireOrder).toBeLessThan(deactivateOrder);
+			expect(deactivateOrder).toBeLessThan(releaseOrder);
+		});
+
+		test('logs when isolate release fails after teardown', async () => {
+			const expression = mock<Expression>();
+			const workflowStartNode = mock<ReturnType<Workflow['getNode']>>({
+				type: 'n8n-nodes-base.noOp',
+			});
+			const workflow = mock<Workflow>({
+				id: workflowEntity.id,
+				expression,
+				getNode: jest.fn().mockReturnValue(workflowStartNode),
+			});
+
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			jest.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
+			registrations.get.mockResolvedValueOnce({
+				version: 1,
+				workflowEntity,
+				webhook,
+			} as TestWebhookRegistration);
+			jest.spyOn(testWebhooks, 'deactivateWebhooks').mockResolvedValue(undefined);
+
+			jest
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(async (...args: unknown[]) => {
+					const onDone = args[10] as (error: Error | null, data: unknown) => void;
+					onDone(null, { noWebhookResponse: true });
+					return 'execution-id';
+				});
+
+			const error = new Error('release failed');
+			expression.releaseIsolate.mockRejectedValueOnce(error);
+
+			await testWebhooks.executeWebhook(
+				mock<WebhookRequest>({ params: { path }, method: httpMethod }),
+				mock<express.Response>(),
+			);
+			await flushMicrotasks();
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to release expression isolate for test webhook',
+				expect.objectContaining({ error, workflowId: workflowEntity.id }),
+			);
+		});
 	});
 
 	describe('deactivateWebhooks()', () => {
@@ -198,6 +291,104 @@ describe('TestWebhooks', () => {
 				userId,
 				workflowId: workflowEntity.id,
 			});
+		});
+	});
+
+	describe('cancelWebhook()', () => {
+		test('acquires and releases isolate around deactivateWebhooks', async () => {
+			const expression = mock<Expression>();
+			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });
+
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			registrations.getAllKeys.mockResolvedValue(['key1']);
+			registrations.get.mockResolvedValue({
+				version: 1,
+				workflowEntity,
+				webhook,
+			} as TestWebhookRegistration);
+			const deactivateSpy = jest
+				.spyOn(testWebhooks, 'deactivateWebhooks')
+				.mockResolvedValue(undefined);
+
+			await testWebhooks.cancelWebhook(workflowEntity.id);
+			await flushMicrotasks();
+
+			expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
+			expect(deactivateSpy).toHaveBeenCalledWith(workflow);
+			expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
+			const [acquireOrder] = (expression.acquireIsolate as jest.Mock).mock.invocationCallOrder;
+			const [deactivateOrder] = deactivateSpy.mock.invocationCallOrder;
+			const [releaseOrder] = (expression.releaseIsolate as jest.Mock).mock.invocationCallOrder;
+			expect(acquireOrder).toBeLessThan(deactivateOrder);
+			expect(deactivateOrder).toBeLessThan(releaseOrder);
+		});
+
+		test('releases isolate and logs when deactivateWebhooks throws', async () => {
+			const expression = mock<Expression>();
+			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });
+
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			registrations.getAllKeys.mockResolvedValue(['key1']);
+			registrations.get.mockResolvedValue({
+				version: 1,
+				workflowEntity,
+				webhook,
+			} as TestWebhookRegistration);
+			const error = new Error('boom');
+			jest.spyOn(testWebhooks, 'deactivateWebhooks').mockRejectedValue(error);
+
+			await testWebhooks.cancelWebhook(workflowEntity.id);
+			await flushMicrotasks();
+
+			expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
+			expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to deactivate test webhooks on cancel',
+				expect.objectContaining({ error, workflowId: workflowEntity.id }),
+			);
+		});
+	});
+
+	describe('handleClearTestWebhooks()', () => {
+		test('acquires and releases isolate around deactivateWebhooks', async () => {
+			const expression = mock<Expression>();
+			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });
+
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			((testWebhooks as any).push.hasPushRef as jest.Mock).mockReturnValue(true);
+			const deactivateSpy = jest
+				.spyOn(testWebhooks, 'deactivateWebhooks')
+				.mockResolvedValue(undefined);
+
+			await testWebhooks.handleClearTestWebhooks({
+				webhookKey: 'key1',
+				workflowEntity,
+				pushRef: 'push-ref',
+			});
+
+			expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
+			expect(deactivateSpy).toHaveBeenCalledWith(workflow);
+			expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		test('releases isolate when deactivateWebhooks throws', async () => {
+			const expression = mock<Expression>();
+			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });
+
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			((testWebhooks as any).push.hasPushRef as jest.Mock).mockReturnValue(true);
+			jest.spyOn(testWebhooks, 'deactivateWebhooks').mockRejectedValue(new Error('boom'));
+
+			await expect(
+				testWebhooks.handleClearTestWebhooks({
+					webhookKey: 'key1',
+					workflowEntity,
+					pushRef: 'push-ref',
+				}),
+			).rejects.toThrow('boom');
+
+			expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
+			expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 	});
 

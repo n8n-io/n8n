@@ -4,7 +4,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import { InstanceSettings } from 'n8n-core';
-import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
+import { createDeferredPromise, WebhookPathTakenError, Workflow } from 'n8n-workflow';
 import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
@@ -131,8 +131,11 @@ export class TestWebhooks implements IWebhookManager {
 		}
 
 		await workflow.expression.acquireIsolate();
-		try {
-			return await new Promise(async (resolve, reject) => {
+		// Release only after teardown below runs, not when resolve() settles the
+		// promise early — teardown still needs the isolate held.
+		const responded = createDeferredPromise();
+		return await new Promise(async (resolve, reject) => {
+			try {
 				try {
 					const executionMode = 'manual';
 					const executionId = await WebhookHelpers.executeWebhook(
@@ -149,6 +152,7 @@ export class TestWebhooks implements IWebhookManager {
 						(error: Error | null, data: IWebhookResponseCallbackData) => {
 							if (error !== null) reject(error);
 							else resolve(data);
+							responded.resolve();
 						},
 						destinationNode,
 					);
@@ -157,7 +161,6 @@ export class TestWebhooks implements IWebhookManager {
 					// or a ping so do not resolve the promise and wait for the real webhook
 					// request instead.
 					if (executionId === undefined) {
-						await workflow.expression.releaseIsolate();
 						return;
 					}
 
@@ -175,6 +178,7 @@ export class TestWebhooks implements IWebhookManager {
 					// Settle the Promise to prevent hanging the request.
 					// No return to ensure test-webhook cleanup.
 					reject(error as Error);
+					responded.resolve();
 				}
 
 				/**
@@ -197,10 +201,19 @@ export class TestWebhooks implements IWebhookManager {
 				this.clearTimeout(key);
 
 				await this.deactivateWebhooks(workflow);
-			});
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
+				await responded.promise;
+			} finally {
+				// Response (if any) was already sent, so a release failure here can only be logged.
+				try {
+					await workflow.expression.releaseIsolate();
+				} catch (error) {
+					this.logger.error('Failed to release expression isolate for test webhook', {
+						error,
+						workflowId: workflow.id,
+					});
+				}
+			}
+		});
 	}
 
 	@OnPubSubEvent('clear-test-webhooks', { instanceType: 'main' })
