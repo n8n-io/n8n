@@ -352,10 +352,17 @@ export class CommunityPackagesService {
 	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
 		await this.removeNpmPackage(packageName);
 		await this.removePackageFromDatabase(installedPackage);
-		void this.publisher.publishCommand({
-			command: 'community-package-uninstall',
-			payload: { packageName },
-		});
+		void this.publisher
+			.publishCommand({
+				command: 'community-package-uninstall',
+				payload: { packageName },
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to publish community package uninstall event', {
+					error: ensureError(error),
+					packageName,
+				});
+			});
 	}
 
 	private getNpmRegistry() {
@@ -483,10 +490,18 @@ export class CommunityPackagesService {
 						});
 					}
 				}
-				void this.publisher.publishCommand({
-					command: isUpdate ? 'community-package-update' : 'community-package-install',
-					payload: { packageName, packageVersion },
-				});
+				void this.publisher
+					.publishCommand({
+						command: isUpdate ? 'community-package-update' : 'community-package-install',
+						payload: { packageName, packageVersion },
+					})
+					.catch((error) => {
+						this.logger.warn('Failed to publish community package install/update event', {
+							error: ensureError(error),
+							packageName,
+							packageVersion,
+						});
+					});
 				await this.loadNodesAndCredentials.postProcessLoaders();
 				this.loadNodesAndCredentials.releaseTypes();
 				this.logger.info(`Community package installed: ${packageName}`);
@@ -509,12 +524,27 @@ export class CommunityPackagesService {
 		packageName,
 		packageVersion,
 	}: { packageName: string; packageVersion: string }) {
-		await this.installOrUpdateNpmPackage(packageName, packageVersion);
+		try {
+			await this.installOrUpdateNpmPackage(packageName, packageVersion);
+		} catch (error) {
+			this.logger.error(`Failed to install community package ${packageName} from pubsub event`, {
+				error: ensureError(error),
+				packageName,
+				packageVersion,
+			});
+		}
 	}
 
 	@OnPubSubEvent('community-package-uninstall')
 	async handleUninstallEvent({ packageName }: { packageName: string }) {
-		await this.removeNpmPackage(packageName);
+		try {
+			await this.removeNpmPackage(packageName);
+		} catch (error) {
+			this.logger.error(`Failed to uninstall community package ${packageName} from pubsub event`, {
+				error: ensureError(error),
+				packageName,
+			});
+		}
 	}
 
 	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {

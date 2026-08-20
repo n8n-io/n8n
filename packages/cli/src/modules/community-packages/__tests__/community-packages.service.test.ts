@@ -88,6 +88,7 @@ describe('CommunityPackagesService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+		publisher.publishCommand.mockResolvedValue(undefined);
 
 		const nodeName = randomName();
 		installedNodesRepository.create.mockImplementation(() => {
@@ -729,6 +730,25 @@ describe('CommunityPackagesService', () => {
 			});
 		});
 
+		test('should still succeed when publishing the update event fails', async () => {
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			publisher.publishCommand.mockRejectedValue(new Error('Redis unreachable'));
+
+			await expect(
+				communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				),
+			).resolves.toBe(installedPackageForUpdateTest);
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to publish community package install/update event',
+				expect.objectContaining({ packageName: PACKAGE_NAME }),
+			);
+		});
+
 		test('should not attempt to delete the tarball when npm pack prints no filename', async () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
@@ -802,6 +822,28 @@ describe('CommunityPackagesService', () => {
 			});
 			expect(installedPackageRepository.remove).toHaveBeenCalledWith(installedPackage);
 			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+		});
+
+		test('should log and not throw when publishing the uninstall event fails', async () => {
+			const PACKAGE_NAME = 'n8n-nodes-test';
+			const installedPackage = mock<InstalledPackages>({ packageName: PACKAGE_NAME });
+
+			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
+			loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+			vi.mocked(rm).mockResolvedValue(undefined);
+			installedPackageRepository.remove.mockResolvedValue(undefined as never);
+			publisher.publishCommand.mockRejectedValue(new Error('Redis unreachable'));
+
+			await expect(
+				communityPackagesService.removePackage(PACKAGE_NAME, installedPackage),
+			).resolves.toBeUndefined();
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to publish community package uninstall event',
+				expect.objectContaining({ packageName: PACKAGE_NAME }),
+			);
 		});
 	});
 
@@ -1290,6 +1332,39 @@ describe('CommunityPackagesService', () => {
 			});
 
 			expect(callOrder).toEqual(['unloadPackage', 'loadPackage']);
+		});
+
+		test('should catch and log the error instead of throwing', async () => {
+			vi.spyOn(communityPackagesService as any, 'downloadPackage').mockRejectedValue(
+				new Error('npm registry unreachable'),
+			);
+
+			await expect(
+				communityPackagesService.handleInstallEvent({
+					packageName: 'n8n-nodes-test',
+					packageVersion: '1.0.0',
+				}),
+			).resolves.toBeUndefined();
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to install community package n8n-nodes-test from pubsub event',
+				expect.objectContaining({ packageName: 'n8n-nodes-test', packageVersion: '1.0.0' }),
+			);
+		});
+	});
+
+	describe('handleUninstallEvent', () => {
+		test('should catch and log the error instead of throwing', async () => {
+			vi.mocked(rm).mockRejectedValue(new Error('EBUSY'));
+
+			await expect(
+				communityPackagesService.handleUninstallEvent({ packageName: 'n8n-nodes-test' }),
+			).resolves.toBeUndefined();
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to uninstall community package n8n-nodes-test from pubsub event',
+				expect.objectContaining({ packageName: 'n8n-nodes-test' }),
+			);
 		});
 	});
 
