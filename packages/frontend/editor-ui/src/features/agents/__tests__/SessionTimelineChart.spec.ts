@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import SessionTimelineChart from '../components/SessionTimelineChart.vue';
@@ -97,6 +96,23 @@ describe('SessionTimelineChart', () => {
 		expect(blocks[1].attributes('style')).not.toMatch(/opacity:\s*0\.15/);
 	});
 
+	it('renders a synthetic execution error as a danger block', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'execution-error',
+					executionStatus: 'error',
+					content: 'Model request failed',
+					timestamp: 1000,
+				}),
+			],
+		});
+		const block = w.get('[data-test-id="timeline-block"]');
+
+		expect(block.attributes('data-error')).toBe('true');
+		expect(block.attributes('style')).toContain('var(--color--red-400)');
+	});
+
 	it('renders idle blobs interleaved with events in chronological order', () => {
 		const w = mountChart({ idleRanges: [{ start: 1500, end: 2000 }] });
 		expect(w.findAll('[data-test-id="timeline-idle"]')).toHaveLength(1);
@@ -114,6 +130,48 @@ describe('SessionTimelineChart', () => {
 		const blocks = w.findAll('[data-test-id="timeline-block"]');
 		expect(blocks[0].element.getAttribute('data-selected')).not.toBe('true');
 		expect(blocks[2].element.getAttribute('data-selected')).toBe('true');
+	});
+
+	it('marks a generic tool soft-failure block as failed', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: { success: false, error: 'boom' },
+				}),
+			],
+		});
+		const block = w.get('[data-test-id="timeline-block"]');
+		expect(block.attributes('data-error')).toBe('true');
+	});
+
+	it('marks a workflow soft-failure block as failed', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'workflow',
+					toolSuccess: true,
+					toolOutput: { status: 'error', error: 'boom' },
+				}),
+			],
+		});
+		const block = w.get('[data-test-id="timeline-block"]');
+		expect(block.attributes('data-error')).toBe('true');
+	});
+
+	it('does not mark a successful tool block as failed', () => {
+		const w = mountChart({
+			items: [
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: { ok: true },
+				}),
+			],
+		});
+		const block = w.get('[data-test-id="timeline-block"]');
+		expect(block.attributes('data-error')).toBeUndefined();
 	});
 
 	it('renders the localized "Idle" pill text inside each idle segment', () => {

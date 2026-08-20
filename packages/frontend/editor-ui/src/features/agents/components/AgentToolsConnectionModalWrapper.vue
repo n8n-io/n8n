@@ -33,12 +33,13 @@ import {
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
-import type {
-	NodeConnectionItem,
-	ToolCategoryKey,
-	ToolConnectionItem,
-	ToolCredentialRef,
-	WorkflowConnectionItem,
+import {
+	hasToolConnection,
+	type NodeConnectionItem,
+	type ToolCategoryKey,
+	type ToolConnectionItem,
+	type ToolCredentialRef,
+	type WorkflowConnectionItem,
 } from '@/features/shared/toolsConnection/types';
 
 import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
@@ -60,6 +61,7 @@ import {
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
+import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
 
 const CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
@@ -98,8 +100,13 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
-const { availableToolTypes, availableWorkflows, loadWorkflows, resolveToolNodeType } =
-	useAgentToolCatalog();
+const {
+	availableToolTypes,
+	availableWorkflows,
+	incompatibleWorkflows,
+	loadWorkflows,
+	resolveToolNodeType,
+} = useAgentToolCatalog();
 const { installNode: installCommunityNode } = useInstallNode();
 const usersStore = useUsersStore();
 
@@ -553,7 +560,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 			workflowId: workflowRef.workflowId ?? workflowRef.workflow,
 			title: workflowRef.name ?? workflowRef.workflow,
 			description: workflowRef.description,
-			isConnected: true,
+			status: 'connected',
 			credentials: [],
 		};
 		return item;
@@ -574,7 +581,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		title: node.name,
 		description: credentialSubtitle(node) ?? nodeType.description,
 		longDescription: nodeType.description,
-		isConnected: true,
+		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 		verified: isVerifiedCommunityTool(nodeType),
@@ -594,7 +601,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 		title: entry.server.name,
 		description: credentialSubtitle(node) ?? nodeType.description,
 		longDescription: nodeType.description,
-		isConnected: true,
+		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 	};
@@ -611,7 +618,7 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 		title: nodeType.displayName.replace(/ Tool$/, ''),
 		description: nodeType.description,
 		longDescription: nodeType.description,
-		isConnected: false,
+		status: 'none',
 		iconSource: toToolIconSource(nodeType),
 		credentials: [],
 		verified: isVerifiedCommunityTool(nodeType),
@@ -629,9 +636,34 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 		workflowId: workflow.id,
 		title: workflow.name,
 		description: workflow.description ?? undefined,
-		isConnected: false,
+		status: 'none',
 		credentials: [],
 	};
+}
+
+function disabledWorkflowItem(
+	workflow: IWorkflowDb,
+	reason: WorkflowToolIncompatibilityReason,
+): WorkflowConnectionItem {
+	return {
+		id: `workflow-disabled:${workflow.id}`,
+		kind: 'workflow',
+		category: 'workflows',
+		workflowId: workflow.id,
+		title: workflow.name,
+		description: workflow.description ?? undefined,
+		status: 'none',
+		credentials: [],
+		disabled: true,
+		disabledReason: disabledWorkflowReasonText(reason),
+	};
+}
+
+function disabledWorkflowReasonText(reason: WorkflowToolIncompatibilityReason): string {
+	if (reason.reason === 'incompatible_nodes') {
+		return i18n.baseText('agents.tools.workflow.disabled.incompatibleNodes');
+	}
+	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger');
 }
 
 /**
@@ -681,12 +713,21 @@ const items = computed<ToolConnectionItem[]>(() => {
 	for (const workflow of availableWorkflows.value) {
 		out.push(availableWorkflowItem(workflow));
 	}
+	// Incompatible workflows appear last, greyed out and disabled, so the user
+	// can see why they're missing instead of them simply being absent.
+	for (const { workflow, reason } of incompatibleWorkflows.value) {
+		out.push(disabledWorkflowItem(workflow, reason));
+	}
 
 	return out;
 });
 
 function handleRowActivate(item: ToolConnectionItem) {
-	if (item.isConnected) {
+	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
+	// the row's own tooltip already explains why, so activating does nothing.
+	if (item.disabled) return;
+	if (item.status === 'connecting') return;
+	if (hasToolConnection(item.status)) {
 		if (item.id.startsWith('mcp:')) {
 			const localId = item.id.slice('mcp:'.length);
 			const entry = workingMcpServerEntries.value.find((e) => e.localId === localId);

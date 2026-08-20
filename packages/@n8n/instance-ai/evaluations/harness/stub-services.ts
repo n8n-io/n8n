@@ -81,7 +81,7 @@ export async function createStubServices(
 
 	const workflowService: InstanceAiWorkflowService = {
 		async list() {
-			return [];
+			return { workflows: [], total: 0, totalInScope: 0 };
 		},
 		async get(workflowId: string) {
 			return emptyWorkflowDetail(workflowId);

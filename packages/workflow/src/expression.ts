@@ -6,13 +6,7 @@ import { UnexpectedError, UserError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
-import {
-	DollarSignValidator,
-	PrototypeSanitizer,
-	ThisSanitizer,
-	sanitizer,
-	sanitizerName,
-} from './expression-sandboxing';
+import { expressionSandboxHooks, sanitizer, sanitizerName } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
 import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
@@ -268,10 +262,7 @@ export class Expression {
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
 				idleTimeoutMs: options.idleTimeoutMs,
-				hooks: {
-					before: [ThisSanitizer],
-					after: [PrototypeSanitizer, DollarSignValidator],
-				},
+				hooks: expressionSandboxHooks,
 				logger: LoggerProxy,
 				observability: options.observability,
 			});
@@ -329,8 +320,9 @@ export class Expression {
 	 *
 	 * WARNING: This is a global setting — switching engines mid-execution could
 	 * cause a workflow to evaluate some expressions with one engine and some with
-	 * another. Only use this in benchmarks and tests, never in production code.
-	 * In production, set `N8N_EXPRESSION_ENGINE` before process startup instead.
+	 * another. Only call this during process startup (or in benchmarks and tests),
+	 * never mid-execution. In production, set `N8N_EXPRESSION_ENGINE` before
+	 * process startup instead.
 	 */
 	static setExpressionEngine(engine: 'legacy' | 'vm'): void {
 		this.expressionEngine = engine;
