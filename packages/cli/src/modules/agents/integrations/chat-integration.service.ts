@@ -68,7 +68,6 @@ interface ChatAgentConnection {
 interface ConnectOptions {
 	ingressEnabled?: boolean;
 	skipExternalHooks?: boolean;
-	skipBeforeConnect?: boolean;
 	settings?: AgentIntegrationSettings;
 }
 
@@ -171,6 +170,7 @@ export class ChatIntegrationService {
 		await implementation.onBeforeConnect({
 			agentId,
 			projectId,
+			integration,
 			credentialId: integration.credentialId,
 			credential,
 			ingressEnabled: true,
@@ -218,6 +218,7 @@ export class ChatIntegrationService {
 		const ctx: AgentChatIntegrationContext = {
 			agentId,
 			projectId,
+			integration,
 			credentialId: integration.credentialId,
 			credential: decryptedData,
 			ingressEnabled,
@@ -227,12 +228,7 @@ export class ChatIntegrationService {
 		// Pre-connect hook — webhook-based platforms use this to detect
 		// credential conflicts (e.g. a Telegram bot token already in use) and
 		// abort the connect before we touch any external API.
-		if (
-			ingressEnabled &&
-			integrationImpl.onBeforeConnect &&
-			!options.skipExternalHooks &&
-			!options.skipBeforeConnect
-		) {
+		if (ingressEnabled && integrationImpl.onBeforeConnect && !options.skipExternalHooks) {
 			await integrationImpl.onBeforeConnect(ctx);
 		}
 

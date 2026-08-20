@@ -10,12 +10,30 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('accepts a chat integration with credential id', () => {
+	it('accepts an existing Slack integration without messaging settings', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'slack',
 			credentialId: 'cred-123',
 		});
 		expect(result.success).toBe(true);
+	});
+
+	it('accepts a Slack integration that uses the Agent messaging experience', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'slack',
+			credentialId: 'cred-123',
+			settings: { messagingExperience: 'agent' },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects an unknown Slack messaging experience', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'slack',
+			credentialId: 'cred-123',
+			settings: { messagingExperience: 'unknown' },
+		});
+		expect(result.success).toBe(false);
 	});
 
 	it('rejects Telegram private settings without allowed users', () => {

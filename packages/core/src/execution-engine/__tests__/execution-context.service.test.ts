@@ -329,6 +329,49 @@ describe('ExecutionContextService', () => {
 		});
 	});
 
+	describe('buildRequestBoundCredentials()', () => {
+		it('should encrypt the credential context with the request context in metadata', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const result = await service.buildRequestBoundCredentials('n8n-auth-cookie-jwt', {
+				method: 'POST',
+				endpoint: '/rest/dynamic-node-parameters/resource-locator-results',
+				browserId: 'browser-abc',
+			});
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'n8n-auth-cookie-jwt',
+				metadata: {
+					source: 'cookie-source',
+					method: 'POST',
+					endpoint: '/rest/dynamic-node-parameters/resource-locator-results',
+					browserId: 'browser-abc',
+				},
+			});
+			expect(result).toBe('encrypted-credential-blob');
+		});
+
+		it('should omit an absent browser id', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			await service.buildRequestBoundCredentials('cookie', {
+				method: 'POST',
+				endpoint: '/rest/dynamic-node-parameters/options',
+			});
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith(
+				expect.objectContaining({
+					metadata: {
+						source: 'cookie-source',
+						method: 'POST',
+						endpoint: '/rest/dynamic-node-parameters/options',
+					},
+				}),
+			);
+		});
+	});
+
 	describe('buildTriggerIdentityCredentials()', () => {
 		it('should encrypt the credential context with the token as identity and resource in metadata', async () => {
 			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
@@ -344,6 +387,31 @@ describe('ExecutionContextService', () => {
 				metadata: { source: 'n8n-oauth', resource: 'https://api.example.com/resource' },
 			});
 			expect(result).toBe('encrypted-credential-blob');
+		});
+
+		it('should seal the resource grant so the run can verify itself after the trigger is gone', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const grant = {
+				audiences: ['https://api.example.com/resource?method=POST'],
+				executeAccessWorkflowId: 'workflow-1',
+			};
+
+			await service.buildTriggerIdentityCredentials(
+				'oauth-token-jwt',
+				'https://api.example.com/resource',
+				grant,
+			);
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'oauth-token-jwt',
+				metadata: {
+					source: 'n8n-oauth',
+					resource: 'https://api.example.com/resource',
+					grant,
+				},
+			});
 		});
 
 		it('should propagate errors raised by the cipher', async () => {

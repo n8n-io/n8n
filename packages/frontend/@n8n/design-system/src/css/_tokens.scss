@@ -361,6 +361,8 @@
 	--ndv--droppable-parameter--color--background--active: var(--color--green-alpha-100);
 	--ndv--back--color--text: var(--color--neutral-white);
 	--ndv--background--color: var(--color--background--light-3);
+	--ndv--header--color: var(--color--background);
+	--ndv--header--height: calc(var(--height--xl) + var(--spacing--5xs));
 
 	// Notice
 	--notice--border-color--warning: var(--color--warning--tint-1);
@@ -1234,8 +1236,6 @@
 	--command-bar-item--color--background--hover: var(--color--background--light-1);
 	--command-bar--shadow:
 		0 15px 45px 0 var(--color--black-alpha-400), 0 5px 10px 0 var(--color--black-alpha-200);
-
-	--shadow-color: var(--color--black-alpha-250);
 }
 
 :root {

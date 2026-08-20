@@ -9,8 +9,10 @@ import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
 import type { AuthenticationMethod } from '@n8n/api-types';
 import {
+	registerModuleCommands,
 	registerModuleModals,
 	registerModuleProjectTabs,
+	registerModulePushHandlers,
 	registerModuleResources,
 	registerModuleSettingsPages,
 } from '@/app/moduleInitializer/moduleInitializer';
@@ -33,6 +35,7 @@ import { h } from 'vue';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 export const state = {
@@ -237,6 +240,8 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleProjectTabs();
 	registerModuleModals();
 	registerModuleSettingsPages();
+	registerModulePushHandlers();
+	registerModuleCommands();
 
 	// Initialize run data worker and load node types
 	if (isDataWorkerEnabled()) {
@@ -260,6 +265,7 @@ function registerAuthenticationHooks() {
 	const settingsStore = useSettingsStore();
 	const ssoStore = useSSOStore();
 	const favoritesStore = useFavoritesStore();
+	const workflowReviewStatusStore = useWorkflowReviewStatusStore();
 
 	usersStore.registerLoginHook(async (user) => {
 		await settingsStore.getSettings();
@@ -305,5 +311,8 @@ function registerAuthenticationHooks() {
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 		favoritesStore.reset();
+		workflowReviewStatusStore.reset();
+		// So a soft-redirect re-login (no page reload) re-fetches per-user data.
+		authenticatedFeaturesInitialized = false;
 	});
 }

@@ -175,8 +175,15 @@ function buildApprovalSubtitle(item: PendingConfirmationItem): string {
  */
 function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 	const destructive = isDestructive(item);
+	const conf = item.toolCall.confirmation;
+	// Workflow edits must be scoped to a workflow ID — never offer a session grant
+	// that would collapse to a blanket tool key.
+	const alwaysAllowAvailable =
+		!destructive &&
+		!conf.targetApproval &&
+		thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
 	const options: ApprovalOption[] = [];
-	if (!destructive && !item.toolCall.confirmation.targetApproval) {
+	if (alwaysAllowAvailable) {
 		options.push({
 			key: 'always-allow',
 			icon: 'check-check',
@@ -244,10 +251,11 @@ async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 		// behaviour. `confirmAction` already surfaces a toast on failure.
 		const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved });
 		if (!ok) return;
-		// "Always allow" is offered alongside Approve/Deny for non-destructive
-		// generic approvals; include it in the option set so telemetry reflects
-		// what the user actually chose between.
-		const alwaysAllowAvailable = !isDestructive(item) && !conf.targetApproval;
+		// Match the options actually shown in `buildApprovalOptions`.
+		const alwaysAllowAvailable =
+			!isDestructive(item) &&
+			!conf.targetApproval &&
+			thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
 		trackInputCompleted(
 			conf,
 			[
@@ -283,7 +291,7 @@ async function handleAlwaysAllow(item: PendingConfirmationItem) {
 			scope: 'session',
 		});
 		if (!ok) return;
-		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
+		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
 		trackInputCompleted(
 			conf,
 			[
@@ -423,12 +431,14 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 			<!-- ============ Standalone items (no approval wrapper) ============ -->
 			<template v-if="chunk.type === 'standalone'">
 				<!-- Workflow setup -->
+				<!-- Threads are project-bound: fall back to the thread's project so a
+				     payload without projectId never degrades to the personal project. -->
 				<InstanceAiWorkflowSetup
 					v-if="chunk.item.toolCall.confirmation.setupRequests?.length"
 					:key="'setup-' + chunk.item.toolCall.confirmation.requestId"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
 					:workflow-id="chunk.item.toolCall.confirmation.workflowId"
 				/>
@@ -440,8 +450,9 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:credential-requests="chunk.item.toolCall.confirmation.credentialRequests!"
 					:message="chunk.item.toolCall.confirmation.message"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
+					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
 				/>
 
 				<!-- Structured questions -->

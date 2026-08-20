@@ -82,7 +82,7 @@ runSharedChannelIntegrationContract({
 		resourceId: '123456',
 		firstPost: {
 			chat_id: '123456',
-			text: 'Got it',
+			rich_message: { markdown: 'Got it' },
 		},
 		respondPost: {
 			chat_id: '123456',

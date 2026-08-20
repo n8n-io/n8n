@@ -100,6 +100,7 @@ export interface FrontendSettings {
 	executionTimeout: number;
 	maxExecutionTimeout: number;
 	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
+	excludeNodes: string[];
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;
@@ -325,6 +326,8 @@ export type FrontendModuleSettings = {
 		mcpManagedByEnv: boolean;
 		/** Public URL of the instance MCP server endpoint. */
 		serverUrl?: string;
+		/** Whether newly created workflows are auto-exposed to MCP. */
+		autoExposeNewWorkflows: boolean;
 	};
 
 	/**

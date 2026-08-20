@@ -24,6 +24,7 @@ export type {
 	AiGatewayUsageMetadata,
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
+export type { AiGatewayWalletResponse } from './ai/ai-gateway-wallet-response.dto';
 
 export {
 	InstanceAiConfirmRequestDto,
@@ -97,6 +98,18 @@ export {
 } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
+export {
+	CloneGitConnectionDto,
+	CreateGitConnectionDto,
+	GitConnectionListPublicDto,
+	GitConnectionPublicDto,
+	ListGitConnectionsQueryDto,
+	UpdateGitConnectionDto,
+	gitConnectionTypeSchema,
+	gitKeyGeneratorTypeSchema,
+	type GitConnectionType,
+	type GitKeyGeneratorType,
+} from './git-connections/git-connections.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
@@ -127,15 +140,20 @@ export {
 } from './workflows/manual-run.dto';
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
+export { TransferWorkflowPublicDto } from './workflows/transfer-workflow-public.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
+export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tags-public.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
+export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
 	WorkflowPublicDto,
+	WorkflowListPublicDto,
 	workflowPublicSchema,
+	workflowListItemPublicSchema,
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 } from './workflows/workflow-public.dto';
@@ -186,13 +204,20 @@ export {
 } from './user/users-list-filter.dto';
 
 export { UpdateRoleDto } from './roles/update-role.dto';
+export { UpdateRolePublicDto } from './roles/update-role-public.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
 export {
 	RolePublicDto,
 	RoleListPublicDto,
 	RoleListQueryPublicDto,
+	RoleGetPublicDto,
 } from './roles/role-public.dto';
 export { CreateRoleMappingRuleDto } from './roles/create-role-mapping-rule.dto';
+export {
+	RoleMappingRulePublicDto,
+	RoleMappingRuleListPublicDto,
+	RoleMappingRuleListQueryPublicDto,
+} from './roles/role-mapping-rule-public.dto';
 export {
 	PatchRoleMappingRuleDto,
 	type PatchRoleMappingRuleInput,
@@ -306,6 +331,7 @@ export {
 	ExecutionRedactionQueryDtoSchema,
 	type ExecutionRedactionQueryDto,
 } from './executions/execution-redaction-query.dto';
+export { DeleteExecutionsDto } from './executions/delete-executions.dto';
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
@@ -322,14 +348,24 @@ export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workfl
 export { DecideWorkflowReviewRequestDto } from './workflow-reviews/decide-workflow-review-request.dto';
 export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
 export {
+	GetWorkflowReviewStatusesDto,
+	type WorkflowReviewStatus,
+	type WorkflowReviewStatusesResponse,
+} from './workflow-reviews/get-workflow-review-statuses.dto';
+export {
 	ListWorkflowReviewRequestsQueryDto,
-	type WorkflowReviewApprovedPublicationState,
 	type WorkflowReviewRequestForWorkflow,
 	type WorkflowReviewRequestList,
 } from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
 export * from './workflow-reviews/list-workflow-review-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
+export {
+	ListWorkflowReviewActivityQueryDto,
+	CreateWorkflowReviewCommentDto,
+	WORKFLOW_REVIEW_TEXT_MAX_LENGTH,
+	type ListWorkflowReviewActivityResponse,
+} from './workflow-reviews/workflow-review-activity.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';

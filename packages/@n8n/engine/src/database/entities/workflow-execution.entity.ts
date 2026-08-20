@@ -8,8 +8,11 @@ import {
 	UpdateDateColumn,
 } from '@n8n/typeorm';
 
-import type { JsonObject } from '../../common';
-import type { ExecutionMode, ExecutionStatus } from '../../execution/execution.types';
+import type {
+	ExecutionMode,
+	ExecutionStatus,
+	TriggerOutputs,
+} from '../../execution/execution.types';
 import type { WorkflowGraph } from '../../graph';
 import { generateId } from '../generate-id';
 
@@ -32,8 +35,8 @@ export class WorkflowExecution {
 	@Column('jsonb')
 	graph!: WorkflowGraph;
 
-	@Column('jsonb', { name: 'trigger_payload', nullable: true })
-	triggerPayload!: JsonObject | null;
+	@Column('jsonb', { name: 'trigger_outputs', nullable: true })
+	triggerOutputs!: TriggerOutputs | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

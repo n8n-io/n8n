@@ -69,6 +69,8 @@ export interface ApprovalInput {
 	toolName: string;
 	displayName?: string;
 	args: unknown;
+	/** Sanitized full tool configuration, included only by preview chat. */
+	details?: unknown;
 }
 
 export interface ApprovalResume {
