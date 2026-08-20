@@ -1,0 +1,21 @@
+packages/@n8n/config/src/configs/__tests__/security.config.test.ts
+  s_c0403ec2c18b97::t_e1b87e39268f47 22-23,25-31,33
+packages/@n8n/config/test/config.test.ts
+  s_c0403ec2c18b97::t_46e45b94e3f9f7 875
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "06100171096887fb2a7f5a962ce8bf413a4479de",
+  "prompts": {},
+  "sessions": {
+    "s_c0403ec2c18b97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0adbcce-a327-4cad-ab7c-e49efa952a96",
+        "model": "unknown"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
