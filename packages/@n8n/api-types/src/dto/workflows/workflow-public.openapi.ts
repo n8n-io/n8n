@@ -329,7 +329,6 @@ const requestNodeGroupsOpenApi = nestingDescriptor({
 	},
 });
 
-/** Each literal carries its own `readOnly: true`, to land where the deleted schema had it. */
 export const workflowCreateReadOnlyFieldDocs = {
 	id: { type: 'string', readOnly: true, example: '2tUt1wbLX592XDdX' },
 	active: { type: 'boolean', readOnly: true },

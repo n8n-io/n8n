@@ -289,7 +289,6 @@ export class WorkflowsPublicController {
 
 		const workflow = createWorkflowEntityFromPayload(rest);
 
-		// Before the creation service, so a below-floor policy is a 422 even when a later check fails.
 		await this.redactionEnforcementService.assertNewPolicyAllowed(body.settings.redactionPolicy);
 
 		const createdWorkflow = await this.workflowCreationService.createWorkflow(req.user, workflow, {

@@ -15,7 +15,6 @@ import {
 } from './workflow-public.openapi';
 import { Z } from '../../zod-class';
 
-/** The descriptor must set `type`: the generator has no mapping for `z.undefined()` and throws. */
 const readOnlyPublicSchema = (descriptor: ZodOpenAPIMetadata) =>
 	z.undefined({ invalid_type_error: 'is read-only' }).openapi(descriptor);
 
@@ -65,7 +64,6 @@ const workflowNodeGroupCreatePublicSchema = z
 	.object({
 		id: z.string().openapi(workflowNodeGroupFieldDocs.id),
 		name: z.string().openapi(workflowNodeGroupFieldDocs.name),
-		// 155, not GROUP_DESCRIPTION_MAX_LENGTH (145): the internal cap truncates, this one rejects.
 		description: z.string().max(155).optional().openapi(workflowNodeGroupFieldDocs.description),
 		nodeIds: z.array(z.string()).openapi(workflowNodeGroupFieldDocs.nodeIds),
 	})
@@ -114,7 +112,6 @@ const workflowSettingsCreatePublicSchema = z
 		({ binaryMode: _binaryMode, credentialResolverId: _resolverId, ...settings }) => settings,
 	);
 
-/** `sharedWorkflow.yml` left `project` open, so unknown keys pass there. */
 const sharedWorkflowCreatePublicSchema = z
 	.object({
 		role: z.string().optional().openapi({ example: 'workflow:owner' }),
@@ -168,7 +165,6 @@ const createWorkflowPublicShape = {
 	connections: z
 		.custom<IConnections>(
 			(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
-			// A fragment: the registry prefixes `request/body/connections`.
 			{ message: 'must be object' },
 		)
 		.openapi(connectionsOpenApi),
@@ -192,8 +188,6 @@ const createWorkflowPublicShape = {
 
 const createWorkflowPublicSchema = z.object(createWorkflowPublicShape).strict();
 
-// `Z.class` builds a non-strict schema, which strips an unknown field. `workflowCreate.yml` set
-// `additionalProperties: false`, so an unknown field has to stay a 400 — hence the strict overrides.
 export class CreateWorkflowPublicDto extends Z.class(createWorkflowPublicShape) {
 	static schema = createWorkflowPublicSchema;
 
