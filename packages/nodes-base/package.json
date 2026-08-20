@@ -949,7 +949,7 @@
     "@n8n/errors": "workspace:*",
     "@n8n/imap": "workspace:*",
     "@n8n/utils": "workspace:*",
-    "@thednp/dommatrix": "^2.0.12",
+    "@thednp/dommatrix": "^3.1.1",
     "alasql": "4.4.0",
     "amqplib": "0.10.6",
     "aws4": "1.11.0",
