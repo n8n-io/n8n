@@ -38,7 +38,6 @@ export const ERROR_RESPONSE_REFS = {
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
 } as const satisfies Record<number, { $ref: string }>;
 
-/** The statuses `@ApiErrorResponse` can document, i.e. those with a shared response file. */
 type DocumentedErrorStatus = keyof typeof ERROR_RESPONSE_REFS;
 
 function isDocumentedErrorStatus(status: number): status is DocumentedErrorStatus {
@@ -47,8 +46,7 @@ function isDocumentedErrorStatus(status: number): status is DocumentedErrorStatu
 
 /**
  * The wording each file in `ERROR_RESPONSE_REFS` carries, for the one case that cannot `$ref` it.
- * The key type keeps both maps covering the same statuses; `error-response-descriptions.test.ts`
- * keeps the text itself in step with the files it was copied from.
+ * `error-response-descriptions.test.ts` asserts the two stay in step.
  */
 export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> = {
 	400: 'The request is invalid or provides malformed data.',
