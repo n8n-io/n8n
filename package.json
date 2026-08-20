@@ -174,7 +174,8 @@
       "linkify-it@<=5.0.2": "5.0.2",
       "@zone-eu/mailsplit@<5.4.15": "5.4.15",
       "fast-uri": "3.1.5",
-      "sharp": "0.35.0"
+      "sharp": "0.35.0",
+      "jose@<6.2.9": "6.2.9"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
