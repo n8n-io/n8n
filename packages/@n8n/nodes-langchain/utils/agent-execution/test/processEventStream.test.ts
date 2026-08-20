@@ -72,6 +72,33 @@ describe('processEventStream', () => {
 		});
 	});
 
+	it('emits a tool-call-start chunk for every requested tool call', async () => {
+		await processEventStream(
+			ctx,
+			toStream([
+				modelEnd({
+					content: '',
+					tool_calls: [
+						{ name: 'create_repair_order', args: { room: '1101' }, id: 'call-1' },
+						{ name: 'list_folder', args: { path: '/tmp' }, id: 'call-2' },
+					],
+				}),
+			]),
+			0,
+		);
+
+		expect(ctx.sendChunk).toHaveBeenCalledWith('tool-call-start', 0, undefined, {
+			toolName: 'create_repair_order',
+			toolCallId: 'call-1',
+			toolInput: '{"room":"1101"}',
+		});
+		expect(ctx.sendChunk).toHaveBeenCalledWith('tool-call-start', 0, undefined, {
+			toolName: 'list_folder',
+			toolCallId: 'call-2',
+			toolInput: '{"path":"/tmp"}',
+		});
+	});
+
 	it('extracts text from content blocks rather than the whole block array', async () => {
 		const result = await processEventStream(
 			ctx,

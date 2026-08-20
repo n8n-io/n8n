@@ -154,6 +154,10 @@ async function processEventStream(
 	// so a missing end event is the only sign a run produced nothing usable.
 	const pendingChunksByRun = new Map<string, string[]>();
 
+	// Tool calls announced via tool-call-start that have not ended yet, used to pair
+	// the provider-assigned call id with the matching on_tool_end event.
+	const pendingToolCalls: Array<{ name: string; id?: string }> = [];
+
 	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {
 		// Stream chat model tokens as they come in
@@ -183,6 +187,15 @@ async function processEventStream(
 					}
 				}
 
+				for (const toolCall of toolCalls) {
+					pendingToolCalls.push({ name: toolCall.name, id: toolCall.id });
+					ctx.sendChunk('tool-call-start', itemIndex, undefined, {
+						toolName: toolCall.name,
+						toolCallId: toolCall.id,
+						toolInput: JSON.stringify(toolCall.args ?? {}),
+					});
+				}
+
 				// Capture full LLM response with tool calls for intermediate steps
 				if (returnIntermediateSteps) {
 					for (const toolCall of toolCalls) {
@@ -202,19 +215,31 @@ async function processEventStream(
 				}
 				break;
 			}
-			case 'on_tool_end':
+			case 'on_tool_end': {
+				const toolData: { output?: unknown } | undefined = event.data;
+				// The event carries no call id, so pair with the oldest announced call of the
+				// same tool. AgentExecutor runs tools sequentially, so FIFO order holds.
+				const pendingIndex = pendingToolCalls.findIndex((call) => call.name === event.name);
+				const pendingCall = pendingIndex === -1 ? undefined : pendingToolCalls[pendingIndex];
+				if (pendingIndex !== -1) pendingToolCalls.splice(pendingIndex, 1);
+				ctx.sendChunk('tool-call-end', itemIndex, undefined, {
+					toolName: event.name,
+					toolCallId: pendingCall?.id,
+					toolOutput: JSON.stringify(toolData?.output),
+				});
+
 				// Capture tool execution results and match with action
 				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
-					const toolData = event.data as any;
 					// Find the matching intermediate step for this tool call
 					const matchingStep = agentResult.intermediateSteps!.find(
 						(step) => !step.observation && step.action.tool === event.name,
 					);
 					if (matchingStep) {
-						matchingStep.observation = toolData.output;
+						matchingStep.observation = toolData?.output;
 					}
 				}
 				break;
+			}
 			default:
 				break;
 		}

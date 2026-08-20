@@ -52,6 +52,11 @@ export async function processEventStream(
 						// Note: For Gemini, we pass additional_kwargs to ALL tool calls
 						// so the signature can be applied to each when rebuilding
 						for (const toolCall of output.tool_calls) {
+							ctx.sendChunk('tool-call-start', itemIndex, undefined, {
+								toolName: toolCall.name,
+								toolCallId: toolCall.id,
+								toolInput: JSON.stringify(toolCall.args ?? {}),
+							});
 							toolCalls.push({
 								tool: toolCall.name,
 								toolInput: toolCall.args,

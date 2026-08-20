@@ -820,6 +820,80 @@ describe('toolsAgentExecute', () => {
 			]);
 		});
 
+		it('should emit tool-call-start and tool-call-end chunks when the agent invokes a tool', async () => {
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			mockContext.isStreaming.mockReturnValue(true);
+
+			const toolCallMessage = new AIMessage({
+				content: 'I need to call a tool',
+				tool_calls: [
+					{
+						id: 'call_123',
+						name: 'TestTool',
+						args: { input: 'test data' },
+						type: 'tool_call',
+					},
+				],
+				id: 'msg_abc',
+			});
+
+			const mockStreamEvents = async function* () {
+				yield {
+					event: 'on_chat_model_end',
+					data: { output: toolCallMessage },
+				};
+				yield {
+					event: 'on_tool_end',
+					name: 'TestTool',
+					data: { output: 'Tool execution result' },
+				};
+				yield {
+					event: 'on_chat_model_stream',
+					data: { chunk: new AIMessageChunk({ content: 'Final response' }) },
+				};
+				yield {
+					event: 'on_chat_model_end',
+					data: { output: new AIMessage({ content: 'Final response' }) },
+				};
+			};
+
+			const mockExecutor = {
+				streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
+			};
+
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig(mockExecutor) as any,
+			);
+
+			// returnIntermediateSteps stays false (default), tool chunks must be sent anyway
+			const result = await toolsAgentExecute.call(mockContext);
+
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('tool-call-start', 0, undefined, {
+				toolName: 'TestTool',
+				toolCallId: 'call_123',
+				toolInput: '{"input":"test data"}',
+			});
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('tool-call-end', 0, undefined, {
+				toolName: 'TestTool',
+				toolCallId: 'call_123',
+				toolOutput: '"Tool execution result"',
+			});
+
+			// Token streaming keeps working alongside the tool chunks
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin', 0);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 0, 'Final response');
+			expect(mockContext.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(result[0][0].json.output).toBe('Final response');
+
+			// The start chunk is sent before the tool runs, the end chunk afterwards
+			const chunkTypes = mockContext.sendChunk.mock.calls.map(([type]) => type);
+			expect(chunkTypes.indexOf('tool-call-start')).toBeGreaterThanOrEqual(0);
+			expect(chunkTypes.indexOf('tool-call-end')).toBeGreaterThan(
+				chunkTypes.indexOf('tool-call-start'),
+			);
+		});
+
 		it('should not stream text from a turn that also requested tools', async () => {
 			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
 			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
