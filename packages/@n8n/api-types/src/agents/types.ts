@@ -2,8 +2,10 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	getChildNodes,
 	MANUAL_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
+	type IConnections,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -24,6 +26,87 @@ export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
 ] as const;
 
 export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
+
+/**
+ * Why a workflow can't be attached as an agent tool. `null` means compatible.
+ *
+ * @remarks Computed from `nodes` (type/name/disabled) and `connections`, so it
+ * stays pure and shareable between the backend validation service and the
+ * frontend picker. Only nodes that can actually execute when the agent
+ * invokes the workflow are considered: disabled body nodes are skipped, and
+ * when `connections` is available only nodes reachable from the entry-point
+ * trigger are checked. The entry point is the first supported trigger in node
+ * order, matching the runtime `detectTriggerNode` selection — so with
+ * multiple supported triggers the other trigger subgraphs never run and an
+ * incompatible node there must not block the workflow. When `connections` is
+ * absent the check degrades to scanning every enabled node, which is the
+ * strict superset and stays safe. The runtime `validateCompatibility`/
+ * `detectTriggerNode` throws still cover edge cases that a pure scan can't
+ * (e.g. a trigger that resolves to a supported type only after parameter
+ * materialisation), so this is a strict subset of the runtime check — never
+ * relax the runtime check based on this.
+ */
+export type WorkflowToolIncompatibilityReason =
+	| { reason: 'incompatible_nodes'; nodeTypes: string[] }
+	| { reason: 'no_supported_trigger' };
+
+export function getWorkflowToolIncompatibilityReason(workflow: {
+	nodes?: Array<{ type: string; name: string; disabled?: boolean }>;
+	connections?: IConnections;
+}): WorkflowToolIncompatibilityReason | null {
+	const nodes = workflow.nodes ?? [];
+
+	// Entry point the agent invokes — the first supported trigger in node
+	// order, matching the runtime `detectTriggerNode` selection. Runtime does
+	// not skip disabled triggers, so neither do we; this keeps the picker and
+	// the runtime from disagreeing on which subgraph executes.
+	const triggerNode = nodes.find((n) =>
+		(SUPPORTED_WORKFLOW_TOOL_TRIGGERS as readonly string[]).includes(n.type),
+	);
+
+	// Only nodes reachable from the entry-point trigger run when the workflow
+	// is invoked as an agent tool. With no trigger (or no connections to
+	// traverse) we fall back to every node — the safe superset that keeps
+	// `incompatible_nodes` prioritised over `no_supported_trigger`.
+	const reachableNames =
+		triggerNode && workflow.connections
+			? reachableNodesFromTriggers([triggerNode.name], workflow.connections)
+			: new Set(nodes.map((n) => n.name));
+
+	// Disabled body nodes never execute, so they can't make the workflow
+	// incompatible even when they sit on a reachable branch.
+	const incompatibleNodeTypes = nodes
+		.filter((n) => !n.disabled && reachableNames.has(n.name))
+		.filter((n) =>
+			(INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES as readonly string[]).includes(n.type),
+		)
+		.map((n) => n.type);
+	if (incompatibleNodeTypes.length > 0) {
+		return { reason: 'incompatible_nodes', nodeTypes: incompatibleNodeTypes };
+	}
+
+	if (!triggerNode) return { reason: 'no_supported_trigger' };
+
+	return null;
+}
+
+/**
+ * All node names reachable from any of `triggerNames` (the triggers included),
+ * following every connection type. `getChildNodes` is cycle-safe and returns
+ * each descendant once, so one call per trigger and a union is enough.
+ */
+function reachableNodesFromTriggers(
+	triggerNames: string[],
+	connections: IConnections,
+): Set<string> {
+	const reachable = new Set<string>(triggerNames);
+	for (const name of triggerNames) {
+		for (const child of getChildNodes(connections, name, 'ALL')) {
+			reachable.add(child);
+		}
+	}
+	return reachable;
+}
 
 export interface ChatIntegrationDescriptor {
 	type: string;

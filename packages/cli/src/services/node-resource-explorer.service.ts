@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { detectAuthenticationParameterValue } from '@n8n/ai-utilities/node-catalog';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ExploreResourcesParams, ExploreResourcesResult } from '@n8n/instance-ai';
@@ -27,6 +28,9 @@ import { getBase } from '@/workflow-execute-additional-data';
  */
 const MAX_AVAILABILITY_PAGES = 5;
 
+/** Display name for the managed n8n Connect credential slot in explore-resources. */
+const N8N_CONNECT_DISPLAY_NAME = 'n8n credits';
+
 /**
  * Looks up dynamic resource locator and load-options values for a node on
  * behalf of a user, after verifying credential ownership.
@@ -48,23 +52,13 @@ export class NodeResourceExplorerService {
 		user: User,
 		params: ExploreResourcesParams,
 	): Promise<ExploreResourcesResult> {
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			params.credentialId,
-			user,
-			['credential:read'],
-		);
-		if (!credential || credential.type !== params.credentialType) {
-			throw new Error(`Credential ${params.credentialId} not found or not accessible`);
-		}
+		const credentials = await this.resolveExploreCredentials(user, params);
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 
 		const nodeTypeAndVersion = { name: params.nodeType, version: params.version };
 		const currentNodeParameters = structuredClone(
 			params.currentNodeParameters ?? {},
 		) as INodeParameters;
-		const credentials: INodeCredentials = {
-			[credential.type]: { id: credential.id, name: credential.name },
-		};
 
 		const nodeDescription = this.getNodeDescription(params.nodeType, params.version);
 
@@ -112,14 +106,26 @@ export class NodeResourceExplorerService {
 				};
 			}
 
-			const options = await this.dynamicNodeParametersService.getOptionsViaMethodName(
-				params.methodName,
-				'',
-				additionalData,
-				nodeTypeAndVersion,
-				currentNodeParameters,
-				credentials,
-			);
+			const isRouted = nodeDescription
+				? isRoutedLoadOptionsProperty(nodeDescription, params.methodName)
+				: false;
+
+			const options = isRouted
+				? await this.dynamicNodeParametersService.getOptionsViaLoadOptionsByPath(
+						params.methodName,
+						additionalData,
+						nodeTypeAndVersion,
+						currentNodeParameters,
+						credentials,
+					)
+				: await this.dynamicNodeParametersService.getOptionsViaMethodName(
+						params.methodName,
+						'',
+						additionalData,
+						nodeTypeAndVersion,
+						currentNodeParameters,
+						credentials,
+					);
 			return {
 				results: options.map((o) => ({
 					name: String(o.name),
@@ -134,6 +140,40 @@ export class NodeResourceExplorerService {
 			});
 			throw error;
 		}
+	}
+
+	/**
+	 * Resolve credentials for explore-resources / availability checks.
+	 * The n8n Connect managed tag skips the credential store and passes the
+	 * gateway-managed marker so CredentialsHelper mints a synthetic credential
+	 * against the gateway allowlist.
+	 */
+	private async resolveExploreCredentials(
+		user: User,
+		params: Pick<ExploreResourcesParams, 'credentialId' | 'credentialType'>,
+	): Promise<INodeCredentials> {
+		if (params.credentialId === AI_GATEWAY_MANAGED_TAG) {
+			return {
+				[params.credentialType]: {
+					id: null,
+					name: N8N_CONNECT_DISPLAY_NAME,
+					__aiGatewayManaged: true,
+				},
+			};
+		}
+
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			params.credentialId,
+			user,
+			['credential:read'],
+		);
+		if (!credential || credential.type !== params.credentialType) {
+			throw new Error(`Credential ${params.credentialId} not found or not accessible`);
+		}
+
+		return {
+			[credential.type]: { id: credential.id, name: credential.name },
+		};
 	}
 
 	/**
@@ -228,7 +268,7 @@ export class NodeResourceExplorerService {
 			credentialId: string;
 			parameters: Record<string, unknown>;
 		},
-		candidate: Pick<CandidateLocator, 'name' | 'methodName'>,
+		candidate: Pick<CandidateLocator, 'name' | 'methodName' | 'methodType'>,
 	): Promise<{ options: Array<{ name: string; value: string }>; complete: boolean }> {
 		const byValue = new Map<string, { name: string; value: string }>();
 		let paginationToken: string | undefined;
@@ -240,7 +280,7 @@ export class NodeResourceExplorerService {
 					nodeType: params.nodeType,
 					version: params.version,
 					methodName: candidate.methodName,
-					methodType: 'listSearch',
+					methodType: candidate.methodType,
 					credentialType: params.credentialType,
 					credentialId: params.credentialId,
 					currentNodeParameters: params.parameters,
@@ -301,6 +341,7 @@ interface CandidateLocator {
 	name: string;
 	displayName: string;
 	methodName: string;
+	methodType: 'listSearch' | 'loadOptions';
 	currentValue: string;
 }
 
@@ -388,14 +429,32 @@ function collectListBackedLocators(
 	const seen = new Set<string>();
 
 	for (const property of nodeDescription.properties) {
-		if (property.type !== 'resourceLocator') continue;
 		if (seen.has(property.name)) continue;
 
-		const methodName = property.modes?.reduce<string | undefined>(
-			(found, mode: INodePropertyMode) =>
-				found ?? (mode.type === 'list' ? mode.typeOptions?.searchListMethod : undefined),
-			undefined,
-		);
+		let methodName: string | undefined;
+		let methodType: 'listSearch' | 'loadOptions' = 'listSearch';
+
+		if (property.type === 'resourceLocator') {
+			methodName = property.modes?.reduce<string | undefined>(
+				(found, mode: INodePropertyMode) =>
+					found ?? (mode.type === 'list' ? mode.typeOptions?.searchListMethod : undefined),
+				undefined,
+			);
+			methodType = 'listSearch';
+		} else if (property.type === 'options') {
+			if (property.typeOptions?.loadOptionsMethod) {
+				methodName = property.typeOptions.loadOptionsMethod;
+				methodType =
+					property.typeOptions.loadOptionsMethod === 'listSearch' ? 'listSearch' : 'loadOptions';
+			} else if (property.typeOptions?.searchListMethod) {
+				methodName = property.typeOptions.searchListMethod;
+				methodType = 'listSearch';
+			} else if (property.typeOptions?.loadOptions?.routing) {
+				methodName = property.name;
+				methodType = 'loadOptions';
+			}
+		}
+
 		if (!methodName) continue;
 
 		if (!NodeHelpers.displayParameter(resolved, property, node, nodeDescription)) continue;
@@ -408,6 +467,7 @@ function collectListBackedLocators(
 			name: property.name,
 			displayName: property.displayName,
 			methodName,
+			methodType,
 			currentValue,
 		});
 	}
@@ -428,7 +488,10 @@ function findBuilderHintForMethod(
 	const referencesMethod = (prop: INodeProperties): boolean => {
 		switch (methodType) {
 			case 'loadOptions':
-				return prop.typeOptions?.loadOptionsMethod === methodName;
+				return (
+					prop.typeOptions?.loadOptionsMethod === methodName ||
+					(Boolean(prop.typeOptions?.loadOptions?.routing) && prop.name === methodName)
+				);
 			case 'listSearch': {
 				const modes: INodePropertyMode[] = prop.modes ?? [];
 				return modes.some((mode) => mode.typeOptions?.searchListMethod === methodName);
@@ -463,4 +526,28 @@ function findBuilderHintForMethod(
 	};
 
 	return searchProps(nodeDesc.properties);
+}
+
+function isRoutedLoadOptionsProperty(
+	nodeDesc: INodeTypeDescription,
+	propertyName: string,
+): boolean {
+	const search = (
+		items?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+	): boolean => {
+		for (const item of items ?? []) {
+			if ('values' in item && Array.isArray(item.values)) {
+				if (search(item.values)) return true;
+				continue;
+			}
+			if ('type' in item) {
+				if (item.name === propertyName && Boolean(item.typeOptions?.loadOptions?.routing)) {
+					return true;
+				}
+				if (item.options && search(item.options)) return true;
+			}
+		}
+		return false;
+	};
+	return search(nodeDesc.properties);
 }

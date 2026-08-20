@@ -31,6 +31,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'project:delete',
 	'project:list',
 	'project:export',
+	'project:manageMembers',
 	'variable:create',
 	'variable:delete',
 	'variable:list',

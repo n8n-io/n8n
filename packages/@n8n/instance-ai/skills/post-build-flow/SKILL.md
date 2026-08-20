@@ -444,6 +444,18 @@ building, and use the chosen credential name in the workflow code. Exception: th
 user already named the credential in their message — use it directly. With a
 single candidate, auto-apply and do not ask.
 
+**Honor an explicit "create a new credential" request.** When the user asks for a
+new credential of a type, never pick an existing one for them and never ask them
+to choose among existing ones — not even when exactly one exists (the build would
+otherwise attach it silently and skip setup entirely). Pass the credential type in
+`preferNewCredentials` on both `build-workflow` and `workflows(action="setup")`
+(or `preferNew: true` on the `credentials(action="setup")` entry). Setup then
+opens on credential creation while still listing the existing credentials, so the
+user can change their mind — say so in one short sentence rather than
+re-litigating the choice. If they had skipped that card earlier, pass
+`reopenSkipped` alongside it: `preferNewCredentials` decides what the card offers,
+`reopenSkipped` decides whether the card comes back at all.
+
 **Ask which auth type to use when a service supports more than one.**
 `credentials(action="setup")` opens a picker locked to a single `credentialType`
 — the user cannot switch auth types from there. So when

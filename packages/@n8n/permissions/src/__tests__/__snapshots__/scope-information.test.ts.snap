@@ -62,6 +62,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "project:delete",
   "project:list",
   "project:export",
+  "project:manageMembers",
   "saml:manage",
   "securityAudit:generate",
   "securitySettings:manage",
