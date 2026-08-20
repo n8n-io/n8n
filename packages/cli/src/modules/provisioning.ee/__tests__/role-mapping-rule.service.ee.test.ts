@@ -769,25 +769,44 @@ describe('RoleMappingRuleService', () => {
 		} as unknown as RoleMappingRule;
 
 		it('should reject an empty id', async () => {
-			await expect(service.delete('')).rejects.toThrow(BadRequestError);
+			await expect(
+				service.delete({ id: '', userId: testUser.id, userEmail: testUser.email }),
+			).rejects.toThrow(BadRequestError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should return 404 when rule id is unknown', async () => {
 			roleMappingRuleRepository.findOne.mockResolvedValue(null);
 
-			await expect(service.delete('00000000-0000-4000-8000-000000000000')).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				service.delete({
+					id: '00000000-0000-4000-8000-000000000000',
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
+			).rejects.toThrow(NotFoundError);
 			expect(roleMappingRuleRepository.remove).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
-		it('should remove the rule when it exists', async () => {
+		it('should remove the rule and emit the deleted event when it exists', async () => {
 			roleMappingRuleRepository.findOne.mockResolvedValue(rule);
 			roleMappingRuleRepository.remove.mockResolvedValue(rule);
 
-			await service.delete(rule.id);
+			const result = await service.delete({
+				id: rule.id,
+				userId: testUser.id,
+				userEmail: testUser.email,
+			});
 
+			expect(result).toEqual({ ruleType: 'instance' });
 			expect(roleMappingRuleRepository.remove).toHaveBeenCalledWith(rule);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-deleted', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: rule.id,
+				ruleType: 'instance',
+			});
 		});
 	});
 
@@ -985,7 +1004,7 @@ describe('RoleMappingRuleService', () => {
 			roleMappingRuleRepository.findOne.mockResolvedValue(makeRule('a', 0));
 			roleMappingRuleRepository.remove.mockResolvedValue(makeRule('a', 0));
 
-			await service.delete('a');
+			await service.delete({ id: 'a', userId: testUser.id, userEmail: testUser.email });
 
 			expect(transactionSpy).not.toHaveBeenCalled();
 		});
@@ -1001,7 +1020,7 @@ describe('RoleMappingRuleService', () => {
 			roleMappingRuleRepository.findOne.mockResolvedValue(makeRule('x', 0));
 			roleMappingRuleRepository.remove.mockResolvedValue(makeRule('x', 0));
 
-			await service.delete('x');
+			await service.delete({ id: 'x', userId: testUser.id, userEmail: testUser.email });
 
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
 
