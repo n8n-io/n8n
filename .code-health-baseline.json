@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-22T13:28:07.821Z",
-	"totalViolations": 188,
+	"generated": "2026-08-20T05:46:01.771Z",
+	"totalViolations": 189,
 	"violations": {
 		"packages/@n8n/ai-workflow-builder.ee/package.json": [
 			{
@@ -341,6 +341,12 @@
 				"line": 56,
 				"message": "eslint-plugin-n8n-nodes-base appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "6a9e12780943"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 53,
+				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "b6a694c807bc"
 			}
 		],
 		"packages/frontend/editor-ui/package.json": [
@@ -491,6 +497,12 @@
 				"line": 38,
 				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "67f9d81d9528"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 38,
+				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "6c742564e868"
 			}
 		],
 		"packages/@n8n/cli/package.json": [
@@ -499,6 +511,12 @@
 				"line": 75,
 				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "733c3960022e"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 78,
+				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "78dcf13f2250"
 			}
 		],
 		"packages/@n8n/computer-use/package.json": [
@@ -547,12 +565,6 @@
 			{
 				"rule": "catalog-violations",
 				"line": 30,
-				"message": "stylelint appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "955f3fe044c7"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 46,
 				"message": "stylelint appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "955f3fe044c7"
 			}
@@ -1205,12 +1217,6 @@
 				"line": 87,
 				"message": "typescript@^5.3.3 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
 				"hash": "050d5b2d74e1"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 90,
-				"message": "pg@^8.17.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "6cac348bdcc8"
 			}
 		],
 		"packages/core/package.json": [

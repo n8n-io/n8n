@@ -311,7 +311,7 @@ describe('establishExecutionContext', () => {
 		});
 
 		it('should work with different execution modes', async () => {
-			const startNode = mock<INode>({ name: 'Trigger', type: 'n8n-nodes-base.cron' });
+			const startNode = mock<INode>({ name: 'Trigger', type: 'n8n-nodes-base.scheduleTrigger' });
 			const modes: WorkflowExecuteMode[] = ['manual', 'trigger', 'webhook'];
 
 			for (const mode of modes) {

@@ -124,8 +124,6 @@ const EXCLUDED_NODE_NAMES = [
 	'n8n-nodes-base.respondToWebhook',
 	'n8n-nodes-base.manualTrigger',
 	'n8n-nodes-base.errorTrigger',
-	'n8n-nodes-base.function',
-	'n8n-nodes-base.functionItem',
 ];
 
 // Exclude all LangChain nodes (AI tools)
