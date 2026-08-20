@@ -283,6 +283,7 @@ overrides:
   '@zone-eu/mailsplit@<5.4.15': 5.4.15
   fast-uri: 3.1.5
   sharp: 0.35.0
+  jose: 6.2.5
 
 patchedDependencies:
   '@lezer/highlight':
@@ -13182,11 +13183,8 @@ packages:
   join-component@1.1.0:
     resolution: {integrity: sha512-bF7vcQxbODoGK1imE2P9GS9aw4zD0Sd+Hni68IMZLj7zRnquH7dXUmMw9hDI5S/Jzt7q+IyTXN0rSg2GI0IKhQ==}
 
-  jose@6.0.11:
-    resolution: {integrity: sha512-QxG7EaliDARm1O1S8BGakqncGT9s25bKL1WSf6/oa17Tkqwi8D2ZNglqCF+DsYF88/rV66Q/Q2mFAy697E1DUg==}
-
-  jose@6.1.3:
-    resolution: {integrity: sha512-0TpaTfihd4QMNwrz/ob2Bp7X04yuxJkjRGi4aKmOqwhov54i6u79oCv7T+C7lo70MKH6BesI3vscD1yb/yzKXQ==}
+  jose@6.2.5:
+    resolution: {integrity: sha512-2E5L2yRp03FnwreJLJX8/r7mHiZICCf8kG7fAsTWkSQTDAcc46NIZoQLKy+EJ8sPoJlxyS4OQR5H70LjIZZlIQ==}
 
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
@@ -22466,7 +22464,7 @@ snapshots:
       express: 5.2.1
       express-rate-limit: 8.2.2(express@5.2.1)
       hono: 4.12.34
-      jose: 6.1.3
+      jose: 6.2.5
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
       raw-body: 3.0.0
@@ -31100,9 +31098,7 @@ snapshots:
 
   join-component@1.1.0: {}
 
-  jose@6.0.11: {}
-
-  jose@6.1.3: {}
+  jose@6.2.5: {}
 
   joycon@3.1.1: {}
 
@@ -32977,7 +32973,7 @@ snapshots:
 
   openid-client@6.5.0:
     dependencies:
-      jose: 6.0.11
+      jose: 6.2.5
       oauth4webapi: 3.5.1
 
   option@0.2.4: {}
