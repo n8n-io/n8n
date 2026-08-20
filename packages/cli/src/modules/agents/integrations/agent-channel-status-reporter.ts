@@ -36,6 +36,16 @@ const MAX_BACKOFF_MS = 10 * Time.minutes.toMilliseconds;
  */
 @Service()
 export class AgentChannelStatusReporter {
+	/**
+	 * Set once this process has withdrawn everything on the way out. Work that
+	 * outlives the withdrawal still calls in here — a startup the reconciler
+	 * stopped waiting for finishes and reports what it found — and would write a
+	 * fresh row for a host that is already gone, leaving the channel reported
+	 * against this instance until its lease expires. Nothing this process says
+	 * after it has withdrawn still applies, so nothing is written.
+	 */
+	private hasWithdrawn = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
@@ -95,6 +105,10 @@ export class AgentChannelStatusReporter {
 
 	/** This process is going away, so nothing it said still applies. */
 	async withdrawAll(): Promise<void> {
+		// Before the delete, not after: a write landing in between belongs to work
+		// that is on its way out with the process, and would outlive the withdrawal.
+		this.hasWithdrawn = true;
+
 		try {
 			await this.repository.clearOwnHost();
 		} catch (error) {
@@ -152,6 +166,13 @@ export class AgentChannelStatusReporter {
 		ref: AgentChannelRef,
 		write: () => Promise<void>,
 	): Promise<void> {
+		if (this.hasWithdrawn) {
+			this.logger.debug(
+				`[AgentChannelStatusReporter] Not going to ${what} for ${ref.integrationType} on agent ${ref.agentId} — this instance has withdrawn`,
+			);
+			return;
+		}
+
 		try {
 			await write();
 		} catch (error) {

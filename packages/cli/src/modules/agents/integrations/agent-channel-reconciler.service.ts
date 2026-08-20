@@ -121,11 +121,12 @@ export class AgentChannelReconciler {
 		clearInterval(this.reconcileInterval);
 		this.reconcileInterval = undefined;
 
-		// Wait out a pass already running, or its `recordConnected` lands after the
-		// withdrawal and leaves a row behind for a lease's worth of time. Bounded,
-		// because a startup can stall on a platform that never answers and a
-		// deployment must not wait on it: past the bound the rows are withdrawn
-		// anyway, and whatever the pass writes afterwards expires with its lease.
+		// Wait out a pass already running, so a channel it started is reported as
+		// running for the moment it still is. Bounded, because a startup can stall
+		// on a platform that never answers and a deployment must not wait on it:
+		// past the bound the rows are withdrawn anyway, and the withdrawal seals
+		// the reporter, so a startup that resolves afterwards cannot report against
+		// a host that is gone.
 		await this.settleInFlight();
 
 		await this.statusReporter.withdrawAll();

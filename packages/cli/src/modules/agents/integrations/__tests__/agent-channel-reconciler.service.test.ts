@@ -134,7 +134,13 @@ function build(
 		mock<ErrorReporter>(),
 	);
 
-	return { reconciler, agentRepository, channelStatusRepository, chatIntegrationService };
+	return {
+		reconciler,
+		agentRepository,
+		channelStatusRepository,
+		chatIntegrationService,
+		statusReporter,
+	};
 }
 
 describe('AgentChannelReconciler', () => {
@@ -608,6 +614,46 @@ describe('AgentChannelReconciler — role changes while a pass is running', () =
 
 		expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
 		expect(channelStatusRepository.clearOwnChannel).toHaveBeenCalledWith(refOf(telegram));
+	});
+
+	it('does not report a startup that finished after shutdown stopped waiting', async () => {
+		// Past the bound the rows are already withdrawn, so a write landing
+		// afterwards would report this host as running the channel until its lease
+		// expired — with the process gone and nothing left to refresh or correct it.
+		vi.useFakeTimers();
+		try {
+			const {
+				reconciler,
+				agentRepository,
+				channelStatusRepository,
+				chatIntegrationService,
+				statusReporter,
+			} = build();
+			agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+			let finishStartup!: () => void;
+			const startupDone = new Promise<void>((resolve) => (finishStartup = resolve));
+			// Mirrors `connect`, which reports from inside the startup, so the write
+			// lands whenever the platform finally answers.
+			chatIntegrationService.startChannel.mockImplementation(async () => {
+				await startupDone;
+				await statusReporter.recordConnected(refOf(slack));
+			});
+
+			const pass = reconciler.reconcile('interval');
+			await vi.advanceTimersByTimeAsync(0);
+
+			const shutdown = reconciler.shutdown();
+			await vi.advanceTimersByTimeAsync(6 * Time.seconds.toMilliseconds);
+			await shutdown;
+			expect(channelStatusRepository.clearOwnHost).toHaveBeenCalled();
+
+			finishStartup();
+			await pass;
+
+			expect(channelStatusRepository.saveOwn).not.toHaveBeenCalled();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('gives up waiting on a stalled pass rather than blocking shutdown', async () => {

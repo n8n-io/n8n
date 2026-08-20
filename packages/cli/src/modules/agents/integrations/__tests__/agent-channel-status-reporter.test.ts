@@ -209,6 +209,38 @@ describe('AgentChannelStatusReporter', () => {
 		});
 	});
 
+	describe('withdrawing on the way out', () => {
+		it.each([
+			['recordConnected', async (r: AgentChannelStatusReporter) => await r.recordConnected(ref)],
+			[
+				'recordFailure',
+				async (r: AgentChannelStatusReporter) => await r.recordFailure(ref, new Error('boom')),
+			],
+			['refreshLease', async (r: AgentChannelStatusReporter) => await r.refreshLease(ref)],
+		])('ignores a late %s, so nothing is left behind for a lease', async (_name, call) => {
+			// A startup that shutdown stopped waiting for finishes after the
+			// withdrawal and reports what it found. Writing it would leave the channel
+			// reported against an instance that is gone until its lease expires.
+			const { reporter, repository } = build();
+
+			await reporter.withdrawAll();
+			await call(reporter);
+
+			expect(repository.saveOwn).not.toHaveBeenCalled();
+			expect(repository.refreshOwnLease).not.toHaveBeenCalled();
+		});
+
+		it('seals even when clearing the rows fails, because the process is still leaving', async () => {
+			const { reporter, repository } = build();
+			repository.clearOwnHost.mockRejectedValue(new Error('database is down'));
+
+			await reporter.withdrawAll();
+			await reporter.recordConnected(ref);
+
+			expect(repository.saveOwn).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('never failing the operation it reports on', () => {
 		it.each([
 			['recordConnected', async (r: AgentChannelStatusReporter) => await r.recordConnected(ref)],
