@@ -203,6 +203,10 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('Slack')).toBeTruthy();
 
 		const inputEl = getByPlaceholderText('Search all tools...') as HTMLInputElement;
+		// A non-matching query empties the tab, proving the debounced filter runs.
+		await fireEvent.update(inputEl, 'zzzznomatch');
+		await waitFor(() => expect(getByTestId('tab-n8n-connect').textContent).toContain('(0)'));
+		// Searching the item's description text brings it back.
 		await fireEvent.update(inputEl, 'send messages');
 		await waitFor(() => expect(getByTestId('tab-n8n-connect').textContent).toContain('(1)'));
 	});
