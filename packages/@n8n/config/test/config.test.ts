@@ -513,7 +513,7 @@ describe('GlobalConfig', () => {
 			blockFileAccessToN8nFiles: true,
 			blockFilePatterns: '^(.*\\/)*\\.git(\\/.*)*$',
 			daysAbandonedWorkflow: 90,
-			contentSecurityPolicy: '{}',
+			contentSecurityPolicy: undefined,
 			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
 			crossOriginOpenerPolicy: 'same-origin-allow-popups',
 			disableWebhookHtmlSandboxing: false,

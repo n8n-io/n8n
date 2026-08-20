@@ -1,17 +1,15 @@
 import z from 'zod';
 
+import {
+	contentSecurityPolicyReportOnlySchema,
+	contentSecurityPolicySchema,
+	DEFAULT_CONTENT_SECURITY_POLICY,
+	type ContentSecurityPolicyReportOnlySetting,
+	type ContentSecurityPolicySetting,
+} from './content-security-policy';
 import { Config, Env } from '../decorators';
 
 const crossOriginOpenerPolicySchema = z.enum(['same-origin', 'same-origin-allow-popups']);
-
-/**
- * The [Level 3](https://web.dev/articles/strict-csp) policy n8n reports on by default.
- *
- * `<nonce>` takes the response's nonce when n8n serves the header (see
- * `NONCE_PLACEHOLDER` in `packages/cli/src/security/content-security-policy.ts`).
- */
-export const DEFAULT_CONTENT_SECURITY_POLICY =
-	"script-src <nonce> 'strict-dynamic' 'unsafe-eval'; object-src 'none'; base-uri 'none'";
 
 // Mirrors the `Resolvers` union in nodes-base (`system-credentials-utils.ts`);
 // kept in sync manually since @n8n/config cannot import from nodes-base.
@@ -87,9 +85,13 @@ export class SecurityConfig {
 	 *
 	 * Empty by default: n8n enforces nothing until a policy is set here. See
 	 * `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` for the policy it reports on.
+	 *
+	 * Parsed on read, so this holds the policy to send, or `undefined` to send no header.
+	 * A value that cannot be read warns and leaves this `undefined`: a policy n8n cannot
+	 * parse must not be enforced.
 	 */
-	@Env('N8N_CONTENT_SECURITY_POLICY')
-	contentSecurityPolicy: string = '{}';
+	@Env('N8N_CONTENT_SECURITY_POLICY', contentSecurityPolicySchema)
+	contentSecurityPolicy: ContentSecurityPolicySetting = undefined;
 
 	/**
 	 * The policy n8n serves as `Content-Security-Policy-Report-Only`, in the same two formats
@@ -98,9 +100,14 @@ export class SecurityConfig {
 	 *
 	 * Defaults to n8n's Level 3 policy. Set it to `default` for that policy explicitly, or to
 	 * `{}` to send no report-only header.
+	 *
+	 * Parsed on read, as `N8N_CONTENT_SECURITY_POLICY` is. The variable held a boolean until
+	 * it took a policy, so a boolean parses to `{ legacyBoolean }` for the caller to honor
+	 * with a deprecation warning.
 	 */
-	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY')
-	contentSecurityPolicyReportOnly: string = DEFAULT_CONTENT_SECURITY_POLICY;
+	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY', contentSecurityPolicyReportOnlySchema)
+	contentSecurityPolicyReportOnly: ContentSecurityPolicyReportOnlySetting =
+		DEFAULT_CONTENT_SECURITY_POLICY;
 
 	/**
 	 * Configuration for the `Cross-Origin-Opener-Policy` header.

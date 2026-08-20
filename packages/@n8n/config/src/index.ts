@@ -64,7 +64,16 @@ export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader
 export { sampleRateSchema } from './configs/sentry.config';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
-export { DEFAULT_CONTENT_SECURITY_POLICY, SecurityConfig } from './configs/security.config';
+export { SecurityConfig } from './configs/security.config';
+export {
+	DEFAULT_CONTENT_SECURITY_POLICY,
+	isLegacyBooleanSetting,
+	parseContentSecurityPolicy,
+} from './configs/content-security-policy';
+export type {
+	ContentSecurityPolicyReportOnlySetting,
+	ContentSecurityPolicySetting,
+} from './configs/content-security-policy';
 export {
 	SsrfProtectionConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
