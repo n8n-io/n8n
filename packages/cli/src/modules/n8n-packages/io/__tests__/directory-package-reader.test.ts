@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -75,6 +75,30 @@ describe('DirectoryPackageReader', () => {
 		);
 	});
 
+	it.skipIf(process.platform === 'win32')('rejects a symbolic-link file entry', async () => {
+		await writeFile(path.join(baseDir, 'target.json'), '{}');
+		await symlink('target.json', path.join(baseDir, 'linked.json'));
+
+		await expect(reader().readFile('linked.json')).rejects.toThrow('disallowed entry type');
+	});
+
+	it.skipIf(process.platform === 'win32')(
+		'rejects an entry below a symbolic-link directory',
+		async () => {
+			await mkdir(path.join(baseDir, 'targets', 'alpha'), { recursive: true });
+			await writeFile(path.join(baseDir, 'targets', 'alpha', 'project.json'), '{}');
+			await mkdir(path.join(baseDir, 'projects'));
+			await symlink(
+				path.join(baseDir, 'targets', 'alpha'),
+				path.join(baseDir, 'projects', 'alpha'),
+			);
+
+			await expect(reader().readFile('projects/alpha/project.json')).rejects.toThrow(
+				'disallowed entry type',
+			);
+		},
+	);
+
 	it('lists every regular file as a posix-relative path', async () => {
 		await mkdir(path.join(baseDir, 'projects', 'alpha'), { recursive: true });
 		await writeFile(path.join(baseDir, 'manifest.json'), '{}');
@@ -91,6 +115,27 @@ describe('DirectoryPackageReader', () => {
 		await writeFile(path.join(baseDir, 'b.json'), '{}');
 
 		await expect(tight.listEntries()).rejects.toThrow('too many entries');
+	});
+
+	it.skipIf(process.platform === 'win32')(
+		'rejects symbolic links during whole-tree validation',
+		async () => {
+			await writeFile(path.join(baseDir, 'target.json'), '{}');
+			await symlink('target.json', path.join(baseDir, 'linked.json'));
+
+			await expect(reader().listEntries()).rejects.toThrow('disallowed entry type');
+		},
+	);
+
+	it.skipIf(process.platform === 'win32')('rejects a symbolic-link package root', async () => {
+		const actualBaseDir = path.join(baseDir, 'actual');
+		const linkedBaseDir = path.join(baseDir, 'linked');
+		await mkdir(actualBaseDir);
+		await symlink(actualBaseDir, linkedBaseDir);
+
+		const linkedReader = new DirectoryPackageReader(linkedBaseDir, limits);
+
+		await expect(linkedReader.listEntries()).rejects.toThrow('disallowed entry type');
 	});
 
 	it('fails when a single entry exceeds the per-entry size limit', async () => {
