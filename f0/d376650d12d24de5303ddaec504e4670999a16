@@ -1,0 +1,52 @@
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_fdd843c989fc1e::t_349bd5e4cb777a 114-123
+  s_fdd843c989fc1e::t_7646861db9db6e 2
+  s_fdd843c989fc1e::t_b401fa938f2546 65-67,71-86
+  s_fdd843c989fc1e::t_036e81d3a38e67 68-70,87-88
+  h_44f8d1c0f2f8c4 113
+packages/@n8n/instance-ai/src/tools/n8n-docs/schemas.ts
+  h_44f8d1c0f2f8c4 25
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  h_44f8d1c0f2f8c4 878,886-887,956,1050,1063,1277,1288
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiArtifactsPanel.test.ts
+  h_44f8d1c0f2f8c4 204,370
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  h_44f8d1c0f2f8c4 1108
+packages/@n8n/instance-ai/src/tools/__tests__/n8n-docs.tool.test.ts
+  h_44f8d1c0f2f8c4 158,200
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  h_44f8d1c0f2f8c4 1406
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  h_44f8d1c0f2f8c4 66,77
+packages/frontend/editor-ui/src/features/ai/chatHub/composables/useDynamicCredentialsStatus.test.ts
+  h_44f8d1c0f2f8c4 43,159,300
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  h_44f8d1c0f2f8c4 293
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  h_44f8d1c0f2f8c4 240
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  h_44f8d1c0f2f8c4 34
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  h_44f8d1c0f2f8c4 2656,2717
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f0d376650d12d24de5303ddaec504e4670999a16",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fdd843c989fc1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8570369f-3ca5-4b11-b894-3403a18f73ac",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
