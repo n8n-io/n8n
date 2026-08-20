@@ -173,8 +173,8 @@ catalogs:
       specifier: 2.4.3
       version: 2.4.3
     highlight.js:
-      specifier: 11.8.0
-      version: 11.8.0
+      specifier: 11.12.0
+      version: 11.12.0
     pinia:
       specifier: ^2.2.4
       version: 2.2.4
@@ -2186,7 +2186,7 @@ importers:
         version: 10.11.0(vue@3.5.13(typescript@5.9.2))
       highlight.js:
         specifier: catalog:frontend
-        version: 11.8.0
+        version: 11.12.0
       markdown-it-link-attributes:
         specifier: ^4.0.1
         version: 4.0.1
@@ -2797,7 +2797,7 @@ importers:
         version: 3.4.2
       highlight.js:
         specifier: catalog:frontend
-        version: 11.8.0
+        version: 11.12.0
       humanize-duration:
         specifier: ^3.27.2
         version: 3.27.3
@@ -12234,12 +12234,8 @@ packages:
   help-me@5.0.0:
     resolution: {integrity: sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg==}
 
-  highlight.js@11.11.1:
-    resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
-    engines: {node: '>=12.0.0'}
-
-  highlight.js@11.8.0:
-    resolution: {integrity: sha512-MedQhoqVdr0U6SSnWPzfiadUcDHfN/Wzq25AkXiQv9oiOO/sG0S7XkvpFIqWBl9Yq1UYyYOOVORs5UW2XlPyzg==}
+  highlight.js@11.12.0:
+    resolution: {integrity: sha512-nbfWpyRMcMrPMmDwJB+dhX/eiaPKtc2RB+0QZskqJ3WjRA/FDS0e9hZrx8EC/lbEv8gXy98FcDbNa/dspAaJMg==}
     engines: {node: '>=12.0.0'}
 
   hmac-drbg@1.0.1:
@@ -29674,9 +29670,7 @@ snapshots:
 
   help-me@5.0.0: {}
 
-  highlight.js@11.11.1: {}
-
-  highlight.js@11.8.0: {}
+  highlight.js@11.12.0: {}
 
   hmac-drbg@1.0.1:
     dependencies:
@@ -36311,7 +36305,7 @@ snapshots:
     dependencies:
       diff: 5.2.2
       diff-match-patch: 1.0.5
-      highlight.js: 11.11.1
+      highlight.js: 11.12.0
       vue: 3.5.13(typescript@5.9.2)
       vue-demi: 0.14.10(vue@3.5.13(typescript@5.9.2))
 
