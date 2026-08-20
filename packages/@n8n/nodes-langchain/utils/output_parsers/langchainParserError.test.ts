@@ -106,6 +106,18 @@ describe('wrapLangChainParserError', () => {
 			expect((wrapped as NodeOperationError).cause).toBe(original);
 		});
 
+		it('uses constructor.name in the description for a custom subclass that inherits name "Error"', () => {
+			class CustomAgentError extends Error {}
+			const original = new CustomAgentError('boom');
+
+			const wrapped = wrapLangChainParserError(original, node, undefined, {
+				enrichNonParserErrors: true,
+			});
+
+			expect((wrapped as NodeOperationError).description).toBe('Original error: CustomAgentError');
+			expect(getFailureType(wrapped)).toBe('CustomAgentError');
+		});
+
 		it('returns BaseError subclasses unchanged', () => {
 			class CustomBaseError extends BaseError {
 				constructor() {
@@ -126,6 +138,18 @@ describe('wrapLangChainParserError', () => {
 
 			expect(wrapped).toBeInstanceOf(NodeOperationError);
 			expect(wrapped.message).toBe('something broke');
+		});
+
+		it('keeps a named non-Error throw through the wrap instead of OperationalError', () => {
+			const wrapped = wrapLangChainParserError({ name: 'RateLimitError' }, node, undefined, {
+				enrichNonParserErrors: true,
+			}) as NodeOperationError;
+
+			expect(wrapped.message).toBe('Agent execution failed');
+			expect(wrapped.description).toBe('Original error: RateLimitError');
+			expect(wrapped.cause).toBeInstanceOf(Error);
+			expect((wrapped.cause as Error).name).toBe('RateLimitError');
+			expect(getFailureType(wrapped)).toBe('RateLimitError');
 		});
 
 		it('uses the fallback when a non-Error throw has no string message', () => {
@@ -194,9 +218,22 @@ describe('getFailureType', () => {
 		expect(getFailureType(top)).toBe('RangeError');
 	});
 
+	it('stops walking a cause chain that loops back on itself', () => {
+		const inner = new TypeError('inner');
+		const outer = new RangeError('outer');
+		inner.cause = outer;
+		outer.cause = inner;
+
+		expect(getFailureType(outer)).toBe('TypeError');
+	});
+
 	it('falls back to typeof for non-Error throws', () => {
 		expect(getFailureType('a string')).toBe('string');
 		expect(getFailureType(undefined)).toBe('undefined');
+	});
+
+	it('uses a name on a thrown plain object', () => {
+		expect(getFailureType({ name: 'RateLimitError' })).toBe('RateLimitError');
 	});
 
 	it('falls back to "Error" when the class name is empty', () => {

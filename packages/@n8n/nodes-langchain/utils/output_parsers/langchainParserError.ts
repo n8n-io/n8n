@@ -18,11 +18,12 @@ function getErrorProperty(error: unknown, property: 'message' | 'name') {
 	return typeof value === 'string' ? value : undefined;
 }
 
-function getErrorName(error: unknown) {
-	const errorName = getErrorProperty(error, 'name');
-	if (errorName) return errorName;
-
-	return error instanceof Error ? error.constructor.name : undefined;
+function resolveErrorName(error: unknown): string | undefined {
+	if (error instanceof Error) {
+		if (error.name && error.name !== 'Error') return error.name;
+		return error.constructor.name || undefined;
+	}
+	return getErrorProperty(error, 'name');
 }
 
 function hasLangChainParserMessage(error: unknown) {
@@ -35,7 +36,7 @@ function hasLangChainParserMessage(error: unknown) {
 export function isLangChainParserError(error: unknown) {
 	return (
 		error instanceof OutputParserException ||
-		getErrorName(error) === 'OutputParserException' ||
+		resolveErrorName(error) === 'OutputParserException' ||
 		hasLangChainParserMessage(error)
 	);
 }
@@ -47,17 +48,13 @@ export function isLangChainParserError(error: unknown) {
  */
 export function getFailureType(error: unknown): string {
 	let current: unknown = error;
+	const seen = new Set<Error>();
 	while (current instanceof Error && current.cause instanceof Error) {
+		seen.add(current);
+		if (seen.has(current.cause)) break;
 		current = current.cause;
 	}
-	if (!(current instanceof Error)) {
-		return typeof current;
-	}
-	// Custom subclasses that do not set `this.name` inherit `'Error'`.
-	if (current.name && current.name !== 'Error') {
-		return current.name;
-	}
-	return current.constructor.name || 'Error';
+	return resolveErrorName(current) ?? (current instanceof Error ? 'Error' : typeof current);
 }
 
 function isUselessMessage(message: string | undefined, className: string | undefined): boolean {
@@ -71,7 +68,7 @@ function wrapAsNodeOperationError(
 	node: INode,
 	itemIndex: number | undefined,
 ): Error {
-	const className = getErrorName(error);
+	const className = resolveErrorName(error);
 	const messageProperty = getErrorProperty(error, 'message');
 	const candidateMessage = messageProperty ?? (typeof error === 'string' ? error : undefined);
 	const message = isUselessMessage(candidateMessage, className)
@@ -84,10 +81,17 @@ function wrapAsNodeOperationError(
 		level: 'error' as const,
 		...(itemIndex !== undefined ? { itemIndex } : {}),
 	};
+
+	// Always pass an Error so NodeOperationError does not wrap a string in
+	// OperationalError and lose the original name.
+	let cause: Error;
 	if (error instanceof Error) {
-		return new NodeOperationError(node, error, options);
+		cause = error;
+	} else {
+		cause = new Error(message);
+		if (className) cause.name = className;
 	}
-	return new NodeOperationError(node, message, options);
+	return new NodeOperationError(node, cause, options);
 }
 
 export function wrapLangChainParserError(
