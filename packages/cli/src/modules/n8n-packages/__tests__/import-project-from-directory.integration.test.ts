@@ -17,6 +17,7 @@ import { EventService } from '@/events/event.service';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 
+import { PackageImportConfig } from '../n8n-packages.config';
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { ImportRequest } from '../n8n-packages.types';
 
@@ -117,6 +118,27 @@ describe('importPackageFromDirectory', () => {
 
 		expect(emitSpy).not.toHaveBeenCalledWith('n8n-package-imported', expect.anything());
 		emitSpy.mockRestore();
+	});
+
+	it('rejects a working copy that exceeds the package-wide entry limit', async () => {
+		const project = await createTeamProject('Alpha Project', owner);
+		await createWorkflow({ name: 'WF One', nodes: [], connections: {} }, project);
+		await service.exportPackageToDirectory(
+			{ user: owner, projectIds: [project.id] },
+			{ targetDir: sourceDir },
+		);
+		await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'ProjectRelation', 'Project']);
+
+		const config = Container.get(PackageImportConfig);
+		const originalMaxEntries = config.maxEntries;
+		config.maxEntries = 1;
+		try {
+			await expect(
+				service.importPackageFromDirectory({ user: owner, ...importPolicy }, { sourceDir }),
+			).rejects.toThrow('too many entries');
+		} finally {
+			config.maxEntries = originalMaxEntries;
+		}
 	});
 
 	it('is a no-op for a working copy with no projects', async () => {

@@ -92,4 +92,22 @@ describe('DirectoryPackageReader', () => {
 
 		await expect(tight.listEntries()).rejects.toThrow('too many entries');
 	});
+
+	it('fails when a single entry exceeds the per-entry size limit', async () => {
+		await writeFile(path.join(baseDir, 'big.json'), Buffer.alloc(limits.maxEntryBytes + 1, 0x61));
+
+		await expect(reader().listEntries()).rejects.toThrow(
+			'exceeds the maximum allowed uncompressed size per entry',
+		);
+	});
+
+	it('fails when the tree exceeds the total uncompressed size limit', async () => {
+		const tight = new DirectoryPackageReader(baseDir, { ...limits, maxUncompressedBytes: 1024 });
+		await writeFile(path.join(baseDir, 'a.json'), Buffer.alloc(600, 0x61));
+		await writeFile(path.join(baseDir, 'b.json'), Buffer.alloc(600, 0x61));
+
+		await expect(tight.listEntries()).rejects.toThrow(
+			'exceeds the maximum allowed uncompressed size',
+		);
+	});
 });
