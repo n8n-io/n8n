@@ -294,6 +294,33 @@ export class AgentChatBridge {
 	// Thread ID resolution — single place to apply per-platform formatting
 	// ---------------------------------------------------------------------------
 
+	/**
+	 * Resume from a server-side trigger rather than a user action. Rebuilds the
+	 * platform thread from the stored agent thread id, so the continuation streams
+	 * back into the conversation the suspension was posted to.
+	 */
+	async resumeInAgentThread(
+		agentThreadId: string,
+		runId: string,
+		toolCallId: string,
+		resumeData: unknown,
+	): Promise<void> {
+		const prefix = `${this.agentId}:`;
+		const platformThreadId = agentThreadId.startsWith(prefix)
+			? agentThreadId.slice(prefix.length)
+			: agentThreadId;
+		const sdkThreadId =
+			this.integrationImpl?.formatThreadId?.toSdk(platformThreadId) ?? platformThreadId;
+
+		await this.hitlResumeHandler.executeResume(
+			this.chat.thread(sdkThreadId),
+			runId,
+			toolCallId,
+			resumeData,
+			false,
+		);
+	}
+
 	private resolvePlatformThreadId(thread: Thread<unknown, unknown>) {
 		return this.integrationImpl?.formatThreadId?.fromSdk(thread) ?? thread.id;
 	}

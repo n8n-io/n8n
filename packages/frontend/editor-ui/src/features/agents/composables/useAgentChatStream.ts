@@ -34,6 +34,7 @@ import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/share
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
+import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
 
 export interface FatalAgentError {
 	message: string;
@@ -116,7 +117,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	async function refreshHistory({
 		clearOnNotFound = false,
-	}: { clearOnNotFound?: boolean } = {}): Promise<boolean> {
+		silent = false,
+	}: { clearOnNotFound?: boolean; silent?: boolean } = {}): Promise<boolean> {
 		const continueId = params.continueSessionId?.value;
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
@@ -146,7 +148,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (status === 404) {
 				if (clearOnNotFound) messages.value = [];
 				return clearOnNotFound;
-			} else {
+			} else if (!silent) {
 				showError(error, locale.baseText('agents.chat.loadHistory.error'));
 			}
 			return false;
@@ -159,6 +161,24 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		historyLoaded.value = true;
 		params.onHistoryLoaded?.(messages.value.length);
 	}
+
+	// A turn can complete with no stream attached — a Wait node finishing wakes the
+	// run server-side, long after this chat's SSE stream closed.
+	useAgentExecutionUpdates(
+		{
+			projectId: params.projectId,
+			agentId: params.agentId,
+			// A continued session is pinned to one thread; the default test chat has
+			// only one, so any update for this agent is the chat being shown.
+			...(params.continueSessionId ? { threadId: params.continueSessionId } : {}),
+		},
+		async () => {
+			// A live stream is already writing the transcript — let it finish.
+			if (isStreaming.value) return;
+			// Nobody asked for this refetch, so a transient failure must stay quiet.
+			await refreshHistory({ silent: true });
+		},
+	);
 
 	async function clearHistory(): Promise<void> {
 		try {

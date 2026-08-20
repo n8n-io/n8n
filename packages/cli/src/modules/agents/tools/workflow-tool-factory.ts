@@ -1,4 +1,4 @@
-import type { BuiltTool } from '@n8n/agents';
+import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	getWorkflowToolIncompatibilityReason,
@@ -9,6 +9,7 @@ import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	IDataObject,
 	IExecuteResponsePromiseData,
@@ -18,6 +19,7 @@ import type {
 	IRunData,
 	ITaskData,
 	IWorkflowExecutionDataProcess,
+	RelatedAgentRun,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
@@ -27,6 +29,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	WAIT_INDEFINITELY,
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 import { z } from 'zod';
@@ -72,6 +75,57 @@ void _assertSupportedTriggersInSync;
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
+/** Only a bounded wait due within this window is blocked on; longer ones go to HITL. */
+const WAIT_POLL_ELIGIBLE_MS = 60_000;
+
+/** How often `WaitTracker` sweeps for due executions, which is what resumes them. */
+const WAIT_TRACKER_SWEEP_MS = 60_000;
+
+const WAIT_POLL_INTERVAL_MS = 2_000;
+
+/** `buildSuspendCardPayload` passes this through verbatim, so it doubles as the HITL card spec. */
+const WAIT_SUSPEND_SCHEMA = z.object({
+	title: z.string(),
+	components: z.array(z.object({ type: z.string() }).catchall(z.unknown())),
+});
+
+/**
+ * `Tool` only yields an interruptible context when both schemas are Zod, so this
+ * mirrors `INTERACTIVE_CARD_RESUME_JSON_SCHEMA` — the shape card clicks arrive in.
+ */
+const WAIT_RESUME_SCHEMA = z.object({
+	type: z.string().optional(),
+	id: z.string().optional(),
+	value: z.string().optional(),
+});
+
+/** Private state carried across the suspension; never shown to the model. */
+const WAIT_CONTINUATION_SCHEMA = z.object({ executionId: z.string() });
+
+type WaitSuspendPayload = z.infer<typeof WAIT_SUSPEND_SCHEMA>;
+type WaitToolContext = InterruptibleToolContext<
+	WaitSuspendPayload,
+	z.infer<typeof WAIT_RESUME_SCHEMA>
+>;
+
+interface WorkflowWaitState {
+	/** When the wait expires. Absent for an indefinite wait. */
+	waitTill?: Date;
+}
+
+/** Tool-facing result — exactly the tool's declared output schema. */
+interface WorkflowToolResult {
+	executionId: string;
+	status: string;
+	data?: Record<string, unknown>;
+	error?: string;
+}
+
+/** Internal result, carrying wait details that are stripped before the model sees them. */
+export interface WorkflowToolExecutionResult extends WorkflowToolResult {
+	wait?: WorkflowWaitState;
+}
+
 function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
 	return isRecord(value) && ('body' in value || 'headers' in value || 'statusCode' in value);
 }
@@ -90,8 +144,20 @@ export interface WorkflowToolContext {
 	executionMode: WorkflowToolExecutionMode;
 	/** Base URL for webhooks/forms (e.g. http://localhost:5678/) */
 	webhookBaseUrl?: string;
+	agentId?: string;
+	/** Chat platform the run came from, if any. */
+	integrationType?: string;
+	userId?: string;
+	/** Whether a suspension can be resumed at all. Defaults to true. */
+	supportsHitl?: boolean;
 	/** Eval-only additionalData decoration for the sub-execution — absent on every production path. */
 	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
+}
+
+/** {@link WorkflowToolContext} plus fields that only exist once a run does. */
+export interface WorkflowToolRunContext extends WorkflowToolContext {
+	/** Stamped onto sub-executions so a Wait node finishing can wake this run. */
+	agentRun?: RelatedAgentRun;
 }
 
 // ---------------------------------------------------------------------------
@@ -396,16 +462,11 @@ export async function executeWorkflow(
 	triggerNode: INode,
 	triggerType: string,
 	inputData: Record<string, unknown>,
-	context: WorkflowToolContext,
+	context: WorkflowToolRunContext,
 	allOutputs = false,
 	/** Sanitized tool name for eval instrumentation; set only on instrumented runs. */
 	instrumentedToolName?: string,
-): Promise<{
-	executionId: string;
-	status: string;
-	data?: Record<string, unknown>;
-	error?: string;
-}> {
+): Promise<WorkflowToolExecutionResult> {
 	const { workflowRunner, activeExecutions } = context;
 
 	// Build pin data for the trigger
@@ -425,6 +486,7 @@ export async function executeWorkflow(
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
 		pinData: triggerPinData,
 		executionData: createRunExecutionData({
+			...(context.agentRun ? { parentAgentRun: context.agentRun } : {}),
 			startData: {},
 			resultData: { pinData: triggerPinData, runData: {} },
 			executionData: {
@@ -574,27 +636,25 @@ function formatResult(
 	status: string | undefined,
 	data: IRun['data'] | undefined,
 	allOutputs: boolean,
-) {
+): WorkflowToolExecutionResult {
 	const runData = data?.resultData?.runData;
 	const resultData = runData ? collectResultData(runData, allOutputs) : {};
+	const normalisedStatus = normaliseExecutionStatus(status);
+	const wait = normalisedStatus === 'waiting' ? extractWaitState(data) : undefined;
 
 	return {
 		executionId,
-		status: normaliseExecutionStatus(status),
+		status: normalisedStatus,
 		data: Object.keys(resultData).length > 0 ? resultData : undefined,
 		error: data?.resultData?.error?.message,
+		...(wait ? { wait } : {}),
 	};
 }
 
 export async function extractResult(
 	executionId: string,
 	allOutputs: boolean,
-): Promise<{
-	executionId: string;
-	status: string;
-	data?: Record<string, unknown>;
-	error?: string;
-}> {
+): Promise<WorkflowToolExecutionResult> {
 	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
@@ -634,6 +694,129 @@ function truncateWebhookResponse(response: IExecuteResponsePromiseData): unknown
 		return { ...rest, body: { _truncated: true } };
 	}
 	return response;
+}
+
+// ---------------------------------------------------------------------------
+// Wait-node handoff
+// ---------------------------------------------------------------------------
+
+/** All-or-nothing: a partial marker would leave the resume path guessing. */
+function agentRunOf(
+	context: WorkflowToolContext,
+	ctx: WaitToolContext,
+): RelatedAgentRun | undefined {
+	const threadId = ctx.persistence?.threadId;
+	if (!context.agentId || !threadId || !ctx.runId || !ctx.toolCallId) return undefined;
+
+	return {
+		agentId: context.agentId,
+		projectId: context.projectId,
+		threadId,
+		runId: ctx.runId,
+		toolCallId: ctx.toolCallId,
+		...(context.integrationType ? { integrationType: context.integrationType } : {}),
+		...(context.userId ? { userId: context.userId } : {}),
+	};
+}
+
+/**
+ * Deliberately excludes the Wait node's signed resume URL: delivering that to the
+ * right recipient is the waiting workflow's job, not the calling agent's.
+ */
+function extractWaitState(data: IRun['data'] | undefined): WorkflowWaitState | undefined {
+	if (!data) return undefined;
+
+	// An indefinite wait is a sentinel far-future date, not an absent one — drop it
+	// rather than report it as a deadline.
+	const waitTill = data.waitTill ? new Date(data.waitTill) : undefined;
+	const bounded = waitTill !== undefined && waitTill.getTime() < WAIT_INDEFINITELY.getTime();
+
+	return bounded ? { waitTill } : {};
+}
+
+function withoutWaitState(result: WorkflowToolExecutionResult): WorkflowToolResult {
+	const { wait: _wait, ...rest } = result;
+	return rest;
+}
+
+function isPollableWait(wait: WorkflowWaitState | undefined): wait is { waitTill: Date } {
+	return (
+		wait?.waitTill !== undefined && wait.waitTill.getTime() - Date.now() <= WAIT_POLL_ELIGIBLE_MS
+	);
+}
+
+/**
+ * Polls the database because the resume runs on the leader, which in multi-main is
+ * another process. Status only — the data bundle is needed just once the wait ends.
+ */
+async function pollWaitingExecution(
+	executionId: string,
+	waitTill: Date,
+	allOutputs: boolean,
+	abortSignal: AbortSignal | undefined,
+): Promise<WorkflowToolExecutionResult | undefined> {
+	// The wait's own deadline plus one sweep, never a flat budget: that would sit on
+	// a wait due in a second for two more minutes. Clamped so an overdue wait still
+	// gets at least one probe.
+	const deadline = Math.min(
+		Date.now() + DEFAULT_TIMEOUT_MS,
+		Math.max(waitTill.getTime(), Date.now()) + WAIT_TRACKER_SWEEP_MS,
+	);
+	const persistence = Container.get(ExecutionPersistence);
+
+	while (Date.now() < deadline) {
+		try {
+			await sleep(WAIT_POLL_INTERVAL_MS, abortSignal);
+		} catch {
+			return undefined; // Aborted mid-sleep; `sleep` rejects rather than resolving.
+		}
+		const status = (await persistence.findSingleExecution(executionId))?.status;
+		if (status !== 'waiting') return await extractResult(executionId, allOutputs);
+	}
+
+	return undefined;
+}
+
+function buildWaitCard(
+	workflowName: string,
+	wait: WorkflowWaitState | undefined,
+): WaitSuspendPayload {
+	const components: WaitSuspendPayload['components'] = [
+		{ type: 'section', text: `The "${workflowName}" workflow is paused, waiting to continue.` },
+	];
+
+	if (wait?.waitTill) {
+		components.push({
+			type: 'fields',
+			fields: [{ label: 'Continues at', value: wait.waitTill.toISOString() }],
+		});
+	}
+
+	components.push({
+		type: 'button',
+		label: 'Check for the result',
+		value: 'continue',
+		style: 'primary',
+	});
+
+	return { title: `Waiting on "${workflowName}"`, components };
+}
+
+/** So the model gets the workflow's real output rather than an interim "waiting". */
+async function pollIfDueSoon(
+	parked: WorkflowToolExecutionResult,
+	allOutputs: boolean,
+	abortSignal: AbortSignal | undefined,
+): Promise<WorkflowToolExecutionResult> {
+	if (!isPollableWait(parked.wait)) return parked;
+
+	const settled = await pollWaitingExecution(
+		parked.executionId,
+		parked.wait.waitTill,
+		allOutputs,
+		abortSignal,
+	);
+	return settled ?? parked;
 }
 
 // ---------------------------------------------------------------------------
@@ -742,7 +925,10 @@ async function buildWorkflowTool(
 		};
 	}
 
-	// Standard execution-based tool for all other triggers
+	// Standard execution-based tool for all other triggers. A body Wait node parks
+	// the sub-execution and hands off to the user — but only where a suspension can
+	// be resumed; elsewhere it reports the waiting status instead of parking forever.
+	const supportsHitl = context.supportsHitl ?? true;
 	const builder = new Tool(toolName)
 		.description(toolDescription)
 		.input(inputSchema)
@@ -754,24 +940,48 @@ async function buildWorkflowTool(
 				error: z.string().optional(),
 			}),
 		)
-		.handler(async (input: Record<string, unknown>) => {
-			const current = await loadCurrentWorkflow(context, reference, triggerType);
-			const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
-			const currentSchema = omitFixedFieldsFromSchema(currentFullSchema, toolInputs);
-			const parsedInput = mergeWorkflowToolInput(
-				currentSchema.parse(input) as Record<string, unknown>,
-				toolInputs,
-				currentFullSchema,
-			);
-			return await executeWorkflow(
-				current.workflow,
-				current.triggerNode,
-				current.triggerType,
-				parsedInput,
-				context,
-				allOutputs,
-				toolName,
-			);
+		.suspend(WAIT_SUSPEND_SCHEMA)
+		.resume(WAIT_RESUME_SCHEMA)
+		.handler(async (input: Record<string, unknown>, ctx) => {
+			// A continuation means this workflow already ran on without us, so re-running
+			// it would be wrong. Skip the reload too: a settled run's output should still
+			// come back even if the workflow was archived since. The input is not parsed
+			// again either — fixed tool inputs were merged in on the original call.
+			const pending = WAIT_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
+			let current: Awaited<ReturnType<typeof loadCurrentWorkflow>> | undefined;
+			let result: WorkflowToolExecutionResult;
+
+			if (pending.success) {
+				result = await extractResult(pending.data.executionId, allOutputs);
+			} else {
+				current = await loadCurrentWorkflow(context, reference, triggerType);
+				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
+				const currentSchema = omitFixedFieldsFromSchema(currentFullSchema, toolInputs);
+				const parsedInput = mergeWorkflowToolInput(
+					currentSchema.parse(input) as Record<string, unknown>,
+					toolInputs,
+					currentFullSchema,
+				);
+				result = await executeWorkflow(
+					current.workflow,
+					current.triggerNode,
+					current.triggerType,
+					parsedInput,
+					{ ...context, agentRun: agentRunOf(context, ctx) },
+					allOutputs,
+					toolName,
+				);
+			}
+
+			if (result.status === 'waiting') {
+				result = await pollIfDueSoon(result, allOutputs, ctx.abortSignal);
+			}
+			if (result.status !== 'waiting' || !supportsHitl) return withoutWaitState(result);
+
+			current ??= await loadCurrentWorkflow(context, reference, triggerType);
+			return await ctx.suspend(buildWaitCard(current.workflow.name, result.wait), {
+				continuation: { executionId: result.executionId },
+			});
 		});
 
 	const built = builder.build();
