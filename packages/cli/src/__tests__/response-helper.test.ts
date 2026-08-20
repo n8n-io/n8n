@@ -1,10 +1,16 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { Request, Response } from 'express';
+import { ErrorReporter } from 'n8n-core';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { sendErrorResponse } from '@/response-helper';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { reportError, sendErrorResponse } from '@/response-helper';
 
 describe('sendErrorResponse', () => {
 	let mockResponse: Response;
@@ -85,5 +91,45 @@ describe('sendErrorResponse', () => {
 				expect.stringContaining('sandbox'),
 			);
 		});
+	});
+});
+
+describe('reportError', () => {
+	const errorReporter = mockInstance(ErrorReporter);
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+	});
+
+	it('skips a client error that extends ResponseError', () => {
+		reportError(new ForbiddenError('Nope'));
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
+	});
+
+	it('skips a client error that only duck-types ResponseError', () => {
+		reportError(
+			new PolicyViolationError([
+				{ kind: 'node-type-unavailable', checkId: 'check', message: 'blocked' },
+			]),
+		);
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
+	});
+
+	it('reports a server error', () => {
+		const error = new InternalServerError('Broken');
+
+		reportError(error);
+
+		expect(errorReporter.error).toHaveBeenCalledWith(error, undefined);
+	});
+
+	it('reports an error carrying no response fields', () => {
+		const error = new UserError('Something the user did');
+
+		reportError(error);
+
+		expect(errorReporter.error).toHaveBeenCalledWith(error, undefined);
 	});
 });
