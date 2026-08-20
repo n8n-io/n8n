@@ -227,6 +227,14 @@ describe('model-discovery', () => {
 				'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models',
 			);
 		});
+
+		it('returns an empty list when the response has no data field', async () => {
+			const fetch = mockFetch({});
+
+			const models = await listModelsForProvider('alibaba', { apiKey: 'key', fetch });
+
+			expect(models).toEqual([]);
+		});
 	});
 
 	describe('error handling', () => {
