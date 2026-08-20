@@ -373,8 +373,8 @@ catalogs:
       specifier: ^1.16.7
       version: 1.16.7
     eslint-plugin-oxlint:
-      specifier: ^1.61.0
-      version: 1.61.0
+      specifier: 1.79.0
+      version: 1.79.0
     express:
       specifier: 5.1.0
       version: 5.1.0
@@ -6326,7 +6326,7 @@ importers:
         version: 2.1.1(browserslist@4.28.1)
       eslint-plugin-oxlint:
         specifier: 'catalog:'
-        version: 1.61.0(oxlint@1.61.0(oxlint-tsgolint@0.21.1))
+        version: 1.79.0(oxlint@1.61.0(oxlint-tsgolint@0.21.1))
       fake-indexeddb:
         specifier: ^6.0.0
         version: 6.0.0
@@ -16714,10 +16714,10 @@ packages:
     resolution: {integrity: sha512-lKo+stn4t2jXX/ZdmJv2ClUQnRZLwSOyqfqsYgD6I/wYwy9bqA6mna4CEzdQNFVg5f3/RODpd/JQMiITARY92g==}
     engines: {node: '>=20.15', pnpm: '>=9.6'}
 
-  eslint-plugin-oxlint@1.61.0:
-    resolution: {integrity: sha512-mpROR01MZfs5jRtglHnslLcHYd3/6BNXPJvIxJW/Klg9B5wA8i8EDQp8/FUK7XgpRVa9TpodclqGiwsUYwi/Wg==}
+  eslint-plugin-oxlint@1.79.0:
+    resolution: {integrity: sha512-KpxU5mvO6gOMYKeJAaebF8lShP763U2lGUjGYmXf6YRvjlw4vME4ID9Ne8fLv8wU6LSImxYFINbzoyELt4Dsvg==}
     peerDependencies:
-      oxlint: ~1.61.0
+      oxlint: ~1.79.0
 
   eslint-plugin-playwright@2.2.2:
     resolution: {integrity: sha512-j0jKpndIPOXRRP9uMkwb9l/nSmModOU3452nrFdgFJoEv/435J1onk8+aITzjDW8DfypxgmVaDMdmVIa6F7I0w==}
@@ -35654,7 +35654,7 @@ snapshots:
       - supports-color
       - typescript
 
-  eslint-plugin-oxlint@1.61.0(oxlint@1.61.0(oxlint-tsgolint@0.21.1)):
+  eslint-plugin-oxlint@1.79.0(oxlint@1.61.0(oxlint-tsgolint@0.21.1)):
     dependencies:
       jsonc-parser: 3.3.1
       oxlint: 1.61.0(oxlint-tsgolint@0.21.1)
