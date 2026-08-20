@@ -30,21 +30,31 @@ const DEADLINES_MS = {
 
 type CheckRunner<Point extends EnforcementPoint> = (
 	context: PolicyContext<Point>,
+	signal: AbortSignal,
 ) => Promise<PolicyCheckResult>;
 
 type CheckOutcome =
 	| { answered: true; result: PolicyCheckResult }
 	| { answered: false; failure: PolicyCheckFailure };
 
-/** Stops waiting after `ms`. The work itself keeps running — a promise can't be cancelled. */
-async function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
+/**
+ * Bounds `start` to `ms`, two ways. The signal lets a check that honours it stop its own work
+ * — abort the query, drop the request — and the race covers the ones that don't, which would
+ * otherwise carry on in the background while we've stopped waiting.
+ */
+async function withDeadline<T>(start: (signal: AbortSignal) => Promise<T>, ms: number) {
+	const controller = new AbortController();
 	let timer: NodeJS.Timeout | undefined;
 
 	try {
 		return await Promise.race([
-			work,
+			start(controller.signal),
 			new Promise<never>((_, reject) => {
-				timer = setTimeout(() => reject(new OperationalError(`Deadline of ${ms}ms exceeded`)), ms);
+				timer = setTimeout(() => {
+					const expired = new OperationalError(`Deadline of ${ms}ms exceeded`);
+					controller.abort(expired);
+					reject(expired);
+				}, ms);
 			}),
 		]);
 	} finally {
@@ -128,7 +138,12 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 		const outcomes = await Promise.all(
 			this.runnersFor(point).map(async ({ checkId, run }): Promise<CheckOutcome> => {
 				try {
-					return { answered: true, result: await withDeadline(run(context), DEADLINES_MS[point]) };
+					const result = await withDeadline(
+						async (signal) => await run(context, signal),
+						DEADLINES_MS[point],
+					);
+
+					return { answered: true, result };
 				} catch (error) {
 					const correlationId = randomUUID();
 

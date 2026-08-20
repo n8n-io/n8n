@@ -8,6 +8,7 @@ import type {
 	WorkflowStartContext,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { classifyHttpError } from '@/errors/http-error-classifier';
@@ -86,6 +87,26 @@ class HangingCheck implements RegisteredPolicyCheck {
 	}
 }
 
+/** Honours the signal, the way a check talking to a store with an abortable client would. */
+@Service()
+class AbortAwareCheck implements RegisteredPolicyCheck {
+	readonly id = 'abort-aware';
+
+	aborted: unknown = null;
+
+	async onWorkflowStart(
+		_ctx: WorkflowStartContext,
+		signal: AbortSignal,
+	): Promise<PolicyCheckResult> {
+		return await new Promise((_resolve, reject) => {
+			signal.addEventListener('abort', () => {
+				this.aborted = signal.reason;
+				reject(new Error('aborted by signal'));
+			});
+		});
+	}
+}
+
 /** Only implements `onWorkflowStart`, so it must not be called at other points. */
 @Service()
 class StartOnlyCheck implements RegisteredPolicyCheck {
@@ -156,6 +177,23 @@ describe('PolicyDecisionService', () => {
 				await vi.advanceTimersByTimeAsync(250);
 
 				expect(await pending).toBeInstanceOf(PolicyCheckFailedError);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('signals a check that overruns, so it can stop its own work', async () => {
+			vi.useFakeTimers();
+
+			try {
+				const pending = serviceWith(AbortAwareCheck)
+					.enforce('workflowStart', startContext)
+					.catch((e: unknown) => e);
+
+				await vi.advanceTimersByTimeAsync(250);
+
+				expect(await pending).toBeInstanceOf(PolicyCheckFailedError);
+				expect(Container.get(AbortAwareCheck).aborted).toBeInstanceOf(OperationalError);
 			} finally {
 				vi.useRealTimers();
 			}
