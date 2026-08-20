@@ -1,31 +1,18 @@
 import { SKILL_LOAD_TOOL_NAME, type StreamChunk } from '@n8n/agents';
-import type { PushPayload } from '@n8n/api-types';
-import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-
-export type WorkflowAgentInvocationContext = {
-	nodeId: string;
-	nodeName: string;
-	runIndex: number;
-	itemIndex: number;
-	sendResponseChunk?: (type: 'begin' | 'item' | 'end' | 'error', content?: string) => Promise<void>;
-};
+import type { AgentNodeCapability, PushPayload } from '@n8n/api-types';
+import type { ExecuteAgentInvocationContext, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 type WorkflowAgentStreamEvent =
 	| { type: 'response-begin' }
 	| { type: 'response-delta'; delta: string }
 	| { type: 'response-end' }
-	| { type: 'capability-start'; toolCallId: string; capability: WorkflowAgentCapability }
+	| { type: 'capability-start'; toolCallId: string; capability: AgentNodeCapability }
 	| {
 			type: 'capability-end';
 			toolCallId: string;
-			capability: WorkflowAgentCapability;
+			capability: AgentNodeCapability;
 			status: 'succeeded' | 'failed';
 	  };
-
-type WorkflowAgentCapability =
-	| { kind: 'tool'; name: string }
-	| { kind: 'skill'; id: string; name?: string }
-	| { kind: 'skill'; id?: never; name: string };
 
 export type WorkflowAgentStreamObserver = (event: WorkflowAgentStreamEvent) => Promise<void>;
 
@@ -38,7 +25,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function capabilityFor(toolName: string, input: unknown): WorkflowAgentCapability | undefined {
+function capabilityFor(toolName: string, input: unknown): AgentNodeCapability | undefined {
 	if (toolName !== SKILL_LOAD_TOOL_NAME) return { kind: 'tool', name: toolName };
 	if (!isRecord(input)) return undefined;
 
@@ -57,7 +44,7 @@ export function createWorkflowAgentStreamObserver({
 }: {
 	additionalData: IWorkflowExecuteAdditionalData;
 	executionId: string;
-	invocation: WorkflowAgentInvocationContext;
+	invocation: ExecuteAgentInvocationContext;
 }): WorkflowAgentStreamObserver {
 	let sequenceNumber = 0;
 
@@ -96,9 +83,7 @@ export class WorkflowAgentStreamAdapter {
 
 	private readonly pendingTools = new Map<string, PendingTool>();
 
-	private readonly runningCapabilities = new Map<string, WorkflowAgentCapability>();
-
-	private readonly completedToolCalls = new Set<string>();
+	private readonly runningCapabilities = new Map<string, AgentNodeCapability>();
 
 	constructor(private readonly observer?: WorkflowAgentStreamObserver) {}
 
@@ -165,11 +150,9 @@ export class WorkflowAgentStreamAdapter {
 	}
 
 	private async endCapability(toolCallId: string, status: 'succeeded' | 'failed'): Promise<void> {
-		if (this.completedToolCalls.has(toolCallId)) return;
 		const capability = this.runningCapabilities.get(toolCallId);
 		if (!capability) return;
 
-		this.completedToolCalls.add(toolCallId);
 		this.runningCapabilities.delete(toolCallId);
 		this.pendingTools.delete(toolCallId);
 		await this.emit({ type: 'capability-end', toolCallId, capability, status });

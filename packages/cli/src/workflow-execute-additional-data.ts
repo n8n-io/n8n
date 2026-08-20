@@ -14,6 +14,7 @@ import type {
 	AiEvent,
 	EnvProviderState,
 	ExecuteAgentData,
+	ExecuteAgentInvocationContext,
 	ExecuteAgentSource,
 	ExecuteAgentWorkflowContext,
 	ExecuteWorkflowData,
@@ -73,7 +74,6 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 import {
 	createWorkflowAgentStreamObserver,
-	type WorkflowAgentInvocationContext,
 	type WorkflowAgentStreamObserver,
 } from './modules/agents/workflow-agent-stream';
 
@@ -374,7 +374,7 @@ export async function executeAgent(
 	executionMode: WorkflowExecuteMode,
 	outputSchema?: JSONSchema7,
 	workflowContext?: ExecuteAgentWorkflowContext,
-	invocationContext?: WorkflowAgentInvocationContext,
+	invocationContext?: ExecuteAgentInvocationContext,
 ): Promise<ExecuteAgentData> {
 	const telemetryUserId = additionalData.userId;
 	let projectId = additionalData.projectId;
@@ -410,7 +410,6 @@ export async function executeAgent(
 	const streamObserverArguments: [] | [WorkflowAgentStreamObserver] = streamObserver
 		? [streamObserver]
 		: [];
-
 	if (!additionalData.workflowId) {
 		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
 	}

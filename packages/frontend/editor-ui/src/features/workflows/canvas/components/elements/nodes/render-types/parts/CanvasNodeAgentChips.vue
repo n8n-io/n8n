@@ -55,7 +55,7 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			<AgentChipButton
 				:icon="chip.nodeTypeDescription ? undefined : chip.icon"
 				:clickable="false"
-				:busy="isChipActive(chip)"
+				:aria-busy="isChipActive(chip)"
 				data-test-id="canvas-node-agent-chip"
 			>
 				<template v-if="chip.nodeTypeDescription" #icon>
@@ -70,7 +70,7 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 		>
 			<AgentChipButton
 				:clickable="false"
-				:busy="isOverflowActive"
+				:aria-busy="isOverflowActive"
 				data-test-id="canvas-node-agent-chips-overflow"
 			>
 				{{
@@ -89,7 +89,7 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 		>
 			<template #activator>
 				<span :class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]">
-					<AgentChipButton :busy="isOverflowActive">
+					<AgentChipButton :aria-busy="isOverflowActive">
 						{{
 							i18n.baseText('agentNode.card.moreChips', {
 								interpolate: { count: overflowChips.length },

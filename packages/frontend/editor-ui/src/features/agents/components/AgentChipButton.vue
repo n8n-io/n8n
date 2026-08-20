@@ -8,7 +8,6 @@ const props = withDefaults(
 		disabled?: boolean;
 		variant?: 'default' | 'suggestion';
 		active?: boolean;
-		busy?: boolean;
 		/** Marks the chip as having an unresolved configuration error (e.g. a missing credential). */
 		invalid?: boolean;
 		/** Human-readable reasons behind `invalid`, shown in a tooltip on the warning icon. */
@@ -19,7 +18,6 @@ const props = withDefaults(
 		disabled: false,
 		variant: 'default',
 		active: false,
-		busy: false,
 		invalid: false,
 		invalidReasons: () => [],
 		clickable: true,
@@ -49,7 +47,6 @@ const emit = defineEmits<{
 			},
 		]"
 		:disabled="props.disabled"
-		:aria-busy="props.active || props.busy"
 		@click="emit('click', $event)"
 	>
 		<span v-if="props.icon || $slots.icon" :class="$style.iconWrapper">
@@ -101,12 +98,6 @@ const emit = defineEmits<{
 
 .default:not(:disabled):hover {
 	background-color: var(--background--hover);
-}
-
-.default.active:not(:disabled) {
-	border-color: color-mix(in srgb, var(--background--brand) 28%, var(--border-color--subtle));
-	background: color-mix(in srgb, var(--background--brand) 12%, var(--background--hover));
-	box-shadow: var(--shadow--xs);
 }
 
 .chip:disabled {

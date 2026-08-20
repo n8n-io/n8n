@@ -167,7 +167,6 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			new Map<
 				string,
 				{
-					executionId: string;
 					nodeId: string;
 					nodeName: string;
 					capability: AgentNodeCapability;
@@ -177,7 +176,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		);
 		const latestAgentProgressByCapabilityCall = new Map<
 			string,
-			{ nodeId: string; nodeName: string; sequenceNumber: number }
+			{ nodeName: string; sequenceNumber: number }
 		>();
 		const agentCapabilityRemovalTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -191,12 +190,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			return keysByNodeId;
 		});
 
-		function invocationKey(data: AgentNodeProgress['data']): string {
-			return `${data.executionId}:${data.nodeId}:${data.runIndex}:${data.itemIndex}`;
-		}
-
 		function capabilityCallKey(data: AgentNodeProgress['data']): string {
-			return `${invocationKey(data)}:${data.toolCallId}`;
+			return `${data.executionId}:${data.nodeId}:${data.runIndex}:${data.itemIndex}:${data.toolCallId}`;
 		}
 
 		function removeAgentCapabilityCall(key: string) {
@@ -229,7 +224,6 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			const latest = latestAgentProgressByCapabilityCall.get(callKey);
 			if (latest && data.sequenceNumber <= latest.sequenceNumber) return;
 			latestAgentProgressByCapabilityCall.set(callKey, {
-				nodeId: data.nodeId,
 				nodeName: data.nodeName,
 				sequenceNumber: data.sequenceNumber,
 			});
@@ -240,7 +234,6 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				if (removalTimer) clearTimeout(removalTimer);
 				agentCapabilityRemovalTimers.delete(callKey);
 				activeAgentCapabilityCalls.set(callKey, {
-					executionId: data.executionId,
 					nodeId: data.nodeId,
 					nodeName: data.nodeName,
 					capability: data.capability,
@@ -957,7 +950,6 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 
 			setActiveExecutionId(undefined);
 			executingNode.clearNodeExecutionQueue();
-			clearAgentProgress();
 			setExecutionWaitingForWebhook(false);
 
 			useDocumentTitle().setDocumentTitle(useWorkflowDocumentStore(documentId).name, 'IDLE');
@@ -1067,7 +1059,6 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			addActiveNodeExecutionStartedData,
 			handleAgentNodeProgress,
 			clearAgentNodeProgress,
-			clearAgentProgress,
 			renameActiveExecutionNode,
 			resetExecutionState,
 			markExecutionAsStopped,

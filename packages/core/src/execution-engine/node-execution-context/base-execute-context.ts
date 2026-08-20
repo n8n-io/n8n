@@ -49,24 +49,6 @@ import { deepMerge } from '@/utils/deep-merge';
 
 import { NodeExecutionContext } from './node-execution-context';
 
-type ExecuteAgentFunction = NonNullable<IWorkflowExecuteAdditionalData['executeAgent']>;
-
-type ExecuteAgentWithInvocationContext = (
-	...args: [
-		...Parameters<ExecuteAgentFunction>,
-		invocationContext?: {
-			nodeId: string;
-			nodeName: string;
-			runIndex: number;
-			itemIndex: number;
-			sendResponseChunk?: (
-				type: 'begin' | 'item' | 'end' | 'error',
-				content?: string,
-			) => Promise<void>;
-		},
-	]
-) => ReturnType<ExecuteAgentFunction>;
-
 export class BaseExecuteContext extends NodeExecutionContext {
 	constructor(
 		workflow: Workflow,
@@ -261,7 +243,6 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			runExecutionData: this.runExecutionData,
 		};
 
-		const executeAgent: ExecuteAgentWithInvocationContext = this.additionalData.executeAgent;
 		const sendResponseChunk =
 			agentInfo.enableStreaming !== false &&
 			agentInfo.outputSchema === undefined &&
@@ -270,7 +251,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 						await this.sendChunk(type, itemIndex, content)
 				: undefined;
 
-		return await executeAgent(
+		return await this.additionalData.executeAgent(
 			source,
 			message,
 			executionId,

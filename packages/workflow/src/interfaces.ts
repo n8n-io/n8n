@@ -2339,6 +2339,14 @@ export interface ExecuteAgentWorkflowContext {
 	runExecutionData: IRunExecutionData;
 }
 
+export interface ExecuteAgentInvocationContext {
+	nodeId: string;
+	nodeName: string;
+	runIndex: number;
+	itemIndex: number;
+	sendResponseChunk?: (type: ChunkType, content?: string) => Promise<void>;
+}
+
 export interface ExecuteAgentOptions {
 	node?: INode;
 	parentWorkflowId: string;
@@ -3680,6 +3688,7 @@ export interface IWorkflowExecuteAdditionalData {
 		executionMode: WorkflowExecuteMode,
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
+		invocationContext?: ExecuteAgentInvocationContext,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;

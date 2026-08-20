@@ -11,6 +11,7 @@ import type {
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	ExecuteAgentInvocationContext,
 	WorkflowExpression,
 	IWorkflowBase,
 } from 'n8n-workflow';
@@ -416,17 +417,6 @@ describe('ExecuteContext', () => {
 	});
 
 	describe('executeAgent', () => {
-		type InvocationContext = {
-			nodeId: string;
-			nodeName: string;
-			runIndex: number;
-			itemIndex: number;
-			sendResponseChunk?: (
-				type: 'begin' | 'item' | 'end' | 'error',
-				content?: string,
-			) => Promise<void>;
-		};
-
 		const webhookNode: INode = {
 			id: 'webhook-node-id',
 			name: 'Webhook',
@@ -459,6 +449,40 @@ describe('ExecuteContext', () => {
 			[closeFn],
 			abortSignal,
 		);
+		const createStreamingAgentContext = (
+			contextRunIndex = runIndex,
+			contextInputData = inputData,
+		) => {
+			const hooks = new ExecutionLifecycleHooks('manual', 'exec-1', mock<IWorkflowBase>());
+			const sendChunkHandler = vi.fn();
+			hooks.addHandler('sendChunk', sendChunkHandler);
+			const executeAgentMock = vi.fn().mockResolvedValue({ response: 'ok' });
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				hooks,
+				rootExecutionMode: undefined,
+				streamingEnabled: true,
+			});
+			additionalData.executeAgent =
+				executeAgentMock as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			return {
+				context: new ExecuteContext(
+					agentWorkflow,
+					node,
+					additionalData,
+					'manual',
+					runExecutionData,
+					contextRunIndex,
+					connectionInputData,
+					contextInputData,
+					executeData,
+					[closeFn],
+					abortSignal,
+				),
+				executeAgentMock,
+				sendChunkHandler,
+			};
+		};
 
 		it('passes the workflow context to additionalData.executeAgent', async () => {
 			agentAdditionalData.executeAgent = vi
@@ -505,33 +529,13 @@ describe('ExecuteContext', () => {
 		});
 
 		it('passes a response chunk callback when workflow streaming is available', async () => {
-			const hooks = new ExecutionLifecycleHooks('manual', 'exec-1', mock<IWorkflowBase>());
-			const sendChunkHandler = vi.fn();
-			hooks.addHandler('sendChunk', sendChunkHandler);
-			const executeAgentMock = vi.fn().mockResolvedValue({ response: 'ok' });
-			const streamingAdditionalData = mock<IWorkflowExecuteAdditionalData>({
-				hooks,
-				rootExecutionMode: undefined,
-				streamingEnabled: true,
+			const { context, executeAgentMock, sendChunkHandler } = createStreamingAgentContext(2, {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
 			});
-			streamingAdditionalData.executeAgent =
-				executeAgentMock as IWorkflowExecuteAdditionalData['executeAgent'];
-			const streamingContext = new ExecuteContext(
-				agentWorkflow,
-				node,
-				streamingAdditionalData,
-				'manual',
-				runExecutionData,
-				2,
-				connectionInputData,
-				{ main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]] },
-				executeData,
-				[closeFn],
-				abortSignal,
-			);
 
-			await streamingContext.executeAgent({ agentId: 'agent-1' }, 'hello', 'exec-1', 1);
-			const invocationContext = executeAgentMock.mock.calls[0]?.[8] as InvocationContext;
+			await context.executeAgent({ agentId: 'agent-1' }, 'hello', 'exec-1', 1);
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
 
 			expect(invocationContext).toMatchObject({
 				nodeId: node.id,
@@ -557,74 +561,32 @@ describe('ExecuteContext', () => {
 		});
 
 		it('omits the response chunk callback when structured output is configured', async () => {
-			const hooks = new ExecutionLifecycleHooks('manual', 'exec-1', mock<IWorkflowBase>());
-			hooks.addHandler('sendChunk', vi.fn());
-			const executeAgentMock = vi.fn().mockResolvedValue({ response: 'ok' });
-			const structuredAdditionalData = mock<IWorkflowExecuteAdditionalData>({
-				hooks,
-				rootExecutionMode: undefined,
-				streamingEnabled: true,
-			});
-			structuredAdditionalData.executeAgent =
-				executeAgentMock as IWorkflowExecuteAdditionalData['executeAgent'];
-			const structuredContext = new ExecuteContext(
-				agentWorkflow,
-				node,
-				structuredAdditionalData,
-				'manual',
-				runExecutionData,
-				runIndex,
-				connectionInputData,
-				inputData,
-				executeData,
-				[closeFn],
-				abortSignal,
-			);
+			const { context, executeAgentMock } = createStreamingAgentContext();
 
-			await structuredContext.executeAgent(
+			await context.executeAgent(
 				{ agentId: 'agent-1', outputSchema: { type: 'object' } },
 				'hello',
 				'exec-1',
 				0,
 			);
 
-			const invocationContext = executeAgentMock.mock.calls[0]?.[8] as InvocationContext;
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
 			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
 		});
 
 		it('omits the response chunk callback when agent streaming is disabled', async () => {
-			const hooks = new ExecutionLifecycleHooks('manual', 'exec-1', mock<IWorkflowBase>());
-			hooks.addHandler('sendChunk', vi.fn());
-			const executeAgentMock = vi.fn().mockResolvedValue({ response: 'ok' });
-			const streamingAdditionalData = mock<IWorkflowExecuteAdditionalData>({
-				hooks,
-				rootExecutionMode: undefined,
-				streamingEnabled: true,
-			});
-			streamingAdditionalData.executeAgent =
-				executeAgentMock as IWorkflowExecuteAdditionalData['executeAgent'];
-			const streamingContext = new ExecuteContext(
-				agentWorkflow,
-				node,
-				streamingAdditionalData,
-				'manual',
-				runExecutionData,
-				runIndex,
-				connectionInputData,
-				inputData,
-				executeData,
-				[closeFn],
-				abortSignal,
-			);
+			const { context, executeAgentMock } = createStreamingAgentContext();
 
-			await streamingContext.executeAgent(
+			await context.executeAgent(
 				{ agentId: 'agent-1', enableStreaming: false },
 				'hello',
 				'exec-1',
 				0,
 			);
 
-			const invocationContext = executeAgentMock.mock.calls[0]?.[8] as InvocationContext;
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
 			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
 		});
 
