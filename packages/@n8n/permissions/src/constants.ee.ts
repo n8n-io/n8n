@@ -118,7 +118,7 @@ export const API_KEY_RESOURCES = {
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
 	insights: ['read'] as const,
 	role: ['manage', 'manageProject', 'list', 'read'] as const,
-	roleMappingRule: ['create', 'list'] as const,
+	roleMappingRule: ['create', 'list', 'update'] as const,
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
