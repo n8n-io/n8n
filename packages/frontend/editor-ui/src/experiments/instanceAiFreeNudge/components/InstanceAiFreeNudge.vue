@@ -72,6 +72,7 @@ watch(
 }
 
 .dismiss {
+	--button--radius: var(--radius--full);
 	--button--color: var(--icon-color--success);
 	--button--color--background-hover: color-mix(
 		in srgb,
