@@ -64,7 +64,7 @@ describe('decorators', () => {
 		const config = Container.get(TestConfig);
 		expect(config.value).toBe('secret-value');
 		expect(consoleWarnSpy).toHaveBeenCalledWith(
-			expect.stringContaining('TEST_VALUE_FILE contains leading or trailing whitespace'),
+			expect.stringContaining('TEST_VALUE_FILE contained leading or trailing whitespace'),
 		);
 		consoleWarnSpy.mockRestore();
 	});
@@ -113,6 +113,7 @@ describe('decorators', () => {
 		const filePath = '/path/to/secret';
 		process.env.TEST_VALUE_FILE = filePath;
 		mockFs.readFileSync.mockReturnValueOnce('legacy\n');
+		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		@Config
 		class TestConfig {
@@ -122,5 +123,7 @@ describe('decorators', () => {
 
 		const config = Container.get(TestConfig);
 		expect(config.value).toBe('legacy');
+		expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('the value was trimmed'));
+		consoleWarnSpy.mockRestore();
 	});
 });

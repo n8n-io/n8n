@@ -23,14 +23,14 @@ const readEnv = (envName: string) => {
 	const filePath = process.env[`${envName}_FILE`];
 	if (filePath) {
 		const value = readFileSync(filePath, 'utf8');
-		if (value !== value.trim()) {
+		// File contents commonly carry a trailing newline (e.g. `echo value > file`)
+		const trimmed = value.trim();
+		if (value !== trimmed) {
 			console.warn(
-				`[n8n] Warning: The file specified by ${envName}_FILE contains leading or trailing whitespace, which may cause authentication failures.`,
+				`[n8n] Warning: The file specified by ${envName}_FILE contained leading or trailing whitespace; the value was trimmed.`,
 			);
 		}
-		// Config file contents commonly carry a trailing newline (e.g. `echo value > file`);
-		// leaving it in silently fails schema/type parsing and falls back to the default value.
-		return value.trim();
+		return trimmed;
 	}
 
 	return undefined;
