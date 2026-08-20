@@ -1,19 +1,14 @@
 import { assertSupportedAwsRegion, getAwsDomain } from 'n8n-nodes-base/aws-credentials';
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
+import type { BedrockInferenceProfileSummary } from '@utils/aws/listBedrockInferenceProfiles';
+import { listBedrockInferenceProfiles } from '@utils/aws/listBedrockInferenceProfiles';
+
 type FoundationModelSummary = {
 	modelId: string;
 	modelName: string;
 	modelArn: string;
 	inferenceTypesSupported?: string[];
-};
-
-type InferenceProfileSummary = {
-	inferenceProfileId: string;
-	inferenceProfileName: string;
-	inferenceProfileArn: string;
-	description?: string;
-	models?: Array<{ modelArn?: string }>;
 };
 
 export async function listModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -34,12 +29,7 @@ export async function listModels(this: ILoadOptionsFunctions): Promise<INodeProp
 			url: '/foundation-models?byOutputModality=EMBEDDING',
 			json: true,
 		}) as Promise<{ modelSummaries?: FoundationModelSummary[] }>,
-		this.helpers.httpRequestWithAuthentication.call(this, credentialsType, {
-			method: 'GET',
-			baseURL,
-			url: '/inference-profiles?maxResults=1000',
-			json: true,
-		}) as Promise<{ inferenceProfileSummaries?: InferenceProfileSummary[] }>,
+		listBedrockInferenceProfiles(this, credentialsType, baseURL),
 	]);
 
 	// The credential may lack one of the two list permissions
@@ -77,19 +67,17 @@ export async function listModels(this: ILoadOptionsFunctions): Promise<INodeProp
 		// The inference-profiles API cannot filter by modality, so chat profiles are dropped
 		// by matching each profile's underlying models against the embedding-model list.
 		// Without that list every profile is kept: a usable, if noisy, dropdown.
-		const isEmbeddingProfile = (profile: InferenceProfileSummary) =>
+		const isEmbeddingProfile = (profile: BedrockInferenceProfileSummary) =>
 			foundationModels.status === 'rejected' ||
 			(profile.models ?? []).some((model) =>
 				embeddingModelIds.has(model.modelArn?.split('/').pop() ?? ''),
 			);
 		options.push(
-			...(inferenceProfiles.value.inferenceProfileSummaries ?? [])
-				.filter(isEmbeddingProfile)
-				.map((profile) => ({
-					name: profile.inferenceProfileName,
-					value: profile.inferenceProfileId,
-					description: profile.description ?? profile.inferenceProfileArn,
-				})),
+			...inferenceProfiles.value.filter(isEmbeddingProfile).map((profile) => ({
+				name: profile.inferenceProfileName,
+				value: profile.inferenceProfileId,
+				description: profile.description ?? profile.inferenceProfileArn,
+			})),
 		);
 	}
 	return options.sort((a, b) => a.name.localeCompare(b.name));
