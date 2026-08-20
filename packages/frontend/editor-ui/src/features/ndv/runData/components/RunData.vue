@@ -386,10 +386,15 @@ const hasNodeRun = computed(() =>
  * The displayed output of this node was simulated (fabricated fixture data)
  * by the AI Assistant during workflow verification — label it and guard the
  * pin affordance so it isn't adopted as if it were real.
+ *
+ * Only meaningful when the pane displays the active execution: a supplied
+ * `workflowExecution` prop is a different execution whose id we don't know,
+ * so checking the active id against it could mislabel real data.
  */
 const isAiSimulatedOutput = computed(
 	() =>
 		!isPaneTypeInput.value &&
+		props.workflowExecution === undefined &&
 		hasNodeRun.value &&
 		!pinnedData.hasData.value &&
 		aiSimulatedDataGuard.isSimulatedNodeOutput(currentExecution.value?.id, node.value?.name),

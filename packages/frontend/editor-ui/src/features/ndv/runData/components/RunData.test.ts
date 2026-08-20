@@ -24,6 +24,7 @@ import {
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	type ExecutionStatus,
 	type INodeExecutionData,
+	type IRunExecutionData,
 	type ITaskData,
 	type ITaskMetadata,
 	type NodeHint,
@@ -185,6 +186,35 @@ describe('RunData', () => {
 			useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Test Node']);
 
 			await waitFor(() => expect(getByTestId('ndv-ai-simulated-data-callout')).toBeInTheDocument());
+		});
+
+		it('does not label supplied historical executions, whose id is unknown', async () => {
+			// Standalone hosts (agents log viewers) pass a different execution as a
+			// prop; keying provenance off the active execution would mislabel it.
+			const { queryByTestId } = render({
+				displayMode: 'table',
+				workflowExecutionProp: createRunExecutionData({
+					resultData: {
+						runData: {
+							'Test Node': [
+								{
+									startTime: Date.now(),
+									executionIndex: 0,
+									executionTime: 1,
+									data: { main: [simulatedItems] },
+									source: [null],
+								},
+							],
+						},
+					},
+				}),
+			});
+
+			useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Test Node']);
+
+			await waitFor(() =>
+				expect(queryByTestId('ndv-ai-simulated-data-callout')).not.toBeInTheDocument(),
+			);
 		});
 
 		it('does not label output of nodes the execution did not mark', async () => {
@@ -1574,6 +1604,7 @@ describe('RunData', () => {
 		executionStatus,
 		nodeTypeHints,
 		withRunData = true,
+		workflowExecutionProp,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1588,6 +1619,8 @@ describe('RunData', () => {
 		executionStatus?: ExecutionStatus;
 		nodeTypeHints?: NodeHint[];
 		withRunData?: boolean;
+		/** Supplied historical execution data, as standalone hosts pass it. */
+		workflowExecutionProp?: IRunExecutionData;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1688,6 +1721,7 @@ describe('RunData', () => {
 					nodes: workflowNodes,
 				}),
 				displayMode,
+				...(workflowExecutionProp ? { workflowExecution: workflowExecutionProp } : {}),
 			},
 			global: {
 				provide: {

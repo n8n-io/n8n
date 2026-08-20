@@ -11,12 +11,26 @@ import { ref } from 'vue';
  * Display metadata only — deliberately kept out of execution data
  * (`resultData`), which stays a faithful record of what ran.
  */
+/**
+ * Only this many most recently marked executions are retained. The editor can
+ * only re-display recent agent executions, and the bound keeps a long-lived
+ * session with many verification runs from accumulating entries forever.
+ */
+const MAX_TRACKED_EXECUTIONS = 25;
+
 export const useAiSimulatedExecutionsStore = defineStore('aiSimulatedExecutions', () => {
 	const simulatedNodesByExecutionId = ref(new Map<string, Set<string>>());
 
 	function markSimulatedNodes(executionId: string, nodeNames: string[]) {
 		if (nodeNames.length === 0) return;
+		// Delete before set so a re-marked execution moves to the newest position.
+		simulatedNodesByExecutionId.value.delete(executionId);
 		simulatedNodesByExecutionId.value.set(executionId, new Set(nodeNames));
+		while (simulatedNodesByExecutionId.value.size > MAX_TRACKED_EXECUTIONS) {
+			const oldest = simulatedNodesByExecutionId.value.keys().next().value;
+			if (oldest === undefined) break;
+			simulatedNodesByExecutionId.value.delete(oldest);
+		}
 	}
 
 	function isSimulatedNodeOutput(
