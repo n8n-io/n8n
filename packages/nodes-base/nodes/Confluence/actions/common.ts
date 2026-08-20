@@ -79,6 +79,41 @@ export const pageRLC: INodeProperties = {
 	],
 };
 
+export const labelRLC: INodeProperties = {
+	displayName: 'Label',
+	name: 'label',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description: 'The label to operate on',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getLabels',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. 123456',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '^[0-9]+$',
+						errorMessage: 'The label ID must be numeric',
+					},
+				},
+			],
+		},
+	],
+};
+
 export type ConfluenceBodyFormat = 'storage' | 'atlas_doc_format' | 'plainText';
 
 export const bodyFormatOption: INodeProperties = {
@@ -194,6 +229,55 @@ export async function resolveSpaceKey(
 	if (typeof space.key !== 'string' || space.key === '') return undefined;
 	spaceKeyCache.set(cacheKey, space.key);
 	return space.key;
+}
+
+// Text extraction, not rendering: concatenate ADF text nodes, newline at block boundaries
+const ADF_BLOCK_TYPES = new Set([
+	'blockquote',
+	'bulletList',
+	'codeBlock',
+	'heading',
+	'listItem',
+	'orderedList',
+	'panel',
+	'paragraph',
+	'rule',
+	'table',
+	'tableRow',
+	'taskItem',
+	'taskList',
+]);
+
+function adfToPlainText(node: IDataObject): string {
+	if (node.type === 'text') return typeof node.text === 'string' ? node.text : '';
+	if (node.type === 'hardBreak') return '\n';
+	const content = Array.isArray(node.content) ? (node.content as IDataObject[]) : [];
+	let inner = '';
+	for (const child of content) {
+		inner += adfToPlainText(child);
+		if (node.type === 'tableRow') inner += ' ';
+	}
+	return ADF_BLOCK_TYPES.has(node.type as string) ? `${inner}\n` : inner;
+}
+
+/** Replaces a page's ADF body with plain text extracted from it. No server-side
+ * plain-text format exists, so callers request `atlas_doc_format` and shape here. */
+export function shapeBody(page: IDataObject, bodyFormat: ConfluenceBodyFormat): IDataObject {
+	if (bodyFormat !== 'plainText') return page;
+	const adf = (page.body as IDataObject | undefined)?.atlas_doc_format as IDataObject | undefined;
+	let value = '';
+	if (typeof adf?.value === 'string' && adf.value !== '') {
+		try {
+			const doc = JSON.parse(adf.value) as IDataObject;
+			value = adfToPlainText(doc)
+				.replace(/[ \t]+\n/g, '\n')
+				.replace(/\n{3,}/g, '\n\n')
+				.trim();
+		} catch {
+			value = '';
+		}
+	}
+	return { ...page, body: { plainText: { representation: 'plain_text', value } } };
 }
 
 export function extractNextCursor(response: IDataObject): string | undefined {
