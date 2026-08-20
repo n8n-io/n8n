@@ -411,7 +411,10 @@ export class WorkflowsPublicController {
 	@ApiTags(['Workflow'])
 	@ApiResponse(200, WorkflowPublishPublicDto)
 	@ApiErrorResponse(404)
-	@ApiErrorResponse(409, WorkflowPublishBlockedErrorPublicDto, PUBLISH_CONFLICT_DESCRIPTION)
+	@ApiErrorResponse(409, {
+		dto: WorkflowPublishBlockedErrorPublicDto,
+		description: PUBLISH_CONFLICT_DESCRIPTION,
+	})
 	async publishWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,

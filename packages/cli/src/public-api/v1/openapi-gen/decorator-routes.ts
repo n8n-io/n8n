@@ -220,15 +220,18 @@ function buildResponses(
 			);
 		}
 
-		// A `$ref` cannot carry siblings, so a documented body means spelling the description out
-		// here instead of pointing at the shared file that would have supplied it.
-		responses[status] =
-			dto && hasNamedSchema(dto)
-				? {
-						description: description ?? ERROR_RESPONSE_DESCRIPTIONS[status],
-						content: { 'application/json': { schema: dto.schema } },
-					}
-				: ref;
+		// A `$ref` cannot carry siblings, so either extra means writing the description out here
+		// instead of pointing at the shared file that would have supplied it.
+		if (dto && hasNamedSchema(dto)) {
+			responses[status] = {
+				description: description ?? ERROR_RESPONSE_DESCRIPTIONS[status],
+				content: { 'application/json': { schema: dto.schema } },
+			};
+		} else if (description) {
+			responses[status] = { description };
+		} else {
+			responses[status] = ref;
+		}
 	}
 
 	return responses;

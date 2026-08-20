@@ -55,7 +55,10 @@ describe('@ApiErrorResponse Decorator', () => {
 		class TestController {
 			@Get('/')
 			@ApiErrorResponse(404)
-			@ApiErrorResponse(409, ConflictDto, 'Conflict, e.g. an open review blocks publication.')
+			@ApiErrorResponse(409, {
+				dto: ConflictDto,
+				description: 'Conflict, e.g. an open review blocks publication.',
+			})
 			async handler() {}
 		}
 
@@ -70,6 +73,22 @@ describe('@ApiErrorResponse Decorator', () => {
 				dto: ConflictDto,
 				description: 'Conflict, e.g. an open review blocks publication.',
 			},
+		]);
+	});
+
+	it('should store a description given without a DTO', () => {
+		class TestController {
+			@Get('/')
+			@ApiErrorResponse(404, { description: 'No workflow with that ID.' })
+			async handler() {}
+		}
+
+		const route = controllerRegistryMetadata.getRouteMetadata(
+			TestController as Controller,
+			'handler',
+		);
+		expect(route.errorResponses).toEqual([
+			{ status: 404, description: 'No workflow with that ID.' },
 		]);
 	});
 });

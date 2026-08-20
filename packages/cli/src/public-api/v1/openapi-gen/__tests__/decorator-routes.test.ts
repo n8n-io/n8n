@@ -216,7 +216,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		class WidgetsPublicController {
 			@Get('/')
 			@ApiResponse(200)
-			@ApiErrorResponse(409, WidgetResponseDto)
+			@ApiErrorResponse(409, { dto: WidgetResponseDto })
 			method() {}
 		}
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
@@ -233,7 +233,10 @@ describe('getDecoratorGeneratedOperations', () => {
 		class WidgetsPublicController {
 			@Get('/')
 			@ApiResponse(200)
-			@ApiErrorResponse(409, WidgetResponseDto, 'Conflict, e.g. an open review blocks publication.')
+			@ApiErrorResponse(409, {
+				dto: WidgetResponseDto,
+				description: 'Conflict, e.g. an open review blocks publication.',
+			})
 			method() {}
 		}
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
@@ -244,16 +247,30 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(response.description).toBe('Conflict, e.g. an open review blocks publication.');
 	});
 
+	it('emits the given description with no $ref when no body DTO is given', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@ApiErrorResponse(404, { description: 'No widget with that ID.' })
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[404]).toEqual({ description: 'No widget with that ID.' });
+	});
+
 	it('keeps an error body schema inline even when two routes share the DTO', () => {
 		class WidgetsPublicController {
 			@Get('/')
 			@ApiResponse(200)
-			@ApiErrorResponse(409, WidgetResponseDto)
+			@ApiErrorResponse(409, { dto: WidgetResponseDto })
 			list() {}
 
 			@Post('/')
 			@ApiResponse(201)
-			@ApiErrorResponse(409, WidgetResponseDto)
+			@ApiErrorResponse(409, { dto: WidgetResponseDto })
 			create() {}
 		}
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
