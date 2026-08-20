@@ -189,6 +189,10 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// skipped there for MCP builds (which run no instance-ai thread, so capture no
 	// context state), and declaring them needs no build-side setup.
 	memoryExpectations: 'supported',
+	// Deterministic post-build check over captured context; like the expectation
+	// kinds it needs no build-side setup, and it degrades to `incomplete` when a run
+	// captured no context state (as MCP builds never do).
+	contextAssertions: 'supported',
 	// Forbidden legacy key — the schema rejects it at load, so it can never
 	// reach this check; classified only to keep the map schema-complete.
 	buildExpectations: 'supported',

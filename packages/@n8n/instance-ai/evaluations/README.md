@@ -283,6 +283,39 @@ A test case can declare optional natural-language assertions, split by what they
 
 `memoryExpectations` deliberately do **not** see the full conversation transcript or the built workflow. The raw message window is not the transcript: messages evicted from the window do not appear in it, which is precisely why it can be trusted as a record of what the agent *still had*. Grading against the transcript instead would let the judge satisfy "the agent still knew X" from the turn where X was first said even after the fact had fallen out of context — the confound this kind exists to remove. Keeping the inputs disjoint from the build is what makes a miss attributable to **recall**, so write them as claims about what the *context* contains, not about what the agent *did*. Their verdicts are tagged `kind: "memory"` in `eval-results.json` and badged `memory` in the HTML report. The Observer only compresses once a thread crosses its token threshold, so on a short thread the observation block is legitimately empty while every fact is still in the raw window — the judge is told this explicitly, and an absent observation block is **never** on its own a reason to fail. That matters: grading on the observation block alone would fail every memory expectation for a structural reason on exactly the short threads the suite is mostly made of. Which tier held the fact is reported in the verdict, since that is the interesting detail when comparing two memory approaches.
 
+#### `contextAssertions` — the deterministic alternative
+
+For a **concrete value**, prefer this over a `memoryExpectation`. It asks the same
+question — did this reach the model? — by substring search over the captured context,
+with no LLM involved:
+
+```json
+"contextAssertions": [
+  { "text": "#ops-alerts", "note": "the house alert channel, from a sibling workflow" },
+  { "text": "triggerAtHour" },
+  { "text": "email_address", "mustAppear": false, "note": "the renamed column, which should have been dropped" }
+]
+```
+
+`mustAppear` defaults to true; set it false for a stale value that should be gone.
+Verdicts are tagged `kind: "memory"` like the judged ones and name the tier the value
+was found in.
+
+Why prefer it: it cannot hallucinate, costs nothing, needs no rubric, and it searches
+the **untruncated** context — the judge's view is capped so the interesting part stays
+in its attention, but this check has no such limit. That keeps the judge off the
+load-bearing path for exactly the claims where a wrong verdict would be most
+misleading.
+
+Two rules. Assert **atomic** values (`triggerAtHour`, `#ops-alerts`, `2026-03-01`),
+not formatted phrases (`triggerAtHour: 6`) — the same value is serialised with
+different spacing and quoting depending on which tier carries it. And matching is
+case-insensitive, because casing drifts as content is re-rendered through tool
+payloads and a casing difference is never the finding.
+
+Keep `memoryExpectations` for claims a string search cannot express — "the retrieved
+sibling was the same *kind* of workflow", "the value is present but altered".
+
 #### Writing a memory expectation that can actually fail
 
 Two things make a memory expectation harder to falsify than it looks. Both were measured, not theorised.

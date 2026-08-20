@@ -154,6 +154,27 @@ const evalTestCaseObjectSchema = z
 		 *  recall rather than to the build. Needs run debug, so skipped in prebuilt/MCP runs.
 		 *  Counted as units. */
 		memoryExpectations: z.array(z.string().min(1)).optional(),
+		/** Exact values that must (or must not) appear in the agent's captured context.
+		 *  Checked deterministically by substring search — no LLM, so it cannot
+		 *  hallucinate and needs no rubric. Use for concrete values (a date, a channel,
+		 *  a column name, a parameter key); leave genuinely fuzzy claims to
+		 *  `memoryExpectations`. Assert ATOMIC values, not formatted phrases: the same
+		 *  value is serialised with different spacing depending on which tier carries
+		 *  it. Counted as units. */
+		contextAssertions: z
+			.array(
+				z
+					.object({
+						text: z.string().min(1),
+						/** Omit or true → must appear. False → must NOT appear (a stale value
+						 *  that should have been dropped). */
+						mustAppear: z.boolean().optional(),
+						/** Shown in the verdict when the raw string is not self-explanatory. */
+						note: z.string().min(1).optional(),
+					})
+					.strict(),
+			)
+			.optional(),
 		/**
 		 * Removed in favour of the process/outcome split. Declared as a forbidden key (rather
 		 * than dropped from the shape) so a legacy fixture fails loudly with a migration hint,
@@ -308,12 +329,13 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 			(c.executionScenarios?.length ?? 0) === 0 &&
 			(c.processExpectations?.length ?? 0) === 0 &&
 			(c.outcomeExpectations?.length ?? 0) === 0 &&
-			(c.memoryExpectations?.length ?? 0) === 0
+			(c.memoryExpectations?.length ?? 0) === 0 &&
+			(c.contextAssertions?.length ?? 0) === 0
 		) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message:
-					'a case needs at least one executionScenario, or a process/outcome/memory expectation to grade it',
+					'a case needs at least one executionScenario, or a process/outcome/memory expectation, or a context assertion to grade it',
 			});
 		}
 	});

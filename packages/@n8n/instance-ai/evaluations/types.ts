@@ -265,6 +265,10 @@ export interface WorkflowTestCase {
 	 *  workflow, so a miss is attributable to recall rather than to the build. Requires run debug,
 	 *  so skipped in prebuilt/MCP runs. Counted toward the pass rate. */
 	memoryExpectations?: string[];
+	/** Exact values that must (or must not) appear in the agent's captured context,
+	 *  checked by deterministic substring search rather than by the judge. Counted
+	 *  toward the pass rate. See `harness/context-assertions.ts`. */
+	contextAssertions?: ContextAssertion[];
 	/**
 	 * Credentials visible to this case's build. Created for real before the build
 	 * and pinned as the thread's entire credential view — cases without this
@@ -315,6 +319,14 @@ export interface ExecutionScenarioResult {
 	 *  workflow failure). Rendered visibly but kept out of the pass-rate count,
 	 *  mirroring `BuildExpectationResult.incomplete`. */
 	incomplete?: boolean;
+}
+
+/** One deterministic claim about the agent's captured context. */
+export interface ContextAssertion {
+	text: string;
+	/** Omit or true → must appear. False → must NOT appear. */
+	mustAppear?: boolean;
+	note?: string;
 }
 
 /** Verdict for one author-written build expectation. Scored as a unit in the

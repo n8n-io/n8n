@@ -43,6 +43,7 @@ import {
 } from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import { effectiveTimeoutMs, runWorkflowChecks } from '../harness/cleanup';
+import { checkContextAssertions } from '../harness/context-assertions';
 import {
 	credentialSetupExpectationTexts,
 	runCredentialSetupChecks,
@@ -450,13 +451,14 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					);
 				})
 			: undefined;
-		const { expectations, memoryExpectations, transcript, unjudged } = selectAuthorExpectations({
-			testCase,
-			transcript: build.transcript,
-			buildSucceeded: build.success,
-			isPrebuilt,
-			logger,
-		});
+		const { expectations, memoryExpectations, contextAssertions, transcript, unjudged } =
+			selectAuthorExpectations({
+				testCase,
+				transcript: build.transcript,
+				buildSucceeded: build.success,
+				isPrebuilt,
+				logger,
+			});
 		// Attributed here, where we still know WHY the build ended: a build that
 		// died on infra produced nothing to judge, so its expectations are unowned
 		// rather than the agent's miss. Both readers of this map (the row outputs
@@ -473,7 +475,12 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			verdicts: BuildExpectationResult[] | Promise<BuildExpectationResult[]>,
 		): Promise<BuildExpectationResult[]> =>
 			injected ? [...(await verdicts), ...(await injected)] : await verdicts;
-		if (unjudged.length === 0 && expectations.length === 0 && memoryExpectations.length === 0) {
+		if (
+			unjudged.length === 0 &&
+			expectations.length === 0 &&
+			memoryExpectations.length === 0 &&
+			contextAssertions.length === 0
+		) {
 			if (injected) buildExpectationsByKey.set(key, injected);
 			return;
 		}
@@ -503,6 +510,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// Reads the run debug stashed for this build — hence stashRunDebug runs first.
 		// Graded on its own inputs (observation block + final system prompt) and never
 		// the transcript, so a miss is attributable to recall, not to the build.
+		const checkAssertions = async (): Promise<BuildExpectationResult[]> =>
+			checkContextAssertions(
+				contextAssertions,
+				build.threadId ? await runDebugByThreadId.get(build.threadId) : undefined,
+			);
 		const judgeMemory = async (): Promise<BuildExpectationResult[]> =>
 			await verifyMemoryExpectations(
 				memoryExpectations,
@@ -528,11 +540,12 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			key,
 			withInjected(
 				(async () => {
-					const [conversation, memory] = await Promise.all([
+					const [conversation, memory, asserted] = await Promise.all([
 						expectations.length > 0 ? judgeConversation() : Promise.resolve([]),
 						memoryExpectations.length > 0 ? judgeMemory() : Promise.resolve([]),
+						contextAssertions.length > 0 ? checkAssertions() : Promise.resolve([]),
 					]);
-					return [...attribute(unjudged), ...conversation, ...memory];
+					return [...attribute(unjudged), ...conversation, ...memory, ...attribute(asserted)];
 				})(),
 			),
 		);
