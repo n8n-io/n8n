@@ -1,5 +1,6 @@
 import { jsonParse } from 'n8n-workflow';
-import { readdir, readFile, stat } from 'node:fs/promises';
+import type { Stats } from 'node:fs';
+import { lstat, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -26,9 +27,10 @@ export interface DirectoryReaderLimits {
  *
  * The directory originates from a remote Git repository, so it is untrusted: the
  * same path-safety and size guards as the tar reader apply. Entry paths must stay
- * within `baseDir`, and a single file may not exceed `maxEntryBytes`. Because reads
- * are lazy, callers must validate the whole tree up front via {@link listEntries}
- * to enforce the package-wide `maxEntries` and `maxUncompressedBytes` limits.
+ * within `baseDir`, symbolic links are rejected, and a single file may not exceed
+ * `maxEntryBytes`. Because reads are lazy, callers must validate the whole tree up
+ * front via {@link listEntries} to enforce the package-wide `maxEntries` and
+ * `maxUncompressedBytes` limits.
  */
 export class DirectoryPackageReader implements PackageReader {
 	constructor(
@@ -88,7 +90,7 @@ export class DirectoryPackageReader implements PackageReader {
 		const safePath = this.validateEntryPath(entryPath);
 		const absolutePath = this.resolveWithin(safePath);
 
-		const stats = await stat(absolutePath);
+		const stats = await this.lstatWithoutSymlinks(absolutePath, safePath);
 		if (!stats.isFile()) {
 			throw new BadRequestError(`Package entry is not a file: ${entryPath}`);
 		}
@@ -98,6 +100,26 @@ export class DirectoryPackageReader implements PackageReader {
 			);
 		}
 		return await readFile(absolutePath);
+	}
+
+	/** Rejects symlinks in the package root or any component of an entry path. */
+	private async lstatWithoutSymlinks(absolutePath: string, entryPath: string): Promise<Stats> {
+		let currentPath = this.baseDir;
+		let stats = await lstat(currentPath);
+		if (stats.isSymbolicLink()) {
+			throw new BadRequestError('Package root has a disallowed entry type');
+		}
+
+		const relativePath = path.relative(this.baseDir, absolutePath);
+		for (const component of relativePath.split(path.sep)) {
+			currentPath = path.join(currentPath, component);
+			stats = await lstat(currentPath);
+			if (stats.isSymbolicLink()) {
+				throw new BadRequestError(`Package contains a disallowed entry type for "${entryPath}"`);
+			}
+		}
+
+		return stats;
 	}
 
 	/** Mirrors TarPackageReader path validation: relative, in-bounds, allowed characters only. */
@@ -144,21 +166,29 @@ export class DirectoryPackageReader implements PackageReader {
 		return destination;
 	}
 
-	/** Depth-first walk yielding each regular file's posix-relative path and size; symlinks are skipped. */
+	/** Depth-first walk yielding each regular file's posix-relative path and size. */
 	private async walk(
 		dir: string,
 		visit: (relativePath: string, size: number) => void,
 	): Promise<void> {
+		if ((await lstat(dir)).isSymbolicLink()) {
+			const relativeDirPath = path.relative(this.baseDir, dir).split(path.sep).join('/') || '.';
+			throw new BadRequestError(
+				`Package contains a disallowed entry type for "${relativeDirPath}"`,
+			);
+		}
 		const dirents = await readdir(dir, { withFileTypes: true });
 		for (const dirent of dirents) {
-			if (dirent.isSymbolicLink()) continue;
 			const absolutePath = path.join(dir, dirent.name);
-			if (dirent.isDirectory()) {
+			const relativePath = path.relative(this.baseDir, absolutePath).split(path.sep).join('/');
+			const stats = await lstat(absolutePath);
+			if (stats.isSymbolicLink()) {
+				throw new BadRequestError(`Package contains a disallowed entry type for "${relativePath}"`);
+			}
+			if (stats.isDirectory()) {
 				await this.walk(absolutePath, visit);
-			} else if (dirent.isFile()) {
-				const relativePath = path.relative(this.baseDir, absolutePath).split(path.sep).join('/');
-				const { size } = await stat(absolutePath);
-				visit(relativePath, size);
+			} else if (stats.isFile()) {
+				visit(relativePath, stats.size);
 			}
 		}
 	}
