@@ -964,6 +964,16 @@ export class WorkflowService {
 			);
 		}
 
+		// The publication commit boundary: both branches above have durably published the
+		// version (outbox record committed / triggers registered and history recorded). The
+		// metadata update and re-fetch below can still fail, but the publication — and this
+		// record of it — stand. The hook must not throw.
+		await this.workflowMutationHooks.afterWorkflowPublished({
+			workflowId,
+			versionId: versionIdToActivate,
+			userId: user.id,
+		});
+
 		if (options?.name !== undefined || options?.description !== undefined) {
 			const updateFields: UpdateWorkflowHistoryVersionDto = {};
 			if (options.name !== undefined) updateFields.name = options.name;
@@ -1287,11 +1297,9 @@ export class WorkflowService {
 			throw new BadRequestError('Workflow must be archived before it can be deleted.');
 		}
 
-		// Ahead of every destructive step, including the trigger teardown below: the
-		// hook may throw to abort the delete, and deactivation is not rolled back, so
-		// running it later would strand the workflow as active in the DB but no longer
-		// running.
-		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId);
+		// Ahead of every destructive step: the hook captures rows the delete is about
+		// to cascade away, so `afterWorkflowsDeleted` can still explain what happened.
+		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId, user.id);
 
 		if (workflow.active) {
 			// deactivate before deleting
@@ -1377,7 +1385,7 @@ export class WorkflowService {
 
 		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
 
-		await this.workflowMutationHooks.afterWorkflowArchived(workflowId);
+		await this.workflowMutationHooks.afterWorkflowArchived(workflowId, user.id);
 
 		this.eventService.emit('workflow-archived', {
 			user,
