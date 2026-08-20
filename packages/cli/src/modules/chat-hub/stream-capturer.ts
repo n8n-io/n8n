@@ -159,6 +159,16 @@ export function createStructuredChunkAggregator(
 			return null;
 		}
 
+		// Node lifecycle and tool progress chunks carry no message content
+		if (
+			chunk.type === 'node-execute-before' ||
+			chunk.type === 'node-execute-after' ||
+			chunk.type === 'tool-call-start' ||
+			chunk.type === 'tool-call-end'
+		) {
+			return null;
+		}
+
 		const { type, content, metadata } = chunk;
 		const key = keyOf(metadata);
 

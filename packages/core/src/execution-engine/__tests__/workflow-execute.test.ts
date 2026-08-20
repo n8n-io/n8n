@@ -34,6 +34,7 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	IDestinationNode,
+	StructuredChunk,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
@@ -3114,8 +3115,10 @@ describe('WorkflowExecute', () => {
 					metadata: {
 						nodeId: errorNode.id,
 						nodeName: errorNode.name,
+						nodeType: errorNode.type,
 						runIndex: 0,
 						itemIndex: 0,
+						timestamp: expect.any(Number),
 					},
 				},
 			]);
@@ -3178,11 +3181,81 @@ describe('WorkflowExecute', () => {
 					metadata: {
 						nodeId: errorNode.id,
 						nodeName: errorNode.name,
+						nodeType: errorNode.type,
 						runIndex: 0,
 						itemIndex: 0,
+						timestamp: expect.any(Number),
 					},
 				},
 			]);
+		});
+
+		test('should send node-execute-before and node-execute-after chunks around a node execution', async () => {
+			// ARRANGE
+			const successNode: INode = {
+				id: 'success-node-id',
+				name: 'SuccessNode',
+				type: 'test.success',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const successNodeType = mock<INodeType>({
+				description: {
+					name: 'test.success',
+					displayName: 'Test Success Node',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					return [[{ json: { success: true } }]];
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(successNodeType);
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [successNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			testAdditionalData.hooks = mockHooks;
+
+			// ACT
+			await workflowExecute.run({ workflow, startNode: successNode });
+
+			// ASSERT
+			const expectedMetadata = {
+				nodeId: successNode.id,
+				nodeName: successNode.name,
+				nodeType: successNode.type,
+				runIndex: 0,
+				itemIndex: 0,
+				timestamp: expect.any(Number),
+			};
+			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
+				{ type: 'node-execute-before', metadata: expectedMetadata },
+			]);
+			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
+				{ type: 'node-execute-after', metadata: expectedMetadata },
+			]);
+
+			const chunkTypes = vi
+				.mocked(mockHooks.runHook)
+				.mock.calls.filter(([hookName]) => hookName === 'sendChunk')
+				.map(([, [chunk]]) => (chunk as StructuredChunk).type);
+			const beforeIndex = chunkTypes.indexOf('node-execute-before');
+			const afterIndex = chunkTypes.indexOf('node-execute-after');
+			expect(beforeIndex).toBeGreaterThanOrEqual(0);
+			expect(afterIndex).toBeGreaterThan(beforeIndex);
 		});
 
 		test('should not send error chunk when workflow execution succeeds', async () => {
@@ -3228,7 +3301,9 @@ describe('WorkflowExecute', () => {
 			await workflowExecute.run({ workflow, startNode: successNode });
 
 			// ASSERT
-			expect(mockHooks.runHook).not.toHaveBeenCalledWith('sendChunk', expect.anything());
+			expect(mockHooks.runHook).not.toHaveBeenCalledWith('sendChunk', [
+				expect.objectContaining({ type: 'error' }),
+			]);
 		});
 
 		test('should send error chunk when workflow execution fails with NodeOperationError', async () => {
@@ -3288,8 +3363,10 @@ describe('WorkflowExecute', () => {
 					metadata: {
 						nodeId: errorNode.id,
 						nodeName: errorNode.name,
+						nodeType: errorNode.type,
 						runIndex: 0,
 						itemIndex: 0,
+						timestamp: expect.any(Number),
 					},
 				},
 			]);
@@ -3351,8 +3428,10 @@ describe('WorkflowExecute', () => {
 					metadata: {
 						nodeId: errorNode.id,
 						nodeName: errorNode.name,
+						nodeType: errorNode.type,
 						runIndex: 0,
 						itemIndex: 0,
+						timestamp: expect.any(Number),
 					},
 				},
 			]);

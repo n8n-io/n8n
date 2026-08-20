@@ -16,6 +16,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionHint,
 	StructuredChunk,
+	ToolCallChunkDetails,
 	Workflow,
 	WorkflowExecuteMode,
 	EngineResponse,
@@ -160,14 +161,17 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		type: ChunkType,
 		itemIndex: number,
 		content?: IDataObject | string,
+		tool?: ToolCallChunkDetails,
 	): Promise<void> {
 		const node = this.getNode();
 		const metadata = {
 			nodeId: node.id,
 			nodeName: node.name,
+			nodeType: node.type,
 			itemIndex,
 			runIndex: this.runIndex,
 			timestamp: Date.now(),
+			...tool,
 		};
 
 		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);

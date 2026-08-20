@@ -44,6 +44,7 @@ import type {
 	EngineRequest,
 	EngineResponse,
 	IDestinationNode,
+	StructuredChunk,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -1576,6 +1577,30 @@ export class WorkflowExecute {
 	}
 
 	/**
+	 * Sends a node lifecycle chunk to streaming responses. These chunks are scoped to a
+	 * whole node run, not to a single item, so itemIndex is always 0.
+	 */
+	private async sendNodeChunk(
+		hooks: ExecutionLifecycleHooks,
+		type: 'node-execute-before' | 'node-execute-after',
+		node: INode,
+		runIndex: number,
+	): Promise<void> {
+		const chunk: StructuredChunk = {
+			type,
+			metadata: {
+				nodeId: node.id,
+				nodeName: node.name,
+				nodeType: node.type,
+				runIndex,
+				itemIndex: 0,
+				timestamp: Date.now(),
+			},
+		};
+		await hooks.runHook('sendChunk', [chunk]);
+	}
+
+	/**
 	 * Runs the given execution data.
 	 *
 	 */
@@ -1793,6 +1818,7 @@ export class WorkflowExecute {
 					// Future: May introduce dedicated nodeExecutionPaused/nodeExecutionResumed events
 					// if we need finer-grained visibility into the pause/resume cycle.
 					if (!executionData.metadata?.nodeWasResumed) {
+						await this.sendNodeChunk(hooks, 'node-execute-before', executionNode, runIndex);
 						await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
 					}
 					let maxTries = 1;
@@ -2073,8 +2099,10 @@ export class WorkflowExecute {
 								metadata: {
 									nodeId: executionNode.id,
 									nodeName: executionNode.name,
+									nodeType: executionNode.type,
 									runIndex,
 									itemIndex: 0,
+									timestamp: Date.now(),
 								},
 							},
 						]);
@@ -2133,6 +2161,7 @@ export class WorkflowExecute {
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
 							// Only execute the nodeExecuteAfter hook if the node did not get aborted
 							if (!this.isCancelled) {
+								await this.sendNodeChunk(hooks, 'node-execute-after', executionNode, runIndex);
 								await hooks.runHook('nodeExecuteAfter', [
 									executionNode.name,
 									taskData,
@@ -2195,6 +2224,7 @@ export class WorkflowExecute {
 					}
 
 					if (this.runExecutionData.waitTill) {
+						await this.sendNodeChunk(hooks, 'node-execute-after', executionNode, runIndex);
 						await hooks.runHook('nodeExecuteAfter', [
 							executionNode.name,
 							taskData,
@@ -2210,6 +2240,7 @@ export class WorkflowExecute {
 					if (this.runExecutionData?.startData?.destinationNode?.nodeName === executionNode.name) {
 						// Before stopping, make sure we are executing hooks so
 						// That frontend is notified for example for manual executions.
+						await this.sendNodeChunk(hooks, 'node-execute-after', executionNode, runIndex);
 						await hooks.runHook('nodeExecuteAfter', [
 							executionNode.name,
 							taskData,
@@ -2321,6 +2352,7 @@ export class WorkflowExecute {
 					// Execute hooks now to make sure that all hooks are executed properly
 					// Await is needed to make sure that we don't fall into concurrency problems
 					// When saving node execution data
+					await this.sendNodeChunk(hooks, 'node-execute-after', executionNode, runIndex);
 					await hooks.runHook('nodeExecuteAfter', [
 						executionNode.name,
 						taskData,

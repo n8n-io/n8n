@@ -314,6 +314,7 @@ describe('ExecuteContext', () => {
 					metadata: expect.objectContaining({
 						nodeName: 'Test Node',
 						nodeId: 'test-node-id',
+						nodeType: node.type,
 						runIndex: 0,
 						itemIndex: 0,
 						timestamp: expect.any(Number),
@@ -357,6 +358,68 @@ describe('ExecuteContext', () => {
 						runIndex: 0,
 						itemIndex: 0,
 						timestamp: expect.any(Number),
+					}),
+				}),
+			]);
+		});
+
+		test('should merge tool call details into metadata for tool chunks', async () => {
+			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
+				runHook: vi.fn(),
+			});
+			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
+				...additionalData,
+				hooks: hooksMock,
+			};
+
+			const testExecuteContext = new ExecuteContext(
+				workflow,
+				node,
+				additionalDataWithHooks,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await testExecuteContext.sendChunk('tool-call-start', 0, undefined, {
+				toolName: 'List_Folder',
+				toolCallId: 'call-1',
+				toolInput: '{"path":"/tmp"}',
+			});
+			await testExecuteContext.sendChunk('tool-call-end', 0, undefined, {
+				toolName: 'List_Folder',
+				toolCallId: 'call-1',
+				toolOutput: '["a.txt"]',
+			});
+
+			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
+				expect.objectContaining({
+					type: 'tool-call-start',
+					metadata: expect.objectContaining({
+						nodeName: 'Test Node',
+						nodeId: 'test-node-id',
+						nodeType: node.type,
+						runIndex: 0,
+						itemIndex: 0,
+						timestamp: expect.any(Number),
+						toolName: 'List_Folder',
+						toolCallId: 'call-1',
+						toolInput: '{"path":"/tmp"}',
+					}),
+				}),
+			]);
+			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
+				expect.objectContaining({
+					type: 'tool-call-end',
+					metadata: expect.objectContaining({
+						toolName: 'List_Folder',
+						toolCallId: 'call-1',
+						toolOutput: '["a.txt"]',
 					}),
 				}),
 			]);

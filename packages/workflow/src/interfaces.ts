@@ -1263,7 +1263,12 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
 		isConsoleOutputRedacted(): boolean;
 		sendResponse(response: IExecuteResponsePromiseData): Promise<void>;
-		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
+		sendChunk(
+			type: ChunkType,
+			itemIndex: number,
+			content?: IDataObject | string,
+			tool?: ToolCallChunkDetails,
+		): void;
 		isStreaming(): boolean;
 		/** Returns true if the node is being executed as an AI Agent tool */
 		isToolExecution(): boolean;
@@ -4320,17 +4325,39 @@ export type IPersonalizationSurveyAnswersV4 = {
 	reportedSourceOther?: string | null;
 };
 
-export type ChunkType = 'begin' | 'item' | 'end' | 'error';
+export type ChunkType =
+	| 'begin'
+	| 'item'
+	| 'end'
+	| 'error'
+	| 'node-execute-before'
+	| 'node-execute-after'
+	| 'tool-call-start'
+	| 'tool-call-end';
+
+/** Tool invocation details attached to `tool-call-start` / `tool-call-end` chunks */
+export interface ToolCallChunkDetails {
+	/** Name of the tool as seen by the LLM */
+	toolName: string;
+	/** Provider-assigned id of this tool call, used to pair start and end chunks */
+	toolCallId?: string;
+	/** JSON-stringified input arguments of the tool call */
+	toolInput?: string;
+	/** JSON-stringified output of the tool call */
+	toolOutput?: string;
+}
+
 export interface StructuredChunk {
 	type: ChunkType;
 	content?: string;
 	metadata: {
 		nodeId: string;
 		nodeName: string;
+		nodeType?: string;
 		runIndex: number;
 		itemIndex: number;
 		timestamp: number;
-	};
+	} & Partial<ToolCallChunkDetails>;
 }
 
 export type ApiKeyAudience = 'public-api' | 'mcp-server-api';
