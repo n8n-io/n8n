@@ -8,4 +8,8 @@ describe('sanitizeAgentToolName', () => {
 	it('converts workflow display names to runtime-safe names', () => {
 		expect(sanitizeAgentToolName('Lookup Orders & Returns')).toBe('lookup-orders-returns');
 	});
+
+	it.each(['', '!!!', '🛠️'])('falls back when %j has no valid characters', (name) => {
+		expect(sanitizeAgentToolName(name)).toBe('tool');
+	});
 });

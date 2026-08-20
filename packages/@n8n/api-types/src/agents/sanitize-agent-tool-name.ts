@@ -4,9 +4,11 @@ const VALID_AGENT_TOOL_NAME = /^[a-zA-Z0-9_-]{1,128}$/;
 export function sanitizeAgentToolName(name: string): string {
 	if (VALID_AGENT_TOOL_NAME.test(name)) return name;
 
-	return name
+	const sanitizedName = name
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-|-$/g, '')
 		.slice(0, 128);
+
+	return sanitizedName || 'tool';
 }

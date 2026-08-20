@@ -4,6 +4,7 @@ import {
 	type AgentCapabilityTool,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { nodeNameToToolName } from 'n8n-workflow';
 import { formatToolNameForDisplay } from '@/features/agents/utils/toolDisplayName';
 import { MIN_GROUPED_TOOLS_PER_TYPE } from '@/features/agents/components/AgentCapabilitiesSection.utils';
 import {
@@ -46,7 +47,12 @@ const TOOL_ICONS = {
 } as const satisfies Record<AgentCapabilityTool['type'], IconName>;
 
 function individualToolChip(tool: AgentCapabilityTool, index: number): AgentCardChip {
-	const activityName = tool.type === 'workflow' ? sanitizeAgentToolName(tool.name) : tool.name;
+	const activityName =
+		tool.type === 'workflow'
+			? sanitizeAgentToolName(tool.name)
+			: tool.type === 'node'
+				? nodeNameToToolName(tool.name)
+				: tool.name;
 
 	return {
 		key: `tool:${tool.type}:${tool.name}:${index}`,
@@ -101,7 +107,7 @@ function buildToolChips(
 					key: `tool:node:${nodeType}`,
 					icon: TOOL_ICONS.node,
 					label: `${group.length} ${nodeTypeLabels.get(nodeType)}`,
-					activityKeys: group.map(({ tool }) => toolActivityKey(tool.name)),
+					activityKeys: group.map(({ tool }) => toolActivityKey(nodeNameToToolName(tool.name))),
 					// All members share this node type, so the group chip shows its icon.
 					nodeType,
 					nodeTypeVersion: group[0].tool.nodeTypeVersion,

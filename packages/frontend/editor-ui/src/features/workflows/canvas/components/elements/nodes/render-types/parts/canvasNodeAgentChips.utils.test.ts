@@ -33,14 +33,14 @@ describe('buildAgentCardChips', () => {
 		expect(chips.some((c) => c.key.startsWith('task:'))).toBe(false);
 	});
 
-	it('humanizes raw tool names like the edit page', () => {
+	it('humanizes node tool names while tracking their runtime-safe names', () => {
 		const summary = makeSummary({
-			tools: [{ type: 'node', name: 'send_telegram_message' }],
+			tools: [{ type: 'node', name: 'Send Telegram Message' }],
 		});
 
 		expect(buildAgentCardChips(summary)[0]).toMatchObject({
 			label: 'Send telegram message',
-			activityKeys: ['tool:send_telegram_message'],
+			activityKeys: ['tool:Send_Telegram_Message'],
 		});
 	});
 
@@ -130,7 +130,7 @@ describe('buildAgentCardChips', () => {
 			tools: [
 				{
 					type: 'node',
-					name: 'send_message',
+					name: 'Send Message',
 					nodeType: 'n8n-nodes-base.telegramTool',
 					nodeTypeVersion: 2,
 				},
@@ -150,13 +150,13 @@ describe('buildAgentCardChips', () => {
 			tools: [
 				{
 					type: 'node',
-					name: 'send_message',
+					name: 'Send Message',
 					nodeType: 'n8n-nodes-base.telegramTool',
 					nodeTypeVersion: 1,
 				},
 				{
 					type: 'node',
-					name: 'get_chat',
+					name: 'Get Chat',
 					nodeType: 'n8n-nodes-base.telegramTool',
 					nodeTypeVersion: 1,
 				},
@@ -169,7 +169,7 @@ describe('buildAgentCardChips', () => {
 			label: '2 Telegram',
 			nodeType: 'n8n-nodes-base.telegramTool',
 			nodeTypeVersion: 1,
-			activityKeys: ['tool:send_message', 'tool:get_chat'],
+			activityKeys: ['tool:Send_Message', 'tool:Get_Chat'],
 		});
 	});
 
