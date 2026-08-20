@@ -62,8 +62,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const hasFetchedUsableCredentials = ref(false);
 	/** The scope the slice currently holds, so it can be refreshed and invalidated. */
 	const usableCredentialsScope = ref<CredentialFetchScope | null>(null);
-	/** The most recently requested scope, so a response we've navigated away from is dropped. */
-	let requestedUsableCredentialsScope: string | null = null;
+	/** Bumped per scoped fetch, so only the most recent one publishes its response. */
+	let usableCredentialsRequestId = 0;
 
 	const clearUsableCredentials = () => {
 		usableCredentials.value = {};
@@ -364,7 +364,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		if (usableCredentialsScope.value && scopeKey(usableCredentialsScope.value) !== requestedScope) {
 			clearUsableCredentials();
 		}
-		requestedUsableCredentialsScope = requestedScope;
+		const requestId = ++usableCredentialsRequestId;
 
 		const credentials = await credentialsApi.getAllCredentialsForWorkflow(
 			rootStore.restApiContext,
@@ -374,9 +374,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		// what the credential picker reads.
 		setCredentials(credentials);
 
-		// A response for a scope we have since left must not publish — two scoped
-		// fetches can be in flight at once, and the later one owns the slice.
-		if (requestedUsableCredentialsScope !== requestedScope) {
+		// Only the newest request publishes. Several scoped fetches can be in flight at
+		// once — a mount racing the refresh a quick connect triggers, say — and an older
+		// response landing last would reinstate a list we already know is out of date,
+		// whether or not it was fetched for the same scope.
+		if (requestId !== usableCredentialsRequestId) {
 			return credentials;
 		}
 

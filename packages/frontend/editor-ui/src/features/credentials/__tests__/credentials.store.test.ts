@@ -361,6 +361,31 @@ describe('credentials.store', () => {
 			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
 		});
 
+		it('ignores an older response for the scope already loaded', async () => {
+			const store = useCredentialsStore();
+
+			// A refresh — the one a quick connect triggers, say — can overtake a fetch the
+			// same scope started earlier; the newest answer has to win.
+			let resolveFirst: (credentials: ICredentialsResponse[]) => void = () => {};
+			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveFirst = resolve;
+				}),
+			);
+			const stale = store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+
+			vi.spyOn(credentialsApi, 'getAllCredentialsForWorkflow').mockResolvedValue([
+				inScope,
+				outOfScope,
+			]);
+			await store.fetchAllCredentialsForWorkflow({ workflowId: 'wf-1' });
+
+			resolveFirst([inScope]);
+			await stale;
+
+			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([outOfScope, inScope]);
+		});
+
 		it('keeps the slice when the same scope is fetched again', async () => {
 			const store = useCredentialsStore();
 
