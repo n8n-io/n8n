@@ -168,7 +168,7 @@ describe('AgentIntegrationManagementService', () => {
 			const persistedEntry = { type: 'slack', credentialId: 'credential-1' } as const;
 			const agent = makeAgent({ integrations: [persistedEntry] });
 			stubRow(agentRepository, [persistedEntry]);
-			chatService.getChatInstance.mockReturnValue({} as never);
+			chatService.isChannelLive.mockReturnValue(true);
 			persistenceService.applyIntegrationDelta.mockRejectedValue(new Error('write failed'));
 
 			await expect(service.connect({ agent, user: user as never, integration })).rejects.toThrow(
@@ -193,7 +193,7 @@ describe('AgentIntegrationManagementService', () => {
 			const persistedEntry = { type: 'slack', credentialId: 'credential-1' } as const;
 			const agent = makeAgent({ integrations: [persistedEntry] });
 			stubRow(agentRepository, [persistedEntry]);
-			chatService.getChatInstance.mockReturnValue({} as never);
+			chatService.isChannelLive.mockReturnValue(true);
 			chatService.connect.mockRejectedValueOnce(new Error('Slack connect failed'));
 
 			await expect(service.connect({ agent, user: user as never, integration })).rejects.toThrow(
@@ -352,7 +352,7 @@ describe('AgentIntegrationManagementService', () => {
 			stubRow(agentRepository, []);
 			// Never live: not before the connect, and gone again by the time the write
 			// finished — as if a peer's disconnect broadcast landed in between.
-			chatService.getChatInstance.mockReturnValue(undefined);
+			chatService.isChannelLive.mockReturnValue(false);
 			persistenceService.applyIntegrationDelta.mockImplementation(async () =>
 				deltaResult(agent, true),
 			);

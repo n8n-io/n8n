@@ -266,8 +266,14 @@ export abstract class AgentChatIntegration {
 	 * mains and either duplicate or get lost. Webhook-based platforms return
 	 * false so any main can answer inbound webhooks (which the load balancer
 	 * routes round-robin across all mains).
+	 *
+	 * `ingressEnabled` is passed because exclusivity can depend on it: an outbound
+	 * connection that receives nothing may well be safe on every main even when the
+	 * ingress one is not. Only the integration knows — it is the same input its
+	 * `createAdapter` uses to pick a transport — so the answer belongs here rather
+	 * than inferred by the caller.
 	 */
-	requiresLeader(): boolean {
+	requiresLeader(_options: { ingressEnabled: boolean } = { ingressEnabled: true }): boolean {
 		return false;
 	}
 
