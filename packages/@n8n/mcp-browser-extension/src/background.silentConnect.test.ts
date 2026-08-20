@@ -34,13 +34,22 @@ vi.mock('./relayConnection', () => ({
 	},
 }));
 
+type InternalMessageHandler = (
+	message: unknown,
+	sender: chrome.runtime.MessageSender,
+	sendResponse: (response: unknown) => void,
+) => unknown;
+
 const externalMessageListeners: ExternalMessageHandler[] = [];
+const internalMessageListeners: InternalMessageHandler[] = [];
 
 const chromeMock = {
 	runtime: {
 		getURL: (path: string) => `chrome-extension://testextensionid/${path}`,
 		sendMessage: vi.fn().mockResolvedValue(undefined),
-		onMessage: { addListener: vi.fn() },
+		onMessage: {
+			addListener: vi.fn((fn: InternalMessageHandler) => internalMessageListeners.push(fn)),
+		},
 		onMessageExternal: {
 			addListener: vi.fn((fn: ExternalMessageHandler) => externalMessageListeners.push(fn)),
 		},
@@ -101,18 +110,23 @@ function stubRelaySocket(opens: boolean): void {
 
 const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
 
+/** Drive a message from an extension view, which is how the connect page asks to connect. */
+async function sendFromExtensionView(message: unknown): Promise<void> {
+	for (const fn of internalMessageListeners) {
+		fn(message, {} as chrome.runtime.MessageSender, () => {});
+	}
+	await flush();
+}
+
 /** Returns a getter, since a response can be held open until the flow settles. */
 async function sendFromPage(
 	type: 'connect' | 'connectResult',
 	origin = ALLOWED_ORIGIN,
+	relayUrl = RELAY_URL,
 ): Promise<() => unknown> {
 	const holder: { value?: unknown } = {};
 	for (const fn of externalMessageListeners) {
-		fn(
-			{ type, relayUrl: RELAY_URL },
-			{ origin } as chrome.runtime.MessageSender,
-			(r) => (holder.value = r),
-		);
+		fn({ type, relayUrl }, { origin } as chrome.runtime.MessageSender, (r) => (holder.value = r));
 	}
 	await flush();
 	return () => holder.value;
@@ -175,6 +189,26 @@ describe('silent connect to an approved host', () => {
 		expect(response()).toEqual({ accepted: true, confirmationRequired: true });
 		expect(chromeMock.windows.create).toHaveBeenCalled();
 		expect(registerSelectedTabs).not.toHaveBeenCalled();
+	});
+
+	it("leaves another instance's pending flow alone when this one lands", async () => {
+		stubRelaySocket(true);
+		const otherOrigin = 'https://other.app.n8n.cloud';
+		const otherRelay = 'wss://other.app.n8n.cloud/browser-use/extension/zzz?token=bu_y';
+
+		// An unapproved instance is mid-confirmation: its popup is open and its page is
+		// holding a `connectResult` open, waiting to hear how that went.
+		await sendFromPage('connect', otherOrigin, otherRelay);
+		const otherResult = await sendFromPage('connectResult', otherOrigin, otherRelay);
+		expect(otherResult()).toBeUndefined();
+
+		// Meanwhile a connect page approves a different relay, which reaches connectToRelay
+		// without going through the supersede at the top of the external handler.
+		await sendFromExtensionView({ type: 'connect', relayUrl: RELAY_URL, selectedTabIds: [] });
+		await flush();
+
+		// Settling here would tell that page its connect failed while its popup is still up.
+		expect(otherResult()).toBeUndefined();
 	});
 
 	it('reports failure promptly instead of leaving the page waiting', async () => {

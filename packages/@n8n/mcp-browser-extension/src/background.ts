@@ -494,7 +494,9 @@ async function connectToRelay(
 		log.debug('connected, controlling', tabCount, 'tabs');
 		updateBadge(tabCount);
 		broadcastStatusChange();
-		settleConnectFlow(pendingConnectFlow?.relayUrl === relayUrl);
+		// Only our own flow: a newer request may already own the pending one, and settling it
+		// here would fail a page whose confirmation is still on screen.
+		if (pendingConnectFlow?.relayUrl === relayUrl) settleConnectFlow(true);
 		return { success: true };
 	} catch (error) {
 		log.error('connectToRelay failed:', error);
