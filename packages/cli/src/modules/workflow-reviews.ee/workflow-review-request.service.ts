@@ -835,10 +835,6 @@ export class WorkflowReviewRequestService {
 			workflowId: workflowRow.workflowId,
 			workflowVersionId: pinnedVersionId,
 			decision: dto.decision,
-			// Assignment is reported ahead of the override when both apply: the review asked
-			// this reviewer for the decision, and the override is what the rest are left with.
-			// The override is deliberately resolved pre-lock (see the note there), so this names
-			// the role that authorized the decision, not one re-asserted at commit time.
 			decidedVia: decidedAsAssignedReviewer ? 'assigned-reviewer' : 'admin-override',
 			msSinceReviewOpened: Date.now() - saved.createdAt.getTime(),
 		});

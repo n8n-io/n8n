@@ -2950,8 +2950,6 @@ describe('LogStreamingEventRelay', () => {
 			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
 		});
 
-		// Both directions, because the two policies sharing this switch are named
-		// "restricted" and therefore invert, while this one does not.
 		it('should log `workflow-reviews-policy.enabled` when workflow_reviews is turned on', () => {
 			const event: RelayEventMap['instance-policies-updated'] = {
 				user: {
@@ -3104,6 +3102,7 @@ describe('LogStreamingEventRelay', () => {
 				payload: {
 					...redactedReviewer,
 					workflowId: 'wf-1',
+					versionId: null,
 					workflowReviewRequestId: 'review-1',
 					decidedVia: 'admin-override',
 				},

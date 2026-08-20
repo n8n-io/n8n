@@ -1133,8 +1133,6 @@ export class LogStreamingEventRelay extends EventRelay {
 				// is emitted separately via 'redaction-enforcement-updated'.
 				break;
 			case 'workflow_reviews':
-				// Unlike the two policies above, this one is not named "restricted": enabling it
-				// is the enabled event.
 				void this.eventBus.sendAuditEvent({
 					eventName: value
 						? 'n8n.audit.workflow-reviews-policy.enabled'
@@ -1213,19 +1211,20 @@ export class LogStreamingEventRelay extends EventRelay {
 			payload: {
 				...user,
 				workflowId,
-				...(workflowVersionId !== null && { versionId: workflowVersionId }),
+				versionId: workflowVersionId,
 				workflowReviewRequestId,
 				decidedVia,
 			},
 		});
 	}
 
-	/** Not `@Redactable()`: no close path names a user, so there is nothing to redact. */
-	private workflowReviewClosed({
-		workflowReviewRequestId,
-		reason,
-		actorKind,
-	}: RelayEventMap['workflow-review-closed']) {
+	private workflowReviewClosed(
+		{
+			workflowReviewRequestId,
+			reason,
+			actorKind,
+		}: RelayEventMap['workflow-review-closed'] /* not `@Redactable()`: no close path names a user */,
+	) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow-review.closed',
 			payload: { workflowReviewRequestId, reason, actorKind },

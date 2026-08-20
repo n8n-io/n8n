@@ -213,7 +213,6 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 			if (closedRequestIds.length === 0) return;
 
 			for (const requestId of closedRequestIds) {
-				// No cause survived to name here, and the sweep records no actor either.
 				this.eventService.emit('workflow-review-closed', {
 					workflowReviewRequestId: requestId,
 					reason: 'no-reviewable-workflows',
@@ -244,6 +243,8 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		type: 'workflow.archived' | 'workflow.moved',
 		userId: string | null,
 	): Promise<void> {
+		const actorKind = userId === null ? 'system' : 'user';
+
 		try {
 			const { affectedWorkflowIds, closedRequestIds } = await this.dbLockService.withLockContext(
 				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
@@ -264,10 +265,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 								{
 									workflowReviewRequestId: request.id,
 									type,
-									data: {
-										workflowId: linkedWorkflowId,
-										actorKind: userId === null ? 'system' : 'user',
-									},
+									data: { workflowId: linkedWorkflowId, actorKind },
 									createdById: userId,
 								},
 								ctx,
@@ -284,13 +282,12 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 				},
 			);
 
-			// Ahead of the guard below, which is on affected workflow ids: a close is the
-			// thing being reported, and only the sweep can close without one.
+			// Ahead of the affected-ids guard below: the close is what is being reported.
 			for (const requestId of closedRequestIds) {
 				this.eventService.emit('workflow-review-closed', {
 					workflowReviewRequestId: requestId,
 					reason: type === 'workflow.archived' ? 'workflow-archived' : 'workflow-moved',
-					actorKind: userId === null ? 'system' : 'user',
+					actorKind,
 				});
 			}
 
@@ -329,22 +326,21 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 				async (ctx) => {
 					const affected = new Set<string>();
-					const closed: Array<{ requestId: string; userId: string | null }> = [];
+					const closed: Array<{ requestId: string; actorKind: 'user' | 'system' }> = [];
 					for (const [requestId, capture] of capturesByRequestId) {
 						// Cause events record into open reviews; one that closed since the
 						// capture (e.g. approved meanwhile) gets nothing.
 						const request = await this.workflowReviewRequestRepository.findById(requestId, ctx);
 						if (!request || request.state !== 'open') continue;
 
+						const actorKind = capture.userId === null ? 'system' : 'user';
+
 						for (const workflowId of capture.workflowIds) {
 							await this.activityRepository.createActivity(
 								{
 									workflowReviewRequestId: requestId,
 									type: 'workflow.deleted',
-									data: {
-										workflowId,
-										actorKind: capture.userId === null ? 'system' : 'user',
-									},
+									data: { workflowId, actorKind },
 									createdById: capture.userId,
 								},
 								ctx,
@@ -353,7 +349,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 						}
 
 						if (await this.applyClosePolicy(request, batchWorkflowIds, ctx)) {
-							closed.push({ requestId, userId: capture.userId });
+							closed.push({ requestId, actorKind });
 						}
 					}
 
@@ -361,13 +357,12 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 				},
 			);
 
-			// Ahead of the guard below, which is on affected workflow ids: a close is the
-			// thing being reported, and only the sweep can close without one.
-			for (const { requestId, userId } of closedRequests) {
+			// Ahead of the affected-ids guard below: the close is what is being reported.
+			for (const { requestId, actorKind } of closedRequests) {
 				this.eventService.emit('workflow-review-closed', {
 					workflowReviewRequestId: requestId,
 					reason: 'workflow-deleted',
-					actorKind: userId === null ? 'system' : 'user',
+					actorKind,
 				});
 			}
 

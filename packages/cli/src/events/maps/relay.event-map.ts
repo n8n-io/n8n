@@ -1,9 +1,4 @@
-import type {
-	AuthenticationMethod,
-	DecideWorkflowReviewRequestDto,
-	ProjectRelation,
-	RedactionFloor,
-} from '@n8n/api-types';
+import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
@@ -1129,16 +1124,8 @@ export type RelayEventMap = {
 		workflowId: string;
 		/** Null when the pinned version was pruned before the decision. */
 		workflowVersionId: string | null;
-		decision: DecideWorkflowReviewRequestDto['decision'];
-		/**
-		 * Which authority allowed the decision. A caller can hold both; the emit site
-		 * reports assignment, because that is what the review asked for.
-		 */
+		decision: 'approved' | 'changes_requested';
 		decidedVia: 'assigned-reviewer' | 'admin-override';
-		/**
-		 * Wall clock from `review.opened` to this decision. A review can be decided
-		 * several times: `updateVersion` resets the decision to pending.
-		 */
 		msSinceReviewOpened: number;
 	};
 
@@ -1150,11 +1137,7 @@ export type RelayEventMap = {
 	 */
 	'workflow-review-closed': {
 		workflowReviewRequestId: string;
-		/**
-		 * Deliberately not `WorkflowReviewClosedReason` from `@n8n/api-types`: that names the
-		 * activity feed's effect entry, and sharing 'no-reviewable-workflows' with it is a
-		 * coincidence rather than one vocabulary.
-		 */
+		/** Not `WorkflowReviewClosedReason`: that type names the activity feed's entry, not a cause. */
 		reason: 'workflow-archived' | 'workflow-moved' | 'workflow-deleted' | 'no-reviewable-workflows';
 		/** 'system' means no actor was recorded for the cause, not that automation acted. */
 		actorKind: 'user' | 'system';
