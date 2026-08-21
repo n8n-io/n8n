@@ -89,12 +89,15 @@ cd ./my-awesome-api-node
 npm run dev
 ```
 
-This command:
-- Starts n8n in development mode on `http://localhost:5678`
-- Enables hot reload for your node changes
-- Automatically includes your node in the n8n instance
-- Links your node to `~/.n8n-node-cli/.n8n/custom` for development
-- Watches for file changes and rebuilds automatically
+This command needs Docker or Podman — the same container engine you install n8n
+itself with. It:
+- Starts n8n in a container on `http://localhost:5678`
+- Mounts your project into the container's custom nodes directory
+- Recompiles on change and reloads your node without a restart, including icons
+  and JSON assets
+- Persists workflows and credentials in the `n8n-node-cli-data` volume
+
+Use `--external-n8n` if you would rather run n8n yourself.
 
 ### 3. Test your node
 
@@ -244,8 +247,8 @@ Choose the right template for your use case:
 
 **Node not appearing in n8n:**
 ```bash
-# Clear n8n node cli cache and restart
-rm -rf ~/.n8n-node-cli/.n8n/custom
+# Reset the dev instance's data volume and restart
+docker volume rm n8n-node-cli-data
 npm run dev
 ```
 
@@ -265,27 +268,30 @@ npm run build
 
 **Development server issues:**
 ```bash
-# Clear cache and restart development server
-rm -rf ~/.n8n-node-cli/.n8n/custom
-npm run dev
+# `n8n-node dev` needs Docker or Podman. Check the engine is running:
+docker info
+
+# Override engine detection if you use Podman, Colima, etc.
+CONTAINER_ENGINE=podman npm run dev
 ```
 
 ## 🔧 Advanced Usage
 
-### Using External n8n Instance
-
-If you prefer to use your own n8n installation:
+### Pinning the n8n Version
 
 ```bash
-npm run dev --external-n8n
+npm run dev -- --n8n-version 2.20.7
 ```
 
-### Custom User Folder
+### Using External n8n Instance
 
-Specify a custom location for n8n user data:
+If you prefer to run n8n yourself. That instance must run with
+`N8N_DEV_RELOAD=true` and `N8N_USER_FOLDER` set to the folder below:
 
 ```bash
-npm run dev --custom-user-folder /path/to/custom/folder
+npm run dev -- --external-n8n
+npm run dev -- --external-n8n --custom-user-folder /path/to/n8n/user/folder
+npm run dev -- --external-n8n --n8n-url https://dev.example.com
 ```
 
 ## 📚 Resources
