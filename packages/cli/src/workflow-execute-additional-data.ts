@@ -25,6 +25,7 @@ import type {
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteWorkflowInfo,
+	IConnections,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
@@ -42,8 +43,9 @@ import {
 	OperationalError,
 	UnexpectedError,
 	Workflow,
+	buildSubWorkflowOutputFromRunData,
+	triggerReturnsLastRunOnly,
 	createRunExecutionData,
-	mergeRunsPerBranch,
 	attachDynamicCredentialsUsage,
 	summarizeDynamicCredentialsUsage,
 } from 'n8n-workflow';
@@ -486,46 +488,30 @@ async function listAgents(userId: string): Promise<Array<{ id: string; name: str
 }
 
 /**
- * Whether the sub-workflow's `Execute Workflow Trigger` wants the legacy single-run output.
- * v1.2+ triggers always opt into the new merged-runs default;
- * pre-1.2 triggers can opt in via the `returnOutput` parameter
- * and otherwise stay on `lastRunOnly` for backward compatibility.
- * Sub-workflows without an `Execute Workflow Trigger` keep the legacy output too.
- * See n8n-io/n8n#9989
- */
-export function triggerReturnsLastRunOnly(nodes: INode[]): boolean {
-	const trigger = nodes.find((node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger');
-	const triggerVersion = trigger?.typeVersion ?? 1;
-	return triggerVersion < 1.2 && trigger?.parameters?.returnOutput !== 'allRuns';
-}
-
-/**
- * Returns the items the parent workflow gets back from the sub-workflow's last node.
- * By default, items from every run of the terminal node are concatenated per output branch.
+ * Returns the items the parent workflow gets back from the sub-workflow's terminal nodes.
+ * By default, items from every run of each terminal node are merged and flattened onto
+ * the single main output the Execute Workflow node exposes.
  * The trigger declares its preference.
  * The caller can additionally force the legacy single-run output via `returnLastRunOnly`
  * (used by LangChain tool/retriever callers that need a single-answer output).
- * Pinned data on the last node always wins in manual mode.
+ * Pinned data on a terminal node always wins in manual mode.
  * See n8n-io/n8n#9989.
  */
 export function buildSubWorkflowOutput(
 	data: IRun,
-	workflowNodes: INode[],
+	workflow: { nodes: INode[]; connections: IConnections },
 	callerReturnsLastRunOnly: boolean,
 ): Array<INodeExecutionData[] | null> {
-	const lastRunOnly = callerReturnsLastRunOnly || triggerReturnsLastRunOnly(workflowNodes);
-	const runs = WorkflowHelpers.getLastExecutedNodeRuns(data);
-	const { lastNodeExecuted, pinData = {} } = data.data.resultData;
-	const manualPinDataOverride =
-		data.mode === 'manual' &&
-		lastNodeExecuted !== undefined &&
-		pinData[lastNodeExecuted] !== undefined;
+	const lastRunOnly = callerReturnsLastRunOnly || triggerReturnsLastRunOnly(workflow.nodes);
 
-	if (!lastRunOnly && runs.length > 0 && !manualPinDataOverride) {
-		return mergeRunsPerBranch(runs);
-	}
-	return WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null];
+	return buildSubWorkflowOutputFromRunData(data.data.resultData, workflow, {
+		lastRunOnly,
+		mode: data.mode,
+		pinData: data.data.resultData.pinData,
+	});
 }
+
+export { triggerReturnsLastRunOnly } from 'n8n-workflow';
 
 async function startExecution(
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -700,7 +686,11 @@ async function startExecution(
 
 		return {
 			executionId,
-			data: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
+			data: buildSubWorkflowOutput(
+				data,
+				{ nodes: workflowData.nodes, connections: workflowData.connections },
+				options.returnLastRunOnly ?? false,
+			),
 			waitTill: data.waitTill,
 			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
 			...summarizeDynamicCredentialsUsage(data.data),
