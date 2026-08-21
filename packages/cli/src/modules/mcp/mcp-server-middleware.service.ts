@@ -100,11 +100,9 @@ export class McpServerMiddlewareService {
 
 			(req as AuthenticatedRequest).user = user;
 			const mcpReq = req as McpAuthenticatedRequest;
-			mcpReq.mcpAuthType = result.authType;
+			mcpReq.mcpCaller = result.caller;
 			// undefined for API keys = not scope-bearing → full tool access
 			mcpReq.mcpScopes = result.scopes;
-			// undefined for API keys, which are not issued to an OAuth client
-			mcpReq.mcpOauthClientId = result.oauthClientId;
 
 			next();
 		};

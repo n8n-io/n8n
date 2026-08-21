@@ -445,9 +445,9 @@ describe('OAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
-			// `oauthClientId` is the client the token was issued to, handed back so
+			// The caller carries the client the token was issued to, handed back so
 			// callers can attribute activity per client and not only per user.
-			expect(result).toEqual({ user, authType: 'oauth', scopes: [], oauthClientId: clientId });
+			expect(result).toEqual({ user, caller: { authType: 'oauth', clientId }, scopes: [] });
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { id: userId },
 				relations: ['role'],

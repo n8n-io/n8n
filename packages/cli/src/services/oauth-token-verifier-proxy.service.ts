@@ -23,6 +23,17 @@ export type Mcpauth_type = 'oauth' | 'api_key' | 'unknown';
  */
 export type McpResolvedAuthType = Exclude<Mcpauth_type, 'unknown'>;
 
+/**
+ * How an admitted caller authenticated, together with the registered OAuth
+ * client it authenticated as. The two travel as one value because they are not
+ * independent: an OAuth token is always issued to a client, and an API key
+ * never is, so no code path can report `oauth` without naming a client or
+ * attach a client to an API key.
+ */
+export type McpCallerAuth =
+	| { authType: 'oauth'; clientId: string }
+	| { authType: 'api_key'; clientId?: never };
+
 export type TelemetryAuthContext = {
 	reason: AuthFailureReason;
 	auth_type: Mcpauth_type;
@@ -33,15 +44,15 @@ export type UserWithContext = {
 	user: User | null;
 	actor?: User;
 	context?: TelemetryAuthContext;
-	authType?: McpResolvedAuthType;
+	/**
+	 * How the caller authenticated and, for OAuth, the client the token was
+	 * issued to (`client_id`), so activity can be attributed to a client and not
+	 * just to the user who authorized it. Absent on the failure paths, which
+	 * reject before a caller is admitted.
+	 */
+	caller?: McpCallerAuth;
 	/** OAuth scopes granted to the token. `undefined` = not scope-bearing (e.g. API key) → full access. */
 	scopes?: string[];
-	/**
-	 * The registered OAuth client the token was issued to (`client_id`). Absent
-	 * for API keys, which are not issued to a client. Carried so callers can
-	 * attribute activity to a client, not just to the user who authorized it.
-	 */
-	oauthClientId?: string;
 	/**
 	 * Sealable form of the gate this call was admitted by, for callers that keep
 	 * re-verifying after the resource stops resolving. Absent when the gate can't be

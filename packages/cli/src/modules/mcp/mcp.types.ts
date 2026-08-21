@@ -4,10 +4,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
-import type {
-	Mcpauth_type,
-	McpResolvedAuthType,
-} from '@/services/oauth-token-verifier-proxy.service';
+import type { Mcpauth_type, McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
@@ -140,22 +137,20 @@ export type McpClientInfo = {
 
 /**
  * What the MCP auth middleware resolved from the bearer token, carried on the
- * request for the handlers downstream of it. All three fields are absent until
- * the middleware runs, and the OAuth-only ones stay absent for API keys.
+ * request for the handlers downstream of it. Both fields are absent until the
+ * middleware runs.
  */
 export type McpAuthenticatedRequest = AuthenticatedRequest & {
-	mcpAuthType?: McpResolvedAuthType;
+	mcpCaller?: McpCallerAuth;
 	/** `undefined` = not scope-bearing (API key) → full tool access. */
 	mcpScopes?: string[];
-	/** The registered OAuth client the token was issued to. */
-	mcpOauthClientId?: string;
 };
 
 /**
  * The same resolution, in the shape the MCP server is built from. Read off the
  * request by the controller so nothing below it touches Express, and passed as
- * one object because scopes gate which tools register while the other two only
- * label the tool-call events.
+ * one object because scopes gate which tools register while the caller only
+ * labels the tool-call events.
  */
 export type McpAuthContext = {
 	/**
@@ -164,8 +159,7 @@ export type McpAuthContext = {
 	 * = not scope-bearing (API key, legacy token) → all tools register.
 	 */
 	grantedScopes: string[] | undefined;
-	authType?: McpResolvedAuthType;
-	oauthClientId?: string;
+	caller?: McpCallerAuth;
 };
 
 export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';

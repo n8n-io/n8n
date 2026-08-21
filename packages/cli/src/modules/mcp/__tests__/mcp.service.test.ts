@@ -677,8 +677,6 @@ describe('McpService', () => {
 				workflowId: 'wf-42',
 				status: 'success',
 				errorMessage: undefined,
-				authType: undefined,
-				clientId: undefined,
 				clientName: undefined,
 			});
 		});
@@ -739,8 +737,6 @@ describe('McpService', () => {
 				workflowId: undefined,
 				status: 'error',
 				errorMessage: 'boom',
-				authType: undefined,
-				clientId: undefined,
 				clientName: undefined,
 			});
 		});
@@ -844,7 +840,10 @@ describe('McpService', () => {
 				{},
 				{
 					clientInfo: { name: 'Claude', version: '1.2.3' },
-					auth: { grantedScopes: undefined, authType: 'oauth', oauthClientId: 'client-abc' },
+					auth: {
+						grantedScopes: undefined,
+						caller: { authType: 'oauth', clientId: 'client-abc' },
+					},
 				},
 			);
 
@@ -871,7 +870,12 @@ describe('McpService', () => {
 						throw new Error('boom');
 					},
 					{},
-					{ auth: { grantedScopes: undefined, authType: 'oauth', oauthClientId: 'client-abc' } },
+					{
+						auth: {
+							grantedScopes: undefined,
+							caller: { authType: 'oauth', clientId: 'client-abc' },
+						},
+					},
 				),
 			).rejects.toThrow('boom');
 
@@ -891,8 +895,7 @@ describe('McpService', () => {
 			const registrarSpy = vi.spyOn(mcpService, 'createToolRegistrar');
 			const auth = {
 				grantedScopes: undefined,
-				authType: 'oauth' as const,
-				oauthClientId: 'client-abc',
+				caller: { authType: 'oauth' as const, clientId: 'client-abc' },
 			};
 
 			await mcpService.getServer(user, mcpFeatureFlags(), { name: 'Cursor' }, auth);
@@ -910,12 +913,16 @@ describe('McpService', () => {
 				'my_tool',
 				async () => ({ content: [{ type: 'text', text: 'ok' }] }),
 				{},
-				{ auth: { grantedScopes: undefined, authType: 'api_key' } },
+				{ auth: { grantedScopes: undefined, caller: { authType: 'api_key' } } },
 			);
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'mcp-tool-called',
-				expect.objectContaining({ authType: 'api_key', clientId: undefined }),
+				expect.objectContaining({ authType: 'api_key' }),
+			);
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({ clientId: expect.anything() }),
 			);
 		});
 

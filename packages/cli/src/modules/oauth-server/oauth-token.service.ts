@@ -295,9 +295,8 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			// was just admitted by.
 			return {
 				user,
-				authType: 'oauth',
+				caller: { authType: 'oauth', clientId: authInfo.clientId },
 				scopes: authInfo.scopes,
-				oauthClientId: authInfo.clientId,
 				grant: resource?.getGrant?.(),
 			};
 		} catch (error) {

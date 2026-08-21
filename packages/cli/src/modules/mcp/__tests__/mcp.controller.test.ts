@@ -28,7 +28,7 @@ import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.
 import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
-import type { UserConnectedToMCPEventPayload } from '../mcp.types';
+import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
 // The controller wires createMcpHandler (per-request server factory) through
@@ -49,9 +49,8 @@ vi.mock('@modelcontextprotocol/node', () => ({
 }));
 
 type AuthenticatedMcpRequest = AuthenticatedRequest & {
-	mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'];
+	mcpCaller?: McpCallerAuth;
 	mcpScopes?: string[];
-	mcpOauthClientId?: string;
 };
 
 const createReq = (overrides: Partial<AuthenticatedMcpRequest> = {}): AuthenticatedMcpRequest =>
@@ -125,7 +124,7 @@ describe('McpController', () => {
 
 		await controller.build(
 			createReq({
-				mcpAuthType: 'oauth',
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
 				body: {
 					jsonrpc: '2.0',
 					method: 'initialize',
@@ -184,7 +183,7 @@ describe('McpController', () => {
 
 		await controller.build(
 			createReq({
-				mcpAuthType: 'oauth',
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
 				body: {
 					jsonrpc: '2.0',
 					method: 'initialize',
@@ -223,7 +222,7 @@ describe('McpController', () => {
 		// envelope, so the connection event must fire off that method.
 		await controller.build(
 			createReq({
-				mcpAuthType: 'oauth',
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
 				body: {
 					jsonrpc: '2.0',
 					method: 'server/discover',
@@ -311,7 +310,7 @@ describe('McpController', () => {
 			expect.objectContaining({ id: 'user-1' }),
 			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
 			{ name: 'Claude', version: '1.0.0' },
-			{ authType: undefined, grantedScopes: undefined, oauthClientId: undefined },
+			{ caller: undefined, grantedScopes: undefined },
 		);
 	});
 
@@ -344,7 +343,7 @@ describe('McpController', () => {
 			expect.objectContaining({ id: 'user-1' }),
 			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
 			undefined,
-			{ authType: undefined, grantedScopes: undefined, oauthClientId: undefined },
+			{ caller: undefined, grantedScopes: undefined },
 		);
 		// Non-initialize requests still skip telemetry tracking.
 		expect(telemetry.track).not.toHaveBeenCalled();
@@ -364,9 +363,8 @@ describe('McpController', () => {
 		await controller.build(
 			createReq({
 				body: { jsonrpc: '2.0', method: 'tools/call' },
-				mcpAuthType: 'oauth',
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
 				mcpScopes: ['workflow:read'],
-				mcpOauthClientId: 'client-abc',
 			}),
 			res,
 		);
@@ -375,7 +373,10 @@ describe('McpController', () => {
 			expect.objectContaining({ id: 'user-1' }),
 			expect.anything(),
 			undefined,
-			{ authType: 'oauth', grantedScopes: ['workflow:read'], oauthClientId: 'client-abc' },
+			{
+				caller: { authType: 'oauth', clientId: 'client-abc' },
+				grantedScopes: ['workflow:read'],
+			},
 		);
 	});
 

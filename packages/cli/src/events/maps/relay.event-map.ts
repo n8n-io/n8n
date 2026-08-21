@@ -23,7 +23,7 @@ import type {
 } from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
-import type { McpResolvedAuthType } from '@/services/oauth-token-verifier-proxy.service';
+import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -1176,30 +1176,31 @@ export type RelayEventMap = {
 		clientName?: string;
 	};
 
+	/**
+	 * `authType` reports how the call authenticated, so an absent `clientId` is
+	 * explicit rather than inferred. `api_key` covers every non-OAuth bearer
+	 * token the MCP server admits, including token-exchange scoped JWTs, which
+	 * is the same grouping the MCP connection telemetry uses.
+	 *
+	 * `clientId` is the OAuth client the call was authenticated with, as
+	 * registered with this instance. Unlike `clientName` (self-reported by the
+	 * client), it identifies the client, so it is what usage can be attributed
+	 * by. Treat it as opaque: a first-party client's id is a URL rather than a
+	 * generated id.
+	 *
+	 * The two travel paired because they are not independent: verification
+	 * rejects an OAuth token carrying no `client_id` claim, and an API key is
+	 * never issued to a client. The pair is absent only where no caller was
+	 * resolved.
+	 */
 	'mcp-tool-called': {
 		user: UserLike;
 		toolName: string;
 		workflowId?: string;
 		status: 'success' | 'error';
 		errorMessage?: string;
-		/**
-		 * How the call authenticated. Reported so an absent `clientId` is explicit
-		 * rather than inferred. `api_key` covers every non-OAuth bearer token the
-		 * MCP server admits, including token-exchange scoped JWTs, which is the
-		 * same grouping the MCP connection telemetry uses.
-		 */
-		authType?: McpResolvedAuthType;
-		/**
-		 * The OAuth client the call was authenticated with, as registered with this
-		 * instance. Present whenever `authType` is `oauth`, since verification
-		 * rejects a token carrying no `client_id` claim, and absent otherwise.
-		 * Unlike `clientName` (self-reported by the client), this identifies the
-		 * client, so it is what usage can be attributed by. Treat it as opaque: a
-		 * first-party client's id is a URL rather than a generated id.
-		 */
-		clientId?: string;
 		clientName?: string;
-	};
+	} & (McpCallerAuth | { authType?: undefined; clientId?: undefined });
 
 	'mcp-access-updated': {
 		user: UserLike;

@@ -331,8 +331,7 @@ export class McpService {
 						workflowId: workflowId ?? getWorkflowId(result?.structuredContent),
 						status,
 						errorMessage,
-						authType: auth?.authType,
-						clientId: auth?.oauthClientId,
+						...auth?.caller,
 						clientName: clientInfo?.name,
 					});
 					return result;
@@ -343,8 +342,7 @@ export class McpService {
 						workflowId,
 						status: 'error',
 						errorMessage: error instanceof Error ? error.message : String(error),
-						authType: auth?.authType,
-						clientId: auth?.oauthClientId,
+						...auth?.caller,
 						clientName: clientInfo?.name,
 					});
 					throw error;

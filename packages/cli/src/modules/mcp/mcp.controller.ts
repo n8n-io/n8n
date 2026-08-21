@@ -146,7 +146,7 @@ export class McpController {
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
 			protocol_version: getProtocolVersion(req),
-			auth_type: (req as McpAuthenticatedRequest).mcpAuthType,
+			auth_type: (req as McpAuthenticatedRequest).mcpCaller?.authType,
 		};
 
 		const enabled = await this.mcpSettingsService.getEnabled();
@@ -223,9 +223,8 @@ export class McpController {
 		);
 		const mcpReq = req as McpAuthenticatedRequest;
 		const auth: McpAuthContext = {
-			authType: mcpReq.mcpAuthType,
+			caller: mcpReq.mcpCaller,
 			grantedScopes: mcpReq.mcpScopes,
-			oauthClientId: mcpReq.mcpOauthClientId,
 		};
 
 		// The handler builds a fresh server per request (complete isolation, no

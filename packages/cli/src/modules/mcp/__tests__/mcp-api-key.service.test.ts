@@ -68,7 +68,7 @@ describe('McpServerApiKeyService', () => {
 
 			const result = await service.verifyApiKey('scoped-jwt');
 
-			expect(result.authType).toBe('api_key');
+			expect(result.caller).toEqual({ authType: 'api_key' });
 		});
 
 		it('returns a rejection context when the registry returns null', async () => {
