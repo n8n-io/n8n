@@ -21,6 +21,7 @@ import {
 	ERROR_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
+	UserError,
 	Workflow,
 	WorkflowActivationError,
 } from 'n8n-workflow';
@@ -658,8 +659,19 @@ export class WorkflowTriggerActivator {
 			}
 			deregistrationResults.forEach((result, index) => {
 				if (result.status === 'rejected') {
-					firstFailure ??= ensureError(result.reason);
-					return;
+					const error = ensureError(result.reason);
+					if (this.shouldAbandonFailedTeardown(error)) {
+						// The webhook counts as removed, so its row is cleared below
+						// instead of retained.
+						this.logger.warn('Abandoned webhook whose deregistration can never succeed', {
+							workflowId: workflow.id,
+							nodeName: webhooks[index].node,
+							error: error.message,
+						});
+					} else {
+						firstFailure ??= error;
+						return;
+					}
 				}
 				const nodeName = webhooks[index].node;
 				const pending = (pendingWebhooksByNode.get(nodeName) ?? 0) - 1;
@@ -781,11 +793,32 @@ export class WorkflowTriggerActivator {
 		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
 
 		await Promise.all(
-			triggerNodeIds.map(
-				async (nodeId) =>
-					await raceAbort(this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId), abort),
-			),
+			triggerNodeIds.map(async (nodeId) => {
+				try {
+					await raceAbort(this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId), abort);
+				} catch (error) {
+					if (!this.shouldAbandonFailedTeardown(ensureError(error))) throw error;
+					this.logger.warn('Abandoned trigger whose deregistration can never succeed', {
+						workflowId,
+						nodeId,
+						error: ensureError(error).message,
+					});
+				}
+			}),
 		);
+	}
+
+	/**
+	 * A `UserError` from teardown (e.g. a delete hook whose credential was
+	 * deleted) can never succeed on retry, so the trigger is abandoned instead
+	 * of failing the deactivation — a retained registration would only make the
+	 * publication outbox retry a teardown that is permanently broken. An abort
+	 * rejects with the abort reason, never a `UserError`, so it is never
+	 * abandoned. Transient remote failures (network errors, API rejections)
+	 * are not `UserError`s and still fail for retry.
+	 */
+	private shouldAbandonFailedTeardown(error: Error) {
+		return error instanceof UserError;
 	}
 
 	private getNonWebhookTriggerNodeIdsForNodeIds(workflow: Workflow, nodeIds: Set<INode['id']>) {

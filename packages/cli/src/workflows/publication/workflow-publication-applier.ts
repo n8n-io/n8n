@@ -180,8 +180,10 @@ export class WorkflowPublicationApplier {
 		abort.signal.throwIfAborted();
 
 		// Must happen BEFORE advancing the version, using the currently published
-		// version so the right webhooks are deregistered. A teardown failure here
-		// bubbles up so the version is not advanced.
+		// version so the right webhooks are deregistered. A retryable teardown
+		// failure bubbles up so the version is not advanced; one that can never
+		// succeed (a UserError) is abandoned inside `deactivate`, since retrying
+		// it would block this publication forever.
 		if (toRemove.size > 0 && oldVersion) {
 			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort);
 		}
@@ -244,7 +246,11 @@ export class WorkflowPublicationApplier {
 	 * clears any trigger-status rows left behind by an interrupted unpublish.
 	 *
 	 * A teardown failure bubbles up (the consumer turns it into a `failed` result)
-	 * so the mapping is only removed once teardown has succeeded.
+	 * so the mapping is only removed once teardown has succeeded. A teardown
+	 * failure that can never succeed on retry (e.g. a webhook's delete hook
+	 * needs a credential that was deleted) is abandoned inside `deactivate`
+	 * rather than surfaced — the mapping is what the reconciler treats as drift,
+	 * so such a failure would otherwise re-enqueue this unpublish forever.
 	 */
 	private async unpublish(
 		workflow: WorkflowEntity,
