@@ -3,9 +3,10 @@ import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import Dev from './index';
-import { runCommands } from './utils';
+import { runCommands, triggerReload } from './utils';
 import { setupTestPackage } from '../../test-utils/package-setup';
 import { tmpdirTest } from '../../test-utils/temp-fs';
+import { detectContainerEngine } from '../../utils/container-engine';
 import { createSymlink } from '../../utils/filesystem';
 import { onCancel } from '../../utils/prompts';
 
@@ -19,8 +20,17 @@ vi.mock('./utils', async () => {
 		sleep: vi.fn(),
 		createOpenN8nHandler: vi.fn(() => ({ key: 'o', handler: vi.fn() })),
 		buildHelpText: vi.fn(() => 'Press q to quit | o to open n8n'),
+		waitForN8n: vi.fn(async () => await Promise.resolve(true)),
+		triggerReload: vi.fn(async () => await Promise.resolve(true)),
+		watchStaticFiles: vi.fn(() => () => {}),
 	};
 });
+
+vi.mock('../../utils/container-engine', () => ({
+	detectContainerEngine: vi.fn(async () => await Promise.resolve('docker')),
+	assertEngineRunning: vi.fn(async () => await Promise.resolve()),
+	removeContainer: vi.fn(),
+}));
 
 vi.mock('../../utils/prompts', () => ({
 	onCancel: vi.fn((_msg: string, code?: number) => {
@@ -45,130 +55,124 @@ describe('dev command', () => {
 			runHook: async () => await Promise.resolve({ successes: [], failures: [] }),
 		});
 
+	const lastRunCommandsCall = () => vi.mocked(runCommands).mock.calls[0]?.[0];
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	tmpdirTest(
-		'creates symlink and starts TypeScript watcher with external-n8n flag',
-		async ({ tmpdir }) => {
-			await setupTestPackage(tmpdir, {
-				packageJson: { name: 'n8n-nodes-test' },
-			});
+	tmpdirTest('runs n8n in a container by default, without a symlink', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
 
-			const command = new Dev(['--external-n8n'], createMockConfig(tmpdir));
-			await command.run();
+		await new Dev([], createMockConfig(tmpdir)).run();
 
-			expect(createSymlink).toHaveBeenCalled();
-			expect(runCommands).toHaveBeenCalled();
+		expect(createSymlink).not.toHaveBeenCalled();
+		expect(detectContainerEngine).toHaveBeenCalled();
 
-			const calls = vi.mocked(runCommands).mock.calls[0]?.[0];
-			expect(calls?.commands).toHaveLength(1);
-			expect(calls?.commands[0]?.name).toBe('TypeScript Build (watching)');
-		},
-	);
+		const commands = lastRunCommandsCall()?.commands;
+		expect(commands).toHaveLength(2);
+		expect(commands?.[0]?.name).toBe('TypeScript Build (watching)');
 
-	tmpdirTest('starts both TypeScript watcher and n8n server by default', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir, {
-			packageJson: { name: 'n8n-nodes-test' },
-		});
-
-		const command = new Dev([], createMockConfig(tmpdir));
-		await command.run();
-
-		const calls = vi.mocked(runCommands).mock.calls[0]?.[0];
-		expect(calls?.commands).toHaveLength(2);
-		expect(calls?.commands[0]?.name).toBe('TypeScript Build (watching)');
-		expect(calls?.commands[1]?.name).toBe('n8n Server');
+		const server = commands?.[1];
+		expect(server?.cmd).toBe('docker');
+		expect(server?.args).toContain('docker.n8n.io/n8nio/n8n:latest');
+		expect(server?.args.join(' ')).toContain(
+			`${tmpdir}:/home/node/.n8n/custom/node_modules/n8n-nodes-test`,
+		);
+		expect(server?.args).toContain('N8N_DEV_RELOAD=true');
 	});
 
-	tmpdirTest('creates symlink in default custom folder location', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir, {
-			packageJson: { name: 'n8n-nodes-test' },
-		});
+	tmpdirTest('--n8n-version selects the image tag', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
 
-		const command = new Dev(['--external-n8n'], createMockConfig(tmpdir));
-		await command.run();
+		await new Dev(['--n8n-version', '2.20.7'], createMockConfig(tmpdir)).run();
 
-		const calls = vi.mocked(createSymlink).mock.calls[0];
-		expect(calls?.[0]).toContain(tmpdir.split('/').pop());
-		expect(calls?.[1]).toContain('.n8n-node-cli');
-		expect(calls?.[1]).toContain('node_modules/n8n-nodes-test');
+		expect(lastRunCommandsCall()?.commands[1]?.args).toContain('docker.n8n.io/n8nio/n8n:2.20.7');
 	});
 
-	tmpdirTest('creates symlink in custom folder when specified', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir, {
-			packageJson: { name: 'n8n-nodes-test' },
-		});
+	tmpdirTest('--n8n-image overrides --n8n-version', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
+
+		await new Dev(
+			['--n8n-image', 'n8nio/n8n:local', '--n8n-version', '2.20.7'],
+			createMockConfig(tmpdir),
+		).run();
+
+		const args = lastRunCommandsCall()?.commands[1]?.args;
+		expect(args).toContain('n8nio/n8n:local');
+		expect(args).not.toContain('docker.n8n.io/n8nio/n8n:2.20.7');
+	});
+
+	tmpdirTest('with --external-n8n only runs the watcher and symlinks', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
 
 		const customFolder = path.join(tmpdir, 'my-custom-folder');
-		const command = new Dev(['--custom-user-folder', customFolder], createMockConfig(tmpdir));
-		await command.run();
+		await new Dev(
+			['--external-n8n', '--custom-user-folder', customFolder],
+			createMockConfig(tmpdir),
+		).run();
 
-		const calls = vi.mocked(createSymlink).mock.calls[0];
-		expect(calls?.[0]).toContain(tmpdir.split('/').pop());
-		expect(calls?.[1]).toBe(
+		expect(detectContainerEngine).not.toHaveBeenCalled();
+		expect(lastRunCommandsCall()?.commands).toHaveLength(1);
+		expect(vi.mocked(createSymlink).mock.calls[0]?.[1]).toBe(
 			path.join(customFolder, '.n8n', 'custom', 'node_modules', 'n8n-nodes-test'),
 		);
 	});
 
-	tmpdirTest('validates node name before creating symlink', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir, {
-			packageJson: { name: 'invalid-node-name' },
-		});
+	tmpdirTest('--external-n8n names the required N8N_USER_FOLDER', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
 
-		const command = new Dev(['--external-n8n'], createMockConfig(tmpdir));
+		const customFolder = path.join(tmpdir, 'my-custom-folder');
+		await new Dev(
+			['--external-n8n', '--custom-user-folder', customFolder],
+			createMockConfig(tmpdir),
+		).run();
 
-		await expect(command.run()).rejects.toThrow('EEXIT');
+		expect(lastRunCommandsCall()?.headerText).toContain(`N8N_USER_FOLDER=${customFolder}`);
+	});
+
+	tmpdirTest('pushes a reload when the TypeScript build succeeds', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
+
+		await new Dev(['--external-n8n'], createMockConfig(tmpdir)).run();
+
+		const tsc = lastRunCommandsCall()?.commands[0];
+		tsc?.onOutput?.('Found 1 error. Watching for file changes.');
+		expect(triggerReload).not.toHaveBeenCalled();
+
+		tsc?.onOutput?.('Found 0 errors. Watching for file changes.');
+		expect(triggerReload).toHaveBeenCalledWith('http://localhost:5678');
+	});
+
+	tmpdirTest('offers "o" to open n8n in external mode too', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
+
+		await new Dev(['--external-n8n'], createMockConfig(tmpdir)).run();
+
+		expect(lastRunCommandsCall()?.keyHandlers).toHaveLength(1);
+	});
+
+	tmpdirTest('validates node name before doing anything', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'invalid-node-name' } });
+
+		await expect(new Dev(['--external-n8n'], createMockConfig(tmpdir)).run()).rejects.toThrow(
+			'EEXIT',
+		);
 
 		expect(onCancel).toHaveBeenCalled();
 		expect(createSymlink).not.toHaveBeenCalled();
 		expect(runCommands).not.toHaveBeenCalled();
 	});
 
-	tmpdirTest('passes correct environment to n8n server', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir, {
-			packageJson: { name: 'n8n-nodes-test' },
-		});
+	tmpdirTest('fails with an actionable error when no engine is found', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
+		vi.mocked(detectContainerEngine).mockRejectedValueOnce(
+			new Error('No container engine found — n8n-node dev needs Docker or Podman.'),
+		);
 
-		const customFolder = path.join(tmpdir, 'custom');
-		const command = new Dev(['--custom-user-folder', customFolder], createMockConfig(tmpdir));
-		await command.run();
+		await expect(new Dev([], createMockConfig(tmpdir)).run()).rejects.toThrow('EEXIT');
 
-		const calls = vi.mocked(runCommands).mock.calls[0]?.[0];
-		const n8nCommand = calls?.commands.find((c) => c.name === 'n8n Server');
-
-		expect(n8nCommand).toBeDefined();
-		expect(n8nCommand?.env).toMatchObject({
-			N8N_DEV_RELOAD: 'true',
-			N8N_USER_FOLDER: customFolder,
-		});
-	});
-
-	tmpdirTest('includes open n8n key handler when n8n is enabled', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir, {
-			packageJson: { name: 'n8n-nodes-test' },
-		});
-
-		const command = new Dev([], createMockConfig(tmpdir));
-		await command.run();
-
-		const calls = vi.mocked(runCommands).mock.calls[0]?.[0];
-		expect(calls?.keyHandlers).toBeDefined();
-		expect(calls?.keyHandlers).toHaveLength(1);
-		expect(calls?.keyHandlers?.[0]?.key).toBe('o');
-	});
-
-	tmpdirTest('includes no key handlers with external-n8n flag', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir, {
-			packageJson: { name: 'n8n-nodes-test' },
-		});
-
-		const command = new Dev(['--external-n8n'], createMockConfig(tmpdir));
-		await command.run();
-
-		const calls = vi.mocked(runCommands).mock.calls[0]?.[0];
-		expect(calls?.keyHandlers).toBeDefined();
-		expect(calls?.keyHandlers).toHaveLength(0);
+		expect(vi.mocked(onCancel).mock.calls[0]?.[0]).toContain('No container engine found');
+		expect(runCommands).not.toHaveBeenCalled();
 	});
 });
