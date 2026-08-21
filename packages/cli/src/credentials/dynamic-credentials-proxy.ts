@@ -66,6 +66,7 @@ export class DynamicCredentialsProxy
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
 	): Promise<CredentialResolutionResult> {
 		if (!this.resolvingProvider) {
 			if (credentialsResolveMetadata.isResolvable) {
@@ -81,6 +82,7 @@ export class DynamicCredentialsProxy
 			staticData,
 			executionContext,
 			workflowSettings,
+			executionId,
 		);
 	}
 

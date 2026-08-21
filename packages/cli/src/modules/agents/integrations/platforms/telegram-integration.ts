@@ -166,9 +166,12 @@ export class TelegramIntegration extends AgentChatIntegration {
 	 * In polling mode the Chat SDK adapter long-polls Telegram, which must be
 	 * done by exactly one main — otherwise multiple instances race for the same
 	 * updates. Webhook mode is safe on every main.
+	 *
+	 * Mirrors `createAdapter`, which forces webhook mode when ingress is off: an
+	 * outbound connection opens no poll loop, so it is not leader-bound.
 	 */
-	override requiresLeader(): boolean {
-		return this.getMode() === 'polling';
+	override requiresLeader({ ingressEnabled } = { ingressEnabled: true }): boolean {
+		return ingressEnabled && this.getMode() === 'polling';
 	}
 
 	/**

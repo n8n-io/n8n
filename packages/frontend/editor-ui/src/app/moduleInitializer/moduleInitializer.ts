@@ -1,5 +1,6 @@
 import { type Router } from 'vue-router';
 import {
+	assertUniqueRouteNames,
 	modalRegistry,
 	registerResource,
 	pushHandlerRegistry,
@@ -126,6 +127,8 @@ export const registerModuleCommands = () => {
  * Initialize module routes, done in main.ts
  */
 export const registerModuleRoutes = (router: Router) => {
+	assertUniqueRouteNames(modules, router);
+
 	modules.forEach((module) => {
 		module.routes?.forEach((route) => {
 			// Prepare the enhanced route with module metadata and custom middleware that checks module availability

@@ -10,6 +10,7 @@ import {
 import { Service } from '@n8n/di';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { EventService } from '@/events/event.service';
 import type { WorkflowMutationHooks } from '@/workflows/workflow-mutation-hooks-proxy.service';
 
 /** What `beforeWorkflowDeleted` captured, keyed by the workflow about to be deleted. */
@@ -52,6 +53,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		private readonly activityRepository: WorkflowReviewActivityRepository,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
+		private readonly eventService: EventService,
 	) {}
 
 	async afterWorkflowArchived(workflowId: string, userId: string | null): Promise<void> {
@@ -210,6 +212,14 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 
 			if (closedRequestIds.length === 0) return;
 
+			for (const requestId of closedRequestIds) {
+				// The sweep is the backstop, so it can recover neither the trigger nor an actor.
+				this.eventService.emit('workflow-review-closed', {
+					workflowReviewRequestId: requestId,
+					cause: { trigger: 'unknown', actorKind: 'system', userId: null },
+				});
+			}
+
 			this.logger.info('Closed open workflow review request(s) left on unreviewable workflows', {
 				workflowIds,
 				closedRequestIds,
@@ -233,8 +243,10 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		type: 'workflow.archived' | 'workflow.moved',
 		userId: string | null,
 	): Promise<void> {
+		const actorKind = userId === null ? 'system' : 'user';
+
 		try {
-			const affectedWorkflowIds = await this.dbLockService.withLockContext(
+			const { affectedWorkflowIds, closedRequestIds } = await this.dbLockService.withLockContext(
 				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 				async (ctx) => {
 					// Fetched under the lock so the close can't race a concurrent
@@ -246,16 +258,14 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 						);
 
 					const affected = new Set<string>();
+					const closedRequestIds: string[] = [];
 					for (const { request, links } of openRequests) {
 						for (const { workflowId: linkedWorkflowId } of links) {
 							await this.activityRepository.createActivity(
 								{
 									workflowReviewRequestId: request.id,
 									type,
-									data: {
-										workflowId: linkedWorkflowId,
-										actorKind: userId === null ? 'system' : 'user',
-									},
+									data: { workflowId: linkedWorkflowId, actorKind },
 									createdById: userId,
 								},
 								ctx,
@@ -263,12 +273,26 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 							affected.add(linkedWorkflowId);
 						}
 
-						await this.applyClosePolicy(request, workflowIds, ctx);
+						if (await this.applyClosePolicy(request, workflowIds, ctx)) {
+							closedRequestIds.push(request.id);
+						}
 					}
 
-					return [...affected];
+					return { affectedWorkflowIds: [...affected], closedRequestIds };
 				},
 			);
+
+			// Ahead of the affected-ids guard below: the close is what is being reported.
+			for (const requestId of closedRequestIds) {
+				this.eventService.emit('workflow-review-closed', {
+					workflowReviewRequestId: requestId,
+					cause: {
+						trigger: type === 'workflow.archived' ? 'workflow-archived' : 'workflow-moved',
+						actorKind,
+						userId,
+					},
+				});
+			}
 
 			if (affectedWorkflowIds.length === 0) return;
 
@@ -301,25 +325,29 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		batchWorkflowIds: string[],
 	): Promise<void> {
 		try {
-			const affectedWorkflowIds = await this.dbLockService.withLockContext(
+			const { affectedWorkflowIds, closedRequests } = await this.dbLockService.withLockContext(
 				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 				async (ctx) => {
 					const affected = new Set<string>();
+					const closed: Array<{
+						requestId: string;
+						actorKind: 'user' | 'system';
+						userId: string | null;
+					}> = [];
 					for (const [requestId, capture] of capturesByRequestId) {
 						// Cause events record into open reviews; one that closed since the
 						// capture (e.g. approved meanwhile) gets nothing.
 						const request = await this.workflowReviewRequestRepository.findById(requestId, ctx);
 						if (!request || request.state !== 'open') continue;
 
+						const actorKind = capture.userId === null ? 'system' : 'user';
+
 						for (const workflowId of capture.workflowIds) {
 							await this.activityRepository.createActivity(
 								{
 									workflowReviewRequestId: requestId,
 									type: 'workflow.deleted',
-									data: {
-										workflowId,
-										actorKind: capture.userId === null ? 'system' : 'user',
-									},
+									data: { workflowId, actorKind },
 									createdById: capture.userId,
 								},
 								ctx,
@@ -327,12 +355,22 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 							affected.add(workflowId);
 						}
 
-						await this.applyClosePolicy(request, batchWorkflowIds, ctx);
+						if (await this.applyClosePolicy(request, batchWorkflowIds, ctx)) {
+							closed.push({ requestId, actorKind, userId: capture.userId });
+						}
 					}
 
-					return [...affected];
+					return { affectedWorkflowIds: [...affected], closedRequests: closed };
 				},
 			);
+
+			// Ahead of the affected-ids guard below: the close is what is being reported.
+			for (const { requestId, actorKind, userId } of closedRequests) {
+				this.eventService.emit('workflow-review-closed', {
+					workflowReviewRequestId: requestId,
+					cause: { trigger: 'workflow-deleted', actorKind, userId },
+				});
+			}
 
 			if (affectedWorkflowIds.length === 0) return;
 
@@ -354,21 +392,21 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 	}
 
 	/**
-	 * Closes the request iff no linked workflow outside the affected set is reviewable.
-	 * In the cause entries' transaction on purpose: a review closed without an explanation
-	 * is worse than a close that rolls back and waits for the sweep.
+	 * Closes the request iff no linked workflow outside the affected set is reviewable, and
+	 * reports whether it did. In the cause entries' transaction on purpose: a review closed
+	 * without an explanation is worse than a close that rolls back and waits for the sweep.
 	 */
 	private async applyClosePolicy(
 		request: WorkflowReviewRequest,
 		affectedWorkflowIds: string[],
 		ctx: OperationContext,
-	): Promise<void> {
+	): Promise<boolean> {
 		const staysOpen = await this.workflowReviewRequestRepository.hasReviewableWorkflowOutside(
 			request.id,
 			affectedWorkflowIds,
 			ctx,
 		);
-		if (staysOpen) return;
+		if (staysOpen) return false;
 
 		request.state = 'closed';
 		// A system close has no closing user; the decision stays as-is.
@@ -384,6 +422,8 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 			},
 			ctx,
 		);
+
+		return true;
 	}
 
 	private broadcastReviewStateChanged(workflowIds: string[]): void {
