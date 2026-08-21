@@ -38,6 +38,22 @@ describe('registerModuleModals', () => {
 
 		expect(modalRegistry.isAdHocKey('aModalNobodyRegistered')).toBe(false);
 	});
+
+	// Post-login registration runs again after a re-login in the same page
+	// session, so replaying it must stay silent and lossless.
+	it('replays registration without warning and keeps every modal', () => {
+		const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		registerModuleModals();
+		const keysAfterFirstRun = modalRegistry.getKeys();
+
+		registerModuleModals();
+
+		expect(consoleSpy).not.toHaveBeenCalled();
+		expect(modalRegistry.getKeys()).toEqual(keysAfterFirstRun);
+
+		consoleSpy.mockRestore();
+	});
 });
 
 /**
