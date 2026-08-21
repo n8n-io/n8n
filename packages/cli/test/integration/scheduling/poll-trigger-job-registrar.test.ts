@@ -78,11 +78,11 @@ describe('PollTriggerJobRegistrar', () => {
 		// Seed a poller_state row already sitting in backoff, as it would be after a
 		// run of poll failures before the node was deactivated.
 		await pollerStateRepository.insert({ workflowId: workflow.id, nodeId: node.id, cursor: {} });
-		const futureBackoff = new Date(Date.now() + 60 * 60 * 1000);
-		await pollerStateRepository.recordFailure(workflow.id, node.id, futureBackoff);
+		await pollerStateRepository.recordFailure(workflow.id, node.id, 60 * 60 * 1000);
 
 		const failingBefore = await pollerStateRepository.findFailureState(workflow.id, node.id);
-		expect(failingBefore).toEqual({ consecutiveErrors: 1, backoffUntil: futureBackoff });
+		expect(failingBefore?.consecutiveErrors).toBe(1);
+		expect(failingBefore?.backoffUntil).toBeInstanceOf(Date);
 
 		// A previously-unprovisioned poll time, so `register()` genuinely inserts a new
 		// scheduled_job row rather than reconciling one that already existed.
@@ -109,8 +109,8 @@ describe('PollTriggerJobRegistrar', () => {
 		schedulerConfig.durableCursorsEnabled = false;
 
 		await pollerStateRepository.insert({ workflowId: workflow.id, nodeId: node.id, cursor: {} });
-		const futureBackoff = new Date(Date.now() + 60 * 60 * 1000);
-		await pollerStateRepository.recordFailure(workflow.id, node.id, futureBackoff);
+		await pollerStateRepository.recordFailure(workflow.id, node.id, 60 * 60 * 1000);
+		const failingBefore = await pollerStateRepository.findFailureState(workflow.id, node.id);
 
 		const { inserted } = await registrar.register(
 			workflow.id,
@@ -121,6 +121,6 @@ describe('PollTriggerJobRegistrar', () => {
 
 		expect(inserted).toBe(true);
 		const failureStateAfter = await pollerStateRepository.findFailureState(workflow.id, node.id);
-		expect(failureStateAfter).toEqual({ consecutiveErrors: 1, backoffUntil: futureBackoff });
+		expect(failureStateAfter).toEqual(failingBefore);
 	});
 });

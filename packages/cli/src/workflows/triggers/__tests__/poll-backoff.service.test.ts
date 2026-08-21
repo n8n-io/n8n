@@ -5,7 +5,7 @@ import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import {
-	computeBackoffUntil,
+	computeBackoffDelayMs,
 	MAX_BACKOFF_MS,
 	RETRY_AFTER_MAX_MS,
 } from '@/workflows/triggers/poll-backoff-policy';
@@ -169,16 +169,15 @@ describe('PollBackoffService', () => {
 
 			await recordFailure(service, { state });
 
-			const expectedBackoffUntil = computeBackoffUntil({
+			const expectedDelayMs = computeBackoffDelayMs({
 				type: 'transient',
 				consecutiveErrors: expectedCount,
 				retryAfterMs: null,
-				now,
 			});
 			expect(pollerStateRepository.recordFailure).toHaveBeenCalledWith(
 				'wf-1',
 				'node-1',
-				expectedBackoffUntil,
+				expectedDelayMs,
 			);
 		});
 
@@ -188,8 +187,8 @@ describe('PollBackoffService', () => {
 
 			await recordFailure(service, { state: null, error: httpError });
 
-			const [, , backoffUntil] = pollerStateRepository.recordFailure.mock.calls[0];
-			expect(backoffUntil.getTime()).toBe(now.getTime() + MAX_BACKOFF_MS);
+			const [, , delayMs] = pollerStateRepository.recordFailure.mock.calls[0];
+			expect(delayMs).toBe(MAX_BACKOFF_MS);
 		});
 
 		test('swallows and reports a failing write instead of throwing', async () => {
@@ -213,7 +212,7 @@ describe('PollBackoffService', () => {
 			expect(scopedLogger.debug).toHaveBeenCalled();
 		});
 
-		test('logs the failure class, count and deadline at warn', async () => {
+		test('logs the failure class, count and delay at warn', async () => {
 			pollerStateRepository.recordFailure.mockResolvedValue(true);
 			const service = buildService();
 
@@ -226,7 +225,7 @@ describe('PollBackoffService', () => {
 					nodeId: 'node-1',
 					consecutiveErrors: 2,
 					type: 'transient',
-					backoffUntil: expect.any(Date),
+					delayMs: expect.any(Number),
 				}),
 			);
 		});
@@ -259,16 +258,15 @@ describe('PollBackoffService', () => {
 				recordFailure(service, { state: null, error: hostileError }),
 			).resolves.toBeUndefined();
 
-			const expectedBackoffUntil = computeBackoffUntil({
+			const expectedDelayMs = computeBackoffDelayMs({
 				type: 'transient',
 				consecutiveErrors: 1,
 				retryAfterMs: null,
-				now,
 			});
 			expect(pollerStateRepository.recordFailure).toHaveBeenCalledWith(
 				'wf-1',
 				'node-1',
-				expectedBackoffUntil,
+				expectedDelayMs,
 			);
 		});
 	});

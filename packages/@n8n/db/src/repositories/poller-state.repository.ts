@@ -10,7 +10,7 @@ import { BaseRepository } from './base-repository';
 import type { PollerCursor } from '../entities/poller-state';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
-import { dbNowLiteral } from '../utils/dialect-time';
+import { dbNowLiteral, laterOfColumnAndNowPlusMsLiteral } from '../utils/dialect-time';
 
 export type { PollerCursor } from '../entities/poller-state';
 
@@ -167,25 +167,27 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 	}
 
 	/**
-	 * Increments the failure counter and sets the backoff deadline. Update-only: an upsert
-	 * would have to invent a cursor value, seeding `{}` and destroying an unmigrated node's
-	 * static-data seed. A missing row is reported as `false`, not thrown.
+	 * Increments the failure counter and pushes the backoff deadline `delayMs` out from
+	 * DB-clock now, keeping a stored deadline that already stands further out. Update-only:
+	 * an upsert would have to invent a cursor value, seeding `{}` and destroying an
+	 * unmigrated node's static-data seed. A missing row is reported as `false`, not thrown.
 	 */
 	async recordFailure(
 		workflowId: string,
 		nodeId: string,
-		backoffUntil: Date,
+		delayMs: number,
 		ctx: OperationContext = {},
 	): Promise<boolean> {
 		const result = await this.managerFor(ctx)
 			.createQueryBuilder()
 			.update(PollerState)
 			.set({
-				// Incremented in SQL rather than read-then-write, so two overlapping
-				// failing polls of the same node both count instead of one clobbering
-				// the other.
+				// Both written in SQL rather than read-then-write, so two overlapping
+				// failing polls of the same node both count and neither shortens the
+				// other's deadline.
 				consecutiveErrors: () => '"consecutiveErrors" + 1',
-				backoffUntil,
+				backoffUntil: () =>
+					laterOfColumnAndNowPlusMsLiteral(this.isPostgres, '"backoffUntil"', delayMs),
 				updatedAt: () => dbNowLiteral(this.isPostgres),
 			} as QueryDeepPartialEntity<PollerState>)
 			.where('workflowId = :workflowId AND nodeId = :nodeId', { workflowId, nodeId })

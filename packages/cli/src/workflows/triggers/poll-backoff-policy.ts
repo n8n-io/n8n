@@ -98,7 +98,8 @@ function pollFailureFromNetwork(error: unknown, now: Date): PollFailure {
 }
 
 /**
- * When the next poll may run.
+ * How long the next poll must wait, in ms. Anchored by the caller, so the
+ * database clock can be the anchor rather than this process's.
  *
  * A permanent failure starts at the ceiling instead of climbing to it, since a
  * lower plateau would back off less than an escalating transient one. A
@@ -106,17 +107,15 @@ function pollFailureFromNetwork(error: unknown, now: Date): PollFailure {
  * outright would pin a persistent failure to a fixed delay forever, and
  * ignoring it would poll again before the source said it was safe to.
  */
-export function computeBackoffUntil(args: {
+export function computeBackoffDelayMs(args: {
 	type: PollFailureType;
 	consecutiveErrors: number;
 	retryAfterMs: number | null;
-	now: Date;
-}): Date {
-	const { type, consecutiveErrors, retryAfterMs: retryAfter, now } = args;
+}): number {
+	const { type, consecutiveErrors, retryAfterMs: retryAfter } = args;
 
 	const curveMs = backoff(consecutiveErrors, { maxMs: MAX_BACKOFF_MS });
 	const floorMs = Math.min(retryAfter ?? 0, RETRY_AFTER_MAX_MS);
-	const delayMs = type === 'permanent' ? MAX_BACKOFF_MS : Math.max(curveMs, floorMs);
 
-	return new Date(now.getTime() + delayMs);
+	return type === 'permanent' ? MAX_BACKOFF_MS : Math.max(curveMs, floorMs);
 }

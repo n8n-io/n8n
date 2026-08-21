@@ -7,7 +7,7 @@ import { ErrorReporter } from 'n8n-core';
 
 import { isDurablePollerChainEnabled } from '@/scheduling/poll-trigger-node/durable-poller-chain';
 import {
-	computeBackoffUntil,
+	computeBackoffDelayMs,
 	pollFailureFromError,
 	RETRY_AFTER_MAX_MS,
 } from '@/workflows/triggers/poll-backoff-policy';
@@ -87,18 +87,9 @@ export class PollBackoffService {
 
 		try {
 			const { type, retryAfterMs, cause } = pollFailureFromError(error, now);
-			const backoffUntil = computeBackoffUntil({
-				type,
-				consecutiveErrors,
-				retryAfterMs,
-				now,
-			});
+			const delayMs = computeBackoffDelayMs({ type, consecutiveErrors, retryAfterMs });
 
-			const updated = await this.pollerStateRepository.recordFailure(
-				workflowId,
-				nodeId,
-				backoffUntil,
-			);
+			const updated = await this.pollerStateRepository.recordFailure(workflowId, nodeId, delayMs);
 
 			if (!updated) {
 				this.logger.debug('Poller state row missing while recording a poll failure', {
@@ -112,7 +103,7 @@ export class PollBackoffService {
 					type,
 					cause,
 					consecutiveErrors,
-					backoffUntil,
+					delayMs,
 				});
 			}
 		} catch (writeError) {

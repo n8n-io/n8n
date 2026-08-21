@@ -4,7 +4,7 @@ import type { INode } from 'n8n-workflow';
 import { ACTIONABLE_CAUSES, NodeApiError, NodeOperationError, TIMED_CAUSES } from 'n8n-workflow';
 
 import {
-	computeBackoffUntil,
+	computeBackoffDelayMs,
 	MAX_BACKOFF_MS,
 	pollFailureFromError,
 	RETRY_AFTER_MAX_MS,
@@ -127,7 +127,7 @@ describe('pollFailureFromError', () => {
 		['a value with surrounding whitespace', '  120  ', 120_000],
 		['an array-valued header, reading its first entry', ['120', '60'], 120_000],
 		[
-			'a very large value, uncapped here; capping is left to computeBackoffUntil',
+			'a very large value, uncapped here; capping is left to computeBackoffDelayMs',
 			'999999999',
 			999_999_999_000,
 		],
@@ -283,9 +283,7 @@ describe('pollFailureFromError', () => {
 	});
 });
 
-describe('computeBackoffUntil', () => {
-	const now = new Date('2026-08-05T12:00:00.000Z');
-
+describe('computeBackoffDelayMs', () => {
 	describe('transient', () => {
 		test.each([
 			[1, backoff(1, { maxMs: MAX_BACKOFF_MS })],
@@ -294,75 +292,69 @@ describe('computeBackoffUntil', () => {
 		])(
 			'grows exponentially with the failure count (attempt %d)',
 			(consecutiveErrors, expectedMs) => {
-				const until = computeBackoffUntil({
+				const delayMs = computeBackoffDelayMs({
 					type: 'transient',
 					consecutiveErrors,
 					retryAfterMs: null,
-					now,
 				});
 
-				expect(until.getTime()).toBe(now.getTime() + expectedMs);
+				expect(delayMs).toBe(expectedMs);
 			},
 		);
 
 		test('caps the curve at MAX_BACKOFF_MS under a long failure streak', () => {
-			const until = computeBackoffUntil({
+			const delayMs = computeBackoffDelayMs({
 				type: 'transient',
 				consecutiveErrors: 50,
 				retryAfterMs: null,
-				now,
 			});
 
-			expect(until.getTime()).toBe(now.getTime() + MAX_BACKOFF_MS);
+			expect(delayMs).toBe(MAX_BACKOFF_MS);
 		});
 
 		test('keeps the curve when Retry-After asks for less than it', () => {
 			const curveMs = backoff(1, { maxMs: MAX_BACKOFF_MS });
 
-			const until = computeBackoffUntil({
+			const delayMs = computeBackoffDelayMs({
 				type: 'transient',
 				consecutiveErrors: 1,
 				retryAfterMs: curveMs - 1_000,
-				now,
 			});
 
-			expect(until.getTime()).toBe(now.getTime() + curveMs);
+			expect(delayMs).toBe(curveMs);
 		});
 
 		test('raises the delay to Retry-After when it asks for more than the curve', () => {
-			const until = computeBackoffUntil({
+			const delayMs = computeBackoffDelayMs({
 				type: 'transient',
 				consecutiveErrors: 1,
 				retryAfterMs: 120_000,
-				now,
 			});
 
-			expect(until.getTime()).toBe(now.getTime() + 120_000);
+			expect(delayMs).toBe(120_000);
 		});
 
 		test('caps a Retry-After ask at RETRY_AFTER_MAX_MS, which may exceed MAX_BACKOFF_MS', () => {
-			const until = computeBackoffUntil({
+			const delayMs = computeBackoffDelayMs({
 				type: 'transient',
 				consecutiveErrors: 1,
 				retryAfterMs: RETRY_AFTER_MAX_MS * 2,
-				now,
 			});
 
-			expect(until.getTime()).toBe(now.getTime() + RETRY_AFTER_MAX_MS);
+			expect(delayMs).toBe(RETRY_AFTER_MAX_MS);
 			expect(RETRY_AFTER_MAX_MS).toBeGreaterThan(MAX_BACKOFF_MS);
 		});
 
 		test.each([0, -1])(
 			'resolves to now itself when consecutiveErrors is %d and there is no Retry-After',
 			(consecutiveErrors) => {
-				const until = computeBackoffUntil({
+				const delayMs = computeBackoffDelayMs({
 					type: 'transient',
 					consecutiveErrors,
 					retryAfterMs: null,
-					now,
 				});
 
-				expect(until.getTime()).toBe(now.getTime());
+				expect(delayMs).toBe(0);
 			},
 		);
 	});
@@ -371,26 +363,24 @@ describe('computeBackoffUntil', () => {
 		test.each([1, 100])(
 			'sits at MAX_BACKOFF_MS from the first failure regardless of the count (attempt %d)',
 			(consecutiveErrors) => {
-				const until = computeBackoffUntil({
+				const delayMs = computeBackoffDelayMs({
 					type: 'permanent',
 					consecutiveErrors,
 					retryAfterMs: null,
-					now,
 				});
 
-				expect(until.getTime()).toBe(now.getTime() + MAX_BACKOFF_MS);
+				expect(delayMs).toBe(MAX_BACKOFF_MS);
 			},
 		);
 
 		test('ignores a Retry-After value even when it asks for more than MAX_BACKOFF_MS', () => {
-			const until = computeBackoffUntil({
+			const delayMs = computeBackoffDelayMs({
 				type: 'permanent',
 				consecutiveErrors: 1,
 				retryAfterMs: RETRY_AFTER_MAX_MS,
-				now,
 			});
 
-			expect(until.getTime()).toBe(now.getTime() + MAX_BACKOFF_MS);
+			expect(delayMs).toBe(MAX_BACKOFF_MS);
 		});
 	});
 });
