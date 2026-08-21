@@ -6774,6 +6774,7 @@
 	"instanceAi.workflowOverview.triggerSeparator": "or",
 	"instanceAi.workflowOverview.resultSeparator": "and",
 	"instanceAi.workflowOverview.empty": "Not defined yet",
+	"instanceAi.workflowOverview.provisional": "Drafting…",
 	"instanceAi.workflowOverview.emptyState": "No overview for this workflow yet. Generate one from its current structure.",
 	"instanceAi.workflowOverview.generate": "Generate overview",
 	"instanceAi.workflowOverview.generating": "Generating overview…",

@@ -33,6 +33,8 @@ export interface StreamRunOptions {
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
 	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
 	outputRedaction?: RedactionOptions | false;
+	/** Raw-chunk tap forwarded to the stream executor (must never throw). */
+	observeChunk?: (chunk: unknown) => void;
 }
 
 export interface StreamRunResult {
@@ -89,6 +91,7 @@ async function consumeStream(
 			onActivity: options.onActivity,
 			stopSignal: options.stopSignal,
 			outputRedaction: options.outputRedaction,
+			observeChunk: options.observeChunk,
 		},
 		control: { mode: 'manual' },
 		initialAgentRunId: options.agentRunId,

@@ -108,6 +108,8 @@ import {
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
 	WorkflowOverviewSidecar,
+	WorkflowBuildStreamObserver,
+	renderBuildInProgressFacts,
 	type WorkflowOverviewBundle,
 } from '@n8n/instance-ai';
 import type { Scope } from '@n8n/permissions';
@@ -148,6 +150,7 @@ import {
 import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
+import { InstanceAiNodeMetaAdapter } from './instance-ai-node-meta.adapter';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
@@ -796,6 +799,7 @@ export class InstanceAiService {
 		private readonly creditService: InstanceAiCreditService,
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
+		private readonly nodeMetaAdapter: InstanceAiNodeMetaAdapter,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -3898,6 +3902,9 @@ export class InstanceAiService {
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
 
+			// T4 sidecar tap: overview refreshes from workflow code while it streams.
+			const buildStreamObserver = this.createWorkflowBuildStreamObserver(user, threadId, runId);
+
 			streamReached = true;
 			const result = tracing
 				? await tracing.withActiveSpan(tracing.actorRun, async () => {
@@ -3911,6 +3918,7 @@ export class InstanceAiService {
 							onActivity: () => this.runState.touchActiveRun(threadId),
 							stopSignal,
 							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+							observeChunk: (chunk) => buildStreamObserver?.observe(chunk),
 						});
 					})
 				: await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
@@ -3923,6 +3931,7 @@ export class InstanceAiService {
 						onActivity: () => this.runState.touchActiveRun(threadId),
 						stopSignal,
 						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+						observeChunk: (chunk) => buildStreamObserver?.observe(chunk),
 					});
 			if (result.status === 'suspended') {
 				// finalizeRun only fires on terminal outcomes; record suspended-segment usage here.
@@ -5234,6 +5243,13 @@ export class InstanceAiService {
 			const runControl = createOrchestratorRunControlForState(opts.runHandoff);
 			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
 
+			// T4 sidecar tap — resumed passes can start builds too (e.g. after plan approval).
+			const buildStreamObserver = this.createWorkflowBuildStreamObserver(
+				opts.user,
+				opts.threadId,
+				opts.runId,
+			);
+
 			const result = opts.tracing
 				? await opts.tracing.withActiveSpan(opts.tracing.actorRun, async () => {
 						return await resumeAgentRun(agent, resumeData, resumeOptions, {
@@ -5247,6 +5263,7 @@ export class InstanceAiService {
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
 							stopSignal,
 							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+							observeChunk: (chunk) => buildStreamObserver?.observe(chunk),
 						});
 					})
 				: await resumeAgentRun(agent, resumeData, resumeOptions, {
@@ -5260,6 +5277,7 @@ export class InstanceAiService {
 						onActivity: () => this.runState.touchActiveRun(opts.threadId),
 						stopSignal,
 						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
+						observeChunk: (chunk) => buildStreamObserver?.observe(chunk),
 					});
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
@@ -6526,6 +6544,10 @@ export class InstanceAiService {
 			latestUserMessage?: string;
 			qaAnswers?: Array<{ question: string; answer: string }>;
 			includePlan?: boolean;
+			/** Rendered `<build-in-progress>` facts from code still being written (T4 stream). */
+			buildInProgressFacts?: string;
+			/** Publish the overview as provisional (cleared by the next terminal refresh). */
+			provisional?: boolean;
 		},
 	): Promise<void> {
 		try {
@@ -6561,6 +6583,7 @@ export class InstanceAiService {
 				modelId,
 				source: extras.source,
 				userId: user.id,
+				...(extras.provisional ? { provisional: true } : {}),
 				bundle: {
 					conversation,
 					...(extras.latestUserMessage ? { latestUserMessage: extras.latestUserMessage } : {}),
@@ -6568,6 +6591,9 @@ export class InstanceAiService {
 						? { qaAnswers: extras.qaAnswers }
 						: {}),
 					...(planTaskSpec ? { planTaskSpec } : {}),
+					...(extras.buildInProgressFacts
+						? { buildInProgressFacts: extras.buildInProgressFacts }
+						: {}),
 					...(builtWorkflowSummary ? { builtWorkflowSummary } : {}),
 				},
 			});
@@ -6576,6 +6602,64 @@ export class InstanceAiService {
 				threadId,
 				error: getErrorMessage(error),
 			});
+		}
+	}
+
+	/**
+	 * Raw-chunk tap for one stream pass: watches workflow source code streaming
+	 * through build-tool arguments and refreshes the overview panel from the
+	 * partial code (T4-stream, provisional), then again — authoritatively —
+	 * once a build-workflow call saves (T4-complete). One instance per stream
+	 * pass; re-emissions across resumed passes are absorbed by the sidecar's
+	 * bundle-hash dedupe.
+	 *
+	 * PoC note: emissions are fire-and-forget, so two refreshes racing through
+	 * the async bundle assembly can, rarely, reach the sidecar out of order —
+	 * the stability prompt + only-on-change publishing make that benign.
+	 */
+	private createWorkflowBuildStreamObserver(
+		user: User,
+		threadId: string,
+		runId: string,
+	): WorkflowBuildStreamObserver | undefined {
+		// Fail-soft like the sidecar itself: the observer is decoration on the
+		// critical streaming path — a construction failure only loses the live
+		// overview refresh, never the run.
+		try {
+			return new WorkflowBuildStreamObserver({
+				logger: this.logger,
+				onFacts: (facts) => {
+					const buildInProgressFacts = renderBuildInProgressFacts(facts, this.nodeMetaAdapter);
+					if (!buildInProgressFacts) return;
+					// Info on purpose (PoC diagnostics): proves partial code is being
+					// observed while the build tool call is still streaming.
+					this.logger.info('Workflow overview build-stream facts observed', {
+						threadId,
+						runId,
+						nodeCount: facts.nodeTypes.length,
+					});
+					void this.refreshWorkflowOverview(user, threadId, runId, {
+						source: 't4-build-stream',
+						buildInProgressFacts,
+						provisional: true,
+					});
+				},
+				onWorkflowSaved: () => {
+					this.logger.info('Workflow overview build-complete refresh', { threadId, runId });
+					// Authoritative pass: workflow-loop records exist by now, so the
+					// bundle picks up builtWorkflowSummary; also clears `provisional`.
+					void this.refreshWorkflowOverview(user, threadId, runId, {
+						source: 't4-build-complete',
+					});
+				},
+			});
+		} catch (error) {
+			this.logger.warn('Failed to create build-stream overview observer', {
+				threadId,
+				runId,
+				error: getErrorMessage(error),
+			});
+			return undefined;
 		}
 	}
 

@@ -36,6 +36,7 @@ import type * as EvalAgentsMod from './utils/eval-agents';
 import type * as StreamHelpersMod from './utils/stream-helpers';
 import type * as WorkflowLoopMod from './workflow-loop';
 import type * as WorkflowLoopRuntimeMod from './workflow-loop/runtime';
+import type * as BuildStreamObserverMod from './workflow-overview/build-stream-observer';
 import type * as ResultFactsMod from './workflow-overview/result-facts';
 import type * as TriggerFactsMod from './workflow-overview/trigger-facts';
 import type * as WorkflowOverviewGeneratorMod from './workflow-overview/workflow-overview-generator';
@@ -130,6 +131,9 @@ const loadSummarizeWorkflow = lazyModule(
 );
 const loadTriggerFacts = lazyModule(
 	() => require('./workflow-overview/trigger-facts') as typeof TriggerFactsMod,
+);
+const loadBuildStreamObserver = lazyModule(
+	() => require('./workflow-overview/build-stream-observer') as typeof BuildStreamObserverMod,
 );
 const loadResultFacts = lazyModule(
 	() => require('./workflow-overview/result-facts') as typeof ResultFactsMod,
@@ -409,6 +413,17 @@ export const formatTriggersPane: typeof TriggerFactsMod.formatTriggersPane = laz
 export const triggerPaneClauses: typeof TriggerFactsMod.triggerPaneClauses = lazyFunction(
 	() => loadTriggerFacts().triggerPaneClauses,
 );
+export type {
+	BuildStreamFacts,
+	WorkflowBuildStreamObserverDeps,
+} from './workflow-overview/build-stream-observer';
+export type WorkflowBuildStreamObserver = BuildStreamObserverMod.WorkflowBuildStreamObserver;
+export const WorkflowBuildStreamObserver: typeof BuildStreamObserverMod.WorkflowBuildStreamObserver =
+	lazyClass(() => loadBuildStreamObserver().WorkflowBuildStreamObserver);
+export const extractBuildStreamFacts: typeof BuildStreamObserverMod.extractBuildStreamFacts =
+	lazyFunction(() => loadBuildStreamObserver().extractBuildStreamFacts);
+export const renderBuildInProgressFacts: typeof BuildStreamObserverMod.renderBuildInProgressFacts =
+	lazyFunction(() => loadBuildStreamObserver().renderBuildInProgressFacts);
 export type {
 	ResultExtraction,
 	ResultFact,

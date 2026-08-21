@@ -33,6 +33,12 @@ export interface WorkflowOverviewBundle {
 	qaAnswers?: Array<{ question: string; answer: string }>;
 	/** Executor briefing spec of the plan's single build-workflow task. */
 	planTaskSpec?: string;
+	/**
+	 * Structural facts extracted live from workflow code the assistant is
+	 * writing RIGHT NOW (tool-call args still streaming). Partial by nature —
+	 * more nodes may still be added. Plan subject only.
+	 */
+	buildInProgressFacts?: string;
 	/** Compact facts about a workflow already built in this thread, if any. */
 	builtWorkflowSummary?: string;
 	/**
@@ -107,10 +113,11 @@ const PLAN_INSTRUCTIONS = [
 	'It reads as a plan, not as a description of something that already exists.',
 	'',
 	'Evidence priority — higher entries win on any conflict:',
-	'1. <built-workflow> facts about an already-built workflow',
-	'2. <plan-task-spec> the approved or proposed plan briefing',
-	'3. <qa-answers> explicit answers the user just gave',
-	'4. <conversation> and <latest-user-message>',
+	'1. <build-in-progress> nodes detected in workflow code the assistant is writing right now',
+	'2. <built-workflow> facts about an already-built workflow',
+	'3. <plan-task-spec> the approved or proposed plan briefing',
+	'4. <qa-answers> explicit answers the user just gave',
+	'5. <conversation> and <latest-user-message>',
 	'',
 	'Rules:',
 	'- One short sentence per pane, written in the language the user writes in.',
@@ -118,7 +125,9 @@ const PLAN_INSTRUCTIONS = [
 	'- Use "" for a pane the conversation has not determined yet. Never invent details.',
 	// Plan-mode only: prevents rephrasing churn across conversation turns.
 	// Workflow mode deliberately re-derives from structure instead (see below).
-	"- Stability: given <previous-overview>, keep each pane's wording UNCHANGED unless newer evidence contradicts or fills it.",
+	"- Stability: given <previous-overview>, keep each pane's wording UNCHANGED unless newer evidence contradicts, fills, or REFINES it.",
+	'- <build-in-progress>, when present, is authoritative for what the workflow will contain but INCOMPLETE while code is still being written: never conclude something is missing because it is absent there, and ground pane wording in the listed nodes plus the conversation intent.',
+	'- Refinement: <build-in-progress> and <built-workflow> count as newer evidence. When they name concrete services, destinations, or schedules, rewrite the affected pane to be more specific (e.g. "Sends a notification" becomes "Posts the summary to Slack"). Mere confirmation without new detail is not a change.',
 	...SHARED_RULES,
 	'- skip=true when the conversation is not about building/editing one workflow, when it coordinates multiple workflows, or when no pane would change. With skip=true set every pane to "".',
 ].join('\n');
@@ -228,6 +237,12 @@ function renderBundle(bundle: WorkflowOverviewBundle): string {
 	if (bundle.planTaskSpec) {
 		sections.push(
 			`<plan-task-spec>\n${clip(bundle.planTaskSpec, MAX_SECTION_CHARS)}\n</plan-task-spec>`,
+		);
+	}
+
+	if (bundle.buildInProgressFacts) {
+		sections.push(
+			`<build-in-progress>\n${clip(bundle.buildInProgressFacts, MAX_SECTION_CHARS)}\n</build-in-progress>`,
 		);
 	}
 

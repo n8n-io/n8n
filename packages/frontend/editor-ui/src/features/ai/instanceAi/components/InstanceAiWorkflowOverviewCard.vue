@@ -46,6 +46,13 @@ const panes = computed<OverviewPane[]>(() => [
 			<N8nHeading tag="h3" size="small" :class="$style.title">
 				{{ i18n.baseText('instanceAi.workflowOverview.title') }}
 			</N8nHeading>
+			<span
+				v-if="overview.provisional"
+				:class="$style.provisional"
+				data-test-id="instance-ai-workflow-overview-provisional"
+			>
+				{{ i18n.baseText('instanceAi.workflowOverview.provisional') }}
+			</span>
 		</div>
 		<div :class="$style.panes">
 			<div
@@ -88,10 +95,19 @@ const panes = computed<OverviewPane[]>(() => [
 	padding: 0 var(--spacing--2xs);
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
 }
 
 .title {
 	color: var(--text-color--subtle);
+}
+
+.provisional {
+	font-size: var(--font-size--2xs);
+	font-style: italic;
+	color: var(--text-color--subtle);
+	flex-shrink: 0;
 }
 
 .panes {

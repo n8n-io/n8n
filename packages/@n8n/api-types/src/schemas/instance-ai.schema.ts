@@ -542,6 +542,12 @@ export const workflowOverviewSchema = z.object({
 	 * stays the joined-sentence fallback for consumers that don't.
 	 */
 	resultClauses: z.array(z.string()).optional(),
+	/**
+	 * Transient rendering hint: the overview was derived from workflow code the
+	 * assistant is still writing, so panes may change once the build completes.
+	 * Set only on live sidecar updates — never persisted with stored overviews.
+	 */
+	provisional: z.boolean().optional(),
 });
 
 export type WorkflowOverview = z.infer<typeof workflowOverviewSchema>;

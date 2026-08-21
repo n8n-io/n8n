@@ -25,6 +25,12 @@ export interface WorkflowOverviewRefreshArgs {
 	source?: string;
 	/** User the refresh runs for — tracing metadata only. */
 	userId?: string;
+	/**
+	 * Marks the published overview as provisional (grounded in code still being
+	 * written). The next non-provisional refresh republishes the overview with
+	 * the flag cleared even when no pane changed.
+	 */
+	provisional?: boolean;
 	/** Bundle WITHOUT previousOverview — the sidecar injects its own last-published state. */
 	bundle: Omit<WorkflowOverviewBundle, 'previousOverview'>;
 }
@@ -33,6 +39,8 @@ interface ThreadOverviewState {
 	inFlight: boolean;
 	lastBundleHash?: string;
 	lastOverview?: WorkflowOverview;
+	/** Whether the currently shown overview was published as provisional. */
+	lastProvisional?: boolean;
 	pending?: WorkflowOverviewRefreshArgs;
 }
 
@@ -114,41 +122,73 @@ export class WorkflowOverviewSidecar {
 
 		while (args) {
 			state.pending = undefined;
+			const provisional = args.provisional === true;
 			const bundle: WorkflowOverviewBundle = {
 				...args.bundle,
 				previousOverview: state.lastOverview ?? null,
 			};
 
+			let overview: WorkflowOverview | null = null;
 			const bundleHash = JSON.stringify(bundle);
 			if (bundleHash !== state.lastBundleHash) {
 				state.lastBundleHash = bundleHash;
-				const { threadId } = args;
-				const overview = await generate(args, bundle, {
+				const { threadId, source } = args;
+				overview = await generate(args, bundle, {
 					onFailure: (reason, detail) => {
-						this.deps.logger.debug('Workflow overview generation yielded no result', {
+						// Info on purpose (PoC diagnostics): tells "model skipped" apart
+						// from "panes identical" when a refresh yields no visible update.
+						this.deps.logger.info('Workflow overview generation yielded no result', {
 							threadId,
+							source,
 							reason,
 							...(detail ? { detail } : {}),
 						});
 					},
 				});
+			}
 
-				const changed =
-					overview !== null &&
-					(state.lastOverview === undefined ||
-						serializeOverview(overview) !== serializeOverview(state.lastOverview));
-				if (changed) {
-					state.lastOverview = overview;
-					this.deps.publish(args.threadId, {
-						type: 'workflow-overview-update',
-						runId: args.runId,
-						agentId: args.agentId,
-						payload: { overview },
-					});
-				}
+			if (
+				overview !== null &&
+				(state.lastOverview === undefined ||
+					serializeOverview(overview) !== serializeOverview(state.lastOverview))
+			) {
+				// `lastOverview` stays flag-free: it feeds previousOverview prompts
+				// and the change compare; `provisional` is publish-time decoration.
+				state.lastOverview = overview;
+				state.lastProvisional = provisional;
+				this.publishOverview(args, overview, provisional, 'panes-changed');
+			} else if (state.lastOverview && (state.lastProvisional === true) !== provisional) {
+				// Panes unchanged (generation skipped, deduped, or repeated itself)
+				// but the provisional STATE flipped — republish so the UI shows the
+				// lifecycle: promote to "drafting" when a build starts streaming,
+				// demote back once a terminal refresh confirms the panes.
+				state.lastProvisional = provisional;
+				this.publishOverview(args, state.lastOverview, provisional, 'provisional-flag');
 			}
 
 			args = state.pending;
 		}
+	}
+
+	private publishOverview(
+		args: WorkflowOverviewRefreshArgs,
+		overview: WorkflowOverview,
+		provisional: boolean,
+		cause: 'panes-changed' | 'provisional-flag',
+	): void {
+		// Info on purpose (PoC diagnostics): publishes are rare and this is the
+		// one place that proves the whole refresh pipeline end-to-end.
+		this.deps.logger.info('Workflow overview published', {
+			threadId: args.threadId,
+			source: args.source,
+			provisional,
+			cause,
+		});
+		this.deps.publish(args.threadId, {
+			type: 'workflow-overview-update',
+			runId: args.runId,
+			agentId: args.agentId,
+			payload: { overview: provisional ? { ...overview, provisional: true } : overview },
+		});
 	}
 }

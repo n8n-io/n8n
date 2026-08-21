@@ -42,6 +42,13 @@ export interface ResumableStreamContext {
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
 	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
 	outputRedaction?: RedactionOptions | false;
+	/**
+	 * Optional tap invoked with every raw agent chunk this pass consumes,
+	 * before event mapping/redaction (not during abort drain). Lets hosts
+	 * observe chunk types the event pipeline drops, e.g. `tool-input-delta`
+	 * for the workflow-overview build stream. Contract: must never throw.
+	 */
+	observeChunk?: (chunk: unknown) => void;
 }
 
 export interface ManualSuspensionControl {
@@ -383,6 +390,7 @@ async function consumeStreamPass(args: {
 
 		options.context.onActivity?.();
 		usageAccumulator.observe(chunk);
+		options.context.observeChunk?.(chunk);
 
 		if (isRecord(chunk) && chunk.type === 'start-step') {
 			nativeStepIndex += 1;

@@ -311,7 +311,12 @@ function describeGenericTrigger(
 	return { clause: `on ${service} events`, exact: false };
 }
 
-function isTriggerType(type: string): boolean {
+/**
+ * Name-based trigger heuristic (known core ids + the `*Trigger` type-name
+ * convention) — the fallback when no {@link TriggerNodeMetaProvider} verdict
+ * is available. Shared with the build-stream facts extractor.
+ */
+export function isTriggerType(type: string): boolean {
 	if (type in DESCRIBERS) return true;
 	const bare = type.split('.').pop() ?? type;
 	return /Trigger$/.test(bare);
