@@ -15,6 +15,7 @@ describe('getAdditionalKeys', () => {
 		formWaitingBaseUrl: 'https://form.test',
 		variables: { testVar: 'value' },
 		externalSecretsProxy,
+		rootExecutionMode: undefined,
 	});
 	additionalData.externalSecretProviderKeysAccessibleByCredential =
 		providerKeysAccessibleByCredential;
@@ -132,6 +133,27 @@ describe('getAdditionalKeys', () => {
 
 	it('should return test mode when manual', () => {
 		const result = getAdditionalKeys(additionalData, 'manual', null);
+
+		expect(result.$execution?.mode).toBe('test');
+	});
+
+	it('should return test mode for a sub-workflow whose root execution is manual', () => {
+		const subWorkflowData = { ...additionalData, rootExecutionMode: 'manual' as const };
+		const result = getAdditionalKeys(subWorkflowData, 'integrated', null);
+
+		expect(result.$execution?.mode).toBe('test');
+	});
+
+	it('should return production mode for a sub-workflow whose root execution is production', () => {
+		const subWorkflowData = { ...additionalData, rootExecutionMode: 'trigger' as const };
+		const result = getAdditionalKeys(subWorkflowData, 'integrated', null);
+
+		expect(result.$execution?.mode).toBe('production');
+	});
+
+	it('should return test mode for an internal execution whose root execution is manual', () => {
+		const subWorkflowData = { ...additionalData, rootExecutionMode: 'manual' as const };
+		const result = getAdditionalKeys(subWorkflowData, 'internal', null);
 
 		expect(result.$execution?.mode).toBe('test');
 	});
