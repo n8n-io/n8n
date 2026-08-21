@@ -290,7 +290,7 @@ const setupAction = z.object({
 			z.object({
 				credentialType: z
 					.string()
-					.describe('n8n credential type name (e.g. "slackApi", "gmailOAuth2Api")'),
+					.describe('n8n credential type name (e.g. "slackApi", "gmailOAuth2")'),
 				reason: z.string().optional().describe('Why this credential is needed (shown to user)'),
 				suggestedName: z
 					.string()

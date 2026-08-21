@@ -148,8 +148,12 @@ export const projectsRoutes: RouteRecordRaw[] = [
 											(p) => p.id === options?.to.params.projectId,
 										);
 										const permissions = getResourcePermissions(project?.scopes);
+										// Mirrors ProjectHeader's showSettings: any one section's
+										// scope is enough to enter the settings page.
 										return (
-											!!permissions.project.update || !!permissions.externalSecretsProvider.read
+											!!permissions.project.update ||
+											!!permissions.project.manageMembers ||
+											!!permissions.externalSecretsProvider.read
 										);
 									},
 								},

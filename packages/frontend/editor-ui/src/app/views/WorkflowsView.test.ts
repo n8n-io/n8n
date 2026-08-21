@@ -14,7 +14,6 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import WorkflowsView from '@/app/views/WorkflowsView.vue';
 import { STORES } from '@n8n/stores';
@@ -23,14 +22,6 @@ import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
-
-const { workflowReviewsEnabled } = vi.hoisted(() => ({
-	workflowReviewsEnabled: { value: false },
-}));
-
-vi.mock('@/features/workflow-reviews/composables/useWorkflowReviewsFeature', () => ({
-	useWorkflowReviewsFeature: () => ({ isWorkflowReviewsEnabled: workflowReviewsEnabled }),
-}));
 
 vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
@@ -526,60 +517,6 @@ describe('Folders', () => {
 			updatedAt: new Date().toISOString(),
 		},
 	};
-
-	describe('review card statuses', () => {
-		beforeEach(() => {
-			workflowReviewsEnabled.value = true;
-			router.resolve = vi.fn().mockResolvedValue({ href: '/projects/1/folders/1' });
-			foldersStore.totalWorkflowCount = 2;
-			workflowsListStore.fetchActiveWorkflows.mockResolvedValue([]);
-		});
-
-		afterEach(() => {
-			workflowReviewsEnabled.value = false;
-		});
-
-		it('fetches one status batch with only the visible workflow ids', async () => {
-			const reviewStatusStore = mockedStore(useWorkflowReviewStatusStore);
-			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
-				TEST_WORKFLOW_RESOURCE,
-				TEST_FOLDER_RESOURCE,
-				{ ...TEST_WORKFLOW_RESOURCE, id: '3', name: 'Workflow 3' },
-			]);
-
-			renderComponent({ pinia });
-			await waitAllPromises();
-
-			expect(reviewStatusStore.fetchReviewStatuses).toHaveBeenCalledExactlyOnceWith([
-				TEST_WORKFLOW_RESOURCE.id,
-				'3',
-			]);
-		});
-
-		it('makes no review request when the feature is disabled', async () => {
-			workflowReviewsEnabled.value = false;
-			const reviewStatusStore = mockedStore(useWorkflowReviewStatusStore);
-			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
-
-			renderComponent({ pinia });
-			await waitAllPromises();
-
-			expect(reviewStatusStore.fetchReviewStatuses).not.toHaveBeenCalled();
-		});
-
-		it.each([
-			{ name: 'an empty page', resources: [] as WorkflowListResource[] },
-			{ name: 'a folders-only page', resources: [TEST_FOLDER_RESOURCE] },
-		])('makes no review request for $name', async ({ resources }) => {
-			const reviewStatusStore = mockedStore(useWorkflowReviewStatusStore);
-			workflowsListStore.fetchWorkflowsPage.mockResolvedValue(resources);
-
-			renderComponent({ pinia });
-			await waitAllPromises();
-
-			expect(reviewStatusStore.fetchReviewStatuses).not.toHaveBeenCalled();
-		});
-	});
 
 	it('should render workflow and folder cards', async () => {
 		// mock router resolve:
