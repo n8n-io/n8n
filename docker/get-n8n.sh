@@ -12,7 +12,7 @@
 # Source: https://github.com/n8n-io/n8n/blob/master/docker/get-n8n.sh
 set -eu
 
-SCRIPT_VERSION="1.1.0"
+SCRIPT_VERSION="1.2.0"
 # The version to install is derived from the latest stable GitHub release in
 # resolve_n8n_version(); this fallback only applies when that lookup fails.
 FALLBACK_N8N_VERSION="2.32.0"
@@ -203,8 +203,6 @@ write_env() {
 # n8n version to run. 'get-n8n.sh --upgrade' updates this line and nothing else.
 N8N_VERSION=${INSTALL_VERSION}
 
-N8N_ENABLED_MODULES=instance-ai
-
 # Code-node user code (JavaScript and Python) runs in the separate 'runners'
 # container. The broker binds 0.0.0.0 so that container can reach it — its
 # port (5679) stays private to the compose network.
@@ -288,24 +286,43 @@ compose() {
 	docker compose -f "${N8N_DIR}/compose.yml" "$@"
 }
 
-# For compose commands that pull images: Docker Hub's anonymous pull rate
-# limit is a common first-run failure, so turn it into recovery advice
-# instead of a raw error dump.
+# Docker Hub's anonymous pull rate limit is a common first-run failure, so
+# turn it into recovery advice instead of a raw error dump. Consumes the log.
+check_rate_limit() {
+	grep -qiE 'toomanyrequests|rate ?limit' "$1" || return 0
+	rm -f "$1"
+	fail "Docker Hub pull rate limit reached — your configuration in ${N8N_DIR} is
+  unaffected. Wait about an hour, then start n8n with:
+    docker compose -f ${N8N_DIR}/compose.yml up -d
+  Or 'docker login' with a Docker Hub account to raise the limit and re-run."
+}
+
+# Pull attached to the terminal so compose renders its in-place progress bars
+# (capturing the output would drop compose into plain line mode). On failure,
+# retry quietly to get the error text for classification — a rate-limited pull
+# fails again instantly, a transient blip just succeeds on the retry.
+compose_pull() {
+	compose pull && return 0
+	log="$(mktemp)"
+	if compose pull -q >"$log" 2>&1; then
+		rm -f "$log"
+		return 0
+	fi
+	check_rate_limit "$log"
+	rm -f "$log"
+	fail "pulling images failed — see the output above; check your network and re-run."
+}
+
+# Quiet on success — compose's per-container status lines are only shown
+# when something went wrong.
 compose_checked() {
 	log="$(mktemp)"
 	if compose "$@" >"$log" 2>&1; then
-		cat "$log"
 		rm -f "$log"
 		return 0
 	fi
 	cat "$log" >&2
-	if grep -qiE 'toomanyrequests|rate ?limit' "$log"; then
-		rm -f "$log"
-		fail "Docker Hub pull rate limit reached — your configuration in ${N8N_DIR} is
-  unaffected. Wait about an hour, then start n8n with:
-    docker compose -f ${N8N_DIR}/compose.yml up -d
-  Or 'docker login' with a Docker Hub account to raise the limit and re-run."
-	fi
+	check_rate_limit "$log"
 	rm -f "$log"
 	fail "starting n8n failed — check 'docker compose -f ${N8N_DIR}/compose.yml logs'."
 }
@@ -335,7 +352,8 @@ do_upgrade() {
 		exit 0
 	fi
 
-	compose_checked pull -q
+	say "Pulling images..."
+	compose_pull
 	compose_checked up -d --quiet-pull
 	ok "Restarted with n8n ${target}"
 }
@@ -365,8 +383,7 @@ Config files:      ${N8N_DIR}/compose.yml, ${N8N_DIR}/.env
 
 To stop:      docker compose -f ${N8N_DIR}/compose.yml down
 To upgrade:   curl -fsSL https://get.n8n.io | sh -s -- --upgrade
-To uninstall: docker compose -f ${N8N_DIR}/compose.yml down -v   # -v DELETES all n8n data
-              rm -rf ${N8N_DIR}
+To uninstall: docker compose -f ${N8N_DIR}/compose.yml down -v && rm -rf ${N8N_DIR}   # DELETES all n8n data
 
 Security notes:
   - Only port ${N8N_PORT} (n8n) should ever be reachable from the internet.
@@ -376,6 +393,8 @@ This setup is meant to try n8n locally. For production (TLS, Postgres, queue
 mode) see ${DOCS_HOSTING_URL}
 
 get-n8n.sh v${SCRIPT_VERSION} — source: ${SOURCE_URL}
+
+Open http://localhost:${N8N_PORT} in your browser to get started.
 EOF
 }
 
@@ -429,7 +448,8 @@ main() {
 		exit 0
 	fi
 
-	say "Pulling images and starting (this can take a few minutes on first run)..."
+	say "Pulling images (this can take a few minutes on first run)..."
+	compose_pull
 	compose_checked up -d --quiet-pull
 	ok "Started n8n ${INSTALL_VERSION} and sandbox services"
 	wait_for_n8n || fail "n8n did not become ready — check 'docker compose -f ${N8N_DIR}/compose.yml logs n8n'."

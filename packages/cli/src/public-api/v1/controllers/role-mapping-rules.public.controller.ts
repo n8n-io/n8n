@@ -4,6 +4,7 @@ import {
 	RoleMappingRuleListPublicDto,
 	RoleMappingRuleListQueryPublicDto,
 	RoleMappingRulePublicDto,
+	UpdateRoleMappingRulePublicDto,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -17,6 +18,7 @@ import {
 	Body,
 	Get,
 	Param,
+	Patch,
 	Post,
 	PublicApiController,
 	Query,
@@ -125,6 +127,33 @@ export class RoleMappingRulesPublicController {
 		const rule = await this.roleMappingRuleService.move({
 			id: roleMappingRuleId,
 			targetIndex: body.targetIndex,
+			userId: req.user.id,
+			userEmail: req.user.email,
+		});
+
+		return toRoleMappingRulePublicDto(rule);
+	}
+
+	@Patch('/:roleMappingRuleId')
+	@ApiKeyScope('roleMappingRule:update')
+	@ApiSummary('Update a role-mapping rule')
+	@ApiDescription(
+		"Updates a rule's claim expression, role, and/or project assignments. A rule's type cannot be changed once created, so `type` isn't accepted here, and reordering is handled by the move endpoint.",
+	)
+	@ApiTags(['RoleMappingRule'])
+	@ApiResponse(200, RoleMappingRulePublicDto)
+	@ApiErrorResponse(404)
+	async updateRoleMappingRule(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('roleMappingRuleId') roleMappingRuleId: string,
+		@Body body: UpdateRoleMappingRulePublicDto,
+	): Promise<RoleMappingRulePublicDto> {
+		this.assertProvisioningLicensed();
+
+		const rule = await this.roleMappingRuleService.patch({
+			id: roleMappingRuleId,
+			dto: body,
 			userId: req.user.id,
 			userEmail: req.user.email,
 		});

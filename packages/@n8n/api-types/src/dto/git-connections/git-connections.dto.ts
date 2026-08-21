@@ -64,3 +64,16 @@ export class GitConnectionListPublicDto extends Z.class({
 	data: z.array(gitConnectionSummarySchema),
 	nextCursor: z.string().nullable(),
 }) {}
+
+export const gitConnectionProjectPublicSchema = z.object({
+	projectId: z.string(),
+	gitConnectionId: z.string(),
+});
+
+export class GitConnectionProjectPublicDto extends Z.class(
+	gitConnectionProjectPublicSchema.shape,
+) {}
+
+export class GitConnectionProjectListPublicDto extends Z.class({
+	projectIds: z.array(z.string()),
+}) {}

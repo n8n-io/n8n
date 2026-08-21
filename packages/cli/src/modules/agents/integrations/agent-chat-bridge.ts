@@ -240,12 +240,13 @@ export class AgentChatBridge {
 		this.chat.onNewMention(async (thread, message) => {
 			try {
 				if (!this.canUserAccess(message.author)) return;
+				const anchoredThread = this.anchorInboundThread(thread, message);
 				const shouldSubscribe =
 					this.integrationImpl?.shouldSubscribeToNewMention?.({ thread, message }) ?? true;
 				if (shouldSubscribe) {
-					await thread.subscribe();
+					await anchoredThread.subscribe();
 				}
-				await this.executeAndStream(thread, message, { isNewMention: true });
+				await this.executeAndStream(anchoredThread, message, { isNewMention: true });
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -254,7 +255,8 @@ export class AgentChatBridge {
 		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
 				if (!this.canUserAccess(message.author)) return;
-				await this.executeAndStream(thread, message, { isNewMention: false });
+				const anchoredThread = this.anchorInboundThread(thread, message);
+				await this.executeAndStream(anchoredThread, message, { isNewMention: false });
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -272,6 +274,20 @@ export class AgentChatBridge {
 
 	private canUserAccess(author: Author): boolean {
 		return this.integrationImpl?.isUserAllowed?.(author, this.integration) ?? true;
+	}
+
+	/**
+	 * Re-anchor an inbound conversation at the message's own thread on platforms
+	 * where a top-level post arrives through the channel-level pseudo-thread
+	 * (e.g. a Slack channel message). Conversation-scoped DMs and group DMs stay
+	 * on their inbound thread so Agent-view chat remains one session.
+	 */
+	private anchorInboundThread(thread: Thread, message: Message): Thread {
+		const anchored = this.integrationImpl?.messageThreadId?.(
+			{ id: message.id, threadId: thread.id, raw: message.raw },
+			{ inbound: true },
+		);
+		return anchored ? this.chat.thread(anchored) : thread;
 	}
 
 	// ---------------------------------------------------------------------------
@@ -321,10 +337,17 @@ export class AgentChatBridge {
 		const platformThreadId = this.resolvePlatformThreadId(thread);
 		const threadId = this.toAgentThreadId(platformThreadId);
 		const resourceId = integrationMemoryResourceId(this.integration.type, message.author.userId);
+		// If this thread was established by an outbound task send, continue that
+		// task's session instead of starting a fresh one. Attachments are stored
+		// on the execution thread so file-store hydration (scoped to
+		// persistence.threadId) can load them. The Slack reply thread is unchanged.
+		const sessionOrigin = await this.messageContextBridge.resolveSession(threadId.id);
+		const memoryThreadId = sessionOrigin ? toInternalThreadId(sessionOrigin.threadId) : threadId;
+		const memoryResourceId = sessionOrigin?.resourceId ?? resourceId;
 		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
 			inboundAttachments,
-			threadId.id,
-			resourceId,
+			memoryThreadId.id,
+			memoryResourceId,
 		);
 		const statusRetry = new AbortController();
 		const replyExpectation =
@@ -351,13 +374,30 @@ export class AgentChatBridge {
 				this.messageContextBridge.resolveSubject(message),
 			]);
 			statusHandle = onceStatusHandle(bridgeExecutionContext.statusHandle);
-			await this.messageContextBridge.updateLatest(threadId.id, message.author.userId, thread, {
+			const latestContextOptions = {
 				messageId: message.id,
 				interactingUserId: message.author.userId,
 				...bridgeExecutionContext.platformAgentContext,
 				subject,
 				replyExpectation,
-			});
+			};
+			await this.messageContextBridge.updateLatest(
+				threadId.id,
+				message.author.userId,
+				thread,
+				latestContextOptions,
+			);
+			// Tools look up context on persistence.threadId (the execution
+			// session). When a bound reply continues a task, that is the origin
+			// thread, not the Slack thread — store this turn there too.
+			if (memoryThreadId.id !== threadId.id) {
+				await this.messageContextBridge.updateLatest(
+					memoryThreadId.id,
+					memoryResourceId,
+					thread,
+					latestContextOptions,
+				);
+			}
 			// threadId.id is agent-prefixed for observation storage; resourceId keeps
 			// the platform user identity so episodic recall works across threads for
 			// the same user while staying isolated between users.
@@ -372,8 +412,8 @@ export class AgentChatBridge {
 				message: agentInput,
 				attachments: attachments.length > 0 ? attachments : undefined,
 				memory: {
-					threadId,
-					resourceId,
+					threadId: memoryThreadId,
+					resourceId: memoryResourceId,
 				},
 				integrationType: this.integration.type,
 				sandboxPrincipalHash: hashAgentSandboxPrincipal({

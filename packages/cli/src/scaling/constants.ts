@@ -43,6 +43,10 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'relay-instance-ai-task-control',
 	'agent-chat-subscription-changed',
 	'agent-chat-integration-changed',
+	// Correlated request/response pairs: the subscriber debounces by command name,
+	// so debouncing would collapse concurrent requests (or their acks) into one.
+	'agent-chat-leader-channel-request',
+	'agent-chat-leader-channel-result',
 	'cancel-test-run',
 	'stop-execution',
 	'display-workflow-activation',

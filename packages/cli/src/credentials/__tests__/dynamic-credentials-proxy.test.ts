@@ -89,6 +89,7 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				undefined,
 				undefined,
+				undefined,
 			);
 		});
 
@@ -120,6 +121,7 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				executionContext,
 				workflowSettings,
+				undefined,
 			);
 		});
 	});

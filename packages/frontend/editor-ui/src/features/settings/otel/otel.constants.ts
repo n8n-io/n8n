@@ -1,5 +1,13 @@
 export const OTEL_STORE = 'otel';
 
+/**
+ * Route name for the OpenTelemetry settings page. Owned by this module rather
+ * than by the shared `VIEWS` enum, so the module can be packaged without the
+ * shell holding one of its identifiers. The value is unchanged, so existing
+ * URLs and telemetry keep resolving.
+ */
+export const OTEL_SETTINGS_VIEW = 'SettingsOpenTelemetryView';
+
 /** Name of the span emitted by the "Send test trace" button — shown in the result copy. */
 export const OTEL_TEST_SPAN_NAME = 'n8n.test_trace';
 
