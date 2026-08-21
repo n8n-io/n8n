@@ -4,6 +4,7 @@ import type { EvalLogger } from '../harness/logger';
 import type {
 	BuildExpectationResult,
 	ContextAssertion,
+	MemoryExpectation,
 	TranscriptTurn,
 	WorkflowTestCase,
 } from '../types';
@@ -65,7 +66,7 @@ export function selectAuthorExpectations(args: SelectAuthorExpectationsArgs): {
 	expectations: string[];
 	/** Expectations for the context-state judge, which grades them against the
 	 *  captured run debug rather than the transcript. */
-	memoryExpectations: string[];
+	memoryExpectations: Array<string | MemoryExpectation>;
 	/** Deterministic context claims, checked by substring search rather than judged.
 	 *  Gated exactly like memoryExpectations: both need captured run debug. */
 	contextAssertions: ContextAssertion[];
@@ -114,7 +115,7 @@ export function selectAuthorExpectations(args: SelectAuthorExpectationsArgs): {
 				...asMemoryVerdicts(
 					allFailVerdicts(
 						[
-							...(testCase.memoryExpectations ?? []),
+							...memoryTexts(testCase.memoryExpectations),
 							...contextAssertionLabels(testCase.contextAssertions),
 						],
 						NO_AGENT_OUTPUT_REASON,
@@ -137,7 +138,10 @@ export function selectAuthorExpectations(args: SelectAuthorExpectationsArgs): {
 	const authoredMemory = testCase.memoryExpectations ?? [];
 	const authoredAssertions = testCase.contextAssertions ?? [];
 	if ((authoredMemory.length > 0 || authoredAssertions.length > 0) && isPrebuilt) {
-		const ungraded = [...authoredMemory, ...contextAssertionLabels(authoredAssertions)];
+		const ungraded = [
+			...memoryTexts(authoredMemory),
+			...contextAssertionLabels(authoredAssertions),
+		];
 		logger.warn(
 			`  Prebuilt/MCP build — leaving ${String(ungraded.length)} context check(s) ungraded; this run ran no instance-ai thread`,
 		);
@@ -157,6 +161,12 @@ export function selectAuthorExpectations(args: SelectAuthorExpectationsArgs): {
 		transcript,
 		unjudged: [],
 	};
+}
+
+/** Claim text only, for the paths that just need labels — a claim may be a bare string
+ *  or an object carrying its anchor. */
+function memoryTexts(claims: Array<string | MemoryExpectation> | undefined): string[] {
+	return (claims ?? []).map((claim) => (typeof claim === 'string' ? claim : claim.text));
 }
 
 /** Verdict labels for assertions, matching what `checkContextAssertions` produces, so

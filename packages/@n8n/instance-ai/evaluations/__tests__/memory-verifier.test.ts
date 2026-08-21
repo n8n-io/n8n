@@ -136,3 +136,102 @@ describe('verifyMemoryExpectations', () => {
 		]);
 	});
 });
+
+describe('anchored claims', () => {
+	/** Probe and turn-end differ: the value appears only in the second run's later step. */
+	function twoRunDebug(): InstanceAiRunDebugResponse[] {
+		return [
+			{
+				threadId: 'thread-1',
+				runId: 'run-1',
+				startedAt: 1,
+				steps: [{ stepNumber: 1, input: { system: 'carried in' } }],
+				workflowCode: [],
+			},
+			{
+				threadId: 'thread-1',
+				runId: 'run-2',
+				startedAt: 2,
+				steps: [
+					{ stepNumber: 1, input: { system: 'at the probe' } },
+					{ stepNumber: 2, input: { system: 'fetched while answering' } },
+				],
+				workflowCode: [],
+			},
+		];
+	}
+
+	it('runs one judge call per anchor, each with its own context block', async () => {
+		// Two anchors must not share a block: handing the judge both would put it back to
+		// guessing which snapshot a claim meant, which is what the anchor removes.
+		const generate: GenerateMock = vi.fn().mockResolvedValue({
+			structuredOutput: { results: [{ index: 0, pass: true, reason: 'found' }] },
+		});
+		mockJudge(generate);
+
+		await verifyMemoryExpectations(
+			[
+				{ text: 'the rule survived', anchor: 'probe' },
+				{ text: 'the sibling was fetched', anchor: 'turn-end' },
+			],
+			twoRunDebug(),
+		);
+
+		expect(generate).toHaveBeenCalledTimes(2);
+		const blocks = generate.mock.calls.map((call) => JSON.stringify(call[0]));
+		expect(blocks.some((b) => b.includes('as the graded request ARRIVED'))).toBe(true);
+		expect(blocks.some((b) => b.includes('at the END of the graded turn'))).toBe(true);
+	});
+
+	it('makes one call when every claim shares an anchor', async () => {
+		const generate: GenerateMock = vi.fn().mockResolvedValue({
+			structuredOutput: {
+				results: [
+					{ index: 0, pass: true, reason: 'a' },
+					{ index: 1, pass: true, reason: 'b' },
+				],
+			},
+		});
+		mockJudge(generate);
+
+		await verifyMemoryExpectations(['first', 'second'], twoRunDebug());
+
+		expect(generate).toHaveBeenCalledTimes(1);
+	});
+
+	it('returns verdicts in the order the case wrote them, not grouped by anchor', async () => {
+		// Grouping reorders internally; a case reads its verdicts against its own list.
+		const generate: GenerateMock = vi.fn().mockImplementation(async (messages: unknown) => {
+			const turnEnd = JSON.stringify(messages).includes('at the END of the graded turn');
+			return await Promise.resolve({
+				structuredOutput: {
+					results: [{ index: 0, pass: true, reason: turnEnd ? 'from turn-end' : 'from probe' }],
+				},
+			});
+		});
+		mockJudge(generate);
+
+		const verdicts = await verifyMemoryExpectations(
+			[
+				{ text: 'claim A', anchor: 'turn-end' },
+				{ text: 'claim B', anchor: 'probe' },
+				{ text: 'claim C', anchor: 'turn-end' },
+			],
+			twoRunDebug(),
+		);
+
+		expect(verdicts.map((v) => v.expectation)).toEqual(['claim A', 'claim B', 'claim C']);
+		expect(verdicts[1].reason).toBe('from probe');
+	});
+
+	it('treats a bare string as probe-anchored', async () => {
+		const generate: GenerateMock = vi.fn().mockResolvedValue({
+			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+		});
+		mockJudge(generate);
+
+		await verifyMemoryExpectations(['a plain claim'], twoRunDebug());
+
+		expect(JSON.stringify(generate.mock.calls[0][0])).toContain('as the graded request ARRIVED');
+	});
+});

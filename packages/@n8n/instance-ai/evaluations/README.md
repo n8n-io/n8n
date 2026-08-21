@@ -344,6 +344,43 @@ execution or table schema — is still found rather than reported missing. That 
 the judge off the load-bearing path for exactly the claims where a wrong verdict
 would be most misleading.
 
+### Pick the anchor: what the agent carried in, or what it went and fetched
+
+Both `memoryExpectations` and `contextAssertions` take an optional `anchor`:
+
+| `anchor` | Graded against | Use it for |
+|---|---|---|
+| `probe` (default) | State when the request arrived, before the agent produced anything | **Retention** — "a fact from an earlier turn survived to here" |
+| `turn-end` | State at the end of the turn | **Within-turn retrieval** — "the agent fetched the sibling workflow it needed" |
+
+```json
+"memoryExpectations": [
+  { "text": "the agent's context holds the retrieved sibling workflow's node detail",
+    "anchor": "turn-end" }
+],
+"contextAssertions": [
+  { "text": "#ops-escalations", "note": "stated three turns ago" }
+]
+```
+
+A bare string is equivalent to `{ "text": …, "anchor": "probe" }`, so existing cases are
+unchanged.
+
+**Getting this wrong is silent, and it is why the field exists.** Tool calls land on step
+2 and later; the probe snapshot is step 1. So a retrieval claim graded at the probe
+**fails every time regardless of whether retrieval worked** — the anchor excludes the
+very thing the claim is about. That happened for real: the cross-workflow case showed a
+judged expectation passing on *"the agent called `workflows(action='get')` on two
+workflow IDs"* while the memory expectation failed with *"the raw message window contains
+no tool calls or results retrieving any existing workflow's node details"*. Both graders
+were right; the claim was anchored at the wrong moment, and the case's classification
+flipped from `context-ignored` to `retrieval-gap` — inverting what the result implied
+about where to spend effort.
+
+Claims are grouped by anchor and judged one call per group, each with its own context
+block, so the judge is never asked to guess which moment a claim meant. Verdicts come
+back in the order the case wrote them.
+
 Three rules, all learned from a real run.
 
 **Assert atomic values** (`triggerAtHour`, `#ops-alerts`, `external_id`), not

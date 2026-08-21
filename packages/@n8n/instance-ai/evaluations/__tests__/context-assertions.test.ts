@@ -257,3 +257,102 @@ describe('deep values inside large tool payloads', () => {
 		expect(v.reason).toContain('still present');
 	});
 });
+
+describe('anchor selection', () => {
+	/** Two runs: the value arrives only in the SECOND run's later step — i.e. the agent
+	 *  fetched it after the request landed. That is the shape every within-turn
+	 *  retrieval has, and the shape the probe anchor structurally cannot see. */
+	const fetchedDuringTurn: InstanceAiRunDebugResponse[] = [
+		{
+			threadId: 't1',
+			runId: 'r1',
+			startedAt: 1,
+			steps: [
+				{
+					stepNumber: 1,
+					input: { system: 'sys', messages: [{ role: 'user', content: 'build me a sync' }] },
+				},
+			],
+			workflowCode: [],
+		},
+		{
+			threadId: 't1',
+			runId: 'r2',
+			startedAt: 2,
+			steps: [
+				// The probe: the request has arrived, nothing fetched yet.
+				{
+					stepNumber: 1,
+					input: { system: 'sys', messages: [{ role: 'user', content: 'match the siblings' }] },
+				},
+				// Then the agent goes and gets it.
+				{
+					stepNumber: 2,
+					input: {
+						system: 'sys',
+						messages: [
+							{
+								role: 'assistant',
+								content: [
+									{
+										type: 'tool-result',
+										toolName: 'workflows',
+										output: { retryOnFail: 'maxTries-3' },
+									},
+								],
+							},
+						],
+					},
+				},
+			],
+			workflowCode: [],
+		},
+	];
+
+	it('sees a within-turn fetch when anchored at turn end', () => {
+		const [v] = checkContextAssertions(
+			[{ text: 'maxTries-3', anchor: 'turn-end' }],
+			fetchedDuringTurn,
+		);
+		expect(v.pass).toBe(true);
+		expect(v.reason).toContain('by the end of the turn');
+		// Not called retention: a fetch is a different thing from having carried it in.
+		expect(v.reason).not.toContain('retained');
+	});
+
+	it('cannot see the same fetch at the probe, and says why', () => {
+		// The regression this guards: grading a retrieval claim at the probe fails every
+		// time regardless of whether retrieval worked, because tool calls land later.
+		const [v] = checkContextAssertions([{ text: 'maxTries-3' }], fetchedDuringTurn);
+		expect(v.pass).toBe(false);
+		expect(v.reason).toContain('NOT retained');
+	});
+
+	it('defaults to the probe anchor when none is given', () => {
+		const [probe] = checkContextAssertions([{ text: 'maxTries-3' }], fetchedDuringTurn);
+		const [explicit] = checkContextAssertions(
+			[{ text: 'maxTries-3', anchor: 'probe' }],
+			fetchedDuringTurn,
+		);
+		expect(probe.pass).toBe(explicit.pass);
+		expect(probe.reason).toBe(explicit.reason);
+	});
+
+	it('labels a turn-end claim so the verdict is not ambiguous', () => {
+		const [v] = checkContextAssertions(
+			[{ text: 'maxTries-3', anchor: 'turn-end' }],
+			fetchedDuringTurn,
+		);
+		expect(v.expectation).toContain('[by turn end]');
+	});
+
+	it('honours must-NOT-appear at turn end', () => {
+		// A stale value the agent re-fetched is still present, and must fail.
+		const [v] = checkContextAssertions(
+			[{ text: 'maxTries-3', mustAppear: false, anchor: 'turn-end' }],
+			fetchedDuringTurn,
+		);
+		expect(v.pass).toBe(false);
+		expect(v.reason).toContain('still present at the end of the turn');
+	});
+});

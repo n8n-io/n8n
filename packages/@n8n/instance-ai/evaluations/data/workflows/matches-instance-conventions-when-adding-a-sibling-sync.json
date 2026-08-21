@@ -1,5 +1,5 @@
 {
-	"description": "Cross-workflow context: the instance already carries ten workflows in one obvious house style — names prefixed '[Ops] <Domain> — <Action>', every schedule at 06:00, every outbound fetch with retryOnFail and maxTries 3, and every failure routed to a Slack node named 'Notify Ops' posting to #ops-alerts. The live turn asks for one more sync of exactly the same kind and deliberately states NONE of those conventions, so the only way to match them is to read the sibling workflows off the instance. The seeded conversation is a two-line greeting that carries no convention detail, so nothing about the house style is recoverable from the conversation. EXPECTED TO FAIL TODAY: this is a baseline for context work, not a regression guard — a build that ignores its siblings is the finding. Harness note: restore appends ' [seed <hex>]' to every seeded workflow name, so the naming convention here is a PREFIX and the case never grades the tail of a name; the other three conventions are structural and unaffected. NOT YET CALIBRATED against a real build.",
+	"description": "Cross-workflow context: the instance already carries ten workflows in one obvious house style — names prefixed '[Ops] <Domain> — <Action>', every schedule at 06:00, every outbound fetch with retryOnFail and maxTries 3, and every failure routed to a Slack node named 'Notify Ops' posting to #ops-alerts. The live turn asks for one more sync of exactly the same kind and deliberately states NONE of those conventions, so the only way to match them is to read the sibling workflows off the instance. The seeded conversation is a two-line greeting that carries no convention detail, so nothing about the house style is recoverable from the conversation. EXPECTED TO FAIL TODAY: this is a baseline for context work, not a regression guard — a build that ignores its siblings is the finding. Harness note: restore appends ' [seed <hex>]' to every seeded workflow name, so the naming convention here is a PREFIX and the case never grades the tail of a name; the other three conventions are structural and unaffected. NOT YET CALIBRATED against a real build.\n\nBoth memory claims are anchored at TURN END, not at the probe. They are about context the agent goes and fetches during the graded turn, and retrieval happens after the request arrives — so grading them at the probe would fail every time regardless of whether retrieval worked.",
 	"seed": {
 		"mode": "inline",
 		"messages": [
@@ -1115,8 +1115,14 @@
 		"The workflow routes fetch failures to a Slack node named 'Notify Ops' posting to the #ops-alerts channel, matching how every other [Ops] workflow handles failure — not to a different channel, a different node name, or no failure path at all."
 	],
 	"memoryExpectations": [
-		"The agent's context state contains the actual content of at least one existing [Ops] workflow — node names, node types or parameters such as the 06:00 schedule, the retry settings, or the #ops-alerts channel. A bare list of workflow names is NOT sufficient: the conventions live in the node detail, so a context state holding only names means the house style was never actually retrieved.",
-		"The retrieved sibling content is an [Ops] sync workflow of the same kind as the one being built, not an unrelated workflow — so what reached the context was the right precedent to copy rather than whatever happened to be listed first."
+		{
+			"text": "The agent's context state contains the actual content of at least one existing [Ops] workflow — node names, node types or parameters such as the 06:00 schedule, the retry settings, or the #ops-alerts channel. A bare list of workflow names is NOT sufficient: the conventions live in the node detail, so a context state holding only names means the house style was never actually retrieved.",
+			"anchor": "turn-end"
+		},
+		{
+			"text": "The retrieved sibling content is an [Ops] sync workflow of the same kind as the one being built, not an unrelated workflow — so what reached the context was the right precedent to copy rather than whatever happened to be listed first.",
+			"anchor": "turn-end"
+		}
 	],
 	"datasets": ["memory"]
 }
