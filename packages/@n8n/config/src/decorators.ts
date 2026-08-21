@@ -23,16 +23,22 @@ const readEnv = (envName: string) => {
 	const filePath = process.env[`${envName}_FILE`];
 	if (filePath) {
 		const value = readFileSync(filePath, 'utf8');
-		if (value !== value.trim()) {
+		// File contents commonly carry a trailing newline (e.g. `echo value > file`)
+		const trimmed = value.trim();
+		if (value !== trimmed) {
 			console.warn(
-				`[n8n] Warning: The file specified by ${envName}_FILE contains leading or trailing whitespace, which may cause authentication failures.`,
+				`[n8n] Warning: The file specified by ${envName}_FILE contained leading or trailing whitespace; the value was trimmed.`,
 			);
 		}
-		return value;
+		return trimmed;
 	}
 
 	return undefined;
 };
+
+// Env values commonly carry stray whitespace or surrounding quotes (e.g. compose env_file,
+// `echo value > file`); strip both so parsing doesn't silently fall back to the default value.
+const normalizeEnvValue = (value: string) => value.trim().replace(/^(['"])(.*)\1$/, '$2');
 
 export const Config: ClassDecorator = (ConfigClass: Class) => {
 	const factory = function (...args: unknown[]) {
@@ -52,7 +58,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 				if (value === undefined) continue;
 
 				if (schema) {
-					const result = schema.safeParse(value);
+					const result = schema.safeParse(normalizeEnvValue(value));
 					if (result.error) {
 						console.warn(
 							`Invalid value for ${envName} - ${result.error.issues[0].message}. Falling back to default value.`,
@@ -83,7 +89,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 						config[key] = new Date(timestamp);
 					}
 				} else if (type === String) {
-					config[key] = value.trim().replace(/^(['"])(.*)\1$/, '$2');
+					config[key] = normalizeEnvValue(value);
 				} else {
 					config[key] = new (type as Constructable)(value);
 				}

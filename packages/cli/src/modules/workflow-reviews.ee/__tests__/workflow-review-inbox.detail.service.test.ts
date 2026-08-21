@@ -15,7 +15,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
@@ -74,7 +73,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	const service = new WorkflowReviewInboxService(
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		accessService,
-		mock<WorkflowFinderService>(),
 		workflowHistoryService,
 		requestRepository,
 		workflowRepository,

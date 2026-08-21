@@ -588,6 +588,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						state: 'open',
 						decision: 'pending',
 						workflowVersionId: 'version-0',
+						workflowVersionName: null,
 						description: null,
 						createdAt: '2026-07-20T10:00:00.000Z',
 						updatedAt: '2026-07-20T10:00:00.000Z',
@@ -1279,6 +1280,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						decision: 'pending',
 						// Differs from the saved 'version-1', so the review is out of date
 						workflowVersionId: 'version-0',
+						workflowVersionName: null,
 						description: null,
 						createdAt: '2026-07-20T10:00:00.000Z',
 						updatedAt: '2026-07-20T10:00:00.000Z',
