@@ -417,6 +417,7 @@ async function fetchAgent(
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	agent.value = data;
 	agentName.value = data.name;
+	upsertProjectAgentsListCache(targetProjectId, data);
 }
 
 async function fetchAgentFiles(
