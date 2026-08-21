@@ -209,6 +209,11 @@ export class TelemetryEventRelay extends EventRelay {
 			'history-compacted': (event) => this.historyCompacted(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 			'execution-data-revealed': (event) => this.executionDataRevealed(event),
+			'workflow-review-requested': (event) => this.workflowReviewRequested(event),
+			'workflow-review-version-updated': (event) => this.workflowReviewVersionUpdated(event),
+			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
+			'workflow-review-closed': (event) => this.workflowReviewClosed(event),
+			'workflow-review-comment-created': (event) => this.workflowReviewCommentCreated(event),
 			'custom-role-created': (event) => this.customRoleCreated(event),
 			'custom-role-updated': (event) => this.customRoleUpdated(event),
 			'custom-role-deleted': (event) => this.customRoleDeleted(event),
@@ -1071,6 +1076,9 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_missing_mode: options.credentialMissingMode,
 			workflow_publishing_policy: options.workflowPublishingPolicy,
 			missing_node_type_mode: options.missingNodeTypeMode,
+			project_conflict_policy: options.projectConflictPolicy,
+			folder_conflict_policy: options.folderConflictPolicy,
+			overwrite_deletion_policy: options.overwriteDeletionPolicy,
 			data_table_matching_mode: options.dataTableMatchingMode,
 			data_table_missing_mode: options.dataTableMissingMode,
 			data_table_schema_conflict_policy: options.dataTableSchemaConflictPolicy,
@@ -1082,6 +1090,9 @@ export class TelemetryEventRelay extends EventRelay {
 			workflows_created: counts.workflows.created,
 			workflows_updated: counts.workflows.updated,
 			workflows_skipped: counts.workflows.skipped,
+			workflows_archived: counts.workflows.archived,
+			workflows_deleted: counts.workflows.deleted,
+			folders_removed: counts.folders.removed,
 			credentials_matched: counts.credentials.matched,
 			credentials_created: counts.credentials.created,
 			credentials_required: counts.credentials.requirements,
@@ -1103,7 +1114,11 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private packageExported({ user, counts }: RelayEventMap['n8n-package-exported']) {
+	private packageExported({
+		user,
+		counts,
+		credentialExportPolicy,
+	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
 			workflow_count: counts.workflows,
@@ -1112,6 +1127,7 @@ export class TelemetryEventRelay extends EventRelay {
 			data_table_count: counts.dataTables,
 			variable_count: counts.variables,
 			tag_count: counts.tags,
+			credential_export_policy: credentialExportPolicy,
 		});
 	}
 
@@ -2120,6 +2136,86 @@ export class TelemetryEventRelay extends EventRelay {
 			execution_id: executionId,
 			workflow_id: workflowId,
 			redaction_policy: redactionPolicy,
+		});
+	}
+
+	// #endregion
+
+	// #region Workflow Reviews
+
+	private workflowReviewRequested({
+		user,
+		workflowReviewRequestId,
+		projectId,
+		workflowId,
+		workflowVersionId,
+		reviewerCount,
+	}: RelayEventMap['workflow-review-requested']) {
+		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_REQUESTED_WORKFLOW_REVIEW, {
+			user_id: user.id,
+			workflow_review_request_id: workflowReviewRequestId,
+			project_id: projectId,
+			workflow_id: workflowId,
+			workflow_version_id: workflowVersionId,
+			reviewer_count: reviewerCount,
+		});
+	}
+
+	private workflowReviewVersionUpdated({
+		user,
+		workflowReviewRequestId,
+		workflowId,
+		workflowVersionId,
+	}: RelayEventMap['workflow-review-version-updated']) {
+		this.telemetry.track(
+			TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW,
+			{
+				user_id: user.id,
+				workflow_review_request_id: workflowReviewRequestId,
+				workflow_id: workflowId,
+				workflow_version_id: workflowVersionId,
+			},
+		);
+	}
+
+	private workflowReviewDecided({
+		user,
+		workflowReviewRequestId,
+		workflowId,
+		workflowVersionId,
+		decision,
+		decidedVia,
+		reviewCreatedAt,
+	}: RelayEventMap['workflow-review-decided']) {
+		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW, {
+			user_id: user.id,
+			workflow_review_request_id: workflowReviewRequestId,
+			workflow_id: workflowId,
+			workflow_version_id: workflowVersionId,
+			decision,
+			decided_via: decidedVia,
+			review_created_at: reviewCreatedAt.toISOString(),
+		});
+	}
+
+	private workflowReviewClosed({
+		workflowReviewRequestId,
+		cause,
+	}: RelayEventMap['workflow-review-closed']) {
+		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED, {
+			workflow_review_request_id: workflowReviewRequestId,
+			cause_trigger: cause.trigger,
+			cause_actor_kind: cause.actorKind,
+		});
+	}
+
+	private workflowReviewCommentCreated({
+		user,
+		workflowReviewRequestId,
+	}: RelayEventMap['workflow-review-comment-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_COMMENTED_ON_WORKFLOW_REVIEW, {
+			user_id: user.id,
+			workflow_review_request_id: workflowReviewRequestId,
 		});
 	}
 

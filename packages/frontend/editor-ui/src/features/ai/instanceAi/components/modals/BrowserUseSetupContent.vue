@@ -56,7 +56,6 @@ async function refreshExtensionState(): Promise<void> {
 }
 
 onMounted(async () => {
-	telemetry.trackModalOpened(isBrowserSupported);
 	if (!isBrowserSupported) return;
 	await Promise.all([refreshExtensionState(), store.fetchBrowserStatus()]);
 	statusChecked.value = true;
@@ -83,7 +82,9 @@ watch(
 // Re-probe when the user returns from installing the extension. Coming back by tab switch
 // only fires `visibilitychange` — the window's focus can land in DevTools or another pane —
 // while coming back from a separate window only fires `focus`, so we listen for both.
-const reprobeExtension = () => void refreshExtensionState();
+const reprobeExtension = () => {
+	void refreshExtensionState();
+};
 onDocumentVisible(reprobeExtension);
 useEventListener(window, 'focus', reprobeExtension);
 </script>

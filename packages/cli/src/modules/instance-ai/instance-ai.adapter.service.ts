@@ -1858,6 +1858,18 @@ export class InstanceAiAdapterService {
 				}
 			},
 
+			async credentialTypeExists(credentialType: string): Promise<boolean> {
+				if (credentialType in loadNodesAndCredentials.knownCredentials) return true;
+				// Runtime-registered types (e.g. MCP registry loaders) may not appear
+				// in knownCredentials — fall back to resolving the credential class.
+				try {
+					loadNodesAndCredentials.getCredential(credentialType);
+					return true;
+				} catch {
+					return false;
+				}
+			},
+
 			async searchCredentialTypes(query: string): Promise<CredentialTypeSearchResult[]> {
 				const q = query.toLowerCase().trim();
 				if (!q) return [];

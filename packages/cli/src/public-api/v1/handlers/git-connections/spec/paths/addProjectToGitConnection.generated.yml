@@ -1,0 +1,45 @@
+operationId: addProjectToGitConnection
+tags:
+  - GitConnections
+summary: Add a project to a Git connection
+description: Adds a team project to the connection. A project can be added to only one connection.
+x-required-scope: gitConnection:manageProjects
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: id
+    in: path
+  - schema:
+      type: string
+    required: true
+    name: projectId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            projectId:
+              type: string
+            gitConnectionId:
+              type: string
+          required:
+            - projectId
+            - gitConnectionId
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml

@@ -1,3 +1,10 @@
+@mixin reduced-motion {
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+		transition: none;
+	}
+}
+
 // Shimmer - animated gradient for loading/skeleton states
 @mixin shimmer {
 	background: linear-gradient(

@@ -14,6 +14,7 @@ import type {
 	AiEvent,
 	EnvProviderState,
 	ExecuteAgentData,
+	ExecuteAgentInvocationContext,
 	ExecuteAgentSource,
 	ExecuteAgentWorkflowContext,
 	ExecuteWorkflowData,
@@ -71,6 +72,10 @@ import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
+import {
+	createWorkflowAgentStreamObserver,
+	type WorkflowAgentStreamObserver,
+} from './modules/agents/workflow-agent-stream';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -369,6 +374,7 @@ export async function executeAgent(
 	executionMode: WorkflowExecuteMode,
 	outputSchema?: JSONSchema7,
 	workflowContext?: ExecuteAgentWorkflowContext,
+	invocationContext?: ExecuteAgentInvocationContext,
 ): Promise<ExecuteAgentData> {
 	const telemetryUserId = additionalData.userId;
 	let projectId = additionalData.projectId;
@@ -394,7 +400,16 @@ export async function executeAgent(
 		'@/modules/agents/agent-workflow-execution.service.js'
 	);
 	const agentWorkflowExecutionService = Container.get(AgentWorkflowExecutionService);
-
+	const streamObserver = invocationContext
+		? createWorkflowAgentStreamObserver({
+				additionalData,
+				executionId,
+				invocation: invocationContext,
+			})
+		: undefined;
+	const streamObserverArguments: [] | [WorkflowAgentStreamObserver] = streamObserver
+		? [streamObserver]
+		: [];
 	if (!additionalData.workflowId) {
 		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
 	}
@@ -412,6 +427,7 @@ export async function executeAgent(
 			isManualOrChatExecution(executionMode) ? 'test' : 'production',
 			outputSchema,
 			workflowContext,
+			...streamObserverArguments,
 		);
 	}
 
@@ -445,6 +461,7 @@ export async function executeAgent(
 		outputSchema,
 		workflowContext,
 		sandboxScope,
+		...streamObserverArguments,
 	);
 
 	// Callers see the session id they supplied (or the derived per-call id), so

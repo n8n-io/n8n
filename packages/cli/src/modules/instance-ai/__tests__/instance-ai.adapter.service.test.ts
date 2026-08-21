@@ -2653,7 +2653,7 @@ describe('createWorkflowAdapter', () => {
 					parameters: {},
 					credentials: {
 						slackApi: { name: 'Slack' },
-						gmailOAuth2Api: { id: '', name: 'Gmail' },
+						gmailOAuth2: { id: '', name: 'Gmail' },
 						openAiApi: { id: null, name: 'OpenAI' },
 						httpHeaderAuth: { id: 'cred-1', name: 'HTTP Header' },
 					},
@@ -2714,7 +2714,7 @@ describe('createWorkflowAdapter', () => {
 					parameters: {},
 					credentials: {
 						slackApi: { name: 'Slack' },
-						gmailOAuth2Api: { id: '  ', name: 'Gmail' },
+						gmailOAuth2: { id: '  ', name: 'Gmail' },
 					},
 				},
 			],
@@ -4737,6 +4737,44 @@ describe('createCredentialAdapter', () => {
 			});
 
 			await expect(credentialService.isTestable!('kafka')).resolves.toBe(false);
+		});
+	});
+
+	describe('credentialTypeExists', () => {
+		const loader = {
+			knownCredentials: { gmailOAuth2: {} },
+			getCredential: (type: string) => {
+				// Runtime-registered types resolve through a loader without being in
+				// knownCredentials (e.g. MCP registry).
+				if (type === 'linearMcpOAuth2Api') return { type: { name: type } };
+				throw new Error(`Unrecognized credential type: ${type}`);
+			},
+		};
+
+		it('is true for a known credential type', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loader,
+			});
+
+			await expect(credentialService.credentialTypeExists!('gmailOAuth2')).resolves.toBe(true);
+		});
+
+		it('is true for a runtime-registered type resolvable only via getCredential', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loader,
+			});
+
+			await expect(credentialService.credentialTypeExists!('linearMcpOAuth2Api')).resolves.toBe(
+				true,
+			);
+		});
+
+		it('is false for an unregistered type', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loader,
+			});
+
+			await expect(credentialService.credentialTypeExists!('gmailOAuth2Api')).resolves.toBe(false);
 		});
 	});
 });

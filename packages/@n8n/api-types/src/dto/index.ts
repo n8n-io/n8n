@@ -102,6 +102,8 @@ export {
 	CloneGitConnectionDto,
 	CreateGitConnectionDto,
 	GitConnectionListPublicDto,
+	GitConnectionProjectListPublicDto,
+	GitConnectionProjectPublicDto,
 	GitConnectionPublicDto,
 	ListGitConnectionsQueryDto,
 	UpdateGitConnectionDto,
@@ -236,6 +238,7 @@ export {
 	PatchRoleMappingRuleDto,
 	type PatchRoleMappingRuleInput,
 } from './roles/patch-role-mapping-rule.dto';
+export { UpdateRoleMappingRulePublicDto } from './roles/update-role-mapping-rule-public.dto';
 export { MoveRoleMappingRuleDto } from './roles/move-role-mapping-rule.dto';
 export {
 	ListRoleMappingRuleQueryDto,
@@ -361,11 +364,6 @@ export type { EncryptionKeyResponseDto } from './encryption/encryption-key-respo
 export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
 export { DecideWorkflowReviewRequestDto } from './workflow-reviews/decide-workflow-review-request.dto';
 export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
-export {
-	GetWorkflowReviewStatusesDto,
-	type WorkflowReviewStatus,
-	type WorkflowReviewStatusesResponse,
-} from './workflow-reviews/get-workflow-review-statuses.dto';
 export {
 	ListWorkflowReviewRequestsQueryDto,
 	type WorkflowReviewRequestForWorkflow,
