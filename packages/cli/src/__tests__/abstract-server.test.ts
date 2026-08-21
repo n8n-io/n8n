@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AbstractServer } from '@/abstract-server';
 import { ExternalHooks } from '@/external-hooks';
+import { Logger } from '@n8n/backend-common';
 
 const mockServer = mock<http.Server>();
 
@@ -22,6 +23,12 @@ mockApp.use.mockReturnValue(mockApp);
 vi.mock('express', async () => ({ __esModule: true, default: () => mockApp }));
 
 class TestServer extends AbstractServer {
+	async configure() {}
+}
+
+/** Skips webhook route registration so only middleware is set up. */
+class BotFilterTestServer extends AbstractServer {
+	protected override webhooksEnabled = false;
 	async configure() {}
 }
 
@@ -130,5 +137,115 @@ describe('AbstractServer health endpoints', () => {
 			expect(res.status).toHaveBeenCalledWith(503);
 			expect(res.send).toHaveBeenCalledWith({ status: 'error' });
 		});
+	});
+});
+
+describe('AbstractServer bot filter middleware', () => {
+	// Bot filter is the 3rd app.use call in start() with webhooksEnabled=false:
+	// [0] compression, [1] rawBodyReader, [2] bot filter, [3] bodyParser
+	const BOT_FILTER_INDEX = 2;
+
+	type Middleware = (req: express.Request, res: express.Response, next: () => void) => void;
+
+	let botFilter: Middleware;
+
+	beforeEach(async () => {
+		vi.clearAllMocks();
+		mockApp.use.mockReturnValue(mockApp);
+		mockApp.all.mockReturnValue(mockApp);
+		mockApp.get.mockReturnValue(mockApp);
+
+		Container.set(
+			GlobalConfig,
+			mock<GlobalConfig>({
+				path: '/',
+				protocol: 'http',
+				port: 5678,
+				listen_address: '0.0.0.0',
+				proxy_hops: 0,
+				ssl_key: '',
+				ssl_cert: '',
+				endpoints: {
+					rest: 'rest',
+					form: 'form',
+					formTest: 'form-test',
+					formWaiting: 'form-waiting',
+					webhook: 'webhook',
+					webhookTest: 'webhook-test',
+					webhookWaiting: 'webhook-waiting',
+					mcp: 'mcp',
+					mcpTest: 'mcp-test',
+					health: '/healthz',
+				},
+			}),
+		);
+		Container.set(Logger, mock<Logger>());
+
+		const server = new BotFilterTestServer();
+		await server.start();
+
+		botFilter = mockApp.use.mock.calls[BOT_FILTER_INDEX][0] as unknown as Middleware;
+	});
+
+	const botUA = 'Googlebot/2.1 (+http://www.google.com/bot.html)';
+
+	const callFilter = (path: string, userAgent: string) => {
+		const req = mock<express.Request>({ headers: { 'user-agent': userAgent }, path });
+		const res = mock<express.Response>();
+		res.status.mockReturnValue(res);
+		const next = vi.fn();
+		botFilter(req, res, next);
+		return { req, res, next };
+	};
+
+	it('allows bot UA through for /webhook/ paths', () => {
+		const { res, next } = callFilter('/webhook/abc123', botUA);
+		expect(next).toHaveBeenCalled();
+		expect(res.status).not.toHaveBeenCalled();
+	});
+
+	it('allows bot UA through for /webhook-test/ paths', () => {
+		const { res, next } = callFilter('/webhook-test/abc123', botUA);
+		expect(next).toHaveBeenCalled();
+		expect(res.status).not.toHaveBeenCalled();
+	});
+
+	it('allows bot UA through for /webhook-waiting/ paths', () => {
+		const { res, next } = callFilter('/webhook-waiting/abc123', botUA);
+		expect(next).toHaveBeenCalled();
+		expect(res.status).not.toHaveBeenCalled();
+	});
+
+	it('allows bot UA through for /form/ paths', () => {
+		const { res, next } = callFilter('/form/abc123', botUA);
+		expect(next).toHaveBeenCalled();
+		expect(res.status).not.toHaveBeenCalled();
+	});
+
+	it('allows bot UA through for /mcp/ paths', () => {
+		const { res, next } = callFilter('/mcp/abc123', botUA);
+		expect(next).toHaveBeenCalled();
+		expect(res.status).not.toHaveBeenCalled();
+	});
+
+	it('blocks bot UA on non-webhook paths with 204', () => {
+		const { res, next } = callFilter('/rest/workflows', botUA);
+		expect(res.status).toHaveBeenCalledWith(204);
+		expect(res.end).toHaveBeenCalled();
+		expect(next).not.toHaveBeenCalled();
+	});
+
+	it('allows non-bot UA through any path', () => {
+		const { res, next } = callFilter('/rest/workflows', 'Mozilla/5.0 (compatible; myapp/1.0)');
+		expect(next).toHaveBeenCalled();
+		expect(res.status).not.toHaveBeenCalled();
+	});
+
+	it('allows request with no User-Agent through any path', () => {
+		const req = mock<express.Request>({ headers: {}, path: '/rest/workflows' });
+		const res = mock<express.Response>();
+		const next = vi.fn();
+		botFilter(req, res, next);
+		expect(next).toHaveBeenCalled();
 	});
 });
