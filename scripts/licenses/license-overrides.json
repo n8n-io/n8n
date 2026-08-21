@@ -25,10 +25,6 @@
       "license": "MIT",
       "source": "compiled/node_modules/busboy/LICENSE — package.json uses legacy licenses[] array"
     },
-    "pkg:npm/imap@0.8.19": {
-      "license": "MIT",
-      "source": "compiled/node_modules/imap/LICENSE — package.json uses legacy licenses[] array"
-    },
     "pkg:npm/js-nacl@1.4.0": {
       "license": "MIT",
       "source": "compiled/node_modules/js-nacl/README.md — 'is licensed under the MIT license', wraps libsodium (ISC)"
@@ -36,10 +32,6 @@
     "pkg:npm/streamsearch@1.1.0": {
       "license": "MIT",
       "source": "compiled/node_modules/streamsearch/LICENSE — package.json uses legacy licenses[] array"
-    },
-    "pkg:npm/utf7@1.0.2": {
-      "license": "MIT",
-      "source": "DISCREPANCY: package.json declares legacy licenses[]=BSD, but compiled/node_modules/utf7/LICENSE ships verbatim MIT text (https://github.com/chris-rock/node-utf7/blob/master/LICENSE). On-disk LICENSE file taken as authoritative — this is the file customers actually receive in the release tarball. If a future legal review concludes differently, set skipDiskText:true and switch license to BSD-3-Clause."
     }
   },
   "byName": {
