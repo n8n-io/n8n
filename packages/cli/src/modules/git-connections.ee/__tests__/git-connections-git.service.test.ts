@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
@@ -22,6 +22,8 @@ const { mockGit, simpleGitMock, GitPluginError } = vi.hoisted(() => {
 		raw: vi.fn(),
 		revparse: vi.fn(),
 		checkIsRepo: vi.fn(),
+		listRemote: vi.fn(),
+		clone: vi.fn(),
 	};
 	instance.env.mockReturnValue(instance);
 	// Minimal stand-in for simple-git's GitPluginError (carries the `plugin` name).
@@ -188,6 +190,85 @@ describe('GitConnectionsGitService (git operations)', () => {
 		it('returns false when the check throws (directory missing)', async () => {
 			mockGit.checkIsRepo.mockRejectedValue(new Error('not a repo'));
 			await expect(gitService.hasWorkingCopy(rootFolder)).resolves.toBe(false);
+		});
+	});
+
+	describe('clone', () => {
+		const repositoryFolder = () => path.join(rootFolder, 'repository');
+		const nextRepositoryFolder = () => path.join(rootFolder, 'repository-next');
+
+		const call = async (over: Record<string, unknown> = {}) =>
+			await gitService.clone({
+				connection: httpsConnection(),
+				credentials: httpsCredentials,
+				branchName: 'main',
+				rootFolder,
+				...over,
+			});
+
+		beforeEach(() => {
+			// check-ref-format (branch validation) and the init/remote plumbing all go
+			// through raw; create the target folder when git "init" runs so the rename
+			// into place succeeds, mirroring what a real clone/init would leave on disk.
+			mockGit.raw.mockImplementation(async (args: unknown) => {
+				if (Array.isArray(args) && args[0] === 'init') {
+					await mkdir(String(args[args.length - 1]), { recursive: true });
+				}
+				return '';
+			});
+			mockGit.clone.mockImplementation(async (_url: unknown, dir: unknown) => {
+				await mkdir(String(dir), { recursive: true });
+				return '';
+			});
+		});
+
+		it('clones the single branch when it exists on the remote', async () => {
+			mockGit.listRemote.mockResolvedValue('abc123\trefs/heads/main\n');
+
+			await call();
+
+			expect(mockGit.clone).toHaveBeenCalledWith(
+				httpsConnection().repositoryUrl,
+				nextRepositoryFolder(),
+				['--branch', 'main', '--single-branch', '--no-tags', '--progress'],
+			);
+			// Cloned copy is moved into place as the working copy.
+			await expect(stat(repositoryFolder())).resolves.toBeDefined();
+		});
+
+		it('bootstraps a working copy on the target branch when the remote is empty', async () => {
+			// Branch lookup and the follow-up "any heads?" lookup both come back empty.
+			mockGit.listRemote.mockResolvedValue('');
+
+			await call();
+
+			expect(mockGit.clone).not.toHaveBeenCalled();
+			expect(mockGit.raw).toHaveBeenCalledWith([
+				'init',
+				'--initial-branch=main',
+				nextRepositoryFolder(),
+			]);
+			expect(mockGit.raw).toHaveBeenCalledWith([
+				'-C',
+				nextRepositoryFolder(),
+				'remote',
+				'add',
+				'origin',
+				httpsConnection().repositoryUrl,
+			]);
+			await expect(stat(repositoryFolder())).resolves.toBeDefined();
+		});
+
+		it('throws when the branch is missing but the remote already has other branches', async () => {
+			mockGit.listRemote
+				.mockResolvedValueOnce('') // requested branch not found
+				.mockResolvedValueOnce('def456\trefs/heads/develop\n'); // remote is not empty
+
+			const error = await call().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect((error as Error).message).toBe('Remote branch does not exist: main');
+			expect(mockGit.clone).not.toHaveBeenCalled();
 		});
 	});
 

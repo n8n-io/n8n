@@ -146,23 +146,42 @@ export class GitConnectionsGitService {
 			// Clone runs with cwd = rootFolder so it can write repository-next beside
 			// the eventual working copy; known_hosts still lives under sshDir.
 			await this.withGit({ connection, credentials, repoDir: rootFolder, sshDir }, async (git) => {
-				const remoteRefs = await git.listRemote([
+				const branchRefs = await git.listRemote([
 					'--heads',
 					connection.repositoryUrl,
 					`refs/heads/${branchName}`,
 				]);
-				if (!remoteRefs.trim()) {
-					throw new BadRequestError(`Remote branch does not exist: ${branchName}`);
+				if (!branchRefs.trim()) {
+					// The branch has no ref on the remote. If the remote is entirely empty
+					// (a freshly created repo), bootstrap a working copy on the target
+					// branch so the first push creates it upstream. If the remote already
+					// has branches, the requested one is genuinely missing — surface that.
+					const anyRefs = await git.listRemote(['--heads', connection.repositoryUrl]);
+					if (anyRefs.trim()) {
+						throw new BadRequestError(`Remote branch does not exist: ${branchName}`);
+					}
+					// branchName is validated with check-ref-format, so it is safe as a
+					// single argv element here (no shell, no injection).
+					await git.raw(['init', `--initial-branch=${branchName}`, nextRepositoryFolder]);
+					await git.raw([
+						'-C',
+						nextRepositoryFolder,
+						'remote',
+						'add',
+						'origin',
+						connection.repositoryUrl,
+					]);
+				} else {
+					await git.clone(connection.repositoryUrl, nextRepositoryFolder, [
+						'--branch',
+						branchName,
+						'--single-branch',
+						'--no-tags',
+						// Emit progress so the stall-timeout backstop keeps resetting during a
+						// healthy transfer and only fires when the connection genuinely stalls.
+						'--progress',
+					]);
 				}
-				await git.clone(connection.repositoryUrl, nextRepositoryFolder, [
-					'--branch',
-					branchName,
-					'--single-branch',
-					'--no-tags',
-					// Emit progress so the stall-timeout backstop keeps resetting during a
-					// healthy transfer and only fires when the connection genuinely stalls.
-					'--progress',
-				]);
 				await rm(repositoryFolder, { recursive: true, force: true });
 				await rename(nextRepositoryFolder, repositoryFolder);
 			});
