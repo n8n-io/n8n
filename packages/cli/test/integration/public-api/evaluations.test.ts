@@ -336,9 +336,9 @@ describe('POST /workflows/:id/test-runs', () => {
 describe('POST /workflows/:id/test-runs/:runId/cancel', () => {
 	beforeEach(() => {
 		testRunner.cancelTestRun.mockReset();
-		testRunner.canBeCancelled.mockReset();
+		testRunner.isInNonCancellableState.mockReset();
 		// Mirror the real (terminal-state) implementation.
-		testRunner.canBeCancelled.mockImplementation(
+		testRunner.isInNonCancellableState.mockImplementation(
 			(run: TestRun) => run.status !== 'running' && run.status !== 'new',
 		);
 		testServer.license.setQuota(

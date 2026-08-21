@@ -3,7 +3,7 @@ import { Get, RestController } from '@n8n/decorators';
 
 import { getMcpRegistryCredentialTypeName } from './node-description-transform';
 import { McpRegistryService } from './registry/mcp-registry.service';
-import type { McpRegistryServer } from './registry/mcp-registry.types';
+import { normalizeTags, type McpRegistryServer } from './registry/mcp-registry.types';
 
 @RestController('/mcp-registry')
 export class McpRegistryController {
@@ -31,6 +31,6 @@ function toResponse(server: McpRegistryServer): McpRegistryServerResponse {
 		tools: server.tools,
 		isOfficial: server.isOfficial,
 		status: server.status,
-		tags: server.tags,
+		tags: normalizeTags(server.tags),
 	};
 }
