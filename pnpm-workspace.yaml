@@ -137,6 +137,8 @@ catalog:
   chat: 4.37.0
   cheerio: 1.1.0
   chokidar: 4.0.3
+  citty: ^0.1.6
+  consola: ^3.4.2
   cron: 4.4.0
   cron-parser: 5.6.1
   cross-env: ^7.0.3

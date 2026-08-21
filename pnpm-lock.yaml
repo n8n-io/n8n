@@ -348,6 +348,12 @@ catalogs:
     cheerio:
       specifier: 1.1.0
       version: 1.1.0
+    citty:
+      specifier: ^0.1.6
+      version: 0.1.6
+    consola:
+      specifier: ^3.4.2
+      version: 3.4.2
     cron:
       specifier: 4.4.0
       version: 4.4.0
@@ -898,6 +904,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:packages/@n8n/eslint-config
+      '@n8n/module-cli':
+        specifier: workspace:*
+        version: link:packages/@n8n/module-cli
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.41
@@ -3048,6 +3057,22 @@ importers:
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(@typescript/typescript6@6.0.2))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+
+  packages/@n8n/module-cli:
+    dependencies:
+      citty:
+        specifier: 'catalog:'
+        version: 0.1.6
+      consola:
+        specifier: 'catalog:'
+        version: 3.4.2
+    devDependencies:
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -15393,6 +15418,9 @@ packages:
   cipher-base@1.0.6:
     resolution: {integrity: sha512-3Ek9H3X6pj5TgenXYtNWdaBon1tgYCaebd+XPg0keyjEbEfkD4KkmAxkQ/i1vYvxdcT5nscLBfq9VJRmCBcFSw==}
     engines: {node: '>= 0.10'}
+
+  citty@0.1.6:
+    resolution: {integrity: sha512-tskPPKEs8D2KPafUypv2gxwJP8h/OaJmC82QQGGDQcHvXX43xF2VDACcJVmZ0EuSxkpO9Kc4MlrA3q0+FG58AQ==}
 
   cjs-module-lexer@2.2.0:
     resolution: {integrity: sha512-4bHTS2YuzUvtoLjdy+98ykbNB5jS0+07EvFNXerqZQJ89F7DI6ET7OQo/HJuW6K0aVsKA9hj9/RVb2kQVOrPDQ==}
@@ -34051,6 +34079,10 @@ snapshots:
     dependencies:
       inherits: 2.0.4
       safe-buffer: 5.2.1
+
+  citty@0.1.6:
+    dependencies:
+      consola: 3.4.2
 
   cjs-module-lexer@2.2.0: {}
 
