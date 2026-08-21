@@ -112,7 +112,7 @@ Usage:
 
 Positional arguments:
   url        n8n instance URL (e.g. https://my-instance.app.n8n.cloud)
-  token      Gateway token (from "Connect local files" UI)
+  token      Gateway token (from "Connect local computer" in the + menu)
 
 Global options:
   --log-level <level>            Log level: silent, error, warn, info, debug (default: info)

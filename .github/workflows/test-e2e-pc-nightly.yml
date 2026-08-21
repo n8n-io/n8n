@@ -12,12 +12,18 @@ on:
         required: false
         default: 'n8nio/n8n:nightly-pc'
         type: string
+      runners-image:
+        description: 'Task runner image to boot beside it'
+        required: false
+        default: 'n8nio/runners:nightly'
+        type: string
 
 permissions:
   contents: read
 
 env:
   TEST_IMAGE_N8N: ${{ inputs.image || 'n8nio/n8n:nightly-pc' }}
+  TEST_IMAGE_TASK_RUNNER: ${{ inputs.runners-image || 'n8nio/runners:nightly' }}
 
 jobs:
   e2e-pc:

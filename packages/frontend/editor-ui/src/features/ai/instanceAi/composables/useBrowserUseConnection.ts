@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import type { BrowserUseModalSource } from '../instanceAiBrowserUse.telemetry';
 import { useInstanceAiBrowserUseTelemetry } from '../instanceAiBrowserUse.telemetry';
 import { beginConnectFlow, useExtensionDirectConnect } from './useExtensionDirectConnect';
 
@@ -29,10 +30,10 @@ export function useBrowserUseConnection() {
 	const { status, isAttempting, attempt } = useExtensionDirectConnect();
 
 	/** Resolves true once the browser is attached, false if the user backed out. */
-	async function ensureConnected(): Promise<boolean> {
+	async function ensureConnected(source: BrowserUseModalSource): Promise<boolean> {
 		if (inFlight === null) {
 			const endFlow = beginConnectFlow();
-			inFlight = run().finally(() => {
+			inFlight = run(source).finally(() => {
 				inFlight = null;
 				endFlow();
 			});
@@ -40,7 +41,7 @@ export function useBrowserUseConnection() {
 		return await inFlight;
 	}
 
-	async function run(): Promise<boolean> {
+	async function run(source: BrowserUseModalSource): Promise<boolean> {
 		if (settingsStore.browserConnected) return true;
 
 		if (!isAttempting.value) {
@@ -65,6 +66,7 @@ export function useBrowserUseConnection() {
 		}
 
 		// The attempt stays in flight; the modal shares its state rather than starting its own.
+		telemetry.trackModalOpened(source);
 		uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
 		if (!(await waitForConnectedOrDismissed())) return false;
 		uiStore.closeModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);

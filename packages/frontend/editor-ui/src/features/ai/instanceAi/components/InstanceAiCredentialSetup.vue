@@ -574,7 +574,7 @@ async function handleSetupAutomatically() {
 	const attemptId = uuidv4();
 	trackSetupChoiceClicked('ai', attemptId);
 
-	if (!(await ensureBrowserConnected())) return;
+	if (!(await ensureBrowserConnected('credential_setup'))) return;
 	await submitAutoSetup(credentialType, attemptId);
 }
 </script>

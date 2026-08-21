@@ -21,7 +21,7 @@ const uiStore = reactive({
 	}),
 });
 
-const telemetryMock = { trackDirectConnectRequested: vi.fn() };
+const telemetryMock = { trackDirectConnectRequested: vi.fn(), trackModalOpened: vi.fn() };
 const toastMock = { showMessage: vi.fn() };
 const attemptMock = vi.fn<(connectUrl: string) => Promise<void>>();
 const directConnectStatus = ref<'idle' | 'unsupported' | 'waiting' | 'connecting' | 'failed'>(
@@ -81,7 +81,7 @@ describe('useBrowserUseConnection', () => {
 	it('resolves immediately when the browser is already connected', async () => {
 		settingsStore.browserConnected = true;
 
-		await expect(useBrowserUseConnection().ensureConnected()).resolves.toBe(true);
+		await expect(useBrowserUseConnection().ensureConnected('input_menu')).resolves.toBe(true);
 
 		expect(uiStore.openModal).not.toHaveBeenCalled();
 		expect(attemptMock).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ describe('useBrowserUseConnection', () => {
 			settingsStore.browserConnected = true;
 		});
 
-		const result = useBrowserUseConnection().ensureConnected();
+		const result = useBrowserUseConnection().ensureConnected('input_menu');
 		await vi.advanceTimersByTimeAsync(0);
 
 		await expect(result).resolves.toBe(true);
@@ -113,7 +113,7 @@ describe('useBrowserUseConnection', () => {
 			directConnectStatus.value = 'waiting';
 		});
 
-		const result = useBrowserUseConnection().ensureConnected();
+		const result = useBrowserUseConnection().ensureConnected('input_menu');
 		await vi.advanceTimersByTimeAsync(0);
 
 		expect(uiStore.openModal).toHaveBeenCalledWith(MODAL_KEY);
@@ -134,7 +134,7 @@ describe('useBrowserUseConnection', () => {
 			settingsStore.browserConnected = true;
 		});
 
-		const result = useBrowserUseConnection().ensureConnected();
+		const result = useBrowserUseConnection().ensureConnected('input_menu');
 		await vi.advanceTimersByTimeAsync(0);
 
 		await expect(result).resolves.toBe(true);
@@ -146,7 +146,7 @@ describe('useBrowserUseConnection', () => {
 			directConnectStatus.value = 'waiting';
 		});
 
-		const result = useBrowserUseConnection().ensureConnected();
+		const result = useBrowserUseConnection().ensureConnected('input_menu');
 		await vi.advanceTimersByTimeAsync(0);
 
 		uiStore.closeModal(MODAL_KEY);
@@ -160,7 +160,7 @@ describe('useBrowserUseConnection', () => {
 		isAttempting.value = true;
 		directConnectStatus.value = 'waiting';
 
-		const result = useBrowserUseConnection().ensureConnected();
+		const result = useBrowserUseConnection().ensureConnected('input_menu');
 		await vi.advanceTimersByTimeAsync(0);
 
 		// Minting rotates the relay token and would strand the running connect.
@@ -181,7 +181,7 @@ describe('useBrowserUseConnection', () => {
 			settingsStore.browserConnected = true;
 		});
 
-		const result = useBrowserUseConnection().ensureConnected();
+		const result = useBrowserUseConnection().ensureConnected('input_menu');
 		await vi.advanceTimersByTimeAsync(0);
 
 		await expect(result).resolves.toBe(true);
@@ -193,7 +193,7 @@ describe('useBrowserUseConnection', () => {
 			directConnectStatus.value = 'unsupported';
 		});
 
-		const result = useBrowserUseConnection().ensureConnected();
+		const result = useBrowserUseConnection().ensureConnected('input_menu');
 		await vi.advanceTimersByTimeAsync(0);
 
 		// No point sitting out the grace window for a connect that already gave up.
@@ -207,7 +207,7 @@ describe('useBrowserUseConnection', () => {
 	it('still opens the modal when no connect URL is available', async () => {
 		settingsStore.fetchBrowserConnectUrl.mockResolvedValue(null);
 
-		const result = useBrowserUseConnection().ensureConnected();
+		const result = useBrowserUseConnection().ensureConnected('input_menu');
 		await vi.advanceTimersByTimeAsync(0);
 
 		expect(attemptMock).not.toHaveBeenCalled();
