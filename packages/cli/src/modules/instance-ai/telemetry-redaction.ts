@@ -47,9 +47,19 @@ const IDENTIFIER_KEY_PATTERN = /(?:^|_)(?:id|ids|hash)$/;
  * sail through — these are replaced wholesale instead. Anchored at the end of
  * the key so properties that merely describe a credential (`credential_type`,
  * `credential_kind` on `Node credential assigned`) keep their analytics value.
+ *
+ * Deliberately excludes a bare `credential(s)` key: in this codebase such a
+ * property is a dimension (a list of credential *types*), and wiping it would
+ * be a silent analytics regression. A credential object nested under it is
+ * still walked key by key.
  */
 const SECRET_KEY_PATTERN =
-	/(?:^|_)(?:password|passwd|pwd|secret|token|api_?key|apikey|access_?token|refresh_?token|id_?token|session_?token|auth_?token|authorization|cookie|private_?key|credentials?)$/i;
+	/(?:^|_)(?:password|passwd|pwd|secret|token|api_?key|apikey|access_?token|refresh_?token|id_?token|session_?token|auth_?token|authorization|cookie|private_?key)$/i;
+
+/** `clientSecret` → `client_secret`, so camelCase keys hit the same pattern. */
+function toSnakeCase(key: string): string {
+	return key.replace(/([a-z0-9])([A-Z])/g, '$1_$2');
+}
 
 /**
  * Telemetry payloads are flat in practice. Rather than let an unexpectedly deep
@@ -75,7 +85,10 @@ function redactPropertyValue(key: string, value: GenericValue, depth: number): G
 	// Runs before the identifier exemption: a secret-shaped key wins over any
 	// key-based pass-through. Numbers/booleans are left alone — they can't carry
 	// a secret, and flags like `has_token` are worth keeping.
-	if (SECRET_KEY_PATTERN.test(key) && (typeof value === 'string' || isNonNullObject(value))) {
+	if (
+		SECRET_KEY_PATTERN.test(toSnakeCase(key)) &&
+		(typeof value === 'string' || isNonNullObject(value))
+	) {
 		return DEFAULT_PLACEHOLDER;
 	}
 

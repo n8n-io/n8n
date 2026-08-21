@@ -87,10 +87,17 @@ describe('redactTelemetryProperties', () => {
 		});
 	});
 
+	it('catches camelCase secret keys too', () => {
+		expect(
+			redactTelemetryProperties({ config: { clientSecret: 'plain', apiKey: 'plain' } }),
+		).toEqual({ config: { clientSecret: '[REDACTED]', apiKey: '[REDACTED]' } });
+	});
+
 	it('keeps properties that only describe a credential', () => {
 		const properties = {
 			credential_type: 'httpBasicAuth',
 			credential_kind: 'n8n_connect',
+			credentials: ['slackApi', 'googleSheetsOAuth2Api'],
 			has_token: true,
 			total_tokens: 1_200,
 		};
