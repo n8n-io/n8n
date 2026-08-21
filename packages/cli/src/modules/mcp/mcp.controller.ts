@@ -16,6 +16,8 @@ import {
 	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 	INTERNAL_SERVER_ERROR_MESSAGE,
 	MCP_DISCOVER_METHOD,
+	HANDSHAKE_FAILED_ERROR_MESSAGE,
+	MISSING_PROTOCOL_VERSION_ERROR_MESSAGE,
 } from './mcp.constants';
 import { McpService, type McpFeatureFlags } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
@@ -131,9 +133,9 @@ export class McpController {
 		// request is `server/discover`, so both mark the connection handshake for
 		// telemetry. Legacy clients on the stateless fallback still send
 		// `initialize`.
-		const isConnectionHandshake = isJSONRPCRequest(body)
-			? body.method === 'initialize' || body.method === MCP_DISCOVER_METHOD
-			: false;
+		const isDiscoverHandshake = isJSONRPCRequest(body) && body.method === MCP_DISCOVER_METHOD;
+		const isConnectionHandshake =
+			isDiscoverHandshake || (isJSONRPCRequest(body) && body.method === 'initialize');
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'tools/call' : false;
 		const clientInfo = getClientInfo(req);
 
@@ -155,6 +157,9 @@ export class McpController {
 					...baseTelemetryPayload,
 					mcp_connection_status: 'error',
 					error: MCP_ACCESS_DISABLED_ERROR_MESSAGE,
+					// Literal, not res.statusCode: the event is tracked before the
+					// response is written, so the status is still the default 200 here.
+					http_status: 403,
 				});
 			}
 			// Return 403 Forbidden
@@ -175,11 +180,29 @@ export class McpController {
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			await this.handleTransportRequest(req, res, featureFlags, req.body);
+			const transportError = await this.handleTransportRequest(req, res, featureFlags, req.body);
 			if (isConnectionHandshake) {
+				// The SDK answers a failed handshake with an error response instead of
+				// throwing, so a resolved call says nothing about the outcome: the
+				// status it wrote is what tells us whether the client connected.
+				//
+				// One failure does not reach the status. `server/discover` exists only
+				// on the modern leg, and a request that declares no protocol version
+				// in its `_meta` envelope classifies as legacy, where the method is
+				// unknown. That answer is a JSON-RPC method-not-found inside a 200, so
+				// a client that adopted the 2026 method name without the envelope would
+				// otherwise count as connected.
+				const unservableDiscover = isDiscoverHandshake && !telemetryPayload.protocol_version;
+				const failed = res.statusCode >= 400 || unservableDiscover;
 				this.trackConnectionEvent({
 					...telemetryPayload,
-					mcp_connection_status: 'success',
+					mcp_connection_status: failed ? 'error' : 'success',
+					...(failed && {
+						error: unservableDiscover
+							? MISSING_PROTOCOL_VERSION_ERROR_MESSAGE
+							: (transportError ?? HANDSHAKE_FAILED_ERROR_MESSAGE),
+						http_status: res.statusCode,
+					}),
 				});
 			} else if (isToolCallRequest) {
 				this.logger.debug('MCP Tool Call request', body);
@@ -191,6 +214,9 @@ export class McpController {
 					...telemetryPayload,
 					mcp_connection_status: 'error',
 					error: error instanceof Error ? error.message : String(error),
+					// A throw this far out means the handler never answered, so the
+					// response below is the 500 unless something already replied.
+					http_status: res.headersSent ? res.statusCode : 500,
 				});
 			}
 			// Return JSON-RPC error response
@@ -207,12 +233,18 @@ export class McpController {
 		}
 	}
 
+	/**
+	 * Routes the request into the MCP handler and returns the first error the
+	 * handler reported, if any. The handler swallows failures by design (it
+	 * answers with an error response rather than throwing), so the caller needs
+	 * both this message and the response status to judge the outcome.
+	 */
 	private async handleTransportRequest(
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
 		featureFlags: McpFeatureFlags,
 		body: unknown,
-	) {
+	): Promise<string | undefined> {
 		const { createMcpHandler } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
 		);
@@ -220,6 +252,8 @@ export class McpController {
 			async () => await import('@modelcontextprotocol/node'),
 		);
 		const grantedScopes = (req as AuthenticatedRequest & { mcpScopes?: string[] }).mcpScopes;
+
+		let reportedError: string | undefined;
 
 		// The handler builds a fresh server per request (complete isolation, no
 		// request-ID collisions across concurrent clients) and serves both the
@@ -230,10 +264,15 @@ export class McpController {
 				await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), grantedScopes),
 			{
 				legacy: 'stateless',
-				onerror: (error) => this.errorReporter.error(error),
+				onerror: (error) => {
+					reportedError ??= error.message;
+					this.errorReporter.error(error);
+				},
 			},
 		);
 		await toNodeHandler(handler)(req, res, body);
+
+		return reportedError;
 	}
 
 	private trackConnectionEvent(payload: UserConnectedToMCPEventPayload) {
