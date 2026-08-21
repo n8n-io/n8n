@@ -191,7 +191,14 @@ watch(
 			: null,
 	(defaultModel) => {
 		const currentModel = parseModelString(modelToString(props.config?.model));
-		if (!defaultModel || props.disabled || currentModel?.provider === defaultModel.provider) return;
+		if (
+			!defaultModel ||
+			props.disabled ||
+			(currentModel?.provider === defaultModel.provider && currentModel.name === defaultModel.model)
+		) {
+			pendingDefaultProvider.value = null;
+			return;
+		}
 
 		pendingDefaultProvider.value = null;
 		onModelChange(defaultModel, 'auto');
