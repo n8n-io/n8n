@@ -27,26 +27,7 @@ export class PublicFormPage extends BasePage {
 
 	/** Navigate this tab to the form URL. */
 	async goto(url: string) {
-		// First-party OAuth for `n8nUserAuth` can bounce through /oauth/authorize
-		// before the consent page or form HTML loads.
-		await this.page.goto(url, { timeout: 30_000 });
-		await this.completeFirstPartyConsentIfShown();
-	}
-
-	/**
-	 * `n8nUserAuth` forms always start the first-party OAuth flow. Approve the
-	 * consent screen when it appears so the follow-up GET can render the form.
-	 * First-party clients skip the redirect-URI trust checkbox.
-	 */
-	private async completeFirstPartyConsentIfShown() {
-		if (!this.page.url().includes('/oauth/consent')) {
-			return;
-		}
-
-		const allow = this.page.getByRole('button', { name: 'Allow access' });
-		await expect(allow).toBeEnabled();
-		await allow.click();
-		await expect(this.page.locator('#n8n-form')).toBeVisible();
+		await this.page.goto(url);
 	}
 
 	async fillField(label: string, value: string) {

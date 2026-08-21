@@ -4,6 +4,7 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
+import { isFormOAuth2Enabled } from '@/constants/oauth2-triggers';
 import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -42,6 +43,10 @@ export class FormTriggerResourceResolver implements ProtectedResourceResolver {
 	}
 
 	async resolveByPath(pathname: string) {
+		if (!isFormOAuth2Enabled()) {
+			return undefined;
+		}
+
 		if (!pathname.startsWith(`/${this.config.endpoints.form}/`)) {
 			return undefined;
 		}
