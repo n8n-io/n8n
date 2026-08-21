@@ -257,14 +257,14 @@ export async function execute(
 				}
 			}
 
-			if (!item[columnsToMatchOn[0]]) {
+			if (item[columnsToMatchOn[0]] === undefined) {
 				throw new NodeOperationError(
 					this.getNode(),
-					"Column to match on not found in input item. Add a column to match on or set the 'Data Mode' to 'Define Below' to define the value to match on.",
+					`Column to match on '${columnsToMatchOn[0]}' not found in input item. Add the column to the input data or set the 'Data Mode' to 'Define Below' to define the value to match on.`,
 				);
 			}
 
-			if (item[columnsToMatchOn[0]] && Object.keys(item).length === 1) {
+			if (item[columnsToMatchOn[0]] !== undefined && Object.keys(item).length === 1) {
 				throw new NodeOperationError(
 					this.getNode(),
 					"Add values to update or insert to the input item or set the 'Data Mode' to 'Define Below' to define the values to insert or update.",
@@ -288,7 +288,7 @@ export async function execute(
 				valuesLength = valuesLength + 1;
 				values.push(column);
 			});
-			const onConflict = ` ON CONFLICT (${conflictColumns.join(',')})`;
+			const onConflict = ` ON CONFLICT (${conflictColumns.join(',')})` ;
 
 			const insertQuery = `INSERT INTO $1:name.$2:name($${valuesLength}:name) VALUES($${valuesLength}:csv)${onConflict}`;
 			valuesLength = valuesLength + 1;
