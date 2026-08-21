@@ -317,6 +317,17 @@ describe('analyzeHtmlSensitivity', () => {
 		]);
 	});
 
+	it('blocks capture of an assignment name separated by whitespace', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(`<dl><dt>Client Secret</dt><dd>GOOGLE_CLIENT_SECRET = ${HEX_SECRET}</dd></dl>`),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: HEX_SECRET },
+		]);
+	});
+
 	// Base64 padding also ends on `=` but separates nothing, so it stays capturable.
 	it('still captures a padded base64 value sharing the cell with other text', () => {
 		const value = 'dGhpc2lzbm90YXJlYWxzZWNyZXQ==';

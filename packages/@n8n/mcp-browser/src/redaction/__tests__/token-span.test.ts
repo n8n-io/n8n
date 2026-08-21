@@ -112,6 +112,15 @@ describe('assignmentNames', () => {
 		{ named: 'every name in a chain', text: 'a=b=c', want: ['a=', 'b='] },
 		{ named: 'nothing for base64 padding', text: 'dGhpc2lzbm90YXJlYWw==', want: [] },
 		{ named: 'nothing for padding followed by more text', text: 'dGhpcw== copy', want: [] },
+		{ named: 'a name across spaces', text: 'NAME = secretvalue', want: ['NAME'] },
+		{
+			named: 'a name when only the value is spaced off',
+			text: 'NAME =secretvalue',
+			want: ['NAME', '='],
+		},
+		// Indistinguishable from padding plus a word at this level, so left alone
+		// rather than guessed at — guessing would uncapture a real base64 secret.
+		{ named: 'nothing when only the name is spaced off', text: 'NAME= secretvalue', want: [] },
 		{ named: 'nothing when there is no assignment', text: 'plain text here', want: [] },
 	])('reports $named', ({ text, want }) => {
 		expect(assignmentNames(text)).toEqual(want);

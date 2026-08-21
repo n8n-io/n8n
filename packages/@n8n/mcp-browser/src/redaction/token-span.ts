@@ -57,11 +57,16 @@ export function tokenize(text: string): string[] {
  */
 export function assignmentNames(text: string): string[] {
 	const names: string[] = [];
-	for (const run of text.split(STOP_RUN)) {
-		if (!run.includes('=')) continue;
+	const runs = text.split(STOP_RUN);
+	runs.forEach((run, index) => {
+		// A run *starting* with `=` is a separator — padding can only end one — so
+		// the run before it is a name however the whitespace fell. `NAME= value` is
+		// deliberately not covered: at this level it is `dGhpcw== copy` exactly.
+		if (runs[index + 1]?.startsWith('=')) names.push(run.replace(EDGE_TRIM, ''));
+		if (!run.includes('=')) return;
 		const parts = run.split(ASSIGNMENT).filter(Boolean);
 		for (const name of parts.slice(0, -1)) names.push(name.replace(EDGE_TRIM, ''));
-	}
+	});
 	return names.filter(Boolean);
 }
 
