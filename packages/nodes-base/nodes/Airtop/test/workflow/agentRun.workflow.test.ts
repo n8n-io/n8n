@@ -28,10 +28,11 @@ describe('Test Airtop, agent run workflow', () => {
 	describe('omits the profileId query param when no Browser Profile ID is set', () => {
 		beforeAll(() => {
 			nock(AIRTOP_BASE_URL).get(AGENT_DETAILS_PATH).reply(200, { webhookId: 'test-webhook' });
-			// No `.query(...)` means this interceptor only matches a request without a query
-			// string, asserting that no profileId is sent when the field is left empty.
+			// `.query({})` only matches a request without any query params, asserting that no
+			// profileId is sent when the field is left empty.
 			nock(AIRTOP_BASE_URL)
 				.post(AGENT_WEBHOOK_PATH, { configVars: {} })
+				.query({})
 				.reply(200, { invocationId: 'invocation-123' });
 		});
 

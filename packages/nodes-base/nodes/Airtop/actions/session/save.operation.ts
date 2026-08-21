@@ -41,14 +41,14 @@ export const description: INodeProperties[] = [
 		...profileNameField,
 		required: true,
 		description:
-			'The ID of the <a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank">Browser Profile</a> to save',
+			'The ID to save this session\'s <a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank">Browser Profile</a> under. A profile with this ID is created if it does not exist yet.',
 		displayOptions: {
 			show: {
 				resource: ['session'],
 				operation: ['save'],
 			},
 		},
-		hint: 'Name of the profile you want to save. Must consist only of alphanumeric characters and hyphens "-"',
+		hint: 'Must consist only of alphanumeric characters and hyphens "-"',
 	},
 ];
 
