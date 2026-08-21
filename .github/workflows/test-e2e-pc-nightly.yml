@@ -63,7 +63,9 @@ jobs:
 
       - name: Run e2e against the image
         working-directory: packages/testing/playwright
-        run: pnpm test:container:sqlite:e2e -- --shard=${{ matrix.shard }}/4
+        # Two workers: the CI default takes every CPU, and four parallel
+        # container-stack boots starve each other past the fixture timeout.
+        run: pnpm test:container:sqlite:e2e -- --shard=${{ matrix.shard }}/4 --workers=2
 
   notify-on-failure:
     name: Notify Cats on -pc e2e failure
