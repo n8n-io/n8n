@@ -139,7 +139,10 @@ each container start, so every session gets the skills with no per-session step:
   regression test generation, and Security Hub report triage.
 
 Together they add roughly 5k always-on tokens to every session. Drop a plugin
-from `PLUGINS` in `post-start.mjs` if that budget matters more than the skills.
+from `PLUGINS` in `plugins.mjs` if that budget matters more than the skills.
+`post-start.mjs` and the `pnpm session` prelude in `scripts/cloud-session.mjs`
+both read that list, so a session that races the container start still gets
+every plugin.
 
 The private marketplace uses the codespace's own GitHub auth — no extra token.
 `devcontainer.json` grants the codespace read access to

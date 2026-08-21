@@ -4,9 +4,8 @@ import { execFileSync } from 'node:child_process';
 import { rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { MARKETPLACE, PLUGINS } from './plugins.mjs';
 
-const MARKETPLACE = 'n8n-io/n8n-agent-skills';
-const PLUGINS = ['quality@n8n-agent-skills', 'security@n8n-agent-skills'];
 const STATUS_FILE = '/tmp/post-start-status.json';
 
 // Claude Code stages the marketplace clone here before renaming it to the cache dir.
