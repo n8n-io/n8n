@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { QuickReplyType } from '@n8n/api-types';
+import { redactTelemetryText } from '@n8n/telemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, useSlots } from 'vue';
@@ -57,7 +58,7 @@ async function onUserMessage(content: string, quickReplyType?: string, isFeedbac
 			is_quick_reply: !!quickReplyType,
 			is_positive: quickReplyType === 'all-good',
 			solution_count: solutionCount,
-			response: content,
+			response: redactTelemetryText(content),
 		});
 	}
 }

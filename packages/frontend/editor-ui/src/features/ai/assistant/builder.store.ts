@@ -1,4 +1,5 @@
 import type { VIEWS } from '@/app/constants';
+import { redactTelemetryText } from '@n8n/telemetry';
 import { CODE_WORKFLOW_BUILDER_EXPERIMENT } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -761,9 +762,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		const trackingPayload: UserSubmittedBuilderMessageTrackingPayload = {
 			source,
-			message: text,
+			// Scrubbed at the call site: this payload goes to RudderStack *and*
+			// straight to PostHog from the browser, so no backend hop sees both.
+			message: redactTelemetryText(text),
 			session_id: trackingSessionId.value,
-			start_workflow_json: currentWorkflowJson,
+			// Already size-gated below/by the caller — truncating a serialized
+			// workflow or execution would make it unparseable for analysis.
+			start_workflow_json: redactTelemetryText(currentWorkflowJson, { maxLength: Infinity }),
 			workflow_id: routeWorkflowId.value,
 			type,
 			manual_exec_success_count_since_prev_msg: manualExecStatsInBetweenMessages.value.success,
@@ -786,10 +791,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				console.warn('Failed to stringify execution data for telemetry:', error);
 			}
 
-			trackingPayload.execution_data = resultDataSizeKb > 512 ? '{}' : resultData;
+			trackingPayload.execution_data =
+				resultDataSizeKb > 512 ? '{}' : redactTelemetryText(resultData, { maxLength: Infinity });
 			trackingPayload.execution_status = executionStatus ?? '';
 			if (executionStatus === 'error') {
-				trackingPayload.error_message = errorMessage ?? '';
+				trackingPayload.error_message = redactTelemetryText(errorMessage ?? '');
 				trackingPayload.error_node_type = errorNodeType ?? '';
 			}
 		}
