@@ -1,8 +1,9 @@
-import { ExecutionsConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
+import { randomBytes } from 'node:crypto';
 
 /**
  * Runs the engine 2.0 data plane in-process.
@@ -19,6 +20,13 @@ export class EngineV2Module implements ModuleInterface {
 	async init() {
 		if (Container.get(ExecutionsConfig).mode === 'queue') {
 			throw new UserError('The engine-v2 module does not support queue mode.');
+		}
+
+		const engineConfig = Container.get(EngineConfig);
+		// Both planes live in this process, so a generated secret is enough and the
+		// integrated engine is never unauthenticated. A separate CP must set it.
+		if (!engineConfig.authSecret) {
+			engineConfig.authSecret = randomBytes(32).toString('hex');
 		}
 
 		const { EngineV2Runtime } = await import('./engine-v2.runtime.js');

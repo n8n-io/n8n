@@ -66,6 +66,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('@n8n/engine', () => ({
 	AllowAllAdmittance: vi.fn(),
+	SharedSecretIdentityVerifier: vi.fn(),
 	createDataSource: mocks.createDataSource,
 	createEngineRuntime: mocks.createEngineRuntime,
 }));

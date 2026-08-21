@@ -2,6 +2,7 @@ import type { DataSource } from '@n8n/typeorm';
 import type { Application } from 'express';
 
 import type { AdmittanceService } from '../admittance';
+import type { IdentityVerifier } from '../auth/identity.types';
 import { createStores } from '../database';
 import type { EngineStores } from '../database';
 import type { ExternalDependencies } from '../dependencies';
@@ -21,6 +22,8 @@ export interface EngineRuntimeOptions {
 	/** The data plane database, already initialized and migrated. */
 	dataSource: DataSource;
 	admittance: AdmittanceService;
+	/** Verifies the identity token on every `/api` request. No default: an unauthenticated engine must never boot by omission. */
+	identityVerifier: IdentityVerifier;
 	/**
 	 * Builds the capabilities the engine does not own. It receives the engine's
 	 * stores, because a `v1-node` executor reads step data through them and the
@@ -54,6 +57,7 @@ export interface EngineRuntime {
 export function createEngineRuntime({
 	dataSource,
 	admittance,
+	identityVerifier,
 	externalDependencies,
 }: EngineRuntimeOptions): EngineRuntime {
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
@@ -77,6 +81,7 @@ export function createEngineRuntime({
 
 	const { app } = createEngineServer(
 		new StartExecutionService(admittance, executionStore, orchestrationQueue),
+		identityVerifier,
 	);
 
 	return {

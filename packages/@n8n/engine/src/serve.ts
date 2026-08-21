@@ -2,6 +2,7 @@ import { EngineConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
 import { AllowAllAdmittance } from './admittance';
+import { SharedSecretIdentityVerifier } from './auth';
 import { createDataSource } from './database';
 import { createEngineRuntime } from './runtime';
 
@@ -14,11 +15,19 @@ async function main(): Promise<void> {
 		throw new Error('engine: N8N_ENGINE_DATABASE_URL is not set');
 	}
 
+	if (!config.authSecret) {
+		throw new Error('engine: N8N_ENGINE_AUTH_SECRET is not set');
+	}
+
 	const dataSource = createDataSource(config.databaseUrl);
 	await dataSource.initialize();
 	await dataSource.runMigrations();
 
-	const runtime = createEngineRuntime({ dataSource, admittance: new AllowAllAdmittance() });
+	const runtime = createEngineRuntime({
+		dataSource,
+		admittance: new AllowAllAdmittance(),
+		identityVerifier: new SharedSecretIdentityVerifier(config.authSecret),
+	});
 	runtime.start();
 
 	const server = runtime.app.listen(config.port, config.host, () => {

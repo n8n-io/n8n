@@ -3,7 +3,14 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EngineErrorResponse, StartExecutionRequest, StartExecutionResult } from '@n8n/engine';
+import type {
+	AuthenticatedCaller,
+	EngineErrorResponse,
+	StartExecutionRequest,
+	StartExecutionResult,
+} from '@n8n/engine';
+import { mintIdentityToken } from '@n8n/engine';
+import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import type { EngineDataPlaneProvider } from '@/services/engine-data-plane-proxy.service';
@@ -20,7 +27,11 @@ import type { EngineDataPlaneProvider } from '@/services/engine-data-plane-proxy
 export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 	private readonly http: HttpRequestClient;
 
-	constructor(engineConfig: EngineConfig, outboundHttp: OutboundHttp) {
+	constructor(
+		private readonly engineConfig: EngineConfig,
+		outboundHttp: OutboundHttp,
+		private readonly instanceSettings: InstanceSettings,
+	) {
 		this.http = outboundHttp.requests({
 			// Fixed, n8n-controlled host.
 			ssrf: 'disabled',
@@ -28,7 +39,22 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 			// dialable. Default to loopback and let `N8N_ENGINE_BASE_URL` override
 			// when the engine answers somewhere else.
 			baseURL: engineConfig.baseUrl || `http://127.0.0.1:${engineConfig.port}`,
+			// A factory, not a fixed value: every request gets a fresh short-lived
+			// token, and `engineConfig.authSecret` is read at request time — after
+			// the module generates it, which is after this constructor runs.
+			headers: () => ({
+				authorization: `Bearer ${mintIdentityToken(this.engineConfig.authSecret, this.caller())}`,
+			}),
 		});
+	}
+
+	/**
+	 * In a single-tenant deployment the CP is the tenant; cloud replaces
+	 * `tenantId` with a real one.
+	 */
+	private caller(): AuthenticatedCaller {
+		const { instanceId } = this.instanceSettings;
+		return { cpId: instanceId, tenantId: instanceId };
 	}
 
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {

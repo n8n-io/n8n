@@ -1,6 +1,13 @@
 export { createEngineRuntime } from './runtime';
 export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 
+export {
+	InvalidIdentityTokenError,
+	mintIdentityToken,
+	SharedSecretIdentityVerifier,
+} from './auth';
+export type { AuthenticatedCaller, IdentityVerifier } from './auth';
+
 export type { EngineErrorResponse } from './server';
 
 export type { JsonObject, JsonValue } from './common';

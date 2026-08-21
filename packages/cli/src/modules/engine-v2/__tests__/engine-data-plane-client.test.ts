@@ -4,11 +4,15 @@ import type {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
+import { SharedSecretIdentityVerifier } from '@n8n/engine';
 import type { StartExecutionRequest } from '@n8n/engine';
+import type { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
+
+const authSecret = 'a'.repeat(32);
 
 describe('EngineDataPlaneClient', () => {
 	const request: StartExecutionRequest = {
@@ -42,8 +46,9 @@ describe('EngineDataPlaneClient', () => {
 		});
 
 		return new EngineDataPlaneClient(
-			mock<EngineConfig>({ port: 3000, host: '0.0.0.0', baseUrl: '', ...config }),
+			mock<EngineConfig>({ port: 3000, host: '0.0.0.0', baseUrl: '', authSecret, ...config }),
 			outboundHttp,
+			mock<InstanceSettings>({ instanceId: 'instance-1' }),
 		);
 	};
 
@@ -84,6 +89,19 @@ describe('EngineDataPlaneClient', () => {
 
 		it('opts out of SSRF protection for the n8n-controlled engine host', () => {
 			expect(clientOptions?.ssrf).toBe('disabled');
+		});
+
+		it('sends an identity token the engine accepts, proving the caller is the instance id', () => {
+			const headers = clientOptions?.headers;
+			const resolved = typeof headers === 'function' ? headers() : headers;
+			const authorization = resolved?.authorization ?? '';
+
+			expect(authorization).toMatch(/^Bearer .+/);
+
+			const token = authorization.replace('Bearer ', '');
+			const verifier = new SharedSecretIdentityVerifier(authSecret);
+
+			expect(verifier.verify(token)).toEqual({ cpId: 'instance-1', tenantId: 'instance-1' });
 		});
 
 		it.each([
