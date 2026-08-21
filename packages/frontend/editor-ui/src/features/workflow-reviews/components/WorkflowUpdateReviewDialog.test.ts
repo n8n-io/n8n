@@ -38,6 +38,7 @@ const openReview = {
 	state: 'open' as const,
 	decision: 'pending' as const,
 	workflowVersionId: 'version-1',
+	workflowVersionName: null,
 	description: 'Original review description' as string | null,
 	createdAt: '2024-01-01T00:00:00.000Z',
 	updatedAt: '2024-01-01T00:00:00.000Z',

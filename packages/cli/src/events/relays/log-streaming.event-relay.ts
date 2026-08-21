@@ -159,7 +159,12 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private packageExported({ user, counts, ...rest }: RelayEventMap['n8n-package-exported']) {
+	private packageExported({
+		user,
+		counts,
+		credentialExportPolicy,
+		...rest
+	}: RelayEventMap['n8n-package-exported']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.n8n-package.export.success',
 			payload: { ...user, ...rest },

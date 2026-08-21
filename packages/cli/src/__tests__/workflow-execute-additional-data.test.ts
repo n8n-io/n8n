@@ -1644,6 +1644,61 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 		});
 
+		it('bridges the invocation context to response chunks and editor progress', async () => {
+			const sendDataToUI = vi.fn();
+			const sendResponseChunk = vi.fn().mockResolvedValue(undefined);
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+				sendDataToUI,
+			});
+
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'webhook',
+				undefined,
+				undefined,
+				{
+					nodeId: 'node-1',
+					nodeName: 'Message an Agent',
+					runIndex: 2,
+					itemIndex: 3,
+					sendResponseChunk,
+				},
+			);
+
+			expect(agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[9]).toEqual(
+				executionSandboxScope,
+			);
+			const streamObserver = agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[10];
+			expect(streamObserver).toEqual(expect.any(Function));
+
+			await streamObserver?.({ type: 'response-delta', delta: 'hello' });
+			await streamObserver?.({
+				type: 'capability-start',
+				toolCallId: 'tc-1',
+				capability: { kind: 'tool', name: 'lookup' },
+			});
+
+			expect(sendResponseChunk).toHaveBeenCalledWith('item', 'hello');
+			expect(sendDataToUI).toHaveBeenCalledWith('agentNodeProgress', {
+				executionId: EXEC_ID,
+				nodeId: 'node-1',
+				nodeName: 'Message an Agent',
+				runIndex: 2,
+				itemIndex: 3,
+				sequenceNumber: 0,
+				toolCallId: 'tc-1',
+				capability: { kind: 'tool', name: 'lookup' },
+				status: 'running',
+			});
+		});
+
 		it('backfills projectId from the workflow owner when missing', async () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				userId: 'user-1',
