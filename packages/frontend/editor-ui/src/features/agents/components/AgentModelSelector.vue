@@ -186,6 +186,19 @@ function getCredentialsForProvider(provider: AgentModelProvider) {
 	return [...credentialsById.values()].toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
+function isFreeOpenAiCreditsCredential(
+	provider: AgentModelProvider,
+	credentialId: string,
+): boolean {
+	const credential = credentialsStore.getCredentialById(credentialId);
+
+	return (
+		provider === FREE_OPENAI_CREDITS_PROVIDER &&
+		credential?.type === getProviderCredentialTypes(FREE_OPENAI_CREDITS_PROVIDER)[0] &&
+		credential.isManaged
+	);
+}
+
 const canUseFreeOpenAiCredits = computed(
 	() => credentials !== null && canCreateCredentials.value && userCanClaimOpenAiCredits.value,
 );
@@ -470,6 +483,15 @@ const filteredMenu = computed(() => {
 	});
 });
 
+function selectCredentialWithDefaultModel(
+	provider: AgentModelProvider,
+	credentialId: string,
+	defaultModel?: string,
+) {
+	emit('selectCredential', provider, credentialId);
+	if (defaultModel) emit('change', { provider, model: defaultModel });
+}
+
 function openNewCredential(provider: AgentModelProvider, credentialType: string) {
 	if (!disabled && canCreateCredentials.value) {
 		uiStore.openNewCredential(
@@ -483,7 +505,10 @@ function openNewCredential(provider: AgentModelProvider, credentialType: string)
 			{
 				hideAskAssistant: true,
 				onCredentialCreated: function selectCreatedCredential(credential) {
-					emit('selectCredential', provider, credential.id);
+					const defaultModel = selectedModel
+						? undefined
+						: modelsByProvider[provider]?.models[0]?.model;
+					selectCredentialWithDefaultModel(provider, credential.id, defaultModel);
 				},
 				...(credentialModalAppendToBody ? { appendToBody: true } : {}),
 			},
@@ -505,7 +530,11 @@ async function onSelect(id: string) {
 	}
 
 	if (action === 'select') {
-		emit('selectCredential', providerId, value);
+		selectCredentialWithDefaultModel(
+			providerId,
+			value,
+			isFreeOpenAiCreditsCredential(providerId, value) ? FREE_OPENAI_CREDITS_MODEL : undefined,
+		);
 		return;
 	}
 
@@ -526,8 +555,7 @@ async function onSelect(id: string) {
 
 		if (!credential) return;
 
-		emit('selectCredential', providerId, credential.id);
-		emit('change', { provider: providerId, model: value });
+		selectCredentialWithDefaultModel(providerId, credential.id, value);
 		return;
 	}
 
