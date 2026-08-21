@@ -4,7 +4,7 @@ import { InsightsModule } from './module.descriptor';
 
 const mocks = vi.hoisted(() => ({ isInsightsEnabled: true }));
 
-vi.mock('@/features/execution/insights/insights.store', () => ({
+vi.mock('./insights.store', () => ({
 	useInsightsStore: () => ({
 		get isInsightsEnabled() {
 			return mocks.isInsightsEnabled;
