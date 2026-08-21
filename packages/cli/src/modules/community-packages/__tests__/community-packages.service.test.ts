@@ -1422,6 +1422,27 @@ describe('CommunityPackagesService', () => {
 				expect.objectContaining({ packageName: 'n8n-nodes-test', packageVersion: '1.0.0' }),
 			);
 		});
+
+		test('should skip the download when the on-disk version already matches and the loader is registered', async () => {
+			vi.mocked(readFile).mockResolvedValue(JSON.stringify({ version: '1.0.0' }));
+			loadNodesAndCredentials.loaders['n8n-nodes-test'] = mock<PackageDirectoryLoader>();
+
+			const downloadPackageSpy = vi
+				.spyOn(communityPackagesService as any, 'downloadPackage')
+				.mockResolvedValue(undefined);
+
+			await communityPackagesService.handleInstallEvent({
+				packageName: 'n8n-nodes-test',
+				packageVersion: '1.0.0',
+			});
+
+			expect(downloadPackageSpy).not.toHaveBeenCalled();
+			expect(loadNodesAndCredentials.unloadPackage).not.toHaveBeenCalled();
+			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Community package n8n-nodes-test already at 1.0.0, skipping',
+			);
+		});
 	});
 
 	describe('handleUninstallEvent', () => {

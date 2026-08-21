@@ -252,8 +252,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.initCommunityPackages();
 
-		// Rewire: initCommunityPackages() may have just registered new @OnPubSubEvent handlers,
-		// too late for the initOrchestration() call above to have picked them up.
+		// Rewire: pick up @OnPubSubEvent handlers initCommunityPackages() just registered.
+		// The Subscriber is already live, so without this the window where incoming
+		// community-package-* commands have no listener stays open until server.ts's
+		// later PubSubRegistry.init() instead of closing here.
 		Container.get(PubSubRegistry).init();
 
 		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
