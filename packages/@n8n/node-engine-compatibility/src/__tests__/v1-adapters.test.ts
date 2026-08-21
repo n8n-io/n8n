@@ -123,10 +123,10 @@ describe('toV1Execution', () => {
 			const skipped = { body: { 0: items({ pass: 0 }), 1: items({ pass: 1 }) } };
 			const execution = toV1Execution(graph, skipped, 'body', 2);
 
-			// the padded pass carries no output slots at all, which is what a node
-			// that did not run on that pass produced
+			// one slot holding no items. Zero slots would read to v1 as no data at
+			// all, and an expression naming Body would throw instead of see nothing
 			expect(execution.runData.Body).toHaveLength(3);
-			expect(execution.runData.Body[2].data!.main).toEqual([]);
+			expect(execution.runData.Body[2].data!.main).toEqual([[]]);
 		});
 
 		it('shows a node in no loop iteration 0 alone, seen from inside the loop', () => {

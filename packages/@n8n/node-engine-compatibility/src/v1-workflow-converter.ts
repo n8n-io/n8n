@@ -378,6 +378,12 @@ function toBatchConfig(node: INode): BatchStepConfig {
 	// Each pass slices a list fixed at the first pass, so nothing can restart a
 	// loop halfway through.
 	const options: unknown = node.parameters?.options;
+	if (typeof options === 'string') {
+		throw new UnsupportedWorkflowError(
+			`Node "${node.name}" sets its options from an expression, which is not supported yet.`,
+		);
+	}
+
 	const reset = isRecord(options) ? options.reset : undefined;
 	if (reset !== undefined && reset !== false) {
 		throw new UnsupportedWorkflowError(

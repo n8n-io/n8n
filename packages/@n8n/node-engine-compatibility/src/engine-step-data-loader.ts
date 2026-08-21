@@ -20,13 +20,17 @@ export function createEngineStepDataLoader(
 		const execution = await executionStore.loadExecution(context.executionId);
 		const steps = await stepStore.loadAllSteps(context.executionId);
 
-		const outputsByNode: Record<string, Record<number, StepSlots>> = {};
+		const byNode = new Map<string, Record<number, StepSlots>>();
 		for (const step of steps) {
 			if (step.status !== 'completed' || step.outputs === null) continue;
-			outputsByNode[step.nodeId] ??= {};
-			outputsByNode[step.nodeId][step.iteration] = step.outputs;
+			let byIteration = byNode.get(step.nodeId);
+			if (byIteration === undefined) {
+				byIteration = {};
+				byNode.set(step.nodeId, byIteration);
+			}
+			byIteration[step.iteration] = step.outputs;
 		}
 
-		return { graph: execution.graph, outputsByNode };
+		return { graph: execution.graph, outputsByNode: Object.fromEntries(byNode) };
 	};
 }
