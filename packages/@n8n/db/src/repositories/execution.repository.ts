@@ -118,20 +118,8 @@ function parseFiltersToQueryBuilder(
 			}
 		}
 	}
-	if (filters?.startedAfter) {
-		qb.andWhere({
-			startedAt: MoreThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(filters.startedAfter)),
-			),
-		});
-	}
-	if (filters?.startedBefore) {
-		qb.andWhere({
-			startedAt: LessThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(filters.startedBefore)),
-			),
-		});
-	}
+	const startedAt = startedAtCondition(filters ?? {});
+	if (startedAt) qb.andWhere({ startedAt });
 	if (filters?.workflowId) {
 		qb.andWhere({
 			workflowId: filters.workflowId,
@@ -139,12 +127,30 @@ function parseFiltersToQueryBuilder(
 	}
 }
 
-const lessThanOrEqual = (date: string): unknown => {
-	return LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(date)));
-};
+const startedAtCondition = ({
+	startedAfter,
+	startedBefore,
+}: {
+	startedAfter?: string;
+	startedBefore?: string;
+}) => {
+	const conditions = [];
 
-const moreThanOrEqual = (date: string): unknown => {
-	return MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(date)));
+	if (startedAfter) {
+		conditions.push(
+			MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter))),
+		);
+	}
+
+	if (startedBefore) {
+		conditions.push(
+			LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore))),
+		);
+	}
+
+	if (conditions.length === 0) return undefined;
+
+	return And(...conditions);
 };
 
 // This is the max number of elements in an IN-clause.
@@ -637,6 +643,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			lastId?: string;
 			status?: ExecutionStatus;
 			excludedExecutionsIds?: string[];
+			startedAfter?: string;
+			startedBefore?: string;
 		},
 	): Promise<number> {
 		return await this.count({
@@ -675,6 +683,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			lastId?: string;
 			status?: ExecutionStatus;
 			excludedExecutionsIds?: string[];
+			startedAfter?: string;
+			startedBefore?: string;
 		} = {},
 	) {
 		const where: FindOptionsWhere<IExecutionFlattedDb> = {
@@ -685,6 +695,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			...this.getStatusCondition(options.status),
 			workflowId: In(workflowIds),
 		};
+
+		const startedAt = startedAtCondition(options);
+		if (startedAt) where.startedAt = startedAt;
 
 		return where;
 	}
@@ -968,8 +981,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
 		if (finished) qb.andWhere({ finished });
 		if (workflowId) qb.andWhere({ workflowId });
-		if (startedBefore) qb.andWhere({ startedAt: lessThanOrEqual(startedBefore) });
-		if (startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(startedAfter) });
+		const startedAt = startedAtCondition({ startedAfter, startedBefore });
+		if (startedAt) qb.andWhere({ startedAt });
 
 		if (metadata?.length === 1) {
 			const [{ key, value, exactMatch }] = metadata;
@@ -1176,21 +1189,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			where.workflowId = query.workflowId;
 		}
 
-		const startedAtConditions = [];
-
-		if (query.startedAfter)
-			startedAtConditions.push(
-				MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter))),
-			);
-
-		if (query.startedBefore)
-			startedAtConditions.push(
-				LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore))),
-			);
-
-		if (startedAtConditions.length > 0) {
-			where.startedAt = And(...startedAtConditions);
-		}
+		const startedAt = startedAtCondition(query);
+		if (startedAt) where.startedAt = startedAt;
 
 		return await this.find({ select: ['id'], where });
 	}

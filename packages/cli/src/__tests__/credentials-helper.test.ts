@@ -308,6 +308,83 @@ describe('CredentialsHelper', () => {
 			});
 		});
 
+		test('resolves a hidden base URL computed from a sibling credential field', async () => {
+			const credentialType: ICredentialType = {
+				name: 'moonshotApi',
+				displayName: 'Moonshot',
+				properties: [
+					{
+						displayName: 'API Key',
+						name: 'apiKey',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+					{
+						displayName: 'Region',
+						name: 'region',
+						type: 'options',
+						options: [
+							{ name: 'International', value: 'international' },
+							{ name: 'China', value: 'china' },
+						],
+						default: 'international',
+					},
+					{
+						displayName: 'Base URL',
+						name: 'url',
+						type: 'hidden',
+						default:
+							'={{ $self.region === "china" ? "https://api.moonshot.cn/v1" : "https://api.moonshot.ai/v1" }}',
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+
+			// Region left at its default: neither `region` nor `url` was persisted.
+			await expect(
+				helper.applyDefaultsAndOverwrites(
+					mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+					{ apiKey: 'test-api-key' },
+					credentialType.name,
+					'internal',
+				),
+			).resolves.toMatchObject({
+				apiKey: 'test-api-key',
+				region: 'international',
+				url: 'https://api.moonshot.ai/v1',
+			});
+
+			// Region changed from its default, so it is persisted while `url` is not.
+			await expect(
+				helper.applyDefaultsAndOverwrites(
+					mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+					{ apiKey: 'test-api-key', region: 'china' },
+					credentialType.name,
+					'internal',
+				),
+			).resolves.toMatchObject({
+				apiKey: 'test-api-key',
+				region: 'china',
+				url: 'https://api.moonshot.cn/v1',
+			});
+		});
+
 		test('preserves PKCE flag negotiated by dynamic client registration', async () => {
 			const credentialType: ICredentialType = {
 				name: 'mcpOAuth2Api',

@@ -3,7 +3,8 @@ import { GlobalConfig } from '@n8n/config';
 import type { SqliteConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { In, LessThan, LessThanOrEqual, And, Not } from '@n8n/typeorm';
+import { In, LessThan, LessThanOrEqual, MoreThanOrEqual, And, Not } from '@n8n/typeorm';
+import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { BinaryDataService } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -150,6 +151,81 @@ describe('ExecutionRepository', () => {
 					take: limit,
 				});
 
+				expect(result).toBe(mockCount);
+			});
+		});
+
+		describe('with startedAfter and startedBefore filters', () => {
+			const startedAfter = '2024-01-01T00:00:00.000Z';
+			const startedBefore = '2024-12-31T23:59:59.999Z';
+			const startedAfterCondition = MoreThanOrEqual(
+				DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter)),
+			);
+			const startedBeforeCondition = LessThanOrEqual(
+				DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore)),
+			);
+
+			test('should filter executions started after a given time', async () => {
+				const limit = 10;
+				const mockCount = 4;
+				const workflowIds = ['wf-1'];
+
+				entityManager.count.mockResolvedValueOnce(mockCount);
+				const result = await executionRepository.countInWorkflows(workflowIds, {
+					limit,
+					startedAfter,
+				});
+
+				expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
+					where: {
+						workflowId: In(workflowIds),
+						startedAt: And(startedAfterCondition),
+					},
+					take: limit,
+				});
+				expect(result).toBe(mockCount);
+			});
+
+			test('should filter executions started before a given time', async () => {
+				const limit = 10;
+				const mockCount = 6;
+				const workflowIds = ['wf-1'];
+
+				entityManager.count.mockResolvedValueOnce(mockCount);
+				const result = await executionRepository.countInWorkflows(workflowIds, {
+					limit,
+					startedBefore,
+				});
+
+				expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
+					where: {
+						workflowId: In(workflowIds),
+						startedAt: And(startedBeforeCondition),
+					},
+					take: limit,
+				});
+				expect(result).toBe(mockCount);
+			});
+
+			test('should filter executions started within a time range', async () => {
+				const limit = 10;
+				const mockCount = 3;
+				const workflowIds = ['wf-1'];
+
+				entityManager.count.mockResolvedValueOnce(mockCount);
+				const result = await executionRepository.countInWorkflows(workflowIds, {
+					limit,
+					startedAfter,
+					startedBefore,
+				});
+
+				expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
+					where: {
+						workflowId: In(workflowIds),
+						startedAt: And(startedAfterCondition, startedBeforeCondition),
+					},
+					take: limit,
+				});
 				expect(result).toBe(mockCount);
 			});
 		});

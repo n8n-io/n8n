@@ -1341,9 +1341,23 @@ export class InstanceAiEventsQuery extends Z.class({
 	lastEventId: z.coerce.number().int().nonnegative().optional(),
 }) {}
 
+/** Ceilings for a single thread-history read: `limit` bounds the rows (and the
+ *  tree hydration hanging off them) one request can pull, `page` bounds the
+ *  offset scan behind it. Both sit above any real client — the UI's largest page
+ *  is 100 messages and it never pages past the first — so they only ever bite a
+ *  hand-crafted request. */
+export const INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT = 50;
+export const INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT = 200;
+export const INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE = 1000;
+
 export class InstanceAiThreadMessagesQuery extends Z.class({
-	limit: z.coerce.number().int().positive().default(50),
-	page: z.coerce.number().int().nonnegative().default(0),
+	limit: z.coerce
+		.number()
+		.int()
+		.min(1)
+		.max(INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT)
+		.default(INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT),
+	page: z.coerce.number().int().nonnegative().max(INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE).default(0),
 	raw: z.enum(['true', 'false']).optional(),
 }) {}
 

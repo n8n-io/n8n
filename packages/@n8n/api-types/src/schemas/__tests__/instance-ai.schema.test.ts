@@ -25,6 +25,10 @@ import {
 	InstanceAiEnsureThreadRequest,
 	findUnbackedSeedWorkflowTools,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiThreadMessagesQuery,
+	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	instanceAiEvalSeedAgentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiResourceAttachmentSchema,
@@ -895,5 +899,41 @@ describe('instanceAiAttachmentSchema — nodes attachment', () => {
 	it('is also accepted by instanceAiResourceAttachmentSchema', () => {
 		const result = instanceAiResourceAttachmentSchema.safeParse(nodesAttachment());
 		expect(result.success).toBe(true);
+	});
+});
+
+describe('InstanceAiThreadMessagesQuery', () => {
+	it('defaults to the first page at the default limit', () => {
+		expect(InstanceAiThreadMessagesQuery.parse({})).toEqual({
+			limit: INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
+			page: 0,
+		});
+	});
+
+	it('coerces the string query params a URL carries', () => {
+		expect(InstanceAiThreadMessagesQuery.parse({ limit: '25', page: '2', raw: 'true' })).toEqual({
+			limit: 25,
+			page: 2,
+			raw: 'true',
+		});
+	});
+
+	it('accepts the ceilings', () => {
+		const result = InstanceAiThreadMessagesQuery.safeParse({
+			limit: INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
+			page: INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{ limit: INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT + 1 },
+		{ limit: 0 },
+		{ limit: -1 },
+		{ limit: 1.5 },
+		{ page: INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE + 1 },
+		{ page: -1 },
+	])('rejects out-of-range paging (%o)', (query) => {
+		expect(InstanceAiThreadMessagesQuery.safeParse(query).success).toBe(false);
 	});
 });
