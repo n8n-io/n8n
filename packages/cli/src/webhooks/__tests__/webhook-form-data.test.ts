@@ -242,6 +242,75 @@ describe('webhook-form-data', () => {
 			testServer.assertHasBeenCalled();
 		});
 
+		it('should keep the filled entries when one field repeats with a blank input', async () => {
+			const parseFn = createMultiFormDataParser(1);
+			const boundary = 'repeatedFieldBoundary';
+			const body = [
+				`--${boundary}`,
+				'Content-Disposition: form-data; name="attachments"; filename="file.txt"',
+				'Content-Type: text/plain',
+				'',
+				'hello',
+				`--${boundary}`,
+				'Content-Disposition: form-data; name="attachments"; filename=""',
+				'Content-Type: application/octet-stream',
+				'',
+				'',
+				`--${boundary}--`,
+				'',
+			].join('\r\n');
+
+			await testServer
+				.sendRequestToHandler(async (req) => {
+					const parsedData = await parseFn(req);
+
+					// One entry remains, so `normalizeFormData` unwraps the array.
+					expect(parsedData).toStrictEqual({
+						data: {},
+						files: {
+							attachments: expect.objectContaining({
+								originalFilename: 'file.txt',
+								size: 'hello'.length,
+							}),
+						},
+					});
+				})
+				.set('Content-Type', `multipart/form-data; boundary=${boundary}`)
+				.send(body)
+				.expect(200);
+
+			testServer.assertHasBeenCalled();
+		});
+
+		it('should count an empty-filename part against the size limit', async () => {
+			const oneKbInMb = 1 / 1024;
+			const parseFn = createMultiFormDataParser(oneKbInMb);
+			const boundary = 'oversizedEmptyNameBoundary';
+			// The part declares no filename, so it is a candidate for removal, but
+			// its content must still meet the limit. Removal happens after
+			// formidable has accounted for the bytes, never instead of it.
+			const body = [
+				`--${boundary}`,
+				'Content-Disposition: form-data; name="oversized"; filename=""',
+				'Content-Type: application/octet-stream',
+				'',
+				'x'.repeat(64 * 1024),
+				`--${boundary}--`,
+				'',
+			].join('\r\n');
+
+			await testServer
+				.sendRequestToHandler(async (req) => {
+					const rejection = parseFn(req);
+					await expect(rejection).rejects.toBeInstanceOf(ContentTooLargeError);
+					await expect(rejection).rejects.toMatchObject({ httpStatusCode: 413 });
+				})
+				.set('Content-Type', `multipart/form-data; boundary=${boundary}`)
+				.send(body);
+
+			testServer.assertHasBeenCalled();
+		});
+
 		it('should keep a file part that omits the filename', async () => {
 			const parseFn = createMultiFormDataParser(1);
 

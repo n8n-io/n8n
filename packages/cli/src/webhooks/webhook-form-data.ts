@@ -1,5 +1,6 @@
 import formidable from 'formidable';
 import type { IncomingMessage } from 'http';
+import { rm } from 'node:fs/promises';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
@@ -26,12 +27,40 @@ const mapFormParseError = (error: unknown): Error => {
 };
 
 // A browser submits a file input the user left empty as a 0-byte part that
-// declares `filename=""`. Skipping the part keeps the request valid and
-// produces no binary for that field. A part that omits the filename attribute
-// altogether is a different case: formidable reports `null` rather than an
-// empty string, and non-browser clients upload real content that way, so the
-// parser must keep it.
-const isFileSelected = (part: formidable.Part): boolean => part.originalFilename !== '';
+// declares `filename=""`. A part that omits the filename attribute altogether
+// is a different case: formidable reports `null` rather than an empty string,
+// and non-browser clients upload real content that way.
+const isBlankFileInput = (file: formidable.File): boolean =>
+	file.originalFilename === '' && file.size === 0;
+
+/**
+ * Removes the file inputs the user left empty, so the request produces no
+ * binary for those fields. formidable applies its size limits while it writes
+ * each part, so the parser discards these afterwards rather than skipping them
+ * with formidable's `filter` option, which would exempt the part from those
+ * limits.
+ */
+const discardBlankFileInputs = async (files: Record<string, formidable.File[] | undefined>) => {
+	const discarded: formidable.File[] = [];
+
+	for (const key in files) {
+		const entries = files[key];
+		if (!entries) continue;
+
+		const kept = entries.filter((file) => !isBlankFileInput(file));
+		if (kept.length === entries.length) continue;
+
+		discarded.push(...entries.filter(isBlankFileInput));
+		if (kept.length === 0) {
+			delete files[key];
+		} else {
+			files[key] = kept;
+		}
+	}
+
+	// A discarded part still reached disk as an empty temp file.
+	await Promise.all(discarded.map(async (file) => await rm(file.filepath, { force: true })));
+};
 
 const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
 	for (const key in values) {
@@ -61,7 +90,6 @@ export const createMultiFormDataParser = (maxFormDataSizeInMb: number) => {
 			// `minFileSize` default of 1 rejects them again on its own.
 			allowEmptyFiles: true,
 			minFileSize: 0,
-			filter: isFileSelected,
 			// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 		});
 
@@ -71,9 +99,13 @@ export const createMultiFormDataParser = (maxFormDataSizeInMb: number) => {
 					reject(mapFormParseError(error));
 					return;
 				}
-				normalizeFormData(data);
-				normalizeFormData(files);
-				resolve({ data, files });
+				discardBlankFileInputs(files)
+					.then(() => {
+						normalizeFormData(data);
+						normalizeFormData(files);
+						resolve({ data, files });
+					})
+					.catch(reject);
 			});
 		});
 	};
