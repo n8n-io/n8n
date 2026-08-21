@@ -74,7 +74,7 @@ const scrollStyle = computed(() => {
 	th {
 		background-color: var(--color--background--light-1);
 		color: var(--color--text);
-		font-weight: 600;
+		font-weight: var(--font-weight--medium);
 		font-size: 12px;
 		padding: 0 8px;
 		text-transform: capitalize;

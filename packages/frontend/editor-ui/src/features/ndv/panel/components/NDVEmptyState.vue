@@ -38,7 +38,7 @@ defineSlots<{
 
 .title {
 	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: 145%;
 	color: var(--color--text);
 	margin: 0;

@@ -944,7 +944,7 @@ th.isCollapsingColumn + th {
 .dataKey {
 	color: var(--color--text--shade-1);
 	line-height: 1.7;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	border-radius: var(--radius);
 	padding: 0 var(--spacing--5xs) 0 var(--spacing--5xs);
 	margin-right: var(--spacing--5xs);

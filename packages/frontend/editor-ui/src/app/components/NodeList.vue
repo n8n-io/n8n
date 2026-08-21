@@ -79,7 +79,7 @@ const countNodesToBeSliced = (nodes: ITemplatesNode[]): number => {
 	border: 1px var(--color--foreground) solid;
 	border-radius: var(--radius);
 	font-size: 10px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 .buttonSm {

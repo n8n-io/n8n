@@ -97,7 +97,7 @@ const isAgentModel = computed(
 	margin-top: var(--spacing--2xs);
 	color: var(--color--text--shade-1);
 	font-size: 24px;
-	font-weight: 600;
+	font-weight: var(--font-weight--medium);
 	line-height: 32px;
 }
 

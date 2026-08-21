@@ -21,7 +21,7 @@ const { t } = useI18n();
 	display: inline-block;
 
 	color: var(--color--secondary);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	background-color: var(--color--secondary--tint-2);
 	border-radius: 16px;
 }

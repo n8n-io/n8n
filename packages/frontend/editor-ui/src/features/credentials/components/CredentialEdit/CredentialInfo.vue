@@ -60,7 +60,7 @@ const i18n = useI18n();
 }
 
 .label {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	max-width: 230px;
 }
 

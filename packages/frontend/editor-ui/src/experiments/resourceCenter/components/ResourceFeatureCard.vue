@@ -240,7 +240,7 @@ const resolvedArtworkNodeTypes = computed(() => {
 	background: var(--feature--color--accent);
 	color: white;
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	box-shadow: 0 0.75rem 1.5rem -1rem
 		color-mix(in srgb, var(--feature--shadow--accent) 42%, transparent);
 	cursor: pointer;

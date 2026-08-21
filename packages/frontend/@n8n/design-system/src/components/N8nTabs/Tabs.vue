@@ -250,7 +250,7 @@ const scrollRight = () => scroll(50);
 	.modern & {
 		padding-bottom: calc(var(--spacing--xs) + var(--tabs--tab--border-width--active));
 		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 
 	.small & {
@@ -371,7 +371,7 @@ const scrollRight = () => scroll(50);
 	width: 10px;
 	display: flex;
 	align-items: center;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .notificationContainer {

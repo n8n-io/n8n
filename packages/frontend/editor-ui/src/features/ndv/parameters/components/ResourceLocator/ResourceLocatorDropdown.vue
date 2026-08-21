@@ -539,7 +539,7 @@ watch(
 }
 
 .addResourceText {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .addResourceIcon {
@@ -550,7 +550,7 @@ watch(
 
 .tipText {
 	color: var(--color--text--shade-1);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	white-space: nowrap;
 	align-self: flex-start;
 }

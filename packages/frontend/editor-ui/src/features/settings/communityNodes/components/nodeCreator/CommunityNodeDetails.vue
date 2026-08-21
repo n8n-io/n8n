@@ -165,7 +165,7 @@ const onInstall = async () => {
 	align-items: center;
 	color: var(--color--text);
 	font-size: var(--font-size--xl);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 .nodeIcon {
 	--node--icon--size: 36px;

@@ -203,7 +203,7 @@ onClickOutside(
 @use '@/app/css/variables' as *;
 
 :global(strong) {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 .nodeCreator {
 	--node-creator--width: #{$node-creator-width};

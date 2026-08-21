@@ -5,7 +5,7 @@
 .switch {
 	span {
 		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text--tint-1);
 	}
 }
@@ -31,7 +31,7 @@
 	> label {
 		display: inline-block;
 		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text--shade-1);
 		padding: 0 0 var(--spacing--2xs);
 	}
@@ -98,7 +98,7 @@
 
 	label {
 		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text--shade-1);
 	}
 

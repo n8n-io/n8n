@@ -376,7 +376,7 @@ onClickOutside(
 		}
 
 		&.selected {
-			font-weight: var(--font-weight--bold);
+			font-weight: var(--font-weight--medium);
 
 			> span {
 				display: inline-block;

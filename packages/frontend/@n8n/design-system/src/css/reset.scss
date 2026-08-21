@@ -115,7 +115,7 @@ input {
 }
 
 button {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 article,
@@ -216,7 +216,12 @@ mark {
 	background-color: var(--text-highlight--color--background);
 	color: var(--color--text--shade-1);
 	font-style: italic;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
+}
+
+strong,
+b {
+	font-weight: var(--font-weight--medium);
 }
 
 del {

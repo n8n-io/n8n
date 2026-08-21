@@ -134,7 +134,7 @@ const menuHeight = computed(() => {
 	align-items: center;
 	color: var(--color--text);
 	background-color: var(--color--background--light-3);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--3xs);
 	z-index: 999;
 	border: var(--border-width) var(--border-style) var(--color--info--tint-1);
@@ -156,7 +156,7 @@ const menuHeight = computed(() => {
 	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-1);
 	text-transform: uppercase;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 .groupUsers {
 	display: flex;

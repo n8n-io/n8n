@@ -32,7 +32,7 @@
 		margin: 0;
 		color: var(--color--text--shade-1);
 		line-height: var(--line-height--md);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		scroll-margin-top: calc(var(--markdown--spacing) * 4);
 	}
 
@@ -73,7 +73,7 @@
 	strong,
 	b {
 		color: var(--color--text--shade-1);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 
 	a:not(:where(h1, h2, h3, h4, h5, h6) *) {
@@ -105,7 +105,7 @@
 	}
 
 	:is(h1, h2, h3, h4, h5, h6) code {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 
 	pre {
@@ -226,7 +226,7 @@
 
 	thead th {
 		color: var(--color--text--shade-1);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		vertical-align: bottom;
 		padding-inline-start: 0.6em;
 		padding-inline-end: 0.6em;
