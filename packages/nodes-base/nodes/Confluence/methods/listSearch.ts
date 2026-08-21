@@ -43,15 +43,22 @@ async function searchByName(
 		const response = await confluenceApiRequest.call(this, 'GET', endpoint, {}, qs);
 		const entries = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 
+		let lastName: string | undefined;
+		let exactFound = false;
 		for (const entry of entries) {
-			if (typeof entry.id !== 'string' && typeof entry.id !== 'number') continue;
 			if (typeof entry.name !== 'string') continue;
-			if (filterLower !== '' && !entry.name.toLowerCase().includes(filterLower)) continue;
+			lastName = entry.name.toLowerCase();
+			if (typeof entry.id !== 'string' && typeof entry.id !== 'number') continue;
+			if (filterLower !== '' && !lastName.includes(filterLower)) continue;
+			if (lastName === filterLower) exactFound = true;
 			results.push({ name: toDisplayName(entry.name, entry), value: String(entry.id) });
 		}
 
 		cursor = extractNextCursor(response);
-		if (cursor === undefined || filterLower === '' || results.length > 0) break;
+		if (cursor === undefined || filterLower === '' || exactFound) break;
+		// The list is name-sorted: don't stop on partial matches while an exact match may still lie ahead
+		const exactMayLieAhead = lastName !== undefined && lastName < filterLower;
+		if (results.length > 0 && !exactMayLieAhead) break;
 	}
 
 	return { results, paginationToken: cursor };
