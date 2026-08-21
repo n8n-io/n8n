@@ -1,6 +1,7 @@
 import {
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
+	WAIT_TOOL_NAME,
 	type AgentBuilderOpenSuspension,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -9,6 +10,7 @@ import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
 	parseN8nChatActionInput,
+	parseWaitSuspendPayload,
 } from './n8nChatInteraction';
 
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
@@ -128,8 +130,8 @@ function isDeclinedToolOutput(value: unknown): boolean {
 
 /**
  * Given a tool call belonging to one of the interactive tools still rendered
- * in agents chat (`approval`, `chat_action`), reconstruct an
- * `InteractivePayload` for it. The result is:
+ * in agents chat (`approval`, `chat_action`) — or a workflow tool parked on a
+ * Wait node — reconstruct an `InteractivePayload` for it. The result is:
  *
  * - **resolved**: when `output` is present.
  * - **open**: when `output` is absent — the card renders as an active
@@ -153,6 +155,21 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 				!isDelegateSubAgentTool(tc.tool) && {
 					resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
 				}),
+		};
+	}
+
+	// A workflow tool waiting on a Wait node: the tool name is per-workflow, so
+	// the suspend payload's own marker is the only discriminator.
+	const waitInput = parseWaitSuspendPayload(tc.suspendPayload);
+	if (waitInput) {
+		const resolved = tc.output !== undefined ? n8nChatResumeValueSchema.safeParse(tc.output) : null;
+		return {
+			toolCallId: tc.toolCallId,
+			...(tc.output !== undefined && { resolvedAt: 1 }),
+			...(tc.canceled === true && { cancelled: true }),
+			toolName: WAIT_TOOL_NAME,
+			input: waitInput,
+			...(tc.canceled !== true && resolved?.success && { resolvedValue: resolved.data }),
 		};
 	}
 

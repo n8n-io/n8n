@@ -2,6 +2,9 @@ import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	getWorkflowToolIncompatibilityReason,
+	WORKFLOW_WAIT_ACTION_CANCEL,
+	WORKFLOW_WAIT_ACTION_CHECK,
+	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type AgentJsonToolConfig,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
@@ -86,6 +89,7 @@ const WAIT_POLL_INTERVAL_MS = 2_000;
 
 /** `buildSuspendCardPayload` passes this through verbatim, so it doubles as the HITL card spec. */
 const WAIT_SUSPEND_SCHEMA = z.object({
+	type: z.literal(WORKFLOW_WAIT_SUSPEND_TYPE),
 	title: z.string(),
 	components: z.array(z.object({ type: z.string() }).catchall(z.unknown())),
 });
@@ -120,6 +124,8 @@ interface WorkflowToolResult {
 	status: string;
 	data?: Record<string, unknown>;
 	error?: string;
+	/** Explains a non-obvious outcome to the model, e.g. that the user stopped waiting. */
+	note?: string;
 }
 
 /** Internal result, carrying wait details that are stripped before the model sees them. */
@@ -692,14 +698,31 @@ function buildWaitCard(
 		});
 	}
 
-	components.push({
-		type: 'button',
-		label: 'Check for the result',
-		value: 'continue',
-		style: 'primary',
-	});
+	components.push(
+		{
+			type: 'button',
+			label: 'Check for the result',
+			value: WORKFLOW_WAIT_ACTION_CHECK,
+			style: 'primary',
+		},
+		{
+			type: 'button',
+			label: 'Stop waiting',
+			value: WORKFLOW_WAIT_ACTION_CANCEL,
+			style: 'danger',
+		},
+	);
 
-	return { title: `Waiting on "${workflowName}"`, components };
+	return {
+		type: WORKFLOW_WAIT_SUSPEND_TYPE,
+		title: `Waiting on "${workflowName}"`,
+		components,
+	};
+}
+
+/** True when the user clicked the card's "stop waiting" button. */
+function isWaitCancelled(resumeData: WaitToolContext['resumeData']): boolean {
+	return resumeData?.value === WORKFLOW_WAIT_ACTION_CANCEL;
 }
 
 /** So the model gets the workflow's real output rather than an interim "waiting". */
@@ -830,6 +853,7 @@ async function buildWorkflowTool(
 				status: z.string(),
 				data: z.record(z.unknown()).optional(),
 				error: z.string().optional(),
+				note: z.string().optional(),
 			}),
 		)
 		.suspend(WAIT_SUSPEND_SCHEMA)
@@ -855,6 +879,16 @@ async function buildWorkflowTool(
 					allOutputs,
 					toolName,
 				);
+			}
+
+			// The user gave up on the wait: report where the workflow got to rather
+			// than polling or parking again. Re-invoking the tool would start a
+			// second execution, so say so.
+			if (result.status === 'waiting' && isWaitCancelled(ctx.resumeData)) {
+				return {
+					...withoutWaitState(result),
+					note: 'The user stopped waiting for this workflow. It is still paused — do not start it again.',
+				};
 			}
 
 			if (result.status === 'waiting') {
