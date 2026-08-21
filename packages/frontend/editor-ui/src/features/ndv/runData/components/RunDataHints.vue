@@ -2,16 +2,23 @@
 import { computed, ref } from 'vue';
 import type { NodeHint } from 'n8n-workflow';
 import { N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
-import type { CalloutTheme } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+
+type HintTheme = NonNullable<NodeHint['type']>;
 
 type HintEntry = {
 	key: string;
-	theme: CalloutTheme;
+	theme: HintTheme;
 	hints: NodeHint[];
 	repeatedCount?: number;
 	/** Only set for grouped hints; `{count}` is interpolated on render */
 	summary?: string;
+};
+
+const HINT_THEME_SEVERITY: Record<HintTheme, number> = {
+	info: 0,
+	warning: 1,
+	danger: 2,
 };
 
 const props = defineProps<{
@@ -52,6 +59,7 @@ const entries = computed<HintEntry[]>(() => {
 		const existing = groups.get(hint.group.key);
 
 		if (existing) {
+			existing.theme = mostSevereTheme(existing.theme, theme);
 			existing.hints.push(hint);
 			hintEntries.set(key, existing);
 			return acc;
@@ -95,8 +103,12 @@ function isCollapsible(entry: HintEntry) {
 	return entry.hints.length > 1 && !!entry.summary;
 }
 
+function mostSevereTheme(current: HintTheme, next: HintTheme) {
+	return HINT_THEME_SEVERITY[next] > HINT_THEME_SEVERITY[current] ? next : current;
+}
+
 function summaryText(entry: HintEntry) {
-	return entry.summary?.replace('{count}', entry.hints.length.toString()) ?? '';
+	return entry.summary?.replaceAll('{count}', entry.hints.length.toString()) ?? '';
 }
 
 function repeatedText(entry: HintEntry) {

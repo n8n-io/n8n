@@ -81,6 +81,46 @@ describe('RunDataHints', () => {
 		).not.toBeInTheDocument();
 	});
 
+	it('should use the most severe theme for grouped hints', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				hints: [
+					{
+						message: 'Minor issue',
+						type: 'info',
+						group: { key: 'mixedSeverity', summary: '{count} issues' },
+					},
+					{
+						message: 'Critical issue',
+						type: 'danger',
+						group: { key: 'mixedSeverity', summary: '{count} issues' },
+					},
+				] satisfies NodeHint[],
+			},
+		});
+
+		expect(getByTestId('node-hint')).toHaveClass('danger');
+	});
+
+	it('should replace every count placeholder in a grouped summary', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				hints: [
+					{
+						message: 'First issue',
+						group: { key: 'shared', summary: '{count} of {count} issues' },
+					},
+					{
+						message: 'Second issue',
+						group: { key: 'shared', summary: '{count} of {count} issues' },
+					},
+				] satisfies NodeHint[],
+			},
+		});
+
+		expect(getByTestId('node-hint-summary')).toHaveTextContent('2 of 2 issues');
+	});
+
 	it('should list just the labels when an expanded group provides them', async () => {
 		const { getByTestId, getAllByTestId, queryAllByTestId } = renderComponent({
 			props: {

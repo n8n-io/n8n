@@ -3019,7 +3019,7 @@ export type NodeHintGroup = {
 	/** Text shown while collapsed. `{count}` is replaced with the number of hints in the group. */
 	summary: string;
 	/**
-	 * Short form listed when the group is expanded, e.g. just the field name. The
+	 * Short form listed when the group is expanded, e.g. just the field name.
 	 * Falls back to `message` when not set.
 	 */
 	label?: string;
