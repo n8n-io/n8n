@@ -471,7 +471,7 @@ describe('Test Airtop, agent run operation', () => {
 			agentId: { mode: 'id', value: 'test-agent-123' },
 			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
 			awaitExecution: false,
-			profileId: 'my-profile',
+			profileName: 'my-profile',
 		};
 
 		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
@@ -495,7 +495,7 @@ describe('Test Airtop, agent run operation', () => {
 			agentId: { mode: 'id', value: 'test-agent-123' },
 			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
 			awaitExecution: false,
-			profileId: '  my-profile  ',
+			profileName: '  my-profile  ',
 		};
 
 		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
@@ -542,7 +542,7 @@ describe('Test Airtop, agent run operation', () => {
 			agentId: { mode: 'id', value: 'test-agent-123' },
 			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
 			awaitExecution: false,
-			profileId: null,
+			profileName: null,
 		};
 
 		// A null value must not throw; it is normalized to empty and no profileId is sent.
@@ -567,7 +567,7 @@ describe('Test Airtop, agent run operation', () => {
 			agentId: { mode: 'id', value: 'test-agent-123' },
 			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
 			awaitExecution: false,
-			profileId: 'a13c6f73-bd89-4a76-ab32-5a6c422e8224',
+			profileName: 'a13c6f73-bd89-4a76-ab32-5a6c422e8224',
 		};
 
 		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
@@ -581,16 +581,19 @@ describe('Test Airtop, agent run operation', () => {
 		);
 	});
 
-	it('should throw an error when the browser profile contains invalid characters', async () => {
+	it('should throw an error referencing the item when the browser profile contains invalid characters', async () => {
 		const nodeParameters = {
 			...baseNodeParameters,
 			agentId: { mode: 'id', value: 'test-agent-123' },
 			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
-			profileId: 'invalid profile!',
+			profileName: 'invalid profile!',
 		};
 
-		await expect(run.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
-			ERROR_MESSAGES.PROFILE_ID_INVALID,
-		);
+		await expect(
+			run.execute.call(createMockExecuteFunction(nodeParameters), 1),
+		).rejects.toMatchObject({
+			message: ERROR_MESSAGES.PROFILE_NAME_INVALID,
+			context: { itemIndex: 1 },
+		});
 	});
 });

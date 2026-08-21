@@ -12,13 +12,10 @@ import {
 	throwOperationErrorIf,
 	validateAgentParameters,
 } from './agent.utils';
-import {
-	AGENT_MIN_TIMEOUT_SECONDS,
-	AIRTOP_HOOKS_BASE_URL,
-	ERROR_MESSAGES,
-	PROFILE_IDENTIFIER_REGEX,
-} from '../../constants';
+import { AGENT_MIN_TIMEOUT_SECONDS, AIRTOP_HOOKS_BASE_URL, ERROR_MESSAGES } from '../../constants';
+import { validateProfileName } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
+import { profileNameField } from '../common/fields';
 
 const displayOptions = {
 	show: {
@@ -107,13 +104,9 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Browser Profile ID',
-		name: 'profileId',
-		type: 'string',
-		default: '',
-		placeholder: 'e.g. my-profile',
+		...profileNameField,
 		description:
-			"The browser profile ID the agent should use for this run. Leave empty to use the agent's default profile.",
+			"The Airtop browser profile ID the agent should use for this run. Leave empty to use the agent's default profile.",
 		hint: '<a href="https://portal.airtop.ai/browser-profiles" target="_blank">Manage profiles</a>',
 		displayOptions,
 	},
@@ -160,19 +153,12 @@ export async function execute(
 
 	const timeout = this.getNodeParameter('timeout', index, 600) as number;
 
-	const profileId = ((this.getNodeParameter('profileId', index, '') as string) || '').trim();
+	const profileName = validateProfileName.call(this, index);
 
 	// Validate timeout
 	throwOperationErrorIf(
 		timeout < AGENT_MIN_TIMEOUT_SECONDS,
 		ERROR_MESSAGES.AGENT_TIMEOUT_INVALID,
-		airtopNode,
-	);
-
-	// Validate the profile identifier against the Airtop backend's alphanum-hyphen rule
-	throwOperationErrorIf(
-		Boolean(profileId) && !PROFILE_IDENTIFIER_REGEX.test(profileId),
-		ERROR_MESSAGES.PROFILE_ID_INVALID,
 		airtopNode,
 	);
 
@@ -184,7 +170,7 @@ export async function execute(
 
 	// Pass the chosen browser profile through to the agent webhook. Omitted when empty so
 	// the agent falls back to its default profile.
-	const query: IDataObject = profileId ? { profileId } : {};
+	const query: IDataObject = profileName ? { profileId: profileName } : {};
 
 	const invocationResponse = await apiRequest.call<
 		IExecuteFunctions,

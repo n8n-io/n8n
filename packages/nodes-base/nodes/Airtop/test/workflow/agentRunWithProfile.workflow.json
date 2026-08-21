@@ -23,7 +23,7 @@
 					"value": {},
 					"schema": []
 				},
-				"profileId": "my-profile",
+				"profileName": "my-profile",
 				"awaitExecution": false
 			},
 			"id": "85be9b53-8684-4001-8be9-709861ea2ca8",

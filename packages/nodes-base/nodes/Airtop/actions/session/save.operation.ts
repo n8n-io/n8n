@@ -41,7 +41,7 @@ export const description: INodeProperties[] = [
 		...profileNameField,
 		required: true,
 		description:
-			'The name of the <a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank">Profile</a> to save',
+			'The ID of the <a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank">Browser Profile</a> to save',
 		displayOptions: {
 			show: {
 				resource: ['session'],

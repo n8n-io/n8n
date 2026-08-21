@@ -23,7 +23,7 @@
 					"value": {},
 					"schema": []
 				},
-				"profileId": "my-profile",
+				"profileName": "my-profile",
 				"awaitExecution": true,
 				"timeout": 600
 			},
