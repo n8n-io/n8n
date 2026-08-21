@@ -26,20 +26,42 @@ env:
   TEST_IMAGE_TASK_RUNNER: ${{ inputs.runners-image || 'n8nio/runners:nightly' }}
 
 jobs:
-  e2e-pc:
-    name: E2E on -pc image (${{ matrix.shard }}/4)
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
+  generate-matrix:
+    name: Generate shard matrix
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
     steps:
       - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           persist-credentials: false
 
-      - name: Pull image and assert pointer compression
+      - name: Setup
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor
+
+      - name: Generate matrix (16 shards, duration-weighted)
+        id: gen
+        run: |
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+  e2e-pc:
+    name: E2E on -pc image (${{ matrix.shard }}/16)
+    needs: generate-matrix
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.generate-matrix.outputs.matrix) }}
+    steps:
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        with:
+          persist-credentials: false
+
+      - name: Pull images and assert pointer compression
         run: |
           docker pull --quiet "$TEST_IMAGE_N8N"
           # Pre-pull the runner image too: the test fixture's 60s budget covers
@@ -63,9 +85,7 @@ jobs:
 
       - name: Run e2e against the image
         working-directory: packages/testing/playwright
-        # Two workers: the CI default takes every CPU, and four parallel
-        # container-stack boots starve each other past the fixture timeout.
-        run: pnpm test:container:sqlite:e2e -- --shard=${{ matrix.shard }}/4 --workers=2
+        run: pnpm test:container:sqlite:e2e -- ${{ matrix.specs }} --workers=2
 
   notify-on-failure:
     name: Notify Cats on -pc e2e failure
