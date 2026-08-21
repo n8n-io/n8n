@@ -41,12 +41,7 @@ import type {
 	InstanceAiVerificationResponse,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
-import {
-	BROWSER_USE_CONNECTION_TYPE,
-	COMPUTER_USE_CONNECTION_TYPE,
-	type BrowserUseConnectionType,
-	type ComputerUseConnectionType,
-} from './constants';
+import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
 import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
@@ -288,15 +283,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		} catch {}
 	}
 
-	// ── Input menu connections ───────────────────────────────────────────
-	type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
-
-	interface InputMenuConnection {
-		type: ComputerUseConnectionType | BrowserUseConnectionType;
-		name?: string;
-		status: ConnectionStatus;
-	}
-
 	const isGatewayBrowserCategoryEnabled = computed(
 		() => gatewayToolCategories.value.find((c) => c.name === 'browser')?.enabled === true,
 	);
@@ -306,44 +292,16 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		() =>
 			browserConnected.value || (gatewayConnected.value && isGatewayBrowserCategoryEnabled.value),
 	);
-	const hasUnexpectedGatewayDisconnect = computed(
-		() =>
-			hasObservedGatewayConnection.value &&
-			!gatewayConnected.value &&
-			!isDaemonConnecting.value &&
-			!isLocalGatewayDisabled.value,
-	);
-	const hasUnexpectedBrowserDisconnect = computed(
-		() => hasObservedBrowserConnection.value && !browserConnected.value,
-	);
-	const computerUseStatus = computed<ConnectionStatus>(() => {
+	const computerUseConnectionStatus = computed<ToolConnectionStatus>(() => {
 		if (gatewayConnected.value) return 'connected';
 		if (isDaemonConnecting.value) return 'connecting';
-		return 'disconnected';
+		if (hasObservedGatewayConnection.value && !isLocalGatewayDisabled.value) return 'disconnected';
+		return 'none';
 	});
-	const connections = computed<InputMenuConnection[]>(() => {
-		const result: InputMenuConnection[] = [];
-
-		if (!isLocalGatewayDisabled.value) {
-			result.push({
-				type: COMPUTER_USE_CONNECTION_TYPE,
-				status: computerUseStatus.value,
-			});
-		}
-
-		if (isBrowserUseEnabledByAdmin.value) {
-			result.push({
-				type: BROWSER_USE_CONNECTION_TYPE,
-				name: isBrowserUseConnected.value
-					? 'Google Chrome'
-					: i18n.baseText('instanceAi.connections.add.browserUse'),
-				status: isBrowserUseConnected.value ? 'connected' : 'disconnected',
-			});
-		}
-
-		return result;
+	const browserUseConnectionStatus = computed<ToolConnectionStatus>(() => {
+		if (browserConnected.value) return 'connected';
+		return hasObservedBrowserConnection.value ? 'disconnected' : 'none';
 	});
-
 	/**
 	 * Tears down the paired gateway session on the server (so its tools are no
 	 * longer exposed to the agent). User preference stays enabled — the user
@@ -694,7 +652,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		setupCommandTtlSeconds,
 		setupCommandFetchedAt,
 		hasEverConnectedGateway,
-		hasUnexpectedGatewayDisconnect,
+		computerUseConnectionStatus,
 		isGatewayConnected,
 		gatewayDirectory,
 		gatewayHostIdentifier,
@@ -722,7 +680,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		verifySearch,
 		// Browser Use (direct channel)
 		browserConnected,
-		hasUnexpectedBrowserDisconnect,
+		browserUseConnectionStatus,
 		browserConnectedAt,
 		browserToolCategories,
 		browserStatusLoaded,
@@ -732,8 +690,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		fetchBrowserConnectUrl,
 		clearBrowserConnectUrl,
 		disconnectBrowserUse,
-		// Input menu connections
-		connections,
 		isBrowserUseConnected,
 		disconnectComputerUse,
 	};

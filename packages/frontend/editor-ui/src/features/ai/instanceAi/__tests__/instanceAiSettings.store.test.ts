@@ -530,107 +530,6 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
-	describe('connections', () => {
-		it('shows only a disconnected Browser Use row when the gateway is disabled for the user', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: true,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-
-			expect(store.connections).toHaveLength(1);
-			expect(store.connections[0]).toMatchObject({
-				type: 'browser-use',
-				status: 'disconnected',
-			});
-		});
-
-		it('shows disconnected Computer Use and Browser Use rows when enabled but not paired', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
-
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({
-				type: 'computer-use',
-				status: 'disconnected',
-			});
-			expect(store.connections[1]).toMatchObject({
-				type: 'browser-use',
-				status: 'disconnected',
-			});
-		});
-
-		it('shows Computer Use as connecting while daemon pairing is in progress', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
-			store.isDaemonConnecting = true;
-
-			expect(store.connections[0]).toMatchObject({
-				type: 'computer-use',
-				status: 'connecting',
-			});
-		});
-
-		it('shows Computer Use as connected and adds Browser Use row when browser category is present', async () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			mockGetGatewayStatus.mockResolvedValue({
-				connected: true,
-				directory: '/Users/test/project',
-				hostIdentifier: 'host-1',
-				toolCategories: [{ name: 'browser', enabled: true }],
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
-			await store.fetchGatewayStatus();
-
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({
-				type: 'computer-use',
-				status: 'connected',
-			});
-			expect(store.connections[1]).toMatchObject({
-				type: 'browser-use',
-				status: 'connected',
-			});
-		});
-
-		it('shows a disconnected Browser Use row when connected without a browser tool category', async () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			mockGetGatewayStatus.mockResolvedValue({
-				connected: true,
-				directory: '/Users/test/project',
-				hostIdentifier: 'host-1',
-				toolCategories: [{ name: 'filesystem', enabled: true }],
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
-			await store.fetchGatewayStatus();
-
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({ type: 'computer-use', status: 'connected' });
-			expect(store.connections[1]).toMatchObject({ type: 'browser-use', status: 'disconnected' });
-		});
-	});
-
 	describe('unexpected disconnects', () => {
 		it('does not treat persisted connection history as a current disconnect', () => {
 			localStorage.setItem('instanceAi.gateway.hasConnected', 'true');
@@ -641,7 +540,7 @@ describe('useInstanceAiSettingsStore', () => {
 			setUserPreference(store, { localGatewayDisabled: false });
 
 			expect(store.hasEverConnectedGateway).toBe(true);
-			expect(store.hasUnexpectedGatewayDisconnect).toBe(false);
+			expect(store.computerUseConnectionStatus).toBe('none');
 		});
 
 		it('distinguishes an unavailable gateway from a user-disconnected gateway', async () => {
@@ -662,13 +561,14 @@ describe('useInstanceAiSettingsStore', () => {
 				});
 
 			await store.fetchGatewayStatus();
+			expect(store.computerUseConnectionStatus).toBe('connected');
 			await store.fetchGatewayStatus();
-			expect(store.hasUnexpectedGatewayDisconnect).toBe(true);
+			expect(store.computerUseConnectionStatus).toBe('disconnected');
 			expect(store.gatewayHostIdentifier).toBe('host-1');
 
 			mockDisconnectGatewaySession.mockResolvedValue(undefined);
 			await store.disconnectComputerUse();
-			expect(store.hasUnexpectedGatewayDisconnect).toBe(false);
+			expect(store.computerUseConnectionStatus).toBe('none');
 			expect(store.gatewayHostIdentifier).toBeNull();
 		});
 
@@ -678,12 +578,13 @@ describe('useInstanceAiSettingsStore', () => {
 				.mockResolvedValueOnce({ connected: false, connectedAt: null, toolCategories: [] });
 
 			await store.fetchBrowserStatus();
+			expect(store.browserUseConnectionStatus).toBe('connected');
 			await store.fetchBrowserStatus();
-			expect(store.hasUnexpectedBrowserDisconnect).toBe(true);
+			expect(store.browserUseConnectionStatus).toBe('disconnected');
 
 			mockDisconnectBrowserSession.mockResolvedValue(undefined);
 			await store.disconnectBrowserUse();
-			expect(store.hasUnexpectedBrowserDisconnect).toBe(false);
+			expect(store.browserUseConnectionStatus).toBe('none');
 		});
 	});
 

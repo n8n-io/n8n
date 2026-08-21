@@ -6828,6 +6828,7 @@
 	"instanceAi.inputMenu.computer.connected": "Computer use",
 	"instanceAi.inputMenu.browser.connect": "Connect browser",
 	"instanceAi.inputMenu.browser.connected": "Browser use",
+	"instanceAi.inputMenu.browser.connectedTitle": "Google Chrome",
 	"instanceAi.mcp.success.connect": "Connected successfully",
 	"instanceAi.mcp.success.changeCredential": "Credential changed successfully",
 	"instanceAi.mcp.error.fetchConnections": "Failed to load MCP connections",

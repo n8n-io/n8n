@@ -37,11 +37,9 @@ const {
 		isLocalGatewayDisabled: false,
 		isLocalGatewayDisabledByAdmin: false,
 		isBrowserUseEnabledByAdmin: true,
-		browserConnected: false,
 		isGatewayConnected: false,
-		isDaemonConnecting: false,
-		hasUnexpectedGatewayDisconnect: false,
-		hasUnexpectedBrowserDisconnect: false,
+		computerUseConnectionStatus: 'none',
+		browserUseConnectionStatus: 'none',
 		gatewayHostIdentifier: null as string | null,
 		persistLocalGatewayPreference: vi.fn(),
 		disconnectComputerUse: vi.fn(),
@@ -153,11 +151,9 @@ describe('useInstanceAiInputMenuItems', () => {
 		settingsStore.isLocalGatewayDisabled = false;
 		settingsStore.isLocalGatewayDisabledByAdmin = false;
 		settingsStore.isBrowserUseEnabledByAdmin = true;
-		settingsStore.browserConnected = false;
 		settingsStore.isGatewayConnected = false;
-		settingsStore.isDaemonConnecting = false;
-		settingsStore.hasUnexpectedGatewayDisconnect = false;
-		settingsStore.hasUnexpectedBrowserDisconnect = false;
+		settingsStore.computerUseConnectionStatus = 'none';
+		settingsStore.browserUseConnectionStatus = 'none';
 		settingsStore.gatewayHostIdentifier = null;
 	});
 
@@ -193,7 +189,7 @@ describe('useInstanceAiInputMenuItems', () => {
 		{
 			id: 'computer',
 			setDisconnected: () => {
-				settingsStore.hasUnexpectedGatewayDisconnect = true;
+				settingsStore.computerUseConnectionStatus = 'disconnected';
 				settingsStore.gatewayHostIdentifier = 'Work computer';
 			},
 			modal: INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
@@ -202,10 +198,10 @@ describe('useInstanceAiInputMenuItems', () => {
 		{
 			id: 'browser',
 			setDisconnected: () => {
-				settingsStore.hasUnexpectedBrowserDisconnect = true;
+				settingsStore.browserUseConnectionStatus = 'disconnected';
 			},
 			modal: INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
-			title: 'Google Chrome',
+			title: 'instanceAi.inputMenu.browser.connectedTitle',
 		},
 	])(
 		'shows a Reconnect menu when $id disconnects unexpectedly',
@@ -248,7 +244,7 @@ describe('useInstanceAiInputMenuItems', () => {
 	});
 
 	it('disconnects Browser Use when the direct extension is connected', async () => {
-		settingsStore.browserConnected = true;
+		settingsStore.browserUseConnectionStatus = 'connected';
 
 		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 		await findItem(menuItems.value, 'browser-disconnect')?.data?.action?.();
@@ -257,7 +253,7 @@ describe('useInstanceAiInputMenuItems', () => {
 	});
 
 	it('shows Computer Use as connecting while daemon pairing is in progress', () => {
-		settingsStore.isDaemonConnecting = true;
+		settingsStore.computerUseConnectionStatus = 'connecting';
 
 		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 
@@ -268,6 +264,7 @@ describe('useInstanceAiInputMenuItems', () => {
 		const attachFiles = vi.fn();
 		settingsStore.isLocalGatewayDisabled = true;
 		settingsStore.isGatewayConnected = true;
+		settingsStore.computerUseConnectionStatus = 'connected';
 		mcpStore.connections = [makeMcpConnection('1', 'connected')];
 		const { menuItems } = useInstanceAiInputMenuItems(attachFiles);
 

@@ -41,6 +41,15 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	void settingsStore.fetch();
 	if (isMcpFeatureEnabled.value) void mcpStore.fetchConnectionsLazy();
 
+	const isMcpAvailable = computed(
+		() => isMcpFeatureEnabled.value && settingsStore.settings?.mcpAccessEnabled === true,
+	);
+	const isComputerUseAvailable = computed(
+		() => isComputerUseFeatureEnabled.value && !settingsStore.isLocalGatewayDisabledByAdmin,
+	);
+	const isBrowserUseAvailable = computed(
+		() => isBrowserUseFeatureEnabled.value && settingsStore.isBrowserUseEnabledByAdmin,
+	);
 	async function openComputerSetup() {
 		if (settingsStore.isLocalGatewayDisabled) {
 			await settingsStore.persistLocalGatewayPreference(false);
@@ -122,20 +131,18 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 
 	const disconnectedConnectionCount = computed(() => {
 		let count = 0;
-		if (isMcpFeatureEnabled.value && settingsStore.settings?.mcpAccessEnabled === true) {
+		if (isMcpAvailable.value) {
 			count += mcpStore.connections.filter(({ status }) => status === 'disconnected').length;
 		}
 		if (
-			isComputerUseFeatureEnabled.value &&
-			!settingsStore.isLocalGatewayDisabledByAdmin &&
-			settingsStore.hasUnexpectedGatewayDisconnect
+			isComputerUseAvailable.value &&
+			settingsStore.computerUseConnectionStatus === 'disconnected'
 		) {
 			count++;
 		}
 		if (
-			isBrowserUseFeatureEnabled.value &&
-			settingsStore.isBrowserUseEnabledByAdmin &&
-			settingsStore.hasUnexpectedBrowserDisconnect
+			isBrowserUseAvailable.value &&
+			settingsStore.browserUseConnectionStatus === 'disconnected'
 		) {
 			count++;
 		}
@@ -152,7 +159,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			},
 		];
 
-		if (isMcpFeatureEnabled.value && settingsStore.settings?.mcpAccessEnabled === true) {
+		if (isMcpAvailable.value) {
 			const tools: InputMenuItem[] = mcpStore.connections.map((connection) => ({
 				id: `mcp-${connection.id}`,
 				label: connection.serverTitle,
@@ -232,17 +239,11 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			});
 		}
 
-		if (isComputerUseFeatureEnabled.value && !settingsStore.isLocalGatewayDisabledByAdmin) {
+		if (isComputerUseAvailable.value) {
 			items.push(
 				createConnectionItem({
 					id: 'computer',
-					status: settingsStore.isGatewayConnected
-						? 'connected'
-						: settingsStore.isDaemonConnecting
-							? 'connecting'
-							: settingsStore.hasUnexpectedGatewayDisconnect
-								? 'disconnected'
-								: 'none',
+					status: settingsStore.computerUseConnectionStatus,
 					icon: 'laptop',
 					connectLabel: i18n.baseText('instanceAi.inputMenu.computer.connect'),
 					connectedLabel: i18n.baseText('instanceAi.inputMenu.computer.connected'),
@@ -253,21 +254,17 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			);
 		}
 
-		if (isBrowserUseFeatureEnabled.value && settingsStore.isBrowserUseEnabledByAdmin) {
+		if (isBrowserUseAvailable.value) {
 			items.push(
 				createConnectionItem({
 					id: 'browser',
-					status: settingsStore.browserConnected
-						? 'connected'
-						: settingsStore.hasUnexpectedBrowserDisconnect
-							? 'disconnected'
-							: 'none',
+					status: settingsStore.browserUseConnectionStatus,
 					icon: 'globe',
 					connectLabel: i18n.baseText('instanceAi.inputMenu.browser.connect'),
 					connectedLabel: i18n.baseText('instanceAi.inputMenu.browser.connected'),
 					connectedTitle:
-						settingsStore.browserConnected || settingsStore.hasUnexpectedBrowserDisconnect
-							? 'Google Chrome'
+						settingsStore.browserUseConnectionStatus !== 'none'
+							? i18n.baseText('instanceAi.inputMenu.browser.connectedTitle')
 							: undefined,
 					connect: () => {
 						browserUseTelemetry.trackModalOpened('input_menu');
