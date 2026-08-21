@@ -38,6 +38,51 @@
 								"address": "newone@example.com"
 							}
 						]
+					},
+					"orgUnitPath": "/Sales",
+					"recoveryEmail": "recovery@example.com",
+					"organizationUi": {
+						"organizationValues": [
+							{
+								"name": "Acme",
+								"title": "Engineer",
+								"type": "work",
+								"fullTimeEquivalent": 100000,
+								"primary": true
+							}
+						]
+					},
+					"relationsUi": {
+						"relationsValues": [
+							{
+								"type": "manager",
+								"value": "boss@example.com"
+							}
+						]
+					},
+					"posixAccountsUi": {
+						"posixAccountsValues": [
+							{
+								"username": "jdoe",
+								"uid": 1001,
+								"gid": 1001,
+								"homeDirectory": "/home/jdoe",
+								"shell": "/bin/bash",
+								"gecos": "John Doe",
+								"systemId": "sys1",
+								"accountId": "acc1",
+								"operatingSystemType": "linux",
+								"primary": true
+							}
+						]
+					},
+					"sshPublicKeysUi": {
+						"sshPublicKeysValues": [
+							{
+								"key": "ssh-rsa AAAA",
+								"expirationTimeUsec": 1893456000000000
+							}
+						]
 					}
 				}
 			},
