@@ -144,7 +144,8 @@ describe('reconnect', () => {
 				if (attempt > 0) transport.mailbox = box(4);
 			});
 			imap().search.mockImplementation(() => {});
-			connection.onArrival(async () => {
+			connection.onArrival(async (arrival) => {
+				events.arrival(arrival);
 				await connection.search(['UNSEEN'], {});
 			});
 
@@ -155,8 +156,50 @@ describe('reconnect', () => {
 
 			expect(events.error).not.toHaveBeenCalled();
 			expect(events.close).not.toHaveBeenCalled();
-			expect(events.arrival).not.toHaveBeenCalled();
 			expect(events.reconnect).toHaveBeenCalledTimes(1);
+			expect(events.arrival).toHaveBeenNthCalledWith(2, { count: 4 });
+		});
+
+		it('keeps a failure to itself when the error reaches the handler before the close', async () => {
+			const { connection, events, imap } = await connect(WATCHING, (transport, attempt) => {
+				if (attempt > 0) transport.mailbox = box(4);
+			});
+			const dropped = imap();
+			dropped.search.mockImplementation((_criteria, onResults) => {
+				dropped.once('error', (error: Error) => onResults(error, []));
+			});
+			connection.onArrival(async () => {
+				await connection.search(['UNSEEN'], {});
+			});
+
+			dropped.emit('mail', 1);
+			await settle();
+			dropped.drop(new Error('ECONNRESET'));
+			await settle();
+
+			expect(events.error).not.toHaveBeenCalled();
+			expect(events.close).not.toHaveBeenCalled();
+			expect(events.reconnect).toHaveBeenCalledTimes(1);
+		});
+
+		it('rescans even with an arrival queued behind the run that was cut short', async () => {
+			const arrivals: number[] = [];
+			const { connection, imap } = await connect(WATCHING, (transport, attempt) => {
+				if (attempt > 0) transport.mailbox = box(4);
+			});
+			imap().search.mockImplementation(() => {});
+			connection.onArrival(async ({ count }) => {
+				arrivals.push(count);
+				if (count === 1) await connection.search(['UNSEEN'], {});
+			});
+
+			imap().emit('mail', 1);
+			imap().emit('mail', 2);
+			await settle();
+			imap().drop();
+			await settle();
+
+			expect(arrivals).toEqual([1, 4]);
 		});
 
 		it('carries on serving arrivals after one was cut short', async () => {
