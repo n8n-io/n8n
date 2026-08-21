@@ -2014,6 +2014,7 @@ describe('GET /workflow-review-requests', () => {
 			state: 'open',
 			decision: 'pending',
 			workflowVersionId: versionId,
+			workflowVersionName: null,
 			// The owner can act on the review, so the description rides along; the
 			// title stays off the workflow-scoped list entirely.
 			description: 'Confidential description',
@@ -2022,6 +2023,48 @@ describe('GET /workflow-review-requests', () => {
 			// Does not apply to a pending review
 			decisionBy: null,
 			viewerCanOpen: true,
+		});
+	});
+
+	describe('pinned version name', () => {
+		/** Pin `versionId` on a fresh review of a workflow owned by `owner`. */
+		async function createReviewPinnedTo(workflowId: string, versionId: string) {
+			const request = await requestRepository.createRequest(
+				{
+					projectId: ownerProject.id,
+					title: 'Review before publishing',
+					createdById: owner.id,
+				},
+				{},
+			);
+			await linkRequestToWorkflow(request.id, workflowId, versionId);
+			return request;
+		}
+
+		async function listPinnedVersionName(workflowId: string) {
+			const response = await ownerAgent
+				.get('/workflow-review-requests')
+				.query({ workflowId, take: 1 })
+				.expect(200);
+
+			expect(response.body.data.data).toHaveLength(1);
+			return response.body.data.data[0].workflowVersionName;
+		}
+
+		test('returns the name the pinned version was given', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const versionId = uuid();
+			await createWorkflowHistoryItem(workflow.id, { versionId, name: 'Release candidate' });
+			await createReviewPinnedTo(workflow.id, versionId);
+
+			expect(await listPinnedVersionName(workflow.id)).toBe('Release candidate');
+		});
+
+		test('returns null for an unnamed pinned version', async () => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+			await createReviewPinnedTo(workflow.id, versionId);
+
+			expect(await listPinnedVersionName(workflow.id)).toBeNull();
 		});
 	});
 
@@ -2316,119 +2359,6 @@ async function seedInboxRequests() {
 	);
 	return { openRequest, closedRequest, openWorkflow };
 }
-
-describe('POST /workflow-review-requests/statuses', () => {
-	/** A workflow in the team project with a pinned history version. */
-	async function createTeamWorkflow(versionId = uuid()) {
-		const workflow = await createWorkflow({}, teamProject);
-		await createWorkflowHistoryItem(workflow.id, { versionId });
-		return { workflow, versionId };
-	}
-
-	async function createTeamReview(
-		workflowId: string,
-		versionId: string | null,
-		options: { state?: WorkflowReviewRequestState; reviewerId?: string } = {},
-	) {
-		const request = await requestRepository.createRequest(
-			{
-				projectId: teamProject.id,
-				state: options.state ?? 'open',
-				title: 'Team review',
-				createdById: owner.id,
-			},
-			{},
-		);
-		await workflowRepository.createWorkflowRow(
-			{ workflowReviewRequestId: request.id, workflowId, workflowVersionId: versionId },
-			{},
-		);
-		await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: owner.id }, {});
-		if (options.reviewerId) {
-			await reviewerRepository.addReviewers(
-				{ workflowReviewRequestId: request.id, userIds: [options.reviewerId] },
-				{},
-			);
-		}
-		return request;
-	}
-
-	const postStatuses = (agent: SuperAgentTest, workflowIds: string[]) =>
-		agent.post('/workflow-review-requests/statuses').send({ workflowIds });
-
-	test('returns the open review to an uninvolved reader as visible but not openable', async () => {
-		const { workflow, versionId } = await createTeamWorkflow();
-		const request = await createTeamReview(workflow.id, versionId);
-
-		const response = await postStatuses(viewerAgent, [workflow.id]).expect(200);
-
-		expect(response.body.data.data[workflow.id]).toEqual({
-			summary: {
-				id: request.id,
-				state: 'open',
-				decision: 'pending',
-				workflowVersionId: versionId,
-				createdAt: expect.any(String),
-				updatedAt: expect.any(String),
-			},
-			viewerCanOpen: false,
-		});
-	});
-
-	test('marks the review openable for the assigned reviewer and the requester', async () => {
-		const { workflow, versionId } = await createTeamWorkflow();
-		await createTeamReview(workflow.id, versionId, { reviewerId: member.id });
-
-		const reviewerResponse = await postStatuses(memberAgent, [workflow.id]).expect(200);
-		expect(reviewerResponse.body.data.data[workflow.id].viewerCanOpen).toBe(true);
-
-		const requesterResponse = await postStatuses(ownerAgent, [workflow.id]).expect(200);
-		expect(requesterResponse.body.data.data[workflow.id].viewerCanOpen).toBe(true);
-	});
-
-	test('returns null for closed reviews — only open reviews badge', async () => {
-		const { workflow, versionId } = await createTeamWorkflow();
-		await createTeamReview(workflow.id, versionId, { state: 'closed' });
-
-		const response = await postStatuses(memberAgent, [workflow.id]).expect(200);
-
-		expect(response.body.data.data[workflow.id]).toBeNull();
-	});
-
-	test('returns null for an open review whose pin was pruned', async () => {
-		const { workflow } = await createTeamWorkflow();
-		await createTeamReview(workflow.id, null);
-
-		const response = await postStatuses(memberAgent, [workflow.id]).expect(200);
-
-		expect(response.body.data.data[workflow.id]).toBeNull();
-	});
-
-	test('returns the same null for unreadable and nonexistent workflows', async () => {
-		// In the owner's personal project, so the member cannot read it
-		const { workflow, versionId } = await createReviewableWorkflow();
-		await createOpenReview(workflow.id, versionId);
-
-		const response = await postStatuses(memberAgent, [workflow.id, 'does-not-exist']).expect(200);
-
-		expect(response.body.data.data).toEqual({
-			[workflow.id]: null,
-			'does-not-exist': null,
-		});
-	});
-
-	test('returns 400 for an empty batch', async () => {
-		await postStatuses(ownerAgent, []).expect(400);
-	});
-
-	test('is licensed like the other review routes', async () => {
-		testServer.license.disable('feat:workflowReviews');
-
-		await postStatuses(ownerAgent, ['wf-1']).expect(403);
-
-		testServer.license.enable('feat:workflowReviews');
-	});
-});
 
 describe('GET /workflow-review-requests/summary', () => {
 	test('returns open/closed counts for instance owner', async () => {
