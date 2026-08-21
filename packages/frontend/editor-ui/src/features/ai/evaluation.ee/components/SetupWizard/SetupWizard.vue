@@ -303,7 +303,7 @@ function onSeePlans() {
 	gap: var(--spacing--sm);
 
 	button {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 

@@ -170,7 +170,7 @@ const getIconSize = computed<IconSize>(() => {
 
 .secondary {
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	border-color: var(--callout--border-color--secondary);
 	background-color: var(--callout--color--background--secondary);
 	color: var(--callout--color--text--secondary);

@@ -150,7 +150,7 @@ const diffs = computed(() => {
 
 .title {
 	padding: var(--spacing--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--2xs);
 	// ensure consistent spacing even if title is empty
 	min-height: 32.5px;

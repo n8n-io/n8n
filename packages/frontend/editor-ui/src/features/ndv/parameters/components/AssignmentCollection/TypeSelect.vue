@@ -117,7 +117,7 @@ const onSelect = (type: string): void => {
 
 .selected span {
 	color: var(--color--primary);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .dropdownContent {

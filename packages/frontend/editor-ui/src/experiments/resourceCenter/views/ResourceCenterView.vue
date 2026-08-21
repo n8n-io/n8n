@@ -388,7 +388,7 @@ onMounted(() => {
 	margin: 0;
 	color: var(--resource-center--color--text);
 	font-size: var(--font-size--xl);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--lg);
 }
 

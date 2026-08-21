@@ -92,7 +92,7 @@ function openOnboarding() {
 	background: var(--color--orange-100);
 	color: var(--color--orange-800);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	letter-spacing: var(--letter-spacing--wider);
 	text-transform: uppercase;
 	line-height: 1;

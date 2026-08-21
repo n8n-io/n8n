@@ -397,7 +397,7 @@ function formatStepCount(count: number): string {
 	border-radius: var(--radius--xl);
 	background: var(--color--foreground--tint-2);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 
