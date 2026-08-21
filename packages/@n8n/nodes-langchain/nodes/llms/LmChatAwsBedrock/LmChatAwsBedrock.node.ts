@@ -167,7 +167,7 @@ export class LmChatAwsBedrock implements INodeType {
 					},
 				},
 				typeOptions: {
-					loadOptionsDependsOn: ['modelSource'],
+					loadOptionsDependsOn: ['modelSource', 'authentication'],
 					loadOptionsMethod: 'listInferenceProfiles',
 				},
 				routing: {
