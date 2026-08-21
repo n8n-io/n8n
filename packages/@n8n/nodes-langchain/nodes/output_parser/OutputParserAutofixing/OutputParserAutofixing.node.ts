@@ -1,5 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { PromptTemplate } from '@langchain/core/prompts';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
@@ -12,7 +13,6 @@ import {
 	N8nOutputFixingParser,
 	type N8nStructuredOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
-import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { NAIVE_FIX_PROMPT } from './prompt';
 
