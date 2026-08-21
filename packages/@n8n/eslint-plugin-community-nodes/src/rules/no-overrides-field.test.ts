@@ -46,5 +46,22 @@ ruleTester.run('no-overrides-field', NoOverridesFieldRule, {
 			code: '{ "name": "n8n-nodes-sinch", "overrides": { "axios": "1.7.0", "fast-xml-parser": "4.4.0", "minimatch": "9.0.5", "@langchain/core": "0.3.0", "qs": "6.13.0" } }',
 			errors: [{ messageId: 'overridesForbidden' }],
 		},
+		// CE-2377: `resolutions` is the Yarn equivalent of npm's `overrides` — it
+		// forces/replaces a transitive dependency to a maintainer-controlled
+		// version or an arbitrary tarball/git URL that never appears in the node's
+		// readable source. Community node vetting must flag it for the same
+		// supply-chain reason it flags `overrides`, but the rule ignores it today.
+		{
+			name: 'resolutions as object is forbidden',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "resolutions": { "axios": "1.0.0" } }',
+			errors: [{ messageId: 'overridesForbidden' }],
+		},
+		{
+			name: 'resolutions pinning a transitive dep to an arbitrary tarball is forbidden',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "resolutions": { "minimatch": "https://example.com/evil.tgz" } }',
+			errors: [{ messageId: 'overridesForbidden' }],
+		},
 	],
 });
