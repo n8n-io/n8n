@@ -13,11 +13,14 @@ import type {
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
+	encryptSecret,
 	getFileSha,
+	getRepositoryPublicKey,
 	githubApiRequest,
 	githubApiRequestAllItems,
 	isBase64,
 	validateJSON,
+	validateSecretName,
 } from './GenericFunctions';
 import { getRefs, getRepositories, getUsers, getWorkflows } from './SearchFunctions';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
@@ -146,6 +149,10 @@ export class Github implements INodeType {
 					{
 						name: 'Review',
 						value: 'review',
+					},
+					{
+						name: 'Secret',
+						value: 'secret',
 					},
 					{
 						name: 'User',
@@ -458,6 +465,27 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'create',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['secret'],
+					},
+				},
+				options: [
+					{
+						name: 'Create or Update',
+						value: 'createOrUpdate',
+						description: 'Create or update a repository secret',
+						action: 'Create or update a repository secret',
+					},
+				],
+				default: 'createOrUpdate',
 			},
 
 			{
@@ -2056,6 +2084,50 @@ export class Github implements INodeType {
 			},
 
 			// ----------------------------------
+			//         secret
+			// ----------------------------------
+
+			// ----------------------------------
+			//         secret:createOrUpdate
+			// ----------------------------------
+			{
+				displayName: 'Secret Name',
+				name: 'secretName',
+				// The identifier of a secret is not itself sensitive — GitHub displays it in
+				// the UI and API — so it stays visible; only 'Secret Value' below is masked.
+				// eslint-disable-next-line n8n-nodes-base/node-param-type-options-password-missing
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['secret'],
+						operation: ['createOrUpdate'],
+					},
+				},
+				placeholder: 'MY_SECRET_NAME',
+				description:
+					'The name of the secret. Must contain only alphanumeric characters ([a-z], [A-Z], [0-9]) or underscores (_). Spaces are not allowed. Must not start with GITHUB_ or a number.',
+			},
+			{
+				displayName: 'Secret Value',
+				name: 'secretValue',
+				type: 'string',
+				typeOptions: {
+					password: true,
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['secret'],
+						operation: ['createOrUpdate'],
+					},
+				},
+				description: 'The value of the secret. This will be encrypted before being stored.',
+			},
+
+			// ----------------------------------
 			//       user:getRepositories
 			// ----------------------------------
 			{
@@ -2388,6 +2460,7 @@ export class Github implements INodeType {
 			'review:create',
 			'review:get',
 			'review:update',
+			'secret:createOrUpdate',
 			'user:invite',
 			'workflow:disable',
 			'workflow:dispatch',
@@ -2994,6 +3067,34 @@ export class Github implements INodeType {
 
 						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
 					}
+				} else if (resource === 'secret') {
+					if (operation === 'createOrUpdate') {
+						// ----------------------------------
+						//         createOrUpdate
+						// ----------------------------------
+						requestMethod = 'PUT';
+
+						const secretName = this.getNodeParameter('secretName', i) as string;
+						const secretValue = this.getNodeParameter('secretValue', i) as string;
+
+						const secretNameError = validateSecretName(secretName);
+						if (secretNameError) {
+							throw new NodeOperationError(this.getNode(), secretNameError, { itemIndex: i });
+						}
+
+						// First, get the repository's public key for encryption
+						const { key_id, key } = await getRepositoryPublicKey.call(this, owner, repository);
+
+						// Encrypt the secret value using the public key
+						const encryptedValue = await encryptSecret(secretValue, key);
+
+						body = {
+							encrypted_value: encryptedValue,
+							key_id,
+						};
+
+						endpoint = `/repos/${owner}/${repository}/actions/secrets/${encodeURIComponent(secretName)}`;
+					}
 				} else if (resource === 'user') {
 					if (operation === 'getRepositories') {
 						// ----------------------------------
@@ -3199,6 +3300,11 @@ export class Github implements INodeType {
 				}
 
 				if (fullOperation === 'release:delete') {
+					responseData = { success: true };
+				}
+
+				if (fullOperation === 'secret:createOrUpdate') {
+					// GitHub returns empty body on success (201 for new, 204 for update)
 					responseData = { success: true };
 				}
 
