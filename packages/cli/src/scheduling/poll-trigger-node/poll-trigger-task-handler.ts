@@ -94,8 +94,9 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			// Scheduled polls run outside any activation isolate window, so acquire and
 			// release one per tick; the finally releases even when poll() throws.
 			await workflow.expression.acquireIsolate();
-			// Only a throw out of poll() is the polled source failing, so a later
-			// hand-off or database error must not back the node off.
+			// Nothing past a returning poll is the source failing, so a hand-off or
+			// database error after it must not back the node off. A setup error before
+			// poll() does count: it repeats every tick just like a failing source.
 			let polled = false;
 			try {
 				const pollResponse = await this.triggersAndPollers.runPollFunction(

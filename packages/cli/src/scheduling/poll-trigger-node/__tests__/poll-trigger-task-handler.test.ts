@@ -455,6 +455,18 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
 		});
 
+		// A node type that lost its poll method throws before poll() runs. It is not the
+		// source failing, but it repeats every tick, so it gets the same backoff.
+		test('records a failure when the poll cannot be started at all', async () => {
+			triggersAndPollers.runPollFunction.mockRejectedValue(
+				new UnexpectedError('Node type does not have a poll function defined'),
+			);
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollBackoffService.recordFailure).toHaveBeenCalledTimes(1);
+		});
+
 		test('records no failure when the poll returned and a later step throws', async () => {
 			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
 			pollBackoffService.getFailureState.mockResolvedValue(state);
