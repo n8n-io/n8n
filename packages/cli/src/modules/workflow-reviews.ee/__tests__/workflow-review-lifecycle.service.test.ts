@@ -102,8 +102,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			).toHaveBeenCalledExactlyOnceWith('wf-1');
 			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-closed', {
 				workflowReviewRequestId: 'req-1',
-				reason: 'workflow-archived',
-				actorKind: 'user',
+				cause: { trigger: 'workflow-archived', actorKind: 'user', userId: 'user-9' },
 			});
 		});
 
@@ -127,8 +126,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			);
 			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-closed', {
 				workflowReviewRequestId: 'req-1',
-				reason: 'workflow-archived',
-				actorKind: 'system',
+				cause: { trigger: 'workflow-archived', actorKind: 'system', userId: null },
 			});
 		});
 
@@ -235,13 +233,11 @@ describe('WorkflowReviewLifecycleService', () => {
 			expect(eventService.emit).toHaveBeenCalledTimes(2);
 			expect(eventService.emit).toHaveBeenCalledWith('workflow-review-closed', {
 				workflowReviewRequestId: 'req-1',
-				reason: 'workflow-moved',
-				actorKind: 'user',
+				cause: { trigger: 'workflow-moved', actorKind: 'user', userId: 'user-9' },
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('workflow-review-closed', {
 				workflowReviewRequestId: 'req-2',
-				reason: 'workflow-moved',
-				actorKind: 'user',
+				cause: { trigger: 'workflow-moved', actorKind: 'user', userId: 'user-9' },
 			});
 		});
 
@@ -310,8 +306,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			).toHaveBeenCalledExactlyOnceWith('wf-1');
 			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-closed', {
 				workflowReviewRequestId: 'req-1',
-				reason: 'workflow-deleted',
-				actorKind: 'user',
+				cause: { trigger: 'workflow-deleted', actorKind: 'user', userId: 'user-9' },
 			});
 		});
 
@@ -354,8 +349,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			).toHaveLength(1);
 			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-closed', {
 				workflowReviewRequestId: 'req-1',
-				reason: 'workflow-deleted',
-				actorKind: 'user',
+				cause: { trigger: 'workflow-deleted', actorKind: 'user', userId: 'user-9' },
 			});
 		});
 
@@ -506,8 +500,7 @@ describe('WorkflowReviewLifecycleService', () => {
 				);
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-review-closed', {
 					workflowReviewRequestId: requestId,
-					reason: 'no-reviewable-workflows',
-					actorKind: 'system',
+					cause: { trigger: 'unknown', actorKind: 'system', userId: null },
 				});
 			}
 			expect(activityRepository.createActivity).toHaveBeenCalledTimes(2);

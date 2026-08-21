@@ -198,7 +198,10 @@ describe('auto-close on workflow archive', () => {
 			[
 				[
 					'workflow-review-closed',
-					{ workflowReviewRequestId: request.id, reason: 'workflow-archived', actorKind: 'user' },
+					{
+						workflowReviewRequestId: request.id,
+						cause: { trigger: 'workflow-archived', actorKind: 'user', userId: owner.id },
+					},
 				],
 			],
 		);

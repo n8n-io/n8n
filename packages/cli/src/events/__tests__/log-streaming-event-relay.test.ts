@@ -3070,7 +3070,7 @@ describe('LogStreamingEventRelay', () => {
 				workflowVersionId: 'ver-1',
 				decision: 'approved',
 				decidedVia: 'assigned-reviewer',
-				msSinceReviewOpened: 3_600_000,
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
 			});
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
@@ -3094,7 +3094,7 @@ describe('LogStreamingEventRelay', () => {
 				workflowVersionId: null,
 				decision: 'changes_requested',
 				decidedVia: 'admin-override',
-				msSinceReviewOpened: 120_000,
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
 			});
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
@@ -3109,19 +3109,19 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log `workflow-review.closed` with no user, since nobody closed it', () => {
+		it('should log `workflow-review.closed` with what made the workflow unreviewable and who caused it', () => {
 			eventService.emit('workflow-review-closed', {
 				workflowReviewRequestId: 'review-1',
-				reason: 'workflow-archived',
-				actorKind: 'user',
+				cause: { trigger: 'workflow-archived', actorKind: 'user', userId: 'user123' },
 			});
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.audit.workflow-review.closed',
 				payload: {
 					workflowReviewRequestId: 'review-1',
-					reason: 'workflow-archived',
-					actorKind: 'user',
+					causeTrigger: 'workflow-archived',
+					causeActorKind: 'user',
+					causeUserId: 'user123',
 				},
 			});
 		});

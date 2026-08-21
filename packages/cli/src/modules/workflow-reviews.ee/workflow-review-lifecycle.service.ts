@@ -213,10 +213,10 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 			if (closedRequestIds.length === 0) return;
 
 			for (const requestId of closedRequestIds) {
+				// The sweep is the backstop, so it can recover neither the trigger nor an actor.
 				this.eventService.emit('workflow-review-closed', {
 					workflowReviewRequestId: requestId,
-					reason: 'no-reviewable-workflows',
-					actorKind: 'system',
+					cause: { trigger: 'unknown', actorKind: 'system', userId: null },
 				});
 			}
 
@@ -286,8 +286,11 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 			for (const requestId of closedRequestIds) {
 				this.eventService.emit('workflow-review-closed', {
 					workflowReviewRequestId: requestId,
-					reason: type === 'workflow.archived' ? 'workflow-archived' : 'workflow-moved',
-					actorKind,
+					cause: {
+						trigger: type === 'workflow.archived' ? 'workflow-archived' : 'workflow-moved',
+						actorKind,
+						userId,
+					},
 				});
 			}
 
@@ -326,7 +329,11 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 				async (ctx) => {
 					const affected = new Set<string>();
-					const closed: Array<{ requestId: string; actorKind: 'user' | 'system' }> = [];
+					const closed: Array<{
+						requestId: string;
+						actorKind: 'user' | 'system';
+						userId: string | null;
+					}> = [];
 					for (const [requestId, capture] of capturesByRequestId) {
 						// Cause events record into open reviews; one that closed since the
 						// capture (e.g. approved meanwhile) gets nothing.
@@ -349,7 +356,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 						}
 
 						if (await this.applyClosePolicy(request, batchWorkflowIds, ctx)) {
-							closed.push({ requestId, actorKind });
+							closed.push({ requestId, actorKind, userId: capture.userId });
 						}
 					}
 
@@ -358,11 +365,10 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 			);
 
 			// Ahead of the affected-ids guard below: the close is what is being reported.
-			for (const { requestId, actorKind } of closedRequests) {
+			for (const { requestId, actorKind, userId } of closedRequests) {
 				this.eventService.emit('workflow-review-closed', {
 					workflowReviewRequestId: requestId,
-					reason: 'workflow-deleted',
-					actorKind,
+					cause: { trigger: 'workflow-deleted', actorKind, userId },
 				});
 			}
 

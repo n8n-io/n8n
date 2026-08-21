@@ -13,11 +13,13 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 			project_id: z.string().describe('Owning project when the review opened'),
 			workflow_id: z.string(),
 			workflow_version_id: z.string(),
-			reviewer_count: z.number(),
+			reviewer_count: z
+				.number()
+				.describe('Reviewers assigned when the review opened, not everyone eligible to review'),
 		}),
 	},
-	USER_UPDATED_WORKFLOW_REVIEW_VERSION: {
-		name: 'User updated workflow review version',
+	USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW: {
+		name: 'User updated workflow version under review',
 		description:
 			'An open review was re-pinned to another version of the workflow it covers, which resets its decision to pending. Fires only on a real re-pin, not on a rename or a description edit.',
 		properties: z.object({
@@ -30,7 +32,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 	USER_DECIDED_WORKFLOW_REVIEW: {
 		name: 'User decided workflow review',
 		description:
-			'A reviewer approved a review or requested changes on it. A review can be decided several times: requesting changes keeps it open, and a re-pin resets it to pending.',
+			'A user approved a review or requested changes on it. A review can be decided several times: requesting changes keeps it open, and a re-pin resets it to pending.',
 		properties: z.object({
 			user_id: z.string(),
 			workflow_review_request_id: z.string(),
@@ -45,36 +47,34 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					"'assigned-reviewer' = the decider was assigned to this review; 'admin-override' = they decided through an instance or project admin role. Assignment wins when both apply",
 				),
-			ms_since_review_opened: z
-				.number()
-				.describe('Wall clock from the review opening to this decision'),
+			review_created_at: z
+				// `unknown` because this is emitted as a Date, which zod cannot represent in
+				// JSON Schema. It reaches the warehouse as an ISO timestamp via JSON.stringify.
+				.unknown()
+				.describe('When the review was opened'),
 		}),
 	},
 	WORKFLOW_REVIEW_CLOSED: {
 		name: 'Workflow review closed',
 		description:
-			'An open review was closed without a decision because its workflow stopped being reviewable. No user performs it. An approval also closes the review, but reports "User decided workflow review" instead.',
+			'An open review was closed without a decision because no reviewable workflow was left on it. No user performs it. An approval also closes the review, but reports "User decided workflow review" instead.',
 		properties: z.object({
 			workflow_review_request_id: z.string(),
-			reason: z
-				.enum([
-					'workflow-archived',
-					'workflow-moved',
-					'workflow-deleted',
-					'no-reviewable-workflows',
-				])
+			cause_trigger: z
+				.enum(['workflow-archived', 'workflow-moved', 'workflow-deleted', 'unknown'])
 				.describe(
-					'What made the workflow unreviewable. "no-reviewable-workflows" means the cause was no longer recoverable when the review was closed',
+					'What left the review without a reviewable workflow. "unknown" means the trigger went unrecorded and the review was swept up later, not that nothing triggered it',
 				),
-			actor_kind: z
+			cause_actor_kind: z
 				.enum(['user', 'system'])
-				.describe('"system" means no actor was recorded for the cause, not that automation acted'),
+				.describe(
+					'Who caused the trigger, not who closed the review. "system" means no actor was recorded, not that automation acted',
+				),
 		}),
 	},
 	USER_COMMENTED_ON_WORKFLOW_REVIEW: {
 		name: 'User commented on workflow review',
-		description:
-			'A comment was posted on a review. Comments stay open after the review settles, so this can fire on a closed review.',
+		description: 'A comment was posted on an open review.',
 		properties: z.object({
 			user_id: z.string(),
 			workflow_review_request_id: z.string(),

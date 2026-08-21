@@ -836,7 +836,7 @@ export class WorkflowReviewRequestService {
 			workflowVersionId: pinnedVersionId,
 			decision: dto.decision,
 			decidedVia: decidedAsAssignedReviewer ? 'assigned-reviewer' : 'admin-override',
-			msSinceReviewOpened: Date.now() - saved.createdAt.getTime(),
+			reviewCreatedAt: saved.createdAt,
 		});
 
 		const summary = toRequestSummary(saved, pinnedVersionId);

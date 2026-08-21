@@ -1126,7 +1126,7 @@ export type RelayEventMap = {
 		workflowVersionId: string | null;
 		decision: 'approved' | 'changes_requested';
 		decidedVia: 'assigned-reviewer' | 'admin-override';
-		msSinceReviewOpened: number;
+		reviewCreatedAt: Date;
 	};
 
 	/**
@@ -1137,10 +1137,18 @@ export type RelayEventMap = {
 	 */
 	'workflow-review-closed': {
 		workflowReviewRequestId: string;
-		/** Not `WorkflowReviewClosedReason`: that type names the activity feed's entry, not a cause. */
-		reason: 'workflow-archived' | 'workflow-moved' | 'workflow-deleted' | 'no-reviewable-workflows';
-		/** 'system' means no actor was recorded for the cause, not that automation acted. */
-		actorKind: 'user' | 'system';
+		/**
+		 * What left the review with no reviewable workflow, and who caused that — not who
+		 * closed the review, which nobody does. `'unknown'` is not the activity feed's
+		 * `no-reviewable-workflows`: the feed records that value on every close, whatever the
+		 * trigger, while `'unknown'` says the trigger itself went unrecorded.
+		 */
+		cause: {
+			trigger: 'workflow-archived' | 'workflow-moved' | 'workflow-deleted' | 'unknown';
+			/** 'system' means no actor was recorded, not that automation acted. */
+			actorKind: 'user' | 'system';
+			userId: string | null;
+		};
 	};
 
 	'workflow-review-comment-created': {

@@ -2156,12 +2156,15 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowId,
 		workflowVersionId,
 	}: RelayEventMap['workflow-review-version-updated']) {
-		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_REVIEW_VERSION, {
-			user_id: user.id,
-			workflow_review_request_id: workflowReviewRequestId,
-			workflow_id: workflowId,
-			workflow_version_id: workflowVersionId,
-		});
+		this.telemetry.track(
+			TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW,
+			{
+				user_id: user.id,
+				workflow_review_request_id: workflowReviewRequestId,
+				workflow_id: workflowId,
+				workflow_version_id: workflowVersionId,
+			},
+		);
 	}
 
 	private workflowReviewDecided({
@@ -2171,7 +2174,7 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowVersionId,
 		decision,
 		decidedVia,
-		msSinceReviewOpened,
+		reviewCreatedAt,
 	}: RelayEventMap['workflow-review-decided']) {
 		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW, {
 			user_id: user.id,
@@ -2180,19 +2183,18 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_version_id: workflowVersionId,
 			decision,
 			decided_via: decidedVia,
-			ms_since_review_opened: msSinceReviewOpened,
+			review_created_at: reviewCreatedAt,
 		});
 	}
 
 	private workflowReviewClosed({
 		workflowReviewRequestId,
-		reason,
-		actorKind,
+		cause,
 	}: RelayEventMap['workflow-review-closed']) {
 		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED, {
 			workflow_review_request_id: workflowReviewRequestId,
-			reason,
-			actor_kind: actorKind,
+			cause_trigger: cause.trigger,
+			cause_actor_kind: cause.actorKind,
 		});
 	}
 

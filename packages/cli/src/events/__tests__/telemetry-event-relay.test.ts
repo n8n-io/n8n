@@ -3800,17 +3800,17 @@ describe('TelemetryEventRelay', () => {
 				workflow_version_id: 'ver-2',
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_REVIEW_VERSION,
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW,
 				payload,
 			);
 			expect(
-				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_REVIEW_VERSION.getValidationError(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW.getValidationError(
 					payload,
 				),
 			).toBeNull();
 		});
 
-		it('should track an approval, how long the review took, and who was entitled to decide', () => {
+		it('should track an approval, when the review opened, and who was entitled to decide', () => {
 			eventService.emit('workflow-review-decided', {
 				user: { id: 'user123' },
 				workflowReviewRequestId: 'review-1',
@@ -3818,7 +3818,7 @@ describe('TelemetryEventRelay', () => {
 				workflowVersionId: 'ver-1',
 				decision: 'approved',
 				decidedVia: 'assigned-reviewer',
-				msSinceReviewOpened: 3_600_000,
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
 			});
 
 			const payload = {
@@ -3828,7 +3828,7 @@ describe('TelemetryEventRelay', () => {
 				workflow_version_id: 'ver-1',
 				decision: 'approved',
 				decided_via: 'assigned-reviewer',
-				ms_since_review_opened: 3_600_000,
+				review_created_at: new Date('2026-01-01T10:00:00.000Z'),
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW,
@@ -3847,7 +3847,7 @@ describe('TelemetryEventRelay', () => {
 				workflowVersionId: null,
 				decision: 'changes_requested',
 				decidedVia: 'admin-override',
-				msSinceReviewOpened: 120_000,
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
 			});
 
 			const payload = {
@@ -3857,7 +3857,7 @@ describe('TelemetryEventRelay', () => {
 				workflow_version_id: null,
 				decision: 'changes_requested',
 				decided_via: 'admin-override',
-				ms_since_review_opened: 120_000,
+				review_created_at: new Date('2026-01-01T10:00:00.000Z'),
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW,
@@ -3868,17 +3868,16 @@ describe('TelemetryEventRelay', () => {
 			).toBeNull();
 		});
 
-		it('should track a review closed because its workflow stopped being reviewable', () => {
+		it('should track a review closed with no trigger recorded, never the acting user', () => {
 			eventService.emit('workflow-review-closed', {
 				workflowReviewRequestId: 'review-1',
-				reason: 'no-reviewable-workflows',
-				actorKind: 'system',
+				cause: { trigger: 'unknown', actorKind: 'system', userId: null },
 			});
 
 			const payload = {
 				workflow_review_request_id: 'review-1',
-				reason: 'no-reviewable-workflows',
-				actor_kind: 'system',
+				cause_trigger: 'unknown',
+				cause_actor_kind: 'system',
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED,

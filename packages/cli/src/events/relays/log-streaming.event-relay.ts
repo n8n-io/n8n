@@ -1221,13 +1221,17 @@ export class LogStreamingEventRelay extends EventRelay {
 	private workflowReviewClosed(
 		{
 			workflowReviewRequestId,
-			reason,
-			actorKind,
-		}: RelayEventMap['workflow-review-closed'] /* not `@Redactable()`: no close path names a user */,
+			cause,
+		}: RelayEventMap['workflow-review-closed'] /* not `@Redactable()`: the cause carries a bare id, not a `UserLike` */,
 	) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow-review.closed',
-			payload: { workflowReviewRequestId, reason, actorKind },
+			payload: {
+				workflowReviewRequestId,
+				causeTrigger: cause.trigger,
+				causeActorKind: cause.actorKind,
+				causeUserId: cause.userId,
+			},
 		});
 	}
 

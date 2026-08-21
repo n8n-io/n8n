@@ -132,7 +132,8 @@ describe('WorkflowReviewRequestService.decide', () => {
 		});
 
 	const mockSuccessfulDecidePath = () => {
-		requestRepository.findById.mockResolvedValue(openRequest());
+		const request = openRequest();
+		requestRepository.findById.mockResolvedValue(request);
 		workflowRepository.findByRequestId.mockResolvedValue([pinnedRow()]);
 		workflowRepository.captureApprovalBaseline.mockResolvedValue(undefined);
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
@@ -146,13 +147,11 @@ describe('WorkflowReviewRequestService.decide', () => {
 		reviewerRepository.isReviewer.mockResolvedValue(true);
 		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([requesterUser]);
-		requestRepository.saveRequest.mockImplementation(async (request) => request);
+		requestRepository.saveRequest.mockImplementation(async (saved) => saved);
+		return request;
 	};
 
 	beforeEach(() => {
-		// The fixture opens at 10:00, so every decision here is reported as 90 minutes old.
-		vi.useFakeTimers();
-		vi.setSystemTime(new Date('2026-07-20T11:30:00.000Z'));
 		vi.resetAllMocks();
 		accessService.resolveOpenableRequestIds.mockResolvedValue(new Set());
 		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
@@ -162,10 +161,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 		dbLockService.withLockContext.mockImplementation(async (_id, fn) => await fn(ctx));
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 		collaborationService.broadcastWorkflowUpdate.mockResolvedValue(undefined);
-	});
-
-	afterEach(() => {
-		vi.useRealTimers();
 	});
 
 	it('throws when the instance policy is disabled, before any lookup or lock', async () => {
@@ -378,7 +373,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 	});
 
 	it('approves: closes the request, stamps closedById and approvedAt, and broadcasts', async () => {
-		mockSuccessfulDecidePath();
+		const request = mockSuccessfulDecidePath();
 
 		const result = await service.decide(memberUser(), requestId, approveDto);
 
@@ -417,7 +412,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			workflowVersionId: 'ver-1',
 			decision: 'approved',
 			decidedVia: 'assigned-reviewer',
-			msSinceReviewOpened: 5_400_000,
+			reviewCreatedAt: request.createdAt,
 		});
 	});
 
@@ -444,7 +439,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 	});
 
 	it('requests changes: keeps the request open and leaves closedById/approvedAt untouched', async () => {
-		mockSuccessfulDecidePath();
+		const request = mockSuccessfulDecidePath();
 
 		const result = await service.decide(memberUser(), requestId, requestChangesDto);
 
@@ -467,7 +462,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			workflowVersionId: 'ver-1',
 			decision: 'changes_requested',
 			decidedVia: 'assigned-reviewer',
-			msSinceReviewOpened: 5_400_000,
+			reviewCreatedAt: request.createdAt,
 		});
 	});
 
