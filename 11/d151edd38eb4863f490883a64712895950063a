@@ -1,0 +1,447 @@
+packages/frontend/editor-ui/src/app/constants/actions.ts
+  s_1d191d0326cc19::t_528910e3ae9840 10
+packages/frontend/editor-ui/src/features/workflows/chaos/components/ChaosTestingModal.vue
+  s_1d191d0326cc19::t_58db8ee5109f34 159,163
+  s_1d191d0326cc19::t_ac4b6b6d2a3889 374-382
+  s_1d191d0326cc19::t_d2d2917e494aad 337,360,367-368
+  s_1d191d0326cc19::t_7cc31bfc1780de 370-372
+  s_1d191d0326cc19::t_2f8c8140e1a1a1 22
+  s_1d191d0326cc19::t_c625c1a78c879d 304
+  s_1d191d0326cc19::t_b125d8b90827b7 90,102-103
+  s_1d191d0326cc19::t_6aebec9c068f4c 167-169,177-186
+  s_1d191d0326cc19::t_a1b455d9f0ffad 241-242,244,251-258
+  s_1d191d0326cc19::t_584bd682166c14 354
+  s_1d191d0326cc19::t_bd2b15f45151a1 87,91-92
+  s_1d191d0326cc19::t_ffbdc8370e307e 334
+  s_1d191d0326cc19::t_2068dd64066673 51
+  s_1d191d0326cc19::t_faccec1d13d9a1 75
+  s_1d191d0326cc19::t_157689d9ab5135 166
+  s_1d191d0326cc19::t_b4bf41332eb79e 154,158,160-162
+  s_1d191d0326cc19::t_2a985a2947b114 280
+  s_1d191d0326cc19::t_b2897c8c31ace1 63-68
+  s_1d191d0326cc19::t_0d6b7d913fb1af 155-157
+  s_1d191d0326cc19::t_d64bebaadefb0a 14-15
+  s_1d191d0326cc19::t_bf868590e2fd78 1-13,16-21,23-50,52-62,69-74,76-86,88-89,93-101,104-153,164-165,170-176,187-219,250,259-279,281-303,305-333,335-336,338-353,355-359,361-366,369,373,383-454
+  s_1d191d0326cc19::t_e0924a21e0a457 220-240,243,245-249
+packages/frontend/editor-ui/src/features/workflows/chaos/components/ChaosTestingModal.test.ts
+  s_1d191d0326cc19::t_a632ad3c120726 65-66
+  s_1d191d0326cc19::t_b6d7910d211436 299,361-374
+  s_1d191d0326cc19::t_510cca94fdd8fb 12
+  s_1d191d0326cc19::t_d96f32bd4a018d 97
+  s_1d191d0326cc19::t_33cf45eb6f008d 6-7
+  s_1d191d0326cc19::t_b27b3031548930 147-148,263-264,280-281,295-296,310-311,345-346,359,438-522
+  s_1d191d0326cc19::t_e6f4e6f5b7919e 3,10,15-56,63,67-96,98-144,155-260,268-277,284-292,300-307,313-342,348-358,375,378-380,382-397,400-402,405-437
+  s_1d191d0326cc19::t_92d82829b9e850 376-377,381,398-399,403
+  s_1d191d0326cc19::t_ca631a1de4ac57 145,261,278,293,308,343
+  s_1d191d0326cc19::t_f3f1d928345366 1-2
+  s_1d191d0326cc19::t_0bb2bd796c20de 4-5
+  s_1d191d0326cc19::t_76d3e5a115368d 8-9
+  s_1d191d0326cc19::t_afd86a9352e90f 11
+  s_1d191d0326cc19::t_8de7276c1404ff 13-14
+  s_1d191d0326cc19::t_2f9fc25ab896bc 57-62
+  s_1d191d0326cc19::t_e71c773b95b4f2 64
+  s_1d191d0326cc19::t_8fbdd020a70257 146
+  s_1d191d0326cc19::t_1642868a11d136 149-154
+  s_1d191d0326cc19::t_db93277cb9a190 262
+  s_1d191d0326cc19::t_460a9f7586f054 265-267
+  s_1d191d0326cc19::t_f6634ee5fb94fb 279
+  s_1d191d0326cc19::t_e9add61a47797d 282-283
+  s_1d191d0326cc19::t_9a3c8c9ec0a89c 294
+  s_1d191d0326cc19::t_5ef82b88a2f52b 297-298
+  s_1d191d0326cc19::t_dab445224d7687 309
+  s_1d191d0326cc19::t_e1a1f764fd6bc5 312
+  s_1d191d0326cc19::t_8090fbb4369636 344
+  s_1d191d0326cc19::t_08954298627d17 347
+  s_1d191d0326cc19::t_de71520a1936cb 360
+  s_1d191d0326cc19::t_21973e87ca242c 404
+  s_1d191d0326cc19::t_8f25788ac102ae 523
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue
+  s_1d191d0326cc19::t_823342c0d30368 199-203
+  s_1d191d0326cc19::t_c1683285012964 75,94-107,111-119
+  s_1d191d0326cc19::t_5d99e886644df2 110
+  s_1d191d0326cc19::t_ae3114d5344d13 46-49
+  s_1d191d0326cc19::t_49c4fa13925d46 108-109
+  s_1d191d0326cc19::t_49dc5fe458702d 133
+  s_1d191d0326cc19::t_c016eb91c92c4a 167,175
+  s_1d191d0326cc19::t_777dba1b03f8cd 12-22,27
+  s_1d191d0326cc19::t_7bafb7b486e3bc 189-198,204-211
+packages/frontend/editor-ui/src/features/workflows/chaos/randomChaosPlan.ts
+  s_1d191d0326cc19::t_6114a1c6399100 45
+  s_1d191d0326cc19::t_7305e3d2e23015 10,16,39-43,59-60,67-68,74-81,83-85,87,89,92-96,98-99,101-105
+  s_1d191d0326cc19::t_68c0799b1a0951 9,13-14,17-38,44,46-58,61-66,69-73,82,86,88,90-91,97,100
+  s_1d191d0326cc19::t_5a7e9c1dedf0be 1-8
+  s_1d191d0326cc19::t_b7715fbf0bb5bd 11-12,15
+packages/frontend/editor-ui/src/features/workflows/chaos/randomChaosPlan.test.ts
+  s_1d191d0326cc19::t_9125ad00da2955 1-10,12,14,16,19-24,27,30-40,43-45,47-51,54-62,64,67-80,83,86-90,92,95-99,101-104,106-108,111-114,116-129,132-141,144-147,150,153-157,159,162-164
+  s_1d191d0326cc19::t_86ebf1c3ad0031 11,13,15,17-18,25-26,28-29,41-42,46,52-53,63,65-66,81-82,84-85,91,93-94,100,105,109-110,115,130-131,142-143,148-149,151-152,158,160-161,165-166
+packages/workflow/test/chaos.test.ts
+  s_1d191d0326cc19::t_3e91d34e293426 1,3-27,44-45,47-59
+  s_1d191d0326cc19::t_f6c2f4aafa4869 2
+  s_1d191d0326cc19::t_3bd32742d563cb 28-43,46
+packages/workflow/src/run-execution-data-factory.ts
+  s_1d191d0326cc19::t_a346414d20009f 38
+  s_1d191d0326cc19::t_0b7b8a3f6ea213 1
+  s_1d191d0326cc19::t_d5bedea4c911e4 66
+packages/@n8n/api-types/src/dto/workflows/base-workflow.dto.ts
+  s_1d191d0326cc19::t_95317cc7c2e5e5 6
+  s_1d191d0326cc19::t_1412022cd4799e 70
+  s_1d191d0326cc19::t_49bb29eff8b43d 5
+  s_1d191d0326cc19::t_770a0dadeca0d6 66-67
+  s_1d191d0326cc19::t_7a29af4c50252d 68-69
+packages/workflow/src/index.ts
+  s_1d191d0326cc19::t_c6beb66513cd2c 8
+packages/core/src/execution-engine/chaos/index.ts
+  s_1d191d0326cc19::t_cc18666abd00db 1
+packages/cli/test/integration/execution.service.integration.test.ts
+  s_1d191d0326cc19::t_5c2c30b624c792 994
+  s_1d191d0326cc19::t_38a159e77c69cb 104
+  s_1d191d0326cc19::t_9be7a58a1307d4 116-137
+packages/@n8n/api-types/src/dto/workflows/__tests__/update-workflow.dto.test.ts
+  s_1d191d0326cc19::t_a289f2d4556fa7 244
+  s_1d191d0326cc19::t_32b0221196993c 235-237,242-243,245-249,254-258,261,267
+  s_1d191d0326cc19::t_b6a731155dd961 129,131-132,134-145
+  s_1d191d0326cc19::t_944fdf6af57a7f 130,133,146-155,234,259-260,262-266
+  s_1d191d0326cc19::t_f6c2f4aafa4869 238-241,250-253
+packages/frontend/editor-ui/src/app/stores/defaults/modals.ts
+  s_1d191d0326cc19::t_975bd5a6cdee4b 9
+  s_1d191d0326cc19::t_67fa2f81814422 109
+packages/frontend/editor-ui/src/app/composables/useRunWorkflow.test.ts
+  s_1d191d0326cc19::t_b68a367bcf1c16 1440-1478,1482-1483,1525-1526
+  s_1d191d0326cc19::t_11d476f8100a87 15,19-22
+  s_1d191d0326cc19::t_0401cf9b18de96 1488-1501,1506
+  s_1d191d0326cc19::t_3a8e996b823bf0 1507-1511
+  s_1d191d0326cc19::t_265e8a9395fc4f 1512
+  s_1d191d0326cc19::t_5634c989f4d3d1 1479-1481
+  s_1d191d0326cc19::t_9cd65cf0c92572 1484-1487,1502-1505,1513-1524
+  s_1d191d0326cc19::t_866f87f73d458f 18
+  s_1d191d0326cc19::t_6cbdc285c5e051 40
+  s_1d191d0326cc19::t_1c73d9153b300c 8,17
+packages/frontend/editor-ui/src/app/components/Modals.vue
+  s_1d191d0326cc19::t_d7ccc1b1e26488 237-239
+  s_1d191d0326cc19::t_b9f19c7c069eec 29
+  s_1d191d0326cc19::t_647cfc937056b8 129
+  s_1d191d0326cc19::t_a0fdb4be9dbfc6 236
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsCard.test.ts
+  s_1d191d0326cc19::t_4b18a773a19c14 183-217
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_1d191d0326cc19::t_261244474173b3 138-144
+packages/core/src/execution-engine/chaos/__tests__/fault-engine.test.ts
+  s_1d191d0326cc19::t_246bfa8705a330 57-94,104-114
+  s_1d191d0326cc19::t_27e8ff07790880 1-16,26-51,55-56,95-99,101-103,115-146,160-212,217-243,261-264,269-272,290-319
+  s_1d191d0326cc19::t_67490bf301a46d 147-159
+  s_1d191d0326cc19::t_5ecb515487bdf0 273-280,285-289
+  s_1d191d0326cc19::t_8bafe8af9e59bf 17-25
+  s_1d191d0326cc19::t_c4c2dce38994fd 281-284
+  s_1d191d0326cc19::t_ef10793188f5ce 100
+  s_1d191d0326cc19::t_ec7bb0603bec28 244-260
+  s_1d191d0326cc19::t_b6577fa156f0f7 52-54,213-216,265-268
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_1d191d0326cc19::t_9622f864a524fa 747
+  s_1d191d0326cc19::t_0d951cce9d9dda 848-851
+  s_1d191d0326cc19::t_3c666be6377cce 829
+packages/@n8n/db/src/migrations/common/1786523768496-AddIsChaosRunToExecutionEntity.ts
+  s_1d191d0326cc19::t_a3b377cd6993e0 1-3,17,22,24-25
+  s_1d191d0326cc19::t_35fd70ad21c7ad 4-16,18-21,23
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsCard.vue
+  s_1d191d0326cc19::t_927bca06866218 193
+  s_1d191d0326cc19::t_79f9a13745d76d 14
+packages/workflow/src/run-execution-data/run-execution-data.v1.ts
+  s_1d191d0326cc19::t_59e03dad38ed06 78
+  s_1d191d0326cc19::t_5a4b28bd2b03ba 2
+  s_1d191d0326cc19::t_a8375fa5f734ed 46-47
+packages/@n8n/api-types/src/schemas/chaos.schema.ts
+  s_1d191d0326cc19::t_1412022cd4799e 1
+  s_1d191d0326cc19::t_003b804a53d32a 8-10,12,14,22-24,26-28,35-36
+  s_1d191d0326cc19::t_b5457cdd5081af 3-4,13,15-21,25,37-41,51
+  s_1d191d0326cc19::t_12af7722f19fa4 29-34
+  s_1d191d0326cc19::t_d590bc28d8f748 56
+  s_1d191d0326cc19::t_49bb29eff8b43d 2,5-7,11,42-50,52-55,57-65
+packages/frontend/editor-ui/src/features/workflows/chaos/chaosFaults.ts
+  s_1d191d0326cc19::t_ff0c7832c9f09d 36-39,42-44,46,50
+  s_1d191d0326cc19::t_c49db02591a0ca 96-102
+  s_1d191d0326cc19::t_de74d09bb95a51 1-7,9,51-95,103
+  s_1d191d0326cc19::t_70d8b60530a9bb 10
+  s_1d191d0326cc19::t_e00b320e64de43 8,11-35,40-41,45,47-49
+packages/frontend/editor-ui/src/features/workflows/chaos/composables/useChaosRun.ts
+  s_1d191d0326cc19::t_d09d1221d87efe 26
+  s_1d191d0326cc19::t_292b4d19eb160a 1,9,11-12,30-31,34-39,50-52,61,64-66
+  s_1d191d0326cc19::t_a73cfdd333bf87 6,8,13,18-22,27,32-33,40-49,54-59,62-63,67,70,80
+  s_1d191d0326cc19::t_2a91e6942a54d6 10
+  s_1d191d0326cc19::t_d430efce0d5fb0 60
+  s_1d191d0326cc19::t_97a4d47ae8b07d 73-77
+  s_1d191d0326cc19::t_04e00943118cc9 2-5,7,14-17,23-25,28-29,53,68-69,71-72,78-79,81
+packages/frontend/editor-ui/src/features/workflows/chaos/chaosFaults.test.ts
+  s_1d191d0326cc19::t_3a29c8777ceefc 36-39,115
+  s_1d191d0326cc19::t_e62c88732a2769 1-35,40-114,116-147
+packages/cli/src/scaling/job-processor.ts
+  s_1d191d0326cc19::t_61d04ebe5408c4 175
+packages/cli/src/__tests__/active-executions.test.ts
+  s_1d191d0326cc19::t_341dab21cc5994 188
+  s_1d191d0326cc19::t_c62d899db8b1c7 185-187,189-218
+  s_1d191d0326cc19::t_f52efc9e30bd4e 9
+packages/frontend/editor-ui/src/features/workflows/chaos/composables/useChaosRun.test.ts
+  s_1d191d0326cc19::t_42872aec96d06c 2,5,9,36,38-39,42-47,62,65-66,70-72,74-75,77,79-84,86-90,92,94-95,98-139,141-143
+  s_1d191d0326cc19::t_ca264525326608 1,3-4,6,8,10-24,26,28-35,37,40,48-59,68-69,73,76,78,85,91,93,96-97,140,144-146,148-149
+  s_1d191d0326cc19::t_baf099f37f39cb 25,27
+  s_1d191d0326cc19::t_493415ed65ab88 41,67,147
+  s_1d191d0326cc19::t_3d118cb11b7281 7,60-61
+  s_1d191d0326cc19::t_8ae349f33b94fa 63-64
+packages/frontend/editor-ui/src/app/constants/modals.ts
+  s_1d191d0326cc19::t_ec986eb4f54fce 12
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.test.ts
+  s_1d191d0326cc19::t_df3f9cd4d8ecaf 6
+  s_1d191d0326cc19::t_4c00615663e3c3 253-267
+packages/cli/src/workflow-helpers.ts
+  s_1d191d0326cc19::t_2521e920c19000 363-365
+  s_1d191d0326cc19::t_3df9d8d200af49 358-362
+packages/workflow/src/interfaces.ts
+  s_1d191d0326cc19::t_5597846ef82b02 3540-3544
+  s_1d191d0326cc19::t_400852f7123c8c 26
+  s_1d191d0326cc19::t_f32af72b73424a 3792-3794,3800
+  s_1d191d0326cc19::t_c169e6c750bf19 3703-3707
+  s_1d191d0326cc19::t_99060302ce2672 3795-3799
+  s_1d191d0326cc19::t_8d606a7298aa95 3801
+  s_1d191d0326cc19::t_b63ca0668fbcda 4039-4040
+packages/frontend/editor-ui/src/features/execution/chaos/chaosReport.ts
+  s_1d191d0326cc19::t_c25bfc256f683a 156-169
+  s_1d191d0326cc19::t_3fcf619e05a342 179-183,187
+  s_1d191d0326cc19::t_9dcc9a2ea816d7 93
+  s_1d191d0326cc19::t_5e526b30635607 133
+  s_1d191d0326cc19::t_3c05c4fb26c7c5 57-62,67-72,75-79,81
+  s_1d191d0326cc19::t_a920c615a3015b 113-124
+  s_1d191d0326cc19::t_e98f3be54676e5 1-56,73-74,80,82-92,94-111,125-132,134-155,170-178,184-186,188-192
+  s_1d191d0326cc19::t_04b8b23956abb6 112
+  s_1d191d0326cc19::t_3a29c8777ceefc 63-66
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1d191d0326cc19::t_d2d2917e494aad 1372-1374
+  s_1d191d0326cc19::t_2da59176859c2b 1370-1371
+  s_1d191d0326cc19::t_7a48f2d75c6bd2 1375-1389,1391-1401,1417-1425
+  s_1d191d0326cc19::t_6c48aef86d71d8 1402,1409,1411-1416
+  s_1d191d0326cc19::t_939f889057341c 1403-1408
+  s_1d191d0326cc19::t_693c6e1c82dca2 1410,1426
+  s_1d191d0326cc19::t_0f3f976e47c347 1390
+packages/cli/src/workflow-runner.ts
+  s_1d191d0326cc19::t_b13ca867cdb754 384
+packages/@n8n/api-types/src/dto/workflows/manual-run.dto.ts
+  s_1d191d0326cc19::t_ea0bcfd9c0ed87 28-30
+  s_1d191d0326cc19::t_0728491101b2a2 31,35,44,51
+  s_1d191d0326cc19::t_ba369fdb64bca0 4-5
+packages/frontend/editor-ui/src/features/execution/chaos/chaosReport.test.ts
+  s_1d191d0326cc19::t_25a45022e591fd 191-194,204,207
+  s_1d191d0326cc19::t_114e8bbc2f8421 1-27,31-175,195-203,205-206,208-353
+  s_1d191d0326cc19::t_36c59f995479c3 176-190
+  s_1d191d0326cc19::t_6ee435d5c73a2f 28-30
+packages/frontend/editor-ui/src/features/execution/chaos/components/ChaosReport.test.ts
+  s_1d191d0326cc19::t_83cef44f38f120 1,7-10,12-24,28-113,169-178,183,185-196
+  s_1d191d0326cc19::t_e64cc69ccdecf3 25-27
+  s_1d191d0326cc19::t_19d0a17be064d3 179-182,184
+  s_1d191d0326cc19::t_d88fd3344fcca3 114-168
+  s_1d191d0326cc19::t_4ff010b92f9fc0 2-6,11
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.vue
+  s_1d191d0326cc19::t_19622f8d4461e3 747-752,754
+packages/cli/src/active-executions.ts
+  s_1d191d0326cc19::t_d82af9ea069338 102-104
+  s_1d191d0326cc19::t_c095019146e1ec 15-19
+  s_1d191d0326cc19::t_c73b0aaefeac12 100-101
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_1d191d0326cc19::t_08dfe64edfae8c 161
+  s_1d191d0326cc19::t_584944a71d89ca 200
+  s_1d191d0326cc19::t_93988353d49f16 238
+  s_1d191d0326cc19::t_875f8298110601 282
+  s_1d191d0326cc19::t_e22c2183e870bf 669-673
+packages/core/src/execution-engine/chaos/__tests__/workflow-execute-chaos.test.ts
+  s_1d191d0326cc19::t_3eb73c4a78d9ed 256-258,262-276
+  s_1d191d0326cc19::t_f16dae01f72470 79
+  s_1d191d0326cc19::t_50d9d265d0d606 292-306
+  s_1d191d0326cc19::t_77ed297d7b3e50 167-193
+  s_1d191d0326cc19::t_c3afbef22c98c1 139
+  s_1d191d0326cc19::t_682c5b32873df0 26-27
+  s_1d191d0326cc19::t_a4c94be0ca0383 72
+  s_1d191d0326cc19::t_c331f8a643d66e 288
+  s_1d191d0326cc19::t_2a0c644f84b8af 201-208
+  s_1d191d0326cc19::t_fee2a75d42d11d 35
+  s_1d191d0326cc19::t_6ec710d3fe5dde 1-25,28-34,36-71,73-78,80-121,129-137,140-166,194-200,220-255,259-261,277-287,289-291,307-347
+  s_1d191d0326cc19::t_f2db0fb9e6b885 122-128,138
+  s_1d191d0326cc19::t_900acb0cd7d797 209-219
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_1d191d0326cc19::t_20d88b97eeb845 122-124
+  s_1d191d0326cc19::t_e186be69d49d5b 357-358
+  s_1d191d0326cc19::t_c98171092f6f86 22,120-121
+  s_1d191d0326cc19::t_7d342c79f37835 344-356
+packages/frontend/editor-ui/src/Interface.ts
+  s_1d191d0326cc19::t_983674430cb2c3 237-238
+  s_1d191d0326cc19::t_de29c3ca055ed2 42
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.test.ts
+  s_1d191d0326cc19::t_bb8ce84d1344eb 155-175,177-223
+  s_1d191d0326cc19::t_55a653f6540dc5 176
+packages/frontend/editor-ui/src/app/composables/useRunWorkflow.ts
+  s_1d191d0326cc19::t_e37a60aaa6dd3e 397
+  s_1d191d0326cc19::t_74e716571e4c7e 680-681
+  s_1d191d0326cc19::t_335e30154efede 168-169
+  s_1d191d0326cc19::t_aba7e239656675 642-663
+  s_1d191d0326cc19::t_253260cc25bbfc 17
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_1d191d0326cc19::t_6514221645eb10 333,342-356
+  s_1d191d0326cc19::t_33c35acbc29cb0 328-332,334-341,357-362
+packages/core/src/execution-engine/chaos/__tests__/workflow-execute-chaos-run.test.ts
+  s_1d191d0326cc19::t_0644e23cd4c69a 185-203
+  s_1d191d0326cc19::t_fe1fea04abcd62 56-57
+  s_1d191d0326cc19::t_dbef1e0221a2a3 1-2,6-7,10,12-14,16-20,22-30,33,36,39-45,49-50,61-64,68-69,73-74,77-83,97-101,106,108-109,114,119,129-131,139,142-144,163-164,175,183-184,204
+  s_1d191d0326cc19::t_b1fef9a9ccb614 84-86,90-96,102-105,107
+  s_1d191d0326cc19::t_d81686e22ed554 4-5,11,15,21,31-32,34-35,38,48,54,59,66-67,70-72,87-89,154-156,167-173,176-179,181
+  s_1d191d0326cc19::t_6e5c9ee635ee89 3,8-9,37,46-47,51-53,55,58,60,65,75-76,110-113,115-118,120-128,132-138,140-141,145-153,157-162,165-166,174,180,182
+packages/cli/test/integration/shared/db/executions.ts
+  s_1d191d0326cc19::t_b0379d0a644404 66
+  s_1d191d0326cc19::t_f9430f39e8f6ad 50
+packages/@n8n/api-types/src/dto/workflows/__tests__/manual-run.dto.test.ts
+  s_1d191d0326cc19::t_579cae0cc6dedb 72-74,79-115
+  s_1d191d0326cc19::t_9bdb647930cf99 172-249
+  s_1d191d0326cc19::t_7c735edc626df3 42-63,66-71,75-78,116-117
+  s_1d191d0326cc19::t_7838f47d95fb6f 64-65
+packages/core/src/execution-engine/chaos/fault-engine.ts
+  s_1d191d0326cc19::t_b6577fa156f0f7 7-13
+  s_1d191d0326cc19::t_ac22dbd2dcccaa 53,59-61
+  s_1d191d0326cc19::t_955a0624242bd3 54-58
+  s_1d191d0326cc19::t_adb68cf3c3f342 6,21-32,38-39,45-47,62-76,81-83,85-88,93,97-108,115-116,120,124-125,136-137
+  s_1d191d0326cc19::t_865757092e2b01 14-20,109-114,117-119,121-123,126-135
+  s_1d191d0326cc19::t_4e1cf1b95ab1cb 40-43
+  s_1d191d0326cc19::t_e71fd491451758 77-80,84,89-92
+  s_1d191d0326cc19::t_5d619685f88461 138-139,141-142
+  s_1d191d0326cc19::t_53b7f892eabdbd 140
+  s_1d191d0326cc19::t_afe41efa922bf0 33-35,37,48-52
+  s_1d191d0326cc19::t_1bd946652ba0b4 1-5
+  s_1d191d0326cc19::t_fddb8398140656 36
+  s_1d191d0326cc19::t_618801db0ded74 44
+  s_1d191d0326cc19::t_a8f8b85fc323f1 94-96
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.vue
+  s_1d191d0326cc19::t_8067e613795344 26,291
+packages/frontend/editor-ui/src/features/execution/chaos/components/ChaosRunBadge.vue
+  s_1d191d0326cc19::t_2a23da117148c5 1-18
+packages/@n8n/db/src/entities/types-db.ts
+  s_1d191d0326cc19::t_e172c8d9f6edb2 74
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_1d191d0326cc19::t_da2ef0015ef9f4 2073,2078
+  s_1d191d0326cc19::t_56d0254b8594c8 21
+  s_1d191d0326cc19::t_4d1dc1fcb2a996 229
+  s_1d191d0326cc19::t_a95af802e9178a 2074
+packages/core/src/execution-engine/workflow-execute.ts
+  s_1d191d0326cc19::t_64a59c1a98947f 64
+  s_1d191d0326cc19::t_6b0688abb845e8 1721
+  s_1d191d0326cc19::t_222e1c1359b9af 1547-1553,1557
+  s_1d191d0326cc19::t_3359d9054a1c03 1522-1523,1526,1530,1534-1535,1563-1564,1566-1568
+  s_1d191d0326cc19::t_1c24346a61fe33 1524-1525,1528-1529,1533,1576
+  s_1d191d0326cc19::t_80fc8a7a742da1 1386,1388,1410-1429,1431-1437,1439-1449,1451-1460
+  s_1d191d0326cc19::t_b05a4b53986612 1387,1527
+  s_1d191d0326cc19::t_f24da2ef161306 1569-1575,1577-1580
+  s_1d191d0326cc19::t_65ac9ef73f7104 1399-1405,1536-1546,1554-1556,1558-1562,1565
+  s_1d191d0326cc19::t_0d7efed443aedc 74
+  s_1d191d0326cc19::t_3843872be233aa 1450
+  s_1d191d0326cc19::t_4a81e562d809e7 65
+  s_1d191d0326cc19::t_91e1840ac9e79c 1438
+  s_1d191d0326cc19::t_2641857ebf9ecd 13-14
+  s_1d191d0326cc19::t_ecfa398fae3747 1407
+  s_1d191d0326cc19::t_282e02cf16945b 1389-1391,1396-1398
+  s_1d191d0326cc19::t_ec75ec6be177b9 1406
+  s_1d191d0326cc19::t_08b10d13571092 1408-1409
+  s_1d191d0326cc19::t_cb7b32d9eb2e9a 1430
+  s_1d191d0326cc19::t_f91c102a63ab8a 1531-1532
+  s_1d191d0326cc19::t_17c3a8fd02f8a2 1392-1395
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsListItem.test.ts
+  s_1d191d0326cc19::t_e6d864eabd3b80 170-202
+.agents/specs/chaos-button.md
+  s_1d191d0326cc19::t_4183525bd36083 481-496,498-499,646,648-651
+  s_1d191d0326cc19::t_9e9b471643ded5 410-424
+  s_1d191d0326cc19::t_4cde036d545aba 699
+  s_1d191d0326cc19::t_07ce9b8b5046a8 89-90,92-106
+  s_1d191d0326cc19::t_713bf0e5b3663f 536
+  s_1d191d0326cc19::t_012290aefc322f 134-137
+  s_1d191d0326cc19::t_684d62082c7901 173,175
+  s_1d191d0326cc19::t_5817eb8ccd25e1 294,296-300,303,306-309,319-333
+  s_1d191d0326cc19::t_8bacf6b9f111bf 315
+  s_1d191d0326cc19::t_dc298e1fbf4dab 454,457-467,688
+  s_1d191d0326cc19::t_0fcaac3e5f1d47 501-510
+  s_1d191d0326cc19::t_d3dec93019b7bb 145-146,153-154,159-167
+  s_1d191d0326cc19::t_6fd3b4db59c4bf 1-3,5-9,13-17,31-49,52,110-111,117,139-144,148-149,168,220-231,233,235-242,244,246-260,262-267,274-293,295,301-302,304-305,310-314,316-318,334-360,363,366-368,380-381,384,388-404,409,425-427,478-480,500,518-535,538,546-550,621-623,697,700,765-767
+  s_1d191d0326cc19::t_1edd12ef2cc67e 147,150-152,155-156,158
+  s_1d191d0326cc19::t_2b5669e312a25a 234
+  s_1d191d0326cc19::t_8b895d9bbfe202 511-515,517
+  s_1d191d0326cc19::t_f05d3c8db84b82 537
+  s_1d191d0326cc19::t_f0af0f0f40add5 361,516,679-682
+  s_1d191d0326cc19::t_08cbfdea3c730c 118-130
+  s_1d191d0326cc19::t_c98b390ee1cea4 243
+  s_1d191d0326cc19::t_ba0931707fca43 497
+  s_1d191d0326cc19::t_ecb1506c1b9d7e 551-560,563-588
+  s_1d191d0326cc19::t_a306751107849a 596-598
+  s_1d191d0326cc19::t_cda0cccca7c135 616-617
+  s_1d191d0326cc19::t_840257eca9594a 24-25
+  s_1d191d0326cc19::t_5dcae59f9ecb47 768-769
+  s_1d191d0326cc19::t_7a0b0a1f442102 232
+  s_1d191d0326cc19::t_0d4aaf0946ece2 157,561-562
+  s_1d191d0326cc19::t_f48733569adc23 629-631,635-638,652-654
+  s_1d191d0326cc19::t_c5e3232443e996 667-671
+  s_1d191d0326cc19::t_3eefee50523cd5 10
+  s_1d191d0326cc19::t_6648f10b5afd3f 29
+  s_1d191d0326cc19::t_1d8a98ac01dcf8 435-453,455-456,468-477
+  s_1d191d0326cc19::t_4f316c46e95706 376-379,608-609
+  s_1d191d0326cc19::t_30dcb637a0e195 206-214,217-219
+  s_1d191d0326cc19::t_91c5c92785c15e 605-607
+  s_1d191d0326cc19::t_6ecaf31f5d4e20 624-628,632-634,639-641,645,647,655-657,663-665,683-685,692-696,698,701-747
+  s_1d191d0326cc19::t_ceed8bb8a4ef24 642-644
+  s_1d191d0326cc19::t_baf78e5ca38b56 666,675-678
+  s_1d191d0326cc19::t_523ee45e38e668 50-51,53-56,59,63,71-74,85,107-109,112-116
+  s_1d191d0326cc19::t_d7fbcd2d8ab36e 686-687,689-691
+  s_1d191d0326cc19::t_798e90b1f97bc1 610
+  s_1d191d0326cc19::t_937bc6bd50c63f 611-615
+  s_1d191d0326cc19::t_8886a450aa1c5a 58,60-62,64-70,75-82,84,86-88,91
+  s_1d191d0326cc19::t_43e678405f9906 27-28
+  s_1d191d0326cc19::t_27bba4e1dbf53d 245
+  s_1d191d0326cc19::t_1260217d60ef96 57,83,131-133
+  s_1d191d0326cc19::t_a3b65aa5d6c80d 26
+  s_1d191d0326cc19::t_dd42d33c85a23e 4,672-674,748-764
+  s_1d191d0326cc19::t_0b3fa96b47db6a 261,268-273
+  s_1d191d0326cc19::t_f4df78701aa7e0 11-12,18-23,30,138,169-172,174,205,215-216,362,364,369,382-383,385-387,405-408,428-434,589-595,599-604,618-620
+  s_1d191d0326cc19::t_310d223b2efd2e 176-204
+  s_1d191d0326cc19::t_3a7c8250aca67e 365,370-375
+  s_1d191d0326cc19::t_2549011424daf5 539-545
+  s_1d191d0326cc19::t_d0763932b0b0a3 658-662
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsOverviewPanel.vue
+  s_1d191d0326cc19::t_fe04c979a3a40d 5
+  s_1d191d0326cc19::t_79aac5001b9d9d 144
+packages/workflow/src/chaos.ts
+  s_1d191d0326cc19::t_2f737357968228 32-38
+  s_1d191d0326cc19::t_8f39c05bfb8393 51-61,64,72,74
+  s_1d191d0326cc19::t_b7715fbf0bb5bd 85
+  s_1d191d0326cc19::t_f5dc6d63efae67 87-105
+  s_1d191d0326cc19::t_4c196d0831417c 1,7-31,39-50,62-63,65-66,71,73,106-125
+  s_1d191d0326cc19::t_e04892e7f9e836 67-70,75-84,86
+  s_1d191d0326cc19::t_fb93802ae5136f 2-6
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_1d191d0326cc19::t_e4c6e845915397 230-235
+  s_1d191d0326cc19::t_e44686b1d6a2d6 12
+  s_1d191d0326cc19::t_beaa3da941ec42 408-411
+packages/frontend/editor-ui/src/features/execution/chaos/components/ChaosReport.vue
+  s_1d191d0326cc19::t_6783085aa02bf6 1-6,12,14,16-26,28,39,42-44,46,59-64,66-80,82-90,92-98,100-103,105-108,110-113,115-124,139-144,146-148,153-200
+  s_1d191d0326cc19::t_d2d2917e494aad 65
+  s_1d191d0326cc19::t_00291c0898e95e 7-11
+  s_1d191d0326cc19::t_3a29c8777ceefc 149
+  s_1d191d0326cc19::t_9ee3262179a161 150,152
+  s_1d191d0326cc19::t_074500955a42a6 29-36,38,40-41,47-58,125-126,136,138
+  s_1d191d0326cc19::t_2ba058184991df 13,15,27,37,45,81,91,99,104,109,114,145,151
+  s_1d191d0326cc19::t_416c0dd077eec3 127-135,137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "11d151edd38eb4863f490883a64712895950063a",
+  "prompts": {},
+  "sessions": {
+    "s_1d191d0326cc19": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb8e6756-8b85-4cdc-963d-3ab799739305",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
