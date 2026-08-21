@@ -245,8 +245,8 @@ describe('getEscalationWarningKey', () => {
 		expect(getEscalationWarningKey('role', ['role:read'])).toBeUndefined();
 	});
 
-	it('returns undefined for user when only the non-escalating View scopes (user:read/user:list) are present', () => {
-		expect(getEscalationWarningKey('user', ['user:read', 'user:list'])).toBeUndefined();
+	it('returns undefined for user when only the non-escalating View scope (user:list) is present', () => {
+		expect(getEscalationWarningKey('user', ['user:list'])).toBeUndefined();
 	});
 });
 
@@ -322,12 +322,15 @@ describe('toggleOptionInGroup', () => {
 			expect(getOptionState(scopes, aiAssistantManage.scopes)).toBe('checked');
 		});
 
-		it('"Mcp manage" and "AiAssistant manage" stay independently toggleable while "Manage all settings" is checked (not implied/disabled by it)', () => {
-			// "Mcp use"/"AiAssistant use" are still implied by their own "manage" tier
-			// (pre-existing rule, same as apiKey's "Manage own" under "Manage all") —
-			// only the top-level "manage" options must remain directly clickable here.
+		it('all four MCP/AI Assistant options stay independently toggleable while "Manage all settings" is checked (none implied/disabled by it)', () => {
+			// Unlike apiKey's "Manage own"/"Manage all" tiering, none of these four
+			// are superseded by another option in this group — "Manage all settings"
+			// checks them via plain scope-superset arithmetic, not implication, so
+			// unchecking any one of the four must stay a single, direct click.
 			const scopes = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
+			expect(isOptionImplied(mcpUse, settingsGroup.options, scopes)).toBe(false);
 			expect(isOptionImplied(mcpManage, settingsGroup.options, scopes)).toBe(false);
+			expect(isOptionImplied(aiAssistantUse, settingsGroup.options, scopes)).toBe(false);
 			expect(isOptionImplied(aiAssistantManage, settingsGroup.options, scopes)).toBe(false);
 		});
 
@@ -373,9 +376,9 @@ describe('mandatory instance options', () => {
 	});
 
 	it('withMandatoryInstanceScopes does not duplicate scopes already present', () => {
-		const withDuplicate = withMandatoryInstanceScopes(['user:read', 'tag:read']);
-		expect(withDuplicate.filter((s) => s === 'user:read')).toHaveLength(1);
-		expect(withDuplicate).toEqual(expect.arrayContaining(['user:read', 'user:list', 'tag:read']));
+		const withDuplicate = withMandatoryInstanceScopes(['user:list', 'tag:read']);
+		expect(withDuplicate.filter((s) => s === 'user:list')).toHaveLength(1);
+		expect(withDuplicate).toEqual(expect.arrayContaining(['user:list', 'tag:read']));
 	});
 
 	it('withMandatoryInstanceScopes preserves unrelated scopes untouched', () => {

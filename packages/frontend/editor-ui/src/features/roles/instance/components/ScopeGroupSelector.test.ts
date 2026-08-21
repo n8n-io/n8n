@@ -203,20 +203,44 @@ describe('ScopeGroupSelector', () => {
 			);
 		});
 
-		it('keeps "Mcp manage" and "AiAssistant manage" enabled (not implied) when "Manage all settings" is checked', () => {
+		it('keeps all four MCP/AI Assistant checkboxes enabled (not implied) when "Manage all settings" is checked', () => {
 			const { getByTestId } = renderComponent(ScopeGroupSelector, {
 				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
 			});
-			const mcpManage = getByTestId('scope-option-settings-mcp-manage');
-			const aiAssistantManage = getByTestId('scope-option-settings-aiassistant-manage');
-			expect(mcpManage.getAttribute('aria-checked')).toBe('true');
-			expect(mcpManage.hasAttribute('disabled')).toBe(false);
-			expect(aiAssistantManage.getAttribute('aria-checked')).toBe('true');
-			expect(aiAssistantManage.hasAttribute('disabled')).toBe(false);
+			for (const testId of [
+				'scope-option-settings-mcp-use',
+				'scope-option-settings-mcp-manage',
+				'scope-option-settings-aiassistant-use',
+				'scope-option-settings-aiassistant-manage',
+			]) {
+				const checkbox = getByTestId(testId);
+				expect(checkbox.getAttribute('aria-checked')).toBe('true');
+				expect(checkbox.hasAttribute('disabled')).toBe(false);
+			}
+		});
+
+		it('unchecking "Mcp use" (not just "Mcp manage") turns "Manage all settings" off', async () => {
+			const { getByTestId, emitted, rerender } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
+			});
+
+			await userEvent.click(getByTestId('scope-option-settings-mcp-use'));
+
+			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
+			const [scopes] = emitted()['update:modelValue'][0] as [string[]];
+			expect(scopes).not.toContain('mcp:oauth');
+			expect(scopes).toContain('securitySettings:manage');
+
+			// v-model doesn't auto-sync in tests — re-render with the emitted value to
+			// prove the effect the title claims: the checkbox itself loses its checked state.
+			await rerender({ modelValue: scopes });
+			expect(getByTestId('scope-option-settings-manage').getAttribute('aria-checked')).not.toBe(
+				'true',
+			);
 		});
 
 		it('unchecking "Mcp manage" turns "Manage all settings" off while "Manage all settings" was checked', async () => {
-			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
+			const { getByTestId, emitted, rerender } = renderComponent(ScopeGroupSelector, {
 				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
 			});
 
@@ -226,6 +250,11 @@ describe('ScopeGroupSelector', () => {
 			const [scopes] = emitted()['update:modelValue'][0] as [string[]];
 			expect(scopes).not.toContain('mcp:manage');
 			expect(scopes).toContain('securitySettings:manage');
+
+			await rerender({ modelValue: scopes });
+			expect(getByTestId('scope-option-settings-manage').getAttribute('aria-checked')).not.toBe(
+				'true',
+			);
 		});
 	});
 

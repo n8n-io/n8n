@@ -68,14 +68,9 @@ function optionTooltip(
 	return option.descriptionKey ? i18n.baseText(option.descriptionKey) : '';
 }
 
-function onToggle(
-	resource: InstanceResource,
-	option: InstanceScopeOption,
-	groupOptions: InstanceScopeOption[],
-) {
+function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption[]) {
 	if (props.readonly) return;
 	if (isOptionImplied(option, groupOptions, props.modelValue)) return;
-	if (isOptionMandatory(resource, option)) return;
 	emit('update:modelValue', toggleOptionInGroup(props.modelValue, option, groupOptions));
 }
 </script>
@@ -111,7 +106,7 @@ function onToggle(
 								isOptionMandatory(group.resource, option)
 							"
 							:class="$style.checkbox"
-							@update:model-value="onToggle(group.resource, option, group.options)"
+							@update:model-value="onToggle(option, group.options)"
 						/>
 					</N8nTooltip>
 				</template>
