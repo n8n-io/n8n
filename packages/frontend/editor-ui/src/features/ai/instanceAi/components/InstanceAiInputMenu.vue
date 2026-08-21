@@ -57,6 +57,12 @@ async function handleSelect(id: string) {
 function trackInputPlusButtonClick() {
 	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON, {});
 }
+
+function handleUpdateDropdownModelValue(open: boolean) {
+	if (open) {
+		trackInputPlusButtonClick();
+	}
+}
 </script>
 
 <template>
@@ -67,6 +73,7 @@ function trackInputPlusButtonClick() {
 			:disabled="props.disabled"
 			data-test-id="instance-ai-input-menu"
 			@select="handleSelect"
+			@update:model-value="handleUpdateDropdownModelValue"
 		>
 			<template #trigger>
 				<span :class="$style.trigger">
@@ -76,7 +83,6 @@ function trackInputPlusButtonClick() {
 						size="medium"
 						:disabled="props.disabled"
 						:aria-label="tooltip"
-						@click="trackInputPlusButtonClick"
 					/>
 					<span
 						v-if="disconnectedConnectionCount > 0"
