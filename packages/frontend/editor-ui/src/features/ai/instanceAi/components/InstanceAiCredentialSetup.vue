@@ -25,6 +25,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useInstanceAiBrowserUseTelemetry } from '../instanceAiBrowserUse.telemetry';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import ConfirmationFooter from './ConfirmationFooter.vue';
@@ -42,6 +43,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const browserUseTelemetry = useInstanceAiBrowserUseTelemetry();
 const rootStore = useRootStore();
 const thread = useThread();
 const credentialsStore = useCredentialsStore();
@@ -595,6 +597,7 @@ async function handleSetupAutomatically() {
 		return;
 	}
 
+	browserUseTelemetry.trackModalOpened('credential_setup');
 	uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
 	stopWatchingBrowserConnect();
 	stopBrowserConnectWatch = watch(

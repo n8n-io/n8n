@@ -1,11 +1,15 @@
 <script lang="ts" setup>
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { InstanceAiHandoffContext, TaskItem } from '@n8n/api-types';
-import type { IconName } from '@n8n/design-system';
-import { isIconOrEmoji } from '@n8n/design-system';
-import { N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
+import {
+	isIconOrEmoji,
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	type IconName,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, inject, ref, type Ref } from 'vue';
+import { computed, inject, type Ref } from 'vue';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import {
@@ -14,7 +18,6 @@ import {
 	getDismissedContextKeys,
 	handoffContextKey,
 } from '../instanceAi.handoffContext';
-import ConnectionsCard from './ConnectionsCard.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const projectsStore = useProjectsStore();
@@ -38,7 +41,6 @@ const project = computed(() => {
 		icon: isPersonal ? { type: 'icon' as const, value: 'user-round' as const } : icon,
 	};
 });
-const panelRef = ref<HTMLElement>();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
 	'openDataTablePreview',
@@ -201,7 +203,7 @@ async function dismissContext(key: string) {
 </script>
 
 <template>
-	<aside ref="panelRef" :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
+	<aside :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
 		<div :class="$style.group" data-test-id="instance-ai-artifacts-sidebar-group">
 			<!-- Project section -->
 			<div :class="$style.section">
@@ -325,9 +327,6 @@ async function dismissContext(key: string) {
 					</div>
 				</div>
 			</div>
-
-			<!-- Connections section -->
-			<ConnectionsCard :dropdown-portal-target="panelRef" />
 		</div>
 	</aside>
 </template>
