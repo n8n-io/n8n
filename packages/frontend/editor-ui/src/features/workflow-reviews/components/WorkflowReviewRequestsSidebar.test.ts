@@ -136,8 +136,10 @@ describe('WorkflowReviewRequestsSidebar', () => {
 	});
 
 	describe('sections', () => {
-		it('always renders both open headers in order, waiting before authored', () => {
-			const { getAllByTestId } = renderComponent({ props: openProps() });
+		it('renders both open headers in order, waiting before authored', () => {
+			const { getAllByTestId } = renderComponent({
+				props: openProps([{ items: [makeItem()] }, { items: [makeItem({ id: 'req-2' })] }]),
+			});
 
 			const headers = getAllByTestId('workflow-review-section-header');
 			expect(headers.map((header) => header.dataset.section)).toEqual(['waiting', 'authored']);
@@ -145,27 +147,35 @@ describe('WorkflowReviewRequestsSidebar', () => {
 			expect(headers[1]).toHaveTextContent('Authored by you');
 		});
 
-		it('shows a per-section empty hint for the section that has no rows', () => {
+		it('drops a settled empty section, keeping the populated sibling', () => {
 			const { getAllByTestId } = renderComponent({
 				props: openProps([{ items: [makeItem()] }, {}]),
 			});
 
-			const hints = getAllByTestId('workflow-review-section-empty');
-			expect(hints).toHaveLength(1);
-			expect(hints[0].dataset.section).toBe('authored');
-			expect(hints[0]).toHaveTextContent("You haven't authored any open reviews");
+			const headers = getAllByTestId('workflow-review-section-header');
+			expect(headers.map((header) => header.dataset.section)).toEqual(['waiting']);
+			expect(getAllByTestId('workflow-review-request-row')).toHaveLength(1);
 		});
 
-		it('renders no header and the flat closed empty state on the closed tab', () => {
-			const { queryAllByTestId, getByTestId } = renderComponent({ props: closedProps() });
+		it('drops every section when the whole tab is empty', () => {
+			const { queryAllByTestId } = renderComponent({ props: openProps() });
 
 			expect(queryAllByTestId('workflow-review-section-header')).toHaveLength(0);
-			expect(getByTestId('workflow-review-section-empty')).toHaveTextContent('No closed reviews');
+			expect(queryAllByTestId('workflow-review-request-row')).toHaveLength(0);
+		});
+
+		it('renders no header on the closed tab', () => {
+			const { queryAllByTestId, getAllByTestId } = renderComponent({
+				props: closedProps({ items: [makeItem({ state: 'closed' })] }),
+			});
+
+			expect(queryAllByTestId('workflow-review-section-header')).toHaveLength(0);
+			expect(getAllByTestId('workflow-review-request-row')).toHaveLength(1);
 		});
 
 		it('gives each section its own labelled listbox holding only options', () => {
 			const { container } = renderComponent({
-				props: openProps([{ items: [makeItem()] }, {}]),
+				props: openProps([{ items: [makeItem()] }, { items: [makeItem({ id: 'req-2' })] }]),
 			});
 
 			const listboxes = container.querySelectorAll('[role="listbox"]');
@@ -197,14 +207,23 @@ describe('WorkflowReviewRequestsSidebar', () => {
 		it('drops the possessive waiting labels for an admin', () => {
 			mockedStore(useUsersStore).isAdminOrOwner = true;
 
-			const { getAllByTestId } = renderComponent({ props: openProps([{}, {}]) });
+			const { getAllByTestId } = renderComponent({
+				props: openProps([{ items: [makeItem()] }, {}]),
+			});
 
 			expect(getAllByTestId('workflow-review-section-header')[0]).toHaveTextContent(
 				'Waiting for review',
 			);
-			expect(getAllByTestId('workflow-review-section-empty')[0]).toHaveTextContent(
-				'No reviews waiting',
-			);
+		});
+
+		it('shows one skeleton and no headers while both open sections load', () => {
+			const { getAllByTestId, queryAllByTestId } = renderComponent({
+				props: openProps([{ loading: true }, { loading: true }]),
+			});
+
+			expect(getAllByTestId('workflow-review-list-skeleton')).toHaveLength(1);
+			expect(queryAllByTestId('workflow-review-section-skeleton')).toHaveLength(0);
+			expect(queryAllByTestId('workflow-review-section-header')).toHaveLength(0);
 		});
 
 		it('shows the skeleton only in the loading section, leaving the sibling rendered', () => {
@@ -215,6 +234,8 @@ describe('WorkflowReviewRequestsSidebar', () => {
 			const skeletons = getAllByTestId('workflow-review-section-skeleton');
 			expect(skeletons).toHaveLength(1);
 			expect(skeletons[0].dataset.section).toBe('waiting');
+			// The header names the list the lone skeleton belongs to.
+			expect(getAllByTestId('workflow-review-section-header')).toHaveLength(2);
 			expect(getAllByTestId('workflow-review-request-row')).toHaveLength(1);
 		});
 	});
@@ -318,12 +339,15 @@ describe('WorkflowReviewRequestsSidebar', () => {
 			expect(emitted().retry).toEqual([['waiting']]);
 		});
 
-		it('does not show the empty hint for a failed section', () => {
-			const { queryAllByTestId } = renderComponent({
+		it('keeps a failed section rendered even with no rows of its own', () => {
+			const { getByTestId, getAllByTestId } = renderComponent({
 				props: openProps([{ error: new Error('boom') }, { items: [makeItem()] }]),
 			});
 
-			expect(queryAllByTestId('workflow-review-section-empty')).toHaveLength(0);
+			// The header is the only thing naming the list that failed.
+			const headers = getAllByTestId('workflow-review-section-header');
+			expect(headers.map((header) => header.dataset.section)).toEqual(['waiting', 'authored']);
+			expect(getByTestId('workflow-review-section-error').dataset.section).toBe('waiting');
 		});
 	});
 });

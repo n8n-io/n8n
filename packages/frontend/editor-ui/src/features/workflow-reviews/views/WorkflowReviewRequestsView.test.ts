@@ -163,12 +163,84 @@ describe('WorkflowReviewRequestsView', () => {
 	it('does not fetch or select a review on the bare inbox path', async () => {
 		store.probeSettled = true;
 		store.showSidebar = true;
+		store.hasItemsInActiveTab = true;
 
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
 
 		expect(store.fetchDetail).not.toHaveBeenCalled();
 		expect(getByTestId('workflow-reviews-no-selection')).toBeInTheDocument();
+	});
+
+	it('heads the no-selection state with the open count', async () => {
+		store.probeSettled = true;
+		store.showSidebar = true;
+		store.hasItemsInActiveTab = true;
+		store.openCount = 4;
+
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(
+			within(getByTestId('workflow-reviews-no-selection')).getByText('4 open reviews'),
+		).toBeInTheDocument();
+	});
+
+	it('heads the no-selection state in the singular for one review', async () => {
+		store.probeSettled = true;
+		store.showSidebar = true;
+		store.hasItemsInActiveTab = true;
+		store.openCount = 1;
+
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(
+			within(getByTestId('workflow-reviews-no-selection')).getByText('1 open review'),
+		).toBeInTheDocument();
+	});
+
+	it('heads the no-selection state with the closed count on the closed tab', async () => {
+		await router.replace('/workflow-review-requests?state=closed');
+		store.probeSettled = true;
+		store.showSidebar = true;
+		store.hasItemsInActiveTab = true;
+		store.openCount = 4;
+		store.closedCount = 2;
+
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(
+			within(getByTestId('workflow-reviews-no-selection')).getByText('2 closed reviews'),
+		).toBeInTheDocument();
+	});
+
+	it('waits with a skeleton while the active tab has no rows yet', async () => {
+		store.probeSettled = true;
+		store.showSidebar = true;
+		store.isLoadingActiveTab = true;
+
+		const { container, queryByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(container.querySelector('.n8n-loading')).toBeInTheDocument();
+		expect(queryByTestId('workflow-reviews-no-selection')).not.toBeInTheDocument();
+	});
+
+	// A failed list has no rows to select and no proof the tab is empty, so the
+	// section's own retry in the sidebar is the only message.
+	it('prompts neither for a selection nor an empty tab when the list failed', async () => {
+		store.probeSettled = true;
+		store.showSidebar = true;
+		store.isEmpty = false;
+		store.hasItemsInActiveTab = false;
+
+		const { queryByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(queryByTestId('workflow-reviews-no-selection')).not.toBeInTheDocument();
+		expect(queryByTestId('workflow-reviews-empty-state')).not.toBeInTheDocument();
 	});
 
 	it('fetches the route review detail on mount', async () => {
