@@ -450,6 +450,45 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(fetchMock.mock.calls[2][1].body).not.toContain('tc-wait');
 	});
 
+	// Only the workflow, the card's own button, or Stop may end a wait. Steering it
+	// would abandon the run and leave the sub-workflow finishing into nothing.
+	it('refuses to steer a waiting card even when it is the current turn', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(
+			makeSseResponse([
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-wait',
+					toolName: 'long_wait_workflow',
+					input: {},
+				},
+				{
+					type: 'tool-call-suspended',
+					payload: {
+						toolCallId: 'tc-wait',
+						runId: 'run-wait',
+						toolName: 'long_wait_workflow',
+						input: {
+							type: 'workflow_wait',
+							title: 'Waiting on "Long wait"',
+							components: [{ type: 'button', label: 'Check for the result', value: 'continue' }],
+						},
+					},
+				},
+			]),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('start a long wait');
+		await hook.cancelAndSteer('never mind, do something else');
+
+		// Only the original turn was sent — no resume, so the wait stays parked.
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		const assistant = hook.messages.value[hook.messages.value.length - 1];
+		expect(assistant.interactive?.resolvedAt).toBeUndefined();
+		expect(assistant.interactive?.cancelled).toBeUndefined();
+	});
+
 	it('cancels an idle suspended interaction and settles its UI state', async () => {
 		globalThis.fetch = vi.fn(async () =>
 			makeSseResponse([
