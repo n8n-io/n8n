@@ -397,15 +397,14 @@ describe('PollerStateRepository', () => {
 			await expect(repository.clearFailures(workflowId, 'node-1')).resolves.toBe(false);
 		});
 
-		it('succeeds as a no-op on a row that was never failing', async () => {
+		it('leaves a row that carries no failures untouched', async () => {
 			await seed('node-1', {});
+			const { updatedAt: before } = await readRow('node-1');
 
-			await expect(repository.clearFailures(workflowId, 'node-1')).resolves.toBe(true);
+			await expect(repository.clearFailures(workflowId, 'node-1')).resolves.toBe(false);
 
-			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
-				consecutiveErrors: 0,
-				backoffUntil: null,
-			});
+			const { updatedAt: after } = await readRow('node-1');
+			expect(after.getTime()).toBe(before.getTime());
 		});
 
 		it('moves updatedAt forward', async () => {

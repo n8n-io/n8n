@@ -194,17 +194,27 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		return result.affected === 1;
 	}
 
-	/** Zeroes the counter and clears the deadline. Update-only, same `false` on a miss. */
+	/**
+	 * Zeroes the counter and clears the deadline. Update-only, and guarded on the row
+	 * still carrying failures, so an already-clean row is never touched. `false`
+	 * therefore means either no row or nothing to clear.
+	 */
 	async clearFailures(
 		workflowId: string,
 		nodeId: string,
 		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const result = await this.managerFor(ctx).update(PollerState, { workflowId, nodeId }, {
-			consecutiveErrors: 0,
-			backoffUntil: null,
-			updatedAt: () => dbNowLiteral(this.isPostgres),
-		} as QueryDeepPartialEntity<PollerState>);
+		const result = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(PollerState)
+			.set({
+				consecutiveErrors: 0,
+				backoffUntil: null,
+				updatedAt: () => dbNowLiteral(this.isPostgres),
+			} as QueryDeepPartialEntity<PollerState>)
+			.where('workflowId = :workflowId AND nodeId = :nodeId', { workflowId, nodeId })
+			.andWhere('("consecutiveErrors" <> 0 OR "backoffUntil" IS NOT NULL)')
+			.execute();
 
 		return result.affected === 1;
 	}

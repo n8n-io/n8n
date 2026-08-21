@@ -120,6 +120,13 @@ export class PollBackoffService {
 		}
 	}
 
+	/**
+	 * Forgets the failures of a poll that returned.
+	 *
+	 * A pre-poll state known to be clean skips the round trip. The write itself is
+	 * guarded on the stored row, so a state read that has since gone stale cannot
+	 * clear a row it never saw failing.
+	 */
 	async recordSuccess(args: {
 		workflowId: string;
 		nodeId: string;
@@ -127,9 +134,9 @@ export class PollBackoffService {
 	}): Promise<void> {
 		const { workflowId, nodeId, state } = args;
 		// `null` may also mean the read failed, so only a known-clean state skips the write.
-		if (state !== null && state.consecutiveErrors === 0 && state.backoffUntil === null) return;
-
-		await this.reset(workflowId, nodeId);
+		if (state === null || state.consecutiveErrors > 0 || state.backoffUntil !== null) {
+			await this.reset(workflowId, nodeId);
+		}
 	}
 
 	/** Forgets past failures, so a new node does not start inside an old backoff window. */
