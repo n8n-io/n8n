@@ -14,7 +14,6 @@ import type { Project, User, WorkflowReviewRequestState } from '@n8n/db';
 import {
 	UserRepository,
 	WorkflowHistoryRepository,
-	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 	WorkflowReviewRequestAuthorRepository,
@@ -56,7 +55,6 @@ let workflowRepository: WorkflowReviewRequestWorkflowRepository;
 let authorRepository: WorkflowReviewRequestAuthorRepository;
 let reviewerRepository: WorkflowReviewRequestReviewerRepository;
 let userRepository: UserRepository;
-let publishedVersionRepository: WorkflowPublishedVersionRepository;
 let publishHistoryRepository: WorkflowPublishHistoryRepository;
 let workflowEntityRepository: WorkflowRepository;
 let workflowHistoryRepository: WorkflowHistoryRepository;
@@ -69,7 +67,6 @@ beforeAll(async () => {
 	authorRepository = Container.get(WorkflowReviewRequestAuthorRepository);
 	reviewerRepository = Container.get(WorkflowReviewRequestReviewerRepository);
 	userRepository = Container.get(UserRepository);
-	publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	publishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	workflowEntityRepository = Container.get(WorkflowRepository);
 	workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
@@ -827,6 +824,14 @@ describe('publishing a workflow under review', () => {
 		expect(
 			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
 		).toBe(versionId);
+
+		// The timeline completes: the approval that closed the review, then its publication.
+		const activity = await ownerAgent
+			.get(`/workflow-review-requests/${request.id}/activity`)
+			.expect(200);
+		expect((activity.body.data.data as Array<{ type: string }>).map((entry) => entry.type)).toEqual(
+			['review.approved', 'workflow.published'],
+		);
 	});
 
 	test('keeps the approval and allows manual publish when auto-publish fails', async () => {
@@ -3198,7 +3203,11 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			versionId: 'version-pinned',
 			name: 'Release candidate',
 		});
-		await publishedVersionRepository.setPublishedVersion(workflow.id, baseline.versionId);
+		// The baseline resolves from the workflow row, which both publication paths maintain.
+		await workflowEntityRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: baseline.versionId,
+		});
 		const reviewer = await createAdmin();
 		const request = await seedRequest(workflow.id, 'version-pinned', owner);
 		await reviewerRepository.addReviewers(
@@ -3255,7 +3264,10 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			name: 'Release candidate',
 		});
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-later' });
-		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-published');
+		await workflowEntityRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: 'version-published',
+		});
 		const request = await seedRequest(workflow.id, 'version-pinned', owner);
 		await reviewerRepository.addReviewers(
 			{ workflowReviewRequestId: request.id, userIds: [member.id] },
@@ -3269,7 +3281,7 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 
 		// Auto-publish moved the live pointer to the pinned version; advance it again
 		// so a live read would show the wrong baseline without persistence.
-		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-later');
+		await workflowEntityRepository.update(workflow.id, { activeVersionId: 'version-later' });
 
 		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 
@@ -3300,10 +3312,8 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			.send({ decision: 'approved' })
 			.expect(200);
 
-		// Auto-publish leaves the live version pointing at the pinned one, so reading it
+		// Auto-publish left the live pointer on the pinned version, so reading it
 		// live would diff that version against itself.
-		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-pinned');
-
 		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 
 		expect(response.body.data.state).toBe('closed');
@@ -3314,7 +3324,10 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		const workflow = await createWorkflow({ name: 'Reviewed workflow' }, teamProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-published' });
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
-		await publishedVersionRepository.setPublishedVersion(workflow.id, 'version-published');
+		await workflowEntityRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: 'version-published',
+		});
 		const request = await requestRepository.createRequest(
 			{
 				projectId: teamProject.id,
