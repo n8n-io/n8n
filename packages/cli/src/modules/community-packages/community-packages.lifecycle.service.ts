@@ -91,20 +91,12 @@ export class CommunityPackagesLifecycleService {
 			}
 		}
 
-		let packages = this.communityPackagesService.matchPackagesWithUpdates(
+		const packages = this.communityPackagesService.matchPackagesWithUpdates(
 			installedPackages,
 			pendingUpdates,
 		);
 
-		try {
-			if (this.communityPackagesService.hasMissingPackages) {
-				packages = this.communityPackagesService.matchMissingPackages(packages);
-			}
-		} catch {
-			// Ignore errors when matching missing packages
-		}
-
-		return packages;
+		return this.communityPackagesService.withLoadStatus(packages);
 	}
 
 	async install(
@@ -153,10 +145,11 @@ export class CommunityPackagesLifecycleService {
 			throw new BadRequestError(templateMessage);
 		}
 
-		const isInstalled = await this.communityPackagesService.isPackageInstalled(parsed.packageName);
-		const hasLoaded = this.communityPackagesService.hasPackageLoaded(name);
+		const existingPackage = await this.communityPackagesService.findInstalledPackage(
+			parsed.packageName,
+		);
 
-		if (isInstalled && hasLoaded) {
+		if (existingPackage && this.communityPackagesService.isPackageLoaded(existingPackage)) {
 			const alreadyMessage =
 				presentation === 'ui'
 					? [
@@ -203,8 +196,6 @@ export class CommunityPackagesLifecycleService {
 				error instanceof Error ? isCommunityPackageInstallClientError(error) : false;
 			throw new (clientError ? BadRequestError : InternalServerError)(message);
 		}
-
-		if (!hasLoaded) this.communityPackagesService.removePackageFromMissingList(name);
 
 		installedPackage.installedNodes.forEach((node) => {
 			this.push.broadcast({
