@@ -24,6 +24,28 @@ type ColumnOptions = {
 	metadataColumnName: string;
 };
 
+// Advisory lock key used to serialize the `CREATE EXTENSION` DDL across
+// concurrent executions against a fresh database. Without it, two transactions
+// can both reach `CREATE EXTENSION IF NOT EXISTS vector` before either commits
+// and PostgreSQL may raise a duplicate-key/race error.
+const CREATE_EXTENSION_ADVISORY_LOCK = 979021312;
+
+async function createVectorExtension(pool: pg.Pool) {
+	const client = await pool.connect();
+	try {
+		await client.query('BEGIN');
+		// Serialize concurrent DDL attempts so parallel workflows don't race.
+		await client.query('SELECT pg_advisory_xact_lock($1)', [CREATE_EXTENSION_ADVISORY_LOCK]);
+		await client.query('CREATE EXTENSION IF NOT EXISTS vector');
+		await client.query('COMMIT');
+	} catch (error) {
+		await client.query('ROLLBACK').catch(() => undefined);
+		throw error;
+	} finally {
+		client.release();
+	}
+}
+
 const sharedFields: INodeProperties[] = [
 	{
 		displayName: 'Table Name',
@@ -32,6 +54,14 @@ const sharedFields: INodeProperties[] = [
 		default: 'n8n_vectors',
 		description:
 			'The table name to store the vectors in. If table does not exist, it will be created.',
+	},
+	{
+		displayName: 'Create Extension',
+		name: 'createExtension',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to create the pgvector (vector) extension if it doesn\'t already exist. Requires superuser privileges. Off by default.',
 	},
 ];
 
@@ -270,6 +300,10 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			'cosine',
 		) as DistanceStrategy;
 
+		if (context.getNodeParameter('createExtension', itemIndex, false)) {
+			await createVectorExtension(pool);
+		}
+
 		return await ExtendedPGVectorStore.initialize(embeddings, config);
 	},
 
@@ -305,6 +339,10 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			contentColumnName: 'text',
 			metadataColumnName: 'metadata',
 		}) as ColumnOptions;
+
+		if (context.getNodeParameter('createExtension', itemIndex, false)) {
+			await createVectorExtension(pool);
+		}
 
 		const vectorStore = await PGVectorStore.fromDocuments(documents, embeddings, config);
 		vectorStore.client?.release();
