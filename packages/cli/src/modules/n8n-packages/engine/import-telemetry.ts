@@ -6,7 +6,7 @@ import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types'
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PersistedWorkflowOutcome } from '../entities/workflow/workflow-import.types';
 import { VariableParentPolicy } from '../n8n-packages.types';
-import type { ImportContext, ImportPackageRequest } from '../n8n-packages.types';
+import type { ImportContext, ResolvedImportPackageRequest } from '../n8n-packages.types';
 import type { ImportContentResult } from './import-orchestrator';
 import { reconcileVariableSummary } from './import-result';
 import type { PackageManifest } from '../spec/manifest.schema';
@@ -24,7 +24,7 @@ export interface PackageImportScope {
 export function emitPackageImportedEvent(
 	eventService: EventService,
 	params: {
-		request: ImportPackageRequest;
+		request: ResolvedImportPackageRequest;
 		manifest: PackageManifest;
 		scopes: PackageImportScope[];
 	},
@@ -32,6 +32,7 @@ export function emitPackageImportedEvent(
 	const { request, manifest, scopes } = params;
 
 	const workflowOutcomes = scopes.flatMap(({ imported }) => imported.workflowOutcomes);
+	const removedWorkflows = scopes.flatMap(({ imported }) => imported.removedWorkflows);
 	const credentialResults = scopes.map(({ imported }) => imported.credentialResult);
 	const importedWorkflows = workflowOutcomes.filter(({ status }) => status !== 'skipped');
 	const countByStatus = (status: PersistedWorkflowOutcome['status']) =>
@@ -101,6 +102,11 @@ export function emitPackageImportedEvent(
 			credentialMissingMode: request.credentialMissingMode,
 			workflowPublishingPolicy: request.workflowPublishingPolicy,
 			missingNodeTypeMode: request.missingNodeTypeMode,
+			projectConflictPolicy: request.projectConflictPolicy,
+			// Settled by the dispatcher before any importer runs, so analytics see what the import
+			// actually ran under rather than a blank meaning "same as the project policy".
+			folderConflictPolicy: request.folderConflictPolicy,
+			overwriteDeletionPolicy: request.overwriteDeletionPolicy,
 			dataTableMatchingMode: request.dataTableMatchingMode,
 			dataTableMissingMode: request.dataTableMissingMode,
 			dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
@@ -123,6 +129,13 @@ export function emitPackageImportedEvent(
 				created: countByStatus('created'),
 				updated: countByStatus('updated'),
 				skipped: countByStatus('skipped'),
+				// Reconciliation removals, split by what actually happened — a `hard-delete` whose
+				// row could not be dropped yet counts as archived, like the API response reports it.
+				archived: removedWorkflows.filter(({ deletion }) => deletion === 'archived').length,
+				deleted: removedWorkflows.filter(({ deletion }) => deletion === 'deleted').length,
+			},
+			folders: {
+				removed: scopes.reduce((total, { imported }) => total + imported.removedFolders.length, 0),
 			},
 			credentials: {
 				matched: matchedCredentialIds.length,
