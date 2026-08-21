@@ -128,6 +128,8 @@ describe('EmailReadImapV1', () => {
 		const error = new Error('gone for good');
 
 		onError?.(error);
+		// `emitError` is held back until the workflow is active, so it lands a microtask later.
+		await new Promise((resolve) => setImmediate(resolve));
 
 		expect(triggerFunctions.emitError).toHaveBeenCalledWith(error);
 	});

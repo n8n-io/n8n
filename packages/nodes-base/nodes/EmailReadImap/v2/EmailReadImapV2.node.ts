@@ -318,11 +318,8 @@ export class EmailReadImapV2 implements INodeType {
 					error: error as Error,
 				});
 				if (conn.endedByCaller) return;
-				// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
-				// if it receives an error before the workflow got activated
-				await returnedPromise.promise.then(() => {
-					this.emitError(error as Error);
-				});
+				// A drop mid-fetch is the connection's to recover from; it reports if it cannot.
+				throw error;
 			}
 		};
 
@@ -363,7 +360,8 @@ export class EmailReadImapV2 implements INodeType {
 			this.logger.debug(`IMAP connection experienced an error: (${imapErrorCode(error)})`, {
 				error,
 			});
-			this.emitError(error);
+			// Held back until the workflow is active, else n8n is unhappy about an early error
+			void returnedPromise.promise.then(() => this.emitError(error));
 		});
 
 		// An unreachable mail server must never be able to block deactivation.

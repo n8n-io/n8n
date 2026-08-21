@@ -138,6 +138,84 @@ describe('reconnect', () => {
 		});
 	});
 
+	describe('when a handler is cut short', () => {
+		it('keeps the failure to itself and rescans once the mailbox is back', async () => {
+			const { connection, events, imap } = await connect(WATCHING, (transport, attempt) => {
+				if (attempt > 0) transport.mailbox = box(4);
+			});
+			imap().search.mockImplementation(() => {});
+			connection.onArrival(async () => {
+				await connection.search(['UNSEEN'], {});
+			});
+
+			imap().emit('mail', 1);
+			await settle();
+			imap().drop();
+			await settle();
+
+			expect(events.error).not.toHaveBeenCalled();
+			expect(events.close).not.toHaveBeenCalled();
+			expect(events.arrival).not.toHaveBeenCalled();
+			expect(events.reconnect).toHaveBeenCalledTimes(1);
+		});
+
+		it('carries on serving arrivals after one was cut short', async () => {
+			const arrivals: number[] = [];
+			const { connection, imap } = await connect(WATCHING, (transport, attempt) => {
+				if (attempt > 0) transport.mailbox = box(4);
+			});
+			imap().search.mockImplementation(() => {});
+			connection.onArrival(async ({ count }) => {
+				arrivals.push(count);
+				if (arrivals.length === 1) await connection.search(['UNSEEN'], {});
+			});
+
+			imap().emit('mail', 1);
+			await settle();
+			imap().drop();
+			await settle();
+
+			expect(arrivals).toEqual([1, 4]);
+		});
+
+		it('carries on serving arrivals after a scheduled replacement cut one short', async () => {
+			useTimers();
+			const arrivals: number[] = [];
+			const { connection, imap } = await connect(
+				{ ...WATCHING, interval: 60_000 },
+				(transport, attempt) => {
+					if (attempt > 0) transport.mailbox = box(4);
+				},
+			);
+			imap().search.mockImplementation(() => {});
+			connection.onArrival(async ({ count }) => {
+				arrivals.push(count);
+				if (arrivals.length === 1) await connection.search(['UNSEEN'], {});
+			});
+
+			imap().emit('mail', 1);
+			await settle();
+			await vi.advanceTimersByTimeAsync(60_000);
+			await settle();
+
+			expect(arrivals).toEqual([1, 4]);
+		});
+	});
+
+	describe('when the mailbox cannot be selected', () => {
+		it('tears the transport it opened down instead of leaving it connected', async () => {
+			const factory = transportFactory((t) => (t.mailbox = new Error('no such mailbox')));
+
+			await expect(ImapSimple.connectWith(factory.create, { mailbox: 'Nope' })).rejects.toThrow(
+				'no such mailbox',
+			);
+			await settle();
+
+			expect(factory.latest().end).toHaveBeenCalled();
+			expect(factory.built).toHaveLength(1);
+		});
+	});
+
 	describe('when the caller ends it', () => {
 		it('does not restore a transport it tore down itself', async () => {
 			const { connection, factory, events } = await connect(WATCHING);
