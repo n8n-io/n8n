@@ -4,7 +4,10 @@ import { buildAllowedHosts, isAuthorized, startHttpTransport } from '../server';
 
 type Started = Awaited<ReturnType<typeof startHttpTransport>>;
 
-async function boot(authToken: string): Promise<{
+async function boot(
+	authToken: string,
+	sessionOpts: { sessionIdleTtlMs?: number; sessionSweepIntervalMs?: number } = {},
+): Promise<{
 	started: Started;
 	baseUrl: string;
 	close: () => Promise<void>;
@@ -14,6 +17,7 @@ async function boot(authToken: string): Promise<{
 		host: '127.0.0.1',
 		port: 0,
 		authToken,
+		...sessionOpts,
 	});
 	const address = started.httpServer.address() as AddressInfo;
 	return {
@@ -114,6 +118,57 @@ describe('HTTP transport', () => {
 
 		expect(res.headers.get('access-control-allow-origin')).toBeNull();
 		expect(res.headers.get('access-control-expose-headers')).toBeNull();
+	});
+});
+
+describe('idle session eviction', () => {
+	const token = 'test-token-1234';
+
+	async function openSession(baseUrl: string, id: number) {
+		await fetch(`${baseUrl}/mcp`, {
+			method: 'POST',
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+			headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+			body: JSON.stringify({
+				jsonrpc: '2.0',
+				id,
+				method: 'initialize',
+				params: {
+					protocolVersion: '2025-06-18',
+					capabilities: {},
+					clientInfo: { name: 'test-client', version: '1.0.0' },
+				},
+			}),
+		});
+	}
+
+	it('evicts sessions that go idle past the TTL, shutting down their browser connections', async () => {
+		const booted = await boot(token, { sessionIdleTtlMs: 20, sessionSweepIntervalMs: 10 });
+		try {
+			for (let i = 0; i < 3; i++) await openSession(booted.baseUrl, i);
+			expect(booted.started.activeConnections.size).toBe(3);
+
+			await new Promise((resolve) => setTimeout(resolve, 120));
+
+			expect(booted.started.activeConnections.size).toBe(0);
+		} finally {
+			await booted.close();
+		}
+	});
+
+	it('keeps a session alive while its client keeps making requests', async () => {
+		const booted = await boot(token, { sessionIdleTtlMs: 200, sessionSweepIntervalMs: 10 });
+		try {
+			await openSession(booted.baseUrl, 1);
+			expect(booted.started.activeConnections.size).toBe(1);
+
+			// Two sweeps' worth of waiting, well inside the TTL: the session must survive.
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			expect(booted.started.activeConnections.size).toBe(1);
+		} finally {
+			await booted.close();
+		}
 	});
 });
 
