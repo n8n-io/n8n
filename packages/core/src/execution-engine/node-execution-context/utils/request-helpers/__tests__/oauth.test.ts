@@ -390,8 +390,10 @@ describe('refreshOAuth2Token', () => {
 			'The credential "test-credentials-name" needs to be reconnected.',
 		);
 		await expect(promise).rejects.toMatchObject({
+			name: 'NodeOperationError',
 			description: expect.stringContaining('reconnect'),
 			level: 'warning',
+			failure: { cause: 'credential-invalid' },
 		});
 		expect(
 			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,

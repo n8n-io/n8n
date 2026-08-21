@@ -61,6 +61,7 @@ function createMockContext(
 				nodes: [],
 				connections: {},
 			}),
+			getPinnedDataSummary: vi.fn().mockResolvedValue([]),
 			createFromWorkflowJSON: vi.fn(),
 			updateFromWorkflowJSON: vi.fn(),
 			archive: vi.fn(),
@@ -800,6 +801,41 @@ describe('workflows tool', () => {
 
 			expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('wf1', undefined);
 			expect(result).toEqual(workflow);
+		});
+
+		it('reports pinned nodes next to the JSON when the workflow carries pinned data', async () => {
+			const workflow = { id: 'wf1', name: 'Test WF', nodes: [], connections: {} };
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(workflow);
+			(context.workflowService.getPinnedDataSummary as Mock).mockResolvedValue([
+				{ nodeName: 'Get Job Alert Emails', itemCount: 1 },
+			]);
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'get-json', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				...workflow,
+				pinnedNodes: [{ nodeName: 'Get Job Alert Emails', itemCount: 1 }],
+			});
+			expect(result).toHaveProperty('pinnedDataNote', expect.stringContaining('pinned data'));
+		});
+
+		it('does not fetch a pin report for historical version reads', async () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, 'full');
+
+			await executeTool(
+				tool,
+				{ action: 'get-json', workflowId: 'wf1', versionId: 'v7' },
+				{} as never,
+			);
+
+			expect(context.workflowService.getPinnedDataSummary).not.toHaveBeenCalled();
 		});
 
 		it('should forward versionId to the full fetches', async () => {
