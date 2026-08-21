@@ -47,7 +47,7 @@ catalog:
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
   '@confluentinc/kafka-javascript': 1.9.1
-  '@daytona/sdk': 0.187.0
+  '@daytona/sdk': 0.204.1
   '@e965/xlsx': 0.20.3
   '@iconify-json/lucide': ^1.2.112
   '@iconify-json/mdi': ^1.1.63
@@ -77,10 +77,9 @@ catalog:
   '@pinecone-database/pinecone': ^5.0.2
   '@qdrant/js-client-rest': ^1.16.2
   '@rudderstack/rudder-sdk-node': 3.0.5
-  '@sentry/node': ^10.55.0
   '@stryker-mutator/core': 9.6.1
   '@stryker-mutator/vitest-runner': 9.6.1
-  '@supabase/supabase-js': 2.50.0
+  '@supabase/supabase-js': 2.112.3
   '@testcontainers/k3s': ^11.13.0
   '@testcontainers/kafka': ^11.13.0
   '@testcontainers/mysql': ^11.13.0
@@ -147,7 +146,7 @@ catalog:
   esbuild: ^0.28.1
   eslint: 9.29.0
   eslint-plugin-n8n-nodes-base: ^1.16.7
-  eslint-plugin-oxlint: ^1.61.0
+  eslint-plugin-oxlint: 1.79.0
   express: 5.1.0
   fast-check: ^3.23.2
   fast-glob: 3.3.3
@@ -187,7 +186,7 @@ catalog:
   nodemailer: 8.0.10
   openai: 6.46.0
   oracledb: 6.10.0
-  oxlint: ^1.61.0
+  oxlint: 1.79.0
   oxlint-tsgolint: ^0.21.1
   pdf-parse: 2.4.5
   pdfjs-dist: 5.4.296
@@ -240,7 +239,7 @@ catalogs:
     playwright-core: 1.62.1
   frontend:
     '@internationalized/date': ^3.9.0
-    '@sentry/vue': ^10.36.0
+    '@sentry/vue': 10.70.0
     '@testing-library/dom': ^10.4.0
     '@testing-library/jest-dom': ^6.6.3
     '@testing-library/user-event': ^14.6.1

@@ -110,12 +110,18 @@ export const ALIBABA_CLOUD_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.aliba
 export const MOONSHOT_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.moonshot';
 export const MINIMAX_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.minimax';
 
-// Trigger types that execute with a manual-user identity. Used to gate
-// features (like private credentials) that depend on per-user runtime state.
+// Trigger types that always run with the manually-executing n8n user's identity.
+// Chat and MCP triggers are deliberately not listed: they only establish an
+// identity in specific configurations (Chat Hub availability, n8n OAuth2), which
+// `classifyTriggerIdentity` checks parameter-by-parameter (IAM-1238).
 export const MANUAL_TRIGGER_NODE_TYPES: readonly string[] = [
 	MANUAL_TRIGGER_NODE_TYPE,
+<<<<<<< HEAD
 	CHAT_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
+=======
+	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
+>>>>>>> 2c5db29175abb7abb6663ab7957c9a5d1124f39f
 ];
 
 export const AI_VENDOR_NODE_TYPES = [
