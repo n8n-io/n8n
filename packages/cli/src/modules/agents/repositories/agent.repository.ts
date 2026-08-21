@@ -1,13 +1,7 @@
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	DataSource,
-	In,
-	IsNull,
-	Repository,
-	type EntityManager,
-	type SelectQueryBuilder,
-} from '@n8n/typeorm';
+import { DataSource, EntityManager, In, IsNull, type SelectQueryBuilder } from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
 
@@ -27,9 +21,9 @@ export type AgentSummaryFilters = {
 };
 
 @Service()
-export class AgentRepository extends Repository<Agent> {
-	constructor(dataSource: DataSource) {
-		super(Agent, dataSource.manager);
+export class AgentRepository extends BaseRepository<Agent> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(Agent, dataSource.manager, transactionRunner);
 	}
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {
@@ -367,12 +361,16 @@ export class AgentRepository extends Repository<Agent> {
 	 * `updatedAt` are synced to what was written. Returns whether this caller
 	 * won the fence.
 	 */
-	async saveDraftFenced(agent: Agent, trx?: EntityManager): Promise<boolean> {
+	async saveDraftFenced(agent: Agent, trx?: EntityManager | OperationContext): Promise<boolean> {
 		const expectedRevision = agent.revision;
+		// The handle is either a raw EntityManager (legacy `manager.transaction`
+		// callers) or an OperationContext from `TransactionRunner.run`.
+		const manager =
+			trx === undefined ? this.manager : trx instanceof EntityManager ? trx : this.managerFor(trx);
 		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
 		// so the in-memory entity can report the exact persisted timestamp.
 		const updatedAt = new Date();
-		const result = await (trx ?? this)
+		const result = await manager
 			.createQueryBuilder()
 			.update(Agent)
 			.set({

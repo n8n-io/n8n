@@ -12,6 +12,7 @@ import {
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
+	type AgentTaskDto,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -27,6 +28,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
+	getAgentTasks,
 	createAgent,
 	deleteAgent,
 	listAgentFiles,
@@ -35,6 +37,7 @@ import {
 	warmAgentKnowledgeSandbox,
 	updateAgentSkill,
 } from '../composables/useAgentApi';
+import { buildExportedAgentJson } from '../utils/build-exported-agent-json';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import type {
 	AgentResource,
@@ -1244,6 +1247,11 @@ const headerActions = computed(() => {
 });
 
 async function exportAgentJson() {
+	// Snapshot the export target and its data before any await. The user can
+	// switch agents while a request is pending, and the export must not mix
+	// the old agent's tasks with the new agent's config and name.
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	if (!localConfig.value) return;
 
 	try {
@@ -1251,13 +1259,52 @@ async function exportAgentJson() {
 	} catch {
 		return;
 	}
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	if (!localConfig.value) return;
 
-	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
+	const configSnapshot = deepCopy(localConfig.value);
+	const skillsSnapshot = agent.value?.skills ?? {};
+	const toolsSnapshot = agent.value?.tools ?? {};
+
+	// Inline the task, skill, and custom tool definition bodies, so the
+	// download is self-contained. The config itself carries only bare refs.
+	// Skill bodies and tool code are on the agent resource. This function
+	// fetches the task bodies.
+	let tasks: AgentTaskDto[] = [];
+	if (configSnapshot.tasks?.length && !isUnsaved.value) {
+		try {
+			tasks = await getAgentTasks(rootStore.restApiContext, targetProjectId, targetAgentId);
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.exportJson.tasksLoadError' as BaseTextKey));
+			return;
+		}
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	}
+	const { config: exportedConfig, missing } = buildExportedAgentJson(configSnapshot, {
+		skills: skillsSnapshot,
+		tools: toolsSnapshot,
+		tasks,
+	});
+	if (missing.length > 0) {
+		// The download still starts, but an import of this file drops the
+		// listed refs, so the user must know the export is incomplete.
+		showMessage({
+			title: locale.baseText('agents.builder.exportJson.incompleteWarning.title' as BaseTextKey),
+			message: locale.baseText(
+				'agents.builder.exportJson.incompleteWarning.message' as BaseTextKey,
+				{
+					interpolate: { ids: missing.map((entry) => entry.id).join(', ') },
+				},
+			),
+			type: 'warning',
+		});
+	}
+
+	const blob = new Blob([`${JSON.stringify(exportedConfig, null, 2)}\n`], {
 		type: 'application/json',
 	});
 	const url = URL.createObjectURL(blob);
-	const name = localConfig.value.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
+	const name = configSnapshot.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
 	const link = Object.assign(document.createElement('a'), {
 		href: url,
 		download: `${name}.json`,

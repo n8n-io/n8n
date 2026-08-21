@@ -274,17 +274,25 @@ export class AgentSkillsService {
 		return skillId;
 	}
 
+	/** Returns true when a skill other than `currentSkillId` already uses this name. */
+	isSkillNameTaken(
+		existing: Record<string, AgentSkill>,
+		name: string,
+		currentSkillId?: string,
+	): boolean {
+		const normalizedName = this.normalizeSkillName(name);
+		return Object.entries(existing ?? {}).some(
+			([id, skill]) =>
+				id !== currentSkillId && this.normalizeSkillName(skill.name) === normalizedName,
+		);
+	}
+
 	private assertSkillNameIsUnique(
 		existing: Record<string, AgentSkill>,
 		name: string,
 		currentSkillId?: string,
 	): void {
-		const normalizedName = this.normalizeSkillName(name);
-		const duplicate = Object.entries(existing ?? {}).find(
-			([id, skill]) =>
-				id !== currentSkillId && this.normalizeSkillName(skill.name) === normalizedName,
-		);
-		if (duplicate) {
+		if (this.isSkillNameTaken(existing, name, currentSkillId)) {
 			throw new UserError(`Agent already has a skill named "${name.trim()}".`);
 		}
 	}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue';
-import { AgentJsonConfigSchema } from '@n8n/api-types';
+import { ExportedAgentJsonConfigSchema } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -44,11 +44,16 @@ async function onFileChange(event: Event) {
 
 	try {
 		const parsed = JSON.parse(await file.text()) as unknown;
-		const result = AgentJsonConfigSchema.safeParse(parsed);
+		const result = ExportedAgentJsonConfigSchema.safeParse(parsed);
 		if (!result.success) {
 			throw new Error('Invalid agent JSON');
 		}
-		parsedConfig.value = result.data;
+		// Import the raw JSON. Zod removes fields that this client's schema
+		// does not define yet. A client older than the server then silently
+		// drops config parts that the server understands (for example, inline
+		// definition bodies). The server sanitizes on save, so the server
+		// decides which unknown fields to keep.
+		parsedConfig.value = parsed as AgentJsonConfig;
 	} catch {
 		errorMessage.value = i18n.baseText('agents.builder.importJsonModal.invalidJson' as BaseTextKey);
 	}

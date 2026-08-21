@@ -1,5 +1,6 @@
 import {
 	AgentJsonConfigSchema,
+	ExportedAgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
 } from '../agent-json-config.schema';
@@ -542,6 +543,100 @@ describe('AgentJsonConfigSchema — skills', () => {
 		expect(result.success).toBe(false);
 		if (!result.success) {
 			expect(result.error.errors[0].message).toBe('Duplicate skill id: "summarize_notes"');
+		}
+	});
+});
+
+describe('AgentJsonConfigSchema — tasks', () => {
+	it('rejects multiple task refs with the same id', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tasks: [
+				{ type: 'task', id: 'weekly_review', enabled: true },
+				{ type: 'task', id: 'weekly_review', enabled: false },
+			],
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.errors[0].message).toBe('Duplicate task id: "weekly_review"');
+		}
+	});
+
+	it('rejects a task id longer than the persisted column length', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tasks: [{ type: 'task', id: 'a'.repeat(33), enabled: true }],
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts a task id at the persisted column length', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tasks: [{ type: 'task', id: 'a'.repeat(32), enabled: true }],
+		});
+
+		expect(result.success).toBe(true);
+	});
+});
+
+describe('ExportedAgentJsonConfigSchema', () => {
+	it('keeps inline definition bodies on task, skill, and custom tool refs', () => {
+		const result = ExportedAgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tasks: [
+				{
+					type: 'task',
+					id: 'weekly_review',
+					enabled: true,
+					name: 'Weekly review',
+					objective: 'Summarise the week',
+					cronExpression: '0 9 * * 1',
+				},
+			],
+			skills: [
+				{
+					type: 'skill',
+					id: 'summarize',
+					name: 'Summarize',
+					description: 'Summarise threads',
+					instructions: 'Do it.',
+				},
+			],
+			tools: [{ type: 'custom', id: 'my_tool', code: 'export default tool' }],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.tasks?.[0]).toMatchObject({ cronExpression: '0 9 * * 1' });
+			expect(result.data.skills?.[0]).toMatchObject({ instructions: 'Do it.' });
+			expect(result.data.tools?.[0]).toMatchObject({ code: 'export default tool' });
+		}
+	});
+
+	it('rejects duplicate ids like the persisted schema does', () => {
+		const result = ExportedAgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tasks: [
+				{ type: 'task', id: 'weekly_review', enabled: true },
+				{ type: 'task', id: 'weekly_review', enabled: false },
+			],
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('persisted schema strips inline definition bodies on parse', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			skills: [{ type: 'skill', id: 'summarize', name: 'Summarize', instructions: 'Do it.' }],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.skills?.[0]).toEqual({ type: 'skill', id: 'summarize' });
 		}
 	});
 });

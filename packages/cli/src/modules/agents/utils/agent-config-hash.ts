@@ -1,6 +1,8 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { ExportedAgentJsonConfig } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'node:crypto';
+
+import { withBareConfigRefs } from '../json-config/bare-config-refs';
 
 function canonicalizeJson(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map((item) => canonicalizeJson(item));
@@ -11,9 +13,15 @@ function canonicalizeJson(value: unknown): unknown {
 	return sorted;
 }
 
-export function getAgentConfigHash(config: AgentJsonConfig | null): string | null {
+// The parameter type is the exported shape, a superset of the persisted
+// shape. Thus the function accepts bare persisted configs and exported
+// configs with inline definition bodies.
+export function getAgentConfigHash(config: ExportedAgentJsonConfig | null): string | null {
 	if (!config) return null;
+
+	// Hash the bare-ref shape. Then a config from the schema column and the
+	// same config with inline definition bodies get the same hash.
 	return createHash('sha256')
-		.update(JSON.stringify(canonicalizeJson(config)))
+		.update(JSON.stringify(canonicalizeJson(withBareConfigRefs(config))))
 		.digest('hex');
 }

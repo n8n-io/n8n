@@ -106,6 +106,38 @@ describe('AgentJsonImportModal', () => {
 		expect(closeModalMock).toHaveBeenCalledWith('agentJsonImportModal');
 	});
 
+	it('imports the raw JSON so fields unknown to this client schema survive', async () => {
+		const onConfirm = vi.fn();
+		// A config exported by a newer server can carry fields this client's
+		// bundled schema does not know yet; the import must not strip them.
+		const config = {
+			name: 'Imported agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Use imported settings.',
+			skills: [
+				{
+					type: 'skill',
+					id: 'skill_test',
+					name: 'Test',
+					description: 'A skill',
+					instructions: 'Do the thing.',
+					fieldFromNewerServer: 'kept',
+				},
+			],
+		};
+		const wrapper = await mountModal(onConfirm);
+
+		await selectFile(wrapper, makeJsonFile(JSON.stringify(config)));
+		await vi.waitFor(() => {
+			expect(wrapper.find('[data-testid="agent-json-import-confirm"]').attributes('disabled')).toBe(
+				undefined,
+			);
+		});
+		await wrapper.find('[data-testid="agent-json-import-confirm"]').trigger('click');
+
+		expect(onConfirm).toHaveBeenCalledWith(config);
+	});
+
 	it('clears selected file state when the modal is cancelled', async () => {
 		const onConfirm = vi.fn();
 		const config: AgentJsonConfig = {

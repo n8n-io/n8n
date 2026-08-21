@@ -10,6 +10,7 @@ import type {
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type {
+	TransactionRunner,
 	User,
 	CredentialsEntity,
 	ProjectRelationRepository,
@@ -263,6 +264,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
+			mock<AgentSecureRuntime>(),
+			mock<TransactionRunner>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,
