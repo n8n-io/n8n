@@ -177,6 +177,10 @@ export type PolicyDecision = {
  *   action.
  * - Only read state, never write it. That's what makes `evaluate` safe to call.
  * - Implement only the points you care about.
+ * - Pass `signal` to anything that accepts one, and check it around long steps. Every check
+ *   runs under a deadline; the signal is how a check gets to stop its own work instead of
+ *   being abandoned mid-query. Ignoring it is safe — the deadline still holds — but the work
+ *   carries on in the background.
  *
  * There's no `priority`, because every check has to pass — the order they run in can't
  * change the answer.
@@ -187,8 +191,8 @@ export type PolicyDecision = {
  * export class NodeTypePolicyCheck implements RegisteredPolicyCheck {
  *   readonly id = 'node-type-availability';
  *
- *   async onWorkflowStart({ workflow, projectId }: WorkflowStartContext) {
- *     return { violations: await this.violationsFor(workflow, projectId) };
+ *   async onWorkflowStart({ workflow, projectId }: WorkflowStartContext, signal: AbortSignal) {
+ *     return { violations: await this.violationsFor(workflow, projectId, signal) };
  *   }
  * }
  * ```
@@ -197,12 +201,18 @@ export interface RegisteredPolicyCheck {
 	/** Stable id, shown on every violation and on the audit log. */
 	id: string;
 
-	onWorkflowSave?(ctx: WorkflowSaveContext): Promise<PolicyCheckResult>;
-	onWorkflowPublish?(ctx: WorkflowPublishContext): Promise<PolicyCheckResult>;
-	onWorkflowStart?(ctx: WorkflowStartContext): Promise<PolicyCheckResult>;
-	onWorkflowTransfer?(ctx: WorkflowTransferContext): Promise<PolicyCheckResult>;
-	onCredentialDecrypt?(ctx: CredentialDecryptContext): Promise<PolicyCheckResult>;
-	onContentImport?(ctx: ContentImportContext): Promise<PolicyCheckResult>;
+	onWorkflowSave?(ctx: WorkflowSaveContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onWorkflowPublish?(ctx: WorkflowPublishContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onWorkflowStart?(ctx: WorkflowStartContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onWorkflowTransfer?(
+		ctx: WorkflowTransferContext,
+		signal: AbortSignal,
+	): Promise<PolicyCheckResult>;
+	onCredentialDecrypt?(
+		ctx: CredentialDecryptContext,
+		signal: AbortSignal,
+	): Promise<PolicyCheckResult>;
+	onContentImport?(ctx: ContentImportContext, signal: AbortSignal): Promise<PolicyCheckResult>;
 }
 
 /** The {@link RegisteredPolicyCheck} method for a point, e.g. `'onWorkflowSave'`. */

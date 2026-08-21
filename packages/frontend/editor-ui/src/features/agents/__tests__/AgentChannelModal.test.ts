@@ -45,12 +45,21 @@ vi.mock('../channels/registry', async () => {
 	const { ref, defineComponent } = await import('vue');
 	const platformView = {
 		props: ['modelValue', 'mode', 'isPublished', 'runtime'],
-		emits: ['update:modelValue', 'connect'],
-		setup: () => ({
-			currentSettings: { accessMode: 'all' },
-			validationError: null,
-			beforeSave: mocks.beforeSave,
-		}),
+		emits: ['update:modelValue', 'connect', 'connected'],
+		setup: () => {
+			// Platforms that drive their own flow (Slack) report `connected` while
+			// still reporting `loading`, so the two are controlled together here.
+			const loading = ref(false);
+			return {
+				currentSettings: { accessMode: 'all' },
+				validationError: null,
+				beforeSave: mocks.beforeSave,
+				loading,
+				startOwnFlow: () => {
+					loading.value = true;
+				},
+			};
+		},
 		template: `
 			<div
 				data-testid="platform-view"
@@ -60,6 +69,7 @@ vi.mock('../channels/registry', async () => {
 			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
+				<button data-testid="platform-own-flow" @click="startOwnFlow(); $emit('connected')" />
 			</div>
 		`,
 	};
@@ -298,6 +308,107 @@ describe('AgentChannelModal', () => {
 			mocks.connect.mock.invocationCallOrder[0],
 		);
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+	});
+
+	describe('while agent persistence is pending', () => {
+		function deferPersistence() {
+			let release: () => void = () => {};
+			mocks.ensureAgentPersisted.mockImplementation(
+				async () =>
+					await new Promise<void>((resolve) => {
+						release = resolve;
+					}),
+			);
+			return () => release();
+		}
+
+		it('does not submit setup twice', async () => {
+			const release = deferPersistence();
+			selectedCredentials.value.example = 'credential-new';
+			const wrapper = mountModal('example_setup');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="connect-channel"]').trigger('click');
+			await wrapper.get('[data-testid="connect-channel"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.ensureAgentPersisted).toHaveBeenCalledOnce();
+			expect(mocks.connect).not.toHaveBeenCalled();
+
+			release();
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledOnce();
+		});
+
+		it('keeps close, back and remove inert', async () => {
+			const release = deferPersistence();
+			statuses.value.example = 'configured';
+			connectedCredentials.value.example = 'credential-old';
+			selectedCredentials.value.example = 'credential-new';
+			const wrapper = mountModal('example_edit');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="close-dialog"]').trigger('click');
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+
+			expect(
+				wrapper.get('[data-testid="agent-channel-back"]').attributes('disabled'),
+			).toBeDefined();
+
+			await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
+			expect(mocks.disconnect).not.toHaveBeenCalled();
+
+			release();
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledOnce();
+			expect(wrapper.emitted('update:open')).toEqual([[false]]);
+		});
+
+		it('surfaces a failed persistence instead of connecting', async () => {
+			mocks.ensureAgentPersisted.mockRejectedValue(new Error('agent could not be saved'));
+			selectedCredentials.value.example = 'credential-new';
+			const wrapper = mountModal('example_setup');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="connect-channel"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.showError).toHaveBeenCalled();
+			expect(mocks.connect).not.toHaveBeenCalled();
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+		});
+	});
+
+	it('surfaces a failed pre-save step instead of connecting', async () => {
+		mocks.beforeSave.mockRejectedValue(new Error('settings could not be saved'));
+		selectedCredentials.value.example = 'credential-new';
+		const wrapper = mountModal('example_setup');
+		await flushPromises();
+
+		await wrapper.get('[data-testid="connect-channel"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.showError).toHaveBeenCalled();
+		expect(mocks.connect).not.toHaveBeenCalled();
+		expect(wrapper.emitted('update:open')).toBeUndefined();
+	});
+
+	it('closes when a platform reports connected from inside its own flow', async () => {
+		const wrapper = mountModal('example_setup');
+		await flushPromises();
+
+		// The platform is still loading at this point — the in-flight guard covers
+		// user-initiated closes only, so it must not swallow this one.
+		await wrapper.get('[data-testid="platform-own-flow"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.emitted('channel-connected')).toEqual([['example']]);
+		expect(wrapper.emitted('update:open')).toEqual([[false]]);
 	});
 
 	it('clears a stale integration error when the edit modal reopens', async () => {

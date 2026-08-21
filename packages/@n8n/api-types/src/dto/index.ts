@@ -99,7 +99,7 @@ export {
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
 export {
-	ConnectGitConnectionDto,
+	CloneGitConnectionDto,
 	CreateGitConnectionDto,
 	GitConnectionListPublicDto,
 	GitConnectionPublicDto,
@@ -152,11 +152,21 @@ export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
 	WorkflowPublicDto,
 	WorkflowListPublicDto,
+	WorkflowPublishPublicDto,
 	workflowPublicSchema,
+	workflowPublishPublicSchema,
 	workflowListItemPublicSchema,
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 } from './workflows/workflow-public.dto';
+export {
+	PublishWorkflowPublicDto,
+	publishWorkflowPublicSchema,
+} from './workflows/publish-workflow-public.dto';
+export {
+	WorkflowPublishBlockedErrorPublicDto,
+	workflowPublishBlockedErrorPublicSchema,
+} from './workflows/workflow-publish-blocked-error-public.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';

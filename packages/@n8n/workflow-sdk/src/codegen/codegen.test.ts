@@ -3,6 +3,36 @@ import { parseWorkflowCode } from './parse-workflow-code';
 import type { WorkflowJSON } from '../types/base';
 
 describe('generateWorkflowCode', () => {
+	it('never emits pinData from the source workflow', () => {
+		// Intentional (INS-1216): pinned data must not round-trip through
+		// generated code. get-as-code → edit → rebuild is how the AI Assistant
+		// clears stale pins (fabricated verification fixtures a user adopted);
+		// if codegen represented pins, every rebuild would re-persist them.
+		const json: WorkflowJSON = {
+			id: 'wf-pins',
+			name: 'Pinned Workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Get Job Alert Emails',
+					type: 'n8n-nodes-base.gmail',
+					typeVersion: 2.1,
+					position: [0, 0],
+					parameters: { resource: 'message', operation: 'getAll' },
+				},
+			],
+			connections: {},
+			pinData: {
+				'Get Job Alert Emails': [{ id: 'msg_1', threadId: 'th_1' }],
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).not.toContain('pinData');
+		expect(code).not.toContain('msg_1');
+	});
+
 	it('should generate valid TypeScript for a simple workflow', () => {
 		const json: WorkflowJSON = {
 			id: 'test-123',

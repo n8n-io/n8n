@@ -133,4 +133,28 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage project roles',
 		description: 'Allows creating, editing, and deleting project role definitions.',
 	},
+	'gitConnection:create': {
+		displayName: 'Create Git Connection',
+		description: 'Allows creating Git connections and their authentication material.',
+	},
+	'gitConnection:read': {
+		displayName: 'Read Git Connection',
+		description: 'Allows reading Git connection configuration. Secrets are never returned.',
+	},
+	'gitConnection:update': {
+		displayName: 'Update Git Connection',
+		description: 'Allows updating Git connections, including their authentication material.',
+	},
+	'gitConnection:delete': {
+		displayName: 'Delete Git Connection',
+		description: 'Allows deleting Git connections and their local files.',
+	},
+	'gitConnection:list': {
+		displayName: 'List Git Connections',
+		description: 'Allows listing Git connections.',
+	},
+	'gitConnection:clone': {
+		displayName: 'Clone Git Connection',
+		description: 'Allows cloning and removing the local working copy of a Git connection.',
+	},
 };

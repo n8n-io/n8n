@@ -166,7 +166,8 @@ N8N_INSTANCE_AI_MCP_SERVERS="github=https://mcp.github.com/sse,database=https://
 ```
 
 Each MCP server's tools are merged with the native tools and made available to
-the orchestrator agent. Sub-agents currently do not receive MCP tools.
+the orchestrator agent. The embedded Agent Builder receives the same validated,
+approval-wrapped MCP tools; specialized background agents do not.
 
 ## Storage
 
@@ -196,7 +197,10 @@ are never persisted. Rows cascade-delete with their thread
 (`N8N_INSTANCE_AI_THREAD_TTL_DAYS`). Setting it to `false` is the rollback
 switch until the legacy paths sunset at Gate B: events then live only in a
 bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted; ids
-reset on restart, so replay does not survive a restart).
+reset on restart, so replay does not survive a restart). That bound is
+per-thread only: a buffer is released when its thread is deleted or expires,
+so a main's memory scales with the number of threads it has served until the
+process restarts. The main logs a warning at boot when the switch is set.
 
 Runtime behavior:
 - One active run per thread. Additional `POST /instance-ai/chat/:threadId`

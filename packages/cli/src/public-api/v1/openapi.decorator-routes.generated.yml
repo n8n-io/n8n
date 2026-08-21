@@ -3,11 +3,32 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /git-connections:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/createGitConnection.generated.yml
+    get:
+      $ref: ./handlers/git-connections/spec/paths/getGitConnections.generated.yml
+  /git-connections/{id}:
+    get:
+      $ref: ./handlers/git-connections/spec/paths/getGitConnection.generated.yml
+    put:
+      $ref: ./handlers/git-connections/spec/paths/updateGitConnection.generated.yml
+    delete:
+      $ref: ./handlers/git-connections/spec/paths/deleteGitConnection.generated.yml
+  /git-connections/{id}/clone:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/cloneGitConnection.generated.yml
+  /git-connections/{id}/disconnect:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/disconnectGitConnection.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
     post:
       $ref: ./handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
+  /role-mapping-rules/{roleMappingRuleId}/move:
+    post:
+      $ref: ./handlers/role-mapping-rules/spec/paths/moveRoleMappingRule.generated.yml
   /roles:
     get:
       $ref: ./handlers/roles/spec/paths/getAllRoles.generated.yml
@@ -38,6 +59,12 @@ paths:
   /workflows/{workflowId}/transfer:
     put:
       $ref: ./handlers/workflows/spec/paths/transferWorkflow.generated.yml
+  /workflows/{workflowId}/publish:
+    post:
+      $ref: ./handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  /workflows/{workflowId}/unpublish:
+    post:
+      $ref: ./handlers/workflows/spec/paths/unpublishWorkflow.generated.yml
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml

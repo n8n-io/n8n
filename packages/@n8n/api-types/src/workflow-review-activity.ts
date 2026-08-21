@@ -4,9 +4,8 @@ import type { Iso8601DateTimeString } from './datetime';
 import type { WorkflowReviewEligibleReviewer } from './workflow-review-eligible-reviewer';
 
 /**
- * Feed entry kinds, named `<model>.<event>`: a dot separates model from event, snake_case within a
- * multi-word event. Mirrored by a CHECK constraint on `workflow_review_activity.type`, so a new
- * kind needs a migration.
+ * Feed entry kinds, named `<model>.<event>`. Constrained only here and at the write sites — the
+ * database intentionally has no CHECK on `type`, so growing this union needs no migration.
  *
  * Here rather than on the entity because it is a wire type: the frontend switches on these
  * values to pick a renderer.
@@ -17,19 +16,24 @@ export type WorkflowReviewActivityType =
 	| 'review.changes_requested'
 	| 'review.version_updated'
 	| 'review.approved'
+	| 'workflow.archived'
+	| 'workflow.deleted'
+	| 'workflow.moved'
 	| 'workflow.published'
-	/** Closed without an approval: workflow archived or deleted, or the review abandoned. An
-	 * approval writes `review.approved` instead, never both. */
+	/** Closed without an approval. An approval writes `review.approved` instead, never both. */
 	| 'review.closed';
 
 // These are the typeVersion 1 shapes. A typeVersion 2 gets its own schema, its own
 // union member and its own mapper case; never widen one of these in place.
-const workflowReviewClosedReasonSchema = z.enum([
-	'workflow-archived',
-	'workflow-moved',
-	'workflow-deleted',
-]);
+const workflowReviewClosedReasonSchema = z.enum(['no-reviewable-workflows']);
 export type WorkflowReviewClosedReason = z.infer<typeof workflowReviewClosedReasonSchema>;
+
+/**
+ * Immutable record of who acted, because `createdById` alone cannot say: it is also `null` once a
+ * user is deleted, and a deleted user's action must still render as a person's, not the system's.
+ */
+const workflowReviewActivityActorKindSchema = z.enum(['user', 'system']);
+export type WorkflowReviewActivityActorKind = z.infer<typeof workflowReviewActivityActorKindSchema>;
 
 /**
  * Pairs the version with its workflow: the entry is the immutable record, and the live pin it was
@@ -75,6 +79,26 @@ export type WorkflowReviewClosedActivityData = z.infer<
 	typeof workflowReviewClosedActivityDataSchema
 >;
 
+/**
+ * A cause event: what happened to a linked workflow. The id lives here rather than in a column
+ * because the entity's FKs cascade.
+ */
+export const workflowReviewWorkflowCauseActivityDataSchema = z.object({
+	workflowId: z.string(),
+	actorKind: workflowReviewActivityActorKindSchema,
+});
+export type WorkflowReviewWorkflowCauseActivityData = z.infer<
+	typeof workflowReviewWorkflowCauseActivityDataSchema
+>;
+
+export const workflowReviewWorkflowPublishedActivityDataSchema = z.object({
+	workflowId: z.string(),
+	workflowVersionId: z.string(),
+});
+export type WorkflowReviewWorkflowPublishedActivityData = z.infer<
+	typeof workflowReviewWorkflowPublishedActivityDataSchema
+>;
+
 type WorkflowReviewActivityBase = {
 	/** Int in the database, string on the wire. */
 	id: string;
@@ -95,9 +119,9 @@ export type WorkflowReviewActivityMessage = {
 };
 
 /**
- * Total over every type the CHECK constraint allows, so no stored row is ever unmappable.
- * `data: null` on a non-comment entry means the stored payload did not parse; the renderer
- * degrades rather than dropping the entry.
+ * Total over every type in {@link WorkflowReviewActivityType}, so no stored row is ever
+ * unmappable. `data: null` on a non-comment entry means the stored payload did not parse; the
+ * renderer degrades rather than dropping the entry.
  */
 export type WorkflowReviewActivityEntry =
 	| (WorkflowReviewActivityBase & {
@@ -122,6 +146,10 @@ export type WorkflowReviewActivityEntry =
 			data: WorkflowReviewClosedActivityData | null;
 	  })
 	| (WorkflowReviewActivityBase & {
+			type: 'workflow.archived' | 'workflow.deleted' | 'workflow.moved';
+			data: WorkflowReviewWorkflowCauseActivityData | null;
+	  })
+	| (WorkflowReviewActivityBase & {
 			type: 'workflow.published';
-			data: null;
+			data: WorkflowReviewWorkflowPublishedActivityData | null;
 	  });
