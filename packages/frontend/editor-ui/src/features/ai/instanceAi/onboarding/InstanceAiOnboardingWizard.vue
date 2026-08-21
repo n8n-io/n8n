@@ -38,6 +38,7 @@ import {
 } from '../instanceAiConnection.constants';
 import { getAllInstanceAiModelOptions, getInstanceAiModelOptions } from '../instanceAiModelCatalog';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { sanitizeFailureDetail } from './sanitizeFailureDetail';
 import type { InstanceAiOnboardingStep } from './useInstanceAiOnboarding';
 
 const DAYTONA_API_URL = 'https://app.daytona.io/api';
@@ -597,7 +598,13 @@ async function verifyExistingCredential(): Promise<InstanceAiVerificationRespons
 	if (!credential) return { ok: false, failure: 'provider_error' };
 	return (await testSavedCredential(credential.id, credential.name, credential.type))
 		? { ok: true }
-		: { ok: false, failure: 'provider_error', error: credentialTestError.value || undefined };
+		: {
+				ok: false,
+				failure: 'provider_error',
+				error: credentialTestError.value
+					? sanitizeFailureDetail(credentialTestError.value)
+					: undefined,
+			};
 }
 
 async function runVerification(): Promise<InstanceAiVerificationResponse | null> {
@@ -676,7 +683,8 @@ async function handlePrimary(): Promise<void> {
 		}
 	} catch (error) {
 		failure.value = 'provider_error';
-		failureDetail.value = error instanceof Error && error.message ? error.message : null;
+		failureDetail.value =
+			error instanceof Error && error.message ? sanitizeFailureDetail(error.message) : null;
 	} finally {
 		busy.value = false;
 	}
