@@ -60,6 +60,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useAiSimulatedDataGuard } from '@/app/composables/useAiSimulatedDataGuard';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -245,6 +246,7 @@ const rootStore = useRootStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 
 const toast = useToast();
+const aiSimulatedDataGuard = useAiSimulatedDataGuard();
 const route = useRoute();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
@@ -379,6 +381,24 @@ const hasNodeRun = computed(() =>
 			((workflowRunData.value && workflowRunData.value.hasOwnProperty(node.value.name)) ||
 				pinnedData.hasData.value),
 	),
+);
+
+/**
+ * The displayed output of this node was simulated (fabricated fixture data)
+ * by the AI Assistant during workflow verification — label it and guard the
+ * pin affordance so it isn't adopted as if it were real.
+ *
+ * Only meaningful when the pane displays the active execution: a supplied
+ * `workflowExecution` prop is a different execution whose id we don't know,
+ * so checking the active id against it could mislabel real data.
+ */
+const isAiSimulatedOutput = computed(
+	() =>
+		!isPaneTypeInput.value &&
+		props.workflowExecution === undefined &&
+		hasNodeRun.value &&
+		!pinnedData.hasData.value &&
+		aiSimulatedDataGuard.isSimulatedNodeOutput(currentExecution.value?.id, node.value?.name),
 );
 
 const isArtificialRecoveredEventItem = computed(
@@ -1023,7 +1043,7 @@ function onClickCancelEdit() {
 	onExitEditMode({ type: 'cancel' });
 }
 
-function onClickSaveEdit() {
+async function onClickSaveEdit() {
 	if (!node.value) {
 		return;
 	}
@@ -1031,6 +1051,11 @@ function onClickSaveEdit() {
 	const { value } = editMode.value;
 
 	toast.clearAllStickyNotifications();
+
+	// Saving output edits pins the result — same adoption boundary as the pin icon.
+	if (!(await confirmPinningAiSimulatedData())) {
+		return;
+	}
 
 	try {
 		const clearedValue = clearJsonKey(value) as INodeExecutionData[];
@@ -1060,6 +1085,15 @@ function onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 	});
 }
 
+/**
+ * Pinning AI-simulated data needs an explicit opt-in: the fabricated fixture
+ * would otherwise silently become the node's "real" data in every test run.
+ */
+async function confirmPinningAiSimulatedData(): Promise<boolean> {
+	if (!isAiSimulatedOutput.value) return true;
+	return await aiSimulatedDataGuard.confirmAdoption();
+}
+
 async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSource }) {
 	if (!node.value) {
 		return;
@@ -1083,6 +1117,10 @@ async function onTogglePinData({ source }: { source: PinDataSource | UnpinDataSo
 
 	if (pinnedData.hasData.value) {
 		pinnedData.unsetData(source);
+		return;
+	}
+
+	if (!(await confirmPinningAiSimulatedData())) {
 		return;
 	}
 
@@ -1509,6 +1547,16 @@ defineExpose({ enterEditMode });
 					{{ i18n.baseText('runData.pindata.learnMore') }}
 				</N8nLink>
 			</template>
+		</N8nCallout>
+
+		<N8nCallout
+			v-if="isAiSimulatedOutput && !editMode.enabled"
+			theme="warning"
+			icon="triangle-alert"
+			:class="$style.pinnedDataCallout"
+			data-test-id="ndv-ai-simulated-data-callout"
+		>
+			{{ i18n.baseText('runData.aiSimulatedData.callout') }}
 		</N8nCallout>
 
 		<div :class="$style.header">

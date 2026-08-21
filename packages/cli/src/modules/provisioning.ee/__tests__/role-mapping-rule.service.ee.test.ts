@@ -823,7 +823,16 @@ describe('RoleMappingRuleService', () => {
 		it('should throw NotFoundError when rule does not exist', async () => {
 			roleMappingRuleRepository.findOne.mockResolvedValue(null);
 
-			await expect(service.move('nonexistent', 0)).rejects.toThrow(NotFoundError);
+			await expect(
+				service.move({
+					id: 'nonexistent',
+					targetIndex: 0,
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
+			).rejects.toThrow(NotFoundError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should move first rule to last position', async () => {
@@ -837,10 +846,21 @@ describe('RoleMappingRuleService', () => {
 				updatedAt: new Date(),
 			} as unknown as RoleMappingRule);
 
-			await service.move('a', 2);
+			await service.move({
+				id: 'a',
+				targetIndex: 2,
+				userId: testUser.id,
+				userEmail: testUser.email,
+			});
 
 			// Verify applyOrder called with correct sequence: b, c, a
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-updated', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: 'a',
+				ruleType: 'instance',
+				patchedFields: ['order'],
+			});
 		});
 
 		it('should move last rule to first position', async () => {
@@ -854,9 +874,20 @@ describe('RoleMappingRuleService', () => {
 				updatedAt: new Date(),
 			} as unknown as RoleMappingRule);
 
-			await service.move('c', 0);
+			await service.move({
+				id: 'c',
+				targetIndex: 0,
+				userId: testUser.id,
+				userEmail: testUser.email,
+			});
 
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-updated', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: 'c',
+				ruleType: 'instance',
+				patchedFields: ['order'],
+			});
 		});
 
 		it('should clamp targetIndex to last position when out of bounds', async () => {
@@ -871,9 +902,20 @@ describe('RoleMappingRuleService', () => {
 			} as unknown as RoleMappingRule);
 
 			// targetIndex 999 should clamp to 1 (last valid index)
-			await service.move('a', 999);
+			await service.move({
+				id: 'a',
+				targetIndex: 999,
+				userId: testUser.id,
+				userEmail: testUser.email,
+			});
 
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-updated', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: 'a',
+				ruleType: 'instance',
+				patchedFields: ['order'],
+			});
 		});
 	});
 
