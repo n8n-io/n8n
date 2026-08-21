@@ -4,7 +4,13 @@ import { Service } from '@n8n/di';
 import { chmod, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { SimpleGit, SimpleGitOptions } from 'simple-git';
+import {
+	CheckRepoActions,
+	GitPluginError,
+	simpleGit,
+	type SimpleGit,
+	type SimpleGitOptions,
+} from 'simple-git';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -108,7 +114,6 @@ export class GitConnectionsGitService {
 	}
 
 	async validateBranchName(branchName: string) {
-		const { simpleGit } = await import('simple-git');
 		try {
 			await simpleGit().raw(['check-ref-format', '--branch', branchName]);
 		} catch {
@@ -133,12 +138,13 @@ export class GitConnectionsGitService {
 	}) {
 		await this.validateBranchName(branchName);
 		await mkdir(rootFolder, { recursive: true });
-		const repositoryFolder = path.join(rootFolder, 'repository');
-		const nextRepositoryFolder = path.join(rootFolder, 'repository-next');
+		const { repositoryFolder, nextRepositoryFolder, sshDir } = this.connectionPaths(rootFolder);
 		await rm(nextRepositoryFolder, { recursive: true, force: true });
 
 		try {
-			await this.withGit({ connection, credentials, baseDir: rootFolder }, async (git) => {
+			// Clone runs with cwd = rootFolder so it can write repository-next beside
+			// the eventual working copy; known_hosts still lives under sshDir.
+			await this.withGit({ connection, credentials, repoDir: rootFolder, sshDir }, async (git) => {
 				const remoteRefs = await git.listRemote([
 					'--heads',
 					connection.repositoryUrl,
@@ -172,19 +178,109 @@ export class GitConnectionsGitService {
 		}
 	}
 
+	/** True only when `<rootFolder>/repository` is itself a git working-copy root. */
+	async hasWorkingCopy(rootFolder: string): Promise<boolean> {
+		const { repositoryFolder } = this.connectionPaths(rootFolder);
+		try {
+			// IS_REPO_ROOT (not the default in-tree check) so a working copy that
+			// happens to sit under a parent git checkout does not read as connected.
+			return await simpleGit({
+				baseDir: repositoryFolder,
+				binary: 'git',
+				maxConcurrentProcesses: 1,
+			}).checkIsRepo(CheckRepoActions.IS_REPO_ROOT);
+		} catch {
+			// Directory missing or not a repo.
+			return false;
+		}
+	}
+	/**
+	 * Commit the already-exported working copy and push it to the remote branch.
+	 * Stages only `stagePathspec` so files the user keeps at the repository root
+	 * stay out of the commit. Returns the pushed commit and the resulting HEAD;
+	 * on a clean tree it commits nothing and returns `commit: null`.
+	 */
+	async commitAndPush({
+		connection,
+		credentials,
+		rootFolder,
+		branchName,
+		author,
+		commitMessage,
+		force,
+		stagePathspec,
+	}: {
+		connection: GitConnection;
+		credentials: PlainCredentials;
+		rootFolder: string;
+		branchName: string;
+		author: { name: string; email: string };
+		commitMessage: string;
+		force: boolean;
+		stagePathspec: string;
+	}): Promise<{ commit: string | null; head: string }> {
+		const { repositoryFolder, sshDir } = this.connectionPaths(rootFolder);
+		try {
+			return await this.withGit(
+				{
+					connection,
+					credentials,
+					repoDir: repositoryFolder,
+					sshDir,
+					// Process-local identity, so a concurrent op can't change repo-wide config.
+					config: [`user.name=${author.name}`, `user.email=${author.email}`],
+				},
+				async (git) => {
+					// `--all` under the pathspec stages deletions too — the export does
+					// rm + rename, so removed entities must be committed as deletions.
+					await git.add(['--all', '--', stagePathspec]);
+					const status = await git.status(['--', stagePathspec]);
+					if (status.isClean()) {
+						// Nothing changed since the last push: skip commit + push.
+						const head = (await git.revparse(['HEAD'])).trim();
+						return { commit: null, head };
+					}
+
+					await git.commit(commitMessage);
+
+					if (force) {
+						await git.push('origin', branchName, ['-f']);
+					} else {
+						await git.push('origin', branchName);
+					}
+
+					const head = (await git.revparse(['HEAD'])).trim();
+					return { commit: head, head };
+				},
+			);
+		} catch (error) {
+			throw this.mapGitError(error, { connectionId: connection.id, branchName });
+		}
+	}
+
 	/**
 	 * Remove the cached working copy but keep `.ssh/known_hosts`, so a pinned
 	 * host key survives credential rotation and reconnects (preserving MITM
 	 * protection). Used when auth/target changes invalidate the clone.
 	 */
 	async resetWorkingCopy(rootFolder: string) {
-		await rm(path.join(rootFolder, 'repository'), { recursive: true, force: true });
-		await rm(path.join(rootFolder, 'repository-next'), { recursive: true, force: true });
+		const { repositoryFolder, nextRepositoryFolder } = this.connectionPaths(rootFolder);
+		await rm(repositoryFolder, { recursive: true, force: true });
+		await rm(nextRepositoryFolder, { recursive: true, force: true });
 	}
 
 	/** Remove everything for a connection, including the pinned host key. */
 	async cleanup(rootFolder: string) {
 		await rm(rootFolder, { recursive: true, force: true });
+	}
+
+	/** On-disk layout under a connection's root folder. */
+	private connectionPaths(rootFolder: string) {
+		return {
+			repositoryFolder: path.join(rootFolder, 'repository'),
+			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
+			sshDir: path.join(rootFolder, '.ssh'),
+		};
 	}
 
 	/**
@@ -198,29 +294,38 @@ export class GitConnectionsGitService {
 		{
 			connection,
 			credentials,
-			baseDir,
+			repoDir,
+			sshDir,
+			config: extraConfig = [],
 		}: {
 			connection: GitConnection;
 			credentials: PlainCredentials;
-			baseDir: string;
+			/** Directory simple-git uses as its process cwd (working-copy root, or clone parent). */
+			repoDir: string;
+			/** Directory that holds `known_hosts` (the pinned host key). Unused for HTTPS. */
+			sshDir: string;
+			/** Extra per-invocation `-c` config entries, e.g. `user.name=…`. */
+			config?: string[];
 		},
 		operation: (git: SimpleGit) => Promise<T>,
 	) {
-		await mkdir(baseDir, { recursive: true });
+		await mkdir(repoDir, { recursive: true });
 		const options: Partial<SimpleGitOptions> = {
-			baseDir,
+			baseDir: repoDir,
 			binary: 'git',
 			maxConcurrentProcesses: 1,
 			trimmed: false,
 			timeout: { block: GIT_COMMAND_STALL_TIMEOUT_MS },
 		};
-		const { simpleGit } = await import('simple-git');
 		let temporaryFolder: string | undefined;
 
 		try {
 			let git: SimpleGit;
 			if (credentials.type === 'https') {
-				const config = buildHttpsGitConfig(connection.repositoryUrl, credentials);
+				const config = [
+					...buildHttpsGitConfig(connection.repositoryUrl, credentials),
+					...extraConfig,
+				];
 
 				git = simpleGit({
 					...options,
@@ -232,13 +337,18 @@ export class GitConnectionsGitService {
 				const privateKeyPath = path.join(temporaryFolder, 'private-key');
 				await writeFile(privateKeyPath, credentials.privateKey, { mode: 0o600 });
 				await chmod(privateKeyPath, 0o600);
-				const sshFolder = path.join(baseDir, '.ssh');
-				await mkdir(sshFolder, { recursive: true });
+				// Host key lives in sshDir, not the git working copy, so a key pinned at
+				// clone time keeps protecting later fetch/push after resetWorkingCopy.
+				await mkdir(sshDir, { recursive: true });
 				const sshCommand = buildSshCommand({
 					privateKeyPath,
-					knownHostsPath: path.join(sshFolder, 'known_hosts'),
+					knownHostsPath: path.join(sshDir, 'known_hosts'),
 				});
-				git = simpleGit({ ...options, unsafe: { allowUnsafeSshCommand: true } })
+				git = simpleGit({
+					...options,
+					config: extraConfig,
+					unsafe: { allowUnsafeSshCommand: true },
+				})
 					.env('GIT_SSH_COMMAND', sshCommand)
 					.env('GIT_TERMINAL_PROMPT', '0');
 			}
@@ -246,5 +356,24 @@ export class GitConnectionsGitService {
 		} finally {
 			if (temporaryFolder) await rm(temporaryFolder, { recursive: true, force: true });
 		}
+	}
+
+	/**
+	 * Map a git operation failure to a response error. The stall backstop is the
+	 * one transient signal we can detect without inspecting git's output, so it
+	 * becomes a retryable 503; everything else is redacted to a generic 400 (raw
+	 * git output can echo the credential-helper config, so it is never surfaced or
+	 * logged — only a correlatable subset is).
+	 */
+	private mapGitError(error: unknown, ctx: { connectionId: string; branchName: string }): Error {
+		if (error instanceof BadRequestError || error instanceof ServiceUnavailableError) return error;
+
+		if (error instanceof GitPluginError && error.plugin === 'timeout') {
+			this.logger.warn('Git operation stalled', ctx);
+			return new ServiceUnavailableError('The Git operation timed out. Please try again.');
+		}
+
+		this.logger.warn('Git operation failed', ctx);
+		return new BadRequestError('Could not complete the Git operation');
 	}
 }

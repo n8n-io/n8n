@@ -3,6 +3,7 @@ import type {
 	GitConnectionPublicDto,
 	GitConnectionPullResultDto,
 	GitConnectionPushResultDto,
+	PushGitConnectionDto,
 	UpdateGitConnectionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -34,6 +35,7 @@ import {
 	type ImportResult,
 } from '@/modules/n8n-packages/n8n-packages.types';
 
+import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME } from './constants';
 import { GitConnection } from './database/entities/git-connection.entity';
 import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from './database/repositories/git-connection.repository';
@@ -172,12 +174,25 @@ export class GitConnectionsService {
 		await this.repository.remove(connection);
 	}
 
-	async push(connectionId: string, actor: User): Promise<GitConnectionPushResultDto> {
-		// Validates the connection exists (throws NotFound otherwise) before any export work.
-		await this.getEntity(connectionId);
+	async push(
+		connectionId: string,
+		actor: User,
+		input: PushGitConnectionDto,
+	): Promise<GitConnectionPushResultDto> {
+		const connection = await this.getEntity(connectionId);
+		const { branchName } = connection;
+		if (!branchName) throw new BadRequestError('A branch name is required to push');
+
+		const rootFolder = this.rootFolder(connectionId);
+		if (!(await this.gitService.hasWorkingCopy(rootFolder))) {
+			throw new BadRequestError(
+				'This Git connection repository is not cloned. Clone it before pushing.',
+			);
+		}
+
 		const projectIds =
 			await this.projectConnectionRepository.findProjectIdsByConnection(connectionId);
-		const repositoryFolder = path.join(this.rootFolder(connectionId), 'repository');
+		const repositoryFolder = path.join(rootFolder, 'repository');
 		const exportFolder = path.join(repositoryFolder, EXPORT_SUBFOLDER);
 
 		this.logger.info('Exporting projects to Git connection repository', {
@@ -206,12 +221,23 @@ export class GitConnectionsService {
 			await rm(exportFolder, { recursive: true, force: true });
 			await rename(stagingFolder, exportFolder);
 
-			// TODO: commit the working copy and push to the remote, then surface the
-			// git operation result here.
-			return {
-				connectionId,
-				counts: exportResult.counts,
-			};
+			const credentials = await this.decryptCredentials(connection);
+			const { commit, head } = await this.gitService.commitAndPush({
+				connection,
+				credentials,
+				rootFolder,
+				branchName,
+				author: this.commitAuthor(actor),
+				commitMessage: input.commitMessage,
+				force: input.force ?? false,
+				stagePathspec: EXPORT_SUBFOLDER,
+			});
+
+			// The working copy is synced to this commit; record it as the base.
+			connection.baseCommit = head;
+			await this.repository.save(connection);
+
+			return { connectionId, counts: exportResult.counts, commit };
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
 		}
