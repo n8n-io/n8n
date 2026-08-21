@@ -4,7 +4,6 @@ import type {
 	InboxVisibility,
 	User,
 	UserRepository,
-	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestReviewerRepository,
@@ -26,7 +25,6 @@ describe('WorkflowReviewInboxService', () => {
 	const accessService = mock<WorkflowReviewAccessService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
-	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowReviewRequestRepository = mockInstance(WorkflowReviewRequestRepository);
 	const workflowReviewRequestWorkflowRepository = mockInstance(
 		WorkflowReviewRequestWorkflowRepository,
@@ -54,7 +52,6 @@ describe('WorkflowReviewInboxService', () => {
 			accessService,
 			workflowFinderService,
 			workflowHistoryService,
-			publishedVersionRepository,
 			workflowReviewRequestRepository,
 			workflowReviewRequestWorkflowRepository,
 			reviewerRepository,

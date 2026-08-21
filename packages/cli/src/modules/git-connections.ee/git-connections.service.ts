@@ -84,10 +84,10 @@ export class GitConnectionsService {
 		return this.toPublic(saved);
 	}
 
-	async connect(id: string, branchName?: string) {
+	async clone(id: string, branchName?: string) {
 		const connection = await this.getEntity(id);
 		const effectiveBranch = branchName ?? connection.branchName;
-		if (!effectiveBranch) throw new BadRequestError('A branch name is required to connect');
+		if (!effectiveBranch) throw new BadRequestError('A branch name is required to clone');
 		const credentials = await this.decryptCredentials(connection);
 		await this.gitService.clone({
 			connection,

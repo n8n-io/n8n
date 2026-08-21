@@ -33,6 +33,7 @@ function makeWorkflowDetail(
 		workflowName: 'Payment Handler',
 		workflowVersionId: 'version-1',
 		pinnedVersion: null,
+		publishedVersionId: null,
 		baselineVersion: null,
 		...overrides,
 	};

@@ -21,6 +21,7 @@ export type {
 	Controller,
 	CorsOptions,
 	DeprecationInfo,
+	ErrorResponse,
 	HandlerName,
 	Method,
 	ResponseDtoClass,
