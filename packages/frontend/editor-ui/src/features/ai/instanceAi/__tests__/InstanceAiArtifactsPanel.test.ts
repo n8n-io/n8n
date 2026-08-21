@@ -178,7 +178,7 @@ describe('InstanceAiArtifactsPanel', () => {
 				context: {
 					source: 'credential-modal',
 					credential: {
-						credentialType: 'gmailOAuth2Api',
+						credentialType: 'gmailOAuth2',
 						displayName: 'Gmail OAuth2 API',
 					},
 				},
@@ -344,7 +344,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		const pendingComposerContext = ref({
 			source: 'credential-modal' as const,
 			credential: {
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 			},
 		});

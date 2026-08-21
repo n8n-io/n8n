@@ -10,7 +10,6 @@ import {
 /** Build a WorkspacePkg fixture from `[depName, section]` pairs (only names + sections matter). */
 function ws(name: string, deps: Array<[string, string]>) {
 	return {
-		dir: `/x/${name}`,
 		relDir: `packages/${name}`,
 		info: {
 			filePath: `/x/${name}/package.json`,

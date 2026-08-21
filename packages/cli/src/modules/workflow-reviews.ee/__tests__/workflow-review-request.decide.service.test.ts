@@ -33,6 +33,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -75,6 +76,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const workflowService = mock<WorkflowService>();
 	const accessService = mock<WorkflowReviewAccessService>();
 	const logger = mock<Logger>();
+	const eventService = mock<EventService>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
 
@@ -105,6 +107,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		collaborationService,
 		workflowService,
 		accessService,
+		eventService,
 	);
 
 	const openRequest = (overrides: Partial<WorkflowReviewRequest> = {}) =>
@@ -129,7 +132,8 @@ describe('WorkflowReviewRequestService.decide', () => {
 		});
 
 	const mockSuccessfulDecidePath = () => {
-		requestRepository.findById.mockResolvedValue(openRequest());
+		const request = openRequest();
+		requestRepository.findById.mockResolvedValue(request);
 		workflowRepository.findByRequestId.mockResolvedValue([pinnedRow()]);
 		workflowRepository.captureApprovalBaseline.mockResolvedValue(undefined);
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
@@ -143,13 +147,13 @@ describe('WorkflowReviewRequestService.decide', () => {
 		reviewerRepository.isReviewer.mockResolvedValue(true);
 		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([requesterUser]);
-		requestRepository.saveRequest.mockImplementation(async (request) => request);
+		requestRepository.saveRequest.mockImplementation(async (saved) => saved);
+		return request;
 	};
 
 	beforeEach(() => {
 		vi.resetAllMocks();
 		accessService.resolveOpenableRequestIds.mockResolvedValue(new Set());
-		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.
@@ -286,6 +290,11 @@ describe('WorkflowReviewRequestService.decide', () => {
 				ctx,
 			);
 			expect(requestRepository.saveRequest).toHaveBeenCalled();
+			// Being an author does not take away the assignment that entitled them to decide.
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+				'workflow-review-decided',
+				expect.objectContaining({ decidedVia: 'assigned-reviewer' }),
+			);
 		});
 
 		it('rejects a caller unassigned while waiting for the lock', async () => {
@@ -328,6 +337,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 				'user-1',
 				['project:admin'],
 			);
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+				'workflow-review-decided',
+				expect.objectContaining({ decidedVia: 'admin-override' }),
+			);
 		});
 
 		it('throws ForbiddenError for an author who is only a project admin elsewhere', async () => {
@@ -359,7 +372,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 	});
 
 	it('approves: closes the request, stamps closedById and approvedAt, and broadcasts', async () => {
-		mockSuccessfulDecidePath();
+		const request = mockSuccessfulDecidePath();
 
 		const result = await service.decide(memberUser(), requestId, approveDto);
 
@@ -391,6 +404,15 @@ describe('WorkflowReviewRequestService.decide', () => {
 			autoPublish: { status: 'published' },
 		});
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-1');
+		expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-decided', {
+			user: expect.objectContaining({ id: 'user-1' }),
+			workflowReviewRequestId: requestId,
+			workflowId: 'wf-1',
+			workflowVersionId: 'ver-1',
+			decision: 'approved',
+			decidedVia: 'assigned-reviewer',
+			reviewCreatedAt: request.createdAt,
+		});
 	});
 
 	// Reviews carry exactly one workflow today (the create DTO enforces it), so this
@@ -416,7 +438,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 	});
 
 	it('requests changes: keeps the request open and leaves closedById/approvedAt untouched', async () => {
-		mockSuccessfulDecidePath();
+		const request = mockSuccessfulDecidePath();
 
 		const result = await service.decide(memberUser(), requestId, requestChangesDto);
 
@@ -432,6 +454,15 @@ describe('WorkflowReviewRequestService.decide', () => {
 		expect(result.state).toBe('open');
 		expect(result.decision).toBe('changes_requested');
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-1');
+		expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-decided', {
+			user: expect.objectContaining({ id: 'user-1' }),
+			workflowReviewRequestId: requestId,
+			workflowId: 'wf-1',
+			workflowVersionId: 'ver-1',
+			decision: 'changes_requested',
+			decidedVia: 'assigned-reviewer',
+			reviewCreatedAt: request.createdAt,
+		});
 	});
 
 	it('allows repeating changes_requested (e.g. a second reviewer)', async () => {
@@ -467,6 +498,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 		expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 
 	it('refuses to approve a workflow archived while the decision waited for the lock', async () => {
@@ -571,6 +603,11 @@ describe('WorkflowReviewRequestService.decide', () => {
 				expect.objectContaining({ workflowId: 'wf-1', pinnedVersionId: 'ver-1' }),
 			);
 			expect(collaborationService.broadcastWorkflowUpdate).not.toHaveBeenCalled();
+			// The approval stands, so it is reported exactly once whatever publishing did.
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+				'workflow-review-decided',
+				expect.objectContaining({ decision: 'approved' }),
+			);
 		});
 
 		it('keeps the approval as a system close when the requester user has been deleted', async () => {
@@ -592,6 +629,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 				status: 'failed',
 				message: 'The review requester is no longer available',
 			});
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+				'workflow-review-decided',
+				expect.objectContaining({ decision: 'approved' }),
+			);
 		});
 
 		it('keeps the approval as a system close when the requester has been deactivated', async () => {
@@ -655,6 +696,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 					data: { workflowVersions: [], note: null },
 				}),
 				ctx,
+			);
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+				'workflow-review-decided',
+				expect.objectContaining({ decision: 'approved', workflowVersionId: null }),
 			);
 		});
 	});

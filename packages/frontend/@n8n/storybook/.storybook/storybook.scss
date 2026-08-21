@@ -13,6 +13,8 @@
 
 body {
 	padding: 0 !important;
+	/* Keep the Storybook canvas stable while body data-theme flips for teleported floating UI. */
+	background-color: var(--color--neutral-50) !important;
 }
 
 .story {

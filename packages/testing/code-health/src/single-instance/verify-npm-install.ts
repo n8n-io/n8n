@@ -1,14 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import {
-	appendFileSync,
-	mkdirSync,
-	mkdtempSync,
-	readdirSync,
-	rmSync,
-	writeFileSync,
-} from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 
 import { analyze, collectCopies } from './collect-copies.js';
@@ -104,8 +97,13 @@ function exemptPackages(byName: Map<string, WorkspacePkg>): Set<string> {
 	return new Set(names.map(([name]) => name));
 }
 
+/** One entry of `pnpm pack --json`. */
+interface Packed {
+	name: string;
+	filename: string;
+}
+
 interface WorkspacePkg {
-	dir: string;
 	relDir: string;
 	info: PackageJsonInfo;
 }
@@ -116,7 +114,7 @@ async function loadWorkspace(rootDir: string): Promise<Map<string, WorkspacePkg>
 	for (const file of await findPackageJsonFiles(rootDir)) {
 		const info = parsePackageJson(file);
 		if (info.private) continue;
-		byName.set(info.packageName, { dir: dirname(file), relDir: relativeDir(rootDir, file), info });
+		byName.set(info.packageName, { relDir: relativeDir(rootDir, file), info });
 	}
 	return byName;
 }
@@ -160,7 +158,10 @@ function changedPackages(
 	}
 	let out: string;
 	try {
-		out = execFileSync('git', ['diff', '--name-only', baseRef, 'HEAD'], {
+		// `--no-renames`: a moved file has to count against both the old and the new package, and
+		// rename detection would also read blob contents — which the CI checkout deliberately
+		// leaves on the server.
+		out = execFileSync('git', ['diff', '--name-only', '--no-renames', baseRef, 'HEAD'], {
 			cwd: rootDir,
 			encoding: 'utf8',
 		});
@@ -216,6 +217,68 @@ export function resolveTargets(
 }
 
 /**
+ * Pack the named packages in one recursive pnpm run, and return name -> tarball path.
+ *
+ * One invocation rather than one per package: packing these tarballs is quick, so ~50 pnpm startups
+ * dominate the step. `--json` reports the tarball each project produced, which also removes the
+ * need to diff the destination directory — that mis-attributes a tarball whose name is already
+ * present, and reads as "pack produced nothing".
+ *
+ * Scripts are off. The only `prepack` hook among publishable packages rebuilds `dist`, and this
+ * check reads package.json out of the installed graph, so nothing here needs compiling.
+ */
+function packWorkspacePackages(
+	names: string[],
+	destination: string,
+	rootDir: string,
+): Record<string, string> {
+	let stdout: string;
+	try {
+		stdout = execFileSync(
+			'pnpm',
+			[
+				'pack',
+				'--recursive',
+				...names.flatMap((name) => ['--filter', name]),
+				'--config.ignore-scripts=true',
+				'--pack-destination',
+				destination,
+				'--json',
+			],
+			{
+				cwd: rootDir,
+				encoding: 'utf8',
+				// The report lists every packed file, so it runs to several MB. The default 1MB cap
+				// would kill pnpm mid-pack.
+				maxBuffer: 256 * 1024 * 1024,
+				stdio: ['ignore', 'pipe', 'inherit'],
+			},
+		);
+	} catch (error) {
+		// `--json` puts the failure on stdout, which is captured rather than inherited — print it or
+		// the throw reads as a bare "Command failed" with the cause nowhere in the log.
+		const captured = (error as { stdout?: string }).stdout;
+		if (captured) console.error(captured);
+		throw error;
+	}
+	// pnpm reports a bare object for a single project and an array for several.
+	let packed: Packed | Packed[];
+	try {
+		packed = JSON.parse(stdout) as Packed | Packed[];
+	} catch {
+		throw new Error(`Could not read the pnpm pack report: ${stdout.slice(0, 500)}`);
+	}
+	const tarballByName = Object.fromEntries(
+		[packed].flat().map(({ name, filename }) => [name, filename]),
+	);
+	const missing = names.filter((name) => !tarballByName[name]);
+	if (missing.length > 0) {
+		throw new Error(`pnpm pack produced no tarball for: ${missing.join(', ')}`);
+	}
+	return tarballByName;
+}
+
+/**
  * Reproduce the `npm install` graph for the targeted publishable packages and run the closure
  * verifier against it. Local pnpm dev and the `pnpm deploy` closure both apply root
  * `pnpm.overrides`, which hide duplication; those don't travel in published tarballs, so
@@ -255,19 +318,7 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 	try {
 		const packStartedAt = Date.now();
 		console.log(`Packing ${toPack.length} workspace package(s) (targets: ${targets.length})...`);
-		const tarballByName: Record<string, string> = {};
-		for (const name of toPack) {
-			const entry = byName.get(name);
-			if (!entry) continue;
-			const before = new Set(readdirSync(tarballs));
-			execFileSync('pnpm', ['pack', '--pack-destination', tarballs], {
-				cwd: entry.dir,
-				stdio: ['ignore', 'ignore', 'inherit'],
-			});
-			const produced = readdirSync(tarballs).find((f) => !before.has(f) && f.endsWith('.tgz'));
-			if (!produced) throw new Error(`pnpm pack produced no tarball for ${name}`);
-			tarballByName[name] = join(tarballs, produced);
-		}
+		const tarballByName = packWorkspacePackages(toPack, tarballs, rootDir);
 
 		// Scratch project: install targets as file: deps, force ALL packed workspace deps to their
 		// local tarballs. Third-party deps resolve from the real npm registry.
