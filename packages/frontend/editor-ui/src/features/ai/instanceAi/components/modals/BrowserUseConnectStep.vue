@@ -37,7 +37,9 @@ async function refreshConnectUrl(): Promise<void> {
 	const delay = Date.parse(expiresAt) - Date.now() - CONNECT_URL_REFRESH_MARGIN_MS;
 	if (!Number.isFinite(delay) || delay <= 0) return;
 
-	refreshTimer = setTimeout(() => void refreshConnectUrl(), delay);
+	refreshTimer = setTimeout(() => {
+		void refreshConnectUrl();
+	}, delay);
 }
 
 onMounted(async () => {
