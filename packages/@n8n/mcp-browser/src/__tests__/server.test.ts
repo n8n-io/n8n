@@ -1,8 +1,20 @@
+import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 import { buildAllowedHosts, isAuthorized, startHttpTransport } from '../server';
 
 type Started = Awaited<ReturnType<typeof startHttpTransport>>;
+
+/** Bind an ephemeral port, note it, release it. Sessions can only initialize on a concrete port:
+ * `buildAllowedHosts` bakes the port into the allowed Host list, so booting on port 0 produces
+ * `127.0.0.1:0` and the SDK's DNS-rebinding check then rejects the real Host header. */
+async function freePort(): Promise<number> {
+	const probe = createServer();
+	await new Promise<void>((resolve) => probe.listen(0, '127.0.0.1', () => resolve()));
+	const { port } = probe.address() as AddressInfo;
+	await new Promise<void>((resolve) => probe.close(() => resolve()));
+	return port;
+}
 
 async function boot(
 	authToken: string,
@@ -12,17 +24,17 @@ async function boot(
 	baseUrl: string;
 	close: () => Promise<void>;
 }> {
+	const port = await freePort();
 	const started = await startHttpTransport({
 		config: {},
 		host: '127.0.0.1',
-		port: 0,
+		port,
 		authToken,
 		...sessionOpts,
 	});
-	const address = started.httpServer.address() as AddressInfo;
 	return {
 		started,
-		baseUrl: `http://127.0.0.1:${address.port}`,
+		baseUrl: `http://127.0.0.1:${port}`,
 		close: async () => {
 			await new Promise<void>((resolve) => started.httpServer.close(() => resolve()));
 		},
@@ -124,11 +136,17 @@ describe('HTTP transport', () => {
 describe('idle session eviction', () => {
 	const token = 'test-token-1234';
 
-	async function openSession(baseUrl: string, id: number) {
-		await fetch(`${baseUrl}/mcp`, {
+	/** Opens a session and returns its id. Requires a real (non-ephemeral) port so the SDK's
+	 * DNS-rebinding Host check passes and initialization actually completes. */
+	async function openSession(baseUrl: string, id: number): Promise<string> {
+		const res = await fetch(`${baseUrl}/mcp`, {
 			method: 'POST',
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
-			headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+			headers: {
+				authorization: `Bearer ${token}`,
+				// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+				'content-type': 'application/json',
+				accept: 'application/json, text/event-stream',
+			},
 			body: JSON.stringify({
 				jsonrpc: '2.0',
 				id,
@@ -140,15 +158,34 @@ describe('idle session eviction', () => {
 				},
 			}),
 		});
+		const sessionId = res.headers.get('mcp-session-id');
+		if (!sessionId) throw new Error(`initialize did not return a session id (status ${res.status})`);
+		return sessionId;
+	}
+
+	/** A follow-up request on an existing session -- the path that refreshes its activity stamp. */
+	async function pingSession(baseUrl: string, sessionId: string, id: number) {
+		await fetch(`${baseUrl}/mcp`, {
+			method: 'POST',
+			headers: {
+				authorization: `Bearer ${token}`,
+				// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+				'content-type': 'application/json',
+				accept: 'application/json, text/event-stream',
+				// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+				'mcp-session-id': sessionId,
+			},
+			body: JSON.stringify({ jsonrpc: '2.0', id, method: 'ping' }),
+		});
 	}
 
 	it('evicts sessions that go idle past the TTL, shutting down their browser connections', async () => {
-		const booted = await boot(token, { sessionIdleTtlMs: 20, sessionSweepIntervalMs: 10 });
+		const booted = await boot(token, { sessionIdleTtlMs: 50, sessionSweepIntervalMs: 10 });
 		try {
 			for (let i = 0; i < 3; i++) await openSession(booted.baseUrl, i);
 			expect(booted.started.activeConnections.size).toBe(3);
 
-			await new Promise((resolve) => setTimeout(resolve, 120));
+			await new Promise((resolve) => setTimeout(resolve, 200));
 
 			expect(booted.started.activeConnections.size).toBe(0);
 		} finally {
@@ -157,13 +194,19 @@ describe('idle session eviction', () => {
 	});
 
 	it('keeps a session alive while its client keeps making requests', async () => {
-		const booted = await boot(token, { sessionIdleTtlMs: 200, sessionSweepIntervalMs: 10 });
+		const ttl = 100;
+		const booted = await boot(token, { sessionIdleTtlMs: ttl, sessionSweepIntervalMs: 10 });
 		try {
-			await openSession(booted.baseUrl, 1);
+			const sessionId = await openSession(booted.baseUrl, 1);
 			expect(booted.started.activeConnections.size).toBe(1);
 
-			// Two sweeps' worth of waiting, well inside the TTL: the session must survive.
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			// Keep pinging for well over the TTL. Each ping must refresh the activity stamp,
+			// so the session survives a span it would certainly have been evicted across
+			// had it stayed idle.
+			for (let i = 0; i < 6; i++) {
+				await new Promise((resolve) => setTimeout(resolve, ttl / 2));
+				await pingSession(booted.baseUrl, sessionId, 100 + i);
+			}
 
 			expect(booted.started.activeConnections.size).toBe(1);
 		} finally {
