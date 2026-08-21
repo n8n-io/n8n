@@ -1286,6 +1286,8 @@
 	"duplicateWorkflowDialog.errors.generic.title": "Duplicate workflow failed",
 	"experiments.instanceAiProactiveAgent.message": "Hey, I can build your first workflow in a few minutes. Do you know what you want to automate, or do you want help with ideas?",
 	"experiments.instanceAiProactiveAgent.typingLabel": "AI Assistant is typing",
+	"experiments.instanceAiFreeNudge.variant1": "Free to use. No execution cost",
+	"experiments.instanceAiFreeNudge.variant2": "The new AI Assistant is free to use",
 	"experiments.instanceAiPromptSuggestionsV2.emptyState.title": "What do you want to automate?",
 	"experiments.instanceAiPromptSuggestionsV2.input.placeholder": "Tell me what to build or ask a question – add context with +",
 	"experiments.instanceAiPromptSuggestionsV2.nextSuggestions": "Show more prompt suggestions",

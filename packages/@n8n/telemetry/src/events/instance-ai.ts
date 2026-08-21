@@ -32,12 +32,34 @@ const setupSnapshotProps = {
 	web_search_provider: z.enum(['brave', 'searxng']).nullable(),
 };
 
+const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
+const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
+
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CLICKED_AI_CREDIT_BALANCE: {
 		name: 'User clicked AI credit balance',
 		description:
 			'The user clicked the AI Assistant credit balance button to open or close the balance dropdown.',
 		properties: z.object({}),
+	},
+	FREE_NUDGE_EXPOSED: {
+		name: 'Instance AI free nudge exposed',
+		description:
+			'An eligible user reached the Instance AI empty state for the free-use nudge experiment, including the control variant.',
+		properties: z.object({
+			variant: freeNudgeVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/105_instance_ai_free_nudge': freeNudgeVariant,
+		}),
+	},
+	FREE_NUDGE_DISMISSED: {
+		name: 'Instance AI free nudge dismissed',
+		description: 'The user dismissed a visible Instance AI free-use nudge.',
+		properties: z.object({
+			variant: freeNudgeTreatmentVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/105_instance_ai_free_nudge': freeNudgeTreatmentVariant,
+		}),
 	},
 	USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON: {
 		name: 'User clicked AI Assistant input plus button',
