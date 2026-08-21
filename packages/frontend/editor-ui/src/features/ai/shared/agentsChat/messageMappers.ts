@@ -107,6 +107,23 @@ export function findTailOpenInteractive(
 	return getMessageInteractives(tail).find((payload) => payload.resolvedAt === undefined);
 }
 
+/**
+ * The open interactive on the last turn that a steering message is allowed to
+ * cancel. A waiting card is never one: the workflow resumes it by itself, so
+ * cancelling it because the user typed would abandon a run they never asked to
+ * stop and leave the sub-workflow finishing into a checkpoint nobody reads.
+ * Stopping a wait is a deliberate act — the card's own button, or Stop.
+ */
+export function findTailSteerableInteractive(
+	messages: MessageWithInteractives[],
+): InteractivePayload | undefined {
+	const tail = messages[messages.length - 1];
+	if (!tail) return undefined;
+	return getMessageInteractives(tail).find(
+		(payload) => payload.resolvedAt === undefined && payload.toolName !== WAIT_TOOL_NAME,
+	);
+}
+
 /** True when a suspend payload is the approval tool's renderable input. */
 export function isApprovalSuspendInput(value: unknown): boolean {
 	return parseApprovalInput(value) !== undefined;

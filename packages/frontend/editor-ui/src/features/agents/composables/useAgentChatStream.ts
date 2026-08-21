@@ -23,6 +23,7 @@ import {
 	convertDbMessages,
 	findOpenInteractive,
 	findTailOpenInteractive,
+	findTailSteerableInteractive,
 	getMessageInteractive,
 	getMessageInteractives,
 	isApprovalSuspendInput,
@@ -933,8 +934,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	async function cancelAndSteer(text: string): Promise<void> {
 		// Steering answers the card the user is looking at — the one on the current
-		// turn. An unresolved card further up belongs to a turn already moved past.
-		const openInteractive = findTailOpenInteractive(messages.value);
+		// turn, and never a waiting card, which only the workflow or a deliberate
+		// click may end. The chat input gates this too, but the rule belongs with
+		// the resume it would send.
+		const openInteractive = findTailSteerableInteractive(messages.value);
 		if (!openInteractive?.runId) return;
 
 		await resume({
