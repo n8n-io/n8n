@@ -92,6 +92,21 @@ export function findOpenInteractive(
 	return undefined;
 }
 
+/**
+ * The open interactive on the last turn, which is the one that owns the chat
+ * input and any steering. A parked run is always the tail of the transcript, so
+ * an unresolved card further up belongs to a turn the conversation already moved
+ * past — `findOpenInteractive` returns those too, and acting on them would
+ * answer or cancel the wrong tool call.
+ */
+export function findTailOpenInteractive(
+	messages: MessageWithInteractives[],
+): InteractivePayload | undefined {
+	const tail = messages[messages.length - 1];
+	if (!tail) return undefined;
+	return getMessageInteractives(tail).find((payload) => payload.resolvedAt === undefined);
+}
+
 /** True when a suspend payload is the approval tool's renderable input. */
 export function isApprovalSuspendInput(value: unknown): boolean {
 	return parseApprovalInput(value) !== undefined;

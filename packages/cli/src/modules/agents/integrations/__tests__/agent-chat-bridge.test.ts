@@ -1929,6 +1929,24 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('Approval required'));
 		});
 
+		// The gate must not swallow the message: nothing ran, so the handler's error
+		// reply is all that can tell the user their message went nowhere.
+		it('surfaces a failure to post the notice instead of dropping the message', async () => {
+			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
+				title: 'Approval required',
+				components: [{ type: 'section', text: 'approve?' }],
+			});
+			thread.post.mockRejectedValueOnce(new Error('platform unavailable'));
+
+			await handlers.subscribed!(thread, {
+				text: 'any news?',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenLastCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
 		it('runs normally when nothing is parked', async () => {
 			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension(null);
 

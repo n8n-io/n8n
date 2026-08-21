@@ -19,6 +19,7 @@ import {
 	type StoredAttachmentRef,
 } from '../agent-chat-attachment.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import { AgentExecutionService } from '../agent-execution.service';
 import {
 	hashAgentSandboxPrincipal,
 	type AgentSandboxPrincipalHash,
@@ -248,6 +249,13 @@ export class AgentChatBridge {
 				yield* agentService.resumeForChat(config);
 			},
 			async findOpenSuspension({ agentId: aid, threadId }) {
+				// Checkpoints carry no thread index, so the authoritative lookup parses
+				// every active checkpoint of the agent. Gate it behind a counted query
+				// on the thread's own runs: a thread that never parked one cannot have
+				// an open checkpoint, and that is the common case for inbound traffic.
+				if (!(await Container.get(AgentExecutionService).hasSuspendedRun(threadId))) {
+					return null;
+				}
 				const checkpoint = await Container.get(N8NCheckpointStorage).findSuspendedForThread(
 					aid,
 					threadId,
@@ -489,7 +497,9 @@ export class AgentChatBridge {
 	 * and let them resolve the open card.
 	 *
 	 * Returns true when the message was answered with the notice and must not
-	 * start a run.
+	 * start a run. A failure to post propagates: the gate has already decided not
+	 * to run, and the handler's error reply is the only thing left that can tell
+	 * the user their message went nowhere.
 	 */
 	private async postStillWaitingReply(thread: Thread, threadId: string): Promise<boolean> {
 		const open = await this.agentService.findOpenSuspension?.({
@@ -506,6 +516,7 @@ export class AgentChatBridge {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
 			});
+			throw error;
 		}
 		return true;
 	}

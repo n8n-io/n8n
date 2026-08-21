@@ -22,6 +22,7 @@ import {
 	applyOpenSuspensions,
 	convertDbMessages,
 	findOpenInteractive,
+	findTailOpenInteractive,
 	getMessageInteractive,
 	getMessageInteractives,
 	isApprovalSuspendInput,
@@ -291,7 +292,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	function findOpenSuspension(): { runId: string; toolCallId: string } | undefined {
-		const interactive = findOpenInteractive(messages.value);
+		// Prefer the current turn's card over one abandoned by an earlier turn.
+		const interactive =
+			findTailOpenInteractive(messages.value) ?? findOpenInteractive(messages.value);
 		if (interactive?.runId) {
 			return { runId: interactive.runId, toolCallId: interactive.toolCallId };
 		}
@@ -929,7 +932,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	async function cancelAndSteer(text: string): Promise<void> {
-		const openInteractive = findOpenInteractive(messages.value);
+		// Steering answers the card the user is looking at — the one on the current
+		// turn. An unresolved card further up belongs to a turn already moved past.
+		const openInteractive = findTailOpenInteractive(messages.value);
 		if (!openInteractive?.runId) return;
 
 		await resume({
