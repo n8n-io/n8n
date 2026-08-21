@@ -25,7 +25,7 @@ import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/s
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useExecutionDebugging } from '@/features/execution/executions/composables/useExecutionDebugging';
 import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/utils/workflowSamples';
-import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME, EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
 import {
 	useWorkflowDocumentStore,
@@ -94,6 +94,9 @@ export function useWorkflowInitialization() {
 	const isTemplateRoute = computed(() => route.name === VIEWS.TEMPLATE_IMPORT);
 	const isOnboardingRoute = computed(() => route.name === VIEWS.WORKFLOW_ONBOARDING);
 	const isDebugRoute = computed(() => route.name === VIEWS.EXECUTION_DEBUG);
+	// An unauthenticated embed: there is no session, so a session-dependent REST
+	// call on this path can only answer 401. Do not make it.
+	const isPreviewPage = computed(() => settingsStore.isPreviewMode && isDemoRoute.value);
 
 	async function loadCredentials() {
 		let options: { workflowId: string } | { projectId: string };
@@ -203,9 +206,8 @@ export function useWorkflowInitialization() {
 	}
 
 	async function initializeData() {
-		const isPreviewPage = settingsStore.isPreviewMode && isDemoRoute.value;
 		const loadPromises = (() => {
-			if (isPreviewPage) return [];
+			if (isPreviewPage.value) return [];
 
 			const promises: Array<Promise<unknown>> = [
 				workflowsListStore.fetchActiveWorkflows(),
@@ -226,7 +228,7 @@ export function useWorkflowInitialization() {
 
 		try {
 			// important to load community nodes to render them correctly
-			if (isPreviewPage) {
+			if (isPreviewPage.value) {
 				loadPromises.push(nodeTypesStore.fetchCommunityNodePreviews());
 			} else {
 				//We don't need to await this as community node previews are not critical and needed only in nodes search panel
@@ -314,12 +316,17 @@ export function useWorkflowInitialization() {
 			workflowsListStore.updateWorkflowInCache(workflowId.value, { name: payload.name });
 		});
 
-		const workflowData = await workflowsApi.getNewWorkflowData(
-			rootStore.restApiContext,
-			undefined,
-			projectsStore.currentProjectId,
-			parentFolderId,
-		);
+		// `/rest/workflows/new` only supplies the placeholder name, and it needs a
+		// session. On a preview embed the imported workflow overwrites that name
+		// anyway, so use the local default instead of calling the endpoint.
+		const workflowData = isPreviewPage.value
+			? { name: DEFAULT_NEW_WORKFLOW_NAME }
+			: await workflowsApi.getNewWorkflowData(
+					rootStore.restApiContext,
+					undefined,
+					projectsStore.currentProjectId,
+					parentFolderId,
+				);
 		currentWorkflowDocumentStore.value.setName(workflowData.name);
 		documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
 		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
