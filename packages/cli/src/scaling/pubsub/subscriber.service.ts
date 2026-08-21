@@ -81,11 +81,11 @@ export class Subscriber {
 			if (!msg) return;
 			if (!msg.debounce) return handlerFn(msg);
 
-			const eventName = this.eventNameFrom(msg);
-			let handler = this.debouncedHandlers.get(eventName);
+			const debounceKey = this.debounceKeyFrom(msg);
+			let handler = this.debouncedHandlers.get(debounceKey);
 			if (!handler) {
 				handler = debounce(handlerFn, 300);
-				this.debouncedHandlers.set(eventName, handler);
+				this.debouncedHandlers.set(debounceKey, handler);
 			}
 			handler(msg);
 		});
@@ -151,6 +151,24 @@ export class Subscriber {
 
 	private eventNameFrom(msg: PubSub.Command | PubSub.WorkerResponse) {
 		return 'command' in msg ? msg.command : msg.response;
+	}
+
+	/**
+	 * Debounce bucket key. Distinct from `eventNameFrom`: two different community packages
+	 * published within the debounce window must not collapse into one delivery, so their
+	 * events get separate buckets even though they share the same command name.
+	 */
+	private debounceKeyFrom(msg: PubSub.Command | PubSub.WorkerResponse) {
+		const eventName = this.eventNameFrom(msg);
+		if (
+			'command' in msg &&
+			(msg.command === 'community-package-install' ||
+				msg.command === 'community-package-update' ||
+				msg.command === 'community-package-uninstall')
+		) {
+			return `${eventName}:${msg.payload.packageName}`;
+		}
+		return eventName;
 	}
 
 	private parseMessage(str: string, channel: string) {

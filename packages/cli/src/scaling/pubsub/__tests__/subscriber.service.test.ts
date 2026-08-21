@@ -177,6 +177,66 @@ describe('Subscriber', () => {
 			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(1);
 		});
 
+		it('should not drop community-package-install events for different packages within 300ms', () => {
+			const pubsubEventBus = mock<PubSubEventBus>();
+			new Subscriber(
+				mockLogger(),
+				mock(),
+				pubsubEventBus,
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+
+			const messageHandler = getMessageHandler();
+
+			const payloadA = { packageName: 'pkg-a', packageVersion: '1.0.0' };
+			const payloadB = { packageName: 'pkg-b', packageVersion: '1.0.0' };
+			messageHandler(
+				'n8n:n8n.commands',
+				makeCommandMsg('community-package-install', true, payloadA),
+			);
+			messageHandler(
+				'n8n:n8n.commands',
+				makeCommandMsg('community-package-install', true, payloadB),
+			);
+
+			vi.advanceTimersByTime(300);
+
+			expect(pubsubEventBus.emit).toHaveBeenCalledWith('community-package-install', payloadA);
+			expect(pubsubEventBus.emit).toHaveBeenCalledWith('community-package-install', payloadB);
+			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(2);
+		});
+
+		it('should still coalesce repeated community-package-install events for the same package within 300ms', () => {
+			const pubsubEventBus = mock<PubSubEventBus>();
+			new Subscriber(
+				mockLogger(),
+				mock(),
+				pubsubEventBus,
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+
+			const messageHandler = getMessageHandler();
+
+			const payload = { packageName: 'pkg-a', packageVersion: '1.0.0' };
+			messageHandler(
+				'n8n:n8n.commands',
+				makeCommandMsg('community-package-install', true, payload),
+			);
+			messageHandler(
+				'n8n:n8n.commands',
+				makeCommandMsg('community-package-install', true, payload),
+			);
+
+			vi.advanceTimersByTime(300);
+
+			expect(pubsubEventBus.emit).toHaveBeenCalledWith('community-package-install', payload);
+			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(1);
+		});
+
 		it('should not debounce immediate commands', () => {
 			const pubsubEventBus = mock<PubSubEventBus>();
 			new Subscriber(
