@@ -25,7 +25,6 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
@@ -115,8 +114,6 @@ export type PublicFrontendSettings = {
 export class FrontendService {
 	private settings: FrontendSettings;
 
-	private communityPackagesService?: CommunityPackagesService;
-
 	private publishedWorkflowCountCache?: { value: number; expiresAt: number };
 
 	private publishedWorkflowCountRequest?: Promise<number>;
@@ -145,14 +142,6 @@ export class FrontendService {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
 		void this.generateTypes();
-		// @TODO: Move to community-packages module
-		if (Container.get(CommunityPackagesConfig).enabled) {
-			void import('@/modules/community-packages/community-packages.service.js').then(
-				({ CommunityPackagesService }) => {
-					this.communityPackagesService = Container.get(CommunityPackagesService);
-				},
-			);
-		}
 	}
 
 	private collectEnvFeatureFlags(): N8nEnvFeatFlags {
@@ -578,10 +567,6 @@ export class FrontendService {
 
 		if (this.license.isVariablesEnabled()) {
 			this.settings.variables.limit = this.license.getVariablesLimit();
-		}
-
-		if (this.communityPackagesService) {
-			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
 		}
 
 		if (isAiAssistantEnabled) {

@@ -76,6 +76,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "gitConnection:list",
   "gitConnection:clone",
   "gitConnection:push",
+  "gitConnection:manageProjects",
   "tag:create",
   "tag:read",
   "tag:update",

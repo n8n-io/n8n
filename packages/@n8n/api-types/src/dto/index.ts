@@ -102,6 +102,8 @@ export {
 	CloneGitConnectionDto,
 	CreateGitConnectionDto,
 	GitConnectionListPublicDto,
+	GitConnectionProjectListPublicDto,
+	GitConnectionProjectPublicDto,
 	GitConnectionPublicDto,
 	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,

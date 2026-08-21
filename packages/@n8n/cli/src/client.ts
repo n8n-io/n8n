@@ -258,6 +258,18 @@ export class N8nClient {
 		return await this.post<PushGitConnectionResult>(`/git-connections/${id}/push`);
 	}
 
+	async listGitConnectionProjects(id: string) {
+		return await this.get<{ projectIds: string[] }>(`/git-connections/${id}/projects`);
+	}
+
+	async addProjectToGitConnection(id: string, projectId: string) {
+		return await this.post<Record<string, unknown>>(`/git-connections/${id}/projects/${projectId}`);
+	}
+
+	async removeProjectFromGitConnection(id: string, projectId: string) {
+		return await this.del<undefined>(`/git-connections/${id}/projects/${projectId}`);
+	}
+
 	// ─── Workflows ─────────────────────────────────────────────────
 
 	async listWorkflows(query: Record<string, string> = {}, limit?: number) {
