@@ -169,9 +169,9 @@ function getInputClass(isEmpty: boolean): string {
 			:class="[$style.tags, props.embedded && $style.tagsEmbedded]"
 			@invalid="onInvalid"
 		>
-			<template #default="{ modelValue }">
+			<template #default="{ modelValue: tags }">
 				<TagsInputItem
-					v-for="(tag, index) in modelValue"
+					v-for="(tag, index) in tags"
 					:key="getTagKey(tag, index)"
 					:value="tag"
 					:class="$style.tag"
@@ -204,15 +204,15 @@ function getInputClass(isEmpty: boolean): string {
 				<slot
 					:id="props.id"
 					name="input"
-					:placeholder="modelValue.length ? '' : props.placeholder"
+					:placeholder="tags.length ? '' : props.placeholder"
 					:auto-focus="props.autoFocus"
 					:disabled="props.disabled"
-					:class="getInputClass(modelValue.length === 0)"
+					:class="getInputClass(tags.length === 0)"
 				>
 					<TagsInputInput
 						:id="props.id"
-						:class="getInputClass(modelValue.length === 0)"
-						:placeholder="modelValue.length ? '' : props.placeholder"
+						:class="getInputClass(tags.length === 0)"
+						:placeholder="tags.length ? '' : props.placeholder"
 						:auto-focus="props.autoFocus"
 						:disabled="props.disabled"
 					/>
@@ -226,7 +226,8 @@ function getInputClass(isEmpty: boolean): string {
 @use '@n8n/design-system/css/mixins/focus';
 @use '@n8n/design-system/css/mixins/input' as input-mixin;
 
-.root {
+.root,
+.embedded {
 	@include input-mixin.size-variables('large');
 	@include input-mixin.theme-variables(var(--border-color));
 
@@ -235,7 +236,9 @@ function getInputClass(isEmpty: boolean): string {
 	--tag--gap: var(--spacing--4xs);
 	--tag--delete--size: max(var(--height--4xs), calc(var(--tag--height) - 2 * var(--spacing--4xs)));
 	--tag--padding-inline-end: calc((var(--tag--height) - var(--tag--delete--size) - 2px) / 2);
+}
 
+.root {
 	display: flex;
 	flex: 1;
 	width: 100%;
@@ -273,11 +276,6 @@ function getInputClass(isEmpty: boolean): string {
 }
 
 .embedded {
-	@include input-mixin.size-variables('large');
-	@include input-mixin.theme-variables(var(--border-color));
-
-	--tags-input--gap: calc(var(--tags-input--padding) - 1px);
-	--tag--height: calc(var(--input--height) - 2 * var(--tags-input--padding));
 	width: 100%;
 }
 
