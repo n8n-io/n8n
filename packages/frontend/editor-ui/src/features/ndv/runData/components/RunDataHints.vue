@@ -211,7 +211,7 @@ function toggle(entry: HintEntry) {
 	margin: 0;
 	padding: 0;
 	border: none;
-	border-radius: var(--radius);
+	border-radius: var(--radius--3xs);
 	background: none;
 	color: inherit;
 	font: inherit;
