@@ -92,6 +92,7 @@ const authorizeAndMintCode = async (
 };
 
 beforeAll(async () => {
+	process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 = 'true'; // gates the form-trigger resolver
 	owner = await createOwner();
 	member = await createMember();
 	formEndpoint = Container.get(GlobalConfig).endpoints.form;
@@ -99,6 +100,10 @@ beforeAll(async () => {
 	codes = Container.get(OAuthAuthorizationCodeService);
 	oauthServer = Container.get(OAuthServerService);
 	tokenService = Container.get(OAuthTokenService);
+});
+
+afterAll(() => {
+	delete process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2;
 });
 
 afterEach(async () => {
