@@ -37,6 +37,9 @@ paths:
   /role-mapping-rules/{roleMappingRuleId}/move:
     post:
       $ref: ./handlers/role-mapping-rules/spec/paths/moveRoleMappingRule.generated.yml
+  /role-mapping-rules/{roleMappingRuleId}:
+    patch:
+      $ref: ./handlers/role-mapping-rules/spec/paths/updateRoleMappingRule.generated.yml
   /roles:
     get:
       $ref: ./handlers/roles/spec/paths/getAllRoles.generated.yml

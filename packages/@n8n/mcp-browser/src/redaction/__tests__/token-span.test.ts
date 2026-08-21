@@ -1,4 +1,4 @@
-import { expandToTokenSpan } from '../token-span';
+import { assignmentNames, expandToTokenSpan, tokenize } from '../token-span';
 
 function expand(text: string, match: string): string {
 	return expandToTokenSpan(text, text.indexOf(match), match.length).span;
@@ -78,5 +78,51 @@ describe('expandToTokenSpan', () => {
 	it('reports whether the token was delimited', () => {
 		expect(delimited('key AQ.abc123 rest', 'abc123')).toBe(true);
 		expect(delimited(`${'x'.repeat(5000)}abc123`, 'abc123')).toBe(false);
+	});
+});
+
+describe('tokenize', () => {
+	it.each([
+		{
+			named: 'strips punctuation around a value',
+			text: '(abcdef1234567890),',
+			want: ['abcdef1234567890'],
+		},
+		{ named: 'keeps a dot inside a token', text: 'AQ.Ab8RN6Jr7x', want: ['AQ.Ab8RN6Jr7x'] },
+		{ named: 'never ends a token on a dot', text: 'value.', want: ['value'] },
+		{
+			named: 'keeps base64 padding',
+			text: 'dGhpc2lzbm90YXJlYWw==',
+			want: ['dGhpc2lzbm90YXJlYWw=='],
+		},
+		{
+			named: 'breaks an assignment off its value',
+			text: 'NAME=secretvalue',
+			want: ['NAME=', 'secretvalue'],
+		},
+		{ named: 'drops empty runs', text: '  a   b  ', want: ['a', 'b'] },
+	])('$named', ({ text, want }) => {
+		expect(tokenize(text)).toEqual(want);
+	});
+});
+
+describe('assignmentNames', () => {
+	it.each([
+		{ named: 'a name separating a value', text: 'NAME=secretvalue', want: ['NAME='] },
+		{ named: 'every name in a chain', text: 'a=b=c', want: ['a=', 'b='] },
+		{ named: 'nothing for base64 padding', text: 'dGhpc2lzbm90YXJlYWw==', want: [] },
+		{ named: 'nothing for padding followed by more text', text: 'dGhpcw== copy', want: [] },
+		{ named: 'a name across spaces', text: 'NAME = secretvalue', want: ['NAME'] },
+		{
+			named: 'a name when only the value is spaced off',
+			text: 'NAME =secretvalue',
+			want: ['NAME', '='],
+		},
+		// Indistinguishable from padding plus a word at this level, so left alone
+		// rather than guessed at — guessing would uncapture a real base64 secret.
+		{ named: 'nothing when only the name is spaced off', text: 'NAME= secretvalue', want: [] },
+		{ named: 'nothing when there is no assignment', text: 'plain text here', want: [] },
+	])('reports $named', ({ text, want }) => {
+		expect(assignmentNames(text)).toEqual(want);
 	});
 });

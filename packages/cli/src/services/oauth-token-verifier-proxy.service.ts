@@ -56,6 +56,14 @@ export interface OAuthTokenVerifier {
 		expectedAudience?: string,
 		grant?: OAuthResourceGrant,
 	): Promise<UserWithContext>;
+
+	/**
+	 * Re-take a sealed grant's `workflow:execute` decision for `userId`, without the token.
+	 * Used by the sealed-identity credential path to keep the check live: a caller whose
+	 * execute access was revoked after the identity was sealed must stop resolving. Returns
+	 * `false` when the user is gone/disabled or lacks the access the grant requires.
+	 */
+	authorizeSealedGrant(userId: string, grant: OAuthResourceGrant): Promise<boolean>;
 }
 
 /**
@@ -91,5 +99,13 @@ export class OAuthTokenVerifierProxy implements OAuthTokenVerifier {
 			};
 		}
 		return await this.provider.verifyOAuthAccessToken(token, expectedAudience, grant);
+	}
+
+	async authorizeSealedGrant(userId: string, grant: OAuthResourceGrant): Promise<boolean> {
+		// Fail closed: with no verifier registered there is nothing to re-authorize against.
+		if (!this.provider) {
+			return false;
+		}
+		return await this.provider.authorizeSealedGrant(userId, grant);
 	}
 }

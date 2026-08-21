@@ -18,7 +18,7 @@ import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import {
 	createRunExecutionData,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
@@ -1563,6 +1563,23 @@ describe('RunData', () => {
 
 			expect(outputPane.getByText('Output pane hint')).toBeInTheDocument();
 			expect(outputPane.queryByText('Input pane hint')).not.toBeInTheDocument();
+		});
+
+		it('should render every hint inside the hints container, which caps their height', () => {
+			const { getByTestId, getAllByTestId } = render({
+				displayMode: 'table',
+				nodeTypeHints: [
+					{ message: 'First hint', location: 'outputPane' },
+					{ message: 'Second hint', location: 'outputPane' },
+				],
+				paneType: 'output',
+			});
+
+			const hintsContainer = getByTestId('run-data-hints');
+
+			expect(within(hintsContainer).getAllByTestId('node-hint')).toHaveLength(2);
+			expect(getAllByTestId('node-hint')).toHaveLength(2);
+			expect(hintsContainer).toHaveClass('hints');
 		});
 
 		it('should hide an afterExecution hint before the node has run', () => {

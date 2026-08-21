@@ -185,7 +185,7 @@ export class BreakingChangeService {
 
 		for (let skip = 0; skip < totalWorkflows; skip += this.batchSize) {
 			const workflows = await this.workflowRepository.find({
-				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'updatedAt'],
+				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'settings', 'updatedAt'],
 				skip,
 				take: this.batchSize,
 				order: { id: 'ASC' },

@@ -45,7 +45,9 @@ describe('getComputerUsePrompt', () => {
 				localGateway: { status: 'disabled' },
 			});
 
-			expect(result).toContain('Setup computer use');
+			expect(result).toContain('+ button beside the chat input');
+			expect(result).toContain('"Connect local computer"');
+			expect(result).toContain('"Connect browser"');
 		});
 	});
 
@@ -74,7 +76,9 @@ describe('getComputerUsePrompt', () => {
 				localGateway: { status: 'disconnected' },
 			});
 
-			expect(result).toContain('"Connect"');
+			expect(result).toContain('+ button beside the chat input');
+			expect(result).toContain('"Connect local computer"');
+			expect(result).toContain('"Connect browser"');
 		});
 	});
 
@@ -162,6 +166,8 @@ describe('getComputerUsePrompt', () => {
 			});
 
 			expect(result).toContain('Browser Automation (Disabled in Computer Use)');
+			expect(result).toContain('+ button beside the chat input');
+			expect(result).toContain('"Connect browser"');
 		});
 
 		it('does not include the full browser automation rules', () => {

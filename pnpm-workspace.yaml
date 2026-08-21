@@ -146,7 +146,7 @@ catalog:
   esbuild: ^0.28.1
   eslint: 9.29.0
   eslint-plugin-n8n-nodes-base: ^1.16.7
-  eslint-plugin-oxlint: 1.79.0
+  eslint-plugin-oxlint: 1.78.0
   express: 5.1.0
   fast-check: ^3.23.2
   fast-glob: 3.3.3
@@ -186,14 +186,14 @@ catalog:
   nodemailer: 8.0.10
   openai: 6.46.0
   oracledb: 6.10.0
-  oxlint: 1.79.0
+  oxlint: 1.78.0
   oxlint-tsgolint: ^0.21.1
   pdf-parse: 2.4.5
   pdfjs-dist: 5.4.296
   pg: 8.21.0
   picocolors: 1.0.1
   playwright-core: 1.62.1
-  posthog-node: 5.33.4
+  posthog-node: 5.49.1
   prettier: 3.6.2
   proxy-from-env: ^1.1.0
   qs: 6.15.2

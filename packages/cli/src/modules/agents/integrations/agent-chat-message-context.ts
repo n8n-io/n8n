@@ -8,6 +8,7 @@ import {
 	type IntegrationMessageContext,
 	type IntegrationMessageSubject,
 	type ReplyExpectation,
+	type SessionBinding,
 } from './integration-tools';
 
 interface UpdateLatestMessageContextOptions {
@@ -84,6 +85,20 @@ export class AgentChatMessageContextBridge {
 				}`,
 			);
 			return undefined;
+		}
+	}
+
+	async resolveSession(threadId: string): Promise<SessionBinding | null> {
+		if (!this.messageContextStore) return null;
+		try {
+			return await this.messageContextStore.resolveSession(threadId);
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to resolve session binding', {
+				agentId: this.agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
 		}
 	}
 
