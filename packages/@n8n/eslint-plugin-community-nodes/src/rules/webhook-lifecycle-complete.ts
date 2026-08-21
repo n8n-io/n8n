@@ -10,6 +10,33 @@ import {
 } from '../utils/index.js';
 
 /**
+ * Strips `as` / `satisfies` / `!` / type assertions to reach the value they
+ * annotate. Annotating a value says nothing about what it holds, so the rule
+ * reads through them everywhere rather than losing sight of the node.
+ */
+function unwrapTypeAnnotations(node: TSESTree.Node): TSESTree.Node {
+	switch (node.type) {
+		case AST_NODE_TYPES.TSAsExpression:
+		case AST_NODE_TYPES.TSSatisfiesExpression:
+		case AST_NODE_TYPES.TSNonNullExpression:
+		case AST_NODE_TYPES.TSTypeAssertion:
+			return unwrapTypeAnnotations(node.expression);
+		default:
+			return node;
+	}
+}
+
+/** Returns the value as an object literal, or undefined when it is not one. */
+function asObjectExpression(
+	node: TSESTree.Node | null | undefined,
+): TSESTree.ObjectExpression | undefined {
+	if (!node) return undefined;
+
+	const value = unwrapTypeAnnotations(node);
+	return value.type === AST_NODE_TYPES.ObjectExpression ? value : undefined;
+}
+
+/**
  * Returns true if the description declares webhook endpoints, indicating the
  * node is a webhook-based trigger that needs a complete lifecycle.
  *
@@ -18,30 +45,85 @@ import {
  */
 function hasWebhooksDeclared(descriptionValue: TSESTree.ObjectExpression): boolean {
 	const webhooksProperty = findObjectProperty(descriptionValue, 'webhooks');
-	if (webhooksProperty?.value.type !== AST_NODE_TYPES.ArrayExpression) return false;
-	return webhooksProperty.value.elements.length > 0;
+	if (!webhooksProperty) return false;
+
+	const webhooks = unwrapTypeAnnotations(webhooksProperty.value);
+	if (webhooks.type !== AST_NODE_TYPES.ArrayExpression) return false;
+	return webhooks.elements.length > 0;
 }
 
-/** Returns true when the property defines a (possibly async) method named `name`. */
-function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string): boolean {
+/**
+ * Returns true when the value supplies an implementation. A method may be
+ * written inline or handed over as a reference (`{ checkExists }`,
+ * `{ delete: removeWebhook }`, `{ create: hooks.create }`), which is just as
+ * implemented as a function expression. `undefined` is an identifier too, but
+ * it supplies nothing.
+ */
+function isImplementation(node: TSESTree.Node): boolean {
+	const value = unwrapTypeAnnotations(node);
+
+	switch (value.type) {
+		case AST_NODE_TYPES.FunctionExpression:
+		case AST_NODE_TYPES.ArrowFunctionExpression:
+		case AST_NODE_TYPES.MemberExpression:
+			return true;
+		case AST_NODE_TYPES.Identifier:
+			return value.name !== 'undefined';
+		default:
+			return false;
+	}
+}
+
+/** Returns true when the property states the key `name`, whatever value it gives it. */
+function declaresKey(
+	property: TSESTree.ObjectLiteralElement,
+	name: string,
+): property is TSESTree.Property {
 	if (property.type !== AST_NODE_TYPES.Property) return false;
 	if (property.computed) return false;
 
-	const keyMatches =
-		(property.key.type === AST_NODE_TYPES.Identifier && property.key.name === name) ||
-		(property.key.type === AST_NODE_TYPES.Literal && property.key.value === name);
-	if (!keyMatches) return false;
-
 	return (
-		property.value.type === AST_NODE_TYPES.FunctionExpression ||
-		property.value.type === AST_NODE_TYPES.ArrowFunctionExpression
+		(property.key.type === AST_NODE_TYPES.Identifier && property.key.name === name) ||
+		(property.key.type === AST_NODE_TYPES.Literal && property.key.value === name)
 	);
 }
 
+/** Returns true when the property supplies a method named `name`. */
+function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string): boolean {
+	return declaresKey(property, name) && isImplementation(property.value);
+}
+
+/**
+ * Whatever a spread carries in cannot be read from the class, so only the
+ * properties written after the last one settle the group. Everything before it
+ * may be replaced by that spread, and the spread itself may fill in a key the
+ * group never mentions.
+ */
+function conclusiveProperties(
+	group: TSESTree.ObjectExpression,
+): [properties: TSESTree.ObjectLiteralElement[], spreads: boolean] {
+	let lastSpread = -1;
+	group.properties.forEach((property, index) => {
+		if (property.type === AST_NODE_TYPES.SpreadElement) lastSpread = index;
+	});
+
+	return [group.properties.slice(lastSpread + 1), lastSpread !== -1];
+}
+
 function findMissingMethods(group: TSESTree.ObjectExpression): WebhookLifecycleMethod[] {
-	return WEBHOOK_LIFECYCLE_METHODS.filter(
-		(method) => !group.properties.some((property) => isMethodProperty(property, method)),
-	);
+	const [properties, spreads] = conclusiveProperties(group);
+
+	return WEBHOOK_LIFECYCLE_METHODS.filter((method) => {
+		const declared = properties.find((property): property is TSESTree.Property =>
+			declaresKey(property, method),
+		);
+
+		// A key stated last says what the method really is, `delete: undefined`
+		// included. Otherwise a spread leaves it open, and its absence proves
+		// nothing; without one, an absent key is simply missing.
+		if (declared) return !isImplementation(declared.value);
+		return !spreads;
+	});
 }
 
 export const WebhookLifecycleCompleteRule = createRule({
@@ -71,8 +153,8 @@ export const WebhookLifecycleCompleteRule = createRule({
 				const descriptionProperty = findClassProperty(node, 'description');
 				if (!descriptionProperty) return;
 
-				const descriptionValue = descriptionProperty.value;
-				if (descriptionValue?.type !== AST_NODE_TYPES.ObjectExpression) return;
+				const descriptionValue = asObjectExpression(descriptionProperty.value);
+				if (!descriptionValue) return;
 
 				const webhookMethodsProperty = findClassProperty(node, 'webhookMethods');
 
@@ -88,11 +170,10 @@ export const WebhookLifecycleCompleteRule = createRule({
 					return;
 				}
 
-				if (webhookMethodsProperty.value.type !== AST_NODE_TYPES.ObjectExpression) {
-					return;
-				}
+				const webhookMethods = asObjectExpression(webhookMethodsProperty.value);
+				if (!webhookMethods) return;
 
-				if (webhookMethodsProperty.value.properties.length === 0) {
+				if (webhookMethods.properties.length === 0) {
 					context.report({
 						node: webhookMethodsProperty.key,
 						messageId: 'emptyWebhookMethods',
@@ -100,9 +181,11 @@ export const WebhookLifecycleCompleteRule = createRule({
 					return;
 				}
 
-				for (const groupProperty of webhookMethodsProperty.value.properties) {
+				for (const groupProperty of webhookMethods.properties) {
 					if (groupProperty.type !== AST_NODE_TYPES.Property) continue;
-					if (groupProperty.value.type !== AST_NODE_TYPES.ObjectExpression) continue;
+
+					const group = asObjectExpression(groupProperty.value);
+					if (!group) continue;
 
 					const groupName =
 						groupProperty.key.type === AST_NODE_TYPES.Identifier
@@ -111,7 +194,7 @@ export const WebhookLifecycleCompleteRule = createRule({
 								? String(groupProperty.key.value)
 								: 'default';
 
-					const missing = findMissingMethods(groupProperty.value);
+					const missing = findMissingMethods(group);
 					if (missing.length === 0) continue;
 
 					context.report({
