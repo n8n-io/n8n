@@ -12,11 +12,9 @@ import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workf
 
 import { companyFields, companyOperations } from './CompanyDescription';
 import type { ICompany } from './CompanyInteface';
+import { contactFields, contactOperations } from './ContactDescription';
+import type { IAvatar, IContact, IContactCompany } from './ContactInterface';
 import { intercomApiRequest, intercomApiRequestAllItems, validateJSON } from './GenericFunctions';
-import { leadFields, leadOperations } from './LeadDescription';
-import type { IAvatar, ILead, ILeadCompany } from './LeadInterface';
-import { userFields, userOperations } from './UserDescription';
-import type { IUser, IUserCompany } from './UserInterface';
 
 export class Intercom implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,23 +52,16 @@ export class Intercom implements INodeType {
 							'Companies allow you to represent commercial organizations using your product',
 					},
 					{
-						name: 'Lead',
-						value: 'lead',
-						description: 'Leads are useful for representing logged-out users of your application',
-					},
-					{
-						name: 'User',
-						value: 'user',
-						description: 'The Users resource is the primary way of interacting with Intercom',
+						name: 'Contact',
+						value: 'contact',
+						description: 'Contacts represent your leads and users in Intercom',
 					},
 				],
-				default: 'user',
+				default: 'contact',
 			},
-			...leadOperations,
-			...userOperations,
+			...contactOperations,
 			...companyOperations,
-			...userFields,
-			...leadFields,
+			...contactFields,
 			...companyFields,
 		],
 	};
@@ -112,17 +103,27 @@ export class Intercom implements INodeType {
 				qs = {};
 				const resource = this.getNodeParameter('resource', 0);
 				const operation = this.getNodeParameter('operation', 0);
-				//https://developers.intercom.com/intercom-api-reference/reference#leads
-				if (resource === 'lead') {
+				//https://developers.intercom.com/intercom-api-reference/reference#contacts
+				if (resource === 'contact') {
 					if (operation === 'create' || operation === 'update') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const jsonActive = this.getNodeParameter('jsonParameters', i);
-						const body: ILead = {};
+						const body: IContact = {};
+
 						if (operation === 'create') {
-							body.email = this.getNodeParameter('email', i) as string;
+							const identifierType = this.getNodeParameter('identifierType', i) as string;
+							if (identifierType === 'email') {
+								body.email = this.getNodeParameter('idValue', i) as string;
+							} else if (identifierType === 'userId') {
+								body.user_id = this.getNodeParameter('idValue', i) as string;
+							}
 						}
+
 						if (additionalFields.email) {
 							body.email = additionalFields.email as string;
+						}
+						if (additionalFields.userId) {
+							body.user_id = additionalFields.userId as string;
 						}
 						if (additionalFields.phone) {
 							body.phone = additionalFields.phone as string;
@@ -135,6 +136,16 @@ export class Intercom implements INodeType {
 						}
 						if (additionalFields.updateLastRequestAt) {
 							body.update_last_request_at = additionalFields.updateLastRequestAt as boolean;
+						}
+						if (additionalFields.sessionCount) {
+							body.session_count = additionalFields.sessionCount as number;
+						}
+						if (additionalFields.avatar) {
+							const avatar: IAvatar = {
+								type: 'avatar',
+								image_url: additionalFields.avatar as string,
+							};
+							body.avatar = avatar;
 						}
 						if (additionalFields.utmSource) {
 							body.utm_source = additionalFields.utmSource as string;
@@ -151,18 +162,11 @@ export class Intercom implements INodeType {
 						if (additionalFields.utmContent) {
 							body.utm_content = additionalFields.utmContent as string;
 						}
-						if (additionalFields.avatar) {
-							const avatar: IAvatar = {
-								type: 'avatar',
-								image_url: additionalFields.avatar as string,
-							};
-							body.avatar = avatar;
-						}
 						if (additionalFields.companies) {
-							const companies: ILeadCompany[] = [];
+							const companies: IContactCompany[] = [];
 							// @ts-ignore
 							additionalFields.companies.forEach((o) => {
-								const company: ILeadCompany = {};
+								const company: IContactCompany = {};
 								company.company_id = o;
 								companies.push(company);
 							});
@@ -193,18 +197,63 @@ export class Intercom implements INodeType {
 						if (operation === 'update') {
 							const updateBy = this.getNodeParameter('updateBy', 0) as string;
 							const value = this.getNodeParameter('value', i) as string;
-							if (updateBy === 'userId') {
-								body.user_id = value;
-							}
-							if (updateBy === 'id') {
-								body.id = value;
-							}
-						}
+							let contactId: string | undefined;
 
-						try {
-							responseData = await intercomApiRequest.call(this, '/contacts', 'POST', body);
-						} catch (error) {
-							throw new NodeApiError(this.getNode(), error as JsonObject);
+							if (updateBy === 'id') {
+								contactId = value;
+								body.id = value;
+							} else {
+								const lookupQuery: IDataObject = {};
+								if (updateBy === 'userId') {
+									lookupQuery.user_id = value;
+									body.user_id = value;
+								} else if (updateBy === 'email') {
+									lookupQuery.email = value;
+									body.email = value;
+								}
+
+								const lookupResponse = await intercomApiRequest.call(
+									this,
+									'/contacts',
+									'GET',
+									{},
+									lookupQuery,
+								);
+								const contacts = lookupResponse?.contacts as IDataObject[] | undefined;
+								if (!contacts?.length || typeof contacts[0].id !== 'string') {
+									throw new NodeOperationError(
+										this.getNode(),
+										'Matching contact not found for update',
+										{ itemIndex: i },
+									);
+								}
+								contactId = contacts[0].id as string;
+							}
+
+							if (!contactId) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Unable to resolve contact ID for update',
+									{ itemIndex: i },
+								);
+							}
+
+							try {
+								responseData = await intercomApiRequest.call(
+									this,
+									`/contacts/${contactId}`,
+									'PUT',
+									body,
+								);
+							} catch (error) {
+								throw new NodeApiError(this.getNode(), error as JsonObject);
+							}
+						} else {
+							try {
+								responseData = await intercomApiRequest.call(this, '/contacts', 'POST', body);
+							} catch (error) {
+								throw new NodeApiError(this.getNode(), error as JsonObject);
+							}
 						}
 					}
 					if (operation === 'get') {
@@ -266,179 +315,6 @@ export class Intercom implements INodeType {
 							}
 						} catch (error) {
 							throw new NodeApiError(this.getNode(), error as JsonObject);
-						}
-					}
-				}
-				//https://developers.intercom.com/intercom-api-reference/reference#users
-				if (resource === 'user') {
-					if (operation === 'create' || operation === 'update') {
-						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const jsonActive = this.getNodeParameter('jsonParameters', i);
-						const body: IUser = {};
-
-						if (operation === 'create') {
-							const identifierType = this.getNodeParameter('identifierType', i) as string;
-							if (identifierType === 'email') {
-								body.email = this.getNodeParameter('idValue', i) as string;
-							} else if (identifierType === 'userId') {
-								body.user_id = this.getNodeParameter('idValue', i) as string;
-							}
-						}
-
-						if (additionalFields.email) {
-							body.email = additionalFields.email as string;
-						}
-						if (additionalFields.userId) {
-							body.user_id = additionalFields.userId as string;
-						}
-						if (additionalFields.phone) {
-							body.phone = additionalFields.phone as string;
-						}
-						if (additionalFields.name) {
-							body.name = additionalFields.name as string;
-						}
-						if (additionalFields.unsubscribedFromEmails) {
-							body.unsubscribed_from_emails = additionalFields.unsubscribedFromEmails as boolean;
-						}
-						if (additionalFields.updateLastRequestAt) {
-							body.update_last_request_at = additionalFields.updateLastRequestAt as boolean;
-						}
-						if (additionalFields.sessionCount) {
-							body.session_count = additionalFields.sessionCount as number;
-						}
-						if (additionalFields.avatar) {
-							const avatar: IAvatar = {
-								type: 'avatar',
-								image_url: additionalFields.avatar as string,
-							};
-							body.avatar = avatar;
-						}
-						if (additionalFields.utmSource) {
-							body.utm_source = additionalFields.utmSource as string;
-						}
-						if (additionalFields.utmMedium) {
-							body.utm_medium = additionalFields.utmMedium as string;
-						}
-						if (additionalFields.utmCampaign) {
-							body.utm_campaign = additionalFields.utmCampaign as string;
-						}
-						if (additionalFields.utmTerm) {
-							body.utm_term = additionalFields.utmTerm as string;
-						}
-						if (additionalFields.utmContent) {
-							body.utm_content = additionalFields.utmContent as string;
-						}
-						if (additionalFields.companies) {
-							const companies: IUserCompany[] = [];
-							// @ts-ignore
-							additionalFields.companies.forEach((o) => {
-								const company: IUserCompany = {};
-								company.company_id = o;
-								companies.push(company);
-							});
-							body.companies = companies;
-						}
-						if (additionalFields.sessionCount) {
-							body.session_count = additionalFields.sessionCount as number;
-						}
-						if (!jsonActive) {
-							const customAttributesValues = (
-								this.getNodeParameter('customAttributesUi', i) as IDataObject
-							).customAttributesValues as IDataObject[];
-							if (customAttributesValues) {
-								const customAttributes = {};
-								for (let index = 0; index < customAttributesValues.length; index++) {
-									// @ts-ignore
-									customAttributes[customAttributesValues[index].name] =
-										customAttributesValues[index].value;
-								}
-								body.custom_attributes = customAttributes;
-							}
-						} else {
-							const customAttributesJson = validateJSON(
-								this.getNodeParameter('customAttributesJson', i) as string,
-							);
-							if (customAttributesJson) {
-								body.custom_attributes = customAttributesJson;
-							}
-						}
-
-						if (operation === 'update') {
-							const updateBy = this.getNodeParameter('updateBy', 0) as string;
-							const value = this.getNodeParameter('value', i) as string;
-							if (updateBy === 'userId') {
-								body.user_id = value;
-							}
-							if (updateBy === 'id') {
-								body.id = value;
-							}
-							if (updateBy === 'email') {
-								body.email = value;
-							}
-						}
-
-						try {
-							responseData = await intercomApiRequest.call(this, '/users', 'POST', body, qs);
-						} catch (error) {
-							throw new NodeApiError(this.getNode(), error as JsonObject);
-						}
-					}
-					if (operation === 'get') {
-						const selectBy = this.getNodeParameter('selectBy', 0) as string;
-						const value = this.getNodeParameter('value', i) as string;
-						if (selectBy === 'userId') {
-							qs.user_id = value;
-						}
-						try {
-							if (selectBy === 'id') {
-								responseData = await intercomApiRequest.call(
-									this,
-									`/users/${value}`,
-									'GET',
-									{},
-									qs,
-								);
-							} else {
-								responseData = await intercomApiRequest.call(this, '/users', 'GET', {}, qs);
-							}
-						} catch (error) {
-							throw new NodeApiError(this.getNode(), error as JsonObject);
-						}
-					}
-					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i);
-						Object.assign(qs, filters);
-
-						try {
-							if (returnAll) {
-								responseData = await intercomApiRequestAllItems.call(
-									this,
-									'users',
-									'/users',
-									'GET',
-									{},
-									qs,
-								);
-							} else {
-								qs.per_page = this.getNodeParameter('limit', i);
-								responseData = await intercomApiRequest.call(this, '/users', 'GET', {}, qs);
-								responseData = responseData.users;
-							}
-						} catch (error) {
-							throw new NodeApiError(this.getNode(), error as JsonObject);
-						}
-					}
-					if (operation === 'delete') {
-						const id = this.getNodeParameter('id', i) as string;
-						try {
-							responseData = await intercomApiRequest.call(this, `/users/${id}`, 'DELETE');
-						} catch (error) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Intercom Error: ${JSON.stringify(error)}`,
-								{ itemIndex: i },
-							);
 						}
 					}
 				}

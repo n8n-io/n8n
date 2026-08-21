@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const userOperations: INodeProperties[] = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,66 +8,143 @@ export const userOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['user'],
+				resource: ['contact'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new user',
-				action: 'Create a user',
+				description: 'Create a new contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a user',
-				action: 'Delete a user',
+				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get data of a user',
-				action: 'Get a user',
+				description: 'Get data of a contact',
+				action: 'Get a contact',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of many users',
-				action: 'Get many users',
+				description: 'Get data of many contacts',
+				action: 'Get many contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a user',
-				action: 'Update a user',
+				description: 'Update a contact',
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
 	},
 ];
 
-export const userFields: INodeProperties[] = [
+export const contactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 user:delete                                */
+	/*                                contact:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID',
-		name: 'id',
-		type: 'string',
-		required: true,
+		displayName: 'Delete By',
+		name: 'deleteBy',
+		type: 'options',
 		displayOptions: {
 			show: {
-				resource: ['user'],
+				resource: ['contact'],
 				operation: ['delete'],
 			},
 		},
+		options: [
+			{
+				name: 'ID',
+				value: 'id',
+				description: 'The Intercom defined ID representing the Contact',
+			},
+			{
+				name: 'User ID',
+				value: 'userId',
+				description: 'Automatically generated identifier for the Contact',
+			},
+		],
+		default: 'id',
+	},
+	{
+		displayName: 'Value',
+		name: 'value',
+		type: 'string',
 		default: '',
-		description: 'The Intercom defined ID representing the Lead',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['contact'],
+				operation: ['delete'],
+			},
+		},
+		description: 'Delete by value',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                  user:getAll                                 */
+	/*                                contact:get                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Select By',
+		name: 'selectBy',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['contact'],
+				operation: ['get'],
+			},
+		},
+		options: [
+			{
+				name: 'Email',
+				value: 'email',
+				description: 'Email representing the Contact',
+			},
+			{
+				name: 'ID',
+				value: 'id',
+				description: 'The Intercom defined ID representing the Contact',
+			},
+			{
+				name: 'User ID',
+				value: 'userId',
+				description: 'Automatically generated identifier for the Contact',
+			},
+			{
+				name: 'Phone',
+				value: 'phone',
+				description: 'Phone representing the Contact',
+			},
+		],
+		default: 'id',
+		description: 'The property to select the contact by',
+	},
+	{
+		displayName: 'Value',
+		name: 'value',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['contact'],
+				operation: ['get'],
+			},
+		},
+		description: 'View by value',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                               contact:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -75,7 +152,7 @@ export const userFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: ['user'],
+				resource: ['contact'],
 				operation: ['getAll'],
 			},
 		},
@@ -88,7 +165,7 @@ export const userFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: ['user'],
+				resource: ['contact'],
 				operation: ['getAll'],
 				returnAll: [false],
 			},
@@ -108,7 +185,7 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['user'],
+				resource: ['contact'],
 				operation: ['getAll'],
 			},
 		},
@@ -118,7 +195,7 @@ export const userFields: INodeProperties[] = [
 				name: 'company_id',
 				type: 'string',
 				default: '',
-				description: 'Company ID representing the user',
+				description: 'Company ID representing the contact',
 			},
 			{
 				displayName: 'Email',
@@ -126,72 +203,34 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'name@email.com',
 				default: '',
-				description: 'The email address of the user',
+				description: 'The email address of the contact',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+				description: 'The phone number of the contact',
 			},
 			{
 				displayName: 'Segment ID',
 				name: 'segment_id',
 				type: 'string',
 				default: '',
-				description: 'Segment representing the user',
+				description: 'Segment representing the contact',
 			},
 			{
 				displayName: 'Tag ID',
 				name: 'tag_id',
 				type: 'string',
 				default: '',
-				description: 'Tag representing the user',
+				description: 'Tag representing the contact',
 			},
 		],
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                  user:get                                 */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Select By',
-		name: 'selectBy',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['get'],
-			},
-		},
-		options: [
-			{
-				name: 'ID',
-				value: 'id',
-				default: '',
-				description: 'The Intercom defined ID representing the Lead',
-			},
-			{
-				name: 'User ID',
-				value: 'userId',
-				default: '',
-				description: 'Automatically generated identifier for the Lead',
-			},
-		],
-		default: '',
-		description: 'The property to select the user by',
-	},
-	{
-		displayName: 'Value',
-		name: 'value',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['get'],
-			},
-		},
-		description: 'View by value',
-	},
-
-	/* -------------------------------------------------------------------------- */
-	/*                                 user:update                                */
+	/*                               contact:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Update By',
@@ -199,7 +238,7 @@ export const userFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: ['user'],
+				resource: ['contact'],
 				operation: ['update'],
 			},
 		},
@@ -207,21 +246,21 @@ export const userFields: INodeProperties[] = [
 			{
 				name: 'ID',
 				value: 'id',
-				description: 'The Intercom defined ID representing the user',
+				description: 'The Intercom defined ID representing the contact',
 			},
 			{
 				name: 'Email',
 				value: 'email',
-				description: 'The email address of user',
+				description: 'The email address of contact',
 			},
 			{
 				name: 'User ID',
 				value: 'userId',
-				description: 'Automatically generated identifier for the user',
+				description: 'Automatically generated identifier for the contact',
 			},
 		],
 		default: 'id',
-		description: 'The property via which to query the user',
+		description: 'The property via which to query the contact',
 	},
 	{
 		displayName: 'Value',
@@ -231,15 +270,15 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['user'],
+				resource: ['contact'],
 				operation: ['update'],
 			},
 		},
-		description: 'Value of the property to identify the user to update',
+		description: 'Value of the property to identify the contact to update',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 user:create                                */
+	/*                               contact:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Identifier Type',
@@ -247,7 +286,7 @@ export const userFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: ['user'],
+				resource: ['contact'],
 				operation: ['create'],
 			},
 		},
@@ -256,16 +295,16 @@ export const userFields: INodeProperties[] = [
 				name: 'User ID',
 				value: 'userId',
 				description:
-					'A unique string identifier for the user. It is required on creation if an email is not supplied.',
+					'A unique string identifier for the contact. It is required on creation if an email is not supplied.',
 			},
 			{
 				name: 'Email',
 				value: 'email',
 				description:
-					"The user's email address. It is required on creation if a user_id is not supplied.",
+					"The contact's email address. It is required on creation if a user_id is not supplied.",
 			},
 		],
-		default: '',
+		default: 'email',
 		description: 'Unique string identifier',
 	},
 	{
@@ -276,7 +315,7 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['user'],
+				resource: ['contact'],
 				operation: ['create'],
 			},
 		},
@@ -290,7 +329,7 @@ export const userFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['create', 'update'],
-				resource: ['user'],
+				resource: ['contact'],
 			},
 		},
 	},
@@ -303,7 +342,7 @@ export const userFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['create', 'update'],
-				resource: ['user'],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -323,24 +362,15 @@ export const userFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Identifies the companies this user belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Identifies the companies this contact belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
-				displayOptions: {
-					show: {
-						'/operation': ['update'],
-						'/resource': ['user'],
-					},
-					hide: {
-						'/updateBy': ['email'],
-					},
-				},
 				type: 'string',
 				placeholder: 'name@email.com',
 				default: '',
-				description: 'Email of the user',
+				description: 'Email of the contact',
 			},
 			{
 				displayName: 'Name',
@@ -348,38 +378,28 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: '',
-				description: 'Name of the user',
+				description: 'Name of the contact',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'The phone number of the user',
+				description: 'The phone number of the contact',
 			},
 			{
 				displayName: 'Session Count',
 				name: 'sessionCount',
 				type: 'number',
-				default: false,
-				options: [],
-				description: 'How many sessions the user has recorded',
+				default: '',
+				description: 'How many sessions the contact has recorded',
 			},
 			{
 				displayName: 'User ID',
 				name: 'userId',
-				displayOptions: {
-					show: {
-						'/operation': ['update'],
-						'/resource': ['user'],
-					},
-					hide: {
-						'/updateBy': ['email', 'userId'],
-					},
-				},
 				type: 'string',
 				default: '',
-				description: 'Email of the user',
+				description: 'The user_id of the contact',
 			},
 			{
 				displayName: 'Unsubscribed From Emails',
@@ -387,16 +407,15 @@ export const userFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				placeholder: '',
-				description: 'Whether the user is unsubscribed from emails',
+				description: 'Whether the contact is unsubscribed from emails',
 			},
 			{
 				displayName: 'Update Last Request At',
 				name: 'updateLastRequestAt',
 				type: 'boolean',
 				default: false,
-				options: [],
 				description:
-					'Whether to instruct Intercom to update the users last_request_at value to the current API service time in UTC',
+					'Whether to instruct Intercom to update the contact last_request_at value to the current API service time in UTC',
 			},
 			{
 				displayName: 'UTM Campaign',
@@ -444,14 +463,14 @@ export const userFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: ['user'],
+				resource: ['contact'],
 				operation: ['create', 'update'],
 				jsonParameters: [true],
 			},
 		},
 		default: '',
 		description:
-			'A hash of key/value pairs to represent custom data you want to attribute to a user',
+			'A hash of key/value pairs to represent custom data you want to attribute to a contact',
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -464,7 +483,7 @@ export const userFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: ['user'],
+				resource: ['contact'],
 				operation: ['create', 'update'],
 				jsonParameters: [false],
 			},
@@ -490,6 +509,6 @@ export const userFields: INodeProperties[] = [
 			},
 		],
 		description:
-			'A hash of key/value pairs to represent custom data you want to attribute to a user',
+			'A hash of key/value pairs to represent custom data you want to attribute to a contact',
 	},
 ];
