@@ -178,6 +178,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
 		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity.js');
+		const { AgentTaskSchedule } = await import('./entities/agent-task-schedule.entity.js');
 		const { AgentObservationEntity } = await import('./entities/agent-observation.entity.js');
 		const { AgentObservationCursorEntity } = await import(
 			'./entities/agent-observation-cursor.entity.js'
@@ -212,6 +213,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentTask,
 			AgentTaskRunLock,
 			AgentTaskSnapshot,
+			AgentTaskSchedule,
 			AgentObservationEntity,
 			AgentObservationCursorEntity,
 			AgentObservationLockEntity,

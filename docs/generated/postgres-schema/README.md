@@ -22,6 +22,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
+| [public.agent_task_schedule](public.agent_task_schedule.md) | 4 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
 | [public.agents](public.agents.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
@@ -182,6 +183,8 @@ erDiagram
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_definition" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_run_lock" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_task_schedule" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_task_schedule" |o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
 "public.agents" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agents" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
@@ -519,6 +522,12 @@ erDiagram
   uuid holderId
   varchar_32_ taskId
   timestamp_3__with_time_zone updatedAt
+}
+"public.agent_task_schedule" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  integer jobId FK
+  varchar_32_ taskId
 }
 "public.agent_task_snapshot" {
   timestamp_3__with_time_zone createdAt

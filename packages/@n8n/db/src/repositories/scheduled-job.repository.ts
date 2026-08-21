@@ -226,10 +226,14 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		await manager.update(ScheduledJob, ids, update);
 	}
 
-	async deleteManyByIds(manager: EntityManager, ids: number[]): Promise<void> {
-		if (ids.length > 0) {
-			await manager.delete(ScheduledJob, ids);
-		}
+	/**
+	 * Delete specific jobs by id; their tasks cascade away.
+	 * @returns how many jobs were deleted (0 when the driver can't report it).
+	 */
+	async deleteManyByIds(manager: EntityManager, ids: number[]): Promise<number> {
+		if (ids.length === 0) return 0;
+		const result = await manager.delete(ScheduledJob, ids);
+		return result.affected ?? 0;
 	}
 
 	/**
@@ -242,6 +246,16 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		nodeId: string,
 	): Promise<number> {
 		const result = await manager.delete(ScheduledJob, { workflowId, nodeId });
+		return result.affected ?? 0;
+	}
+
+	/**
+	 * Delete all jobs of one task type, whoever owns them; their tasks cascade
+	 * away. For teardown of a whole consumer, e.g. when its feature flag is off.
+	 * @returns how many jobs were deleted (0 when the driver can't report it).
+	 */
+	async deleteByTaskType(manager: EntityManager, taskType: string): Promise<number> {
+		const result = await manager.delete(ScheduledJob, { taskType });
 		return result.affected ?? 0;
 	}
 

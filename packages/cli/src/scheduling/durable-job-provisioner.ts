@@ -29,7 +29,7 @@ import { createSchedulerTracer } from './scheduler-tracer';
 const MAX_MISFIRE_GRACE_SECONDS = 30 * Time.days.toSeconds;
 
 /** Identifies one workflow node's jobs, and stamps the rows provisioning inserts. */
-interface ProvisionScope {
+interface WorkflowNodeProvisionScope {
 	workflowId: string;
 	nodeId: string;
 	taskType: string;
@@ -38,10 +38,37 @@ interface ProvisionScope {
 	misfireGraceSeconds?: number;
 }
 
-/** Identifies jobs for deletion: one node's jobs, or one workflow's jobs of a task type. */
+/**
+ * Provisions jobs whose owner is not a workflow node. Ownership lives in a
+ * caller-managed link table, reached only through these callbacks so the link
+ * rows commit atomically with the job rows they describe. The job rows
+ * themselves carry `workflowId`/`nodeId` NULL.
+ */
+export interface LinkedProvisionScope {
+	linked: true;
+	taskType: string;
+	misfirePolicy: ScheduledJobMisfirePolicy;
+	misfireGraceSeconds?: number;
+	/** Identifies the owner in logs. */
+	logContext: Record<string, unknown>;
+	/** The owner's existing jobs of this task type, within the transaction. */
+	findExisting(manager: EntityManager): Promise<ScheduledJob[]>;
+	/** Payload stamped on a desired job's row, by job name. */
+	payloadFor(jobName: string): Record<string, unknown>;
+	/** Record ownership of freshly inserted jobs, within the transaction. */
+	linkInserted(manager: EntityManager, jobs: Array<{ id: number; name: string }>): Promise<void>;
+}
+
+type ProvisionScope = WorkflowNodeProvisionScope | LinkedProvisionScope;
+
+/**
+ * Identifies jobs for deletion: one node's jobs, one workflow's jobs of a task
+ * type, or specific jobs a linked owner resolved through its link table.
+ */
 type DeprovisionScope =
-	| Pick<ProvisionScope, 'workflowId' | 'nodeId'>
-	| Pick<ProvisionScope, 'workflowId' | 'taskType'>;
+	| Pick<WorkflowNodeProvisionScope, 'workflowId' | 'nodeId'>
+	| Pick<WorkflowNodeProvisionScope, 'workflowId' | 'taskType'>
+	| { jobIds: number[] };
 
 /** A job row's schedule columns: one `ScheduleDefinition` flattened for storage. */
 type ScheduleColumns = Pick<
@@ -56,8 +83,9 @@ type ScheduleColumns = Pick<
 >;
 
 /**
- * The write side of the durable scheduler: persists a workflow node's scheduled
- * jobs. The provisioning logic itself lives in the scheduler package (see
+ * The write side of the durable scheduler: persists an owner's scheduled jobs —
+ * a workflow node's, or a linked owner's (see {@link LinkedProvisionScope}).
+ * The provisioning logic itself lives in the scheduler package (see
  * {@link createJobProvisioner}); this service only binds that package's
  * transaction ports to the `@n8n/db` repositories and maps between the domain
  * `ScheduleDefinition` and the flat `scheduled_job` columns.
@@ -123,9 +151,30 @@ export class DurableJobProvisioner {
 		);
 	}
 
+	/**
+	 * Provision a linked owner's jobs so the stored set matches `desired`, matched
+	 * by name. Job rows get `workflowId`/`nodeId` NULL; ownership rows are written
+	 * through the scope's callbacks within the same transaction.
+	 */
+	async provisionLinked(
+		scope: Omit<LinkedProvisionScope, 'linked'>,
+		desired: DesiredJob[],
+	): Promise<ProvisionSummary> {
+		return await this.provisioner.provision({ linked: true, ...scope }, desired);
+	}
+
 	/** Delete all of a node's jobs; their queued tasks cascade away. */
 	async deprovision(workflowId: string, nodeId: string): Promise<{ removed: number }> {
 		return await this.provisioner.deprovision({ workflowId, nodeId });
+	}
+
+	/**
+	 * Delete specific jobs by id; their queued tasks and ownership links cascade
+	 * away. For linked owners, which resolve their job ids through their link table.
+	 */
+	async deprovisionJobs(jobIds: number[]): Promise<{ removed: number }> {
+		if (jobIds.length === 0) return { removed: 0 };
+		return await this.provisioner.deprovision({ jobIds });
 	}
 
 	/**
@@ -152,18 +201,43 @@ export class DurableJobProvisioner {
 		await this.jobs.deleteByWorkflowTaskType(manager, workflowId, taskType);
 	}
 
-	private provisionTransaction({
-		workflowId,
-		nodeId,
-		taskType,
-		payload,
-		misfirePolicy,
-		misfireGraceSeconds: requestedMisfireGraceSeconds,
-	}: ProvisionScope): RunInProvisionTransaction {
+	/**
+	 * The parts of provisioning that differ per scope kind: the owner's log
+	 * identity, how its existing jobs are read, which identity columns stamp an
+	 * inserted row, and how ownership of fresh rows is recorded.
+	 */
+	private scopeBinding(scope: ProvisionScope) {
+		if ('linked' in scope) {
+			return {
+				logContext: scope.logContext,
+				findExisting: async (manager: EntityManager) => await scope.findExisting(manager),
+				identityColumns: (
+					jobName: string,
+				): Pick<NewScheduledJob, 'workflowId' | 'nodeId' | 'payload'> => ({
+					workflowId: null,
+					nodeId: null,
+					payload: scope.payloadFor(jobName),
+				}),
+				linkInserted: async (manager: EntityManager, jobs: Array<{ id: number; name: string }>) =>
+					await scope.linkInserted(manager, jobs),
+			};
+		}
+		const { workflowId, nodeId, payload } = scope;
+		return {
+			logContext: { workflowId, nodeId },
+			findExisting: async (manager: EntityManager) =>
+				await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId),
+			identityColumns: () => ({ workflowId, nodeId, payload }),
+			linkInserted: async () => {},
+		};
+	}
+
+	private provisionTransaction(scope: ProvisionScope): RunInProvisionTransaction {
+		const { taskType, misfirePolicy } = scope;
+		const binding = this.scopeBinding(scope);
 		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
-			requestedMisfireGraceSeconds,
-			workflowId,
-			nodeId,
+			scope.misfireGraceSeconds,
+			binding.logContext,
 		);
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
@@ -174,7 +248,7 @@ export class DurableJobProvisioner {
 				const outdatedGraceJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
-						const rows = await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId);
+						const rows = await binding.findExisting(manager);
 						for (const row of rows) {
 							const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
 							if (graceChanged) {
@@ -197,10 +271,8 @@ export class DurableJobProvisioner {
 						const rows = desired.map(
 							(job): NewScheduledJob => ({
 								name: job.name,
-								workflowId,
-								nodeId,
+								...binding.identityColumns(job.name),
 								taskType,
-								payload,
 								...scheduleColumns(job.schedule),
 								nextRunAt: job.firstRunAt,
 								maxAttempts: this.globalConfig.scheduler.maxAttempts,
@@ -209,6 +281,10 @@ export class DurableJobProvisioner {
 							}),
 						);
 						const ids = await this.jobs.insertMany(manager, rows);
+						await binding.linkInserted(
+							manager,
+							ids.map((id, index) => ({ id, name: desired[index].name })),
+						);
 						for (const id of ids) seededJobIds.add(id);
 						return ids;
 					},
@@ -223,7 +299,9 @@ export class DurableJobProvisioner {
 					},
 					withdrawPendingTasks: async (jobIds) =>
 						await this.tasks.deletePendingByJobIds(manager, jobIds),
-					deleteJobs: async (jobIds) => await this.jobs.deleteManyByIds(manager, jobIds),
+					deleteJobs: async (jobIds) => {
+						await this.jobs.deleteManyByIds(manager, jobIds);
+					},
 				});
 				// Only `redefine` touches a job's misfire policy and grace, so an unchanged
 				// schedule needs this to pick up a policy/grace change on its own.
@@ -246,8 +324,7 @@ export class DurableJobProvisioner {
 
 	private resolveMisfireGraceSeconds(
 		requested: unknown,
-		workflowId: string,
-		nodeId: string,
+		logContext: Record<string, unknown>,
 	): number {
 		const { misfireGraceSeconds, executorIntervalSeconds, materializationWindowSeconds } =
 			this.globalConfig.scheduler;
@@ -276,11 +353,10 @@ export class DurableJobProvisioner {
 		if (effective !== truncated || numeric > MAX_MISFIRE_GRACE_SECONDS) {
 			this.logger.warn(
 				effective > truncated
-					? "Raised a node's misfire grace to the scheduler's minimum"
-					: "Lowered a node's misfire grace to the scheduler's maximum",
+					? "Raised an owner's misfire grace to the scheduler's minimum"
+					: "Lowered an owner's misfire grace to the scheduler's maximum",
 				{
-					workflowId,
-					nodeId,
+					...logContext,
 					requestedMisfireGraceSeconds: numeric,
 					misfireGraceSeconds: effective,
 				},
@@ -360,14 +436,18 @@ export class DurableJobProvisioner {
 			await this.dataSource.transaction(
 				async (manager) =>
 					await work({
-						deleteAll: async () =>
-							'nodeId' in scope
+						deleteAll: async () => {
+							if ('jobIds' in scope) {
+								return await this.jobs.deleteManyByIds(manager, scope.jobIds);
+							}
+							return 'nodeId' in scope
 								? await this.jobs.deleteByWorkflowNode(manager, scope.workflowId, scope.nodeId)
 								: await this.jobs.deleteByWorkflowTaskType(
 										manager,
 										scope.workflowId,
 										scope.taskType,
-									),
+									);
+						},
 					}),
 			);
 	}

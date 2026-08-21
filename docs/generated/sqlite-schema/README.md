@@ -22,6 +22,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
+| [agent_task_schedule](agent_task_schedule.md) | 4 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
 | [agents](agents.md) | 14 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
@@ -165,6 +166,8 @@ erDiagram
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_task_schedule" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_task_schedule" |o--|| "scheduled_job" : "FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents" }o--o| "agent_history" : "FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -506,6 +509,12 @@ erDiagram
   varchar holderId
   varchar_32_ taskId PK
   datetime_3_ updatedAt
+}
+"agent_task_schedule" {
+  varchar_36_ agentId FK
+  datetime_3_ createdAt
+  INTEGER jobId FK
+  varchar_32_ taskId
 }
 "agent_task_snapshot" {
   datetime_3_ createdAt
