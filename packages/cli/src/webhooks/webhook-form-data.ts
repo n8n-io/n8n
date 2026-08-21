@@ -1,21 +1,34 @@
 import formidable from 'formidable';
 import type { IncomingMessage } from 'http';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
 
-// formidable flags "payload too large" conditions (a file too big, the total
-// upload too big, too many files/fields) with `httpCode: 413`. n8n's error
-// classifier reads `httpStatusCode`, not formidable's `httpCode`, so without
-// this mapping these surface as a generic 500 instead of a 413.
-const isPayloadTooLargeError = (error: unknown): boolean =>
-	typeof error === 'object' && error !== null && 'httpCode' in error && error.httpCode === 413;
+// formidable reports the status code it considers appropriate on `httpCode`
+// (413 for a file or field exceeding a limit, 400 for a request it cannot
+// parse). n8n's error classifier reads `httpStatusCode`, not `httpCode`, so
+// without this mapping every parse failure surfaces as a generic 500.
+const getFormidableHttpCode = (error: unknown): number | undefined => {
+	if (typeof error !== 'object' || error === null || !('httpCode' in error)) return undefined;
+	const { httpCode } = error;
+	return typeof httpCode === 'number' ? httpCode : undefined;
+};
 
 const mapFormParseError = (error: unknown): Error => {
-	if (isPayloadTooLargeError(error)) {
-		return new ContentTooLargeError('The submitted form data exceeds the allowed size.');
+	switch (getFormidableHttpCode(error)) {
+		case 413:
+			return new ContentTooLargeError('The submitted form data exceeds the allowed size.');
+		case 400:
+			return BadRequestError.wrap('The submitted form data could not be parsed.', error);
+		default:
+			return error instanceof Error ? error : new Error(String(error));
 	}
-	return error instanceof Error ? error : new Error(String(error));
 };
+
+// A browser submits a file input the user left empty as a 0-byte part with an
+// empty filename. Skipping the part keeps the request valid and produces no
+// binary for that field.
+const isFileSelected = (part: formidable.Part): boolean => Boolean(part.originalFilename);
 
 const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
 	for (const key in values) {
@@ -40,6 +53,12 @@ export const createMultiFormDataParser = (maxFormDataSizeInMb: number) => {
 			multiples: true,
 			encoding: encoding as formidable.BufferEncoding,
 			maxFileSize: maxFormDataSizeInMb * 1024 * 1024,
+			// A file is a valid upload even when it holds no bytes.
+			// formidable rejects 0-byte files by default, and its
+			// `minFileSize` default of 1 rejects them again on its own.
+			allowEmptyFiles: true,
+			minFileSize: 0,
+			filter: isFileSelected,
 			// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 		});
 
