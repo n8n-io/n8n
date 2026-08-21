@@ -1,3 +1,14 @@
+## [1.123.75](https://github.com/n8n-io/n8n/compare/n8n@1.123.74...n8n@1.123.75) (2026-08-21)
+
+
+### Bug Fixes
+
+* **core:** Normalize env values before schema-based parsing ([#36733](https://github.com/n8n-io/n8n/issues/36733)) ([5c9153e](https://github.com/n8n-io/n8n/commit/5c9153e013b33d6f0f8557716ea1ab0c353435fe))
+* **core:** Only init the expression engine for commands that evaluate expressions ([#36649](https://github.com/n8n-io/n8n/issues/36649)) ([16a8676](https://github.com/n8n-io/n8n/commit/16a867684aa8f95a9fba92bce50bb5ddf8bd1962))
+* **core:** Release test-webhook isolate only after teardown completes ([#36633](https://github.com/n8n-io/n8n/issues/36633)) ([a75e5ed](https://github.com/n8n-io/n8n/commit/a75e5ed20a5e59be33df846a68842e89455bb012))
+* **core:** Wrap a trigger's closeFunction in an expression isolate at creation time ([#36699](https://github.com/n8n-io/n8n/issues/36699)) ([fccd046](https://github.com/n8n-io/n8n/commit/fccd046c97b97a4b55ba66bce725d793b94c1f39))
+
+
 ## [1.123.74](https://github.com/n8n-io/n8n/compare/n8n@1.123.73...n8n@1.123.74) (2026-08-20)
 
 
