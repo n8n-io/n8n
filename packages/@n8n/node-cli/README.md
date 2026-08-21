@@ -83,31 +83,48 @@ n8n-node new n8n-nodes-my-app --template declarative/custom
 Run n8n with your node in development mode with hot reload.
 
 ```bash
-n8n-node dev [--external-n8n] [--custom-user-folder <value>]
+n8n-node dev [--n8n-version <value>] [--n8n-image <value>] [--n8n-url <value>] [--external-n8n] [--custom-user-folder <value>]
 ```
+
+Requires Docker or Podman — the same container engine n8n itself is installed
+with (`curl -fsSL https://get.n8n.io | sh`). Use `--external-n8n` if you would
+rather run n8n yourself.
 
 **Flags:**
 | Flag | Description |
 |------|-------------|
-| `--external-n8n` | Run n8n externally instead of in a subprocess |
-| `--custom-user-folder <path>` | Folder to use to store user-specific n8n data (default: `~/.n8n-node-cli`) |
+| `--n8n-version <tag>` | Version tag of the n8n image to run (default: `latest`) |
+| `--n8n-image <image>` | Full image reference, overriding `--n8n-version`. Also settable via `N8N_NODE_DEV_IMAGE` |
+| `--n8n-url <url>` | URL n8n is reachable at (default: `http://localhost:5678`) |
+| `--external-n8n` | Do not start a container; use an n8n you run yourself |
+| `--custom-user-folder <path>` | Only with `--external-n8n`: the `N8N_USER_FOLDER` of that instance (default: `~/.n8n-node-cli`) |
 
 This command:
-- Starts n8n on `http://localhost:5678` (unless using `--external-n8n`)
-- Links your node to n8n's custom nodes directory (`~/.n8n-node-cli/.n8n/custom`)
-- Rebuilds on file changes for live preview
-- Watches for changes in your `src/` directory
+- Starts n8n in a container on `http://localhost:5678` (unless using `--external-n8n`)
+- Mounts your project into the container's custom nodes directory
+- Persists workflows and credentials in the `n8n-node-cli-data` volume
+- Recompiles on change and pushes a reload to n8n, including for icons and JSON assets
+
+`CONTAINER_ENGINE=docker|podman` overrides engine detection. Colima, Rancher
+Desktop, OrbStack and a remote `DOCKER_HOST` all work.
 
 **Examples:**
 ```bash
-# Standard development with built-in n8n
+# Standard development, latest n8n
 n8n-node dev
 
-# Use external n8n instance
+# Pin the n8n version
+n8n-node dev --n8n-version 2.20.7
+
+# Test against a locally built image
+n8n-node dev --n8n-image n8nio/n8n:local
+
+# Use an n8n instance you started yourself. It must run with
+# N8N_DEV_RELOAD=true and N8N_USER_FOLDER=~/.n8n-node-cli
 n8n-node dev --external-n8n
 
-# Custom n8n extensions directory
-n8n-node dev --custom-user-folder /home/user
+# ...including a remote one
+n8n-node dev --external-n8n --n8n-url https://dev.example.com
 ```
 
 #### `n8n-node build`
