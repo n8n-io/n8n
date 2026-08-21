@@ -1,19 +1,16 @@
-import { Router, type Response, type Router as RouterType } from 'express';
-import assert from 'node:assert';
+import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 
 import { AdmittanceRejectedError } from '../../admittance';
 import { UnimplementedError, type JsonValue } from '../../common';
-import {
-	ExecutionNotFoundError,
-	type ExecutionQueryService,
-	type ExecutionView,
-	type StepView,
-} from '../../execution';
+import type { ExecutionQueryService } from '../../execution';
 import type { StartExecutionService } from '../../execution/start-execution.service';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
-import type { ExecutionSnapshot, ExecutionStepsResponse, StepDetail } from '../api.types';
-import type { EngineErrorResponse } from '../error-response';
+import { fail } from '../error-response';
+import {
+	createGetExecutionHandler,
+	createGetExecutionStepsHandler,
+} from './workflow-executions.handlers';
 
 const MAX_TRIGGER_SLOTS = MAX_SLOT_INDEX + 1;
 
@@ -60,44 +57,11 @@ const StartExecutionBody = z.object({
 	mode: z.enum(['production', 'manual']).optional(),
 });
 
-const ExecutionIdParams = z.object({ id: z.string().uuid() });
-
-function toExecutionSnapshot(record: ExecutionView): ExecutionSnapshot {
-	return {
-		id: record.id,
-		workflowId: record.workflowId,
-		status: record.status,
-		mode: record.mode,
-		graph: record.graph,
-		createdAt: record.createdAt.toISOString(),
-		updatedAt: record.updatedAt.toISOString(),
-		finishedAt: record.finishedAt?.toISOString() ?? null,
-	};
-}
-
-function toStepDetail(record: StepView): StepDetail {
-	return {
-		id: record.id,
-		nodeId: record.nodeId,
-		iteration: record.iteration,
-		status: record.status,
-		outputs: record.outputs,
-		error: record.error,
-		createdAt: record.createdAt.toISOString(),
-		updatedAt: record.updatedAt.toISOString(),
-	};
-}
-
 export function createWorkflowExecutionsRouter(deps: {
 	startExecution: StartExecutionService;
 	executionQuery: ExecutionQueryService;
 }): RouterType {
 	const router = Router();
-
-	const fail = (res: Response, status: number, body: EngineErrorResponse): void => {
-		assert(status >= 400, `fail() sends error responses only, but got status ${status}`);
-		res.status(status).json(body);
-	};
 
 	router.post('/', async (req, res) => {
 		const parsed = StartExecutionBody.safeParse(req.body);
@@ -126,36 +90,9 @@ export function createWorkflowExecutionsRouter(deps: {
 		}
 	});
 
-	router.get('/:id', async (req, res) => {
-		const parsed = ExecutionIdParams.safeParse(req.params);
-		if (!parsed.success) {
-			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
-			return;
-		}
+	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
 
-		try {
-			const execution = await deps.executionQuery.getExecution(parsed.data.id);
-			res.status(200).json(toExecutionSnapshot(execution));
-		} catch (error) {
-			if (error instanceof ExecutionNotFoundError) {
-				fail(res, 404, { error: 'not_found' });
-				return;
-			}
-			throw error;
-		}
-	});
-
-	router.get('/:id/steps', async (req, res) => {
-		const parsed = ExecutionIdParams.safeParse(req.params);
-		if (!parsed.success) {
-			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
-			return;
-		}
-
-		const steps = await deps.executionQuery.getSteps(parsed.data.id);
-		const body: ExecutionStepsResponse = { steps: steps.map(toStepDetail) };
-		res.status(200).json(body);
-	});
+	router.get('/:id/steps', createGetExecutionStepsHandler(deps.executionQuery));
 
 	return router;
 }
