@@ -105,7 +105,8 @@ describe('InstanceAiVerificationService', () => {
 			);
 			expect(createModelMock).toHaveBeenCalledWith(modelConfig, expect.any(Function));
 			expect(generateTextMock).toHaveBeenCalledWith(
-				expect.objectContaining({ prompt: 'Reply with OK.', maxOutputTokens: 8 }),
+				// OpenAI's Responses API rejects max_output_tokens below 16.
+				expect.objectContaining({ prompt: 'Reply with OK.', maxOutputTokens: 16 }),
 			);
 		});
 
