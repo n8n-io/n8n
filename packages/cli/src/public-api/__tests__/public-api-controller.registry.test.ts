@@ -6,7 +6,6 @@ import {
 	Deprecated,
 	Get,
 	Post,
-	Query,
 } from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -102,16 +101,14 @@ describe('PublicApiControllerRegistry', () => {
 	});
 
 	describe('validation failures', () => {
-		// `is read-only` is a fragment: without the path it has no subject.
 		class WidgetBodyDto extends Z.class({
 			name: z.string(),
 			active: z.undefined({ invalid_type_error: 'is read-only' }),
-			nested: z.object({ label: z.string() }).optional(),
 		}) {}
 
-		class WidgetQueryDto extends Z.class({ limit: z.coerce.number() }) {}
-
-		function widgetsApp(): express.Express {
+		// `formatValidationError` is covered in public-api-validation-error.test.ts. This only checks
+		// that a failed `safeParse` reaches it and comes back as the 400 body.
+		it('returns the formatted message as a 400', async () => {
 			@Service()
 			class WidgetsPublicController {
 				@Post('/')
@@ -119,71 +116,15 @@ describe('PublicApiControllerRegistry', () => {
 				create(_req: express.Request, _res: express.Response, @Body _body: WidgetBodyDto) {
 					return { ok: true };
 				}
-
-				@Get('/')
-				@ApiResponse(200)
-				list(_req: express.Request, _res: express.Response, @Query _query: WidgetQueryDto) {
-					return { ok: true };
-				}
 			}
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-			return activate();
-		}
 
-		it('names the offending body field', async () => {
-			const response = await request(widgetsApp()).post('/widgets').send({ name: 1 }).expect(400);
-
-			expect(response.body.message).toBe('request/body/name Expected string, received number');
-		});
-
-		it('gives a fragment message its subject', async () => {
-			const response = await request(widgetsApp())
+			const response = await request(activate())
 				.post('/widgets')
 				.send({ name: 'w', active: false })
 				.expect(400);
 
 			expect(response.body.message).toBe('request/body/active is read-only');
-		});
-
-		it('joins a nested path with slashes', async () => {
-			const response = await request(widgetsApp())
-				.post('/widgets')
-				.send({ name: 'w', nested: { label: 1 } })
-				.expect(400);
-
-			expect(response.body.message).toBe(
-				'request/body/nested/label Expected string, received number',
-			);
-		});
-
-		it('reports the location alone when the issue has no path', async () => {
-			const response = await request(widgetsApp()).post('/widgets').send([]).expect(400);
-
-			expect(response.body.message).toBe('request/body Expected object, received array');
-		});
-
-		it('names a missing field the way the legacy validator did', async () => {
-			const response = await request(widgetsApp()).post('/widgets').send({}).expect(400);
-
-			expect(response.body.message).toBe("request/body must have required property 'name'");
-		});
-
-		it('attributes a missing nested field to its parent object', async () => {
-			const response = await request(widgetsApp())
-				.post('/widgets')
-				.send({ name: 'w', nested: {} })
-				.expect(400);
-
-			expect(response.body.message).toBe("request/body/nested must have required property 'label'");
-		});
-
-		it('names the offending query parameter', async () => {
-			const response = await request(widgetsApp())
-				.get('/widgets')
-				.query({ limit: 'abc' })
-				.expect(400);
-
-			expect(response.body.message).toBe('request/query/limit Expected number, received nan');
 		});
 	});
 });
