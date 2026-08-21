@@ -397,13 +397,19 @@ graph LR
         S2[Sub-Agent B] -->|publish| Bus
     end
 
-    Bus --> Store[Thread Storage]
+    Bus -->|enqueue| Log[Durable Event Log]
+    Log -->|"drained (seq assigned)"| Bus
+    Log --> DB[(instance_ai_events)]
     Bus --> SSE[SSE Endpoint]
+    Bus -->|relay| Siblings[Sibling mains]
     SSE --> FE[Frontend]
 ```
 
-All events are published to a per-thread channel on the event bus. Events are
-simultaneously persisted to thread storage and delivered to connected SSE clients.
+All events are published to a per-thread channel on the event bus, which
+enqueues them into the durable event log. The log assigns each durable fact a
+per-thread `seq`, persists it, and hands the event back to the bus for
+delivery to connected SSE clients and — in multi-main — to sibling mains. The
+bus itself retains nothing.
 
 ### Implementations
 

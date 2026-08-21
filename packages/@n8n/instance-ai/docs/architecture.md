@@ -49,7 +49,8 @@ graph TB
     subgraph EventSystem ["Event System"]
         OrcAgent -->|publishes| EventBus
         EvalSetupAgent -->|publishes| EventBus
-        EventBus --> ThreadStorage[Thread Event Storage]
+        EventBus --> DurableLog[Durable Event Log]
+        DurableLog --> EventsTable[(instance_ai_events)]
     end
 
     subgraph Filesystem ["Filesystem Access"]
@@ -68,8 +69,8 @@ graph TB
     subgraph Storage ["Storage"]
         Memory --> PostgreSQL
         Memory --> SQLite[LibSQL / SQLite]
-        ThreadStorage --> PostgreSQL
-        ThreadStorage --> SQLite
+        EventsTable --> PostgreSQL
+        EventsTable --> SQLite
     end
 
     subgraph Sandbox ["Sandbox (Optional)"]
@@ -215,8 +216,9 @@ The n8n integration layer.
 - **Adapter** — bridges n8n services to agent interfaces, enforces RBAC permissions
 - **Memory service** — thread lifecycle, message persistence, expiration
 - **Settings service** — admin settings (model, MCP, sandbox), user preferences
-- **Event bus** — in-process EventEmitter (single instance) or Redis Pub/Sub
-  (queue mode), with thread storage for event persistence and replay (max 500 events or 2 MB per thread)
+- **Event bus** — live fan-out only: in-process EventEmitter (single instance)
+  plus a Redis Pub/Sub relay to sibling mains (queue mode). Persistence and
+  replay belong to the durable event log, not the bus
 - **Filesystem** — `LocalGateway` (remote daemon via SSE protocol).
   See `docs/filesystem-access.md`
 - **Entities** — TypeORM entities for thread, message, memory, snapshots, iteration logs
