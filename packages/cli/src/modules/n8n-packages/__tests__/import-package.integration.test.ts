@@ -1150,6 +1150,11 @@ describe('Package import event emission', () => {
 					created: 2,
 					updated: 0,
 					skipped: 0,
+					archived: 0,
+					deleted: 0,
+				},
+				folders: {
+					removed: 0,
 				},
 				credentials: {
 					matched: 0,
@@ -1245,6 +1250,11 @@ describe('Package import event emission', () => {
 					created: 3,
 					updated: 0,
 					skipped: 0,
+					archived: 0,
+					deleted: 0,
+				},
+				folders: {
+					removed: 0,
 				},
 				credentials: {
 					matched: 2,
@@ -1309,6 +1319,11 @@ describe('Package import event emission', () => {
 					created: 1,
 					updated: 0,
 					skipped: 1,
+					archived: 0,
+					deleted: 0,
+				},
+				folders: {
+					removed: 0,
 				},
 				credentials: {
 					matched: 0,
@@ -1375,6 +1390,11 @@ describe('Package import event emission', () => {
 					created: 0,
 					updated: 1,
 					skipped: 0,
+					archived: 0,
+					deleted: 0,
+				},
+				folders: {
+					removed: 0,
 				},
 				credentials: {
 					matched: 0,
