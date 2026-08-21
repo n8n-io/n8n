@@ -11,6 +11,6 @@ const MAX_DETAIL_LENGTH = 512;
  */
 export function sanitizeFailureDetail(message: string): string {
 	return scrubSecretsInText(message)
-		.replace(/(https?:\/\/[^\s?]+)\?\S*/g, '$1')
+		.replace(/(https?:\/\/[^\s?]+)\?\S*/gi, '$1')
 		.slice(0, MAX_DETAIL_LENGTH);
 }
