@@ -816,9 +816,14 @@ export class WorkflowTriggerActivator {
 	 * rejects with the abort reason, never a `UserError`, so it is never
 	 * abandoned. Transient remote failures (network errors, API rejections)
 	 * are not `UserError`s and still fail for retry.
+	 *
+	 * The cause is checked too: a non-webhook trigger's close failure
+	 * arrives wrapped in a `WorkflowDeactivationError` with the node's error as
+	 * its `cause`.
 	 */
-	private shouldAbandonFailedTeardown(error: Error) {
-		return error instanceof UserError;
+	private shouldAbandonFailedTeardown(error: unknown): boolean {
+		if (error instanceof UserError) return true;
+		return error instanceof Error && error.cause instanceof UserError;
 	}
 
 	private getNonWebhookTriggerNodeIdsForNodeIds(workflow: Workflow, nodeIds: Set<INode['id']>) {

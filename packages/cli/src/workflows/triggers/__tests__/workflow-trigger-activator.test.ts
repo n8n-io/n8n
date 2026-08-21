@@ -8,6 +8,7 @@ import {
 	UserError,
 	WebhookPathTakenError,
 	WorkflowActivationError,
+	WorkflowDeactivationError,
 	WorkflowExpression,
 } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -585,7 +586,7 @@ describe('WorkflowTriggerActivator', () => {
 			]);
 		});
 
-		test('skips a non-webhook trigger whose deregistration fails with a UserError', async () => {
+		test('skips a non-webhook trigger whose deregistration fails with a UserError, even when wrapped', async () => {
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 				mock<IWorkflowExecuteAdditionalData>(),
 			);
@@ -594,7 +595,11 @@ describe('WorkflowTriggerActivator', () => {
 			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['t']);
-			nonWebhookTriggerRegistrar.deregister.mockRejectedValue(new UserError('teardown broken'));
+			nonWebhookTriggerRegistrar.deregister.mockRejectedValue(
+				new WorkflowDeactivationError('Failed to deactivate trigger of workflow ID "wf-1"', {
+					cause: new UserError('teardown broken'),
+				}),
+			);
 
 			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
 
