@@ -1,0 +1,288 @@
+packages/cli/src/security-audit/risk-reporters/__tests__/instance-risk-reporter.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 35
+packages/cli/src/modules/instance-ai/web-research/__tests__/fetch-and-extract.test.ts
+  s_f96f346a5f9824::t_d44c8db351c764 10
+  s_f96f346a5f9824::t_e63f1945cc7491 330-340
+packages/cli/src/telemetry/index.ts
+  s_f96f346a5f9824::t_985b40d994f62b 193
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.authorization.test.ts
+  s_f96f346a5f9824::t_eeebdf7fbbc212 2
+  s_f96f346a5f9824::t_1ab07d09b19542 165-167,169,186-188,190
+  s_f96f346a5f9824::t_21e36e9b4da81f 213
+  s_f96f346a5f9824::t_e9863dbb3d4aa1 125-131
+packages/cli/src/utils/__tests__/strapi-utils.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 102
+packages/cli/src/services/__tests__/credentials-tester.service.test.ts
+  s_f96f346a5f9824::t_2addb9226a73df 169-173,179,196
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/factory.ts
+  s_f96f346a5f9824::t_8b9b165904a463 1-2
+  s_f96f346a5f9824::t_173ceb1182d61d 88
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_f96f346a5f9824::t_48b6ed87f46fb4 160-163
+packages/cli/src/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee.ts
+  s_f96f346a5f9824::t_985b40d994f62b 418
+packages/@n8n/backend-network/src/testing.ts
+  s_f96f346a5f9824::t_aaef572a2aa899 9
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_f96f346a5f9824::t_985b40d994f62b 229
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_f96f346a5f9824::t_e6cf7aeaee05b8 392,395
+  s_f96f346a5f9824::t_bd16b337b35a15 28
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.dispatcher.test.ts
+  s_f96f346a5f9824::t_2d2370a0d9a7ae 2,15-19
+  s_f96f346a5f9824::t_1ab07d09b19542 24,30,38,46
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/oauth2-userinfo-identifier.integration.test.ts
+  s_f96f346a5f9824::t_cd0562752e1f64 49
+  s_f96f346a5f9824::t_fcc2deb78dc9e3 45
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_f96f346a5f9824::t_58ce92e7dbf698 5
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_f96f346a5f9824::t_f26af11fcbc9e4 4
+packages/nodes-base/credentials/test/SalesforceJwtApi.credentials.test.ts
+  s_f96f346a5f9824::t_3af5c47131c4b6 239,246
+  s_f96f346a5f9824::t_ce101332748c1e 1
+packages/cli/src/services/__tests__/ai-gateway.service.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 124
+packages/@n8n/config/src/configs/ssrf-protection.config.ts
+  s_f96f346a5f9824::t_40452f916b2090 61-64
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_f96f346a5f9824::t_985b40d994f62b 81
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_f96f346a5f9824::t_fe6a05efb15e81 2390-2392
+  s_f96f346a5f9824::t_f553f030a8f184 12
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  s_f96f346a5f9824::t_e8ea7d3f93db6c 86
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 116
+packages/cli/test/integration/eventbus.ee.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 322
+packages/cli/src/modules/community-packages/__tests__/npm-utils.ssrf.test.ts
+  s_f96f346a5f9824::t_64a1e520aa7d6c 1,18,21
+packages/@n8n/backend-network/src/http/outbound-http.ts
+  s_f96f346a5f9824::t_5627d66d5b861a 41-42,44
+  s_f96f346a5f9824::t_edbb88b842647e 165-169,175,180,184,245-253
+  s_f96f346a5f9824::t_0857d2956d43dd 221-222,226
+  s_f96f346a5f9824::t_02a763b68c9b74 2
+  s_f96f346a5f9824::t_234ab9be1ba799 23
+packages/cli/src/modules/external-secrets.ee/providers/infisical.ts
+  s_f96f346a5f9824::t_985b40d994f62b 178
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_f96f346a5f9824::t_985b40d994f62b 804
+packages/cli/src/workflows/workflows.controller.ts
+  s_f96f346a5f9824::t_1c34b41da11a7a 731-732
+  s_f96f346a5f9824::t_2bd419c0852e84 14-15
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_f96f346a5f9824::t_a88ea74e4bb85e 337-338
+  s_f96f346a5f9824::t_21d0847db32428 4
+packages/@n8n/backend-network/README.md
+  s_f96f346a5f9824::t_95150562cbe4ac 124-135
+  s_f96f346a5f9824::t_8f5a9b25992eb3 42
+  s_f96f346a5f9824::t_b848e7dce917b5 61,63-66,73-93,96,98,100-101,105-107,110-111,113-114,117-118
+packages/cli/src/license/license.service.ts
+  s_f96f346a5f9824::t_985b40d994f62b 40
+packages/cli/src/modules/token-exchange/services/jwks-resolver.ts
+  s_f96f346a5f9824::t_985b40d994f62b 144
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  s_f96f346a5f9824::t_7df57f10bfdc59 4-5
+  s_f96f346a5f9824::t_5b02038bea49d8 106,140
+packages/cli/src/modules/community-packages/npm-utils.ts
+  s_f96f346a5f9824::t_ff2fa53c0a579c 1
+  s_f96f346a5f9824::t_d9796011d681b7 269,271
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/ssrf-integration.test.ts
+  s_f96f346a5f9824::t_6ff31ab00a9a27 40,48-60
+  s_f96f346a5f9824::t_c867f5448451de 4
+  s_f96f346a5f9824::t_3d5a82188bdfcc 2-3,6
+packages/core/src/execution-engine/node-execution-context/__tests__/credentials-test-context.test.ts
+  s_f96f346a5f9824::t_03eb5b38a4f471 2,16-19,33,35,37-39
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_f96f346a5f9824::t_97313165cf5535 3
+  s_f96f346a5f9824::t_b199a02b433619 256
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/oauth2-metadata-http-client.ts
+  s_f96f346a5f9824::t_9d41989ae894e9 35-38
+  s_f96f346a5f9824::t_9a680e57638be6 2
+packages/cli/src/modules/external-secrets.ee/providers/vault.ts
+  s_f96f346a5f9824::t_985b40d994f62b 292
+packages/nodes-base/credentials/test/MicrosoftEntraServicePrincipalApi.credentials.test.ts
+  s_f96f346a5f9824::t_e40994b653e4cd 194
+  s_f96f346a5f9824::t_bcc2f7168a9851 192-193
+  s_f96f346a5f9824::t_901276b1dbadea 52-54
+packages/cli/src/modules/sso-saml/saml.service.ee.ts
+  s_f96f346a5f9824::t_985b40d994f62b 712
+packages/cli/src/services/ai-gateway.service.ts
+  s_f96f346a5f9824::t_985b40d994f62b 98
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/legacy-request-adapter.ts
+  s_f96f346a5f9824::t_6b63f801bc13e8 25
+packages/cli/src/modules/log-streaming.ee/destinations/__tests__/message-event-bus-destination-webhook.ee.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 112
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.requests.test.ts
+  s_f96f346a5f9824::t_1ab07d09b19542 61
+  s_f96f346a5f9824::t_aad048919a1ba3 2,6
+  s_f96f346a5f9824::t_06b17a73045347 52-53,57
+  s_f96f346a5f9824::t_6cb68d19b658ef 22-23
+packages/@n8n/backend-network/src/http/safety-mode.ts
+  s_f96f346a5f9824::t_b0a9942c03a154 1-12
+packages/@n8n/backend-network/src/http/__tests__/legacy-request.test.ts
+  s_f96f346a5f9824::t_fc79fbf30d98c0 2
+  s_f96f346a5f9824::t_c1d96ccec46f9b 15-19
+  s_f96f346a5f9824::t_1ab07d09b19542 33,43,56,75,88,120,142,165,187,202,283,294,305,321,335,346,381,440,455,475
+  s_f96f346a5f9824::t_acc76da441e7d2 232,242,259,270
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.error-tagging.test.ts
+  s_f96f346a5f9824::t_2c5b007d1b9fa7 2
+  s_f96f346a5f9824::t_badd101197745d 15-19
+packages/cli/src/modules/agents/integrations/platforms/linear-integration.ts
+  s_f96f346a5f9824::t_985b40d994f62b 170
+packages/cli/src/utils/ai-proxy-fetch.ts
+  s_f96f346a5f9824::t_76ea87cc4e084c 27-31
+  s_f96f346a5f9824::t_2aa4aff55e147a 67
+  s_f96f346a5f9824::t_985b40d994f62b 37
+  s_f96f346a5f9824::t_20dfe6c1482bdf 1
+  s_f96f346a5f9824::t_d103083cf29ff1 51
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_f96f346a5f9824::t_985b40d994f62b 193
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.ssrf.test.ts
+  s_f96f346a5f9824::t_48df0009a3f8aa 2
+  s_f96f346a5f9824::t_e4d79c4585d8a6 154-165
+  s_f96f346a5f9824::t_1ab07d09b19542 235,265,419
+packages/nodes-base/credentials/common/token-request.ts
+  s_f96f346a5f9824::t_3a4a4322cc9856 1
+  h_32d8cd6a0d6aad 2,28
+  s_f96f346a5f9824::t_c4d61ae72cda62 29
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/outbound-user-agent.integration.test.ts
+  s_f96f346a5f9824::t_c867f5448451de 1
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/infisical.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 121
+packages/@n8n/backend-network/src/http/index.ts
+  s_f96f346a5f9824::t_0aedf372130844 13
+  s_f96f346a5f9824::t_f7b595552e490f 14-16
+  s_f96f346a5f9824::t_093326e27d959c 9
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_f96f346a5f9824::t_bd16b337b35a15 37
+  s_f96f346a5f9824::t_85d12c2bf109f4 936
+packages/cli/src/utils/strapi-utils.ts
+  s_f96f346a5f9824::t_985b40d994f62b 89
+packages/cli/src/controllers/__tests__/telemetry.controller.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 191
+packages/cli/src/modules/sso-saml/__tests__/saml.service.ee.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 1617
+packages/cli/src/services/__tests__/dynamic-node-parameters.service.test.ts
+  s_f96f346a5f9824::t_861d19d72bab8d 3
+  s_f96f346a5f9824::t_1d01a004822636 316,320,325
+packages/cli/src/modules/quick-connect/handlers/__tests__/firecrawl.handler.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 26
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_f96f346a5f9824::t_0102fa77a7865b 4044,4046-4047,4049
+  s_f96f346a5f9824::t_e111015078a837 4010
+  s_f96f346a5f9824::t_ef9bd4a92493a7 1335,1338-1339,1342,1703-1704,1707,2033-2034,2037,3148-3149,3152,3414-3415,3418
+  s_f96f346a5f9824::t_aa4d9daf06d87f 1700,2030,3145,3411
+packages/nodes-base/credentials/test/GoogleApi.credentials.test.ts
+  s_f96f346a5f9824::t_e40994b653e4cd 89
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.test.ts
+  s_f96f346a5f9824::t_1ab07d09b19542 58
+  s_f96f346a5f9824::t_a841c350cf4ef5 2
+  s_f96f346a5f9824::t_5a525c53417a2e 30
+packages/cli/src/security-audit/risk-reporters/instance-risk-reporter.ts
+  s_f96f346a5f9824::t_985b40d994f62b 35
+packages/cli/src/oauth/oauth.service.ts
+  s_f96f346a5f9824::t_cdceafb20df58c 141-144
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/oauth2-introspection-identifier.integration.test.ts
+  s_f96f346a5f9824::t_fcc2deb78dc9e3 54
+  s_f96f346a5f9824::t_cd0562752e1f64 58
+packages/cli/src/modules/agents/integrations/__tests__/linear-integration.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 103
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_f96f346a5f9824::t_3debc3556c580a 6
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_f96f346a5f9824::t_7fb13ae76be8b7 303
+packages/cli/src/modules/instance-ai/__tests__/workflow-templates.service.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 31
+packages/cli/src/modules/otel/otel.service.ts
+  s_f96f346a5f9824::t_985b40d994f62b 206
+packages/cli/src/modules/instance-ai/workflow-templates.service.ts
+  s_f96f346a5f9824::t_985b40d994f62b 26
+packages/cli/src/workflows/__tests__/workflows.controller.test.ts
+  s_f96f346a5f9824::t_532f358f7564c3 4
+  s_f96f346a5f9824::t_497bc608b226c2 131,136,146
+packages/cli/src/utils/__tests__/ai-proxy-fetch.test.ts
+  s_f96f346a5f9824::t_422f806d18dc8f 1,12,18-22,28,36-37,39,50-51,53
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_f96f346a5f9824::t_28765e0e0208b4 69
+packages/cli/src/controllers/telemetry.controller.ts
+  s_f96f346a5f9824::t_985b40d994f62b 129
+packages/cli/test/integration/oidc/oidc-discovery-http.test.ts
+  s_f96f346a5f9824::t_5a3b40d29a73c9 4
+  s_f96f346a5f9824::t_0be97c49b7f8d2 12-16,18
+packages/cli/src/modules/sso-oidc/__tests__/oidc.service.ee.test.ts
+  s_f96f346a5f9824::t_59e6b53ac0e4a0 8
+  s_f96f346a5f9824::t_f5daceca0273d7 871-875
+  s_f96f346a5f9824::t_b6d49188a5a376 822
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_f96f346a5f9824::t_985b40d994f62b 26
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_f96f346a5f9824::t_bd16b337b35a15 20
+  s_f96f346a5f9824::t_85d12c2bf109f4 1629
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/oauth2-introspection-identifier.test.ts
+  s_f96f346a5f9824::t_cd0562752e1f64 62
+  s_f96f346a5f9824::t_fcc2deb78dc9e3 1
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/oauth2-userinfo-identifier.test.ts
+  s_f96f346a5f9824::t_fcc2deb78dc9e3 1
+  s_f96f346a5f9824::t_cd0562752e1f64 44
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/vault.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 105
+packages/cli/src/modules/external-secrets.ee/providers/aws-secrets-manager.ts
+  s_f96f346a5f9824::t_985b40d994f62b 145
+packages/@n8n/backend-network/src/http/client-options.ts
+  s_f96f346a5f9824::t_1a95daf19d0631 2,6-7,9
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/legacy-request-adapter.test.ts
+  s_f96f346a5f9824::t_32ba08ed02df21 18-23
+  s_f96f346a5f9824::t_655e31d1f407fa 2
+  s_f96f346a5f9824::t_eef5765bedf344 41-42,46,49,52
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.node-agent.test.ts
+  s_f96f346a5f9824::t_1ab07d09b19542 122
+  s_f96f346a5f9824::t_d93eb663235461 9
+  s_f96f346a5f9824::t_fdb7039ce79e97 13-16
+  s_f96f346a5f9824::t_ae79f4676b984f 114
+  s_f96f346a5f9824::t_c528d126b2b611 2
+  s_f96f346a5f9824::t_6eeebf3b04f13e 17
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/oauth2-metadata-http-client.test.ts
+  s_f96f346a5f9824::t_ae86402b6f89ee 27-28,30
+  s_f96f346a5f9824::t_1758c1bedbdb78 1
+  s_f96f346a5f9824::t_e1f2e3cd7ad427 17
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_f96f346a5f9824::t_85d12c2bf109f4 305,371
+  s_f96f346a5f9824::t_bd16b337b35a15 10
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_f96f346a5f9824::t_cd50fa90effc21 404-405,410
+  s_f96f346a5f9824::t_8a98c55a3b673f 4
+packages/cli/src/modules/quick-connect/handlers/firecrawl.handler.ts
+  s_f96f346a5f9824::t_985b40d994f62b 25
+packages/cli/src/oauth/__tests__/oauth.service.integration.test.ts
+  s_f96f346a5f9824::t_7a10c97ec6f823 55
+packages/nodes-base/credentials/test/CiscoSecureEndpointApi.credentials.test.ts
+  s_f96f346a5f9824::t_9826f37e0f389a 1
+  s_f96f346a5f9824::t_54072fdfb383a5 82,85
+packages/cli/src/modules/community-packages/community-packages.service.ts
+  s_f96f346a5f9824::t_985b40d994f62b 78
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/aws-secrets-manager.test.ts
+  s_f96f346a5f9824::t_b199a02b433619 106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "23154ce138360ca778acf6fec0f3d55063694059",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f96f346a5f9824": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f064ca8-70c3-4fe7-adb7-0bc1aa5d5d0d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
