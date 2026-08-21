@@ -238,8 +238,6 @@ write_env() {
 # n8n version to run. 'get-n8n.sh --upgrade' updates this line and nothing else.
 N8N_VERSION=${INSTALL_VERSION}
 
-N8N_ENABLED_MODULES=instance-ai
-
 # Code-node user code (JavaScript and Python) runs in the separate 'runners'
 # container. The broker binds 0.0.0.0 so that container can reach it — its
 # port (5679) stays private to the compose network.
