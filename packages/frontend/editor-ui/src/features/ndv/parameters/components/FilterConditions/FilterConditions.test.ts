@@ -165,7 +165,7 @@ describe('FilterConditions.vue', () => {
 		);
 		expect(
 			within(conditions[3]).getByTestId('filter-condition-right').querySelector('input'),
-		).toHaveValue(5);
+		).toHaveValue('5');
 	});
 
 	it('renders parameter issues', async () => {
@@ -473,13 +473,13 @@ describe('FilterConditions.vue', () => {
 		).toHaveValue('qux');
 		expect(
 			within(conditions[1]).getByTestId('filter-condition-left').querySelector('input'),
-		).toHaveValue(5);
+		).toHaveValue('5');
 		expect(within(conditions[1]).getByTestId('filter-operator-select')).toHaveTextContent(
 			'is greater than',
 		);
 		expect(
 			within(conditions[1]).getByTestId('filter-condition-right').querySelector('input'),
-		).toHaveValue(6);
+		).toHaveValue('6');
 	});
 
 	it('emits once with updated caseSensitive when typeOptions.filter.caseSensitive changes', async () => {

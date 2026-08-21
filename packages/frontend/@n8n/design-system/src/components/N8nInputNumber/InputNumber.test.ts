@@ -1,9 +1,11 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
 
+import type { InputNumberExposed } from './InputNumber.types';
 import InputNumber from './InputNumber.vue';
 
-describe('v2/components/InputNumber', () => {
+describe('components/N8nInputNumber', () => {
 	describe('rendering', () => {
 		it('should render with placeholder text', () => {
 			const wrapper = render(InputNumber, {
@@ -488,6 +490,21 @@ describe('v2/components/InputNumber', () => {
 	});
 
 	describe('typed min/max', () => {
+		async function pasteText(text: string) {
+			const clipboardData = new DataTransfer();
+			clipboardData.setData('text', text);
+			await userEvent.paste(clipboardData);
+		}
+
+		function dispatchPaste(input: HTMLInputElement, text: string) {
+			const clipboardData = new DataTransfer();
+			clipboardData.setData('text', text);
+			const event = new Event('paste', { bubbles: true, cancelable: true });
+			Object.defineProperty(event, 'clipboardData', { value: clipboardData });
+			input.dispatchEvent(event);
+			return event;
+		}
+
 		it('should clamp value below min on blur', async () => {
 			const wrapper = render(InputNumber, {
 				props: {
@@ -501,7 +518,7 @@ describe('v2/components/InputNumber', () => {
 				throw new Error('Expected input element');
 			}
 
-			// Min blocks out-of-range keystrokes; set the DOM value then blur to exercise clamping.
+			// Typing below min is allowed (1 can become 15); set the DOM value then blur to clamp.
 			await userEvent.click(input);
 			input.value = '5';
 			await userEvent.tab();
@@ -532,6 +549,156 @@ describe('v2/components/InputNumber', () => {
 				expect(input).toHaveValue('10');
 			});
 		});
+
+		it('should ignore keystrokes that would exceed max', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					defaultValue: 5,
+					max: 10,
+					controls: false,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.click(input);
+			await userEvent.type(input, '50');
+
+			expect(input).toHaveValue('5');
+		});
+
+		it('should allow typing a value equal to max', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					defaultValue: 1,
+					max: 10,
+					controls: false,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.click(input);
+			await userEvent.type(input, '10');
+
+			expect(input).toHaveValue('10');
+		});
+
+		it('should ignore pasted values that would exceed max', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					defaultValue: 5,
+					max: 10,
+					controls: false,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.click(input);
+			await pasteText('50');
+
+			expect(input).toHaveValue('5');
+		});
+
+		it('should reject over-max paste from clipboardData when beforeinput data is empty', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					defaultValue: 5,
+					max: 10,
+					controls: false,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.click(input);
+			const event = dispatchPaste(input, '50');
+
+			expect(event.defaultPrevented).toBe(true);
+		});
+
+		it('should allow pasting a value equal to max', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					defaultValue: 5,
+					max: 10,
+					controls: false,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.click(input);
+			await pasteText('10');
+
+			expect(input).toHaveValue('10');
+		});
+
+		it('should still bubble paste so consumers can handle expressions', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					defaultValue: 5,
+					max: 10,
+					controls: false,
+				},
+			});
+			const root = wrapper.getByTestId('input-number');
+			const bubbled: Event[] = [];
+			root.addEventListener('paste', (event) => bubbled.push(event));
+
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.click(input);
+			await pasteText('{{ $json.foo }}');
+
+			expect(bubbled).toHaveLength(1);
+			expect(bubbled[0].defaultPrevented).toBe(false);
+		});
+
+		it('should bubble over-max paste after rejecting it', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					defaultValue: 5,
+					max: 10,
+					controls: false,
+				},
+			});
+			const root = wrapper.getByTestId('input-number');
+			const bubbled: Event[] = [];
+			root.addEventListener('paste', (event) => bubbled.push(event));
+
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.click(input);
+			const event = dispatchPaste(input, '50');
+
+			expect(event.defaultPrevented).toBe(true);
+			expect(bubbled).toHaveLength(1);
+		});
 	});
 
 	describe('external v-model updates', () => {
@@ -549,6 +716,46 @@ describe('v2/components/InputNumber', () => {
 			await waitFor(() => {
 				expect(input).toHaveValue('10');
 			});
+		});
+	});
+
+	describe('exposed methods', () => {
+		const mounted: Array<{ unmount: () => void }> = [];
+
+		afterEach(() => {
+			while (mounted.length) mounted.pop()?.unmount();
+		});
+
+		it('should focus, blur, and select the nested input via the template ref', async () => {
+			const wrapper = mount(InputNumber, {
+				attachTo: document.body,
+				props: {
+					modelValue: 42,
+					controls: false,
+				},
+			});
+			mounted.push(wrapper);
+
+			const input = wrapper.find('input').element;
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			const exposed = wrapper.vm as unknown as InputNumberExposed;
+
+			expect(typeof exposed.focus).toBe('function');
+			expect(typeof exposed.blur).toBe('function');
+			expect(typeof exposed.select).toBe('function');
+
+			exposed.focus();
+			expect(document.activeElement).toBe(input);
+
+			exposed.select();
+			expect(input.selectionStart).toBe(0);
+			expect(input.selectionEnd).toBe(input.value.length);
+
+			exposed.blur();
+			expect(document.activeElement).not.toBe(input);
 		});
 	});
 });

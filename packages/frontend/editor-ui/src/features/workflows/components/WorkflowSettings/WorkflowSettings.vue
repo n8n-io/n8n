@@ -811,9 +811,9 @@ const toggleAvailableInMCP = () => {
 	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
 };
 
-const updateTimeSavedPerExecution = (value: string) => {
-	const numValue = parseInt(value, 10);
-	workflowSettings.value.timeSavedPerExecution = isNaN(numValue)
+const updateTimeSavedPerExecution = (value: number | null | undefined) => {
+	const numValue = typeof value === 'number' && Number.isFinite(value) ? Math.trunc(value) : NaN;
+	workflowSettings.value.timeSavedPerExecution = Number.isNaN(numValue)
 		? undefined
 		: numValue < 0
 			? 0
@@ -1696,6 +1696,7 @@ onBeforeUnmount(() => {
 								controls-position="right"
 								size="medium"
 								:controls="true"
+								:class="$style.timeSavedPerExecution"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								data-test-id="workflow-settings-time-saved-per-execution"
 								:min="0"
@@ -1877,10 +1878,11 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
 
-	:global(.el-input-number) {
-		width: var(--spacing--4xl);
-	}
+.timeSavedPerExecution {
+	width: var(--spacing--4xl);
+	flex-shrink: 0;
 }
 
 .time-saved-dropdown {
