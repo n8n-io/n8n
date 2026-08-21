@@ -1,5 +1,4 @@
 import {
-	getRelayHost,
 	getRelayHostKey,
 	isAllowedPageOrigin,
 	isAllowedRelayUrl,
@@ -88,26 +87,15 @@ describe('isLocalhostRelay', () => {
 	});
 });
 
-describe('getRelayHost', () => {
-	it('returns the hostname for a valid URL', () => {
-		expect(getRelayHost('wss://acme.app.n8n.cloud/x')).toBe('acme.app.n8n.cloud');
-	});
-
-	it('returns null for malformed or empty input', () => {
-		expect(getRelayHost('not a url')).toBeNull();
-		expect(getRelayHost(null)).toBeNull();
-		expect(getRelayHost(undefined)).toBeNull();
-	});
-});
-
 describe('getRelayHostKey', () => {
 	it('keeps the port so two local instances stay distinct', () => {
 		expect(getRelayHostKey('ws://localhost:5678/x')).toBe('localhost:5678');
 		expect(getRelayHostKey('ws://localhost:5679/x')).toBe('localhost:5679');
 	});
 
-	it('matches the hostname when the URL carries no explicit port', () => {
+	it('omits the port when it is the default for the protocol', () => {
 		expect(getRelayHostKey('wss://acme.app.n8n.cloud/x')).toBe('acme.app.n8n.cloud');
+		expect(getRelayHostKey('wss://acme.app.n8n.cloud:443/x')).toBe('acme.app.n8n.cloud');
 	});
 
 	it('returns null for malformed or empty input', () => {

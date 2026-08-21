@@ -12,7 +12,6 @@ const {
 	selectedTabIds,
 	errorMessage,
 	hasRelayUrl,
-	relayHost,
 	isRelayAllowed,
 	isAutoConnect,
 	relayHostKey,
@@ -45,7 +44,9 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 				<div class="panel">
 					<InfoRow
 						icon="shield"
-						:title="relayHost ? `Connected to ${relayHost}` : 'Connected to your n8n instance'"
+						:title="
+							relayHostKey ? `Connected to ${relayHostKey}` : 'Connected to your n8n instance'
+						"
 					/>
 					<InfoRow
 						icon="lock"
@@ -66,7 +67,7 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 				<div class="panel">
 					<InfoRow
 						icon="shield"
-						:title="`Connecting to ${relayHost}`"
+						:title="`Connecting to ${relayHostKey}`"
 						description="Only continue if you initiated this connection"
 					>
 						<N8nCheckbox
@@ -107,8 +108,8 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 			<template v-else-if="hasRelayUrl">
 				<h1 class="title">Allow n8n to access your browser</h1>
 				<p class="error">
-					Can't connect to <strong>{{ relayHost || 'this address' }}</strong> — it isn't a valid n8n
-					instance.
+					Can't connect to <strong>{{ relayHostKey || 'this address' }}</strong> — it isn't a valid
+					n8n instance.
 				</p>
 			</template>
 

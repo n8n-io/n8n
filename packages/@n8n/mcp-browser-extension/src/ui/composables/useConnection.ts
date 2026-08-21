@@ -2,12 +2,7 @@ import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 
 import { forgetApprovedHost, listApprovedHosts, rememberHost } from '../../approvedHosts';
 import { createLogger } from '../../logger';
-import {
-	getRelayHost,
-	getRelayHostKey,
-	isAllowedRelayUrl,
-	isLocalhostRelay,
-} from '../../relayAllowlist';
+import { getRelayHostKey, isAllowedRelayUrl, isLocalhostRelay } from '../../relayAllowlist';
 import { isEligibleTab } from '../../relayConnection';
 import type {
 	ConnectionStatus,
@@ -68,9 +63,9 @@ export function useConnection() {
 
 	// ── Computeds ─────────────────────────────────────────────────────────────
 	const hasRelayUrl = computed(() => !!relayUrl.value);
-	const relayHost = computed(() => getRelayHost(connectedRelayUrl.value ?? relayUrl.value));
 	const isRelayAllowed = computed(() => isAllowedRelayUrl(relayUrl.value));
-	// What gets stored, so the string the user agrees to is the one the revoke list shows.
+	// The one identity the user ever sees, and the one that gets stored, so what they agree
+	// to always matches what the revoke list shows back.
 	const relayHostKey = computed(() => getRelayHostKey(connectedRelayUrl.value ?? relayUrl.value));
 
 	// ── Private helpers ───────────────────────────────────────────────────────
@@ -129,7 +124,7 @@ export function useConnection() {
 		}
 
 		if (!isAllowedRelayUrl(relayUrl.value)) {
-			errorMessage.value = `Can't connect to ${relayHost.value ?? 'this address'} — not a recognized n8n instance.`;
+			errorMessage.value = `Can't connect to ${relayHostKey.value ?? 'this address'} — not a recognized n8n instance.`;
 			log.warn('connect: relay URL not allowed', relayUrl.value);
 			return;
 		}
@@ -313,7 +308,6 @@ export function useConnection() {
 		errorMessage,
 		relayUrl,
 		hasRelayUrl,
-		relayHost,
 		isRelayAllowed,
 		isAutoConnect,
 		relayHostKey,

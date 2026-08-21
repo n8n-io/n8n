@@ -205,7 +205,7 @@ describe('useConnection', () => {
 	});
 
 	describe('connected instance', () => {
-		const RELAY_URL = 'wss://acme.app.n8n.cloud/relay';
+		const RELAY_URL = 'wss://acme.app.n8n.cloud:8443/relay';
 
 		it('names the instance reported by the background on mount', async () => {
 			chromeMock.runtime.sendMessage.mockImplementation(async (msg: { type: string }) => {
@@ -218,7 +218,7 @@ describe('useConnection', () => {
 			const { wrapper, result } = mountComposable();
 			await flush();
 
-			expect(result().relayHost.value).toBe('acme.app.n8n.cloud');
+			expect(result().relayHostKey.value).toBe('acme.app.n8n.cloud:8443');
 
 			wrapper.unmount();
 		});
@@ -226,12 +226,12 @@ describe('useConnection', () => {
 		it('names the instance when a connection starts while the view is open', async () => {
 			const { wrapper, result } = mountComposable();
 			await flush();
-			expect(result().relayHost.value).toBeNull();
+			expect(result().relayHostKey.value).toBeNull();
 
 			pushMessage({ type: 'statusChanged', connected: true, tabIds: [], relayUrl: RELAY_URL });
 			await flush();
 
-			expect(result().relayHost.value).toBe('acme.app.n8n.cloud');
+			expect(result().relayHostKey.value).toBe('acme.app.n8n.cloud:8443');
 
 			wrapper.unmount();
 		});
@@ -245,7 +245,7 @@ describe('useConnection', () => {
 			await result().disconnect();
 			await flush();
 
-			expect(result().relayHost.value).toBeNull();
+			expect(result().relayHostKey.value).toBeNull();
 
 			wrapper.unmount();
 		});

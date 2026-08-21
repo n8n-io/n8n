@@ -11,17 +11,21 @@ function parseRelayUrl(url: string | null | undefined): URL | null {
 	}
 }
 
-export function getRelayHost(url: string | null | undefined): string | null {
+function getHostname(url: string | null | undefined): string | null {
 	return parseRelayUrl(url)?.hostname ?? null;
 }
 
-/** Storage identity for a relay: hostname + port, so two local instances stay distinct. */
+/**
+ * The identity of a relay everywhere it is stored or shown: hostname plus port, with the
+ * protocol's default port omitted. Two local instances stay distinct; cloud hosts read
+ * unchanged.
+ */
 export function getRelayHostKey(url: string | null | undefined): string | null {
 	return parseRelayUrl(url)?.host ?? null;
 }
 
 export function isLocalhostRelay(url: string | null | undefined): boolean {
-	const host = getRelayHost(url);
+	const host = getHostname(url);
 	return host !== null && LOCAL_HOSTS.has(host);
 }
 

@@ -11,7 +11,6 @@ const state = {
 	selectedTabIds: reactive(new Set<number>()),
 	errorMessage: ref(''),
 	hasRelayUrl: ref(true),
-	relayHost: ref<string | null>('localhost'),
 	isRelayAllowed: ref(true),
 	isAutoConnect: ref(false),
 	relayHostKey: ref<string | null>('localhost:5678'),
@@ -65,7 +64,6 @@ describe('remembered hosts', () => {
 
 	it('can be revoked while connected to a different instance', async () => {
 		state.status.value = 'connected';
-		state.relayHost.value = 'acme.app.n8n.cloud';
 		state.approvedHosts.value = ['localhost:5678'];
 
 		const wrapper = mount(App);
