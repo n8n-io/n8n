@@ -489,6 +489,17 @@ export const userFields: INodeProperties[] = [
 				options: rolesOptions,
 			},
 			{
+				displayName: 'Organizational Unit Name or ID',
+				name: 'orgUnitPath',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getOrgUnits',
+				},
+				default: '/',
+				description:
+					'Specify the organizational unit name or ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
 				displayName: 'Custom Fields',
 				name: 'customFields',
 				placeholder: 'Add or Edit Custom Fields',
@@ -1181,6 +1192,17 @@ export const userFields: INodeProperties[] = [
 				default: [],
 				description: 'Select the roles you want to assign to the user',
 				options: rolesOptions,
+			},
+			{
+				displayName: 'Organizational Unit Name or ID',
+				name: 'orgUnitPath',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getOrgUnits',
+				},
+				default: '/',
+				description:
+					'Specify the organizational unit name or ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Custom Fields',
