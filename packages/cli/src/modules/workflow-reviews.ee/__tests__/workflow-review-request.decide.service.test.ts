@@ -149,7 +149,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		accessService.resolveOpenableRequestIds.mockResolvedValue(new Set());
-		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.

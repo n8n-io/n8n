@@ -38,7 +38,6 @@ describe('WorkflowReviewInboxService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		reviewerRepository.findByRequestIds.mockResolvedValue([]);
