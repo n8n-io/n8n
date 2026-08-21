@@ -9,7 +9,7 @@ import {
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
@@ -277,7 +277,6 @@ export class InstanceAiAdapterService {
 		private readonly roleService: RoleService,
 		private readonly telemetry: Telemetry,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly workflowTemplatesService: WorkflowTemplatesService,
@@ -2400,10 +2399,9 @@ export class InstanceAiAdapterService {
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
 
-		const { outboundHttp, ssrfProtectionService } = this;
-		const sharedTransport = outboundHttp.transport({
-			ssrf: this.ssrfProtectionService, // LLM/user-chosen URLs
-		});
+		const { outboundHttp } = this;
+		// LLM/user-chosen URLs, so the default safe mode applies
+		const sharedTransport = outboundHttp.transport();
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
@@ -2460,7 +2458,6 @@ export class InstanceAiAdapterService {
 				const authorizeUrl = options?.authorizeUrl;
 				const transport = authorizeUrl
 					? outboundHttp.transport({
-							ssrf: ssrfProtectionService,
 							authorize: async (target: URL) => await authorizeUrl(target.href),
 						})
 					: sharedTransport;

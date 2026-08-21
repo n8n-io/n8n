@@ -226,7 +226,7 @@ export class AgentChatBridge {
 			Container.get(AgentChatAttachmentService),
 			integration.type === 'discord'
 				? Container.get(OutboundHttp).requests({
-						ssrf: 'disabled', // Discord attachment URLs are restricted to its fixed CDN host
+						safetyMode: 'unsafe', // Discord attachment URLs are restricted to its fixed CDN host
 					})
 				: undefined,
 		);

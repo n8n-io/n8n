@@ -83,7 +83,7 @@ describe('EngineDataPlaneClient', () => {
 		});
 
 		it('opts out of SSRF protection for the n8n-controlled engine host', () => {
-			expect(clientOptions?.ssrf).toBe('disabled');
+			expect(clientOptions?.safetyMode).toBe('unsafe');
 		});
 
 		it.each([
