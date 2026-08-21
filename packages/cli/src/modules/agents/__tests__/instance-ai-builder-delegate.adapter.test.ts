@@ -1,5 +1,6 @@
 import type {
 	BuiltTelemetry,
+	BuiltTool,
 	CredentialProvider,
 	SerializableAgentState,
 	StreamChunk,
@@ -69,6 +70,14 @@ async function* asAsyncGenerator<T>(values: T[]): AsyncGenerator<T> {
 
 const abortSignal = new AbortController().signal;
 
+function fakeMcpTools(): Map<string, BuiltTool> {
+	const notionSearch: BuiltTool = {
+		name: 'notion_search',
+		description: 'Search connected Notion content',
+	};
+	return new Map([[notionSearch.name, notionSearch]]);
+}
+
 describe('InstanceAiBuilderDelegateAdapterService', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
@@ -106,6 +115,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
 			const sentinel = { functionId: 'host' } as unknown as BuiltTelemetry;
+			const mcpTools = fakeMcpTools();
 
 			await delegate.streamBuild('agent-1', 'hi', {
 				threadId: 'ia-builder:t:agent-1',
@@ -114,6 +124,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 				abortSignal,
 				telemetry: sentinel,
+				mcpTools,
 			});
 
 			expect(agentsBuilderService.buildAgent).toHaveBeenCalledWith(
@@ -130,6 +141,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					telemetry: sentinel,
+					mcpTools,
 				},
 			);
 		});
@@ -172,6 +184,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		it('forwards to agentsBuilderService.resumeBuild and accumulates text-delta chunks', async () => {
 			const { delegate, agentsBuilderService, user, credentialProvider } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			const mcpTools = fakeMcpTools();
 
 			const chunks: StreamChunk[] = [
 				{ type: 'text-delta', id: '1', delta: 'Using ' },
@@ -188,6 +201,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
 					abortSignal,
+					mcpTools,
 				},
 			);
 
@@ -211,6 +225,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
 					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
+					mcpTools,
 				},
 			);
 		});
