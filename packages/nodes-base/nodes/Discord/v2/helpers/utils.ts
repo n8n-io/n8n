@@ -173,7 +173,8 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 					url: embedReturnData.thumbnail,
 				};
 			}
-			if (embedReturnData.image) {
+
+			if (embedReturnData.image && typeof embedReturnData.image !== 'object') {
 				embedReturnData.image = {
 					url: embedReturnData.image,
 				};

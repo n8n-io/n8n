@@ -1,7 +1,7 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
-import { getAuditLogReasonHeaders, prepareMultiPartForm } from '../utils';
+import { getAuditLogReasonHeaders, prepareEmbeds, prepareMultiPartForm } from '../utils';
 
 describe('Discord V2 Utils', () => {
 	describe('prepareMultiPartForm', () => {
@@ -359,6 +359,215 @@ describe('Discord V2 Utils', () => {
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(2, 'file1');
 			expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(2, 'file1');
 			expect(result).toBeDefined();
+		});
+	});
+
+	describe('prepareEmbeds', () => {
+		let mockExecuteFunctions: IExecuteFunctions;
+
+		beforeEach(() => {
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockExecuteFunctions.getNode = vi.fn().mockReturnValue({ name: 'Discord' });
+		});
+
+		afterEach(() => {
+			vi.resetAllMocks();
+		});
+
+		it('should build an embed from form fields, dropping empty string values', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'fields',
+					title: 'Hello',
+					description: '',
+					url: 'https://example.com',
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toEqual([{ title: 'Hello', url: 'https://example.com' }]);
+		});
+
+		it('should convert a string author into an author object', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'fields',
+					author: 'Jane Doe',
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toEqual([{ author: { name: 'Jane Doe' } }]);
+		});
+
+		it('should convert a hex color string into a decimal integer', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'fields',
+					color: '#FF0000',
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toEqual([{ color: 16711680 }]);
+		});
+
+		it('should wrap a video URL string into a video object with default dimensions', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'fields',
+					video: 'https://example.com/video.mp4',
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toEqual([
+				{
+					video: {
+						url: 'https://example.com/video.mp4',
+						width: 1270,
+						height: 720,
+					},
+				},
+			]);
+		});
+
+		it('should wrap a thumbnail URL string into a thumbnail object', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'fields',
+					thumbnail: 'https://example.com/thumb.png',
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toEqual([
+				{
+					thumbnail: { url: 'https://example.com/thumb.png' },
+				},
+			]);
+		});
+
+		it('should wrap an image URL string into an image object', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'fields',
+					image: 'https://example.com/image.png',
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toEqual([
+				{
+					image: { url: 'https://example.com/image.png' },
+				},
+			]);
+		});
+
+		it('should not re-wrap an image that is already an object', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'fields',
+					image: { url: 'https://example.com/image.png', width: 100, height: 100 },
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toEqual([
+				{
+					image: { url: 'https://example.com/image.png', width: 100, height: 100 },
+				},
+			]);
+		});
+
+		it('should preserve sibling fields when the image is already an object', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'fields',
+					title: 'Has image object',
+					image: { url: 'https://example.com/pic.png' },
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toEqual([
+				{
+					title: 'Has image object',
+					image: { url: 'https://example.com/pic.png' },
+				},
+			]);
+		});
+
+		it('should parse a valid JSON string when inputMethod is json', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'json',
+					json: '{"title":"From JSON","color":"#00FF00"}',
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toEqual([{ title: 'From JSON', color: 65280 }]);
+		});
+
+		it('should throw a NodeOperationError when the JSON string is invalid', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'json',
+					json: '{invalid json',
+				},
+			];
+
+			expect(() => prepareEmbeds.call(mockExecuteFunctions, embeds)).toThrow(NodeOperationError);
+			expect(() => prepareEmbeds.call(mockExecuteFunctions, embeds)).toThrow('Not a valid JSON');
+		});
+
+		it('should filter out embeds that end up empty', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'fields',
+					description: '',
+				},
+				{
+					inputMethod: 'fields',
+					title: 'Kept',
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toEqual([{ title: 'Kept' }]);
+		});
+
+		it('should process multiple embeds independently', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'fields',
+					title: 'First',
+					image: 'https://example.com/first.png',
+				},
+				{
+					inputMethod: 'fields',
+					title: 'Second',
+					image: { url: 'https://example.com/second.png' },
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toEqual([
+				{ title: 'First', image: { url: 'https://example.com/first.png' } },
+				{ title: 'Second', image: { url: 'https://example.com/second.png' } },
+			]);
 		});
 	});
 
