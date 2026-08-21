@@ -1,4 +1,9 @@
-import { redactText, SUPPORTED_PII_CATEGORIES, type RedactionOptions } from '@n8n/agents';
+import {
+	DEFAULT_PLACEHOLDER,
+	redactText,
+	SUPPORTED_PII_CATEGORIES,
+	type RedactionOptions,
+} from '@n8n/agents';
 import type { GenericValue, ITelemetryTrackProperties } from 'n8n-workflow';
 
 /**
@@ -37,6 +42,16 @@ const MAX_TELEMETRY_TEXT_LENGTH = 8_000;
 const IDENTIFIER_KEY_PATTERN = /(?:^|_)(?:id|ids|hash)$/;
 
 /**
+ * Keys whose *value is itself* the credential. A pattern scan only catches
+ * secrets with a recognizable shape, so a plain `password: 'hunter2'` would
+ * sail through — these are replaced wholesale instead. Anchored at the end of
+ * the key so properties that merely describe a credential (`credential_type`,
+ * `credential_kind` on `Node credential assigned`) keep their analytics value.
+ */
+const SECRET_KEY_PATTERN =
+	/(?:^|_)(?:password|passwd|pwd|secret|token|api_?key|apikey|access_?token|refresh_?token|id_?token|session_?token|auth_?token|authorization|cookie|private_?key|credentials?)$/i;
+
+/**
  * Telemetry payloads are flat in practice. Rather than let an unexpectedly deep
  * value through unscrubbed (INS-685), replace it with a marker.
  */
@@ -52,7 +67,18 @@ export function redactTelemetryText(value: string): string {
 		: redacted;
 }
 
+function isNonNullObject(value: GenericValue): value is object {
+	return value !== null && typeof value === 'object';
+}
+
 function redactPropertyValue(key: string, value: GenericValue, depth: number): GenericValue {
+	// Runs before the identifier exemption: a secret-shaped key wins over any
+	// key-based pass-through. Numbers/booleans are left alone — they can't carry
+	// a secret, and flags like `has_token` are worth keeping.
+	if (SECRET_KEY_PATTERN.test(key) && (typeof value === 'string' || isNonNullObject(value))) {
+		return DEFAULT_PLACEHOLDER;
+	}
+
 	if (typeof value === 'string') {
 		return IDENTIFIER_KEY_PATTERN.test(key) ? value : redactTelemetryText(value);
 	}
@@ -62,7 +88,7 @@ function redactPropertyValue(key: string, value: GenericValue, depth: number): G
 		return value.map((entry: GenericValue) => redactPropertyValue(key, entry, depth + 1));
 	}
 
-	if (value !== null && typeof value === 'object') {
+	if (isNonNullObject(value)) {
 		if (depth >= MAX_PROPERTY_DEPTH) return OVER_DEPTH_MARKER;
 		const redacted: Record<string, GenericValue> = {};
 		for (const [nestedKey, nestedValue] of Object.entries(value)) {

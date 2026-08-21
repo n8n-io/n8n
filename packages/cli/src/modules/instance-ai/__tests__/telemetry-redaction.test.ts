@@ -73,6 +73,31 @@ describe('redactTelemetryProperties', () => {
 		expect(redactTelemetryProperties(properties)).toEqual(properties);
 	});
 
+	it('replaces values under secret-shaped keys, even when they match no pattern', () => {
+		const redacted = redactTelemetryProperties({
+			password: 'hunter2',
+			api_key: 'plain-value',
+			config: { access_token: 'not-token-shaped' },
+		});
+
+		expect(redacted).toEqual({
+			password: '[REDACTED]',
+			api_key: '[REDACTED]',
+			config: { access_token: '[REDACTED]' },
+		});
+	});
+
+	it('keeps properties that only describe a credential', () => {
+		const properties = {
+			credential_type: 'httpBasicAuth',
+			credential_kind: 'n8n_connect',
+			has_token: true,
+			total_tokens: 1_200,
+		};
+
+		expect(redactTelemetryProperties(properties)).toEqual(properties);
+	});
+
 	it('recurses into nested objects and arrays', () => {
 		const redacted = redactTelemetryProperties({
 			errors: [
