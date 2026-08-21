@@ -1026,21 +1026,7 @@ describe('useNodeHelpers()', () => {
 				expect(result).toBeNull();
 			});
 
-<<<<<<< HEAD
-			it('does not warn when a private credential is used under a chat trigger', () => {
-=======
-			it('does not warn when a private credential is used under a manual chat trigger', () => {
-				mockConnectedPrivateCred(true);
-				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(MANUAL_CHAT_TRIGGER)];
-
-				const { getNodeCredentialIssues } = useNodeHelpers();
-				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
-
-				expect(result).toBeNull();
-			});
-
 			it('warns when a private credential is used under a chat trigger not available in Chat Hub', () => {
->>>>>>> 2c5db29175abb7abb6663ab7957c9a5d1124f39f
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(CHAT_TRIGGER)];
 

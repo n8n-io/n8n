@@ -116,12 +116,8 @@ export const MINIMAX_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.minimax';
 // `classifyTriggerIdentity` checks parameter-by-parameter (IAM-1238).
 export const MANUAL_TRIGGER_NODE_TYPES: readonly string[] = [
 	MANUAL_TRIGGER_NODE_TYPE,
-<<<<<<< HEAD
 	CHAT_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
-=======
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
->>>>>>> 2c5db29175abb7abb6663ab7957c9a5d1124f39f
 ];
 
 export const AI_VENDOR_NODE_TYPES = [
