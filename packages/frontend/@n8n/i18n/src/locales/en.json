@@ -4398,6 +4398,7 @@
 	"ndv.nodeHints.executeOnce": "This node will execute only once, no matter how many input items there are",
 	"ndv.nodeHints.retryOnFail": "This node will automatically retry if it fails",
 	"ndv.nodeHints.continueOnError": "Execution will continue even if the node fails",
+	"ndv.nodeHints.repeatedCount": "Occurred {count} times",
 	"updatesPanel.andIs": "and is",
 	"updatesPanel.behindTheLatest": "behind the latest and greatest n8n",
 	"updatesPanel.howToUpdateYourN8nVersion": "How to update your n8n version",
