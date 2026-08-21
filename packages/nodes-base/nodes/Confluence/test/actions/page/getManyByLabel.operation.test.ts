@@ -182,6 +182,27 @@ describe('Confluence page:getManyByLabel operation', () => {
 			expect(result.map((page) => page.id)).toEqual(['1', '2', '3']);
 		});
 
+		it('stops when the API repeats a next cursor instead of refetching forever', async () => {
+			apiRequest
+				.mockResolvedValueOnce({
+					results: [{ id: '1' }],
+					_links: { next: '/wiki/api/v2/labels/777/pages?cursor=same' },
+				})
+				.mockResolvedValueOnce({
+					results: [{ id: '2' }],
+					_links: { next: '/wiki/api/v2/labels/777/pages?cursor=same' },
+				});
+			const ctx = createContext({
+				label: { mode: 'id', value: '777' },
+				returnAll: true,
+			});
+
+			const result = (await execute.call(ctx, 0)) as IDataObject[];
+
+			expect(apiRequest).toHaveBeenCalledTimes(2);
+			expect(result.map((page) => page.id)).toEqual(['1', '2']);
+		});
+
 		it('stops when the response has no next cursor even below the limit', async () => {
 			apiRequest.mockResolvedValueOnce({ results: [{ id: '1' }] });
 			const ctx = createContext({

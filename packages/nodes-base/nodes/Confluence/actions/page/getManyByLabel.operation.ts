@@ -88,6 +88,7 @@ export const execute: ConfluenceOperation = async function (
 	const requestedFormat = bodyFormat === 'plainText' ? 'atlas_doc_format' : bodyFormat;
 
 	const pages: IDataObject[] = [];
+	const seenCursors = new Set<string>();
 	let cursor: string | undefined;
 	do {
 		const qs: IDataObject = {
@@ -107,6 +108,9 @@ export const execute: ConfluenceOperation = async function (
 		const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 		pages.push.apply(pages, results);
 		cursor = extractNextCursor(response);
+		// The API can return a next link that does not advance; refetching it would loop forever
+		if (cursor !== undefined && seenCursors.has(cursor)) cursor = undefined;
+		if (cursor !== undefined) seenCursors.add(cursor);
 	} while (cursor !== undefined && pages.length < limit);
 
 	return pages.slice(0, limit).map((page) => shapeBody(page, bodyFormat));
