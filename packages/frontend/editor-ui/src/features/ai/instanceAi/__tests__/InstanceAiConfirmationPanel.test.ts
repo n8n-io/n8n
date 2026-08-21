@@ -627,11 +627,22 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			],
 		};
 
+		it('renders questions only in the floating mount', () => {
+			injectPendingConfirmation(thread, questionsConfirmation);
+
+			const floating = renderComponent({ props: { kind: 'floating' } });
+			expect(floating.getByTestId('mock-questions')).toBeVisible();
+			floating.unmount();
+
+			const inline = renderComponent({ props: { kind: 'inline' } });
+			expect(inline.queryByTestId('mock-questions')).toBeNull();
+		});
+
 		it('includes all available options and correct option_chosen for single-select', () => {
 			injectPendingConfirmation(thread, questionsConfirmation);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			renderComponent({ props: { kind: 'inline' } });
+			renderComponent({ props: { kind: 'floating' } });
 
 			const answers: QuestionAnswer[] = [
 				{
@@ -693,7 +704,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			injectPendingConfirmation(thread, questionsConfirmation);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			renderComponent({ props: { kind: 'inline' } });
+			renderComponent({ props: { kind: 'floating' } });
 
 			const answers: QuestionAnswer[] = [
 				{
@@ -736,7 +747,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			injectPendingConfirmation(thread, questionsConfirmation);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			renderComponent({ props: { kind: 'inline' } });
+			renderComponent({ props: { kind: 'floating' } });
 
 			const answers: QuestionAnswer[] = [
 				{
@@ -777,7 +788,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			injectPendingConfirmation(thread, questionsConfirmation);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			renderComponent({ props: { kind: 'inline' } });
+			renderComponent({ props: { kind: 'floating' } });
 
 			const answers: QuestionAnswer[] = [
 				{
