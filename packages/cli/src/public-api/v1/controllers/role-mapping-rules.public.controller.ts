@@ -138,7 +138,7 @@ export class RoleMappingRulesPublicController {
 	@ApiKeyScope('roleMappingRule:update')
 	@ApiSummary('Update a role-mapping rule')
 	@ApiDescription(
-		"Replaces a rule's claim expression, role and project assignments. `type` must match the rule's current type — a rule's type cannot be changed once created. The rule keeps its position in the evaluation order — use the move endpoint to reorder it.",
+		"Updates a rule's claim expression, role, and/or project assignments. A rule's type cannot be changed once created, so `type` isn't accepted here, and reordering is handled by the move endpoint.",
 	)
 	@ApiTags(['RoleMappingRule'])
 	@ApiResponse(200, RoleMappingRulePublicDto)
