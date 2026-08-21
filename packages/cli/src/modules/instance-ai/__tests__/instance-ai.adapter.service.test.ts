@@ -2653,7 +2653,7 @@ describe('createWorkflowAdapter', () => {
 					parameters: {},
 					credentials: {
 						slackApi: { name: 'Slack' },
-						gmailOAuth2Api: { id: '', name: 'Gmail' },
+						gmailOAuth2: { id: '', name: 'Gmail' },
 						openAiApi: { id: null, name: 'OpenAI' },
 						httpHeaderAuth: { id: 'cred-1', name: 'HTTP Header' },
 					},
@@ -2714,7 +2714,7 @@ describe('createWorkflowAdapter', () => {
 					parameters: {},
 					credentials: {
 						slackApi: { name: 'Slack' },
-						gmailOAuth2Api: { id: '  ', name: 'Gmail' },
+						gmailOAuth2: { id: '  ', name: 'Gmail' },
 					},
 				},
 			],
