@@ -131,6 +131,7 @@ describe('Insights Transformers', () => {
 				failureRate: { value: 0.05, deviation: 0.01, unit: 'ratio' },
 				averageRunTime: { value: 5000, deviation: 1000, unit: 'millisecond' },
 				failed: { value: 5, deviation: 1, unit: 'count' },
+				billable: { value: 100, deviation: 8, unit: 'count' },
 			};
 
 			const expectedOutput = [
@@ -200,6 +201,7 @@ describe('Insights Transformers', () => {
 				timeSaved: { value: 30, deviation: null, unit: 'minute' },
 				averageRunTime: { value: 2000, deviation: 500, unit: 'millisecond' },
 				failureRate: { value: 0.1, deviation: null, unit: 'ratio' },
+				billable: { value: 90, deviation: null, unit: 'count' },
 			};
 
 			const expectedOutput = [

@@ -38,6 +38,11 @@ export const insightsSummaryDataSchemas = {
 		deviation: z.union([z.null(), z.number()]),
 		unit: z.literal('millisecond'),
 	}),
+	billable: z.object({
+		value: z.number(),
+		deviation: z.union([z.null(), z.number()]),
+		unit: z.literal('count'),
+	}),
 } as const;
 
 export const insightsSummarySchema = z.object(insightsSummaryDataSchemas).strict();

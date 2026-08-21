@@ -1,4 +1,8 @@
-import { type InsightsSummary } from '@n8n/api-types';
+import {
+	type InsightsByTime,
+	type InsightsSummary,
+	type RestrictedInsightsByTime,
+} from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
@@ -11,12 +15,27 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
-import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
-import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
+import type { PeriodUnit, TypeUnit, ByTimeInsightType } from './database/entities/insights-shared';
+import { NumberToType } from './database/entities/insights-shared';
 import type { InsightsAccessFilter } from './database/repositories/insights-by-period.repository';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsCompactionService } from './insights-compaction.service';
 import { InsightsPruningService } from './insights-pruning.service';
+
+const BY_TIME_INSIGHT_TYPES: ByTimeInsightType[] = [
+	'time_saved_min',
+	'runtime_ms',
+	'success',
+	'failure',
+];
+
+type InsightsDateRangeQuery = {
+	user: User;
+	startDate: Date;
+	endDate: Date;
+	projectId?: string;
+	timeZone?: string;
+};
 
 @Service()
 export class InsightsService {
@@ -168,6 +187,9 @@ export class InsightsService {
 		const currentTimeSaved = getValueByType('current', 'time_saved_min');
 		const previousTimeSaved = getValueByType('previous', 'time_saved_min');
 
+		const currentBillable = getValueByType('current', 'billable');
+		const previousBillable = getValueByType('previous', 'billable');
+
 		// If the previous period has no executions, we discard deviation
 		const getDeviation = (current: number, previous: number) =>
 			previousTotal === 0 ? null : current - previous;
@@ -198,6 +220,11 @@ export class InsightsService {
 				value: currentTotal,
 				unit: 'count',
 				deviation: getDeviation(currentTotal, previousTotal),
+			},
+			billable: {
+				value: currentBillable,
+				unit: 'count',
+				deviation: getDeviation(currentBillable, previousBillable),
 			},
 		};
 
@@ -250,23 +277,74 @@ export class InsightsService {
 
 	async getInsightsByTime({
 		user,
-		// Default to all insight types
-		insightTypes = Object.keys(TypeToNumber) as TypeUnit[],
-		projectId,
 		startDate,
 		endDate,
+		projectId,
 		timeZone,
-	}: {
-		user: User;
-		insightTypes?: TypeUnit[];
-		projectId?: string;
-		startDate: Date;
-		endDate: Date;
-		timeZone?: string;
-	}) {
+	}: InsightsDateRangeQuery): Promise<InsightsByTime[]> {
+		const rows = await this.queryInsightsByTime({
+			user,
+			startDate,
+			endDate,
+			projectId,
+			timeZone,
+			insightTypes: BY_TIME_INSIGHT_TYPES,
+		});
+
+		return rows.map((r) => {
+			const succeeded = r.succeeded ?? 0;
+			const failed = r.failed ?? 0;
+			const total = succeeded + failed;
+			const runTime = r.runTime ?? 0;
+
+			return {
+				date: r.periodStart,
+				values: {
+					total,
+					succeeded,
+					failed,
+					failureRate: total ? failed / total : 0,
+					averageRunTime: total ? runTime / total : 0,
+					timeSaved: r.timeSaved ?? 0,
+				},
+			};
+		});
+	}
+
+	async getTimeSavedInsightsByTime({
+		user,
+		startDate,
+		endDate,
+		projectId,
+		timeZone,
+	}: InsightsDateRangeQuery): Promise<RestrictedInsightsByTime[]> {
+		const rows = await this.queryInsightsByTime({
+			user,
+			startDate,
+			endDate,
+			projectId,
+			timeZone,
+			insightTypes: ['time_saved_min'],
+		});
+
+		return rows.map((r) => ({
+			date: r.periodStart,
+			values: { timeSaved: r.timeSaved ?? 0 },
+		}));
+	}
+
+	private async queryInsightsByTime({
+		user,
+		startDate,
+		endDate,
+		projectId,
+		timeZone,
+		insightTypes,
+	}: InsightsDateRangeQuery & { insightTypes: ByTimeInsightType[] }) {
 		const accessFilter = await this.resolveAccessFilter(user, projectId);
 		const periodUnit = this.getDateFiltersGranularity({ startDate, endDate });
-		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
+
+		return await this.insightsByPeriodRepository.getInsightsByTime({
 			periodUnit,
 			insightTypes,
 			projectId,
@@ -274,30 +352,6 @@ export class InsightsService {
 			endDate,
 			timeZone,
 			accessFilter,
-		});
-
-		return rows.map((r) => {
-			const { periodStart, runTime, ...rest } = r;
-			const values: typeof rest & {
-				total?: number;
-				successRate?: number;
-				failureRate?: number;
-				averageRunTime?: number;
-			} = rest;
-
-			// Compute ratio if total has been computed
-			if (typeof r.succeeded === 'number' && typeof r.failed === 'number') {
-				const total = r.succeeded + r.failed;
-				values.total = total;
-				values.failureRate = total ? r.failed / total : 0;
-				if (typeof runTime === 'number') {
-					values.averageRunTime = total ? runTime / total : 0;
-				}
-			}
-			return {
-				date: r.periodStart,
-				values,
-			};
 		});
 	}
 
