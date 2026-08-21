@@ -10,6 +10,7 @@ import Handlebars from 'handlebars';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 
+import { GraphMailer } from './graph-mailer';
 import type { InviteEmailData, PasswordResetData, SendEmailResult } from './interfaces';
 import { NodeMailer } from './node-mailer';
 
@@ -58,7 +59,7 @@ export class UserManagementMailer {
 
 	readonly templatesCache: Partial<Record<TemplateName, Template>> = {};
 
-	readonly mailer: NodeMailer | undefined;
+	readonly mailer: NodeMailer | GraphMailer | undefined;
 
 	constructor(
 		globalConfig: GlobalConfig,
@@ -68,12 +69,21 @@ export class UserManagementMailer {
 		private readonly eventService: EventService,
 	) {
 		const emailsConfig = globalConfig.userManagement.emails;
-		this.isEmailSetUp = emailsConfig.mode === 'smtp' && emailsConfig.smtp.host !== '';
+		const { microsoftGraph: graph } = emailsConfig;
+		const isSmtpSetUp = emailsConfig.mode === 'smtp' && emailsConfig.smtp.host !== '';
+		const isGraphSetUp =
+			emailsConfig.mode === 'microsoftGraph' &&
+			!!graph.clientId &&
+			!!graph.clientSecret &&
+			!!graph.tenantId &&
+			!!graph.sender;
+		this.isEmailSetUp = isSmtpSetUp || isGraphSetUp;
 		this.templateOverrides = emailsConfig.template;
 
-		// Other implementations can be used in the future.
-		if (this.isEmailSetUp) {
+		if (isSmtpSetUp) {
 			this.mailer = Container.get(NodeMailer);
+		} else if (isGraphSetUp) {
+			this.mailer = Container.get(GraphMailer);
 		}
 	}
 
