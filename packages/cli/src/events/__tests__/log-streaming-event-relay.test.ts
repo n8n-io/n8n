@@ -73,6 +73,9 @@ describe('LogStreamingEventRelay', () => {
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
 					missingNodeTypeMode: 'fail',
+					projectConflictPolicy: 'merge',
+					folderConflictPolicy: 'merge',
+					overwriteDeletionPolicy: 'archive',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
@@ -95,6 +98,11 @@ describe('LogStreamingEventRelay', () => {
 						created: 1,
 						updated: 1,
 						skipped: 0,
+						archived: 1,
+						deleted: 0,
+					},
+					folders: {
+						removed: 1,
 					},
 					credentials: {
 						matched: 1,
@@ -145,6 +153,9 @@ describe('LogStreamingEventRelay', () => {
 						credentialMissingMode: 'must-preexist',
 						workflowPublishingPolicy: 'preserve-published-state',
 						missingNodeTypeMode: 'fail',
+						projectConflictPolicy: 'merge',
+						folderConflictPolicy: 'merge',
+						overwriteDeletionPolicy: 'archive',
 						dataTableMatchingMode: 'by-id',
 						dataTableMissingMode: 'create',
 						dataTableSchemaConflictPolicy: 'keep-existing',
@@ -186,6 +197,8 @@ describe('LogStreamingEventRelay', () => {
 					variables: 1,
 					tags: 1,
 				},
+				// Telemetry-only; must not appear in the audit payload below.
+				credentialExportPolicy: 'expression-values-only',
 			};
 
 			eventService.emit('n8n-package-exported', event);
