@@ -25,10 +25,13 @@ const mapFormParseError = (error: unknown): Error => {
 	}
 };
 
-// A browser submits a file input the user left empty as a 0-byte part with an
-// empty filename. Skipping the part keeps the request valid and produces no
-// binary for that field.
-const isFileSelected = (part: formidable.Part): boolean => Boolean(part.originalFilename);
+// A browser submits a file input the user left empty as a 0-byte part that
+// declares `filename=""`. Skipping the part keeps the request valid and
+// produces no binary for that field. A part that omits the filename attribute
+// altogether is a different case: formidable reports `null` rather than an
+// empty string, and non-browser clients upload real content that way, so the
+// parser must keep it.
+const isFileSelected = (part: formidable.Part): boolean => part.originalFilename !== '';
 
 const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
 	for (const key in values) {

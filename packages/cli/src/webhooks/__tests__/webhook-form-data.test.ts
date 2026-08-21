@@ -242,6 +242,32 @@ describe('webhook-form-data', () => {
 			testServer.assertHasBeenCalled();
 		});
 
+		it('should keep a file part that omits the filename', async () => {
+			const parseFn = createMultiFormDataParser(1);
+
+			await testServer
+				.sendRequestToHandler(async (req) => {
+					const parsedData = await parseFn(req);
+
+					expect(parsedData).toStrictEqual({
+						data: {},
+						files: {
+							file: expect.objectContaining({
+								originalFilename: null,
+								size: oneKbData.length,
+								mimetype: 'application/octet-stream',
+							}),
+						},
+					});
+				})
+				// supertest omits the filename attribute when `attach` gets no
+				// filename, which is how non-browser clients upload content too.
+				.attach('file', oneKbData)
+				.expect(200);
+
+			testServer.assertHasBeenCalled();
+		});
+
 		it('should keep only the file inputs the user filled in', async () => {
 			const parseFn = createMultiFormDataParser(1);
 			const boundary = 'mixedFileBoundary';
