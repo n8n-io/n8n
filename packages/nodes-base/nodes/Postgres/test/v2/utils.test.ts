@@ -30,6 +30,7 @@ import {
 	isWhereClause,
 	getWhereClauses,
 	runQueriesAndHandleErrors,
+	parseParameterLoadingError,
 } from '../../v2/helpers/utils';
 
 const node: INode = {
@@ -152,6 +153,25 @@ describe('Test PostgresV2, parsePostgresError', () => {
 		expect(parsedError).toBeDefined();
 		expect(parsedError.message).toEqual('Syntax error at line 1 near "select"');
 		expect(parsedError instanceof NodeOperationError).toEqual(true);
+	});
+});
+
+describe('Test PostgresV2, parseParameterLoadingError', () => {
+	it('should wrap a raw error as a warning-level NodeOperationError', () => {
+		const error = parseParameterLoadingError(
+			node,
+			new Error('relation "public.opinie_godzina" does not exist'),
+		);
+
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(error.level).toEqual('warning');
+		expect(error.message).toEqual('relation "public.opinie_godzina" does not exist');
+	});
+
+	it('should return an existing NodeOperationError unchanged', () => {
+		const original = new NodeOperationError(node, 'boom');
+
+		expect(parseParameterLoadingError(node, original)).toBe(original);
 	});
 });
 
