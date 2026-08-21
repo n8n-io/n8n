@@ -155,6 +155,23 @@ export const ALL_INSTANCE_SCOPES: Scope[] = [
 	...new Set(INSTANCE_SCOPE_GROUP_LIST.flatMap((g) => g.options.flatMap((o) => o.scopes))),
 ];
 
+/**
+ * "Users: View" is baseline behavior every instance role carries — the default
+ * Member role already has it — not something a custom role can opt out of.
+ * Rendered checked and disabled in the editor; `withMandatoryInstanceScopes`
+ * guarantees the underlying scopes are present on load and on save.
+ */
+export function isOptionMandatory(resource: InstanceResource, option: InstanceScopeOption) {
+	return resource === 'user' && option.key === 'View';
+}
+
+const MANDATORY_INSTANCE_SCOPES: readonly Scope[] = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View;
+
+/** Unions in the mandatory scopes (see `isOptionMandatory`) on top of an already-filtered scope list. */
+export function withMandatoryInstanceScopes(scopes: readonly string[]): string[] {
+	return [...new Set([...scopes, ...MANDATORY_INSTANCE_SCOPES])];
+}
+
 export type OptionState = 'checked' | 'indeterminate' | 'unchecked';
 
 /**

@@ -228,4 +228,30 @@ describe('ScopeGroupSelector', () => {
 			expect(scopes).toContain('securitySettings:manage');
 		});
 	});
+
+	describe('mandatory "Users: View" option', () => {
+		// The caller (InstanceRoleView's `withMandatoryInstanceScopes`) is what
+		// guarantees these scopes are always in `modelValue` — the selector itself
+		// stays a pure function of its props, same as every other option.
+		const withUserView = [...INSTANCE_SCOPE_GROUPS.user.View];
+
+		it('renders checked and disabled', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: withUserView },
+			});
+			const userView = getByTestId('scope-option-user-view');
+			expect(userView.getAttribute('aria-checked')).toBe('true');
+			expect(userView.hasAttribute('disabled')).toBe(true);
+		});
+
+		it('does not emit an update when clicked', async () => {
+			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: withUserView },
+			});
+
+			await userEvent.click(getByTestId('scope-option-user-view'));
+
+			expect(emitted()['update:modelValue']).toBeFalsy();
+		});
+	});
 });
