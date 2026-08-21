@@ -25,3 +25,15 @@ export class ConnectionEndedError extends ImapError {
 		super('Connection ended unexpectedly');
 	}
 }
+
+export class ConnectionLostError extends ImapError {
+	constructor() {
+		super('Connection to the IMAP server was lost');
+	}
+}
+
+export class ReconnectTimeoutError extends ImapError {
+	constructor() {
+		super('Reconnecting to the IMAP server timed out');
+	}
+}
