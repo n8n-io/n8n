@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_d64d432ee2bd9a::t_2c0314f2678e29 141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e4f6bca043d72b733d75ef387dc89eb7b99bf46a",
+  "prompts": {},
+  "sessions": {
+    "s_d64d432ee2bd9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2dd4d14-a5c2-4343-994f-5e116c36149d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
