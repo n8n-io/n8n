@@ -1,21 +1,34 @@
-import {
-	getParts,
-	type ImapSimple,
-	type Message,
-	type MessagePart,
-	type SearchCriteria,
-} from '@n8n/imap';
+import type { FetchOptions, ImapSimple, Message, SearchCriteria } from '@n8n/imap';
 import find from 'lodash/find';
 import { simpleParser, type Source as ParserSource } from 'mailparser';
 import {
-	type IBinaryData,
 	type INodeExecutionData,
 	type IDataObject,
 	type ITriggerFunctions,
-	deepCopy,
 	NodeOperationError,
+	deepCopy,
 	type IBinaryKeyData,
 } from 'n8n-workflow';
+import rfc2047 from 'rfc2047';
+
+const EMAIL_BATCH_SIZE = 20;
+
+const FETCH_OPTIONS: Record<string, FetchOptions> = {
+	resolved: { bodies: [''], markSeen: false, struct: true },
+	simple: { bodies: ['TEXT', 'HEADER'], markSeen: false, struct: true },
+	raw: { bodies: ['TEXT', 'HEADER'], markSeen: false, struct: true },
+};
+
+/** Headers a `simple` item carries at the top level; every other header goes under `metadata`. */
+const TOP_LEVEL_HEADERS = ['cc', 'date', 'from', 'subject', 'to'];
+
+const decodeFilename = (filename: string) => {
+	const regex = /=\?([\w-]+)\?Q\?.*\?=/i;
+	if (regex.test(filename)) {
+		return rfc2047.decode(filename);
+	}
+	return filename;
+};
 
 async function parseRawEmail(
 	this: ITriggerFunctions,
@@ -24,45 +37,40 @@ async function parseRawEmail(
 ): Promise<INodeExecutionData> {
 	const responseData = await simpleParser(messageEncoded);
 	const headers: IDataObject = {};
-	const additionalData: IDataObject = {};
 
 	for (const header of responseData.headerLines) {
 		headers[header.key] = header.line;
 	}
 
-	additionalData.headers = headers;
-	additionalData.headerLines = undefined;
-
 	const binaryData: IBinaryKeyData = {};
-	if (responseData.attachments) {
-		for (let i = 0; i < responseData.attachments.length; i++) {
-			const attachment = responseData.attachments[i];
-			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
-				attachment.content,
-				attachment.filename,
-				attachment.contentType,
-			);
-		}
-
-		additionalData.attachments = undefined;
+	for (const [i, attachment] of (responseData.attachments ?? []).entries()) {
+		binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
+			attachment.content,
+			attachment.filename,
+			attachment.contentType,
+		);
 	}
 
-	const json: IDataObject = { ...responseData, ...additionalData };
+	const json: IDataObject = {
+		...responseData,
+		headers,
+		headerLines: undefined,
+		attachments: undefined,
+	};
 
 	return {
 		// v2.2+ deep-serializes the mail so the Date and any other non-JSON values stay JSON-safe
 		json: this.getNode().typeVersion >= 2.2 ? deepCopy(json) : json,
 		binary: Object.keys(binaryData).length ? binaryData : undefined,
-	} as INodeExecutionData;
+	};
 }
 
-const EMAIL_BATCH_SIZE = 20;
+/** Turns one message into an item, or into nothing when it holds no usable mail. */
+type ItemBuilder = (message: Message) => Promise<INodeExecutionData | undefined>;
 
 export async function getNewEmails(
 	this: ITriggerFunctions,
 	{
-		getAttachment,
-		getText,
 		onEmailBatch,
 		imapConnection,
 		postProcessAction,
@@ -71,192 +79,46 @@ export async function getNewEmails(
 		imapConnection: ImapSimple;
 		searchCriteria: SearchCriteria[];
 		postProcessAction: string;
-		getText: (parts: MessagePart[], message: Message, subtype: string) => Promise<string>;
-		getAttachment: (
-			imapConnection: ImapSimple,
-			parts: MessagePart[],
-			message: Message,
-		) => Promise<IBinaryData[]>;
 		onEmailBatch: (data: INodeExecutionData[]) => Promise<void>;
 	},
 ) {
 	const format = this.getNodeParameter('format', 0) as string;
-
-	let fetchOptions = {};
-
-	if (format === 'simple' || format === 'raw') {
-		fetchOptions = {
-			bodies: ['TEXT', 'HEADER'],
-			markSeen: false,
-			struct: true,
-		};
-	} else if (format === 'resolved') {
-		fetchOptions = {
-			bodies: [''],
-			markSeen: false,
-			struct: true,
-		};
-	}
-
-	let results: Message[] = [];
-	let maxUid = 0;
-
 	const staticData = this.getWorkflowStaticData('node');
 	const limit = this.getNode().typeVersion >= 2.1 ? EMAIL_BATCH_SIZE : undefined;
 
+	const buildItem = itemBuilderFor.call(this, format, imapConnection);
+
+	let criteria = searchCriteria;
+	let results: Message[] = [];
+	let maxUid = 0;
+
 	do {
 		if (maxUid) {
-			searchCriteria = searchCriteria.filter((criteria: SearchCriteria) => {
-				if (Array.isArray(criteria)) {
-					return !['UID', 'SINCE'].includes(criteria[0]);
-				}
-				return true;
-			});
-
-			searchCriteria.push(['UID', `${maxUid}:*`]);
+			criteria = criteria.filter(
+				(criterion) => !Array.isArray(criterion) || !['UID', 'SINCE'].includes(criterion[0]),
+			);
+			criteria.push(['UID', `${maxUid}:*`]);
 		}
-		results = await imapConnection.search(searchCriteria, fetchOptions, limit);
+		results = await imapConnection.search(criteria, FETCH_OPTIONS[format] ?? {}, limit);
 
 		this.logger.debug(`Process ${results.length} new emails in node "EmailReadImap"`);
 
 		const newEmails: INodeExecutionData[] = [];
 		const processedUids: number[] = [];
-		let newEmail: INodeExecutionData;
-		let attachments: IBinaryData[];
-		let propertyName: string;
 
-		// All properties get by default moved to metadata except the ones
-		// which are defined here which get set on the top level.
-		const topLevelProperties = ['cc', 'date', 'from', 'subject', 'to'];
+		for (const message of results) {
+			const lastMessageUid = staticData.lastMessageUid as number | undefined;
+			if (lastMessageUid !== undefined && message.attributes.uid <= lastMessageUid) continue;
+			if (message.attributes.uid > maxUid) maxUid = message.attributes.uid;
 
-		if (format === 'resolved') {
-			const dataPropertyAttachmentsPrefixName = this.getNodeParameter(
-				'dataPropertyAttachmentsPrefixName',
-			) as string;
+			const item = await buildItem(message);
+			if (!item) continue;
 
-			for (const message of results) {
-				const lastMessageUid = this.getWorkflowStaticData('node').lastMessageUid as number;
-				if (lastMessageUid !== undefined && message.attributes.uid <= lastMessageUid) {
-					continue;
-				}
-
-				// Track the maximum UID to update staticData later
-				if (message.attributes.uid > maxUid) {
-					maxUid = message.attributes.uid;
-				}
-				const part = find(message.parts, { which: '' });
-
-				if (part === undefined) {
-					throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
-				}
-				const parsedEmail = await parseRawEmail.call(
-					this,
-					part.body as Buffer,
-					dataPropertyAttachmentsPrefixName,
-				);
-
-				parsedEmail.json.attributes = {
-					uid: message.attributes.uid,
-				};
-
-				newEmails.push(parsedEmail);
-				processedUids.push(message.attributes.uid);
-			}
-		} else if (format === 'simple') {
-			const downloadAttachments = this.getNodeParameter('downloadAttachments') as boolean;
-
-			let dataPropertyAttachmentsPrefixName = '';
-			if (downloadAttachments) {
-				dataPropertyAttachmentsPrefixName = this.getNodeParameter(
-					'dataPropertyAttachmentsPrefixName',
-				) as string;
-			}
-
-			for (const message of results) {
-				const lastMessageUid = this.getWorkflowStaticData('node').lastMessageUid as number;
-				if (lastMessageUid !== undefined && message.attributes.uid <= lastMessageUid) {
-					continue;
-				}
-
-				// Track the maximum UID to update staticData later
-				if (message.attributes.uid > maxUid) {
-					maxUid = message.attributes.uid;
-				}
-				const parts = getParts(message.attributes.struct as IDataObject[]);
-
-				newEmail = {
-					json: {
-						textHtml: await getText(parts, message, 'html'),
-						textPlain: await getText(parts, message, 'plain'),
-						metadata: {} as IDataObject,
-						attributes: {
-							uid: message.attributes.uid,
-						} as IDataObject,
-					},
-				};
-
-				const messageHeader = message.parts.filter((part) => part.which === 'HEADER');
-
-				if (messageHeader.length === 0 || !messageHeader[0].body) {
-					this.logger.warn(
-						`Skipping email UID ${message.attributes.uid}: HEADER part missing or empty`,
-					);
-					continue;
-				}
-
-				const messageBody = messageHeader[0].body as Record<string, string[]>;
-				for (propertyName of Object.keys(messageBody)) {
-					if (messageBody[propertyName].length) {
-						if (topLevelProperties.includes(propertyName)) {
-							newEmail.json[propertyName] = messageBody[propertyName][0];
-						} else {
-							(newEmail.json.metadata as IDataObject)[propertyName] = messageBody[propertyName][0];
-						}
-					}
-				}
-
-				if (downloadAttachments) {
-					// Get attachments and add them if any get found
-					attachments = await getAttachment(imapConnection, parts, message);
-					if (attachments.length) {
-						newEmail.binary = {};
-						for (let i = 0; i < attachments.length; i++) {
-							newEmail.binary[`${dataPropertyAttachmentsPrefixName}${i}`] = attachments[i];
-						}
-					}
-				}
-
-				newEmails.push(newEmail);
-				processedUids.push(message.attributes.uid);
-			}
-		} else if (format === 'raw') {
-			for (const message of results) {
-				const lastMessageUid = this.getWorkflowStaticData('node').lastMessageUid as number;
-				if (lastMessageUid !== undefined && message.attributes.uid <= lastMessageUid) {
-					continue;
-				}
-
-				// Track the maximum UID to update staticData later
-				if (message.attributes.uid > maxUid) {
-					maxUid = message.attributes.uid;
-				}
-				const part = find(message.parts, { which: 'TEXT' });
-
-				if (part === undefined) {
-					throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
-				}
-				// Return base64 string
-				newEmail = {
-					json: {
-						raw: part.body as string,
-					},
-				};
-
-				newEmails.push(newEmail);
-				processedUids.push(message.attributes.uid);
-			}
+			newEmails.push(item);
+			processedUids.push(message.attributes.uid);
 		}
 
+		// only mark messages as seen once processing has finished
 		if (postProcessAction === 'read' && processedUids.length > 0) {
 			await imapConnection.addFlags(processedUids, '\\SEEN');
 		}
@@ -267,4 +129,86 @@ export async function getNewEmails(
 			staticData.lastMessageUid = maxUid;
 		}
 	} while (results.length >= EMAIL_BATCH_SIZE);
+}
+
+function itemBuilderFor(
+	this: ITriggerFunctions,
+	format: string,
+	imapConnection: ImapSimple,
+): ItemBuilder {
+	const attachmentPrefix = () =>
+		this.getNodeParameter('dataPropertyAttachmentsPrefixName') as string;
+
+	if (format === 'resolved') {
+		const prefix = attachmentPrefix();
+
+		return async (message) => {
+			const part = find(message.parts, { which: '' });
+			if (part === undefined) {
+				throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
+			}
+
+			const item = await parseRawEmail.call(this, part.body as Buffer, prefix);
+			item.json.attributes = { uid: message.attributes.uid };
+			return item;
+		};
+	}
+
+	if (format === 'simple') {
+		const downloadAttachments = this.getNodeParameter('downloadAttachments') as boolean;
+		const prefix = downloadAttachments ? attachmentPrefix() : '';
+
+		return async (message) => {
+			const header = find(message.parts, { which: 'HEADER' });
+			if (!header?.body) {
+				this.logger.warn(
+					`Skipping email UID ${message.attributes.uid}: HEADER part missing or empty`,
+				);
+				return undefined;
+			}
+
+			const json: IDataObject = {
+				textHtml: await imapConnection.downloadText(message, 'html'),
+				textPlain: await imapConnection.downloadText(message, 'plain'),
+				metadata: {} as IDataObject,
+				attributes: { uid: message.attributes.uid },
+			};
+
+			for (const [name, values] of Object.entries(header.body as Record<string, string[]>)) {
+				if (!values.length) continue;
+				if (TOP_LEVEL_HEADERS.includes(name)) json[name] = values[0];
+				else (json.metadata as IDataObject)[name] = values[0];
+			}
+
+			const item: INodeExecutionData = { json };
+
+			if (downloadAttachments) {
+				const attachments = await imapConnection.downloadAttachments(message);
+				const binaries = await Promise.all(
+					attachments.map(
+						async ({ content, filename }) =>
+							await this.helpers.prepareBinaryData(content, decodeFilename(filename as string)),
+					),
+				);
+
+				if (binaries.length) {
+					item.binary = Object.fromEntries(binaries.map((binary, i) => [`${prefix}${i}`, binary]));
+				}
+			}
+
+			return item;
+		};
+	}
+
+	if (format === 'raw') {
+		return async (message) => {
+			const part = find(message.parts, { which: 'TEXT' });
+			if (part === undefined) {
+				throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
+			}
+			return { json: { raw: part.body as string } };
+		};
+	}
+
+	return async () => undefined;
 }
