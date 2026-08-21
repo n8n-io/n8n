@@ -582,6 +582,7 @@ describe('WorkflowReviewRequestService', () => {
 			description: null,
 			updatedById: 'user-2',
 			workflowVersionId: 'ver-1',
+			workflowVersionName: null,
 			createdAt: new Date('2024-01-01T00:00:00.000Z'),
 			updatedAt: new Date('2024-01-02T00:00:00.000Z'),
 			...overrides,
@@ -637,6 +638,7 @@ describe('WorkflowReviewRequestService', () => {
 					decision: 'changes_requested',
 					description: null,
 					workflowVersionId: 'ver-1',
+					workflowVersionName: null,
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 					decisionBy: {
@@ -648,6 +650,14 @@ describe('WorkflowReviewRequestService', () => {
 					viewerCanOpen: false,
 				},
 			]);
+		});
+
+		it('carries the pinned version name through to the response', async () => {
+			mockLatestReview({ workflowVersionName: 'Release candidate' });
+
+			const { data } = await service.list(user, query);
+
+			expect(data[0]).toMatchObject({ workflowVersionName: 'Release candidate' });
 		});
 
 		it('falls back to no actor when the deciding user was deleted', async () => {

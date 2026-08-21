@@ -2014,6 +2014,7 @@ describe('GET /workflow-review-requests', () => {
 			state: 'open',
 			decision: 'pending',
 			workflowVersionId: versionId,
+			workflowVersionName: null,
 			// The owner can act on the review, so the description rides along; the
 			// title stays off the workflow-scoped list entirely.
 			description: 'Confidential description',
@@ -2022,6 +2023,48 @@ describe('GET /workflow-review-requests', () => {
 			// Does not apply to a pending review
 			decisionBy: null,
 			viewerCanOpen: true,
+		});
+	});
+
+	describe('pinned version name', () => {
+		/** Pin `versionId` on a fresh review of a workflow owned by `owner`. */
+		async function createReviewPinnedTo(workflowId: string, versionId: string) {
+			const request = await requestRepository.createRequest(
+				{
+					projectId: ownerProject.id,
+					title: 'Review before publishing',
+					createdById: owner.id,
+				},
+				{},
+			);
+			await linkRequestToWorkflow(request.id, workflowId, versionId);
+			return request;
+		}
+
+		async function listPinnedVersionName(workflowId: string) {
+			const response = await ownerAgent
+				.get('/workflow-review-requests')
+				.query({ workflowId, take: 1 })
+				.expect(200);
+
+			expect(response.body.data.data).toHaveLength(1);
+			return response.body.data.data[0].workflowVersionName;
+		}
+
+		test('returns the name the pinned version was given', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const versionId = uuid();
+			await createWorkflowHistoryItem(workflow.id, { versionId, name: 'Release candidate' });
+			await createReviewPinnedTo(workflow.id, versionId);
+
+			expect(await listPinnedVersionName(workflow.id)).toBe('Release candidate');
+		});
+
+		test('returns null for an unnamed pinned version', async () => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+			await createReviewPinnedTo(workflow.id, versionId);
+
+			expect(await listPinnedVersionName(workflow.id)).toBeNull();
 		});
 	});
 

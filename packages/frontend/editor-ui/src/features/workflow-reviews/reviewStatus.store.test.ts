@@ -18,6 +18,7 @@ const review = (
 	state: 'open',
 	decision: 'pending',
 	workflowVersionId: 'ver-1',
+	workflowVersionName: null,
 	description: null,
 	createdAt: '2026-07-20T10:00:00.000Z',
 	updatedAt: '2026-07-20T10:00:00.000Z',
@@ -126,7 +127,7 @@ describe('reviewStatus.store', () => {
 		expect(store.hasOpenReview('workflow-1')).toBe(true);
 	});
 
-	it('keeps the description the caller submitted with a freshly created review', () => {
+	it('keeps the description and the version name the caller submitted with a freshly created review', () => {
 		const store = useWorkflowReviewStatusStore();
 
 		store.setOpenReview(
@@ -140,11 +141,13 @@ describe('reviewStatus.store', () => {
 				updatedAt: '2026-07-20T10:00:00.000Z',
 			},
 			'Please review the retry logic',
+			'Release candidate',
 		);
 
 		expect(store.latestReviewRequest('workflow-1')?.description).toBe(
 			'Please review the retry logic',
 		);
+		expect(store.latestReviewRequest('workflow-1')?.workflowVersionName).toBe('Release candidate');
 	});
 
 	it('stores null when the API returns no review', async () => {
