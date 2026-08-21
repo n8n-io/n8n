@@ -23,7 +23,7 @@ import type {
 } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
-import { isFormOAuth2Enabled } from '@/constants/oauth2-triggers';
+import { isChatOAuth2Enabled, isFormOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
@@ -419,14 +419,23 @@ export class WorkflowValidationService {
 
 	/**
 	 * Describes which trigger configurations the system resolver currently accepts,
-	 * for the publish-error copy. Chat only qualifies when available in Chat Hub and
-	 * MCP only with n8n user auth (OAuth2); form only joins while the form OAuth2
-	 * flag is enabled. Mirrors `classifyTriggerIdentity`.
+	 * for the publish-error copy. Chat only qualifies when available in Chat Hub, or
+	 * with n8n user auth while the chat OAuth2 flag is enabled; MCP only with n8n user
+	 * auth (OAuth2); form only joins while the form OAuth2 flag is enabled. Mirrors
+	 * `classifyTriggerIdentity`.
 	 */
 	private getN8nUserAuthTriggersList(): string {
-		const authTriggers = isFormOAuth2Enabled() ? 'MCP, form, or webhook' : 'MCP or webhook';
+		const authTriggers = ['MCP'];
+		if (isFormOAuth2Enabled()) authTriggers.push('form');
+		if (isChatOAuth2Enabled()) authTriggers.push('chat');
+		authTriggers.push('webhook');
 
-		return `manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and ${authTriggers} triggers with n8n user authentication`;
+		const authTriggersText =
+			authTriggers.length > 2
+				? `${authTriggers.slice(0, -1).join(', ')}, or ${authTriggers.at(-1)}`
+				: authTriggers.join(' or ');
+
+		return `manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and ${authTriggersText} triggers with n8n user authentication`;
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
@@ -469,6 +478,7 @@ export class WorkflowValidationService {
 		let allTriggersProvideN8nIdentity = true;
 		let hasTrigger = false;
 		const formOAuth2Enabled = isFormOAuth2Enabled();
+		const chatOAuth2Enabled = isChatOAuth2Enabled();
 
 		for (const node of nodes) {
 			if (node.disabled) continue;
@@ -484,7 +494,7 @@ export class WorkflowValidationService {
 			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
 				node.type,
 				node.parameters,
-				{ isFormOAuth2Enabled: formOAuth2Enabled },
+				{ isFormOAuth2Enabled: formOAuth2Enabled, isChatOAuth2Enabled: chatOAuth2Enabled },
 			);
 			allTriggersProvideExternalIdentity &&= providesExternalIdentity;
 			allTriggersProvideN8nIdentity &&= providesN8nIdentity;

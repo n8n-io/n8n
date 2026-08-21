@@ -1171,6 +1171,9 @@ describe('WorkflowValidationService', () => {
 		const withFormOAuth2 = (enabled: boolean) =>
 			vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', enabled ? 'true' : 'false');
 
+		const withChatOAuth2 = (enabled: boolean) =>
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', enabled ? 'true' : 'false');
+
 		describe('webhook trigger', () => {
 			const validateWithOAuth2Webhook = async () => {
 				const nodes: INode[] = [
@@ -1286,6 +1289,96 @@ describe('WorkflowValidationService', () => {
 				expect(result.isValid).toBe(false);
 				expect(result.error).toContain(
 					'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, or webhook triggers with n8n user authentication',
+				);
+			});
+		});
+
+		describe('chat trigger', () => {
+			const CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.chatTrigger';
+
+			const validateWithChatTrigger = async (authentication: string) => {
+				const nodes: INode[] = [
+					createNode('When chat message received', CHAT_TRIGGER, {
+						parameters: { authentication },
+					}),
+					createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+						credentials: { oAuth2Api: { id: 'cred-1' } },
+					}),
+				];
+
+				mockCredentialsRepository.find.mockResolvedValue([
+					{ id: 'cred-1', name: 'My OAuth2' } as any,
+				]);
+				useSystemResolver();
+
+				mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === CHAT_TRIGGER) return createTriggerNodeType();
+					return {} as INodeType;
+				}) as any);
+
+				return await service.validateDynamicCredentials(nodes, mockNodeTypes);
+			};
+
+			it('should return valid for n8nUserAuth when chat OAuth2 is enabled', async () => {
+				withChatOAuth2(true);
+
+				const result = await validateWithChatTrigger('n8nUserAuth');
+
+				expect(result.isValid).toBe(true);
+			});
+
+			it.each(['none', 'basicAuth'])('should reject authentication %s', async (authentication) => {
+				withChatOAuth2(true);
+
+				const result = await validateWithChatTrigger(authentication);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toBe(
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, chat, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+				);
+			});
+
+			it('should reject n8nUserAuth when chat OAuth2 is disabled', async () => {
+				// The chat trigger authenticates the visitor over its legacy auth but
+				// establishes no identity, so this must be caught at publish rather than
+				// mid-execution.
+				withChatOAuth2(false);
+
+				const result = await validateWithChatTrigger('n8nUserAuth');
+
+				expect(result.isValid).toBe(false);
+				// The chat option is not advertised while the flag is off.
+				expect(result.error).toContain(
+					'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP or webhook triggers with n8n user authentication',
+				);
+			});
+
+			it('should offer both form and chat in the generic message when both flags are enabled', async () => {
+				withFormOAuth2(true);
+				withChatOAuth2(true);
+
+				const nodes: INode[] = [
+					createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
+					createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+						credentials: { oAuth2Api: { id: 'cred-1' } },
+					}),
+				];
+
+				mockCredentialsRepository.find.mockResolvedValue([
+					{ id: 'cred-1', name: 'My OAuth2' } as any,
+				]);
+				useSystemResolver();
+
+				mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === 'n8n-nodes-base.scheduleTrigger') return createTriggerNodeType();
+					return {} as INodeType;
+				}) as any);
+
+				const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain(
+					'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, chat, or webhook triggers with n8n user authentication',
 				);
 			});
 		});
