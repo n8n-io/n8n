@@ -25,13 +25,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import {
-	PROJECT_ROOT,
-	UnexpectedError,
-	Workflow,
-	assert,
-	calculateWorkflowChecksum,
-} from 'n8n-workflow';
+import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
@@ -1138,13 +1132,17 @@ export class WorkflowService {
 	 * which may legitimately fail user-facing checks (e.g. duplicate node
 	 * names).
 	 *
-	 * The write only lands if the active version is still the one read here
-	 * (compare-and-swap): a concurrent user publish or unpublish wins, and this
-	 * method returns `{ published: false, reason: 'superseded' }` having written
-	 * nothing — the version row, publish history, and outbox record all live in
-	 * one transaction that a guard miss rolls back. The caller must not retry —
-	 * whatever superseded the read enqueued its own outbox record, and the next
-	 * activation pass covers it. Two accepted residuals: a concurrent draft save's
+	 * The write only lands if the active version is still
+	 * `expectedActiveVersionId` — the version the corrected copy was derived
+	 * from, supplied by the caller so the guard spans the caller's whole
+	 * read-correct-publish window, not just this method's own read
+	 * (compare-and-swap). Any move past that baseline — a newer user publish,
+	 * an unpublish, a deletion — wins, and this method returns
+	 * `{ published: false, reason: 'superseded' }` having written nothing: the
+	 * version row, publish history, and outbox record all live in one
+	 * transaction that a guard miss rolls back. The caller must not retry —
+	 * whatever superseded the baseline enqueued its own outbox record, and the
+	 * next activation pass covers it. Two accepted residuals: a concurrent draft save's
 	 * `updatedAt` bump can be rolled back to the value read here (the guard
 	 * deliberately excludes `updatedAt` — a datetime-equality quirk would make
 	 * the heal silently never land, a worse failure direction than a bounded
@@ -1160,19 +1158,22 @@ export class WorkflowService {
 			connections: WorkflowEntity['connections'];
 			nodeGroups?: WorkflowEntity['nodeGroups'];
 		},
+		expectedActiveVersionId: string,
 	): Promise<{ published: true; versionId: string } | { published: false; reason: 'superseded' }> {
 		const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
-		// Load-bearing for the guard below: it compares against a non-null value,
-		// so a null active version must never reach it.
-		if (!workflow?.active || workflow.activeVersionId === null) {
-			throw new UnexpectedError(
-				'Cannot publish a system-authored version: the workflow has no active version',
-				{ extra: { workflowId } },
-			);
+		// A missing or inactive workflow, or an active version that already moved
+		// past the caller's baseline, is the same benign race as losing the guard
+		// below — whatever moved the version owns the state now. The transaction
+		// guard re-checks the same condition atomically; this early return just
+		// skips the doomed version-row insert.
+		if (
+			!workflow?.active ||
+			workflow.activeVersionId === null ||
+			workflow.activeVersionId !== expectedActiveVersionId
+		) {
+			return { published: false, reason: 'superseded' };
 		}
 
-		// Narrowed copy: the closure below would see `string | null` again.
-		const previousActiveVersionId = workflow.activeVersionId;
 		const versionId = uuid();
 		try {
 			await this.workflowRepository.manager.transaction(async (trx) => {
@@ -1198,9 +1199,9 @@ export class WorkflowService {
 					null,
 					workflowId,
 					versionId,
-					previousActiveVersionId,
+					expectedActiveVersionId,
 					workflow.updatedAt,
-					{ onlyIfActiveVersionIs: previousActiveVersionId },
+					{ onlyIfActiveVersionIs: expectedActiveVersionId },
 				);
 				// Roll back the version row too — a lost race must leave no trace.
 				if (!recorded) throw new SystemPublishSupersededError();

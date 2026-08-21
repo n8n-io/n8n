@@ -20,6 +20,8 @@ defineProps<DialogOverlayProps>();
 </template>
 
 <style module lang="scss">
+@use '../../css/mixins/motion';
+
 @keyframes overlayFadeIn {
 	from {
 		opacity: 0;
@@ -52,9 +54,13 @@ defineProps<DialogOverlayProps>();
 
 .overlay[data-state='open'] {
 	animation: overlayFadeIn var(--animation--duration--snappy) ease;
+
+	@include motion.reduced-motion;
 }
 
 .overlay[data-state='closed'] {
 	animation: overlayFadeOut var(--animation--duration--snappy) ease;
+
+	@include motion.reduced-motion;
 }
 </style>

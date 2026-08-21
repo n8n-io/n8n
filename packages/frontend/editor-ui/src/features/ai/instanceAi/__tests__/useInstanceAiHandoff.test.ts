@@ -63,7 +63,7 @@ describe('useInstanceAiHandoff', () => {
 	it('builds credential modal handoff context without empty optional fields', () => {
 		expect(
 			buildInstanceAiCredentialHandoffContext({
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 				nodeName: 'Gmail',
 				nodeType: 'n8n-nodes-base.gmail',
@@ -74,7 +74,7 @@ describe('useInstanceAiHandoff', () => {
 		).toEqual({
 			source: 'credential-modal',
 			credential: {
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 				nodeName: 'Gmail',
 				nodeType: 'n8n-nodes-base.gmail',

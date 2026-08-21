@@ -40,7 +40,7 @@ function createExecutionStatus(
 			{
 				credentialId: 'cred-2',
 				credentialName: 'Gmail',
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				credentialStatus: 'configured',
 				authorizationUrl:
 					'https://n8n.example.com/rest/credentials/cred-2/authorize?resolverId=resolver-2',
@@ -156,7 +156,7 @@ describe('useDynamicCredentialsStatus', () => {
 						{
 							credentialId: 'cred-2',
 							credentialName: 'Gmail',
-							credentialType: 'gmailOAuth2Api',
+							credentialType: 'gmailOAuth2',
 							credentialStatus: 'configured',
 						},
 					],
@@ -297,7 +297,7 @@ describe('useDynamicCredentialsStatus', () => {
 						{
 							credentialId: 'cred-2',
 							credentialName: 'Gmail',
-							credentialType: 'gmailOAuth2Api',
+							credentialType: 'gmailOAuth2',
 							credentialStatus: 'configured',
 							authorizationUrl:
 								'https://n8n.example.com/rest/credentials/cred-2/authorize?resolverId=resolver-2',
