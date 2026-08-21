@@ -313,10 +313,11 @@ compose_pull() {
 	fail "pulling images failed — see the output above; check your network and re-run."
 }
 
+# Quiet on success — compose's per-container status lines are only shown
+# when something went wrong.
 compose_checked() {
 	log="$(mktemp)"
 	if compose "$@" >"$log" 2>&1; then
-		cat "$log"
 		rm -f "$log"
 		return 0
 	fi
