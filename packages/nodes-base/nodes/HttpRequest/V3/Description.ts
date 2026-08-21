@@ -27,6 +27,26 @@ export const mainProperties: INodeProperties[] = [
 				value: 'HEAD',
 			},
 			{
+				name: 'PROPFIND',
+				value: 'PROPFIND',
+			},
+			{
+				name: 'MKCOL',
+				value: 'MKCOL',
+			},
+			{
+				name: 'MOVE',
+				value: 'MOVE',
+			},
+			{
+				name: 'COPY',
+				value: 'COPY',
+			},
+			{
+				name: 'REPORT',
+				value: 'REPORT',
+			},
+			{
 				name: 'OPTIONS',
 				value: 'OPTIONS',
 			},
