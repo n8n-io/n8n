@@ -1617,7 +1617,12 @@ export class InstanceAiAdapterService {
 		credentialIdAllowlist?: string[],
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiCredentialService {
-		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
+		const {
+			credentialsService,
+			credentialsFinderService,
+			loadNodesAndCredentials,
+			aiGatewayService,
+		} = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 
 		const adapter: InstanceAiCredentialService = {
@@ -1993,6 +1998,15 @@ export class InstanceAiAdapterService {
 				// type check is a best-effort validation, not a security gate.
 				const config = await getGatewayConfig();
 				return config?.credentialTypes.includes(credType) ?? false;
+			},
+
+			async getN8nCreditsWallet(): Promise<{ balance: number } | null> {
+				if (!aiGatewayService.isEnabled()) return null;
+				try {
+					return await aiGatewayService.getWallet(user.id);
+				} catch {
+					return null;
+				}
 			},
 
 			async listAiGatewayCredentialTypes(): Promise<string[]> {
