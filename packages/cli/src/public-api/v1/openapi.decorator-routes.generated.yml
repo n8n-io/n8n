@@ -30,7 +30,7 @@ paths:
     post:
       $ref: ./handlers/role-mapping-rules/spec/paths/moveRoleMappingRule.generated.yml
   /role-mapping-rules/{roleMappingRuleId}:
-    put:
+    patch:
       $ref: ./handlers/role-mapping-rules/spec/paths/updateRoleMappingRule.generated.yml
   /roles:
     get:

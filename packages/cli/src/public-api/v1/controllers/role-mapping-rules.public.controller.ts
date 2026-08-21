@@ -18,9 +18,9 @@ import {
 	Body,
 	Get,
 	Param,
+	Patch,
 	Post,
 	PublicApiController,
-	Put,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -134,7 +134,7 @@ export class RoleMappingRulesPublicController {
 		return toRoleMappingRulePublicDto(rule);
 	}
 
-	@Put('/:roleMappingRuleId')
+	@Patch('/:roleMappingRuleId')
 	@ApiKeyScope('roleMappingRule:update')
 	@ApiSummary('Update a role-mapping rule')
 	@ApiDescription(
@@ -151,7 +151,7 @@ export class RoleMappingRulesPublicController {
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
 
-		const rule = await this.roleMappingRuleService.update({
+		const rule = await this.roleMappingRuleService.patch({
 			id: roleMappingRuleId,
 			dto: body,
 			userId: req.user.id,

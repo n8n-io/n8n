@@ -590,7 +590,7 @@ describe('RoleMappingRuleService', () => {
 		});
 	});
 
-	describe('update', () => {
+	describe('patch', () => {
 		const existingInstanceRule = {
 			id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
 			expression: 'claims.group === "admins"',
@@ -621,7 +621,7 @@ describe('RoleMappingRuleService', () => {
 
 		it('should return 404 when rule id is unknown', async () => {
 			await expect(
-				service.update({
+				service.patch({
 					id: '00000000-0000-4000-8000-000000000000',
 					dto: { expression: 'true' },
 					userId: testUser.id,
@@ -634,7 +634,7 @@ describe('RoleMappingRuleService', () => {
 
 		it('should reject an empty patch payload', async () => {
 			await expect(
-				service.update({
+				service.patch({
 					id: existingInstanceRule.id,
 					dto: {},
 					userId: testUser.id,
@@ -645,7 +645,7 @@ describe('RoleMappingRuleService', () => {
 
 		it('should reject a type change', async () => {
 			await expect(
-				service.update({
+				service.patch({
 					id: existingInstanceRule.id,
 					dto: { type: 'project' },
 					userId: testUser.id,
@@ -669,7 +669,7 @@ describe('RoleMappingRuleService', () => {
 			roleMappingRuleRepository.save.mockImplementation(async (r) => r as RoleMappingRule);
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(updatedRule);
 
-			const result = await service.update({
+			const result = await service.patch({
 				id: existingInstanceRule.id,
 				dto: { expression: 'claims.new === 1' },
 				userId: testUser.id,
@@ -713,7 +713,7 @@ describe('RoleMappingRuleService', () => {
 			});
 
 			await expect(
-				service.update({
+				service.patch({
 					id: existingInstanceRule.id,
 					dto: { order: 5 },
 					userId: testUser.id,
@@ -760,7 +760,7 @@ describe('RoleMappingRuleService', () => {
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(updatedRule);
 
 			await expect(
-				service.update({
+				service.patch({
 					id: existingInstanceRule.id,
 					dto: { expression: 'true' },
 					userId: testUser.id,

@@ -50,7 +50,7 @@
 		"POST /role-mapping-rules/{roleMappingRuleId}/move": {
 			"status": "gap"
 		},
-		"PUT /role-mapping-rules/{roleMappingRuleId}": {
+		"PATCH /role-mapping-rules/{roleMappingRuleId}": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

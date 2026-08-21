@@ -541,13 +541,13 @@ describe('Role mapping rules in Public API', () => {
 		});
 	});
 
-	describe('PUT /role-mapping-rules/{roleMappingRuleId}', () => {
+	describe('PATCH /role-mapping-rules/{roleMappingRuleId}', () => {
 		it('replaces an instance rule and returns 200', async () => {
 			const rule = await createInstanceRule();
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({
 					expression: 'claims.group === "engineers"',
 					role: 'global:admin',
@@ -585,7 +585,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({
 					expression: 'claims.project === "beta"',
 					role: 'project:editor',
@@ -605,7 +605,7 @@ describe('Role mapping rules in Public API', () => {
 				expression: `${validInstancePayload.expression} || false`,
 			});
 
-			const response = await agent.put(`/role-mapping-rules/${second.id}`).send({
+			const response = await agent.patch(`/role-mapping-rules/${second.id}`).send({
 				expression: 'claims.group === "engineers"',
 				role: 'global:member',
 				type: 'instance',
@@ -624,7 +624,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({
 					expression: 'claims.project === "alpha"',
 					role: 'project:editor',
@@ -639,7 +639,7 @@ describe('Role mapping rules in Public API', () => {
 		it('rejects with 404 when the rule id is unknown', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put('/role-mapping-rules/00000000-0000-4000-8000-000000000000')
+				.patch('/role-mapping-rules/00000000-0000-4000-8000-000000000000')
 				.send({
 					expression: 'claims.group === "engineers"',
 					role: 'global:member',
@@ -656,7 +656,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({
 					expression: 'claims.group === "engineers"',
 					role: 'global:nonexistent',
@@ -673,7 +673,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({ expression: 'claims.group === "engineers"' });
 
 			expect(response.status).toBe(400);
@@ -684,7 +684,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({ expression: '', role: 'global:member', type: 'instance', projectIds: [] });
 
 			expect(response.status).toBe(400);
@@ -696,7 +696,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({ expression: 'true', role: 'global:member', type: 'instance' });
 
 			expect(response.status).toBe(400);
@@ -707,7 +707,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({
 					expression: 'true',
 					role: 'global:member',
@@ -726,7 +726,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({ expression: 'true', role: 'project:editor', type: 'instance', projectIds: [] });
 
 			expect(response.status).toBe(400);
@@ -738,7 +738,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({
 					expression: 'true',
 					role: 'project:editor',
@@ -755,7 +755,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentWithoutApiKey()
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({
 					expression: 'claims.group === "engineers"',
 					role: 'global:member',
@@ -770,7 +770,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentWithApiKey('invalid-key')
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({
 					expression: 'claims.group === "engineers"',
 					role: 'global:member',
@@ -786,7 +786,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(scopedOwner)
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({
 					expression: 'claims.group === "engineers"',
 					role: 'global:member',
@@ -804,7 +804,7 @@ describe('Role mapping rules in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.put(`/role-mapping-rules/${rule.id}`)
+				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({
 					expression: 'claims.group === "engineers"',
 					role: 'global:member',
