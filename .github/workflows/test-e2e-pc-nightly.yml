@@ -51,7 +51,9 @@ jobs:
     name: E2E on -pc image (${{ matrix.shard }}/16)
     needs: generate-matrix
     runs-on: blacksmith-2vcpu-ubuntu-2204
-    timeout-minutes: 30
+    # Container-mode e2e boots a stack per worker, so shards run far longer
+    # than the source-mode PR shards. Same envelope as the coverage nightly.
+    timeout-minutes: 55
     strategy:
       fail-fast: false
       matrix:
