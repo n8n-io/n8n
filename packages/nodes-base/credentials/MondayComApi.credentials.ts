@@ -34,7 +34,7 @@ export class MondayComApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			headers: {
-				'API-Version': '2023-10',
+				'API-Version': '2026-01',
 				'Content-Type': 'application/json',
 			},
 			baseURL: 'https://api.monday.com/v2',
