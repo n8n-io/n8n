@@ -5,8 +5,8 @@
  * Storybook's vue-docgen-plugin resolves package imports from this folder to a
  * broken relative path:
  *
- *   src/v2/components/RadioGroup/ → ../../../node_modules/reka-ui/dist/index.js
- *   (resolves to src/node_modules/…, which does not exist)
+ *   src/components/N8nRadioGroup/ → ../../../node_modules/reka-ui/dist/index.js
+ *   (vue-docgen may resolve this incorrectly; keep imports behind this shim)
  *
  * Types are re-exported here so .vue files in this folder never import
  * 'reka-ui' directly.
