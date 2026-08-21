@@ -24,6 +24,9 @@ interface ConnectionState {
 }
 
 let activeConnection: ConnectionState | null = null;
+// Bumped per connect request. A handshake is slow enough that a newer one can finish while
+// an older is still opening, so the older must not commit itself over the live session.
+let connectGeneration = 0;
 
 /** A query param rather than a header because `WebSocket` cannot set request headers. */
 export function buildRelayWsUrl(relayUrl: string, version: string): string {
@@ -449,6 +452,8 @@ async function connectToRelay(
 		return { success: false, error: 'Refusing to connect: not a recognized n8n instance.' };
 	}
 
+	const generation = ++connectGeneration;
+
 	// Clean up existing connection
 	disconnect();
 
@@ -483,16 +488,25 @@ async function connectToRelay(
 			throw error;
 		}
 
+		if (generation !== connectGeneration) {
+			log.debug('discarding superseded relay connection:', relayUrl);
+			relay.close('superseded');
+			return { success: false, error: 'Superseded by a newer connection request.' };
+		}
+
 		activeConnection = { relay, relayUrl };
 
 		relay.onclose = () => {
 			log.debug('relay connection closed');
+			// A superseded relay closing must not clear the session that replaced it.
+			if (activeConnection?.relay !== relay) return;
 			activeConnection = null;
 			updateBadge(0);
 			broadcastStatusChange();
 		};
 
 		relay.ontabcreated = () => {
+			if (activeConnection?.relay !== relay) return;
 			broadcastStatusChange();
 			updateBadge(relay.getControlledIds().length);
 		};

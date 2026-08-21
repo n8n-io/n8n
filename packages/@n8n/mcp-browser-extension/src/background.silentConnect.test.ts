@@ -46,6 +46,7 @@ const internalMessageListeners: InternalMessageHandler[] = [];
 const chromeMock = {
 	runtime: {
 		getURL: (path: string) => `chrome-extension://testextensionid/${path}`,
+		getManifest: () => ({ version: '0.0.6' }),
 		sendMessage: vi.fn().mockResolvedValue(undefined),
 		onMessage: {
 			addListener: vi.fn((fn: InternalMessageHandler) => internalMessageListeners.push(fn)),
@@ -90,6 +91,31 @@ const chromeMock = {
 
 Object.assign(globalThis, { chrome: chromeMock });
 
+/** Relay socket whose handshake the test completes by hand, to interleave two connects. */
+function stubDeferredRelaySocket(): { openAll: () => void } {
+	const opens: Array<() => void> = [];
+	vi.stubGlobal(
+		'WebSocket',
+		class {
+			onopen: (() => void) | null = null;
+
+			onerror: ((event: unknown) => void) | null = null;
+
+			constructor(public url: string) {
+				opens.push(() => this.onopen?.());
+			}
+
+			close(): void {}
+		},
+	);
+	return {
+		openAll: () => {
+			// Reverse, so the connect that started first is the last to finish.
+			for (const open of [...opens].reverse()) open();
+		},
+	};
+}
+
 /** Relay socket double, so the handshake resolves without a network. */
 function stubRelaySocket(opens: boolean): void {
 	vi.stubGlobal(
@@ -116,6 +142,16 @@ async function sendFromExtensionView(message: unknown): Promise<void> {
 		fn(message, {} as chrome.runtime.MessageSender, () => {});
 	}
 	await flush();
+}
+
+/** Same as `sendFromExtensionView`, but hands back what the background answered. */
+async function sendFromExtensionViewWithResponse(message: unknown): Promise<unknown> {
+	let response: unknown;
+	for (const fn of internalMessageListeners) {
+		fn(message, {} as chrome.runtime.MessageSender, (r) => (response = r));
+	}
+	await flush();
+	return response;
 }
 
 /** Returns a getter, since a response can be held open until the flow settles. */
@@ -209,6 +245,21 @@ describe('silent connect to an approved host', () => {
 
 		// Settling here would tell that page its connect failed while its popup is still up.
 		expect(otherResult()).toBeUndefined();
+	});
+
+	it('does not let a slower earlier handshake replace the live session', async () => {
+		const socket = stubDeferredRelaySocket();
+
+		// Two connects overlap; the first one's socket is the last to open.
+		await sendFromExtensionView({ type: 'connect', relayUrl: RELAY_URL, selectedTabIds: [] });
+		const newerRelay = 'wss://acme.app.n8n.cloud/browser-use/extension/newer?token=bu_z';
+		await sendFromExtensionView({ type: 'connect', relayUrl: newerRelay, selectedTabIds: [] });
+
+		socket.openAll();
+		await flush();
+
+		const status = await sendFromExtensionViewWithResponse({ type: 'getStatus' });
+		expect(status).toMatchObject({ connected: true, relayUrl: newerRelay });
 	});
 
 	it('reports failure promptly instead of leaving the page waiting', async () => {
