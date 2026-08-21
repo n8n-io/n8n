@@ -84,7 +84,18 @@ export class Subscriber {
 			const debounceKey = this.debounceKeyFrom(msg);
 			let handler = this.debouncedHandlers.get(debounceKey);
 			if (!handler) {
-				handler = debounce(handlerFn, 300);
+				// Evict once the trailing call fires, so long-lived processes don't
+				// accumulate one debounce entry per distinct community package forever.
+				const debouncedHandler = debounce((message: PubSub.Command | PubSub.WorkerResponse) => {
+					try {
+						handlerFn(message);
+					} finally {
+						if (this.debouncedHandlers.get(debounceKey) === debouncedHandler) {
+							this.debouncedHandlers.delete(debounceKey);
+						}
+					}
+				}, 300);
+				handler = debouncedHandler;
 				this.debouncedHandlers.set(debounceKey, handler);
 			}
 			handler(msg);

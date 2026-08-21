@@ -177,6 +177,29 @@ describe('Subscriber', () => {
 			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(1);
 		});
 
+		it('should evict the debounce entry once its trailing call fires', () => {
+			const pubsubEventBus = mock<PubSubEventBus>();
+			const subscriber = new Subscriber(
+				mockLogger(),
+				mock(),
+				pubsubEventBus,
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+
+			const messageHandler = getMessageHandler();
+
+			messageHandler('n8n:n8n.commands', makeCommandMsg('reload-license', true));
+
+			expect((subscriber as any).debouncedHandlers.size).toBe(1);
+
+			vi.advanceTimersByTime(300);
+
+			expect(pubsubEventBus.emit).toHaveBeenCalledWith('reload-license', undefined);
+			expect((subscriber as any).debouncedHandlers.size).toBe(0);
+		});
+
 		it('should not drop community-package-install events for different packages within 300ms', () => {
 			const pubsubEventBus = mock<PubSubEventBus>();
 			new Subscriber(
