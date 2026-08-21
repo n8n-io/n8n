@@ -59,6 +59,12 @@ Agent's replies. Do not add a same-platform node, MCP, or workflow tool merely
 so the Agent can reply, send a normal conversational message, or use interaction
 features already listed in that integration's capabilities.
 
+Configured integrations also generate their listed context and action tools for
+every top-level Agent run, including scheduled tasks. A scheduled task can use
+actions such as \`send_dm\` or \`send_channel_message\` without an inbound
+message. Being proactive, scheduled, or outside an open conversation is never
+by itself a reason to add a same-platform node, MCP, or workflow tool.
+
 Use an MCP, node, or workflow tool when the product is only something the agent
 operates on: searching records, creating tickets, updating objects, or sending a
 business-process notification while the conversation happens elsewhere.
@@ -66,9 +72,9 @@ business-process notification while the conversation happens elsewhere.
 When building an agent that should interact with Slack, Discord, Telegram, or
 Linear, use the matching chat integration instead of an MCP, node, or workflow
 tool when the platform is the conversation surface. Add a callable tool only
-for an explicitly requested operation that the selected integration's returned
-capabilities do not support, especially a business action outside the current
-conversation context.
+for an explicitly requested operation that is absent from the selected
+integration's returned capabilities. Compare the exact operation; do not infer
+that the integration is unavailable merely because the run starts from a task.
 
 Examples:
 
@@ -78,7 +84,8 @@ Examples:
 - Discord integration: the agent should be mentioned or messaged in Discord,
   respond in Discord threads or DMs, or render approval buttons there.
 - Telegram integration: the agent should receive or send Telegram messages,
-  continue conversations there, or render supported interactive messages.
+  continue conversations there, render supported interactive messages, or use
+  \`send_dm\` to initiate a scheduled message to a known Telegram user ID.
 - Linear integration: the agent should be triggered from Linear issues/comments,
   understand the current Linear subject, or reply in the same Linear
   conversation.
@@ -105,6 +112,15 @@ Agent needs an external channel-bridge workflow instead:
 For callable (non-chat) services, call \`resolve_integration\` separately per
 service and follow the returned \`kind\`: \`"mcp"\` -> MCP Servers section
 below, \`"node"\` -> load \`agent-builder-node-tools\`.
+
+### Correcting a redundant channel tool
+
+If the user questions why a same-platform tool exists, inspect the current
+config and the integration's returned capabilities before answering. When the
+integration supplies the tool's purpose, remove the redundant node, MCP, or
+workflow tool and explain the correction. Do not defend it merely because the
+message is proactive, scheduled, or has no current conversation; generated
+actions such as \`send_dm\` are available without inbound message context.
 
 ## Chat Integrations
 
@@ -147,8 +163,9 @@ The \`integrations\` array controls how the target agent is triggered.
 - Do not add a chat integration just because the agent needs CRUD or notifications
   for that product. Resolve the callable capability through \`resolve_integration\`
   unless the product itself is the chat/trigger context.
-- For recurring or scheduled runs, create a task (\`create_tasks\`), not an
-  integration.
+- For recurring or scheduled runs, create a task (\`create_tasks\`) for the
+  cadence. Keep a requested chat integration, and use its generated action
+  tools when the task sends through that same platform.
 - Omitting \`integrations\` from a config write preserves the current channels.
   To remove one, write an explicit filtered array or remove the exact array
   entry.
@@ -323,6 +340,8 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 - The chosen integration matches \`useIntegrationWhen\`; otherwise resolve the
   callable capability through \`resolve_integration\` and use MCP, node, or
   workflow tools.
+- No node, MCP, or workflow tool duplicates an action listed by a configured
+  chat integration, including for proactive scheduled tasks.
 - Generic non-chat external services were routed through \`resolve_integration\`
   before MCP or node setup.
 - The final \`integrations\` array keeps unrelated integrations intact and
