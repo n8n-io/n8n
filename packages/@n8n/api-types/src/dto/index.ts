@@ -108,6 +108,7 @@ export {
 	GitConnectionPullResultDto,
 	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,
+	PushGitConnectionDto,
 	UpdateGitConnectionDto,
 	gitConnectionTypeSchema,
 	gitKeyGeneratorTypeSchema,

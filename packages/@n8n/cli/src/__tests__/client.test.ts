@@ -43,18 +43,28 @@ describe('N8nClient packages', () => {
 	});
 
 	describe('pushGitConnectionProjects', () => {
-		it('POSTs to the push endpoint and returns the connection id and export counts', async () => {
+		it('POSTs the commit message and returns the connection id, counts, and commit', async () => {
 			const response = {
 				connectionId: 'connection-id',
 				counts: { workflows: 0, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+				commit: 'abc123',
 			};
 			fetchMock.mockResolvedValue(jsonResponse(200, response));
 
-			await expect(client.pushGitConnectionProjects('connection-id')).resolves.toEqual(response);
+			await expect(
+				client.pushGitConnectionProjects('connection-id', {
+					commitMessage: 'sync projects',
+					force: true,
+				}),
+			).resolves.toEqual(response);
 
 			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(url).toBe('https://n8n.example.com/api/v1/git-connections/connection-id/push');
 			expect(init.method).toBe('POST');
+			expect(JSON.parse(init.body as string)).toEqual({
+				commitMessage: 'sync projects',
+				force: true,
+			});
 		});
 	});
 
@@ -78,6 +88,7 @@ describe('N8nClient packages', () => {
 					variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
 					tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
 				},
+				commit: 'def456',
 			};
 			fetchMock.mockResolvedValue(jsonResponse(200, response));
 

@@ -64,6 +64,8 @@ export interface ExportPackageResult {
 export type PushGitConnectionResult = {
 	connectionId: string;
 	counts: ExportPackageCounts;
+	/** The pushed commit, or null when nothing changed (no-op push). */
+	commit: string | null;
 };
 
 /** Per-entity counts of what a pull changed in the instance, broken down by outcome. */
@@ -101,6 +103,8 @@ export interface ImportPackageCounts {
 export type PullGitConnectionResult = {
 	connectionId: string;
 	counts: ImportPackageCounts;
+	/** The remote commit the working copy was reset to and imported from. */
+	commit: string;
 };
 
 export class ApiError extends Error {
@@ -291,8 +295,8 @@ export class N8nClient {
 		return await this.del<undefined>(`/git-connections/${id}`);
 	}
 
-	async pushGitConnectionProjects(id: string) {
-		return await this.post<PushGitConnectionResult>(`/git-connections/${id}/push`);
+	async pushGitConnectionProjects(id: string, body: { commitMessage: string; force?: boolean }) {
+		return await this.post<PushGitConnectionResult>(`/git-connections/${id}/push`, body);
 	}
 
 	async listGitConnectionProjects(id: string) {
