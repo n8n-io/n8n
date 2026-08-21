@@ -1,5 +1,3 @@
-process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
-
 import {
 	createTeamProject,
 	createWorkflow,
@@ -67,7 +65,6 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 	testServer.license.enable('feat:workflowReviews');
 
 	await testDb.truncate([
