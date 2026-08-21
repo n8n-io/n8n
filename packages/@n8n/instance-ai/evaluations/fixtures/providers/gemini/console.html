@@ -1,0 +1,218 @@
+<!doctype html>
+<!--
+  Lookalike Google AI Studio API-keys console. Our own generic content — no
+  provider source, no recorded responses, no real tokens. Calibrated against a
+  real captured accessibility tree (LangTracer thread 708172f1, 2026-08-17).
+
+  Load-bearing, all taken from the real page:
+  - TWO overlays (guided tour, cookie notice) block the page until dismissed
+  - the key is a TEXT NODE with a copy button, not a field, so reading
+    `input.value` finds nothing here
+  - neither panel is role=dialog — they are containers with accessible names
+  - the list truncates to the last four characters, rendered as a button
+  - keys carry Google's current `AQ.` prefix, and minting the same shape is what
+    lets the hermetic case notice a partially captured value (NODE-5768) instead
+    of passing on a friendlier format.
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>API Keys | Google AI Studio</title>
+	</head>
+	<body>
+		<div id="tour" role="dialog" aria-label="Guided Tour" aria-modal="true">
+			<h2>credit_card New: Control your API cost</h2>
+			<p>Set a monthly spend limit per project and get alerts before you hit it.</p>
+			<a href="/docs/billing">Further resources</a>
+			<button id="tour-close" type="button">Close guided tour</button>
+		</div>
+
+		<div id="cookies">
+			<p>Google AI Studio uses cookies to deliver and improve the service.</p>
+			<a href="/docs/cookies">Learn more about how Google uses cookies. Opens in a new tab.</a>
+			<button id="cookies-ok" type="button">OK, got it</button>
+		</div>
+
+		<div id="page" hidden>
+			<button type="button">Skip to main content</button>
+			<header>
+				<button type="button">Toggle navigation menu</button>
+				<a href="/">Google AI Studio logo</a>
+				<button type="button">View related products</button>
+				<nav aria-label="Main">
+					<ul>
+						<li><a href="/dashboard">Dashboard</a></li>
+						<li><a href="/apikey" aria-current="page">API Keys</a></li>
+						<li><a href="/projects">Projects</a></li>
+						<li><a href="/usage">Usage</a></li>
+						<li><a href="/rate-limit">Rate Limit</a></li>
+						<li><a href="/spend">Spend</a></li>
+						<li><a href="/billing">Billing</a></li>
+						<li><a href="/logs">Logs and Datasets</a></li>
+						<li><a href="/changelog">Changelog</a></li>
+					</ul>
+				</nav>
+				<button type="button">What's new</button>
+				<button type="button">Settings</button>
+				<button type="button">Search</button>
+				<button type="button">Get API key</button>
+				<button type="button">Google Account: Eval Owner</button>
+			</header>
+
+			<main>
+				<h2>API Keys</h2>
+				<a href="/docs/quickstart">API quickstart</a>
+				<button id="open-create" type="button">Create API key</button>
+
+				<span>Group by</span>
+				<button type="button">API Key</button>
+				<button type="button">Project</button>
+				<span>Filter by</span>
+				<label for="project-filter">Filter by</label>
+				<select id="project-filter" name="project-filter">
+					<option value="all" selected>All projects</option>
+					<option value="default">Default Gemini Project</option>
+				</select>
+
+				<table>
+					<thead>
+						<tr>
+							<th scope="col">Key</th>
+							<th scope="col">Project</th>
+							<th scope="col"><button type="button">Created</button></th>
+							<th scope="col">Billing Tier</th>
+							<th scope="col"></th>
+						</tr>
+					</thead>
+					<tbody id="key-rows">
+						<tr>
+							<td><button type="button">...iIJg</button><span>Test local model selection</span></td>
+							<td><button type="button">Default Gemini Project</button><span>gen-lang-client-0228122468</span></td>
+							<td>Jul 8, 2026</td>
+							<td><button type="button">Set up billing</button><span>Free tier</span></td>
+							<td>
+								<button type="button">Copy API key</button>
+								<button type="button">View spend</button>
+								<button type="button">View usage</button>
+								<button type="button">View more actions</button>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<p>Can't find your API keys here?</p>
+				<p>
+					This list only shows API keys for projects imported into Google AI
+					Studio. Import other projects to manage their associated API Keys. You
+					can also create a new API Key above.
+					<a href="/docs/api-key#import-projects">Learn more</a>
+				</p>
+				<button type="button">Import projects</button>
+
+				<!-- Not role=dialog — the real one isn't either. -->
+				<div id="create-panel" aria-label="Create a new key Close dialog" hidden>
+					<h2>Create a new key <button id="create-close" type="button">Close dialog</button></h2>
+					<label for="key-name">Name your key</label>
+					<input id="key-name" name="key-name" type="text" placeholder="Name your key" value="" />
+					<label for="key-project">Project</label>
+					<select id="key-project" name="key-project">
+						<option value="default" selected>Default Gemini Project</option>
+						<option value="new">Create a new project</option>
+					</select>
+					<button id="create-cancel" type="button">Cancel</button>
+					<button id="create-submit" type="button">Create key</button>
+				</div>
+
+				<div id="reveal" aria-label="API key details close" hidden>
+					<h2>API key details <button id="reveal-close" type="button">close</button></h2>
+					<p>
+						info For details on using auth keys with Gemini API, see our
+						<a href="/docs/api-key">API key documentation</a>.
+					</p>
+					<span>API Key</span>
+					<span id="key-value"></span>
+					<button id="copy-key" type="button">Copy key to clipboard</button>
+					<span>Name</span>
+					<span id="reveal-name">Gemini API Key</span>
+					<button type="button">Copy display name to clipboard</button>
+					<span>Project name</span>
+					<span>projects/58324130107</span>
+					<button type="button">Copy project name to clipboard</button>
+					<span>Project number</span>
+					<span>58324130107</span>
+				</div>
+			</main>
+		</div>
+
+		<script>
+			const tour = document.getElementById('tour');
+			const cookies = document.getElementById('cookies');
+			const page = document.getElementById('page');
+			const panel = document.getElementById('create-panel');
+			const reveal = document.getElementById('reveal');
+			const keyValue = document.getElementById('key-value');
+			const nameInput = document.getElementById('key-name');
+
+			// Hidden until BOTH overlays are dismissed.
+			const revealPage = () => {
+				if (tour.hidden && cookies.hidden) page.hidden = false;
+			};
+			document.getElementById('tour-close').addEventListener('click', () => {
+				tour.hidden = true;
+				revealPage();
+			});
+			document.getElementById('cookies-ok').addEventListener('click', () => {
+				cookies.hidden = true;
+				revealPage();
+			});
+
+			document.getElementById('open-create').addEventListener('click', () => {
+				panel.hidden = false;
+				nameInput.focus();
+			});
+			document.getElementById('create-cancel').addEventListener('click', () => {
+				panel.hidden = true;
+			});
+			document.getElementById('create-close').addEventListener('click', () => {
+				panel.hidden = true;
+			});
+
+			document.getElementById('create-submit').addEventListener('click', async () => {
+				const response = await fetch('/__fixture__/create-key', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						name: nameInput.value || 'Gemini API Key',
+						project: document.getElementById('key-project').value,
+					}),
+				});
+				const { key } = await response.json();
+				keyValue.textContent = key;
+				document.getElementById('reveal-name').textContent = nameInput.value || 'Gemini API Key';
+				panel.hidden = true;
+				reveal.hidden = false;
+
+				const row = document.createElement('tr');
+				row.innerHTML =
+					'<td><button type="button">...' +
+					key.slice(-4) +
+					'</button><span class="key-name"></span></td>' +
+					'<td><button type="button">Default Gemini Project</button><span>gen-lang-client-0228122468</span></td>' +
+					'<td>just now</td>' +
+					'<td><button type="button">Set up billing</button><span>Free tier</span></td>' +
+					'<td><button type="button">Copy API key</button><button type="button">View spend</button>' +
+					'<button type="button">View usage</button><button type="button">View more actions</button></td>';
+				// textContent, not markup — see the openai fixture.
+				row.querySelector('.key-name').textContent = nameInput.value || 'Gemini API Key';
+				document.getElementById('key-rows').prepend(row);
+			});
+
+			document.getElementById('copy-key').addEventListener('click', async () => {
+				await navigator.clipboard.writeText(keyValue.textContent).catch(() => {});
+			});
+			document.getElementById('reveal-close').addEventListener('click', () => {
+				reveal.hidden = true;
+			});
+		</script>
+	</body>
+</html>

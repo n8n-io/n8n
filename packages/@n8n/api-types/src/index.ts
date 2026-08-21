@@ -598,6 +598,7 @@ export {
 	MCP_CLIENT_TYPE_FILTER_BUCKETS,
 	MCP_CLIENT_CONNECTED_PERIODS,
 	getMcpClientType,
+	getMcpClientBrand,
 	type McpScope,
 	type McpClientType,
 	type McpClientBrandName,

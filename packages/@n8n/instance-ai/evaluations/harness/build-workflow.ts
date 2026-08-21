@@ -571,6 +571,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				foreignCredentialIds,
 				fixture: lane.fixture,
 				verifyBaseUrl: lane.verifyBaseUrl,
+				urlField: lane.credentialUrlField,
 				local: lane.local,
 				logger,
 			}),

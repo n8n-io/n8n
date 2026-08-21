@@ -2,6 +2,10 @@
 import { reactivePick } from '@vueuse/core';
 import { computed, useCssModule, useTemplateRef } from 'vue';
 
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import { useI18n } from '@n8n/design-system/composables/useI18n';
+import type { IconSize } from '@n8n/design-system/types/icon';
+
 import {
 	TagsInputInput,
 	TagsInputItem,
@@ -9,26 +13,27 @@ import {
 	TagsInputItemText,
 	TagsInputRoot,
 	useForwardPropsEmits,
+	type TagsInputRootProps,
 } from './reka-ui';
 import type {
 	TagsInputEmits,
-	TagsInputProps,
+	TagsInputOwnProps,
 	TagsInputSizes,
 	TagsInputSlots,
 	TagsInputValue,
 } from './TagsInput.types';
-import Icon from '../../../components/N8nIcon/Icon.vue';
-import type { IconSize } from '../../../types/icon';
 
 defineOptions({ inheritAttrs: false });
 
 const $style = useCssModule();
+const { t } = useI18n();
 
-const props = withDefaults(defineProps<TagsInputProps>(), {
+const props = withDefaults(defineProps<TagsInputOwnProps & TagsInputRootProps<TagsInputValue>>(), {
 	placeholder: 'Add a tag...',
 	size: 'large',
 	delimiter: ',',
 	disabled: false,
+	embedded: false,
 });
 
 const emit = defineEmits<TagsInputEmits>();
@@ -157,19 +162,20 @@ function getInputClass(isEmpty: boolean): string {
 </script>
 
 <template>
-	<div ref="root" :class="[$style.root, sizes[props.size]]">
+	<div ref="root" :class="[props.embedded ? $style.embedded : $style.root, sizes[props.size]]">
 		<TagsInputRoot
 			v-bind="{ ...$attrs, ...rootProps }"
 			:display-value="getDisplayValue"
-			:class="$style.tags"
+			:class="[$style.tags, props.embedded && $style.tagsEmbedded]"
 			@invalid="onInvalid"
 		>
-			<template #default="{ modelValue }">
+			<template #default="{ modelValue: tags }">
 				<TagsInputItem
-					v-for="(tag, index) in modelValue"
+					v-for="(tag, index) in tags"
 					:key="getTagKey(tag, index)"
 					:value="tag"
 					:class="$style.tag"
+					data-test-id="tags-input-tag"
 				>
 					<slot
 						name="tag"
@@ -180,8 +186,17 @@ function getInputClass(isEmpty: boolean): string {
 						:ui="{ text: $style.tagText, delete: $style.tagDelete }"
 					>
 						<TagsInputItemText :class="$style.tagText" />
-						<TagsInputItemDelete :class="$style.tagDelete" :disabled="props.disabled">
-							<Icon icon="x" :size="deleteIconSize" />
+						<TagsInputItemDelete as-child :disabled="props.disabled" @mousedown.prevent>
+							<button
+								type="button"
+								:class="$style.tagDelete"
+								tabindex="-1"
+								:disabled="props.disabled"
+								aria-labelledby=""
+								:aria-label="t('tagsInput.removeTag', { tag: getDisplayValue(tag) })"
+							>
+								<Icon icon="x" :size="deleteIconSize" />
+							</button>
 						</TagsInputItemDelete>
 					</slot>
 				</TagsInputItem>
@@ -189,15 +204,15 @@ function getInputClass(isEmpty: boolean): string {
 				<slot
 					:id="props.id"
 					name="input"
-					:placeholder="modelValue.length ? '' : props.placeholder"
+					:placeholder="tags.length ? '' : props.placeholder"
 					:auto-focus="props.autoFocus"
 					:disabled="props.disabled"
-					:class="getInputClass(modelValue.length === 0)"
+					:class="getInputClass(tags.length === 0)"
 				>
 					<TagsInputInput
 						:id="props.id"
-						:class="getInputClass(modelValue.length === 0)"
-						:placeholder="modelValue.length ? '' : props.placeholder"
+						:class="getInputClass(tags.length === 0)"
+						:placeholder="tags.length ? '' : props.placeholder"
 						:auto-focus="props.autoFocus"
 						:disabled="props.disabled"
 					/>
@@ -211,7 +226,8 @@ function getInputClass(isEmpty: boolean): string {
 @use '@n8n/design-system/css/mixins/focus';
 @use '@n8n/design-system/css/mixins/input' as input-mixin;
 
-.root {
+.root,
+.embedded {
 	@include input-mixin.size-variables('large');
 	@include input-mixin.theme-variables(var(--border-color));
 
@@ -220,7 +236,9 @@ function getInputClass(isEmpty: boolean): string {
 	--tag--gap: var(--spacing--4xs);
 	--tag--delete--size: max(var(--height--4xs), calc(var(--tag--height) - 2 * var(--spacing--4xs)));
 	--tag--padding-inline-end: calc((var(--tag--height) - var(--tag--delete--size) - 2px) / 2);
+}
 
+.root {
 	display: flex;
 	flex: 1;
 	width: 100%;
@@ -255,6 +273,10 @@ function getInputClass(isEmpty: boolean): string {
 		cursor: not-allowed;
 		opacity: 0.6;
 	}
+}
+
+.embedded {
+	width: 100%;
 }
 
 .mini {
@@ -324,6 +346,10 @@ function getInputClass(isEmpty: boolean): string {
 	width: 100%;
 	padding: calc(var(--tags-input--padding) - 1px);
 	overflow: auto;
+}
+
+.tagsEmbedded {
+	padding: 0;
 }
 
 .tag {

@@ -2290,6 +2290,11 @@ export type ExecuteAgentInfo = ExecuteAgentSource & {
 	 */
 	outputSchema?: JSONSchema7;
 	/**
+	 * Whether to forward generated text to a streaming workflow response. Defaults
+	 * to true when omitted. This does not affect execution progress events.
+	 */
+	enableStreaming?: boolean;
+	/**
 	 * Which slice of the calling node's input the agent's `fetch_input_data`
 	 * tool should expose: the single current item (`'item'`, default) or all
 	 * input items (`'all'`, used when the node invokes the agent once for the
@@ -2333,6 +2338,14 @@ export interface ExecuteAgentWorkflowContext {
 	nodes: Array<{ name: string; type: string }>;
 	/** The calling execution's run data (read-only by convention). */
 	runExecutionData: IRunExecutionData;
+}
+
+export interface ExecuteAgentInvocationContext {
+	nodeId: string;
+	nodeName: string;
+	runIndex: number;
+	itemIndex: number;
+	sendResponseChunk?: (type: ChunkType, content?: string) => Promise<void>;
 }
 
 export interface ExecuteAgentOptions {
@@ -3672,6 +3685,7 @@ export interface IWorkflowExecuteAdditionalData {
 		executionMode: WorkflowExecuteMode,
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
+		invocationContext?: ExecuteAgentInvocationContext,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
