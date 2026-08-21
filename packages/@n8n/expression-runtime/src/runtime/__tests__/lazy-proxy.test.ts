@@ -5,8 +5,6 @@ import { createDeepLazyProxy, isLazyProxy, getProxyPath } from '../lazy-proxy';
 // Helpers
 // ---------------------------------------------------------------------------
 
-const ivmCallOpts = { arguments: { copy: true }, result: { copy: true } };
-
 function mockApplySync(returnValue: unknown = undefined) {
 	return vi.fn().mockReturnValue(returnValue);
 }
@@ -22,8 +20,8 @@ function createMockCallbacks(
 	const getArrayElement = overrides.getArrayElement ?? mockApplySync();
 
 	const callbacks = {
-		getValueAtPath: { applySync: getValueAtPath },
-		getArrayElement: { applySync: getArrayElement },
+		getValueAtPath,
+		getArrayElement,
 	};
 
 	return { getValueAtPath, getArrayElement, callbacks };
@@ -231,7 +229,7 @@ describe('createDeepLazyProxy', () => {
 			const p = proxy(['data']);
 			mocks.getArrayElement.mockReturnValue('val');
 			p.list[3];
-			expect(mocks.getArrayElement).toHaveBeenCalledWith(null, [['data', 'list'], 3], ivmCallOpts);
+			expect(mocks.getArrayElement).toHaveBeenCalledWith(['data', 'list'], 3);
 		});
 
 		it('returns undefined for non-numeric non-length properties', () => {
@@ -272,15 +270,15 @@ describe('createDeepLazyProxy', () => {
 			// Each level triggers __getValueAtPath and creates a nested proxy
 			// a -> returns object metadata
 			const a = p.a;
-			expect(mocks.getValueAtPath).toHaveBeenLastCalledWith(null, [['a']], ivmCallOpts);
+			expect(mocks.getValueAtPath).toHaveBeenLastCalledWith(['a']);
 
 			// a.b -> returns object metadata
 			const b = a.b;
-			expect(mocks.getValueAtPath).toHaveBeenLastCalledWith(null, [['a', 'b']], ivmCallOpts);
+			expect(mocks.getValueAtPath).toHaveBeenLastCalledWith(['a', 'b']);
 
 			// a.b.c -> returns object metadata
 			const c = b.c;
-			expect(mocks.getValueAtPath).toHaveBeenLastCalledWith(null, [['a', 'b', 'c']], ivmCallOpts);
+			expect(mocks.getValueAtPath).toHaveBeenLastCalledWith(['a', 'b', 'c']);
 			expect(getProxyPath(c)).toEqual(['a', 'b', 'c']);
 		});
 
@@ -303,7 +301,7 @@ describe('createDeepLazyProxy', () => {
 			mocks.getValueAtPath.mockReturnValue('val');
 			const p = proxy(['$json']);
 			p.user;
-			expect(mocks.getValueAtPath).toHaveBeenCalledWith(null, [['$json', 'user']], ivmCallOpts);
+			expect(mocks.getValueAtPath).toHaveBeenCalledWith(['$json', 'user']);
 		});
 
 		it('nested proxies inherit full path', () => {
@@ -315,11 +313,7 @@ describe('createDeepLazyProxy', () => {
 			// Accessing a property on the nested proxy should build the full path
 			mocks.getValueAtPath.mockReturnValue('Alice');
 			user.name;
-			expect(mocks.getValueAtPath).toHaveBeenLastCalledWith(
-				null,
-				[['$json', 'user', 'name']],
-				ivmCallOpts,
-			);
+			expect(mocks.getValueAtPath).toHaveBeenLastCalledWith(['$json', 'user', 'name']);
 		});
 	});
 
@@ -369,7 +363,7 @@ describe('createDeepLazyProxy', () => {
 			mocks.getValueAtPath.mockReturnValue('val');
 			const p = proxy(['$json']);
 			'foo' in p;
-			expect(mocks.getValueAtPath).toHaveBeenCalledWith(null, [['$json', 'foo']], ivmCallOpts);
+			expect(mocks.getValueAtPath).toHaveBeenCalledWith(['$json', 'foo']);
 		});
 	});
 
@@ -461,7 +455,7 @@ describe('createDeepLazyProxy', () => {
 			const p = arrayProxy(['arr'], 3);
 			mocks.getArrayElement.mockReturnValue('first');
 			expect(p[0]).toBe('first');
-			expect(mocks.getArrayElement).toHaveBeenCalledWith(null, [['arr'], 0], ivmCallOpts);
+			expect(mocks.getArrayElement).toHaveBeenCalledWith(['arr'], 0);
 		});
 
 		it('nested array element returns an array-shaped child proxy', () => {

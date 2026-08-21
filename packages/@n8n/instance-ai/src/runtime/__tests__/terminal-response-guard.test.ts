@@ -144,6 +144,33 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.event?.type).toBe('text-delta');
 	});
 
+	it('emits fallback when a completed run only produced a preamble before its tool calls', () => {
+		const decision = guard().evaluateTerminal(
+			[runStart(), rootText('Let me read the current source first.'), toolCall()],
+			'completed',
+		);
+
+		expect(decision.action).toBe('emit');
+		expect(decision.reason).toBe('completed-silent');
+		expect(decision.event?.type).toBe('text-delta');
+	});
+
+	it('does not emit fallback when a completed run answers after its tool calls', () => {
+		const decision = guard().evaluateTerminal(
+			[
+				runStart(),
+				rootText('Let me read the current source first.'),
+				toolCall(),
+				rootText('Done.'),
+			],
+			'completed',
+		);
+
+		expect(decision.action).toBe('none');
+		expect(decision.visibilitySource).toBe('root-text');
+		expect(decision.reason).toBe('already-visible');
+	});
+
 	it('does not emit completed fallback when the message group already has root text', () => {
 		const decision = new InstanceAiTerminalResponseGuard({
 			runId,

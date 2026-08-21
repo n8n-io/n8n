@@ -6,9 +6,19 @@ import {
 	AUTO_FOLLOW_UP_MESSAGE,
 } from '../internal-messages';
 
+type NodeRef = { id: string; name?: string };
+type NodeSet = {
+	nodes: NodeRef[];
+	inputNode?: NodeRef;
+	outputNode?: NodeRef;
+	canvasGroupId?: string;
+	canvasGroupName?: string;
+};
+
 type EditorContextAttachment =
 	| { type: 'workflow'; id: string; name?: string; executionId?: string }
-	| { type: 'agent'; id: string; name?: string; projectId: string; pending?: true };
+	| { type: 'agent'; id: string; name?: string; projectId: string; pending?: true }
+	| { type: 'nodes'; workflowId: string; sets: NodeSet[] };
 
 /** Mirrors the marker the service writes in buildContextResourcesBlock. */
 function editorContextMarker(
@@ -184,6 +194,25 @@ describe('extractEditorContextResourceAttachments', () => {
 		expect(extractEditorContextResourceAttachments(stored)).toEqual([
 			{ type: 'workflow', id: 'wf-1', name: 'My workflow' },
 			{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+		]);
+	});
+
+	it('reconstructs a nodes attachment with multiple sets from the marker', () => {
+		const sets: NodeSet[] = [
+			{ nodes: [{ id: 'n1', name: 'HTTP Request' }] },
+			{
+				nodes: [
+					{ id: 'n2', name: 'Set' },
+					{ id: 'n3', name: 'IF' },
+				],
+				inputNode: { id: 'n1', name: 'HTTP Request' },
+				canvasGroupId: 'g1',
+			},
+		];
+		const stored = editorContextMarker([{ type: 'nodes', workflowId: 'wf1', sets }]);
+
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
+			{ type: 'nodes', workflowId: 'wf1', sets },
 		]);
 	});
 

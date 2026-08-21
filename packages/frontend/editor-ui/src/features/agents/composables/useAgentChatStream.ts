@@ -40,6 +40,12 @@ export interface FatalAgentError {
 	missing: string[];
 }
 
+interface AgentChatWarning {
+	message: string;
+	server?: string;
+	code?: string;
+}
+
 export interface UseAgentChatStreamParams {
 	projectId: Ref<string>;
 	agentId: Ref<string>;
@@ -70,6 +76,10 @@ function getApprovalDecision(value: unknown): boolean | undefined {
 	return value.approved;
 }
 
+function warningKey(warning: AgentChatWarning): string {
+	return JSON.stringify([warning.code ?? '', warning.server ?? '', warning.message]);
+}
+
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
 	const locale = useI18n();
@@ -91,9 +101,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	/**
 	 * Non-fatal warnings emitted during a run (e.g. an MCP server that failed to
 	 * connect, so its tools were skipped). The run continues; these are shown to
-	 * the user as a warning callout. Cleared on the next send.
+	 * the user as a warning callout. Visible warnings clear on the next send;
+	 * explicitly dismissed warnings stay hidden for this composable instance.
 	 */
-	const warnings = ref<Array<{ message: string; server?: string; code?: string }>>([]);
+	const warnings = ref<AgentChatWarning[]>([]);
+	const dismissedWarningKeys = new Set<string>();
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
@@ -574,11 +586,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'warning': {
 				// Non-fatal run warning (e.g. an MCP server was unavailable, so its
 				// tools were skipped). The run continues; surfaced as a callout.
-				warnings.value.push({
+				const warning: AgentChatWarning = {
 					message: event.message,
 					...(event.server !== undefined && { server: event.server }),
 					...(event.code !== undefined && { code: event.code }),
-				});
+				};
+				if (!dismissedWarningKeys.has(warningKey(warning))) {
+					warnings.value.push(warning);
+				}
 				break;
 			}
 			case 'error': {
@@ -925,7 +940,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	function dismissWarning(index: number): void {
-		warnings.value = warnings.value.filter((_, i) => i !== index);
+		const warning = warnings.value[index];
+		if (!warning) return;
+		const dismissedKey = warningKey(warning);
+		dismissedWarningKeys.add(dismissedKey);
+		warnings.value = warnings.value.filter((item) => warningKey(item) !== dismissedKey);
 	}
 
 	async function stopGenerating(): Promise<void> {

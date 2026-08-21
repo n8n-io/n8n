@@ -69,7 +69,21 @@ export const AgentTelegramSettingsSchema = z
 
 export type AgentTelegramIntegrationSettings = z.infer<typeof AgentTelegramSettingsSchema>;
 
-export const AgentIntegrationSettingsSchema = z.union([AgentTelegramSettingsSchema, z.undefined()]);
+export const SLACK_MESSAGING_EXPERIENCES = ['assistant', 'agent'] as const;
+
+export const AgentSlackSettingsSchema = z
+	.object({
+		messagingExperience: z.enum(SLACK_MESSAGING_EXPERIENCES),
+	})
+	.strict();
+
+export type AgentSlackIntegrationSettings = z.infer<typeof AgentSlackSettingsSchema>;
+
+export const AgentIntegrationSettingsSchema = z.union([
+	AgentTelegramSettingsSchema,
+	AgentSlackSettingsSchema,
+	z.undefined(),
+]);
 export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
 
 const credentialIntegrations = [
@@ -77,7 +91,10 @@ const credentialIntegrations = [
 		// keep optional for older agents
 		settings: AgentTelegramSettingsSchema.optional(),
 	}),
-	createSimpleIntegrationSchema('slack'),
+	createCredIntegrationSchema('slack', AgentSlackSettingsSchema).extend({
+		// Existing Slack integrations use the legacy Assistant messaging experience.
+		settings: AgentSlackSettingsSchema.optional(),
+	}),
 	createSimpleIntegrationSchema('linear'),
 	createSimpleIntegrationSchema('discord'),
 ] as const;
@@ -86,7 +103,9 @@ const draftCredentialIntegrations = [
 	createDraftCredIntegrationSchema('telegram', AgentTelegramSettingsSchema).extend({
 		settings: AgentTelegramSettingsSchema.optional(),
 	}),
-	createDraftSimpleIntegrationSchema('slack'),
+	createDraftCredIntegrationSchema('slack', AgentSlackSettingsSchema).extend({
+		settings: AgentSlackSettingsSchema.optional(),
+	}),
 	createDraftSimpleIntegrationSchema('linear'),
 	createDraftSimpleIntegrationSchema('discord'),
 ] as const;

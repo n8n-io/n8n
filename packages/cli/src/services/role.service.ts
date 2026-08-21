@@ -141,7 +141,15 @@ export class RoleService {
 		return { members };
 	}
 
-	async removeCustomRole(slug: string, reassignRoleSlug?: string) {
+	async removeCustomRole({
+		slug,
+		reassignRoleSlug,
+		userId,
+	}: {
+		slug: string;
+		reassignRoleSlug?: string;
+		userId: string;
+	}) {
 		const role = await this.roleRepository.findBySlug(slug);
 		if (!role) {
 			throw new NotFoundError('Role not found');
@@ -172,7 +180,14 @@ export class RoleService {
 		// Invalidate cache after role deletion
 		await this.roleCacheService.invalidateCache();
 
-		return this.dbRoleToRoleDTO(role);
+		const result = this.dbRoleToRoleDTO(role);
+
+		this.eventService.emit('custom-role-deleted', {
+			userId,
+			roleSlug: result.slug,
+		});
+
+		return result;
 	}
 
 	private async reassignUsersAndRemoveRole(role: Role, reassignRoleSlug: string) {

@@ -10,7 +10,6 @@ import type {
 	WorkflowEntity,
 	WorkflowHistory,
 	WorkflowHistoryRepository,
-	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -35,6 +34,8 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
+import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
+
 import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
@@ -56,7 +57,6 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 	const workflowEntityRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
@@ -69,6 +69,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
 	const workflowService = mock<WorkflowService>();
+	const accessService = mock<WorkflowReviewAccessService>();
 	const logger = mock<Logger>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
@@ -81,7 +82,6 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		workflowHistoryRepository,
 		workflowEntityRepository,
 		sharedWorkflowRepository,
-		publishHistoryRepository,
 		requestRepository,
 		workflowRepository,
 		authorRepository,
@@ -93,6 +93,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		dbLockService,
 		collaborationService,
 		workflowService,
+		accessService,
 	);
 
 	const openRequest = (overrides: Partial<WorkflowReviewRequest> = {}) =>
@@ -130,6 +131,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		accessService.resolveOpenableRequestIds.mockResolvedValue(new Set());
 		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });

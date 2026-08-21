@@ -29,11 +29,7 @@ import {
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import {
-	AI_GATEWAY_TOP_UP_MODAL_KEY,
-	ChatHubToolContextKey,
-	CREDENTIAL_ONLY_NODE_PREFIX,
-} from '@/app/constants';
+import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -62,6 +58,7 @@ import CredentialIcon from './CredentialIcon.vue';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 
 import {
 	N8nActionPill,
@@ -82,6 +79,11 @@ type Props = {
 	showAll?: boolean;
 	hideIssues?: boolean;
 	skipAutoSelect?: boolean;
+	/** The user asked for a fresh credential (Instance AI setup surfaces). Nothing
+	 *  is preselected, and the empty picker invites creation ("Connect to X")
+	 *  instead of reading as a list to choose from. Existing credentials stay
+	 *  selectable — the user may change their mind once they see them. */
+	preferNewCredential?: boolean;
 	/** When true, skip all global store writes (workflowsStore, nodeHelpers).
 	 *  Used by Instance AI to render credential selection without polluting the active workflow. */
 	standalone?: boolean;
@@ -117,6 +119,7 @@ const props = withDefaults(defineProps<Props>(), {
 	showAll: false,
 	hideIssues: false,
 	skipAutoSelect: false,
+	preferNewCredential: false,
 	standalone: false,
 	skipCredentialsFetch: false,
 });
@@ -166,6 +169,7 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 	useCredentialOAuth();
 
 const aiGateway = useAiGateway();
+const { openTopUp } = useAiGatewayTopUp();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 const balancePill = computed(() => {
@@ -554,11 +558,15 @@ function getSelectedName(type: string) {
 }
 
 function getSelectPlaceholder(type: string, issues: string[]) {
-	return issues.length && getSelectedName(type)
-		? i18n.baseText('nodeCredentials.selectedCredentialUnavailable', {
-				interpolate: { name: getSelectedName(type) },
-			})
-		: i18n.baseText('nodeCredentials.selectCredential');
+	if (issues.length && getSelectedName(type)) {
+		return i18n.baseText('nodeCredentials.selectedCredentialUnavailable', {
+			interpolate: { name: getSelectedName(type) },
+		});
+	}
+	// Asked-for-fresh slots read as the create affordance they are, matching the
+	// no-credentials-yet empty state instead of "Select Credential".
+	if (props.preferNewCredential) return entryPlaceholder(type);
+	return i18n.baseText('nodeCredentials.selectCredential');
 }
 
 function clearSelectedCredential(credentialType: string) {
@@ -895,13 +903,9 @@ function getIssues(credentialTypeName: string): string[] {
 
 function onTopUp(credentialType: string): void {
 	if (props.readonly) return;
-	telemetry.track('User clicked ai gateway top up', {
+	void openTopUp({
 		source: 'credential_selector',
-		credential_type: credentialType,
-	});
-	uiStore.openModalWithData({
-		name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-		data: { credentialType },
+		credentialType,
 	});
 }
 

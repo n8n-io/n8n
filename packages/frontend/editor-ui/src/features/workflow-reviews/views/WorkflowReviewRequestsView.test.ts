@@ -30,7 +30,7 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 vi.mock('@/features/workflow-reviews/components/WorkflowReviewChangesSection.vue', () => ({
 	default: {
 		name: 'WorkflowReviewChangesSection',
-		props: ['workflow'],
+		props: ['workflow', 'state', 'decision'],
 		template: '<div data-test-id="workflow-review-changes-section" />',
 	},
 }));
@@ -874,12 +874,13 @@ describe('WorkflowReviewRequestsView', () => {
 		expect(showError).not.toHaveBeenCalled();
 	});
 
-	it('resets the store on unmount', async () => {
-		const { unmount } = renderComponent();
-		await waitAllPromises();
-		unmount();
+	it('clears the stores on entry, before probing', async () => {
+		renderComponent();
 
 		expect(store.reset).toHaveBeenCalledTimes(1);
+		expect(store.reset.mock.invocationCallOrder[0]).toBeLessThan(
+			store.probeInbox.mock.invocationCallOrder[0],
+		);
 	});
 });
 

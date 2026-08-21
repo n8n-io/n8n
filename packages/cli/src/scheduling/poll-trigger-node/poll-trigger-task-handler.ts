@@ -12,7 +12,6 @@ import {
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import {
@@ -41,7 +40,6 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly errorReporter: ErrorReporter,
-		private readonly durablePollerGate: DurablePollerGateService,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -51,24 +49,25 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
 		const { workflowId, nodeId } = this.parsePayload(task);
 
-		// Job rows persisted before the gate closed keep being materialized, and
-		// activation has fallen back to in-memory polling; running the task too
-		// would poll the node twice per interval. Skipped, not thrown — a throw
-		// would retry to the max attempt count and dead-letter every occurrence.
-		if (!this.durablePollerGate.allowed) {
-			this.logger.debug('Durable pollers are refused on this instance; skipping the occurrence', {
-				taskId: task.id,
-				jobId: task.jobId,
-				workflowId,
-				nodeId,
-			});
-			return report.notDispatched();
-		}
 		// bypassCache: the poll cursor in staticData must be read live, not from the publish-time cache.
 		const workflowData = await this.triggerExecutionContextFactory.loadPublishedWorkflowData(
 			workflowId,
 			{ bypassCache: true },
 		);
+
+		// A due task persisted for a version with duplicate or missing node ids can
+		// fire before the healed version's outbox record replaces the jobs.
+		// Resolving a duplicated id would poll the wrong node and write shared
+		// cursor state. Skipped, not thrown — a throw would retry to the max
+		// attempt count and dead-letter every occurrence.
+		if (!this.hasHealthyNodeIds(workflowData)) {
+			this.logger.debug(
+				'Published version has duplicate or missing node ids; skipping the occurrence until it is healed',
+				{ taskId: task.id, jobId: task.jobId, workflowId, nodeId },
+			);
+			return report.notDispatched();
+		}
+
 		const node = this.resolveTriggerNode(workflowData, nodeId, task);
 
 		const { workflow, pollFunctions } =
@@ -157,6 +156,12 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				await workflow.expression.releaseIsolate();
 			}
 		});
+	}
+
+	/** The invariant the activation-time healer guarantees: every node id unique and non-empty. */
+	private hasHealthyNodeIds(workflowData: IWorkflowBase): boolean {
+		const ids = workflowData.nodes.map((node) => node.id);
+		return ids.every(Boolean) && new Set(ids).size === ids.length;
 	}
 
 	private parsePayload(task: ClaimedTask): PollTriggerTaskPayload {

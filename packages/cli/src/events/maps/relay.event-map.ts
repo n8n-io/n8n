@@ -22,6 +22,7 @@ import type {
 	PackageFailureReason,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
+import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -1123,6 +1124,17 @@ export type RelayEventMap = {
 
 	'instance-ai-settings-updated': {
 		mcpSettingsChanged: boolean;
+		/** Instance credential assignments before and after the save; absent when the update carried none (e.g. multi-main reload). Ids and model names only, never credential data. */
+		credentialSelections?: {
+			previous: InstanceAiCredentialSelection;
+			next: InstanceAiCredentialSelection;
+			/** Components whose connection payload was written in this save. Same-provider key rotations update the credential in place and keep its id, so an id diff alone cannot see them. */
+			connectionsUpdated: {
+				model: boolean;
+				sandbox: boolean;
+				search: boolean;
+			};
+		};
 	};
 
 	'instance-ai-mcp-registry-connection-created': {

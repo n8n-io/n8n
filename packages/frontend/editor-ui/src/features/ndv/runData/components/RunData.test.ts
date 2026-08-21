@@ -10,7 +10,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from './RunData.vue';
 import { STORES } from '@n8n/stores';
-import { SET_NODE_TYPE } from '@/app/constants';
+import { MODAL_CONFIRM, SET_NODE_TYPE } from '@/app/constants';
+import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecutions.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
@@ -23,6 +24,7 @@ import {
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	type ExecutionStatus,
 	type INodeExecutionData,
+	type IRunExecutionData,
 	type ITaskData,
 	type ITaskMetadata,
 	type NodeHint,
@@ -39,13 +41,17 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
 
-const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl, runWorkflow } = vi.hoisted(
-	() => ({
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl, runWorkflow, confirmMock } =
+	vi.hoisted(() => ({
 		trackOpeningRelatedExecution: vi.fn(),
 		resolveRelatedExecutionUrl: vi.fn(),
 		runWorkflow: vi.fn(),
-	}),
-);
+		confirmMock: vi.fn(),
+	}));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: confirmMock }),
+}));
 
 vi.mock('vue-router', () => {
 	return {
@@ -159,6 +165,116 @@ describe('RunData', () => {
 		await waitFor(() => getAllByTestId('run-data-schema-item'), { timeout: 1000 });
 		expect(getByText('Test 1')).toBeInTheDocument();
 		expect(getByText('Json data 1')).toBeInTheDocument();
+	});
+
+	describe('AI-simulated output', () => {
+		const simulatedItems = [{ json: { id: 'msg_1' } }];
+
+		beforeEach(() => {
+			confirmMock.mockReset();
+		});
+
+		it('labels output as simulated when the displayed execution marked the node', async () => {
+			const { getByTestId, queryByTestId } = render({
+				defaultRunItems: simulatedItems,
+				displayMode: 'table',
+			});
+
+			expect(queryByTestId('ndv-ai-simulated-data-callout')).not.toBeInTheDocument();
+
+			// The Instance AI preview registers provenance for the displayed execution.
+			useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Test Node']);
+
+			await waitFor(() => expect(getByTestId('ndv-ai-simulated-data-callout')).toBeInTheDocument());
+		});
+
+		it('does not label supplied historical executions, whose id is unknown', async () => {
+			// Standalone hosts (agents log viewers) pass a different execution as a
+			// prop; keying provenance off the active execution would mislabel it.
+			const { queryByTestId } = render({
+				displayMode: 'table',
+				workflowExecutionProp: createRunExecutionData({
+					resultData: {
+						runData: {
+							'Test Node': [
+								{
+									startTime: Date.now(),
+									executionIndex: 0,
+									executionTime: 1,
+									data: { main: [simulatedItems] },
+									source: [null],
+								},
+							],
+						},
+					},
+				}),
+			});
+
+			useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Test Node']);
+
+			await waitFor(() =>
+				expect(queryByTestId('ndv-ai-simulated-data-callout')).not.toBeInTheDocument(),
+			);
+		});
+
+		it('does not label output of nodes the execution did not mark', async () => {
+			const { queryByTestId } = render({
+				defaultRunItems: simulatedItems,
+				displayMode: 'table',
+			});
+
+			useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Other Node']);
+
+			await waitFor(() =>
+				expect(queryByTestId('ndv-ai-simulated-data-callout')).not.toBeInTheDocument(),
+			);
+		});
+
+		it('does not pin simulated output when the confirmation is declined', async () => {
+			confirmMock.mockResolvedValueOnce('cancel');
+			const { getByTestId } = render({
+				defaultRunItems: simulatedItems,
+				displayMode: 'table',
+			});
+			useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Test Node']);
+			await waitFor(() => expect(getByTestId('ndv-ai-simulated-data-callout')).toBeInTheDocument());
+
+			await userEvent.click(getByTestId('ndv-pin-data'));
+
+			expect(confirmMock).toHaveBeenCalledTimes(1);
+			expect(workflowDocumentStore.pinnedDataByNodeName['Test Node']).toBeUndefined();
+		});
+
+		it('pins simulated output after explicit confirmation', async () => {
+			confirmMock.mockResolvedValueOnce(MODAL_CONFIRM);
+			const { getByTestId } = render({
+				defaultRunItems: simulatedItems,
+				displayMode: 'table',
+			});
+			useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Test Node']);
+			await waitFor(() => expect(getByTestId('ndv-ai-simulated-data-callout')).toBeInTheDocument());
+
+			await userEvent.click(getByTestId('ndv-pin-data'));
+
+			expect(confirmMock).toHaveBeenCalledTimes(1);
+			await waitFor(() =>
+				expect(workflowDocumentStore.pinnedDataByNodeName['Test Node']).toEqual(simulatedItems),
+			);
+		});
+
+		it('pins non-simulated output without asking for confirmation', async () => {
+			const { getByTestId } = render({
+				defaultRunItems: simulatedItems,
+				displayMode: 'table',
+			});
+
+			await userEvent.click(getByTestId('ndv-pin-data'));
+
+			expect(confirmMock).not.toHaveBeenCalled();
+			await waitFor(() =>
+				expect(workflowDocumentStore.pinnedDataByNodeName['Test Node']).toEqual(simulatedItems),
+			);
+		});
 	});
 
 	it('should render only download buttons for PDFs', async () => {
@@ -1488,6 +1604,7 @@ describe('RunData', () => {
 		executionStatus,
 		nodeTypeHints,
 		withRunData = true,
+		workflowExecutionProp,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1502,6 +1619,8 @@ describe('RunData', () => {
 		executionStatus?: ExecutionStatus;
 		nodeTypeHints?: NodeHint[];
 		withRunData?: boolean;
+		/** Supplied historical execution data, as standalone hosts pass it. */
+		workflowExecutionProp?: IRunExecutionData;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1602,13 +1721,17 @@ describe('RunData', () => {
 					nodes: workflowNodes,
 				}),
 				displayMode,
+				...(workflowExecutionProp ? { workflowExecution: workflowExecutionProp } : {}),
 			},
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => workflowId ?? 'test-workflow'),
 				},
 				stubs: {
-					RunDataPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
+					RunDataPinButton: {
+						template:
+							'<button data-test-id="ndv-pin-data" @click="$emit(\'togglePinData\')"></button>',
+					},
 					NodeErrorView: { template: '<div data-test-id="node-error-view"></div>' },
 					VirtualSchema: {
 						template: `

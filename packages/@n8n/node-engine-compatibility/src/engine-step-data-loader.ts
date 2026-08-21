@@ -19,12 +19,15 @@ export function createEngineStepDataLoader(
 	return async (context): Promise<StepData> => {
 		const execution = await executionStore.loadExecution(context.executionId);
 
-		const nodeIds = execution.graph.nodes.map((node) => node.id);
-		const stored = await stepStore.loadStepsByNodeIds(context.executionId, nodeIds);
+		// TODO(CAT-2875): Expressions inside loop bodies resolve run-indexed.
+		// iteration 0 is every row there is until the engine executes loops.
+		const keys = execution.graph.nodes.map((node) => ({ nodeId: node.id, iteration: 0 }));
+		const stored = await stepStore.loadStepsByKeys(context.executionId, keys);
 
 		const outputsByNodeId: Record<string, StepSlots> = {};
-		for (const [nodeId, row] of Object.entries(stored)) {
-			if (row.status === 'completed' && row.outputs !== null) outputsByNodeId[nodeId] = row.outputs;
+		for (const row of Object.values(stored)) {
+			if (row.status === 'completed' && row.outputs !== null)
+				outputsByNodeId[row.nodeId] = row.outputs;
 		}
 
 		return { graph: execution.graph, outputsByNodeId };

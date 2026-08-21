@@ -8,6 +8,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { ToolConfigCredentialSelectedKey } from '@/app/constants';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
@@ -251,6 +253,25 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		expect(getAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+	});
+
+	it('syncs parameter changes to the scoped NDV when enabled', async () => {
+		const initialNode = createMockNode();
+		const { rerender } = renderComponent({
+			props: { initialNode, syncNodeToNdv: true },
+		});
+		const toolNdvStore = useNDVStore(createWorkflowDocumentId('node-tool-workflow'));
+
+		expect(toolNdvStore.activeNode?.parameters).toEqual(initialNode.parameters);
+
+		const updatedNode = createMockNode({
+			parameters: { ...initialNode.parameters, nameField: 'updated-value' },
+		});
+		await rerender({ initialNode: updatedNode });
+
+		await waitFor(() =>
+			expect(toolNdvStore.activeNode?.parameters).toEqual(updatedNode.parameters),
+		);
 	});
 
 	it('should render NodeCredentials inside the parameters tab', () => {

@@ -405,7 +405,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		descriptor: IntegrationToolConnectionDescriptor,
 		thread: Parameters<NonNullable<AgentChatIntegration['prepareSentThread']>>[0],
 	): Promise<void> {
-		await this.integrationRegistry.get(descriptor.integration.type)?.prepareSentThread?.(thread);
+		if (descriptor.integration.credentialId === undefined) return;
+		await this.integrationRegistry
+			.get(descriptor.integration.type)
+			?.prepareSentThread?.(thread, descriptor.integration);
 	}
 }
 

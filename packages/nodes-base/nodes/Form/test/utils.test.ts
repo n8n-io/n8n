@@ -24,6 +24,7 @@ import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import type {
 	CredentialCheckResult,
+	CredentialCheckStatus,
 	FormFieldsParameter,
 	IDataObject,
 	INode,
@@ -1487,6 +1488,139 @@ describe('FormTrigger, formWebhook', () => {
 					webhookResponse: { status: 200 },
 					workflowData: [[expect.anything()]],
 				});
+			});
+		});
+
+		describe('hosting shell on GET', () => {
+			const missing: CredentialCheckStatus = {
+				credentialId: 'cred-missing',
+				credentialName: 'My Gmail',
+				credentialType: 'gmailOAuth2',
+				resolverId: 'resolver-1',
+				status: 'missing',
+				authorizationUrl: 'https://example.com/authorize',
+			};
+			const configured: CredentialCheckStatus = {
+				credentialId: 'cred-connected',
+				credentialName: 'My CRM',
+				credentialType: 'hubspotOAuth2',
+				resolverId: 'resolver-2',
+				status: 'configured',
+				revokeUrl: 'https://example.com/revoke?resolverId=resolver-2',
+			};
+
+			const setupAuthedGet = (
+				ctx: ReturnType<typeof mock<IWebhookFunctions>>,
+				overrides: { query?: IDataObject; headers?: Record<string, string> } = {},
+			) => {
+				const res = setupContext(ctx, {
+					method: 'GET',
+					query: overrides.query,
+					headers: { cookie: 'n8n-form-oauth=as-token', ...(overrides.headers ?? {}) },
+				});
+				ctx.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: authedUser });
+				return res;
+			};
+
+			it('renders the shell while an account is still missing', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupAuthedGet(ctx);
+				ctx.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: false,
+					credentials: [missing, configured],
+				});
+
+				const result = await formWebhook(ctx);
+
+				expect(render).toHaveBeenCalledWith(
+					'form-shell',
+					expect.objectContaining({ total: 2, connectedCount: 1, allConnected: false }),
+				);
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			// The panel must survive the reload right after connecting, or the submitter
+			// loses every way to see and revoke the accounts the form runs on.
+			it('keeps rendering the shell once every account is connected', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupAuthedGet(ctx);
+				ctx.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: true,
+					credentials: [configured],
+				});
+
+				const result = await formWebhook(ctx);
+
+				expect(render).toHaveBeenCalledWith(
+					'form-shell',
+					expect.objectContaining({
+						total: 1,
+						connectedCount: 1,
+						allConnected: true,
+						credentials: [
+							expect.objectContaining({
+								id: 'cred-connected',
+								connected: true,
+								account: authedUser.email,
+								revokeUrl: configured.revokeUrl,
+							}),
+						],
+					}),
+				);
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			it('renders the plain form when the trigger needs no end-user accounts', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupAuthedGet(ctx);
+				ctx.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: true,
+					credentials: [],
+				});
+
+				const result = await formWebhook(ctx);
+
+				expect(render).toHaveBeenCalledWith('form-trigger', expect.any(Object));
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			it('renders the plain form for the shell inner iframe GET', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupAuthedGet(ctx, {
+					query: { n8nShellInner: '1' },
+					headers: { 'sec-fetch-dest': 'iframe' },
+				});
+				ctx.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: true,
+					credentials: [configured],
+				});
+
+				const result = await formWebhook(ctx);
+
+				expect(render).toHaveBeenCalledWith(
+					'form-trigger',
+					expect.objectContaining({ shellInner: true }),
+				);
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			// A typed-in ?n8nShellInner=1 is a top-level document navigation, not the
+			// shell iframe. Honoring the flag there would skip the connect UI.
+			it('still renders the hosting shell for a hand-typed n8nShellInner URL', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupAuthedGet(ctx, {
+					query: { n8nShellInner: '1' },
+					headers: { 'sec-fetch-dest': 'document' },
+				});
+				ctx.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: true,
+					credentials: [configured],
+				});
+
+				const result = await formWebhook(ctx);
+
+				expect(render).toHaveBeenCalledWith('form-shell', expect.any(Object));
+				expect(result).toEqual({ noWebhookResponse: true });
 			});
 		});
 	});

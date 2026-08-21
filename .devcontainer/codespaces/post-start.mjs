@@ -2,8 +2,8 @@
 // Runs on each codespace start. Installs the skills marketplace, starts the worker.
 import { execFileSync } from 'node:child_process';
 
-const MARKETPLACE = 'n8n-io/n8n-claude-skills';
-const PLUGIN = 'quality@n8n-claude-skills';
+const MARKETPLACE = 'n8n-io/n8n-agent-skills';
+const PLUGIN = 'quality@n8n-agent-skills';
 
 // The codespace clones over HTTPS and has no SSH key. The loader defaults to SSH
 // for "owner/repo", so it must prefer HTTPS or the private clone fails.

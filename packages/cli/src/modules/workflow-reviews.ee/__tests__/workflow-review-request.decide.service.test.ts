@@ -9,7 +9,6 @@ import type {
 	UserRepository,
 	WorkflowEntity,
 	WorkflowHistoryRepository,
-	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -24,6 +23,11 @@ import type {
 import { DbLock } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
+import { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
+import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
+import { WorkflowReviewRequestService } from '../workflow-review-request.service';
+
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -34,10 +38,6 @@ import type { WorkflowReviewPolicyService } from '@/services/workflow-review-pol
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
-
-import { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
-import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
-import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
 const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:member' } });
 const requesterUser = mock<User>({
@@ -61,7 +61,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 	const workflowEntityRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
@@ -74,6 +73,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
 	const workflowService = mock<WorkflowService>();
+	const accessService = mock<WorkflowReviewAccessService>();
 	const logger = mock<Logger>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
@@ -86,7 +86,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 		workflowHistoryRepository,
 		workflowEntityRepository,
 		sharedWorkflowRepository,
-		publishHistoryRepository,
 		requestRepository,
 		workflowRepository,
 		authorRepository,
@@ -105,6 +104,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		dbLockService,
 		collaborationService,
 		workflowService,
+		accessService,
 	);
 
 	const openRequest = (overrides: Partial<WorkflowReviewRequest> = {}) =>
@@ -121,16 +121,17 @@ describe('WorkflowReviewRequestService.decide', () => {
 			...overrides,
 		});
 
-	const pinnedRow = (workflowVersionId: string | null = 'ver-1') =>
+	const pinnedRow = (workflowVersionId: string | null = 'ver-1', workflowId = 'wf-1') =>
 		mock<WorkflowReviewRequestWorkflow>({
 			workflowReviewRequestId: requestId,
-			workflowId: 'wf-1',
+			workflowId,
 			workflowVersionId,
 		});
 
 	const mockSuccessfulDecidePath = () => {
 		requestRepository.findById.mockResolvedValue(openRequest());
 		workflowRepository.findByRequestId.mockResolvedValue([pinnedRow()]);
+		workflowRepository.captureApprovalBaseline.mockResolvedValue(undefined);
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			mock<WorkflowEntity>({ isArchived: false }),
 		);
@@ -147,6 +148,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		accessService.resolveOpenableRequestIds.mockResolvedValue(new Set());
 		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
@@ -231,10 +233,21 @@ describe('WorkflowReviewRequestService.decide', () => {
 	});
 
 	describe('author eligibility', () => {
-		it('throws ForbiddenError for an author without an admin override, even when assigned', async () => {
+		it('allows an assigned reviewer to decide even when they authored a version', async () => {
 			mockSuccessfulDecidePath();
 			authorRepository.isAuthor.mockResolvedValue(true);
 			reviewerRepository.isReviewer.mockResolvedValue(true);
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			const result = await service.decide(memberUser(), requestId, approveDto);
+
+			expect(result.decision).toBe('approved');
+		});
+
+		it('throws ForbiddenError for a non-assigned author without an admin override', async () => {
+			mockSuccessfulDecidePath();
+			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(false);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 
 			await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
@@ -244,11 +257,12 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
-		// The missing note is a payload problem, and an author is not entitled to hear about it:
-		// they may not decide at all, whatever they sent.
+		// The missing note is a payload problem, and a non-reviewer author is not entitled to
+		// hear about it: they may not decide at all, whatever they sent.
 		it('tells an author they may not decide even when their note is missing too', async () => {
 			mockSuccessfulDecidePath();
 			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(false);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 
 			await expect(
@@ -256,22 +270,32 @@ describe('WorkflowReviewRequestService.decide', () => {
 			).rejects.toThrow(ForbiddenError);
 		});
 
-		it('rejects a caller who became an author while waiting for the lock', async () => {
+		it('still allows an assigned reviewer who became an author while waiting for the lock', async () => {
 			mockSuccessfulDecidePath();
 			// Not an author before the lock, but a version sync won the lock first and
 			// added them to the author set before the critical section runs.
 			authorRepository.isAuthor.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 
-			await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
-				ForbiddenError,
-			);
+			const result = await service.decide(memberUser(), requestId, approveDto);
 
-			// The re-check must run against the lock's transaction, not a fresh read.
+			expect(result.decision).toBe('approved');
 			expect(authorRepository.isAuthor).toHaveBeenNthCalledWith(
 				2,
 				expect.objectContaining({ workflowReviewRequestId: requestId }),
 				ctx,
+			);
+			expect(requestRepository.saveRequest).toHaveBeenCalled();
+		});
+
+		it('rejects a caller unassigned while waiting for the lock', async () => {
+			mockSuccessfulDecidePath();
+			reviewerRepository.isReviewer.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+			authorRepository.isAuthor.mockResolvedValue(false);
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
+				NotFoundError,
 			);
 			expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		});
@@ -309,6 +333,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		it('throws ForbiddenError for an author who is only a project admin elsewhere', async () => {
 			mockSuccessfulDecidePath();
 			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(false);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['other-proj']);
 
 			await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
@@ -344,6 +369,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 		);
 		// Re-checked under the lock through the transaction manager.
 		expect(requestRepository.findById).toHaveBeenCalledWith(requestId, ctx);
+		expect(workflowRepository.captureApprovalBaseline).toHaveBeenCalledExactlyOnceWith(
+			{ workflowReviewRequestId: requestId, workflowId: 'wf-1' },
+			ctx,
+		);
 		const savedEntity = requestRepository.saveRequest.mock.calls[0]?.[0];
 		expect(savedEntity).toMatchObject({
 			decision: 'approved',
@@ -364,11 +393,34 @@ describe('WorkflowReviewRequestService.decide', () => {
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-1');
 	});
 
+	// Reviews carry exactly one workflow today (the create DTO enforces it), so this
+	// covers the capture loop for the multi-workflow bundles it was written for.
+	it('approves: freezes a baseline for every workflow the request covers', async () => {
+		mockSuccessfulDecidePath();
+		workflowRepository.findByRequestId.mockResolvedValue([
+			pinnedRow('ver-1', 'wf-1'),
+			pinnedRow('ver-2', 'wf-2'),
+		]);
+
+		await service.decide(memberUser(), requestId, approveDto);
+
+		expect(workflowRepository.captureApprovalBaseline).toHaveBeenCalledTimes(2);
+		expect(workflowRepository.captureApprovalBaseline).toHaveBeenCalledWith(
+			{ workflowReviewRequestId: requestId, workflowId: 'wf-1' },
+			ctx,
+		);
+		expect(workflowRepository.captureApprovalBaseline).toHaveBeenCalledWith(
+			{ workflowReviewRequestId: requestId, workflowId: 'wf-2' },
+			ctx,
+		);
+	});
+
 	it('requests changes: keeps the request open and leaves closedById/approvedAt untouched', async () => {
 		mockSuccessfulDecidePath();
 
 		const result = await service.decide(memberUser(), requestId, requestChangesDto);
 
+		expect(workflowRepository.captureApprovalBaseline).not.toHaveBeenCalled();
 		const savedEntity = requestRepository.saveRequest.mock.calls[0]?.[0];
 		expect(savedEntity).toMatchObject({
 			decision: 'changes_requested',

@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
 
     steps:
       - name: Generate App Token
@@ -92,3 +93,24 @@ jobs:
 
           git reset --hard public-1.x
           git push origin 1.x --force-with-lease
+
+      - name: Re-create missing bundle branches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING=$(git ls-remote --heads origin 'refs/heads/bundle/*')
+
+          MISSING=()
+          for BRANCH in bundle/2.x bundle/1.x; do
+            if ! grep -qF "refs/heads/$BRANCH" <<<"$EXISTING"; then
+              MISSING+=("$BRANCH")
+            fi
+          done
+
+          if [ ${#MISSING[@]} -eq 0 ]; then
+            echo 'Both bundle branches exist; nothing to dispatch.'
+            exit 0
+          fi
+
+          echo "Missing: ${MISSING[*]} - dispatching Security: Sync Bundle Branches"
+          gh workflow run sec-sync-bundle-branches.yml --ref master

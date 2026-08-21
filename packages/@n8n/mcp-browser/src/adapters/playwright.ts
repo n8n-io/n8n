@@ -14,9 +14,11 @@ import { chromium } from 'playwright-core';
 import { CDPRelayServer } from '../cdp-relay';
 import {
 	BrowserExecutableNotFoundError,
+	ElementNotActionableError,
 	PageNotFoundError,
 	StaleRefError,
 	type ConnectionLostReason,
+	type UnactionableReason,
 } from '../errors';
 import { buildExtensionConnectUrl } from '../extension-connect';
 import { createLogger } from '../logger';
@@ -44,6 +46,34 @@ import type {
 import { generateId, toError } from '../utils';
 
 const log = createLogger('playwright');
+
+/**
+ * How long a control may stay unactionable before the action is refused.
+ * Generous on purpose: a control disabled by a debounce or an in-flight save
+ * was acted on before this guard existed, and refusing one is worse than
+ * waiting. Overridable because it pre-empts Playwright's own configurable
+ * timeout, and a slow backend can legitimately need longer.
+ */
+const ACTIONABLE_GRACE_MS = Number(process.env.N8N_MCP_BROWSER_ACTIONABLE_GRACE_MS) || 5_000;
+/** Re-read cadence within the grace window. */
+const ACTIONABLE_POLL_MS = 250;
+/** Budget for one read, which crosses the relay and so is not instant. */
+const ACTIONABLE_READ_TIMEOUT_MS = 2_000;
+
+/**
+ * What an action needs of its target.
+ *
+ * `click` and `select` mirror Playwright's own actionability, so the guard
+ * cannot refuse what Playwright would have performed — note a read-only
+ * `<select>` still accepts `selectOption`, so it needs `enabled`, not
+ * `editable`.
+ *
+ * `type` is deliberately STRICTER than Playwright: `pressSequentially` types
+ * into a disabled or read-only field without complaint and reports success,
+ * so the caller believes a value was entered when nothing was. Refusing is the
+ * lesser evil, and it is a correctness fix rather than a saved timeout.
+ */
+type Actionability = 'enabled' | 'editable';
 
 // ---------------------------------------------------------------------------
 // Per-page state tracked by the adapter
@@ -397,6 +427,7 @@ export class PlaywrightAdapter {
 	async click(pageId: string, target: ElementTarget, options?: ClickOptions): Promise<void> {
 		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
+		await this.ensureActionable(locator, target, 'enabled');
 		await locator.click({
 			button: options?.button,
 			clickCount: options?.clickCount,
@@ -412,6 +443,7 @@ export class PlaywrightAdapter {
 	): Promise<void> {
 		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
+		await this.ensureActionable(locator, target, 'editable');
 
 		if (options?.clear) {
 			await locator.clear();
@@ -427,6 +459,7 @@ export class PlaywrightAdapter {
 	async select(pageId: string, target: ElementTarget, values: string[]): Promise<string[]> {
 		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
+		await this.ensureActionable(locator, target, 'enabled');
 		return await locator.selectOption(values);
 	}
 
@@ -913,6 +946,59 @@ export class PlaywrightAdapter {
 	// =========================================================================
 	// Private helpers
 	// =========================================================================
+
+	/**
+	 * Refuse an action whose target is still unactionable once the grace window is
+	 * up. Left alone, `click` and `select` wait out the full action timeout and
+	 * then fail with a message that says nothing about why, and `type` reports a
+	 * success it did not achieve.
+	 */
+	private async ensureActionable(
+		locator: Locator,
+		target: ElementTarget,
+		need: Actionability,
+	): Promise<void> {
+		const deadline = Date.now() + ACTIONABLE_GRACE_MS;
+		while (await this.readBlocked(locator, need)) {
+			const remaining = deadline - Date.now();
+			if (remaining <= 0) {
+				const described = 'ref' in target ? target.ref : target.selector;
+				throw new ElementNotActionableError(described, await this.blockedReason(locator));
+			}
+			await new Promise((resolve) => setTimeout(resolve, Math.min(ACTIONABLE_POLL_MS, remaining)));
+		}
+	}
+
+	/**
+	 * Uses Playwright's own predicates. They resolve `aria-ref` locators, which
+	 * most other locator reads do not — the callers target elements from a
+	 * snapshot. An unreadable state counts as fine, leaving the action to run.
+	 */
+	private async readBlocked(locator: Locator, need: Actionability): Promise<boolean> {
+		const options = { timeout: ACTIONABLE_READ_TIMEOUT_MS };
+		const blocked =
+			need === 'editable'
+				? locator.isEditable(options).then((editable) => !editable)
+				: locator.isDisabled(options);
+		return await blocked.catch((error: unknown) => {
+			// Only the error type: Playwright embeds matched element HTML in some
+			// messages, and this logger does not redact.
+			log.warn('actionability check failed:', toError(error).name);
+			return false;
+		});
+	}
+
+	/**
+	 * Only asked once the action is already refused, so the extra read costs
+	 * nothing on the happy path. Unreadable defaults to `disabled` — the far more
+	 * common cause, and the hint it picks is the more useful of the two.
+	 */
+	private async blockedReason(locator: Locator): Promise<UnactionableReason> {
+		const disabled = await locator
+			.isDisabled({ timeout: ACTIONABLE_READ_TIMEOUT_MS })
+			.catch(() => true);
+		return disabled ? 'disabled' : 'readonly';
+	}
 
 	private requireContext(): BrowserContext {
 		if (!this.context) throw new Error('Browser context not initialized');

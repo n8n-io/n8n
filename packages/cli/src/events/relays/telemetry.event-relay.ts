@@ -1525,11 +1525,16 @@ export class TelemetryEventRelay extends EventRelay {
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
 			multi_main_setup_enabled: this.globalConfig.multiMainSetup.enabled,
 			instance_ai: {
-				// Which sandbox and AIA search providers are configured (booleans/names only, never key values)
+				// Which model, sandbox and AIA search providers are configured via env vars
+				// (booleans/names only, never key values)
 				sandbox_enabled: this.globalConfig.instanceAi.sandboxEnabled,
 				sandbox_provider: this.globalConfig.instanceAi.sandboxProvider,
 				search_brave_set: this.globalConfig.instanceAi.braveSearchApiKey !== '',
 				search_searxng_set: this.globalConfig.instanceAi.searxngUrl !== '',
+				model_env_set:
+					this.globalConfig.instanceAi.modelApiKey !== '' ||
+					this.globalConfig.instanceAi.modelUrl !== '',
+				model_id: this.globalConfig.instanceAi.model,
 			},
 			metrics: {
 				metrics_enabled: this.globalConfig.endpoints.metrics.enable,

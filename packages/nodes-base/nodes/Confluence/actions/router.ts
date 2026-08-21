@@ -24,8 +24,20 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			let responseData: IDataObject | IDataObject[];
 
 			switch (`${resource}:${operation}`) {
+				case 'page:append':
+					responseData = await page.append.execute.call(this, i);
+					break;
 				case 'page:create':
 					responseData = await page.create.execute.call(this, i);
+					break;
+				case 'page:delete':
+					responseData = await page.delete.execute.call(this, i);
+					break;
+				case 'page:get':
+					responseData = await page.get.execute.call(this, i);
+					break;
+				case 'page:update':
+					responseData = await page.update.execute.call(this, i);
 					break;
 				default:
 					throw new NodeOperationError(
@@ -42,7 +54,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const message = error instanceof Error ? error.message : String(error);
-				returnData.push({ json: { error: message }, pairedItem: { item: i } });
+				const errorData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: message }),
+					{ itemData: { item: i } },
+				);
+				returnData.push.apply(returnData, errorData);
 				continue;
 			}
 			throw error;

@@ -170,6 +170,7 @@ export class ChatIntegrationService {
 		await implementation.onBeforeConnect({
 			agentId,
 			projectId,
+			integration,
 			credentialId: integration.credentialId,
 			credential,
 			ingressEnabled: true,
@@ -217,6 +218,7 @@ export class ChatIntegrationService {
 		const ctx: AgentChatIntegrationContext = {
 			agentId,
 			projectId,
+			integration,
 			credentialId: integration.credentialId,
 			credential: decryptedData,
 			ingressEnabled,

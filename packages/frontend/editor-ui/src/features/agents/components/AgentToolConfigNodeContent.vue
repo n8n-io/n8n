@@ -3,7 +3,10 @@ import { provide, ref } from 'vue';
 import type { INode } from 'n8n-workflow';
 import { UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS } from '@n8n/api-types';
 
-import { ResourceMapperSchemaAutoRefreshKey } from '@/app/constants';
+import {
+	ResourceMapperRefreshEmptySchemaKey,
+	ResourceMapperSchemaAutoRefreshKey,
+} from '@/app/constants';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 
 const props = defineProps<{
@@ -11,6 +14,8 @@ const props = defineProps<{
 	existingToolNames?: string[];
 	projectId?: string;
 	contentTestId?: string;
+	parameterIssues?: Record<string, string[]>;
+	fromAiDisabledParameters?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -22,6 +27,7 @@ const emit = defineEmits<{
 const contentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
 
 provide(ResourceMapperSchemaAutoRefreshKey, false);
+provide(ResourceMapperRefreshEmptySchemaKey, true);
 
 function handleChangeName(name: string) {
 	contentRef.value?.handleChangeName(name);
@@ -49,6 +55,9 @@ defineExpose({
 		:existing-tool-names="props.existingToolNames"
 		:project-id="props.projectId"
 		:hidden-operations="UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS"
+		:parameter-issues="props.parameterIssues"
+		:from-ai-disabled-parameters="props.fromAiDisabledParameters"
+		:sync-node-to-ndv="true"
 		:data-test-id="props.contentTestId"
 		@update:valid="emit('update:valid', $event)"
 		@update:node-name="emit('update:node-name', $event)"

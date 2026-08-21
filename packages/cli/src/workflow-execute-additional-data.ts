@@ -399,8 +399,7 @@ export async function executeAgent(
 		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
 	}
 
-	// Scope session threads by workflow
-	const scopedThreadId = `wf:${additionalData.workflowId}:${threadId}`;
+	const scopedThreadId = `workflow:project-${projectId}:${threadId}`;
 
 	if (source.inlineAgent) {
 		return await agentWorkflowExecutionService.executeInlineForWorkflow(
@@ -416,7 +415,24 @@ export async function executeAgent(
 		);
 	}
 
+	const { hashAgentSandboxPrincipal } = await import('@/modules/agents/agent-sandbox-principal.js');
 	const useDraftVersion = isManualOrChatExecution(executionMode);
+	const sandboxScope =
+		workflowContext?.hasCallerSessionId === true
+			? {
+					principalHash: hashAgentSandboxPrincipal({
+						type: 'project-session',
+						projectId,
+						sessionId: threadId,
+					}),
+				}
+			: {
+					principalHash: hashAgentSandboxPrincipal({
+						type: 'workflow-execution',
+						workflowId: additionalData.workflowId,
+						executionId,
+					}),
+				};
 
 	const result = await agentWorkflowExecutionService.executeForWorkflow(
 		source.agentId,
@@ -428,6 +444,7 @@ export async function executeAgent(
 		useDraftVersion,
 		outputSchema,
 		workflowContext,
+		sandboxScope,
 	);
 
 	// Callers see the session id they supplied (or the derived per-call id), so

@@ -1,22 +1,57 @@
 import type { CredentialSummary } from '../../types';
 
 /**
- * Maps an LLM-provider credential type to its chat model node, ordered by the
- * provider recommendation precedence. When the user has credentials for several
- * providers, the first match wins; with none, the builder keeps its own default.
+ * Maps an LLM-provider credential type to its chat model node and models.dev
+ * provider id, ordered by the provider recommendation precedence. When the user
+ * has credentials for several providers, the first match wins; with none, the
+ * builder keeps its own default.
  *
  * Deliberately scoped to the recommended providers: chat-model nodes outside
  * this table (Azure OpenAI, OpenRouter, Groq, DeepSeek, Cohere, Ollama,
  * Bedrock, ...) get no steering, hints, or mismatch warnings. Extending it is
  * a recommendation decision, not just a lookup fix — keep the precedence order.
  */
-const CHAT_MODEL_BY_CREDENTIAL_TYPE: ReadonlyArray<[credentialType: string, nodeType: string]> = [
-	['anthropicApi', '@n8n/n8n-nodes-langchain.lmChatAnthropic'],
-	['openAiApi', '@n8n/n8n-nodes-langchain.lmChatOpenAi'],
-	['mistralCloudApi', '@n8n/n8n-nodes-langchain.lmChatMistralCloud'],
-	['xAiApi', '@n8n/n8n-nodes-langchain.lmChatXAiGrok'],
-	['googlePalmApi', '@n8n/n8n-nodes-langchain.lmChatGoogleGemini'],
+export const CHAT_MODEL_BY_CREDENTIAL_TYPE: ReadonlyArray<{
+	credentialType: string;
+	nodeType: string;
+	/** models.dev provider id used by `@n8n/agents/catalog`. */
+	modelsDevProviderId: string;
+}> = [
+	{
+		credentialType: 'anthropicApi',
+		nodeType: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+		modelsDevProviderId: 'anthropic',
+	},
+	{
+		credentialType: 'openAiApi',
+		nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+		modelsDevProviderId: 'openai',
+	},
+	{
+		credentialType: 'mistralCloudApi',
+		nodeType: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+		modelsDevProviderId: 'mistral',
+	},
+	{
+		credentialType: 'xAiApi',
+		nodeType: '@n8n/n8n-nodes-langchain.lmChatXAiGrok',
+		modelsDevProviderId: 'xai',
+	},
+	{
+		credentialType: 'googlePalmApi',
+		nodeType: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+		modelsDevProviderId: 'google',
+	},
 ];
+
+export const CHAT_MODEL_NODE_TYPES: ReadonlySet<string> = new Set(
+	CHAT_MODEL_BY_CREDENTIAL_TYPE.map((entry) => entry.nodeType),
+);
+
+/** Whether a node type corresponds to one of the recommended chat model nodes. */
+export function isChatModelNode(nodeType: string | undefined): boolean {
+	return nodeType !== undefined && CHAT_MODEL_NODE_TYPES.has(nodeType);
+}
 
 /**
  * Pick the chat model node for the provider the user already has a credential
@@ -27,7 +62,7 @@ export function pickPreferredChatModelNode(
 	availableCredentialTypes: Iterable<string>,
 ): string | undefined {
 	const available = new Set(availableCredentialTypes);
-	for (const [credentialType, nodeType] of CHAT_MODEL_BY_CREDENTIAL_TYPE) {
+	for (const { credentialType, nodeType } of CHAT_MODEL_BY_CREDENTIAL_TYPE) {
 		if (available.has(credentialType)) return nodeType;
 	}
 	return undefined;
@@ -35,7 +70,14 @@ export function pickPreferredChatModelNode(
 
 /** Whether a credential type belongs to an LLM provider with a chat model node. */
 export function isChatModelProviderCredentialType(credentialType: string): boolean {
-	return CHAT_MODEL_BY_CREDENTIAL_TYPE.some(([type]) => type === credentialType);
+	return CHAT_MODEL_BY_CREDENTIAL_TYPE.some((entry) => entry.credentialType === credentialType);
+}
+
+export function resolveChatModelCatalogEntry(
+	nodeType: string | undefined,
+): (typeof CHAT_MODEL_BY_CREDENTIAL_TYPE)[number] | undefined {
+	if (!nodeType) return undefined;
+	return CHAT_MODEL_BY_CREDENTIAL_TYPE.find((entry) => entry.nodeType === nodeType);
 }
 
 /**
@@ -47,7 +89,7 @@ function listStoredChatModelAlternatives(
 	excludedType: string,
 	storedCredentials: readonly CredentialSummary[],
 ): string | undefined {
-	const alternatives = CHAT_MODEL_BY_CREDENTIAL_TYPE.flatMap(([credentialType]) =>
+	const alternatives = CHAT_MODEL_BY_CREDENTIAL_TYPE.flatMap(({ credentialType }) =>
 		credentialType === excludedType
 			? []
 			: storedCredentials.filter((cred) => cred.type === credentialType),
@@ -89,7 +131,7 @@ export function buildChatModelProviderHint(
  * user's intent.
  */
 export function buildChatModelProviderMismatchWarnings(
-	nodes: ReadonlyArray<{ name?: string; type?: string }>,
+	nodes: ReadonlyArray<{ name?: string; type?: string; disabled?: boolean }>,
 	storedCredentials: readonly CredentialSummary[],
 	resolvedCredentialsByNode: Record<
 		string,
@@ -99,7 +141,8 @@ export function buildChatModelProviderMismatchWarnings(
 	const storedTypes = new Set(storedCredentials.map((cred) => cred.type));
 	const warnings: string[] = [];
 	for (const node of nodes) {
-		const entry = CHAT_MODEL_BY_CREDENTIAL_TYPE.find(([, nodeType]) => nodeType === node.type);
+		if (node.disabled) continue;
+		const entry = resolveChatModelCatalogEntry(node.type);
 		if (!entry) continue;
 		// Own-key check: a node named "constructor" or "__proto__" must not
 		// resolve to an inherited Object.prototype member.
@@ -108,7 +151,7 @@ export function buildChatModelProviderMismatchWarnings(
 				? resolvedCredentialsByNode[node.name]
 				: undefined;
 		if (resolved?.some((cred) => cred.__aiGatewayManaged)) continue;
-		const [credentialType] = entry;
+		const { credentialType } = entry;
 		if (storedTypes.has(credentialType)) continue;
 		const listed = listStoredChatModelAlternatives(credentialType, storedCredentials);
 		if (!listed) continue;

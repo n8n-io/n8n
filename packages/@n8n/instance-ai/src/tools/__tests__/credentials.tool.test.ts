@@ -85,6 +85,19 @@ describe('credentials tool', () => {
 			expect(getDescription(tool)).toContain('set up new credentials');
 		});
 
+		it('should require requireUserSelection to be a boolean when provided', () => {
+			const tool = createCredentialsTool(createMockContext());
+			const schema = getInputSchema(tool);
+			const setupInput = {
+				action: 'setup',
+				credentials: [{ credentialType: 'slackApi', reason: 'Send Slack messages' }],
+			};
+
+			expect(schema.safeParse({ ...setupInput, requireUserSelection: true }).success).toBe(true);
+			expect(schema.safeParse({ ...setupInput, requireUserSelection: false }).success).toBe(true);
+			expect(schema.safeParse({ ...setupInput, requireUserSelection: 'true' }).success).toBe(false);
+		});
+
 		it('should describe only explicitly allowed actions', () => {
 			const tool = createCredentialsTool(createMockContext(), {
 				allowedActions: builderCredentialActions,
@@ -810,6 +823,45 @@ describe('credentials tool', () => {
 					],
 				}),
 			);
+			expect(suspendFn.mock.calls[0][0]).not.toHaveProperty('requireUserSelection');
+		});
+
+		it('should propagate requireUserSelection when explicitly enabled', async () => {
+			const context = createMockContext();
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+
+			await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'openRouterApi', reason: 'Set up a new account' }],
+					requireUserSelection: true,
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn.mock.calls[0][0]).toEqual(
+				expect.objectContaining({ requireUserSelection: true }),
+			);
+		});
+
+		it('should omit requireUserSelection when explicitly disabled', async () => {
+			const context = createMockContext();
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+
+			await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi', reason: 'Set up Slack' }],
+					requireUserSelection: false,
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn.mock.calls[0][0]).not.toHaveProperty('requireUserSelection');
 		});
 
 		it('should include suggestedName in credentialRequests when provided', async () => {

@@ -82,6 +82,29 @@ export class ExtensionConflictError extends McpBrowserError {
 	}
 }
 
+/** Why an element never became actionable. Drives the wording, so keep paired. */
+export type UnactionableReason = 'disabled' | 'readonly';
+
+const UNACTIONABLE: Record<UnactionableReason, { label: string; hint: string }> = {
+	disabled: {
+		label: 'disabled',
+		hint: 'Set whatever gates it — an unset dropdown, an empty required field — then retry. If nothing gates it, the page may still have been busy, so a retry alone may work.',
+	},
+	readonly: {
+		label: 'read-only',
+		hint: 'Unlock it first, usually through an edit or override control, or set the value from wherever the field takes it. Typing here does nothing.',
+	},
+};
+
+export class ElementNotActionableError extends McpBrowserError {
+	constructor(
+		readonly target: string,
+		readonly reason: UnactionableReason,
+	) {
+		super(`Element is ${UNACTIONABLE[reason].label}: ${target}`, UNACTIONABLE[reason].hint);
+	}
+}
+
 export class UnsupportedOperationError extends McpBrowserError {
 	constructor(
 		readonly operation: string,

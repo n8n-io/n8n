@@ -132,6 +132,10 @@ function buildOpenAiCompatible(
 
 type OpenAiCompatibleProviderId = 'nvidia' | 'moonshotai';
 
+function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
+	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
+}
+
 function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
 	name: P,
 	defaultBaseURL: string,
@@ -157,9 +161,13 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// A custom baseURL usually means an OpenAI-COMPATIBLE server (LM Studio,
 			// vLLM, Ollama), which speaks /chat/completions; the provider's default
 			// model targets OpenAI's own Responses API (/responses) that those
-			// servers do not implement. A proxy in front of real OpenAI also sets a
-			// baseURL but does serve /responses, so `apiStyle` overrides the guess.
-			const useChat = apiStyle ? apiStyle === 'chat' : Boolean(providerCreds.baseURL);
+			// servers do not implement. OpenAI credentials also carry the official
+			// baseURL, so keep those on /responses. `apiStyle` handles proxies that
+			// explicitly support one API or the other.
+			const useChat =
+				apiStyle === 'chat' ||
+				(apiStyle === undefined &&
+					Boolean(providerCreds.baseURL && !isOfficialOpenAiBaseUrl(providerCreds.baseURL)));
 			return useChat ? provider.chat(model) : provider(model);
 		},
 	},

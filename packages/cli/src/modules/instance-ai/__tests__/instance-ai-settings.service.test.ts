@@ -2246,25 +2246,28 @@ describe('InstanceAiSettingsService', () => {
 		it('does not flag mcpSettingsChanged for unrelated field changes', async () => {
 			await service.updateAdminSettings({ permissions: { createWorkflow: 'always_allow' } });
 
-			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
-				mcpSettingsChanged: false,
-			});
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({ mcpSettingsChanged: false }),
+			);
 		});
 
 		it('flags mcpSettingsChanged when mcpAccessEnabled changes', async () => {
 			await service.updateAdminSettings({ mcpAccessEnabled: false });
 
-			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
-				mcpSettingsChanged: true,
-			});
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({ mcpSettingsChanged: true }),
+			);
 		});
 
 		it('does not flag mcpSettingsChanged when mcpAccessEnabled is set to the same value', async () => {
 			await service.updateAdminSettings({ mcpAccessEnabled: true });
 
-			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
-				mcpSettingsChanged: false,
-			});
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({ mcpSettingsChanged: false }),
+			);
 		});
 
 		it('does not fail a committed update when a local event listener throws', async () => {
@@ -2423,6 +2426,27 @@ describe('InstanceAiSettingsService', () => {
 					instanceAi: { localGatewayDisabled: true },
 				});
 			});
+		});
+	});
+
+	describe('setup telemetry event payload', () => {
+		it('carries the previous and next credential selections on the settings-updated event', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+
+			await service.updateAdminSettings({ modelCredentialId: 'model-cred', modelName: 'gpt-4' });
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({
+					credentialSelections: {
+						previous: expect.objectContaining({ modelCredentialId: null, modelName: null }),
+						next: expect.objectContaining({ modelCredentialId: 'model-cred', modelName: 'gpt-4' }),
+						// No connection payload in this save — a raw credential-id assignment
+						connectionsUpdated: { model: false, sandbox: false, search: false },
+					},
+				}),
+			);
 		});
 	});
 });

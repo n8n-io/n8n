@@ -191,6 +191,9 @@ describe('GlobalConfig', () => {
 			separator: ':',
 			files: [],
 		},
+		featureFlags: {
+			override: {},
+		},
 		nodes: {
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
@@ -254,6 +257,7 @@ describe('GlobalConfig', () => {
 				queueMetricsInterval: 20,
 				includeSchedulerMetrics: false,
 				schedulerMetricsInterval: 20,
+				includePollTriggerMetrics: false,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
@@ -730,15 +734,6 @@ describe('GlobalConfig', () => {
 		expect(config.agents.tracingRecordOutputs).toBe(false);
 	});
 
-	it('should parse N8N_AGENTS_AI_SANDBOX_EPHEMERAL from env variables', () => {
-		process.env = {
-			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
-		};
-		const config = Container.get(GlobalConfig);
-
-		expect(config.agents.sandboxEphemeral).toBe(true);
-	});
-
 	it('should parse N8N_AGENTS_AI_SANDBOX_SNAPSHOT from env variables', () => {
 		process.env = {
 			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
@@ -877,7 +872,7 @@ describe('GlobalConfig', () => {
 		expect(config.database.postgresdb.password).toBe('password-from-file');
 		expect(consoleWarnMock).toHaveBeenCalledWith(
 			expect.stringContaining(
-				'DB_POSTGRESDB_PASSWORD_FILE contains leading or trailing whitespace',
+				'DB_POSTGRESDB_PASSWORD_FILE contained leading or trailing whitespace',
 			),
 		);
 	});

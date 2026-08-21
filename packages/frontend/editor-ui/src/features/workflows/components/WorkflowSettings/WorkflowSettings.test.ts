@@ -236,6 +236,24 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy')).toBeVisible();
 	});
 
+	it('should lock caller policy to none when executeWorkflow is excluded', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		vi.spyOn(settingsStore, 'isExecuteWorkflowNodeExcluded', 'get').mockReturnValue(true);
+		workflowDocumentStore.setSettings({
+			callerPolicy: 'workflowsFromAList',
+			callerIds: 'abc',
+			executionOrder: 'v1',
+		});
+
+		const { getByTestId, queryByTestId } = createComponent({ pinia });
+		await flushPromises();
+
+		expect(
+			within(getByTestId('workflow-caller-policy-select')).getByRole('combobox'),
+		).toBeDisabled();
+		expect(queryByTestId('workflow-caller-policy-workflow-ids')).not.toBeInTheDocument();
+	});
+
 	describe('Custom span attributes', () => {
 		beforeEach(() => {
 			settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];

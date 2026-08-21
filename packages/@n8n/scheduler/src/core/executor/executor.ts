@@ -49,6 +49,13 @@ export interface ExecutorHooks {
 	onFire?: (taskType: string, result: 'success' | 'failure') => void;
 	/** A fire failed but has attempts left; it was rescheduled with backoff. */
 	onRetry?: (taskType: string) => void;
+	/**
+	 * A handler finished but its terminal write matched no row: the lease was
+	 * reclaimed while the handler ran, so another instance may have run the same
+	 * occurrence concurrently. This is the at-least-once contract's residual
+	 * overlap, surfaced so it can be counted.
+	 */
+	onLeaseLost?: (taskType: string) => void;
 }
 
 /**
@@ -281,18 +288,20 @@ export class Executor {
 						this.hooks.onFire?.(task.taskType, 'success');
 						return { outcome: 'completed' };
 					}
+					this.hooks.onLeaseLost?.(task.taskType);
 					return { outcome: 'skipped-not-owned', errorMessage };
 				}
 				// A terminal write resolves 0 (it does not reject) when the row was
 				// reclaimed by the reaper after a lease overrun. The result is then no
 				// longer ours to record: report the fire as skipped, not as a state
-				// transition we did not make, and count no metric. Same on every
-				// terminal write below.
+				// transition we did not make, and count only the lease-lost metric,
+				// not a fire outcome. Same on every terminal write below.
 				const rowsAffected = await this.store.failTaskTerminal(claim, errorMessage);
 				if (rowsAffected > 0) {
 					this.hooks.onFire?.(task.taskType, 'failure');
 					return { outcome: 'dead-lettered', errorMessage };
 				}
+				this.hooks.onLeaseLost?.(task.taskType);
 				return { outcome: 'skipped-not-owned', errorMessage };
 			}
 			const rowsAffected = await this.store.rescheduleTask(
@@ -304,6 +313,7 @@ export class Executor {
 				this.hooks.onRetry?.(task.taskType);
 				return { outcome: 'rescheduled', errorMessage };
 			}
+			this.hooks.onLeaseLost?.(task.taskType);
 			return { outcome: 'skipped-not-owned', errorMessage };
 		}
 
@@ -314,6 +324,7 @@ export class Executor {
 			this.hooks.onFire?.(task.taskType, 'success');
 			return { outcome: 'completed' };
 		}
+		this.hooks.onLeaseLost?.(task.taskType);
 		return { outcome: 'skipped-not-owned' };
 	}
 

@@ -24,6 +24,7 @@ import {
 	searchForHeader,
 	setAxiosAgents,
 	tryParseUrl,
+	validateProxySsrf,
 } from '../utils';
 
 // Agent construction is owned by `buildNodeAgents` (./factory).
@@ -428,6 +429,66 @@ describe('getUrlFromProxyConfig', () => {
 
 	it('should return null for undefined proxy config', () => {
 		expect(getUrlFromProxyConfig(undefined as unknown as string)).toBeNull();
+	});
+});
+
+describe('validateProxySsrf', () => {
+	const denyingBridge = (deniedHostname: string, error: Error) =>
+		makeSsrfBridge({
+			validateUrl: vi.fn(async (url: string | URL) => {
+				const hostname = typeof url === 'string' ? new URL(url).hostname : url.hostname;
+				return await Promise.resolve(
+					hostname === deniedHostname
+						? { ok: false as const, error }
+						: { ok: true as const, result: undefined },
+				);
+			}),
+		});
+
+	it.each([
+		['a proxy URL string', 'http://proxy.example.com:8080'],
+		['a proxy config object', { host: 'proxy.example.com', port: 8080 }],
+	])('throws when the policy denies the host of %s', async (_label, proxyConfig) => {
+		const error = new Error('The proxy host is not permitted by policy');
+
+		await expect(
+			validateProxySsrf(proxyConfig, denyingBridge('proxy.example.com', error)),
+		).rejects.toBe(error);
+	});
+
+	it('validates the URL composed from a proxy config object', async () => {
+		const bridge = makeSsrfBridge();
+
+		await validateProxySsrf(
+			{
+				protocol: 'https',
+				host: 'proxy.example.com',
+				port: 9443,
+				auth: { username: 'user', password: 'pass' },
+			},
+			bridge,
+		);
+
+		expect(bridge.validateUrl).toHaveBeenCalledWith(
+			expect.objectContaining({ href: 'https://user:pass@proxy.example.com:9443/' }),
+		);
+	});
+
+	it.each([
+		['no proxy is configured', undefined],
+		['the proxy config has no host', { host: '', port: 8080 }],
+		['the proxy scheme is not supported', 'socks5://proxy.example.com:1080'],
+		['the proxy value is not a URL', 'not-a-url'],
+	])('does not consult the policy when %s', async (_label, proxyConfig) => {
+		const bridge = makeSsrfBridge();
+
+		await validateProxySsrf(proxyConfig, bridge);
+
+		expect(bridge.validateUrl).not.toHaveBeenCalled();
+	});
+
+	it('does not consult the policy when no bridge is provided', async () => {
+		await expect(validateProxySsrf('http://proxy.example.com:8080')).resolves.toBeUndefined();
 	});
 });
 

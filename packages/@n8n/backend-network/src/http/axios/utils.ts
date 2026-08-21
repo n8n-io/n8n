@@ -139,8 +139,6 @@ export const getBeforeRedirectFn =
 		const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
 		const proxy = resolveProxyOption(customProxyUrl);
 
-		// SSRF lookup is applied to direct connections only; behind a proxy the
-		// proxy validates the final target.
 		const targetUrl = redirectedRequest.href;
 		const { httpAgent, httpsAgent } = buildNodeAgents(proxy, ssrf, redirectAgentOptions);
 
@@ -397,8 +395,6 @@ export function setAxiosAgents(
 	const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
 	const proxy = resolveProxyOption(customProxyUrl);
 
-	// SSRF lookup is applied to direct connections only; behind a proxy the
-	// proxy validates the final target.
 	const { httpAgent, httpsAgent } = buildNodeAgents(proxy, ssrf, agentOptions);
 	config.httpAgent = httpAgent;
 	config.httpsAgent = httpsAgent;
@@ -418,6 +414,16 @@ export async function validateUrlSsrf(
 	if (!result.ok) {
 		throw result.error;
 	}
+}
+
+export async function validateProxySsrf(
+	proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
+	ssrfBridge?: SsrfBridge,
+): Promise<void> {
+	const proxyUrl = getUrlFromProxyConfig(proxyConfig);
+	if (!isSupportedProxyUrl(proxyUrl)) return;
+
+	await validateUrlSsrf(proxyUrl, ssrfBridge);
 }
 
 /**

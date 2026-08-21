@@ -8,7 +8,7 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('Docker: Build
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '24.18.1'
+  NODE_VERSION: '26.5.1'
 
 on:
   schedule:

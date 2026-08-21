@@ -19,6 +19,8 @@ import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 
+import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
+
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 
 interface FakeThread {
@@ -398,7 +400,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenNthCalledWith(3, { markdown: 'After resume.' });
 		});
 
-		it('includes tool approval details when posting a suspension card', async () => {
+		it('posts tool approval cards without raw JSON input', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
@@ -448,13 +450,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						},
 						{
 							type: 'fields',
-							fields: [
-								{ label: 'Tool', value: 'GIPHY GIF Search' },
-								{
-									label: 'Input',
-									value: '{\n  "query": "project status",\n  "limit": 3\n}',
-								},
-							],
+							fields: [{ label: 'Tool', value: 'GIPHY GIF Search' }],
 						},
 						{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
 						{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
@@ -668,6 +664,12 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenNthCalledWith(
 				1,
 				expect.objectContaining({
+					sandboxPrincipalHash: hashAgentSandboxPrincipal({
+						type: 'integration-user',
+						connectionId: 'cred-1',
+						platform: 'test-streaming',
+						platformUserId: 'u1',
+					}),
 					memory: expect.objectContaining({
 						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
 						resourceId: 'integration:test-streaming:u1',
@@ -1349,6 +1351,50 @@ describe('AgentChatBridge — consumeStream', () => {
 				thread.post.mock.invocationCallOrder[0],
 			);
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
+		});
+
+		it('uses the user message as a ready thread root for Agent view DMs', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() =>
+					toStream([
+						{ type: 'text-delta', id: 't1', delta: 'Hello' },
+						{ type: 'finish', finishReason: 'stop' },
+					]),
+				),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience: 'agent' },
+				},
+			);
+
+			await handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(setAssistantStatus).toHaveBeenCalledWith('D123', '1779466577.518139', '');
 		});
 
 		it('retries top-level Slack assistant status when Slack has not materialized the thread yet', async () => {

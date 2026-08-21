@@ -280,26 +280,31 @@ describe('Commenting on a review', () => {
 			.expect(404);
 	});
 
-	test.each(['approved', 'closed'] as const)(
-		'keeps existing comments visible and still accepts new ones on a %s review',
-		async (settled) => {
+	// Whatever closed the review — an approval or a lifecycle close — the outcome is the
+	// same: the feed stays readable, new comments are refused with a conflict.
+	test.each([
+		['approved', { state: 'closed', decision: 'approved' }],
+		['lifecycle-closed', { state: 'closed' }],
+	] as const)(
+		'keeps existing comments visible but refuses new ones on a %s review',
+		async (_close, update) => {
 			const { request } = await seedReviewInTeamProject(owner);
 			await ownerAgent
 				.post(`/workflow-review-requests/${request.id}/comments`)
-				.send({ body: 'Before it settled' })
+				.send({ body: 'Before it closed' })
 				.expect(201);
-			await requestRepository.update(
-				request.id,
-				settled === 'approved' ? { decision: 'approved' } : { state: 'closed' },
-			);
+			await requestRepository.update(request.id, update);
 
 			const feed = await getActivity(ownerAgent, request.id);
 			expect(feed.data).toHaveLength(1);
 
 			await ownerAgent
 				.post(`/workflow-review-requests/${request.id}/comments`)
-				.send({ body: 'After it settled' })
-				.expect(201);
+				.send({ body: 'After it closed' })
+				.expect(409);
+
+			// Nothing was written: the refusal happened before the comment, not after.
+			expect((await getActivity(ownerAgent, request.id)).data).toHaveLength(1);
 		},
 	);
 
@@ -439,7 +444,8 @@ describe('Recording the review lifecycle in the feed', () => {
 			.expect(200);
 
 		const feed = await getActivity(ownerAgent, requestId);
-		expect(entryTypes(feed)).toEqual(['review.opened', 'review.approved']);
+		// The approval auto-publishes the pinned version, so its record follows.
+		expect(entryTypes(feed)).toEqual(['review.opened', 'review.approved', 'workflow.published']);
 		expect(feed.data[1].data).toEqual({
 			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
 			note: 'Ships as is',
@@ -501,17 +507,13 @@ describe('Recording the review lifecycle in the feed', () => {
 
 		const feed = await getActivity(memberAgent, requestId);
 		expect(entryTypes(feed)).toEqual(['review.opened', 'review.version_updated']);
+		// In `data`, never a column: a scoping column would cascade, so a workflow delete would
+		// take the entry with it.
 		expect(feed.data[1].data).toEqual({
 			workflowId: workflow.id,
 			fromWorkflowVersionId: 'version-1',
 			toWorkflowVersionId: 'version-2',
 		});
-
-		// The scoping column stays unwritten: its FK cascades, so a workflow delete would take
-		// the entry with it.
-		const rows = await activityRepository.findBy({ type: 'review.version_updated' });
-		expect(rows).toHaveLength(1);
-		expect(rows[0].workflowId).toBeNull();
 	});
 
 	test('keeps a version update in the feed after its workflow is deleted', async () => {

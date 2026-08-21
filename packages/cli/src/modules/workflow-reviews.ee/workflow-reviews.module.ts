@@ -20,11 +20,11 @@ export class WorkflowReviewsModule implements ModuleInterface {
 			Container.get(WorkflowReviewPublishGuard),
 		);
 
-		const { WorkflowReviewAutoCloseService } = await import(
-			'./workflow-review-auto-close.service.js'
+		const { WorkflowReviewLifecycleService } = await import(
+			'./workflow-review-lifecycle.service.js'
 		);
 		Container.get(WorkflowMutationHooksProxy).registerProvider(
-			Container.get(WorkflowReviewAutoCloseService),
+			Container.get(WorkflowReviewLifecycleService),
 		);
 	}
 }

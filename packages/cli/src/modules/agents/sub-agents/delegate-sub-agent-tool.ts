@@ -12,6 +12,7 @@ import { OperationalError } from 'n8n-workflow';
 
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
+import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import type {
 	SubAgentForegroundRunContext,
 	SubAgentForegroundResult,
@@ -63,6 +64,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 					error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
 				};
 			}
+			const parentSandboxScope = decodeAgentSandboxHostMetadata(request.parentHostMetadata);
 
 			const result = await runner.runForeground(
 				{
@@ -79,6 +81,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 						: {}),
 					...(request.parentResourceId !== undefined
 						? { parentResourceId: request.parentResourceId }
+						: {}),
+					...(parentSandboxScope?.projectId === runContext.projectId
+						? { parentSandboxPrincipalHash: parentSandboxScope.principalHash }
 						: {}),
 					taskPath: request.taskPath,
 				},

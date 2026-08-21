@@ -69,4 +69,18 @@ export class WorkflowReviewRequestAuthorRepository extends BaseRepository<Workfl
 			order: { userId: 'ASC' },
 		});
 	}
+
+	/** Of the given requests, the ones this user authored — batched `isAuthor`. */
+	async findRequestIdsForUser(requestIds: string[], userId: string): Promise<Set<string>> {
+		if (requestIds.length === 0) {
+			return new Set();
+		}
+
+		const rows = await this.find({
+			select: { workflowReviewRequestId: true },
+			where: { workflowReviewRequestId: In(requestIds), userId },
+		});
+
+		return new Set(rows.map((row) => row.workflowReviewRequestId));
+	}
 }

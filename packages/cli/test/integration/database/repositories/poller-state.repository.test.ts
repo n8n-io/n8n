@@ -12,12 +12,14 @@ describe('PollerStateRepository', () => {
 	let workflowRepository: WorkflowRepository;
 	let txRunner: TransactionRunner;
 	let workflowId: string;
+	let otherWorkflowId: string;
 
 	beforeAll(async () => {
 		await testDb.init();
 		repository = Container.get(PollerStateRepository);
 		workflowRepository = Container.get(WorkflowRepository);
 		({ id: workflowId } = await createWorkflow());
+		({ id: otherWorkflowId } = await createWorkflow());
 		txRunner = Container.get(TransactionRunner);
 	});
 
@@ -104,6 +106,27 @@ describe('PollerStateRepository', () => {
 
 			expect(await repository.findCursor(doomedWorkflowId, 'node-1')).toBeNull();
 			expect(await repository.findCursor(doomedWorkflowId, 'node-2')).toBeNull();
+		});
+	});
+
+	describe('deleteWorkflowCursors', () => {
+		it('deletes all rows of the given workflows and reports how many', async () => {
+			await seed('node-1', { lastItemId: 'a' });
+			await seed('node-2', { lastItemId: 'b' });
+			await seed('node-1', { lastItemId: 'c' }, otherWorkflowId);
+
+			expect(await repository.deleteWorkflowCursors([workflowId])).toBe(2);
+
+			expect(await repository.findCursor(workflowId, 'node-1')).toBeNull();
+			expect(await repository.findCursor(workflowId, 'node-2')).toBeNull();
+			expect(await repository.findCursor(otherWorkflowId, 'node-1')).toEqual({ lastItemId: 'c' });
+		});
+
+		it('deletes nothing and reports zero rows for an empty workflow list', async () => {
+			await seed('node-1', { lastItemId: 'a' });
+
+			expect(await repository.deleteWorkflowCursors([])).toBe(0);
+			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
 		});
 	});
 

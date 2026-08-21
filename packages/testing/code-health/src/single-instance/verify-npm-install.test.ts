@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { closureOf, filesTriggerFullRun, matchChangedFiles } from './verify-npm-install.js';
+import {
+	closureOf,
+	filesTriggerFullRun,
+	matchChangedFiles,
+	resolveTargets,
+} from './verify-npm-install.js';
 
 /** Build a WorkspacePkg fixture from `[depName, section]` pairs (only names + sections matter). */
 function ws(name: string, deps: Array<[string, string]>) {
 	return {
-		dir: `/x/${name}`,
 		relDir: `packages/${name}`,
 		info: {
 			filePath: `/x/${name}/package.json`,
@@ -92,5 +96,27 @@ describe('filesTriggerFullRun', () => {
 
 	it('does not escalate on an ordinary package source change', () => {
 		expect(filesTriggerFullRun(['packages/core/src/index.ts'])).toBe(false);
+	});
+});
+
+describe('resolveTargets', () => {
+	it('does not mistake --report-only for a package name', () => {
+		expect(resolveTargets(['a', '--report-only'], byName, '/x')).toEqual(['a']);
+	});
+
+	// Flag-only args must reach the usage error rather than silently verifying nothing.
+	it('resolves no targets when only flags are passed', () => {
+		expect(resolveTargets(['--report-only'], byName, '/x')).toEqual([]);
+	});
+
+	it('still expands --all alongside the flag', () => {
+		expect(resolveTargets(['--all', '--report-only'], byName, '/x')?.sort()).toEqual([
+			'a',
+			'b',
+			'c',
+			'd',
+			'dev-only',
+			'solo',
+		]);
 	});
 });

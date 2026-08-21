@@ -80,7 +80,7 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 	async function runWorkflowThatThrows(
 		error: unknown,
 		additionalDataOverrides: Partial<IWorkflowExecuteAdditionalData> = {},
-	): Promise<void> {
+	): Promise<IRun> {
 		const nodeType = mock<INodeType>({
 			description: {
 				name: 'manualTrigger',
@@ -116,7 +116,23 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		).mockImplementation(() => {});
 
 		await workflowExecute.run({ workflow, startNode: triggerNode });
-		await waitPromise.promise;
+		return await waitPromise.promise;
+	}
+
+	function createAxiosError() {
+		return Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), {
+			name: 'AxiosError',
+			isAxiosError: true,
+			code: 'ECONNREFUSED',
+			config: {
+				headers: { 'x-request-header': 'payload' },
+				data: '{"requestField":"payload"}',
+			},
+			options: {
+				headers: { 'x-request-header': 'payload' },
+				data: '{"requestField":"payload"}',
+			},
+		});
 	}
 
 	it('should report a Error instance as class + stack only, without its message', async () => {
@@ -172,6 +188,39 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		await runWorkflowThatThrows(axiosError);
 
 		expect(mockErrorReporter.error).not.toHaveBeenCalled();
+	});
+
+	it('should store unhandled axios errors as NodeApiError', async () => {
+		const run = await runWorkflowThatThrows(createAxiosError());
+		const nodeError = run.data.resultData.runData.ThrowingNode[0].error;
+		const resultError = run.data.resultData.error;
+
+		expect(nodeError?.name).toBe('NodeApiError');
+		expect(resultError?.name).toBe('NodeApiError');
+	});
+
+	it('should omit axios config from stored errors', async () => {
+		const run = await runWorkflowThatThrows(createAxiosError());
+		const nodeError = run.data.resultData.runData.ThrowingNode[0].error;
+		const resultError = run.data.resultData.error;
+
+		expect(nodeError).not.toHaveProperty('config');
+		expect(resultError).not.toHaveProperty('config');
+	});
+
+	it('should omit legacy request options from stored errors', async () => {
+		const run = await runWorkflowThatThrows(createAxiosError());
+		const nodeError = run.data.resultData.runData.ThrowingNode[0].error;
+		const resultError = run.data.resultData.error;
+
+		expect(nodeError).not.toHaveProperty('options');
+		expect(resultError).not.toHaveProperty('options');
+	});
+
+	it('should omit request values from serialized execution errors', async () => {
+		const run = await runWorkflowThatThrows(createAxiosError());
+
+		expect(JSON.stringify(run.data.resultData)).not.toContain('payload');
 	});
 
 	it('should not report an ApplicationError with no cause', async () => {

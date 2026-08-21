@@ -12,7 +12,7 @@ import {
 import AgentChannelSlackSetupSnapshots from './AgentChannelSlackSetupSnapshots.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { ChatIntegrationDescriptor } from '@n8n/api-types';
+import type { AgentSlackIntegrationSettings, ChatIntegrationDescriptor } from '@n8n/api-types';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { getSlackAgentAppManifest } from '../channels/slack/api';
 import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
@@ -73,6 +73,9 @@ const slackAppManifest = shallowRef('');
 const manifestLoading = shallowRef(false);
 const manifestError = shallowRef(false);
 const manifestCopied = shallowRef(false);
+const currentSettings = computed<AgentSlackIntegrationSettings>(() => ({
+	messagingExperience: 'agent',
+}));
 
 const steps = computed(() => [
 	{
@@ -175,7 +178,7 @@ watch(
 	{ immediate: true },
 );
 
-defineExpose({ credentialId, validationError: null, loading: setupLoading });
+defineExpose({ credentialId, currentSettings, validationError: null, loading: setupLoading });
 </script>
 
 <template>

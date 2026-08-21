@@ -11,6 +11,7 @@ import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import {
+	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
 	type McpServerTool,
@@ -20,11 +21,11 @@ import {
 	type ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 import { useInstanceAiMcpStore } from '../../instanceAiMcp.store';
+import type { InstanceAiMcpConnection } from '../../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../../instanceAiMcp.telemetry';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useMcpServerConnect } from '../../composables/useMcpServerConnect';
 import type {
-	InstanceAiMcpConnectionResponse,
 	InstanceAiMcpConnectionToolResponse,
 	McpRegistryServerResponse,
 	McpRegistryServerToolResponse,
@@ -102,7 +103,9 @@ const detailItem = computed<ToolConnectionItem | null>(() => {
 });
 
 const detailMode = computed<'detail' | 'settings'>(() =>
-	detailItem.value?.kind === 'mcp-server' && detailItem.value.isConnected ? 'settings' : 'detail',
+	detailItem.value?.kind === 'mcp-server' && hasToolConnection(detailItem.value.status)
+		? 'settings'
+		: 'detail',
 );
 
 type McpToolMetadata = McpRegistryServerToolResponse | InstanceAiMcpConnectionToolResponse;
@@ -116,7 +119,7 @@ function showConnectedServer(connectionId: string | null): void {
 
 if (isMcpEnabled.value) {
 	void mcpStore.fetchCatalogLazy();
-	void mcpStore.fetchConnections();
+	void mcpStore.fetchConnectionsLazy();
 	void credentialsStore.fetchAllCredentials();
 }
 
@@ -153,7 +156,7 @@ function toMcpServerTool(
 	return out;
 }
 
-function settingsForConnection(connection: InstanceAiMcpConnectionResponse): McpToolSettings {
+function settingsForConnection(connection: InstanceAiMcpConnection): McpToolSettings {
 	if (!connection.toolFilter) {
 		return { inclusionMode: 'all', selectedTools: [], excludedTools: [] };
 	}
@@ -175,7 +178,7 @@ function settingsForConnection(connection: InstanceAiMcpConnectionResponse): Mcp
 
 function availableToolsForServer(
 	server: McpRegistryServerResponse,
-	connection: InstanceAiMcpConnectionResponse | undefined,
+	connection: InstanceAiMcpConnection | undefined,
 ): McpServerTool[] {
 	const liveTools = connection ? mcpStore.connectionToolsById.get(connection.id) : undefined;
 	if (!liveTools) return server.tools.map((tool) => toMcpServerTool(tool, tool));
@@ -186,7 +189,7 @@ function availableToolsForServer(
 
 function buildItem(
 	server: McpRegistryServerResponse,
-	connection: InstanceAiMcpConnectionResponse | undefined,
+	connection: InstanceAiMcpConnection | undefined,
 ): McpServerConnectionItem {
 	return {
 		id: connection?.id ?? server.slug,
@@ -195,7 +198,7 @@ function buildItem(
 		title: server.title,
 		description: server.tagline,
 		longDescription: server.description,
-		isConnected: Boolean(connection),
+		status: connection?.status ?? 'none',
 		iconSource: iconForTool(server.icons, uiStore.appliedTheme),
 		credentials: [
 			{
@@ -250,7 +253,7 @@ const serviceItems = computed<ServiceConnectionItem[]>(() => {
 			serviceId: service.id,
 			title: i18n.baseText(service.titleKey),
 			description: i18n.baseText(service.descriptionKey),
-			isConnected: service.isConnected,
+			status: service.isConnected ? 'connected' : 'none',
 			iconSource: service.iconSource,
 		}));
 });
@@ -281,10 +284,11 @@ const items = computed<ToolConnectionItem[]>(() => {
 });
 
 watch(
-	() => (detailMode.value === 'settings' ? detailItem.value : null),
-	(item) => {
-		if (!item?.isConnected || item.kind !== 'mcp-server') return;
-		void mcpStore.fetchConnectionToolsLazy(item.id);
+	() => detailItem.value?.id ?? null,
+	(id) => {
+		const item = detailItem.value;
+		if (!id || !item || item.kind !== 'mcp-server') return;
+		void mcpStore.fetchConnectionToolsLazy(id);
 	},
 	{ immediate: true },
 );

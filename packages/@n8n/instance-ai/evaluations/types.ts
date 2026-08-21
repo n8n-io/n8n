@@ -380,7 +380,10 @@ export type ToolInteraction =
 	| {
 			kind: 'setup-wizard';
 			completedNodes: SetupWizardCompletedNode[];
-			skippedNodes: SetupWizardSkippedNode[];
+			/** Left unconfigured — nobody has filled these in yet. */
+			nodesStillNeedingSetup: SetupWizardSkippedNode[];
+			/** Actively dismissed by the user, which the assistant must not ask about again. */
+			skippedByUser?: SetupWizardSkippedNode[];
 			reason?: string;
 	  }
 	| {

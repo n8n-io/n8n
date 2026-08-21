@@ -18,6 +18,7 @@ import type {
 	TagsInputValue,
 } from './TagsInput.types';
 import Icon from '../../../components/N8nIcon/Icon.vue';
+import type { IconSize } from '../../../types/icon';
 
 defineOptions({ inheritAttrs: false });
 
@@ -41,6 +42,10 @@ const sizes: Record<TagsInputSizes, string> = {
 	large: $style.large,
 	xlarge: $style.xlarge,
 };
+
+const deleteIconSize = computed(
+	(): IconSize => (props.size === 'mini' || props.size === 'small' ? 'xsmall' : 'small'),
+);
 
 const rootRef = useTemplateRef<HTMLElement>('root');
 
@@ -176,7 +181,7 @@ function getInputClass(isEmpty: boolean): string {
 					>
 						<TagsInputItemText :class="$style.tagText" />
 						<TagsInputItemDelete :class="$style.tagDelete" :disabled="props.disabled">
-							<Icon icon="x" size="small" />
+							<Icon icon="x" :size="deleteIconSize" />
 						</TagsInputItemDelete>
 					</slot>
 				</TagsInputItem>
@@ -212,6 +217,9 @@ function getInputClass(isEmpty: boolean): string {
 
 	--tags-input--gap: calc(var(--tags-input--padding) - 1px);
 	--tag--height: calc(var(--input--height) - 2 * var(--tags-input--padding));
+	--tag--gap: var(--spacing--4xs);
+	--tag--delete--size: max(var(--height--4xs), calc(var(--tag--height) - 2 * var(--spacing--4xs)));
+	--tag--padding-inline-end: calc((var(--tag--height) - var(--tag--delete--size) - 2px) / 2);
 
 	display: flex;
 	flex: 1;
@@ -254,10 +262,10 @@ function getInputClass(isEmpty: boolean): string {
 
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--5xs);
-	--tag--padding: 0 var(--spacing--5xs) 1px var(--spacing--4xs);
+	--tag--padding-block-end: 1px;
+	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--4xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--3xs);
-	--tag--delete--offset: 1px;
 }
 
 .small {
@@ -265,10 +273,10 @@ function getInputClass(isEmpty: boolean): string {
 
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--4xs);
-	--tag--padding: 0 var(--spacing--4xs) var(--spacing--5xs) var(--spacing--3xs);
+	--tag--padding-block-end: var(--spacing--5xs);
+	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--2xs);
-	--tag--delete--offset: 2px;
 }
 
 .medium {
@@ -276,10 +284,10 @@ function getInputClass(isEmpty: boolean): string {
 
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--4xs);
-	--tag--padding: 0 var(--spacing--4xs) var(--spacing--5xs) var(--spacing--3xs);
+	--tag--padding-block-end: var(--spacing--5xs);
+	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--2xs);
-	--tag--delete--offset: var(--spacing--5xs);
 }
 
 .large {
@@ -287,10 +295,10 @@ function getInputClass(isEmpty: boolean): string {
 
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--3xs);
-	--tag--padding: 0 var(--spacing--4xs) var(--spacing--5xs) var(--spacing--3xs);
+	--tag--padding-block-end: var(--spacing--5xs);
+	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--3xs);
 	--tag--radius: var(--radius--3xs);
 	--tag--font-size: var(--font-size--xs);
-	--tag--delete--offset: var(--spacing--5xs);
 }
 
 .xlarge {
@@ -298,10 +306,10 @@ function getInputClass(isEmpty: boolean): string {
 
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--2xs);
-	--tag--padding: 0 var(--spacing--4xs) var(--spacing--5xs) var(--spacing--2xs);
+	--tag--padding-block-end: var(--spacing--5xs);
+	--tag--padding: 0 var(--tag--padding-inline-end) 0 var(--spacing--2xs);
 	--tag--radius: var(--radius--3xs);
 	--tag--font-size: var(--font-size--xs);
-	--tag--delete--offset: var(--spacing--5xs);
 }
 
 .tags {
@@ -321,7 +329,7 @@ function getInputClass(isEmpty: boolean): string {
 .tag {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--5xs);
+	gap: var(--tag--gap);
 	max-width: 100%;
 	min-width: 0;
 	height: var(--tag--height);
@@ -336,8 +344,8 @@ function getInputClass(isEmpty: boolean): string {
 
 	&[data-state='active'],
 	&[aria-current='true'] {
-		background-color: var(--tag--color--background--hover);
-		border-color: var(--tag--border-color--hover);
+		background-color: var(--tag--color--background--active);
+		border-color: var(--tag--border-color--active);
 	}
 }
 
@@ -347,6 +355,7 @@ function getInputClass(isEmpty: boolean): string {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	line-height: normal;
+	padding-block-end: var(--tag--padding-block-end);
 }
 
 .tagDelete {
@@ -354,17 +363,26 @@ function getInputClass(isEmpty: boolean): string {
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
+	width: var(--tag--delete--size);
+	height: var(--tag--delete--size);
 	padding: 0;
 	border: none;
-	border-radius: var(--radius--full);
+	border-radius: var(--radius--4xs);
 	background: transparent;
 	color: var(--icon-color);
 	cursor: pointer;
-	margin-top: var(--tag--delete--offset);
 
-	&:hover,
-	&:focus {
+	@media (hover: hover) {
+		&:hover {
+			background-color: var(--background--hover);
+			color: var(--icon-color--strong);
+		}
+	}
+
+	&:focus,
+	&:focus-visible {
 		outline: none;
+		background-color: var(--background--hover);
 		color: var(--icon-color--strong);
 	}
 

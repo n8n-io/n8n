@@ -781,6 +781,7 @@ describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
 	): AgentChatIntegrationContext => ({
 		agentId: 'agent-1',
 		projectId: 'project-1',
+		integration: slackIntegration,
 		credentialId: 'cred-1',
 		credential: { accessToken: 'bot-token' },
 		ingressEnabled: true,

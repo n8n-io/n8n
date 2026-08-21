@@ -11,6 +11,7 @@ import { AgentMessageList } from '../model/message-list';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
+import { EXPIRED_OFFLOADED_TOOL_RESULT } from '../tools/tool-result-guard';
 
 const THREAD_ID = 'thread-1';
 const RESOURCE_ID = 'user-1';
@@ -247,6 +248,71 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 		expect(errors).toHaveLength(1);
 		expect(errors[0]).toMatchObject({ type: AgentEvent.Error, source: 'turn-delta-persistence' });
 	});
+
+	it.each(['persistTurnDelta', 'saveToMemory'] as const)(
+		'sanitizes offloaded result locators for %s',
+		async (method) => {
+			const store = new InMemoryMemory();
+			await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+			const runHash = 'a'.repeat(43);
+			const envelope = (kind: 'result' | 'error' | 'message') => {
+				const path = `tool-results/runs/${runHash}/${kind[0].repeat(43)}.${kind}.json`;
+				return {
+					_offloaded: true as const,
+					path,
+					originalCharCount: 100_000,
+					estimatedTokenCount: 60_000,
+					requiredAction: {
+						toolName: 'workspace_read_tool_result' as const,
+						input: { path, view: 'describe' as const },
+					},
+					message: 'Stored in workspace',
+				};
+			};
+			const list = new AgentMessageList();
+			list.addResponse([
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'result-call',
+							toolName: 'result-tool',
+							input: {},
+							state: 'resolved',
+							output: envelope('result'),
+						},
+						{
+							type: 'tool-call',
+							toolCallId: 'error-call',
+							toolName: 'error-tool',
+							input: {},
+							state: 'rejected',
+							error: JSON.stringify(envelope('error')),
+						},
+						{ type: 'text', text: JSON.stringify(envelope('message')) },
+					],
+				},
+			]);
+
+			const orchestrator = buildOrchestrator(store);
+			await orchestrator[method](list, PERSIST);
+
+			const [persisted] = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
+			if (!persisted || !('content' in persisted)) throw new Error('Expected persisted message');
+			expect(persisted.content).toEqual([
+				expect.objectContaining({
+					state: 'resolved',
+					output: EXPIRED_OFFLOADED_TOOL_RESULT,
+				}),
+				expect.objectContaining({
+					state: 'rejected',
+					error: JSON.stringify(EXPIRED_OFFLOADED_TOOL_RESULT),
+				}),
+				{ type: 'text', text: JSON.stringify(EXPIRED_OFFLOADED_TOOL_RESULT) },
+			]);
+		},
+	);
 });
 
 describe('MemoryOrchestrator save-path telemetry', () => {

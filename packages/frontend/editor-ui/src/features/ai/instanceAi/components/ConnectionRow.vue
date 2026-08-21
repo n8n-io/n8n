@@ -1,15 +1,14 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nDropdownMenu, N8nText } from '@n8n/design-system';
+import { N8nDropdownMenu, N8nSpinner, N8nText } from '@n8n/design-system';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import ToolIcon from '@/features/shared/toolsConnection/ToolIcon.vue';
-import type { ToolIconSource } from '@/features/shared/toolsConnection/types';
+import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
 
 type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
-/** `none` is for rows that were never connected: there is no state to report, so
- *  the row renders no indicator at all rather than a failure-coloured one. */
-export type ConnectionStatus = 'connected' | 'waiting' | 'disconnected' | 'none';
+/** `none` lets consumers omit the indicator when no connection status applies. */
+export type ConnectionStatus = ToolConnectionStatus;
 export type ConnectionRowIcon = IconName | ToolIconSource;
 /** `compact` fits the settings sidebar list; `default` matches the rows in the tools connection modal. */
 export type ConnectionRowSize = 'compact' | 'default';
@@ -67,7 +66,7 @@ const menuItems = computed<Array<DropdownMenuItemProps<RowAction>>>(() =>
 
 const STATUS_LABEL_KEYS = {
 	connected: 'instanceAi.connections.row.status.connected',
-	waiting: 'instanceAi.connections.row.status.waiting',
+	connecting: 'instanceAi.connections.row.status.connecting',
 	disconnected: 'instanceAi.connections.row.status.disconnected',
 } satisfies Record<Exclude<ConnectionStatus, 'none'>, BaseTextKey>;
 
@@ -97,12 +96,17 @@ function handleRowClick() {
 		</div>
 		<div :class="$style.action" @click.stop>
 			<slot name="action">
+				<N8nSpinner
+					v-if="status === 'connecting'"
+					size="small"
+					:title="statusLabel"
+					data-test-id="instance-ai-connection-row-status"
+				/>
 				<span
-					v-if="status !== 'none'"
+					v-else-if="status !== 'none'"
 					:class="[
 						$style.dot,
 						status === 'connected' && $style.dotConnected,
-						status === 'waiting' && $style.dotWaiting,
 						status === 'disconnected' && $style.dotDisconnected,
 					]"
 					:title="statusLabel"
@@ -165,10 +169,6 @@ function handleRowClick() {
 
 .dotConnected {
 	background: var(--color--success);
-}
-
-.dotWaiting {
-	background: var(--color--warning);
 }
 
 .dotDisconnected {
