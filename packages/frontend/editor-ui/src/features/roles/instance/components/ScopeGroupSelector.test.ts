@@ -179,4 +179,53 @@ describe('ScopeGroupSelector', () => {
 			);
 		});
 	});
+
+	describe('settings "Manage all settings" select-all behaviour', () => {
+		it('checks MCP and AI Assistant use/manage when "Manage all settings" is toggled on', async () => {
+			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [] },
+			});
+
+			await userEvent.click(getByTestId('scope-option-settings-manage'));
+
+			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
+			const [scopes] = emitted()['update:modelValue'][0] as [string[]];
+			expect(scopes).toEqual(
+				expect.arrayContaining([
+					'mcp:manage',
+					'mcp:oauth',
+					'mcpApiKey:create',
+					'mcpApiKey:rotate',
+					'aiAssistant:manage',
+					'instanceAi:manage',
+					'instanceAi:message',
+				]),
+			);
+		});
+
+		it('keeps "Mcp manage" and "AiAssistant manage" enabled (not implied) when "Manage all settings" is checked', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
+			});
+			const mcpManage = getByTestId('scope-option-settings-mcp-manage');
+			const aiAssistantManage = getByTestId('scope-option-settings-aiassistant-manage');
+			expect(mcpManage.getAttribute('aria-checked')).toBe('true');
+			expect(mcpManage.hasAttribute('disabled')).toBe(false);
+			expect(aiAssistantManage.getAttribute('aria-checked')).toBe('true');
+			expect(aiAssistantManage.hasAttribute('disabled')).toBe(false);
+		});
+
+		it('unchecking "Mcp manage" turns "Manage all settings" off while "Manage all settings" was checked', async () => {
+			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
+			});
+
+			await userEvent.click(getByTestId('scope-option-settings-mcp-manage'));
+
+			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
+			const [scopes] = emitted()['update:modelValue'][0] as [string[]];
+			expect(scopes).not.toContain('mcp:manage');
+			expect(scopes).toContain('securitySettings:manage');
+		});
+	});
 });

@@ -53,20 +53,41 @@ describe('custom role scope whitelists', () => {
 		expect(bundle).toContain('chatHub:message');
 	});
 
-	it('includes AI Assistant and n8n Agent scopes in the settings.Manage bundle', () => {
-		const bundle = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage;
+	it('exposes AI Assistant and n8n Agent scopes as their own use/manage options', () => {
+		const { 'AiAssistant use': use, 'AiAssistant manage': manage } =
+			GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings;
 
-		expect(bundle).toContain('aiAssistant:manage');
-		expect(bundle).toContain('instanceAi:manage');
-		expect(bundle).toContain('instanceAi:message');
+		expect(use).toContain('instanceAi:message');
+		expect(manage).toContain('aiAssistant:manage');
+		expect(manage).toContain('instanceAi:manage');
+		expect(manage).toContain('instanceAi:message');
 	});
 
-	it('includes instance-level MCP scopes in the settings.Manage bundle', () => {
+	it('exposes instance-level MCP scopes as their own use/manage options', () => {
+		const { 'Mcp use': use, 'Mcp manage': manage } = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings;
+
+		expect(use).toContain('mcp:oauth');
+		expect(use).toContain('mcpApiKey:create');
+		expect(use).toContain('mcpApiKey:rotate');
+		expect(manage).toContain('mcp:manage');
+		expect(manage).toContain('mcp:oauth');
+		expect(manage).toContain('mcpApiKey:create');
+		expect(manage).toContain('mcpApiKey:rotate');
+	});
+
+	it('includes MCP and AI Assistant scopes in the general settings.Manage bundle, as a superset of their own options', () => {
 		const bundle = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage;
 
-		expect(bundle).toContain('mcp:manage');
-		expect(bundle).toContain('mcp:oauth');
-		expect(bundle).toContain('mcpApiKey:create');
-		expect(bundle).toContain('mcpApiKey:rotate');
+		for (const scope of [
+			'mcp:manage',
+			'mcp:oauth',
+			'mcpApiKey:create',
+			'mcpApiKey:rotate',
+			'aiAssistant:manage',
+			'instanceAi:manage',
+			'instanceAi:message',
+		]) {
+			expect(bundle).toContain(scope);
+		}
 	});
 });
