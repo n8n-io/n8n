@@ -1,7 +1,12 @@
 export { createEngineRuntime } from './runtime';
 export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 
-export type { EngineErrorResponse } from './server';
+export type {
+	EngineErrorResponse,
+	ExecutionSnapshot,
+	ExecutionStepsResponse,
+	StepDetail,
+} from './server';
 
 export type { JsonObject, JsonValue } from './common';
 
@@ -40,9 +45,11 @@ export type {
 export { ExecutionNotFoundError, StepNotFoundError } from './execution';
 export type {
 	ExecutionMode,
+	ExecutionReadStore,
 	ExecutionRecord,
 	ExecutionStatus,
 	ExecutionStore,
+	ExecutionView,
 	NewExecutionRecord,
 	NewStepRecord,
 	StartExecutionRequest,
@@ -54,6 +61,7 @@ export type {
 	StepSlots,
 	StepStatus,
 	StepStore,
+	StepView,
 	TriggerOutputs,
 } from './execution';
 

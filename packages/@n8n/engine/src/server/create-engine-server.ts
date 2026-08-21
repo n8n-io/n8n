@@ -1,10 +1,14 @@
 import express, { type Application } from 'express';
 
+import type { ExecutionQueryService } from '../execution';
 import type { StartExecutionService } from '../execution/start-execution.service';
 import { createWorkflowExecutionsRouter } from './routes/workflow-executions';
 
 /** Builds the engine HTTP app: `/healthz` plus the execution API. */
-export function createEngineServer(startExecution: StartExecutionService): { app: Application } {
+export function createEngineServer(deps: {
+	startExecution: StartExecutionService;
+	executionQuery: ExecutionQueryService;
+}): { app: Application } {
 	const app = express();
 	app.use(express.json());
 
@@ -12,7 +16,7 @@ export function createEngineServer(startExecution: StartExecutionService): { app
 		res.status(200).json({ status: 'ok' });
 	});
 
-	app.use('/api/workflow-executions', createWorkflowExecutionsRouter(startExecution));
+	app.use('/api/workflow-executions', createWorkflowExecutionsRouter(deps));
 
 	return { app };
 }

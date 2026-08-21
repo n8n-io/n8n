@@ -1,5 +1,4 @@
-import type { JsonValue } from '../common';
-import type { StepKey, StepKeyId, StepSlots, StepStatus } from './execution.types';
+import type { StepError, StepKey, StepKeyId, StepSlots, StepStatus } from './execution.types';
 
 /**
  * A new step to persist. `id` and timestamps are assigned by the store.
@@ -17,20 +16,12 @@ export type NewStepRecord = { nodeId: string; iteration: number } & (
 	| { status: Extract<StepStatus, 'completed'>; outputs: StepSlots }
 );
 
-/** The error that failed a step, as persisted on its row. */
-export interface StepError {
-	name: string;
-	message: string;
-	stack?: string;
-	/**
-	 * Step-type-specific error detail, persisted without inspection — the engine
-	 * owns only `name`/`message`/`stack`. Unpopulated until executors have a way
-	 * to hand structured detail across the seam; they only throw today.
-	 */
-	details?: JsonValue;
-}
-
-/** A step record. */
+/**
+ * What running and settling a step needs of its row: identity, status, and the
+ * payload a successor reads. No timing and no `error` — the execution path
+ * writes an error, and decides on `status` alone. The read path has its own
+ * view (`StepView`).
+ */
 export interface StepRecord {
 	id: string;
 	executionId: string;
@@ -39,8 +30,6 @@ export interface StepRecord {
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
-	/** The error that failed the step; `null` unless it failed. */
-	error: StepError | null;
 }
 
 /**

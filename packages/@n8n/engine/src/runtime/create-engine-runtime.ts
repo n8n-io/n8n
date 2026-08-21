@@ -6,6 +6,7 @@ import { createStores } from '../database';
 import type { EngineStores } from '../database';
 import type { ExternalDependencies } from '../dependencies';
 import {
+	ExecutionQueryService,
 	ExecutionStartHandler,
 	OrchestrationWorker,
 	StartExecutionService,
@@ -58,7 +59,7 @@ export function createEngineRuntime({
 }: EngineRuntimeOptions): EngineRuntime {
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 	const stepQueue = new InMemoryWorkQueue<StepMessage>();
-	const { executionStore, stepStore } = createStores(dataSource);
+	const { executionStore, stepStore, executionReadStore } = createStores(dataSource);
 
 	const orchestrationWorker = new OrchestrationWorker(
 		orchestrationQueue,
@@ -71,13 +72,14 @@ export function createEngineRuntime({
 			executionStore,
 			stepStore,
 			orchestrationQueue,
-			externalDependencies?.({ executionStore, stepStore }) ?? {},
+			externalDependencies?.({ executionStore, stepStore, executionReadStore }) ?? {},
 		),
 	);
 
-	const { app } = createEngineServer(
-		new StartExecutionService(admittance, executionStore, orchestrationQueue),
-	);
+	const { app } = createEngineServer({
+		startExecution: new StartExecutionService(admittance, executionStore, orchestrationQueue),
+		executionQuery: new ExecutionQueryService(executionReadStore),
+	});
 
 	return {
 		app,

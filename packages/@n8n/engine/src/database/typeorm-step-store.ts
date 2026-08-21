@@ -6,6 +6,7 @@ import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
 	stepKeyId,
+	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
@@ -14,7 +15,6 @@ import {
 import {
 	StepNotFoundError,
 	type NewStepRecord,
-	type StepError,
 	type StepRecord,
 	type StepStore,
 	type StepSummary,
@@ -42,7 +42,12 @@ type StepSummaryRow = {
 
 /** RETURNING rows come back keyed by database column name (snake_case). */
 type InsertedStepRow = { id: string; node_id: string; iteration: number };
-type ClaimedStepRow = { id: string; execution_id: string; node_id: string; iteration: number };
+type ClaimedStepRow = {
+	id: string;
+	execution_id: string;
+	node_id: string;
+	iteration: number;
+};
 
 /**
  * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
@@ -125,7 +130,7 @@ export class TypeOrmStepStore implements StepStore {
 		// The one transition that hands the row back, so the claimant doesn't
 		// need a second query to learn which node it now runs. RETURNING covers
 		// only the identity columns: a step claimed out of `queued` can't have
-		// an outcome yet, so `outputs`/`error` are `null` by the lifecycle.
+		// an outcome yet, so `outputs` is `null` by the lifecycle.
 		//
 		// The execution-row lock serializes the claim with `failStep`, so no
 		// step starts running once its execution has a failed step. Claims
@@ -164,7 +169,6 @@ export class TypeOrmStepStore implements StepStore {
 				iteration: row.iteration,
 				status: 'running',
 				outputs: null,
-				error: null,
 			};
 		});
 	}
