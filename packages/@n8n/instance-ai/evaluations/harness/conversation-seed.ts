@@ -649,6 +649,30 @@ function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
 }
 
 /**
+ * Order the restored agents so the one the harness grades is first.
+ *
+ * `findAgentArtifactRef` takes the first ref it sees, so this decides which agent an
+ * agent-anchored case is graded and executed against. Seed-array order is an authoring
+ * artifact, hence the promotion.
+ *
+ * Under a SESSION BOUNDARY the promotion is skipped, because its justification does not
+ * hold: the server binds a thread to the agent its history last targeted, but the
+ * history was restored into the separate seed thread, so the live thread continues
+ * nothing. Promoting on that basis would assert a link the live turn never had. What
+ * remains is seed-declaration order, which is at least an explicit authoring choice
+ * rather than a false inference.
+ */
+export function orderRestoredAgentIds(
+	restoredAgentIds: string[],
+	seedActiveAgentId: string | undefined,
+	sessionBoundary: boolean,
+): string[] {
+	if (sessionBoundary) return restoredAgentIds;
+	if (!seedActiveAgentId || !restoredAgentIds.includes(seedActiveAgentId)) return restoredAgentIds;
+	return [seedActiveAgentId, ...restoredAgentIds.filter((id) => id !== seedActiveAgentId)];
+}
+
+/**
  * The agent a seeded history LAST targeted — the one the restored thread continues,
  * and so the one a case grades and executes.
  *

@@ -1,9 +1,10 @@
 import {
 	ConversationSeedSchema,
-	expandSeedMessageShorthand,
-	activeSeedAgentId,
-	remapSeedArtifactIds,
 	SEED_NAME_RE,
+	activeSeedAgentId,
+	expandSeedMessageShorthand,
+	orderRestoredAgentIds,
+	remapSeedArtifactIds,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from '../harness/conversation-seed';
@@ -889,5 +890,41 @@ describe('seed project names', () => {
 		expect(
 			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: 'Foobar' }] }).success,
 		).toBe(true);
+	});
+});
+
+describe('orderRestoredAgentIds', () => {
+	// `findAgentArtifactRef` takes the first ref, so this ordering decides which agent
+	// an agent-anchored case is graded against.
+	it('promotes the agent the seeded history last targeted', () => {
+		expect(orderRestoredAgentIds(['helper', 'parent', 'other'], 'parent', false)).toEqual([
+			'parent',
+			'helper',
+			'other',
+		]);
+	});
+
+	it('leaves order alone under a session boundary', () => {
+		// The promotion is justified by the server binding a thread to the agent its
+		// history last targeted. Under a boundary the history went to the OTHER thread,
+		// so the live turn continues nothing and the premise does not hold.
+		expect(orderRestoredAgentIds(['helper', 'parent', 'other'], 'parent', true)).toEqual([
+			'helper',
+			'parent',
+			'other',
+		]);
+	});
+
+	it('leaves order alone when there is no active agent', () => {
+		expect(orderRestoredAgentIds(['a', 'b'], undefined, false)).toEqual(['a', 'b']);
+	});
+
+	it('leaves order alone when the active agent was not restored', () => {
+		expect(orderRestoredAgentIds(['a', 'b'], 'never-restored', false)).toEqual(['a', 'b']);
+	});
+
+	it('keeps every id exactly once', () => {
+		const ordered = orderRestoredAgentIds(['a', 'b', 'c'], 'c', false);
+		expect([...ordered].sort()).toEqual(['a', 'b', 'c']);
 	});
 });

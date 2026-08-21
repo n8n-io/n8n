@@ -21,9 +21,10 @@ import {
 } from './chat-loop';
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
 import {
-	activeSeedAgentId,
-	remapSeedArtifactIds,
 	SEED_NAME_RE,
+	activeSeedAgentId,
+	orderRestoredAgentIds,
+	remapSeedArtifactIds,
 	seedNameBase,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
@@ -808,6 +809,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// the harness has to grade that same one — array order is an authoring
 				// artifact and `findAgentArtifactRef` takes the first ref it sees.
 				seedActiveAgentId = activeSeedAgentId(remapped);
+				if (sessionBoundary && remapped.agents.length > 0) {
+					// Not refused: agents are instance-scoped and crossing the boundary is the
+					// point. But the thread→agent binding lands on the seed thread, so the live
+					// turn inherits none — and the harness still has to grade against SOME agent,
+					// which it takes in seed-declaration order. Say that plainly: with more than
+					// one seeded agent the author decides which is graded by listing it first.
+					logger.warn(
+						`  Session boundary with ${String(remapped.agents.length)} seeded agent(s): the agent binding stays on the prior session, so grading falls back to seed order — declare the agent to grade first`,
+					);
+				}
 				seededTranscript = transcriptPrefixFromSeed(remapped.messages, {
 					priorSession: sessionBoundary,
 				});
@@ -1010,12 +1021,11 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const seenAgentIds = new Set(
 			eventOutcome.artifactRefs.filter((ref) => ref.type === 'agent').map((ref) => ref.id),
 		);
-		// Active agent first, so `findAgentArtifactRef` picks the one the restored
-		// thread actually continues rather than whichever the seed happened to list first.
-		const restoredAgentOrder =
-			seedActiveAgentId && restoredAgentIds.includes(seedActiveAgentId)
-				? [seedActiveAgentId, ...restoredAgentIds.filter((id) => id !== seedActiveAgentId)]
-				: restoredAgentIds;
+		const restoredAgentOrder = orderRestoredAgentIds(
+			restoredAgentIds,
+			seedActiveAgentId,
+			sessionBoundary,
+		);
 		const artifactRefs: ArtifactRef[] = [
 			...eventOutcome.artifactRefs,
 			...restoredAgentOrder
