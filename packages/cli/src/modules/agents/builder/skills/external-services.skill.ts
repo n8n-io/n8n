@@ -36,6 +36,7 @@ export function externalServicesSkill(): RuntimeSkill {
 			'read_config',
 			'patch_config',
 			'write_config',
+			'report_required_artifact',
 			'load_skill',
 		],
 		instructions: `\
@@ -52,15 +53,22 @@ Use an integration when the product is the agent's conversation or trigger
 surface: humans will mention, message, comment to, or resume the agent there,
 or the agent needs to respond in that same platform conversation context.
 
+Native Agent chat integrations are bidirectional within their conversation
+context. The integration both receives the triggering message and delivers the
+Agent's replies. Do not add a same-platform node, MCP, or workflow tool merely
+so the Agent can reply, send a normal conversational message, or use interaction
+features already listed in that integration's capabilities.
+
 Use an MCP, node, or workflow tool when the product is only something the agent
 operates on: searching records, creating tickets, updating objects, or sending a
 business-process notification while the conversation happens elsewhere.
 
-When building an agent that should interact with Slack, Discord, or Telegram,
-prefer the matching chat integration over an MCP, node, or workflow tool, even
-when a callable tool could perform the same messaging action. Use a callable
-tool instead only when the user explicitly asks for one or the requested
-operation is not supported by the chat integration.
+When building an agent that should interact with Slack, Discord, Telegram, or
+Linear, use the matching chat integration instead of an MCP, node, or workflow
+tool when the platform is the conversation surface. Add a callable tool only
+for an explicitly requested operation that the selected integration's returned
+capabilities do not support, especially a business action outside the current
+conversation context.
 
 Examples:
 
@@ -77,6 +85,22 @@ Examples:
 - Linear callable tools: the agent is triggered from Slack, Preview, a task, or a
   workflow and only needs to search/create/update Linear tickets via MCP or node
   tools.
+
+If \`list_integration_types\` does not return the requested conversation
+platform, do not substitute a platform messaging node as an Agent tool. The
+Agent needs an external channel-bridge workflow instead:
+
+1. Finish the Agent without a native integration for that platform.
+2. When \`report_required_artifact\` is available, call it once with an
+   \`artifact\` whose \`type\` is \`"workflow"\` and \`relationship\` is
+   \`"agent-entrypoint"\`. Require the
+   platform trigger, Message an Agent using the incoming message and a stable
+   platform conversation/sender identifier as its custom session key, and the
+   platform send action using the Agent's text response.
+3. The bridge invokes the Agent. Never add it to the Agent's \`tools\` array and
+   never report it as \`relationship: "agent-tool"\`.
+4. If the reporting tool is unavailable, state the same workflow requirement
+   clearly in the final reply so the calling surface can create it.
 
 For callable (non-chat) services, call \`resolve_integration\` separately per
 service and follow the returned \`kind\`: \`"mcp"\` -> MCP Servers section

@@ -49,8 +49,8 @@ and interactive tools.
 
 ## Prerequisites
 
-Before the first `build-agent` call, create every prerequisite the builder
-cannot create:
+Before the first `build-agent` call, create prerequisites the builder cannot
+create when they must be attached to or used by the Agent:
 
 - Create a workflow tool only when one Agent tool call must run an ordered
   multi-node procedure, or when the user explicitly needs that workflow to be
@@ -64,8 +64,27 @@ List prerequisite names and schemas in `message`. Let the builder gather the
 remaining Agent-specific requirements, including model, credentials,
 integrations, and direct tools.
 
-If a `builderReply` lists missing workflows or tables, create them and call
-`build-agent` again. Never ask the user to create them manually.
+`build-agent` can return structured `requiredArtifacts` when the embedded
+builder discovers something Instance AI must create:
+
+- For a workflow with `relationship: "agent-tool"`, build it, pass it in
+  `workflowContext`, and call `build-agent` again so the builder can attach it.
+- For a workflow with `relationship: "agent-entrypoint"`, build it after the
+  Agent exists, using the returned `agentId`. This workflow invokes the Agent;
+  never pass it in `workflowContext`, never attach it to the Agent as a tool,
+  and do not call `build-agent` again solely to attach it.
+- For a data table, create it and call `build-agent` again with its name and
+  schema in `message`.
+
+For an unsupported chat channel, an `agent-entrypoint` workflow should connect
+the platform trigger to Message an Agent, map the incoming message, use a
+stable platform conversation/sender identifier as the custom session key, and
+send the Agent's `text` response through the platform. Native Agent channels do
+not need this wrapper.
+
+If an older builder only lists missing workflows or tables in `builderReply`,
+handle them the same way based on whether the workflow calls the Agent or is
+called by the Agent. Never ask the user to create prerequisites manually.
 
 ## Targeting across turns
 
