@@ -875,7 +875,7 @@ describe('resolveCredentials', () => {
 						type: 'n8n-nodes-base.gmail',
 						typeVersion: 2,
 						position: [0, 0],
-						credentials: { gmailOAuth2Api: undefined as unknown as { id: string; name: string } },
+						credentials: { gmailOAuth2: undefined as unknown as { id: string; name: string } },
 					},
 				],
 			});
@@ -883,8 +883,8 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, createMockContext());
 
 			expect(result.mockedNodeNames).toEqual(['Gmail']);
-			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2Api']);
-			expect(result.mockedCredentialsByNode).toEqual({ Gmail: ['gmailOAuth2Api'] });
+			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2']);
+			expect(result.mockedCredentialsByNode).toEqual({ Gmail: ['gmailOAuth2'] });
 			expect(json.nodes[0].credentials).toEqual({});
 			// json.pinData must NOT be mutated
 			expect(json.pinData).toBeUndefined();
@@ -953,7 +953,7 @@ describe('resolveCredentials', () => {
 		const availableCredentials = makeCredentialMap([
 			{ id: 'slack-1', name: 'Team Slack', type: 'slackApi' },
 			{ id: 'slack-2', name: 'Backup Slack', type: 'slackApi' },
-			{ id: 'gmail-1', name: 'Gmail', type: 'gmailOAuth2Api' },
+			{ id: 'gmail-1', name: 'Gmail', type: 'gmailOAuth2' },
 		]);
 
 		it('keeps a raw credential id that exists in the snapshot for the same type', async () => {
@@ -1047,7 +1047,7 @@ describe('resolveCredentials', () => {
 						type: 'n8n-nodes-base.gmail',
 						typeVersion: 2,
 						position: [0, 0],
-						credentials: { gmailOAuth2Api: { id: 'mock-gmail-oauth2', name: 'Gmail' } },
+						credentials: { gmailOAuth2: { id: 'mock-gmail-oauth2', name: 'Gmail' } },
 					},
 				],
 			});
@@ -1060,7 +1060,7 @@ describe('resolveCredentials', () => {
 			);
 
 			expect(result.mockedNodeNames).toEqual(['Gmail']);
-			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2Api']);
+			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2']);
 			expect(json.nodes[0].credentials).toEqual({});
 		});
 
@@ -1274,7 +1274,7 @@ describe('resolveCredentials', () => {
 						type: 'n8n-nodes-base.gmail',
 						typeVersion: 2,
 						position: [200, 0],
-						credentials: { gmailOAuth2Api: undefined as unknown as { id: string; name: string } },
+						credentials: { gmailOAuth2: undefined as unknown as { id: string; name: string } },
 					},
 				],
 				pinData: {
@@ -1285,7 +1285,7 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, createMockContext());
 
 			expect(result.mockedNodeNames).toEqual(['Gmail']);
-			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2Api']);
+			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2']);
 			// Slack should be untouched
 			expect(json.nodes[0].credentials).toEqual({
 				slackApi: { id: 'real-id', name: 'Real Slack' },

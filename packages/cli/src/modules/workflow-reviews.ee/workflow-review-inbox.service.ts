@@ -1,14 +1,11 @@
 import type {
 	GetWorkflowReviewInboxSummaryResponse,
-	GetWorkflowReviewStatusesDto,
 	ListWorkflowReviewInboxQueryDto,
 	ListWorkflowReviewInboxResponse,
-	WorkflowReviewStatus,
 	WorkflowReviewEligibleReviewer,
 	WorkflowReviewInboxItem,
 	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestWorkflowDetail,
-	WorkflowReviewStatusesResponse,
 	WorkflowReviewVersionSnapshot,
 } from '@n8n/api-types';
 import {
@@ -29,13 +26,12 @@ import {
 import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { WorkflowReviewAccessService } from './workflow-review-access.service';
 import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
-import { toEligibleReviewer, toRequestSummary } from './workflow-review.mapper';
+import { toEligibleReviewer } from './workflow-review.mapper';
 
 /**
  * The reviewer-facing read side of workflow reviews: the cross-project inbox, its
@@ -48,7 +44,6 @@ export class WorkflowReviewInboxService {
 	constructor(
 		private readonly featureGate: WorkflowReviewFeatureGate,
 		private readonly accessService: WorkflowReviewAccessService,
-		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
@@ -113,68 +108,6 @@ export class WorkflowReviewInboxService {
 
 		const visibility = await this.accessService.resolveInboxVisibility(user);
 		return await this.workflowReviewRequestRepository.countByStateForInbox({ visibility });
-	}
-
-	/**
-	 * Open-review statuses for a page of workflows. Every reader of a
-	 * workflow gets its open review's summary; `viewerCanOpen` carries the detail
-	 * access rule so the client links only where opening cannot 404. `null` uniformly
-	 * covers no open review, a pruned pin, and workflows the caller cannot read (or
-	 * that do not exist), so the response never confirms a workflow's existence.
-	 */
-	async getStatusesForWorkflows(
-		user: User,
-		dto: GetWorkflowReviewStatusesDto,
-	): Promise<WorkflowReviewStatusesResponse> {
-		await this.featureGate.assertAvailable();
-
-		const data: Record<string, WorkflowReviewStatus | null> = {};
-		for (const workflowId of dto.workflowIds) {
-			data[workflowId] = null;
-		}
-
-		const requestedIds = [...new Set(dto.workflowIds)];
-		const readableIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-			requestedIds,
-			user,
-			['workflow:read'],
-		);
-
-		const openRequests = await this.workflowReviewRequestRepository.findOpenRequestsForWorkflows(
-			[...readableIds],
-			{},
-		);
-
-		const rows: Array<{
-			workflowId: string;
-			request: (typeof openRequests)[number]['request'];
-			workflowVersionId: string;
-		}> = [];
-		for (const { request, links } of openRequests) {
-			for (const link of links) {
-				// A pruned pin renders nowhere else either (banner and detail hide it).
-				if (!readableIds.has(link.workflowId) || link.workflowVersionId === null) continue;
-				rows.push({
-					workflowId: link.workflowId,
-					request,
-					workflowVersionId: link.workflowVersionId,
-				});
-			}
-		}
-
-		const openableIds = await this.accessService.resolveOpenableRequestIds(
-			user,
-			rows.map((row) => ({ id: row.request.id, projectId: row.request.projectId })),
-		);
-
-		for (const row of rows) {
-			data[row.workflowId] = {
-				summary: toRequestSummary(row.request, row.workflowVersionId),
-				viewerCanOpen: openableIds.has(row.request.id),
-			};
-		}
-
-		return { data };
 	}
 
 	async getDetail(

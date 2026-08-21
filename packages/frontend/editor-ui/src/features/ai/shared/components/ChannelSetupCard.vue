@@ -265,7 +265,9 @@ async function loadChannelState(forceReload = false) {
 
 watch(
 	() => [props.projectId, props.agentId, props.integrationType] as const,
-	() => void loadChannelState(),
+	() => {
+		void loadChannelState();
+	},
 	{ immediate: true },
 );
 </script>
