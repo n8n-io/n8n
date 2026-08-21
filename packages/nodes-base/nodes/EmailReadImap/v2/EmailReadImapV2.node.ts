@@ -1,18 +1,10 @@
 import type { ICredentialsDataImap } from '@credentials/Imap.credentials';
 import { isCredentialsDataImap } from '@credentials/Imap.credentials';
-import type {
-	ImapSimple,
-	ImapSimpleOptions,
-	Message,
-	MessagePart,
-	SearchCriteria,
-} from '@n8n/imap';
-import { connect as imapConnect } from '@n8n/imap';
-import isEmpty from 'lodash/isEmpty';
+import type { SearchCriteria } from '@n8n/imap';
+import { imapErrorCode, ImapSimple } from '@n8n/imap';
 import { DateTime } from 'luxon';
 import type {
 	ITriggerFunctions,
-	IBinaryData,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -21,12 +13,11 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	ITriggerResponse,
-	JsonObject,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
-import rfc2047 from 'rfc2047';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { toImapCredentials } from '../credentials';
 import { getNewEmails } from './utils';
 
 const versionDescription: INodeTypeDescription = {
@@ -212,37 +203,17 @@ export class EmailReadImapV2 implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				if (isCredentialsDataImap(credential.data)) {
 					const credentials = credential.data as ICredentialsDataImap;
+					let connection: ImapSimple | undefined;
 					try {
-						const config: ImapSimpleOptions = {
-							imap: {
-								user: credentials.user,
-								password: credentials.password,
-								host: credentials.host.trim(),
-								port: credentials.port,
-								tls: credentials.secure,
-								authTimeout: 20000,
-							},
-						};
-						const tlsOptions: IDataObject = {};
-
-						if (credentials.allowUnauthorizedCerts) {
-							tlsOptions.rejectUnauthorized = false;
-						}
-
-						if (credentials.secure) {
-							tlsOptions.servername = credentials.host.trim();
-						}
-						if (!isEmpty(tlsOptions)) {
-							config.imap.tlsOptions = tlsOptions;
-						}
-						const connection = await imapConnect(config);
+						connection = await ImapSimple.connect(toImapCredentials(credentials));
 						await connection.getBoxes();
-						connection.end();
 					} catch (error) {
 						return {
 							status: 'Error',
 							message: (error as Error).message,
 						};
+					} finally {
+						connection?.end();
 					}
 					return {
 						status: 'OK',
@@ -282,263 +253,121 @@ export class EmailReadImapV2 implements INodeType {
 
 		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
 
-		let connection: ImapSimple;
-		let closeFunctionWasCalled = false;
-		let isCurrentlyReconnecting = false;
-
-		// Returns the email text
-
-		const getText = async (
-			parts: MessagePart[],
-			message: Message,
-			subtype: string,
-		): Promise<string> => {
-			if (!message.attributes.struct) {
-				return '';
-			}
-
-			const textParts = parts.filter((part) => {
-				return (
-					part.type.toUpperCase() === 'TEXT' && part.subtype.toUpperCase() === subtype.toUpperCase()
-				);
-			});
-
-			const part = textParts[0];
-			if (!part) {
-				return '';
-			}
-
-			try {
-				const partData = await connection.getPartData(message, part);
-				return partData.toString();
-			} catch {
-				return '';
-			}
-		};
-
-		// Returns the email attachments
-		const getAttachment = async (
-			imapConnection: ImapSimple,
-			parts: MessagePart[],
-			message: Message,
-		): Promise<IBinaryData[]> => {
-			if (!message.attributes.struct) {
-				return [];
-			}
-
-			// Check if the message has attachments and if so get them
-			const attachmentParts = parts.filter(
-				(part) => part.disposition?.type?.toUpperCase() === 'ATTACHMENT',
-			);
-
-			const decodeFilename = (filename: string) => {
-				const regex = /=\?([\w-]+)\?Q\?.*\?=/i;
-				if (regex.test(filename)) {
-					return rfc2047.decode(filename);
-				}
-				return filename;
-			};
-
-			const attachmentPromises = [];
-			let attachmentPromise;
-			for (const attachmentPart of attachmentParts) {
-				attachmentPromise = imapConnection
-					.getPartData(message, attachmentPart)
-					.then(async (partData) => {
-						// if filename contains utf-8 encoded characters, decode it
-						const fileName = decodeFilename(
-							((attachmentPart.disposition as IDataObject)?.params as IDataObject)
-								?.filename as string,
-						);
-						// Return it in the format n8n expects
-						return await this.helpers.prepareBinaryData(partData.buffer, fileName);
-					});
-
-				attachmentPromises.push(attachmentPromise);
-			}
-
-			return await Promise.all(attachmentPromises);
-		};
-
 		const returnedPromise = this.helpers.createDeferredPromise();
 
-		const establishConnection = async (): Promise<ImapSimple> => {
-			let searchCriteria: SearchCriteria[] = ['UNSEEN'];
-			if (options.customEmailConfig !== undefined) {
-				try {
-					searchCriteria = JSON.parse(options.customEmailConfig as string) as SearchCriteria[];
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
-				}
-			}
-
-			const config: ImapSimpleOptions = {
-				imap: {
-					user: credentials.user,
-					password: credentials.password,
-					host: credentials.host.trim(),
-					port: credentials.port,
-					tls: credentials.secure,
-					authTimeout: 20000,
-				},
-				onMail: async (numEmails) => {
-					this.logger.debug('New emails received in node "EmailReadImap"', {
-						numEmails,
-					});
-
-					if (connection) {
-						// Create a fresh copy to avoid accumulating filters across calls
-						const currentSearchCriteria = [...searchCriteria];
-
-						/**
-						 * Only process new emails:
-						 * - If we've seen emails before (lastMessageUid is set), fetch messages higher UID.
-						 * - Otherwise, fetch emails received since the workflow activation date.
-						 *
-						 * Note: IMAP 'SINCE' only filters by date (not time),
-						 * so it may include emails from earlier on the activation day.
-						 */
-						if (staticData.lastMessageUid !== undefined) {
-							/**
-							 * A short explanation about UIDs and how they work
-							 * can be found here: https://dev.to/kehers/imap-new-messages-since-last-check-44gm
-							 * TL;DR:
-							 * - You cannot filter using ['UID', 'CURRENT ID + 1:*'] because IMAP
-							 * won't return correct results if current id + 1 does not yet exist.
-							 * - UIDs can change but this is not being treated here.
-							 * If the mailbox is recreated (lets say you remove all emails, remove
-							 * the mail box and create another with same name, UIDs will change)
-							 * - You can check if UIDs changed in the above example
-							 * by checking UIDValidity.
-							 */
-							currentSearchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
-						} else if (node.typeVersion > 2 && options.trackLastMessageId !== false) {
-							currentSearchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
-						}
-
-						this.logger.debug('Querying for new messages on node "EmailReadImap"', {
-							searchCriteria: currentSearchCriteria,
-						});
-
-						try {
-							await getNewEmails.call(this, {
-								imapConnection: connection,
-								searchCriteria: currentSearchCriteria,
-								postProcessAction,
-								getText,
-								getAttachment,
-								onEmailBatch: async (returnData: INodeExecutionData[]) => {
-									if (returnData.length) {
-										this.emit([returnData]);
-									}
-								},
-							});
-						} catch (error) {
-							this.logger.error('Email Read Imap node encountered an error fetching new emails', {
-								error: error as Error,
-							});
-							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
-							// if it receives an error before the workflow got activated
-							await returnedPromise.promise.then(() => {
-								this.emitError(error as Error);
-							});
-						}
-					}
-				},
-				onUpdate: (seqNo: number, info) => {
-					this.logger.debug(`Email Read Imap:update ${seqNo}`, info);
-				},
-			};
-
-			const tlsOptions: IDataObject = {};
-
-			if (credentials.allowUnauthorizedCerts) {
-				tlsOptions.rejectUnauthorized = false;
-			}
-
-			if (credentials.secure) {
-				tlsOptions.servername = credentials.host.trim();
-			}
-
-			if (!isEmpty(tlsOptions)) {
-				config.imap.tlsOptions = tlsOptions;
-			}
-
-			// Connect to the IMAP server and open the mailbox
-			// that we get informed whenever a new email arrives
-			return await imapConnect(config).then((conn) => {
-				let errorReported = false;
-
-				conn.on('close', (_hadError: boolean) => {
-					if (isCurrentlyReconnecting) {
-						this.logger.debug('Email Read Imap: Connected closed for forced reconnecting');
-					} else if (closeFunctionWasCalled) {
-						this.logger.debug('Email Read Imap: Shutting down workflow - connected closed');
-					} else if (!errorReported) {
-						this.logger.error('Email Read Imap: Connected closed unexpectedly');
-						this.emitError(
-							new NodeOperationError(this.getNode(), 'IMAP connection closed unexpectedly', {
-								description:
-									'The IMAP server closed the connection without reporting an error, usually because the server (or a proxy/firewall) periodically closes long-lived connections, or was temporarily unavailable. n8n will automatically retry reactivating the workflow. If this happens on a regular cycle, enable the "Force Reconnect" option with an interval shorter than that cycle, so n8n reconnects before the server does.',
-							}),
-						);
-					}
-					conn.removeAllListeners();
-				});
-				conn.on('error', (error) => {
-					const errorCode =
-						((error as JsonObject).code as string | undefined)?.toUpperCase() ?? 'UNKNOWN';
-					this.logger.debug(`IMAP connection experienced an error: (${errorCode})`, {
-						error: error as Error,
-					});
-					errorReported = true;
-					this.emitError(error as Error);
-				});
-				return conn;
-			});
-		};
-
-		connection = await establishConnection();
-
-		await connection.openBox(mailbox);
-
-		let reconnectionInterval: NodeJS.Timeout | undefined;
-
-		const handleReconnect = async () => {
-			this.logger.debug('Forcing reconnect to IMAP server');
+		let searchCriteria: SearchCriteria[] = ['UNSEEN'];
+		if (options.customEmailConfig !== undefined) {
 			try {
-				isCurrentlyReconnecting = true;
-				if (connection.closeBox) await connection.closeBox(false);
-				connection.end();
-				connection = await establishConnection();
-				await connection.openBox(mailbox);
+				searchCriteria = JSON.parse(options.customEmailConfig as string) as SearchCriteria[];
 			} catch (error) {
-				this.logger.error(error as string);
-			} finally {
-				isCurrentlyReconnecting = false;
+				throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
 			}
-		};
-
-		if (options.forceReconnect !== undefined) {
-			reconnectionInterval = setInterval(
-				handleReconnect,
-				(options.forceReconnect as number) * 1000 * 60,
-			);
 		}
 
-		// When workflow and so node gets set to inactive close the connection
-		const closeFunction = async () => {
-			closeFunctionWasCalled = true;
-			if (reconnectionInterval) {
-				clearInterval(reconnectionInterval);
+		const fetchNewEmails = async (conn: ImapSimple, numEmails: number) => {
+			this.logger.debug('New emails received in node "EmailReadImap"', {
+				numEmails,
+			});
+
+			// Create a fresh copy to avoid accumulating filters across calls
+			const currentSearchCriteria = [...searchCriteria];
+
+			/**
+			 * Only process new emails:
+			 * - If we've seen emails before (lastMessageUid is set), fetch messages higher UID.
+			 * - Otherwise, fetch emails received since the workflow activation date.
+			 *
+			 * Note: IMAP 'SINCE' only filters by date (not time),
+			 * so it may include emails from earlier on the activation day.
+			 */
+			if (staticData.lastMessageUid !== undefined) {
+				/**
+				 * A short explanation about UIDs and how they work
+				 * can be found here: https://dev.to/kehers/imap-new-messages-since-last-check-44gm
+				 * TL;DR:
+				 * - You cannot filter using ['UID', 'CURRENT ID + 1:*'] because IMAP
+				 * won't return correct results if current id + 1 does not yet exist.
+				 * - UIDs can change but this is not being treated here.
+				 * If the mailbox is recreated (lets say you remove all emails, remove
+				 * the mail box and create another with same name, UIDs will change)
+				 * - You can check if UIDs changed in the above example
+				 * by checking UIDValidity.
+				 */
+				currentSearchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
+			} else if (node.typeVersion > 2 && options.trackLastMessageId !== false) {
+				currentSearchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
 			}
+
+			this.logger.debug('Querying for new messages on node "EmailReadImap"', {
+				searchCriteria: currentSearchCriteria,
+			});
+
 			try {
-				if (connection.closeBox) await connection.closeBox(false);
-				connection.end();
+				await getNewEmails.call(this, {
+					imapConnection: conn,
+					searchCriteria: currentSearchCriteria,
+					postProcessAction,
+					onEmailBatch: async (returnData: INodeExecutionData[]) => {
+						if (returnData.length) {
+							this.emit([returnData]);
+						}
+					},
+				});
 			} catch (error) {
-				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
+				this.logger.error('Email Read Imap node encountered an error fetching new emails', {
+					error: error as Error,
+				});
+				if (conn.endedByCaller) return;
+				// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
+				// if it receives an error before the workflow got activated
+				await returnedPromise.promise.then(() => {
+					this.emitError(error as Error);
+				});
 			}
 		};
+
+		const connection = await ImapSimple.connect(toImapCredentials(credentials), {
+			mailbox,
+			interval:
+				options.forceReconnect === undefined
+					? undefined
+					: (options.forceReconnect as number) * 1000 * 60,
+		});
+
+		connection.onArrival(async ({ count }) => await fetchNewEmails(connection, count));
+
+		connection.onFlags(({ seqNo, info }) => {
+			this.logger.debug(`Email Read Imap:update ${seqNo}`, info as IDataObject);
+		});
+
+		connection.onReconnect(() => {
+			this.logger.debug('Email Read Imap: Connection restored');
+		});
+
+		connection.onClose((reason) => {
+			// `error` was already reported through onError; only an unexplained close is news.
+			if (reason !== 'dropped') {
+				this.logger.debug(`Email Read Imap: Connection closed (${reason})`);
+				return;
+			}
+			this.logger.error('Email Read Imap: Connected closed unexpectedly');
+			this.emitError(
+				new NodeOperationError(this.getNode(), 'IMAP connection closed unexpectedly', {
+					description:
+						'The IMAP server closed the connection without reporting an error, usually because the server (or a proxy/firewall) periodically closes long-lived connections, or was temporarily unavailable. n8n will automatically retry reactivating the workflow.',
+				}),
+			);
+		});
+
+		connection.onError((error) => {
+			this.logger.debug(`IMAP connection experienced an error: (${imapErrorCode(error)})`, {
+				error,
+			});
+			this.emitError(error);
+		});
+
+		// An unreachable mail server must never be able to block deactivation.
+		const closeFunction = async () => connection.end();
 
 		// Resolve returned-promise so that waiting errors can be emitted
 		returnedPromise.resolve();
