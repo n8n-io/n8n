@@ -1,5 +1,7 @@
 import get from 'lodash/get';
 import unset from 'lodash/unset';
+import merge from 'lodash/merge';
+import set from 'lodash/set';
 import { NodeOperationError, deepCopy, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IBinaryData,
@@ -12,6 +14,12 @@ import type {
 
 import { prepareFieldsArray } from '../utils/utils';
 import { FieldsTracker } from './utils';
+
+const dangerousPathSegments = new Set(['__proto__', 'prototype', 'constructor']);
+
+function isSafePath(path: string) {
+	return !path.split('.').some((segment) => dangerousPathSegments.has(segment));
+}
 
 export class SplitOut implements INodeType {
 	description: INodeTypeDescription = {
@@ -219,10 +227,24 @@ export class SplitOut implements INodeType {
 								pairedItem: { item: i },
 							};
 						} else {
-							splited[elementIndex].json[fieldName] = element;
+							if (!disableDotNotation) {
+								if (!isSafePath(fieldName)) {
+									throw new NodeOperationError(this.getNode(), 'Invalid destination field name');
+								}
+								set(splited[elementIndex].json, fieldName, element);
+							} else {
+								splited[elementIndex].json[fieldName] = element;
+							}
 						}
 					} else {
-						splited[elementIndex].json[fieldName] = element;
+						if (!disableDotNotation) {
+							if (!isSafePath(fieldName)) {
+								throw new NodeOperationError(this.getNode(), 'Invalid destination field name');
+							}
+							set(splited[elementIndex].json, fieldName, element);
+						} else {
+							splited[elementIndex].json[fieldName] = element;
+						}
 					}
 				}
 			}
@@ -239,7 +261,7 @@ export class SplitOut implements INodeType {
 							delete itemCopy[fieldToSplitOut];
 						}
 					}
-					newItem.json = { ...itemCopy, ...splitEntry.json };
+					newItem.json = merge(itemCopy, splitEntry.json);
 				}
 
 				if (include === 'selectedOtherFields') {
