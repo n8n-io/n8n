@@ -1,5 +1,5 @@
 import { analyzeHtmlSensitivity } from './analyze-html';
-import { CONCATENATED_ONLY, PARTIAL_TOKEN } from '../redaction/redact';
+import { ASSIGNMENT_NAME, CONCATENATED_ONLY, PARTIAL_TOKEN } from '../redaction/redact';
 import { htmlProbe as probe } from '../tools/test-helpers';
 
 const ANTHROPIC = `sk-ant-api03-${'a'.repeat(93)}AA`;
@@ -303,13 +303,28 @@ describe('analyzeHtmlSensitivity', () => {
 		]);
 	});
 
-	// A field name assigned to the value must not be swallowed into the secret.
-	it('does not carry an assignment prefix into the captured value', () => {
+	// A field name long enough to clear the length floor is masked with the value,
+	// but capturing it would store the name as the credential. The name must be
+	// long enough here or the length floor hides the rule being tested.
+	it('blocks capture of the name side of an assignment', () => {
 		const result = analyzeHtmlSensitivity(
-			probe(`<dl><dt>Client Secret</dt><dd>CLIENT_SECRET=${HEX_SECRET}</dd></dl>`),
+			probe(`<dl><dt>Client Secret</dt><dd>GOOGLE_CLIENT_SECRET=${HEX_SECRET}</dd></dl>`),
 		);
 
-		expect(result.ok && result.hits).toEqual([{ type: 'password', value: HEX_SECRET }]);
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET=', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: HEX_SECRET },
+		]);
+	});
+
+	// Base64 padding also ends on `=` but separates nothing, so it stays capturable.
+	it('still captures a padded base64 value sharing the cell with other text', () => {
+		const value = 'dGhpc2lzbm90YXJlYWxzZWNyZXQ==';
+		const result = analyzeHtmlSensitivity(
+			probe(`<dl><dt>Client Secret</dt><dd>${value} copy</dd></dl>`),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value }]);
 	});
 
 	// The credential flow needs the public identifier that sits beside the

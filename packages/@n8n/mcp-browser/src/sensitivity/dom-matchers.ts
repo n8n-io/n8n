@@ -1,11 +1,13 @@
 import {
+	ASSIGNMENT_NAME,
+	type CaptureBlockedReason,
 	collectHit,
 	CONCATENATED_ONLY,
 	PARTIAL_TOKEN,
 	UNDELIMITED_TOKEN,
 	type SecretHit,
 } from '../redaction/redact';
-import { expandToTokenSpan, tokenize } from '../redaction/token-span';
+import { assignmentNames, expandToTokenSpan, tokenize } from '../redaction/token-span';
 
 export const TESTID_ATTRS = ['data-testid', 'data-test-id', 'data-test', 'data-qa'] as const;
 
@@ -13,6 +15,11 @@ export const TESTID_ATTRS = ['data-testid', 'data-test-id', 'data-test', 'data-q
 // credential noun without naming one, so a vocabulary only counts at separators.
 const identifierBoundary = (vocabulary: RegExp) =>
 	new RegExp(`(^|[-_\\s])(?:${vocabulary.source})([-_\\s]|$)`, 'i');
+
+// `clientSecret` names a secret as plainly as `client-secret` does, so give the
+// hump the separator the boundary rule needs. Humpless runs (`tokenizer`) are
+// untouched, which is what keeps them out.
+const separateCamelHumps = (text: string) => text.replace(/([a-z0-9])([A-Z])/g, '$1-$2');
 
 /** Shortest run we treat as opaque rather than prose. */
 const MIN_OPAQUE_TOKEN_LENGTH = 16;
@@ -149,9 +156,9 @@ export function isSecretLabelledCell(el: Element): boolean {
 	// Five `getAttribute` calls per cell otherwise, on pages where most carry none.
 	if (!el.hasAttributes()) return false;
 	return (
-		namesSecret(el.getAttribute('id') ?? '', SENSITIVE_FIELD_ATTR_PATTERN) ||
+		namesSecret(separateCamelHumps(el.getAttribute('id') ?? ''), SENSITIVE_FIELD_ATTR_PATTERN) ||
 		// The test-id pass judges the same attribute, so it must agree with it.
-		namesSecret(getTestId(el), SENSITIVE_TESTID_PATTERN)
+		namesSecret(separateCamelHumps(getTestId(el)), SENSITIVE_TESTID_PATTERN)
 	);
 }
 
@@ -237,7 +244,8 @@ function opaqueTokens(text: string): string[] {
  * the decision that entropy carries over a region.
  */
 export function opaqueTokenCandidates(el: Element): SecretHit[] {
-	const rendered = opaqueTokens(elementText(el));
+	const text = elementText(el);
+	const rendered = opaqueTokens(text);
 	// `elementText` spaces inline children apart, so a value split across them is
 	// whole only in `textContent` — a spelling that appears nowhere in what the
 	// model reads, which is why neither it nor the rendered fragments inside it
@@ -246,14 +254,22 @@ export function opaqueTokenCandidates(el: Element): SecretHit[] {
 	const concatenated = el.firstElementChild
 		? opaqueTokens(el.textContent ?? '').filter((value) => !seen.has(value))
 		: [];
+	const names = new Set(assignmentNames(text));
+
+	// Masked either way; the reason decides only whether it may be captured.
+	const blocked = (value: string): CaptureBlockedReason | undefined => {
+		if (names.has(value)) return ASSIGNMENT_NAME;
+		if (concatenated.some((whole) => whole.includes(value))) return PARTIAL_TOKEN;
+		return undefined;
+	};
 
 	return [
-		...rendered.map(
-			(value): SecretHit =>
-				concatenated.some((whole) => whole.includes(value))
-					? { type: 'password', value, captureBlocked: PARTIAL_TOKEN }
-					: { type: 'password', value },
-		),
+		...rendered.map((value): SecretHit => {
+			const captureBlocked = blocked(value);
+			return captureBlocked
+				? { type: 'password', value, captureBlocked }
+				: { type: 'password', value };
+		}),
 		...concatenated.map(
 			(value): SecretHit => ({ type: 'password', value, captureBlocked: CONCATENATED_ONLY }),
 		),

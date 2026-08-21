@@ -241,6 +241,8 @@ describe('isSecretLabelledCell', () => {
 		{ named: 'a decorated label', html: '<dt>Client Secret:</dt><dd>v</dd>' },
 		{ named: 'the cell id', html: '<dt>Issued</dt><dd id="client-secret">v</dd>' },
 		{ named: 'the cell test id', html: '<dt>Issued</dt><dd data-testid="client-secret">v</dd>' },
+		{ named: 'a camelCase test id', html: '<dt>Issued</dt><dd data-testid="clientSecret">v</dd>' },
+		{ named: 'a camelCase id', html: '<dt>Issued</dt><dd id="apiKeyValue">v</dd>' },
 	])('accepts $named', ({ html }) => {
 		expect(isSecretLabelledCell(cell(html))).toBe(true);
 	});
@@ -248,6 +250,14 @@ describe('isSecretLabelledCell', () => {
 	it.each([
 		{ named: 'a label the noun only qualifies', html: '<dt>Token expiry</dt><dd>v</dd>' },
 		{ named: 'a qualified label behind decoration', html: '<dt>Credential type:</dt><dd>v</dd>' },
+		{
+			named: 'a camelCase identifier merely containing a noun',
+			html: '<dt>Issued</dt><dd id="tokenizerOutput">v</dd>',
+		},
+		{
+			named: 'a camelCase test id merely containing a noun',
+			html: '<dt>Issued</dt><dd data-testid="secretaryPanel">v</dd>',
+		},
 		{
 			named: 'an identifier merely containing a noun',
 			html: '<dt>Issued</dt><dd id="tokenizer-output">v</dd>',

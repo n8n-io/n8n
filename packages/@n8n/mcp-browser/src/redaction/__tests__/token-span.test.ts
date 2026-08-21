@@ -1,4 +1,4 @@
-import { expandToTokenSpan, tokenize } from '../token-span';
+import { assignmentNames, expandToTokenSpan, tokenize } from '../token-span';
 
 function expand(text: string, match: string): string {
 	return expandToTokenSpan(text, text.indexOf(match), match.length).span;
@@ -103,5 +103,17 @@ describe('tokenize', () => {
 		{ named: 'drops empty runs', text: '  a   b  ', want: ['a', 'b'] },
 	])('$named', ({ text, want }) => {
 		expect(tokenize(text)).toEqual(want);
+	});
+});
+
+describe('assignmentNames', () => {
+	it.each([
+		{ named: 'a name separating a value', text: 'NAME=secretvalue', want: ['NAME='] },
+		{ named: 'every name in a chain', text: 'a=b=c', want: ['a=', 'b='] },
+		{ named: 'nothing for base64 padding', text: 'dGhpc2lzbm90YXJlYWw==', want: [] },
+		{ named: 'nothing for padding followed by more text', text: 'dGhpcw== copy', want: [] },
+		{ named: 'nothing when there is no assignment', text: 'plain text here', want: [] },
+	])('reports $named', ({ text, want }) => {
+		expect(assignmentNames(text)).toEqual(want);
 	});
 });

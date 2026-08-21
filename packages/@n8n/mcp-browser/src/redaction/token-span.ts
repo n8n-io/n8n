@@ -51,6 +51,21 @@ export function tokenize(text: string): string[] {
 }
 
 /**
+ * The name sides of `NAME=value` pairs. They tokenize like any other run, so a
+ * caller that reads tokens as values needs to know which ones never are. Base64
+ * padding is not one: its `=` ends the run instead of separating two.
+ */
+export function assignmentNames(text: string): string[] {
+	const names: string[] = [];
+	for (const run of text.split(STOP_RUN)) {
+		if (!run.includes('=')) continue;
+		const parts = run.split(ASSIGNMENT).filter(Boolean);
+		for (const name of parts.slice(0, -1)) names.push(name.replace(EDGE_TRIM, ''));
+	}
+	return names.filter(Boolean);
+}
+
+/**
  * Snap a match out to the whole token around it, so an unanticipated prefix or
  * suffix is covered without enumerating character classes. Only trims outside
  * the original match.
