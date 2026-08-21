@@ -73,12 +73,17 @@ This project uses n8n's CLI tool for developing community nodes: `n8n-node`. It
 is available as a dev dependency and `package.json` has some aliases for common
 commands. Short overview of the commands:
 - `n8n-node dev` - run n8n with your node in development mode with hot reload.
-  This command starts up n8n on `http://localhost:5678` so that the user can
-  manually test the node. It also links it to n8n's custom nodes directory
-  (`~/.n8n-node-cli/.n8n/custom` by default), so it's available within n8n.
-  `--external-n8n` makes it not launch n8n and `--custom-user-folder <path>`
-  can be used to specify the folder where user-specific data is stored
-  (`~/.n8n-node-cli` is the default)
+  This command starts n8n in a container on `http://localhost:5678` so that the
+  user can manually test the node. It mounts the project into n8n's custom nodes
+  directory, so it's available within n8n, and pushes a reload after every
+  successful compile. It needs Docker or Podman.
+  - `--n8n-version <tag>` picks the n8n version (`latest` by default)
+  - `--n8n-image <image>` runs a specific image instead
+  - `--external-n8n` skips the container and uses an n8n the user runs
+    themselves; that instance needs `N8N_DEV_RELOAD=true` and
+    `N8N_USER_FOLDER` set to `--custom-user-folder` (`~/.n8n-node-cli` by
+    default)
+  - `--n8n-url <url>` points at an n8n that is not on `localhost:5678`
 - `n8n-node build` - compile your node and prepare it for distribution.
 - `n8n-node lint` - lint the node in the current directory.
   Use `--fix` flag to automatically fix fixable issues.
