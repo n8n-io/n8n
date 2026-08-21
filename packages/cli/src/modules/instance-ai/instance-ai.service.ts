@@ -113,7 +113,7 @@ import {
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { redactTelemetryProperties, redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -198,7 +198,6 @@ import {
 	type ResumableOrphan,
 } from './suspended-run-restorer.service';
 import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
-import { redactTelemetryProperties, redactTelemetryText } from './telemetry-redaction';
 import {
 	InstanceAiTracingService,
 	type MessageTraceFinalization,
