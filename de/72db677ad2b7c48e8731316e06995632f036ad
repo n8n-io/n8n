@@ -1,0 +1,35 @@
+packages/@n8n/config/test/config.test.ts
+  s_03455fc2fd0731::t_738da14f007923 717-725
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_18d1b2aab23e80::t_51f773cf646bcd 2,30,79
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_03455fc2fd0731::t_99dd463966bc75 271-285
+packages/cli/src/workflows/triggers/__tests__/poll-cursor.service.test.ts
+  s_03455fc2fd0731::t_c6122962e9cc69 2,47
+packages/cli/test/integration/executions/poll-cursor-atomicity.test.ts
+  s_03455fc2fd0731::t_f749a8110fce6b 2,37,50,66,168,179,194,217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "de72db677ad2b7c48e8731316e06995632f036ad",
+  "prompts": {},
+  "sessions": {
+    "s_03455fc2fd0731": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9d2d72e-8cb5-41b1-8ccd-e37f2252e2d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_18d1b2aab23e80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da450be1-7baf-4ca3-927f-cb51da58c797",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
