@@ -158,8 +158,9 @@ export const ALL_INSTANCE_SCOPES: Scope[] = [
 /**
  * "Users: View" is baseline behavior every instance role carries — the default
  * Member role already has it — not something a custom role can opt out of.
- * Rendered checked and disabled in the editor; `withMandatoryInstanceScopes`
- * guarantees the underlying scopes are present on load and on save.
+ * Rendered checked and disabled in the editor. `withMandatoryInstanceScopes`
+ * is applied to the form (and on save), not the persisted snapshot, so a
+ * stored role that is missing these scopes stays unsaved until the next save.
  */
 export function isOptionMandatory(resource: InstanceResource, option: InstanceScopeOption) {
 	return resource === 'user' && option.key === 'View';
