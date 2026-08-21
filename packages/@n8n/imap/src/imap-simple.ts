@@ -163,11 +163,6 @@ export class ImapSimple {
 	/** `close` was emitted; the connection is spent and stays silent from here on. */
 	private closed = false;
 
-	/**
-	 * Detached from a transport that goes away: node-imap abandons its request queue on a close
-	 * without calling back, so a handler waiting on one of its commands never returns, and the
-	 * rescan a reconnect enqueues would sit behind it for good.
-	 */
 	private queue: Promise<unknown> = Promise.resolve();
 
 	private readonly pending: Arrival[] = [];
@@ -178,8 +173,7 @@ export class ImapSimple {
 	/** Distinguishes the attempt that is still wanted from one that timed out and kept running. */
 	private attempt = 0;
 
-	/** A restore is under way, so work the drop cut short is redone rather than reported. */
-	private restoring = false;
+	private abandon: ((error: Error) => void) | undefined;
 
 	private timer: NodeJS.Timeout | undefined;
 
@@ -312,6 +306,7 @@ export class ImapSimple {
 	}
 
 	private onTransportError(error: Error): void {
+		this.lose();
 		// A connection that restores itself reports the failure it could not recover from, not
 		// every one on the way there — `restore` reports if it runs out of road.
 		if (this.canRestore()) return;
@@ -319,7 +314,7 @@ export class ImapSimple {
 	}
 
 	private onTransportClose(): void {
-		this.queue = Promise.resolve();
+		this.lose();
 
 		if (!this.canRestore()) {
 			this.reportClose();
@@ -327,6 +322,15 @@ export class ImapSimple {
 		}
 
 		void this.restore();
+	}
+
+	/**
+	 * Gives up on the current transport. A handler waiting on one of its commands is let go
+	 * explicitly, because node-imap abandons its request queue on a close without calling back.
+	 */
+	private lose(): void {
+		this.generation += 1;
+		this.abandon?.(new ConnectionLostError());
 	}
 
 	private canRestore(): boolean {
@@ -340,7 +344,6 @@ export class ImapSimple {
 	private async restore(): Promise<void> {
 		this.attempt += 1;
 		const attempt = this.attempt;
-		this.restoring = true;
 
 		try {
 			await withTimeout(this.reopen(attempt), this.reconnectTimeout);
@@ -348,14 +351,12 @@ export class ImapSimple {
 			if (attempt !== this.attempt || !this.canRestore()) return;
 			this.reportError(error);
 			this.reportClose();
-		} finally {
-			if (attempt === this.attempt) this.restoring = false;
 		}
 	}
 
 	private async reopen(attempt: number): Promise<void> {
 		// A scheduled replacement tears the transport down itself, so no `close` reaches us.
-		this.queue = Promise.resolve();
+		this.lose();
 		this.discard(this.client);
 		const { client, total } = await this.dial();
 
@@ -367,7 +368,6 @@ export class ImapSimple {
 		}
 
 		this.install(client);
-		this.generation += 1;
 		this.report('reconnect', (handler) => handler());
 
 		// Mail that landed while the connection was down is already in the mailbox by the time it
@@ -410,15 +410,20 @@ export class ImapSimple {
 			return;
 		}
 
+		const queuedOn = this.generation;
 		this.queue = this.queue.then(async () => {
-			const startedOn = this.generation;
+			if (this.generation !== queuedOn) return;
+
+			const lost = new Promise<never>((_, reject) => (this.abandon = reject));
 			try {
-				await handler(arrival);
+				await Promise.race([handler(arrival), lost]);
 			} catch (error) {
 				// Work a drop or a swap cut short belongs to a transport that no longer exists:
 				// `restore` reports if it cannot recover, and reopening rescans what was missed.
-				if (this.restoring || this.generation !== startedOn) return;
+				if (this.generation !== queuedOn) return;
 				this.reportError(error);
+			} finally {
+				this.abandon = undefined;
 			}
 		});
 	}
@@ -608,6 +613,7 @@ export class ImapSimple {
 	end(): void {
 		this.ended = true;
 		clearTimeout(this.timer);
+		this.lose();
 
 		const client = this.client;
 		client.removeAllListeners();

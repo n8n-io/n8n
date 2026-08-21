@@ -50,10 +50,10 @@ export class FakeImap extends EventEmitter {
 	/** node-imap overloads `getBoxes`; only the no-prefix form is ever used here. */
 	readonly getBoxes = vi.fn<(onBoxes: (error: Error | null, boxes?: MailBoxes) => void) => void>();
 
-	/** Mimics the server going away: node-imap reports the error first, then the close. */
+	/** Mimics the server going away: node-imap reports the socket error a tick before the close. */
 	drop(error?: Error) {
 		if (error) this.emit('error', error);
-		this.emit('close', error !== undefined);
+		setImmediate(() => this.emit('close', error !== undefined));
 	}
 }
 
@@ -71,6 +71,6 @@ export const transportFactory = (init?: (transport: FakeImap, attempt: number) =
 };
 
 /** Lets pending `setImmediate` callbacks and promise jobs run. */
-export const settle = async (times = 3) => {
+export const settle = async (times = 6) => {
 	for (let i = 0; i < times; i++) await new Promise((resolve) => setImmediate(resolve));
 };
