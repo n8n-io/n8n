@@ -13,6 +13,27 @@ const createItems = (count: number): DropdownMenuItemProps[] => {
 	}));
 };
 
+class MockIntersectionObserver {
+	static instances: MockIntersectionObserver[] = [];
+
+	readonly observerHandler: IntersectionObserverCallback;
+
+	constructor(observerHandler: IntersectionObserverCallback) {
+		this.observerHandler = observerHandler;
+		MockIntersectionObserver.instances.push(this);
+	}
+
+	observe() {}
+
+	disconnect() {}
+
+	unobserve() {}
+
+	takeRecords(): IntersectionObserverEntry[] {
+		return [];
+	}
+}
+
 async function getDropdownContent() {
 	const dropdown = await waitFor(() => {
 		const el = document.querySelector('[role="menu"]');
@@ -25,6 +46,45 @@ async function getDropdownContent() {
 
 describe('N8nDropdownMenu', () => {
 	describe('rendering', () => {
+		it('should close an open submenu when its trigger leaves the scroll container', async () => {
+			MockIntersectionObserver.instances = [];
+			vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+
+			try {
+				render(DropdownMenu, {
+					props: {
+						modelValue: true,
+						items: [{ id: 'parent', label: 'Parent', children: [{ id: 'child', label: 'Child' }] }],
+					},
+				});
+
+				const parent = await waitFor(() => {
+					const item = document.querySelector('[role="menuitem"]');
+					if (!item) throw new Error('Parent item not found');
+					return item as HTMLElement;
+				});
+
+				await userEvent.click(parent);
+				await waitFor(() => expect(parent).toHaveAttribute('aria-expanded', 'true'));
+
+				const observer = MockIntersectionObserver.instances[0];
+				expect(observer).toBeDefined();
+				observer.observerHandler(
+					[
+						{
+							isIntersecting: false,
+							intersectionRatio: 0,
+						} as IntersectionObserverEntry,
+					],
+					observer as unknown as IntersectionObserver,
+				);
+
+				await waitFor(() => expect(parent).toHaveAttribute('aria-expanded', 'false'));
+			} finally {
+				vi.unstubAllGlobals();
+			}
+		});
+
 		it('should render default trigger button', () => {
 			const { container } = render(DropdownMenu, {
 				props: {
