@@ -1,8 +1,8 @@
 operationId: pushGitConnectionProjects
 tags:
   - GitConnections
-summary: Push all projects linked to a Git connection
-description: Work in progress. Exports all linked projects to the local repository working copy. It does not commit or push changes to the selected branch yet.
+summary: Push linked projects to a Git connection
+description: Exports all projects linked to the connection, commits them, and pushes to the configured branch. Requires the repository to be cloned first.
 x-required-scope: gitConnection:push
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -13,6 +13,20 @@ parameters:
     required: true
     name: id
     in: path
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          commitMessage:
+            type: string
+            minLength: 1
+            maxLength: 1000
+          force:
+            type: boolean
+        required:
+          - commitMessage
 responses:
   '200':
     description: Operation successful.
@@ -51,9 +65,13 @@ responses:
                 - dataTables
                 - variables
                 - tags
+            commit:
+              type: string
+              nullable: true
           required:
             - connectionId
             - counts
+            - commit
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
