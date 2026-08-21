@@ -3795,6 +3795,9 @@ importers:
 
   packages/@n8n/telemetry:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       zod:
         specifier: 3.25.76
         version: 3.25.76

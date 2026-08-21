@@ -1,4 +1,5 @@
 import { chatWithAssistant } from '@/features/ai/assistant/assistant.api';
+import { redactTelemetryText } from '@n8n/telemetry';
 import { type VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { ASSISTANT_ENABLED_VIEWS } from './constants';
@@ -694,7 +695,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			return;
 		}
 		telemetry.track('User sent message in Assistant', {
-			message,
+			message: redactTelemetryText(message),
 			is_quick_reply: isQuickReply,
 			chat_session_id: currentSessionId.value,
 			message_number: usersMessages.value.length,

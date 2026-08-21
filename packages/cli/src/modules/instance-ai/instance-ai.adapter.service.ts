@@ -21,6 +21,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
+import { redactTelemetryText } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
 	InstanceAiContext,
@@ -166,7 +167,6 @@ import {
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
-import { redactTelemetryText } from './telemetry-redaction';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 

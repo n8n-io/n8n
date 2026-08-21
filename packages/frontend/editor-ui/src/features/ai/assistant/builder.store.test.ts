@@ -1973,6 +1973,25 @@ describe('AI Builder store', () => {
 		});
 	});
 
+	describe('telemetry redaction', () => {
+		it('scrubs secrets and PII from the tracked user message', async () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
+
+			await builderStore.sendChatMessage({
+				text: 'email jane.doe@example.com using sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+			});
+
+			const [, properties] = track.mock.calls.find(
+				([event]) => event === 'User submitted builder message',
+			) as [string, { message: string }];
+			expect(properties.message).not.toContain('jane.doe@example.com');
+			expect(properties.message).not.toContain('sk-ant-api03');
+			expect(properties.message).toContain('[REDACTED]');
+		});
+	});
+
 	describe('manual execution stats telemetry', () => {
 		it('should include success count in telemetry when sending message', async () => {
 			const builderStore = useBuilderStore();
