@@ -715,6 +715,7 @@ async function handleResume(
 			ok: false,
 			error: 'The builder question this answer belongs to is no longer open.',
 			configUpdated: ref.configUpdated,
+			...(ref.requiredArtifacts ? { requiredArtifacts: ref.requiredArtifacts } : {}),
 			...targetIdentity(target),
 		};
 	}
@@ -728,6 +729,7 @@ async function handleResume(
 			error:
 				"The answer does not match the builder's open question (stale or superseded suspension). Ask the user again with a fresh build-agent call.",
 			configUpdated: ref.configUpdated,
+			...(ref.requiredArtifacts ? { requiredArtifacts: ref.requiredArtifacts } : {}),
 			...targetIdentity(target),
 		};
 	}
