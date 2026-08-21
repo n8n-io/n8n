@@ -4,6 +4,7 @@ import {
 	createRule,
 	findClassProperty,
 	isNodeTypeClass,
+	resolveIdentifier,
 	WEBHOOK_LIFECYCLE_METHODS,
 } from '../utils/index.js';
 
@@ -61,11 +62,22 @@ export const NoSilentErrorSwallowingRule = createRule({
 	},
 	defaultOptions: [],
 	create(context) {
-		// Maps each lifecycle method's function node to its method name. Populated
-		// when the enclosing class is visited (before its `catch` clauses), so a
-		// `catch` is only flagged when its *nearest* enclosing function is a
-		// lifecycle method — catches inside nested callbacks are left alone.
+		// Maps each lifecycle method's function node to its method name. A `catch`
+		// is only flagged when its *nearest* enclosing function is a lifecycle
+		// method — catches inside nested callbacks are left alone. A method handed
+		// over by name can be declared anywhere in the file, so `catch` clauses are
+		// held until the whole program has been read.
 		const lifecycleMethodByFn = new WeakMap<TSESTree.Node, string>();
+		const catchClauses: TSESTree.CatchClause[] = [];
+
+		/** Reads a method value as a function, following a name to its declaration. */
+		function asFunction(node: TSESTree.Node): TSESTree.Node | null {
+			if (isFunctionNode(node)) return node;
+			if (node.type !== AST_NODE_TYPES.Identifier) return null;
+
+			const declared = resolveIdentifier(context.sourceCode.getScope(node), node);
+			return declared && isFunctionNode(declared) ? declared : null;
+		}
 
 		return {
 			ClassDeclaration(node) {
@@ -84,44 +96,47 @@ export const NoSilentErrorSwallowingRule = createRule({
 						const methodName = getPropertyName(methodProperty);
 						if (methodName === null || !LIFECYCLE_METHODS.includes(methodName)) continue;
 
-						const fn = methodProperty.value;
-						if (
-							fn.type === AST_NODE_TYPES.FunctionExpression ||
-							fn.type === AST_NODE_TYPES.ArrowFunctionExpression
-						) {
-							lifecycleMethodByFn.set(fn, methodName);
-						}
+						const fn = asFunction(methodProperty.value);
+						if (fn !== null) lifecycleMethodByFn.set(fn, methodName);
 					}
 				}
 			},
 
 			CatchClause(node) {
-				const enclosingFn = getEnclosingFunction(node);
-				if (enclosingFn === null) return;
+				catchClauses.push(node);
+			},
 
-				const methodName = lifecycleMethodByFn.get(enclosingFn);
-				if (methodName === undefined) return;
-
-				const statements = node.body.body;
-
-				if (statements.length === 0) {
-					context.report({
-						node: node.body,
-						messageId: 'emptyCatch',
-						data: { method: methodName },
-					});
-					return;
-				}
-
-				const onlyStatement = statements.length === 1 ? statements[0] : undefined;
-				if (onlyStatement && isSilentReturn(onlyStatement)) {
-					context.report({
-						node: onlyStatement,
-						messageId: 'silentReturn',
-						data: { method: methodName },
-					});
-				}
+			'Program:exit'() {
+				for (const node of catchClauses) reportIfSilent(node);
 			},
 		};
+
+		function reportIfSilent(node: TSESTree.CatchClause): void {
+			const enclosingFn = getEnclosingFunction(node);
+			if (enclosingFn === null) return;
+
+			const methodName = lifecycleMethodByFn.get(enclosingFn);
+			if (methodName === undefined) return;
+
+			const statements = node.body.body;
+
+			if (statements.length === 0) {
+				context.report({
+					node: node.body,
+					messageId: 'emptyCatch',
+					data: { method: methodName },
+				});
+				return;
+			}
+
+			const onlyStatement = statements.length === 1 ? statements[0] : undefined;
+			if (onlyStatement && isSilentReturn(onlyStatement)) {
+				context.report({
+					node: onlyStatement,
+					messageId: 'silentReturn',
+					data: { method: methodName },
+				});
+			}
+		}
 	},
 });

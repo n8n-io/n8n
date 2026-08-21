@@ -1,6 +1,76 @@
 import type { TSESTree } from '@typescript-eslint/utils';
-import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, ASTUtils, TSESLint } from '@typescript-eslint/utils';
 import { distance } from 'fastest-levenshtein';
+
+/**
+ * True when a reference could change what the name stands for, or change the
+ * value it already holds. `const` fixes the binding and not the object behind
+ * it, and a function declaration fixes neither, so a name is only worth
+ * following when nothing in the file can touch it after it is declared.
+ */
+function canChangeValue(reference: TSESLint.Scope.Reference): boolean {
+	// The declaration writes the value; anything later replaces it.
+	if (reference.isWrite() && !reference.init) return true;
+
+	// Follow `value.a.b` up to the outermost property read, since that is what
+	// the surrounding code actually acts on.
+	let member: TSESTree.Node = reference.identifier;
+	while (
+		member.parent?.type === AST_NODE_TYPES.MemberExpression &&
+		member.parent.object === member
+	) {
+		member = member.parent;
+	}
+
+	const owner = member.parent;
+	if (owner === undefined) return false;
+
+	// `Object.assign(value.default, ...)`: handing the object to a call gives
+	// that call the chance to fill it in.
+	if (
+		(owner.type === AST_NODE_TYPES.CallExpression || owner.type === AST_NODE_TYPES.NewExpression) &&
+		owner.arguments.some((argument) => argument === member)
+	) {
+		return true;
+	}
+
+	// `value.a.b = fn`, `delete value.a`, `value.a++`: the binding is untouched
+	// while what it holds is not.
+	return (
+		(owner.type === AST_NODE_TYPES.AssignmentExpression && owner.left === member) ||
+		owner.type === AST_NODE_TYPES.UpdateExpression ||
+		(owner.type === AST_NODE_TYPES.UnaryExpression && owner.operator === 'delete')
+	);
+}
+
+/**
+ * Follows an identifier to the value it stands for, when that value is fixed
+ * and written in this file: a `const` with an initialiser, or a function
+ * declaration that nothing reassigns. Anything that can hold something else by
+ * the time the node runs (`let`, a parameter, a re-declared name) reads as
+ * unresolved, and so does an import, whose value lives in another file the rule
+ * cannot see.
+ */
+export function resolveIdentifier(
+	scope: TSESLint.Scope.Scope,
+	identifier: TSESTree.Identifier,
+): TSESTree.Node | null {
+	const variable = ASTUtils.findVariable(scope, identifier);
+	if (variable === null || variable.defs.length !== 1) return null;
+	if (variable.references.some(canChangeValue)) return null;
+
+	const [definition] = variable.defs;
+	if (definition === undefined) return null;
+
+	if (definition.type === TSESLint.Scope.DefinitionType.FunctionName) {
+		return definition.node;
+	}
+
+	if (definition.type !== TSESLint.Scope.DefinitionType.Variable) return null;
+	if (definition.parent.kind !== 'const') return null;
+
+	return definition.node.init;
+}
 
 function implementsInterface(node: TSESTree.ClassDeclaration, interfaceName: string): boolean {
 	return (
