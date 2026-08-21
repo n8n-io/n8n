@@ -17,6 +17,8 @@ SCRIPT="$(cd "$(dirname "$0")" && pwd)/get-n8n.sh"
 # on master — the harness must test this branch's compose file.
 COMPOSE_SRC="$(cd "$(dirname "$0")" && pwd)/get-n8n-compose.yml"
 export N8N_COMPOSE_URL="$COMPOSE_SRC"
+# Test runs must not send install telemetry.
+export DO_NOT_TRACK=1
 E2E=0
 [ "${1:-}" = "--e2e" ] && E2E=1
 

@@ -30,9 +30,39 @@ UPGRADE=0
 NO_START=0
 REQUESTED_VERSION=""
 
+# Anonymous usage telemetry (RudderStack): one event when an install/upgrade
+# starts, succeeds or fails, carrying only the script version, OS name, mode
+# and the failed step. Opt out with DO_NOT_TRACK=1. The write key is a
+# public client-side key.
+TELEMETRY_URL="https://nnrry.dataplane.rudderstack.com/v1/track"
+TELEMETRY_WRITE_KEY="3IDNZwfcE0lfjVDb0Y1wp8ZVGlg"
+# Random per-run ID so the started/succeeded/failed events of one run correlate.
+INSTALL_ID=""
+# Set before each step that can fail; empty means "not an install failure"
+# (usage errors etc.) and fail() sends nothing.
+STEP=""
+
+track() { # track <event> [failed-step]
+	[ -z "${DO_NOT_TRACK:-}" ] || return 0
+	[ -n "$INSTALL_ID" ] || INSTALL_ID="$(gen_secret)"
+	mode="install"
+	[ "$UPGRADE" -eq 1 ] && mode="upgrade"
+	body="{\"anonymousId\":\"${INSTALL_ID}\",\"event\":\"${1}\",\"properties\":{\"scriptVersion\":\"${SCRIPT_VERSION}\",\"os\":\"$(uname -s)\",\"mode\":\"${mode}\"${2:+,\"step\":\"${2}\"}}}"
+	if command -v curl >/dev/null 2>&1; then
+		curl -s -o /dev/null --max-time 3 -u "${TELEMETRY_WRITE_KEY}:" \
+			-H 'Content-Type: application/json' -d "$body" "$TELEMETRY_URL" 2>/dev/null || true
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q -O /dev/null -T 3 \
+			--header="Authorization: Basic $(printf '%s:' "$TELEMETRY_WRITE_KEY" | base64)" \
+			--header='Content-Type: application/json' \
+			--post-data="$body" "$TELEMETRY_URL" 2>/dev/null || true
+	fi
+}
+
 say() { printf '%s\n' "$*"; }
 ok() { printf '\342\234\223 %s\n' "$*"; }
 fail() {
+	[ -z "$STEP" ] || track install_failed "$STEP"
 	printf 'Error: %s\n' "$*" >&2
 	exit 1
 }
@@ -56,6 +86,8 @@ Options:
 
 Environment:
   N8N_DIR            Install directory (default: ./n8n)
+  DO_NOT_TRACK=1     Don't send the anonymous install telemetry (script
+                     version, OS name, install/upgrade outcome, failed step).
 
 For production-grade setups (TLS, Postgres, queue mode) see:
   ${DOCS_HOSTING_URL}
@@ -92,6 +124,7 @@ parse_args() {
 }
 
 check_deps() {
+	STEP="docker-missing"
 	command -v docker >/dev/null 2>&1 || fail "Docker is not installed.
   Install it first:
     Linux / WSL:   curl -fsSL https://get.docker.com | sh
@@ -102,10 +135,12 @@ check_deps() {
   Podman, Colima and other Docker-compatible engines work too: install the
   'docker' CLI with the compose plugin and point DOCKER_HOST at their socket."
 
+	STEP="compose-missing"
 	docker compose version >/dev/null 2>&1 || fail "Docker Compose v2 plugin is not available.
   ('docker compose version' failed — the legacy 'docker-compose' binary is not supported.)
   See https://docs.docker.com/compose/install/"
 
+	STEP="daemon-down"
 	docker info >/dev/null 2>&1 || fail "The Docker daemon is not running (or DOCKER_HOST points at a dead socket).
   Start Docker (e.g. open Docker Desktop, or 'sudo systemctl start docker') and re-run.
   Podman/Colima users: make sure the machine/socket is running, e.g.
@@ -293,6 +328,7 @@ compose() {
 check_rate_limit() {
 	grep -qiE 'toomanyrequests|rate ?limit' "$1" || return 0
 	rm -f "$1"
+	STEP="rate-limit"
 	fail "Docker Hub pull rate limit reached — your configuration in ${N8N_DIR} is
   unaffected. Wait about an hour, then start n8n with:
     docker compose -f ${N8N_DIR}/compose.yml up -d
@@ -332,6 +368,7 @@ do_upgrade() {
 	if [ ! -f "${N8N_DIR}/.env" ] || [ ! -f "${N8N_DIR}/compose.yml" ]; then
 		fail "no existing install found in ${N8N_DIR} — run without --upgrade to install."
 	fi
+	track install_started
 
 	target="${REQUESTED_VERSION:-$(resolve_n8n_version)}"
 	current="$(sed -n 's/^N8N_VERSION=//p' "${N8N_DIR}/.env")"
@@ -354,7 +391,9 @@ do_upgrade() {
 	fi
 
 	say "Pulling images..."
+	STEP="pull"
 	compose_pull
+	STEP="start"
 	compose_checked up -d --quiet-pull
 	ok "Restarted with n8n ${target}"
 }
@@ -429,11 +468,14 @@ offer_open() {
 main() {
 	parse_args "$@"
 	check_deps
+	STEP=""
 
 	if [ -f "${N8N_DIR}/compose.yml" ] || [ -f "${N8N_DIR}/.env" ]; then
 		if [ "$UPGRADE" -eq 1 ]; then
 			do_upgrade
+			STEP="health"
 			wait_for_n8n || fail "n8n did not become ready — check 'docker compose -f ${N8N_DIR}/compose.yml logs n8n'."
+			track install_succeeded
 			print_summary
 			exit 0
 		fi
@@ -450,19 +492,24 @@ main() {
 		exit 0
 	fi
 	[ "$UPGRADE" -eq 0 ] || fail "no existing install found in ${N8N_DIR} — run without --upgrade to install."
+	track install_started
 
 	if [ -d "${N8N_DIR}" ] && [ -n "$(ls -A "${N8N_DIR}")" ]; then
+		STEP="dir-not-empty"
 		fail "${N8N_DIR} exists and is not empty — refusing to write into it.
   Pick another directory with: N8N_DIR=./some-dir sh get-n8n.sh"
 	fi
 	if [ "$NO_START" -eq 0 ] && port_in_use; then
+		STEP="port-in-use"
 		fail "something is already listening on port ${N8N_PORT} — stop it first, or use --no-start
   and adjust the port mapping in ${N8N_DIR}/compose.yml before starting."
 	fi
 
 	INSTALL_VERSION="${REQUESTED_VERSION:-$(resolve_n8n_version)}"
 	mkdir -p "${N8N_DIR}"
+	STEP="compose-download"
 	write_compose
+	STEP=""
 	ok "Created ${N8N_DIR}/compose.yml"
 	write_searxng_settings
 	ok "Created ${N8N_DIR}/searxng-settings.yml"
@@ -477,10 +524,14 @@ main() {
 	fi
 
 	say "Pulling images (this can take a few minutes on first run)..."
+	STEP="pull"
 	compose_pull
+	STEP="start"
 	compose_checked up -d --quiet-pull
 	ok "Started n8n ${INSTALL_VERSION} and sandbox services"
+	STEP="health"
 	wait_for_n8n || fail "n8n did not become ready — check 'docker compose -f ${N8N_DIR}/compose.yml logs n8n'."
+	track install_succeeded
 	print_summary
 	offer_open
 }
