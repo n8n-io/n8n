@@ -14,4 +14,27 @@ export type TestWebhookReceived = {
 	};
 };
 
-export type WebhookPushMessage = TestWebhookDeleted | TestWebhookReceived;
+export type WebhookReceived = {
+	type: 'webhookReceived';
+	data: {
+		workflowId: string;
+		node: string;
+		method: string;
+		path: string;
+	};
+};
+
+export type TriggerFired = {
+	type: 'triggerFired';
+	data: {
+		workflowId: string;
+		/** `trigger` for schedules/pollers, `integrated` for sub-workflow calls */
+		mode: string;
+	};
+};
+
+export type WebhookPushMessage =
+	| TestWebhookDeleted
+	| TestWebhookReceived
+	| WebhookReceived
+	| TriggerFired;

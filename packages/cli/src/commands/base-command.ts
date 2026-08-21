@@ -34,6 +34,7 @@ import { getDataDeduplicationService } from '@/deduplication';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { TriggerActivityEventRelay } from '@/events/relays/trigger-activity.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
@@ -228,6 +229,7 @@ export abstract class BaseCommand<F = never> {
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
+		Container.get(TriggerActivityEventRelay).init();
 
 		if (this.needsExpressionEngine) {
 			const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =

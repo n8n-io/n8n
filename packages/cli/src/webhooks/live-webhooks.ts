@@ -15,6 +15,7 @@ import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { NodeTypes } from '@/node-types';
+import { Push } from '@/push';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -48,6 +49,7 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly expressionEngineConfig: ExpressionEngineConfig,
+		private readonly push: Push,
 	) {}
 
 	async getWebhookMethods(path: string) {
@@ -166,6 +168,19 @@ export class LiveWebhooks implements IWebhookManager {
 			if (workflowStartNode === null) {
 				throw new NotFoundError('Could not find node to process webhook.');
 			}
+
+			// Lets the webhooks settings view highlight a webhook when it triggers
+			this.push.broadcast({
+				type: 'webhookReceived',
+				data: {
+					workflowId: webhook.workflowId,
+					node: webhook.node,
+					method: webhook.method,
+					path: webhook.isDynamic
+						? `${webhook.webhookId}/${webhook.webhookPath}`
+						: webhook.webhookPath,
+				},
+			});
 
 			if (!authAllowlistedNodes.has(workflowStartNode.type)) {
 				sanitizeWebhookRequest(request);

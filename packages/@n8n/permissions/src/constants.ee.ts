@@ -45,6 +45,7 @@ export const RESOURCES = {
 	] as const,
 	variable: [...DEFAULT_OPERATIONS] as const,
 	projectVariable: [...DEFAULT_OPERATIONS] as const,
+	webhook: ['list'] as const,
 	workersView: ['manage'] as const,
 	workflow: [
 		'share',
