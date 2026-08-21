@@ -1,5 +1,3 @@
-process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
-
 import type { WorkflowReviewInboxItem } from '@n8n/api-types';
 import {
 	createTeamProject,
@@ -74,7 +72,6 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 	testServer.license.enable('feat:workflowReviews');
 
 	await testDb.truncate([

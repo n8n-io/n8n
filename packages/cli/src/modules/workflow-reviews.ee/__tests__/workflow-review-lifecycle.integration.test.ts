@@ -1,5 +1,3 @@
-process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
-
 import type { SourceControlledFile } from '@n8n/api-types';
 import {
 	createTeamProject,
@@ -29,6 +27,7 @@ import { mock } from 'vitest-mock-extended';
 import { GlobalConfig } from '@n8n/config';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { EventService } from '@/events/event.service';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -79,7 +78,6 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 	testServer.license.enable('feat:workflowReviews');
 
 	await testDb.truncate([
@@ -171,6 +169,8 @@ describe('auto-close on workflow archive', () => {
 		const request = await createOpenReview(workflow.id, versionId, {
 			decision: 'changes_requested',
 		});
+		// Spied rather than mocked: the real container's listeners must keep running.
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		await ownerAgent.post(`/workflows/${workflow.id}/archive`).expect(200);
 
@@ -188,6 +188,20 @@ describe('auto-close on workflow archive', () => {
 			}),
 			closedEntry,
 		]);
+
+		// The archive path reports the close naming the cause, and the sweep that runs right
+		// after it finds nothing left to report.
+		expect(emit.mock.calls.filter(([eventName]) => eventName === 'workflow-review-closed')).toEqual(
+			[
+				[
+					'workflow-review-closed',
+					{
+						workflowReviewRequestId: request.id,
+						cause: { trigger: 'workflow-archived', actorKind: 'user', userId: owner.id },
+					},
+				],
+			],
+		);
 	});
 
 	// The cause, the close and its explanation share one transaction, so an unwritable entry

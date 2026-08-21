@@ -1101,6 +1101,65 @@ export type RelayEventMap = {
 
 	// #endregion
 
+	// #region Workflow Reviews
+
+	'workflow-review-requested': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		/** The project owning the review when it was opened. */
+		projectId: string;
+		workflowId: string;
+		workflowVersionId: string;
+		reviewerCount: number;
+	};
+
+	'workflow-review-version-updated': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		workflowId: string;
+		workflowVersionId: string;
+	};
+
+	'workflow-review-decided': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+		workflowId: string;
+		/** Null when the pinned version was pruned before the decision. */
+		workflowVersionId: string | null;
+		decision: 'approved' | 'changes_requested';
+		decidedVia: 'assigned-reviewer' | 'admin-override';
+		reviewCreatedAt: Date;
+	};
+
+	/**
+	 * Closed without a decision, by the workflow lifecycle hooks or the reconciliation
+	 * sweep. An approval closes the request too but emits 'workflow-review-decided'
+	 * instead, never both: every close path filters `state = 'open'` and `decide()`
+	 * closes in-line.
+	 */
+	'workflow-review-closed': {
+		workflowReviewRequestId: string;
+		/**
+		 * What left the review with no reviewable workflow, and who caused that — not who
+		 * closed the review, which nobody does. `'unknown'` is not the activity feed's
+		 * `no-reviewable-workflows`: the feed records that value on every close, whatever the
+		 * trigger, while `'unknown'` says the trigger itself went unrecorded.
+		 */
+		cause: {
+			trigger: 'workflow-archived' | 'workflow-moved' | 'workflow-deleted' | 'unknown';
+			/** 'system' means no actor was recorded, not that automation acted. */
+			actorKind: 'user' | 'system';
+			userId: string | null;
+		};
+	};
+
+	'workflow-review-comment-created': {
+		user: UserLike;
+		workflowReviewRequestId: string;
+	};
+
+	// #endregion
+
 	// #region Custom Roles
 
 	'custom-role-created': {
