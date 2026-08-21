@@ -13,6 +13,7 @@ import {
 } from 'simple-git';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
 import { GIT_COMMAND_STALL_TIMEOUT_MS, GIT_KEY_COMMENT } from './constants';
 import type { GitConnection } from './database/entities/git-connection.entity';
@@ -251,6 +252,39 @@ export class GitConnectionsGitService {
 
 					const head = (await git.revparse(['HEAD'])).trim();
 					return { commit: head, head };
+				},
+			);
+		} catch (error) {
+			throw this.mapGitError(error, { connectionId: connection.id, branchName });
+		}
+	}
+
+	/**
+	 * Refresh the working copy to exactly match the remote branch tip: fetch, then
+	 * hard-reset to `origin/<branch>`. No merge/pull, so it can never raise a
+	 * conflict. Returns the new HEAD.
+	 */
+	async refreshWorkingCopy({
+		connection,
+		credentials,
+		rootFolder,
+		branchName,
+	}: {
+		connection: GitConnection;
+		credentials: PlainCredentials;
+		rootFolder: string;
+		branchName: string;
+	}): Promise<{ head: string }> {
+		const { repositoryFolder, sshDir } = this.connectionPaths(rootFolder);
+		try {
+			return await this.withGit(
+				{ connection, credentials, repoDir: repositoryFolder, sshDir },
+				async (git) => {
+					// --progress keeps the stall-timeout timer fed during a healthy transfer.
+					await git.fetch('origin', branchName, ['--progress']);
+					await git.raw(['reset', '--hard', `origin/${branchName}`]);
+					const head = (await git.revparse(['HEAD'])).trim();
+					return { head };
 				},
 			);
 		} catch (error) {

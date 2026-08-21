@@ -1,8 +1,47 @@
+import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
+import type { GitConnection } from '../database/entities/git-connection.entity';
 import { GitConnectionsGitService } from '../git-connections-git.service';
+
+const { mockGit, simpleGitMock, GitPluginError } = vi.hoisted(() => {
+	const instance = {
+		env: vi.fn(),
+		add: vi.fn(),
+		status: vi.fn(),
+		commit: vi.fn(),
+		push: vi.fn(),
+		fetch: vi.fn(),
+		raw: vi.fn(),
+		revparse: vi.fn(),
+		checkIsRepo: vi.fn(),
+	};
+	instance.env.mockReturnValue(instance);
+	// Minimal stand-in for simple-git's GitPluginError (carries the `plugin` name).
+	class GitPluginError extends Error {
+		constructor(
+			readonly task: unknown,
+			readonly plugin: string,
+			message: string,
+		) {
+			super(message);
+		}
+	}
+	return { mockGit: instance, simpleGitMock: vi.fn(() => instance), GitPluginError };
+});
+
+vi.mock('simple-git', () => ({
+	simpleGit: simpleGitMock,
+	CheckRepoActions: { IS_REPO_ROOT: 'root' },
+	GitPluginError,
+}));
 
 describe('GitConnectionsGitService', () => {
 	const service = new GitConnectionsGitService(mockLogger());
@@ -99,6 +138,165 @@ describe('GitConnectionsGitService', () => {
 				setPlatform('linux');
 				expect(() => service.validateRepositoryUrl(url, 'ssh')).not.toThrow();
 			});
+		});
+	});
+});
+
+describe('GitConnectionsGitService (git operations)', () => {
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
+	const gitService = new GitConnectionsGitService(logger);
+
+	// HTTPS so withGit takes the credential-helper path and writes no key files.
+	const httpsConnection = () =>
+		({
+			id: '1',
+			repositoryUrl: 'https://github.com/o/r.git',
+			connectionType: 'https',
+		}) as GitConnection;
+	const httpsCredentials = { type: 'https' as const, username: 'u', password: 'p' };
+
+	let rootFolder: string;
+
+	beforeEach(async () => {
+		vi.clearAllMocks();
+		logger.scoped.mockReturnValue(logger);
+		mockGit.env.mockReturnValue(mockGit);
+		rootFolder = await mkdtemp(path.join(tmpdir(), 'n8n-git-op-'));
+	});
+
+	afterEach(async () => {
+		await rm(rootFolder, { recursive: true, force: true });
+	});
+
+	describe('hasWorkingCopy', () => {
+		it('returns true when the repository folder is a git repo root', async () => {
+			mockGit.checkIsRepo.mockResolvedValue(true);
+
+			await expect(gitService.hasWorkingCopy(rootFolder)).resolves.toBe(true);
+			expect(simpleGitMock).toHaveBeenCalledWith(
+				expect.objectContaining({ baseDir: path.join(rootFolder, 'repository') }),
+			);
+			expect(mockGit.checkIsRepo).toHaveBeenCalledWith('root');
+		});
+
+		it('returns false when it is not a repo root', async () => {
+			mockGit.checkIsRepo.mockResolvedValue(false);
+			await expect(gitService.hasWorkingCopy(rootFolder)).resolves.toBe(false);
+		});
+
+		it('returns false when the check throws (directory missing)', async () => {
+			mockGit.checkIsRepo.mockRejectedValue(new Error('not a repo'));
+			await expect(gitService.hasWorkingCopy(rootFolder)).resolves.toBe(false);
+		});
+	});
+
+	describe('commitAndPush', () => {
+		const call = async (over: Record<string, unknown> = {}) =>
+			await gitService.commitAndPush({
+				connection: httpsConnection(),
+				credentials: httpsCredentials,
+				rootFolder,
+				branchName: 'main',
+				author: { name: 'Ada Lovelace', email: 'ada@example.com' },
+				commitMessage: 'sync',
+				force: false,
+				stagePathspec: 'n8n-export',
+				...over,
+			});
+
+		beforeEach(() => {
+			mockGit.status.mockResolvedValue({ isClean: () => false });
+			mockGit.revparse.mockResolvedValue('abc123\n');
+		});
+
+		it('stages the export, commits, pushes, and returns the trimmed commit', async () => {
+			const result = await call();
+
+			expect(mockGit.add).toHaveBeenCalledWith(['--all', '--', 'n8n-export']);
+			expect(mockGit.status).toHaveBeenCalledWith(['--', 'n8n-export']);
+			expect(mockGit.commit).toHaveBeenCalledWith('sync');
+			expect(mockGit.push).toHaveBeenCalledWith('origin', 'main');
+			expect(result).toEqual({ commit: 'abc123', head: 'abc123' });
+		});
+
+		it('runs git in the repository folder and applies the author as process-local config', async () => {
+			await call();
+
+			expect(simpleGitMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseDir: path.join(rootFolder, 'repository'),
+					config: expect.arrayContaining(['user.name=Ada Lovelace', 'user.email=ada@example.com']),
+				}),
+			);
+		});
+
+		it('force-pushes when force is set', async () => {
+			await call({ force: true });
+			expect(mockGit.push).toHaveBeenCalledWith('origin', 'main', ['-f']);
+		});
+
+		it('skips commit and push on a clean tree, returning a null commit', async () => {
+			mockGit.status.mockResolvedValue({ isClean: () => true });
+
+			const result = await call();
+
+			expect(mockGit.commit).not.toHaveBeenCalled();
+			expect(mockGit.push).not.toHaveBeenCalled();
+			expect(result).toEqual({ commit: null, head: 'abc123' });
+		});
+
+		it('maps a stall timeout to a 503', async () => {
+			mockGit.push.mockRejectedValueOnce(
+				new GitPluginError(undefined, 'timeout', 'block timeout reached'),
+			);
+			await expect(call()).rejects.toThrow(ServiceUnavailableError);
+		});
+
+		it('maps any other failure to a redacted 400 and never logs raw git output', async () => {
+			mockGit.push.mockRejectedValue(new Error('remote: rejected [non-fast-forward] secret-token'));
+
+			const error = await call().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect((error as Error).message).toBe('Could not complete the Git operation');
+			const logged = JSON.stringify(logger.warn.mock.calls);
+			expect(logged).not.toContain('secret-token');
+			expect(logged).not.toContain('non-fast-forward');
+		});
+	});
+
+	describe('refreshWorkingCopy', () => {
+		const call = async () =>
+			await gitService.refreshWorkingCopy({
+				connection: httpsConnection(),
+				credentials: httpsCredentials,
+				rootFolder,
+				branchName: 'main',
+			});
+
+		beforeEach(() => {
+			mockGit.revparse.mockResolvedValue('def456\n');
+		});
+
+		it('fetches and hard-resets to the remote tip, returning the new head', async () => {
+			const result = await call();
+
+			expect(mockGit.fetch).toHaveBeenCalledWith('origin', 'main', ['--progress']);
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
+			expect(result).toEqual({ head: 'def456' });
+		});
+
+		it('maps a stall timeout to a 503', async () => {
+			mockGit.fetch.mockRejectedValueOnce(
+				new GitPluginError(undefined, 'timeout', 'block timeout reached'),
+			);
+			await expect(call()).rejects.toThrow(ServiceUnavailableError);
+		});
+
+		it('maps any other failure to a redacted 400', async () => {
+			mockGit.fetch.mockRejectedValueOnce(new Error('boom'));
+			await expect(call()).rejects.toThrow(BadRequestError);
 		});
 	});
 });

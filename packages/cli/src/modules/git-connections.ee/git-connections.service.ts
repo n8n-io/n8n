@@ -340,19 +340,34 @@ export class GitConnectionsService {
 	}
 
 	/**
-	 * Imports every project from the connection's local working copy into the
-	 * instance, overwriting to match it. Reads what is already on disk — a git
-	 * pull/fetch is out of scope, so the result reflects the last connect, not
-	 * necessarily the remote's latest.
+	 * Resets the local clone to the configured branch tip (fetch + hard reset —
+	 * no merge, so no conflicts), then imports projects into the instance,
+	 * overwriting to match.
 	 */
 	async pull(connectionId: string, actor: User): Promise<GitConnectionPullResultDto> {
-		// Validates the connection exists (throws NotFound otherwise) before any import work.
-		await this.getEntity(connectionId);
-		const importFolder = path.join(this.rootFolder(connectionId), 'repository', EXPORT_SUBFOLDER);
+		const connection = await this.getEntity(connectionId);
+		const { branchName } = connection;
+		if (!branchName) throw new BadRequestError('A branch name is required to pull');
 
+		const rootFolder = this.rootFolder(connectionId);
+		if (!(await this.gitService.hasWorkingCopy(rootFolder))) {
+			throw new BadRequestError(
+				'This Git connection repository is not cloned. Clone it before pulling.',
+			);
+		}
+
+		const credentials = await this.decryptCredentials(connection);
+		const { head } = await this.gitService.refreshWorkingCopy({
+			connection,
+			credentials,
+			rootFolder,
+			branchName,
+		});
+
+		const importFolder = path.join(rootFolder, 'repository', EXPORT_SUBFOLDER);
 		if (!(await this.exportedWorkingCopyExists(importFolder))) {
 			throw new BadRequestError(
-				'This Git connection has no exported working copy to import. Connect it and push projects first.',
+				'The remote branch has no exported working copy to import. Push projects to it first.',
 			);
 		}
 
@@ -372,7 +387,20 @@ export class GitConnectionsService {
 			result.projects.map((project) => project.localId),
 		);
 
-		return { connectionId, counts: this.toImportCounts(result) };
+		// The working copy — and now the instance — match this remote commit.
+		connection.baseCommit = head;
+		await this.repository.save(connection);
+
+		return { connectionId, counts: this.toImportCounts(result), commit: head };
+	}
+
+	/** Commit identity for a push: the actor's name/email, with an n8n fallback. */
+	private commitAuthor(user: User): { name: string; email: string } {
+		const name =
+			user.firstName && user.lastName
+				? `${user.firstName} ${user.lastName}`
+				: GIT_DEFAULT_COMMIT_NAME;
+		return { name, email: user.email ?? GIT_DEFAULT_COMMIT_EMAIL };
 	}
 
 	private async exportedWorkingCopyExists(folder: string): Promise<boolean> {
