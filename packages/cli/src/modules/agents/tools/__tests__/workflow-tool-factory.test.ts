@@ -602,6 +602,59 @@ describe('workflow tool → Wait-node handoff', () => {
 		});
 	});
 
+	it('offers both a check and a stop-waiting button, tagged as a wait suspension', async () => {
+		setPersistence(parkedInDb(WAIT_INDEFINITELY));
+		const { tool } = await buildWaitTool(activeExecutionsParkedAt(WAIT_INDEFINITELY));
+		const { ctx, suspend } = makeCtx();
+
+		await tool.handler?.({}, ctx);
+
+		const card = suspendedCard(suspend);
+		// The marker is what lets the preview chat and the session trace tell a
+		// wait apart from a question or an approval.
+		expect(card).toMatchObject({ type: 'workflow_wait' });
+		expect(card.components.filter((component) => component.type === 'button')).toEqual([
+			{ type: 'button', label: 'Check for the result', value: 'continue', style: 'primary' },
+			{ type: 'button', label: 'Stop waiting', value: 'cancel', style: 'danger' },
+		]);
+	});
+
+	it('stops waiting instead of parking again when the user cancels the wait', async () => {
+		setPersistence(parkedInDb(WAIT_INDEFINITELY));
+		const { tool, run } = await buildWaitTool(mock<ActiveExecutions>());
+		const { ctx, suspend } = makeCtx({
+			continuation: { executionId: 'exec-1' },
+			resumeData: { type: 'button', value: 'cancel' },
+		});
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(run).not.toHaveBeenCalled();
+		expect(suspend).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			executionId: 'exec-1',
+			status: 'waiting',
+			note: expect.stringContaining('stopped waiting'),
+		});
+	});
+
+	// A bounded wait due within the poll window would otherwise block the
+	// cancellation for up to a minute before parking again.
+	it('does not poll a due-soon wait when the user cancels it', async () => {
+		const waitTill = new Date(Date.now() + 30_000);
+		setPersistence(parkedInDb(waitTill));
+		const { tool } = await buildWaitTool(mock<ActiveExecutions>());
+		const { ctx, suspend } = makeCtx({
+			continuation: { executionId: 'exec-1' },
+			resumeData: { type: 'button', value: 'cancel' },
+		});
+
+		await tool.handler?.({}, ctx);
+
+		expect(vi.mocked(sleep)).not.toHaveBeenCalled();
+		expect(suspend).not.toHaveBeenCalled();
+	});
+
 	it('parks again when the workflow is still waiting on resume', async () => {
 		setPersistence(parkedInDb(WAIT_INDEFINITELY));
 		const { tool, run } = await buildWaitTool(mock<ActiveExecutions>());

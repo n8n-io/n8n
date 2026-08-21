@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { computed, defineComponent, h, ref } from 'vue';
-import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -425,6 +425,79 @@ describe('AgentChatPanel', () => {
 		await stopButton.trigger('click');
 		await flushPromises();
 		expect(stopGeneratingMock).toHaveBeenCalledTimes(1);
+	});
+
+	/**
+	 * A workflow tool parked on a Wait node. It renders a card, but nobody is
+	 * being asked anything — the workflow resumes it — so the input must be
+	 * blocked rather than routed into cancel-and-steer.
+	 */
+	function openWaitMessage(): ChatMessage {
+		return {
+			id: 'assistant-1',
+			role: 'assistant',
+			content: '',
+			status: 'awaitingUser',
+			toolCalls: [
+				{ tool: 'approval_workflow', toolCallId: 'tc-1', runId: 'run-1', state: 'suspended' },
+			],
+			interactive: {
+				toolName: WAIT_TOOL_NAME,
+				toolCallId: 'tc-1',
+				runId: 'run-1',
+				input: {
+					card: {
+						title: 'Waiting on "Approval workflow"',
+						components: [{ type: 'button', label: 'Stop waiting', value: 'cancel' }],
+					},
+				},
+			},
+		};
+	}
+
+	it('blocks the chat input while a waiting card is open', () => {
+		messagesMock.value = [openWaitMessage()];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('disabled')).toBe(true);
+		expect(chatInput.props('isStreaming')).toBe(true);
+		expect(chatInput.props('placeholder')).toBe('agents.chat.waiting.inputPlaceholder');
+	});
+
+	it('neither sends nor steers while a waiting card is open', async () => {
+		messagesMock.value = [openWaitMessage()];
+
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('any news?');
+		await flushPromises();
+
+		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(cancelAndSteerMock).not.toHaveBeenCalled();
+	});
+
+	// The run is parked and would restart from a context with the pending tool
+	// call stripped out, so the model would call the same tool again.
+	it('blocks the chat input for a suspension with no card', () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{ tool: 'external_action', toolCallId: 'tc-1', runId: 'run-1', state: 'suspended' },
+				],
+			},
+		];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('disabled')).toBe(true);
 	});
 
 	it('keeps the stop control available for a non-card suspension', () => {
