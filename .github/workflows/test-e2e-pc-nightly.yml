@@ -42,6 +42,9 @@ jobs:
       - name: Pull image and assert pointer compression
         run: |
           docker pull --quiet "$TEST_IMAGE_N8N"
+          # Pre-pull the runner image too: the test fixture's 60s budget covers
+          # container start, not a cold image download.
+          docker pull --quiet "$TEST_IMAGE_TASK_RUNNER"
           docker run --rm --entrypoint node "$TEST_IMAGE_N8N" -e "
             if (!process.config.variables.v8_enable_pointer_compression) {
               throw new Error('image is not pointer-compressed');
