@@ -1,4 +1,4 @@
-import { redactTelemetryText } from '../telemetry-redaction';
+import { redactTelemetryProperties, redactTelemetryText } from '../telemetry-redaction';
 
 describe('redactTelemetryText', () => {
 	it('leaves ordinary assistant prose untouched', () => {
@@ -39,5 +39,61 @@ describe('redactTelemetryText', () => {
 
 	it('passes through the empty string', () => {
 		expect(redactTelemetryText('')).toBe('');
+	});
+});
+
+describe('redactTelemetryProperties', () => {
+	it('scrubs free-text values and leaves everything else intact', () => {
+		const redacted = redactTelemetryProperties({
+			thread_id: 'thread-1',
+			run_id: 'run-1',
+			query: 'send a receipt to jane.doe@example.com',
+			attempt_count: 2,
+			multi_gate: true,
+			templates_version: null,
+		});
+
+		expect(redacted).toEqual({
+			thread_id: 'thread-1',
+			run_id: 'run-1',
+			query: 'send a receipt to [REDACTED]',
+			attempt_count: 2,
+			multi_gate: true,
+			templates_version: null,
+		});
+	});
+
+	it('leaves identifier-shaped values unscrubbed so events stay joinable', () => {
+		const properties = {
+			workflow_id: '0d7d274c-1e7a-409f-8d77-bc868a97abd7',
+			source_hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+			node_ids: ['10.0.0.5', '192.168.1.1'],
+		};
+
+		expect(redactTelemetryProperties(properties)).toEqual(properties);
+	});
+
+	it('recurses into nested objects and arrays', () => {
+		const redacted = redactTelemetryProperties({
+			errors: [
+				{
+					node: 'HTTP Request',
+					message: 'rejected ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+				},
+			],
+		});
+
+		expect(redacted).toEqual({
+			errors: [{ node: 'HTTP Request', message: 'rejected [REDACTED]' }],
+		});
+	});
+
+	it('drops values nested deeper than the scrub depth instead of shipping them raw', () => {
+		const redacted = redactTelemetryProperties({
+			a: { b: { c: { d: { e: { f: { secret: 'jane.doe@example.com' } } } } } },
+		});
+
+		expect(JSON.stringify(redacted)).not.toContain('jane.doe@example.com');
+		expect(JSON.stringify(redacted)).toContain('[REDACTED_DEPTH]');
 	});
 });

@@ -1,4 +1,5 @@
 import { redactText, SUPPORTED_PII_CATEGORIES, type RedactionOptions } from '@n8n/agents';
+import type { GenericValue, ITelemetryTrackProperties } from 'n8n-workflow';
 
 /**
  * Egress policy for free-text values leaving the instance as product telemetry
@@ -28,6 +29,20 @@ const TELEMETRY_REDACTION_OPTIONS: RedactionOptions = {
  */
 const MAX_TELEMETRY_TEXT_LENGTH = 8_000;
 
+/**
+ * Identifier-shaped keys (`thread_id`, `workflow_id`, `source_hash`, …). Their
+ * values are internally generated, carry no user content, and are the join keys
+ * every dashboard groups by — scrubbing them is all downside.
+ */
+const IDENTIFIER_KEY_PATTERN = /(?:^|_)(?:id|ids|hash)$/;
+
+/**
+ * Telemetry payloads are flat in practice. Rather than let an unexpectedly deep
+ * value through unscrubbed (INS-685), replace it with a marker.
+ */
+const MAX_PROPERTY_DEPTH = 5;
+const OVER_DEPTH_MARKER = '[REDACTED_DEPTH]';
+
 /** Scrub secrets/PII from a free-text telemetry value and cap its length. */
 export function redactTelemetryText(value: string): string {
 	const redacted = redactText(value, TELEMETRY_REDACTION_OPTIONS).text;
@@ -35,4 +50,43 @@ export function redactTelemetryText(value: string): string {
 	return redacted.length > MAX_TELEMETRY_TEXT_LENGTH
 		? `${redacted.slice(0, MAX_TELEMETRY_TEXT_LENGTH)}...`
 		: redacted;
+}
+
+function redactPropertyValue(key: string, value: GenericValue, depth: number): GenericValue {
+	if (typeof value === 'string') {
+		return IDENTIFIER_KEY_PATTERN.test(key) ? value : redactTelemetryText(value);
+	}
+
+	if (Array.isArray(value)) {
+		if (depth >= MAX_PROPERTY_DEPTH) return OVER_DEPTH_MARKER;
+		return value.map((entry: GenericValue) => redactPropertyValue(key, entry, depth + 1));
+	}
+
+	if (value !== null && typeof value === 'object') {
+		if (depth >= MAX_PROPERTY_DEPTH) return OVER_DEPTH_MARKER;
+		const redacted: Record<string, GenericValue> = {};
+		for (const [nestedKey, nestedValue] of Object.entries(value)) {
+			redacted[nestedKey] = redactPropertyValue(nestedKey, nestedValue as GenericValue, depth + 1);
+		}
+		return redacted;
+	}
+
+	return value;
+}
+
+/**
+ * Scrub every free-text value in a telemetry payload. Used at boundaries where
+ * the property bag is open-ended — notably the `trackTelemetry` channel handed
+ * to tools, whose payloads (search queries, remediation reasons, node error
+ * strings) are model- or user-derived and can't be audited call site by call
+ * site. Identifier keys and non-string values pass through untouched.
+ */
+export function redactTelemetryProperties(
+	properties: ITelemetryTrackProperties,
+): ITelemetryTrackProperties {
+	const redacted: ITelemetryTrackProperties = {};
+	for (const [key, value] of Object.entries(properties)) {
+		redacted[key] = redactPropertyValue(key, value, 0);
+	}
+	return redacted;
 }
