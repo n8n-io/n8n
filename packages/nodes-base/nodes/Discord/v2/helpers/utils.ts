@@ -168,12 +168,12 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 					height: 720,
 				};
 			}
-			if (embedReturnData.thumbnail) {
+			if (embedReturnData.thumbnail && typeof embedReturnData.thumbnail === 'string') {
 				embedReturnData.thumbnail = {
 					url: embedReturnData.thumbnail,
 				};
 			}
-			if (embedReturnData.image) {
+			if (embedReturnData.image && typeof embedReturnData.image === 'string') {
 				embedReturnData.image = {
 					url: embedReturnData.image,
 				};
