@@ -14,7 +14,10 @@ import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
-import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	findOpenInteractive,
+	getMessageInteractives,
+} from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type {
@@ -196,18 +199,30 @@ const missingFields = computed(() => {
 const openInteractive = computed(() => findOpenInteractive(messages.value));
 const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
 const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
-// A waiting card is an interactive the user can act on, but not a question:
+// A waiting card is an interactive the user can act on, but never a question:
 // its resume arrives from the workflow, so typing must not cancel and steer it.
-const hasOpenWait = computed(() => openInteractive.value?.toolName === WAIT_TOOL_NAME);
+const hasOpenWaitCard = computed(() => openInteractive.value?.toolName === WAIT_TOOL_NAME);
 const hasOpenInteractiveQuestion = computed(
-	() => hasOpenInteraction.value && !hasOpenApproval.value && !hasOpenWait.value,
+	() => hasOpenInteraction.value && !hasOpenApproval.value && !hasOpenWaitCard.value,
 );
-const hasOpenSuspension = computed(() =>
-	messages.value.some((message) =>
-		message.toolCalls?.some(
+
+/**
+ * Only the tail of the transcript can hold the input. A parked run is always
+ * the last turn, so anything after it — a resumed answer, a later turn — means
+ * that suspension is history. Without this, one abandoned card wedges the chat
+ * for good, and the card it points at is scrolled far out of view.
+ */
+const tailMessage = computed(() => messages.value[messages.value.length - 1]);
+const tailOpenInteractive = computed(() => {
+	const message = tailMessage.value;
+	if (!message) return undefined;
+	return getMessageInteractives(message).find((payload) => payload.resolvedAt === undefined);
+});
+const tailHasSuspendedToolCall = computed(
+	() =>
+		tailMessage.value?.toolCalls?.some(
 			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
-		),
-	),
+		) ?? false,
 );
 /**
  * A parked run owns the conversation: sending now would start a second run
@@ -218,8 +233,8 @@ const hasOpenSuspension = computed(() =>
 const inputBlockedBySuspension = computed(
 	() =>
 		hasOpenApproval.value ||
-		hasOpenWait.value ||
-		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
+		tailOpenInteractive.value?.toolName === WAIT_TOOL_NAME ||
+		(tailHasSuspendedToolCall.value && !hasOpenInteractiveQuestion.value),
 );
 // Tools still pending/running after the stream ended (desync): the backend
 // finished but their terminal events never arrived. Surfacing Stop here lets

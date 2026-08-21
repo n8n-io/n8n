@@ -480,6 +480,66 @@ describe('AgentChatPanel', () => {
 		expect(cancelAndSteerMock).not.toHaveBeenCalled();
 	});
 
+	// The workflow woke the run and the answer landed after the card. Nothing is
+	// parked any more, so the input has to come back on its own — the user never
+	// clicked the card and never will.
+	it('frees the chat input once a turn lands after the waiting card', () => {
+		messagesMock.value = [
+			openWaitMessage(),
+			{
+				id: 'assistant-2',
+				role: 'assistant',
+				content: "Here's the result of the long wait test",
+				status: 'success',
+			},
+		];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('disabled')).toBe(false);
+		expect(chatInput.props('placeholder')).toBe('Message Agent…');
+	});
+
+	// An abandoned card from an earlier turn is scrolled far out of view, so
+	// blocking on it would wedge the chat with no way to see what it points at.
+	it('does not let an abandoned card from an earlier turn hold the input', () => {
+		messagesMock.value = [
+			{ ...openWaitMessage(), id: 'assistant-old' },
+			{ id: 'user-2', role: 'user', content: 'and now something else', status: 'success' },
+			{
+				id: 'assistant-2',
+				role: 'assistant',
+				content: 'Done.',
+				status: 'success',
+			},
+		];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('disabled')).toBe(false);
+	});
+
+	// Typing is a new message, not an answer: a waiting card is not a question,
+	// so it must never be routed into cancel-and-steer.
+	it('does not steer an earlier waiting card when the user types', async () => {
+		messagesMock.value = [
+			{ ...openWaitMessage(), id: 'assistant-old' },
+			{ id: 'assistant-2', role: 'assistant', content: 'Done.', status: 'success' },
+		];
+
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('something new');
+		await flushPromises();
+
+		expect(cancelAndSteerMock).not.toHaveBeenCalled();
+		expect(sendMessageMock).toHaveBeenCalledWith('something new');
+	});
+
 	// The run is parked and would restart from a context with the pending tool
 	// call stripped out, so the model would call the same tool again.
 	it('blocks the chat input for a suspension with no card', () => {
