@@ -95,3 +95,27 @@ describe('prior-session labelling', () => {
 		expect(text).not.toContain('PREVIOUS SESSION');
 	});
 });
+
+describe('seeded agents across a boundary', () => {
+	// Agents are instance-scoped, so crossing is the documented intent and must stay
+	// authorable. What does NOT cross is the thread→agent binding: the history is
+	// restored into the seed thread, so the live turn continues no agent. The harness
+	// warns and declines to promote a "last targeted" agent it has no basis to pick.
+	it('accepts a boundary case that also seeds agents', () => {
+		const parsed = EvalTestCaseSchema.safeParse({
+			...baseCase,
+			seed: {
+				mode: 'inline',
+				sessionBoundary: true,
+				messages: [{ role: 'user', text: 'use the triage agent for this' }],
+				agents: [
+					{
+						id: 'seedagent-triage-01',
+						config: { name: 'Triage', model: '', instructions: 'Triage incoming issues.' },
+					},
+				],
+			},
+		});
+		expect(parsed.success).toBe(true);
+	});
+});
