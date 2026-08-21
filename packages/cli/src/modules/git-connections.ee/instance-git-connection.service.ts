@@ -12,6 +12,7 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY } from './constants';
+import { applyAuthenticationUpdate } from './git-connections-auth.utils';
 import { GitConnectionsGitService } from './git-connections-git.service';
 
 /**
@@ -44,6 +45,12 @@ export class InstanceGitConnectionService {
 		private readonly cipher: Cipher,
 	) {}
 
+	private readonly authDeps = {
+		generateSshKeyPair: async (keyType: GitKeyGeneratorType) =>
+			await this.gitService.generateSshKeyPair(keyType),
+		encrypt: async (value: string) => await this.cipher.encryptV2(value),
+	};
+
 	async getSettings(): Promise<InstanceGitSettingsPublicDto> {
 		return this.toPublic(await this.getPreferences());
 	}
@@ -54,17 +61,19 @@ export class InstanceGitConnectionService {
 		}
 
 		const current = await this.getPreferences();
-		const updated: InstanceGitConnectionPreferences = { ...current };
 
+		// Validate the target URL and branch before applying auth, so invalid input
+		// fails fast instead of generating a throwaway SSH key pair first.
+		const targetType = input.connectionType ?? current.connectionType;
+		const targetUrl = input.repositoryUrl ?? current.repositoryUrl;
+		if (targetUrl && targetType) this.gitService.validateRepositoryUrl(targetUrl, targetType);
+		if (input.branchName) await this.gitService.validateBranchName(input.branchName);
+
+		const updated: InstanceGitConnectionPreferences = { ...current };
 		if (input.repositoryUrl !== undefined) updated.repositoryUrl = input.repositoryUrl;
 		if (input.branchName !== undefined) updated.branchName = input.branchName;
 
-		await this.applyAuthentication(updated, current, input);
-
-		if (updated.repositoryUrl && updated.connectionType) {
-			this.gitService.validateRepositoryUrl(updated.repositoryUrl, updated.connectionType);
-		}
-		if (input.branchName) await this.gitService.validateBranchName(input.branchName);
+		await applyAuthenticationUpdate(updated, current, input, this.authDeps);
 
 		const targetEnabled = input.enabled ?? current.enabled;
 		if (targetEnabled) this.assertConfigured(updated);
@@ -76,78 +85,6 @@ export class InstanceGitConnectionService {
 
 		await this.save(updated);
 		return this.toPublic(updated);
-	}
-
-	/**
-	 * Apply auth changes onto {@link updated}, preserving existing secrets when the
-	 * caller doesn't touch them. Handles first-time configuration (no type yet)
-	 * and switching between SSH and HTTPS, mirroring the project connection rules.
-	 */
-	private async applyAuthentication(
-		updated: InstanceGitConnectionPreferences,
-		current: InstanceGitConnectionPreferences,
-		input: UpdateInstanceGitSettingsDto,
-	) {
-		const targetType = input.connectionType ?? current.connectionType;
-
-		// No connection type set or being set: auth material has no context to attach to.
-		if (targetType === null) {
-			if (
-				input.username !== undefined ||
-				input.password !== undefined ||
-				input.keyGeneratorType !== undefined
-			) {
-				throw new BadRequestError('Connection type is required to set authentication');
-			}
-			return;
-		}
-
-		if (targetType === 'ssh') {
-			if (input.username !== undefined || input.password !== undefined) {
-				throw new BadRequestError('Username and password are only valid for HTTPS connections');
-			}
-			// Already SSH: keep the existing key pair; only guard against changing its type.
-			if (current.connectionType === 'ssh') {
-				if (input.keyGeneratorType && input.keyGeneratorType !== current.keyGeneratorType) {
-					throw new BadRequestError('SSH key type cannot be changed after creation');
-				}
-				return;
-			}
-			// First-time SSH or switching from HTTPS: generate a fresh key pair.
-			const keyType = input.keyGeneratorType ?? 'ed25519';
-			const pair = await this.gitService.generateSshKeyPair(keyType);
-			updated.connectionType = 'ssh';
-			updated.publicKey = pair.publicKey;
-			updated.encryptedPrivateKey = await this.cipher.encryptV2(pair.privateKey);
-			updated.keyGeneratorType = keyType;
-			updated.encryptedUsername = null;
-			updated.encryptedPassword = null;
-			return;
-		}
-
-		if (input.keyGeneratorType !== undefined) {
-			throw new BadRequestError('Key generator type is only valid for SSH connections');
-		}
-		// Require credentials when switching to (or first configuring) HTTPS.
-		const switching = current.connectionType !== 'https';
-		this.validateHttpsCredentials(input.username, input.password, switching);
-		updated.connectionType = 'https';
-		if (input.username !== undefined && input.password !== undefined) {
-			updated.encryptedUsername = await this.cipher.encryptV2(input.username);
-			updated.encryptedPassword = await this.cipher.encryptV2(input.password);
-		}
-		updated.publicKey = null;
-		updated.encryptedPrivateKey = null;
-		updated.keyGeneratorType = null;
-	}
-
-	private validateHttpsCredentials(username?: string, password?: string, required = false) {
-		if ((username === undefined) !== (password === undefined) || (required && !username)) {
-			throw new BadRequestError('HTTPS username and password must be provided together');
-		}
-		if ([username, password].some((value) => value && /[\r\n\0]/.test(value))) {
-			throw new BadRequestError('HTTPS credentials contain unsupported characters');
-		}
 	}
 
 	/** A connection can only be enabled once it is fully usable. */

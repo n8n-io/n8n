@@ -4,6 +4,7 @@ import {
 	GitConnectionProjectPublicDto,
 	type GitConnectionPublicDto,
 	type GitConnectionPushResultDto,
+	type GitKeyGeneratorType,
 	type UpdateGitConnectionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -29,6 +30,7 @@ import { GitConnectionProject } from './database/entities/git-connection-project
 import { GitConnection } from './database/entities/git-connection.entity';
 import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from './database/repositories/git-connection.repository';
+import { applyAuthenticationUpdate, emptyGitAuthMaterial } from './git-connections-auth.utils';
 import { GitConnectionsGitService } from './git-connections-git.service';
 
 /**
@@ -59,6 +61,12 @@ export class GitConnectionsService {
 		this.logger = this.logger.scoped('git-connections');
 	}
 
+	private readonly authDeps = {
+		generateSshKeyPair: async (keyType: GitKeyGeneratorType) =>
+			await this.gitService.generateSshKeyPair(keyType),
+		encrypt: async (value: string) => await this.cipher.encryptV2(value),
+	};
+
 	async create(input: CreateGitConnectionDto) {
 		this.gitService.validateRepositoryUrl(input.repositoryUrl, input.connectionType);
 		if (input.branchName) await this.gitService.validateBranchName(input.branchName);
@@ -75,7 +83,7 @@ export class GitConnectionsService {
 			keyGeneratorType: null,
 			baseCommit: null,
 		});
-		await this.applyNewAuthentication(connection, input);
+		await applyAuthenticationUpdate(connection, emptyGitAuthMaterial(), input, this.authDeps);
 		return this.toPublic(await this.repository.save(connection));
 	}
 
@@ -113,7 +121,7 @@ export class GitConnectionsService {
 		if (input.repositoryUrl !== undefined) updated.repositoryUrl = input.repositoryUrl;
 		if (input.branchName !== undefined) updated.branchName = input.branchName;
 
-		await this.applyUpdatedAuthentication(updated, current, input);
+		await applyAuthenticationUpdate(updated, current, input, this.authDeps);
 
 		const saved = await this.repository.save(updated);
 		if (changesTarget) await this.resetWorkingCopy(id);
@@ -269,84 +277,6 @@ export class GitConnectionsService {
 			projectId: link.projectId,
 			gitConnectionId: link.gitConnectionId,
 		});
-	}
-
-	private async applyNewAuthentication(
-		connection: GitConnection,
-		input: Pick<
-			CreateGitConnectionDto,
-			'connectionType' | 'keyGeneratorType' | 'username' | 'password'
-		>,
-	) {
-		if (input.connectionType === 'ssh') {
-			if (input.username !== undefined || input.password !== undefined) {
-				throw new BadRequestError('Username and password are only valid for HTTPS connections');
-			}
-			const keyType = input.keyGeneratorType ?? 'ed25519';
-			const keyPair = await this.gitService.generateSshKeyPair(keyType);
-			connection.publicKey = keyPair.publicKey;
-			connection.encryptedPrivateKey = await this.cipher.encryptV2(keyPair.privateKey);
-			connection.keyGeneratorType = keyType;
-			return;
-		}
-
-		if (input.keyGeneratorType !== undefined) {
-			throw new BadRequestError('Key generator type is only valid for SSH connections');
-		}
-		this.validateHttpsCredentials(input.username, input.password, true);
-		connection.encryptedUsername = await this.cipher.encryptV2(input.username!);
-		connection.encryptedPassword = await this.cipher.encryptV2(input.password!);
-	}
-
-	private async applyUpdatedAuthentication(
-		updated: GitConnection,
-		current: GitConnection,
-		input: UpdateGitConnectionDto,
-	) {
-		const targetType = input.connectionType ?? current.connectionType;
-		if (targetType === 'ssh') {
-			if (input.username !== undefined || input.password !== undefined) {
-				throw new BadRequestError('Username and password are only valid for HTTPS connections');
-			}
-			if (current.connectionType === 'ssh') {
-				if (input.keyGeneratorType && input.keyGeneratorType !== current.keyGeneratorType) {
-					throw new BadRequestError('SSH key type cannot be changed after creation');
-				}
-				return;
-			}
-			const keyType = input.keyGeneratorType ?? 'ed25519';
-			const pair = await this.gitService.generateSshKeyPair(keyType);
-			updated.connectionType = 'ssh';
-			updated.publicKey = pair.publicKey;
-			updated.encryptedPrivateKey = await this.cipher.encryptV2(pair.privateKey);
-			updated.keyGeneratorType = keyType;
-			updated.encryptedUsername = null;
-			updated.encryptedPassword = null;
-			return;
-		}
-
-		if (input.keyGeneratorType !== undefined) {
-			throw new BadRequestError('Key generator type is only valid for SSH connections');
-		}
-		const switching = current.connectionType === 'ssh';
-		this.validateHttpsCredentials(input.username, input.password, switching);
-		updated.connectionType = 'https';
-		if (input.username !== undefined && input.password !== undefined) {
-			updated.encryptedUsername = await this.cipher.encryptV2(input.username);
-			updated.encryptedPassword = await this.cipher.encryptV2(input.password);
-		}
-		updated.publicKey = null;
-		updated.encryptedPrivateKey = null;
-		updated.keyGeneratorType = null;
-	}
-
-	private validateHttpsCredentials(username?: string, password?: string, required = false) {
-		if ((username === undefined) !== (password === undefined) || (required && !username)) {
-			throw new BadRequestError('HTTPS username and password must be provided together');
-		}
-		if ([username, password].some((value) => value && /[\r\n\0]/.test(value))) {
-			throw new BadRequestError('HTTPS credentials contain unsupported characters');
-		}
 	}
 
 	private async decryptCredentials(connection: GitConnection) {
