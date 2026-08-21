@@ -12,6 +12,7 @@ import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
+	proxyFetch,
 } from '@n8n/ai-utilities';
 
 export class LmOllama implements INodeType {
@@ -64,6 +65,9 @@ export class LmOllama implements INodeType {
 				}
 			: undefined;
 
+		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
+			await proxyFetch(input, init, {});
+
 		const model = new Ollama({
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
@@ -71,6 +75,7 @@ export class LmOllama implements INodeType {
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			headers,
+			fetch: fetchWithTimeout,
 		});
 
 		return {
