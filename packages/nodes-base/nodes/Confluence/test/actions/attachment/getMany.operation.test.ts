@@ -1,7 +1,7 @@
 import type { IBinaryData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { execute } from '../../../actions/attachment/getMany.operation';
+import { description, execute } from '../../../actions/attachment/getMany.operation';
 import { confluenceApiRequest, confluenceApiRequestBinary } from '../../../transport';
 import { mockExecuteCtx } from '../../shared';
 
@@ -49,6 +49,22 @@ describe('attachment:getMany', () => {
 		vi.clearAllMocks();
 		apiRequest.mockResolvedValue(attachmentPage([]));
 		binaryRequest.mockResolvedValue(Buffer.from('file-bytes'));
+	});
+
+	it('keeps the field-specific display conditions alongside the operation scoping', () => {
+		const limitProperty = description.find((p) => p.name === 'limit');
+		expect(limitProperty?.displayOptions?.show).toEqual({
+			resource: ['attachment'],
+			operation: ['getMany'],
+			returnAll: [false],
+		});
+
+		const binaryProperty = description.find((p) => p.name === 'binaryPropertyName');
+		expect(binaryProperty?.displayOptions?.show).toEqual({
+			resource: ['attachment'],
+			operation: ['getMany'],
+			download: [true],
+		});
 	});
 
 	it('lists attachments and returns one item per record', async () => {
