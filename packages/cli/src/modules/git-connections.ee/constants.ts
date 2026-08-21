@@ -1,6 +1,12 @@
 /** Comment embedded in generated SSH keys (visible when added as a deploy key). */
 export const GIT_KEY_COMMENT = 'n8n git connection';
 
+// Fallback commit identity when the pushing user has no full profile. Mirrors
+// source-control's SOURCE_CONTROL_DEFAULT_NAME/EMAIL so a profile-less user can
+// still commit; kept here to keep this module self-contained.
+export const GIT_DEFAULT_COMMIT_NAME = 'n8n user';
+export const GIT_DEFAULT_COMMIT_EMAIL = 'n8n@example.com';
+
 // Timeouts that bound how long a stalled Git operation can hang. Transport-level
 // limits (SSH, HTTP) fire first based on real network inactivity; the process
 // stall timeout is a transport-agnostic backstop.
