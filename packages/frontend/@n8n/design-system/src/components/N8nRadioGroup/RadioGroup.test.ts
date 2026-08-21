@@ -19,7 +19,7 @@ function renderRadioGroup(props: Record<string, unknown> = {}, slots: { default?
 	});
 }
 
-describe('v2/components/RadioGroup', () => {
+describe('components/N8nRadioGroup', () => {
 	describe('rendering', () => {
 		it('should render unchecked by default', () => {
 			const wrapper = renderRadioGroup();
