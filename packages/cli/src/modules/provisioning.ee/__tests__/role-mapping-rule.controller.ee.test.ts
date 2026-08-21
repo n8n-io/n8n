@@ -3,8 +3,6 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-
 import { RoleMappingRuleController } from '../role-mapping-rule.controller.ee';
 import type {
 	RoleMappingRuleListResponse,
@@ -14,13 +12,8 @@ import type {
 
 const roleMappingRuleService = mock<RoleMappingRuleService>();
 const licenseState = mock<LicenseState>();
-const eventService = mock<EventService>();
 
-const controller = new RoleMappingRuleController(
-	roleMappingRuleService,
-	licenseState,
-	eventService,
-);
+const controller = new RoleMappingRuleController(roleMappingRuleService, licenseState);
 
 describe('RoleMappingRuleController', () => {
 	beforeEach(() => {
@@ -230,8 +223,6 @@ describe('RoleMappingRuleController', () => {
 				userId: req.user.id,
 				userEmail: req.user.email,
 			});
-			// The service owns the `role-mapping-rule-deleted` emission now.
-			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 });

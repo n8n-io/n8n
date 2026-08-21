@@ -19,8 +19,6 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { EventService } from '@/events/event.service';
-
 import type {
 	RoleMappingRuleListResponse,
 	RoleMappingRuleResponse,
@@ -32,7 +30,6 @@ export class RoleMappingRuleController {
 	constructor(
 		private readonly roleMappingRuleService: RoleMappingRuleService,
 		private readonly licenseState: LicenseState,
-		private readonly eventService: EventService,
 	) {}
 
 	@Get('/')
