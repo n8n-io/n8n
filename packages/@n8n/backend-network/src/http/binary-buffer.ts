@@ -3,6 +3,22 @@ import { Container } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
+/** Drain any bytes still sitting in the Readable's internal buffer. */
+function flushBufferedChunks(stream: Readable): Buffer {
+	const chunks: Buffer[] = [];
+	let chunk: unknown;
+	while ((chunk = stream.read()) !== null) {
+		if (Buffer.isBuffer(chunk)) {
+			chunks.push(chunk);
+		} else if (typeof chunk === 'string') {
+			chunks.push(Buffer.from(chunk));
+		} else if (chunk instanceof Uint8Array) {
+			chunks.push(Buffer.from(chunk));
+		}
+	}
+	return Buffer.concat(chunks);
+}
+
 /**
  * Converts a readable stream to a buffer, rejecting if the stream stalls.
  *
@@ -12,8 +28,22 @@ import type { Readable } from 'stream';
  * cut off) — meaning it bounds inactivity, not total read time; a stream that
  * keeps trickling data is intentionally not capped. `idleTimeoutMs` defaults to
  * `HttpRequestConfig.responseBodyReadTimeout`.
+ *
+ * Axios can also hand back a stream that is already `destroyed`/`closed`
+ * (typical for HTTPS CONNECT proxy errors with `responseType: 'stream'`). In
+ * that case no further `end`/`error`/`close` events fire, so we must settle
+ * from the stream's current state instead of waiting on listeners.
  */
 export async function streamToBuffer(stream: Readable, idleTimeoutMs?: number): Promise<Buffer> {
+	// Axios error responses with responseType:'stream' often arrive already
+	// destroyed/closed (e.g. a proxy CONNECT 403 whose Content-Length was never
+	// satisfied). Late 'end'/'close' listeners never fire — without this check
+	// we'd only escape via the inactivity timeout (default 5 minutes). Return
+	// whatever is still buffered so callers can surface the HTTP status + body.
+	if (stream.readableEnded || stream.destroyed || stream.closed) {
+		return flushBufferedChunks(stream);
+	}
+
 	const timeout = idleTimeoutMs ?? Container.get(HttpRequestConfig).responseBodyReadTimeout;
 	const useTimer = Number.isFinite(timeout) && timeout > 0;
 
