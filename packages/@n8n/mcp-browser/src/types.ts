@@ -244,6 +244,8 @@ export interface ClickOptions {
 }
 
 export interface TypeOptions {
+	/** 'paste' inserts the value in one operation, replacing existing content. */
+	mode?: 'type' | 'paste';
 	clear?: boolean;
 	submit?: boolean;
 	delay?: number;

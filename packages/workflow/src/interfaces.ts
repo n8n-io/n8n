@@ -1543,7 +1543,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * Call only after the token is validated. The identity persists for the whole
 	 * execution (including across a Wait), within the token's validity window.
 	 */
-	establishTriggerIdentity(token: string, resource: string): Promise<void>;
+	establishTriggerIdentity(token: string, resource: string, subject?: string): Promise<void>;
 	/**
 	 * Checks the status of the triggering identity's resolvable (end-user) credentials
 	 * for this workflow, using the execution context established by
@@ -3022,12 +3022,29 @@ export type TriggerPanelDefinition = {
 	activationHint?: string | { active: string; inactive: string };
 };
 
+/**
+ * Collapses hints that report the same kind of problem, so a node reporting it
+ * for 20 fields shows one summary line instead of 20 near-identical callouts.
+ */
+export type NodeHintGroup = {
+	/** Hints sharing this key are collapsed together */
+	key: string;
+	/** Text shown while collapsed. `{count}` is replaced with the number of hints in the group. */
+	summary: string;
+	/**
+	 * Short form listed when the group is expanded, e.g. just the field name.
+	 * Falls back to `message` when not set.
+	 */
+	label?: string;
+};
+
 export type NodeHint = {
 	message: string;
 	type?: 'info' | 'warning' | 'danger';
 	location?: 'outputPane' | 'inputPane' | 'ndv';
 	displayCondition?: string;
 	whenToDisplay?: 'always' | 'beforeExecution' | 'afterExecution';
+	group?: NodeHintGroup;
 };
 
 export type NodeExecutionHint = Omit<NodeHint, 'whenToDisplay' | 'displayCondition'>;
@@ -3710,7 +3727,7 @@ export interface IWorkflowExecuteAdditionalData {
 		token: string,
 		resourceUrl: string,
 	) => Promise<N8nOAuth2ValidationResult>;
-	establishTriggerIdentity?(token: string, resource: string): Promise<void>;
+	establishTriggerIdentity?(token: string, resource: string, subject?: string): Promise<void>;
 	checkTriggerCredentialStatus?(): Promise<CredentialCheckResult | undefined>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;

@@ -1317,6 +1317,9 @@ describe('executeWebhook establishTriggerIdentity', () => {
 		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
 		activeExecutions.getPostExecutePromise.mockReturnValue(new Promise(() => {}));
 		executionContextService.buildTriggerIdentityCredentials.mockResolvedValue('sealed-context');
+		// `establishExecutionContext` binds the execution id onto the sealed context; with no
+		// execution id yet (or no sealed subject) it hands the context straight back.
+		executionContextService.maybeBindExecutionId.mockImplementation(async (context) => context);
 		// `establishExecutionContext` runs the hook pass over the seeded stack.
 		executionContextService.augmentExecutionContextWithHooks.mockImplementation(
 			async (_workflow, _startItem, context) => ({ context, triggerItems: null }),
@@ -1391,6 +1394,7 @@ describe('executeWebhook establishTriggerIdentity', () => {
 			'caller-token',
 			RESOURCE_URL,
 			GRANT,
+			undefined,
 		);
 		expect(additionalData.encryptedRunnerIdentity).toBe('sealed-context');
 	});
@@ -1413,6 +1417,7 @@ describe('executeWebhook establishTriggerIdentity', () => {
 			'caller-token',
 			RESOURCE_URL,
 			undefined,
+			undefined,
 		);
 	});
 
@@ -1422,6 +1427,7 @@ describe('executeWebhook establishTriggerIdentity', () => {
 		expect(executionContextService.buildTriggerIdentityCredentials).toHaveBeenCalledWith(
 			'caller-token',
 			RESOURCE_URL,
+			undefined,
 			undefined,
 		);
 	});
