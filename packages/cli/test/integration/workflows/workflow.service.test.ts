@@ -36,6 +36,7 @@ import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
+import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -422,6 +423,29 @@ describe('activateWorkflow()', () => {
 				versionId: newVersionId,
 			}),
 		).rejects.toThrow('There is a conflict with one of the webhooks.');
+	});
+
+	test('should keep the thrown message plain and carry the linked one in meta', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({
+			isValid: false,
+			error: 'Cannot publish workflow: references workflow sub-a which is not published',
+			errorHtml:
+				'Cannot publish workflow: references workflow <a href="https://n8n.test/workflow/sub-a" target="_blank">sub-a</a> which is not published',
+		});
+
+		const error = await workflowService
+			.activateWorkflow(owner, workflow.id)
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(WorkflowValidationError);
+		const validationError = error as WorkflowValidationError;
+		expect(validationError.message).not.toContain('<a href');
+		expect(validationError.meta.messageHtml).toContain(
+			'<a href="https://n8n.test/workflow/sub-a" target="_blank">sub-a</a>',
+		);
 	});
 
 	test('should use nodes from correct workflow version when checking conflicts and versionId is passed', async () => {
