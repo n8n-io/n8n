@@ -132,6 +132,44 @@ describe('EngineV2Dispatcher', () => {
 			]);
 		});
 
+		it('converts only the branch of the selected manual trigger', async () => {
+			const otherTrigger = node(
+				'other-trigger-id',
+				'When clicking Other Execute',
+				'n8n-nodes-base.manualTrigger',
+			);
+			const otherSetNode = node('other-set-id', 'Other Edit Fields', 'n8n-nodes-base.set');
+			const data = runData({
+				workflowData: workflow({
+					nodes: [MANUAL_TRIGGER, SET_NODE, otherTrigger, otherSetNode],
+					connections: {
+						[MANUAL_TRIGGER.name]: {
+							main: [[{ node: SET_NODE.name, type: NodeConnectionTypes.Main, index: 0 }]],
+						},
+						[otherTrigger.name]: {
+							main: [
+								[
+									{ node: SET_NODE.name, type: NodeConnectionTypes.Main, index: 0 },
+									{ node: otherSetNode.name, type: NodeConnectionTypes.Main, index: 0 },
+								],
+							],
+						},
+					},
+				}),
+			});
+
+			await dispatcher.start(data);
+
+			const { graph } = proxy.startExecution.mock.calls[0][0];
+			expect(graph.nodes).toEqual([
+				{ id: MANUAL_TRIGGER.id, name: MANUAL_TRIGGER.name, type: 'trigger' },
+				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
+			]);
+			expect(graph.edges).toEqual([
+				{ from: MANUAL_TRIGGER.id, to: SET_NODE.id, outputIndex: 0, inputIndex: 0 },
+			]);
+		});
+
 		it('checks credential permissions before converting', async () => {
 			const failure = new UserError('Node "X" uses invalid credential');
 			credentialsPermissionChecker.check.mockRejectedValueOnce(failure);
