@@ -238,6 +238,9 @@
 		"POST /source-control/pull": {
 			"status": "gap"
 		},
+		"POST /git-connections/{id}/push": {
+			"status": "gap"
+		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},

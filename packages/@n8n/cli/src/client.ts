@@ -60,6 +60,12 @@ export interface ExportPackageResult {
 	counts?: ExportPackageCounts;
 }
 
+/** Outcome of pushing a Git connection's projects to its working copy. */
+export type PushGitConnectionResult = {
+	connectionId: string;
+	counts: ExportPackageCounts;
+};
+
 export class ApiError extends Error {
 	constructor(
 		readonly statusCode: number,
@@ -246,6 +252,10 @@ export class N8nClient {
 
 	async deleteGitConnection(id: string) {
 		return await this.del<undefined>(`/git-connections/${id}`);
+	}
+
+	async pushGitConnectionProjects(id: string) {
+		return await this.post<PushGitConnectionResult>(`/git-connections/${id}/push`);
 	}
 
 	async listGitConnectionProjects(id: string) {

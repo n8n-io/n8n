@@ -31,6 +31,8 @@ import {
 import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
+import { DirectoryPackageWriter } from './io/directory/directory-package-writer';
+import type { PackageWriter } from './io/package-writer';
 import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
@@ -41,6 +43,7 @@ import {
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageResult,
+	type ExportPackageSummary,
 	type ImportPackageRequest,
 	type ImportResult,
 } from './n8n-packages.types';
@@ -51,6 +54,14 @@ import {
 	type PackageManifest,
 } from './spec/manifest.schema';
 import type { PackageRequirements } from './spec/requirements.schema';
+
+interface WrittenExport {
+	counts: ExportPackageEventCounts;
+	workflowIds: string[];
+	folderIds: string[];
+	projectIds: string[];
+	credentialExportPolicy: CredentialExportPolicy;
+}
 
 @Service()
 export class N8nPackagesService {
@@ -76,11 +87,46 @@ export class N8nPackagesService {
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<ExportPackageResult> {
+		const writer = new TarPackageWriter();
+		const result = await this.writeExport(writer, request);
+		const stream = writer.finalize();
+
+		// This event represents a user-facing archive export, not an internal directory write.
+		this.eventService.emit('n8n-package-exported', {
+			user: request.user,
+			...(result.workflowIds.length ? { workflowIds: result.workflowIds } : {}),
+			...(result.folderIds.length ? { folderIds: result.folderIds } : {}),
+			...(result.projectIds.length ? { projectIds: result.projectIds } : {}),
+			counts: result.counts,
+			credentialExportPolicy: result.credentialExportPolicy,
+		});
+
+		return { stream, counts: result.counts };
+	}
+
+	/**
+	 * Exports the same n8n-packages layout as {@link exportPackage}, but as loose
+	 * files on disk (the unzipped format) under `target.targetDir` instead of a tar
+	 * stream. Reuses the full export orchestration; only the writer differs.
+	 */
+	async exportPackageToDirectory(
+		request: ExportPackageRequest,
+		target: { targetDir: string },
+	): Promise<ExportPackageSummary> {
+		const writer = new DirectoryPackageWriter(target.targetDir);
+		const result = await this.writeExport(writer, request);
+		await writer.finalize();
+		return { counts: result.counts };
+	}
+
+	private async writeExport(
+		writer: PackageWriter,
+		request: ExportPackageRequest,
+	): Promise<WrittenExport> {
 		const { missingWorkflowDependencyPolicy } = request;
 		const isReferenceOnly =
 			missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly;
 
-		const writer = new TarPackageWriter();
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
@@ -161,7 +207,7 @@ export class N8nPackagesService {
 				workflowVersionPolicy,
 			});
 
-			autoIncludedExportResult = this.autoIncludedWorkflowExporter.export({
+			autoIncludedExportResult = await this.autoIncludedWorkflowExporter.export({
 				writer,
 				workflows: autoIncludedWorkflowResolution.autoIncludedWorkflows,
 				existingWorkflowEntries: allWorkflowsBeforeAutoInclude,
@@ -247,7 +293,7 @@ export class N8nPackagesService {
 			projectTargetsById,
 		});
 
-		const tagExportResult = this.tagExporter.export({
+		const tagExportResult = await this.tagExporter.export({
 			usages: requirements.tags,
 			writer,
 		});
@@ -282,9 +328,7 @@ export class N8nPackagesService {
 			...(allProjects.length > 0 ? { projects: allProjects } : {}),
 		});
 
-		writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
-
-		const stream = writer.finalize();
+		await writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
 
 		const counts: ExportPackageEventCounts = {
 			workflows: allWorkflowsInPackage.length,
@@ -295,18 +339,13 @@ export class N8nPackagesService {
 			tags: tagExportResult.entries.length,
 		};
 
-		this.eventService.emit('n8n-package-exported', {
-			user: request.user,
-			...(allWorkflowsInPackage.length
-				? { workflowIds: allWorkflowsInPackage.map(({ id }) => id) }
-				: {}),
-			...(allFolders.length ? { folderIds: allFolders.map(({ id }) => id) } : {}),
-			...(allProjects.length ? { projectIds: allProjects.map(({ id }) => id) } : {}),
+		return {
 			counts,
+			workflowIds: allWorkflowsInPackage.map(({ id }) => id),
+			folderIds: allFolders.map(({ id }) => id),
+			projectIds: allProjects.map(({ id }) => id),
 			credentialExportPolicy,
-		});
-
-		return { stream, counts };
+		};
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {

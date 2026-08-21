@@ -37,7 +37,7 @@ export interface TagExportResult {
 
 @Service()
 export class TagExporter {
-	export(request: TagExportRequest): TagExportResult {
+	async export(request: TagExportRequest): Promise<TagExportResult> {
 		const requirementsByTagId = new Map<string, PackageTagRequirement>();
 
 		for (const { workflowId, tag } of request.usages) {
@@ -60,8 +60,8 @@ export class TagExporter {
 		for (const { id, name } of requirements) {
 			const tagDirectory = allocator.allocate(name);
 			const serializedTag = serializedTagSchema.parse(serializePayload({ id, name }));
-			request.writer.writeDirectory(tagDirectory);
-			request.writer.writeFile(
+			await request.writer.writeDirectory(tagDirectory);
+			await request.writer.writeFile(
 				`${tagDirectory}/tag.json`,
 				JSON.stringify(serializedTag, null, '\t'),
 			);

@@ -83,8 +83,8 @@ export class CredentialExporter {
 				);
 				const baseDir = this.resolveBaseDir(credential, request.projectTargetsById);
 				const target = allocatorFor(baseDir).allocate(name);
-				request.writer.writeDirectory(target);
-				request.writer.writeFile(
+				await request.writer.writeDirectory(target);
+				await request.writer.writeFile(
 					`${target}/credential.json`,
 					JSON.stringify(this.credentialSerializer.serialize(credential, { data }), null, '\t'),
 				);
