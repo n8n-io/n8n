@@ -1,6 +1,8 @@
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 import { parseMessageBlocks, parseSystemPromptForDisplay } from '@n8n/api-types';
 
+import type { ContextAnchor } from '../types';
+
 /** Cap on the rendered context block. The final system prompt carries the whole
  *  baked knowledge base, which dwarfs the observation block and would push the
  *  part we actually grade out of the judge's attention. */
@@ -229,6 +231,38 @@ export function summarizeMemoryContext(
 	};
 }
 
+/** The three tiers for one anchor, so both graders read the same selection logic. */
+export interface AnchoredTiers {
+	observations: string | null;
+	systemPrompt: string;
+	messageWindow: string;
+}
+
+/**
+ * Pick the tier set a claim should be graded against.
+ *
+ * `probe` answers "did this survive to the start of the turn" — the anchor that stops a
+ * request from manufacturing its own evidence. `turn-end` answers "did the agent go and
+ * fetch this", which the probe anchor structurally cannot see: tool calls land at step 2
+ * and later, so retrieval is always absent from the first step.
+ */
+export function tiersForAnchor(
+	summary: MemoryContextSummary,
+	anchor: ContextAnchor = 'probe',
+): AnchoredTiers {
+	return anchor === 'turn-end'
+		? {
+				observations: summary.observations,
+				systemPrompt: summary.finalSystemPrompt,
+				messageWindow: summary.finalMessageWindow,
+			}
+		: {
+				observations: summary.atProbeObservations,
+				systemPrompt: summary.atProbeSystemPrompt,
+				messageWindow: summary.atProbeMessageWindow,
+			};
+}
+
 function truncate(text: string, limit: number, fallback: string): string {
 	if (text.length === 0) return fallback;
 	return text.length > limit ? `${text.slice(0, limit)}\n\n[…truncated]` : text;
@@ -267,29 +301,40 @@ function truncateMiddle(text: string, limit: number, fallback: string): string {
  * confound this expectation kind exists to remove; grading against the window is
  * simply the truth about what was retained.
  */
-export function buildMemoryContextBlock(summary: MemoryContextSummary): string {
+export function buildMemoryContextBlock(
+	summary: MemoryContextSummary,
+	anchor: ContextAnchor = 'probe',
+): string {
+	const tiers = tiersForAnchor(summary, anchor);
+	// The judge is told which moment it is looking at, because the correct reading of an
+	// absence differs: at the probe it means "not carried in", at turn end it means
+	// "never retrieved either".
+	const when =
+		anchor === 'turn-end' ? 'at the END of the graded turn' : 'as the graded request ARRIVED';
 	// Named so the judge is told which tier held the fact, without being invited to
 	// treat an absent observation block as an automatic failure.
 	const observations =
-		summary.atProbeObservations ??
+		tiers.observations ??
 		'(none — the Observer never compressed this thread, so no facts were moved into observational memory. This is NOT itself a failure: on a thread this short the facts should still be present in the raw message window below, which is what the model actually received.)';
 
 	return [
-		'## Compressed observation block (as the probe arrived)',
+		`## Snapshot: ${when}`,
+		'',
+		anchor === 'turn-end'
+			? 'These claims are about what the agent had by the time it finished — including anything it fetched with tools during the turn. Retrieval happens after the request arrives, so this is the only moment at which a fetch is visible.'
+			: 'These claims are about what the agent carried INTO the turn, before it produced anything. Content the agent itself wrote or fetched later in the turn is deliberately excluded, so a request cannot manufacture its own evidence.',
+		'',
+		`## Compressed observation block (${when})`,
 		'',
 		observations,
 		'',
-		'## Raw message window (what the model had when the probe arrived)',
+		`## Raw message window (${when})`,
 		'',
-		truncateMiddle(
-			summary.atProbeMessageWindow,
-			MAX_MESSAGE_WINDOW_CHARS,
-			'(no message window captured)',
-		),
+		truncateMiddle(tiers.messageWindow, MAX_MESSAGE_WINDOW_CHARS, '(no message window captured)'),
 		'',
-		'## System prompt (as the probe arrived)',
+		`## System prompt (${when})`,
 		'',
-		truncate(summary.atProbeSystemPrompt, MAX_SYSTEM_PROMPT_CHARS, '(no system prompt captured)'),
+		truncate(tiers.systemPrompt, MAX_SYSTEM_PROMPT_CHARS, '(no system prompt captured)'),
 		'',
 		'## Capture summary (ground truth — do not recount)',
 		'',
@@ -299,9 +344,12 @@ export function buildMemoryContextBlock(summary: MemoryContextSummary): string {
 				steps: summary.stepCount,
 				stepsCarryingObservations: summary.observationStepCount,
 				compressionRan: summary.observationStepCount > 0,
-				snapshot: summary.atProbeCaptured
-					? 'as the probe arrived, before the agent answered it'
-					: 'end of thread (no per-run snapshot available)',
+				snapshot:
+					anchor === 'turn-end'
+						? 'end of the graded turn, after any tool calls'
+						: summary.atProbeCaptured
+							? 'as the request arrived, before the agent answered it'
+							: 'end of thread (no per-run snapshot available)',
 			},
 			null,
 			2,

@@ -526,7 +526,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				.catch((error: unknown) =>
 					asMemoryVerdicts(
 						allFailVerdicts(
-							memoryExpectations,
+							// A claim may carry an anchor; the failure label is its text.
+							memoryExpectations.map((claim) => (typeof claim === 'string' ? claim : claim.text)),
 							`memory judge error: ${error instanceof Error ? error.message : String(error)}`,
 						),
 					),

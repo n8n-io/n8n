@@ -264,7 +264,7 @@ export interface WorkflowTestCase {
 	 *  observation block plus the final system prompt) rather than from the transcript or the
 	 *  workflow, so a miss is attributable to recall rather than to the build. Requires run debug,
 	 *  so skipped in prebuilt/MCP runs. Counted toward the pass rate. */
-	memoryExpectations?: string[];
+	memoryExpectations?: Array<string | MemoryExpectation>;
 	/** Exact values that must (or must not) appear in the agent's captured context,
 	 *  checked by deterministic substring search rather than by the judge. Counted
 	 *  toward the pass rate. See `harness/context-assertions.ts`. */
@@ -321,12 +321,42 @@ export interface ExecutionScenarioResult {
 	incomplete?: boolean;
 }
 
+/**
+ * Which moment in the graded turn a context claim is judged against.
+ *
+ * `probe` — the state the model held when the request arrived, before it produced
+ * anything. Correct for RETENTION claims ("a fact from earlier survived to here"),
+ * because the agent restates facts as it works and the end state would let a probe
+ * manufacture its own evidence.
+ *
+ * `turn-end` — the state at the end of the turn. Correct for WITHIN-TURN RETRIEVAL
+ * claims ("the agent fetched the sibling workflow it needed"). The agent receives the
+ * request, *then* calls tools, so a retrieval claim graded at the probe can never pass:
+ * the anchor excludes the very thing the claim is about.
+ */
+export type ContextAnchor = 'probe' | 'turn-end';
+
+/** A judged claim about context state, with an explicit anchor. The bare-string form
+ *  is equivalent to `{ text, anchor: 'probe' }`. */
+export interface MemoryExpectation {
+	text: string;
+	anchor?: ContextAnchor;
+}
+
 /** One deterministic claim about the agent's captured context. */
 export interface ContextAssertion {
 	text: string;
 	/** Omit or true → must appear. False → must NOT appear. */
 	mustAppear?: boolean;
 	note?: string;
+	/** Defaults to `probe`. Set `turn-end` when the claim is about something the agent
+	 *  went and fetched during this turn rather than something it carried in. */
+	anchor?: ContextAnchor;
+}
+
+/** Normalise either accepted form of a memory expectation. */
+export function asMemoryExpectation(value: string | MemoryExpectation): MemoryExpectation {
+	return typeof value === 'string' ? { text: value } : value;
 }
 
 /** Verdict for one author-written build expectation. Scored as a unit in the

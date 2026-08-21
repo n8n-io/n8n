@@ -1,6 +1,6 @@
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
-import { summarizeMemoryContext } from './memory-context';
+import { summarizeMemoryContext, tiersForAnchor } from './memory-context';
 import type { BuildExpectationResult, ContextAssertion } from '../types';
 
 /** Recorded when there was no captured context to search, so a missing capture reads
@@ -39,7 +39,9 @@ export function checkContextAssertions(
 	if (!assertions || assertions.length === 0) return [];
 
 	const describe = (a: ContextAssertion) =>
-		`context ${a.mustAppear === false ? 'excludes' : 'contains'} "${a.text}"${a.note ? ` (${a.note})` : ''}`;
+		`context ${a.mustAppear === false ? 'excludes' : 'contains'} "${a.text}"${
+			a.anchor === 'turn-end' ? ' [by turn end]' : ''
+		}${a.note ? ` (${a.note})` : ''}`;
 
 	// capPayloads: false — a value inside a large tool result must not read as absent
 	// just because it sat past the judge's per-payload cap.
@@ -54,46 +56,59 @@ export function checkContextAssertions(
 		}));
 	}
 
-	// Graded against the AT-PROBE snapshot: the context as the model received it
-	// before producing anything in the turn being graded. The end-of-thread state is
-	// searched too, but only to tell "never had it" apart from "re-derived it while
-	// answering" — a distinction that is invisible if you grade the final state.
-	const atProbe: Array<[string, string]> = [
-		['observation block', summary.atProbeObservations ?? ''],
-		['message window', summary.atProbeMessageWindow],
-		['system prompt', summary.atProbeSystemPrompt],
-	];
-	const finalTiers: Array<[string, string]> = [
-		['observation block', summary.observations ?? ''],
-		['message window', summary.finalMessageWindow],
-		['system prompt', summary.finalSystemPrompt],
-	];
+	// Each claim names the moment it is about (`probe` by default). A retention claim
+	// grades at the probe, because the end state would let the agent's own restatement
+	// count as recall. A retrieval claim grades at turn end, because tool calls land
+	// after the request arrives and the probe snapshot structurally cannot see them.
+	const tierList = (anchor: 'probe' | 'turn-end'): Array<[string, string]> => {
+		const t = tiersForAnchor(summary, anchor);
+		return [
+			['observation block', t.observations ?? ''],
+			['message window', t.messageWindow],
+			['system prompt', t.systemPrompt],
+		];
+	};
 	const hits = (tiers: Array<[string, string]>, needle: string) =>
 		tiers.filter(([, text]) => text.toLowerCase().includes(needle)).map(([tier]) => tier);
 
 	return assertions.map((assertion) => {
+		const anchor = assertion.anchor ?? 'probe';
 		const needle = assertion.text.toLowerCase();
-		const found = hits(atProbe, needle);
-		const foundLater = found.length === 0 ? hits(finalTiers, needle) : [];
+		const found = hits(tierList(anchor), needle);
+		// Only meaningful for a probe-anchored claim: searching turn end tells you whether
+		// the agent re-derived the value while answering. A turn-end claim is already
+		// reading that state, so there is no later moment to compare against.
+		const foundLater =
+			found.length === 0 && anchor === 'probe' ? hits(tierList('turn-end'), needle) : [];
 		const mustAppear = assertion.mustAppear !== false;
 		const pass = mustAppear ? found.length > 0 : found.length === 0;
+		const at = anchor === 'turn-end' ? 'at the end of the turn' : 'at the probe';
 
 		let reason: string;
 		if (mustAppear) {
 			if (found.length > 0) {
-				reason = `retained — present at the probe in: ${found.join(', ')} (exact match, case-insensitive)`;
+				// "retained" only for a probe claim: it names the memory subsystem having
+				// carried the value in. A turn-end hit may be a fetch, which is a different
+				// (and equally valid) thing, so it is not called retention.
+				reason =
+					anchor === 'turn-end'
+						? `present by the end of the turn in: ${found.join(', ')} — carried in or fetched during the turn (exact match, case-insensitive)`
+						: `retained — present at the probe in: ${found.join(', ')} (exact match, case-insensitive)`;
 			} else if (foundLater.length > 0) {
 				// The distinction worth surfacing: the memory subsystem did not carry
 				// this, the agent re-produced it while answering.
 				reason = `NOT retained — absent when the probe arrived, but present by the end of the turn in: ${foundLater.join(', ')}. The agent re-derived or restated it rather than carrying it forward.`;
 			} else {
-				reason = 'not present at the probe, nor anywhere by the end of the turn';
+				reason =
+					anchor === 'turn-end'
+						? 'not present anywhere by the end of the turn — never carried in and never fetched'
+						: 'not present at the probe, nor anywhere by the end of the turn';
 			}
 		} else {
 			reason =
 				found.length === 0
-					? 'correctly absent from all three context tiers at the probe'
-					: `still present at the probe in: ${found.join(', ')}`;
+					? `correctly absent from all three context tiers ${at}`
+					: `still present ${at} in: ${found.join(', ')}`;
 		}
 
 		return { expectation: describe(assertion), pass, reason, kind: 'memory' as const };

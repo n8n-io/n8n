@@ -170,7 +170,22 @@ const evalTestCaseObjectSchema = z
 		 *  compressed observation block plus the final system prompt), so a miss is attributable to
 		 *  recall rather than to the build. Needs run debug, so skipped in prebuilt/MCP runs.
 		 *  Counted as units. */
-		memoryExpectations: z.array(z.string().min(1)).optional(),
+		memoryExpectations: z
+			.array(
+				z.union([
+					z.string().min(1),
+					z
+						.object({
+							text: z.string().min(1),
+							/** `probe` (default) for retention claims; `turn-end` for claims about
+							 *  context the agent fetched DURING this turn — retrieval happens after
+							 *  the probe, so grading it at the probe can never pass. */
+							anchor: z.enum(['probe', 'turn-end']).optional(),
+						})
+						.strict(),
+				]),
+			)
+			.optional(),
 		/** Exact values that must (or must not) appear in the agent's captured context.
 		 *  Checked deterministically by substring search — no LLM, so it cannot
 		 *  hallucinate and needs no rubric. Use for concrete values (a date, a channel,
@@ -188,6 +203,9 @@ const evalTestCaseObjectSchema = z
 						mustAppear: z.boolean().optional(),
 						/** Shown in the verdict when the raw string is not self-explanatory. */
 						note: z.string().min(1).optional(),
+						/** `probe` (default) for retention claims; `turn-end` for a value the
+						 *  agent fetched during this turn. */
+						anchor: z.enum(['probe', 'turn-end']).optional(),
 					})
 					.strict(),
 			)

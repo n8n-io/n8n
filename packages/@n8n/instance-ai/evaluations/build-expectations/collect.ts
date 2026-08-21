@@ -43,5 +43,9 @@ export function collectAllExpectations(
 		'processExpectations' | 'outcomeExpectations' | 'memoryExpectations'
 	>,
 ): string[] {
-	return [...collectExpectations(testCase), ...(testCase.memoryExpectations ?? [])];
+	// A memory expectation may carry an anchor; this collector only needs its text.
+	const memory = (testCase.memoryExpectations ?? []).map((claim) =>
+		typeof claim === 'string' ? claim : claim.text,
+	);
+	return [...collectExpectations(testCase), ...memory];
 }
