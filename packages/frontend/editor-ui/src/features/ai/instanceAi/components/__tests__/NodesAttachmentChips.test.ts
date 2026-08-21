@@ -1,9 +1,16 @@
 import { configure, fireEvent } from '@testing-library/vue';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+import { mock } from 'vitest-mock-extended';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { renderComponent } from '@/__tests__/render';
 import NodesAttachmentChips from '../NodesAttachmentChips.vue';
 import type { InstanceAiNodesAttachment } from '@n8n/api-types';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 // This project's default test-id attribute is `data-test-id`; this component
 // (and the legacy chip components it mirrors) use `data-testid` per the brief.
@@ -90,6 +97,39 @@ describe('NodesAttachmentChips', () => {
 		expect(getByTestId('nodes-chip-panel')).toBeTruthy();
 		await fireEvent.click(getByTestId('nodes-chip-expand'));
 		expect(queryByTestId('nodes-chip-panel')).toBeNull();
+	});
+
+	it('expand panel shows each node type icon from the attachment workflow', async () => {
+		useNodeTypesStore().setNodeTypes([
+			mock<INodeTypeDescription>({
+				version: 1,
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields',
+				iconUrl: 'icons/n8n-nodes-base/dist/nodes/Set/set.svg',
+			}),
+		]);
+		useWorkflowDocumentStore(createWorkflowDocumentId('w1')).setNodes(
+			nodeRefs('A', 'B', 'C', 'D').map((node) => ({
+				id: node.id,
+				name: node.name,
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			})),
+		);
+
+		const { getByTestId, getAllByTestId } = renderComponent(NodesAttachmentChips, {
+			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C', 'D') }]), isRemovable: true },
+		});
+		await fireEvent.click(getByTestId('nodes-chip-expand'));
+
+		const rows = getAllByTestId('nodes-chip-panel-row');
+		expect(rows).toHaveLength(4);
+		for (const row of rows) {
+			expect(row.querySelector('[data-icon="crosshair"]')).toBeNull();
+			expect(row.querySelector('.n8n-node-icon img')).toBeTruthy();
+		}
 	});
 
 	it('collapsing many sets shows a total-count summary chip, not a bare toggle', async () => {

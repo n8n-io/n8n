@@ -4,6 +4,7 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import type { InstanceAiNodesAttachment } from '@n8n/api-types';
+import type { INodeUi } from '@/Interface';
 import NodeChip from './NodeChip.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -14,8 +15,6 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { isNodeChipRemovalKey } from '../constants';
 
-// Per ADO-5770 (N = 4). NOT the legacy CHIP_BUNDLE_THRESHOLD — different semantics:
-// this only governs the single-lone-set explode/bundle decision.
 const SINGLE_SET_NODE_EXPANSION_THRESHOLD = 4;
 
 const props = defineProps<{ attachment: InstanceAiNodesAttachment; isRemovable?: boolean }>();
@@ -26,25 +25,39 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
-// Plain `inject` (not the strict composable) — this chip can render before a
-// workflow id is provided (e.g. history playback), so fall back to ''.
-const workflowId = inject(
+const injectedWorkflowId = inject(
 	WorkflowIdKey,
 	computed(() => ''),
 );
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value || 'unknown')),
+const workflowDocumentStore = computed(() =>)
+	useWorkflowDocumentStore(
+		createWorkflowDocumentId(
+			props.attachment.workflowId || injectedWorkflowId.value || 'unknown',
+		),
+	),
 );
 
-const nodeTypeByName = computed(() => {
-	const map = new Map<string, INodeTypeDescription | null>();
-	for (const node of workflowDocumentStore.value.allNodes) {
-		map.set(node.name, nodeTypesStore.getNodeType(node.type));
-	}
-	return map;
-});
-const nodeTypeForName = (name: string | undefined) =>
-	name ? (nodeTypeByName.value.get(name) ?? null) : null;
+interface ResolvedAttachedNode {
+	id: string;
+	name: string;
+	nodeType: INodeTypeDescription | null;
+	workflowNode: INodeUi | null;
+}
+
+function resolveAttachedNode(node: { id: string; name?: string }): ResolvedAttachedNode {
+	const store = workflowDocumentStore.value;
+	const workflowNode =
+		store.getNodeById(node.id) ?? (node.name ? store.getNodeByName(node.name) : undefined) ?? null;
+	const nodeType = workflowNode
+		? nodeTypesStore.getNodeType(workflowNode.type, workflowNode.typeVersion)
+		: null;
+	return {
+		id: node.id,
+		name: node.name ?? workflowNode?.name ?? '',
+		nodeType,
+		workflowNode,
+	};
+}
 
 interface ChipVM {
 	key: string;
@@ -54,7 +67,7 @@ interface ChipVM {
 	nodeType?: INodeTypeDescription | null;
 	setIndex: number;
 	nodeIndex?: number;
-	panel?: Array<{ id: string; name: string; nodeType: INodeTypeDescription | null }>;
+	panel?: ResolvedAttachedNode[];
 }
 
 const chips = computed<ChipVM[]>(() => {
@@ -66,14 +79,17 @@ const chips = computed<ChipVM[]>(() => {
 		!only.canvasGroupId &&
 		only.nodes.length < SINGLE_SET_NODE_EXPANSION_THRESHOLD
 	) {
-		return only.nodes.map((node, nodeIndex) => ({
-			key: node.id,
-			testid: 'nodes-chip-node',
-			label: node.name ?? '',
-			nodeType: nodeTypeForName(node.name),
-			setIndex: 0,
-			nodeIndex,
-		}));
+		return only.nodes.map((node, nodeIndex) => {
+			const resolved = resolveAttachedNode(node);
+			return {
+				key: node.id,
+				testid: 'nodes-chip-node',
+				label: resolved.name,
+				nodeType: resolved.nodeType,
+				setIndex: 0,
+				nodeIndex,
+			};
+		});
 	}
 
 	return sets.map((set, setIndex): ChipVM => {
@@ -95,19 +111,15 @@ const chips = computed<ChipVM[]>(() => {
 				}),
 				icon: 'layers',
 				setIndex,
-				panel: set.nodes.map((node) => ({
-					id: node.id,
-					name: node.name ?? '',
-					nodeType: nodeTypeForName(node.name),
-				})),
+				panel: set.nodes.map((node) => resolveAttachedNode(node)),
 			};
 		}
-		const node = set.nodes[0];
+		const resolved = resolveAttachedNode(set.nodes[0]);
 		return {
 			key: `set-${setIndex}`,
 			testid: 'nodes-chip-node',
-			label: node.name ?? '',
-			nodeType: nodeTypeForName(node.name),
+			label: resolved.name,
+			nodeType: resolved.nodeType,
 			setIndex,
 		};
 	});
@@ -319,7 +331,13 @@ const totalNodeCount = computed(() =>
 							:aria-label="node.name"
 							@keydown="handlePanelRowKeydown(chip.setIndex, nodeIndex, $event)"
 						>
-							<NodeIcon v-if="node.nodeType" :node-type="node.nodeType" :size="12" />
+							<NodeIcon
+								v-if="node.nodeType"
+								:node-type="node.nodeType"
+								:node="node.workflowNode ?? undefined"
+								:size="16"
+								:class="$style.panelRowIcon"
+							/>
 							<N8nIcon v-else icon="crosshair" size="xsmall" />
 							<span :class="$style.panelRowName">{{ node.name }}</span>
 							<button
@@ -388,6 +406,10 @@ const totalNodeCount = computed(() =>
 		outline: 2px solid var(--color--primary);
 		outline-offset: 2px;
 	}
+}
+
+.panelRowIcon {
+	flex-shrink: 0;
 }
 
 .panelRowName {
