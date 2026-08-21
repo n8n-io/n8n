@@ -1135,8 +1135,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			case 'workflow_reviews':
 				void this.eventBus.sendAuditEvent({
 					eventName: value
-						? 'n8n.audit.workflow-reviews-policy.enabled'
-						: 'n8n.audit.workflow-reviews-policy.disabled',
+						? 'n8n.audit.workflow-reviews.enabled'
+						: 'n8n.audit.workflow-reviews.disabled',
 					payload: user,
 				});
 				break;

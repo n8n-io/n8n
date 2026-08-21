@@ -47,11 +47,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					"'assigned-reviewer' = the decider was assigned to this review; 'admin-override' = they decided through an instance or project admin role. Assignment wins when both apply",
 				),
-			review_created_at: z
-				// `unknown` because this is emitted as a Date, which zod cannot represent in
-				// JSON Schema. It reaches the warehouse as an ISO timestamp via JSON.stringify.
-				.unknown()
-				.describe('When the review was opened'),
+			review_created_at: z.string().describe('When the review was opened, ISO 8601'),
 		}),
 	},
 	WORKFLOW_REVIEW_CLOSED: {

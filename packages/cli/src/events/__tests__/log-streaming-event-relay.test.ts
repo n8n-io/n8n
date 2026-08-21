@@ -2950,7 +2950,7 @@ describe('LogStreamingEventRelay', () => {
 			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
 		});
 
-		it('should log `workflow-reviews-policy.enabled` when workflow_reviews is turned on', () => {
+		it('should log `workflow-reviews.enabled` when workflow_reviews is turned on', () => {
 			const event: RelayEventMap['instance-policies-updated'] = {
 				user: {
 					id: 'user505',
@@ -2966,7 +2966,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('instance-policies-updated', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.audit.workflow-reviews-policy.enabled',
+				eventName: 'n8n.audit.workflow-reviews.enabled',
 				payload: {
 					userId: 'user505',
 					_email: 'admin8@example.com',
@@ -2977,7 +2977,7 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log `workflow-reviews-policy.disabled` when workflow_reviews is turned off', () => {
+		it('should log `workflow-reviews.disabled` when workflow_reviews is turned off', () => {
 			const event: RelayEventMap['instance-policies-updated'] = {
 				user: {
 					id: 'user606',
@@ -2993,7 +2993,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('instance-policies-updated', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-				eventName: 'n8n.audit.workflow-reviews-policy.disabled',
+				eventName: 'n8n.audit.workflow-reviews.disabled',
 				payload: {
 					userId: 'user606',
 					_email: 'admin9@example.com',

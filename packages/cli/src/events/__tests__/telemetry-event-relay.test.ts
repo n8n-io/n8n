@@ -3828,7 +3828,7 @@ describe('TelemetryEventRelay', () => {
 				workflow_version_id: 'ver-1',
 				decision: 'approved',
 				decided_via: 'assigned-reviewer',
-				review_created_at: new Date('2026-01-01T10:00:00.000Z'),
+				review_created_at: '2026-01-01T10:00:00.000Z',
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW,
@@ -3857,7 +3857,7 @@ describe('TelemetryEventRelay', () => {
 				workflow_version_id: null,
 				decision: 'changes_requested',
 				decided_via: 'admin-override',
-				review_created_at: new Date('2026-01-01T10:00:00.000Z'),
+				review_created_at: '2026-01-01T10:00:00.000Z',
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW,

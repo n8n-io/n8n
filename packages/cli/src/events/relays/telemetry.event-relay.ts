@@ -2183,7 +2183,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_version_id: workflowVersionId,
 			decision,
 			decided_via: decidedVia,
-			review_created_at: reviewCreatedAt,
+			review_created_at: reviewCreatedAt.toISOString(),
 		});
 	}
 
