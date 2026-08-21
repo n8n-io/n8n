@@ -172,11 +172,11 @@ const onSelect = (operatorId: string): void => {
 }
 
 .suggested span {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .selected span {
 	color: var(--color--primary);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 </style>

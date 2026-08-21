@@ -521,7 +521,7 @@ defineExpose({
 
 	.overLimit {
 		color: var(--color--danger);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 

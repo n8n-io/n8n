@@ -288,7 +288,7 @@ function close() {
 }
 
 .reviewTitle {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	margin-bottom: var(--spacing--3xs);
 }
 

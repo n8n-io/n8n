@@ -86,7 +86,7 @@ watchEffect(() => {
 
 	.chartTitle {
 		font-size: var(--font-size--lg);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text);
 	}
 

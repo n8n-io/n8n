@@ -414,7 +414,7 @@ const serverUrlDescription = computed(() =>
 	display: block;
 	padding-block: var(--spacing--5xs);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
 	color: var(--color--text--tint-1);

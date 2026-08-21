@@ -247,7 +247,7 @@ function resolveCountRoute(row: RoleRow): RouteLocationRaw {
 .countLink {
 	color: var(--color--text);
 	text-decoration: underline;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .countLink:hover {

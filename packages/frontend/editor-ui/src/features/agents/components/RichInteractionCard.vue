@@ -131,7 +131,7 @@ const parsed = computed(() => {
 }
 
 .title {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	margin-bottom: var(--spacing--4xs);
 }
 
@@ -168,7 +168,7 @@ const parsed = computed(() => {
 .buttonSelected {
 	background-color: var(--color--primary--tint-2);
 	color: var(--color--primary);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .selectGroup {
@@ -176,7 +176,7 @@ const parsed = computed(() => {
 }
 
 .selectLabel {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	margin-bottom: var(--spacing--4xs);
 }
 
@@ -216,7 +216,7 @@ const parsed = computed(() => {
 }
 
 .fieldLabel {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 }
 

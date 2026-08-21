@@ -262,7 +262,7 @@ watch(isOpen, (open, _oldValue, onCleanup) => {
 .groupLabel {
 	padding: var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 	line-height: 1;
 }
@@ -287,7 +287,7 @@ watch(isOpen, (open, _oldValue, onCleanup) => {
 	}
 
 	&.active {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 

@@ -216,7 +216,7 @@ export const AccessibilityFallback: Story = {
 
 			<N8nDialog v-model:open="isOpen" v-bind="args">
 				<div style="padding: var(--spacing--sm) 0;">
-					<p style="font-weight: var(--font-weight--bold); margin-bottom: var(--spacing--xs);">
+					<p style="font-weight: var(--font-weight--medium); margin-bottom: var(--spacing--xs);">
 						Custom Visual Title
 					</p>
 					<p>
