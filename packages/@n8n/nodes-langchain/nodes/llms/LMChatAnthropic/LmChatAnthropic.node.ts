@@ -589,6 +589,10 @@ export class LmChatAnthropic implements INodeType {
 			promptCaching?: 'disabled' | '5m' | '1h';
 		};
 
+		// Pre-flight check for the one model family we have confirmed rejects manual thinking, so
+		// those users fail fast instead of spending a request. Newer generations likely reject it
+		// too, but rather than guess a capability matrix that drifts every release, anything this
+		// misses is caught by manualThinkingErrorHandler once the provider rejects the call.
 		const isOpus47Model = modelName.startsWith('claude-opus-4-7');
 		const thinkingMode: 'disabled' | 'adaptive' | 'manual' =
 			version >= 1.5
@@ -711,9 +715,28 @@ export class LmChatAnthropic implements INodeType {
 			}
 		};
 
+		// Same shape as the sampling-parameter backstop above, for the same reason: newer Claude
+		// generations drop the legacy manual thinking mode, and the pre-flight check below only
+		// recognises the models we have confirmed. This catches the rest — including gateway
+		// traffic, whose capabilities we cannot infer from the model name.
+		const manualThinkingErrorHandler = (error: unknown) => {
+			if (thinkingMode !== 'manual') return;
+			const message = error instanceof Error ? error.message : String(error);
+			const mentionsThinking = /thinking|budget_tokens/i.test(message);
+			const isRejection = /not supported|unsupported|not allowed|deprecated|invalid/i.test(message);
+			if (mentionsThinking && isRejection) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`The model "${modelName}" does not support the legacy Manual thinking mode. Set Thinking Mode to Adaptive and choose an Effort level.`,
+					{ itemIndex },
+				);
+			}
+		};
+
 		const failedAttemptHandler = (error: unknown) => {
 			gatewayErrorHandler?.(error);
 			deprecatedSamplingParamErrorHandler(error);
+			manualThinkingErrorHandler(error);
 		};
 
 		const chatAnthropicParams: ChatAnthropicInput = {

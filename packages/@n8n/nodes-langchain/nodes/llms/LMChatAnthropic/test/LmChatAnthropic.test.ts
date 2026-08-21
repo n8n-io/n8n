@@ -599,6 +599,58 @@ describe('LmChatAnthropic', () => {
 			expect(() => capturedHandler!(new Error('rate limit exceeded'))).not.toThrow();
 		});
 
+		it('should sanitize a manual-thinking rejection into an actionable message', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.6 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-5';
+				if (paramName === 'options') return { thinkingMode: 'manual' };
+				return undefined;
+			});
+
+			let capturedHandler: ((error: unknown) => void) | undefined;
+			mockedMakeN8nLlmFailedAttemptHandler.mockImplementation((_ctx, handler) => {
+				capturedHandler = handler as (error: unknown) => void;
+				return vi.fn();
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+			expect(capturedHandler).toBeDefined();
+
+			expect(() =>
+				capturedHandler!(new Error('`thinking.budget_tokens` is not supported on this model.')),
+			).toThrow(NodeOperationError);
+			expect(() =>
+				capturedHandler!(new Error('`thinking.budget_tokens` is not supported on this model.')),
+			).toThrow(/claude-sonnet-5/);
+
+			// Unrelated errors should pass through without throwing
+			expect(() => capturedHandler!(new Error('rate limit exceeded'))).not.toThrow();
+		});
+
+		it('should not claim a manual-thinking problem when thinking is not manual', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.6 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-5';
+				if (paramName === 'options') return { thinkingMode: 'adaptive' };
+				return undefined;
+			});
+
+			let capturedHandler: ((error: unknown) => void) | undefined;
+			mockedMakeN8nLlmFailedAttemptHandler.mockImplementation((_ctx, handler) => {
+				capturedHandler = handler as (error: unknown) => void;
+				return vi.fn();
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+			expect(capturedHandler).toBeDefined();
+
+			expect(() =>
+				capturedHandler!(new Error('`thinking.budget_tokens` is not supported on this model.')),
+			).not.toThrow();
+		});
+
 		it('should throw when model is empty (v1.3)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.3 });
 
