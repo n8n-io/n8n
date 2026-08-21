@@ -193,7 +193,7 @@ catalog:
   pg: 8.21.0
   picocolors: 1.0.1
   playwright-core: 1.62.1
-  posthog-node: 5.33.4
+  posthog-node: 5.49.1
   prettier: 3.6.2
   proxy-from-env: ^1.1.0
   qs: 6.15.2
