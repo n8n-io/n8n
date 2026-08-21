@@ -31,6 +31,8 @@ const MAX_ATTEMPTS = TRIGGER_ACTIVATION_MAX_ATTEMPTS;
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
+const abort = { signal: new AbortController().signal, onDetached: vi.fn() };
+
 const tracing = mock<Tracing>();
 const eventService = mock<EventService>();
 
@@ -285,6 +287,8 @@ describe('WorkflowTriggerActivator', () => {
 				connections: {},
 			},
 			new Set(['t', 'p', 'webhook-node']),
+			'update',
+			abort,
 		);
 
 		// Both phases overlap inside one isolate bracket, so their relative order is
@@ -302,6 +306,49 @@ describe('WorkflowTriggerActivator', () => {
 			'save-static',
 		]);
 		expect(workflowRepository.updateWorkflowTriggerCount).toHaveBeenCalledWith('wf-1', 2);
+	});
+
+	test('threads the activation mode to both the non-webhook and webhook registrations', async () => {
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
+
+		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		const webhookData = mock<IWebhookData>({ node: 'Webhook' });
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookData]);
+
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.createRegistrationContext.mockReturnValue(
+			mock<PreparedNonWebhookTriggerRegistration>(),
+		);
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['t']);
+
+		const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+		const dbWorkflow = mock<WorkflowEntity>({
+			id: 'wf-1',
+			name: 'Test workflow',
+			staticData: {},
+			settings: {},
+		});
+
+		await activator.activate(
+			dbWorkflow,
+			{
+				nodes: [node('t', 'trigger'), node('webhook-node', 'webhook', { name: 'Webhook' })],
+				connections: {},
+			},
+			new Set(['t', 'webhook-node']),
+			'init',
+			abort,
+		);
+
+		expect(nonWebhookTriggerRegistrar.createRegistrationContext).toHaveBeenCalledWith(
+			dbWorkflow,
+			expect.objectContaining({ activationMode: 'init' }),
+		);
+		expect(webhookTriggerRegistrar.register).toHaveBeenCalledWith(
+			expect.objectContaining({ webhookData, activation: 'init' }),
+		);
 	});
 
 	test('keeps the activation isolate until both concurrent phases settle after a phase error', async () => {
@@ -347,6 +394,8 @@ describe('WorkflowTriggerActivator', () => {
 					connections: {},
 				},
 				new Set(['webhook-node', 'trigger-node']),
+				'update',
+				abort,
 			),
 		).rejects.toThrow('webhook discovery failed');
 
@@ -394,6 +443,7 @@ describe('WorkflowTriggerActivator', () => {
 					connections: {},
 				},
 				new Set(['webhook-node', 'trigger-a', 'trigger-b']),
+				abort,
 			)
 			.then(() => {
 				deactivateSettled = true;
@@ -461,6 +511,7 @@ describe('WorkflowTriggerActivator', () => {
 					connections: {},
 				},
 				new Set(['webhook-node', 'trigger-node']),
+				abort,
 			),
 		).rejects.toThrow('webhook discovery failed');
 
@@ -503,6 +554,8 @@ describe('WorkflowTriggerActivator', () => {
 				connections: {},
 			},
 			new Set(['webhook-ok', 'webhook-bad', 't', 'p']),
+			'update',
+			abort,
 		);
 
 		// Both registrars ran; each phase surfaced its own failure while keeping the
@@ -546,6 +599,8 @@ describe('WorkflowTriggerActivator', () => {
 				connections: {},
 			},
 			new Set(['webhook-a', 'webhook-b']),
+			'update',
+			abort,
 		);
 
 		// Parallel fan-out: assert by membership, not order.
@@ -585,6 +640,8 @@ describe('WorkflowTriggerActivator', () => {
 			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
 			{ nodes: [node('webhook-a', 'webhook', { name: 'Webhook A' })], connections: {} },
 			new Set(['webhook-a']),
+			'update',
+			abort,
 		);
 
 		expect(outcome).toEqual({ activated: ['webhook-a'], failures: [] });
@@ -630,6 +687,8 @@ describe('WorkflowTriggerActivator', () => {
 				connections: {},
 			},
 			new Set(['webhook-a', 'webhook-b']),
+			'update',
+			abort,
 		);
 
 		// Parallel fan-out: assert by membership, not order.
@@ -670,6 +729,8 @@ describe('WorkflowTriggerActivator', () => {
 			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
 			{ nodes: [node('webhook-node', 'webhook', { name: 'Webhook' })], connections: {} },
 			new Set(['webhook-node']),
+			'update',
+			abort,
 		);
 
 		expect(outcome.activated).toEqual([]);
@@ -707,6 +768,8 @@ describe('WorkflowTriggerActivator', () => {
 			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
 			{ nodes: [node('t', 'trigger'), node('p', 'poll')], connections: {} },
 			new Set(['t', 'p']),
+			'update',
+			abort,
 		);
 
 		expect(outcome.activated).toEqual(expect.arrayContaining(['t']));
@@ -748,6 +811,8 @@ describe('WorkflowTriggerActivator', () => {
 			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
 			{ nodes: [node('p', 'poll')], connections: {} },
 			new Set(['p']),
+			'update',
+			abort,
 		);
 
 		expect(outcome).toEqual({ activated: ['p'], failures: [] });
@@ -787,6 +852,8 @@ describe('WorkflowTriggerActivator', () => {
 				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
 				{ nodes: [node('t', 'trigger')], connections: {} },
 				new Set(['t']),
+				'update',
+				abort,
 			);
 
 			const context = deps.nonWebhookTriggerRegistrar.createRegistrationContext.mock.calls[0][1];
@@ -929,6 +996,8 @@ describe('WorkflowTriggerActivator', () => {
 				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
 				{ nodes: [node('webhook-a', 'webhook', { name: 'Webhook A' })], connections: {} },
 				new Set(['webhook-a']),
+				'update',
+				abort,
 			);
 
 			expect(getEmissions('workflow-publication-trigger-operation')).toContainEqual(
@@ -957,6 +1026,8 @@ describe('WorkflowTriggerActivator', () => {
 				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
 				{ nodes: [node('webhook-b', 'webhook', { name: 'Webhook B' })], connections: {} },
 				new Set(['webhook-b']),
+				'update',
+				abort,
 			);
 
 			expect(getEmissions('workflow-publication-trigger-operation')).toContainEqual(
@@ -982,6 +1053,7 @@ describe('WorkflowTriggerActivator', () => {
 				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
 				{ nodes: [node('trigger-a', 'trigger')], connections: {} },
 				new Set(['trigger-a']),
+				abort,
 			);
 
 			expect(getEmissions('workflow-publication-trigger-operation')).toContainEqual(
@@ -990,6 +1062,124 @@ describe('WorkflowTriggerActivator', () => {
 			expect(getEmissions('workflow-publication-trigger-node-operations')).toContainEqual(
 				expect.objectContaining({ operation: 'deactivate', result: 'success', count: 1 }),
 			);
+		});
+	});
+
+	describe('abort', () => {
+		beforeEach(() => {
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(true);
+			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockResolvedValue();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+		});
+
+		test('records a node whose registration hangs as failed once the signal aborts, keeping other nodes', async () => {
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.createRegistrationContext.mockReturnValue(
+				mock<PreparedNonWebhookTriggerRegistration>(),
+			);
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['ok', 'stuck']);
+			nonWebhookTriggerRegistrar.register.mockImplementation(async (_workflow, _reg, nodeId) => {
+				if (nodeId === 'stuck') await new Promise(() => {});
+			});
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+			const controller = new AbortController();
+			const onDetached = vi.fn();
+
+			const activation = activator.activate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{ nodes: [node('ok', 'trigger'), node('stuck', 'trigger')], connections: {} },
+				new Set(['ok', 'stuck']),
+				'update',
+				{ signal: controller.signal, onDetached },
+			);
+			await flushPromises();
+			controller.abort(new Error('deadline'));
+
+			const outcome = await activation;
+			expect(outcome.activated).toEqual(['ok']);
+			expect(outcome.failures).toEqual([
+				expect.objectContaining({
+					nodeId: 'stuck',
+					error: expect.objectContaining({ message: 'deadline' }),
+				}),
+			]);
+			// The hung registration is handed back so the caller can outlive it.
+			expect(onDetached).toHaveBeenCalledTimes(1);
+			expect(onDetached).toHaveBeenCalledWith(expect.any(Promise));
+		});
+
+		test('a deactivation whose teardown hangs rejects with the abort reason once the signal fires', async () => {
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['stuck']);
+			nonWebhookTriggerRegistrar.deregister.mockImplementation(
+				async () => await new Promise(() => {}),
+			);
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+			const controller = new AbortController();
+			const onDetached = vi.fn();
+
+			const deactivation = activator.deactivate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{ nodes: [node('stuck', 'trigger')], connections: {} },
+				new Set(['stuck']),
+				{ signal: controller.signal, onDetached },
+			);
+			await flushPromises();
+			controller.abort(new Error('deadline'));
+
+			await expect(deactivation).rejects.toThrow('deadline');
+			expect(onDetached).toHaveBeenCalledWith(expect.any(Promise));
+		});
+
+		test('clears webhook rows only for nodes whose every webhook deregistered before the abort', async () => {
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			const webhookOk = mock<IWebhookData>({ node: 'Webhook OK', path: 'ok' });
+			// The stuck node has two webhooks; only one of them hangs. Its fulfilled
+			// sibling must not cause the node's rows to be cleared.
+			const webhookStuck = mock<IWebhookData>({ node: 'Webhook Stuck', path: 'hang' });
+			const webhookStuckSibling = mock<IWebhookData>({ node: 'Webhook Stuck', path: 'fine' });
+			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([
+				webhookOk,
+				webhookStuck,
+				webhookStuckSibling,
+			]);
+			webhookTriggerRegistrar.deregister.mockImplementation(async ({ webhookData }) => {
+				if (webhookData.path === 'hang') await new Promise(() => {});
+				return webhookData.node;
+			});
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+			const controller = new AbortController();
+
+			const deactivation = activator.deactivate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{
+					nodes: [
+						node('ok-node', 'webhook', { name: 'Webhook OK' }),
+						node('stuck-node', 'webhook', { name: 'Webhook Stuck' }),
+					],
+					connections: {},
+				},
+				new Set(['ok-node', 'stuck-node']),
+				{ signal: controller.signal, onDetached: vi.fn() },
+			);
+			await flushPromises();
+			controller.abort(new Error('deadline'));
+
+			await expect(deactivation).rejects.toThrow('deadline');
+			expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
+				'Webhook OK',
+			]);
 		});
 	});
 });

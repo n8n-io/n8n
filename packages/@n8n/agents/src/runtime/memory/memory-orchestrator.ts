@@ -28,6 +28,7 @@ import type { AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import type { AgentMessageList } from '../model/message-list';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 import type { BackgroundTaskTracker } from '../state/background-task-tracker';
 import type { AgentEventBus } from '../state/event-bus';
 import {
@@ -36,6 +37,7 @@ import {
 	type MemorySpanAttributes,
 	type RuntimeTelemetry,
 } from '../telemetry/runtime-telemetry';
+import { sanitizeOffloadedToolResultsForMemory } from '../tools/tool-result-guard';
 
 const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
 const logger = createFilteredLogger();
@@ -75,6 +77,7 @@ export class MemoryOrchestrator {
 		private readonly backgroundTasks: BackgroundTaskTracker,
 		private readonly eventBus: AgentEventBus,
 		private readonly runtimeTelemetry: RuntimeTelemetry,
+		private readonly tokenCounter: TokenCounter = estimateObservationTokens,
 	) {}
 
 	async loadHistoryMessages(
@@ -268,7 +271,7 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		const memory = this.config.memory;
 		if (!memory || !options?.persistence) return;
-		const delta = list.turnDelta();
+		const delta = sanitizeOffloadedToolResultsForMemory(list.turnDelta());
 		if (delta.length === 0) return;
 		try {
 			const telemetry = this.runtimeTelemetry.resolve(options);
@@ -303,7 +306,7 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		const memory = this.config.memory;
 		if (!memory || !options?.persistence) return;
-		const delta = list.turnDelta();
+		const delta = sanitizeOffloadedToolResultsForMemory(list.turnDelta());
 		if (delta.length === 0) return;
 		const telemetry = this.runtimeTelemetry.resolve(options);
 		await this.saveMessagesWithSpan(
@@ -361,6 +364,7 @@ export class MemoryOrchestrator {
 							observerThresholdTokens,
 							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 							observe,
+							tokenCounter: this.tokenCounter,
 							executionCounter,
 							telemetry,
 						}),
@@ -382,6 +386,7 @@ export class MemoryOrchestrator {
 							...scope,
 							reflectorThresholdTokens,
 							reflect,
+							tokenCounter: this.tokenCounter,
 							executionCounter,
 							telemetry,
 						}),

@@ -246,9 +246,9 @@ export async function runWorkflowChecks(args: {
 }
 
 function hasAnthropicKey(): boolean {
-	return Boolean(
-		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
-			process.env.N8N_AI_ANTHROPIC_KEY ??
-			process.env.ANTHROPIC_API_KEY,
-	);
+	return [
+		process.env.N8N_AI_ANTHROPIC_KEY,
+		process.env.ANTHROPIC_API_KEY,
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY,
+	].some((value) => Boolean(value?.trim()));
 }

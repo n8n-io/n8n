@@ -8,6 +8,7 @@ import { createHmac } from 'crypto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { UrlService } from '@/services/url.service';
 
@@ -37,6 +38,11 @@ const makeContext = (
 ): AgentChatIntegrationContext => ({
 	agentId: 'agent-1',
 	projectId: 'proj-1',
+	integration: {
+		type: 'telegram',
+		credentialId: 'cred-1',
+		settings: { accessMode: 'public', allowedUsers: [] },
+	},
 	credentialId: 'cred-1',
 	credential: { accessToken: 'bot-token' },
 	ingressEnabled: true,
@@ -95,6 +101,16 @@ describe('TelegramIntegration capabilities', () => {
 		const { integration } = makeIntegration();
 
 		expect(integration.actions).toEqual(['respond', 'send_dm', 'edit_message']);
+	});
+});
+
+describe('TelegramIntegration.validateConfig', () => {
+	it('requires Telegram settings', () => {
+		const { integration } = makeIntegration();
+
+		expect(() =>
+			integration.validateConfig({ type: 'telegram', credentialId: 'credential-1' }),
+		).toThrow(BadRequestError);
 	});
 });
 

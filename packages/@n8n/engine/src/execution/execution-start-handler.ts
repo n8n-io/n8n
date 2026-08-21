@@ -2,11 +2,12 @@ import { UnexpectedError } from '../common';
 import { findTriggerNode } from '../graph';
 import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
+import { DEFAULT_TRIGGER_OUTPUTS } from './execution.types';
 import type { StepStore } from './step-store';
 
 /**
  * Handles the `execution:enqueued` orchestration event: claims the execution
- * (`queued → running`), records the trigger as a completed step, and announces
+ * (`queued -> running`), records the trigger as a completed step, and announces
  * that completion. The first step(s) are planned by the step completion handler
  * that handles the trigger completion.
  * NOTE: this means an extra trip through the queue, but it eliminates some
@@ -37,11 +38,18 @@ export class ExecutionStartHandler {
 			throw new UnexpectedError(`Execution ${event.executionId} has no trigger node in its graph`);
 		}
 
-		// The trigger's output was captured at execution start; record it as
-		// already completed so successors can treat it as a satisfied predecessor.
+		// The trigger's outputs were captured at execution start; record them as
+		// already completed so successors read them like any predecessor's slots.
+		// No payload means no slots at all: every successor edge reads undefined
+		// and is treated as dead, same as any other step that produced nothing.
 		// The claim above makes this the only writer, so the row cannot exist yet.
-		const [triggerStep] = await this.stepStore.createSteps([
-			{ executionId: event.executionId, nodeId: trigger.id, status: 'completed' },
+		const [triggerStep] = await this.stepStore.createSteps(event.executionId, [
+			{
+				nodeId: trigger.id,
+				iteration: 0,
+				status: 'completed',
+				outputs: execution.triggerOutputs ?? DEFAULT_TRIGGER_OUTPUTS,
+			},
 		]);
 		if (!triggerStep) {
 			throw new UnexpectedError(
@@ -51,7 +59,7 @@ export class ExecutionStartHandler {
 
 		// Published only after the row exists, so the consumer can always load it.
 		await this.orchestrationQueue.publish({
-			type: 'step:completed',
+			type: 'step:settled',
 			executionId: event.executionId,
 			stepId: triggerStep.id,
 		});

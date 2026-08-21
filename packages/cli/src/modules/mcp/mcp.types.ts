@@ -92,6 +92,8 @@ export type SearchWorkflowsParams = {
 	projectId?: string;
 	tags?: string[];
 	sortBy?: SearchWorkflowsSortBy;
+	folderId?: string;
+	includeSubfolders?: boolean;
 };
 
 export type SearchWorkflowsItem = {
@@ -103,24 +105,29 @@ export type SearchWorkflowsItem = {
 	updatedAt: string | null;
 	triggerCount: number | null;
 	availableInMCP: boolean;
+	parentFolderId: string | null;
 	tags: Array<{ id: string; name: string }>;
 };
 
 export type SearchWorkflowsResult = {
 	data: SearchWorkflowsItem[];
 	count: number;
+	error?: string;
 };
 
 export type WorkflowDetailsResult = z.infer<WorkflowDetailsOutputSchema>;
 export type WorkflowDetailsWorkflow = WorkflowDetailsResult['workflow'];
-export type WorkflowDetailsNode = WorkflowDetailsWorkflow['nodes'][number];
+export type WorkflowDetailsNode = NonNullable<WorkflowDetailsWorkflow['nodes']>[number];
 
 // JSON-RPC types for MCP protocol
 export type JSONRPCRequest = {
 	jsonrpc?: string;
 	method?: string;
 	params?: {
+		/** 2025-era location; superseded by the `_meta` envelope in 2026-07-28. */
 		clientInfo?: McpClientInfo;
+		/** Per-request envelope carrying protocol version and client identity. */
+		_meta?: Record<string, unknown>;
 		[key: string]: unknown;
 	};
 	id?: string | number | null;
@@ -138,6 +145,8 @@ export type UserConnectedToMCPEventPayload = {
 	user_id?: string;
 	client_name?: string;
 	client_version?: string;
+	/** Protocol revision the client declared in its `_meta` envelope (2026-07-28+). */
+	protocol_version?: string;
 	auth_type?: Mcpauth_type;
 	mcp_connection_status: 'success' | 'error';
 	mcp_apps_enabled?: boolean;
@@ -147,8 +156,9 @@ export type UserConnectedToMCPEventPayload = {
 };
 
 export type ExecuteWorkflowsInputMeta = {
-	type: 'webhook' | 'chat' | 'schedule' | 'form';
-	parameter_count: number;
+	type?: 'webhook' | 'chat' | 'form';
+	parameter_count?: number;
+	triggerNodeName?: string;
 };
 
 export type WorkflowNotFoundReason =
@@ -159,7 +169,8 @@ export type WorkflowNotFoundReason =
 	| 'workflow_not_active'
 	| 'unsupported_trigger'
 	| 'execution_not_found'
-	| 'invalid_pin_data';
+	| 'invalid_pin_data'
+	| 'invalid_inputs';
 
 export type UserCalledMCPToolEventPayload = {
 	user_id?: string;

@@ -18,12 +18,23 @@ export interface ToolCredentialRef {
 	required?: boolean;
 }
 
+/**
+ * `none` means no connection has been created. `disconnected` is reserved for
+ * an existing connection that is currently unavailable.
+ */
+export type ToolConnectionStatus = 'none' | 'connecting' | 'connected' | 'disconnected';
+
+/** Whether a connection exists or is currently being established. */
+export function hasToolConnection(status: ToolConnectionStatus): boolean {
+	return status !== 'none';
+}
+
 export interface BaseConnectionItem {
 	id: string;
 	title: string;
 	description?: string;
 	iconSource?: ToolIconSource;
-	isConnected: boolean;
+	status: ToolConnectionStatus;
 	credentials?: ToolCredentialRef[];
 	longDescription?: string;
 	/** Tab this item belongs to. Falls back to `CATEGORY_BY_KIND` when unset. */
@@ -35,6 +46,14 @@ export interface BaseConnectionItem {
 	installing?: boolean;
 	/** Non-admin cannot install; the action is disabled with a contact-admin tooltip. */
 	installDisabled?: boolean;
+	/**
+	 * Row is visible but not selectable. Used to surface incompatible items
+	 * (e.g. a workflow with a Wait node) at the bottom of a category so the user
+	 * can see why they're missing instead of the row simply being absent.
+	 */
+	disabled?: boolean;
+	/** Human-readable explanation shown as a tooltip when `disabled` is true. */
+	disabledReason?: string;
 }
 
 export interface NodeConnectionItem extends BaseConnectionItem {
@@ -152,7 +171,7 @@ export interface PickableCredential {
  */
 export interface ToolConnectionCredentialAdapter {
 	getCredentialsByType: (authType: string) => readonly PickableCredential[];
-	openNewCredential: (authType: string) => void;
+	openNewCredential: (authType: string, item: ToolConnectionItem) => void;
 	openExistingCredential: (credentialId: string) => void;
 }
 

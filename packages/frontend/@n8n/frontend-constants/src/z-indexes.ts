@@ -28,5 +28,6 @@ export const APP_Z_INDEXES = {
 	DRAGGABLE: 9999999,
 	ACTIVE_STICKY: 9999999,
 	WORKFLOW_PREVIEW_NDV: 9999999,
+	E2E_TEST_MODE_MARKER: 9999999, // never takes pointer events, so it can safely sit on top of everything
 	NPS_SURVEY_MODAL: 3001,
 } as const;

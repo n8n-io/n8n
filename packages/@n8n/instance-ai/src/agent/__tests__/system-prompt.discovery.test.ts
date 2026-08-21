@@ -145,25 +145,37 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		});
 	});
 
-	describe('MCP registry discovery is gated on the tool being registered', () => {
-		it('nudges the orchestrator to search the registry when the tool is available', () => {
-			const prompt = getSystemPrompt({ mcpRegistrySearchEnabled: true });
+	describe('MCP server guidance belongs to the tool, not the prompt', () => {
+		// Guidance lives on `mcp-servers`, which is never deferred, so its description
+		// reaches every request the way a prompt section would — without a second copy.
+		it('says nothing about MCP servers', () => {
+			const prompt = getSystemPrompt({ toolSearchEnabled: true, mcpToolSearchEnabled: true });
 
-			expect(prompt).toContain('## Connecting Services');
-			expect(prompt).toContain('mcp-servers');
-		});
-
-		it('keeps the nudge away from workflow building', () => {
-			const prompt = getSystemPrompt({ mcpRegistrySearchEnabled: true });
-
-			expect(prompt).toContain('never call `mcp-servers` for a build request');
-		});
-
-		it('omits the section when the tool is not registered', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).not.toContain('## Connecting Services');
 			expect(prompt).not.toContain('mcp-servers');
+			expect(prompt).not.toContain('## MCP Servers');
+		});
+	});
+
+	// INS-749: n8n-docs is always loaded now, so telling the orchestrator to
+	// discover it via search_tools is both wrong and a nudge away from the tool
+	// it should reach for first on n8n questions.
+	describe('n8n-docs is presented as already available, not as something to discover', () => {
+		// The Tool Discovery section only renders with tool search on, which is where
+		// the stale "search for n8n docs" example lived.
+		const toolSearchOptions = { ...browserCapableOptions, toolSearchEnabled: true };
+
+		it('does not offer n8n docs as a search_tools discovery example', () => {
+			const prompt = getSystemPrompt(toolSearchOptions);
+
+			expect(prompt).toContain('## Tool Discovery');
+			expect(prompt).not.toMatch(/search "n8n docs"/i);
+		});
+
+		it('tells the orchestrator to answer n8n questions from n8n-docs rather than web search', () => {
+			const prompt = getSystemPrompt(toolSearchOptions);
+
+			expect(prompt).toMatch(/prefer[^.]{0,60}n8n-docs/i);
+			expect(prompt).toMatch(/n8n-docs[^.]{0,120}already (loaded|available)/i);
 		});
 	});
 

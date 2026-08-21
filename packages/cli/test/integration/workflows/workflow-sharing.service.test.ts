@@ -116,4 +116,26 @@ describe('WorkflowSharingService', () => {
 			expect(sharedWorkflowIds).not.toContain(workflow2.id);
 		});
 	});
+
+	describe('rolesGrantingScope', () => {
+		it('should return no options for users holding the scope globally', async () => {
+			const options = await workflowSharingService.rolesGrantingScope(owner, 'workflow:read');
+
+			expect(options).toBeUndefined();
+		});
+
+		it('should return the roles granting the scope for other users', async () => {
+			const options = await workflowSharingService.rolesGrantingScope(member, 'workflow:read');
+
+			expect(options?.projectRoles).toContain('project:viewer');
+			expect(options?.workflowRoles).toContain('workflow:owner');
+		});
+
+		it('should return only the roles granting the requested scope', async () => {
+			const options = await workflowSharingService.rolesGrantingScope(member, 'workflow:update');
+
+			expect(options?.projectRoles).not.toContain('project:viewer');
+			expect(options?.projectRoles).toContain('project:admin');
+		});
+	});
 });

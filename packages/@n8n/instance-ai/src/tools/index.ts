@@ -127,7 +127,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 /**
  * Creates orchestrator domain tools. Skills run in the orchestrator now, so
  * domain tools keep their workflow-building surface while hiding raw full
- * WorkflowJSON update actions.
+ * WorkflowJSON read and update actions.
  */
 export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [

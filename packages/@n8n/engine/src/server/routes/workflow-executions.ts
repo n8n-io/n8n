@@ -1,10 +1,14 @@
-import { Router, type Router as RouterType } from 'express';
+import { Router, type Response, type Router as RouterType } from 'express';
+import assert from 'node:assert';
 import { z } from 'zod';
 
 import { AdmittanceRejectedError } from '../../admittance';
 import { UnimplementedError, type JsonValue } from '../../common';
 import type { StartExecutionService } from '../../execution/start-execution.service';
-import { GraphValidationError } from '../../graph';
+import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
+import type { EngineErrorResponse } from '../error-response';
+
+const MAX_TRIGGER_SLOTS = MAX_SLOT_INDEX + 1;
 
 const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 	z.union([
@@ -16,8 +20,6 @@ const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 		z.record(jsonValueSchema),
 	]),
 );
-
-const jsonObjectSchema = z.record(jsonValueSchema);
 
 const StepTypeSchema = z.enum(['trigger', 'v1-node', 'wait', 'subworkflow', 'batch']);
 
@@ -46,20 +48,23 @@ const WorkflowGraphSchema = z.object({
 const StartExecutionBody = z.object({
 	workflowId: z.string().min(1),
 	graph: WorkflowGraphSchema,
-	triggerPayload: jsonObjectSchema.nullable().optional(),
+	/** Trigger output slots. Empty means "no payload" — send `null` or omit instead. */
+	triggerOutputs: z.array(jsonValueSchema).min(1).max(MAX_TRIGGER_SLOTS).nullable().optional(),
 	mode: z.enum(['production', 'manual']).optional(),
 });
 
 export function createWorkflowExecutionsRouter(startExecution: StartExecutionService): RouterType {
 	const router = Router();
 
+	const fail = (res: Response, status: number, body: EngineErrorResponse): void => {
+		assert(status >= 400, `fail() sends error responses only, but got status ${status}`);
+		res.status(status).json(body);
+	};
+
 	router.post('/', async (req, res) => {
 		const parsed = StartExecutionBody.safeParse(req.body);
 		if (!parsed.success) {
-			res.status(400).json({
-				error: 'invalid_request',
-				details: parsed.error.flatten(),
-			});
+			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
 			return;
 		}
 
@@ -68,15 +73,15 @@ export function createWorkflowExecutionsRouter(startExecution: StartExecutionSer
 			res.status(201).json(result);
 		} catch (error) {
 			if (error instanceof AdmittanceRejectedError) {
-				res.status(429).json({ error: 'admittance_rejected', reason: error.reason });
+				fail(res, 429, { error: 'admittance_rejected', reason: error.reason });
 				return;
 			}
 			if (error instanceof GraphValidationError) {
-				res.status(400).json({ error: 'invalid_graph', reason: error.message });
+				fail(res, 400, { error: 'invalid_graph', reason: error.message });
 				return;
 			}
 			if (error instanceof UnimplementedError) {
-				res.status(501).json({ error: 'unimplemented', reason: error.message });
+				fail(res, 501, { error: 'unimplemented', reason: error.message });
 				return;
 			}
 			throw error;

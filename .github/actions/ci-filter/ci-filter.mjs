@@ -105,7 +105,7 @@ export function getChangedFiles(baseRef) {
 	// "changed" — spuriously triggering path-filtered jobs. The merge base
 	// scopes the diff to PR-only changes.
 	fetchUntilMergeBase(baseRef);
-	const output = execSync('git diff --name-only --merge-base FETCH_HEAD HEAD', {
+	const output = execSync('git diff --name-only --no-renames --merge-base FETCH_HEAD HEAD', {
 		encoding: 'utf-8',
 	});
 	return output
@@ -120,9 +120,10 @@ export function getAddedFiles(baseRef) {
 	if (!SAFE_REF.test(baseRef)) {
 		throw new Error(`Unsafe base ref: "${baseRef}"`);
 	}
-	const output = execSync('git diff --name-only --diff-filter=A --merge-base FETCH_HEAD HEAD', {
-		encoding: 'utf-8',
-	});
+	const output = execSync(
+		'git diff --name-only --no-renames --diff-filter=A --merge-base FETCH_HEAD HEAD',
+		{ encoding: 'utf-8' },
+	);
 	return output
 		.split('\n')
 		.map((f) => f.trim())
@@ -161,7 +162,9 @@ function fetchUntilMergeBase(baseRef) {
 
 function deepenFetch(baseRef, step, maxDeepen) {
 	const flag = step > maxDeepen ? '--unshallow' : `--deepen=${step}`;
-	execSync(`git fetch --no-tags --prune ${flag} origin ${baseRef}`, { stdio: 'pipe' });
+	execSync(`git fetch --no-tags --prune --filter=blob:none ${flag} origin ${baseRef}`, {
+		stdio: 'pipe',
+	});
 }
 
 function isShallow() {

@@ -4,7 +4,11 @@ import {
 	WorkflowTechnique,
 	type WorkflowTechniqueType as BestPracticesGuideId,
 } from '@n8n/workflow-sdk/prompts/best-practices';
-import { SDK_LANGUAGE_REFERENCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
+import {
+	GROUPING_GUIDANCE,
+	NODE_GROUPS_REFERENCE,
+	SDK_LANGUAGE_REFERENCE,
+} from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { join as posixJoin } from 'node:path/posix';
@@ -147,6 +151,12 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 		fileName: 'open-ai-output-shape.md',
 	},
 	{
+		id: 'anthropic-output-shape',
+		description:
+			'Anthropic node (@n8n/n8n-nodes-langchain.anthropic) output shape for downstream expressions and Code-node parsing',
+		fileName: 'anthropic-output-shape.md',
+	},
+	{
 		id: 'workflow-builder-guardrails',
 		description:
 			'Workflow builder guardrails for source preservation, fan-out/fan-in, effects, and Code nodes',
@@ -155,9 +165,16 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 	{
 		id: 'workflow-sdk-language',
 		description:
-			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset',
+			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset, node groups',
 		fileName: 'workflow-sdk-language.md',
 		content: SDK_LANGUAGE_REFERENCE,
+	},
+	{
+		id: 'node-groups',
+		description:
+			'Node group rules for SDK builder code: .group(name, members, { description }), what makes a group valid, when to group',
+		fileName: 'node-groups.md',
+		content: `${NODE_GROUPS_REFERENCE}\n\n${GROUPING_GUIDANCE}`,
 	},
 ];
 

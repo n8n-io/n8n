@@ -83,6 +83,7 @@ const {
 	},
 	appSettingsStoreMock: {
 		isCloudDeployment: false,
+		settings: { releaseChannel: 'stable' },
 	},
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({
 		type: 'prompt',
@@ -459,6 +460,14 @@ describe('InstanceAiEmptyView', () => {
 		vi.useRealTimers();
 		vi.clearAllMocks();
 		vi.unstubAllGlobals();
+	});
+
+	it('resets the browser tab title left behind by the previous thread', () => {
+		document.title = 'Previous thread - n8n';
+
+		renderView();
+
+		expect(document.title).toBe('AI Assistant - n8n');
 	});
 
 	it('passes the fixed suggestions to the empty-state composer', () => {

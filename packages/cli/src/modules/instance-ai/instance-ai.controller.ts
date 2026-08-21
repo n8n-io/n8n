@@ -12,6 +12,9 @@ import {
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiVerifyModelRequest,
+	InstanceAiVerifySandboxRequest,
+	InstanceAiVerifySearchRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalAgentExecutionRequest,
@@ -28,6 +31,7 @@ import type {
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import {
 	RestController,
 	GlobalScope,
@@ -48,7 +52,12 @@ import {
 	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
 } from '@n8n/instance-ai';
-import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
+import {
+	OversizedAttachmentError,
+	UnsupportedAttachmentError,
+	validateAttachmentMimeTypes,
+	validateAttachmentSizes,
+} from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
@@ -62,7 +71,9 @@ import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
@@ -123,6 +134,7 @@ export class InstanceAiController {
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly modelCatalogService: InstanceAiModelCatalogService,
 		private readonly evalExecutionService: EvalExecutionService,
 		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
@@ -192,12 +204,30 @@ export class InstanceAiController {
 		if (fileAttachments.length > 0) {
 			try {
 				validateAttachmentMimeTypes(fileAttachments);
+				// Reject oversized payloads here rather than letting them reach the model.
+				// The provider answers an oversized image with an opaque 400, and the
+				// attachment is already persisted in thread history by then — so every
+				// later turn replays it and fails too, stranding the conversation.
+				//
+				// Note the request schema caps each `data` field at the same per-file
+				// limit, and body validation runs before this handler — so over HTTP a
+				// single oversized file is answered by the schema and only the combined
+				// budget reaches here. This call stays because it is the check for
+				// non-HTTP callers and the one that enforces the total.
+				validateAttachmentSizes(fileAttachments);
 			} catch (error) {
 				if (error instanceof UnsupportedAttachmentError) {
 					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');
 					throw new BadRequestError(
 						`Unsupported attachment type: ${summary}. Supported types include CSV, JSON, ` +
 							'PDF, DOCX, XLSX, HTML, plain text, markdown, and images.',
+					);
+				}
+				if (error instanceof OversizedAttachmentError) {
+					throw new BadRequestError(
+						error.reason === 'per_file'
+							? `${error.message} Attach a smaller version, or resize the image before sending.`
+							: `${error.message} Send them across separate messages, or attach smaller versions.`,
 					);
 				}
 				throw error;
@@ -676,6 +706,12 @@ export class InstanceAiController {
 		return await this.settingsService.getAdminSettings();
 	}
 
+	@Get('/settings/models')
+	@GlobalScope('instanceAi:manage')
+	async getModelCatalog(_req: AuthenticatedRequest) {
+		return await this.modelCatalogService.getModels();
+	}
+
 	@Put('/settings')
 	@GlobalScope('instanceAi:manage')
 	async updateAdminSettings(
@@ -699,6 +735,36 @@ export class InstanceAiController {
 		return result;
 	}
 
+	@Post('/settings/verify/model')
+	@GlobalScope('instanceAi:manage')
+	async verifyModel(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifyModelRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifyModel(req.user, payload);
+	}
+
+	@Post('/settings/verify/sandbox')
+	@GlobalScope('instanceAi:manage')
+	async verifySandbox(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifySandboxRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifySandbox(req.user, payload);
+	}
+
+	@Post('/settings/verify/search')
+	@GlobalScope('instanceAi:manage')
+	async verifySearch(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifySearchRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifySearch(payload);
+	}
+
 	@OnPubSubEvent('reload-instance-ai-settings', { instanceType: 'main' })
 	async reloadAdminSettings() {
 		await this.settingsService.reloadFromDb();
@@ -718,6 +784,9 @@ export class InstanceAiController {
 		const sideEffects: Array<() => Promise<void> | void> = [
 			async () => {
 				await this.moduleRegistry.refreshModuleSettings('instance-ai');
+			},
+			async () => {
+				await this.moduleRegistry.refreshModuleSettings('agents');
 			},
 		];
 		if (!settings.enabled || !settings.browserUseEnabled) {

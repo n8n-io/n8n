@@ -58,6 +58,8 @@ export function useWorkflowSetupSections(
 				currentCredentialId,
 				parameterNames,
 				credentialTargetNodes: [{ id: req.node.id, name: req.node.name, type: req.node.type }],
+				...(req.setupHint ? { setupHint: req.setupHint } : {}),
+				...(req.preferNewCredential ? { preferNewCredential: true } : {}),
 			};
 
 			result.push(section);

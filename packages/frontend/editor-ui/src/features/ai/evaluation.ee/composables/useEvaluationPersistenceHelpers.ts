@@ -313,7 +313,7 @@ export function useEvaluationPersistenceHelpers() {
 	}
 
 	function showPersistError(error: unknown) {
-		toast.showError(error, locale.baseText('evaluations.wizardSidepanel.step2.persistError'));
+		toast.showError(error, locale.baseText('evaluations.tests.persistError'));
 	}
 
 	return { ensureConfig, ensureDataTable, rollback, resolveSlice, showPersistError };

@@ -1,6 +1,6 @@
 import type {
 	InstanceAiMcpConnectionResponse,
-	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpConnectionToolsResponse,
 } from '@n8n/api-types';
 import {
 	InstanceAiMcpCreateConnectionRequestDto,
@@ -96,13 +96,19 @@ export class InstanceAiMcpConnectionController {
 		);
 	}
 
+	@Get('/tools')
+	@GlobalScope('instanceAi:message')
+	async listAllTools(req: AuthenticatedRequest): Promise<InstanceAiMcpConnectionToolsResponse[]> {
+		return await this.service.listAllConnectionTools(req.user);
+	}
+
 	@Get('/:id/tools')
 	@GlobalScope('instanceAi:message')
 	async listTools(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
-	): Promise<InstanceAiMcpConnectionToolResponse[]> {
+	): Promise<InstanceAiMcpConnectionToolsResponse> {
 		return await this.service.listConnectionTools(req.user, id);
 	}
 

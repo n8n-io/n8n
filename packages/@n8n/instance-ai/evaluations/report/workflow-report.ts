@@ -18,6 +18,7 @@ import type {
 	BuildExpectationResult,
 	ConversationMetrics,
 	ExecutionScenarioResult,
+	SetupWizardSkippedNode,
 	ToolInteraction,
 	TranscriptStep,
 	TranscriptTurn,
@@ -1035,7 +1036,8 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			return `<details class="transcript-aside" open><summary>${summary}</summary><ul class="transcript-questions">${lines}</ul></details>`;
 		}
 		case 'setup-wizard': {
-			const skipped = interaction.skippedNodes;
+			const skipped = interaction.nodesStillNeedingSetup;
+			const declined = interaction.skippedByUser ?? [];
 			const needCreds = skipped.filter((s) => Boolean(s.credentialType)).length;
 			const needParams = skipped.length - needCreds;
 			const breakdown: string[] = [];
@@ -1047,8 +1049,11 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			}
 			if (skipped.length > 0) {
 				headerParts.push(
-					`${String(skipped.length)} skipped${breakdown.length > 0 ? ` (${breakdown.join(', ')})` : ''}`,
+					`${String(skipped.length)} unconfigured${breakdown.length > 0 ? ` (${breakdown.join(', ')})` : ''}`,
 				);
+			}
+			if (declined.length > 0) {
+				headerParts.push(`${String(declined.length)} skipped by user`);
 			}
 			const header = headerParts.length > 0 ? headerParts.join(', ') : 'nothing to apply';
 
@@ -1064,17 +1069,20 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 					`<div class="transcript-section-label">configured (${String(interaction.completedNodes.length)})</div><ul class="transcript-plan">${items}</ul>`,
 				);
 			}
-			if (skipped.length > 0) {
-				const items = skipped
+			const renderNodeList = (nodes: SetupWizardSkippedNode[], label: string) => {
+				const items = nodes
 					.map(
 						(s) =>
 							`<li>${escapeHtml(s.nodeName)}${s.credentialType ? ` — needs <code>${escapeHtml(s.credentialType)}</code> credential` : ' — needs parameters'}</li>`,
 					)
 					.join('');
 				sections.push(
-					`<div class="transcript-section-label">skipped (${String(skipped.length)})</div><ul class="transcript-plan">${items}</ul>`,
+					`<div class="transcript-section-label">${label} (${String(nodes.length)})</div><ul class="transcript-plan">${items}</ul>`,
 				);
-			}
+			};
+			if (skipped.length > 0) renderNodeList(skipped, 'unconfigured');
+			// Separate section: re-asking for one of these is the failure a judge looks for.
+			if (declined.length > 0) renderNodeList(declined, 'skipped by user');
 			return `<details class="transcript-aside" open><summary>🛠 setup wizard — ${escapeHtml(header)}</summary>${sections.join('')}</details>`;
 		}
 		case 'setup-card': {

@@ -27,25 +27,6 @@ const NO_IDENTITY: TriggerIdentityCapabilities = {
 	providesExternalIdentity: false,
 };
 
-/** Instance-level toggles that change what a trigger can establish. */
-export interface TriggerIdentityOptions {
-	/**
-	 * Whether `N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2` is on for the instance — not a
-	 * per-node setting. The flag doesn't gate the form's `n8nUserAuth` option
-	 * (that's `typeVersion >= 2.6`); it selects which flow backs it. On ⇒ OAuth2,
-	 * establishing the submitter's identity. Off ⇒ the legacy cookie/HMAC flow,
-	 * which authenticates the submitter but establishes no identity.
-	 */
-	isFormOAuth2Enabled?: boolean;
-	/**
-	 * Whether `N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS` is on for the instance.
-	 * Unlike the form's flag, this one does gate the Webhook node's `n8nOAuth2`
-	 * option directly — it's opt-in and hidden in the editor while off. A caller
-	 * that hasn't read the flag must not let an existing `n8nOAuth2` value through.
-	 */
-	isWebhookOAuth2Enabled?: boolean;
-}
-
 /** Whether a trigger's parameters declare at least one context establishment hook. */
 function hasContextEstablishmentHook(parameters: INodeParameters | undefined): boolean {
 	const hookParams = toExecutionContextEstablishmentHookParameter(parameters);
@@ -68,7 +49,6 @@ function hasContextEstablishmentHook(parameters: INodeParameters | undefined): b
 export function classifyTriggerIdentity(
 	nodeType: string,
 	parameters: INodeParameters | undefined,
-	options: TriggerIdentityOptions = {},
 ): TriggerIdentityCapabilities {
 	// Sub-workflows inherit identity from the parent; Chat Hub and MCP-over-n8nOAuth2
 	// inject it. All provide both identity families.
@@ -77,24 +57,14 @@ export function classifyTriggerIdentity(
 		nodeType === CHAT_TRIGGER_NODE_TYPE && parameters?.availableInChat === true;
 	const isMcpTrigger =
 		nodeType === MCP_TRIGGER_NODE_TYPE && parameters?.authentication === 'n8nOAuth2';
-	// The Webhook node's opt-in "n8n User Auth (OAuth2)" mode injects the caller's
-	// n8n identity the same way the MCP trigger does — sharing the `n8nOAuth2` value.
-	// Unlike the MCP trigger, this mode is gated by an instance flag (the option is
-	// hidden in the editor while it's off), so a caller must opt in with
-	// `isWebhookOAuth2Enabled` for it to count — omitting it fails closed.
+	// The Webhook node's "n8n User Auth (OAuth2)" mode injects the caller's n8n
+	// identity the same way the MCP trigger does — sharing the `n8nOAuth2` value.
 	const isOAuth2Webhook =
-		nodeType === WEBHOOK_NODE_TYPE &&
-		parameters?.authentication === 'n8nOAuth2' &&
-		options.isWebhookOAuth2Enabled === true;
-	// The form trigger only establishes an identity through its OAuth2 flow, so callers
-	// must opt the branch in with the instance's `isFormOAuth2Enabled`. Omitting it fails
-	// closed: without the flag a `n8nUserAuth` form takes the legacy cookie/HMAC path,
-	// which authenticates the submitter but establishes no identity to resolve
-	// credentials with — publish must reject that instead of failing mid-execution.
+		nodeType === WEBHOOK_NODE_TYPE && parameters?.authentication === 'n8nOAuth2';
+	// The form trigger establishes the submitter's identity through its OAuth2 flow,
+	// which is what `n8nUserAuth` (typeVersion >= 2.6) now always runs on.
 	const isFormTrigger =
-		nodeType === FORM_TRIGGER_NODE_TYPE &&
-		parameters?.authentication === 'n8nUserAuth' &&
-		options.isFormOAuth2Enabled === true;
+		nodeType === FORM_TRIGGER_NODE_TYPE && parameters?.authentication === 'n8nUserAuth';
 	if (
 		isSubWorkflowTrigger ||
 		isChatHubTrigger ||
@@ -105,7 +75,9 @@ export function classifyTriggerIdentity(
 		return { providesN8nIdentity: true, providesExternalIdentity: true };
 	}
 
-	// Manual/chat/MCP triggers run with the n8n user identity.
+	// Manual triggers run with the executing n8n user's identity (attached from the
+	// session by the manual-run endpoint). Chat and MCP triggers must NOT match here:
+	// outside the branches above they establish no identity at runtime.
 	if (MANUAL_TRIGGER_NODE_TYPES.includes(nodeType)) {
 		return { providesN8nIdentity: true, providesExternalIdentity: false };
 	}

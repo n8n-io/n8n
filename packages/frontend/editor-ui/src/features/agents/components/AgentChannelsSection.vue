@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
+import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -29,6 +29,7 @@ const props = withDefaults(
 		isPublished: false,
 		validationIssues: () => [],
 		simpleChannelSetup: false,
+		ensureAgentPersisted: undefined,
 	},
 );
 
@@ -122,6 +123,7 @@ async function loadChannelDetails() {
 
 onMounted(() => {
 	void loadChannelDetails();
+	agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
 });
 
 function onChannelSetup(event: { agentId?: string; source?: string } | undefined) {
@@ -137,6 +139,17 @@ watch([() => props.projectId, () => props.agentId], () => {
 	void loadChannelDetails();
 });
 
+// After IAI builds an agent we shold refetch credentials and channels
+function onExternalAgentUpdated(event?: { agentId?: string; source?: string }) {
+	if (event?.source === 'agent-builder') return;
+	if (event?.agentId && event.agentId !== props.agentId) return;
+	void loadChannelDetails();
+}
+
+onBeforeUnmount(() => {
+	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
+});
+
 function openChannelModal() {
 	channelModalView.value = 'list';
 	channelModalOpen.value = true;
@@ -144,7 +157,7 @@ function openChannelModal() {
 
 function openChannelEdit(channelType: string) {
 	const hasEditableChannelView = catalog.value?.some(({ type }) => type === channelType) ?? false;
-	channelModalView.value = hasEditableChannelView ? (`${channelType}_edit` as ChannelView) : 'list';
+	channelModalView.value = hasEditableChannelView ? `${channelType}_edit` : 'list';
 	channelModalOpen.value = true;
 }
 

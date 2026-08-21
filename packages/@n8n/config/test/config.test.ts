@@ -135,6 +135,7 @@ describe('GlobalConfig', () => {
 				endpoint: '',
 				endpointAuthToken: '',
 				persistence: false,
+				showScopes: [],
 				skipTypes: [],
 			},
 		},
@@ -189,6 +190,9 @@ describe('GlobalConfig', () => {
 		externalHooks: {
 			separator: ':',
 			files: [],
+		},
+		featureFlags: {
+			override: {},
 		},
 		nodes: {
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
@@ -253,6 +257,7 @@ describe('GlobalConfig', () => {
 				queueMetricsInterval: 20,
 				includeSchedulerMetrics: false,
 				schedulerMetricsInterval: 20,
+				includePollTriggerMetrics: false,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
@@ -322,6 +327,9 @@ describe('GlobalConfig', () => {
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
+			vertexProjectId: '',
+			vertexLocation: '',
+			vertexServiceAccountJson: '',
 			mcpServers: '',
 			localGatewayDisabled: false,
 			browserUseEnabled: true,
@@ -359,6 +367,9 @@ describe('GlobalConfig', () => {
 			thinkingEnabled: true,
 			durableLog: true,
 			mcpConnectionsEnabled: false,
+			canvasNodeContextEnabled: false,
+			activationCapped: false,
+			activationLockMessageThreshold: 1,
 		},
 		queue: {
 			health: {
@@ -470,6 +481,7 @@ describe('GlobalConfig', () => {
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
 			misfireGraceSeconds: 60,
+			durableCursorsEnabled: false,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -625,9 +637,10 @@ describe('GlobalConfig', () => {
 			trimmingMinimumAgeDays: 6,
 			trimmingTimeWindowDays: 2,
 			trimOnStartUp: false,
+			skipOnStartUp: false,
 		},
 		expressionEngine: {
-			engine: 'legacy',
+			engine: 'vm',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
 			bridgeTimeout: 5000,
@@ -675,13 +688,10 @@ describe('GlobalConfig', () => {
 			tracingRecordOutputs: true,
 			modules: [],
 			sandboxEnabled: false,
-			sandboxProvider: '',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
-			daytonaApiUrl: '',
-			daytonaApiKey: '',
 		},
 	} satisfies GlobalConfigShape;
 
@@ -704,6 +714,15 @@ describe('GlobalConfig', () => {
 		expect(config.agents.tracingEnabled).toBe(false);
 	});
 
+	it('should parse N8N_POLLER_DURABLE_CURSORS_ENABLED from env variables', () => {
+		process.env = {
+			N8N_POLLER_DURABLE_CURSORS_ENABLED: 'true',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.scheduler.durableCursorsEnabled).toBe(true);
+	});
+
 	it('should parse N8N_AGENTS_TRACING_RECORD_INPUTS from env variables', () => {
 		process.env = {
 			N8N_AGENTS_TRACING_RECORD_INPUTS: 'false',
@@ -722,15 +741,6 @@ describe('GlobalConfig', () => {
 		expect(config.agents.tracingRecordOutputs).toBe(false);
 	});
 
-	it('should parse N8N_AGENTS_AI_SANDBOX_EPHEMERAL from env variables', () => {
-		process.env = {
-			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
-		};
-		const config = Container.get(GlobalConfig);
-
-		expect(config.agents.sandboxEphemeral).toBe(true);
-	});
-
 	it('should parse N8N_AGENTS_AI_SANDBOX_SNAPSHOT from env variables', () => {
 		process.env = {
 			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
@@ -738,6 +748,18 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.sandboxSnapshot).toBe('n8n/agent-knowledge:1.2.3');
+	});
+
+	it('should parse N8N_MANAGED_OAUTH_SHOW_SCOPES from env variables', () => {
+		process.env = {
+			N8N_MANAGED_OAUTH_SHOW_SCOPES: 'googleOAuth2Api,microsoftOAuth2Api',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.credentials.overwrite.showScopes).toEqual([
+			'googleOAuth2Api',
+			'microsoftOAuth2Api',
+		]);
 	});
 
 	it('should use values from env variables when defined', () => {
@@ -857,7 +879,7 @@ describe('GlobalConfig', () => {
 		expect(config.database.postgresdb.password).toBe('password-from-file');
 		expect(consoleWarnMock).toHaveBeenCalledWith(
 			expect.stringContaining(
-				'DB_POSTGRESDB_PASSWORD_FILE contains leading or trailing whitespace',
+				'DB_POSTGRESDB_PASSWORD_FILE contained leading or trailing whitespace',
 			),
 		);
 	});
@@ -975,6 +997,24 @@ describe('GlobalConfig', () => {
 			process.env = { N8N_WORKFLOW_PUBLICATION_CONCURRENCY: '3' };
 			const config = Container.get(GlobalConfig);
 			expect(config.workflows.workflowPublicationConcurrency).toBe(3);
+		});
+
+		it('should reject an outbox lease above one day and fall back to the default', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS: `${100 * 24 * 60 * 60}` };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxLeaseSeconds).toBe(120);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS'),
+			);
+		});
+
+		it('should reject an outbox lease of 0 and fall back to the default', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.publicationOutboxLeaseSeconds).toBe(120);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS'),
+			);
 		});
 	});
 

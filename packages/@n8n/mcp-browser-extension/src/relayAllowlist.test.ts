@@ -1,4 +1,9 @@
-import { getRelayHost, isAllowedRelayUrl, isLocalhostRelay } from './relayAllowlist';
+import {
+	getRelayHost,
+	isAllowedPageOrigin,
+	isAllowedRelayUrl,
+	isLocalhostRelay,
+} from './relayAllowlist';
 
 describe('isAllowedRelayUrl', () => {
 	it('allows n8n cloud tenant subdomains over wss', () => {
@@ -38,6 +43,35 @@ describe('isAllowedRelayUrl', () => {
 		expect(isAllowedRelayUrl('')).toBe(false);
 		expect(isAllowedRelayUrl(null)).toBe(false);
 		expect(isAllowedRelayUrl(undefined)).toBe(false);
+	});
+});
+
+describe('isAllowedPageOrigin', () => {
+	it('allows n8n cloud origins over https', () => {
+		expect(isAllowedPageOrigin('https://acme.app.n8n.cloud')).toBe(true);
+		expect(isAllowedPageOrigin('https://acme.stage-app.n8n.cloud')).toBe(true);
+	});
+
+	it('allows local origins over http and https', () => {
+		expect(isAllowedPageOrigin('http://localhost:5678')).toBe(true);
+		expect(isAllowedPageOrigin('https://localhost:5678')).toBe(true);
+		expect(isAllowedPageOrigin('http://127.0.0.1:5678')).toBe(true);
+	});
+
+	it('rejects cloud hosts over plain http', () => {
+		expect(isAllowedPageOrigin('http://acme.app.n8n.cloud')).toBe(false);
+	});
+
+	it('rejects unrecognized and suffix-spoofing origins', () => {
+		expect(isAllowedPageOrigin('https://evil.example.com')).toBe(false);
+		expect(isAllowedPageOrigin('https://app.n8n.cloud.evil.com')).toBe(false);
+	});
+
+	it('rejects malformed or empty input', () => {
+		expect(isAllowedPageOrigin('not a url')).toBe(false);
+		expect(isAllowedPageOrigin('')).toBe(false);
+		expect(isAllowedPageOrigin(null)).toBe(false);
+		expect(isAllowedPageOrigin(undefined)).toBe(false);
 	});
 });
 

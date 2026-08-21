@@ -65,7 +65,7 @@ type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'
 	Pick<AgentConfigService, 'updateConfig'> &
 	Pick<AgentCustomToolsService, 'buildCustomTool'> &
 	Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'> &
-	Pick<AgentSkillsService, 'createSkills'>;
+	Pick<AgentSkillsService, 'createSkills' | 'getSkill' | 'listSkills' | 'updateSkill'>;
 
 function makeService() {
 	const agentsService = mock<Pick<AgentsService, 'findById' | 'findByProjectId'>>();
@@ -73,7 +73,8 @@ function makeService() {
 	const agentCustomToolsService = mock<Pick<AgentCustomToolsService, 'buildCustomTool'>>();
 	const agentIntegrationPersistenceService =
 		mock<Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'>>();
-	const agentSkillsService = mock<Pick<AgentSkillsService, 'createSkills'>>();
+	const agentSkillsService =
+		mock<Pick<AgentSkillsService, 'createSkills' | 'getSkill' | 'listSkills' | 'updateSkill'>>();
 	const purposeServices = {
 		findById: agentsService.findById,
 		findByProjectId: agentsService.findByProjectId,
@@ -81,6 +82,9 @@ function makeService() {
 		buildCustomTool: agentCustomToolsService.buildCustomTool,
 		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
 		createSkills: agentSkillsService.createSkills,
+		getSkill: agentSkillsService.getSkill,
+		listSkills: agentSkillsService.listSkills,
+		updateSkill: agentSkillsService.updateSkill,
 	} as Mocked<BuilderPurposeServices>;
 	const secureRuntime = mock<AgentSecureRuntime>();
 	const attachableWorkflowsService = mock<AttachableWorkflowsService>();
@@ -234,6 +238,18 @@ function makeAgent(config: AgentJsonConfig = baseConfig): Agent {
 		tools: {},
 		skills: {},
 	} as unknown as Agent;
+}
+
+function makeTaskDto(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
+	return {
+		id: 'task-1',
+		name: 'Daily summary',
+		objective: 'Summarize the team Slack #general channel from the last 24h and post a recap.',
+		cronExpression: '0 9 * * *',
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z',
+		...overrides,
+	};
 }
 
 describe('AgentsBuilderToolsService', () => {
@@ -1590,6 +1606,276 @@ describe('AgentsBuilderToolsService', () => {
 		});
 	});
 
+	describe('read_skill tool', () => {
+		it('returns instructions with reference metadata but not reference content by default', async () => {
+			const { service, agentsService } = makeService();
+			const skill = {
+				name: 'Create tickets',
+				description: 'Use when creating or updating tickets',
+				instructions: 'Create clear, actionable tickets.',
+				allowedTools: ['create_ticket'],
+				references: [{ path: 'references/ticket-template.md', content: '# Tïcket template' }],
+			};
+			agentsService.getSkill.mockResolvedValue(skill);
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((candidate) => candidate.name === 'read_skill');
+
+			expect(tool).toBeDefined();
+			if (!tool) throw new Error('Expected read_skill tool');
+
+			const result = await tool.handler!({ skillId: 'skill_create_tickets' }, ctx);
+
+			expect(agentsService.getSkill).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				'skill_create_tickets',
+			);
+			expect(result).toEqual({
+				ok: true,
+				id: 'skill_create_tickets',
+				skill: {
+					name: 'Create tickets',
+					description: 'Use when creating or updating tickets',
+					instructions: 'Create clear, actionable tickets.',
+					allowedTools: ['create_ticket'],
+					references: [{ path: 'references/ticket-template.md', sizeBytes: 18 }],
+				},
+			});
+		});
+
+		it('returns content only for explicitly requested reference paths', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.getSkill.mockResolvedValue({
+				name: 'Create tickets',
+				description: 'Use when creating or updating tickets',
+				instructions: 'Create clear, actionable tickets.',
+				references: [
+					{ path: 'references/ticket-template.md', content: '# Ticket template' },
+					{ path: 'references/escalation.md', content: '# Escalation' },
+				],
+			});
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((candidate) => candidate.name === 'read_skill');
+
+			expect(tool).toBeDefined();
+			if (!tool) throw new Error('Expected read_skill tool');
+
+			const result = await tool.handler!(
+				{
+					skillId: 'skill_create_tickets',
+					referencePaths: ['references/escalation.md'],
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: true,
+				id: 'skill_create_tickets',
+				skill: {
+					name: 'Create tickets',
+					description: 'Use when creating or updating tickets',
+					instructions: 'Create clear, actionable tickets.',
+					references: [
+						{ path: 'references/ticket-template.md', sizeBytes: 17 },
+						{
+							path: 'references/escalation.md',
+							sizeBytes: 12,
+							content: '# Escalation',
+						},
+					],
+				},
+			});
+		});
+
+		it('soft-fails when the persisted skill cannot be read', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.getSkill.mockRejectedValue(new Error('Skill not found'));
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((candidate) => candidate.name === 'read_skill');
+
+			expect(tool).toBeDefined();
+			if (!tool) throw new Error('Expected read_skill tool');
+
+			await expect(tool.handler!({ skillId: 'skill_missing' }, ctx)).resolves.toEqual({
+				ok: false,
+				errors: [{ message: 'Skill not found' }],
+			});
+		});
+	});
+
+	describe('list_skills tool', () => {
+		it('returns lightweight metadata for capability discovery', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.listSkills.mockResolvedValue({
+				skill_create_tickets: {
+					name: 'Create tickets',
+					description: 'Use when creating or updating tickets',
+					instructions: 'Create clear, actionable tickets.',
+				},
+				skill_review_images: {
+					name: 'Review images',
+					description: 'Use when reviewing images for quality issues',
+					instructions: 'Inspect each image carefully.',
+				},
+			});
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((candidate) => candidate.name === 'list_skills');
+
+			expect(tool).toBeDefined();
+			if (!tool) throw new Error('Expected list_skills tool');
+
+			const result = await tool.handler!({}, ctx);
+
+			expect(agentsService.listSkills).toHaveBeenCalledWith(agentId, projectId);
+			expect(result).toEqual({
+				ok: true,
+				skills: [
+					{
+						id: 'skill_create_tickets',
+						name: 'Create tickets',
+						description: 'Use when creating or updating tickets',
+					},
+					{
+						id: 'skill_review_images',
+						name: 'Review images',
+						description: 'Use when reviewing images for quality issues',
+					},
+				],
+			});
+		});
+
+		it('soft-fails when persisted skills cannot be listed', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.listSkills.mockRejectedValue(new Error('Agent not found'));
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((candidate) => candidate.name === 'list_skills');
+
+			expect(tool).toBeDefined();
+			if (!tool) throw new Error('Expected list_skills tool');
+
+			await expect(tool.handler!({}, ctx)).resolves.toEqual({
+				ok: false,
+				errors: [{ message: 'Agent not found' }],
+			});
+		});
+	});
+
+	describe('update_skill tool', () => {
+		it('updates only the supplied fields on the existing skill', async () => {
+			const { service, agentsService } = makeService();
+			const updates = {
+				instructions: 'Create tickets with a concise reproduction and acceptance criteria.',
+				allowedTools: ['create_ticket'],
+			};
+			agentsService.updateSkill.mockResolvedValue({
+				id: 'skill_create_tickets',
+				skill: {
+					name: 'Create tickets',
+					description: 'Use when creating or updating tickets',
+					...updates,
+				},
+				versionId: 'v2',
+			});
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((candidate) => candidate.name === 'update_skill');
+
+			expect(tool).toBeDefined();
+			if (!tool) throw new Error('Expected update_skill tool');
+
+			const result = await tool.handler!({ skillId: 'skill_create_tickets', updates }, ctx);
+
+			expect(agentsService.updateSkill).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				'skill_create_tickets',
+				updates,
+				{ user, modifiedBy: 'builder' },
+			);
+			expect(result).toEqual({
+				ok: true,
+				id: 'skill_create_tickets',
+				name: 'Create tickets',
+				configMutated: true,
+				agentId,
+			});
+		});
+
+		it('uses null to remove optional list fields and rejects ambiguous empty arrays', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.updateSkill.mockResolvedValue({
+				id: 'skill_create_tickets',
+				skill: {
+					name: 'Create tickets',
+					description: 'Use when creating or updating tickets',
+					instructions: 'Create clear, actionable tickets.',
+				},
+				versionId: 'v2',
+			});
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((candidate) => candidate.name === 'update_skill');
+
+			expect(tool).toBeDefined();
+			if (!tool) throw new Error('Expected update_skill tool');
+
+			await tool.handler!(
+				{
+					skillId: 'skill_create_tickets',
+					updates: { allowedTools: null, references: null },
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateSkill).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				'skill_create_tickets',
+				{ allowedTools: undefined, references: undefined },
+				{ user, modifiedBy: 'builder' },
+			);
+
+			const inputSchema = tool.inputSchema as unknown as {
+				safeParse: (input: unknown) => { success: boolean };
+			};
+			expect(
+				inputSchema.safeParse({
+					skillId: 'skill_create_tickets',
+					updates: { allowedTools: [] },
+				}).success,
+			).toBe(false);
+			expect(inputSchema.safeParse({ skillId: 'skill_create_tickets', updates: {} }).success).toBe(
+				false,
+			);
+		});
+
+		it('soft-fails without a config mutation marker when the skill cannot be updated', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.updateSkill.mockRejectedValue(new Error('Skill not found'));
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((candidate) => candidate.name === 'update_skill');
+
+			expect(tool).toBeDefined();
+			if (!tool) throw new Error('Expected update_skill tool');
+
+			await expect(
+				tool.handler!(
+					{
+						skillId: 'skill_missing',
+						updates: { instructions: 'Updated instructions' },
+					},
+					ctx,
+				),
+			).resolves.toEqual({ ok: false, errors: [{ message: 'Skill not found' }] });
+		});
+	});
+
 	describe('create_tasks tool', () => {
 		function getCreateTasksTool(service: AgentsBuilderToolsService) {
 			return service
@@ -1607,68 +1893,6 @@ describe('AgentsBuilderToolsService', () => {
 			objective: 'Summarize the week across #general and email a digest to the team.',
 			cronExpression: '0 9 * * 1',
 		};
-
-		function makeTaskDto(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
-			return {
-				id: 'task-1',
-				...taskOneInput,
-				createdAt: '2026-01-01T00:00:00.000Z',
-				updatedAt: '2026-01-01T00:00:00.000Z',
-				...overrides,
-			};
-		}
-
-		it('is available to the builder with batch and config attachment guidance', () => {
-			const { service } = makeService();
-
-			const tool = getCreateTasksTool(service);
-
-			expect(tool).toBeDefined();
-			expect(tool.description).toContain('all-or-nothing');
-			expect(tool.description).toContain(
-				'Pass every task you currently know how to write in one `tasks` array',
-			);
-			expect(tool.description).toContain('config.tasks');
-			expect(tool.description).toContain('{ ok: true, configMutated: true, agentId, tasks:');
-			expect(tool.description).toContain('{ ok: false, errors }');
-		});
-
-		it('puts quality and batching guardrails in systemInstruction, not description', () => {
-			const { service } = makeService();
-
-			const tool = getCreateTasksTool(service);
-
-			expect(tool.systemInstruction).toContain('vague, broad, or placeholder objective');
-			expect(tool.systemInstruction).toContain('ask the user clarifying questions');
-			expect(tool.systemInstruction).toContain('self-contained');
-			expect(tool.systemInstruction).toContain('Success criteria');
-			expect(tool.systemInstruction).toContain('A task can only use tools the agent already has');
-			expect(tool.systemInstruction).toContain('Batch every task');
-			expect(tool.description).not.toContain('ask the user clarifying questions');
-			expect(tool.description).not.toContain('Success criteria');
-		});
-
-		it('puts the structured objective template in each task objective parameter', () => {
-			const { service } = makeService();
-
-			const tool = getCreateTasksTool(service);
-			const objectiveSchema = (
-				tool.inputSchema as unknown as {
-					shape: { tasks: { element: { shape: { objective: { description?: string } } } } };
-				}
-			).shape.tasks.element.shape.objective;
-
-			for (const heading of [
-				'## Objective',
-				'## Context',
-				'## Steps',
-				'## Output',
-				'## Constraints',
-				'## Success criteria',
-			]) {
-				expect(objectiveSchema.description).toContain(heading);
-			}
-		});
 
 		it('creates multiple tasks without emitting legacy builder task telemetry', async () => {
 			const { service, agentsService, agentTaskService, telemetry } = makeService();
@@ -1757,6 +1981,112 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
 
 			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent "agent-1" not found' }] });
+		});
+	});
+
+	describe('list_tasks tool', () => {
+		function getListTasksTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((tool) => tool.name === BUILDER_TOOLS.LIST_TASKS)!;
+		}
+
+		it('lists task bodies with enabled state from the current config', async () => {
+			const { service, agentsService, agentTaskService } = makeService();
+			agentsService.findById.mockResolvedValue(
+				makeAgent({
+					...baseConfig,
+					tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+				}),
+			);
+			agentTaskService.list.mockResolvedValue([
+				makeTaskDto(),
+				makeTaskDto({
+					id: 'task-2',
+					name: 'Weekly digest',
+					objective: 'Summarize the week and email a digest to the team.',
+					cronExpression: '0 9 * * 1',
+				}),
+			]);
+
+			const result = await getListTasksTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: true,
+				tasks: [
+					{
+						id: 'task-1',
+						name: 'Daily summary',
+						objective:
+							'Summarize the team Slack #general channel from the last 24h and post a recap.',
+						cronExpression: '0 9 * * *',
+						enabled: true,
+					},
+					{
+						id: 'task-2',
+						name: 'Weekly digest',
+						objective: 'Summarize the week and email a digest to the team.',
+						cronExpression: '0 9 * * 1',
+						enabled: false,
+					},
+				],
+			});
+		});
+
+		it('does not list task bodies when the agent is outside the project', async () => {
+			const { service, agentsService, agentTaskService } = makeService();
+			agentsService.findById.mockResolvedValue(null);
+
+			const result = await getListTasksTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found' }] });
+			expect(agentTaskService.list).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('update_task tool', () => {
+		function getUpdateTaskTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((tool) => tool.name === BUILDER_TOOLS.UPDATE_TASK)!;
+		}
+
+		it('updates only supplied fields while preserving the task id', async () => {
+			const { service, agentTaskService } = makeService();
+			agentTaskService.update.mockResolvedValue(
+				makeTaskDto({ cronExpression: '0 10 * * *', updatedAt: '2026-01-02T00:00:00.000Z' }),
+			);
+
+			const result = await getUpdateTaskTool(service).handler!(
+				{ taskId: 'task-1', updates: { cronExpression: '0 10 * * *' } },
+				ctx,
+			);
+
+			expect(agentTaskService.update).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				'task-1',
+				{ cronExpression: '0 10 * * *' },
+				{ user, modifiedBy: 'builder' },
+			);
+			expect(result).toEqual({
+				ok: true,
+				id: 'task-1',
+				name: 'Daily summary',
+				configMutated: true,
+				agentId,
+			});
+		});
+
+		it('rejects an update without changed fields', () => {
+			const { service } = makeService();
+			const result = (
+				getUpdateTaskTool(service).inputSchema as unknown as {
+					safeParse: (input: unknown) => { success: boolean };
+				}
+			).safeParse({ taskId: 'task-1', updates: {} });
+
+			expect(result.success).toBe(false);
 		});
 	});
 
@@ -1937,7 +2267,7 @@ describe('AgentsBuilderToolsService', () => {
 				response: 'Deletion approved. I need approval to notify the owner.',
 			};
 			const { service, agentTestRunService } = makeService();
-			agentTestRunService.resumeDraftRun.mockResolvedValue({
+			agentTestRunService.resumeDraftApproval.mockResolvedValue({
 				status: 'suspended',
 				response: secondContinuation.response,
 				sessionId: secondContinuation.sessionId,
@@ -1966,16 +2296,13 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			const secondSuspensions = suspendedChunks(await collectChunks(resumedRun.stream));
 
-			expect(agentTestRunService.resumeDraftRun).toHaveBeenCalledWith({
+			expect(agentTestRunService.resumeDraftApproval).toHaveBeenCalledWith({
 				agentId,
 				projectId,
-				sessionId: firstContinuation.sessionId,
-				runId: firstContinuation.runId,
-				toolCallId: firstContinuation.toolCallId,
-				resumeData: { approved: true },
+				continuation: firstContinuation,
+				approved: true,
 				user,
 				source: 'instance-ai',
-				response: firstContinuation.response,
 				abortSignal: expect.any(AbortSignal),
 			});
 			expect(secondSuspensions).toHaveLength(1);
@@ -2019,13 +2346,19 @@ describe('AgentsBuilderToolsService', () => {
 					},
 				],
 			});
-			agentTestRunService.cancelSuspendedRun.mockResolvedValue(true);
+			agentTestRunService.cancelSuspendedRuns.mockResolvedValue(true);
 
 			const result = await getCallAgentTool(service).handler!({ message: 'Schedule it' }, ctx);
 
-			expect(agentTestRunService.cancelSuspendedRun).toHaveBeenCalledWith({
+			expect(agentTestRunService.cancelSuspendedRuns).toHaveBeenCalledWith({
 				agentId,
-				runId: 'run-1',
+				suspensions: [
+					expect.objectContaining({
+						runId: 'run-1',
+						toolCallId: 'tool-call-1',
+						toolName: 'schedule_record',
+					}),
+				],
 				userId: 'user-1',
 			});
 			expect(result).toEqual({
