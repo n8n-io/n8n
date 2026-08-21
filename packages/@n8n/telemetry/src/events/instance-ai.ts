@@ -39,6 +39,93 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The user clicked the AI Assistant credit balance button to open or close the balance dropdown.',
 		properties: z.object({}),
 	},
+	USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON: {
+		name: 'User clicked AI Assistant input plus button',
+		description: 'The user clicked the plus button in the AI Assistant input.',
+		properties: z.object({}),
+	},
+	TOOLS_LIST_OPENED: {
+		name: 'Instance AI tools list opened',
+		description: 'The user opened the AI Assistant tools connection modal.',
+		properties: z.object({
+			source: z.enum(['input_menu', 'mcp_connect_card']),
+		}),
+	},
+	MCP_SETTINGS_OPENED: {
+		name: 'Instance AI mcp settings opened',
+		description: 'The user opened settings for an MCP connection in the AI Assistant.',
+		properties: z.object({
+			server_slug: z.string(),
+			source: z.enum(['input_menu', 'mcp_connect_card']),
+		}),
+	},
+	MCP_FIRST_CREDENTIAL_CONNECTION_STARTED: {
+		name: 'Instance AI mcp first credential connection start',
+		description: 'The user started connecting the first credential for an MCP server.',
+		properties: z.object({ server_slug: z.string() }),
+	},
+	MCP_CREDENTIAL_DROPDOWN_OPENED: {
+		name: 'Instance AI mcp credential dropdown opened',
+		description: 'The user opened the credential dropdown for an MCP server.',
+		properties: z.object({ server_slug: z.string() }),
+	},
+	MCP_EXISTING_CREDENTIAL_SELECTED: {
+		name: 'Instance AI mcp existing credential selected',
+		description: 'The user selected an existing credential for an MCP server.',
+		properties: z.object({ server_slug: z.string() }),
+	},
+	MCP_NEW_CREDENTIAL_CONNECTION_STARTED: {
+		name: 'Instance AI mcp new credential connection start',
+		description: 'The user started connecting a new credential for an MCP server.',
+		properties: z.object({ server_slug: z.string() }),
+	},
+	MCP_TOOL_FILTER_SETTINGS_UPDATED: {
+		name: 'Instance AI mcp tool filter settings updated',
+		description: 'The user updated which tools are enabled for an MCP server.',
+		properties: z.object({
+			server_slug: z.string(),
+			inclusion_mode: z.enum(['all', 'selected', 'except']),
+		}),
+	},
+	BROWSER_USE_MODAL_OPENED: {
+		name: 'Instance AI Connect Browser Use modal opened',
+		description: 'The user opened the Browser Use connection interface.',
+		properties: z.object({
+			browser_supported: z.boolean(),
+			source: z.enum(['input_menu', 'credential_setup', 'tools_modal']),
+		}),
+	},
+	BROWSER_USE_INSTALL_EXTENSION_CLICKED: {
+		name: 'Instance AI Install Chrome Browser Extension button clicked',
+		description: 'The user clicked the button to install the Browser Use Chrome extension.',
+		properties: z.object({}),
+	},
+	BROWSER_USE_OPEN_EXTENSION_CLICKED: {
+		name: 'Instance AI Open Browser Use Extension button clicked',
+		description: 'The user clicked the button to open the Browser Use extension.',
+		properties: z.object({}),
+	},
+	BROWSER_USE_DIRECT_CONNECT_REQUESTED: {
+		name: 'Instance AI Browser Use direct connect requested',
+		description:
+			'The AI Assistant requested a direct connection through the Browser Use extension.',
+		properties: z.object({}),
+	},
+	COMPUTER_USE_MODAL_OPENED: {
+		name: 'User opened computer use connection modal',
+		description: 'The user opened the Computer Use connection interface.',
+		properties: z.object({
+			is_connected: z.boolean(),
+			source: z.enum(['input_menu', 'tools_modal']),
+		}),
+	},
+	COMPUTER_USE_CONNECTION_COMMAND_COPIED: {
+		name: 'User copied computer use connection command',
+		description: 'The user copied the Computer Use connection command.',
+		properties: z.object({
+			os: z.enum(['mac', 'windows', 'linux']),
+		}),
+	},
 	BUILDER_SPECCED_TEMPLATED_CRED: {
 		name: 'Builder specced templated cred',
 		description:
