@@ -38,6 +38,7 @@ import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -268,6 +269,57 @@ describe('run', () => {
 
 		// ASSERT
 		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
+	});
+
+	describe('engine 2.0 dispatch', () => {
+		it('hands the run to the dispatcher without registering a control-plane execution', async () => {
+			// ARRANGE
+			const dispatcher = Container.get(EngineV2Dispatcher);
+			vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(true);
+			const startSpy = vi.spyOn(dispatcher, 'start').mockResolvedValueOnce('dp-uuid');
+			const addSpy = vi.spyOn(Container.get(ActiveExecutions), 'add');
+
+			const data = mock<IWorkflowExecutionDataProcess>();
+
+			// ACT
+			const executionId = await runner.run(data);
+
+			// ASSERT
+			expect(executionId).toBe('dp-uuid');
+			expect(startSpy).toHaveBeenCalledWith(data);
+			expect(addSpy).not.toHaveBeenCalled();
+		});
+
+		it('leaves the v1 path alone when the run does not route to engine 2.0', async () => {
+			// ARRANGE
+			const dispatcher = Container.get(EngineV2Dispatcher);
+			vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(false);
+			const startSpy = vi.spyOn(dispatcher, 'start');
+			const activeExecutions = Container.get(ActiveExecutions);
+			const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
+				new PCancelable(() => mock<IRun>()),
+			);
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				triggerToStartFrom: undefined,
+				workflowData: { nodes: [], staticData: {} },
+				executionData: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				runData: undefined,
+			});
+
+			// ACT
+			const executionId = await runner.run(data);
+
+			// ASSERT
+			expect(executionId).toBe('1');
+			expect(startSpy).not.toHaveBeenCalled();
+			expect(addSpy).toHaveBeenCalledWith(data, undefined);
+		});
 	});
 
 	it('run partial execution with additional data', async () => {

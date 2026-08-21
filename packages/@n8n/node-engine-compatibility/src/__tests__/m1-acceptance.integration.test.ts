@@ -76,6 +76,35 @@ describe('M1 acceptance (integration)', () => {
 		expect(execution.status).toBe('completed');
 	});
 
+	it('runs a manual execution started with the default trigger payload', async () => {
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					TRIGGER,
+					setNode('node-a', 'A', [{ name: 'a', value: 'from-a', type: 'string' }]),
+					setNode('node-b', 'B', [{ name: 'b', value: '={{ $json.a }}-b', type: 'string' }]),
+				],
+				{
+					'When clicking Execute': mainTo('A'),
+					A: mainTo('B'),
+				},
+			),
+		);
+
+		// what the control plane sends for a manual run with no trigger data
+		const { execution, steps, byNode } = await runWorkflow(graph, [[{ json: {} }]], 'manual');
+
+		expect(steps).toHaveLength(3);
+		for (const nodeId of ['trigger', 'node-a', 'node-b']) {
+			expect(byNode(nodeId)?.status).toBe('completed');
+		}
+		expect(byNode('node-b')?.outputs).toEqual([
+			[expect.objectContaining({ json: { b: 'from-a-b' } })],
+		]);
+		expect(execution.mode).toBe('manual');
+		expect(execution.status).toBe('completed');
+	});
+
 	it('processes an n-item input into an n-item output, serially and in order', async () => {
 		const graph = converter.convert(
 			v1Workflow(

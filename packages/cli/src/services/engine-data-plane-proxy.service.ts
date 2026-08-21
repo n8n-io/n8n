@@ -18,9 +18,6 @@ export interface EngineDataPlaneProvider {
  * The module registers itself here on init. Without the module enabled there is
  * no provider, and calling into the engine throws rather than degrading silently:
  * a dropped execution would be worse than a loud failure.
- *
- * TODO(CAT-2877): nothing calls this yet. The dispatch that routes on the
- * per-workflow `engineType` setting lands with the parent ticket.
  */
 @Service()
 export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
@@ -28,6 +25,11 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 
 	registerProvider(provider: EngineDataPlaneProvider): void {
 		this.provider = provider;
+	}
+
+	/** Whether the `engine-v2` module is enabled and has registered itself. */
+	isAvailable(): boolean {
+		return this.provider !== null;
 	}
 
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {
