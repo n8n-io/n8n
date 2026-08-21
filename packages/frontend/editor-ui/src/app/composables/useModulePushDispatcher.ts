@@ -9,12 +9,9 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 /**
  * Dispatches push messages to module-registered handlers.
  *
- * Module registration is global and eager, so dispatch has to be too. Mounted at
- * app scope, this is what makes a module's `pushHandlers` run in every layout
- * instead of only where an editor component happens to be mounted.
- *
- * Handlers get the published `ModulePushHandlerContext` — nothing from the
- * editor — so this composable needs no workflow document.
+ * Module registration is global, so dispatch must be global too. At app scope a
+ * module's `pushHandlers` run in every layout — not only where an editor
+ * component mounts.
  */
 export function useModulePushDispatcher({ router }: { router: ReturnType<typeof useRouter> }) {
 	const pushStore = usePushConnectionStore();

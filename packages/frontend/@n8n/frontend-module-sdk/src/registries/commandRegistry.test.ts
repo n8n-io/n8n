@@ -57,7 +57,6 @@ describe('commandRegistry', () => {
 
 	it('should give each subscriber its own array', () => {
 		const received: CommandBarEntry[][] = [];
-		// The first subscriber mutates in place, as a sort or a splice would.
 		commandRegistry.subscribe((commands) => {
 			commands.reverse();
 			received.push(commands);

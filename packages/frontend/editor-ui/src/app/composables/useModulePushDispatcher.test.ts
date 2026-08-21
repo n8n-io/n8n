@@ -87,8 +87,6 @@ describe('useModulePushDispatcher', () => {
 	});
 
 	it('should dispatch without an editor in scope, so any layout is served', async () => {
-		// The published context carries `router` only, so no workflow document is
-		// injected. A throwing handler would surface here as an unhandled failure.
 		const receivedContexts: Array<Record<string, unknown>> = [];
 		pushHandlerRegistry.register('updateInstanceAiCredits', (_event, context) => {
 			receivedContexts.push(context as unknown as Record<string, unknown>);

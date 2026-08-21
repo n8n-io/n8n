@@ -68,10 +68,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			suppressExecutionErrorToasts: !executionErrorToasts.value,
 		};
 
-		// A module can own (or override) a push message type via its descriptor.
-		// `useModulePushDispatcher` runs the handler at app scope, so this only has
-		// to yield the type — otherwise a module override would run beside the
-		// built-in handler it replaces.
+		// A module owns a push type via its descriptor. `useModulePushDispatcher`
+		// runs the handler at app scope, so this only yields the type.
 		if (pushHandlerRegistry.has(event.type)) {
 			return;
 		}

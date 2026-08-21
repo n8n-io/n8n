@@ -69,8 +69,6 @@ useTelemetryInitializer();
 // Initialize global backend status tracking
 useBackendStatus();
 
-// Module push handlers are registered globally, so the shell dispatches them
-// from app scope — not from the editor-scoped `usePushConnection`.
 useModulePushDispatcher({ router });
 
 useTrialIntroModalAutoOpen();

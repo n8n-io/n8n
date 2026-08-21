@@ -17,14 +17,9 @@ import { modalRegistry, registerResource, type FrontendModuleDescription } from 
 
 ## Push handlers
 
-A module owns a push message type by declaring it in `pushHandlers`. The shell
-dispatches every registered handler from app scope, so a handler runs in every
-layout, and not only where an editor component is mounted. The shell skips its
-own built-in handler for a type a module owns.
+A module owns a push message type when it declares it in `pushHandlers`. The
+shell dispatches these at app scope, so a handler runs in every layout. The shell
+skips its own built-in handler for a type a module owns.
 
-The app-scope dispatch and the shell's built-in handling attach separate
-listeners, so their order is not defined.
-
-**Contract:** a module push handler must not depend on the built-in handling of
-the same event. Write it so it holds on its own — read the state it needs, and
-do not assume a built-in handler ran first.
+**Contract:** a handler must not depend on the built-in handling of the same
+event. The two run on separate listeners, so their order is not defined.

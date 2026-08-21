@@ -115,9 +115,6 @@ describe('usePushConnection composable', () => {
 		handler(testEvent);
 		await Promise.resolve();
 
-		// The module owns the type, so the built-in handler is skipped. Dispatch
-		// belongs to `useModulePushDispatcher` at app scope, so this composable
-		// must not run the module handler a second time.
 		expect(executionStarted).not.toHaveBeenCalled();
 		expect(moduleHandler).not.toHaveBeenCalled();
 	});
