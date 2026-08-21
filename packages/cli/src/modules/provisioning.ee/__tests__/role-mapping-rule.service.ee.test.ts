@@ -643,20 +643,6 @@ describe('RoleMappingRuleService', () => {
 			).rejects.toThrow(BadRequestError);
 		});
 
-		it('should reject a type change', async () => {
-			await expect(
-				service.patch({
-					id: existingInstanceRule.id,
-					dto: { type: 'project' },
-					userId: testUser.id,
-					userEmail: testUser.email,
-				}),
-			).rejects.toThrow(BadRequestError);
-
-			expect(roleMappingRuleRepository.save).not.toHaveBeenCalled();
-			expect(eventService.emit).not.toHaveBeenCalled();
-		});
-
 		it('should update expression and return loaded rule', async () => {
 			const updatedRule = {
 				...existingInstanceRule,

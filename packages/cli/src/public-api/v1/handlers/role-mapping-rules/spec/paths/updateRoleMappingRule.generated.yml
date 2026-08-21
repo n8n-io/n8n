@@ -2,7 +2,7 @@ operationId: updateRoleMappingRule
 tags:
   - RoleMappingRule
 summary: Update a role-mapping rule
-description: Updates a rule's claim expression, role, and/or project assignments — omit a field to leave it unchanged. A rule's type cannot be changed once created, so `type` isn't accepted here, and reordering is handled by the move endpoint.
+description: Updates a rule's claim expression, role, and/or project assignments. A rule's type cannot be changed once created, so `type` isn't accepted here, and reordering is handled by the move endpoint.
 x-required-scope: roleMappingRule:update
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
