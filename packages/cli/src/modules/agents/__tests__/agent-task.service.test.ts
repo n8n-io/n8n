@@ -11,7 +11,6 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
-import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { AgentTask } from '../entities/agent-task.entity';
@@ -146,7 +145,6 @@ describe('AgentTaskService', () => {
 	let agentTaskScheduler: ReturnType<typeof mock<ScheduledTaskManager>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
 	let modificationTelemetry: ReturnType<typeof mock<AgentModificationTelemetryService>>;
-	let messageContextService: ReturnType<typeof mock<IntegrationMessageContextService>>;
 	let txManager: { save: Mock; remove: Mock };
 	let service: AgentTaskService;
 
@@ -168,7 +166,6 @@ describe('AgentTaskService', () => {
 			agentTaskScheduler,
 			publisher,
 			modificationTelemetry,
-			messageContextService,
 		);
 	}
 
@@ -206,8 +203,6 @@ describe('AgentTaskService', () => {
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue(undefined);
 		modificationTelemetry = mock<AgentModificationTelemetryService>();
-		messageContextService = mock<IntegrationMessageContextService>();
-		messageContextService.clearSessionBindings.mockResolvedValue(undefined);
 		// Default to the leader so existing registration assertions hold.
 		service = buildService(true);
 	});
@@ -924,27 +919,6 @@ describe('AgentTaskService', () => {
 				}),
 			);
 			expect(taskRepository.update).not.toHaveBeenCalled();
-			const publishedConfig = (agentExecutionOrchestratorService.executeForTaskPublished as Mock)
-				.mock.calls[0][0] as { memory: { threadId: string } };
-			expect(messageContextService.clearSessionBindings).toHaveBeenCalledWith(
-				publishedConfig.memory.threadId,
-			);
-		});
-
-		it('clears session bindings even when the task run fails', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
-				throwingStream(),
-			);
-
-			await expect(runTaskOf(service, AGENT_ID, 'task-1')).resolves.toBeUndefined();
-
-			const publishedConfig = (agentExecutionOrchestratorService.executeForTaskPublished as Mock)
-				.mock.calls[0][0] as { memory: { threadId: string } };
-			expect(messageContextService.clearSessionBindings).toHaveBeenCalledWith(
-				publishedConfig.memory.threadId,
-			);
 		});
 
 		it('uses the published snapshot body, not the live draft row', async () => {

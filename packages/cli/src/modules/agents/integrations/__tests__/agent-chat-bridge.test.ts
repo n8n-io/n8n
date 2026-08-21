@@ -1921,6 +1921,72 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
+		it('stores inbound attachments on the bound task thread', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:D123:1001');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue({
+				threadId: 'task-1-uuid',
+				resourceId: 'task:task-1',
+			});
+			const attachmentService = {
+				storeInbound: vi.fn(
+					async (params: { fileName: string; mimeType: string; data: Buffer }) => ({
+						id: 'att-1',
+						fileName: params.fileName,
+						mimeType: params.mimeType,
+						fileSizeBytes: params.data.byteLength,
+					}),
+				),
+				deleteByIds: vi.fn(async () => {}),
+			};
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+				attachmentService as never,
+			);
+
+			const pngBytes = Buffer.from([
+				0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+				0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f,
+				0x15, 0xc4, 0x89,
+			]);
+
+			await handlers.subscribed!(thread, {
+				id: '1002',
+				text: 'see attached',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'task-1-uuid',
+					resourceId: 'task:task-1',
+					fileName: 'photo.png',
+				}),
+			);
+		});
+
 		it('starts a fresh session when no binding exists', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread('slack:D123:1001');

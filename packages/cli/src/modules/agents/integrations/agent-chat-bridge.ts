@@ -338,16 +338,16 @@ export class AgentChatBridge {
 		const threadId = this.toAgentThreadId(platformThreadId);
 		const resourceId = integrationMemoryResourceId(this.integration.type, message.author.userId);
 		// If this thread was established by an outbound task send, continue that
-		// task's session instead of starting a fresh one. Only the agent memory
-		// thread/resourceId is redirected; attachments and the reply thread stay
-		// anchored to the platform conversation.
+		// task's session instead of starting a fresh one. Attachments are stored
+		// on the execution thread so file-store hydration (scoped to
+		// persistence.threadId) can load them. The Slack reply thread is unchanged.
 		const sessionOrigin = await this.messageContextBridge.resolveSession(threadId.id);
 		const memoryThreadId = sessionOrigin ? toInternalThreadId(sessionOrigin.threadId) : threadId;
 		const memoryResourceId = sessionOrigin?.resourceId ?? resourceId;
 		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
 			inboundAttachments,
-			threadId.id,
-			resourceId,
+			memoryThreadId.id,
+			memoryResourceId,
 		);
 		const statusRetry = new AbortController();
 		const replyExpectation =

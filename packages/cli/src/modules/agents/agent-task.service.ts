@@ -25,7 +25,6 @@ import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
-import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { AgentRepository } from './repositories/agent.repository';
 import {
 	type AgentTaskRunLockHandle,
@@ -73,7 +72,6 @@ export class AgentTaskService {
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly publisher: Publisher,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
-		private readonly messageContextService: IntegrationMessageContextService,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -605,7 +603,6 @@ export class AgentTaskService {
 					taskId,
 					taskVersionId: agent.activeVersionId,
 				}),
-				threadId,
 			);
 		} catch (error) {
 			this.logger.error('[AgentTaskService] Task run failed', {
@@ -649,7 +646,6 @@ export class AgentTaskService {
 		kind: 'Task run' | 'Manual task run',
 		context: Record<string, unknown>,
 		stream: AsyncGenerator<unknown>,
-		originThreadId: string,
 	): Promise<void> {
 		const startedAt = Date.now();
 		try {
@@ -667,17 +663,6 @@ export class AgentTaskService {
 				...context,
 				error: error instanceof Error ? error.message : String(error),
 			});
-		} finally {
-			// Release any session bindings this run established on outbound
-			// channel threads so finished tasks don't haunt future mentions.
-			try {
-				await this.messageContextService.clearSessionBindings(originThreadId);
-			} catch (error) {
-				this.logger.warn('[AgentTaskService] Failed to clear session bindings', {
-					...context,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
 		}
 	}
 
@@ -717,7 +702,6 @@ export class AgentTaskService {
 				memory: { threadId, resourceId: taskRunMemoryResourceId(task.id) },
 				taskId: task.id,
 			}),
-			threadId,
 		);
 	}
 

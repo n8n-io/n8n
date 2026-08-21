@@ -2,6 +2,7 @@ import type { InterruptibleToolContext, ToolContext } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
 import type { z } from 'zod';
 
+import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import { messageSchema, type IntegrationCardComponent } from './integration-tool-definitions';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import type {
@@ -215,13 +216,14 @@ export async function executeActionToolOperation(params: {
 			persistence.resourceId,
 			messageContext,
 		);
-		// Bind the outbound thread back to this run's session so inbound replies
-		// in that thread continue it. Only explicit sends establish a new
-		// thread worth binding; respond/edit/reaction operate on existing ones.
+		// Task-run sends bind the outbound thread so inbound replies continue
+		// that task session. Chat mentions stay on their own thread.
+		// respond/edit/reaction operate on existing threads and do not bind.
 		if (
 			(operation.action === 'send_dm' || operation.action === 'send_channel_message') &&
 			descriptor.agentId &&
-			messageContext.target.threadId
+			messageContext.target.threadId &&
+			isTaskRunMemoryResourceId(persistence.resourceId)
 		) {
 			await messageContextStore.bindSession(
 				`${descriptor.agentId}:${messageContext.target.threadId}`,
