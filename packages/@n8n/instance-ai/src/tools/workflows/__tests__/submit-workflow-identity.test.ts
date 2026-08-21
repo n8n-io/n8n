@@ -173,6 +173,40 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 		expect(calls[1].workflowId).toBe('wf_1');
 	});
 
+	it('returns a structured blocker when create project resolution fails', async () => {
+		const { execute, calls } = makeUnderlying();
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, async () => {
+			throw new Error('workflow:create is not allowed');
+		});
+
+		const result = await wrapped({ filePath: MAIN_PATH });
+
+		expect(result).toMatchObject({
+			success: false,
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'project_resolution_failed',
+			},
+		});
+		expect(result.errors?.[0]).toContain('workflow:create is not allowed');
+		expect(calls).toHaveLength(0);
+	});
+
+	it('does not require create project access when updating an explicit workflow', async () => {
+		const { execute, calls } = makeUnderlying();
+		const resolveProjectId = jest.fn(async () => {
+			throw new Error('workflow:create is not allowed');
+		});
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, resolveProjectId);
+
+		const result = await wrapped({ filePath: MAIN_PATH, workflowId: 'wf_existing' });
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf_existing' });
+		expect(resolveProjectId).not.toHaveBeenCalled();
+		expect(calls).toEqual([{ filePath: MAIN_PATH, workflowId: 'wf_existing' }]);
+	});
+
 	it('resolves differently-spelled paths to the same identity', async () => {
 		const { execute } = makeUnderlying();
 		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath);

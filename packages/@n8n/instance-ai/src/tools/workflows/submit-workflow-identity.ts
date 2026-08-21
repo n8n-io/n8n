@@ -192,7 +192,31 @@ export function wrapSubmitExecuteWithIdentity(
 
 	return async (input) => {
 		const resolvedPath = resolvePath(input.filePath);
-		const projectId = await resolveProjectId(input.projectId);
+		let projectId: string;
+		try {
+			// An explicit workflowId identifies an existing workflow. Resolving its
+			// project with workflow:create would reject valid update-only access.
+			projectId = input.workflowId
+				? (input.projectId ?? 'personal')
+				: await resolveProjectId(input.projectId);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return applyOutputGuards(
+				resolvedPath,
+				{
+					success: false,
+					errors: [`Could not resolve the target project: ${message}`],
+					remediation: createRemediation({
+						category: 'blocked',
+						shouldEdit: false,
+						reason: 'project_resolution_failed',
+						guidance:
+							'The target project could not be resolved. Stop editing and explain the project access blocker.',
+					}),
+				},
+				input.workflowId,
+			);
+		}
 		const identityKey = buildIdentityKey(resolvedPath, projectId);
 		const terminalResult = await blockedByTerminalRemediation(input.workflowId);
 		if (terminalResult) return terminalResult;
@@ -299,8 +323,10 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 			rawFilePath
 				? resolveSandboxWorkflowFilePath(rawFilePath, args.root)
 				: (args.defaultFilePath ?? resolveSandboxWorkflowFilePath(rawFilePath, args.root)),
-		(projectId) =>
-			args.context.workflowService.resolveCreateProjectId?.(projectId) ?? projectId ?? 'personal',
+		async (projectId) =>
+			(await args.context.workflowService.resolveCreateProjectId?.(projectId)) ??
+			projectId ??
+			'personal',
 		{
 			budgetTracker,
 			currentRunId: args.currentRunId,
