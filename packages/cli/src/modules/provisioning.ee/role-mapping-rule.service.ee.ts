@@ -206,14 +206,15 @@ export class RoleMappingRuleService {
 			throw new NotFoundError('Could not find role mapping rule');
 		}
 
-		const type = rule.type as 'instance' | 'project';
+		const originalType = rule.type as 'instance' | 'project';
+		const mergedType = dto.type ?? originalType;
 		const mergedOrder = dto.order ?? rule.order;
 		const mergedExpression = dto.expression ?? rule.expression;
 		const mergedRoleSlug = dto.role ?? rule.role.slug;
 
 		const fallbackProjectIds = rule.projects.map((p) => p.id);
 		const uniqueProjectIds = assertAndNormalizeProjectIdsForRuleType(
-			type,
+			mergedType,
 			dto.projectIds,
 			fallbackProjectIds,
 		);
@@ -227,9 +228,9 @@ export class RoleMappingRuleService {
 			throw new NotFoundError(`Could not find role with slug "${mergedRoleSlug}"`);
 		}
 
-		assertRoleCompatibleWithMappingType(role, type);
+		assertRoleCompatibleWithMappingType(role, mergedType);
 
-		await this.assertOrderAvailable(type, mergedOrder, id);
+		await this.assertOrderAvailable(mergedType, mergedOrder, id);
 
 		const projects =
 			uniqueProjectIds.length > 0
@@ -242,12 +243,16 @@ export class RoleMappingRuleService {
 
 		rule.expression = mergedExpression;
 		rule.role = role;
+		rule.type = mergedType;
 		rule.order = mergedOrder;
 		rule.projects = projects;
 
 		await this.roleMappingRuleRepository.save(rule);
 
-		await this.normalizeOrderForType(type);
+		await this.normalizeOrderForType(mergedType);
+		if (originalType !== mergedType) {
+			await this.normalizeOrderForType(originalType);
+		}
 
 		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
 			where: { id: rule.id },

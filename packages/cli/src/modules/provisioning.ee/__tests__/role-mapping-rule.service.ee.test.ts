@@ -1010,5 +1010,57 @@ describe('RoleMappingRuleService', () => {
 			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { id: 'b' }, { order: 1 });
 			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { id: 'c' }, { order: 2 });
 		});
+
+		it('should normalize both types when type changes during patch', async () => {
+			const existingRule = {
+				id: 'rule-1',
+				expression: 'true',
+				role: globalRole,
+				type: 'instance',
+				order: 1,
+				projects: [],
+			} as unknown as RoleMappingRule;
+
+			roleMappingRuleRepository.findOne.mockImplementation(async (opts) => {
+				if (opts?.where && 'id' in opts.where) return existingRule;
+				return null;
+			});
+			roleMappingRuleRepository.save.mockResolvedValue(existingRule);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue({
+				...existingRule,
+				type: 'project',
+				role: projectRole,
+				projects: [{ id: 'p1' } as Project],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			} as unknown as RoleMappingRule);
+			projectRepository.findBy.mockResolvedValue([{ id: 'p1' } as Project]);
+			roleRepository.findOne.mockResolvedValue(projectRole);
+
+			roleMappingRuleRepository.find
+				.mockResolvedValueOnce([makeRule('rule-1', 0, 'project')]) // new type: project — no gap
+				.mockResolvedValueOnce([
+					makeRule('rule-2', 0, 'instance'),
+					makeRule('rule-3', 2, 'instance'),
+				]); // old type: instance has gap
+
+			await service.patch({
+				id: 'rule-1',
+				dto: {
+					type: 'project',
+					role: projectRole.slug,
+					projectIds: ['p1'],
+					order: 0,
+				},
+				userId: testUser.id,
+				userEmail: testUser.email,
+			});
+
+			// Called twice: once for new type (project), once for old type (instance)
+			expect(roleMappingRuleRepository.find).toHaveBeenCalledTimes(2);
+			// Project sequence has no gap — no transaction needed for it
+			// Instance sequence has gap [0, 2] — transaction called once
+			expect(transactionSpy).toHaveBeenCalledTimes(1);
+		});
 	});
 });
