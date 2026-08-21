@@ -12,6 +12,10 @@ import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { DataTableExporter } from './entities/data-table/data-table.exporter';
+import {
+	folderPolicyRejection,
+	resolveFolderConflictPolicy,
+} from './entities/folder/folder-conflict-policy';
 import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
@@ -314,9 +318,22 @@ export class N8nPackagesService {
 					'variableParentPolicy is not supported for project packages, where variable placement follows the package layout. Omit it.',
 				);
 			}
-			return await this.projectPackageImporter.import(request, reader, manifest);
+			const rejection = folderPolicyRejection(request, 'project');
+			if (rejection) throw new BadRequestError(rejection);
+			return await this.projectPackageImporter.import(
+				{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') },
+				reader,
+				manifest,
+			);
 		}
-		return await this.workflowPackageImporter.import(request, reader, manifest);
+
+		const rejection = folderPolicyRejection(request, 'workflow');
+		if (rejection) throw new BadRequestError(rejection);
+		return await this.workflowPackageImporter.import(
+			{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'workflow') },
+			reader,
+			manifest,
+		);
 	}
 
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
