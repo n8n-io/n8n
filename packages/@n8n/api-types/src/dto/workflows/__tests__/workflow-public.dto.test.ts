@@ -1,3 +1,5 @@
+import assert from 'node:assert';
+
 import {
 	CreatedWorkflowPublicDto,
 	WorkflowPublicDto,
@@ -151,10 +153,9 @@ describe('CreatedWorkflowPublicDto', () => {
 
 		const result = CreatedWorkflowPublicDto.safeParse({ ...baseWorkflow, parentFolder });
 
-		expect(result.success).toBe(true);
-		if (result.success) {
-			expect(result.data.parentFolder).toEqual(parentFolder);
-		}
+		assert(result.success, 'Expected safeParse to succeed');
+
+		expect(result.data.parentFolder).toEqual(parentFolder);
 	});
 
 	test('rejects a body with no parentFolder key', () => {
