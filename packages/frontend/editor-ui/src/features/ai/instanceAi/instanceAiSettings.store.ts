@@ -61,34 +61,14 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
 
 	// ── Gateway / daemon state ──────────────────────────────────────────
-	const HAS_CONNECTED_STORAGE_KEY = 'instanceAi.gateway.hasConnected';
 	const isDaemonConnecting = ref(false);
 	const setupCommand = ref<string | null>(null);
 	const setupCommandExpiresAt = ref<string | null>(null);
 	const setupCommandTtlSeconds = ref<number | null>(null);
 	const setupCommandFetchedAt = ref<number | null>(null);
 	let setupCommandRequestId = 0;
-	const hasEverConnectedGateway = ref(
-		typeof localStorage !== 'undefined' &&
-			localStorage.getItem(HAS_CONNECTED_STORAGE_KEY) === 'true',
-	);
 	const hasObservedGatewayConnection = ref(false);
 	const hasObservedBrowserConnection = ref(false);
-
-	function markGatewayEverConnected(): void {
-		if (hasEverConnectedGateway.value) return;
-		hasEverConnectedGateway.value = true;
-		try {
-			localStorage.setItem(HAS_CONNECTED_STORAGE_KEY, 'true');
-		} catch {}
-	}
-
-	function clearGatewayEverConnected(): void {
-		hasEverConnectedGateway.value = false;
-		try {
-			localStorage.removeItem(HAS_CONNECTED_STORAGE_KEY);
-		} catch {}
-	}
 
 	const gatewayConnected = ref(false);
 	const gatewayDirectory = ref<string | null>(null);
@@ -318,7 +298,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			return;
 		}
 		clearSetupCommand();
-		clearGatewayEverConnected();
 		hasObservedGatewayConnection.value = false;
 		gatewayConnected.value = false;
 		gatewayToolCategories.value = [];
@@ -362,7 +341,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				hasObservedGatewayConnection.value = true;
 				gatewayDirectory.value = status.directory;
 				gatewayHostIdentifier.value = status.hostIdentifier ?? null;
-				markGatewayEverConnected();
 			}
 		} catch {}
 	}
@@ -377,7 +355,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			browserToolCategories.value = status.toolCategories ?? [];
 			if (status.connected) hasObservedBrowserConnection.value = true;
 		} catch {
-			// Keep the last known status if the refresh fails.
 		} finally {
 			browserStatusLoaded.value = true;
 		}
@@ -493,7 +470,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 					hasObservedGatewayConnection.value = true;
 					gatewayDirectory.value = message.data.directory;
 					gatewayHostIdentifier.value = message.data.hostIdentifier ?? null;
-					markGatewayEverConnected();
 				}
 				return;
 			}
@@ -651,7 +627,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		setupCommandExpiresAt,
 		setupCommandTtlSeconds,
 		setupCommandFetchedAt,
-		hasEverConnectedGateway,
 		computerUseConnectionStatus,
 		isGatewayConnected,
 		gatewayDirectory,

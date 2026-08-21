@@ -112,7 +112,6 @@ describe('useInstanceAiSettingsStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		localStorage.clear();
 		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
@@ -531,18 +530,6 @@ describe('useInstanceAiSettingsStore', () => {
 	});
 
 	describe('unexpected disconnects', () => {
-		it('does not treat persisted connection history as a current disconnect', () => {
-			localStorage.setItem('instanceAi.gateway.hasConnected', 'true');
-			setActivePinia(createPinia());
-			store = useInstanceAiSettingsStore();
-			settingsStore = useSettingsStore();
-			setModuleSettings(settingsStore, { localGatewayDisabled: false });
-			setUserPreference(store, { localGatewayDisabled: false });
-
-			expect(store.hasEverConnectedGateway).toBe(true);
-			expect(store.computerUseConnectionStatus).toBe('none');
-		});
-
 		it('distinguishes an unavailable gateway from a user-disconnected gateway', async () => {
 			setModuleSettings(settingsStore, { localGatewayDisabled: false });
 			setUserPreference(store, { localGatewayDisabled: false });
