@@ -1,7 +1,14 @@
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import { AIMessage, HumanMessage, ToolMessage, trimMessages } from '@langchain/core/messages';
+import {
+	AIMessage,
+	HumanMessage,
+	ToolMessage,
+	isAIMessage,
+	isToolMessage,
+	trimMessages,
+} from '@langchain/core/messages';
 import type { IDataObject, GenericValue } from 'n8n-workflow';
 
 import type { ToolCallData } from './types';
@@ -170,7 +177,7 @@ export function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage
 		changed = false;
 
 		// Remove orphaned ToolMessages at the start
-		while (result.length > 0 && result[0] instanceof ToolMessage) {
+		while (result.length > 0 && isToolMessage(result[0])) {
 			result.shift();
 			changed = true;
 		}
@@ -179,9 +186,9 @@ export function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage
 		if (result.length > 0) {
 			const firstMessage = result[0];
 			const hasOrphanedAIMessage =
-				firstMessage instanceof AIMessage &&
+				isAIMessage(firstMessage) &&
 				(firstMessage.tool_calls?.length ?? 0) > 0 &&
-				!(result[1] instanceof ToolMessage);
+				!isToolMessage(result[1]);
 
 			if (hasOrphanedAIMessage) {
 				result.shift();
@@ -197,21 +204,21 @@ export function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage
 		const lastIdx = result.length - 1;
 		const lastMessage = result[lastIdx];
 
-		if (lastMessage instanceof ToolMessage) {
+		if (isToolMessage(lastMessage)) {
 			// Scan backwards past all consecutive trailing ToolMessages
 			let precedingIdx = lastIdx - 1;
-			while (precedingIdx >= 0 && result[precedingIdx] instanceof ToolMessage) {
+			while (precedingIdx >= 0 && isToolMessage(result[precedingIdx])) {
 				precedingIdx--;
 			}
 			// The ToolMessage group is orphaned if not preceded by an AIMessage with tool_calls
 			const precedingMessage = precedingIdx >= 0 ? result[precedingIdx] : undefined;
 			const isPaired =
-				precedingMessage instanceof AIMessage && (precedingMessage.tool_calls?.length ?? 0) > 0;
+				isAIMessage(precedingMessage) && (precedingMessage.tool_calls?.length ?? 0) > 0;
 			if (!isPaired) {
 				result.pop();
 				changed = true;
 			}
-		} else if (lastMessage instanceof AIMessage && (lastMessage.tool_calls?.length ?? 0) > 0) {
+		} else if (isAIMessage(lastMessage) && (lastMessage.tool_calls?.length ?? 0) > 0) {
 			// An AIMessage with tool_calls at the end is orphaned (no ToolMessage follows)
 			result.pop();
 			changed = true;
