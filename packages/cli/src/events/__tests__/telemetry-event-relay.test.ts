@@ -3773,6 +3773,159 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('workflow review events', () => {
+		it('should track a workflow submitted for review, with how many reviewers were asked', () => {
+			eventService.emit('workflow-review-requested', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				projectId: 'project-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+				reviewerCount: 2,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				project_id: 'project-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-1',
+				reviewer_count: 2,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_REQUESTED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_REQUESTED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a review re-pinned to another version', () => {
+			eventService.emit('workflow-review-version-updated', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-2',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-2',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW.getValidationError(
+					payload,
+				),
+			).toBeNull();
+		});
+
+		it('should track an approval, when the review opened, and who was entitled to decide', () => {
+			eventService.emit('workflow-review-decided', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+				decision: 'approved',
+				decidedVia: 'assigned-reviewer',
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-1',
+				decision: 'approved',
+				decided_via: 'assigned-reviewer',
+				review_created_at: '2026-01-01T10:00:00.000Z',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a change request decided by an admin on a review whose version was pruned', () => {
+			eventService.emit('workflow-review-decided', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: null,
+				decision: 'changes_requested',
+				decidedVia: 'admin-override',
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: null,
+				decision: 'changes_requested',
+				decided_via: 'admin-override',
+				review_created_at: '2026-01-01T10:00:00.000Z',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a review closed with no trigger recorded, never the acting user', () => {
+			eventService.emit('workflow-review-closed', {
+				workflowReviewRequestId: 'review-1',
+				cause: { trigger: 'unknown', actorKind: 'system', userId: null },
+			});
+
+			const payload = {
+				workflow_review_request_id: 'review-1',
+				cause_trigger: 'unknown',
+				cause_actor_kind: 'system',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a comment on a review, never its body', () => {
+			eventService.emit('workflow-review-comment-created', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_COMMENTED_ON_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_COMMENTED_ON_WORKFLOW_REVIEW.getValidationError(
+					payload,
+				),
+			).toBeNull();
+		});
+	});
+
 	describe('instance AI MCP events', () => {
 		it('tracks on `instance-ai-mcp-registry-connection-created`', () => {
 			eventService.emit('instance-ai-mcp-registry-connection-created', {
