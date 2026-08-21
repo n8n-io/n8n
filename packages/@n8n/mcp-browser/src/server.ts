@@ -153,6 +153,12 @@ export async function startHttpTransport(opts: {
 			enableDnsRebindingProtection: allowedHosts !== undefined,
 			allowedHosts,
 			onsessioninitialized: (id) => {
+				// A sweep can fire while this request is still in flight and evict the transport
+				// before the SDK gets here. `lastActivityAt` doubles as the liveness registry
+				// (onclose removes the entry), so a missing entry means "already torn down" —
+				// registering the session now would resurrect a closed transport into `sessions`
+				// with no activity tracking behind it, i.e. an entry nothing can ever reap.
+				if (!lastActivityAt.has(transport)) return;
 				sessions.set(id, transport);
 			},
 		});
