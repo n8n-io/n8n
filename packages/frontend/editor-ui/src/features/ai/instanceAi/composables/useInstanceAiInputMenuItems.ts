@@ -24,9 +24,7 @@ type InputMenuItemData = {
 	action?: () => void | Promise<void>;
 };
 
-export type InputMenuItem = Omit<DropdownMenuItemProps<string, InputMenuItemData>, 'children'> & {
-	children?: InputMenuItem[];
-};
+export type InputMenuItem = DropdownMenuItemProps<string, InputMenuItemData>;
 
 export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	const i18n = useI18n();
