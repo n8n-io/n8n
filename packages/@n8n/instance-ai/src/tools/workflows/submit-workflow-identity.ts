@@ -319,6 +319,25 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 	if (!underlyingExecute) {
 		throw new Error('createSubmitWorkflowTool returned a tool without a handler');
 	}
+	const workflowProjectResolver = args.context.workflowService.resolveWorkflowProjectId;
+	const identityOptions: SubmitIdentityOptions = {
+		budgetTracker,
+		currentRunId: args.currentRunId,
+		getWorkflowLoopState: args.getWorkflowLoopState,
+		onGuardFired: args.onGuardFired,
+	};
+	if (workflowProjectResolver) {
+		identityOptions.resolveWorkflowProjectId = async (workflowId) => {
+			const projectId = await workflowProjectResolver.call(
+				args.context.workflowService,
+				workflowId,
+			);
+			if (!projectId) {
+				throw new Error(`Workflow ${workflowId} has no owning project`);
+			}
+			return projectId;
+		};
+	}
 
 	const wrappedExecute = wrapSubmitExecuteWithIdentity(
 		underlyingExecute,
@@ -330,19 +349,7 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 			(await args.context.workflowService.resolveCreateProjectId?.(projectId)) ??
 			projectId ??
 			'personal',
-		{
-			budgetTracker,
-			currentRunId: args.currentRunId,
-			getWorkflowLoopState: args.getWorkflowLoopState,
-			resolveWorkflowProjectId: async (workflowId) => {
-				const projectId = await args.context.workflowService.resolveWorkflowProjectId?.(workflowId);
-				if (!projectId) {
-					throw new Error(`Workflow ${workflowId} has no owning project`);
-				}
-				return projectId;
-			},
-			onGuardFired: args.onGuardFired,
-		},
+		identityOptions,
 	);
 
 	return new Tool('submit-workflow')

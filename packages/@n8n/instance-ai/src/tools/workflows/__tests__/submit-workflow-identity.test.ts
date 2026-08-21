@@ -211,6 +211,16 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 		expect(calls).toEqual([{ filePath: MAIN_PATH, workflowId: 'wf_existing' }]);
 	});
 
+	it('uses the personal fallback when an explicit update has no owner resolver', async () => {
+		const { execute, calls } = makeUnderlying();
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath);
+
+		const result = await wrapped({ filePath: MAIN_PATH, workflowId: 'wf_existing' });
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf_existing' });
+		expect(calls).toEqual([{ filePath: MAIN_PATH, workflowId: 'wf_existing' }]);
+	});
+
 	it('uses the owning project when an update omits projectId', async () => {
 		const { execute, calls } = makeUnderlying();
 		const resolveWorkflowProjectId = jest.fn(async () => 'personal-project');
