@@ -20,6 +20,84 @@ interface WhatsAppApiError {
 	};
 }
 
+function normalizeTemplateParameter(parameter: IDataObject): IDataObject {
+	if (parameter.type === 'text') {
+		return {
+			type: 'text',
+			text: parameter.text,
+		};
+	}
+
+	if (parameter.type === 'currency') {
+		return {
+			type: 'currency',
+			currency: {
+				code: parameter.code,
+				fallback_value: parameter.fallback_value,
+				amount_1000: Number(parameter.amount_1000) * 1000,
+			},
+		};
+	}
+
+	if (parameter.type === 'date_time') {
+		return {
+			type: 'date_time',
+			date_time: {
+				fallback_value: parameter.date_time,
+			},
+		};
+	}
+
+	if (parameter.type === 'image' || parameter.type === 'video' || parameter.type === 'document') {
+		const linkField = `${parameter.type}Link`;
+		return {
+			type: parameter.type,
+			[parameter.type]: {
+				link: parameter[linkField],
+			},
+		};
+	}
+
+	if (parameter.type === 'payload') {
+		return {
+			type: 'payload',
+			payload: parameter.payload,
+		};
+	}
+
+	if (parameter.type === 'coupon_code') {
+		return {
+			type: 'coupon_code',
+			coupon_code: parameter.coupon_code,
+		};
+	}
+
+	if (parameter.type === 'action') {
+		return {
+			type: 'action',
+			action: {
+				flow_token: parameter.flowToken,
+			},
+		};
+	}
+
+	return parameter;
+}
+
+function formatErrorDescription(error: WhatsAppApiError['error'], statusCode: number, operation: string) {
+	const details = [
+		`Status code: ${statusCode}`,
+		`Operation: ${operation}`,
+		error.code ? `Error code: ${error.code}` : '',
+		error.type ? `Error type: ${error.type}` : '',
+		error.fbtrace_id ? `FB trace ID: ${error.fbtrace_id}` : '',
+	]
+		.filter(Boolean)
+		.join(' | ');
+
+	return `${error.message}${details ? `\n${details}` : ''}`;
+}
+
 export async function addTemplateComponents(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
@@ -117,45 +195,17 @@ export async function componentsRequest(
 		if (component.type === 'body') {
 			comp.parameters = (
 				((component.bodyParameters as IDataObject).parameter as IDataObject[]) || []
-			).map((i: IDataObject) => {
-				if (i.type === 'text') {
-					return i;
-				} else if (i.type === 'currency') {
-					return {
-						type: 'currency',
-						currency: {
-							code: i.code,
-							fallback_value: i.fallback_value,
-							amount_1000: (i.amount_1000 as number) * 1000,
-						},
-					};
-				} else if (i.type === 'date_time') {
-					return {
-						type: 'date_time',
-						date_time: {
-							fallback_value: i.date_time,
-						},
-					};
-				}
-			});
+			).map((i: IDataObject) => normalizeTemplateParameter(i));
 		} else if (component.type === 'button') {
 			comp.index = component.index?.toString();
 			comp.sub_type = component.sub_type;
-			comp.parameters = [(component.buttonParameters as IDataObject).parameter];
+			comp.parameters = [
+				normalizeTemplateParameter((component.buttonParameters as IDataObject).parameter as IDataObject),
+			];
 		} else if (component.type === 'header') {
 			comp.parameters = (
 				(component.headerParameters as IDataObject).parameter as IDataObject[]
-			).map((i: IDataObject) => {
-				if (i.type === 'image') {
-					return {
-						type: 'image',
-						image: {
-							link: i.imageLink,
-						},
-					};
-				}
-				return i;
-			});
+			).map((i: IDataObject) => normalizeTemplateParameter(i));
 		}
 		componentsRet.push(comp);
 	}
@@ -191,38 +241,46 @@ export async function sendErrorPostReceive(
 	data: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
+	const operation = this.getNodeParameter('operation', 'send') as string;
+
 	if (response.statusCode === 500) {
 		throw new NodeApiError(
 			this.getNode(),
-			{},
+			response as unknown as JsonObject,
 			{
 				message: 'Sending failed',
 				description:
-					'If you’re sending to a new test number, try sending a message to it from within the Meta developer portal first.',
+					'If you are sending to a new test number, try sending a message to it from within the Meta developer portal first.\nStatus code: 500',
 				httpCode: '500',
 			},
 		);
 	} else if (response.statusCode === 400) {
-		const error = { ...(response.body as WhatsAppApiError).error };
+		const apiError = (response.body as WhatsAppApiError | undefined)?.error;
+		if (!apiError?.message) {
+			throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
+		}
+
+		const error = { ...apiError };
 		error.message = error.message.replace(/^\(#\d+\) /, '');
 		const messageType = this.getNodeParameter('messageType', 'media');
+		const description = formatErrorDescription(error, response.statusCode, operation);
 		if (error.message.endsWith('is not a valid whatsapp business account media attachment ID')) {
 			throw new NodeApiError(
 				this.getNode(),
-				{ error },
+				{ ...(response as unknown as JsonObject), body: { error } },
 				{
 					message: `Invalid ${messageType} ID`,
-					description: error.message,
+					description,
 					httpCode: '400',
 				},
 			);
 		} else if (error.message.endsWith('is not a valid URI.')) {
 			throw new NodeApiError(
 				this.getNode(),
-				{ error },
+				{ ...(response as unknown as JsonObject), body: { error } },
 				{
 					message: `Invalid ${messageType} URL`,
-					description: error.message,
+					description,
 					httpCode: '400',
 				},
 			);
@@ -230,10 +288,18 @@ export async function sendErrorPostReceive(
 		throw new NodeApiError(
 			this.getNode(),
 			{ ...(response as unknown as JsonObject), body: { error } },
-			{},
+			{
+				message: 'WhatsApp API request failed',
+				description,
+				httpCode: '400',
+			},
 		);
 	} else if (response.statusCode > 399) {
-		throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
+		throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
+			message: 'WhatsApp API request failed',
+			description: `Status code: ${response.statusCode} | Operation: ${operation}`,
+			httpCode: `${response.statusCode}`,
+		});
 	}
 	return data;
 }
