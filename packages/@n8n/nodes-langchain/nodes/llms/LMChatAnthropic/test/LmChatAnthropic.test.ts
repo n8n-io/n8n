@@ -85,7 +85,7 @@ describe('LmChatAnthropic', () => {
 				displayName: 'Anthropic Chat Model',
 				name: 'lmChatAnthropic',
 				group: ['transform'],
-				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 				description: 'Language Model Anthropic',
 			});
 		});
@@ -687,6 +687,23 @@ describe('LmChatAnthropic', () => {
 				cachedResultName: 'Claude Sonnet 4.6',
 			});
 		});
+
+		it('should have Claude Sonnet 5 as default for v1.6+ resource locator', () => {
+			const v16ModelField = lmChatAnthropic.description.properties.find(
+				(p) =>
+					p.name === 'model' &&
+					p.type === 'resourceLocator' &&
+					(p.displayOptions?.show?.['@version']?.[0] as { _cnd?: { gte?: number } })?._cnd?.gte ===
+						1.6,
+			);
+
+			expect(v16ModelField).toBeDefined();
+			expect(v16ModelField!.default).toEqual({
+				mode: 'list',
+				value: 'claude-sonnet-5',
+				cachedResultName: 'Claude Sonnet 5',
+			});
+		});
 	});
 
 	describe('thinking modes (v1.5)', () => {
@@ -734,6 +751,33 @@ describe('LmChatAnthropic', () => {
 						top_k: undefined,
 						top_p: undefined,
 						temperature: undefined,
+					},
+				}),
+			);
+		});
+
+		it('should keep the v1.5 thinking-mode branch on v1.6', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.6 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-5';
+				if (paramName === 'options') return { thinkingMode: 'adaptive', promptCaching: '5m' };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: 'claude-sonnet-5',
+					invocationKwargs: {
+						thinking: { type: 'adaptive' },
+						output_config: { effort: 'medium' },
+						max_tokens: 4096,
+						top_k: undefined,
+						top_p: undefined,
+						temperature: undefined,
+						cache_control: { type: 'ephemeral', ttl: '5m' },
 					},
 				}),
 			);
@@ -871,8 +915,7 @@ describe('LmChatAnthropic', () => {
 				(p) =>
 					p.name === 'model' &&
 					p.type === 'resourceLocator' &&
-					(p.displayOptions?.show?.['@version']?.[0] as { _cnd?: { gte?: number } })?._cnd?.gte ===
-						1.5,
+					p.displayOptions?.show?.['@version']?.[0] === 1.5,
 			);
 			expect(v15ModelField).toBeDefined();
 			expect(v15ModelField!.default).toEqual({
