@@ -4,6 +4,7 @@ import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
 import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
@@ -47,11 +48,10 @@ function channelKey(ref: AgentChannelRef): string {
  *
  * The pass ticks on every main for the whole process lifetime, and what it does
  * depends on the role held at that moment, so leadership changes never start or
- * stop it. Three sets drive one pass:
+ * stop it. Two sets drive one pass:
  *
- * - what the cluster wants running (every published agent's channels),
- * - what this main should run (the same, minus leader-only channels when this
- *   main is a follower),
+ * - what this main should run (every published agent's channels, minus
+ *   leader-only ones when this main is a follower),
  * - what this main is running.
  *
  * Every write it makes is to this main's own status rows. Rows belonging to
@@ -61,6 +61,13 @@ function channelKey(ref: AgentChannelRef): string {
 @Service()
 export class AgentChannelReconciler {
 	private reconcileInterval: NodeJS.Timeout | undefined;
+
+	/**
+	 * Whether {@link init} ran. Kept apart from `reconcileInterval`, which says
+	 * only whether the repeating pass is scheduled — with a zero interval there is
+	 * no timer, and a takeover still has to be served.
+	 */
+	private isInitialized = false;
 
 	private isShuttingDown = false;
 
@@ -88,25 +95,31 @@ export class AgentChannelReconciler {
 	/**
 	 * Start the loop and run the first pass now rather than an interval later, so
 	 * this main picks up its channels as soon as it boots.
+	 *
+	 * A zero interval turns off the repeating pass, not the boot pass: this is the
+	 * only thing that starts a published agent's channels on this main, so
+	 * skipping it entirely would leave the instance with no channels at all rather
+	 * than with no retries. Same for a leader takeover, which is when the
+	 * leader-only channels become this main's to run.
 	 */
 	init(): void {
 		const intervalSeconds = this.agentsConfig.channelReconcileIntervalSeconds;
 		if (intervalSeconds <= 0) {
 			this.logger.info(
-				'[AgentChannelReconciler] Channel reconciliation is disabled — a channel that fails to start will stay down until the agent is republished',
+				'[AgentChannelReconciler] Periodic channel reconciliation is disabled — channels still start on boot and on leader takeover, but one that fails to start will stay down until the agent is republished',
 			);
-			return;
+		} else {
+			this.reconcileInterval = setInterval(
+				async () => await this.reconcile('interval'),
+				intervalSeconds * Time.seconds.toMilliseconds,
+			);
+			// Never a reason to hold the process open.
+			this.reconcileInterval.unref();
+
+			this.logger.debug(`[AgentChannelReconciler] Reconciling channels every ${intervalSeconds}s`);
 		}
 
-		this.reconcileInterval = setInterval(
-			async () => await this.reconcile('interval'),
-			intervalSeconds * Time.seconds.toMilliseconds,
-		);
-		// Never a reason to hold the process open.
-		this.reconcileInterval.unref();
-
-		this.logger.debug(`[AgentChannelReconciler] Reconciling channels every ${intervalSeconds}s`);
-
+		this.isInitialized = true;
 		void this.reconcile('startup');
 	}
 
@@ -150,12 +163,12 @@ export class AgentChannelReconciler {
 
 	/**
 	 * A fresh leader owns channels the previous one did — polling channels above
-	 * all — and must not wait an interval to claim them. Gated on the loop
-	 * running so a disabled reconciler stays inert.
+	 * all — and must not wait an interval to claim them. Gated on `init` having
+	 * run, so an instance type that never starts channels (a worker) stays inert.
 	 */
 	@OnLeaderTakeover()
 	async reconcileOnLeaderTakeover(): Promise<void> {
-		if (!this.reconcileInterval) return;
+		if (!this.isInitialized) return;
 
 		await this.reconcile('leader-takeover');
 	}
@@ -193,7 +206,6 @@ export class AgentChannelReconciler {
 			const agents = await this.agentRepository.findPublished();
 			const ownStatuses = await this.channelStatusRepository.findOwnAll();
 
-			const wantedByCluster: WantedChannels = new Map();
 			const wantedHere: WantedChannels = new Map();
 
 			for (const agent of agents) {
@@ -208,7 +220,6 @@ export class AgentChannelReconciler {
 						integrationType: integration.type,
 						credentialId: integration.credentialId,
 					});
-					wantedByCluster.set(key, { agent, integration });
 					if (this.runsHere(integration)) wantedHere.set(key, { agent, integration });
 				}
 			}
@@ -270,7 +281,17 @@ export class AgentChannelReconciler {
 			// Startup and takeover always try: the backoff was set by an earlier life
 			// of this process or by whatever it inherited, and a restart or a
 			// promotion is exactly when the cause may have gone away.
-			if (reason === 'interval' && !this.statusReporter.isRetryReady(own, now)) continue;
+			if (reason === 'interval' && !this.statusReporter.isRetryReady(own, now)) {
+				// Waiting is still this main standing behind what it said, so the lease
+				// is kept alive. From the third consecutive failure on the backoff
+				// outgrows a lease (four intervals against three), and letting the row
+				// expire mid-wait would have the sweep delete it: the channel would
+				// report as `starting` with no reason given, and the next pass — seeing
+				// no row — would retry at once and count from one again, so the backoff
+				// could never grow past that point.
+				await this.statusReporter.refreshLease(ref);
+				continue;
+			}
 
 			try {
 				await this.chatIntegrationService.startChannel(agent, integration);
@@ -287,7 +308,10 @@ export class AgentChannelReconciler {
 					agentId: agent.id,
 					type: integration.type,
 					attempts: (own?.attempts ?? 0) + 1,
-					error: error instanceof Error ? error.message : String(error),
+					// Scrubbed for the same reason `recordFailure` scrubs it: a platform
+					// error can quote the credential it failed with, and a Telegram API
+					// URL carries the bot token in its path.
+					error: scrubSecretsInText(error instanceof Error ? error.message : String(error)),
 				});
 			}
 		}

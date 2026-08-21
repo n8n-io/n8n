@@ -84,13 +84,32 @@ export function clearAgentIntegrationStatusCache(projectId: string, agentId: str
  * Each entry carries its own status, so a mix of a running channel and a broken
  * one renders as exactly that — the response rollup is only for callers that
  * want one word for the whole agent.
+ *
+ * `source` settles who wins where the two disagree. Configuration is the
+ * authority on which channels exist and what backs them; only the status
+ * endpoint knows whether one is actually running. So a `config` pass refreshes
+ * credentials and settings but leaves the status of a channel the server has
+ * already answered for alone — otherwise any builder write, which re-seeds this
+ * cache, would downgrade a channel known to be `connected` (or known to have
+ * failed, losing its reason with it) to the local `starting` guess, and nothing
+ * on that path refetches to put it back.
  */
 function applyStatus(
 	state: AgentIntegrationStatusState,
 	integrationTypes: readonly string[],
 	integrations: AgentIntegrationStatusEntry[],
-	confirmed: boolean,
+	source: 'server' | 'config',
 ): void {
+	const fromServer = source === 'server';
+	const previousStatuses = { ...state.statuses.value };
+	const previousRuntimeErrors = { ...state.runtimeErrors.value };
+	// An answer of `disconnected` was about a channel that did not exist then. If
+	// configuration has one now, the seed is the fresher account of it.
+	const answeredFor = (type: string) =>
+		state.serverConfirmed.value.has(type) &&
+		previousStatuses[type] !== 'disconnected' &&
+		previousStatuses[type] !== 'unknown';
+
 	for (const type of integrationTypes) {
 		state.statuses.value[type] = 'disconnected';
 		state.connectedCredentials.value[type] = '';
@@ -98,15 +117,27 @@ function applyStatus(
 		state.runtimeErrors.value[type] = '';
 	}
 	for (const integration of integrations) {
-		state.statuses.value[integration.type] = integration.status;
+		const keepServerAnswer = !fromServer && answeredFor(integration.type);
+		state.statuses.value[integration.type] = keepServerAnswer
+			? previousStatuses[integration.type]
+			: integration.status;
 		state.connectedCredentials.value[integration.type] =
 			typeof integration.credentialId === 'string' ? integration.credentialId : '';
 		state.integrationSettings.value[integration.type] = integration.settings;
-		state.runtimeErrors.value[integration.type] = integration.errorMessage ?? '';
+		state.runtimeErrors.value[integration.type] = keepServerAnswer
+			? (previousRuntimeErrors[integration.type] ?? '')
+			: (integration.errorMessage ?? '');
 	}
 	for (const type of integrationTypes) {
-		if (confirmed) state.serverConfirmed.value.add(type);
-		else state.serverConfirmed.value.delete(type);
+		if (fromServer) {
+			state.serverConfirmed.value.add(type);
+			continue;
+		}
+		// A channel configuration no longer has is gone whatever the server last
+		// said about it, so its answer goes with it.
+		if (!integrations.some((integration) => integration.type === type)) {
+			state.serverConfirmed.value.delete(type);
+		}
 	}
 }
 
@@ -117,7 +148,7 @@ export function syncAgentIntegrationStatusCache(
 	integrations: AgentIntegrationStatusEntry[],
 ): void {
 	// Seeded from the agent's own configuration, not from the status endpoint.
-	applyStatus(getOrCreate(projectId, agentId), integrationTypes, integrations, false);
+	applyStatus(getOrCreate(projectId, agentId), integrationTypes, integrations, 'config');
 }
 
 export function useAgentIntegrationStatus(projectId: string, agentId: string) {
@@ -134,7 +165,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		state.fetchInFlight = (async () => {
 			try {
 				const result = await getIntegrationStatus(rootStore.restApiContext, projectId, agentId);
-				applyStatus(state, integrationTypes, result.integrations ?? [], true);
+				applyStatus(state, integrationTypes, result.integrations ?? [], 'server');
 			} catch {
 				// Mark only types the server hasn't answered for as `unknown` — a
 				// transient network failure shouldn't claim that a channel the server

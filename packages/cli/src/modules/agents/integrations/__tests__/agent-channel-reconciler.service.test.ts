@@ -1,4 +1,5 @@
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -85,7 +86,12 @@ function erroredOwnRow(
 }
 
 function build(
-	opts: { isLeader?: boolean; live?: AgentChannelRef[]; intervalSeconds?: number } = {},
+	opts: {
+		isLeader?: boolean;
+		live?: AgentChannelRef[];
+		intervalSeconds?: number;
+		logger?: Logger;
+	} = {},
 ) {
 	const registry = new ChatIntegrationRegistry();
 	// Telegram stands in for a polling platform: exactly one main may own it.
@@ -122,8 +128,10 @@ function build(
 		channelStatusRepository,
 	);
 
+	const errorReporter = mock<ErrorReporter>();
+	const logger = opts.logger ?? mockLogger();
 	const reconciler = new AgentChannelReconciler(
-		mockLogger(),
+		logger,
 		agentsConfig,
 		agentRepository,
 		channelStatusRepository,
@@ -131,7 +139,7 @@ function build(
 		chatIntegrationService,
 		registry,
 		mock<InstanceSettings>({ isLeader: opts.isLeader ?? true, hostId: HOST_ID }),
-		mock<ErrorReporter>(),
+		errorReporter,
 	);
 
 	return {
@@ -140,6 +148,7 @@ function build(
 		channelStatusRepository,
 		chatIntegrationService,
 		statusReporter,
+		errorReporter,
 	};
 }
 
@@ -168,6 +177,25 @@ describe('AgentChannelReconciler', () => {
 			await reconciler.reconcile('interval');
 
 			expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
+		});
+
+		it('scrubs credential material out of what it logs about a failure', async () => {
+			// A failed Telegram request quotes the API URL, and the bot token is in that
+			// path — the same reason `recordFailure` scrubs the message it persists.
+			const logger = mock<Logger>();
+			const { reconciler, agentRepository, chatIntegrationService } = build({ logger });
+			agentRepository.findPublished.mockResolvedValue([makeAgent([telegram])]);
+			chatIntegrationService.startChannel.mockRejectedValue(
+				new Error(
+					'request to https://api.telegram.org/bot123456789:AAFakeTokenValueForTestingOnly12345/setWebhook failed',
+				),
+			);
+
+			await reconciler.reconcile('interval');
+
+			const logged = logger.warn.mock.calls.at(-1)?.[1] as { error: string };
+			expect(logged.error).not.toContain('AAFakeTokenValueForTestingOnly12345');
+			expect(logged.error).toContain('setWebhook');
 		});
 
 		it('keeps going after one channel fails to start', async () => {
@@ -231,6 +259,31 @@ describe('AgentChannelReconciler', () => {
 	});
 
 	describe('retry backoff', () => {
+		it('keeps the error row alive while it waits out a long retry deadline', async () => {
+			// The backoff outgrows a lease from the third consecutive failure on. If the
+			// row expired mid-wait the sweep would delete it, dropping the reported
+			// reason and resetting the attempt count that grows the backoff.
+			const { reconciler, agentRepository, channelStatusRepository } = build();
+			agentRepository.findPublished.mockResolvedValue([makeAgent([slack])]);
+			channelStatusRepository.findOwnAll.mockResolvedValue([
+				erroredOwnRow(slack, {
+					attempts: 3,
+					backoffUntil: new Date(
+						Date.now() + 4 * RECONCILE_INTERVAL_SECONDS * Time.seconds.toMilliseconds,
+					),
+				}),
+			]);
+
+			await reconciler.reconcile('interval');
+
+			expect(channelStatusRepository.refreshOwnLease).toHaveBeenCalledWith(
+				refOf(slack),
+				expect.any(Date),
+			);
+			// Still a held-back retry, not a fresh attempt.
+			expect(channelStatusRepository.saveOwn).not.toHaveBeenCalled();
+		});
+
 		it('waits out a retry deadline that has not passed', async () => {
 			const { reconciler, agentRepository, channelStatusRepository, chatIntegrationService } =
 				build();
@@ -387,22 +440,65 @@ describe('AgentChannelReconciler', () => {
 	});
 
 	describe('the loop itself', () => {
-		it('does not schedule anything when the interval is zero', () => {
-			const { reconciler, channelStatusRepository } = build({ intervalSeconds: 0 });
+		it('schedules no repeating pass when the interval is zero', () => {
+			const { reconciler } = build({ intervalSeconds: 0 });
 			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			reconciler.init();
 
 			expect(setIntervalSpy).not.toHaveBeenCalled();
-			expect(channelStatusRepository.findOwnAll).not.toHaveBeenCalled();
 			setIntervalSpy.mockRestore();
 		});
 
-		it('reports a failing pass instead of letting it kill the interval', async () => {
+		it('still starts channels on boot when the interval is zero', async () => {
+			// Turning the loop off gives up retries, not the channels themselves: this
+			// pass is the only thing that starts them on this main.
+			const { reconciler, agentRepository, chatIntegrationService } = build({
+				intervalSeconds: 0,
+			});
+			const agent = makeAgent([slack]);
+			agentRepository.findPublished.mockResolvedValue([agent]);
+
+			reconciler.init();
+
+			// `init` fires the boot pass without awaiting it, so wait for it to land.
+			await vi.waitFor(() =>
+				expect(chatIntegrationService.startChannel).toHaveBeenCalledWith(agent, slack),
+			);
+		});
+
+		it('still claims leader-only channels on takeover when the interval is zero', async () => {
+			const { reconciler, agentRepository, chatIntegrationService } = build({
+				intervalSeconds: 0,
+			});
+			const agent = makeAgent([telegram]);
+			agentRepository.findPublished.mockResolvedValue([agent]);
+
+			reconciler.init();
+			await reconciler.reconcileOnLeaderTakeover();
+
+			expect(chatIntegrationService.startChannel).toHaveBeenCalledWith(agent, telegram);
+		});
+
+		it('stays inert on takeover when it was never initialized', async () => {
+			// A worker never calls `init`, so it must not start channels.
 			const { reconciler, agentRepository } = build();
-			agentRepository.findPublished.mockRejectedValue(new Error('database is down'));
+
+			await reconciler.reconcileOnLeaderTakeover();
+
+			expect(agentRepository.findPublished).not.toHaveBeenCalled();
+		});
+
+		it('reports a failing pass instead of letting it kill the interval', async () => {
+			const { reconciler, agentRepository, errorReporter } = build();
+			const failure = new Error('database is down');
+			agentRepository.findPublished.mockRejectedValue(failure);
 
 			await expect(reconciler.reconcile('interval')).resolves.toBeUndefined();
+
+			// Swallowed for the interval's sake, not silenced: the cause still has to
+			// reach telemetry and the log.
+			expect(errorReporter.error).toHaveBeenCalledWith(failure, { shouldBeLogged: true });
 		});
 
 		it('withdraws everything it said on shutdown, so a restart is not read as degraded', async () => {
@@ -421,14 +517,6 @@ describe('AgentChannelReconciler', () => {
 			await reconciler.reconcile('interval');
 
 			expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
-		});
-
-		it('does not run on leader takeover while the loop is disabled', async () => {
-			const { reconciler, agentRepository } = build();
-
-			await reconciler.reconcileOnLeaderTakeover();
-
-			expect(agentRepository.findPublished).not.toHaveBeenCalled();
 		});
 	});
 });

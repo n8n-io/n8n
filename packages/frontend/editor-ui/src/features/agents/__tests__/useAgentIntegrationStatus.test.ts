@@ -186,6 +186,94 @@ describe('useAgentIntegrationStatus', () => {
 		expect(status.statuses.value.slack).toBe('disconnected');
 	});
 
+	it('does not let a builder re-seed downgrade a channel the server confirmed', async () => {
+		// Every builder write re-seeds this cache from local configuration, where a
+		// published agent's channels read as `starting`. That guess must not replace
+		// what the status endpoint said — nothing on that path refetches to correct it.
+		apiMocks.getIntegrationStatus.mockResolvedValue({
+			status: 'partial',
+			integrations: [
+				{ type: 'slack', credentialId: 'cred-slack', status: 'connected' },
+				{ type: 'discord', credentialId: 'cred-discord', status: 'error', errorMessage: 'boom' },
+			],
+		});
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		await status.fetchStatus(['slack', 'discord']);
+
+		syncAgentIntegrationStatusCache(
+			projectId,
+			agentId,
+			['slack', 'discord'],
+			[
+				{ type: 'slack', credentialId: 'cred-slack', status: 'starting' },
+				{ type: 'discord', credentialId: 'cred-discord', status: 'starting' },
+			],
+		);
+
+		expect(status.statuses.value.slack).toBe('connected');
+		expect(status.statuses.value.discord).toBe('error');
+		expect(status.runtimeErrors.value.discord).toBe('boom');
+	});
+
+	it('still takes the credential and settings of a confirmed channel from configuration', async () => {
+		// Only the status is the server's to know; what the channel is set up with is
+		// the builder's own write, which is what the seed exists to carry.
+		apiMocks.getIntegrationStatus.mockResolvedValue({
+			status: 'connected',
+			integrations: [{ type: 'telegram', credentialId: 'cred-old', status: 'connected' }],
+		});
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		await status.fetchStatus(['telegram']);
+
+		syncAgentIntegrationStatusCache(
+			projectId,
+			agentId,
+			['telegram'],
+			[{ type: 'telegram', credentialId: 'cred-new', status: 'starting' }],
+		);
+
+		expect(status.statuses.value.telegram).toBe('connected');
+		expect(status.connectedCredentials.value.telegram).toBe('cred-new');
+	});
+
+	it('seeds a channel the server last reported as absent', async () => {
+		// The answer was about a channel that did not exist then. Configuration has
+		// one now — just added in the builder — so the seed is the fresher account.
+		apiMocks.getIntegrationStatus.mockResolvedValue({ status: 'configured', integrations: [] });
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		await status.fetchStatus(['slack']);
+		expect(status.statuses.value.slack).toBe('disconnected');
+
+		syncAgentIntegrationStatusCache(
+			projectId,
+			agentId,
+			['slack'],
+			[{ type: 'slack', credentialId: 'cred-slack', status: 'starting' }],
+		);
+
+		expect(status.statuses.value.slack).toBe('starting');
+	});
+
+	it('forgets a confirmed channel that configuration no longer has', async () => {
+		apiMocks.getIntegrationStatus.mockResolvedValue({
+			status: 'connected',
+			integrations: [{ type: 'slack', credentialId: 'cred-slack', status: 'connected' }],
+		});
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		await status.fetchStatus(['slack']);
+
+		// Removed in the builder.
+		syncAgentIntegrationStatusCache(projectId, agentId, ['slack'], []);
+		expect(status.statuses.value.slack).toBe('disconnected');
+
+		// And the stale answer is gone with it, so a failed refresh has nothing to
+		// preserve rather than resurrecting a channel that no longer exists.
+		apiMocks.getIntegrationStatus.mockRejectedValue(new Error('network error'));
+		await status.fetchStatus(['slack']);
+
+		expect(status.statuses.value.slack).toBe('unknown');
+	});
+
 	it('clears a cached integration error', async () => {
 		apiMocks.connectIntegration.mockRejectedValue(
 			new ResponseError('Slack credential is already connected', { httpStatusCode: 409 }),
