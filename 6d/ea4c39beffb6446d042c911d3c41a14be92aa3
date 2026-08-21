@@ -2,6 +2,7 @@ packages/cli/test/integration/public-api/role-mapping-rules.test.ts
   s_c4380fad56171a::t_93a23862bf8036 3,365,789-898,900,904
   s_c4380fad56171a::t_652497460af5a9 899,901-903,905
   s_c4380fad56171a::t_70cf344efdc3a6 543
+  s_c4380fad56171a::t_866658f8f91df7 788
 packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
   s_c4380fad56171a::t_93a23862bf8036 19,21,165-185
   s_c4380fad56171a::t_ea1b5c22ff4d7a 186-187
