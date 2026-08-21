@@ -1,6 +1,5 @@
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import type { HttpRequestClient } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
+import type { HttpRequestClient, SafetyMode } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 
 export const TOKEN_REQUEST_TIMEOUT = 30_000;
@@ -26,10 +25,6 @@ export const TOKEN_REQUEST_TIMEOUT = 30_000;
  * layer entirely (no SSRF guard, no proxy, no timeout).
  */
 export function getTokenRequestClient(host: 'fixed-vendor' | 'user-controlled'): HttpRequestClient {
-	const ssrf =
-		host === 'fixed-vendor' || !Container.get(SsrfProtectionConfig).enabled
-			? 'disabled'
-			: Container.get(SsrfProtectionService);
-
-	return Container.get(OutboundHttp).requests({ ssrf });
+	const safetyMode: SafetyMode = host === 'fixed-vendor' ? 'unsafe' : 'safe';
+	return Container.get(OutboundHttp).requests({ safetyMode });
 }

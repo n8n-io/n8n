@@ -2,13 +2,7 @@ import type * as agents from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig, AgentJsonToolConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type {
-	CustomFetch,
-	HttpTransport,
-	OutboundHttp,
-	SsrfProtectionService,
-} from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -139,8 +133,6 @@ function makeService(overrides: {
 		outboundHttp,
 		mock<AgentWorkspaceService>(),
 		mock<AgentKnowledgeMirrorService>(),
-		mock<SsrfProtectionConfig>({ enabled: true }),
-		mock<SsrfProtectionService>(),
 		credentialsFinderService,
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),

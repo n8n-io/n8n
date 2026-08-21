@@ -1,4 +1,4 @@
-import { httpRequest } from '@n8n/backend-network';
+import { httpRequest } from '@n8n/backend-network/testing';
 import {
 	buildRfcStyleUserAgent,
 	getDefaultN8nOutboundUserAgent,

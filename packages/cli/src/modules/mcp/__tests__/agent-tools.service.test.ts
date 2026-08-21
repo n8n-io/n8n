@@ -2,8 +2,7 @@ import { zodToJsonSchema } from '@n8n/agents';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import { User, type WorkflowRepository } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
@@ -159,8 +158,6 @@ describe('McpAgentToolsService', () => {
 		mockInstance(NodeTypes),
 		mockInstance(OauthService),
 		outboundHttp,
-		mockInstance(SsrfProtectionConfig),
-		mockInstance(SsrfProtectionService),
 		urlService,
 		projectScopeService,
 	);

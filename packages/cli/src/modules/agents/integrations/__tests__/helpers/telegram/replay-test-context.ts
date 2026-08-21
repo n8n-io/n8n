@@ -1,8 +1,7 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
-import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -169,8 +168,6 @@ function createIntegration() {
 		mock<AgentRepository>(),
 		mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
 		mock<OutboundHttp>(),
-		{ enabled: false } as SsrfProtectionConfig,
-		mock<SsrfProtectionService>(),
 	);
 }
 

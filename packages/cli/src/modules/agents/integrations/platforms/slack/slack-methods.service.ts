@@ -78,7 +78,7 @@ export class SlackMethodsService {
 			}
 			const response = await this.outboundHttp
 				.requests({
-					ssrf: 'disabled',
+					safetyMode: 'unsafe',
 				})
 				.request({
 					method: 'POST',

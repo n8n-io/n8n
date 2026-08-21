@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import dns from 'node:dns';
 import type { LookupFunction } from 'node:net';
 import type { Dispatcher } from 'undici';
@@ -150,8 +151,18 @@ function makeBridge(blockedPath: string): { bridge: SsrfBridge; error: Error } {
 	return { bridge, error };
 }
 
-function makeTransport(options?: Parameters<OutboundHttp['transport']>[0]) {
-	return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>()).transport(options);
+// `ssrf` installs the scripted bridge as the instance's protection service, so
+// the transport picks it up through the default safe mode.
+function makeTransport(
+	options?: NonNullable<Parameters<OutboundHttp['transport']>[0]> & { ssrf?: SsrfBridge },
+) {
+	const { ssrf, ...transportOptions } = options ?? {};
+	const service = ssrf ? mock<SsrfProtectionService>(ssrf) : mock<SsrfProtectionService>();
+	return new OutboundHttp(
+		service,
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<Logger>(),
+	).transport(transportOptions);
 }
 
 // Walk the `cause` chain to the deepest error message. undici wraps a
@@ -221,7 +232,7 @@ describe('SSRF end-to-end', () => {
 
 		it('follows the redirect without validation when SSRF is disabled', async () => {
 			const { bridge } = makeBridge('/internal');
-			const fetchFn = makeTransport({ ssrf: 'disabled', proxy: false }).asCustomFetch();
+			const fetchFn = makeTransport({ safetyMode: 'unsafe', proxy: false }).asCustomFetch();
 
 			const res = await fetchFn(`${server.url}/start`);
 
@@ -251,7 +262,7 @@ describe('SSRF end-to-end', () => {
 
 		it('does not validate when SSRF is disabled (bare dispatcher)', async () => {
 			const { bridge } = makeBridge('/internal');
-			const client = makeTransport({ ssrf: 'disabled', proxy: false });
+			const client = makeTransport({ safetyMode: 'unsafe', proxy: false });
 			const dispatcher = client.getDispatcher();
 
 			const { fetch: undiciFetch } = await import('undici');
@@ -405,7 +416,7 @@ describe('proxy host validation', () => {
 		const bridge = denyingBridge(new Error('The proxy host is not permitted by policy'));
 
 		expect(() =>
-			makeTransport({ ssrf: 'disabled', proxy: 'http://127.0.0.1:3128' }).getDispatcher(),
+			makeTransport({ safetyMode: 'unsafe', proxy: 'http://127.0.0.1:3128' }).getDispatcher(),
 		).not.toThrow();
 		expect(bridge.validateConnectionHost).not.toHaveBeenCalled();
 	});
