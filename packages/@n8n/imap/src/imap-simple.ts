@@ -19,15 +19,9 @@ export const imapErrorCode = (error: Error): string =>
 
 const LOGOUT_GRACE_PERIOD = 2000;
 
-/** How long one attempt at restoring the connection may take before it is abandoned. */
 const DEFAULT_RECONNECT_TIMEOUT = 45_000;
 
-/**
- * Why a connection stopped for good:
- * - `ended` the caller asked for it, through `end()`
- * - `error` an error was reported first, and the close is its consequence
- * - `dropped` the server or socket went away, and could not be restored
- */
+/** `ended`: the caller asked. `error`: a failure preceded it. `dropped`: neither, and unrecoverable. */
 export type CloseReason = 'ended' | 'error' | 'dropped';
 
 /** New mail worth looking at: what the server reported, or what a reconnect found waiting. */
@@ -35,7 +29,6 @@ export interface Arrival {
 	count: number;
 }
 
-/** Message metadata changed on the server, most often a flag being set elsewhere. */
 export interface FlagsEvent {
 	seqNo: number;
 	info: { num?: number | undefined; text: unknown };
@@ -135,10 +128,9 @@ const selectMailbox = async (client: ImapTransport, boxName: string): Promise<Im
 	});
 
 /**
- * One long-lived IMAP connection. When `reconnect` is configured it restores itself after a drop
- * and can pre-empt one on a schedule, replacing the transport underneath while its own identity
- * holds — so a caller attaches its listeners once and never sees the swap. `close` then means the
- * connection is gone for good.
+ * One long-lived IMAP connection. Configured with `reconnect` it restores itself after a drop and
+ * can pre-empt one on a schedule, replacing the transport underneath while its own identity holds,
+ * so a caller attaches its listeners once and never sees the swap.
  */
 export class ImapSimple {
 	static async connect(
@@ -178,7 +170,6 @@ export class ImapSimple {
 	 */
 	private queue: Promise<unknown> = Promise.resolve();
 
-	/** Arrivals that landed before a handler was registered. */
 	private readonly pending: Arrival[] = [];
 
 	/** Bumped on every swap, so work cut short by one can be told apart from work that just failed. */
@@ -205,10 +196,7 @@ export class ImapSimple {
 		private readonly reconnectOptions: ReconnectOptions | undefined,
 	) {}
 
-	/**
-	 * Handles new mail. Runs are serialised, because a handler that reads the mailbox and then
-	 * acts on what it read cannot overlap with itself.
-	 */
+	/** Serialised, because a handler that reads the mailbox and acts on it cannot overlap itself. */
 	onArrival(handler: (arrival: Arrival) => Promise<void> | void): this {
 		this.handlers.arrival = handler;
 
@@ -220,7 +208,6 @@ export class ImapSimple {
 		return this;
 	}
 
-	/** Handles a failure the connection could not recover from. */
 	onError(handler: (error: Error) => void): this {
 		this.handlers.error = handler;
 		return this;
@@ -264,7 +251,6 @@ export class ImapSimple {
 		this.report('close', (handler) => handler(this.closeReason()));
 	}
 
-	/** Whether the caller tore this connection down itself, so anything it reports now is expected. */
 	get endedByCaller(): boolean {
 		return this.ended;
 	}
