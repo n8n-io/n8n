@@ -1,3 +1,11 @@
+## [2.36.5](https://github.com/n8n-io/n8n/compare/n8n@2.36.4...n8n@2.36.5) (2026-08-21)
+
+
+### Bug Fixes
+
+* **core:** Raise AI Assistant model verification token limit ([#36797](https://github.com/n8n-io/n8n/issues/36797)) ([ec5244b](https://github.com/n8n-io/n8n/commit/ec5244bb2c82bb3a5531b5c88539a14ea7b1dd01))
+
+
 ## [2.36.4](https://github.com/n8n-io/n8n/compare/n8n@2.36.3...n8n@2.36.4) (2026-08-21)
 
 
