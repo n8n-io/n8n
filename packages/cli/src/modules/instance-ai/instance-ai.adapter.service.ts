@@ -871,6 +871,14 @@ export class InstanceAiAdapterService {
 				return await resolveProjectId(['workflow:create'], projectId);
 			},
 
+			async resolveWorkflowProjectId(workflowId: string) {
+				const project = await sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
+				if (!project) {
+					throw new Error(`Workflow ${workflowId} has no owning project`);
+				}
+				return project.id;
+			},
+
 			async createFromWorkflowJSON(
 				json: WorkflowJSON,
 				options?: { projectId?: string; markAsAiTemporary?: boolean },
