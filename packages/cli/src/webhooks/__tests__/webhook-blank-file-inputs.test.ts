@@ -29,7 +29,8 @@ describe('discardBlankFileInputs', () => {
 	const rmMock = vi.mocked(rm);
 
 	beforeEach(() => {
-		vi.clearAllMocks();
+		rmMock.mockReset();
+		rmMock.mockResolvedValue(undefined);
 	});
 
 	it('should keep a filled input and delete nothing', async () => {
@@ -57,6 +58,31 @@ describe('discardBlankFileInputs', () => {
 		expect(rmMock).toHaveBeenCalledTimes(2);
 		expect(rmMock).toHaveBeenCalledWith('/tmp/blank1', { force: true });
 		expect(rmMock).toHaveBeenCalledWith('/tmp/blank2', { force: true });
+	});
+
+	it('should still return the filled inputs when a deletion fails', async () => {
+		const filled = file();
+		rmMock.mockRejectedValueOnce(new Error('EACCES'));
+
+		const result = await discardBlankFileInputs({
+			document: [filled],
+			blank: [blankInput('/tmp/blank')],
+		});
+
+		// A failed cleanup must not turn a parsed request into an error.
+		expect(result).toEqual({ document: [filled] });
+	});
+
+	it('should ignore a field named __proto__ instead of throwing', async () => {
+		// formidable reassigns the map's prototype for such a part rather than
+		// adding an own key, so the entry is not reachable as a key at all.
+		const files: Record<string, formidable.File[] | undefined> = {};
+		Object.setPrototypeOf(files, [file()]);
+
+		const result = await discardBlankFileInputs(files);
+
+		expect(result).toEqual({});
+		expect(rmMock).not.toHaveBeenCalled();
 	});
 
 	it('should keep a file that holds no bytes but has a name', async () => {

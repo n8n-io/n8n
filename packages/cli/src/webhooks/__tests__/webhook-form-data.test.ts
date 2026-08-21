@@ -440,6 +440,8 @@ describe('webhook-form-data', () => {
 				.sendRequestToHandler(async (req) => {
 					const rejection = parseFn(req);
 					await expect(rejection).rejects.toThrow('unknown transfer-encoding');
+					// The 501 proves the parse reached neither mapped status.
+					await expect(rejection).rejects.toMatchObject({ httpCode: 501 });
 					await expect(rejection).rejects.not.toBeInstanceOf(BadRequestError);
 					await expect(rejection).rejects.not.toBeInstanceOf(ContentTooLargeError);
 				})

@@ -24,8 +24,9 @@ export const discardBlankFileInputs = async (files: ParsedFiles): Promise<Parsed
 	const filled: ParsedFiles = {};
 	const discarded: formidable.File[] = [];
 
-	for (const key in files) {
-		const entries = files[key];
+	// Own keys only. A part named `__proto__` reassigns this object's prototype
+	// instead of adding a key, so `for...in` would walk the array it now inherits.
+	for (const [key, entries] of Object.entries(files)) {
 		if (!entries) continue;
 
 		const keptEntries = entries.filter((file) => !isBlankFileInput(file));
@@ -37,7 +38,17 @@ export const discardBlankFileInputs = async (files: ParsedFiles): Promise<Parsed
 		if (keptEntries.length > 0) filled[key] = keptEntries;
 	}
 
-	await Promise.all(discarded.map(async (file) => await rm(file.filepath, { force: true })));
+	// Cleanup is best effort. A failed deletion must not turn a parsed request
+	// into an error, so each failure is swallowed rather than propagated.
+	await Promise.all(
+		discarded.map(async (file) => {
+			try {
+				await rm(file.filepath, { force: true });
+			} catch {
+				// The temp file stays behind, which is preferable to failing the request.
+			}
+		}),
+	);
 
 	return filled;
 };
