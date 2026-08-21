@@ -268,10 +268,7 @@ describe('AgentChatMessageList', () => {
 		);
 	});
 
-	it('shows copy and read-aloud actions for assistant text messages', async () => {
-		const speakSpy = vi.spyOn(window.speechSynthesis, 'speak');
-		const cancelSpy = vi.spyOn(window.speechSynthesis, 'cancel');
-
+	it('shows copy and read-aloud actions for assistant text messages', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
 				messages: [

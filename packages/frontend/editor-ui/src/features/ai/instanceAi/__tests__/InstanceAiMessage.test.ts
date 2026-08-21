@@ -5,13 +5,28 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import InstanceAiMessageComponent from '../components/InstanceAiMessage.vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 
-const copySpy = vi.fn();
+const { copySpy } = vi.hoisted(function createChatActionMocks() {
+	return { copySpy: vi.fn() };
+});
 
-vi.mock('@n8n/composables/useClipboard', () => ({
-	useClipboard: function useClipboard() {
-		return { copy: copySpy };
-	},
-}));
+vi.mock('@vueuse/core', async function mockVueUse(importOriginal) {
+	const original = await importOriginal<typeof import('@vueuse/core')>();
+	return {
+		...original,
+		useClipboard: function useClipboard() {
+			return { copy: copySpy };
+		},
+		useSpeechSynthesis: function useSpeechSynthesis() {
+			return {
+				isSupported: { value: true },
+				isPlaying: { value: false, __v_isRef: true },
+				status: { value: 'init' },
+				speak: vi.fn(),
+				stop: vi.fn(),
+			};
+		},
+	};
+});
 
 vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
 	default: {

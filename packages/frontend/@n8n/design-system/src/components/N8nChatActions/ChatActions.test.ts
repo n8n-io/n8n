@@ -4,24 +4,28 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import N8nIcon from '../N8nIcon';
 import N8nChatActions from './ChatActions.vue';
 
-const { copy, speak, stop, speechStatus, speechSupported } = vi.hoisted(function createMocks() {
-	return {
-		copy: vi.fn(),
-		speak: vi.fn(),
-		stop: vi.fn(),
-		speechStatus: { value: 'init' as 'init' | 'play' | 'end' },
-		speechSupported: { value: true },
-	};
-});
+const { copy, speak, stop, speechStatus, speechSupported, speechIsPlaying } = vi.hoisted(
+	function createMocks() {
+		return {
+			copy: vi.fn(),
+			speak: vi.fn(),
+			stop: vi.fn(),
+			speechStatus: { value: 'init' as 'init' | 'play' | 'end' },
+			speechSupported: { value: true },
+			speechIsPlaying: { value: false, __v_isRef: true },
+		};
+	},
+);
 
 vi.mock('@vueuse/core', function mockVueUse() {
 	return {
-		useClipboard: function useClipboard() {
-			return { copy };
+		useClipboard: function useClipboard(options?: { legacy?: boolean }) {
+			return { copy, options };
 		},
 		useSpeechSynthesis: function useSpeechSynthesis() {
 			return {
 				isSupported: speechSupported,
+				isPlaying: speechIsPlaying,
 				status: speechStatus,
 				speak,
 				stop,
@@ -49,6 +53,7 @@ describe('N8nChatActions', () => {
 		vi.clearAllMocks();
 		speechStatus.value = 'init';
 		speechSupported.value = true;
+		speechIsPlaying.value = false;
 	});
 
 	it('copies the content and reports the result', async () => {
@@ -98,6 +103,7 @@ describe('N8nChatActions', () => {
 
 	it('stops reading the content aloud', async () => {
 		speechStatus.value = 'play';
+		speechIsPlaying.value = true;
 		const onReadAloud = vi.fn();
 		const wrapper = mount(N8nChatActions, {
 			props: { content: 'Message content', showCopy: false, onReadAloud },
@@ -112,6 +118,12 @@ describe('N8nChatActions', () => {
 
 		expect(stop).toHaveBeenCalledTimes(1);
 		expect(onReadAloud).toHaveBeenCalledWith({ text: 'Message content', status: 'stopped' });
+
+		speechIsPlaying.value = false;
+		await button.trigger('click');
+
+		expect(speak).toHaveBeenCalledTimes(1);
+		expect(onReadAloud).toHaveBeenCalledWith({ text: 'Message content', status: 'started' });
 	});
 
 	it('hides read aloud when speech synthesis is unavailable', () => {

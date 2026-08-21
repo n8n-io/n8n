@@ -23,7 +23,7 @@ defineSlots<{
 	default(): unknown;
 }>();
 
-const clipboard = useClipboard();
+const clipboard = useClipboard({ legacy: true });
 const showCopiedFeedback = ref(false);
 let copyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
 const speech = useSpeechSynthesis(toRef(props, 'content'), {
@@ -32,9 +32,7 @@ const speech = useSpeechSynthesis(toRef(props, 'content'), {
 	volume: 1,
 });
 const wasStoppedByUser = ref(false);
-const isReadingAloud = computed(function getIsReadingAloud() {
-	return speech.status.value === 'play';
-});
+const isReadingAloud = speech.isPlaying;
 const canReadAloud = computed(function getCanReadAloud() {
 	return props.showReadAloud && speech.isSupported.value;
 });
