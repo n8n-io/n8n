@@ -229,6 +229,48 @@ describe('WorkflowExporter', () => {
 		});
 	});
 
+	it('writes node groups into workflow.json', async () => {
+		const workflow = makeWorkflow({
+			nodeGroups: [
+				{ id: 'group-1', name: 'Ingest', nodeIds: ['node-1'], description: 'Pulls the data in' },
+			],
+		});
+		const { exporter } = makeExporter([workflow]);
+		const writer = new CapturingWriter();
+
+		await exporter.export({
+			user,
+			workflowIds: [workflow.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
+
+		const workflowFile = writer.files.find((f) => f.path === 'workflows/my-workflow/workflow.json');
+		expect(jsonParse<unknown>(workflowFile!.content)).toMatchObject({
+			nodeGroups: [
+				{ id: 'group-1', name: 'Ingest', nodeIds: ['node-1'], description: 'Pulls the data in' },
+			],
+		});
+	});
+
+	it('omits nodeGroups from workflow.json when the workflow has none', async () => {
+		const workflow = makeWorkflow({ nodeGroups: [] });
+		const { exporter } = makeExporter([workflow]);
+		const writer = new CapturingWriter();
+
+		await exporter.export({
+			user,
+			workflowIds: [workflow.id],
+			writer,
+			includeTags: true,
+			workflowVersionPolicy: 'latest',
+		});
+
+		const workflowFile = writer.files.find((f) => f.path === 'workflows/my-workflow/workflow.json');
+		expect(jsonParse<object>(workflowFile!.content)).not.toHaveProperty('nodeGroups');
+	});
+
 	it('nests output under `<basePrefix>/workflows` when a basePrefix is given', async () => {
 		// This is the seam the folder exporter uses to place contained workflows
 		// under their folder's directory.

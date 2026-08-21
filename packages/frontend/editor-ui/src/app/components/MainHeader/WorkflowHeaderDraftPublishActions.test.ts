@@ -188,11 +188,9 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 	const setWorkflowReviewGates = ({
 		licensed = true,
-		environmentEnabled = true,
 		instanceEnabled = true,
 	}: Partial<{
 		licensed: boolean;
-		environmentEnabled: boolean;
 		instanceEnabled: boolean;
 	}> = {}) => {
 		settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
@@ -201,10 +199,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		settingsStore.settings = {
 			...settingsStore.settings,
 			workflowReviews: { enabled: instanceEnabled },
-			envFeatureFlags: {
-				...settingsStore.settings.envFeatureFlags,
-				N8N_ENV_FEAT_WORKFLOW_REVIEWS: environmentEnabled ? 'true' : 'false',
-			},
 		};
 	};
 
@@ -218,10 +212,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		settingsStore.settings = {
 			...settingsStore.settings,
 			workflowReviews: { enabled: false },
-			envFeatureFlags: {
-				...settingsStore.settings.envFeatureFlags,
-				N8N_ENV_FEAT_WORKFLOW_REVIEWS: 'false',
-			},
 		};
 		useUsersStore().currentUserId = 'user-1';
 		localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_REVIEW_REQUIRED_BY_WORKFLOW('user-1'));
@@ -588,6 +578,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						state: 'open',
 						decision: 'pending',
 						workflowVersionId: 'version-0',
+						workflowVersionName: null,
 						description: null,
 						createdAt: '2026-07-20T10:00:00.000Z',
 						updatedAt: '2026-07-20T10:00:00.000Z',
@@ -1200,9 +1191,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		};
 
 		it.each([
-			{ licensed: false, environmentEnabled: true, instanceEnabled: true },
-			{ licensed: true, environmentEnabled: false, instanceEnabled: true },
-			{ licensed: true, environmentEnabled: true, instanceEnabled: false },
+			{ licensed: false, instanceEnabled: true },
+			{ licensed: true, instanceEnabled: false },
 		])('is hidden when an enabled gate is false', async (gates) => {
 			setWorkflowReviewGates(gates);
 			const { getByTestId, queryByTestId } = renderComponent();
@@ -1279,6 +1269,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						decision: 'pending',
 						// Differs from the saved 'version-1', so the review is out of date
 						workflowVersionId: 'version-0',
+						workflowVersionName: null,
 						description: null,
 						createdAt: '2026-07-20T10:00:00.000Z',
 						updatedAt: '2026-07-20T10:00:00.000Z',
@@ -1296,9 +1287,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		};
 
 		it.each([
-			{ licensed: false, environmentEnabled: true, instanceEnabled: true },
-			{ licensed: true, environmentEnabled: false, instanceEnabled: true },
-			{ licensed: true, environmentEnabled: true, instanceEnabled: false },
+			{ licensed: false, instanceEnabled: true },
+			{ licensed: true, instanceEnabled: false },
 		])('requests no status and hides the banner when a gate is false', async (gates) => {
 			setWorkflowReviewGates(gates);
 			seedLatestReview();

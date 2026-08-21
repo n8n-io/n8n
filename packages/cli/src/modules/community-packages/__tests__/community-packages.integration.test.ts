@@ -22,9 +22,7 @@ import {
 	mockPackageName,
 } from '../../../../test/integration/shared/utils';
 
-const communityPackagesService = mockInstance(CommunityPackagesService, {
-	hasMissingPackages: false,
-});
+const communityPackagesService = mockInstance(CommunityPackagesService);
 const mockedExecuteNpmCommand = vi.mocked(executeNpmCommand);
 mockInstance(LoadNodesAndCredentials);
 
@@ -54,6 +52,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	vi.resetAllMocks();
+	communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 });
 
 describe('GET /community-packages', () => {
@@ -178,8 +177,7 @@ describe('POST /community-packages', () => {
 
 	test('should reject if package is duplicate', async () => {
 		communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
-		communityPackagesService.isPackageInstalled.mockResolvedValue(true);
-		communityPackagesService.hasPackageLoaded.mockReturnValue(true);
+		communityPackagesService.isPackageLoaded.mockReturnValue(true);
 		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
 		const {
@@ -191,14 +189,14 @@ describe('POST /community-packages', () => {
 
 	test('should allow installing packages that could not be loaded', async () => {
 		communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
-		communityPackagesService.hasPackageLoaded.mockReturnValue(false);
+		communityPackagesService.isPackageLoaded.mockReturnValue(false);
 		communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
 		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 		communityPackagesService.installPackage.mockResolvedValue(mockPackage());
 
 		await authAgent.post('/community-packages').send({ name: mockPackageName() }).expect(200);
 
-		expect(communityPackagesService.removePackageFromMissingList).toHaveBeenCalled();
+		expect(communityPackagesService.installPackage).toHaveBeenCalled();
 	});
 
 	test('should not install a banned package', async () => {

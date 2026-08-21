@@ -22,7 +22,6 @@ export type ExecutionFilterType = {
 	workflowId: 'all' | string;
 	startDate: string | Date;
 	endDate: string | Date;
-	tags: string[];
 	annotationTags: string[];
 	vote: ExecutionFilterVote;
 	metadata: ExecutionFilterMetadata[];
