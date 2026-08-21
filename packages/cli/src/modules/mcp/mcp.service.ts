@@ -429,6 +429,7 @@ export class McpService {
 		const workflowSearchTool = createSearchWorkflowsTool(
 			user,
 			this.workflowService,
+			this.folderFinderService,
 			this.telemetry,
 		);
 		registerIfAllowed(workflowSearchTool);

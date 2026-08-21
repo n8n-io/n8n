@@ -18,6 +18,7 @@ const CONNECT_URL = `${EXT_ORIGIN}connect.html`;
 const tabUpdatedListeners: TabUpdatedHandler[] = [];
 const tabRemovedListeners: Array<(tabId: number) => void> = [];
 const externalMessageListeners: ExternalMessageHandler[] = [];
+const actionClickedListeners: Array<() => void> = [];
 
 const chromeMock = {
 	runtime: {
@@ -30,6 +31,7 @@ const chromeMock = {
 	},
 	tabs: {
 		query: vi.fn().mockResolvedValue([]),
+		get: vi.fn().mockResolvedValue(undefined),
 		update: vi.fn().mockResolvedValue(undefined),
 		remove: vi.fn().mockResolvedValue(undefined),
 		reload: vi.fn().mockResolvedValue(undefined),
@@ -56,9 +58,12 @@ const chromeMock = {
 	},
 	webNavigation: { onCreatedNavigationTarget: { addListener: vi.fn() } },
 	action: {
-		onClicked: { addListener: vi.fn() },
 		setBadgeText: vi.fn(),
 		setBadgeBackgroundColor: vi.fn(),
+		setPopup: vi.fn(),
+		onClicked: {
+			addListener: vi.fn((fn: () => void) => actionClickedListeners.push(fn)),
+		},
 	},
 };
 
@@ -231,10 +236,10 @@ describe('external messages (direct connect flow)', () => {
 		expect(chromeMock.windows.create).toHaveBeenCalledWith({
 			url: connectUrlWithRelay(RELAY_URL),
 			type: 'popup',
-			width: 620,
-			height: 640,
-			left: 650,
-			top: 220,
+			width: 540,
+			height: 700,
+			left: 690,
+			top: 190,
 		});
 		expect(response()).toEqual({ accepted: true });
 	});
@@ -331,6 +336,26 @@ describe('external messages (direct connect flow)', () => {
 		expect(result()).toEqual({ connected: false });
 	});
 
+	it('disables the drawer while the flow is pending and re-enables it on settle', async () => {
+		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
+		expect(chromeMock.action.setPopup).toHaveBeenCalledWith({ popup: '' });
+
+		await simulateTabRemoved(POPUP_TAB_ID);
+
+		expect(chromeMock.action.setPopup).toHaveBeenLastCalledWith({ popup: 'drawer.html' });
+	});
+
+	it('focuses the pending connect page when the extension icon is clicked', async () => {
+		chromeMock.tabs.get.mockResolvedValue({ id: POPUP_TAB_ID, windowId: 7 });
+		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
+
+		for (const fn of actionClickedListeners) fn();
+		await flush();
+
+		expect(chromeMock.tabs.update).toHaveBeenCalledWith(POPUP_TAB_ID, { active: true });
+		expect(chromeMock.windows.update).toHaveBeenCalledWith(7, { focused: true });
+	});
+
 	it('resolves a superseded flow when a newer connect request arrives', async () => {
 		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
 		const firstResult = await simulateExternalMessage(
@@ -341,5 +366,19 @@ describe('external messages (direct connect flow)', () => {
 		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
 
 		expect(firstResult()).toEqual({ connected: false });
+	});
+});
+
+describe('buildRelayWsUrl', () => {
+	const RELAY_URL = 'wss://acme.app.n8n.cloud/browser-use/extension/abc?token=bu_x';
+
+	it('adds the extension version while preserving the existing query', async () => {
+		const { buildRelayWsUrl } = await import('./background');
+
+		const url = new URL(buildRelayWsUrl(RELAY_URL, '0.0.7'));
+
+		expect(url.searchParams.get('extensionVersion')).toBe('0.0.7');
+		expect(url.searchParams.get('token')).toBe('bu_x');
+		expect(url.pathname).toBe('/browser-use/extension/abc');
 	});
 });

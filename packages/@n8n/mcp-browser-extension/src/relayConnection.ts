@@ -10,7 +10,6 @@
 import { DocumentPreparation } from './documentPreparation';
 import { ForeignFrames } from './foreignFrames';
 import { createLogger } from './logger';
-import type { TabManagementSettings } from './types';
 
 interface ProtocolCommand {
 	id: number;
@@ -25,11 +24,6 @@ interface ProtocolResponse {
 	result?: unknown;
 	error?: string;
 }
-
-const DEFAULT_SETTINGS: TabManagementSettings = {
-	allowTabCreation: true,
-	allowTabClosing: false,
-};
 
 const log = createLogger('relay');
 
@@ -96,7 +90,6 @@ export class RelayConnection {
 	private readonly documentPrep = new DocumentPreparation();
 	private closed = false;
 	private keepaliveInterval: ReturnType<typeof setInterval> | undefined;
-	private settings: TabManagementSettings = DEFAULT_SETTINGS;
 
 	onclose?: () => void;
 	ontabcreated?: () => void;
@@ -189,10 +182,6 @@ export class RelayConnection {
 		this.closeIfIdle('extension_disconnected');
 	}
 
-	setSettings(settings: TabManagementSettings): void {
-		this.settings = settings;
-	}
-
 	/** Return controlled tab identifiers (both CDP targetId and Chrome tab ID). */
 	getControlledIds(): Array<{ targetId: string; chromeTabId: number }> {
 		return [...this.tabs.entries()].map(([targetId, entry]) => ({
@@ -204,10 +193,6 @@ export class RelayConnection {
 	/** Check whether a chrome tab ID is controlled by this relay. */
 	isControlledTab(chromeTabId: number): boolean {
 		return this.chromeTabIdToId.has(chromeTabId);
-	}
-
-	isTabCreationAllowed(): boolean {
-		return this.settings.allowTabCreation;
 	}
 
 	isAgentCreatedTab(chromeTabId: number): boolean {
@@ -518,7 +503,7 @@ export class RelayConnection {
 			case 'createTab':
 				return await this.handleCreateTab(message.params ?? {});
 			case 'closeTab':
-				return await this.handleCloseTab(message.params ?? {});
+				throw new Error('The n8n browser extension does not allow closing tabs.');
 			case 'attachTab':
 				return await this.handleAttachTab(message.params ?? {});
 			case 'listTabs':
@@ -655,12 +640,6 @@ export class RelayConnection {
 	}
 
 	private async handleCreateTab(params: Record<string, unknown>): Promise<unknown> {
-		if (!this.settings.allowTabCreation) {
-			throw new Error(
-				'Tab creation is disabled. Enable it in the n8n Browser Bridge extension settings.',
-			);
-		}
-
 		const url = (params.url as string) ?? undefined;
 		log.debug(`createTab: url=${url ?? '(none)'}`);
 
@@ -698,46 +677,6 @@ export class RelayConnection {
 			title: tab.title ?? '',
 			url: tab.url ?? url ?? '',
 		};
-	}
-
-	private async handleCloseTab(params: Record<string, unknown>): Promise<unknown> {
-		if (!this.settings.allowTabClosing) {
-			throw new Error(
-				'Tab closing is disabled. Enable it in the n8n Browser Bridge extension settings.',
-			);
-		}
-
-		const id = params.id as string;
-		if (!id) throw new Error('id is required');
-
-		const entry = this.tabs.get(id);
-		if (!entry) throw new Error(`Tab ${id} is not registered`);
-
-		log.debug(`closeTab: ${id} (chromeTabId=${entry.chromeTabId})`);
-
-		// Detach debugger if attached
-		if (entry.attached) {
-			await chrome.debugger.detach({ tabId: entry.chromeTabId }).catch(() => {});
-		}
-
-		// Clean up maps
-		this.tabs.delete(id);
-		this.chromeTabIdToId.delete(entry.chromeTabId);
-		this.agentCreatedChromeTabIds.delete(entry.chromeTabId);
-		this.foreignFrames.forget(entry.chromeTabId);
-
-		// Close the tab
-		await chrome.tabs.remove(entry.chromeTabId);
-
-		// Update primary
-		if (id === this.primaryId) {
-			const remaining = [...this.tabs.keys()];
-			this.primaryId = remaining.length > 0 ? remaining[0] : undefined;
-		}
-
-		this.closeIfIdle('extension_disconnected');
-
-		return { closed: true, id };
 	}
 
 	private async handleAttachTab(params: Record<string, unknown>): Promise<unknown> {

@@ -161,6 +161,7 @@ export class WorkflowReviewRequestService {
 			decision: request.decision,
 			description: canPublish ? request.description : null,
 			workflowVersionId: request.workflowVersionId,
+			workflowVersionName: request.workflowVersionName,
 			createdAt: request.createdAt.toISOString(),
 			updatedAt: request.updatedAt.toISOString(),
 			decisionBy: this.pickDecisionActor(request, decisionActors),

@@ -1,0 +1,34 @@
+type: object
+properties:
+  id:
+    type: string
+  expression:
+    type: string
+  role:
+    type: string
+  type:
+    type: string
+    enum:
+      - instance
+      - project
+  order:
+    type: integer
+  projectIds:
+    type: array
+    items:
+      type: string
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time
+required:
+  - id
+  - expression
+  - role
+  - type
+  - order
+  - projectIds
+  - createdAt
+  - updatedAt
