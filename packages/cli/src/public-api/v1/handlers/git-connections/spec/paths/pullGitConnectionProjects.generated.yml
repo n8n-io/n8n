@@ -1,8 +1,8 @@
 operationId: pullGitConnectionProjects
 tags:
   - GitConnections
-summary: Import all projects from a Git connection working copy
-description: Work in progress. Imports all projects from the local repository working copy into the instance, overwriting to match it. It does not pull from the remote yet, so it imports whatever the last clone produced.
+summary: Pull projects from a Git connection
+description: Resets the local clone to the configured branch tip and imports projects into the instance, overwriting to match. Requires the repository to be cloned first.
 x-required-scope: gitConnection:pull
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -187,9 +187,12 @@ responses:
                 - dataTables
                 - variables
                 - tags
+            commit:
+              type: string
           required:
             - connectionId
             - counts
+            - commit
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
