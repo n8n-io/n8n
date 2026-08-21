@@ -6,7 +6,7 @@ import AgentChannelSlackEditView from './AgentChannelSlackEditView.vue';
 import type { SlackChannelRuntime } from './useSlackChannelRuntime';
 
 describe('AgentChannelSlackEditView', () => {
-	it('exposes managed settings save activity as loading', async () => {
+	it('renders existing managed settings and exposes save activity as loading', async () => {
 		const settingsLoading = ref(false);
 		const runtime = {
 			loading: ref(false),
@@ -45,11 +45,14 @@ describe('AgentChannelSlackEditView', () => {
 			global: {
 				stubs: {
 					AgentIntegrationCredentialConnection: true,
-					AgentChannelSlackManagedSettings: true,
+					AgentChannelSlackManagedSettings: {
+						template: '<div data-testid="managed-settings" />',
+					},
 				},
 			},
 		});
 
+		expect(wrapper.find('[data-testid="managed-settings"]').exists()).toBe(true);
 		expect(wrapper.vm.loading).toBe(false);
 
 		settingsLoading.value = true;

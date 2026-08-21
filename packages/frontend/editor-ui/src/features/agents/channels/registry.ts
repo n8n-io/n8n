@@ -1,6 +1,9 @@
 import type { AgentIntegrationDisconnectWarning } from '@n8n/api-types';
 import { h, readonly, ref } from 'vue';
 
+import { AGENT_SLACK_MANAGED_SETUP_EXPERIMENT } from '@/app/constants/experiments';
+import { isFeatureEnabled } from '@/experiments/utils';
+
 import AgentChannelDiscordSetup from '../components/AgentChannelDiscordSetup.vue';
 import AgentChannelDiscordEditView from './discord/AgentChannelDiscordEditView.vue';
 import AgentChannelFallbackView from './fallback/AgentChannelFallbackView.vue';
@@ -56,7 +59,9 @@ const platforms = {
 			isPublished && isSlackChannelRuntime(runtime) && runtime.isManagedCredential(credentialId),
 		getConnectAction: ({ text }, runtime) => {
 			const managedSetupAvailable =
-				isSlackChannelRuntime(runtime) && runtime.setup.value.managedSetupAvailable;
+				isFeatureEnabled(AGENT_SLACK_MANAGED_SETUP_EXPERIMENT.name) &&
+				isSlackChannelRuntime(runtime) &&
+				runtime.setup.value.managedSetupAvailable;
 			return {
 				label: text(
 					managedSetupAvailable ? 'agents.channels.slack.managed.addToSlack' : 'generic.connect',

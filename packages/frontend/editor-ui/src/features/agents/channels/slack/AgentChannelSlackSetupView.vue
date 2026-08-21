@@ -2,6 +2,8 @@
 import { N8nLoading } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 
+import { useAgentSlackManagedSetupExperiment } from '@/experiments/agentSlackManagedSetup';
+
 import AgentChannelSlackManagedSetup from '../../components/AgentChannelSlackManagedSetup.vue';
 import AgentChannelSlackSetup from '../../components/AgentChannelSlackSetup.vue';
 import type { AgentChannelViewExpose, AgentChannelViewProps } from '../types';
@@ -21,6 +23,7 @@ const emit = defineEmits<{
 }>();
 
 const manualRef = ref<AgentChannelViewExpose>();
+const { isFeatureEnabled: isManagedSetupEnabled } = useAgentSlackManagedSetupExperiment();
 const currentSettings = computed(() => manualRef.value?.currentSettings);
 const managedActionInFlight = ref(false);
 const validationError = computed(() => manualRef.value?.validationError ?? null);
@@ -80,7 +83,11 @@ defineExpose({ currentSettings, validationError, loading });
 			<N8nLoading variant="p" :rows="4" />
 		</div>
 		<AgentChannelSlackManagedSetup
-			v-else-if="runtime.setup.value.managedSetupAvailable && runtime.setupKind.value === 'managed'"
+			v-else-if="
+				isManagedSetupEnabled &&
+				runtime.setup.value.managedSetupAvailable &&
+				runtime.setupKind.value === 'managed'
+			"
 			:setup="runtime.setup.value"
 			:loading="loading"
 			:credential-permissions="credentialPermissions"

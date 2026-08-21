@@ -131,6 +131,9 @@ export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
 );
 export const TRIAL_INTRO_MODAL_EXPERIMENT = createExperiment('101_trial_intro_modal');
 export const INLINE_AGENTS_EXPERIMENT = createExperiment('103_inline_agents');
+export const AGENT_SLACK_MANAGED_SETUP_EXPERIMENT = createExperiment(
+	'107_agent_slack_managed_setup',
+);
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -168,4 +171,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,
+	AGENT_SLACK_MANAGED_SETUP_EXPERIMENT.name,
 ];

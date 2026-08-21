@@ -3,14 +3,17 @@ import {
 	getExperimentTelemetryPayload,
 	getTemplatePathByRole,
 	isExtraTemplateLinksExperimentEnabled,
+	isFeatureEnabled,
 	TemplateClickSource,
 	trackTemplatesClick,
 } from './utils';
 
 const getVariant = vi.fn();
+const posthogIsFeatureEnabled = vi.fn();
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({
 		getVariant,
+		isFeatureEnabled: posthogIsFeatureEnabled,
 	})),
 }));
 
@@ -40,6 +43,15 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 describe('Utils: experiments', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+	});
+
+	describe('isFeatureEnabled()', () => {
+		it('delegates boolean feature flag checks to the PostHog store', () => {
+			posthogIsFeatureEnabled.mockReturnValue(true);
+
+			expect(isFeatureEnabled('104_agent_slack_managed_setup')).toBe(true);
+			expect(posthogIsFeatureEnabled).toHaveBeenCalledWith('104_agent_slack_managed_setup');
+		});
 	});
 
 	describe('getExperimentTelemetryPayload()', () => {

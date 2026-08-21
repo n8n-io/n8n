@@ -9,6 +9,9 @@ type ExperimentDefinition = {
 	name: string;
 };
 
+export const isFeatureEnabled = (experiment: keyof FeatureFlags) =>
+	usePostHog().isFeatureEnabled(experiment);
+
 export const getExperimentTelemetryPayload = (
 	experiment: ExperimentDefinition,
 	variant: FeatureFlags[keyof FeatureFlags],

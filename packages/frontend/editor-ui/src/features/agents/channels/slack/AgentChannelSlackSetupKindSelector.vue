@@ -3,6 +3,8 @@ import { N8nOption, N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
+import { useAgentSlackManagedSetupExperiment } from '@/experiments/agentSlackManagedSetup';
+
 import type { AgentChannelRuntime } from '../types';
 import { isSlackChannelRuntime, type SlackSetupKind } from './useSlackChannelRuntime';
 
@@ -12,9 +14,13 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const { isFeatureEnabled } = useAgentSlackManagedSetupExperiment();
 
 const visible = computed(
-	() => isSlackChannelRuntime(props.runtime) && props.runtime.setup.value.managedSetupAvailable,
+	() =>
+		isFeatureEnabled.value &&
+		isSlackChannelRuntime(props.runtime) &&
+		props.runtime.setup.value.managedSetupAvailable,
 );
 
 const setupKind = computed<SlackSetupKind>({

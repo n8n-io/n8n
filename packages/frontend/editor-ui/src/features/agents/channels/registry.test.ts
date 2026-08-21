@@ -1,17 +1,30 @@
 import { ref } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getAgentChannelPlatform, isRegisteredAgentChannelPlatform } from './registry';
+
+const mocks = vi.hoisted(() => ({ managedSetupEnabled: true }));
+
+vi.mock('@/experiments/utils', () => ({
+	isFeatureEnabled: () => mocks.managedSetupEnabled,
+}));
 
 const text = (key: BaseTextKey) => key;
 
 describe('agent channel platform registry', () => {
+	beforeEach(() => {
+		mocks.managedSetupEnabled = true;
+	});
+
 	it('provides a safe fallback for unknown catalog entries', () => {
 		const platform = getAgentChannelPlatform('future-channel');
 		const action = platform.getConnectAction(
 			{ text },
-			{ loading: ref(false), load: async () => {} },
+			{
+				loading: ref(false),
+				load: async () => {},
+			},
 		);
 
 		expect(platform.type).toBe('unknown');
@@ -38,6 +51,19 @@ describe('agent channel platform registry', () => {
 			label: 'agents.channels.slack.managed.addToSlack',
 			icon: 'slack',
 		});
+	});
+
+	it('uses generic Slack list metadata when managed setup is disabled', () => {
+		mocks.managedSetupEnabled = false;
+		const platform = getAgentChannelPlatform('slack');
+		const runtime = {
+			loading: ref(false),
+			load: async () => {},
+			setup: ref({ managedSetupAvailable: true, managerCredentials: [] }),
+		};
+		const action = platform.getConnectAction({ text }, runtime);
+
+		expect(action).toEqual({ label: 'generic.connect', icon: undefined });
 	});
 
 	it('confirms removal only for managed Slack credentials on published agents', () => {
