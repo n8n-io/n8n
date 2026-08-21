@@ -38,6 +38,13 @@ export class CloneGitConnectionDto extends Z.class({
 	branchName: branchNameSchema.optional(),
 }) {}
 
+export class PushGitConnectionDto extends Z.class({
+	// Required: every push produces a commit, so the caller must supply its message.
+	commitMessage: z.string().trim().min(1).max(1000),
+	// Overwrite the remote branch even when it has diverged. Off by default.
+	force: z.boolean().optional(),
+}) {}
+
 export class ListGitConnectionsQueryDto extends Z.class({
 	limit: publicApiPaginationSchema.limit,
 	cursor: z.string().optional(),
@@ -72,10 +79,13 @@ export const gitConnectionExportCountsSchema = z.object({
 	tags: z.number().int().nonnegative(),
 });
 
-/** Outcome of a push: which connection, and per-entity counts of what was exported to its working copy. */
+/** Outcome of a push: which connection, per-entity counts, and the pushed commit. */
 export const gitConnectionPushResultSchema = z.object({
 	connectionId: z.string(),
 	counts: gitConnectionExportCountsSchema,
+	// The commit that was pushed, or null when the export matched the working copy
+	// and nothing was committed (no-op push).
+	commit: z.string().nullable(),
 });
 
 export class GitConnectionPushResultDto extends Z.class(gitConnectionPushResultSchema.shape) {}
@@ -109,10 +119,12 @@ export const gitConnectionImportCountsSchema = z.object({
 	}),
 });
 
-/** Outcome of a pull: which connection, and per-entity counts of what was imported into the instance. */
+/** Outcome of a pull: which connection, per-entity counts, and the imported commit. */
 export const gitConnectionPullResultSchema = z.object({
 	connectionId: z.string(),
 	counts: gitConnectionImportCountsSchema,
+	// The remote commit the working copy was reset to and imported from.
+	commit: z.string(),
 });
 
 export class GitConnectionPullResultDto extends Z.class(gitConnectionPullResultSchema.shape) {}
