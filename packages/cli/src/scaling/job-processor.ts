@@ -10,7 +10,19 @@ import {
 	WorkflowExecute,
 	SupplyDataContext,
 } from 'n8n-core';
+import {
+	ManualExecutionCancelledError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	TimeoutExecutionCancelledError,
+	Workflow,
+	UnexpectedError,
+	createRunExecutionData,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
+} from 'n8n-workflow';
 import type {
+	CancellationReason,
 	ExecutionStatus,
 	IDataObject,
 	IExecuteData,
@@ -23,16 +35,6 @@ import type {
 	StructuredChunk,
 	CloseFunction,
 	GenericValue,
-} from 'n8n-workflow';
-import {
-	ManualExecutionCancelledError,
-	NodeConnectionTypes,
-	NodeOperationError,
-	Workflow,
-	UnexpectedError,
-	createRunExecutionData,
-	runDataAttemptedDynamicCredentials,
-	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -58,6 +60,28 @@ import type {
 	SendChunkMessage,
 } from './scaling.types';
 import { WebhookResponseRelay } from './webhook-response-relay';
+
+/** `setTimeout`'s max delay (its 32-bit signed int limit), i.e. ~24.8 days. */
+const MAX_TIMEOUT_DELAY_MS = 2 ** 31 - 1;
+
+/**
+ * Runs `fn` at `timestamp`, returning a function to cancel it. `setTimeout` truncates delays past
+ * ~24.8 days and fires almost immediately, so longer waits are split into bounded chunks.
+ */
+function scheduleAt(timestamp: number, fn: () => void): () => void {
+	let timer: NodeJS.Timeout;
+
+	const schedule = () => {
+		const delay = Math.max(timestamp - Date.now(), 0);
+		timer =
+			delay > MAX_TIMEOUT_DELAY_MS
+				? setTimeout(schedule, MAX_TIMEOUT_DELAY_MS)
+				: setTimeout(fn, delay);
+	};
+	schedule();
+
+	return () => clearTimeout(timer);
+}
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -329,12 +353,31 @@ export class JobProcessor {
 
 		this.runningJobs[job.id] = runningJob;
 
-		const run = await workflowRun;
+		// The engine only checks `executionTimeoutTimestamp` between node executions, so it cannot
+		// interrupt a node stuck mid-execution (e.g. a hanging HTTP call). This watchdog cancels the
+		// job regardless, mirroring the regular-process timeout in `WorkflowRunner.runMainProcess`.
+		let timedOut = false;
+		const clearTimeoutWatchdog =
+			executionTimeoutTimestamp !== undefined
+				? scheduleAt(executionTimeoutTimestamp, () => {
+						timedOut = true;
+						this.cancelJob(job.id, 'timeout');
+					})
+				: undefined;
 
-		delete this.runningJobs[job.id];
+		let run: IRun;
+		try {
+			run = await workflowRun;
+		} finally {
+			// Also on a rejected run, so it isn't left reported as running or cancelled belatedly.
+			clearTimeoutWatchdog?.();
+			delete this.runningJobs[job.id];
+		}
 
 		if (run?.status === 'canceled') {
-			throw new ManualExecutionCancelledError(executionId);
+			throw timedOut
+				? new TimeoutExecutionCancelledError(executionId)
+				: new ManualExecutionCancelledError(executionId);
 		}
 
 		const props = this.deriveJobFinishedProps(run, startedAt);
@@ -487,6 +530,10 @@ export class JobProcessor {
 	}
 
 	stopJob(jobId: JobId) {
+		this.cancelJob(jobId, 'manual'); // Job stops via scaling service are always user-initiated
+	}
+
+	private cancelJob(jobId: JobId, reason: CancellationReason) {
 		const runningJob = this.runningJobs[jobId];
 		if (!runningJob) return;
 
@@ -495,7 +542,7 @@ export class JobProcessor {
 			executionId,
 			workflowId,
 			workflowName,
-			reason: 'manual', // Job stops via scaling service are always user-initiated
+			reason,
 		});
 
 		runningJob.run.cancel();
