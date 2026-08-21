@@ -504,6 +504,8 @@ export interface InstanceAiCredentialService {
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	/** Whether a credential type with this exact registered name exists on the instance. */
+	credentialTypeExists?(credentialType: string): Promise<boolean>;
 	/** HTTP-usable credential types with the API host(s) they authenticate against,
 	 *  derived from credential metadata. Powers steering generic HTTP-node auth toward
 	 *  a predefined credential when one already exists for the target service. */

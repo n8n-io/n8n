@@ -22,12 +22,15 @@ import ExecutionGet from './commands/execution/get';
 import ExecutionList from './commands/execution/list';
 import ExecutionRetry from './commands/execution/retry';
 import ExecutionStop from './commands/execution/stop';
+import GitConnectionsAddProject from './commands/git-connections/add-project';
 import GitConnectionsClone from './commands/git-connections/clone';
 import GitConnectionsCreate from './commands/git-connections/create';
 import GitConnectionsDelete from './commands/git-connections/delete';
 import GitConnectionsDisconnect from './commands/git-connections/disconnect';
 import GitConnectionsGet from './commands/git-connections/get';
 import GitConnectionsList from './commands/git-connections/list';
+import GitConnectionsListProjects from './commands/git-connections/list-projects';
+import GitConnectionsRemoveProject from './commands/git-connections/remove-project';
 import GitConnectionsUpdate from './commands/git-connections/update';
 import Login from './commands/login';
 import Logout from './commands/logout';
@@ -94,6 +97,9 @@ export const commands = {
 	'git-connections:clone': GitConnectionsClone,
 	'git-connections:disconnect': GitConnectionsDisconnect,
 	'git-connections:delete': GitConnectionsDelete,
+	'git-connections:list-projects': GitConnectionsListProjects,
+	'git-connections:add-project': GitConnectionsAddProject,
+	'git-connections:remove-project': GitConnectionsRemoveProject,
 
 	'credential:list': CredentialList,
 	'credential:get': CredentialGet,

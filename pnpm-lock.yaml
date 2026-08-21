@@ -487,8 +487,8 @@ catalogs:
       specifier: 1.62.1
       version: 1.62.1
     posthog-node:
-      specifier: 5.33.4
-      version: 5.33.4
+      specifier: 5.49.1
+      version: 5.49.1
     prettier:
       specifier: 3.6.2
       version: 3.6.2
@@ -866,6 +866,9 @@ patchedDependencies:
   pkce-challenge@5.0.0:
     hash: 651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90
     path: patches/pkce-challenge@5.0.0.patch
+  reka-ui@2.5.0:
+    hash: f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f
+    path: patches/reka-ui@2.5.0.patch
   v-code-diff:
     hash: 21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9
     path: patches/v-code-diff.patch
@@ -4515,7 +4518,7 @@ importers:
         version: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
       posthog-node:
         specifier: 'catalog:'
-        version: 5.33.4(rxjs@7.8.1)
+        version: 5.49.1(rxjs@7.8.1)
       prom-client:
         specifier: 15.1.3
         version: 15.1.3
@@ -5282,7 +5285,7 @@ importers:
         version: 0.11.1
       reka-ui:
         specifier: ^2.5.0
-        version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+        version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       sanitize-html:
         specifier: 'catalog:'
         version: 2.17.5
@@ -6142,7 +6145,7 @@ importers:
         version: 0.14.1
       reka-ui:
         specifier: ^2.5.0
-        version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+        version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       sanitize-html:
         specifier: 'catalog:'
         version: 2.17.5
@@ -11508,11 +11511,11 @@ packages:
   '@pondwader/socks5-server@1.0.10':
     resolution: {integrity: sha512-bQY06wzzR8D2+vVCUoBsr5QS2U6UgPUQRmErNwtsuI6vLcyRKkafjkr3KxbtGFf9aBBIV2mcvlsKD1UYaIV+sg==}
 
-  '@posthog/core@1.28.4':
-    resolution: {integrity: sha512-wmtUYHYqA3zIAKDKvYWRNWAQsWOIBwxV08e+bWzVy0wQQzpaS/LzzRupXWRMRrLOk+1x3JKFxbqA3n0QGvpqsQ==}
+  '@posthog/core@1.48.2':
+    resolution: {integrity: sha512-zZNvsEg+YCezvJKeWdaZ77ngjKJvGnAEo31DIy2guYeDtZ5kNjJ4c6CkwqtmXmwNXjzOFGJyshzv3Fv2gHVJYA==}
 
-  '@posthog/types@1.372.10':
-    resolution: {integrity: sha512-KuT3vLu3LSFsNWCwasS4gqjH/ysAyIUcB/aJSmKyNhDd/85hAznHRz1eSSl0sMvtsDTYiQIq0I0ybduVbrpPew==}
+  '@posthog/types@1.404.1':
+    resolution: {integrity: sha512-i2Gei6ARfOSBeTN4s2yUP1p97s2UNI+1NWmtLjhnR/V6t3RFOfI1sBWKcJNWHjtoOCCWoAFU+PNPY6SgT2VtEQ==}
 
   '@protobufjs/aspromise@1.1.2':
     resolution: {integrity: sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ==}
@@ -20648,8 +20651,8 @@ packages:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
 
-  posthog-node@5.33.4:
-    resolution: {integrity: sha512-kK6nepnkSStbbxWxB2ZFhKxE2nw9tSHLv/3tUKcypwzKfovp8e8icsndBVf9RTHxiXBiF1M3B13tWvjBT2UWBw==}
+  posthog-node@5.49.1:
+    resolution: {integrity: sha512-kmjvzc7K8y+wQX7r3oIkLfKc2BzDJPXMJor5D8gAxpGE7qLNlk4HO2y1brc5587GxtdsZzqtGOxfBJXUBE2MiQ==}
     engines: {node: ^20.20.0 || >=22.22.0}
     peerDependencies:
       rxjs: ^7.0.0
@@ -29587,11 +29590,11 @@ snapshots:
 
   '@pondwader/socks5-server@1.0.10': {}
 
-  '@posthog/core@1.28.4':
+  '@posthog/core@1.48.2':
     dependencies:
-      '@posthog/types': 1.372.10
+      '@posthog/types': 1.404.1
 
-  '@posthog/types@1.372.10': {}
+  '@posthog/types@1.404.1': {}
 
   '@protobufjs/aspromise@1.1.2': {}
 
@@ -40328,9 +40331,9 @@ snapshots:
     dependencies:
       xtend: 4.0.2
 
-  posthog-node@5.33.4(rxjs@7.8.1):
+  posthog-node@5.49.1(rxjs@7.8.1):
     dependencies:
-      '@posthog/core': 1.28.4
+      '@posthog/core': 1.48.2
     optionalDependencies:
       rxjs: 7.8.1
 
@@ -41016,7 +41019,7 @@ snapshots:
 
   reinterval@1.1.0: {}
 
-  reka-ui@2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)):
+  reka-ui@2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)):
     dependencies:
       '@floating-ui/dom': 1.7.0
       '@floating-ui/vue': 1.1.6(vue@3.5.26(typescript@6.0.2))

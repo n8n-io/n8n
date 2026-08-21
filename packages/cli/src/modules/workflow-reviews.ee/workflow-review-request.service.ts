@@ -38,6 +38,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -95,6 +96,7 @@ export class WorkflowReviewRequestService {
 		private readonly collaborationService: CollaborationService,
 		private readonly workflowService: WorkflowService,
 		private readonly accessService: WorkflowReviewAccessService,
+		private readonly eventService: EventService,
 	) {}
 
 	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<User[]> {
@@ -420,6 +422,15 @@ export class WorkflowReviewRequestService {
 
 		this.broadcastReviewStateChanged(workflowId);
 
+		this.eventService.emit('workflow-review-requested', {
+			user,
+			workflowReviewRequestId: request.id,
+			projectId: project.id,
+			workflowId,
+			workflowVersionId,
+			reviewerCount: reviewerUserIds.length,
+		});
+
 		return toRequestSummary(request, workflowVersionId);
 	}
 
@@ -507,7 +518,11 @@ export class WorkflowReviewRequestService {
 			return toRequestSummary(request, workflowRow.workflowVersionId);
 		}
 
-		const { request: updated, changed } = await this.dbLockService.withLockContext(
+		const {
+			request: updated,
+			changed,
+			versionUpdated,
+		} = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			async (ctx) => {
 				// Re-check under the lock so update can't race a concurrent close/approve.
@@ -556,14 +571,14 @@ export class WorkflowReviewRequestService {
 					}
 
 					if (reviewDescription === undefined || reviewDescription === current.description) {
-						return { request: current, changed: false };
+						return { request: current, changed: false, versionUpdated: false };
 					}
 
 					current.description = reviewDescription;
 					current.updatedById = user.id;
 					const saved = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
 
-					return { request: saved, changed: true };
+					return { request: saved, changed: true, versionUpdated: false };
 				}
 
 				// Captured before the update.
@@ -612,12 +627,22 @@ export class WorkflowReviewRequestService {
 					ctx,
 				);
 
-				return { request: saved, changed: true };
+				return { request: saved, changed: true, versionUpdated: true };
 			},
 		);
 
 		if (changed) {
 			this.broadcastReviewStateChanged(dto.workflowId);
+		}
+
+		// Only a real re-pin, never a description-only save, which also sets `changed`.
+		if (versionUpdated) {
+			this.eventService.emit('workflow-review-version-updated', {
+				user,
+				workflowReviewRequestId,
+				workflowId: dto.workflowId,
+				workflowVersionId: dto.workflowVersionId,
+			});
 		}
 
 		return toRequestSummary(updated, dto.workflowVersionId);
@@ -698,7 +723,11 @@ export class WorkflowReviewRequestService {
 			throw new BadRequestError('A note is required when requesting changes');
 		}
 
-		const { request: saved, pinnedVersionId } = await this.dbLockService.withLockContext(
+		const {
+			request: saved,
+			pinnedVersionId,
+			decidedAsAssignedReviewer,
+		} = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			async (ctx) => {
 				// Re-check under the lock so a decision can't race a concurrent
@@ -791,11 +820,25 @@ export class WorkflowReviewRequestService {
 					ctx,
 				);
 
-				return { request: savedRequest, pinnedVersionId: currentRow.workflowVersionId };
+				return {
+					request: savedRequest,
+					pinnedVersionId: currentRow.workflowVersionId,
+					decidedAsAssignedReviewer: isAssignedReviewerNow,
+				};
 			},
 		);
 
 		this.broadcastReviewStateChanged(workflowRow.workflowId);
+
+		this.eventService.emit('workflow-review-decided', {
+			user,
+			workflowReviewRequestId,
+			workflowId: workflowRow.workflowId,
+			workflowVersionId: pinnedVersionId,
+			decision: dto.decision,
+			decidedVia: decidedAsAssignedReviewer ? 'assigned-reviewer' : 'admin-override',
+			reviewCreatedAt: saved.createdAt,
+		});
 
 		const summary = toRequestSummary(saved, pinnedVersionId);
 

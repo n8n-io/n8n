@@ -50,6 +50,9 @@
 		"POST /role-mapping-rules/{roleMappingRuleId}/move": {
 			"status": "gap"
 		},
+		"PATCH /role-mapping-rules/{roleMappingRuleId}": {
+			"status": "gap"
+		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},
