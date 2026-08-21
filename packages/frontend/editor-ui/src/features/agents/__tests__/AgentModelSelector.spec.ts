@@ -524,7 +524,7 @@ describe('AgentModelSelector', () => {
 		);
 	});
 
-	it('selects the first model after creating a credential when no model is selected', async () => {
+	it('lets the parent resolve the verified default after creating a credential', async () => {
 		credentialsByType.value = {};
 		const wrapper = await mountSelector({ anthropic: null }, { selectedModel: null });
 
@@ -537,9 +537,7 @@ describe('AgentModelSelector', () => {
 		expect(wrapper.emitted('selectCredential')).toEqual([
 			['anthropic', 'new-anthropic-credential'],
 		]);
-		expect(wrapper.emitted('change')).toEqual([
-			[{ provider: 'anthropic', model: 'claude-sonnet-4-5' }],
-		]);
+		expect(wrapper.emitted('change')).toBeUndefined();
 	});
 
 	it('does not replace the selected model after creating a credential', async () => {

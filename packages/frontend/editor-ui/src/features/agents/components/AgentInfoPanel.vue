@@ -190,7 +190,8 @@ watch(
 			? getDefaultModelForPicker(effectiveCredentials.value, pendingDefaultProvider.value)
 			: null,
 	(defaultModel) => {
-		if (!defaultModel || props.disabled || modelToString(props.config?.model)) return;
+		const currentModel = parseModelString(modelToString(props.config?.model));
+		if (!defaultModel || props.disabled || currentModel?.provider === defaultModel.provider) return;
 
 		pendingDefaultProvider.value = null;
 		onModelChange(defaultModel, 'auto');
@@ -225,10 +226,10 @@ watch(
 
 function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
 	selectCredential(provider, credentialId);
-	if (credentialId && !modelToString(props.config?.model)) {
+	const parsed = parseModelString(modelToString(props.config?.model));
+	if (credentialId && parsed?.provider !== provider) {
 		pendingDefaultProvider.value = provider;
 	}
-	const parsed = parseModelString(modelToString(props.config?.model));
 	if (parsed?.provider === provider && credentialId) {
 		emit('update:config', { credential: credentialId });
 	}

@@ -227,7 +227,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		id: buildMenuItemId(provider, 'select', credential.id),
 		label: credential.name,
 		disabled: false,
-		checked: selectedProviderCredentialId === credential.id,
+		checked: selectedModel?.provider === provider && selectedProviderCredentialId === credential.id,
 		keepOpen: true,
 		data: { provider },
 	}));
@@ -489,7 +489,12 @@ function selectCredentialWithDefaultModel(
 	defaultModel?: string,
 ) {
 	emit('selectCredential', provider, credentialId);
-	if (defaultModel) emit('change', { provider, model: defaultModel });
+	const model =
+		defaultModel ??
+		(selectedModel?.provider !== provider
+			? modelsByProvider[provider]?.models[0]?.model
+			: undefined);
+	if (model) emit('change', { provider, model });
 }
 
 function openNewCredential(provider: AgentModelProvider, credentialType: string) {
@@ -505,10 +510,7 @@ function openNewCredential(provider: AgentModelProvider, credentialType: string)
 			{
 				hideAskAssistant: true,
 				onCredentialCreated: function selectCreatedCredential(credential) {
-					const defaultModel = selectedModel
-						? undefined
-						: modelsByProvider[provider]?.models[0]?.model;
-					selectCredentialWithDefaultModel(provider, credential.id, defaultModel);
+					emit('selectCredential', provider, credential.id);
 				},
 				...(credentialModalAppendToBody ? { appendToBody: true } : {}),
 			},
@@ -541,7 +543,7 @@ async function onSelect(id: string) {
 	if (action === 'n8nConnect') {
 		// Radio-style: selecting n8n credits always picks the managed tag. There's no
 		// toggle-off — you switch away by choosing another credential.
-		emit('selectCredential', providerId, AI_GATEWAY_MANAGED_TAG);
+		selectCredentialWithDefaultModel(providerId, AI_GATEWAY_MANAGED_TAG);
 		return;
 	}
 
