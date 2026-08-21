@@ -9,7 +9,7 @@ import {
 	DATA_TABLE_AD_HOC_MODAL_KEY_PREFIXES,
 	DATA_TABLE_MODALS,
 } from '@/features/core/dataTable/modals';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { useInsightsStore } from '@/features/execution/insights';
 
 const i18n = useI18n();
 
