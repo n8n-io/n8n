@@ -49,8 +49,8 @@ describe('Utils: experiments', () => {
 		it('delegates boolean feature flag checks to the PostHog store', () => {
 			posthogIsFeatureEnabled.mockReturnValue(true);
 
-			expect(isFeatureEnabled('104_agent_slack_managed_setup')).toBe(true);
-			expect(posthogIsFeatureEnabled).toHaveBeenCalledWith('104_agent_slack_managed_setup');
+			expect(isFeatureEnabled('107_agent_slack_managed_setup')).toBe(true);
+			expect(posthogIsFeatureEnabled).toHaveBeenCalledWith('107_agent_slack_managed_setup');
 		});
 	});
 
