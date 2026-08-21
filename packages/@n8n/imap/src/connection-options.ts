@@ -13,7 +13,6 @@ export interface ImapConnectionOptions {
 	user: string;
 	password: string;
 	allowUnauthorizedCerts?: boolean;
-	/** Milliseconds allowed to establish the connection and authenticate. */
 	authTimeout?: number;
 }
 
