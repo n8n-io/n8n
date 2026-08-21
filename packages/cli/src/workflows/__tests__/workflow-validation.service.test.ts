@@ -709,9 +709,10 @@ describe('WorkflowValidationService', () => {
 
 		beforeEach(() => {
 			mockNodeTypes = mock<NodeTypes>();
-			// Pin the flag off so the expected copy never depends on the ambient env.
-			// Tests that need it on opt in with `withFormOAuth2(true)`.
+			// Pin the flags off so the expected copy never depends on the ambient env.
+			// Tests that need one on opt in with `withFormOAuth2(true)`/`withChatOAuth2(true)`.
 			vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', 'false');
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
 		});
 
 		afterEach(() => {
@@ -1319,68 +1320,22 @@ describe('WorkflowValidationService', () => {
 				return await service.validateDynamicCredentials(nodes, mockNodeTypes);
 			};
 
-			it('should return valid for n8nUserAuth when chat OAuth2 is enabled', async () => {
-				withChatOAuth2(true);
+			// A chat trigger establishes no identity at runtime through `n8nUserAuth`, so
+			// the flag being on must not let publish accept a configuration that would
+			// only fail later, mid-execution.
+			it.each(['n8nUserAuth', 'none', 'basicAuth'])(
+				'should reject authentication %s even when chat OAuth2 is enabled',
+				async (authentication) => {
+					withChatOAuth2(true);
 
-				const result = await validateWithChatTrigger('n8nUserAuth');
+					const result = await validateWithChatTrigger(authentication);
 
-				expect(result.isValid).toBe(true);
-			});
-
-			it.each(['none', 'basicAuth'])('should reject authentication %s', async (authentication) => {
-				withChatOAuth2(true);
-
-				const result = await validateWithChatTrigger(authentication);
-
-				expect(result.isValid).toBe(false);
-				expect(result.error).toBe(
-					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, chat, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
-				);
-			});
-
-			it('should reject n8nUserAuth when chat OAuth2 is disabled', async () => {
-				// The chat trigger authenticates the visitor over its legacy auth but
-				// establishes no identity, so this must be caught at publish rather than
-				// mid-execution.
-				withChatOAuth2(false);
-
-				const result = await validateWithChatTrigger('n8nUserAuth');
-
-				expect(result.isValid).toBe(false);
-				// The chat option is not advertised while the flag is off.
-				expect(result.error).toContain(
-					'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP or webhook triggers with n8n user authentication',
-				);
-			});
-
-			it('should offer both form and chat in the generic message when both flags are enabled', async () => {
-				withFormOAuth2(true);
-				withChatOAuth2(true);
-
-				const nodes: INode[] = [
-					createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
-					createNode('HTTP', 'n8n-nodes-base.httpRequest', {
-						credentials: { oAuth2Api: { id: 'cred-1' } },
-					}),
-				];
-
-				mockCredentialsRepository.find.mockResolvedValue([
-					{ id: 'cred-1', name: 'My OAuth2' } as any,
-				]);
-				useSystemResolver();
-
-				mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
-					if (type === 'n8n-nodes-base.scheduleTrigger') return createTriggerNodeType();
-					return {} as INodeType;
-				}) as any);
-
-				const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
-
-				expect(result.isValid).toBe(false);
-				expect(result.error).toContain(
-					'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, chat, or webhook triggers with n8n user authentication',
-				);
-			});
+					expect(result.isValid).toBe(false);
+					expect(result.error).toBe(
+						'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+					);
+				},
+			);
 		});
 
 		it('should state the identity-extractor requirement for a custom resolver', async () => {

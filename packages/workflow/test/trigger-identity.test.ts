@@ -51,37 +51,9 @@ describe('classifyTriggerIdentity', () => {
 			},
 		);
 
-		it('provides both identities when n8nUserAuth is used and chat OAuth2 is enabled', () => {
-			expect(
-				classifyTriggerIdentity(
-					CHAT_TRIGGER_NODE_TYPE,
-					{ authentication: 'n8nUserAuth' },
-					{ isChatOAuth2Enabled: true },
-				),
-			).toEqual({ providesN8nIdentity: true, providesExternalIdentity: true });
-		});
-
-		it('provides no identity when n8nUserAuth is used but chat OAuth2 is disabled', () => {
-			// Without OAuth2 the chat trigger falls back to its legacy auth, which gates
-			// page access without establishing an identity to resolve credentials with.
-			expect(
-				classifyTriggerIdentity(
-					CHAT_TRIGGER_NODE_TYPE,
-					{ authentication: 'n8nUserAuth' },
-					{ isChatOAuth2Enabled: false },
-				),
-			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
-		});
-
-		it('provides no identity when the options bag is omitted', () => {
-			// Fails closed: a caller that has not read the flag must not let the
-			// combination through.
-			expect(
-				classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, { authentication: 'n8nUserAuth' }),
-			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
-		});
-
-		it.each(['none', 'basicAuth'])(
+		// A chat trigger establishes no identity at runtime through `n8nUserAuth`, so
+		// `isChatOAuth2Enabled` must not flip this classification regardless of value.
+		it.each(['n8nUserAuth', 'none', 'basicAuth'])(
 			'provides no identity for authentication %s even when chat OAuth2 is enabled',
 			(authentication) => {
 				expect(

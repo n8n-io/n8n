@@ -419,23 +419,16 @@ export class WorkflowValidationService {
 
 	/**
 	 * Describes which trigger configurations the system resolver currently accepts,
-	 * for the publish-error copy. Chat only qualifies when available in Chat Hub, or
-	 * with n8n user auth while the chat OAuth2 flag is enabled; MCP only with n8n user
-	 * auth (OAuth2); form only joins while the form OAuth2 flag is enabled. Mirrors
+	 * for the publish-error copy. Chat only qualifies when available in Chat Hub — a
+	 * `n8nUserAuth` chat trigger establishes no identity at runtime, so it's not
+	 * listed here regardless of the chat OAuth2 flag; MCP only with n8n user auth
+	 * (OAuth2); form only joins while the form OAuth2 flag is enabled. Mirrors
 	 * `classifyTriggerIdentity`.
 	 */
 	private getN8nUserAuthTriggersList(): string {
-		const authTriggers = ['MCP'];
-		if (isFormOAuth2Enabled()) authTriggers.push('form');
-		if (isChatOAuth2Enabled()) authTriggers.push('chat');
-		authTriggers.push('webhook');
+		const authTriggers = isFormOAuth2Enabled() ? 'MCP, form, or webhook' : 'MCP or webhook';
 
-		const authTriggersText =
-			authTriggers.length > 2
-				? `${authTriggers.slice(0, -1).join(', ')}, or ${authTriggers.at(-1)}`
-				: authTriggers.join(' or ');
-
-		return `manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and ${authTriggersText} triggers with n8n user authentication`;
+		return `manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and ${authTriggers} triggers with n8n user authentication`;
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */

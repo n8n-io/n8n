@@ -39,9 +39,9 @@ export interface TriggerIdentityOptions {
 	isFormOAuth2Enabled?: boolean;
 
 	/**
-	 * Whether `N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2` is on for the instance. On ⇒ OAuth2, establishing
-	 * the chatting visitor's identity. Off ⇒ chat's existing auth, which establishes
-	 * no identity.
+	 * Whether `N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2` is on for the instance. A
+	 * `n8nUserAuth` chat trigger establishes no identity at runtime, so this option
+	 * is not currently classified on regardless of its value.
 	 */
 	isChatOAuth2Enabled?: boolean;
 }
@@ -90,19 +90,11 @@ export function classifyTriggerIdentity(
 		nodeType === FORM_TRIGGER_NODE_TYPE &&
 		parameters?.authentication === 'n8nUserAuth' &&
 		options.isFormOAuth2Enabled === true;
-	// A `n8nUserAuth` chat trigger only establishes an identity through its OAuth2
-	// flow, gated on the instance's `isChatOAuth2Enabled`. Without the flag it takes
-	// its legacy auth path, which establishes no identity to resolve credentials with.
-	const isChatOAuth2Trigger =
-		nodeType === CHAT_TRIGGER_NODE_TYPE &&
-		parameters?.authentication === 'n8nUserAuth' &&
-		options.isChatOAuth2Enabled === true;
 	if (
 		isSubWorkflowTrigger ||
 		isChatHubTrigger ||
 		isMcpTrigger ||
 		isFormTrigger ||
-		isChatOAuth2Trigger ||
 		isOAuth2Webhook
 	) {
 		return { providesN8nIdentity: true, providesExternalIdentity: true };
