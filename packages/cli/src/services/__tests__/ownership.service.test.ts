@@ -287,11 +287,12 @@ describe('OwnershipService', () => {
 	});
 
 	describe('getInstanceOwner()', () => {
-		test('should find owner using global owner role ID', async () => {
+		test('should find owner using global owner role ID, with the role relation loaded', async () => {
 			await ownershipService.getInstanceOwner();
 
 			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
 				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				relations: ['role'],
 			});
 		});
 	});
