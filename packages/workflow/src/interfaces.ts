@@ -1543,7 +1543,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * Call only after the token is validated. The identity persists for the whole
 	 * execution (including across a Wait), within the token's validity window.
 	 */
-	establishTriggerIdentity(token: string, resource: string): Promise<void>;
+	establishTriggerIdentity(token: string, resource: string, subject?: string): Promise<void>;
 	/**
 	 * Checks the status of the triggering identity's resolvable (end-user) credentials
 	 * for this workflow, using the execution context established by
@@ -3727,7 +3727,7 @@ export interface IWorkflowExecuteAdditionalData {
 		token: string,
 		resourceUrl: string,
 	) => Promise<N8nOAuth2ValidationResult>;
-	establishTriggerIdentity?(token: string, resource: string): Promise<void>;
+	establishTriggerIdentity?(token: string, resource: string, subject?: string): Promise<void>;
 	checkTriggerCredentialStatus?(): Promise<CredentialCheckResult | undefined>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
