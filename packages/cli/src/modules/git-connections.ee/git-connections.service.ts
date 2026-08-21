@@ -133,7 +133,9 @@ export class GitConnectionsService {
 		connectionId,
 		projectId,
 	}: ManageProjectLinkOptions): Promise<GitConnectionProjectPublicDto> {
+		// Validates the connection exists (throws NotFound otherwise) before any project link work.
 		await this.getEntity(connectionId);
+
 		await this.assertProjectAccess(user, projectId);
 		await this.assertProjectCanBeAdded(projectId);
 
@@ -145,7 +147,9 @@ export class GitConnectionsService {
 	}
 
 	async removeProject({ user, connectionId, projectId }: ManageProjectLinkOptions): Promise<void> {
+		// Validates the connection exists (throws NotFound otherwise) before any project link work.
 		await this.getEntity(connectionId);
+
 		await this.assertProjectAccess(user, projectId);
 		const existing = await this.gitConnectionProjectRepository.findByProjectId(projectId);
 		if (!existing) return;
@@ -167,7 +171,9 @@ export class GitConnectionsService {
 	}
 
 	async listProjects(id: string): Promise<GitConnectionProjectListPublicDto> {
+		// Validates the connection exists (throws NotFound otherwise) before any project link work.
 		await this.getEntity(id);
+
 		const projectIds = await this.gitConnectionProjectRepository.findProjectIdsByConnection(id);
 		return GitConnectionProjectListPublicDto.parse({ projectIds });
 	}
