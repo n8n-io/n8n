@@ -379,6 +379,77 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		);
 	});
 
+	// An abandoned waiting card from an earlier turn must not become the steering
+	// target: cancelling it would answer the wrong tool call and leave the
+	// question the user is actually looking at open.
+	it('steers the current turn question, not a waiting card left open earlier', async () => {
+		const waitTurn = makeSseResponse([
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-wait',
+				toolName: 'long_wait_workflow',
+				input: {},
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-wait',
+					runId: 'run-wait',
+					toolName: 'long_wait_workflow',
+					input: {
+						type: 'workflow_wait',
+						title: 'Waiting on "Long wait"',
+						components: [{ type: 'button', label: 'Check for the result', value: 'continue' }],
+					},
+				},
+			},
+		]);
+		const questionTurn = makeSseResponse([
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-question',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: {
+					action: 'respond',
+					input: {
+						message: {
+							card: { components: [{ type: 'button', label: 'Continue', value: 'continue' }] },
+						},
+					},
+				},
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-question',
+					runId: 'run-question',
+					toolName: N8N_CHAT_ACTION_TOOL_NAME,
+					input: { type: 'integration_action' },
+				},
+			},
+		]);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(waitTurn)
+			.mockResolvedValueOnce(questionTurn)
+			.mockResolvedValueOnce(makeSseResponse([{ type: 'done' }]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('start a long wait');
+		await hook.sendMessage('ask me a question');
+		await hook.cancelAndSteer('take another approach');
+
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			3,
+			'http://localhost:5678/projects/p1/agents/v2/a1/chat/resume',
+			expect.objectContaining({
+				body: expect.stringContaining('"toolCallId":"tc-question"'),
+			}),
+		);
+		expect(fetchMock.mock.calls[2][1].body).not.toContain('tc-wait');
+	});
+
 	it('cancels an idle suspended interaction and settles its UI state', async () => {
 		globalThis.fetch = vi.fn(async () =>
 			makeSseResponse([

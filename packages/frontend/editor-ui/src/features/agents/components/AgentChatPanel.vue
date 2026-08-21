@@ -14,10 +14,7 @@ import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
-import {
-	findOpenInteractive,
-	getMessageInteractives,
-} from '@/features/ai/shared/agentsChat/messageMappers';
+import { findTailOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type {
@@ -196,7 +193,14 @@ const missingFields = computed(() => {
 	return fatalError.value.missing.map(humaniseMissingField).join(', ');
 });
 
-const openInteractive = computed(() => findOpenInteractive(messages.value));
+/**
+ * Only the last turn can hold the input. A parked run is always the tail of the
+ * transcript, so anything after it — a resumed answer, a later turn — means that
+ * suspension is history. Reading the tail rather than the first open card
+ * anywhere keeps one abandoned card from wedging the chat for good, and keeps it
+ * from hiding a real question on the current turn.
+ */
+const openInteractive = computed(() => findTailOpenInteractive(messages.value));
 const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
 const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
 // A waiting card is an interactive the user can act on, but never a question:
@@ -205,22 +209,9 @@ const hasOpenWaitCard = computed(() => openInteractive.value?.toolName === WAIT_
 const hasOpenInteractiveQuestion = computed(
 	() => hasOpenInteraction.value && !hasOpenApproval.value && !hasOpenWaitCard.value,
 );
-
-/**
- * Only the tail of the transcript can hold the input. A parked run is always
- * the last turn, so anything after it — a resumed answer, a later turn — means
- * that suspension is history. Without this, one abandoned card wedges the chat
- * for good, and the card it points at is scrolled far out of view.
- */
-const tailMessage = computed(() => messages.value[messages.value.length - 1]);
-const tailOpenInteractive = computed(() => {
-	const message = tailMessage.value;
-	if (!message) return undefined;
-	return getMessageInteractives(message).find((payload) => payload.resolvedAt === undefined);
-});
-const tailHasSuspendedToolCall = computed(
+const hasOpenSuspension = computed(
 	() =>
-		tailMessage.value?.toolCalls?.some(
+		messages.value[messages.value.length - 1]?.toolCalls?.some(
 			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
 		) ?? false,
 );
@@ -233,8 +224,8 @@ const tailHasSuspendedToolCall = computed(
 const inputBlockedBySuspension = computed(
 	() =>
 		hasOpenApproval.value ||
-		tailOpenInteractive.value?.toolName === WAIT_TOOL_NAME ||
-		(tailHasSuspendedToolCall.value && !hasOpenInteractiveQuestion.value),
+		hasOpenWaitCard.value ||
+		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
 );
 // Tools still pending/running after the stream ended (desync): the backend
 // finished but their terminal events never arrived. Surfacing Stop here lets

@@ -540,6 +540,43 @@ describe('AgentChatPanel', () => {
 		expect(sendMessageMock).toHaveBeenCalledWith('something new');
 	});
 
+	// An abandoned wait card earlier in the thread must not hide a real question
+	// on the current turn: that question is answerable and typing steers it.
+	it('keeps a tail question answerable behind an abandoned waiting card', async () => {
+		messagesMock.value = [
+			{ ...openWaitMessage(), id: 'assistant-old' },
+			{
+				...openInteractiveMessage(),
+				id: 'assistant-2',
+				toolCalls: [
+					{ tool: 'chat_action', toolCallId: 'tc-2', runId: 'run-2', state: 'suspended' },
+				],
+				interactive: {
+					toolName: N8N_CHAT_ACTION_TOOL_NAME,
+					toolCallId: 'tc-2',
+					runId: 'run-2',
+					input: {
+						card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
+					},
+				},
+			},
+		];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('disabled')).toBe(false);
+		expect(chatInput.props('placeholder')).toBe('agents.chat.answerQuestionPlaceholder');
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('go another direction');
+		await flushPromises();
+
+		expect(cancelAndSteerMock).toHaveBeenCalledWith('go another direction');
+		expect(sendMessageMock).not.toHaveBeenCalled();
+	});
+
 	// The run is parked and would restart from a context with the pending tool
 	// call stripped out, so the model would call the same tool again.
 	it('blocks the chat input for a suspension with no card', () => {
