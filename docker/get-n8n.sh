@@ -383,8 +383,7 @@ Config files:      ${N8N_DIR}/compose.yml, ${N8N_DIR}/.env
 
 To stop:      docker compose -f ${N8N_DIR}/compose.yml down
 To upgrade:   curl -fsSL https://get.n8n.io | sh -s -- --upgrade
-To uninstall: docker compose -f ${N8N_DIR}/compose.yml down -v   # -v DELETES all n8n data
-              rm -rf ${N8N_DIR}
+To uninstall: docker compose -f ${N8N_DIR}/compose.yml down -v && rm -rf ${N8N_DIR}   # DELETES all n8n data
 
 Security notes:
   - Only port ${N8N_PORT} (n8n) should ever be reachable from the internet.
