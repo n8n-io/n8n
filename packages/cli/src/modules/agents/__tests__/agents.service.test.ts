@@ -135,6 +135,27 @@ describe('AgentsService', () => {
 		});
 	});
 
+	it('creates an agent with a resolved default model and credential', async () => {
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+
+		await service.create(projectId, 'Support Agent', {
+			defaultModel: {
+				model: 'openai/gpt-5-mini',
+				credential: 'managed',
+			},
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity.schema).toMatchObject({
+			name: 'Support Agent',
+			model: 'openai/gpt-5-mini',
+			credential: 'managed',
+		});
+	});
+
 	it('splits a seeded config so integrations land on their own column', async () => {
 		// `composeJsonConfig` reads integrations from the entity column, so leaving
 		// them inside `schema` loses every trigger on the next read — an eval seed
@@ -320,7 +341,7 @@ describe('AgentsService', () => {
 		);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
-		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
+		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
 	});
 
@@ -354,7 +375,7 @@ describe('AgentsService', () => {
 
 		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
-		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
+		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
 	it('returns false when deleting a missing agent', async () => {

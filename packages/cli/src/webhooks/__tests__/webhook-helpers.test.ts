@@ -34,6 +34,7 @@ import {
 	WAIT_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
 	WorkflowConfigurationError,
 	NodeOperationError,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
@@ -755,58 +756,60 @@ describe('prepareExecutionData', () => {
 		expect(runExecutionData.manualData).toBeUndefined();
 	});
 
-	describe('MICROSOFT_AGENT365_TRIGGER_NODE_TYPE merge condition', () => {
-		test('should merge nodeExecutionStack when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE and runExecutionData exists', () => {
-			const microsoftAgentNode = mock<INode>({
-				name: 'Microsoft Agent 365',
-				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-			});
+	describe('seeded execution stack merge condition', () => {
+		test.each([
+			MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			MCP_TRIGGER_NODE_TYPE,
+			CHAT_TRIGGER_NODE_TYPE,
+		])(
+			'should merge nodeExecutionStack when node type is %s and runExecutionData exists',
+			(type) => {
+				const seededTriggerNode = mock<INode>({ name: 'Seeded Trigger', type });
 
-			const existingNodeExecutionStack: IExecuteData[] = [
-				{
-					node: mock<INode>({ name: 'ExistingNode' }),
-					data: {
-						main: [[{ json: { existing: 'data' } }]],
+				const existingNodeExecutionStack: IExecuteData[] = [
+					{
+						node: mock<INode>({ name: 'ExistingNode' }),
+						data: {
+							main: [[{ json: { existing: 'data' } }]],
+						},
+						source: null,
 					},
-					source: null,
-				},
-			];
+				];
 
-			const existingRunExecutionData: IRunExecutionData = {
-				version: 1,
-				startData: {},
-				resultData: { runData: {} },
-				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack: existingNodeExecutionStack,
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			} as IRunExecutionData;
+				const existingRunExecutionData: IRunExecutionData = {
+					version: 1,
+					startData: {},
+					resultData: { runData: {} },
+					executionData: {
+						contextData: {},
+						metadata: {},
+						nodeExecutionStack: existingNodeExecutionStack,
+						waitingExecution: {},
+						waitingExecutionSource: {},
+					},
+				} as IRunExecutionData;
 
-			const { runExecutionData } = prepareExecutionData(
-				'trigger',
-				microsoftAgentNode,
-				webhookResultData,
-				existingRunExecutionData,
-			);
+				const { runExecutionData } = prepareExecutionData(
+					'trigger',
+					seededTriggerNode,
+					webhookResultData,
+					existingRunExecutionData,
+				);
 
-			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].node.name).toBe(
-				'Microsoft Agent 365',
-			);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].node.type).toBe(
-				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-			);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]).toHaveLength(1);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]?.[0]?.json).toEqual(
-				{
+				expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
+				expect(runExecutionData.executionData?.nodeExecutionStack[0].node.name).toBe(
+					'Seeded Trigger',
+				);
+				expect(runExecutionData.executionData?.nodeExecutionStack[0].node.type).toBe(type);
+				expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]).toHaveLength(1);
+				expect(
+					runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]?.[0]?.json,
+				).toEqual({
 					existing: 'data',
 					data: 'test',
-				},
-			);
-		});
+				});
+			},
+		);
 
 		test('should not merge when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE but runExecutionData is undefined', () => {
 			const microsoftAgentNode = mock<INode>({
@@ -1314,6 +1317,9 @@ describe('executeWebhook establishTriggerIdentity', () => {
 		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
 		activeExecutions.getPostExecutePromise.mockReturnValue(new Promise(() => {}));
 		executionContextService.buildTriggerIdentityCredentials.mockResolvedValue('sealed-context');
+		// `establishExecutionContext` binds the execution id onto the sealed context; with no
+		// execution id yet (or no sealed subject) it hands the context straight back.
+		executionContextService.maybeBindExecutionId.mockImplementation(async (context) => context);
 		// `establishExecutionContext` runs the hook pass over the seeded stack.
 		executionContextService.augmentExecutionContextWithHooks.mockImplementation(
 			async (_workflow, _startItem, context) => ({ context, triggerItems: null }),
@@ -1388,6 +1394,7 @@ describe('executeWebhook establishTriggerIdentity', () => {
 			'caller-token',
 			RESOURCE_URL,
 			GRANT,
+			undefined,
 		);
 		expect(additionalData.encryptedRunnerIdentity).toBe('sealed-context');
 	});
@@ -1410,6 +1417,7 @@ describe('executeWebhook establishTriggerIdentity', () => {
 			'caller-token',
 			RESOURCE_URL,
 			undefined,
+			undefined,
 		);
 	});
 
@@ -1419,6 +1427,7 @@ describe('executeWebhook establishTriggerIdentity', () => {
 		expect(executionContextService.buildTriggerIdentityCredentials).toHaveBeenCalledWith(
 			'caller-token',
 			RESOURCE_URL,
+			undefined,
 			undefined,
 		);
 	});

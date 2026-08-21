@@ -30,3 +30,9 @@ export class RoleListPublicDto extends Z.class({
 export class RoleListQueryPublicDto extends Z.class({
 	withUsageCount: booleanFromString.optional().default('false'),
 }) {}
+
+export class RoleGetPublicDto extends RolePublicDto.extend({
+	licensed: z.boolean(),
+	usedByUsers: z.number().optional(),
+	usedByProjects: z.number().optional(),
+}) {}

@@ -1,5 +1,6 @@
 export { toKafkaJSConfig } from './config';
 export { getKafkaLibrary, createKafkaClient } from './client';
+export { assertTopicExists } from './admin';
 export { createKafkaProducer, type KafkaProducerOptions } from './producer';
 export {
 	createKafkaConsumer,

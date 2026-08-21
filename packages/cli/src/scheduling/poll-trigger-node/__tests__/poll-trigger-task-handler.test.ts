@@ -130,6 +130,37 @@ describe('PollTriggerTaskHandler', () => {
 			.mockResolvedValue(undefined);
 	});
 
+	describe('unhealthy published version', () => {
+		// A due task persisted for a version with duplicate or missing node ids can
+		// fire before the healer's corrected version replaces the jobs; resolving a
+		// duplicated id would poll the wrong node and write shared cursor state.
+		test('skips the occurrence when the published version has duplicate node ids', async () => {
+			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({
+					nodes: [triggerNode, { ...triggerNode, name: 'Other Poll Trigger' }],
+				}),
+			);
+
+			await handler.execute(buildTask(), report);
+
+			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+		});
+
+		test('skips the occurrence when the published version has a node without an id', async () => {
+			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({
+					nodes: [triggerNode, { ...triggerNode, id: '', name: 'Other Poll Trigger' }],
+				}),
+			);
+
+			await handler.execute(buildTask(), report);
+
+			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('task type', () => {
 		test('declares the poll-trigger task type it is bound under', () => {
 			expect(handler.taskType).toBe(POLL_TRIGGER_TASK_TYPE);
@@ -143,6 +174,7 @@ describe('PollTriggerTaskHandler', () => {
 			expect(triggerExecutionContextFactory.createPollExecutionContext).toHaveBeenCalledWith(
 				buildWorkflowData(),
 				triggerNode,
+				{ taskId: 'task-1', leaseEpoch: 1 },
 			);
 			expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
 				workflow,

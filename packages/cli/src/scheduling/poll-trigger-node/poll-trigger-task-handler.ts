@@ -48,15 +48,33 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		// A setup failure here retries to N8N_SCHEDULER_MAX_ATTEMPTS then dead-letters,
 		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
 		const { workflowId, nodeId } = this.parsePayload(task);
+
 		// bypassCache: the poll cursor in staticData must be read live, not from the publish-time cache.
 		const workflowData = await this.triggerExecutionContextFactory.loadPublishedWorkflowData(
 			workflowId,
 			{ bypassCache: true },
 		);
+
+		// A due task persisted for a version with duplicate or missing node ids can
+		// fire before the healed version's outbox record replaces the jobs.
+		// Resolving a duplicated id would poll the wrong node and write shared
+		// cursor state. Skipped, not thrown — a throw would retry to the max
+		// attempt count and dead-letter every occurrence.
+		if (!this.hasHealthyNodeIds(workflowData)) {
+			this.logger.debug(
+				'Published version has duplicate or missing node ids; skipping the occurrence until it is healed',
+				{ taskId: task.id, jobId: task.jobId, workflowId, nodeId },
+			);
+			return report.notDispatched();
+		}
+
 		const node = this.resolveTriggerNode(workflowData, nodeId, task);
 
 		const { workflow, pollFunctions } =
-			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node);
+			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node, {
+				taskId: task.id,
+				leaseEpoch: task.leaseEpoch,
+			});
 
 		// Poll and hand-off share one staging scope, so a cursor staged here can only
 		// be committed by this poll and never by a later occurrence.
@@ -138,6 +156,12 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				await workflow.expression.releaseIsolate();
 			}
 		});
+	}
+
+	/** The invariant the activation-time healer guarantees: every node id unique and non-empty. */
+	private hasHealthyNodeIds(workflowData: IWorkflowBase): boolean {
+		const ids = workflowData.nodes.map((node) => node.id);
+		return ids.every(Boolean) && new Set(ids).size === ids.length;
 	}
 
 	private parsePayload(task: ClaimedTask): PollTriggerTaskPayload {

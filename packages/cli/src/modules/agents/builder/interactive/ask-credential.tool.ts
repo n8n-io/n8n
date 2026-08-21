@@ -19,6 +19,8 @@ import type { BuilderTrackFn } from '../builder-config-telemetry';
 
 export interface AskCredentialToolDeps {
 	credentialProvider: CredentialProvider;
+	/** Project the agent lives in — scopes the FE credential picker. */
+	projectId: string;
 	isCredentialTypeKnown?: (credentialType: string) => boolean;
 	/**
 	 * Credential ids of the agent's configured chat channel integrations. When
@@ -159,6 +161,7 @@ async function resolveCredentialSelection(
 			},
 		],
 		credentialFlow: { stage: 'generic' as const },
+		projectId: deps.projectId,
 	});
 }
 

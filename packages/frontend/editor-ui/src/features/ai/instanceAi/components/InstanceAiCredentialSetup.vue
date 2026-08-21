@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '@/app/constants/modals';
+import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/instanceAiBrowserCredentialSetup';
@@ -25,6 +25,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useInstanceAiBrowserUseTelemetry } from '../instanceAiBrowserUse.telemetry';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import ConfirmationFooter from './ConfirmationFooter.vue';
@@ -37,10 +38,12 @@ const props = defineProps<{
 	message: string;
 	projectId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
+	requireUserSelection?: boolean;
 }>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const browserUseTelemetry = useInstanceAiBrowserUseTelemetry();
 const rootStore = useRootStore();
 const thread = useThread();
 const credentialsStore = useCredentialsStore();
@@ -84,8 +87,9 @@ function initSelections() {
 	for (const req of props.credentialRequests) {
 		if (selections.value[req.credentialType] !== undefined) continue;
 
-		if (req.existingCredentials?.length === 1) {
-			// Auto-select when exactly one credential available
+		if (req.existingCredentials?.length === 1 && !req.preferNew) {
+			// Auto-select when exactly one credential available — unless the user
+			// asked to create a new one, which this card must not answer for them.
 			selections.value[req.credentialType] = req.existingCredentials[0].id;
 		} else {
 			selections.value[req.credentialType] = null;
@@ -193,13 +197,15 @@ watch(
 /**
  * A generic auth type (bearer, header, query, basic, digest, custom, OAuth) never
  * identifies a service, so its credential must not be attached to whatever URL the
- * workflow points at unless the user says so. Whenever the card carries one, the
- * Continue button is the only path that may submit — every automatic path bails out.
+ * workflow points at unless the user says so. The agent can also require explicit
+ * confirmation for the card. In both cases, only Continue may submit the card.
  */
-const requiresExplicitContinue = computed(() =>
-	props.credentialRequests.some((request) =>
-		GENERIC_AUTH_CREDENTIAL_TYPES.has(request.credentialType),
-	),
+const requiresExplicitContinue = computed(
+	() =>
+		props.requireUserSelection === true ||
+		props.credentialRequests.some((request) =>
+			GENERIC_AUTH_CREDENTIAL_TYPES.has(request.credentialType),
+		),
 );
 
 // Auto-continue once every step is handled (selected or skipped) and at
@@ -226,10 +232,14 @@ onMounted(async () => {
 
 	// Ensure the credentials store is populated so NodeCredentials can show
 	// existing credentials in the dropdown. The Instance AI page may not have
-	// fetched them yet.
+	// fetched them yet. Scope to the thread's project — an unscoped fetch fills
+	// the store with credentials from other projects (e.g. personal) that the
+	// picker would then offer.
 	try {
 		await Promise.all([
-			credentialsStore.fetchAllCredentials(),
+			props.projectId
+				? credentialsStore.fetchAllCredentialsForWorkflow({ projectId: props.projectId })
+				: credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
 		]);
 	} catch (error) {
@@ -502,22 +512,31 @@ async function handleLater() {
 	await deferWholeCard();
 }
 
+const browserConnectionState = computed(() =>
+	settingsStore.browserConnected ? 'connected' : 'disconnected',
+);
+
 function trackSetupChoiceClicked(choice: CredentialSetupChoice | 'skip', attemptId?: string) {
 	telemetry.track('Instance AI Browser Use User clicked credential setup option', {
 		credential_type: currentRequest.value?.credentialType,
 		choice,
+		browser_connection_state: browserConnectionState.value,
 		...(attemptId ? { credential_setup_attempt_id: attemptId } : {}),
 	});
 }
 
 const shownChoiceTypes = new Set<string>();
 watch(
-	() => (showSetupChoice.value ? currentRequest.value?.credentialType : undefined),
+	() =>
+		showSetupChoice.value && settingsStore.browserStatusLoaded
+			? currentRequest.value?.credentialType
+			: undefined,
 	(credentialType) => {
 		if (!credentialType || shownChoiceTypes.has(credentialType)) return;
 		shownChoiceTypes.add(credentialType);
 		telemetry.track('Instance AI Browser Use credential setup choice shown', {
 			credential_type: credentialType,
+			browser_connection_state: browserConnectionState.value,
 		});
 	},
 	{ immediate: true },
@@ -578,6 +597,7 @@ async function handleSetupAutomatically() {
 		return;
 	}
 
+	browserUseTelemetry.trackModalOpened('credential_setup');
 	uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
 	stopWatchingBrowserConnect();
 	stopBrowserConnectWatch = watch(
@@ -631,7 +651,11 @@ async function handleSetupAutomatically() {
 							standalone
 							hide-issues
 							:instance-ai-credential-help="instanceAiCredentialHelp"
-							:skip-auto-select="GENERIC_AUTH_CREDENTIAL_TYPES.has(currentRequest.credentialType)"
+							:skip-auto-select="
+								GENERIC_AUTH_CREDENTIAL_TYPES.has(currentRequest.credentialType) ||
+								currentRequest.preferNew === true
+							"
+							:prefer-new-credential="currentRequest.preferNew === true"
 							:credential-setup-hint="currentRequest.setupHint"
 							:credentials-field-label="credentialsFieldLabel"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"

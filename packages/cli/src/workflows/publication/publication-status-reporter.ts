@@ -16,6 +16,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type {
 	FailedTriggerPublicationStatus,
 	PublicationResult,
+	PublicationSkipReason,
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
 
@@ -25,6 +26,12 @@ import type {
  * its side effects: persisting per-trigger status rows, clearing legacy activation
  * errors on success, and pushing publication status to the UI.
  */
+const SKIP_LOG_MESSAGE: Record<PublicationSkipReason, string> = {
+	'workflow-not-found': 'Workflow not found',
+	'node-ids-healed': 'Version was healed and republished; its own record applies it',
+	superseded: 'Version was superseded by a concurrent publication',
+};
+
 @Service()
 export class PublicationStatusReporter {
 	constructor(
@@ -60,7 +67,7 @@ export class PublicationStatusReporter {
 			}
 
 			case 'skipped': {
-				this.logSkip(record);
+				this.logSkip(record, result.reason);
 				await this.complete(record);
 				return;
 			}
@@ -218,9 +225,9 @@ export class PublicationStatusReporter {
 		await this.activationErrorsService.deregister(record.workflowId);
 	}
 
-	private logSkip(record: WorkflowPublicationOutbox): void {
+	private logSkip(record: WorkflowPublicationOutbox, reason: PublicationSkipReason): void {
 		const context = { workflowId: record.workflowId, outboxId: record.id };
 
-		this.logger.warn('Workflow not found, marking outbox record as completed', context);
+		this.logger.warn(`${SKIP_LOG_MESSAGE[reason]}, marking outbox record as completed`, context);
 	}
 }

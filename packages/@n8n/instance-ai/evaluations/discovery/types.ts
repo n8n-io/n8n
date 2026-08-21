@@ -8,6 +8,7 @@
 // scenarios assert the *agent's tool/dispatch behavior*.
 // ---------------------------------------------------------------------------
 
+import type { DiscoveryMcpState } from './stub-mcp-registry';
 import type { LocalGatewayStatus } from '../../src/types';
 
 /**
@@ -31,8 +32,17 @@ import type { LocalGatewayStatus } from '../../src/types';
  */
 export interface ForbiddenToolCall {
 	toolName: string;
-	/** Optional case-insensitive substrings to match against the serialized tool args. */
+	/** Deep-partial match: listed keys must match, extra keys ignored, pattern
+	 *  arrays matched as subsets. Prefer this for schema'd fields — a substring
+	 *  can't tell a value from the same word in a free-text sibling. */
+	args?: Record<string, unknown>;
+	/** Case-insensitive substrings over the serialized args, for free-text
+	 *  fields. Combines with `args`; both must hold on the same call. */
 	argsContainAny?: string[];
+	/** Match a call the user refused (an approval-gated tool resuming with
+	 *  `{ declined: true }`) instead of one that ran. Defaults to false, so an
+	 *  expectation never matches a refusal by accident. */
+	declined?: boolean;
 }
 
 export interface ExpectedToolInvocations {
@@ -51,7 +61,18 @@ export interface ExpectedToolInvocations {
 export interface DiscoveryInstanceState {
 	localGateway?: LocalGatewayStatus;
 	browserAvailable?: boolean;
+	mcp?: DiscoveryMcpState;
 }
+
+export type ConfirmationDecision = 'approve' | 'deny';
+
+export interface ConfirmationAnswer {
+	decision: ConfirmationDecision;
+	resumeWith?: Record<string, unknown>;
+}
+
+// Keyed by the suspending tool's name
+export type DiscoveryConfirmations = Record<string, ConfirmationDecision | ConfirmationAnswer>;
 
 export interface DiscoveryTestCase {
 	/** Unique scenario identifier — also used as the scenario filename (without .json). */
@@ -60,12 +81,30 @@ export interface DiscoveryTestCase {
 	userMessage: string;
 	/** Optional instance state overrides applied when constructing the agent. */
 	instanceState?: DiscoveryInstanceState;
+	/** Answers for the tools listed; every other suspension is approved. */
+	confirmations?: DiscoveryConfirmations;
 	/** Pass condition. At least one expectation key is required. */
 	expectedToolInvocations: ExpectedToolInvocations;
 	/** Free-form note explaining what regression this scenario protects against. */
 	rationale?: string;
 	/** Override the runner step cap when orchestrator-inline work needs more iterations. */
 	maxSteps?: number;
+	/** Override the runner timeout when a scenario needs more time. */
+	timeoutMs?: number;
+}
+
+export type DiscoveryStreamStatus =
+	| 'completed'
+	| 'errored'
+	| 'timed-out'
+	| 'suspended'
+	| 'step-exhausted';
+
+export interface DiscoveryTrialFacts {
+	streamStatus: DiscoveryStreamStatus;
+	timeoutMs: number;
+	runError?: string;
+	unmatchedConfirmations: string[];
 }
 
 export interface DiscoveryCheckResult {

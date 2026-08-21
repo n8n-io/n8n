@@ -28,18 +28,11 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-sandbox.controller.js');
 		await import('./agents-list.controller.js');
 		await import('./agent-mcp-access.controller.js');
-		await import('./builder/agents-builder-settings.controller.js');
-
 		const { AgentsService } = await import('./agents.service.js');
 		Container.get(AgentsService);
 
 		const { AgentCredentialIndexListener } = await import('./agent-credential-index.listener.js');
 		Container.get(AgentCredentialIndexListener).init();
-
-		const { AgentsBuilderSettingsService } = await import(
-			'./builder/agents-builder-settings.service.js'
-		);
-		Container.get(AgentsBuilderSettingsService);
 
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
@@ -156,12 +149,13 @@ export class AgentsModule implements ModuleInterface {
 	async settings() {
 		const config = Container.get(AgentsConfig);
 		const { AiService } = await import('@/services/ai.service.js');
+		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
 			enabled: true,
 			modules: [...config.modules],
-			knowledgeBaseEnabled: config.sandboxEnabled,
+			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
 			proxyEnabled,
 		};
 	}

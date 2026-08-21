@@ -25,7 +25,9 @@ export type {
 	Provider,
 	ThinkingConfig,
 	ThinkingConfigFor,
+	AnthropicThinkingEffort,
 	AnthropicThinkingConfig,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
@@ -98,7 +100,9 @@ export type {
 	ObservationLogStatus,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
+	FinishReason,
 } from './types';
+export { FINISH_REASONS, isFinishReason } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
@@ -361,6 +365,7 @@ export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
 	runObservationLogObserver,
+	wrapUntrustedObserverData,
 } from './runtime/memory/observation-log-observer';
 export {
 	normalizeObservationLogReflection,
@@ -422,7 +427,7 @@ export {
 	CORE_WORKSPACE_TOOL_NAMES,
 	createScopedWorkspace,
 	createWorkspaceTools,
-	getToolResultThreadDirectory,
+	reconcileToolResultRuns,
 } from './workspace';
 export { SandboxProcessManager, ProcessHandle } from './workspace';
 

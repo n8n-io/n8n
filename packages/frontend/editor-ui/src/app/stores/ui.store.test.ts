@@ -365,4 +365,59 @@ describe('UI Store', () => {
 			expect(onModalOpened).not.toHaveBeenCalled();
 		});
 	});
+	describe('unknown-key warning', () => {
+		const MODAL_KEY = 'someFeatureModal';
+		let warn: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			warn.mockRestore();
+		});
+
+		it('should warn when opening a key neither the catalogue nor the registry defines', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openModal('aModalNobodyRegistered');
+
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('aModalNobodyRegistered'));
+		});
+
+		it('should warn through openModalWithData too', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openModalWithData({ name: 'aModalNobodyRegistered', data: {} });
+
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('aModalNobodyRegistered'));
+		});
+
+		it('should stay quiet for a shell-catalogue key', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openModal(CREDENTIAL_EDIT_MODAL_KEY);
+
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it('should stay quiet for a registered key', () => {
+			const uiStore = useUIStore();
+			modalRegistry.register({ key: MODAL_KEY, component: {} });
+
+			uiStore.openModal(MODAL_KEY);
+
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it('should stay quiet for a key built from a declared ad-hoc prefix', () => {
+			const uiStore = useUIStore();
+			// dataTable mints one key per row and registers none of them.
+			modalRegistry.declareAdHocKeyPrefix('downloadDataTableModal');
+
+			uiStore.openModal('downloadDataTableModal-42');
+
+			expect(warn).not.toHaveBeenCalled();
+		});
+	});
 });

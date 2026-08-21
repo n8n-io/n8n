@@ -47,6 +47,8 @@ import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
+	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 } from './constants';
 import {
@@ -131,6 +133,35 @@ export function getPendingAgentTargetFromThreadMetadata(
 	return { agentId: target.agentId, projectId: target.projectId };
 }
 
+export function getAgentPreviewViewFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	return getAgentPreviewTargetFromThreadMetadata(
+		metadata,
+		INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	);
+}
+
+export function getAgentPreviewSessionFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	return getAgentPreviewTargetFromThreadMetadata(
+		metadata,
+		INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
+	);
+}
+
+function getAgentPreviewTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+	metadataKey: string,
+) {
+	const raw = metadata?.[metadataKey];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.agentId !== 'string' || typeof target.threadId !== 'string') return undefined;
+	return { agentId: target.agentId, threadId: target.threadId };
+}
+
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
 function collectPendingConfirmations(
 	node: InstanceAiAgentNode,
@@ -150,8 +181,10 @@ function collectPendingConfirmations(
 			// would block the chat input on a confirmation the user can no
 			// longer act on.
 			!tc.confirmation.expired &&
-			// Plan review renders inline in the timeline, not in the confirmation panel
-			tc.confirmation.inputType !== 'plan-review'
+			// Plan review and the MCP connect card render inline in the timeline, not
+			// in the confirmation panel
+			tc.confirmation.inputType !== 'plan-review' &&
+			!tc.confirmation.mcpConnectRequest
 		) {
 			out.push({
 				toolCall: tc as InstanceAiToolCallState & { confirmation: InstanceAiConfirmation },
@@ -167,7 +200,7 @@ function collectPendingConfirmations(
 
 /**
  * Whether any tool call in the tree still waits on user input. Broader than
- * `collectPendingConfirmations`: plan-review and expired confirmations also
+ * `collectPendingConfirmations`: timeline-rendered and expired confirmations also
  * pause the run, so the stall watchdog must not count them as thinking time.
  */
 function hasUnresolvedConfirmation(

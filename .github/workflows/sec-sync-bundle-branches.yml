@@ -1,0 +1,112 @@
+# Keeps the bundle integration branches in sync with their base, in n8n-io/n8n-private.
+#
+# Fixes are integrated on bundle/2.x and bundle/1.x and eventually merged into private
+# master/1.x as a squashed `chore: Bundle/*` PR. Those branches must not drift from their
+# base, or the bundle cut turns into a conflict-resolution session.
+#
+# The base is MERGED IN, never replayed: these branches receive PRs, and rewriting a branch
+# that receives PRs orphans the commits its PR branches already hold — each such PR then shows
+# everyone else's fixes in its commit list and its diff, and picks up another duplicate
+# generation every time its author refreshes. The merge commits cost nothing downstream: a
+# bundle publishes as one squashed, obfuscated commit taken from the tree, not the history.
+# Every push is verified to carry exactly the tree a merge would produce. See
+# sync-bundle-branch.mjs.
+#
+# Daily rather than hourly on purpose: a base force-push never re-triggered CI on the fix PRs,
+# so a faster cadence bought them nothing while re-running the full suite on the cut PR (whose
+# head is the bundle branch). A merged fix and a manual dispatch before a cut are the moments
+# that matter.
+#
+# One job per bundle branch: a conflict on one FAILS THAT JOB and leaves its branch untouched,
+# while the other still syncs. Recovery is manual and deliberate — merge the base in locally,
+# resolve, push, then re-run this workflow. That resolution then lives in the merge commit,
+# instead of being re-litigated on every later run.
+
+name: 'Security: Sync Bundle Branches'
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  pull_request: # a fix landing on a bundle branch is when freshness matters most
+    types: [closed]
+    branches:
+      - 'bundle/2.x'
+      - 'bundle/1.x'
+  workflow_dispatch:
+
+# Least privilege by default; the sync job opts into exactly what it needs.
+permissions: {}
+
+jobs:
+  sync:
+    name: Sync ${{ matrix.bundle }}
+    if: |
+      github.repository == 'n8n-io/n8n-private' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false # a conflict on one bundle branch must not hold back the other
+      matrix:
+        include:
+          - bundle: 'bundle/2.x'
+            base: 'master'
+          - bundle: 'bundle/1.x'
+            base: '1.x'
+    concurrency: # serialize per branch — never two syncs of the same one at once
+      group: sync-${{ matrix.bundle }}
+      cancel-in-progress: false
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the installation token to only what the sync needs.
+          permission-contents: write # push the bundle branch
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Always run the script from the default branch, never from a pull_request merge
+          # ref — the sync holds a contents:write token and fetches what it needs itself,
+          # so the checked-out branch is irrelevant beyond supplying trusted code.
+          ref: master
+          fetch-depth: 0
+          persist-credentials: false # we push with an explicit token URL instead
+
+      - name: Merge the base into the bundle branch
+        # On a merged bundle PR, only the branch that received it needs syncing.
+        # (`matrix` is not available in a job-level `if`, so the filter lives here.)
+        if: github.event_name != 'pull_request' || github.event.pull_request.base.ref == matrix.bundle
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BUNDLE_BRANCH: ${{ matrix.bundle }}
+          BASE_BRANCH: ${{ matrix.base }}
+        run: node .github/scripts/sync-bundle-branch.mjs
+
+  notify-on-failure:
+    name: Notify Slack on failure
+    needs: [sync]
+    if: ${{ always() && needs.sync.result == 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout the slack scripts
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      # Branch names and a run link only: conflicted paths and commit subjects hint at the
+      # vulnerability, and Slack reaches a wider audience than the private repo.
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-security' \
+            --text "<${RUN_URL}|A bundle branch could not be synced with its base>. The branch is untouched; see the run for which one and why."

@@ -10,6 +10,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const isSelectionGroupableMock = vi.fn();
 const isSelectionExtractableMock = vi.fn();
@@ -185,6 +186,15 @@ describe('CanvasSelectionToolbar', () => {
 			readOnly: true,
 		});
 		expect(wrapper.queryByTestId('canvas-selection-toolbar')).toBeNull();
+	});
+
+	it('hides Extract when executeWorkflow is excluded', () => {
+		vi.spyOn(useSettingsStore(), 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+
+		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('b')] });
+
+		expect(wrapper.getByTestId('canvas-selection-toolbar-group')).toBeTruthy();
+		expect(wrapper.queryByTestId('canvas-selection-toolbar-extract')).toBeNull();
 	});
 
 	it('creates a group when Group is clicked', async () => {

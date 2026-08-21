@@ -50,6 +50,37 @@ describe('rebuildInteractiveFromHistory', () => {
 		expect(result?.resolvedValue).toBeUndefined();
 	});
 
+	it('restores preview-only tool details from a persisted suspension payload', () => {
+		const details = {
+			toolName: 'check_ledger',
+			kind: 'node',
+			input: {},
+			node: { parameters: { resource: 'row', operation: 'get', returnAll: true } },
+		};
+		const [message] = convertDbMessages([
+			{
+				id: 'assistant-approval',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'check_ledger',
+						toolCallId: 'call-approval-details',
+						input: {},
+						suspendPayload: {
+							type: 'approval',
+							toolName: 'check_ledger',
+							args: {},
+							details,
+						},
+					},
+				],
+			},
+		]);
+
+		expect(message.interactive?.input).toMatchObject({ details });
+	});
+
 	it('rebuilds a rejected approval card from a declined tool result', () => {
 		const result = rebuildInteractiveFromHistory({
 			tool: 'calculator',
@@ -628,6 +659,40 @@ describe('buildDisplayGroups — interactive payloads', () => {
 });
 
 describe('applyOpenSuspensions', () => {
+	it('preserves persisted preview details when the checkpoint payload is applied', () => {
+		const details = { node: { parameters: { operation: 'get', returnAll: true } } };
+		const chat: ChatMessage[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{
+						tool: 'check_ledger',
+						toolCallId: 'call-1',
+						state: 'running',
+						suspendPayload: {
+							type: 'approval',
+							toolName: 'check_ledger',
+							args: {},
+							details,
+						},
+					},
+				],
+			},
+		];
+
+		const result = applyOpenSuspensions(chat, [
+			{
+				toolCallId: 'call-1',
+				runId: 'run-1',
+				suspendPayload: { type: 'approval', toolName: 'check_ledger', args: {} },
+			},
+		]);
+
+		expect(result[0].interactive?.input).toMatchObject({ details });
+	});
+
 	it('rebuilds a nested approval and leaves resolved cards closed', () => {
 		const delegateInput = {
 			subAgentId: 'inline',

@@ -20,6 +20,7 @@ import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
+import { InstanceAiApiHelper } from './instance-ai-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
 import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
 import { MetricsApiHelper } from './metrics-api-helper';
@@ -85,6 +86,7 @@ export class ApiHelpers {
 	sourceControl: SourceControlApiHelper;
 	securitySettings: SecuritySettingsApiHelper;
 	tokenExchange: TokenExchangeApiHelper;
+	instanceAi: InstanceAiApiHelper;
 
 	publicApi: PublicApiHelper;
 
@@ -106,6 +108,7 @@ export class ApiHelpers {
 		this.sourceControl = new SourceControlApiHelper(this);
 		this.securitySettings = new SecuritySettingsApiHelper(this);
 		this.tokenExchange = new TokenExchangeApiHelper(this);
+		this.instanceAi = new InstanceAiApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}
@@ -256,6 +259,15 @@ export class ApiHelpers {
 			data: { cursor: Record<string, unknown> | null };
 		};
 		return data.cursor;
+	}
+
+	async countTaskRunners(): Promise<number> {
+		const response = await this.request.get('/rest/e2e/task-runners/count');
+		if (!response.ok()) {
+			throw new TestError(`Failed to count task runners: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as { data: { count: number } };
+		return data.count;
 	}
 
 	async clearWorkflowStaticData(workflowId: string): Promise<void> {

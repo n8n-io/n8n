@@ -417,7 +417,9 @@ function reconcileSeededExecutionStack(
 	if (!executionData?.nodeExecutionStack) return;
 
 	if (
-		[MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(workflowStartNode.type)
+		[MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(
+			workflowStartNode.type,
+		)
 	) {
 		merge(executionData.nodeExecutionStack, nodeExecutionStack);
 	} else if (shouldEstablishTriggerIdentity(workflowStartNode)) {
@@ -621,7 +623,11 @@ export async function executeWebhook(
 		};
 	};
 
-	additionalData.establishTriggerIdentity = async (token: string, resource: string) => {
+	additionalData.establishTriggerIdentity = async (
+		token: string,
+		resource: string,
+		subject?: string,
+	) => {
 		// The run re-verifies this token after the trigger stops listening, so it carries
 		// the gate with it. Fall back to a lookup for callers that establish an identity
 		// without going through `validateN8nOAuth2Token`.
@@ -640,7 +646,7 @@ export async function executeWebhook(
 
 		additionalData.encryptedRunnerIdentity = await Container.get(
 			ExecutionContextService,
-		).buildTriggerIdentityCredentials(token, resource, grant);
+		).buildTriggerIdentityCredentials(token, resource, grant, subject);
 		if (runExecutionData) {
 			await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
 		}
@@ -891,6 +897,9 @@ export async function executeWebhook(
 			if (isMcpToolCall(mcpToolCallValue)) {
 				runData.mcpToolCall = mcpToolCallValue;
 			}
+
+			// The worker has no access to the request, so carry the node input the trigger built
+			runData.mcpToolInput = webhookResultData.toolInput;
 
 			// Handle MCP list tools relay - forward to main with SSE transport via pub/sub
 			const mcpListToolsRelayValue =

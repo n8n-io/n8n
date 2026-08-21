@@ -3,6 +3,7 @@ import type * as SharedSandboxMod from '@n8n/agents/sandbox';
 
 import './source-map-filter';
 
+import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
 import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SystemPromptMod from './agent/system-prompt';
@@ -94,6 +95,9 @@ const loadAgentSnapshotEvent = lazyModule(
 const loadInstanceAgent = lazyModule(
 	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
 );
+const loadAiaModelDefaults = lazyModule(
+	() => require('./agent/aia-model-defaults') as typeof AiaModelDefaultsMod,
+);
 const loadApplyAgentThinking = lazyModule(
 	() => require('./agent/apply-agent-thinking') as typeof ApplyAgentThinkingMod,
 );
@@ -182,8 +186,11 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export { parseModelHeadersJson } from './utils/parse-model-headers';
+export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
 export { WorkflowNotFoundError } from './errors/workflow-not-found.error';
+export { WorkflowEditorLockedError } from './errors/workflow-editor-locked.error';
 export {
 	LEGACY_PLANNED_TASK_KINDS,
 	PLANNED_TASK_KINDS,
@@ -220,7 +227,10 @@ export type { Logger } from './logger';
 export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAccessTracker =
 	lazyFunction(() => loadDomainAccess().createDomainAccessTracker);
 export type { DomainAccessTracker } from './domain-access';
-export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
+export type {
+	BrowserExtensionTraceContext,
+	SubmitLangsmithUserFeedbackOptions,
+} from './tracing/langsmith-tracing';
 
 export const emitAgentSnapshotTraceEvent: typeof AgentSnapshotEventMod.emitAgentSnapshotTraceEvent =
 	lazyFunction(() => loadAgentSnapshotEvent().emitAgentSnapshotTraceEvent);
@@ -302,6 +312,11 @@ export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = 
 
 export const applyAgentThinking: typeof ApplyAgentThinkingMod.applyAgentThinking = lazyFunction(
 	() => loadApplyAgentThinking().applyAgentThinking,
+);
+export const resolveAIAPromptCaching: typeof AiaModelDefaultsMod.resolveAIAPromptCaching =
+	lazyFunction(() => loadAiaModelDefaults().resolveAIAPromptCaching);
+export const resolveAIAReasoning: typeof AiaModelDefaultsMod.resolveAIAReasoning = lazyFunction(
+	() => loadAiaModelDefaults().resolveAIAReasoning,
 );
 
 export const getDateTimeSection: typeof SystemPromptMod.getDateTimeSection = lazyFunction(
@@ -593,6 +608,7 @@ export const applyPlannedTaskPermissions: typeof PlannedTaskPermissionsMod.apply
 export declare const PLANNED_TASK_PERMISSION_OVERRIDES: typeof PlannedTaskPermissionsMod.PLANNED_TASK_PERMISSION_OVERRIDES;
 export type {
 	InstanceAiContext,
+	InstanceAiToolRegistry,
 	InstanceAiWorkflowService,
 	InstanceAiExecutionService,
 	InstanceAiCredentialService,
@@ -612,6 +628,7 @@ export type {
 	LocalMcpServer,
 	McpServerConfig,
 	ModelConfig,
+	VertexAnthropicModelConfig,
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,
 	TaskStorage,
@@ -708,4 +725,13 @@ export const validateAttachmentMimeTypes: typeof ValidateAttachmentsMod.validate
 export type UnsupportedAttachmentError = ValidateAttachmentsMod.UnsupportedAttachmentError;
 export const UnsupportedAttachmentError: typeof ValidateAttachmentsMod.UnsupportedAttachmentError =
 	lazyClass(() => loadValidateAttachments().UnsupportedAttachmentError);
-export type { UnsupportedAttachmentDetail } from './parsers/validate-attachments';
+export const validateAttachmentSizes: typeof ValidateAttachmentsMod.validateAttachmentSizes =
+	lazyFunction(() => loadValidateAttachments().validateAttachmentSizes);
+export type OversizedAttachmentError = ValidateAttachmentsMod.OversizedAttachmentError;
+export const OversizedAttachmentError: typeof ValidateAttachmentsMod.OversizedAttachmentError =
+	lazyClass(() => loadValidateAttachments().OversizedAttachmentError);
+export type {
+	UnsupportedAttachmentDetail,
+	OversizedAttachmentDetail,
+	OversizedAttachmentReason,
+} from './parsers/validate-attachments';

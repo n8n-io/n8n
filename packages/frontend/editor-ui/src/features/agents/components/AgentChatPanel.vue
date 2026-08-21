@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, toRef, watch, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import { N8nCallout, N8nIconButton, N8nSendStopButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -16,7 +16,11 @@ import { useAgentChatStream } from '../composables/useAgentChatStream';
 import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
-import type { AgentContinueLoadedEvent, AgentJsonConfig } from '../types';
+import type {
+	AgentContinueLoadedEvent,
+	AgentFixWithAssistantEvent,
+	AgentJsonConfig,
+} from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { TOOL_CALL_STATE } from '../constants';
@@ -54,7 +58,7 @@ const emit = defineEmits<{
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
-	'send-to-assistant': [executionId?: string];
+	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
 }>();
 
 const locale = useI18n();
@@ -62,6 +66,11 @@ const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
 
 const attachedFiles = ref<File[]>([]);
+const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+
+function focusInput(options?: FocusOptions) {
+	chatInput.value?.focus(options);
+}
 
 const attachmentCapabilities = computed(() => {
 	const provider = props.agentConfig?.model?.split('/')[0];
@@ -196,6 +205,17 @@ const hasOpenSuspension = computed(() =>
 		),
 	),
 );
+// Tools still pending/running after the stream ended (desync): the backend
+// finished but their terminal events never arrived. Surfacing Stop here lets
+// the user clear the stale pulsing state without reloading the chat.
+const hasInFlightToolCalls = computed(() =>
+	messages.value.some((message) =>
+		message.toolCalls?.some(
+			(toolCall) =>
+				toolCall.state === TOOL_CALL_STATE.PENDING || toolCall.state === TOOL_CALL_STATE.RUNNING,
+		),
+	),
+);
 const showSuspensionStopAlongsideSend = computed(
 	() => hasOpenInteractiveQuestion.value && !isStreaming.value && !isCancelling.value,
 );
@@ -204,7 +224,8 @@ const showStopAsPrimaryAction = computed(
 		isStreaming.value ||
 		isCancelling.value ||
 		hasOpenApproval.value ||
-		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
+		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value) ||
+		(!isStreaming.value && hasInFlightToolCalls.value),
 );
 
 const chatPlaceholder = computed(() => {
@@ -294,7 +315,7 @@ function sendMessageFromOutside(message: string) {
 	void onSubmit();
 }
 
-defineExpose({ sendMessageFromOutside });
+defineExpose({ focusInput, sendMessageFromOutside });
 
 onMounted(() => {
 	void loadHistory();
@@ -360,7 +381,7 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
-		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" />
+		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :agent-config="agentConfig" />
 		<AgentChatMessageList
 			v-else
 			:messages="messages"
@@ -375,9 +396,11 @@ onBeforeUnmount(() => {
 
 		<div :class="$style.inputArea">
 			<ChatInputBase
+				ref="chatInput"
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
 				:is-streaming="showStopAsPrimaryAction"
+				show-voice
 				:show-attach="showAttach"
 				:accepted-mime-types="acceptedMimeTypes"
 				:can-submit="
@@ -447,6 +470,9 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	width: 100%;
+	max-width: 800px;
+	margin: 0 auto;
 }
 
 .attachmentsStrip {

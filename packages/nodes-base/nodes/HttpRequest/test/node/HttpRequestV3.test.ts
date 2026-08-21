@@ -783,6 +783,7 @@ describe('HttpRequestV3', () => {
 					},
 					pairedItem: { item: 0 },
 				});
+				expect(Object.keys(result[0][0].json)).toEqual(['error', 'details']);
 			},
 		);
 

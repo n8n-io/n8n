@@ -374,6 +374,7 @@ async function suspendForPhase(params: {
 		severity: 'info' as const,
 		credentialRequests,
 		credentialFlow: { stage: 'generic' as const },
+		projectId: deps.projectId,
 		finishSetupChain,
 	});
 }

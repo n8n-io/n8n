@@ -10,7 +10,7 @@ import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { Segment } from '@/app/types/expressions';
-import type { INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { outputTheme } from './ExpressionEditorModal/theme';
 import ExpressionOutput from '@/features/shared/editors/components/InlineExpressionEditor/ExpressionOutput.vue';
@@ -33,6 +33,7 @@ import {
 	N8nText,
 	type ResizeData,
 } from '@n8n/design-system';
+import { useStyles } from '@n8n/composables/useStyles';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
@@ -44,6 +45,7 @@ type Props = {
 	eventSource?: string;
 	redactValues?: boolean;
 	isReadOnly?: boolean;
+	additionalExpressionData?: IDataObject;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -51,6 +53,7 @@ const props = withDefaults(defineProps<Props>(), {
 	dialogVisible: false,
 	redactValues: false,
 	isReadOnly: false,
+	additionalExpressionData: () => ({}),
 });
 const emit = defineEmits<{
 	'update:model-value': [value: string];
@@ -60,6 +63,7 @@ const emit = defineEmits<{
 const ndvStore = injectNDVStore();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const { APP_Z_INDEXES } = useStyles();
 
 const lastSuccessfulExecution = computed(
 	() => workflowExecutionStateStore.value.lastSuccessfulExecution,
@@ -166,6 +170,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 		:class="$style.modal"
 		:model-value="dialogVisible"
 		:before-close="closeDialog"
+		:z-index="APP_Z_INDEXES.MODALS"
 	>
 		<button :class="$style.close" @click="closeDialog">
 			<Close height="18" width="18" />
@@ -223,6 +228,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								:model-value="modelValue"
 								:is-read-only="isReadOnly"
 								:path="path"
+								:additional-data="additionalExpressionData"
 								:class="[
 									$style.editor,
 									{

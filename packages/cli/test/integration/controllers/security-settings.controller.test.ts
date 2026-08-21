@@ -134,25 +134,14 @@ describe('SecuritySettingsController', () => {
 	});
 
 	describe('workflowReviews', () => {
-		const originalWorkflowReviewsFlag = process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
-
 		beforeEach(() => {
-			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 			testServer.license.enable('feat:workflowReviews');
 			securitySettingsService.updateSecuritySettings.mockResolvedValue({});
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
 			workflowReviewPolicyService.set.mockResolvedValue({ enabled: true });
 		});
 
-		afterEach(() => {
-			if (originalWorkflowReviewsFlag === undefined) {
-				delete process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
-			} else {
-				process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = originalWorkflowReviewsFlag;
-			}
-		});
-
-		it('GET should include workflowReviews when licensed and dev flag is on', async () => {
+		it('GET should include workflowReviews when licensed', async () => {
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 
 			const response = await ownerAgent.get('/settings/security').expect(200);

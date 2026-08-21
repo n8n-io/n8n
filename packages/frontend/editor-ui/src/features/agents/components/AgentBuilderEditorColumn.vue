@@ -42,6 +42,8 @@ const props = defineProps<{
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
 	canEditAgent: boolean;
+	/** `agent:execute`, which a project viewer holds without holding update. */
+	canExecuteAgent?: boolean;
 	agentAvailableInMcp?: boolean;
 	executionsDescription: string;
 	generatingEvalCases?: boolean;
@@ -208,7 +210,6 @@ const i18n = useI18n();
 						:embedded="true"
 						:project-id="projectId"
 						:agent-id="agentId"
-						:open-session-in-new-tab="artifactMode"
 						:manage-store-lifecycle="false"
 						data-testid="agent-executions-panel"
 					/>
@@ -270,6 +271,7 @@ const i18n = useI18n();
 						:agent-id="agentId"
 						:agent-unsaved="agentUnsaved"
 						:disabled="childrenDisabled"
+						:can-run="canExecuteAgent"
 						:generating="generatingEvalCases"
 						@generate="emit('generate-eval-cases')"
 					/>

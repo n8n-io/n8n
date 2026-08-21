@@ -12,6 +12,8 @@ import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, openSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
+import { codespaceName, forwardingDomain } from './codespace-env.mjs';
+
 const build = process.argv.includes('--build');
 const port = process.env.N8N_PORT ?? '5678';
 // Probe the same health path the backend serves (defaults to /healthz).
@@ -57,24 +59,28 @@ while (Date.now() < deadline) {
 	await sleep(3000);
 }
 
-const name = process.env.CODESPACE_NAME;
-const url = name ? `https://${name}-${port}.app.github.dev` : `http://localhost:${port}`;
+const name = codespaceName();
+const url = name ? `https://${name}-${port}.${forwardingDomain()}` : `http://localhost:${port}`;
 if (!healthy) {
 	console.error(`\nBackend did not answer ${healthPath} within 2 min — check ${LOG}`);
 	process.exit(1);
 }
 
-// In a codespace, share the port with the org so any n8n member can open the
-// URL. Visibility resets to private on each start, so re-apply it here. gh needs
-// the codespace scope; skip with a note if the call fails, never block the run.
+// In a codespace, share the port with the org. Then any n8n member can open the
+// URL. GitHub makes every port private again at each start, so set it here. If
+// `gh` fails, print the reason and continue.
 let orgShared = false;
+let shareError;
 if (name) {
 	try {
 		execFileSync('gh', ['codespace', 'ports', 'visibility', `${port}:org`, '-c', name], {
-			stdio: 'ignore',
+			stdio: ['ignore', 'ignore', 'pipe'],
 		});
 		orgShared = true;
-	} catch {}
+	} catch (error) {
+		const stderr = error.stderr?.toString().trim();
+		shareError = (stderr || error.message).split('\n').pop();
+	}
 }
 
 console.log(`\nUp: ${url}`);
@@ -82,5 +88,9 @@ if (name)
 	console.log(
 		orgShared
 			? '(org-visible — any n8n member signed into GitHub can open it)'
-			: `(still private — run \`gh codespace ports visibility ${port}:org -c $CODESPACE_NAME\` to share with the org)`,
+			: `(still private: ${shareError} — retry with \`gh codespace ports visibility ${port}:org -c ${name}\`)`,
+	);
+else if (existsSync('/workspaces/.codespaces'))
+	console.log(
+		`(on a codespace but the box name did not resolve, so ${port} was not shared with the org — see .devcontainer/codespaces/README.md)`,
 	);

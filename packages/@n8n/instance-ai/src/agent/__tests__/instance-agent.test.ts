@@ -499,6 +499,26 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
+	it('passes the thread project to the prompt so the project-scope section renders', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'project-scope-prompt',
+				projectId: 'project-1',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'project-scope-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map()),
+		} as never);
+
+		expect(getSystemPrompt).toHaveBeenCalledWith(
+			expect.objectContaining({ projectId: 'project-1' }),
+		);
+	});
+
 	describe('connected MCP services', () => {
 		const lastDomainToolContext = () => {
 			const calls = createOrchestratorDomainTools.mock.calls as Array<
@@ -806,5 +826,45 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.mcpConnectionFailures).not.toHaveBeenCalled();
+	});
+
+	it('sticks Modal endpoint requests to the conversation thread via Modal-Session-ID', async () => {
+		// Sub-agents (build-agent, eval-setup, etc.) reuse context.modelId / orchestration
+		// context.modelId, so mutating the sticky header here covers those paths too.
+		const modalModel = {
+			id: 'custom/moonshotai/Kimi-K3' as const,
+			url: 'https://n8ngmbh--ep-kimi-k3-server.us-west.modal.direct/v1',
+			apiKey: 'wk-test.ws-test',
+		};
+		const context = {
+			threadId: 'thread-sticky-1',
+			runLabel: 'modal-sticky-run',
+			localGatewayStatus: undefined,
+			licenseHints: undefined,
+			localMcpServer: undefined,
+			modelId: modalModel,
+		};
+		const orchestrationContext = {
+			runId: 'modal-sticky-run',
+			threadId: 'thread-sticky-1',
+			modelId: modalModel,
+		};
+
+		await createInstanceAgent({
+			modelId: modalModel,
+			context,
+			orchestrationContext,
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+			thinkingEnabled: false,
+		} as never);
+
+		const stickyModel = {
+			...modalModel,
+			headers: { 'Modal-Session-ID': 'thread-sticky-1' },
+		};
+		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(stickyModel);
+		expect(context.modelId).toEqual(stickyModel);
+		expect(orchestrationContext.modelId).toEqual(stickyModel);
 	});
 });

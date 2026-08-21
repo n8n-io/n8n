@@ -537,6 +537,10 @@ export function useWorkflowSaving({
 			});
 			workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
 
+			if (workflowData.settings) {
+				workflowDocumentStore.setSettings(workflowData.settings);
+			}
+
 			// Only update webhook IDs if we explicitly reset them
 			if (resetWebhookUrls) {
 				Object.keys(changedNodes).forEach((nodeName) => {
