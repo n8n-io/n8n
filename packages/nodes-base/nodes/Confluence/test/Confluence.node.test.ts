@@ -24,8 +24,10 @@ describe('Confluence Node', () => {
 		const operationsFor = (resourceName: string) =>
 			operations.find((p) => (p.displayOptions?.show?.resource ?? []).includes(resourceName));
 		expect(operationsFor('attachment')?.options).toEqual([
+			expect.objectContaining({ value: 'delete' }),
 			expect.objectContaining({ value: 'getMany' }),
 		]);
+		expect(operationsFor('attachment')?.default).toBe('getMany');
 		expect(operationsFor('page')?.options).toEqual([
 			expect.objectContaining({ value: 'append' }),
 			expect.objectContaining({ value: 'create' }),
