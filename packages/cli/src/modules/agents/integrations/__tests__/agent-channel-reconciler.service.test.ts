@@ -130,6 +130,15 @@ function build(
 
 	const errorReporter = mock<ErrorReporter>();
 	const logger = opts.logger ?? mockLogger();
+	// Mutable, so a test can promote this main between passes the way a real
+	// takeover does.
+	const role = { isLeader: opts.isLeader ?? true };
+	const instanceSettings = {
+		hostId: HOST_ID,
+		get isLeader() {
+			return role.isLeader;
+		},
+	} as InstanceSettings;
 	const reconciler = new AgentChannelReconciler(
 		logger,
 		agentsConfig,
@@ -138,7 +147,7 @@ function build(
 		statusReporter,
 		chatIntegrationService,
 		registry,
-		mock<InstanceSettings>({ isLeader: opts.isLeader ?? true, hostId: HOST_ID }),
+		instanceSettings,
 		errorReporter,
 	);
 
@@ -149,6 +158,7 @@ function build(
 		chatIntegrationService,
 		statusReporter,
 		errorReporter,
+		role,
 	};
 }
 
@@ -468,13 +478,20 @@ describe('AgentChannelReconciler', () => {
 		});
 
 		it('still claims leader-only channels on takeover when the interval is zero', async () => {
-			const { reconciler, agentRepository, chatIntegrationService } = build({
+			// A follower leaves a polling channel alone, so the boot pass starts
+			// nothing and only the takeover can — which is what the hook is for.
+			const { reconciler, agentRepository, chatIntegrationService, role } = build({
 				intervalSeconds: 0,
+				isLeader: false,
 			});
 			const agent = makeAgent([telegram]);
 			agentRepository.findPublished.mockResolvedValue([agent]);
 
 			reconciler.init();
+			await vi.waitFor(() => expect(agentRepository.findPublished).toHaveBeenCalled());
+			expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
+
+			role.isLeader = true;
 			await reconciler.reconcileOnLeaderTakeover();
 
 			expect(chatIntegrationService.startChannel).toHaveBeenCalledWith(agent, telegram);

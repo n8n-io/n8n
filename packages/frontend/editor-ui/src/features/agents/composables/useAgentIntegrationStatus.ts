@@ -117,7 +117,13 @@ function applyStatus(
 		state.runtimeErrors.value[type] = '';
 	}
 	for (const integration of integrations) {
-		const keepServerAnswer = !fromServer && answeredFor(integration.type);
+		// Only `starting` is the seed guessing at runtime state, and only a guess
+		// has to give way. `configured` is the seed saying the agent is unpublished,
+		// which is configuration's own fact and outranks any earlier answer — the
+		// channels of an unpublished agent are not running, whatever they were doing
+		// before it was unpublished.
+		const keepServerAnswer =
+			!fromServer && integration.status === 'starting' && answeredFor(integration.type);
 		state.statuses.value[integration.type] = keepServerAnswer
 			? previousStatuses[integration.type]
 			: integration.status;

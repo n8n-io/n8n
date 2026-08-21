@@ -215,6 +215,36 @@ describe('useAgentIntegrationStatus', () => {
 		expect(status.runtimeErrors.value.discord).toBe('boom');
 	});
 
+	it('lets an unpublish seed retire a channel the server reported as running', async () => {
+		// Unpublishing is configuration's own fact, and the channels of an
+		// unpublished agent are not running whatever they were doing before — so the
+		// seed's `configured` outranks the earlier `connected`, and the error of a
+		// channel that had failed goes with it.
+		apiMocks.getIntegrationStatus.mockResolvedValue({
+			status: 'partial',
+			integrations: [
+				{ type: 'slack', credentialId: 'cred-slack', status: 'connected' },
+				{ type: 'discord', credentialId: 'cred-discord', status: 'error', errorMessage: 'boom' },
+			],
+		});
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		await status.fetchStatus(['slack', 'discord']);
+
+		syncAgentIntegrationStatusCache(
+			projectId,
+			agentId,
+			['slack', 'discord'],
+			[
+				{ type: 'slack', credentialId: 'cred-slack', status: 'configured' },
+				{ type: 'discord', credentialId: 'cred-discord', status: 'configured' },
+			],
+		);
+
+		expect(status.statuses.value.slack).toBe('configured');
+		expect(status.statuses.value.discord).toBe('configured');
+		expect(status.runtimeErrors.value.discord).toBe('');
+	});
+
 	it('still takes the credential and settings of a confirmed channel from configuration', async () => {
 		// Only the status is the server's to know; what the channel is set up with is
 		// the builder's own write, which is what the seed exists to carry.

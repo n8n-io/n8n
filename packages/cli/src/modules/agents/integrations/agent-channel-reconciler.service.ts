@@ -106,7 +106,7 @@ export class AgentChannelReconciler {
 		const intervalSeconds = this.agentsConfig.channelReconcileIntervalSeconds;
 		if (intervalSeconds <= 0) {
 			this.logger.info(
-				'[AgentChannelReconciler] Periodic channel reconciliation is disabled — channels still start on boot and on leader takeover, but one that fails to start will stay down until the agent is republished',
+				'[AgentChannelReconciler] Periodic channel reconciliation is disabled — channels still start on boot and on leader takeover, and one that fails to start is retried on either, but nothing will retry it in between except republishing the agent',
 			);
 		} else {
 			this.reconcileInterval = setInterval(
