@@ -7,7 +7,6 @@ import {
 	WEBHOOK_NODE_TYPE,
 	type IConnections,
 } from 'n8n-workflow';
-import { z } from 'zod';
 
 import type { AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
@@ -298,32 +297,6 @@ export interface AgentPersistedMessageDto {
 	/** Outcome of the execution that produced this message. */
 	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 }
-
-export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;
-
-export const agentBuilderModeSchema = z.enum(['default', 'custom']);
-export type AgentBuilderMode = z.infer<typeof agentBuilderModeSchema>;
-
-export const agentBuilderAdminSettingsSchema = z.discriminatedUnion('mode', [
-	z.object({ mode: z.literal('default') }),
-	z.object({
-		mode: z.literal('custom'),
-		provider: z.string().min(1),
-		credentialId: z.string().min(1),
-		modelName: z.string().min(1),
-	}),
-]);
-export type AgentBuilderAdminSettings = z.infer<typeof agentBuilderAdminSettingsSchema>;
-
-export const agentBuilderAdminSettingsResponseSchema = z.object({
-	settings: agentBuilderAdminSettingsSchema,
-});
-export type AgentBuilderAdminSettingsResponse = z.infer<
-	typeof agentBuilderAdminSettingsResponseSchema
->;
-
-export const AgentBuilderAdminSettingsUpdateDto = agentBuilderAdminSettingsSchema;
-export type AgentBuilderAdminSettingsUpdateRequest = AgentBuilderAdminSettings;
 
 export interface AgentBuilderOpenSuspension {
 	toolCallId: string;

@@ -28,6 +28,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -71,6 +72,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const workflowService = mock<WorkflowService>();
 	const accessService = mock<WorkflowReviewAccessService>();
 	const logger = mock<Logger>();
+	const eventService = mock<EventService>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
 
@@ -94,6 +96,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		collaborationService,
 		workflowService,
 		accessService,
+		eventService,
 	);
 
 	const openRequest = (overrides: Partial<WorkflowReviewRequest> = {}) =>
@@ -132,7 +135,6 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		accessService.resolveOpenableRequestIds.mockResolvedValue(new Set());
-		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.
@@ -239,6 +241,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		expect(workflowRepository.updateWorkflowVersion).not.toHaveBeenCalled();
 		expect(authorRepository.addAuthorIfMissing).not.toHaveBeenCalled();
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 
 	it('re-pins the version, resets the decision, and appends the author in one transaction', async () => {
@@ -271,6 +274,12 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 			workflowVersionId: 'ver-2',
 			createdAt: '2026-07-20T10:00:00.000Z',
 			updatedAt: '2026-07-20T11:00:00.000Z',
+		});
+		expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-version-updated', {
+			user: expect.objectContaining({ id: 'user-1' }),
+			workflowReviewRequestId: requestId,
+			workflowId: 'wf-1',
+			workflowVersionId: 'ver-2',
 		});
 	});
 
@@ -314,6 +323,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		expect(authorRepository.addAuthorIfMissing).not.toHaveBeenCalled();
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 
 	it('refuses to re-pin a workflow archived while the update waited for the lock', async () => {
@@ -511,6 +521,8 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 			);
 			expect(workflowRepository.updateWorkflowVersion).not.toHaveBeenCalled();
 			expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-1');
+			// The review changed, but no new version was submitted for review.
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('clears the review description when an empty string is sent', async () => {

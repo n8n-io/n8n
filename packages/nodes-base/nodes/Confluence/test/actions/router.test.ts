@@ -58,6 +58,22 @@ describe('Confluence router', () => {
 		]);
 	});
 
+	it('dispatches page:delete and returns the deletion report', async () => {
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'delete',
+				page: { mode: 'id', value: '1' },
+				purge: false,
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/pages/1');
+		expect(result).toEqual([
+			[{ json: { deleted: true, pageId: '1', purged: false }, pairedItem: { item: 0 } }],
+		]);
+	});
+
 	it('dispatches page:get and returns the fetched page', async () => {
 		const result = await router.call(mockExecuteCtx(getParams));
 
