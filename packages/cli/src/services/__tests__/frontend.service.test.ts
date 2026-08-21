@@ -9,7 +9,7 @@ import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
-import type { License } from '@/license';
+import { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -200,6 +200,9 @@ describe('FrontendService', () => {
 				enabled: false,
 			}),
 		);
+		// isApiKeyAuthEnabled() reads License via the container directly, so the
+		// constructor-injected mock above must also be registered here.
+		Container.set(License, license);
 
 		return {
 			service: new FrontendService(
@@ -234,6 +237,7 @@ describe('FrontendService', () => {
 		globalConfig.aiAssistant.baseUrl = '';
 		globalConfig.aiGateway.enabled = false;
 		licenseState.isAiGatewayLicensed.mockReturnValue(false);
+		licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -272,6 +276,15 @@ describe('FrontendService', () => {
 			);
 		});
 
+		it('should expose excluded node types from NODES_EXCLUDE', async () => {
+			globalConfig.nodes.exclude = ['n8n-nodes-base.executeWorkflow'];
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.excludeNodes).toEqual(['n8n-nodes-base.executeWorkflow']);
+		});
+
 		it('should enable the AI Gateway when configured and licensed', async () => {
 			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
 			globalConfig.aiGateway.enabled = true;
@@ -293,6 +306,18 @@ describe('FrontendService', () => {
 			expect(settings.aiGateway).toBeUndefined();
 		});
 
+		it('should enable Cloud UBB mode when the AI Gateway is also licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+			licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway).toMatchObject({ enabled: true, cloudUbbEnabled: true });
+		});
+
 		it('should normalize configured postMessage origins', async () => {
 			securityConfig.postMessageAllowedOrigins =
 				'HTTPS://Example.COM/, https://app.example.com:443, http://localhost:5678/path, not a url, data:text/html;foo';
@@ -311,7 +336,6 @@ describe('FrontendService', () => {
 		});
 
 		it('should refresh the workflow reviews policy on every settings fetch', async () => {
-			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 			workflowReviewPolicyService.get
 				.mockResolvedValueOnce({ enabled: true })
@@ -838,8 +862,52 @@ describe('FrontendService', () => {
 	describe('overwriteCredentialsProperties', () => {
 		afterEach(() => {
 			// Restore globalConfig.credentials to the default so other tests are unaffected
-			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+			(globalConfig as any).credentials = { overwrite: { showScopes: [], skipTypes: [] } };
 			loadNodesAndCredentials.types = { credentials: [], nodes: [] };
+		});
+
+		it('should expose managed OAuth scopes only for configured credential types', () => {
+			const baseCredential = {
+				name: 'googleOAuth2Api',
+				displayName: 'Google OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			const childCredential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = {
+				credentials: [baseCredential, childCredential],
+				nodes: [],
+			};
+			(globalConfig as any).credentials = {
+				overwrite: { showScopes: ['googleOAuth2Api'], skipTypes: [] },
+			};
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(baseCredential.__showManagedOAuthScopes).toBe(true);
+			expect(childCredential.__showManagedOAuthScopes).toBeUndefined();
+		});
+
+		it('should clear stale managed OAuth scope visibility metadata', () => {
+			const credential = {
+				name: 'googleOAuth2Api',
+				displayName: 'Google OAuth2 API',
+				properties: [],
+				__showManagedOAuthScopes: true,
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { showScopes: [], skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__showManagedOAuthScopes).toBeUndefined();
 		});
 
 		it('should set __skipManagedCreation for types in the skip list', () => {

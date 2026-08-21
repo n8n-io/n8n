@@ -12,12 +12,28 @@ vi.mock('@n8n/design-system', () => ({
 		template:
 			'<div><div @click="$emit(\'update:open\', true)"><slot name="trigger" /></div><div v-if="open"><slot name="content" /></div></div>',
 	},
+	N8nBadge: {
+		props: ['theme'],
+		template: '<span :data-theme="theme"><slot /></span>',
+	},
 	N8nIcon: { template: '<span />' },
 }));
 
 const options: FilterOption[] = [
-	{ key: 'user', label: 'User', color: 'var(--color--blue-400)', count: 2 },
-	{ key: 'workflow', label: 'Workflow', color: 'var(--color--primary)', count: 1 },
+	{
+		key: 'user',
+		label: 'User',
+		presentation: 'swatch',
+		color: 'var(--color--blue-400)',
+		count: 2,
+	},
+	{
+		key: 'workflow',
+		label: 'Workflow',
+		presentation: 'swatch',
+		color: 'var(--color--primary)',
+		count: 1,
+	},
 ];
 
 describe('SessionEventFilter', () => {
@@ -49,6 +65,32 @@ describe('SessionEventFilter', () => {
 		expect(w.find('[data-test-id="filter-option-user"]').exists()).toBe(false);
 		await w.find('[data-test-id="filter-trigger"]').trigger('click');
 		expect(w.find('[data-test-id="filter-option-user"]').exists()).toBe(true);
+	});
+
+	it.each([
+		['approved', 'Approved', 'success'],
+		['declined', 'Declined', 'default'],
+		['error', 'Error', 'danger'],
+	] as const)('renders the %s status option using its timeline pill', async (key, label, theme) => {
+		const w = mount(SessionEventFilter, {
+			props: {
+				available: [
+					{
+						key,
+						label,
+						presentation: 'badge',
+						badgeTheme: theme,
+						count: 1,
+					},
+				],
+				selected: new Set<string>(),
+			},
+		});
+		await w.find('[data-test-id="filter-trigger"]').trigger('click');
+
+		const pill = w.get(`[data-test-id="filter-status-pill-${key}"]`);
+		expect(pill.text()).toBe(label);
+		expect(pill.attributes('data-theme')).toBe(theme);
 	});
 
 	it('emits update with the toggled key added to the selection', async () => {

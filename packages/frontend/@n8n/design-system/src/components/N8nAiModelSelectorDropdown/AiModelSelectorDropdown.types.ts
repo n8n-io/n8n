@@ -3,7 +3,7 @@ import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.type
 export interface AiModelSelectorMenuItemData {
 	badgeLabel?: string;
 	/** Right-aligned action pill on the item (e.g. an n8n credits balance). */
-	actionPill?: { text: string; type?: 'default' | 'danger' };
+	actionPill?: { text: string; type?: 'default' | 'danger' | 'info' };
 	description?: string;
 	descriptionTooltipTeleported?: boolean;
 	fullName?: string;

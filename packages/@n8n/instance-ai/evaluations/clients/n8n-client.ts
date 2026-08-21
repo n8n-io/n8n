@@ -47,6 +47,21 @@ function serverBudgetFor(timeoutMs: number): number {
 	return Math.max(timeoutMs - CLIENT_ABORT_MARGIN_MS, 30_000);
 }
 
+// -- Invitation response shapes ------------------------------------------------
+
+const InvitedUsersEnvelope = z.object({
+	data: z.array(
+		z.object({
+			user: z.object({
+				id: z.string(),
+				email: z.string(),
+				inviteAcceptUrl: z.string().optional(),
+			}),
+			error: z.string().optional(),
+		}),
+	),
+});
+
 // -- Conversation seeding response shapes -------------------------------------
 
 const RestoreThreadEnvelope = z.object({
@@ -85,9 +100,36 @@ const GatewayStatusSchema = z.object({
 const GatewayStatusEnvelope = z.object({ data: GatewayStatusSchema });
 export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
 
+// Browser-use relay (a different channel from the computer-use gateway above:
+// the server owns the CDP relay and the extension dials in).
+const BrowserLinkSchema = z.object({
+	connectUrl: z.string(),
+	expiresAt: z.string().nullable(),
+	ttlSeconds: z.number().nullable(),
+});
+const BrowserLinkEnvelope = z.object({ data: BrowserLinkSchema });
+export type BrowserLink = z.infer<typeof BrowserLinkSchema>;
+
+const BrowserStatusSchema = z.object({
+	connected: z.boolean(),
+	connectedAt: z.string().nullable(),
+	toolCategories: z.array(z.object({ name: z.string(), enabled: z.boolean() })),
+});
+const BrowserStatusEnvelope = z.object({ data: BrowserStatusSchema });
+export type BrowserStatus = z.infer<typeof BrowserStatusSchema>;
+
 // ---------------------------------------------------------------------------
 // Response shapes from the n8n REST API (wrapped in { data: ... })
 // ---------------------------------------------------------------------------
+
+/** A credential as `GET /rest/credentials` returns it. No `data`: the REST read
+ *  blanks every password field, so nothing here consumes decrypted credential
+ *  data — see the header of `credential-setup-checks.ts`. */
+export interface CredentialResponse {
+	id: string;
+	name: string;
+	type: string;
+}
 
 /** A node as returned by the n8n REST API — the fields eval code reads. */
 export interface WorkflowNodeResponse {
@@ -107,6 +149,14 @@ export interface WorkflowNodeResponse {
 	credentials?: Record<string, unknown>;
 }
 
+/** A canvas node group as returned by the n8n REST API — members are node *ids*. */
+export interface WorkflowNodeGroupResponse {
+	id: string;
+	name: string;
+	nodeIds: string[];
+	description?: string;
+}
+
 /** A workflow as returned by GET /rest/workflows/:id. */
 export interface WorkflowResponse {
 	id: string;
@@ -116,6 +166,7 @@ export interface WorkflowResponse {
 	description?: string;
 	nodes: WorkflowNodeResponse[];
 	connections: Record<string, unknown>;
+	nodeGroups?: WorkflowNodeGroupResponse[];
 	pinData?: Record<string, unknown>;
 }
 
@@ -188,7 +239,9 @@ export class N8nApiError extends Error {
 export class N8nClient {
 	private sessionCookie?: string;
 
-	constructor(private readonly baseUrl: string) {}
+	/** Public: the browser runtime needs to know where n8n ACTUALLY is, which is
+	 *  not always what n8n reports as its own base URL (see `planRelayConnection`). */
+	constructor(readonly baseUrl: string) {}
 
 	// -- Auth ----------------------------------------------------------------
 
@@ -347,6 +400,36 @@ export class N8nClient {
 		return GatewayStatusEnvelope.parse(result).data;
 	}
 
+	// -- Browser-use relay (extension pairing + status) ----------------------
+
+	/**
+	 * Mint a connect URL for the browser-use extension to dial into. This is the
+	 * production `mode: 'remote'` path — the server owns the relay.
+	 * POST /rest/instance-ai/browser/create-link
+	 */
+	async createBrowserLink(): Promise<BrowserLink> {
+		const result = await this.fetch('/rest/instance-ai/browser/create-link', { method: 'POST' });
+		return BrowserLinkEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Read the browser relay status. Flips to `connected: true` once the
+	 * extension has registered.
+	 * GET /rest/instance-ai/browser/status
+	 */
+	async getBrowserStatus(): Promise<BrowserStatus> {
+		const result = await this.fetch('/rest/instance-ai/browser/status');
+		return BrowserStatusEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Drop the browser session so the next case starts from a clean relay.
+	 * POST /rest/instance-ai/browser/disconnect-session
+	 */
+	async disconnectBrowserSession(): Promise<void> {
+		await this.fetch('/rest/instance-ai/browser/disconnect-session', { method: 'POST' });
+	}
+
 	// -- REST API (verification helpers) -------------------------------------
 
 	/**
@@ -376,12 +459,51 @@ export class N8nClient {
 		return { id: result.data.id };
 	}
 
+	/**
+	 * List all credentials visible to the authenticated user (no secret data).
+	 * GET /rest/credentials
+	 */
+	async listCredentials(): Promise<CredentialResponse[]> {
+		const result = (await this.fetch('/rest/credentials')) as { data: CredentialResponse[] };
+		return Array.isArray(result.data) ? result.data : [];
+	}
+
+	/**
+	 * Run a credential's own test request WITHOUT persisting anything.
+	 * POST /rest/credentials/test
+	 *
+	 * Proves the stored secret works without the harness ever reading it back.
+	 */
+	async testCredential(credential: {
+		id: string;
+		name: string;
+		type: string;
+		data: Record<string, unknown>;
+	}): Promise<{ status: string; message?: string }> {
+		const result = (await this.fetch('/rest/credentials/test', {
+			method: 'POST',
+			body: { credentials: credential },
+		})) as { data?: { status?: string; message?: string } };
+		return { status: result.data?.status ?? 'Error', message: result.data?.message };
+	}
+
+	/** Read one credential including its (password-blanked) data — the shape the
+	 *  test endpoint wants echoed back. */
+	async getCredentialForTest(id: string): Promise<{
+		id: string;
+		name: string;
+		type: string;
+		data: Record<string, unknown>;
+	}> {
+		const result = (await this.fetch(`/rest/credentials/${id}?includeData=true`)) as {
+			data: { id: string; name: string; type: string; data?: Record<string, unknown> };
+		};
+		return { ...result.data, data: result.data.data ?? {} };
+	}
+
 	/** List all credential IDs visible to the authenticated user. */
 	async listCredentialIds(): Promise<string[]> {
-		const result = (await this.fetch('/rest/credentials')) as {
-			data: Array<{ id: string }>;
-		};
-		return Array.isArray(result.data) ? result.data.map((c) => c.id) : [];
+		return (await this.listCredentials()).map((c) => c.id);
 	}
 
 	/**
@@ -658,6 +780,61 @@ export class N8nClient {
 	 */
 	async deleteCredential(id: string): Promise<void> {
 		await this.fetch(`/rest/credentials/${id}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * Invite member users in one batched request. Requires an owner session.
+	 * Returns one row per invitee, reporting rather than throwing on failure:
+	 * n8n creates the user shells before it reports per-invite errors, so the
+	 * caller needs every id back to clean up. `acceptToken` is present only when
+	 * the invite was not emailed (`inviteAcceptUrl` is the token's only carrier,
+	 * and it is withheld when SMTP is configured or N8N_INVITE_LINKS_EMAIL_ONLY
+	 * is set).
+	 * POST /rest/invitations  body: [{ email, role: 'global:member' }, ...]
+	 */
+	async inviteMembers(
+		emails: string[],
+	): Promise<Array<{ id: string; email: string; acceptToken?: string; error?: string }>> {
+		if (emails.length === 0) return [];
+		const response = InvitedUsersEnvelope.parse(
+			await this.fetch('/rest/invitations', {
+				method: 'POST',
+				body: emails.map((email) => ({ email, role: 'global:member' })),
+			}),
+		);
+		return response.data.map(({ user, error }) => ({
+			id: user.id,
+			email: user.email,
+			acceptToken: user.inviteAcceptUrl
+				? (new URL(user.inviteAcceptUrl).searchParams.get('token') ?? undefined)
+				: undefined,
+			error: error === '' ? undefined : error,
+		}));
+	}
+
+	/**
+	 * Accept an invitation. The response issues the new user's session cookie,
+	 * so on a fresh N8nClient this doubles as their login.
+	 * POST /rest/invitations/accept
+	 */
+	async acceptInvitation(opts: {
+		token: string;
+		firstName: string;
+		lastName: string;
+		password: string;
+	}): Promise<void> {
+		await this.fetch('/rest/invitations/accept', { method: 'POST', body: opts });
+		if (!this.sessionCookie) {
+			throw new Error('Invitation accepted but no session cookie received');
+		}
+	}
+
+	/**
+	 * Delete a user, including the data remaining in their personal project.
+	 * DELETE /rest/users/:id
+	 */
+	async deleteUser(id: string): Promise<void> {
+		await this.fetch(`/rest/users/${id}`, { method: 'DELETE' });
 	}
 
 	/**

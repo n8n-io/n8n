@@ -1,25 +1,23 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgresVersions from 'n8n-containers/postgres-versions.json';
+import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
-import type { JsonObject } from '../../common';
 import {
 	createDataSource,
-	TypeOrmExecutionStore,
-	TypeOrmStepStore,
+	createStores,
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '../../database';
 import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
-import { InMemoryWorkQueue, type OrchestrationMessage, type StepMessage } from '../../queue';
-import { ExecutionStartHandler } from '../execution-start-handler';
-import { OrchestrationWorker } from '../orchestration-worker';
-import { StartExecutionService } from '../start-execution.service';
-import { StepCompletedHandler } from '../step-completed-handler';
+import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
+import { createEngineRuntime } from '../../runtime';
+import type { TriggerOutputs } from '../execution.types';
+import type { StartExecutionResult } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
-import { StepWorker } from '../step-worker';
 
 const graph: WorkflowGraph = {
 	nodes: [
@@ -34,7 +32,7 @@ describe('step execution (integration)', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer('postgres:18-alpine').start();
+		container = await new PostgreSqlContainer(postgresVersions.primary).start();
 		dataSource = createDataSource(container.getConnectionUri());
 		await dataSource.initialize();
 		await dataSource.runMigrations();
@@ -45,59 +43,43 @@ describe('step execution (integration)', () => {
 		if (container) await container.stop();
 	});
 
-	function stores() {
-		return {
-			executionStore: new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution)),
-			stepStore: new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution)),
-		};
-	}
-
 	/**
-	 * Wires both workers over shared queues and runs a workflow through them.
-	 * Resolves once the execution's outcome is recorded, which is after every
-	 * step's own outcome is durable.
+	 * Runs a workflow through a real engine runtime. Resolves once the
+	 * execution's outcome is recorded, which is after every step's own outcome is
+	 * durable.
 	 */
 	async function runWorkflow(
 		executor: IStepExecutor,
-		triggerPayload: JsonObject,
+		triggerOutputs: TriggerOutputs,
 		{ workflowId = 'wf-1', graph: workflowGraph = graph } = {},
 	) {
-		const { executionStore, stepStore } = stores();
-		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
-		const stepQueue = new InMemoryWorkQueue<StepMessage>();
-
 		let done!: () => void;
 		const finished = new Promise<void>((resolve) => (done = resolve));
-		const finishExecution = executionStore.finishExecution.bind(executionStore);
-		vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
-			const recorded = await finishExecution(id, status);
-			done();
-			return recorded;
+
+		const runtime = createEngineRuntime({
+			dataSource,
+			admittance: new AllowAllAdmittance(),
+			// also how the test reaches the stores the runtime owns
+			externalDependencies: ({ executionStore }) => {
+				const finishExecution = executionStore.finishExecution.bind(executionStore);
+				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
+					const recorded = await finishExecution(id, status);
+					done();
+					return recorded;
+				});
+				return { v1StepExecutor: executor };
+			},
 		});
+		runtime.start();
 
-		const orchestrationWorker = new OrchestrationWorker(
-			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepCompletedHandler(executionStore, stepStore, stepQueue),
-		);
-		const stepWorker = new StepWorker(
-			stepQueue,
-			new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {
-				v1StepExecutor: executor,
-			}),
-		);
-		orchestrationWorker.start();
-		stepWorker.start();
-
-		const { executionId } = await new StartExecutionService(
-			new AllowAllAdmittance(),
-			executionStore,
-			orchestrationQueue,
-		).start({ workflowId, graph: workflowGraph, triggerPayload });
+		const response = await request(runtime.app)
+			.post('/api/workflow-executions')
+			.send({ workflowId, graph: workflowGraph, triggerOutputs })
+			.expect(201);
+		const { executionId } = response.body as StartExecutionResult;
 		await finished;
 
-		await stepWorker.stop();
-		await orchestrationWorker.stop();
+		await runtime.stop();
 
 		const execution = await dataSource
 			.getRepository(WorkflowExecution)
@@ -118,9 +100,9 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { executionId, execution, steps } = await runWorkflow(executor, {
-			body: { name: 'ada' },
-		});
+		const { executionId, execution, steps } = await runWorkflow(executor, [
+			{ body: { name: 'ada' } },
+		]);
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
 		expect(execution.status).toBe('completed');
@@ -149,7 +131,7 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution, steps } = await runWorkflow(executor, {});
+		const { execution, steps } = await runWorkflow(executor, [{}]);
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
 		// the failure is terminal for the execution too
@@ -186,11 +168,10 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution } = await runWorkflow(
-			executor,
-			{ body: { name: 'ada' } },
-			{ workflowId: 'wf-chain', graph: chainGraph },
-		);
+		const { execution } = await runWorkflow(executor, [{ body: { name: 'ada' } }], {
+			workflowId: 'wf-chain',
+			graph: chainGraph,
+		});
 
 		// both nodes ran, in order, each on what came before it: node-a on the
 		// trigger's payload slot, node-b on node-a's output slot 0
@@ -202,8 +183,109 @@ describe('step execution (integration)', () => {
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 	});
 
+	it('runs a fan-in once, with each input slot fed by its branch', async () => {
+		const diamondGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+				{ id: 'node-m', name: 'M', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-m', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-b', to: 'node-m', outputIndex: 0, inputIndex: 1 },
+			],
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution } = await runWorkflow(executor, [{ body: { name: 'ada' } }], {
+			workflowId: 'wf-diamond',
+			graph: diamondGraph,
+		});
+
+		// the merge ran exactly once, after both branches, one slot per branch
+		const merge = requests.filter(({ node }) => node.id === 'node-m');
+		expect(merge).toHaveLength(1);
+		expect(merge[0].inputs).toEqual([[{ json: { ran: 'node-a' } }], [{ json: { ran: 'node-b' } }]]);
+
+		expect(execution.status).toBe('completed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
+	});
+
+	it('settles a conditional diamond: dead chain skipped, merge runs on the live side', async () => {
+		// trigger -> if -> {a (out 0), b (out 1) -> c} -> m: the not-taken branch is
+		// two nodes long, so its skips must cascade through the event loop
+		// before the merge can settle and the execution can finish.
+		const branchingGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-if', name: 'If', type: 'v1-node' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+				{ id: 'node-c', name: 'C', type: 'v1-node' },
+				{ id: 'node-m', name: 'M', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-if', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-if', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-if', to: 'node-b', outputIndex: 1, inputIndex: 0 },
+				{ from: 'node-b', to: 'node-c', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-m', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-c', to: 'node-m', outputIndex: 0, inputIndex: 1 },
+			],
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				if (request.node.id === 'node-if') {
+					// everything went down the taken branch; output slot 1 is dead
+					return { outputs: [[{ json: { taken: true } }], null] };
+				}
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-branch',
+			graph: branchingGraph,
+		});
+
+		// the dead branch never ran a node
+		expect(requests.map(({ node }) => node.id).sort()).toEqual(['node-a', 'node-if', 'node-m']);
+
+		// the merge ran once, on the live slot, with the dead slot explicitly null
+		const merge = requests.filter(({ node }) => node.id === 'node-m');
+		expect(merge).toHaveLength(1);
+		expect(merge[0].inputs).toEqual([[{ json: { ran: 'node-a' } }], null]);
+
+		// every reachable node settled, with exactly one row each
+		expect(steps.map(({ nodeId, status }) => [nodeId, status]).sort()).toEqual([
+			['node-a', 'completed'],
+			['node-b', 'skipped'],
+			['node-c', 'skipped'],
+			['node-if', 'completed'],
+			['node-m', 'completed'],
+			['trigger', 'completed'],
+		]);
+		expect(steps.find(({ nodeId }) => nodeId === 'node-b')?.outputs).toBeNull();
+
+		expect(execution.status).toBe('completed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
+	});
+
 	it('is idempotent across duplicate step:ready deliveries', async () => {
-		const { executionStore, stepStore } = stores();
+		const { executionStore, stepStore } = createStores(dataSource);
 		const execute = vi.fn().mockResolvedValue({ outputs: [[{ json: { n: 1 } }]] });
 		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 		const handler = new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {
@@ -215,12 +297,12 @@ describe('step execution (integration)', () => {
 			status: 'running',
 			mode: 'production',
 			graph,
-			triggerPayload: null,
+			triggerOutputs: null,
 		});
-		const created = await stepStore.createSteps([
+		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them
-			{ executionId, nodeId: 'trigger', status: 'completed', outputs: [{}] },
-			{ executionId, nodeId: 'node-a', status: 'queued' },
+			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [{}] },
+			{ nodeId: 'node-a', iteration: 0, status: 'queued' },
 		]);
 		const stepId = created.find(({ nodeId }) => nodeId === 'node-a')!.id;
 

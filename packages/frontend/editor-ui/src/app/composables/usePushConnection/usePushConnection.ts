@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
+import { pushHandlerRegistry } from '@n8n/frontend-module-sdk';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
@@ -23,6 +24,7 @@ import {
 	workflowDeactivated,
 	workflowAutoDeactivated,
 	workflowSettingsUpdated,
+	agentNodeProgress,
 } from '@/app/composables/usePushConnection/handlers';
 import type { PushHandlerOptions } from '@/app/composables/usePushConnection/handlers/types';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -67,7 +69,16 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			suppressExecutionErrorToasts: !executionErrorToasts.value,
 		};
 
+		// A module can own (or override) a push message type via its descriptor.
+		// When none is registered, fall through to the built-in handlers below.
+		const moduleHandler = pushHandlerRegistry.get(event.type);
+		if (moduleHandler) {
+			return await moduleHandler(event, options);
+		}
+
 		switch (event.type) {
+			case 'agentNodeProgress':
+				return await agentNodeProgress(event, options);
 			case 'testWebhookDeleted':
 				return await testWebhookDeleted(event, options);
 			case 'testWebhookReceived':

@@ -42,7 +42,7 @@ const baseMcp: McpServerConnectionItem = {
 	kind: 'mcp-server',
 	title: 'Notion',
 	description: 'Connect to Notion',
-	isConnected: false,
+	status: 'none',
 	availableTools: [],
 };
 
@@ -51,13 +51,13 @@ const baseNode: NodeConnectionItem = {
 	kind: 'node',
 	title: 'OpenAI',
 	description: 'Talk to GPT',
-	isConnected: false,
+	status: 'none',
 	nodeTypeName: '@n8n/n8n-nodes-langchain.openAi',
 };
 
 const connectedMcp: McpServerConnectionItem = {
 	...baseMcp,
-	isConnected: true,
+	status: 'connected',
 	credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1', required: true }],
 };
 
@@ -65,7 +65,7 @@ const baseWorkflow: WorkflowConnectionItem = {
 	id: 'wf-1',
 	kind: 'workflow',
 	title: 'Summariser',
-	isConnected: false,
+	status: 'none',
 	workflowId: 'wf-1234',
 };
 
@@ -110,6 +110,14 @@ describe('ToolRow', () => {
 		expect(getByTestId('tool-credential-picker')).toBeTruthy();
 	});
 
+	it('shows a static connected marker when the item does not use credentials', () => {
+		const item = { ...connectedMcp, credentials: undefined };
+		const { getByTestId, queryByTestId } = renderWithAdapter(item);
+
+		expect(getByTestId('tools-connection-row-connected')).toBeTruthy();
+		expect(queryByTestId('tool-credential-picker')).toBeNull();
+	});
+
 	it('shows a static connected marker when no credential adapter is provided', () => {
 		// The picker cannot list or create anything without an adapter, so
 		// consumers that manage credentials elsewhere get status only.
@@ -119,6 +127,18 @@ describe('ToolRow', () => {
 		expect(queryByTestId('tool-credential-picker')).toBeNull();
 		// Crucially not a Connect button — the tool is already connected.
 		expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+	});
+
+	it('suppresses row and connect actions while connecting', async () => {
+		const item = { ...baseMcp, status: 'connecting' as const };
+		const { getByTestId, queryByTestId, emitted } = render(item);
+
+		expect(getByTestId('tools-connection-row-connecting')).toHaveTextContent('Connecting');
+		expect(getByTestId('tools-connection-row-main')).toBeDisabled();
+		expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+
+		await fireEvent.click(getByTestId('tools-connection-row-main'));
+		expect(emitted()['open-detail']).toBeUndefined();
 	});
 
 	it('emits open-detail when the main row action is clicked', async () => {
@@ -229,5 +249,36 @@ describe('ToolRow', () => {
 
 		await fireEvent.click(install);
 		expect(emitted().connect).toBeUndefined();
+	});
+
+	describe('disabled rows', () => {
+		const disabledWorkflow: WorkflowConnectionItem = {
+			...baseWorkflow,
+			disabled: true,
+			disabledReason: "Contains nodes that aren't supported as agent tools (Wait, Form)",
+		};
+
+		it('renders a disabled marker instead of a connect/install action', () => {
+			const { getByTestId, queryByTestId } = render(disabledWorkflow);
+
+			expect(getByTestId('tools-connection-row-disabled')).toBeTruthy();
+			// A disabled row never offers a connect or install action.
+			expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+			expect(queryByTestId('tools-connection-row-install')).toBeNull();
+		});
+
+		it('does not emit open-detail when the main row action is clicked', async () => {
+			const { getByTestId, emitted } = render(disabledWorkflow);
+
+			await fireEvent.click(getByTestId('tools-connection-row-main'));
+
+			expect(emitted()['open-detail']).toBeUndefined();
+		});
+
+		it('renders the main action button as disabled', () => {
+			const { getByTestId } = render(disabledWorkflow);
+
+			expect(getByTestId('tools-connection-row-main')).toBeDisabled();
+		});
 	});
 });

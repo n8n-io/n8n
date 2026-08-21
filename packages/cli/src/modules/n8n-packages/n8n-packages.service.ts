@@ -12,6 +12,10 @@ import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { DataTableExporter } from './entities/data-table/data-table.exporter';
+import {
+	folderPolicyRejection,
+	resolveFolderConflictPolicy,
+} from './entities/folder/folder-conflict-policy';
 import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
@@ -31,7 +35,9 @@ import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
 import {
+	CredentialExportPolicy,
 	MissingWorkflowDependencyPolicy,
+	WorkflowVersionPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageResult,
@@ -79,6 +85,9 @@ export class N8nPackagesService {
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
 		const includeTags = (request.includeTags ?? true) && !this.globalConfig.tags.disabled;
+		const workflowVersionPolicy = request.workflowVersionPolicy ?? WorkflowVersionPolicy.Latest;
+		const credentialExportPolicy =
+			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -87,6 +96,7 @@ export class N8nPackagesService {
 						folderIds,
 						writer,
 						includeTags,
+						workflowVersionPolicy,
 					})
 				: undefined;
 
@@ -102,6 +112,7 @@ export class N8nPackagesService {
 						workflowIds: workflowsForExport,
 						writer,
 						includeTags,
+						workflowVersionPolicy,
 					})
 				: undefined;
 
@@ -112,6 +123,7 @@ export class N8nPackagesService {
 						projectIds,
 						writer,
 						includeTags,
+						workflowVersionPolicy,
 					})
 				: undefined;
 
@@ -133,6 +145,7 @@ export class N8nPackagesService {
 			user: request.user,
 			workflowIds: allWorkflowsBeforeAutoInclude.map(({ id }) => id),
 			traversal: isReferenceOnly ? 'direct' : 'transitive',
+			workflowVersionPolicy,
 		});
 
 		let autoIncludedExportResult: AutoIncludedWorkflowExportResult | undefined;
@@ -145,6 +158,7 @@ export class N8nPackagesService {
 				folderWorkflowIds: folderExportResult?.workflowEntries.map(({ id }) => id) ?? [],
 				projectWorkflowIds: projectExportResult?.workflowEntries.map(({ id }) => id) ?? [],
 				includeTags,
+				workflowVersionPolicy,
 			});
 
 			autoIncludedExportResult = this.autoIncludedWorkflowExporter.export({
@@ -206,6 +220,7 @@ export class N8nPackagesService {
 			user: request.user,
 			requirements: requirements.credentials,
 			writer,
+			credentialExportPolicy,
 			// Routes project-owned credentials into their project namespace; others stay top-level.
 			projectTargetsById,
 		});
@@ -288,6 +303,7 @@ export class N8nPackagesService {
 			...(allFolders.length ? { folderIds: allFolders.map(({ id }) => id) } : {}),
 			...(allProjects.length ? { projectIds: allProjects.map(({ id }) => id) } : {}),
 			counts,
+			credentialExportPolicy,
 		});
 
 		return { stream, counts };
@@ -302,9 +318,22 @@ export class N8nPackagesService {
 					'variableParentPolicy is not supported for project packages, where variable placement follows the package layout. Omit it.',
 				);
 			}
-			return await this.projectPackageImporter.import(request, reader, manifest);
+			const rejection = folderPolicyRejection(request, 'project');
+			if (rejection) throw new BadRequestError(rejection);
+			return await this.projectPackageImporter.import(
+				{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') },
+				reader,
+				manifest,
+			);
 		}
-		return await this.workflowPackageImporter.import(request, reader, manifest);
+
+		const rejection = folderPolicyRejection(request, 'workflow');
+		if (rejection) throw new BadRequestError(rejection);
+		return await this.workflowPackageImporter.import(
+			{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'workflow') },
+			reader,
+			manifest,
+		);
 	}
 
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {

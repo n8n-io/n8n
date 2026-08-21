@@ -1,3 +1,4 @@
+import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -414,8 +415,9 @@ export class ExecutionService {
 		return response;
 	}
 
-	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
-		const { deleteBefore, ids, filters: requestFiltersRaw } = req.body;
+	async delete(user: User, payload: DeleteExecutionsDto, sharedWorkflowIds: string[]) {
+		const { deleteBefore, ids, filters: requestFiltersRaw } = payload;
+
 		let requestFilters: IGetExecutionsQueryFilter | undefined;
 		if (requestFiltersRaw) {
 			try {
@@ -442,11 +444,11 @@ export class ExecutionService {
 
 		this.eventService.emit('execution-deleted', {
 			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role,
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
 			},
 			executionIds: ids ?? [],
 			deleteBefore,
@@ -591,15 +593,16 @@ export class ExecutionService {
 		return { count, estimated: false };
 	}
 
+	/**
+	 * All executions still enqueued (`new`), plus the ids of those whose data could not be
+	 * read - those can never run, so the caller has to take them out of `new` itself.
+	 */
 	async findAllEnqueuedExecutions() {
-		return await this.executionPersistence.findMultipleExecutions(
-			{
-				select: ['id', 'mode'],
-				where: { status: 'new' },
-				order: { id: 'ASC' },
-			},
-			{ includeData: true, unflattenData: true },
-		);
+		return await this.executionPersistence.findMultipleExecutionsWithUnreadable({
+			select: ['id', 'mode'],
+			where: { status: 'new' },
+			order: { id: 'ASC' },
+		});
 	}
 
 	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
@@ -804,6 +807,8 @@ export class ExecutionService {
 			status?: ExecutionStatus;
 			excludeRunning?: boolean;
 			maxDataSizeBytes?: number;
+			startedAfter?: string;
+			startedBefore?: string;
 		},
 	): Promise<{ executions: IExecutionBase[]; count: number }> {
 		const excludedExecutionsIds = options.excludeRunning
@@ -819,6 +824,8 @@ export class ExecutionService {
 			lastId: options.lastId,
 			status: options.status,
 			excludedExecutionsIds,
+			startedAfter: options.startedAfter,
+			startedBefore: options.startedBefore,
 		};
 
 		const executions = await this.executionPersistence.findManyInWorkflows(

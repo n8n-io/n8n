@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.34.0",
+  "version": "2.36.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -12,9 +12,9 @@
     "build:data": "node scripts/build.mjs",
     "build:agent-library": "node scripts/bundle-agent-library.mjs",
     "buildAndDev": "pnpm run build && pnpm run dev",
-    "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon --delay 1\"",
-    "dev:worker": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon worker\"",
-    "dev:webhook": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon webhook\"",
+    "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"pnpm run watch\" \"nodemon --delay 1\"",
+    "dev:worker": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"pnpm run watch\" \"nodemon worker\"",
+    "dev:webhook": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"pnpm run watch\" \"nodemon webhook\"",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -57,7 +57,7 @@
     "workflow"
   ],
   "engines": {
-    "node": ">=22.22"
+    "node": ">=24.0.0"
   },
   "files": [
     "bin",
@@ -127,8 +127,9 @@
   "dependencies": {
     "@1password/connect": "1.4.2",
     "@ai-sdk/anthropic": "catalog:",
-    "@asteasolutions/zod-to-openapi": "7.3.4",
+    "@ai-sdk/openai-compatible": "catalog:",
     "@apidevtools/json-schema-ref-parser": "12.0.2",
+    "@asteasolutions/zod-to-openapi": "catalog:",
     "@aws-sdk/client-secrets-manager": "3.808.0",
     "@azure/identity": "catalog:",
     "@azure/keyvault-secrets": "4.8.0",
@@ -160,12 +161,14 @@
     "@n8n/db": "workspace:*",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/engine": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
     "@n8n/instance-ai": "workspace:*",
     "@n8n/mcp-apps": "workspace:*",
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/n8n-nodes-langchain": "workspace:*",
+    "@n8n/node-engine-compatibility": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/scheduler": "workspace:*",
     "@n8n/syslog-client": "workspace:*",
@@ -226,7 +229,7 @@
     "ioredis": "5.3.2",
     "isbot": "3.6.13",
     "isolated-vm": "catalog:",
-    "jose": "^6.2.2",
+    "jose": "^6.2.9",
     "json-diff": "1.0.6",
     "json-schema": "catalog:",
     "jsonschema": "1.4.1",

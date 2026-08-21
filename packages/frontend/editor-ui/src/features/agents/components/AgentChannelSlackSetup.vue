@@ -12,9 +12,9 @@ import {
 import AgentChannelSlackSetupSnapshots from './AgentChannelSlackSetupSnapshots.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { ChatIntegrationDescriptor } from '@n8n/api-types';
+import type { AgentSlackIntegrationSettings, ChatIntegrationDescriptor } from '@n8n/api-types';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { getSlackAgentAppManifest } from '../composables/useAgentApi';
+import { getSlackAgentAppManifest } from '../channels/slack/api';
 import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from './AgentCredentialSelect.vue';
 
@@ -73,6 +73,9 @@ const slackAppManifest = shallowRef('');
 const manifestLoading = shallowRef(false);
 const manifestError = shallowRef(false);
 const manifestCopied = shallowRef(false);
+const currentSettings = computed<AgentSlackIntegrationSettings>(() => ({
+	messagingExperience: 'agent',
+}));
 
 const steps = computed(() => [
 	{
@@ -175,7 +178,7 @@ watch(
 	{ immediate: true },
 );
 
-defineExpose({ credentialId, validationError: null });
+defineExpose({ credentialId, currentSettings, validationError: null, loading: setupLoading });
 </script>
 
 <template>
@@ -184,16 +187,18 @@ defineExpose({ credentialId, validationError: null });
 			<template #default="{ step }">
 				<div :class="$style.stepContent">
 					<div v-if="step.id === 'create-token'" :class="$style.createTokenContainer">
-						<N8nButton
-							href="https://api.slack.com/apps"
-							target="_blank"
-							variant="subtle"
-							size="medium"
-							icon="slack"
-							data-testid="slack-app-configuration-token-link"
-						>
-							{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
-						</N8nButton>
+						<div :class="$style.dashboardRow">
+							<N8nButton
+								href="https://api.slack.com/apps"
+								target="_blank"
+								variant="subtle"
+								size="medium"
+								icon="slack"
+								data-testid="slack-app-configuration-token-link"
+							>
+								{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
+							</N8nButton>
+						</div>
 						<AgentChannelSlackSetupSnapshots />
 					</div>
 
@@ -400,6 +405,12 @@ defineExpose({ credentialId, validationError: null });
 	gap: var(--spacing--sm);
 	width: 100%;
 	min-width: 0;
+}
+
+.dashboardRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .manualPanel {

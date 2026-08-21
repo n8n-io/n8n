@@ -1,3 +1,4 @@
+import type { BuiltTool } from '@n8n/agents';
 import {
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	type InstanceAiEvent,
@@ -61,6 +62,14 @@ function fakeStream(chunks: unknown[], text: string): BuilderTurnStream {
 		})(),
 		text: Promise.resolve(text),
 	};
+}
+
+function fakeMcpTools(): Map<string, BuiltTool> {
+	const notionSearch: BuiltTool = {
+		name: 'notion_search',
+		description: 'Search connected Notion content',
+	};
+	return new Map([[notionSearch.name, notionSearch]]);
 }
 
 /** A stream whose iteration rejects mid-consumption, instead of yielding an `error` chunk. */
@@ -293,6 +302,19 @@ describe('build-agent tool', () => {
 			modelConfig: context.modelId,
 			abortSignal: context.abortSignal,
 		});
+	});
+
+	it('forwards the parent MCP tools to the initial builder turn', async () => {
+		const { context, delegate } = makeContext();
+		const mcpTools = fakeMcpTools();
+		context.mcpTools = mcpTools;
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+		await runTool(context, { message: 'Build me a support agent', name: 'Support Agent' });
+
+		const session = vi.mocked(delegate.streamBuild).mock.calls[0]?.[2];
+		expect(session?.mcpTools).toBe(mcpTools);
 	});
 
 	it('returns the accumulated builder reply on completion', async () => {
@@ -701,6 +723,51 @@ describe('build-agent tool', () => {
 				});
 			},
 		);
+
+		it('is true when update_skill returns the config mutation marker', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[
+						toolCallChunk('call-1', 'update_skill'),
+						toolResultChunk('call-1', { ok: true, configMutated: true }),
+					],
+					'Updated the skill.',
+				),
+			);
+
+			const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(result.configUpdated).toBe(true);
+		});
+
+		it('is false when update_skill soft-fails without the config mutation marker', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[
+						toolCallChunk('call-1', 'update_skill'),
+						toolResultChunk('call-1', {
+							ok: false,
+							errors: [{ message: 'Skill not found' }],
+						}),
+					],
+					'Could not update the skill.',
+				),
+			);
+
+			const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(result.configUpdated).toBe(false);
+		});
 
 		it('is false when no config-mutation tool succeeded', async () => {
 			const { context, delegate } = makeContext();
@@ -1536,6 +1603,31 @@ describe('build-agent tool', () => {
 				agentId: 'agent-1',
 				answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
 			});
+		});
+
+		it('forwards the parent MCP tools to the resumed builder turn', async () => {
+			const { context, delegate } = makeContext();
+			const mcpTools = fakeMcpTools();
+			context.mcpTools = mcpTools;
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Using Notion.'));
+
+			await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{
+					resumeData: { approved: true },
+					suspendPayload: suspendPayloadWithCheckpoint(),
+				},
+			);
+
+			const suspensionSession = vi.mocked(delegate.findOpenSuspensions).mock.calls[0]?.[1];
+			const resumeSession = vi.mocked(delegate.resumeBuild).mock.calls[0]?.[2];
+			expect(suspensionSession?.mcpTools).toBe(mcpTools);
+			expect(resumeSession?.mcpTools).toBe(mcpTools);
 		});
 
 		it('does not attach answers when resuming a credential suspension', async () => {

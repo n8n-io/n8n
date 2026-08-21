@@ -13,27 +13,22 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import {
+	buildChatModelProviderHint,
+	isChatModelProviderCredentialType,
+} from './nodes/preferred-chat-model';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
-import { extractServiceHost, N8N_CONNECT_DISPLAY_NAME } from './workflows/credential-utils';
+import {
+	extractServiceHost,
+	GENERIC_AUTH_CREDENTIAL_TYPES,
+	N8N_CONNECT_DISPLAY_NAME,
+} from './workflows/credential-utils';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
 export { CREDENTIALS_TOOL_ID };
 
 const DEFAULT_LIMIT = 50;
-
-/** Generic auth types that should be excluded from search results — the AI should prefer dedicated types. */
-const GENERIC_AUTH_TYPES = new Set([
-	'httpHeaderAuth',
-	'httpBearerAuth',
-	'httpQueryAuth',
-	'httpBasicAuth',
-	'httpCustomAuth',
-	'httpTemplatedCustomAuth',
-	'httpDigestAuth',
-	'oAuth1Api',
-	'oAuth2Api',
-]);
 
 // ── Shared fields (single source of truth for fields used across actions) ───
 
@@ -222,6 +217,71 @@ export function findSetupHintProblems(
 export const INVALID_SETUP_HINT_MESSAGE =
 	'Each setup hint must be a secret-free template whose {{marker}}s match its placeholders one-to-one. Fix the recipe (or omit it entirely) and retry.';
 
+/**
+ * Registered type names often diverge from credential class names, and a
+ * made-up name sails through to a setup card the frontend cannot render.
+ * Resolve which requested types are unknown so setup fails fast with a
+ * corrective error instead. Types are trusted as-is when the service doesn't
+ * expose the lookup.
+ */
+async function findUnknownCredentialTypes(
+	context: InstanceAiContext,
+	credentialTypes: string[],
+): Promise<string[]> {
+	const service = context.credentialService;
+	if (!service.credentialTypeExists) return [];
+
+	const unknown: string[] = [];
+	for (const credentialType of new Set(credentialTypes)) {
+		// The templated type is created from the setupHint recipe, not looked up.
+		if (credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) continue;
+		try {
+			if (!(await service.credentialTypeExists(credentialType))) {
+				unknown.push(credentialType);
+			}
+		} catch {
+			// Existence lookup failing is a soft signal — don't block setup on it.
+		}
+	}
+	return unknown;
+}
+
+/**
+ * Search queries for near-matches of an unknown type, most to least specific:
+ * the name itself, the name without its OAuth2/Api suffix, and the leading
+ * lowercase run (the service part of a camelCase name).
+ */
+function deriveTypeSuggestionQueries(credentialType: string): string[] {
+	const queries = [credentialType];
+	const withoutSuffix = credentialType.replace(/(?:OAuth2(?:Api)?|Api)$/, '');
+	if (withoutSuffix && !queries.includes(withoutSuffix)) queries.push(withoutSuffix);
+	const service = /^[a-z0-9]+/.exec(credentialType)?.[0];
+	if (service && !queries.includes(service)) queries.push(service);
+	return queries;
+}
+
+const MAX_TYPE_SUGGESTIONS = 5;
+
+async function suggestCredentialTypes(
+	context: InstanceAiContext,
+	credentialType: string,
+): Promise<Array<{ type: string; displayName: string }>> {
+	const service = context.credentialService;
+	if (!service.searchCredentialTypes) return [];
+
+	for (const query of deriveTypeSuggestionQueries(credentialType)) {
+		try {
+			const results = (await service.searchCredentialTypes(query)).filter(
+				(result) => !GENERIC_AUTH_CREDENTIAL_TYPES.has(result.type),
+			);
+			if (results.length > 0) return results.slice(0, MAX_TYPE_SUGGESTIONS);
+		} catch {
+			// Try the next, broader query.
+		}
+	}
+	return [];
+}
+
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
@@ -288,14 +348,16 @@ const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe(
-			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished. A `success` result with a `credentials` map means setup is complete (an existing credential may have been auto-selected with no user action): confirm the credentials are ready and do not tell the user a card is open or that they must authorize.',
+			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished. A `success` result with a `credentials` map means setup is complete (a sole service-scoped credential may have been auto-selected with no user action, unless the entry set `preferNew`; generic auth types always need an explicit Continue): confirm the credentials are ready and do not tell the user a card is open or that they must authorize.',
 		),
 	credentials: z
 		.array(
 			z.object({
 				credentialType: z
 					.string()
-					.describe('n8n credential type name (e.g. "slackApi", "gmailOAuth2Api")'),
+					.describe(
+						'n8n credential type name (e.g. "slackApi", "gmailOAuth2"). Must be the registered type name, which can differ from the credential class name — verify with action "search-types" when unsure.',
+					),
 				reason: z.string().optional().describe('Why this credential is needed (shown to user)'),
 				suggestedName: z
 					.string()
@@ -303,10 +365,22 @@ const setupAction = z.object({
 					.describe(
 						'Suggested display name for the credential (e.g. "Linear API key"). Pre-fills the name field when creating a new credential.',
 					),
+				preferNew: z
+					.boolean()
+					.optional()
+					.describe(
+						'Set ONLY when the user explicitly asked to create a new credential of this type ("create a new Slack credential"). The card then opens with nothing preselected instead of offering the most recent existing credential — existing ones stay listed in case the user changes their mind.',
+					),
 				setupHint: setupHintField.optional(),
 			}),
 		)
 		.describe('List of credentials to set up'),
+	requireUserSelection: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set true only for standalone setup when the user explicitly asks to create a new, separate, or different credential, or explicitly asks to see the setup card or choose a credential even if one already exists. Keeps the card open for an explicit user choice instead of automatically accepting a sole existing credential. Omit otherwise.',
+		),
 	credentialFlow: z
 		.object({
 			stage: z.enum(['generic', 'finalize']),
@@ -433,17 +507,18 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 	credentialRequests: z.array(credentialRequestSchema).optional(),
 	projectId: z.string().optional(),
+	requireUserSelection: z.boolean().optional(),
 	credentialFlow: z.object({ stage: z.enum(['generic', 'finalize']) }).optional(),
 });
 
-const resumeSchema = z.object({
+export const credentialsResumeSchema = z.object({
 	approved: z.boolean(),
 	credentials: z.record(z.string()).optional(),
-	autoSetup: z.object({ credentialType: z.string() }).optional(),
+	autoSetup: z.object({ credentialType: z.string(), attemptId: z.string().optional() }).optional(),
 });
 
 interface CredentialToolContext {
-	resumeData: z.infer<typeof resumeSchema> | undefined;
+	resumeData: z.infer<typeof credentialsResumeSchema> | undefined;
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
 }
 
@@ -466,6 +541,23 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 	const storedCredentials = await context.credentialService.list({
 		type: input.type,
 	});
+
+	// An empty LLM-provider lookup is the moment the builder locks in a default
+	// provider — surface the LLM credentials the user does have so it prefers
+	// those (or asks) instead.
+	let chatModelProviderHint: string | undefined;
+	if (
+		input.type &&
+		storedCredentials.length === 0 &&
+		isChatModelProviderCredentialType(input.type)
+	) {
+		try {
+			const allStored = await context.credentialService.list({});
+			chatModelProviderHint = buildChatModelProviderHint(input.type, allStored);
+		} catch {
+			// Soft signal — the primary (empty) listing still returns.
+		}
+	}
 
 	// When the caller filters by type, prepend the synthetic n8n Connect
 	// managed entry if the AI Gateway covers that credential type. This is
@@ -503,6 +595,14 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 
 	const truncatedWithoutNarrowing = hasMore && !input.name && !input.type;
 
+	// Mutually exclusive: the provider hint requires a type filter, the
+	// truncation hint requires none.
+	const hint =
+		chatModelProviderHint ??
+		(truncatedWithoutNarrowing
+			? `Showing ${page.length} of ${total} credentials. Pass \`name\` (substring) or \`type\` to narrow the search before concluding a user-named credential doesn't exist, or use \`offset\` to paginate.`
+			: undefined);
+
 	return {
 		credentials: page.map((c) =>
 			c.id === null
@@ -511,11 +611,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		),
 		total,
 		hasMore,
-		...(truncatedWithoutNarrowing
-			? {
-					hint: `Showing ${page.length} of ${total} credentials. Pass \`name\` (substring) or \`type\` to narrow the search before concluding a user-named credential doesn't exist, or use \`offset\` to paginate.`,
-				}
-			: {}),
+		...(hint ? { hint } : {}),
 	};
 }
 
@@ -579,7 +675,7 @@ async function handleSearchTypes(
 	const allResults = await context.credentialService.searchCredentialTypes(input.query);
 
 	// Filter out generic auth types — the AI should use dedicated types
-	const results = allResults.filter((r) => !GENERIC_AUTH_TYPES.has(r.type));
+	const results = allResults.filter((r) => !GENERIC_AUTH_CREDENTIAL_TYPES.has(r.type));
 
 	if (results.length === 0) {
 		return {
@@ -609,6 +705,27 @@ async function handleSetup(
 
 	// State 1: First call — look up existing credentials per type and suspend
 	if (resumeData === undefined || resumeData === null) {
+		const unknownTypes = await findUnknownCredentialTypes(
+			context,
+			input.credentials.map((req: { credentialType: string }) => req.credentialType),
+		);
+		if (unknownTypes.length > 0) {
+			const suggestions: Record<string, Array<{ type: string; displayName: string }>> = {};
+			for (const credentialType of unknownTypes) {
+				const matches = await suggestCredentialTypes(context, credentialType);
+				if (matches.length > 0) suggestions[credentialType] = matches;
+			}
+			return {
+				error: 'unknown_credential_type',
+				message: `No credential type named ${unknownTypes
+					.map((type) => `"${type}"`)
+					.join(
+						', ',
+					)} is registered on this instance. Type names can differ from credential class names. Pick the exact type from the suggestions, or find it with credentials(action: "search-types"), then retry.`,
+				...(Object.keys(suggestions).length > 0 ? { suggestions } : {}),
+			};
+		}
+
 		const hintProblems = input.credentials.flatMap(
 			(req: { credentialType: string; setupHint?: InstanceAiCredentialSetupHint }) => {
 				if (!req.setupHint) return [];
@@ -633,6 +750,7 @@ async function handleSetup(
 					credentialType: string;
 					reason?: string;
 					suggestedName?: string;
+					preferNew?: boolean;
 					setupHint?: InstanceAiCredentialSetupHint;
 				}) => {
 					// This card has no node context to match candidates by service, so
@@ -652,6 +770,7 @@ async function handleSetup(
 						reason: req.reason ?? `Required for ${req.credentialType}`,
 						existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
 						...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
+						...(req.preferNew ? { preferNew: true } : {}),
 						...(req.setupHint
 							? { setupHint: { ...req.setupHint, ...(serviceHost ? { serviceHost } : {}) } }
 							: {}),
@@ -673,6 +792,7 @@ async function handleSetup(
 			severity: 'info' as const,
 			credentialRequests,
 			...(context.projectId ? { projectId: context.projectId } : {}),
+			...(input.requireUserSelection === true ? { requireUserSelection: true } : {}),
 			...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
 		});
 	}
@@ -689,7 +809,8 @@ async function handleSetup(
 
 	// State 4: User requested automatic browser-assisted setup
 	if (resumeData.autoSetup) {
-		const { credentialType } = resumeData.autoSetup;
+		const { credentialType, attemptId } = resumeData.autoSetup;
+		context.browserCredentialSetup?.markPending(credentialType, attemptId);
 		const docsUrl =
 			(await context.credentialService.getDocumentationUrl?.(credentialType)) ?? undefined;
 		const requiredFields =
@@ -738,7 +859,7 @@ export function createCredentialsTool(
 		.description(getToolDescription(options))
 		.input(inputSchema)
 		.suspend(suspendSchema)
-		.resume(resumeSchema)
+		.resume(credentialsResumeSchema)
 		.handler(async (input, ctx) => {
 			const parsedInput = inputSchema.parse(input) as Input;
 			switch (parsedInput.action) {

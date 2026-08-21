@@ -139,8 +139,13 @@ export interface HttpRequestClient {
  * SSRF coverage is identical for `asCustomFetch()` and `getDispatcher()` (same
  * underlying dispatcher): every dispatched request — initial and each redirect
  * hop — is validated, and direct connections also carry a connect-time secure
- * DNS lookup that defeats DNS-rebinding (TOCTOU). `getNodeAgent()` enforces the
- * same connect-time secure lookup for direct connections.
+ * DNS lookup that defeats DNS-rebinding (TOCTOU). `getNodeAgent()` carries that
+ * same lookup, applied to whichever host its socket opens to: the target on a
+ * direct connection, the proxy behind an explicit one.
+ * It does **not** validate the targets sent through it.
+ * Behind any proxy the proxy resolves the final target, so no client-side
+ * connect-time check of that target is possible.
+ * Callers taking the agents validate those targets themselves (see `buildNodeAgents`).
  */
 export interface HttpTransport {
 	asCustomFetch(): CustomFetch;

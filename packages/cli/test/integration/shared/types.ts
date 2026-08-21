@@ -70,6 +70,7 @@ type ModuleName =
 	| 'ldap'
 	| 'redaction'
 	| 'source-control'
+	| 'git-connections'
 	| 'token-exchange'
 	| 'workflow-reviews';
 
@@ -91,6 +92,7 @@ export interface TestServer {
 	publicApiAgentFor: (user: User) => TestAgent;
 	publicApiAgentWithApiKey: (apiKey: string) => TestAgent;
 	publicApiAgentWithoutApiKey: () => TestAgent;
+	publicApiAgentWithCookie: (user: User) => TestAgent;
 	authlessAgent: TestAgent;
 	restlessAgent: TestAgent;
 	license: LicenseMocker;

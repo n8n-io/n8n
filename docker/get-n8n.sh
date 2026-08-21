@@ -94,9 +94,11 @@ parse_args() {
 check_deps() {
 	command -v docker >/dev/null 2>&1 || fail "Docker is not installed.
   Install it first:
-    Linux:         https://docs.docker.com/engine/install/
+    Linux / WSL:   curl -fsSL https://get.docker.com | sh
+                   then: sudo usermod -aG docker \$USER && re-open your shell
     macOS:         https://docs.docker.com/desktop/setup/install/mac-install/
-    Windows (WSL): https://docs.docker.com/desktop/setup/install/windows-install/
+    Windows:       https://docs.docker.com/desktop/setup/install/windows-install/
+                   (enable your distro under Settings > Resources > WSL integration)
   Podman, Colima and other Docker-compatible engines work too: install the
   'docker' CLI with the compose plugin and point DOCKER_HOST at their socket."
 
@@ -141,19 +143,22 @@ http_get() {
 }
 
 port_in_use() {
+	# In use only when something actually answers. Refusals AND timeouts count
+	# as free: Windows firewalls/WSL drop instead of refusing, which made the
+	# old "anything but refused" check a false positive. --noproxy keeps a
+	# corporate proxy from answering on 127.0.0.1's behalf. Ambiguous cases
+	# fall through to the container healthcheck, which surfaces real conflicts.
 	if command -v curl >/dev/null 2>&1; then
-		# Any HTTP response (even an error status) means something is listening;
-		# only "connection refused" (rc 7) means the port is free.
 		rc=0
-		curl -s -o /dev/null --max-time 2 "http://127.0.0.1:${N8N_PORT}/" 2>/dev/null || rc=$?
-		[ "$rc" -ne 7 ]
+		curl -s -o /dev/null --noproxy '*' --max-time 2 "http://127.0.0.1:${N8N_PORT}/" 2>/dev/null || rc=$?
+		# rc 0 = HTTP response; 52/56 = connection accepted but no/broken reply.
+		[ "$rc" -eq 0 ] || [ "$rc" -eq 52 ] || [ "$rc" -eq 56 ]
 	elif command -v wget >/dev/null 2>&1; then
-		# wget rc 4 = network failure (connection refused) = port free.
 		rc=0
-		wget -q -O /dev/null -T 2 "http://127.0.0.1:${N8N_PORT}/" 2>/dev/null || rc=$?
-		[ "$rc" -ne 4 ]
+		wget -q -O /dev/null --no-proxy -T 2 "http://127.0.0.1:${N8N_PORT}/" 2>/dev/null || rc=$?
+		# rc 0 = OK response; 8 = server issued an error response.
+		[ "$rc" -eq 0 ] || [ "$rc" -eq 8 ]
 	else
-		# No way to check; let the healthcheck surface conflicts later.
 		return 1
 	fi
 }
@@ -207,18 +212,12 @@ N8N_RUNNERS_MODE=external
 N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
 N8N_RUNNERS_AUTH_TOKEN=$(gen_secret)
 
-# Instance AI (optional): fill this in to enable the AI assistant in n8n.
-# n8n works fine without it. Setup guide:
-# https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant
-N8N_INSTANCE_AI_MODEL_API_KEY=
-
 # Web search for the AI assistant runs through the bundled SearXNG service.
 # Optionally set a Brave Search API key instead — it takes priority.
 INSTANCE_AI_BRAVE_SEARCH_API_KEY=
 N8N_INSTANCE_AI_SEARXNG_URL=http://searxng:8080
 SEARXNG_SECRET=$(gen_secret)
 
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
 N8N_INSTANCE_AI_SANDBOX_IMAGE=ghcr.io/n8n-io/n8n-sandbox-service-sandbox:latest
@@ -372,9 +371,6 @@ To uninstall: docker compose -f ${N8N_DIR}/compose.yml down -v   # -v DELETES al
 Security notes:
   - Only port ${N8N_PORT} (n8n) should ever be reachable from the internet.
   - The sandbox runner is privileged Docker-in-Docker — never publish its ports.
-  - The AI assistant stays disabled until you set N8N_INSTANCE_AI_MODEL_API_KEY
-    in ${N8N_DIR}/.env — see
-    https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant
 
 This setup is meant to try n8n locally. For production (TLS, Postgres, queue
 mode) see ${DOCS_HOSTING_URL}

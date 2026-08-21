@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import NewAgentView from '../views/NewAgentView.vue';
 import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 import { getPendingAgentAttachment } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
-import { AGENTS_LIST_VIEW, PROJECT_AGENTS } from '../constants';
+import { AGENTS_LIST_VIEW, AGENT_BUILDER_VIEW, PROJECT_AGENTS } from '../constants';
 
 const mocks = vi.hoisted(() => ({
 	route: { query: { projectId: 'project-1' } as Record<string, string> },
@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 	showError: vi.fn(),
 	syncThread: vi.fn(),
 	updateThreadMetadata: vi.fn(),
+	instanceAiAvailable: true,
 }));
 
 vi.mock('vue-router', () => ({
@@ -23,6 +24,13 @@ vi.mock('@n8n/i18n', () => ({
 }));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mocks.showError }),
+}));
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
+	useInstanceAiAvailable: () => ({
+		get value() {
+			return mocks.instanceAiAvailable;
+		},
+	}),
 }));
 vi.mock('@/features/ai/instanceAi/instanceAi.store', () => ({
 	useInstanceAiStore: () => ({
@@ -37,11 +45,27 @@ describe('NewAgentView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.route.query = { projectId: 'project-1' };
+		mocks.instanceAiAvailable = true;
 		history.replaceState({}, '');
 		localStorage.clear();
 	});
 
-	it('opens an unsaved agent artifact without creating the agent', async () => {
+	it('opens an unpersisted agent in the manual builder when Instance AI is unavailable', async () => {
+		mocks.instanceAiAvailable = false;
+
+		mount(NewAgentView);
+		await flushPromises();
+
+		expect(mocks.syncThread).not.toHaveBeenCalled();
+		expect(mocks.updateThreadMetadata).not.toHaveBeenCalled();
+		expect(mocks.replace).toHaveBeenCalledWith({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: 'project-1', agentId: 'aBcDeFgHiJkLmNoP' },
+			state: { instanceAiPendingAgentId: 'aBcDeFgHiJkLmNoP' },
+		});
+	});
+
+	it('opens an unsaved agent artifact when Instance AI is available', async () => {
 		mount(NewAgentView);
 		await flushPromises();
 

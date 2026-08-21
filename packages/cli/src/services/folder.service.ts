@@ -62,6 +62,18 @@ export class FolderService {
 		});
 	}
 
+	/** Every folder a project holds, flat, with the parent each one sits under (`null` at the root). */
+	async getFolderPlacementsInProject(
+		projectId: string,
+	): Promise<Array<{ id: string; name: string; parentFolderId: string | null }>> {
+		const folders = await this.folderRepository.find({
+			where: { homeProject: { id: projectId } },
+			select: { id: true, name: true, parentFolderId: true },
+		});
+
+		return folders.map(({ id, name, parentFolderId }) => ({ id, name, parentFolderId }));
+	}
+
 	async updateFolder(
 		folderId: string,
 		projectId: string,
@@ -315,7 +327,10 @@ export class FolderService {
 		};
 	}
 
-	async getManyAndCount(projectId: string, options: ListQuery.Options) {
+	async getManyAndCount(
+		projectId: string,
+		options: ListQuery.Options,
+	): Promise<[FolderWithWorkflowAndSubFolderCountAndPath[], number]> {
 		options.filter = { ...options.filter, projectId, isArchived: false };
 		// eslint-disable-next-line prefer-const
 		let [folders, count] = await this.folderRepository.getManyAndCount(options);

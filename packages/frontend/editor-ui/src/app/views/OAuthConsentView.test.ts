@@ -167,7 +167,7 @@ describe('OAuthConsentView', () => {
 		expect(allowButton).not.toBeDisabled();
 	});
 
-	it('should show the redirect URL inside the warning callout', async () => {
+	it('should show the redirect URL inside the redirect callout', async () => {
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
 
@@ -175,6 +175,63 @@ describe('OAuthConsentView', () => {
 		expect(getByTestId('consent-redirect-uri')).toHaveTextContent(
 			'https://legitimate-client.com/callback',
 		);
+	});
+
+	it('should render the trust checkbox outside the redirect callout', async () => {
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(getByTestId('consent-redirect-warning')).not.toContainElement(
+			getByTestId('consent-redirect-confirm'),
+		);
+	});
+
+	describe('first-party consent', () => {
+		const firstPartyDetails = {
+			clientName: 'My Form',
+			clientId: 'c1',
+			redirectUri: 'https://instance.example/form/abc',
+			resourceName: 'Feedback workflow',
+			scopes: [],
+			isFirstParty: true,
+			uiHints: { icon: 'square-pen', consentType: 'form' },
+		};
+
+		beforeEach(() => {
+			consentStore.consentDetails = firstPartyDetails;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = firstPartyDetails;
+				return firstPartyDetails;
+			});
+		});
+
+		it('should hide the trust checkbox and enable Allow without acknowledgement', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(queryByTestId('consent-redirect-confirm')).toBeNull();
+			expect(getByTestId('consent-allow-button')).not.toBeDisabled();
+		});
+
+		it('should not show the redirect URL or the redirect callout', async () => {
+			const { queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(queryByTestId('consent-redirect-warning')).toBeNull();
+			expect(queryByTestId('consent-redirect-uri')).toBeNull();
+		});
+
+		it('should render the first-party heading and resource-driven description', async () => {
+			const { getByText } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByText('"Feedback workflow" wants to run using your n8n login')).toBeVisible();
+			expect(
+				getByText(
+					'Running this form executes its workflow using your account and any connected credentials. Only continue if you trust the creator of this form.',
+				),
+			).toBeVisible();
+		});
 	});
 
 	describe('scope selection', () => {
@@ -240,6 +297,20 @@ describe('OAuthConsentView', () => {
 				'workflow:write',
 				'execution:read',
 			]);
+		});
+
+		it('should keep a custom scope selection when the trust checkbox is toggled', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('scopes-mode-custom'));
+			await userEvent.click(getByTestId('scope-group-executions'));
+			expect(getByTestId('scopes-count')).toHaveTextContent('1 of 3 scopes selected');
+
+			await userEvent.click(getByLabelText('I recognize and trust this URL'));
+
+			expect(getByTestId('scopes-count')).toHaveTextContent('1 of 3 scopes selected');
+			expect(getByTestId('scopes-mode-custom')).toBeChecked();
 		});
 
 		it('should show a tool count pill per scope group when scope tools are provided', async () => {

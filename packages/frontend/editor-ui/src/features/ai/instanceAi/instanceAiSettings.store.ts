@@ -11,6 +11,7 @@ import {
 	updatePreferences,
 	fetchServiceCredentials,
 	fetchInstanceModelCredentials,
+	fetchModelCatalog,
 	verifyModel as verifyModelRequest,
 	verifySandbox as verifySandboxRequest,
 	verifySearch as verifySearchRequest,
@@ -32,6 +33,7 @@ import type {
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	InstanceAiPermissionMode,
+	InstanceAiModelCatalogResponse,
 	ToolCategory,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
@@ -58,6 +60,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const preferences = ref<InstanceAiUserPreferencesResponse | null>(null);
 	const serviceCredentials = ref<InstanceAiProviderConnection[]>([]);
 	const instanceModelCredentials = ref<InstanceAiProviderConnection[]>([]);
+	const modelCatalog = ref<InstanceAiModelCatalogResponse['models'] | null>(null);
+	const isModelCatalogLoading = ref(false);
+	let modelCatalogFetchPromise: Promise<void> | null = null;
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
 
 	// ── Gateway / daemon state ──────────────────────────────────────────
@@ -284,7 +289,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	// ── Sidebar connections ──────────────────────────────────────────────
-	type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
+	type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 
 	interface SidebarConnection {
 		type: ComputerUseConnectionType | BrowserUseConnectionType;
@@ -302,6 +307,20 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		() =>
 			browserConnected.value || (gatewayConnected.value && isGatewayBrowserCategoryEnabled.value),
 	);
+	const computerUseStatus = computed<ConnectionStatus>(() => {
+		if (gatewayConnected.value) return 'connected';
+		if (isDaemonConnecting.value) return 'connecting';
+		return 'disconnected';
+	});
+	const computerUseSubtitle = computed(() => {
+		if (computerUseStatus.value === 'connected') {
+			return i18n.baseText('instanceAi.connections.types.computerUse.subtitle');
+		}
+		if (computerUseStatus.value === 'connecting') {
+			return i18n.baseText('instanceAi.connections.row.status.connecting');
+		}
+		return i18n.baseText('instanceAi.connections.row.status.disconnected');
+	});
 
 	const connections = computed<SidebarConnection[]>(() => {
 		const result: SidebarConnection[] = [];
@@ -310,10 +329,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			result.push({
 				type: COMPUTER_USE_CONNECTION_TYPE,
 				name: gatewayDirectory.value ?? i18n.baseText('instanceAi.connections.add.computerUse'),
-				subtitle: gatewayConnected.value
-					? i18n.baseText('instanceAi.connections.types.computerUse.subtitle')
-					: i18n.baseText('instanceAi.connections.row.status.disconnected'),
-				status: gatewayConnected.value ? 'connected' : 'disconnected',
+				subtitle: computerUseSubtitle.value,
+				status: computerUseStatus.value,
 			});
 		}
 
@@ -604,6 +621,27 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		} catch {}
 	}
 
+	async function loadModelCatalog(): Promise<void> {
+		if (modelCatalog.value) return;
+		if (modelCatalogFetchPromise) return await modelCatalogFetchPromise;
+
+		isModelCatalogLoading.value = true;
+		const request = fetchModelCatalog(rootStore.restApiContext)
+			.then((response) => {
+				if (Object.values(response.models).some((models) => models.length > 0)) {
+					modelCatalog.value = response.models;
+				}
+			})
+			.catch(() => {})
+			.finally(() => {
+				isModelCatalogLoading.value = false;
+				modelCatalogFetchPromise = null;
+			});
+		modelCatalogFetchPromise = request;
+
+		await request;
+	}
+
 	async function refreshModuleSettings(): Promise<void> {
 		const promises: Array<Promise<unknown>> = [settingsStore.getModuleSettings()];
 		if (!preferences.value) {
@@ -642,9 +680,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		preferences,
 		serviceCredentials,
 		instanceModelCredentials,
+		modelCatalog,
 		draft,
 		isLoading,
 		isSaving,
+		isModelCatalogLoading,
 		fetch,
 		save,
 		persistEnabled,
@@ -681,6 +721,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		clearSetupCommand,
 		refreshCredentials,
 		refreshInstanceModelCredentials,
+		loadModelCatalog,
 		refreshModuleSettings,
 		verifyModel,
 		verifySandbox,
