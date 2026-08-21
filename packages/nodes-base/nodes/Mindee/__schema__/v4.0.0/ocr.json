@@ -1,0 +1,98 @@
+{
+	"type": "object",
+	"properties": {
+		"inference": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "string",
+					"description": "ID of the inference"
+				},
+				"job": {
+					"type": "object",
+					"description": "Job the inference belongs to",
+					"properties": {
+						"id": {
+							"type": "string",
+							"description": "UUID of the Job"
+						}
+					}
+				},
+				"model": {
+					"type": "object",
+					"description": "Model info for the inference",
+					"properties": {
+						"id": {
+							"type": "string",
+							"description": "ID of the model"
+						}
+					}
+				},
+				"file": {
+					"type": "object",
+					"description": "File info for the inference",
+					"properties": {
+						"name": {
+							"type": "string",
+							"description": "Name of the file"
+						},
+						"alias": {
+							"type": "string",
+							"description": "Optional alias for the file"
+						},
+						"page_count": {
+							"type": "integer",
+							"description": "Page count"
+						},
+						"mime_type": {
+							"type": "string",
+							"description": "MIME type"
+						}
+					}
+				},
+				"result": {
+					"type": "object",
+					"description": "Result of an OCR inference",
+					"properties": {
+						"pages": {
+							"type": "array",
+							"description": "List of OCR results for each page in the document",
+							"items": {
+								"type": "object",
+								"properties": {
+									"content": {
+										"type": "string",
+										"description": "Full text content extracted from the document page"
+									},
+									"words": {
+										"type": "array",
+										"description": "List of words extracted from the document page",
+										"items": {
+											"type": "object",
+											"properties": {
+												"content": {
+													"type": "string",
+													"description": "Text content of the word"
+												},
+												"polygon": {
+													"type": "array",
+													"description": "Position information as a list of points in clockwise order",
+													"items": {
+														"type": "array",
+														"items": {
+															"type": "number"
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

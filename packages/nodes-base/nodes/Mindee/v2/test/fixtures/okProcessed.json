@@ -1,0 +1,14 @@
+{
+	"job": {
+		"id": "12345678-1234-1234-1234-123456789ABC",
+		"model_id": "87654321-4321-4321-4321-CBA987654321",
+		"filename": "default_sample.jpg",
+		"alias": "dummy-alias.jpg",
+		"created_at": "2025-07-03T14:27:58.974451",
+		"status": "Processed",
+		"polling_url": "https://api-v2.mindee.net/v2/jobs/12345678-1234-1234-1234-123456789ABC",
+		"result_url": "https://api-v2.mindee.net/v2/inferences/12345678-1234-1234-1234-123456789ABC",
+		"webhooks": [],
+		"error": null
+	}
+}
