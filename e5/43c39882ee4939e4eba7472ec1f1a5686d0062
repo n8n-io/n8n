@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_6e0e8168b15a08::t_75b4176ac25c91 175-189,956-964,966-969
+  s_6e0e8168b15a08::t_f2caabc472834f 965
+packages/workflow/src/interfaces.ts
+  s_6e0e8168b15a08::t_3816c6d9ca1386 2292-2295
+  s_6e0e8168b15a08::t_5017d8d96a041d 2291
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_6e0e8168b15a08::t_75b4176ac25c91 595-630
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_6e0e8168b15a08::t_7333a9cb0de12e 1581-1626
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_6e0e8168b15a08::t_f2caabc472834f 193
+  s_6e0e8168b15a08::t_3816c6d9ca1386 194-198,448,475
+  s_6e0e8168b15a08::t_6bc2fbdf7ae91f 192
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_6e0e8168b15a08::t_3816c6d9ca1386 266-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e543c39882ee4939e4eba7472ec1f1a5686d0062",
+  "prompts": {},
+  "sessions": {
+    "s_6e0e8168b15a08": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00185-b743-71c2-9839-c445afe0fdb8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

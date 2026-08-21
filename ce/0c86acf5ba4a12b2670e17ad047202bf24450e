@@ -1,0 +1,21 @@
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_00622278583879::t_0719326fbb6d3e 185
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_00622278583879::t_0db58193f87ca5 234,256,288,291,295,319,334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce0c86acf5ba4a12b2670e17ad047202bf24450e",
+  "prompts": {},
+  "sessions": {
+    "s_00622278583879": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a020e2-d273-7b21-99f9-d7a110097bea",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

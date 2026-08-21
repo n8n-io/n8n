@@ -1,0 +1,117 @@
+packages/cli/src/modules/agents/__tests__/workflow-agent-stream.test.ts
+  s_110e6964417a24::t_0004d81761511c 3,214,233,286
+  s_6e0e8168b15a08::t_1897d02de1869a 58,66,68
+  s_110e6964417a24::t_661a877944135a 1-2,4-57,59-61,63,67,69-213,215-232,234-285,287-296
+  s_6e0e8168b15a08::t_aff75cde91f17a 62,64-65
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.vue
+  s_110e6964417a24::t_e541c0b0938de8 41
+  s_110e6964417a24::t_9874c256f596c5 10,17,19-23,40,42,55,66,83
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_110e6964417a24::t_3607bfcde10c43 1535
+  s_110e6964417a24::t_0f6243a66b7a14 1507-1534,1536-1556
+  s_6e0e8168b15a08::t_e4b42a55823416 1557-1558
+packages/cli/src/modules/agents/workflow-agent-stream.ts
+  s_110e6964417a24::t_b9dbf07451c4d5 30
+  s_110e6964417a24::t_1433725bb060ee 116
+  s_110e6964417a24::t_53161770b24683 3-9,11-16,18-20,22-24,31-40,42-44,47-87,89-98,100-115,117-121,123-136,138-141,143-166,168-181
+  s_110e6964417a24::t_f43376cfb8d110 2,17,21,25-29,41,99
+  s_110e6964417a24::t_5cdba099ff990a 1,10,45-46,88,137,167
+  s_6e0e8168b15a08::t_aff75cde91f17a 122,142
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_6e0e8168b15a08::t_162cdbfdcb6e56 1011-1044
+  s_6e0e8168b15a08::t_a56f87bf8c0337 984,996-999
+  s_110e6964417a24::t_a863b7f05b2b84 978,1000-1003
+  s_6e0e8168b15a08::t_b58f5f92f2bcc6 985-995
+  s_110e6964417a24::t_08be51f2242906 22,606,618,647-651
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_6e0e8168b15a08::t_ac846bd1c4715f 68-74,109,256,268,270,351,372,429,439,442
+  s_6e0e8168b15a08::t_a56f87bf8c0337 97-102,105,446
+  s_110e6964417a24::t_b9dbf07451c4d5 46-49
+  s_6e0e8168b15a08::t_ba6907fcb016d9 106-107,480,537,592,667
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/index.ts
+  s_110e6964417a24::t_1155ae47abfc01 1
+packages/cli/src/workflow-execute-additional-data.ts
+  s_110e6964417a24::t_5cdba099ff990a 404-408
+  s_110e6964417a24::t_b9dbf07451c4d5 74-76,78,377,403,409
+  s_110e6964417a24::t_63f8ae945b8c47 77,410-412,432,448
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.test.ts
+  s_110e6964417a24::t_4ade2c2ac0fc2a 1580-1598,1601-1608,1610-1621,1623-1637,1653-1680,1686-1688
+  s_6e0e8168b15a08::t_1897d02de1869a 1638-1652
+  s_110e6964417a24::t_6a9ecd7d87d22b 1681-1685
+  s_110e6964417a24::t_5442be581837fe 9-10,58-72
+  s_110e6964417a24::t_c70d4d2c0994ec 57,1599-1600,1609,1622
+  s_6e0e8168b15a08::t_b94b59c261b1c9 73-74
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionFinished.ts
+  s_110e6964417a24::t_1155ae47abfc01 110
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.test.ts
+  s_110e6964417a24::t_fffc820fc0047e 41-44,161-168,170-176
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_110e6964417a24::t_49f5f489cd98a6 25,419-429,503-507,509-554,556-559,561-581,583-592
+  s_110e6964417a24::t_0004d81761511c 15,508,560
+  s_110e6964417a24::t_28d8a7f1aec40e 498-502,555,620,665,713,761,806
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/nodeExecuteAfter.test.ts
+  s_110e6964417a24::t_c70d4d2c0994ec 62
+  s_110e6964417a24::t_8326d483697329 86
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionFinished.test.ts
+  s_110e6964417a24::t_8326d483697329 289
+  s_110e6964417a24::t_eda93a96a8cdbd 274
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/nodeExecuteAfter.ts
+  s_110e6964417a24::t_1155ae47abfc01 69
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.ts
+  s_110e6964417a24::t_1155ae47abfc01 27,80-81
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_110e6964417a24::t_1155ae47abfc01 47-49
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/agentNodeProgress.ts
+  s_110e6964417a24::t_1155ae47abfc01 1-10
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.ts
+  s_110e6964417a24::t_9874c256f596c5 5-10,18-19,50,98,134,139-144
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_110e6964417a24::t_35ef7e4885cc47 26,30-31,52-69,264-271,280-286,290-321
+  s_6e0e8168b15a08::t_f93ec462850f9b 322
+packages/frontend/editor-ui/src/features/agents/utils/agentCapabilityActivity.ts
+  s_110e6964417a24::t_11c727425ef164 21
+  s_110e6964417a24::t_1155ae47abfc01 1-20,22-23
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.ts
+  s_110e6964417a24::t_1155ae47abfc01 23,55-59,166-177,179-212,215-221,223-227,230,232-266,587,613,944,960,1035,1068-1070
+  s_6e0e8168b15a08::t_aff75cde91f17a 178,213-214,222,228-229,231
+packages/@n8n/api-types/src/push/execution.ts
+  s_110e6964417a24::t_53161770b24683 57-76,147
+packages/frontend/editor-ui/src/features/agents/components/AgentChipButton.vue
+  s_110e6964417a24::t_9874c256f596c5 50,104-107
+  s_110e6964417a24::t_e9627665a7efd2 108-109
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_110e6964417a24::t_11c727425ef164 138-139
+  s_110e6964417a24::t_9874c256f596c5 23,39,136-137,140,240-244
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.test.ts
+  s_110e6964417a24::t_4de8873f34eba1 10
+  s_110e6964417a24::t_ee9a35b310fa36 6,47,133-154
+  s_6e0e8168b15a08::t_89a414900ecda0 155-156
+packages/@n8n/api-types/src/push/index.ts
+  s_110e6964417a24::t_8b9cf7ec905660 14-15
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.test.ts
+  s_110e6964417a24::t_fffc820fc0047e 22,71-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "817d1ff8f9ea9f9d6e1599f1b6d0ad673d9b920a",
+  "prompts": {},
+  "sessions": {
+    "s_110e6964417a24": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00176-1f2a-7182-a4bf-86c7380dc314",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_6e0e8168b15a08": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00185-b743-71c2-9839-c445afe0fdb8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
