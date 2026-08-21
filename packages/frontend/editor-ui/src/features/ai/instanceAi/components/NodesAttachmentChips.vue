@@ -29,11 +29,9 @@ const injectedWorkflowId = inject(
 	WorkflowIdKey,
 	computed(() => ''),
 );
-const workflowDocumentStore = computed(() =>)
+const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(
-		createWorkflowDocumentId(
-			props.attachment.workflowId || injectedWorkflowId.value || 'unknown',
-		),
+		createWorkflowDocumentId(props.attachment.workflowId || injectedWorkflowId.value || 'unknown'),
 	),
 );
 
