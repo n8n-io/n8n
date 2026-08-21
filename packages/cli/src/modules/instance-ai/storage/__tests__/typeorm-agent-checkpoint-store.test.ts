@@ -68,6 +68,7 @@ describe('TypeORMAgentCheckpointStore', () => {
 		expect(checkpointRepo.create).toHaveBeenCalledWith({
 			key: 'checkpoint:run-1',
 			runId: 'run-1',
+			hostRunId: null,
 			threadId: 'thread-1',
 			resourceId: 'user-1',
 			state,
@@ -109,6 +110,14 @@ describe('TypeORMAgentCheckpointStore', () => {
 		const loaded = await store.load('checkpoint:run-1');
 
 		expect(loaded).toBeUndefined();
+	});
+
+	it('passes the loaded snapshot to the atomic resume claim', async () => {
+		const state = makeState();
+		checkpointRepo.claimSuspendedForResume.mockResolvedValueOnce(true);
+
+		await expect(store.claimForResume('checkpoint:run-1', state)).resolves.toBe(true);
+		expect(checkpointRepo.claimSuspendedForResume).toHaveBeenCalledWith('checkpoint:run-1', state);
 	});
 
 	it('throws a UserError when loading an expired tombstone', async () => {

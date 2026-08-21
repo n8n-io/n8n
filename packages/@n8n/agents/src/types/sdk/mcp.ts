@@ -3,8 +3,22 @@ export type McpVerifyResult =
 	| { ok: false; errors: Array<{ server: string; error: string }> };
 
 export interface McpToolCallSettledEvent {
+	/** Original, unprefixed name reported by the MCP server. */
 	toolName: string;
+	/** Exact normalized name exposed to the model. */
+	modelToolName?: string;
 	success: boolean;
+}
+
+/**
+ * Emitted when an MCP server connection (transport start or MCP initialize)
+ * fails. The server's tools are skipped for the run, but the run continues with
+ * the remaining servers' tools.
+ */
+export interface McpConnectionFailedEvent {
+	/** Display name of the server that failed to connect. */
+	server: string;
+	error: string;
 }
 
 export interface McpServerConfig {
@@ -28,6 +42,9 @@ export interface McpServerConfig {
 
 	/** Optional callback that's invoked after an MCP tool call settles. */
 	onToolCallSettled?: (event: McpToolCallSettledEvent) => void | Promise<void>;
+
+	/** Optional callback invoked when this server fails to connect or initialize. */
+	onConnectionFailed?: (event: McpConnectionFailedEvent) => void | Promise<void>;
 
 	/**
 	 * Maximum time in milliseconds to wait for this server connection (transport

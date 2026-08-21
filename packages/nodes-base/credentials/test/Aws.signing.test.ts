@@ -67,6 +67,26 @@ describe('AWS signing helpers (unit)', () => {
 			expect(req.headers.host).toBe('sqs.eu-central-1.amazonaws.com');
 		});
 
+		it('stringifies numeric header values (S3 multipart upload passes a numeric Content-Length)', () => {
+			const req = buildSmithyHttpRequest({
+				...base,
+				headers: { 'Content-Length': 1024 },
+			} as SignOpts);
+
+			expect(req.headers['content-length']).toBe('1024');
+		});
+
+		it('joins array header values with commas and drops undefined and null values', () => {
+			const req = buildSmithyHttpRequest({
+				...base,
+				headers: { 'x-multi': ['a', 'b'], 'x-missing': undefined, 'x-null': null },
+			} as unknown as SignOpts);
+
+			expect(req.headers['x-multi']).toBe('a,b');
+			expect(req.headers['x-missing']).toBeUndefined();
+			expect(req.headers['x-null']).toBeUndefined();
+		});
+
 		it('injects aws4-style content-type and content-length for a string body', () => {
 			const req = buildSmithyHttpRequest({ ...base, headers: {}, body: 'a=1&b=2' } as SignOpts);
 
@@ -209,6 +229,111 @@ describe('AWS signing (integration, real signer)', () => {
 		expect(headers['x-amz-content-sha256']).toBeDefined();
 		expect(signedHeadersFrom(authorization)).toContain('x-amz-content-sha256');
 		expect(result.body).toBe(buf);
+	});
+
+	it('signs an S3 multipart part upload with a numeric Content-Length header', async () => {
+		const chunk = Buffer.from('multipart chunk payload');
+		const result = await aws.authenticate(credentials, {
+			...baseRequest,
+			method: 'PUT',
+			body: chunk,
+			headers: {
+				'Content-Length': chunk.length,
+				'Content-MD5': 'q0jVSkkeFyhBBcqugSHUEg==',
+			} as unknown as IHttpRequestOptions['headers'],
+			qs: { service: 's3', path: '/my-bucket/big-file.bin?partNumber=1&uploadId=abc123' },
+		});
+
+		const headers = result.headers as Record<string, string>;
+		const authorization = headers.authorization ?? headers.Authorization;
+
+		expect(authorization).toContain('AWS4-HMAC-SHA256');
+		expect(headers['content-length']).toBe(String(chunk.length));
+		expect(signedHeadersFrom(authorization)).toContain('content-length');
+		expect(signedHeadersFrom(authorization)).toContain('content-md5');
+	});
+
+	describe('SES email endpoints', () => {
+		// SES endpoints are `email.<region>.amazonaws.com` but sign under `ses`
+		// (botocore: endpointPrefix 'email', signingName 'ses'). aws4 remapped this
+		// internally; smithy signs the name it is given. SES v2 rejects an
+		// email-scoped credential outright, v1 happens to tolerate it.
+
+		it('signs an SES v2 REST call (HTTP Request node shape) with the ses service name', async () => {
+			const result = await aws.authenticate(credentials, {
+				...baseRequest,
+				method: 'POST',
+				url: 'https://email.eu-central-1.amazonaws.com/v2/email/outbound-emails',
+				body: { FromEmailAddress: 'sender@example.com' },
+			});
+
+			const headers = result.headers as Record<string, string>;
+			expect(headers.authorization).toContain('/eu-central-1/ses/aws4_request');
+		});
+
+		it('signs an SES v1 query call (SES node shape, service param) with the ses service name', async () => {
+			// The AwsSes node passes service 'email', taking the default-endpoint branch.
+			const result = await aws.authenticate(credentials, {
+				...baseRequest,
+				method: 'POST',
+				qs: { service: 'email', path: '/?Action=GetSendQuota&Version=2010-12-01' },
+			});
+
+			const headers = result.headers as Record<string, string>;
+			expect(headers.authorization).toContain('/eu-central-1/ses/aws4_request');
+		});
+
+		describe('parity with the legacy aws4 signer', () => {
+			beforeEach(() => {
+				// Freeze time so both signers embed the same X-Amz-Date
+				vi.useFakeTimers();
+				vi.setSystemTime(new Date('2026-07-15T12:00:00.000Z'));
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+				delete process.env.N8N_AWS_LEGACY_SIGNER;
+			});
+
+			function signatureFrom(headers: Record<string, string>): string {
+				const authorization = headers.authorization ?? headers.Authorization;
+				return /Signature=([0-9a-f]{64})/.exec(authorization)?.[1] ?? '<unsigned>';
+			}
+
+			it('produces the aws4 signature byte-for-byte for an SES v2 send', async () => {
+				const request: IHttpRequestOptions = {
+					...baseRequest,
+					method: 'POST',
+					url: 'https://email.eu-central-1.amazonaws.com/v2/email/outbound-emails',
+					body: { FromEmailAddress: 'sender@example.com' },
+				};
+
+				const smithy = await aws.authenticate(credentials, { ...request });
+				process.env.N8N_AWS_LEGACY_SIGNER = 'true';
+				const legacy = await aws.authenticate(credentials, { ...request });
+
+				const smithySignature = signatureFrom(smithy.headers as Record<string, string>);
+				expect(smithySignature).toMatch(/^[0-9a-f]{64}$/);
+				expect(smithySignature).toBe(signatureFrom(legacy.headers as Record<string, string>));
+			});
+
+			it("canonicalizes '+' and '@' in SES paths identically to aws4", async () => {
+				// Suppression-list addresses put raw emails in the path
+				const request: IHttpRequestOptions = {
+					...baseRequest,
+					url: 'https://email.eu-central-1.amazonaws.com/v2/email/suppression/addresses/bounce+test@example.com',
+				};
+
+				const smithy = await aws.authenticate(credentials, { ...request });
+				process.env.N8N_AWS_LEGACY_SIGNER = 'true';
+				const legacy = await aws.authenticate(credentials, { ...request });
+
+				const smithySignature = signatureFrom(smithy.headers as Record<string, string>);
+				expect(smithySignature).toMatch(/^[0-9a-f]{64}$/);
+				expect(smithySignature).toBe(signatureFrom(legacy.headers as Record<string, string>));
+				expect(smithy.url).toBe(legacy.url);
+			});
+		});
 	});
 
 	describe('legacy fallback', () => {

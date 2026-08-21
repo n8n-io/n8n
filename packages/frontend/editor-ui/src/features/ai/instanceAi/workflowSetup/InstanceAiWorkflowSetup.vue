@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { toRef } from 'vue';
+import { provide, toRef } from 'vue';
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import WorkflowSetupWizard from './components/WorkflowSetupWizard.vue';
 import WorkflowSetupStatus from './components/WorkflowSetupStatus.vue';
 import { provideWorkflowSetupContext } from './composables/useWorkflowSetupContext';
+import { ResourceLocatorDropdownTeleportedKey } from '@/app/constants';
 
 const props = defineProps<{
 	requestId: string;
@@ -12,6 +13,8 @@ const props = defineProps<{
 	workflowId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
 }>();
+
+provide(ResourceLocatorDropdownTeleportedKey, true);
 
 const ctx = provideWorkflowSetupContext({
 	requestId: toRef(props, 'requestId'),

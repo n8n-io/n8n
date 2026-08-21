@@ -1,27 +1,17 @@
-import type { TagEntity } from '@n8n/db';
-import { TagRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { FindManyOptions } from '@n8n/typeorm';
+import type { TagRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TagService } from '@/services/tag.service';
 
-import type { TagRequest } from '../../../types';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
-import {
-	apiKeyHasScopeWithGlobalScopeFallback,
-	validCursor,
-} from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
-
 type TagHandlers = {
 	createTag: PublicAPIEndpoint<TagRequest.Create>;
 	updateTag: PublicAPIEndpoint<TagRequest.Update>;
 	deleteTag: PublicAPIEndpoint<TagRequest.Delete>;
-	getTags: PublicAPIEndpoint<TagRequest.GetAll>;
 	getTag: PublicAPIEndpoint<TagRequest.Get>;
 };
 
@@ -77,29 +67,6 @@ const tagHandlers: TagHandlers = {
 
 			await Container.get(TagService).delete(id);
 			return res.json(tag);
-		},
-	],
-	getTags: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:list' }),
-		validCursor,
-		async (req, res) => {
-			const { offset = 0, limit = 100 } = req.query;
-
-			const query: FindManyOptions<TagEntity> = {
-				skip: offset,
-				take: limit,
-			};
-
-			const [tags, count] = await Container.get(TagRepository).findAndCount(query);
-
-			return res.json({
-				data: tags,
-				nextCursor: encodeNextCursor({
-					offset,
-					limit,
-					numberOfTotalRecords: count,
-				}),
-			});
 		},
 	],
 	getTag: [

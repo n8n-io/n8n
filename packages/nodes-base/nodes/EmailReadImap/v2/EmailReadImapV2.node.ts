@@ -35,7 +35,7 @@ const versionDescription: INodeTypeDescription = {
 	icon: 'fa:inbox',
 	iconColor: 'green',
 	group: ['trigger'],
-	version: [2, 2.1],
+	version: [2, 2.1, 2.2],
 	description: 'Triggers the workflow when a new email is received',
 	eventTriggerDescription: 'Waiting for you to receive an email',
 	defaults: {

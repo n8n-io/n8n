@@ -57,10 +57,49 @@ describe('Microsoft Excel (SharePoint) Error Handler', () => {
 			);
 		});
 
-		it('replaces a nested NotFound error with the not-found message', () => {
+		it('replaces a nested ItemNotFound error with the not-found message', () => {
+			// This is the shape a live tenant actually returns for a nonexistent
+			// site/library/workbook/sheet, confirmed against a real Microsoft Graph tenant.
 			const error = delegatedApiError.call(ctx, {
 				statusCode: 404,
-				error: { error: { code: 'NotFound', message: 'Resource not found' } },
+				error: {
+					error: { code: 'ItemNotFound', message: "The requested resource doesn't exist." },
+				},
+			});
+
+			expect(error.message).toBe(
+				'The requested resource was not found. Check the Site, Library, Workbook, and Sheet values.',
+			);
+		});
+
+		it('replaces the not-found message when the error arrives already wrapped in a NodeApiError', () => {
+			// httpRequestWithAuthentication always wraps failures in `new NodeApiError(node, rawError)`
+			// before this function ever sees them. That constructor lifts the parsed JSON body onto
+			// `context.data`, not `error.error`, and overwrites `.message` with a generic per-status-code
+			// default — both confirmed against a real Microsoft Graph tenant hitting a missing sheet.
+			const rawHttpClientError = {
+				response: {
+					status: 404,
+					data: {
+						error: { code: 'ItemNotFound', message: "The requested resource doesn't exist." },
+					},
+				},
+			};
+			const wrapped = new NodeApiError(ctx.getNode(), rawHttpClientError as never);
+			expect(wrapped.httpCode).toBe('404');
+			expect(wrapped.message).toBe('The resource you are requesting could not be found');
+
+			const error = delegatedApiError.call(ctx, wrapped);
+
+			expect(error.message).toBe(
+				'The requested resource was not found. Check the Site, Library, Workbook, and Sheet values.',
+			);
+		});
+
+		it('replaces a nested NotFound error with the not-found message regardless of its message text', () => {
+			const error = delegatedApiError.call(ctx, {
+				statusCode: 404,
+				error: { error: { code: 'NotFound', message: 'some other wording' } },
 			});
 
 			expect(error.message).toBe(

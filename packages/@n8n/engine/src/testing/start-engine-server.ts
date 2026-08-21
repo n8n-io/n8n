@@ -1,12 +1,13 @@
 import type { Server } from 'node:http';
 
+import type { StartExecutionService } from '../execution';
 import { createEngineServer } from '../server';
 
-export async function startEngineServer(): Promise<{
+export async function startEngineServer(startExecution: StartExecutionService): Promise<{
 	url: string;
 	stop: () => Promise<void>;
 }> {
-	const { app } = createEngineServer();
+	const { app } = createEngineServer(startExecution);
 
 	const server = await new Promise<Server>((resolve, reject) => {
 		const s = app.listen(0, '127.0.0.1', () => resolve(s));

@@ -54,7 +54,9 @@ describe('useAgentResourcesLocator', () => {
 			'proj-1',
 			expect.objectContaining({ skip: 0, take: 40, sortBy: 'updatedAt:desc' }),
 		);
-		expect(agentsResources.value).toEqual([{ name: 'Agent 1', value: 'a1' }]);
+		expect(agentsResources.value).toEqual([
+			{ name: 'Agent 1', value: 'a1', personalisation: null },
+		]);
 		expect(hasMoreAgentsToLoad.value).toBe(true);
 	});
 
@@ -109,7 +111,9 @@ describe('useAgentResourcesLocator', () => {
 			'proj-1',
 			expect.objectContaining({ skip: 0, filter: { query: 'support' } }),
 		);
-		expect(agentsResources.value).toEqual([{ name: 'Support', value: 'a2' }]);
+		expect(agentsResources.value).toEqual([
+			{ name: 'Support', value: 'a2', personalisation: null },
+		]);
 	});
 
 	it('discards a stale search response that resolves after a newer one', async () => {
@@ -134,7 +138,9 @@ describe('useAgentResourcesLocator', () => {
 		await stale;
 		await flushPromises();
 
-		expect(agentsResources.value).toEqual([{ name: 'Newer', value: 'newer' }]);
+		expect(agentsResources.value).toEqual([
+			{ name: 'Newer', value: 'newer', personalisation: null },
+		]);
 	});
 
 	it('ignores a stale error from a request a newer search superseded', async () => {
@@ -161,7 +167,9 @@ describe('useAgentResourcesLocator', () => {
 		await flushPromises();
 
 		expect(loadError.value).toBeNull();
-		expect(agentsResources.value).toEqual([{ name: 'Newer', value: 'newer' }]);
+		expect(agentsResources.value).toEqual([
+			{ name: 'Newer', value: 'newer', personalisation: null },
+		]);
 	});
 
 	it('surfaces loadMore errors via loadError without throwing', async () => {
@@ -270,7 +278,28 @@ describe('useAgentResourcesLocator', () => {
 		);
 		await setAgentsResources();
 
-		expect(agentsResources.value).toEqual([{ name: 'Marketing — Team Agent', value: 'a1' }]);
+		expect(agentsResources.value).toEqual([
+			{ name: 'Marketing — Team Agent', value: 'a1', personalisation: null },
+		]);
+	});
+
+	it('exposes the agent personalisation from the list payload', async () => {
+		const personalisation = {
+			icon: 'rocket',
+			gradient: { from: '#FF0000', to: '#00FF00', angle: 90, fromStop: 0, toStop: 100 },
+		};
+		listAgentsPage.mockResolvedValue({
+			count: 1,
+			data: [{ id: 'a1', name: 'Agent 1', projectId: 'proj-1', schema: { personalisation } }],
+		});
+
+		const { setAgentsResources, agentsResources } = useAgentResourcesLocator(
+			ref('proj-1'),
+			noProjectName,
+		);
+		await setAgentsResources();
+
+		expect(agentsResources.value).toEqual([{ name: 'Agent 1', value: 'a1', personalisation }]);
 	});
 
 	it('does not query and yields an empty catalog when no project is resolved', async () => {

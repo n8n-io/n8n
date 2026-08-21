@@ -19,7 +19,7 @@ export class AmqpTrigger implements INodeType {
 		icon: 'file:amqp.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Listens to AMQP 1.0 Messages',
+		description: 'Listens to AMQP 1.0 messages',
 		defaults: {
 			name: 'AMQP Trigger',
 		},
@@ -40,16 +40,16 @@ export class AmqpTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'topic://sourcename.something',
-				description: 'Name of the queue of topic to listen to',
+				description: 'Name of the queue or topic to listen to',
 			},
 			{
-				displayName: 'Clientname',
+				displayName: 'Client Name',
 				name: 'clientname',
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. n8n',
 				description: 'Leave empty for non-durable topic subscriptions or queues',
-				hint: 'for durable/persistent topic subscriptions',
+				hint: 'For durable/persistent topic subscriptions',
 			},
 			{
 				displayName: 'Subscription',
@@ -58,7 +58,7 @@ export class AmqpTrigger implements INodeType {
 				default: '',
 				placeholder: 'e.g. order-worker',
 				description: 'Leave empty for non-durable topic subscriptions or queues',
-				hint: 'for durable/persistent topic subscriptions',
+				hint: 'For durable/persistent topic subscriptions',
 			},
 			{
 				displayName: 'Options',
@@ -72,7 +72,7 @@ export class AmqpTrigger implements INodeType {
 						name: 'containerId',
 						type: 'string',
 						default: '',
-						description: 'Will be used to pass to the RHEA Backend as container_id',
+						description: 'Will be passed to the RHEA backend as container_id',
 					},
 					{
 						displayName: 'Convert Body To String',
@@ -80,7 +80,7 @@ export class AmqpTrigger implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'Whether to convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
+							'Whether to convert JSON body content (["body"]["content"]) from byte array to string. Needed for Azure Service Bus.',
 					},
 					{
 						displayName: 'JSON Parse Body',
@@ -90,11 +90,11 @@ export class AmqpTrigger implements INodeType {
 						description: 'Whether to parse the body to an object',
 					},
 					{
-						displayName: 'Messages per Cicle',
+						displayName: 'Messages per Cycle',
 						name: 'pullMessagesNumber',
 						type: 'number',
 						default: 100,
-						description: 'Number of messages to pull from the bus for every cicle',
+						description: 'Number of messages to pull from the bus for every cycle',
 					},
 					{
 						displayName: 'Only Body',
@@ -129,7 +129,7 @@ export class AmqpTrigger implements INodeType {
 						name: 'sleepTime',
 						type: 'number',
 						default: 10,
-						description: 'Milliseconds to sleep after every cicle',
+						description: 'Milliseconds to sleep after every cycle',
 					},
 				],
 			},
@@ -163,22 +163,49 @@ export class AmqpTrigger implements INodeType {
 		const container = create_container();
 
 		let lastMsgId: string | number | Buffer | undefined = undefined;
+		let inFlightMessages = 0;
+		// rhea resets link credit when a reconnect attempt starts, so credit added
+		// between disconnect and reattach would double-count with the grant below
+		let receiverReady = true;
 
-		container.on('receiver_open', (context: EventContext) => {
-			context.receiver?.add_credit(pullMessagesNumber);
+		container.on('disconnected', () => {
+			receiverReady = false;
 		});
 
-		container.on('message', async (context: EventContext) => {
+		container.on('receiver_open', (context: EventContext) => {
+			receiverReady = true;
+			// on reconnect, executions from before the disconnect may still hold slots
+			context.receiver?.add_credit(Math.max(0, pullMessagesNumber - inFlightMessages));
+		});
+
+		// each delivered message holds 1 link credit until it is done (processed,
+		// skipped or failed), capping concurrent executions at pullMessagesNumber
+		const processMessage = async (context: EventContext) => {
+			if (!context.message) return null;
+			inFlightMessages++;
 			try {
-				const result = await handleMessage.call(this, context, {
+				return await handleMessage.call(this, context, {
 					lastMessageId: lastMsgId,
-					pullMessagesNumber,
 					jsonConvertByteArrayToString: options.jsonConvertByteArrayToString as boolean,
 					jsonParseBody: options.jsonParseBody as boolean,
 					onlyBody: options.onlyBody as boolean,
 					parallelProcessing,
-					sleepTime: options.sleepTime as number,
 				});
+			} finally {
+				setTimeout(
+					() => {
+						inFlightMessages--;
+						// while the link is down its freed slot is granted by receiver_open instead
+						if (receiverReady) context.receiver?.add_credit(1);
+					},
+					(options.sleepTime as number) || 10,
+				);
+			}
+		};
+
+		container.on('message', async (context: EventContext) => {
+			try {
+				const result = await processMessage(context);
 				if (result) {
 					lastMsgId = result.messageId;
 				}
@@ -220,6 +247,7 @@ export class AmqpTrigger implements INodeType {
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
+			container.removeAllListeners('disconnected');
 			container.removeAllListeners('receiver_open');
 			container.removeAllListeners('message');
 			connection.close();
@@ -236,6 +264,7 @@ export class AmqpTrigger implements INodeType {
 				container.removeAllListeners('message');
 
 				const timeoutHandler = setTimeout(() => {
+					container.removeAllListeners('disconnected');
 					container.removeAllListeners('receiver_open');
 					container.removeAllListeners('message');
 					connection.close();
@@ -243,25 +272,17 @@ export class AmqpTrigger implements INodeType {
 					reject(
 						new NodeOperationError(
 							this.getNode(),
-							'Aborted because no message received within 15 seconds',
+							'Aborted because no message was received within 15 seconds',
 							{
 								description:
-									'This 15sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.',
+									'This 15-second timeout only applies to manually triggered executions. Active workflows will listen indefinitely.',
 							},
 						),
 					);
 				}, 15000);
 				container.on('message', async (context: EventContext) => {
 					try {
-						const result = await handleMessage.call(this, context, {
-							lastMessageId: lastMsgId,
-							pullMessagesNumber,
-							jsonConvertByteArrayToString: options.jsonConvertByteArrayToString as boolean,
-							jsonParseBody: options.jsonParseBody as boolean,
-							onlyBody: options.onlyBody as boolean,
-							parallelProcessing,
-							sleepTime: options.sleepTime as number,
-						});
+						const result = await processMessage(context);
 						if (result) {
 							lastMsgId = result.messageId;
 						}

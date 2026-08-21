@@ -2,6 +2,8 @@ Cursor:
   $ref: './cursor.yml'
 Limit:
   $ref: './limit.yml'
+Offset:
+  $ref: './offset.yml'
 ExecutionId:
   $ref: '../../../handlers/executions/spec/schemas/parameters/executionId.yml'
 WorkflowId:

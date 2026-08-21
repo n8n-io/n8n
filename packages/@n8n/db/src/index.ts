@@ -16,6 +16,8 @@ export { generateHostInstanceId } from './utils/generators';
 export { isStringArray } from './utils/is-string-array';
 export { isUniqueConstraintError } from './utils/is-unique-constraint-error';
 export { isValidEmail } from './utils/is-valid-email';
+export { parseListQuerySortBy } from './utils/list-query-sort';
+export type { ListQuerySort, ListQuerySortDirection } from './utils/list-query-sort';
 export { separate } from './utils/separate';
 export { sql } from './utils/sql';
 export { idStringifier, lowerCaser, objectRetriever, sqlite } from './utils/transformers';
@@ -44,6 +46,14 @@ export type { DbPoolStats } from './connection/db-pool-stats';
 
 export { AuthRolesService } from './services/auth.roles.service';
 export { DbLock, DbLockService } from './services/db-lock.service';
+
+export { TransactionRunner } from './services/transaction';
+export type {
+	Transaction,
+	OperationContext,
+	IsolationLevel,
+	RunOptions,
+} from './services/transaction';
 
 export { In, Like, MoreThanOrEqual, Not, DataSource } from '@n8n/typeorm';
 export type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';

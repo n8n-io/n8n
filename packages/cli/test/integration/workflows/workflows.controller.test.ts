@@ -167,6 +167,52 @@ describe('POST /workflows', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	// CAT-3966: static data is backend-owned (poll cursors, third-party webhook registrations).
+	test('should ignore client-supplied `staticData`', async () => {
+		const payload = {
+			...makeWorkflow({ withPinData: false }),
+			staticData: { 'node:Trello Trigger': { webhookId: 'someone-elses-webhook' } },
+		};
+
+		const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+
+		const created = await workflowRepository.findOneByOrFail({ id: response.body.data.id });
+		expect(created.staticData).toBeNull();
+	});
+
+	test('should reject a workflow whose nodes share a node id', async () => {
+		const payload = {
+			name: 'duplicate node ids',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {},
+			active: false,
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('share the node ID "uuid-1234"');
+	});
+
 	test('should retain accept `workflow.id`', async () => {
 		const payload = {
 			id: 'HDssU5Ce250UWyLg_MNG4',
@@ -1158,7 +1204,7 @@ describe('GET /workflows', () => {
 					activeVersionId: null,
 					createdAt: any(String),
 					updatedAt: any(String),
-					tags: [{ id: any(String), name: 'A' }],
+					tags: [{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) }],
 					versionId: any(String),
 					homeProject: {
 						id: ownerPersonalProject.id,
@@ -1466,8 +1512,8 @@ describe('GET /workflows', () => {
 					objectContaining({
 						name: 'First',
 						tags: expect.arrayContaining([
-							{ id: any(String), name: 'A' },
-							{ id: any(String), name: 'B' },
+							{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) },
+							{ id: any(String), name: 'B', createdAt: any(String), updatedAt: any(String) },
 						]),
 					}),
 				],
@@ -2036,8 +2082,14 @@ describe('GET /workflows', () => {
 			expect(response.body).toEqual({
 				count: 2,
 				data: arrayContaining([
-					objectContaining({ id: any(String), tags: [{ id: any(String), name: 'A' }] }),
-					objectContaining({ id: any(String), tags: [{ id: any(String), name: 'B' }] }),
+					objectContaining({
+						id: any(String),
+						tags: [{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) }],
+					}),
+					objectContaining({
+						id: any(String),
+						tags: [{ id: any(String), name: 'B', createdAt: any(String), updatedAt: any(String) }],
+					}),
 				]),
 			});
 		});
@@ -2446,7 +2498,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					activeVersionId: null,
 					createdAt: any(String),
 					updatedAt: any(String),
-					tags: [{ id: any(String), name: 'A' }],
+					tags: [{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) }],
 					versionId: any(String),
 					homeProject: {
 						id: ownerPersonalProject.id,
@@ -2846,6 +2898,7 @@ describe('GET /workflows?includeFolders=true', () => {
 				data: [
 					objectContaining({
 						name: 'First Folder',
+						// Folder tags come from FolderRepository, which selects id/name only.
 						tags: expect.arrayContaining([
 							{ id: any(String), name: 'A' },
 							{ id: any(String), name: 'B' },
@@ -2854,8 +2907,8 @@ describe('GET /workflows?includeFolders=true', () => {
 					objectContaining({
 						name: 'First',
 						tags: expect.arrayContaining([
-							{ id: any(String), name: 'A' },
-							{ id: any(String), name: 'B' },
+							{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) },
+							{ id: any(String), name: 'B', createdAt: any(String), updatedAt: any(String) },
 						]),
 					}),
 				],
@@ -3274,7 +3327,7 @@ describe('PATCH /workflows/:workflowId', () => {
 					position: [240, 300],
 				},
 				{
-					id: 'uuid-1234',
+					id: 'uuid-5678',
 					parameters: {},
 					name: 'Cron',
 					type: 'n8n-nodes-base.cron',
@@ -3311,6 +3364,91 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(newVersion).not.toBeNull();
 		expect(newVersion!.connections).toEqual(payload.connections);
 		expect(newVersion!.nodes).toEqual(payload.nodes);
+	});
+
+	// CAT-3966: see the matching POST test — static data is backend-owned.
+	test('should ignore client-supplied `staticData`', async () => {
+		const workflow = await createWorkflow(
+			{ staticData: { 'node:Trello Trigger': { webhookId: 'registered-by-the-engine' } } },
+			owner,
+		);
+
+		await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({
+				name: 'name updated',
+				staticData: { 'node:Trello Trigger': { webhookId: 'someone-elses-webhook' } },
+			})
+			.expect(200);
+
+		const updated = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		expect(updated.staticData).toEqual({
+			'node:Trello Trigger': { webhookId: 'registered-by-the-engine' },
+		});
+	});
+
+	test('should allow a metadata-only update of a workflow whose stored nodes share a node id', async () => {
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						parameters: {},
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [240, 300],
+					},
+					{
+						id: 'uuid-1234',
+						parameters: {},
+						name: 'Cron',
+						type: 'n8n-nodes-base.cron',
+						typeVersion: 1,
+						position: [400, 300],
+					},
+				],
+				connections: {},
+			},
+			owner,
+		);
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'name updated' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.name).toBe('name updated');
+	});
+
+	test('should reject an update that sends nodes sharing a node id', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('share the node ID "uuid-1234"');
 	});
 
 	test('should broadcast workflow update to collaborators', async () => {
@@ -4535,6 +4673,79 @@ describe('POST /workflows/:workflowId/activate', () => {
 	});
 });
 
+describe('workflow conflict detection when a version is activated mid-edit (INS-859)', () => {
+	// `activeVersionId` is one of WORKFLOW_CHECKSUM_FIELDS, so activating a workflow shifts its
+	// server-side checksum even though no editable content changed. An editor that captured its
+	// checksum before the activation push therefore autosaves with a stale checksum and gets a
+	// (correct) 409 — the false "changed by someone else" conflict from INS-859. These tests pin
+	// that backend contract: a 409 on the pre-activation checksum, a clean save on the refreshed
+	// one. The frontend fix (refresh the checksum on the `workflowActivated` push) relies on it.
+
+	test('changes the workflow checksum when a version is activated', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const beforeActivation = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		expect(beforeActivation.body.data.activeVersionId).toBeNull();
+		const checksumBeforeActivation = beforeActivation.body.data.checksum;
+
+		const activated = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// Only activeVersionId changed, yet the checksum moves — the root cause of the conflict.
+		expect(activated.body.data.activeVersionId).toBe(workflow.versionId);
+		expect(activated.body.data.checksum).not.toBe(checksumBeforeActivation);
+	});
+
+	test('rejects an autosave whose checksum was captured before activation', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		// The editor loads the workflow and holds its checksum while the user keeps editing.
+		const loaded = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const checksumHeldByEditor = loaded.body.data.checksum;
+
+		// A server-side activation lands while the canvas is still dirty.
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// The debounced autosave ships with the now-stale pre-activation checksum (the edit here
+		// stands in for the node drag in the original report — the conflict is checksum-driven,
+		// not content-driven).
+		const autosave = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Edited while activation landed',
+			expectedChecksum: checksumHeldByEditor,
+		});
+
+		expect(autosave.statusCode).toBe(409);
+		expect(autosave.body.code).toBe(409);
+	});
+
+	test('accepts the autosave once the checksum is refreshed after activation, preserving the edit', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const activated = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// The fix: on the `workflowActivated` push the editor refreshes its checksum to the
+		// post-activation value before the autosave fires.
+		const refreshedChecksum = activated.body.data.checksum;
+
+		const autosave = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'Edited while activation landed', expectedChecksum: refreshedChecksum })
+			.expect(200);
+
+		// The in-progress edit is persisted and the activation state is preserved.
+		expect(autosave.body.data.name).toBe('Edited while activation landed');
+		expect(autosave.body.data.activeVersionId).toBe(workflow.versionId);
+	});
+});
+
 describe('POST /workflows/:workflowId/deactivate', () => {
 	test('should deactivate active workflow', async () => {
 		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
@@ -5192,7 +5403,7 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 	test('should return the last successful execution', async () => {
 		const workflow = await createWorkflow({}, owner);
 
-		const { createSuccessfulExecution } = await import('../shared/db/executions');
+		const { createSuccessfulExecution } = await import('../shared/db/executions.js');
 
 		// Create multiple executions with different statuses
 		await createSuccessfulExecution(workflow);

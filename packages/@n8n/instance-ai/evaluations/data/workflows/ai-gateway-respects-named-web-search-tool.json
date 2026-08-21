@@ -1,0 +1,28 @@
+{
+	"description": "Guardrail for the node-preference rule on the workflow path: when the user explicitly names a web-search tool that is NOT n8n-credits-covered (SerpApi), the build must honour it and must not substitute a covered node or the managed credential — the preference applies only when the user named no tool. Mirrors the prior ai-gateway-respects-named-provider case on the web-search axis. Build-only. NOT YET CALIBRATED against a real build.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow that searches the web for industry news using SerpApi and posts the top 3 to a Slack channel."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "simple",
+	"tags": [
+		"build",
+		"workflow",
+		"web-search",
+		"slack",
+		"ai-gateway",
+		"n8n-connect",
+		"node-preference"
+	],
+	"datasets": ["ai-gateway"],
+	"processExpectations": [
+		"The agent did not substitute the user's explicitly named SerpApi for a different web-search node or for an n8n-credits-covered alternative, even though n8n credits is available on the instance — it honoured the named tool."
+	],
+	"outcomeExpectations": [
+		"Web search is performed via SerpApi — the tool the user explicitly named (a SerpApi node or an HTTP Request to the SerpApi API) — and the build did not substitute a different provider or an n8n-credits-covered node.",
+		"The top three results are posted to a Slack channel."
+	]
+}

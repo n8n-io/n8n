@@ -227,6 +227,6 @@ const hasMetadata = computed(
 	border-radius: var(--radius--3xs);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text);
-	background: var(--color--background--light-2);
+	background: var(--color--background--light-1);
 }
 </style>

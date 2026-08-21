@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -15,7 +15,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
 import SkeletonMenuItem from './SkeletonMenuItem.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { type ChatHubSessionDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';

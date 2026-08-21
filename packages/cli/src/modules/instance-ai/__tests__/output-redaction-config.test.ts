@@ -17,6 +17,10 @@ describe('resolveOutputRedaction', () => {
 		expect(resolveOutputRedaction(config({ outputRedactionEnabled: false }))).toBe(false);
 	});
 
+	it('returns false when the durable log is on, even with redaction enabled (raw-at-rest)', () => {
+		expect(resolveOutputRedaction(config({ durableLog: true }))).toBe(false);
+	});
+
 	it('maps secrets, PII categories, and placeholder from config', () => {
 		expect(resolveOutputRedaction(config())).toEqual({
 			secrets: true,

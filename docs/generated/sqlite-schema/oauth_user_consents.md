@@ -57,6 +57,7 @@ erDiagram
   datetime_3_ createdAt
   TEXT grantTypes
   varchar id PK
+  boolean isFirstParty
   varchar_255_ name
   TEXT redirectUris
   varchar_255_ tokenEndpointAuthMethod

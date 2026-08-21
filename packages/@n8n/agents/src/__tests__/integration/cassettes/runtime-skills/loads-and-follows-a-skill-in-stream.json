@@ -9,7 +9,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Summary marker\"\n  description: \"Use for summarizing notes, updates, or short text while preserving a marker.\"\n  id: \"summary-marker\"\n  category: \"productivity\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
+					"text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Summary marker\"\n  description: \"Use for summarizing notes, updates, or short text while preserving a marker.\"\n  id: \"summary-marker\"\n  category: \"productivity\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. Use the skill catalog in your instructions to pick a matching skillId. Call load_skill with the exact matching skillId before answering when a skill applies. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
 				}
 			],
 			"messages": [
@@ -25,21 +25,6 @@
 			],
 			"tools": [
 				{
-					"name": "list_skills",
-					"description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"category": {
-								"type": "string",
-								"description": "Optional exact category filter."
-							}
-						},
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
 					"name": "load_skill",
 					"description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
 					"input_schema": {
@@ -48,12 +33,12 @@
 							"skillId": {
 								"type": "string",
 								"minLength": 1,
-								"description": "Skill id from list_skills."
+								"description": "Skill id from the skill catalog."
 							},
 							"name": {
 								"type": "string",
 								"minLength": 1,
-								"description": "Skill name from list_skills."
+								"description": "Skill name from the skill catalog."
 							}
 						},
 						"additionalProperties": false,
@@ -111,7 +96,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Summary marker\"\n  description: \"Use for summarizing notes, updates, or short text while preserving a marker.\"\n  id: \"summary-marker\"\n  category: \"productivity\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
+					"text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Summary marker\"\n  description: \"Use for summarizing notes, updates, or short text while preserving a marker.\"\n  id: \"summary-marker\"\n  category: \"productivity\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. Use the skill catalog in your instructions to pick a matching skillId. Call load_skill with the exact matching skillId before answering when a skill applies. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
 				}
 			],
 			"messages": [
@@ -158,21 +143,6 @@
 			],
 			"tools": [
 				{
-					"name": "list_skills",
-					"description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"category": {
-								"type": "string",
-								"description": "Optional exact category filter."
-							}
-						},
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
 					"name": "load_skill",
 					"description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
 					"input_schema": {
@@ -181,12 +151,12 @@
 							"skillId": {
 								"type": "string",
 								"minLength": 1,
-								"description": "Skill id from list_skills."
+								"description": "Skill id from the skill catalog."
 							},
 							"name": {
 								"type": "string",
 								"minLength": 1,
-								"description": "Skill name from list_skills."
+								"description": "Skill name from the skill catalog."
 							}
 						},
 						"additionalProperties": false,

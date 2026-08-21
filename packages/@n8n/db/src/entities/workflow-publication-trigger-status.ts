@@ -11,7 +11,9 @@ export type WorkflowPublicationTriggerStatusType = 'activated' | 'failed';
  * or `trigger` function are registered `in-memory` on the owning instance,
  * nodes with only a `webhook` function are `persisted` rows in
  * `webhook_entity`. Reconciliation diffs the `in-memory` ones against the
- * registry.
+ * registry. `persisted` also covers the no-op pseudo triggers (manual,
+ * executeWorkflow, error): the execution engine fires them directly, so
+ * neither leader handoff nor reconciliation has registry work to redo.
  */
 export type WorkflowPublicationTriggerKind = 'in-memory' | 'persisted';
 

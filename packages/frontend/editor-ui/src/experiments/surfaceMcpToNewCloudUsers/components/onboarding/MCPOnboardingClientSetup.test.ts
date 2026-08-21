@@ -4,7 +4,7 @@ import MCPOnboardingClientSetup from './MCPOnboardingClientSetup.vue';
 
 const mockClipboardCopy = vi.fn();
 
-vi.mock('@/app/composables/useClipboard', () => ({
+vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: () => ({
 		copy: mockClipboardCopy,
 		copied: { value: false },

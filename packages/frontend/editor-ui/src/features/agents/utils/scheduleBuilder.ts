@@ -129,7 +129,11 @@ export function formatTimeOfDay(hour: number, minute: number): string {
 	);
 }
 
-/** Localized run timestamp (weekday + date + time) in the given timezone. */
+/**
+ * Localized run timestamp (weekday + date + time) in the given timezone. Names
+ * the zone so the preview stays unambiguous when the schedule's timezone isn't
+ * the one the reader's own clock is in.
+ */
 export function formatScheduleDateTime(date: Date, timezone: string): string {
 	return new Intl.DateTimeFormat(undefined, {
 		timeZone: timezone,
@@ -138,5 +142,6 @@ export function formatScheduleDateTime(date: Date, timezone: string): string {
 		month: 'short',
 		hour: 'numeric',
 		minute: '2-digit',
+		timeZoneName: 'short',
 	}).format(date);
 }

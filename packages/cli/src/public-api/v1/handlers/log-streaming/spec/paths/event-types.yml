@@ -1,0 +1,21 @@
+get:
+  x-eov-operation-id: getEventTypes
+  x-required-scope: eventBusDestination:list
+  x-eov-operation-handler: v1/handlers/log-streaming/log-streaming.handler
+  tags:
+    - LogStreaming
+  summary: List streamable event types
+  description: >
+    List the event types that can be streamed to a log streaming destination. Requires the
+    `eventBusDestination:list` scope and the Log Streaming feature to be licensed.
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/event-types.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'

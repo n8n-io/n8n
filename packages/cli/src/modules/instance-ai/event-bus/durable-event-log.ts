@@ -38,6 +38,7 @@ const MAX_APPEND_ATTEMPTS = 5;
  * line published after run-finish, or a liveness timeout notice) would sit in
  * the coalescer forever; after this quiet period the open buffers are flushed
  * as blocks so they reach the durable log and replay/history stay complete.
+ * The same tick releases the thread's drain state.
  */
 const IDLE_FLUSH_MS = 3_000;
 
@@ -84,6 +85,22 @@ interface CoalesceBuffer {
 	 *  so the reducer can REPLACE the segment's streamed deltas on replay. */
 	textResponseId?: string;
 	reasoningResponseId?: string;
+	/** Trailing parts buffered by the in-flight drain batch whose live frames
+	 *  have not been emitted yet (the batch is awaiting its persist).
+	 *  getOpenSegments() excludes them: the client receives those frames live
+	 *  after the bootstrap flips, so serving them too would duplicate text. */
+	textUnemittedParts: number;
+	reasoningUnemittedParts: number;
+}
+
+/** A streamed segment still open in the coalescer — the only place its
+ *  streamed-so-far text exists (deltas are never persisted). */
+export interface OpenSegment {
+	runId: string;
+	agentId: string;
+	responseId?: string;
+	kind: 'text' | 'reasoning';
+	text: string;
 }
 
 type EmitFn = (drained: DrainedEvent) => void;
@@ -144,12 +161,84 @@ export class DurableEventLog {
 		if (existing) clearTimeout(existing);
 		const timer = setTimeout(() => {
 			this.idleFlushTimers.delete(threadId);
-			void this.flush(threadId).catch((error) => {
+			void this.settleIdleThread(threadId).catch((error) => {
 				this.logger.error('Instance AI event log idle flush failed', { threadId, error });
 			});
 		}, this.idleFlushMs);
 		timer.unref();
 		this.idleFlushTimers.set(threadId, timer);
+	}
+
+	/**
+	 * Flush the quiet thread's trailing deltas, then drop its drain state so the
+	 * per-thread maps don't accumulate one entry per thread the process has ever
+	 * served — a thread is only cleared explicitly or by the TTL prune,
+	 * which never reaches a non-leader main at all.
+	 *
+	 * All three are caches: `lastSeq` re-seeds from MAX(seq) (the append path
+	 * already drops it on a conflict), `emitters` is re-set by every publish, and
+	 * `lifecycles` mints a fresh token on demand — so a later publish for the
+	 * same thread just pays one seed query.
+	 */
+	private async settleIdleThread(threadId: string): Promise<void> {
+		await this.flush(threadId);
+		// flush() resolves from inside the drain, before the loop clears its
+		// `draining` entry — await the drain itself so "quiet" really means quiet.
+		await this.draining.get(threadId);
+		// Everything below is synchronous, so a publish cannot interleave between
+		// the checks and the deletes; one arriving after them simply recreates
+		// the state. Releasing under work in flight is not merely wasteful —
+		// dropping `emitters` while a drain is queued makes drainBatch bail and
+		// discard that batch — so bail on any sign of it.
+		//
+		// A publish during the awaits above already re-armed the timer, so that
+		// tick does the release.
+		if (this.idleFlushTimers.has(threadId)) return;
+		// The rest have no tick of their own: flush() enqueues a marker and calls
+		// ensureDraining without ever arming a timer (every run boundary does this
+		// via readRunEvents), and a drain batch that throws resolves its flush
+		// signals in ensureDraining's catch while leaving open buffers behind.
+		// Re-arm rather than deferring the release to a publish that may never
+		// come — a thread going silent in that window would keep its drain state
+		// for the process lifetime.
+		//
+		// `draining` is belt-and-braces: reaching here with a drain in flight
+		// needs one started without arming a timer, which today cannot happen
+		// (flush() only drains when pending/buffers are already non-empty, and
+		// both only fill via publish, which always arms one). Cheap to check, and
+		// releasing under an in-flight batch is not merely wasteful — dropping
+		// `lifecycles` makes the resuming batch bail, and its coalesced blocks are
+		// already out of `buffers`, so that streamed text would be lost.
+		if (
+			this.pendingByThread.has(threadId) ||
+			this.draining.has(threadId) ||
+			(this.buffers.get(threadId)?.size ?? 0) > 0
+		) {
+			this.scheduleIdleFlush(threadId);
+			return;
+		}
+		this.buffers.delete(threadId);
+		this.lastSeq.delete(threadId);
+		this.emitters.delete(threadId);
+		this.lifecycles.delete(threadId);
+	}
+
+	/**
+	 * Threads holding any drain state in this process. Every per-thread map, so
+	 * the count stays honest mid-drain too: a flush() with no prior publish
+	 * starts a drain without an emitter, leaving the thread in `draining` alone
+	 * until the batch bails.
+	 */
+	retainedThreadCount(): number {
+		return new Set([
+			...this.pendingByThread.keys(),
+			...this.draining.keys(),
+			...this.lastSeq.keys(),
+			...this.buffers.keys(),
+			...this.emitters.keys(),
+			...this.lifecycles.keys(),
+			...this.idleFlushTimers.keys(),
+		]).size;
 	}
 
 	async getEventsAfter(threadId: string, afterSeq: number): Promise<StoredEvent[]> {
@@ -158,6 +247,35 @@ export class DurableEventLog {
 
 	async getEventsForRuns(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
 		return await this.repo.getForRuns(threadId, runIds);
+	}
+
+	/**
+	 * The thread's still-open streamed segments, read from the coalesce buffers.
+	 * SYNCHRONOUS on purpose: the SSE bootstrap serves these in its synchronous
+	 * tail, where "no delta lands between this read and live delivery taking
+	 * over" is what makes serving them exactly-once. Parts whose live frames the
+	 * in-flight drain batch has not emitted yet are excluded — the client gets
+	 * those as normal live deltas once the batch's persist resolves.
+	 */
+	getOpenSegments(threadId: string): OpenSegment[] {
+		const threadBuffers = this.buffers.get(threadId);
+		if (!threadBuffers) return [];
+		const segments: OpenSegment[] = [];
+		for (const [key, buffer] of threadBuffers) {
+			const separator = key.indexOf(':');
+			const runId = key.slice(0, separator);
+			const agentId = key.slice(separator + 1);
+			for (const kind of ['reasoning', 'text'] as const) {
+				const parts = kind === 'text' ? buffer.text : buffer.reasoning;
+				const unemitted =
+					kind === 'text' ? buffer.textUnemittedParts : buffer.reasoningUnemittedParts;
+				const emitted = unemitted > 0 ? parts.slice(0, parts.length - unemitted) : parts;
+				if (emitted.length === 0) continue;
+				const responseId = kind === 'text' ? buffer.textResponseId : buffer.reasoningResponseId;
+				segments.push({ runId, agentId, kind, responseId, text: emitted.join('') });
+			}
+		}
+		return segments;
 	}
 
 	async getNextEventId(threadId: string): Promise<number> {
@@ -353,6 +471,7 @@ export class DurableEventLog {
 					: undefined;
 			emit({ ...(id !== undefined ? { id } : {}), event: drained.event, live: drained.live });
 		}
+		this.markBufferedPartsEmitted(threadId);
 		settleFlushes();
 	}
 
@@ -498,10 +617,23 @@ export class DurableEventLog {
 		const buffer = this.getOrCreateBuffer(threadId, `${event.runId}:${event.agentId}`);
 		if (event.type === 'text-delta') {
 			buffer.text.push(event.payload.text);
+			buffer.textUnemittedParts++;
 			buffer.textResponseId = event.responseId ?? buffer.textResponseId;
 		} else {
 			buffer.reasoning.push(event.payload.text);
+			buffer.reasoningUnemittedParts++;
 			buffer.reasoningResponseId = event.responseId ?? buffer.reasoningResponseId;
+		}
+	}
+
+	/** All buffered parts have had their live frames emitted (end of a drain
+	 *  batch): open-segment reads may serve them again safely. */
+	private markBufferedPartsEmitted(threadId: string): void {
+		const threadBuffers = this.buffers.get(threadId);
+		if (!threadBuffers) return;
+		for (const buffer of threadBuffers.values()) {
+			buffer.textUnemittedParts = 0;
+			buffer.reasoningUnemittedParts = 0;
 		}
 	}
 
@@ -531,6 +663,9 @@ export class DurableEventLog {
 			const text = this.takeBlock('text', fact.runId, agentId, buffer);
 			if (text) flushed.push(text);
 		}
+		// Don't leave an empty map behind: it would outlive the run and pin one
+		// entry per thread the process has served.
+		if (threadBuffers.size === 0) this.buffers.delete(threadId);
 		return flushed;
 	}
 
@@ -564,6 +699,7 @@ export class DurableEventLog {
 		if (kind === 'text') {
 			const responseId = buffer.textResponseId;
 			buffer.text = [];
+			buffer.textUnemittedParts = 0;
 			buffer.textResponseId = undefined;
 			return {
 				type: 'text-block',
@@ -575,6 +711,7 @@ export class DurableEventLog {
 		}
 		const responseId = buffer.reasoningResponseId;
 		buffer.reasoning = [];
+		buffer.reasoningUnemittedParts = 0;
 		buffer.reasoningResponseId = undefined;
 		return {
 			type: 'reasoning-block',
@@ -603,7 +740,7 @@ export class DurableEventLog {
 		}
 		let buffer = threadBuffers.get(key);
 		if (!buffer) {
-			buffer = { text: [], reasoning: [] };
+			buffer = { text: [], reasoning: [], textUnemittedParts: 0, reasoningUnemittedParts: 0 };
 			threadBuffers.set(key, buffer);
 		}
 		return buffer;

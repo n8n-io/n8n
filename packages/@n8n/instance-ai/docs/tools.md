@@ -180,13 +180,31 @@ List workflows accessible to the current user.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `query` | string | no | — | Filter workflows by name |
+| `query` | string | no | — | Substring filter on the workflow name only — omit for inventory questions |
 | `limit` | number | no | 50 | Max results (1–100) |
 | `status` | `"active" \| "archived" \| "all"` | no | `"active"` | Which workflows to list |
+| `scope` | `"project" \| "instance"` | no | `"project"` | Which project(s) to search |
+| `projectId` | string | no | — | Read one specific project, overriding `scope` |
 
-**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt }] }`
+**Returns**: `{ workflows: [{ id, name, activeVersionId, isArchived, createdAt, updatedAt, project? }], total, totalInScope, note? }`
 
 `activeVersionId` is `null` when the workflow is unpublished.
+
+`total` is how many workflows match every filter; `totalInScope` is how many the
+same status and scope hold with `query` dropped. When a name filter or `limit`
+left workflows out, `note` says so — a filtered page must never be read as the
+project's full inventory.
+
+`project` (`{ id, name }`) is the owning project, present only when the listing
+can span more than one — i.e. neither `projectId` nor a bound project narrowed it
+to one. It is what makes membership readable in a cross-project listing instead
+of guessable by comparing per-scope counts.
+
+`projectId` is a read-only narrowing: the adapter passes it as a filter on a query
+that still resolves readability from the caller's own project and workflow roles,
+so it cannot reach a project the user can't read (`scope: "instance"` already
+returns that whole readable set). Writes ignore it and stay locked to the thread's
+bound project.
 
 ### `get-workflow`
 
@@ -272,7 +290,9 @@ configure it interactively.
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow to set up |
 
-**Returns**: `{ completedNodes, skippedNodes, failedNodes }`
+**Returns**: `{ completedNodes, nodesStillNeedingSetup, skippedByUser, failedNodes }` —
+`nodesStillNeedingSetup` is what nobody has configured yet, `skippedByUser` what the user
+actively dismissed and the agent must not re-open (see `reopenSkipped`).
 
 ### `publish-workflow`
 
@@ -479,8 +499,13 @@ The LLM never sees secrets — the user interacts with the n8n frontend directly
 
 **Returns**: `{ credentialId, credentialType, needsBrowserSetup? }`
 
-**HITL**: Suspends execution and renders the credential setup UI. When
-`needsBrowserSetup=true`, the orchestrator should load the
+**HITL**: Suspends execution and renders the credential setup UI. When a single
+matching *service-scoped* credential already exists, the card auto-selects it
+and resolves without user input — a `success` result with a credentials map
+means setup is already complete, and the card is never open once a result is
+returned. Generic auth types (bearer/header/query/basic/etc.) stay preselected
+but always require an explicit Continue, since the type alone does not identify
+a service. When `needsBrowserSetup=true`, the orchestrator should load the
 `credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
 directly, then call `setup-credentials` again to finalize.
 
@@ -601,7 +626,7 @@ require `workspaceService.listFolders`.
 
 | Tool | Description |
 |------|-------------|
-| `list-projects` | List projects accessible to the user |
+| `list-projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
 | `tag-workflow` | Apply tags to a workflow |
 | `list-tags` | List available tags |
 | `cleanup-test-executions` | Remove test execution data |
@@ -682,40 +707,98 @@ Delegates agent building to the agents-module builder chat
 turn per call. Registered in `createOrchestrationTools` only when the host
 provides `builderDelegate` (agents module active). The builder's own prompt
 and tools drive the build, including its interactive tools (`ask_questions`,
-`ask_credential`, `ask_embedding_credential`, `configure_channel`) — the
-sub-agent session no longer excludes them. Builder session state is keyed to
+`ask_credential`, `ask_embedding_credential`, `configure_channel`, and
+`call_agent` target-tool approvals) and
+lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
+the sub-agent session no longer excludes them. Forward publish/unpublish/
+activate/make-live intents to `build-agent`; never tell the user to open the
+agent editor and click Publish. The builder also inherits the orchestrator's
+validated, approval-wrapped MCP connector tools so it can use the same external
+context while designing the agent; connector tools that conflict with a native
+builder tool name are skipped. Builder session state is keyed to
 instance-AI-scoped threads (`ia-builder:<threadId>:<agentId>`) and never
 appears in the agents-module builder UI.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `message` | string | yes | Instruction or user message to forward to the builder — the builder cannot see this chat, so include every requirement, decision, and answer already gathered, not just the latest message |
-| `name` | string | no | Name for a NEW agent (first call only) |
-| `agentId` | string | no | Existing agent id to edit (first call only) |
+| `name` | string | no | Agent name — switches back to the agent with that name built earlier in this conversation, or creates a new agent and makes it the active target; omit on follow-up calls for the current agent |
+| `agentId` | string | no | Existing agent id to edit — use the `agentId` returned by earlier build-agent results; pass to start editing that agent or to switch the active build target; omit on follow-up calls |
 | `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
-**Returns**: `{ ok: true, builderReply, configUpdated }` on success, or
-`{ ok: false, error, configUpdated? }` on failure. `configUpdated` is optional:
-it's included (reporting mutations from passes that already ran) once a
-builder turn has actually been dispatched — mid-turn failures and resume
-failures that still carry a prior checkpoint ref — but omitted for
-precondition failures before any turn starts (agents module not configured,
-missing `name`/`agentId`, no project context to bind `agentId`, or a resume
-whose suspend payload has no checkpoint ref to carry).
+**Returns**: `{ ok: true, builderReply, configUpdated, agentId,
+agentName? }` on success, or `{ ok: false, error, configUpdated?, agentId?,
+agentName? }` on failure (`agentId`/`agentName` identify the targeted agent
+once a builder turn was dispatched; precondition failures before any turn
+omit them). `configUpdated` is optional: it's included (reporting mutations
+from passes that already ran) once a builder turn has actually been
+dispatched — mid-turn failures and resume failures that still carry a prior
+checkpoint ref — but omitted for precondition failures before any turn
+starts (agents module not configured, missing `name`/`agentId`, no project
+context to bind `agentId`, or a resume whose suspend payload has no
+checkpoint ref to carry).
 
-**Interactive questions:** when the builder suspends on one of its interactive
-tools (batched questions, a credential picker, or channel setup), this tool
+**Interactive requests:** when the builder suspends on one of its interactive
+tools (batched questions, a credential picker, channel setup, or a standard SDK
+approval requested by a target-agent test run), this tool
 cascades the suspension through its own suspend/resume so it renders as a
 chat card directly in the assistant conversation — no manual relaying, and the
-suspension survives a process restart. On resume, the tool re-derives the
-target agent and the builder's open suspension from persistence and verifies
-they match the suspension it originally cascaded before routing the answer
-back; a stale or superseded suspension fails the call instead of silently
-resuming the wrong one.
+suspension survives a process restart. On resume, the tool takes the target
+agent from the checkpoint ref carried in the suspend payload (falling back
+to the persisted active binding for older checkpoints), re-derives the
+builder's open suspension from persistence, and verifies they match the
+suspension it originally cascaded before routing the answer back; a stale
+or superseded suspension fails the call instead of silently resuming the
+wrong one.
 
 **Targeting:** the first call must pass `name` (new agent) or `agentId`
-(existing agent); the binding is then persisted to thread metadata so
-follow-up calls keep editing the same agent without repeating `name`/`agentId`.
+(existing agent); the active target is persisted to thread metadata so
+follow-up calls keep editing the same agent without repeating them. The
+target is rebindable: a `name` matching an agent already targeted this
+conversation switches back to it (tracked in a per-thread registry), while
+an unmatched name creates another agent and switches to it (the same name
+as the active target just continues it), a different `agentId` switches to
+that agent (persisted only once the builder turn settles, so a bad id
+cannot clobber the existing binding), and `agentId` wins when both are
+given. Prefer switching by the `agentId` returned from earlier calls; the
+name lookup is the fallback when the id is unknown.
+
+### `agents` *(domain tool — requires the `agents` backend module)*
+
+Read-only listing of the project's n8n Agent artifacts. One action, `list`:
+returns `{ count, agents: [{ agentId, name, published, updatedAt }] }`, most
+recently updated first. Registered alongside `build-agent` (agents module
+active + project-bound conversation, `agent:read` scope enforced in the
+adapter). Use it to answer questions about existing agents and to find the
+`agentId` for `build-agent` when editing an agent not built in this
+conversation. Creation and editing stay on `build-agent`.
+
+## MCP Registry Tool
+
+### `mcp-servers` *(domain tool — conditional)*
+
+Tool to interact with connected and available MCP servers, and to let the user connect one from the chat.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `action` | `'connected' \| 'details' \| 'search' \| 'connect'` | yes | Discriminator |
+| `slug` | string | `details` | Server slug, as returned by `connected` |
+| `queries` | string[] | `search` | Free-text queries matched against server name, title, description |
+| `serverSlugs` | string[] | `connect` | Slugs returned by `search`, best match first, max 3 |
+| `reason` | string | `connect` | One sentence for the confirmation record |
+
+**`connected`** → `{ servers: [{ slug, toolCount }], hint? }`. Every connected MCP
+server, counts only — names are `details`' job.
+
+**`details`** → `{ slug, tools, hint? }`. One server's tool names. `hint` tells an
+unconnected slug apart from a connected server that loaded no tools.
+
+**`search`** → `{ results: [{ slug, title, description, tools }], hint? }`, capped
+at 5, most relevant first. Only servers the user has *not* connected come back.
+
+**`connect`** → `{ connectedSlugs, message }`. Suspends to render the inline
+**Available tools** card, resuming when the user connects or skips. `connectedSlugs`
+are the ones the server confirms on resume, not the ones the client claimed.
 
 ## Other Domain Tools
 
@@ -749,6 +832,10 @@ only the domain tools wired into that agent.
 | MCP tools | ✅ | ❌ |
 | Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ |
 
+The embedded Agent Builder is an exception to the specialized-background-agent
+column: it inherits the orchestrator's safe MCP connector tools. Eval setup and
+other specialized background agents do not.
+
 ---
 
 ## Adding New Tools
@@ -762,3 +849,7 @@ only the domain tools wired into that agent.
 6. New native domain tools registered in `createAllTools` are available to the orchestrator immediately
 7. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles
    the suspension/resume lifecycle automatically
+8. Tool handlers are wrapped at registry registration time so Stop races
+   `ctx.abortSignal`. For network/sandbox I/O, also forward `ctx.abortSignal`
+   into the underlying request so work stops cooperatively (see `research` and
+   `n8n-docs`)

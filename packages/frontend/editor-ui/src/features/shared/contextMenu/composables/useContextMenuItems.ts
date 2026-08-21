@@ -11,6 +11,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
@@ -48,6 +49,10 @@ export type ContextMenuAction =
 	| 'collapse_all_groups'
 	| 'expand_selected_groups'
 	| 'collapse_selected_groups'
+	| 'show_all_group_descriptions'
+	| 'hide_all_group_descriptions'
+	| 'show_group_description'
+	| 'hide_group_description'
 	| 'focus_ai_on_selected';
 
 /**
@@ -77,6 +82,7 @@ export function useContextMenuItems(
 ): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
@@ -176,11 +182,67 @@ export function useContextMenuItems(
 		// A group target gets the multi-selection menu over its member nodes,
 		// worded for the group as a whole, plus the group's own actions on top.
 		const isGroupTarget = targetGroupId?.value !== undefined;
+
+		// Workflow-wide show/hide, for the empty-canvas menu only. A view
+		// preference, so it stays enabled in read-only mode.
+		const allGroupsDescriptionActions: Item[] = (() => {
+			if (groupView === undefined) return [];
+
+			const groupsWithDescription = (workflowDocumentStore?.value?.allGroups ?? []).filter(
+				(group) => !!group.description?.trim(),
+			);
+			if (groupsWithDescription.length === 0) return [];
+
+			const anyDisplayed = groupsWithDescription.some((group) =>
+				groupView.isDescriptionVisible(group.id),
+			);
+			const anyHidden = groupsWithDescription.some(
+				(group) => !groupView.isDescriptionVisible(group.id),
+			);
+
+			const items: Item[] = [];
+			if (anyHidden) {
+				items.push({
+					id: 'show_all_group_descriptions',
+					label: i18n.baseText('contextMenu.showAllGroupDescriptions'),
+				});
+			}
+			if (anyDisplayed) {
+				items.push({
+					id: 'hide_all_group_descriptions',
+					label: i18n.baseText('contextMenu.hideAllGroupDescriptions'),
+				});
+			}
+			return items;
+		})();
+
+		// Show/hide the targeted group's own description. Collapsed only — the
+		// pinned panel it toggles exists only then.
+		const groupDescriptionActions: Item[] = (() => {
+			const groupId = targetGroupId?.value;
+			if (groupView === undefined || groupId === undefined) return [];
+
+			const group = workflowDocumentStore?.value?.allGroups.find((g) => g.id === groupId);
+			if (!group?.description?.trim() || !groupView.isGroupCollapsed(groupId)) return [];
+
+			const visible = groupView.isDescriptionVisible(groupId);
+			return [
+				{
+					id: visible ? 'hide_group_description' : 'show_group_description',
+					divided: true,
+					label: visible
+						? i18n.baseText('contextMenu.hideGroupDescription')
+						: i18n.baseText('contextMenu.showGroupDescription'),
+				},
+			];
+		})();
+
 		const groupActions: Item[] = isGroupTarget
 			? [
 					{
 						id: 'rename_group',
 						label: i18n.baseText('contextMenu.renameGroup'),
+						shortcut: { keys: ['Space'] },
 						disabled: isReadOnly.value,
 					},
 					{
@@ -189,6 +251,7 @@ export function useContextMenuItems(
 						shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
 						disabled: isReadOnly.value,
 					},
+					...groupDescriptionActions,
 				]
 			: [];
 
@@ -201,7 +264,10 @@ export function useContextMenuItems(
 		}
 
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
-		const canExtract = nodes.some(isExecutable) && !nodes.every(isAiSubNode);
+		const canExtract =
+			!settingsStore.isSubworkflowConversionDisabled &&
+			nodes.some(isExecutable) &&
+			!nodes.every(isAiSubNode);
 
 		const i18nOptions = isGroupTarget
 			? {
@@ -366,6 +432,8 @@ export function useContextMenuItems(
 				},
 				...layoutActions,
 				...groupViewActions,
+				// Join the group-view section
+				...allGroupsDescriptionActions.map((item) => ({ ...item, divided: false })),
 				...selectionActions,
 			];
 		} else {

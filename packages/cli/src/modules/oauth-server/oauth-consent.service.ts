@@ -1,3 +1,4 @@
+import type { ConsentUiHints } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -27,6 +28,12 @@ type ConsentDetailsResult =
 			scopes: string[];
 			/** Scopes this user granted to this client last time, to preselect in the picker. */
 			previousScopes?: string[];
+			/** Tool names each scope unlocks, shown per scope group in the picker. */
+			scopeTools?: Record<string, string[]>;
+			/** Presentational hints for the consent screen, sourced from the target resource. */
+			uiHints?: ConsentUiHints;
+			/** Whether the requesting client is a trusted first-party client. */
+			isFirstParty: boolean;
 	  }
 	| { ok: false; reason: 'resource_unavailable' }
 	| { ok: false; reason: 'forbidden' };
@@ -88,11 +95,15 @@ export class OAuthConsentService {
 					redirectUri: sessionPayload.redirectUri,
 					scopes,
 					previousScopes: await this.previousScopes(user.id, client.id, scopes),
+					scopeTools: resource.getScopeTools?.(),
+					uiHints: resource.uiHints,
+					isFirstParty: client.isFirstParty,
 				};
 			}
 
+			const defaultResource = this.protectedResourceRegistry.getDefaultResource();
 			const scopes = this.grantableScopes(
-				this.protectedResourceRegistry.getDefaultResource()?.scopes ?? [],
+				defaultResource?.scopes ?? [],
 				sessionPayload.requestedScopes,
 			);
 
@@ -103,6 +114,9 @@ export class OAuthConsentService {
 				redirectUri: sessionPayload.redirectUri,
 				scopes,
 				previousScopes: await this.previousScopes(user.id, client.id, scopes),
+				scopeTools: defaultResource?.getScopeTools?.(),
+				uiHints: defaultResource?.uiHints,
+				isFirstParty: client.isFirstParty,
 			};
 		} catch (error) {
 			this.logger.error('Error getting consent details', { error });
@@ -195,6 +209,16 @@ export class OAuthConsentService {
 
 		const grantedScopes = await this.resolveGrantedScopes(sessionPayload, scopes);
 
+		return await this.issueGrant(user, sessionPayload, grantedScopes);
+	}
+
+	private async issueGrant(
+		user: User,
+		sessionPayload: OAuthSessionPayload,
+		grantedScopes: string[],
+	): Promise<{ redirectUrl: string }> {
+		const issuer = this.urlService.getInstanceBaseUrl();
+
 		await this.userConsentRepository.upsert(
 			{
 				userId: user.id,
@@ -261,5 +285,37 @@ export class OAuthConsentService {
 		}
 
 		return scopes;
+	}
+
+	async tryReuseConsent(
+		user: User,
+		sessionPayload: OAuthSessionPayload,
+	): Promise<{ redirectUrl: string } | null> {
+		if (!sessionPayload.resource) return null;
+
+		const resource = await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource);
+		if (!resource?.isFirstParty) return null;
+
+		const consent = await this.userConsentRepository.findOne({
+			where: { clientId: sessionPayload.clientId, userId: user.id },
+		});
+
+		if (!consent) {
+			return null;
+		}
+
+		const grantable = this.grantableScopes(resource.scopes ?? [], sessionPayload.requestedScopes);
+		if (!grantable.every((scope) => consent.scope.includes(scope))) return null;
+
+		if (!(await resource.authorize(user))) {
+			this.logger.debug('Consent reuse skipped: user no longer authorized for resource', {
+				clientId: sessionPayload.clientId,
+				userId: user.id,
+				resourceUrl: sessionPayload.resource,
+			});
+			return null;
+		}
+
+		return await this.issueGrant(user, sessionPayload, grantable);
 	}
 }

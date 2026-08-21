@@ -26,7 +26,6 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
 	MODAL_CONFIRM,
-	TELEGRAM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -45,14 +44,10 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
-	filterTelegramHitlParameters,
-	useEnhancedHitlTelegramExperiment,
-} from '@/experiments/enhancedHitlTelegram';
-import {
 	getParameterTypeOption,
 	type ParameterOptionsOverrides,
 } from '@/features/ndv/shared/ndv.utils';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import { captureException } from '@sentry/vue';
 import { throttledWatch } from '@vueuse/core';
 import get from 'lodash/get';
@@ -64,6 +59,7 @@ import {
 	N8nInputLabel,
 	N8nLink,
 	N8nNotice,
+	N8nSectionHeader,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -95,6 +91,8 @@ type Props = {
 	optionsOverrides?: ParameterOptionsOverrides;
 	assignmentCollectionEditableValueIndices?: Record<string, number[]>;
 	layout?: 'inline';
+	parameterIssues?: Record<string, string[]>;
+	fromAiDisabledParameters?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -118,7 +116,6 @@ const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
-const { isFeatureEnabled: isEnhancedHitlTelegramEnabled } = useEnhancedHitlTelegramExperiment();
 const {
 	dismissCallout,
 	isCalloutDismissed,
@@ -182,6 +179,7 @@ interface ParameterComputedData {
 	dependentParametersValues: string | null;
 	issues: string[];
 	isCalloutVisible: boolean;
+	indentedUnderSection: boolean;
 }
 
 const parameterItems = ref<ParameterComputedData[]>([]);
@@ -190,13 +188,7 @@ const parameterItems = ref<ParameterComputedData[]>([]);
 let previousParameterNames: string[] = [];
 
 throttledWatch(
-	[
-		() => props.parameters,
-		() => props.nodeValues,
-		node,
-		hasChatOrManualChatParent,
-		isEnhancedHitlTelegramEnabled,
-	],
+	[() => props.parameters, () => props.nodeValues, node, hasChatOrManualChatParent],
 	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
@@ -237,12 +229,6 @@ throttledWatch(
 			(node.value.typeVersion ?? 0) >= 3.1
 		) {
 			filteredParameters = updateAgentParameters(parameters, node.value.name);
-		} else if (
-			node.value &&
-			node.value.type === TELEGRAM_NODE_TYPE &&
-			!isEnhancedHitlTelegramEnabled.value
-		) {
-			filteredParameters = filterTelegramHitlParameters(parameters);
 		} else {
 			filteredParameters = parameters;
 		}
@@ -269,9 +255,30 @@ throttledWatch(
 					dependentParametersValues,
 					issues,
 					isCalloutVisible: calloutVisible,
+					indentedUnderSection: false,
 				};
 			}),
 		);
+
+		// Fields following a section header (a `typeOptions.sectionHeader` notice) render
+		// indented beneath it, so the section visually groups its fields. The run ends at
+		// the next section header or the next collection (e.g. the trailing "Options" block).
+		let inSection = false;
+		for (const item of items) {
+			const isSectionHeader =
+				item.parameter.type === 'notice' && item.parameter.typeOptions?.sectionHeader === true;
+			const endsSection =
+				isSectionHeader ||
+				item.parameter.type === 'collection' ||
+				item.parameter.type === 'fixedCollection';
+			item.indentedUnderSection = inSection && !endsSection;
+			if (isSectionHeader) {
+				inSection = true;
+			} else if (endsSection) {
+				inSection = false;
+			}
+		}
+
 		parameterItems.value = items;
 
 		// Get new parameter names
@@ -447,9 +454,7 @@ function updateAgentParameters(parameters: INodeProperties[], nodeName: string) 
 				return {
 					...option,
 					disabled: true,
-					description:
-						option.description ??
-						i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
+					description: i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
 				};
 			}),
 		};
@@ -769,6 +774,7 @@ watch(
 				},
 			]"
 			data-test-id="parameter-item"
+			:data-section-indent="item.indentedUnderSection ? 'true' : undefined"
 		>
 			<slot v-if="indexToShowSlotAt === index" />
 
@@ -790,6 +796,13 @@ watch(
 				v-else-if="item.parameter.type === 'curlImport'"
 				:is-read-only="isReadOnly"
 				@value-changed="valueChanged"
+			/>
+
+			<N8nSectionHeader
+				v-else-if="item.parameter.type === 'notice' && item.parameter.typeOptions?.sectionHeader"
+				class="parameter-item"
+				:title="i18n.nodeText(activeNode?.type).inputLabelDisplayName(item.parameter, path)"
+				bordered
 			/>
 
 			<N8nNotice
@@ -1014,6 +1027,8 @@ watch(
 					:key="node?.name"
 					:parameter="item.parameter"
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
+					:external-issues="parameterIssues?.[item.parameter.name]"
+					:disable-from-ai="fromAiDisabledParameters?.includes(item.parameter.name)"
 					:value="getParameterValue(item.parameter.name)"
 					:display-options="item.showOptions"
 					:options-overrides="optionsOverrides"
@@ -1122,6 +1137,11 @@ watch(
 <style lang="scss" module>
 .parameterContainer {
 	scroll-margin: var(--spacing--xl);
+}
+
+/* Fields grouped under a section header (e.g. "Advanced Interactivity") are indented. */
+.parameterContainer[data-section-indent='true'] {
+	padding-left: var(--spacing--sm);
 }
 
 .firstParameter {

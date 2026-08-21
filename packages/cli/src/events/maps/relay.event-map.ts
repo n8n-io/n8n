@@ -2,6 +2,7 @@ import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
+	HitlResponseTelemetryPayload,
 	IPersonalizationSurveyAnswersV4,
 	IRun,
 	IWorkflowBase,
@@ -12,7 +13,9 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type { CredentialAuthProbeOutcome } from '@/services/credentials-tester.service';
 import type {
+	CredentialExportPolicy,
 	ExportPackageEventCounts,
 	ImportAuditCredentialIds,
 	ImportPackageEventCounts,
@@ -20,10 +23,17 @@ import type {
 	PackageFailureReason,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
+import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
 
 import type { AiEventMap } from './ai.event-map';
 
-export type WorkflowActionSource = 'ui' | 'api' | 'n8n-mcp' | 'n8n-ai' | 'import';
+export type WorkflowActionSource =
+	| 'ui'
+	| 'api'
+	| 'n8n-mcp'
+	| 'n8n-ai'
+	| 'import'
+	| 'review-approval';
 
 export type UserLike = {
 	id: string;
@@ -93,7 +103,7 @@ export type RelayEventMap = {
 
 	'n8n-package-imported': {
 		user: UserLike;
-		projectId: string;
+		projectIds: string[];
 		folderId: string | null;
 		workflowIds: string[];
 		options: ImportPackageEventOptions;
@@ -109,6 +119,7 @@ export type RelayEventMap = {
 		folderIds?: string[];
 		projectIds?: string[];
 		counts: ExportPackageEventCounts;
+		credentialExportPolicy: CredentialExportPolicy;
 	};
 
 	'n8n-package-export-failed': {
@@ -201,6 +212,8 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflowName: string;
 		executionId: string;
+		projectId: string;
+		projectName: string;
 		source:
 			| 'user-manual'
 			| 'user-retry'
@@ -241,6 +254,8 @@ export type RelayEventMap = {
 		nodeName: string;
 		nodeType?: string;
 	};
+
+	'hitl-response-actioned': HitlResponseTelemetryPayload;
 
 	// #endregion
 
@@ -475,6 +490,12 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+	};
+
+	'credentials-probed': {
+		user: UserLike;
+		credentialId: string;
+		outcome: CredentialAuthProbeOutcome;
 	};
 
 	'oauth-callback-binding-rejected': {
@@ -982,6 +1003,11 @@ export type RelayEventMap = {
 		executionId: string;
 	};
 
+	'runner-disconnected': {
+		reason: 'failed-heartbeat-check' | 'runner-unresponsive';
+		mode: 'internal' | 'external';
+	};
+
 	// #endregion
 
 	// #region queue
@@ -1041,6 +1067,10 @@ export type RelayEventMap = {
 	// #endregion
 
 	// region Agents
+	'agent-saved': {
+		agentId: string;
+	};
+
 	'agent-deleted': {
 		agentId: string;
 		projectId: string;
@@ -1096,6 +1126,17 @@ export type RelayEventMap = {
 
 	'instance-ai-settings-updated': {
 		mcpSettingsChanged: boolean;
+		/** Instance credential assignments before and after the save; absent when the update carried none (e.g. multi-main reload). Ids and model names only, never credential data. */
+		credentialSelections?: {
+			previous: InstanceAiCredentialSelection;
+			next: InstanceAiCredentialSelection;
+			/** Components whose connection payload was written in this save. Same-provider key rotations update the credential in place and keep its id, so an id diff alone cannot see them. */
+			connectionsUpdated: {
+				model: boolean;
+				sandbox: boolean;
+				search: boolean;
+			};
+		};
 	};
 
 	'instance-ai-mcp-registry-connection-created': {
@@ -1124,6 +1165,30 @@ export type RelayEventMap = {
 		separate: boolean;
 		backup: boolean;
 		workflowCount: number;
+	};
+
+	// #endregion
+
+	// #region MCP server
+
+	'mcp-oauth-completed': {
+		userId: string;
+		clientId: string;
+		clientName?: string;
+	};
+
+	'mcp-tool-called': {
+		user: UserLike;
+		toolName: string;
+		workflowId?: string;
+		status: 'success' | 'error';
+		errorMessage?: string;
+		clientName?: string;
+	};
+
+	'mcp-access-updated': {
+		user: UserLike;
+		enabled: boolean;
 	};
 
 	// #endregion

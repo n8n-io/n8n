@@ -1,24 +1,20 @@
 @use '@n8n/design-system/css/_primitives' as primitives;
 @use '@n8n/design-system/css/_tokens' as tokens;
+@use '@n8n/design-system/css/fonts/inter';
 
 :root {
 	color-scheme: light dark;
 	@include primitives.primitives;
 	@include tokens.theme;
+
+	// Shared icon column, so info rows and tab rows keep one text edge and one icon centre
+	--row-marker-size: 40px;
 }
 
 @media (prefers-color-scheme: dark) {
 	body:not([data-theme]) {
 		@include tokens.theme-dark;
 	}
-}
-
-@font-face {
-	font-family: InterVariable;
-	font-style: normal;
-	font-weight: 100 900;
-	font-display: swap;
-	src: url('@n8n/design-system/../assets/fonts/InterVariable.woff2') format('woff2');
 }
 
 *,

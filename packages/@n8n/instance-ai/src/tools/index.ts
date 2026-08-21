@@ -30,12 +30,20 @@ const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
+const loadMcpServersTool = lazyMod(
+	() => require('./mcp-servers.tool') as typeof import('./mcp-servers.tool'),
+);
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
+const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
 const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
+);
+const loadGetSessionTool = lazyMod(
+	() =>
+		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
 );
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
@@ -80,9 +88,6 @@ const loadBuildWorkflowTool = lazyMod(
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
 );
-const loadTemplatesTool = lazyMod(
-	() => require('./templates.tool') as typeof import('./templates.tool'),
-);
 const loadWorkspaceTool = lazyMod(
 	() => require('./workspace.tool') as typeof import('./workspace.tool'),
 );
@@ -104,7 +109,6 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
-		[DOMAIN_TOOL_IDS.TEMPLATES, loadTemplatesTool().createTemplatesTool(context)],
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
@@ -123,7 +127,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 /**
  * Creates orchestrator domain tools. Skills run in the orchestrator now, so
  * domain tools keep their workflow-building surface while hiding raw full
- * WorkflowJSON update actions.
+ * WorkflowJSON read and update actions.
  */
 export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
@@ -138,13 +142,19 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
-		[DOMAIN_TOOL_IDS.TEMPLATES, loadTemplatesTool().createTemplatesTool(context)],
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
 	// when `088_config_evaluations` is on, so presence = expose the tool.
 	if (context.evaluationConfigService) {
 		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
+	}
+
+	// Same pattern: the adapter only wires mcpService when MCP access is enabled
+	// instance-wide and the user is in the MCP-connections experiment. Orchestrator
+	// only — sub-agents can't offer the user a connection.
+	if (context.mcpService) {
+		tools.push([DOMAIN_TOOL_IDS.MCP_SERVERS, loadMcpServersTool().createMcpServersTool(context)]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -195,6 +205,14 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 			loadBuildAgentTool().createBuildAgentTool(context),
+		]);
+		tools.push([DOMAIN_TOOL_IDS.AGENTS, loadAgentsTool().createAgentsTool(context)]);
+	}
+
+	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.GET_SESSION,
+			loadGetSessionTool().createGetSessionTool(context),
 		]);
 	}
 

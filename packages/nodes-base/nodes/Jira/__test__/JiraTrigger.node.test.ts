@@ -1,4 +1,3 @@
-import { mock, mockDeep } from 'vitest-mock-extended';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -6,23 +5,31 @@ import type {
 	INode,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
+import { clearAtlassianCloudIdCache } from '@utils/atlassian';
 
-import { JiraTrigger } from '../JiraTrigger.node';
 import {
 	allEvents,
 	OAUTH2_WEBHOOK_REFRESH_INTERVAL_MS,
 	OAUTH2_WEBHOOK_EXPIRY_BUFFER_MS,
 	OAUTH2_SUPPORTED_WEBHOOK_EVENTS,
 } from '../GenericFunctions';
+import { JiraTrigger } from '../JiraTrigger.node';
 
 describe('JiraTrigger', () => {
 	describe('Webhook lifecycle', () => {
 		let staticData: IDataObject;
 
+		const OAUTH2_DOMAIN = 'https://test-oauth2.atlassian.net';
+		const OAUTH2_CLOUD_ID = 'test-cloud-id';
+		const mockCloudIdLookup = () =>
+			vi.fn().mockResolvedValueOnce([{ id: OAUTH2_CLOUD_ID, url: OAUTH2_DOMAIN }]);
+
 		beforeEach(() => {
 			staticData = {};
+			clearAtlassianCloudIdCache();
 		});
 
 		function mockHookFunctions(
@@ -185,6 +192,7 @@ describe('JiraTrigger', () => {
 
 			function mockOAuth2HookFunctions(
 				mockRequest: IHookFunctions['helpers']['requestWithAuthentication'],
+				mockHttpRequest?: IHookFunctions['helpers']['httpRequestWithAuthentication'],
 			) {
 				return mockDeep<IHookFunctions>({
 					getWorkflowStaticData: () => staticData,
@@ -198,29 +206,33 @@ describe('JiraTrigger', () => {
 					}),
 					getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 						({ domain }) as T,
-					helpers: { requestWithAuthentication: mockRequest },
+					helpers: {
+						requestWithAuthentication: mockRequest,
+						...(mockHttpRequest ? { httpRequestWithAuthentication: mockHttpRequest } : {}),
+					},
 				});
 			}
 
 			const baseApiUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
 
-			// checkExists — GET /api/3/webhook
+			// checkExists — the cloudId lookup, then GET /api/3/webhook
+			const mockCloudIdRequest = vi.fn().mockResolvedValueOnce(accessibleResources);
 			const mockExistsRequest = vi
 				.fn()
-				.mockResolvedValueOnce(accessibleResources) // getCloudId call
 				.mockResolvedValueOnce({ isLast: true, maxResults: 50, startAt: 0, total: 0, values: [] });
 
 			const exists = await trigger.webhookMethods.default?.checkExists.call(
-				mockOAuth2HookFunctions(mockExistsRequest),
+				mockOAuth2HookFunctions(mockExistsRequest, mockCloudIdRequest),
 			);
 
-			expect(mockExistsRequest).toHaveBeenCalledTimes(2);
-			expect(mockExistsRequest).toHaveBeenCalledWith(
+			expect(mockCloudIdRequest).toHaveBeenCalledTimes(1);
+			expect(mockCloudIdRequest).toHaveBeenCalledWith(
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://api.atlassian.com/oauth/token/accessible-resources',
+					url: 'https://api.atlassian.com/oauth/token/accessible-resources',
 				}),
 			);
+			expect(mockExistsRequest).toHaveBeenCalledTimes(1);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({ uri: baseApiUrl, method: 'GET' }),
@@ -274,7 +286,7 @@ describe('JiraTrigger', () => {
 
 		test('should refresh OAuth2 webhook in checkExists when near expiry', async () => {
 			const trigger = new JiraTrigger();
-			const cloudId = 'test-cloud-id'; // already cached from previous OAuth2 test
+			const cloudId = 'test-cloud-id';
 			const domain = 'https://test-oauth2.atlassian.net';
 			const baseApiUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
 
@@ -311,7 +323,10 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: mockRequest },
+				helpers: {
+					requestWithAuthentication: mockRequest,
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			const exists = await trigger.webhookMethods.default?.checkExists.call(hookFns);
@@ -361,7 +376,10 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: mockRequest },
+				helpers: {
+					requestWithAuthentication: mockRequest,
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			const exists = await trigger.webhookMethods.default?.checkExists.call(hookFns);
@@ -393,6 +411,9 @@ describe('JiraTrigger', () => {
 			webhookFns.getBodyData.mockReturnValue({});
 			webhookFns.getQueryData.mockReturnValue({});
 			webhookFns.getCredentials.mockResolvedValue({ domain } as ICredentialDataDecryptedObject);
+			webhookFns.helpers.httpRequestWithAuthentication.mockResolvedValueOnce([
+				{ id: cloudId, url: domain },
+			]);
 			// PUT /api/3/webhook/refresh
 			webhookFns.helpers.requestWithAuthentication.mockResolvedValueOnce({});
 			webhookFns.helpers.returnJsonArray.mockImplementation((data: IDataObject | IDataObject[]) => [
@@ -444,7 +465,7 @@ describe('JiraTrigger', () => {
 
 		test('should filter unsupported events when registering OAuth2 webhook', async () => {
 			const trigger = new JiraTrigger();
-			const domain = 'https://test-oauth2.atlassian.net'; // cloudId already cached
+			const domain = 'https://test-oauth2.atlassian.net';
 			const cloudId = 'test-cloud-id';
 			const baseApiUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
 
@@ -476,7 +497,10 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: mockRequest },
+				helpers: {
+					requestWithAuthentication: mockRequest,
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			await trigger.webhookMethods.default?.create.call(hookFns);
@@ -516,7 +540,10 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: mockRequest },
+				helpers: {
+					requestWithAuthentication: mockRequest,
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			await trigger.webhookMethods.default?.create.call(hookFns);
@@ -559,7 +586,10 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: mockRequest },
+				helpers: {
+					requestWithAuthentication: mockRequest,
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			await trigger.webhookMethods.default?.create.call(hookFns);
@@ -587,7 +617,10 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: vi.fn().mockResolvedValueOnce([]) },
+				helpers: {
+					requestWithAuthentication: vi.fn().mockResolvedValueOnce([]),
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			await expect(trigger.webhookMethods.default?.create.call(hookFns)).rejects.toThrow(
@@ -618,7 +651,10 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: mockRequest },
+				helpers: {
+					requestWithAuthentication: mockRequest,
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			await trigger.webhookMethods.default?.create.call(hookFns);

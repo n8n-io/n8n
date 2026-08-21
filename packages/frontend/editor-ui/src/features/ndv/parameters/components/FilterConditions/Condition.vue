@@ -24,7 +24,7 @@ import {
 	resolveCondition,
 } from './utils';
 import type { ConditionResult } from './types';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 
 import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';

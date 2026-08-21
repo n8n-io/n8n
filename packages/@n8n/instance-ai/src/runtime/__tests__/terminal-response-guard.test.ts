@@ -87,6 +87,20 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.visibilitySource).toBe('root-text');
 	});
 
+	it('counts coalesced text-block facts as root text (durable-log reads carry no deltas)', () => {
+		const rootBlock: InstanceAiEvent = {
+			type: 'text-block',
+			runId,
+			agentId: rootAgentId,
+			responseId: 'resp-1',
+			payload: { text: 'hello' },
+		};
+		const decision = guard().evaluateTerminal([runStart(), rootBlock], 'completed');
+
+		expect(decision.action).toBe('none');
+		expect(decision.visibilitySource).toBe('root-text');
+	});
+
 	it('emits text fallback for silent completed runs with structured work counts only', () => {
 		const decision = guard().evaluateTerminal([runStart()], 'completed', {
 			workSummary: { totalToolCalls: 3, totalToolErrors: 1, toolCalls: [] },
@@ -128,6 +142,33 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.action).toBe('emit');
 		expect(decision.reason).toBe('completed-silent');
 		expect(decision.event?.type).toBe('text-delta');
+	});
+
+	it('emits fallback when a completed run only produced a preamble before its tool calls', () => {
+		const decision = guard().evaluateTerminal(
+			[runStart(), rootText('Let me read the current source first.'), toolCall()],
+			'completed',
+		);
+
+		expect(decision.action).toBe('emit');
+		expect(decision.reason).toBe('completed-silent');
+		expect(decision.event?.type).toBe('text-delta');
+	});
+
+	it('does not emit fallback when a completed run answers after its tool calls', () => {
+		const decision = guard().evaluateTerminal(
+			[
+				runStart(),
+				rootText('Let me read the current source first.'),
+				toolCall(),
+				rootText('Done.'),
+			],
+			'completed',
+		);
+
+		expect(decision.action).toBe('none');
+		expect(decision.visibilitySource).toBe('root-text');
+		expect(decision.reason).toBe('already-visible');
 	});
 
 	it('does not emit completed fallback when the message group already has root text', () => {

@@ -147,6 +147,11 @@ export class OAuthAuthorizationCodeService {
 		}
 	}
 
+	/** Deletes every authorization code a user holds for a client. */
+	async deleteForGrant(clientId: string, userId: string): Promise<void> {
+		await this.authorizationCodeRepository.delete({ clientId, userId });
+	}
+
 	// Routed through findAuthorizationCode (filters `used: false`) so a consumed code's PKCE
 	// challenge is never returned — preventing replay-probe oracles against used codes.
 	async getCodeChallenge(authorizationCode: string, clientId: string): Promise<string> {

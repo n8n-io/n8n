@@ -2,11 +2,11 @@
 // Workflow discovery: snapshot IDs, build agent outcome, extract IDs from messages
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils/is-record';
+import type { InstanceAiMessage } from '@n8n/api-types';
 
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } from '../types';
+import { collectArtifactRefIds } from './collect-refs';
 
 // ---------------------------------------------------------------------------
 // Tool names whose results contain workflow IDs
@@ -22,6 +22,15 @@ export async function snapshotWorkflowIds(client: N8nClient): Promise<Set<string
 	try {
 		const workflows = await client.listWorkflows();
 		return new Set(workflows.map((wf) => wf.id));
+	} catch {
+		return new Set();
+	}
+}
+
+/** Same, for data tables — the scenario seed-table eviction's allowlist. */
+export async function snapshotDataTableIds(client: N8nClient): Promise<Set<string>> {
+	try {
+		return new Set(await client.listDataTableIds(await client.getPersonalProjectId()));
 	} catch {
 		return new Set();
 	}
@@ -163,67 +172,9 @@ export async function buildAgentOutcome(
 // ---------------------------------------------------------------------------
 
 export function extractWorkflowIdsFromMessages(messages: InstanceAiMessage[]): string[] {
-	const ids = new Set<string>();
-
-	for (const message of messages) {
-		if (message.role === 'assistant' && message.agentTree) {
-			collectWorkflowIds(message.agentTree, ids);
-		}
-	}
-
-	return [...ids];
-}
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-function collectWorkflowIds(node: InstanceAiAgentNode, ids: Set<string>): void {
-	if (node.targetResource?.type === 'workflow' && node.targetResource.id) {
-		ids.add(node.targetResource.id);
-	}
-
-	// Extract workflow IDs from tool call results
-	for (const tc of node.toolCalls) {
-		if (WORKFLOW_TOOLS.has(tc.toolName)) {
-			const id = extractIdFromResult(tc.result);
-			if (id) ids.add(id);
-		}
-	}
-
-	for (const child of node.children) {
-		collectWorkflowIds(child, ids);
-	}
-}
-
-function extractIdFromResult(result: unknown): string | undefined {
-	const keys = ['workflowId', 'id'];
-
-	if (!isRecord(result)) {
-		if (typeof result === 'string') {
-			try {
-				const parsed: unknown = JSON.parse(result);
-				if (isRecord(parsed)) {
-					return extractIdFromRecord(parsed, keys);
-				}
-			} catch {
-				return undefined;
-			}
-		}
-		return undefined;
-	}
-	return extractIdFromRecord(result, keys);
-}
-
-function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): string | undefined {
-	for (const key of keys) {
-		const value = record[key];
-		if (typeof value === 'string' && value.length > 0) {
-			return value;
-		}
-		if (typeof value === 'number') {
-			return String(value);
-		}
-	}
-	return undefined;
+	return collectArtifactRefIds(messages, {
+		targetType: 'workflow',
+		toolNames: WORKFLOW_TOOLS,
+		resultKeys: ['workflowId', 'id'],
+	});
 }

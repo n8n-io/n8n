@@ -35,7 +35,14 @@ class FakeRepo {
 	/** Hold the next append until released — models an in-flight DB round trip. */
 	gateNextAppend: Promise<void> | undefined;
 
+	/** Called when a gated append is entered, before it starts waiting. */
+	onGatedAppend: (() => void) | undefined;
+
+	/** Seq seeds served from the DB — proves whether the writer's cache was dropped. */
+	maxSeqCalls = 0;
+
 	async maxSeq(_threadId: string): Promise<number> {
+		this.maxSeqCalls++;
 		if (this.failNextMaxSeq > 0) {
 			this.failNextMaxSeq--;
 			throw new Error('connect ETIMEDOUT');
@@ -52,6 +59,7 @@ class FakeRepo {
 		if (this.gateNextAppend) {
 			const gate = this.gateNextAppend;
 			this.gateNextAppend = undefined;
+			this.onGatedAppend?.();
 			await gate;
 		}
 		if (this.failNextAppendsTransient > 0) {
@@ -135,6 +143,15 @@ function toolCall(toolCallId: string, agentId = AGENT): InstanceAiEvent {
 	};
 }
 
+function toolInputStart(toolCallId: string, agentId = AGENT): InstanceAiEvent {
+	return {
+		type: 'tool-input-start',
+		runId: RUN,
+		agentId,
+		payload: { toolCallId, toolName: 'search-workflows' },
+	};
+}
+
 function runFinish(): InstanceAiEvent {
 	return { type: 'run-finish', runId: RUN, agentId: AGENT, payload: { status: 'completed' } };
 }
@@ -152,7 +169,15 @@ async function publishAll(
 	return emitted;
 }
 
+function useIdleFlushTimers(): void {
+	vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+}
+
 describe('DurableEventLog', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it('coalesces a segment into one text-block flushed immediately before the next structural fact', async () => {
 		const repo = new FakeRepo();
 		const { log } = buildLog(repo);
@@ -227,6 +252,7 @@ describe('DurableEventLog', () => {
 
 		const emitted = await publishAll(log, [
 			textDelta('AAA'),
+			toolInputStart('tc-1'),
 			toolCall('tc-1'),
 			{ type: 'status', runId: RUN, agentId: AGENT, payload: { message: 'working' } },
 			runFinish(),
@@ -236,17 +262,29 @@ describe('DurableEventLog', () => {
 		const live = emitted.filter((e) => e.live);
 		expect(live.map((e) => e.event.type)).toEqual([
 			'text-delta',
+			'tool-input-start',
 			'tool-call',
 			'status',
 			'run-finish',
 		]);
 		// Deltas and status carry no id; structural facts carry the DB seq.
+		// tool-input-start is DELIBERATELY structural: ephemeral would lose the
+		// pending call on a mid-stream refresh during a long arg stream, shrink
+		// replayed durations to exclude arg streaming, and leave no trace of a
+		// call killed mid-args. It also flushes open blocks (where tool-call
+		// used to), so the segment closes at arg-stream start.
 		expect(live[0].id).toBeUndefined();
-		expect(live[2].id).toBeUndefined();
+		expect(live[3].id).toBeUndefined();
 		expect(live[1].id).toBeDefined();
-		expect(live[3].id).toBeDefined();
-		// Persisted seqs are contiguous from 1.
-		expect(repo.rows.map((r) => r.seq)).toEqual([1, 2, 3]);
+		expect(live[2].id).toBeDefined();
+		expect(live[4].id).toBeDefined();
+		// Persisted seqs are contiguous from 1, the open block flushed first.
+		expect(repo.rows.map((r) => [r.seq, r.event.type])).toEqual([
+			[1, 'text-block'],
+			[2, 'tool-input-start'],
+			[3, 'tool-call'],
+			[4, 'run-finish'],
+		]);
 	});
 
 	it('continues the seq across a restart (fresh instance seeds from the DB)', async () => {
@@ -442,10 +480,62 @@ describe('DurableEventLog', () => {
 		await publishAll(log, [toolCall('tc-3')]);
 		expect(repo.rows.map((r) => r.seq)).toEqual([1]);
 	});
+	it('getOpenSegments reads the streamed-so-far segments synchronously and empties once they flush', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+
+		log.publish(THREAD, reasoningDelta('think'), () => {});
+		log.publish(THREAD, textDelta('1 2 3'), () => {});
+		log.publish(THREAD, textDelta(' 4 5'), () => {});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		// Synchronous read (no await): the SSE bootstrap depends on it running
+		// inside its one-tick tail.
+		expect(log.getOpenSegments(THREAD)).toEqual([
+			{ runId: RUN, agentId: AGENT, kind: 'reasoning', responseId: 'msg-1', text: 'think' },
+			{ runId: RUN, agentId: AGENT, kind: 'text', responseId: 'msg-1', text: '1 2 3 4 5' },
+		]);
+		expect(log.getOpenSegments('other-thread')).toEqual([]);
+
+		// A structural fact closes the agent's segments: no longer open.
+		await publishAll(log, [toolCall('tc-1')]);
+		expect(log.getOpenSegments(THREAD)).toEqual([]);
+	});
+
+	it('getOpenSegments excludes parts whose live frames the in-flight batch has not emitted yet', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+
+		// Established open segment: its delta frame is already emitted.
+		log.publish(THREAD, textDelta('1 2 3'), () => {});
+
+		// One batch mixing a fact for ANOTHER agent (keeps the segment open but
+		// forces a persist round trip) with a trailing delta for the streaming
+		// agent. While the append is in flight, the delta's text is buffered but
+		// its live frame is not out yet — a bootstrap running in that window must
+		// not serve it, or the client would receive it twice.
+		let releaseAppend!: () => void;
+		repo.gateNextAppend = new Promise((resolve) => (releaseAppend = resolve));
+		log.publish(THREAD, toolCall('tc-1', 'sub:run-1:builder'), () => {});
+		log.publish(THREAD, textDelta(' 4 5'), () => {});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(log.getOpenSegments(THREAD)).toEqual([
+			{ runId: RUN, agentId: AGENT, kind: 'text', responseId: 'msg-1', text: '1 2 3' },
+		]);
+
+		releaseAppend();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(log.getOpenSegments(THREAD)).toEqual([
+			{ runId: RUN, agentId: AGENT, kind: 'text', responseId: 'msg-1', text: '1 2 3 4 5' },
+		]);
+	});
+
 	it('idle flush persists trailing deltas that no structural fact ever follows', async () => {
 		// e.g. a terminal-outcome line published after run-finish, or a liveness
 		// timeout notice: without the idle flush these would never reach the log
 		// and disappear on reload.
+		useIdleFlushTimers();
 		const repo = new FakeRepo();
 		const { log } = buildLog(repo);
 		log.idleFlushMs = 25;
@@ -454,12 +544,94 @@ describe('DurableEventLog', () => {
 		log.publish(THREAD, textDelta('The background workflow-builder task was cancelled.'), (d) =>
 			emitted.push(d),
 		);
-		await new Promise((resolve) => setTimeout(resolve, 120));
+		await vi.advanceTimersByTimeAsync(25);
 
 		const blocks = repo.rows.filter((r) => r.event.type === 'text-block');
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].event.payload).toEqual({
 			text: 'The background workflow-builder task was cancelled.',
 		});
+	});
+
+	it("releases a quiet thread's drain state, and reseeds the seq when it speaks again", async () => {
+		useIdleFlushTimers();
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		log.idleFlushMs = 25;
+
+		await publishAll(log, [textDelta('hello'), toolCall('tool-1')]);
+		expect(log.retainedThreadCount()).toBe(1);
+
+		await vi.advanceTimersByTimeAsync(25);
+		expect(log.retainedThreadCount()).toBe(0);
+
+		// The dropped seq cache reseeds from the DB, so the next fact continues the
+		// sequence rather than colliding with a row already written.
+		const seqsBefore = repo.rows.map((r) => r.seq);
+		await publishAll(log, [toolCall('tool-2')]);
+		expect(repo.rows.map((r) => r.seq)).toEqual([
+			...seqsBefore,
+			seqsBefore[seqsBefore.length - 1] + 1,
+		]);
+	});
+
+	it('keeps the drain state when the thread speaks again mid-settle', async () => {
+		useIdleFlushTimers();
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		log.idleFlushMs = 10;
+
+		// Park the idle flush inside its DB round trip, so the settle is still
+		// awaiting when the next publish lands — without the stall the settle
+		// runs to completion first and the race never happens.
+		let releaseAppend!: () => void;
+		repo.gateNextAppend = new Promise<void>((resolve) => {
+			releaseAppend = resolve;
+		});
+		const settleReachedDb = new Promise<void>((resolve) => {
+			repo.onGatedAppend = resolve;
+		});
+
+		log.publish(THREAD, textDelta('first'), () => {});
+		await vi.advanceTimersByTimeAsync(10);
+		await settleReachedDb;
+		const seedsBeforeRace = repo.maxSeqCalls;
+
+		// Re-arms the idle timer while the settle is parked. A STRUCTURAL fact on
+		// purpose: it persists instead of buffering, so by the time the settle
+		// reaches its guards the pending queue and the coalesce buffers are both
+		// empty and the idle-timer check is the only thing standing between the
+		// racing publish and a released cache. A racing delta would leave a
+		// buffer behind and the later guard would mask this one.
+		log.idleFlushMs = 60_000;
+		log.publish(THREAD, toolCall('tool-race'), () => {});
+		releaseAppend();
+		// Let the parked settle finish its awaits and run its guard checks.
+		await new Promise((resolve) => setImmediate(resolve));
+
+		// A fact published after the settle must reuse the cached seq. Had the
+		// settle released it, this persist re-seeds from MAX(seq) — the only
+		// observable difference, since `retainedThreadCount` cannot tell "never
+		// released" from "released, then recreated by the racing publish".
+		log.publish(THREAD, toolCall('tool-after'), () => {});
+		await log.flush(THREAD);
+
+		expect(repo.maxSeqCalls).toBe(seedsBeforeRace);
+		expect(log.retainedThreadCount()).toBe(1);
+	});
+
+	it('closes an open segment before releasing the quiet thread', async () => {
+		useIdleFlushTimers();
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		log.idleFlushMs = 25;
+
+		log.publish(THREAD, textDelta('streaming'), () => {});
+		await vi.advanceTimersByTimeAsync(25);
+
+		// The idle flush closed the segment into a block, so the thread is now
+		// genuinely quiet and its state is gone.
+		expect(log.getOpenSegments(THREAD)).toHaveLength(0);
+		expect(log.retainedThreadCount()).toBe(0);
 	});
 });

@@ -12,6 +12,7 @@ import {
 	type INodeExecutionData,
 	type IDataObject,
 	type ITriggerFunctions,
+	deepCopy,
 	NodeOperationError,
 	type IBinaryKeyData,
 } from 'n8n-workflow';
@@ -46,8 +47,11 @@ async function parseRawEmail(
 		additionalData.attachments = undefined;
 	}
 
+	const json: IDataObject = { ...responseData, ...additionalData };
+
 	return {
-		json: { ...responseData, ...additionalData },
+		// v2.2+ deep-serializes the mail so the Date and any other non-JSON values stay JSON-safe
+		json: this.getNode().typeVersion >= 2.2 ? deepCopy(json) : json,
 		binary: Object.keys(binaryData).length ? binaryData : undefined,
 	} as INodeExecutionData;
 }

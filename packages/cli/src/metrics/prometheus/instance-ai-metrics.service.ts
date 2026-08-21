@@ -118,11 +118,25 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 			buckets: [1, 5, 25, 100, 500],
 		});
 
+		const historyFoldDuration = new promClient.Histogram({
+			name: `${this.config.prefix}instance_ai_history_fold_duration_seconds`,
+			help: 'Latency of deriving history agent trees by folding the durable log.',
+			buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5],
+		});
+
 		const parserFallbacksTotal = new promClient.Counter({
 			name: `${this.config.prefix}instance_ai_parser_fallbacks_total`,
 			help: 'History messages rendered from the message-derived fallback ladder instead of a renderable snapshot tree.',
 		});
 		parserFallbacksTotal.inc(0);
+
+		const runsSweptTotal = new promClient.Counter({
+			name: `${this.config.prefix}instance_ai_runs_swept_total`,
+			help: 'Crashed Instance AI runs resolved by the interrupted-run sweep.',
+			labelNames: ['outcome'],
+		});
+		runsSweptTotal.inc({ outcome: 'interrupted' }, 0);
+		runsSweptTotal.inc({ outcome: 'crash-resumed' }, 0);
 
 		this.eventService.on('instance-ai-durable-log-drained', ({ rows, bytes }) => {
 			durableLogRowsTotal.inc(rows);
@@ -141,8 +155,14 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 			durableLogReplaysTotal.inc(1);
 			durableLogReplayCursorAge.observe(cursorAgeEvents);
 		});
+		this.eventService.on('instance-ai-history-folded', ({ latencyMs }) => {
+			historyFoldDuration.observe(latencyMs / 1000);
+		});
 		this.eventService.on('instance-ai-parser-fallback', ({ count }) => {
 			parserFallbacksTotal.inc(count);
+		});
+		this.eventService.on('instance-ai-run-swept', ({ outcome }) => {
+			runsSweptTotal.inc({ outcome }, 1);
 		});
 
 		this.eventService.on(

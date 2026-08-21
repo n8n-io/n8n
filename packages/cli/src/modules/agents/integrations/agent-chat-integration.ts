@@ -1,9 +1,13 @@
+import {
+	AgentIntegrationConfig,
+	type AgentIntegrationDisconnectWarning,
+	type RichCardComponentType,
+} from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Thread, Author, Message } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
-import { AgentIntegrationConfig } from '@n8n/api-types';
-import type { RichCardComponentType } from '@n8n/api-types';
 import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
 import {
@@ -18,16 +22,28 @@ import type {
 	IntegrationContextQueryDefinition,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
+	ReplyExpectation,
 } from './integration-tools';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
 export interface AgentChatIntegrationContext {
 	agentId: string;
 	projectId: string;
+	integration: AgentIntegrationConfig;
 	credentialId: string;
 	credential: Record<string, unknown>;
+	/** Whether this connection may receive events from the external platform. */
+	ingressEnabled: boolean;
 	/** Returns the inbound webhook URL this n8n instance exposes for the given platform. */
 	webhookUrlFor: (platform: string) => string;
+}
+
+export interface AgentIntegrationRemovalContext {
+	agentId: string;
+	projectId: string;
+	credentialId: string;
+	user: User;
+	deleteExternalResource?: boolean;
 }
 
 /** Response shape returned by `handleUnauthenticatedWebhook`. */
@@ -35,6 +51,16 @@ export interface UnauthenticatedWebhookResponse {
 	status: number;
 	body: unknown;
 }
+
+export interface WebhookRequestContext {
+	headers: Readonly<Record<string, string | string[] | undefined>>;
+	body: unknown;
+}
+
+export type WebhookRequestResolution =
+	| { type: 'reject'; response: UnauthenticatedWebhookResponse }
+	| { type: 'select'; connectionSelector: string }
+	| { type: 'no_match' };
 
 export interface AgentChatIntegrationBuilderGuidance {
 	capabilities: string[];
@@ -50,10 +76,35 @@ export interface BridgeStatusHandle {
 	clearBeforeResponse(): Promise<void>;
 }
 
+/**
+ * Wrap a status handle so the underlying clear runs at most once, with every
+ * caller awaiting the same in-flight clear. The bridge clears both from the
+ * stream consumer (right before the first response) and from its cleanup
+ * path, so this wrapper keeps platform handles free of dedupe concerns.
+ */
+export function onceStatusHandle(
+	handle: BridgeStatusHandle | undefined,
+): BridgeStatusHandle | undefined {
+	if (!handle) return undefined;
+	let clearing: Promise<void> | undefined;
+	return {
+		clearBeforeResponse: async () => {
+			clearing ??= handle.clearBeforeResponse();
+			await clearing;
+		},
+	};
+}
+
 export interface BridgeExecutionContext {
 	platformAgentContext: PlatformAgentContext;
 	forceBuffered?: boolean;
 	statusHandle?: BridgeStatusHandle;
+	/**
+	 * Platform-fetched conversation context (e.g. prior Slack thread messages)
+	 * that the bridge prepends to the agent input message. Undefined when the
+	 * platform did not surface any context for this message.
+	 */
+	historyContext?: string;
 }
 
 export type BridgeResumeExecutionContext = Pick<
@@ -65,10 +116,45 @@ export interface BridgeMessageContextParams {
 	chat: ChatInstance;
 	thread: Thread<unknown, unknown>;
 	message: Message<unknown>;
+	integration: AgentIntegrationConfig;
 	logger: Logger;
 	agentId: string;
 	statusRetry?: AbortController;
+	/**
+	 * True when this is the first message that pulled the agent into the
+	 * conversation (a fresh @mention / DM), false for follow-ups in an already
+	 * subscribed thread. Platforms use this to decide whether to fetch prior
+	 * thread context that the agent has never seen.
+	 */
+	isNewMention: boolean;
+	/**
+	 * The turn's reply policy ('required' when the platform has none).
+	 * Platforms use 'optional' to skip reply-signalling side effects
+	 * like the thinking status and give the agent a `do_not_respond` action.
+	 */
+	replyExpectation: ReplyExpectation;
 }
+
+export interface ActionDecisionMessageParams {
+	approved?: boolean;
+	selectedLabel?: string;
+	raw: unknown;
+	user: Author;
+}
+
+export type ActionDecisionMessageFormatter = (
+	params: ActionDecisionMessageParams,
+) => string | undefined;
+
+export interface SettleActionMessageParams {
+	agentId: string;
+	integration: AgentIntegrationConfig;
+	threadId: string;
+	messageId: string;
+	content: string;
+}
+
+export type SettleActionMessage = (params: SettleActionMessageParams) => Promise<void>;
 
 /**
  * A chat platform (Slack, Telegram, …) that an agent can be connected to.
@@ -148,6 +234,9 @@ export abstract class AgentChatIntegration {
 	 */
 	readonly needsShortCallbackData: boolean = false;
 
+	/** Whether action messages are deleted before the agent resumes. */
+	readonly deleteActionMessageBeforeResume: boolean = true;
+
 	/**
 	 * True if the bridge should buffer streaming output and post it as a single
 	 * message instead of streaming text deltas via post-and-edit.
@@ -185,6 +274,9 @@ export abstract class AgentChatIntegration {
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
 
+	/** Validate platform settings before credentials or persistence are touched. */
+	validateConfig?(integration: AgentIntegrationConfig): void;
+
 	/**
 	 * Handle a webhook request that arrives before an integration is connected
 	 * (i.e. before credentials are configured). The canonical case is Slack's
@@ -201,6 +293,19 @@ export abstract class AgentChatIntegration {
 	 * in the request itself).
 	 */
 	handleUnauthenticatedWebhook?(body: unknown): UnauthenticatedWebhookResponse | undefined;
+
+	/**
+	 * Resolve platform-specific routing before selecting a connected adapter.
+	 * A selector is only a routing hint; the chosen adapter still authenticates
+	 * the request.
+	 */
+	resolveWebhookRequest?(request: WebhookRequestContext): WebhookRequestResolution;
+
+	/** Match an opaque webhook selector against one connected credential. */
+	matchesWebhookConnection?(
+		credential: Record<string, unknown>,
+		connectionSelector: string,
+	): boolean;
 
 	/**
 	 * Optional hook run BEFORE the adapter is built. Use it to reject the
@@ -224,6 +329,41 @@ export abstract class AgentChatIntegration {
 	 * proceeds so a transient remote failure can't leak in-process resources.
 	 */
 	onBeforeDisconnect?(ctx: AgentChatIntegrationContext): Promise<void>;
+
+	/**
+	 * Cleanup performed only when a user explicitly removes a persisted
+	 * integration. This is deliberately separate from runtime disconnect hooks.
+	 */
+	onRemove?(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<AgentIntegrationDisconnectWarning | undefined>;
+
+	/**
+	 * Prepare a thread created or selected by an outbound send. Slack uses this
+	 * to subscribe the bot so follow-up messages reach the agent.
+	 */
+	prepareSentThread?(
+		thread: Thread<unknown, unknown>,
+		integration: AgentIntegrationConfig,
+	): Promise<void>;
+
+	/**
+	 * Optional hook run on EVERY main once the connection is live, regardless
+	 * of `skipExternalHooks`. Unlike `onAfterConnect`, this is for local runtime
+	 * state each main owns independently — e.g. Discord's leader-gated Gateway
+	 * socket, which must start on the leader even when a follower served the
+	 * user's connect request and the leader only sees the PubSub broadcast.
+	 *
+	 * Must not perform external side effects: it runs once per main, not once
+	 * per cluster. Errors are logged by the caller and swallowed.
+	 */
+	onConnected?(ctx: AgentChatIntegrationContext): Promise<void>;
+
+	/**
+	 * Mirror of {@link onConnected}: runs on every main during teardown so each
+	 * main releases the local runtime state it owns.
+	 */
+	onDisconnected?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/**
 	 * Optional per-platform component normalization (applied before toCard).
@@ -259,6 +399,37 @@ export abstract class AgentChatIntegration {
 	prepareInboundText?(text: string, context: PlatformAgentContext): string;
 
 	/**
+	 * Optional per-message reply policy (see `ReplyExpectation`).
+	 * Default (no implementation): 'required'.
+	 */
+	getReplyExpectation?(params: {
+		message: Message<unknown>;
+		isNewMention: boolean;
+		platformAgentContext: PlatformAgentContext;
+	}): ReplyExpectation;
+
+	/** Replacement text for action cards preserved after a user responds. */
+	formatActionDecisionMessage?(params: ActionDecisionMessageParams): string | undefined;
+
+	/**
+	 * Optional platform-owned settlement for action cards (e.g. Discord must
+	 * clear embeds/components explicitly). When absent, the bridge falls back to
+	 * the adapter's `editMessage()`.
+	 */
+	settleActionMessage?(params: SettleActionMessageParams): Promise<void>;
+
+	/**
+	 * Whether a new mention should subscribe the thread for follow-ups.
+	 * Default (no implementation): true. Discord returns false when a channel
+	 * mention could not open a thread and would otherwise subscribe the parent
+	 * channel.
+	 */
+	shouldSubscribeToNewMention?(params: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+	}): boolean;
+
+	/**
 	 * Optional per-message execution policy for platform-specific bridge behavior,
 	 * such as status indicators or forcing buffered output for a specific thread.
 	 */
@@ -285,9 +456,8 @@ export abstract class AgentChatIntegration {
 	executeContextQuery?(params: PlatformContextQueryParams): Promise<unknown>;
 
 	/**
-	 * Execute a platform-specific action (e.g. Linear `create_issue`, Slack
-	 * `add_reaction`). The central executor handles the cross-platform actions
-	 * (`respond`, `send_dm`, `send_channel_message`) before delegating here.
+	 * Execute a platform-specific action (e.g. Linear `create_issue`). The
+	 * central executor handles cross-platform actions before delegating here.
 	 *
 	 * Return `undefined` to signal the action isn't owned by this platform — the
 	 * caller then returns an `UNSUPPORTED_ACTION` error.

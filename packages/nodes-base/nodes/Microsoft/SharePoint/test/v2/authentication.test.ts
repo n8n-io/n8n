@@ -1,4 +1,4 @@
-import { versionDescription } from '../../v2/MicrosoftSharePointV2.node';
+import { versionDescription } from '../../v2/actions/versionDescription';
 
 describe('Microsoft SharePoint v2 authentication selector', () => {
 	const properties = versionDescription.properties;

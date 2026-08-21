@@ -36,11 +36,17 @@ export const BUILDER_NOT_CONFIGURED_CODE = 'BUILDER_NOT_CONFIGURED' as const;
 export const BUILDER_CHECKPOINT_UNAVAILABLE_CODE = 'BUILDER_CHECKPOINT_UNAVAILABLE' as const;
 
 /**
- * The only two agent-builder tools that mutate the agent config. Mirrors
- * `BUILDER_TOOLS.WRITE_CONFIG` / `PATCH_CONFIG` in
+ * Agent-builder tools whose success should set `configUpdated` on `build-agent`
+ * (refresh the agent artifact preview). Includes config writers and publish
+ * lifecycle tools. Values must match `BUILDER_TOOLS` in
  * `packages/cli/src/modules/agents/builder/builder-tool-names.ts`.
  */
-export const CONFIG_MUTATION_TOOL_NAMES = ['write_config', 'patch_config'] as const;
+export const CONFIG_MUTATION_TOOL_NAMES = [
+	'write_config',
+	'patch_config',
+	'publish_agent',
+	'unpublish_agent',
+] as const;
 
 // ---------------------------------------------------------------------------
 // ask_questions
@@ -95,6 +101,9 @@ export const credentialSuspendPayloadSchema = z.object({
 	severity: z.literal('info'),
 	credentialRequests: z.array(credentialRequestSchema).min(1),
 	credentialFlow: z.object({ stage: z.literal('generic') }),
+	// Scopes the FE credential picker to the builder's project — without it the
+	// picker falls back to the user's personal project.
+	projectId: z.string().optional(),
 });
 export type CredentialSuspendPayload = z.infer<typeof credentialSuspendPayloadSchema>;
 

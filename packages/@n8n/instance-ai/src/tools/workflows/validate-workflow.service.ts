@@ -17,6 +17,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
+import { computeChatModelValidationIssues } from './chat-model-validation';
 import { isAiGatewayManagedCredential } from './credential-utils';
 import type { InstanceAiContext, NodeDescription } from '../../types';
 
@@ -334,7 +335,7 @@ async function computeAiGatewayIssues(
 				.catch(() => true);
 			if (!supported) {
 				(issues.unsupportedCredentialType ??= []).push(
-					`Credential type "${credType}" is not supported by n8n Connect. Use a stored credential of that type or pick a different node.`,
+					`Credential type "${credType}" is not supported by n8n credits. Use a stored credential of that type or pick a different node.`,
 				);
 			}
 		}
@@ -357,7 +358,7 @@ async function computeAiGatewayIssues(
 		const typeVersion = node.typeVersion ?? 1;
 		if (typeVersion < gatewayMeta.minVersion) {
 			(issues.belowMinVersion ??= []).push(
-				`n8n Connect requires typeVersion >= ${gatewayMeta.minVersion} for this node; current version is ${typeVersion}.`,
+				`n8n credits requires typeVersion >= ${gatewayMeta.minVersion} for this node; current version is ${typeVersion}.`,
 			);
 		}
 	}
@@ -377,7 +378,7 @@ async function computeAiGatewayIssues(
 				const scope =
 					resource === AI_GATEWAY_OPERATION_ONLY_MARKER ? '' : ` on resource "${resource}"`;
 				(issues.unsupportedOperation ??= []).push(
-					`Operation "${operation}"${scope} is not supported via n8n Connect. Switch to a supported operation or use a stored credential.`,
+					`Operation "${operation}"${scope} is not supported via n8n credits. Switch to a supported operation or use a stored credential.`,
 				);
 			}
 		}
@@ -390,7 +391,7 @@ async function computeAiGatewayIssues(
 			const value = parameters[propName];
 			if (value === undefined || value === null || value === '') continue;
 			(issues.hiddenPropertySet ??= []).push(
-				`Property "${propName}" is not supported via n8n Connect for this node. Remove it or use a stored credential.`,
+				`Property "${propName}" is not supported via n8n credits for this node. Remove it or use a stored credential.`,
 			);
 		}
 	}
@@ -562,6 +563,14 @@ async function computeNodeIssues(
 		}
 	}
 
+	if (!ignoreIssues.has('chatModel')) {
+		const chatModelIssues = await computeChatModelValidationIssues(context, node);
+		if (Object.keys(chatModelIssues).length > 0) {
+			issues = issues ?? {};
+			issues.chatModel = chatModelIssues;
+		}
+	}
+
 	if (!ignoreIssues.has('input')) {
 		const inputIssues = await computeInputIssues(
 			context,
@@ -600,7 +609,13 @@ function formatSummaryLines(
 	if (issues.typeUnknown) {
 		pushTo.push(`${nodeName}: typeUnknown: Unknown node type`);
 	}
-	for (const category of ['parameters', 'credentials', 'input', 'aiGateway'] as const) {
+	for (const category of [
+		'parameters',
+		'credentials',
+		'input',
+		'aiGateway',
+		'chatModel',
+	] as const) {
 		const slice = issues[category];
 		if (!slice || typeof slice !== 'object') continue;
 		for (const [key, messages] of Object.entries(slice)) {

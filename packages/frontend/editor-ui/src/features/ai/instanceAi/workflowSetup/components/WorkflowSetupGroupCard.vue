@@ -40,7 +40,11 @@ function getSectionNodeType(section: WorkflowSetupSection) {
 		<header :class="$style.header">
 			<NodeIcon :node-type="subnodeRootNodeType" :size="16" />
 			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
-				{{ group.subnodeRootNode.name }}
+				{{
+					i18n.baseText('instanceAi.workflowSetup.configureNode', {
+						interpolate: { name: group.subnodeRootNode.name },
+					})
+				}}
 			</N8nText>
 			<N8nText
 				v-if="isGroupComplete"

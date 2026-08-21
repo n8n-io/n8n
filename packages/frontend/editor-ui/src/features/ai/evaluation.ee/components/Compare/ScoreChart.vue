@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nSegmentControl, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
 import type { CompareMetricGroup, CompareVersion } from '../../composables/useCompareData';
 import GroupedMetricChart from '../shared/GroupedMetricChart.vue';
+import MetricCriteria from './MetricCriteria.vue';
 
 const props = defineProps<{
 	metricGroups: CompareMetricGroup[];
 	versions: CompareVersion[];
+	// metric name → its custom LLM-judge prompt, when configured.
+	metricPrompts?: Record<string, string>;
 }>();
 
 const i18n = useI18n();
@@ -45,7 +48,7 @@ const letters = computed(() => props.versions.map((version) => version.letter));
 				placement="top"
 				:content="i18n.baseText('evaluation.compare.scoreChart.toggle.perCaseComingSoon')"
 			>
-				<N8nRadioButtons v-model="mode" size="small" :options="modeOptions" />
+				<N8nSegmentControl v-model="mode" size="small" :options="modeOptions" />
 			</N8nTooltip>
 		</header>
 
@@ -59,6 +62,7 @@ const letters = computed(() => props.versions.map((version) => version.letter));
 				<N8nText size="small" bold color="text-base" :class="$style.panelHeading">
 					{{ group.label }}
 				</N8nText>
+				<MetricCriteria :metric-key="group.key" :prompt="metricPrompts?.[group.key]" />
 				<GroupedMetricChart
 					variant="detailed"
 					:groups="[{ label: group.label, values: group.values, letters }]"

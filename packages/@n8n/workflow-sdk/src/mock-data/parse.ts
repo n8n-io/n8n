@@ -1,5 +1,5 @@
 import { findEnvelopeKey } from './ai-root-shapes';
-import { findOutputParserTargets } from './context';
+import { findOutputParserTargets, INFORMATION_EXTRACTOR_NODE_TYPE } from './context';
 import type { NodeSchemaContext, PinData } from './types';
 import type { WorkflowJSON } from '../types/base';
 
@@ -27,18 +27,31 @@ export function parsePinDataResponse(responseText: string, expectedNodes: string
 		// Keep empty arrays — a valid "no stored data" pin; dropping one falls back to real execution.
 		if (!Array.isArray(nodeData)) continue;
 
-		pinData[nodeName] = nodeData.map((item: unknown) => {
-			// The execution engine expects { json: IDataObject } format.
-			// The LLM may return items with or without the json wrapper.
-			if (typeof item === 'object' && item !== null && 'json' in item) {
-				return item as Record<string, unknown>;
-			}
-			// Wrap raw objects in { json: ... } for the execution engine
-			return { json: item ?? {} };
-		});
+		pinData[nodeName] = nodeData
+			.map((item: unknown) => {
+				// The execution engine expects { json: IDataObject } format.
+				// The LLM may return items with or without the json wrapper.
+				if (typeof item === 'object' && item !== null && 'json' in item) {
+					return item as Record<string, unknown>;
+				}
+				// Wrap raw objects in { json: ... } for the execution engine
+				return { json: item ?? {} };
+			})
+			// A fieldless item is never a meaningful fixture — it's the model's way
+			// of saying "no data" while obeying "generate items" (a zero-item premise
+			// must pin as [], not [{}]: the phantom item corrupts downstream nodes).
+			.filter((item) => !isEmptyFixtureItem(item));
 	}
 
 	return pinData;
+}
+
+/** True for `{}` / `{ json: {} }` items with no other payload (e.g. binary). */
+function isEmptyFixtureItem(item: Record<string, unknown>): boolean {
+	const json = item.json;
+	if (typeof json !== 'object' || json === null) return false;
+	if (Object.keys(json).length > 0) return false;
+	return !Object.keys(item).some((key) => key !== 'json' && key !== 'pairedItem');
 }
 
 /** Parse a string as a JSON object/array; undefined when it isn't one. */
@@ -78,10 +91,26 @@ export function repairStructuredOutput(
 	);
 	const repaired: PinData = { ...pinData };
 
-	for (const nodeName of findOutputParserTargets(workflow).keys()) {
+	// Information extractors wrap in `{ output: ... }` like parser targets do,
+	// but have no ai_outputParser connection — include them explicitly. Their
+	// envelope is always `output`, even when no `__schema__` resolves; other
+	// roots must declare theirs via their with-parser `__schema__` variant
+	// (Agent and chainLlm both declare `output` — the parser emits that wrapper).
+	const targets = new Set<string>(findOutputParserTargets(workflow).keys());
+	const extractorNames = new Set<string>();
+	for (const node of workflow.nodes) {
+		if (node.name && node.type === INFORMATION_EXTRACTOR_NODE_TYPE) {
+			targets.add(node.name);
+			extractorNames.add(node.name);
+		}
+	}
+
+	for (const nodeName of targets) {
 		const items = repaired[nodeName];
 		if (!items) continue;
-		const envelopeKey = findEnvelopeKey(schemaByName.get(nodeName));
+		const envelopeKey =
+			findEnvelopeKey(schemaByName.get(nodeName)) ??
+			(extractorNames.has(nodeName) ? 'output' : undefined);
 		if (!envelopeKey) continue;
 
 		repaired[nodeName] = items.map((item) => {

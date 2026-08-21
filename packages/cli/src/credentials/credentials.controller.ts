@@ -26,7 +26,6 @@ import {
 	Query,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
@@ -131,7 +130,9 @@ export class CredentialsController {
 					// to do so.
 					query.includeData,
 				)
-			: await this.credentialsService.getOne(req.user, credentialId, query.includeData);
+			: await this.credentialsService.getOne(req.user, credentialId, query.includeData, {
+					includeInstanceCredentials: true,
+				});
 
 		const scopes = await this.credentialsService.getCredentialScopes(
 			req.user,
@@ -146,6 +147,38 @@ export class CredentialsController {
 	async testCredentials(req: CredentialRequest.Test) {
 		try {
 			return await this.credentialsService.testWithCredentials(req.user, req.body.credentials);
+		} catch (error) {
+			if (error instanceof CredentialNotFoundError) {
+				throw new ForbiddenError();
+			}
+
+			throw error;
+		}
+	}
+
+	/**
+	 * Auth-probe a stored credential against the test URL saved in the
+	 * credential itself. Complements `/test`, which needs the credential type
+	 * to declare a test; generic types (e.g. Templated Custom Auth) have none,
+	 * so they are probed against their own persisted test URL instead.
+	 */
+	@Post('/:credentialId/probe')
+	@ProjectScope('credential:read')
+	async probeCredentials(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+	) {
+		try {
+			const result = await this.credentialsService.probeById(req.user, credentialId);
+
+			this.eventService.emit('credentials-probed', {
+				user: req.user,
+				credentialId,
+				outcome: result.outcome,
+			});
+
+			return result;
 		} catch (error) {
 			if (error instanceof CredentialNotFoundError) {
 				throw new ForbiddenError();
@@ -211,6 +244,7 @@ export class CredentialsController {
 			credentialId,
 			user,
 			['credential:update'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!credential) {
@@ -227,6 +261,23 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
+		const isChangingAuthType = body.type !== undefined && body.type !== credential.type;
+
+		if (credential.usageScope === 'instance' && isChangingAuthType) {
+			throw new BadRequestError(
+				'Provider connection type cannot be changed. Create a new connection instead.',
+			);
+		}
+
+		if (
+			credential.usageScope === 'instance' &&
+			(body.isGlobal === true || body.isResolvable === true)
+		) {
+			throw new BadRequestError(
+				'Provider connections cannot be globally shared or converted to end-user credentials',
+			);
+		}
+
 		// We never want to allow users to change the oauthTokenData
 		delete body.data?.oauthTokenData;
 
@@ -238,6 +289,9 @@ export class CredentialsController {
 		if (isTogglingToPrivate || isTogglingToStatic) {
 			const owningProject =
 				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			if (isTogglingToPrivate) {
+				this.credentialsService.ensureEndUserCredentialAllowedInProject(owningProject);
+			}
 			await this.credentialsService.ensureCanManageEndUserCredential(req.user, owningProject?.id);
 		}
 
@@ -245,7 +299,9 @@ export class CredentialsController {
 			req.user,
 			req.body,
 			credential,
-			{ clearOauthTokenData: isTogglingToPrivate },
+			// Switching auth method (e.g. Google Service Account -> OAuth) changes the
+			// credential's type; the previous type's OAuth token no longer applies to it.
+			{ clearOauthTokenData: isTogglingToPrivate || isChangingAuthType },
 		);
 
 		const newCredentialData = await this.credentialsService.createEncryptedData({
@@ -291,7 +347,11 @@ export class CredentialsController {
 			body.data
 				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
 				: undefined,
-			{ deleteUserEntries: isTogglingToStatic || sharedFieldsChanged },
+			{
+				deleteUserEntries: isTogglingToStatic || sharedFieldsChanged,
+				instanceCredential: credential.usageScope === 'instance' ? credential : undefined,
+				user: req.user,
+			},
 		);
 
 		if (responseData === null) {
@@ -342,6 +402,40 @@ export class CredentialsController {
 		return { ...rest, scopes };
 	}
 
+	@Delete('/:credentialId/oauth-token')
+	@ProjectScope('credential:update')
+	async disconnectOauthToken(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+	) {
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			req.user,
+			['credential:update'],
+		);
+
+		if (!credential) {
+			throw new NotFoundError(
+				'Credential not found. You can only modify credentials you have access to.',
+			);
+		}
+
+		if (credential.isManaged) {
+			throw new BadRequestError('Managed credentials cannot be updated');
+		}
+
+		if (!this.credentialsService.isOAuthCredentialType(credential.type)) {
+			throw new BadRequestError('Only OAuth credentials can be disconnected');
+		}
+
+		await this.credentialsService.clearOauthTokenData(credential);
+
+		this.logger.debug('Credential OAuth token cleared', { credentialId });
+
+		return { success: true };
+	}
+
 	@Delete('/:credentialId')
 	@ProjectScope('credential:delete')
 	async deleteCredentials(req: CredentialRequest.Delete) {
@@ -351,6 +445,7 @@ export class CredentialsController {
 			credentialId,
 			req.user,
 			['credential:delete'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!credential) {
@@ -363,21 +458,9 @@ export class CredentialsController {
 			);
 		}
 
-		await this.credentialsService.delete(req.user, credential.id);
-
-		this.eventService.emit('credentials-deleted', {
-			user: req.user,
-			credentialType: credential.type,
-			credentialId: credential.id,
+		await this.credentialsService.delete(req.user, credential.id, {
+			includeInstanceCredentials: true,
 		});
-
-		if (credential.isResolvable) {
-			this.eventService.emit('private-credential-deleted', {
-				user: req.user,
-				credentialType: credential.type,
-				credentialId: credential.id,
-			});
-		}
 
 		return true;
 	}

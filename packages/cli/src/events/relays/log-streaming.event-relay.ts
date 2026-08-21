@@ -142,6 +142,9 @@ export class LogStreamingEventRelay extends EventRelay {
 			'role-mapping-rule-updated': (event) => this.roleMappingRuleUpdated(event),
 			'role-mapping-rule-deleted': (event) => this.roleMappingRuleDeleted(event),
 			'role-mapping-rules-bulk-deleted': (event) => this.roleMappingRulesBulkDeleted(event),
+			'mcp-oauth-completed': (event) => this.mcpOauthCompleted(event),
+			'mcp-tool-called': (event) => this.mcpToolCalled(event),
+			'mcp-access-updated': (event) => this.mcpAccessUpdated(event),
 		});
 	}
 
@@ -156,7 +159,12 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private packageExported({ user, counts, ...rest }: RelayEventMap['n8n-package-exported']) {
+	private packageExported({
+		user,
+		counts,
+		credentialExportPolicy,
+		...rest
+	}: RelayEventMap['n8n-package-exported']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.n8n-package.export.success',
 			payload: { ...user, ...rest },
@@ -386,6 +394,8 @@ export class LogStreamingEventRelay extends EventRelay {
 		workflowId,
 		workflowName,
 		executionId,
+		projectId,
+		projectName,
 		source,
 	}: WorkflowExecutedEventWithUser) {
 		void this.eventBus.sendAuditEvent({
@@ -395,6 +405,8 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName,
 				executionId,
+				projectId,
+				projectName,
 				source,
 			},
 		});
@@ -404,6 +416,8 @@ export class LogStreamingEventRelay extends EventRelay {
 		workflowId,
 		workflowName,
 		executionId,
+		projectId,
+		projectName,
 		source,
 	}: WorkflowExecutedEvent) {
 		void this.eventBus.sendAuditEvent({
@@ -412,6 +426,8 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName,
 				executionId,
+				projectId,
+				projectName,
 				source,
 			},
 		});
@@ -1271,6 +1287,37 @@ export class LogStreamingEventRelay extends EventRelay {
 					reason: event.reason,
 				},
 			},
+		});
+	}
+
+	// #endregion
+
+	// #region MCP server
+
+	private mcpOauthCompleted({
+		userId,
+		clientId,
+		clientName,
+	}: RelayEventMap['mcp-oauth-completed']) {
+		void this.eventBus.sendMcpEvent({
+			eventName: 'n8n.audit.mcp.oauth.completed',
+			payload: { userId, clientId, clientName },
+		});
+	}
+
+	@Redactable()
+	private mcpToolCalled({ user, ...rest }: RelayEventMap['mcp-tool-called']) {
+		void this.eventBus.sendMcpEvent({
+			eventName: 'n8n.audit.mcp.tool.called',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private mcpAccessUpdated({ user, ...rest }: RelayEventMap['mcp-access-updated']) {
+		void this.eventBus.sendMcpEvent({
+			eventName: 'n8n.audit.mcp.access.updated',
+			payload: { ...user, ...rest },
 		});
 	}
 

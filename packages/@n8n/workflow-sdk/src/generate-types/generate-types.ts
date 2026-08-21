@@ -190,6 +190,7 @@ const GENERIC_AUTH_TYPE_VALUES = [
 	'httpHeaderAuth',
 	'httpQueryAuth',
 	'httpCustomAuth',
+	'httpTemplatedCustomAuth',
 	'oAuth1Api',
 	'oAuth2Api',
 ] as const;
@@ -1919,10 +1920,13 @@ export function getPropertiesForCombination(
  */
 interface VersionCondition {
 	_cnd: {
+		eq?: number;
+		not?: number;
 		gt?: number;
 		gte?: number;
 		lt?: number;
 		lte?: number;
+		between?: { from: number; to: number };
 	};
 }
 
@@ -1937,11 +1941,14 @@ function versionMatchesCondition(version: number, condition: number | VersionCon
 
 	// It's a conditional expression like { _cnd: { gte: 3.1 } }
 	if (condition._cnd) {
-		const { gt, gte, lt, lte } = condition._cnd;
+		const { eq, not, gt, gte, lt, lte, between } = condition._cnd;
+		if (eq !== undefined && version !== eq) return false;
+		if (not !== undefined && version === not) return false;
 		if (gt !== undefined && !(version > gt)) return false;
 		if (gte !== undefined && !(version >= gte)) return false;
 		if (lt !== undefined && !(version < lt)) return false;
 		if (lte !== undefined && !(version <= lte)) return false;
+		if (between !== undefined && !(version >= between.from && version <= between.to)) return false;
 		return true;
 	}
 
@@ -2249,6 +2256,17 @@ export function generatePropertyLine(
 	optional: boolean,
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
+	// Steer generic-auth selection at the moment the model reads this type: a
+	// bare union invites httpBearerAuth for any provider documenting
+	// `Authorization: Bearer <token>`.
+	if (prop.type === 'credentialsSelect' && prop.name === 'genericAuthType' && !prop.description) {
+		prop = {
+			...prop,
+			description:
+				'For NEW credentials prefer \'httpTemplatedCustomAuth\' whenever the auth fits header/query/body values — `Authorization: Bearer <token>` becomes the template {"headers":{"Authorization":"Bearer {{api_key}}"}}; do NOT use httpBearerAuth for it. Plain generic types are only for reusing an existing credential or for what a template cannot express (basic, digest, OAuth).',
+		};
+	}
+
 	const tsType = mapPropertyType(prop, discriminatorContext);
 	if (!tsType) {
 		return ''; // Skip this property

@@ -1,3 +1,4 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -29,11 +30,18 @@ export class DataTableExporter {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableSerializer: DataTableSerializer,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async export(request: DataTableExportRequest): Promise<DataTableExportResult> {
 		if (request.requirements.length === 0) {
 			return { entries: [], requirements: [] };
+		}
+
+		if (!this.moduleRegistry.isActive('data-table')) {
+			throw new UserError(
+				'The exported workflows use data tables, but the data-table module is disabled on this instance.',
+			);
 		}
 
 		const usedByWorkflowsById = this.groupByDataTableId(request.requirements);
@@ -76,7 +84,6 @@ export class DataTableExporter {
 			requirements.push({
 				id: dataTable.id,
 				name: dataTable.name,
-				sourceProjectId: dataTable.projectId,
 				usedByWorkflows,
 			});
 		}

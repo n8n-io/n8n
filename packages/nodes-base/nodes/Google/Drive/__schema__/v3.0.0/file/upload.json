@@ -97,11 +97,39 @@
                 "canShare": {
                     "type": "boolean"
                 },
+                "canStartApproval": {
+                    "type": "boolean"
+                },
                 "canTrash": {
                     "type": "boolean"
                 },
                 "canUntrash": {
                     "type": "boolean"
+                }
+            }
+        },
+        "clientEncryptionDetails": {
+            "type": "object",
+            "properties": {
+                "decryptionMetadata": {
+                    "type": "object",
+                    "properties": {
+                        "aes256GcmChunkSize": {
+                            "type": "string"
+                        },
+                        "encryptionResourceKeyHash": {
+                            "type": "string"
+                        },
+                        "kaclsId": {
+                            "type": "string"
+                        },
+                        "keyFormat": {
+                            "type": "string"
+                        },
+                        "wrappedKey": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },
@@ -362,5 +390,5 @@
             "type": "boolean"
         }
     },
-    "version": 6
+    "version": 7
 }

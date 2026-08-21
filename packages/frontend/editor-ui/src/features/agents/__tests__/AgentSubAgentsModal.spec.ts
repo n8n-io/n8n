@@ -46,9 +46,13 @@ vi.mock('@/app/components/Modal.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
-	N8nActionBox: {
+	N8nEmptyState: {
 		props: ['heading', 'description'],
 		template: '<div v-bind="$attrs">{{ heading }} {{ description }}</div>',
+	},
+	N8nCallout: {
+		props: ['theme'],
+		template: '<div v-bind="$attrs"><slot /></div>',
 	},
 	N8nButton: {
 		props: ['variant', 'size', 'disabled'],
@@ -237,6 +241,39 @@ describe('AgentSubAgentsModal', () => {
 
 		expect(onRemove).toHaveBeenCalledWith('agent-2');
 		expect(closeModalMock).toHaveBeenCalledWith('agentSubAgentsModal');
+	});
+
+	it('renders the invalid-reasons callout when opened with reasons', () => {
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					selectedAgent: { id: 'agent-2', name: 'Billing Agent' },
+					invalidReasons: ["This agent isn't published yet."],
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		const callout = wrapper.find('[data-testid="agent-sub-agents-modal-invalid-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain("This agent isn't published yet.");
+	});
+
+	it('omits the invalid-reasons callout when no reasons are given', () => {
+		const wrapper = mount(AgentSubAgentsModal, {
+			props: {
+				modalName: 'agentSubAgentsModal',
+				data: {
+					selectedAgent: { id: 'agent-2', name: 'Billing Agent' },
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-testid="agent-sub-agents-modal-invalid-callout"]').exists()).toBe(
+			false,
+		);
 	});
 
 	it('shows an empty state when no agents are available', () => {

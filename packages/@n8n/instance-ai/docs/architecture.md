@@ -275,7 +275,12 @@ The event bus decouples agent execution from event delivery:
 - All events carry `runId` (correlates to triggering message) and `agentId`
 - SSE events use monotonically increasing per-thread `id` values for replay
 - SSE supports both `Last-Event-ID` header and `?lastEventId` query parameter
-- Events are persisted to thread storage regardless of transport
+- Event storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`: on (the default),
+  coalesced step-level facts are appended to the `instance_ai_events` table
+  (the durable replay source, ids survive restarts) while token deltas stay
+  memory-only; off (the rollback switch until Gate B), events live only in a
+  bounded in-memory buffer (500 events / 2 MB per thread, FIFO-evicted, ids
+  reset on restart)
 - No need to pipe sub-agent streams through orchestrator tool execution
 - One active run per thread (additional `POST /chat` is rejected while active)
 - Cancellation via `POST /instance-ai/chat/:threadId/cancel` (idempotent)
@@ -408,6 +413,11 @@ The cli's `InstanceAiService` holds one manager instance and passes it to
 4. **Cached** by config hash inside the manager — the underlying `MCPClient`
    instances are tracked so `mcpManager.disconnect()` (called during service
    shutdown) closes SSE / stdio connections cleanly.
+
+The embedded Agent Builder receives the same per-run, approval-wrapped MCP tool
+registry as the orchestrator. Builder-native tool names remain reserved, so an
+MCP connector cannot shadow configuration or lifecycle tools. Specialized
+background agents such as eval setup remain isolated from MCP tools.
 
 The local Computer Use server is separate from external MCP configuration. Its
 browser tools are available directly to the orchestrator and are guided by the

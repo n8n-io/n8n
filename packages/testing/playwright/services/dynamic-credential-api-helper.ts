@@ -222,5 +222,28 @@ export class DynamicCredentialApiHelper {
 		}
 	}
 
+	/**
+	 * Resolves the provider authorization URL from a gate-issued n8n authorize link
+	 * (`/rest/credentials/:id/authorize?token=…`).
+	 *
+	 * The link is bound to an n8n user, so it must be opened with that user's session:
+	 * we GET its path+query via the authenticated api.request context, which resolves the
+	 * intent and 302-redirects to the provider. `maxRedirects: 0` captures that redirect so
+	 * the caller can drive the provider flow directly.
+	 */
+	async resolveProviderUrlFromAuthorizeLink(authorizeUrl: string): Promise<string> {
+		const parsed = new URL(authorizeUrl);
+		const response = await this.api.request.get(parsed.pathname + parsed.search, {
+			maxRedirects: 0,
+		});
+		const location = response.headers().location;
+		if (!location) {
+			throw new TestError(
+				`Expected authorize link to redirect to the provider, got ${response.status()}: ${await response.text()}`,
+			);
+		}
+		return location;
+	}
+
 	// ===== Revoke =====
 }

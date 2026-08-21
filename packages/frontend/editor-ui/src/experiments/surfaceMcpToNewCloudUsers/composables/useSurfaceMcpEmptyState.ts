@@ -3,26 +3,18 @@ import { computed, ref, watch, type Ref } from 'vue';
 import { useSurfaceMcpToNewCloudUsersStore } from '../stores/surfaceMcpToNewCloudUsers.store';
 import { useSurfaceMcpToNewCloudUsersEligibility } from './useSurfaceMcpToNewCloudUsersEligibility';
 
-type SurfaceMcpEmptyStateSuppression =
-	| 'app_selection'
-	| 'builder_prompt'
-	| 'recommended_templates'
-	| 'no_create_permission';
+type SurfaceMcpEmptyStateSuppression = 'app_selection' | 'no_create_permission';
 
 type BooleanRef = Readonly<Ref<boolean>>;
 
 type UseSurfaceMcpEmptyStateOptions = {
 	canCreateWorkflow: BooleanRef;
 	showAppSelection: BooleanRef;
-	showBuilderPrompt: BooleanRef;
-	showRecommendedTemplatesInline: BooleanRef;
 };
 
 export function useSurfaceMcpEmptyState({
 	canCreateWorkflow,
 	showAppSelection,
-	showBuilderPrompt,
-	showRecommendedTemplatesInline,
 }: UseSurfaceMcpEmptyStateOptions) {
 	const mcpStore = useMCPStore();
 	const surfaceMcpStore = useSurfaceMcpToNewCloudUsersStore();
@@ -45,26 +37,11 @@ export function useSurfaceMcpEmptyState({
 			return 'app_selection';
 		}
 
-		if (showBuilderPrompt.value) {
-			return 'builder_prompt';
-		}
-
-		if (showRecommendedTemplatesInline.value) {
-			return 'recommended_templates';
-		}
-
 		return null;
 	});
 
 	const showTile = computed(
 		() => showOpportunity.value && surfaceMcpStore.isTileVariant && suppressedBy.value === null,
-	);
-
-	const showReminder = computed(
-		() =>
-			isEligible.value &&
-			surfaceMcpStore.isFirstOpenModalVariant &&
-			surfaceMcpStore.hasDismissedFirstOpenModal,
 	);
 
 	watch(
@@ -103,6 +80,5 @@ export function useSurfaceMcpEmptyState({
 		showOpportunity,
 		suppressedBy,
 		showTile,
-		showReminder,
 	};
 }

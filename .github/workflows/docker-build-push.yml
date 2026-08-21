@@ -4,10 +4,11 @@
 # - Uses docker-tags.mjs for tag generation, this generates the tags for the images
 
 name: 'Docker: Build and Push'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Docker: Build and Push {0} (push={1}, arm64={2})', github.ref_name, inputs.push_enabled, inputs.include_arm64) || '' }}"
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '24.16.0'
+  NODE_VERSION: '26.5.1'
 
 on:
   schedule:
@@ -39,6 +40,28 @@ on:
         required: false
         type: string
         default: ''
+    outputs:
+      # Repo name + multi-arch manifest digest per image, so callers can promote what
+      # was actually pushed (retag by digest) instead of re-deriving tag strings.
+      # Empty when push_enabled is false — the manifest job doesn't run.
+      n8n_image:
+        description: 'GHCR repo for the n8n image (no tag)'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.n8n_image }}
+      n8n_digest:
+        description: 'Multi-arch manifest digest of the n8n image'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.n8n_digest }}
+      runners_image:
+        description: 'GHCR repo for the runners image (no tag)'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.runners_image }}
+      runners_digest:
+        description: 'Multi-arch manifest digest of the runners image'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.runners_digest }}
+      runners_distroless_image:
+        description: 'GHCR repo for the distroless runners image (no tag; same repo as runners)'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.runners_distroless_image }}
+      runners_distroless_digest:
+        description: 'Multi-arch manifest digest of the distroless runners image'
+        value: ${{ jobs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
 
   workflow_dispatch:
     inputs:
@@ -47,6 +70,11 @@ on:
         required: false
         type: boolean
         default: true
+      include_arm64:
+        description: 'Also build linux/arm64 (default is amd64-only for manual/branch builds)'
+        required: false
+        type: boolean
+        default: false
       success_url:
         description: 'URL to call after the build is successful'
         required: false
@@ -81,6 +109,7 @@ jobs:
           N8N_VERSION: ${{ inputs.n8n_version }}
           RELEASE_TYPE: ${{ inputs.release_type }}
           PUSH_ENABLED: ${{ inputs.push_enabled }}
+          INCLUDE_ARM64: ${{ inputs.include_arm64 }}
           GITHUB_REF: ${{ github.ref_name }}
         run: |
           node .github/scripts/docker/docker-config.mjs \
@@ -89,7 +118,8 @@ jobs:
             --branch "$GITHUB_REF" \
             --version "$N8N_VERSION" \
             --release-type "$RELEASE_TYPE" \
-            --push-enabled "$PUSH_ENABLED"
+            --push-enabled "$PUSH_ENABLED" \
+            --include-arm64 "$INCLUDE_ARM64"
 
   build-and-push-docker:
     name: Build App, then Build and Push Docker Image (${{ matrix.platform }})
@@ -119,6 +149,8 @@ jobs:
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
         with:
+          # The image copies native bindings from the host build, so both need the same Node.
+          node-version: ${{ env.NODE_VERSION }}
           build-command: pnpm build:n8n
           enable-docker-cache: 'true'
         env:
@@ -145,7 +177,7 @@ jobs:
             ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }}
 
           echo "=== Generated Docker Tags ==="
-          cat "$GITHUB_OUTPUT" | grep "_tags=" | while IFS='=' read -r key value; do
+          grep "_tags=" "$GITHUB_OUTPUT" | while IFS='=' read -r key value; do
             echo "${key}: ${value%%,*}..."  # Show first tag for brevity
           done
 
@@ -173,6 +205,22 @@ jobs:
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
+
+      - name: Kafka native binding smoke check
+        # `load: true` isn't an option here: with sbom:true, buildx produces a manifest
+        # list even for a single platform, and the docker exporter (what --load uses)
+        # can't materialize manifest lists locally. Pull the pushed image back instead.
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
+        env:
+          N8N_TAGS: ${{ steps.determine-tags.outputs.n8n_tags }}
+        run: |
+          IMAGE_TAG=$(echo "$N8N_TAGS" | cut -d',' -f1)
+          docker pull "$IMAGE_TAG"
+          docker run --rm \
+            --entrypoint node \
+            -v "${{ github.workspace }}/.github/scripts/docker/kafka-native-smoke-check.mjs:/tmp/kafka-native-smoke-check.mjs:ro" \
+            "$IMAGE_TAG" \
+            /tmp/kafka-native-smoke-check.mjs
 
       - name: Build and push task runners Docker image (Alpine)
         id: build-runners

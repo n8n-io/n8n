@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 
 const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
@@ -9,6 +11,7 @@ const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
 const AGENT_PROVIDER_NAMES: Record<string, string> = {
 	'aws-bedrock': 'AWS Bedrock',
 	'azure-openai': 'Azure OpenAI',
+	'google-vertex-anthropic': 'Google Vertex Anthropic',
 };
 
 /** Cost per million tokens. */
@@ -31,6 +34,14 @@ export interface ModelLimits {
 	output?: number;
 }
 
+/** Input and output types supported by a model. */
+export interface ModelModalities {
+	/** Supported input types. */
+	input?: string[];
+	/** Supported output types. */
+	output?: string[];
+}
+
 /** Information about a single model. */
 export interface ModelInfo {
 	/** Model ID (e.g. 'claude-sonnet-4-5'). */
@@ -39,10 +50,17 @@ export interface ModelInfo {
 	name: string;
 	/** Release date in ISO date format when available from models.dev. */
 	releaseDate?: string;
-	/** Whether the model supports reasoning / thinking. */
-	reasoning: boolean;
+	/** Whether the model supports reasoning / thinking, when reported by models.dev. */
+	reasoning?: boolean;
+	/**
+	 * Whether the model accepts a temperature sampling parameter, when
+	 * reported by models.dev. Reasoning-family models typically report false.
+	 */
+	temperature?: boolean;
 	/** Whether the model supports tool calling. */
 	toolCall: boolean;
+	/** Input and output types supported by the model. */
+	modalities?: ModelModalities;
 	/** Cost per million tokens. */
 	cost?: ModelCost;
 	/** Token limits. */
@@ -55,29 +73,56 @@ export interface ProviderInfo {
 	id: string;
 	/** Human-readable name (e.g. 'Anthropic'). */
 	name: string;
-	/** Available models keyed by model ID. */
+	/** Available (non-deprecated) models keyed by model ID. */
 	models: Record<string, ModelInfo>;
+	/**
+	 * Model IDs models.dev marks as deprecated for this provider. Kept out of
+	 * `models` so existing consumers never offer them, but exposed so callers
+	 * can distinguish known-retired IDs (hard error) from merely-absent ones.
+	 */
+	deprecatedModelIds?: string[];
 }
 
 /** The full catalog of providers and their models. */
 export type ProviderCatalog = Record<string, ProviderInfo>;
 
-interface ModelsDevModel {
-	id: string;
-	name: string;
-	release_date?: string;
-	reasoning?: boolean;
-	tool_call?: boolean;
-	status?: string;
-	cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
-	limit?: { context?: number; output?: number };
-}
+const modelsDevModelSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
+	release_date: z.string().optional(),
+	reasoning: z.boolean().optional(),
+	temperature: z.boolean().optional(),
+	tool_call: z.boolean().optional(),
+	status: z.string().optional(),
+	modalities: z
+		.object({
+			input: z.array(z.string()).optional(),
+			output: z.array(z.string()).optional(),
+		})
+		.optional(),
+	cost: z
+		.object({
+			input: z.number().optional(),
+			output: z.number().optional(),
+			cache_read: z.number().optional(),
+			cache_write: z.number().optional(),
+		})
+		.optional(),
+	limit: z
+		.object({
+			context: z.number().optional(),
+			output: z.number().optional(),
+		})
+		.optional(),
+});
 
-interface ModelsDevProvider {
-	id: string;
-	name: string;
-	models?: Record<string, ModelsDevModel>;
-}
+const modelsDevProviderSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
+	models: z.record(z.string(), z.unknown()).optional(),
+});
+
+const modelsDevCatalogSchema = z.record(z.string(), z.unknown());
 
 function toAgentProviderId(modelsDevProviderId: string): string {
 	return MODELS_DEV_PROVIDER_ALIASES[modelsDevProviderId] ?? modelsDevProviderId;
@@ -125,29 +170,46 @@ function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
  * console.log(catalog.anthropic.models['claude-sonnet-4-5'].reasoning); // true
  * ```
  */
-export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
-	const response = await fetch(MODELS_DEV_URL);
+export async function fetchProviderCatalog(options?: {
+	signal?: AbortSignal;
+}): Promise<ProviderCatalog> {
+	const response = await fetch(MODELS_DEV_URL, { signal: options?.signal });
 	if (!response.ok) {
 		throw new Error(`Failed to fetch provider catalog: ${response.statusText}`);
 	}
 
-	const data = (await response.json()) as Record<string, ModelsDevProvider>;
+	const data = modelsDevCatalogSchema.parse(await response.json());
 	const catalog: ProviderCatalog = {};
 
-	for (const [key, provider] of Object.entries(data)) {
+	for (const [key, rawProvider] of Object.entries(data)) {
+		const providerResult = modelsDevProviderSchema.safeParse(rawProvider);
+		if (!providerResult.success) continue;
+		const provider = providerResult.data;
 		if (!provider.models || Object.keys(provider.models).length === 0) continue;
 
+		const providerId = toAgentProviderId(key);
 		const models: Record<string, ModelInfo> = {};
-		for (const [modelId, model] of Object.entries(provider.models)) {
+		const deprecatedModelIds = new Set<string>(catalog[providerId]?.deprecatedModelIds);
+		for (const [modelId, rawModel] of Object.entries(provider.models)) {
+			const modelResult = modelsDevModelSchema.safeParse(rawModel);
+			if (!modelResult.success) continue;
+			const model = modelResult.data;
 			// Deprecated models still 404 at call time when the provider retires
-			// them, so never offer them.
-			if (model.status === 'deprecated') continue;
+			// them, so never offer them in `models` — but record the id so
+			// validation can flag known-retired picks as hard errors.
+			if (model.status === 'deprecated') {
+				deprecatedModelIds.add(modelId);
+				deprecatedModelIds.add(model.id);
+				continue;
+			}
 			const info: ModelInfo = {
 				id: model.id,
 				name: model.name,
 				...(model.release_date !== undefined && { releaseDate: model.release_date }),
-				reasoning: model.reasoning ?? false,
+				...(model.reasoning !== undefined && { reasoning: model.reasoning }),
+				...(model.temperature !== undefined && { temperature: model.temperature }),
 				toolCall: model.tool_call ?? false,
+				...(model.modalities !== undefined && { modalities: model.modalities }),
 			};
 			if (model.cost?.input !== undefined && model.cost?.output !== undefined) {
 				info.cost = {
@@ -166,9 +228,8 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 			models[modelId] = info;
 		}
 
-		if (Object.keys(models).length === 0) continue;
+		if (Object.keys(models).length === 0 && deprecatedModelIds.size === 0) continue;
 
-		const providerId = toAgentProviderId(key);
 		catalog[providerId] = {
 			id: providerId,
 			name: catalog[providerId]?.name ?? AGENT_PROVIDER_NAMES[providerId] ?? provider.name,
@@ -176,6 +237,7 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 				...(catalog[providerId]?.models ?? {}),
 				...models,
 			},
+			deprecatedModelIds: Array.from(deprecatedModelIds),
 		};
 	}
 

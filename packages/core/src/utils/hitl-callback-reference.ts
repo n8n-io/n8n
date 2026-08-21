@@ -8,12 +8,38 @@ import { UnexpectedError } from 'n8n-workflow';
 export const HITL_CALLBACK_PREFIX = 'nhitl1|';
 
 /**
- * Suffix appended to the waiting-webhook base path to build Telegram's fixed
- * HITL endpoint. Shared by the CLI (mounting the endpoint), the Telegram node
- * (registering it as the bot's webhook), and the Telegram Trigger (forwarding
- * callback taps to it), so the three stay in sync without a duplicated literal.
+ * Suffix on the waiting-webhook base path for Telegram's fixed HITL endpoint. Shared by the
+ * CLI, the Telegram node, and the Telegram Trigger so the literal stays in one place.
  */
 export const TELEGRAM_HITL_WEBHOOK_SUFFIX = '-telegram';
+
+/**
+ * Suffix on the waiting-webhook base path for Slack's fixed HITL endpoint. Shared by the CLI
+ * and the Slack Request URL so the literal stays in one place.
+ */
+export const SLACK_HITL_WEBHOOK_SUFFIX = '-slack';
+
+/**
+ * Marker set by the CLI's Slack interaction route (`SlackInteractionWebhooks`) on the request.
+ * The Slack node's handler reads it to hard-require a valid Slack signature and never fall back
+ * to the query-param approval path. A non-enumerable Symbol keeps it off the request's
+ * serializable surface, so it can't be spoofed via the body, query, or headers.
+ */
+const SLACK_INTERACTION_REQUEST = Symbol('n8nSlackInteractionRequest');
+
+/** Flags a request as having arrived via the Slack interaction webhook route. */
+export function markSlackInteractionRequest(req: object): void {
+	Object.defineProperty(req, SLACK_INTERACTION_REQUEST, {
+		value: true,
+		enumerable: false,
+		configurable: true,
+	});
+}
+
+/** Whether a request was flagged by `markSlackInteractionRequest`. */
+export function isSlackInteractionRequest(req: object): boolean {
+	return (req as Record<PropertyKey, unknown>)[SLACK_INTERACTION_REQUEST] === true;
+}
 
 export type HitlCallbackDecision = 'a' | 'd';
 
@@ -37,11 +63,9 @@ function computeHmac(executionId: string, decision: HitlCallbackDecision, secret
 }
 
 /**
- * Builds a compact, HMAC-verified reference for a HITL approval decision, meant
- * to be embedded in a platform-native callback payload (e.g. Telegram's
- * `callback_data`, capped at 64 bytes). The reference is platform-neutral: it
- * carries only the execution id, the decision, and a truncated HMAC, so the
- * same helper can back Telegram, Slack, or Gmail HITL callbacks.
+ * Builds a compact, HMAC-verified reference for a HITL approval decision, embedded in a
+ * platform-native callback payload (e.g. Telegram's `callback_data`, capped at 64 bytes). It
+ * carries only the execution id, decision, and a truncated HMAC, so it's platform-neutral.
  */
 export function buildHitlCallbackReference(
 	executionId: string,

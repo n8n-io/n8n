@@ -3,6 +3,7 @@ import { inProduction, Logger, TypedEmitter } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { toMb } from '@n8n/utils/number/bytes';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
@@ -17,7 +18,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { validateOriginHeaders } from './origin-validator';
+import { validateSseOrigin, validateWebSocketOrigin } from './origin-validator';
 import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
 import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
@@ -121,7 +122,7 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (!pushRef) {
 			connectionError = 'The query parameter "pushRef" is missing!';
 		} else if (inProduction) {
-			const validation = validateOriginHeaders(headers);
+			const validation = ws ? validateWebSocketOrigin(headers) : validateSseOrigin(headers);
 			if (!validation.isValid) {
 				this.logger.warn(
 					'Origin header does NOT match the expected origin. ' +
@@ -241,7 +242,6 @@ export class Push extends TypedEmitter<PushEvents> {
 			const eventSizeBytes = new TextEncoder().encode(JSON.stringify(pushMsg.data)).length;
 
 			if (eventSizeBytes > MAX_PUBSUB_PAYLOAD_BYTES) {
-				const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(0);
 				const eventMb = toMb(eventSizeBytes);
 				const maxMb = toMb(MAX_PUBSUB_PAYLOAD_BYTES);
 

@@ -2,7 +2,6 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin, Logger, safeJoinPath } from '@n8n/backend-common';
 import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { generateKeyPairSync } from 'crypto';
 import { accessSync, constants as fsConstants, mkdirSync } from 'fs';
 import chunk from 'lodash/chunk';
 import isEqual from 'lodash/isEqual';
@@ -19,6 +18,7 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
+import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/git-connections.ee/git-connections-git.utils';
 import { containsExpression } from '@/utils';
 
 import {
@@ -141,11 +141,15 @@ export function mergeRemoteCrendetialDataIntoLocalCredentialData({
 		}
 	}
 
-	// Because oauthTokenData is explicitly stripped from the remote data during sanitization,
-	// it will never exist in the sanitizedRemote object. Therefore, it is skipped in the loop above.
-	// We manually merge it back from local to prevent OAuth credentials being wiped out on pull.
-	if (local.oauthTokenData) {
-		merged.oauthTokenData = local.oauthTokenData;
+	// Keep local fields the remote stub does not carry. A field left at its default value
+	// is not persisted, so it never reaches the stub; an absent field carries the same
+	// "no value to give" meaning as a present-but-blank one, which is already preserved
+	// above. Without this it would be dropped on pull and reset to its default. This also
+	// covers oauthTokenData, which sanitization always strips from the remote.
+	for (const [key, localValue] of Object.entries(local)) {
+		if (!(key in sanitizedRemote)) {
+			merged[key] = localValue;
+		}
 	}
 
 	return merged;
@@ -282,44 +286,8 @@ export function isSourceControlLicensed() {
 	return license.isSourceControlLicensed();
 }
 
-export async function generateSshKeyPair(keyType: KeyPairType) {
-	const sshpk = await import('sshpk');
-	const keyPair: KeyPair = {
-		publicKey: '',
-		privateKey: '',
-	};
-	let generatedKeyPair: KeyPair;
-	switch (keyType) {
-		case 'ed25519':
-			generatedKeyPair = generateKeyPairSync('ed25519', {
-				privateKeyEncoding: { format: 'pem', type: 'pkcs8' },
-				publicKeyEncoding: { format: 'pem', type: 'spki' },
-			});
-			break;
-		case 'rsa':
-			generatedKeyPair = generateKeyPairSync('rsa', {
-				modulusLength: 4096,
-				publicKeyEncoding: {
-					type: 'spki',
-					format: 'pem',
-				},
-				privateKeyEncoding: {
-					type: 'pkcs8',
-					format: 'pem',
-				},
-			});
-			break;
-	}
-	const keyPublic = sshpk.parseKey(generatedKeyPair.publicKey, 'pem');
-	keyPublic.comment = SOURCE_CONTROL_GIT_KEY_COMMENT;
-	keyPair.publicKey = keyPublic.toString('ssh');
-	const keyPrivate = sshpk.parsePrivateKey(generatedKeyPair.privateKey, 'pem');
-	keyPrivate.comment = SOURCE_CONTROL_GIT_KEY_COMMENT;
-	keyPair.privateKey = keyPrivate.toString('ssh-private');
-	return {
-		privateKey: keyPair.privateKey,
-		publicKey: keyPair.publicKey,
-	};
+export async function generateSshKeyPair(keyType: KeyPairType): Promise<KeyPair> {
+	return await generateGitSshKeyPair(keyType, SOURCE_CONTROL_GIT_KEY_COMMENT);
 }
 
 export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {

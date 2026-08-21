@@ -236,7 +236,10 @@ test.describe(
 			});
 
 			test('should accept valid header auth', async ({ api }) => {
-				const headerName = `X-Auth-${nanoid(8)}`;
+				// Keep the header NAME underscore-free: proxies commonly drop request headers
+				// with underscores in the name (the multi-main CI stack's Caddy LB does), and
+				// nanoid's default alphabet includes '_'. Values are unaffected.
+				const headerName = `X-Auth-${nanoid(8).replaceAll('_', '-')}`;
 				const headerValue = `secret-value-${nanoid()}`;
 				const credential = await api.credentials.createCredential({
 					type: 'httpHeaderAuth',

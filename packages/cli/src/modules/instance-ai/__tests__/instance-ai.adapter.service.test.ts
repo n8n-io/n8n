@@ -1,10 +1,18 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
 	const { WorkflowSaveConflictError } = await import(
-		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error'
+		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error.js'
+	);
+	const { WorkflowNotFoundError } = await import(
+		'../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error.js'
+	);
+	const { WorkflowEditorLockedError } = await import(
+		'../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error.js'
 	);
 	return {
 		WorkflowSaveConflictError,
+		WorkflowNotFoundError,
+		WorkflowEditorLockedError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s
@@ -37,6 +45,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 }));
 
 import { Container } from '@n8n/di';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
 import { Expression } from 'n8n-workflow';
 import type {
@@ -52,12 +61,17 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { NodeCatalogService } from '@/node-catalog';
 import type { NodeTypes } from '@/node-types';
-import type { PostHogClient } from '@/posthog';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { PostHogClient } from '@/posthog';
+
+import { InstanceAiMcpRegistryService } from '../mcp';
 
 import {
 	extractExecutionResult,
@@ -65,13 +79,23 @@ import {
 	extractNodeOutput,
 	formatExecutionError,
 	resolveDataTableByIdOrName,
+	resolveMetricProviders,
 	truncateNodeOutput,
 	truncateResultData,
 } from '../instance-ai.adapter.service';
+import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Collaboration stub that reports no editor write lock and records broadcasts. */
+function createMockCollaborationService() {
+	return {
+		ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
+		broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),
+	};
+}
 
 function createMockExecutionRepository(
 	execution?: ReturnType<typeof makeExecution>,
@@ -1214,24 +1238,34 @@ vi.mock('@/permissions.ee/check-access', () => ({
 import type {
 	AiBuilderTemporaryWorkflowRepository,
 	User,
+	CredentialsEntity,
 	ExecutionRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { UserError, UnexpectedError } from 'n8n-workflow';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { WorkflowEditorLockedError } from '../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error';
+import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { LockedError } from '@/errors/response-errors/locked.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
+import { ModuleRegistry } from '@n8n/backend-common';
+import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
@@ -1240,7 +1274,7 @@ function createNodeAdapterServiceForTests(
 	nodes: Array<Record<string, unknown>>,
 	options?: {
 		nodeCatalogService?: Mocked<NodeCatalogService>;
-		loadNodesAndCredentials?: { addPostProcessor?: Mock };
+		loadNodesAndCredentials?: Record<string, unknown>;
 	},
 ) {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1285,7 +1319,7 @@ function createNodeAdapterServiceForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
@@ -1300,8 +1334,13 @@ function createNodeAdapterServiceForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		createMockCollaborationService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 		nodeCatalogService,
 	);
 
@@ -1314,7 +1353,14 @@ function createNodeAdapterServiceForTests(
 		expiresAt: Date.now() + 60_000,
 	};
 
-	return { service, nodeService: service.createContext(mockUser).nodeService, nodeCatalogService };
+	const context = service.createContext(mockUser);
+
+	return {
+		service,
+		nodeService: context.nodeService,
+		credentialService: context.credentialService,
+		nodeCatalogService,
+	};
 }
 
 function createNodeAdapterForTests(
@@ -1323,6 +1369,89 @@ function createNodeAdapterForTests(
 ) {
 	return createNodeAdapterServiceForTests(nodes, { nodeCatalogService }).nodeService;
 }
+
+// ---------------------------------------------------------------------------
+// Web-search provider selection
+// ---------------------------------------------------------------------------
+
+import { braveSearch, searxngSearch } from '@n8n/ai-utilities';
+
+describe('web-search provider selection', () => {
+	type SearchFn = (query: string, options?: Record<string, unknown>) => Promise<unknown>;
+	type ProxyConfig = { apiUrl: string; getAuthHeaders: () => Promise<Record<string, string>> };
+
+	/** `buildSearchMethod` is private, but the precedence it encodes is exactly what
+	 *  the `INSTANCE_AI_BRAVE_SEARCH_API_KEY` wiring relies on — assert it directly. */
+	function buildSearch(args: {
+		apiKey?: string;
+		searxngUrl?: string;
+		proxyConfig?: ProxyConfig;
+	}): SearchFn | undefined {
+		const { service } = createNodeAdapterServiceForTests([]);
+		const cache = { get: vi.fn().mockReturnValue(undefined), set: vi.fn() };
+		const withPrivate = service as unknown as {
+			buildSearchMethod: (
+				apiKey: string,
+				searxngUrl: string,
+				cache: unknown,
+				proxyConfig?: ProxyConfig,
+				userId?: string,
+			) => SearchFn | undefined;
+		};
+		return withPrivate.buildSearchMethod.call(
+			service,
+			args.apiKey ?? '',
+			args.searxngUrl ?? '',
+			cache,
+			args.proxyConfig,
+			'user-1',
+		);
+	}
+
+	beforeEach(() => {
+		vi.mocked(braveSearch).mockReset().mockResolvedValue({ query: 'q', results: [] });
+		vi.mocked(searxngSearch).mockReset().mockResolvedValue({ query: 'q', results: [] });
+	});
+
+	it('has no search method when neither a Brave key nor a SearXNG URL is set', () => {
+		// The adapter then serves `{ query, results: [] }`, which the agent cannot
+		// distinguish from "nothing found" — hence the key in the eval lanes.
+		expect(buildSearch({})).toBeUndefined();
+	});
+
+	it('searches Brave with the configured key', async () => {
+		await buildSearch({ apiKey: 'BSA-key' })!('quakes', { maxResults: 3 });
+
+		expect(braveSearch).toHaveBeenCalledWith(
+			'BSA-key',
+			'quakes',
+			expect.objectContaining({ maxResults: 3 }),
+		);
+		expect(searxngSearch).not.toHaveBeenCalled();
+	});
+
+	it('routes through the AI-service proxy in preference to a configured key', async () => {
+		const proxyConfig: ProxyConfig = {
+			apiUrl: 'https://proxy.example.com/brave-search',
+			getAuthHeaders: async () => ({}),
+		};
+
+		await buildSearch({ apiKey: 'BSA-key', proxyConfig })!('quakes');
+
+		expect(braveSearch).toHaveBeenCalledWith(
+			'',
+			'quakes',
+			expect.objectContaining({ proxyConfig }),
+		);
+	});
+
+	it('falls back to SearXNG when only a URL is set', async () => {
+		await buildSearch({ searxngUrl: 'http://searxng:8080' })!('quakes');
+
+		expect(searxngSearch).toHaveBeenCalledWith('http://searxng:8080', 'quakes', expect.anything());
+		expect(braveSearch).not.toHaveBeenCalled();
+	});
+});
 
 describe('createNodeAdapter', () => {
 	it('preserves credential displayOptions in getDescription()', async () => {
@@ -1523,10 +1652,8 @@ function createDataTableAdapterForTests(overrides?: {
 			.mockResolvedValue({ id: 'dt-1', name: 'Orders', projectId: 'team-project-id' }),
 	};
 
-	const mockSourceControlPreferencesService = {
-		getPreferences: vi.fn().mockReturnValue({
-			branchReadOnly: overrides?.branchReadOnly ?? false,
-		}),
+	const mockInstanceWriteAccess = {
+		isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
 	};
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1561,7 +1688,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
-		mockSourceControlPreferencesService as unknown as SourceControlPreferencesService,
+		mockInstanceWriteAccess as unknown as InstanceWriteAccessService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
@@ -1573,8 +1700,13 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		createMockCollaborationService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -1586,7 +1718,7 @@ function createDataTableAdapterForTests(overrides?: {
 		mockProjectRepository,
 		mockDataTableService,
 		mockDataTableRepository,
-		mockSourceControlPreferencesService,
+		mockInstanceWriteAccess,
 		mockUser,
 	};
 }
@@ -1821,10 +1953,11 @@ function createWorkflowAdapterForTests(overrides?: {
 	};
 
 	const mockWorkflowService = {
-		getMany: vi.fn().mockResolvedValue({ workflows: [savedWorkflow] }),
+		getMany: vi.fn().mockResolvedValue({ workflows: [savedWorkflow], count: 1 }),
 		archive: vi.fn().mockResolvedValue(savedWorkflow),
 		unarchive: vi.fn().mockResolvedValue(savedWorkflow),
 		activateWorkflow: vi.fn().mockResolvedValue({ activeVersionId: 'version-1' }),
+		deactivateWorkflow: vi.fn().mockResolvedValue(savedWorkflow),
 		update: vi.fn().mockResolvedValue(savedWorkflow),
 	};
 	const mockWorkflowHistoryService = {
@@ -1840,6 +1973,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		scoped: vi.fn(),
 	};
 	mockLogger.scoped.mockReturnValue(mockLogger);
+	const mockCollaborationService = createMockCollaborationService();
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
@@ -1873,10 +2007,8 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi
-				.fn()
-				.mockReturnValue({ branchReadOnly: overrides?.branchReadOnly ?? false }),
-		} as unknown as SourceControlPreferencesService,
+			isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
+		} as unknown as InstanceWriteAccessService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		mockWorkflowHistoryService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -1899,8 +2031,13 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		mockCollaborationService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const boundProjectId =
@@ -1914,6 +2051,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	return {
 		adapter,
 		context,
+		savedWorkflow,
 		mockProjectRepository,
 		mockWorkflowRepository,
 		mockWorkflowFinderService,
@@ -1922,6 +2060,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockWorkflowService,
 		mockWorkflowHistoryService,
 		mockEnterpriseWorkflowService,
+		mockCollaborationService,
 		mockTelemetry,
 		mockLogger,
 		mockUser,
@@ -1938,6 +2077,29 @@ describe('createWorkflowAdapter', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockedUserHasScopes.mockResolvedValue(true);
+	});
+
+	it('summarizes pinned data as node names and item counts, without payloads', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-pins',
+			pinData: {
+				'Get Job Alert Emails': [{ json: { id: 'msg_1' } }, { json: { id: 'msg_2' } }],
+				'Empty Pin': [],
+			},
+		});
+
+		await expect(adapter.getPinnedDataSummary?.('wf-pins')).resolves.toEqual([
+			{ nodeName: 'Get Job Alert Emails', itemCount: 2 },
+			{ nodeName: 'Empty Pin', itemCount: 0 },
+		]);
+	});
+
+	it('returns an empty pinned-data summary when the workflow has no pins', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-clean' });
+
+		await expect(adapter.getPinnedDataSummary?.('wf-clean')).resolves.toEqual([]);
 	});
 
 	it('preserves node-level execution options when returning WorkflowJSON', async () => {
@@ -1985,6 +2147,64 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('returns AI Gateway-managed credentials in a shape accepted by workflow codegen', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-managed',
+			name: 'Managed model workflow',
+			active: false,
+			versionId: 'version-id',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-01-01'),
+			nodes: [
+				{
+					id: 'agent-id',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 3.1,
+					position: [0, 0],
+					parameters: { promptType: 'define', text: 'Summarize the input.' },
+				},
+				{
+					id: 'model-id',
+					name: 'Google Gemini Chat Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					typeVersion: 1.1,
+					position: [0, 200],
+					parameters: { modelName: 'models/gemini-3-flash-preview' },
+					credentials: {
+						googlePalmApi: {
+							id: null,
+							name: 'n8n credits',
+							__aiGatewayManaged: true,
+						},
+					},
+				},
+			],
+			connections: {
+				'Google Gemini Chat Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+			settings: {},
+		});
+
+		const workflow = await adapter.getAsWorkflowJSON('wf-managed');
+
+		expect(workflow.nodes[1].credentials).toEqual({
+			googlePalmApi: {
+				id: null,
+				name: 'n8n credits',
+				__aiGatewayManaged: true,
+			},
+		});
+		const code = generateWorkflowCode(workflow);
+		expect(code).toContain("newCredential('n8n credits')");
+		expect(code).not.toContain("newCredential('n8n credits', 'null')");
+	});
+
 	it('returns the version graph with current workflow metadata when a versionId is passed', async () => {
 		const { adapter, mockWorkflowHistoryService, mockUser } = createWorkflowAdapterForTests();
 		mockWorkflowHistoryService.getVersion.mockResolvedValue({
@@ -2024,12 +2244,77 @@ describe('createWorkflowAdapter', () => {
 				projectId: 'team-project-id',
 			},
 		});
-		expect(result).toEqual([
+		expect(result.workflows).toEqual([
 			expect.objectContaining({
 				id: 'wf-new',
 				isArchived: false,
 			}),
 		]);
+	});
+
+	it('reports how many workflows the name filter left out', async () => {
+		const { adapter, mockWorkflowService, mockUser, savedWorkflow } =
+			createWorkflowAdapterForTests();
+		mockWorkflowService.getMany
+			.mockResolvedValueOnce({ workflows: [savedWorkflow], count: 1 })
+			.mockResolvedValueOnce({ workflows: [savedWorkflow], count: 3 });
+
+		const result = await adapter.list({ query: 'PRD' });
+
+		// Second call re-counts the same scope without the name filter.
+		expect(mockWorkflowService.getMany).toHaveBeenNthCalledWith(2, mockUser, {
+			take: 1,
+			filter: { isArchived: false, projectId: 'team-project-id' },
+		});
+		expect(result.total).toBe(1);
+		expect(result.totalInScope).toBe(3);
+	});
+
+	it('lists a caller-named project as a filter, leaving access resolution to getMany', async () => {
+		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.list({ projectId: 'other-project-id' });
+
+		// The user is still the one the query resolves readability from — the project
+		// id only narrows it, so it can never widen what the caller may read.
+		expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
+			take: 50,
+			filter: { isArchived: false, projectId: 'other-project-id' },
+		});
+	});
+
+	it('attributes the owning project only when the listing can span projects', async () => {
+		const { adapter, mockWorkflowService, savedWorkflow } = createWorkflowAdapterForTests();
+		mockWorkflowService.getMany.mockResolvedValue({
+			workflows: [{ ...savedWorkflow, homeProject: { id: 'p2', name: 'Primary', type: 'team' } }],
+			count: 1,
+		});
+
+		const instanceWide = await adapter.list({ scope: 'instance' });
+		expect(instanceWide.workflows[0].project).toEqual({ id: 'p2', name: 'Primary' });
+
+		// Narrowed to one project — repeating it on every row carries no information.
+		const singleProject = await adapter.list({ projectId: 'p2' });
+		expect(singleProject.workflows[0].project).toBeUndefined();
+	});
+
+	it('omits attribution when the listed row carries no home project', async () => {
+		const { adapter, mockWorkflowService, savedWorkflow } = createWorkflowAdapterForTests();
+		mockWorkflowService.getMany.mockResolvedValue({ workflows: [savedWorkflow], count: 1 });
+
+		const result = await adapter.list({ scope: 'instance' });
+
+		expect(result.workflows[0].project).toBeUndefined();
+	});
+
+	it('skips the extra count query when no name filter is given', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		const result = await adapter.list();
+
+		expect(mockWorkflowService.getMany).toHaveBeenCalledTimes(1);
+		expect(result.total).toBe(1);
+		expect(result.totalInScope).toBe(1);
 	});
 
 	it('lists archived workflows when requested', async () => {
@@ -2110,6 +2395,7 @@ describe('createWorkflowAdapter', () => {
 		await adapter.publish('wf-new');
 
 		expect(mockTelemetry.track).toHaveBeenCalledWith('Builder published workflow', {
+			user_id: 'user-1',
 			thread_id: 'thread-1',
 			workflow_id: 'wf-new',
 			executed_by: 'ai',
@@ -2235,6 +2521,81 @@ describe('createWorkflowAdapter', () => {
 			expect.anything(),
 			expect.anything(),
 		);
+	});
+
+	it('defaults executionOrder to v1 when the SDK workflow declares no settings', async () => {
+		// Regression: the SDK omits the settings argument when empty, so AI-authored
+		// workflows persisted with `{}` and ran on legacy v0.
+		const { adapter, mockWorkflowRepository, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ settings: { executionOrder: 'v1' } }),
+		);
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: { executionOrder: 'v1' } }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('keeps an explicit executionOrder from the SDK workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON({
+			...minimalWorkflowJSON,
+			settings: { executionOrder: 'v0' },
+		} as unknown as WorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: { executionOrder: 'v0' } }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('does not inject executionOrder on update, leaving the stored value to the merge', async () => {
+		// update merges over stored settings, so forcing v1 here would upgrade a
+		// workflow the user deliberately kept on v0.
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON);
+
+		expect(mockWorkflowService.update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ settings: {} }),
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('notifies open editors after a successful update so stale canvases reload', async () => {
+		// Without this an open editor keeps state the save replaced (e.g. cleared
+		// pinned data) and resurrects it via the overwrite-conflict dialog.
+		const { adapter, mockCollaborationService, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON);
+
+		expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+			'wf-existing',
+			mockUser.id,
+		);
+	});
+
+	it('does not notify editors when the update fails', async () => {
+		const { adapter, mockCollaborationService, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+		mockWorkflowService.update.mockRejectedValueOnce(new Error('save failed'));
+
+		await expect(
+			adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON),
+		).rejects.toThrow('save failed');
+		expect(mockCollaborationService.broadcastWorkflowUpdate).not.toHaveBeenCalled();
 	});
 
 	it('clears existing node groups when the SDK workflow declares none (update is authoritative)', async () => {
@@ -2392,6 +2753,19 @@ describe('createWorkflowAdapter', () => {
 		).rejects.toBeInstanceOf(WorkflowSaveConflictError);
 	});
 
+	it('throws WorkflowNotFoundError when workflowService.update cannot find the workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		mockWorkflowService.update.mockRejectedValueOnce(
+			new NotFoundError(
+				'You do not have permission to update this workflow. Ask the owner to share it with you.',
+			),
+		);
+
+		await expect(
+			adapter.updateFromWorkflowJSON('wf-missing', minimalWorkflowJSON),
+		).rejects.toBeInstanceOf(WorkflowNotFoundError);
+	});
+
 	it('returns a checksum on create and update saves', async () => {
 		const { adapter } = createWorkflowAdapterForTests();
 
@@ -2498,6 +2872,126 @@ describe('createWorkflowAdapter', () => {
 
 			await expect(adapter.unarchive('wf-1')).rejects.toThrow(
 				'Cannot modify workflows on a protected instance',
+			);
+		});
+	});
+
+	describe('editor write lock', () => {
+		const lockWorkflow = (
+			mockCollaborationService: ReturnType<typeof createMockCollaborationService>,
+		) => {
+			mockCollaborationService.ensureWorkflowEditable.mockRejectedValue(
+				new LockedError('Cannot modify workflow while it is being edited by a user in the editor.'),
+			);
+		};
+
+		it('reports a locked workflow as a WorkflowEditorLockedError instead of a response error', async () => {
+			const { adapter, mockCollaborationService, mockWorkflowService } =
+				createWorkflowAdapterForTests();
+			lockWorkflow(mockCollaborationService);
+
+			await expect(
+				adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON),
+			).rejects.toThrow(WorkflowEditorLockedError);
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		});
+
+		it('refuses to write when the lock cannot be checked, without claiming a lock', async () => {
+			// Fail closed: an unreadable lock is no proof that nobody is editing.
+			const { adapter, mockCollaborationService, mockWorkflowService } =
+				createWorkflowAdapterForTests();
+			const lookupFailure = new Error('collaboration cache is unreachable');
+			mockCollaborationService.ensureWorkflowEditable.mockRejectedValue(lookupFailure);
+
+			await expect(adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON)).rejects.toBe(
+				lookupFailure,
+			);
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		});
+
+		it('refuses to unpublish a locked workflow', async () => {
+			const { adapter, mockCollaborationService, mockWorkflowService } =
+				createWorkflowAdapterForTests();
+			lockWorkflow(mockCollaborationService);
+
+			await expect(adapter.unpublish('wf-1')).rejects.toThrow(WorkflowEditorLockedError);
+			expect(mockWorkflowService.deactivateWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('refuses to restore a version of a locked workflow', async () => {
+			const { adapter, mockCollaborationService, mockWorkflowService } =
+				createWorkflowAdapterForTests();
+			lockWorkflow(mockCollaborationService);
+
+			await expect(adapter.restoreVersion?.('wf-1', 'v-1')).rejects.toThrow(
+				WorkflowEditorLockedError,
+			);
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('notifying open editors', () => {
+		it('notifies after publishing', async () => {
+			const { adapter, mockCollaborationService } = createWorkflowAdapterForTests();
+
+			await adapter.publish('wf-1');
+
+			expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+				'wf-1',
+				'user-1',
+			);
+		});
+
+		it('notifies after unpublishing', async () => {
+			const { adapter, mockCollaborationService } = createWorkflowAdapterForTests();
+
+			await adapter.unpublish('wf-1');
+
+			expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+				'wf-1',
+				'user-1',
+			);
+		});
+
+		it('notifies after archiving', async () => {
+			const { adapter, mockCollaborationService } = createWorkflowAdapterForTests();
+
+			await adapter.archive('wf-1');
+
+			expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+				'wf-1',
+				'user-1',
+			);
+		});
+
+		it('notifies after restoring a version', async () => {
+			const { adapter, mockCollaborationService, mockWorkflowHistoryService } =
+				createWorkflowAdapterForTests();
+			mockWorkflowHistoryService.getVersion.mockResolvedValue({
+				versionId: 'v-1',
+				nodes: [],
+				connections: {},
+				nodeGroups: [],
+			});
+
+			await adapter.restoreVersion?.('wf-1', 'v-1');
+
+			expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+				'wf-1',
+				'user-1',
+			);
+		});
+
+		it('keeps a committed update when notifying open editors fails', async () => {
+			const { adapter, mockCollaborationService, mockLogger } = createWorkflowAdapterForTests();
+			mockCollaborationService.broadcastWorkflowUpdate.mockRejectedValue(new Error('push is down'));
+
+			await expect(
+				adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON),
+			).resolves.toMatchObject({ id: 'wf-new' });
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to notify open editors of an AI workflow update',
+				expect.objectContaining({ workflowId: 'wf-existing', error: 'push is down' }),
 			);
 		});
 	});
@@ -2640,8 +3134,8 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
-		} as unknown as SourceControlPreferencesService,
+			isReadOnly: vi.fn().mockReturnValue(false),
+		} as unknown as InstanceWriteAccessService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
@@ -2653,8 +3147,13 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		createMockCollaborationService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -2900,7 +3399,7 @@ function createRunAdapterForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
@@ -2915,8 +3414,13 @@ function createRunAdapterForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		createMockCollaborationService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -2933,6 +3437,32 @@ function createRunAdapterForTests(
 describe('createExecutionAdapter run()', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('reports workflow-pinned nodes on the run result', async () => {
+		const { adapter } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+				pinData: { 'Get Job Alert Emails': [{ json: { id: 'msg_1' } }] },
+			},
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		const result = await adapter.run('wf-1');
+
+		expect(result.workflowPinnedNodeNames).toEqual(['Get Job Alert Emails']);
+	});
+
+	it('omits workflow-pinned nodes from the run result when the workflow has none', async () => {
+		const { adapter } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [] },
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		const result = await adapter.run('wf-1');
+
+		expect(result).not.toHaveProperty('workflowPinnedNodeNames');
 	});
 
 	it('forces save settings so the agent can read the result back', async () => {
@@ -2972,7 +3502,48 @@ describe('createExecutionAdapter run()', () => {
 			saveManualExecutions: true,
 			saveDataSuccessExecution: 'all',
 			saveDataErrorExecution: 'all',
+			executionTimeout: 300,
 		});
+	});
+
+	it('bounds the execution inside the engine with the wait budget, capped at the max', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [],
+		});
+
+		await adapter.run('wf-1', undefined, { timeout: 60_000 });
+		await adapter.run('wf-1', undefined, { timeout: 60 * 60 * 1000 });
+
+		const [firstRun, secondRun] = mockWorkflowRunner.run.mock.calls.map((call) => call[0]);
+		expect(firstRun.workflowData.settings?.executionTimeout).toBe(60);
+		expect(secondRun.workflowData.settings?.executionTimeout).toBe(600);
+	});
+
+	it('omits the listed connections on the ephemeral run copy only', async () => {
+		const workflow = {
+			id: 'wf-1',
+			nodes: [],
+			connections: {
+				Revise: { main: [[{ node: 'Format', type: 'main', index: 0 }]] },
+				Format: { main: [[{ node: 'Gate', type: 'main', index: 0 }]] },
+			},
+		};
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflow);
+
+		await adapter.run('wf-1', undefined, {
+			omitConnections: [{ source: 'Revise', target: 'Format' }],
+		});
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.connections.Revise.main).toEqual([[]]);
+		expect(runData.workflowData.connections.Format.main).toEqual([
+			[{ node: 'Gate', type: 'main', index: 0 }],
+		]);
+		// The saved workflow object is untouched.
+		expect(workflow.connections.Revise.main).toEqual([
+			[{ node: 'Format', type: 'main', index: 0 }],
+		]);
 	});
 
 	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {
@@ -3076,6 +3647,7 @@ describe('createExecutionAdapter run()', () => {
 		await adapter.run('wf-1');
 
 		expect(mockTelemetry.track).toHaveBeenCalledWith('Builder executed workflow', {
+			user_id: 'user-1',
 			thread_id: 'thread-1',
 			workflow_id: 'wf-1',
 			executed_by: 'ai',
@@ -3126,13 +3698,55 @@ describe('createExecutionAdapter run()', () => {
 			status: 'error',
 		});
 
-		expect(mockActiveExecutions.stopExecution).toHaveBeenCalled();
+		expect(mockActiveExecutions.stopExecution).toHaveBeenCalledWith(
+			'exec-1',
+			expect.objectContaining({ name: 'TimeoutExecutionCancelledError' }),
+		);
 		expect(mockTelemetry.track).toHaveBeenCalledWith(
 			'Builder executed workflow',
 			expect.objectContaining({
 				workflow_id: 'wf-1',
 				status: 'error',
 				error: expect.stringContaining('timed out'),
+			}),
+		);
+	});
+
+	it('tracks abort cancellation as a manual cancel, not a timeout', async () => {
+		const { adapter, mockActiveExecutions, mockTelemetry } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				activeExecution: true,
+				postExecutePromise: new Promise(() => {}),
+				threadId: 'thread-1',
+			},
+		);
+		const abortController = new AbortController();
+
+		const runPromise = adapter.run('wf-1', undefined, {
+			timeout: 60_000,
+			abortSignal: abortController.signal,
+		});
+		abortController.abort();
+
+		await expect(runPromise).resolves.toMatchObject({
+			status: 'error',
+			error: 'Execution was cancelled',
+		});
+
+		expect(mockActiveExecutions.stopExecution).toHaveBeenCalledWith(
+			'exec-1',
+			expect.objectContaining({ name: 'ManualExecutionCancelledError' }),
+		);
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				status: 'error',
+				error: 'Execution was cancelled',
 			}),
 		);
 	});
@@ -3190,6 +3804,160 @@ describe('createExecutionAdapter run()', () => {
 		expect(firstStackItem?.data.main[0]?.[0]?.json).toEqual({});
 	});
 
+	describe('trigger selection', () => {
+		const triggerNode = (
+			name: string,
+			overrides?: { type?: string; disabled?: boolean },
+		): INode => ({
+			...makeNode(name, overrides?.type ?? 'n8n-nodes-base.scheduleTrigger'),
+			...(overrides?.disabled ? { disabled: true } : {}),
+		});
+
+		const startedFrom = (mockWorkflowRunner: { run: Mock }) =>
+			mockWorkflowRunner.run.mock.calls[0][0].triggerToStartFrom?.name;
+
+		it('starts from the named trigger instead of the first one', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await adapter.run('wf-1', undefined, { triggerNodeName: 'Weekly 5pm' });
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Weekly 5pm');
+		});
+
+		it('auto-detects the first trigger when none is named', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Daily 8am');
+		});
+
+		it('skips a disabled trigger when auto-detecting', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am', { disabled: true }), triggerNode('Weekly 5pm')],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Weekly 5pm');
+		});
+
+		it('falls back to a disabled trigger when every trigger is disabled', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('Daily 8am', { disabled: true }),
+					triggerNode('Weekly 5pm', { disabled: true }),
+				],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Daily 8am');
+		});
+
+		it('prefers a known trigger type over an unknown one earlier in the node list', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('On Interval', { type: 'n8n-nodes-base.cron' }),
+					triggerNode('On Chat Message', { type: '@n8n/n8n-nodes-langchain.chatTrigger' }),
+				],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('On Chat Message');
+		});
+
+		it('rejects an unknown trigger name instead of running a different branch', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await expect(
+				adapter.run('wf-1', undefined, { triggerNodeName: 'Weekly 5PM' }),
+			).rejects.toThrow(/Weekly 5PM.*Daily 8am.*Weekly 5pm/s);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects a named node that is not a trigger', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('Daily 8am'),
+					triggerNode('Compute Daily', { type: 'n8n-nodes-base.code' }),
+				],
+			});
+
+			await expect(
+				adapter.run('wf-1', undefined, { triggerNodeName: 'Compute Daily' }),
+			).rejects.toThrow(/Compute Daily/);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+	});
+
+	it('opts a verification run out of the error workflow, on the main process and on a worker', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			settings: { errorWorkflow: 'error-wf-1' },
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+		});
+
+		await adapter.run('wf-1', undefined, { isVerificationRun: true });
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		// A trigger-mode run is a production execution as far as the lifecycle
+		// hooks are concerned, so the opt-out is what keeps a failed build attempt
+		// from paging the user's error workflow.
+		expect(runData.executionMode).toBe('trigger');
+		expect(runData.suppressErrorWorkflow).toBe(true);
+		// Queue mode rebuilds the run from persisted execution data.
+		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBe(true);
+	});
+
+	it('leaves the error workflow enabled for a run the user asked for', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			settings: { errorWorkflow: 'error-wf-1' },
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+		});
+
+		await adapter.run('wf-1');
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.suppressErrorWorkflow).toBeUndefined();
+		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBeUndefined();
+		// The user's setting is never stripped from the run itself.
+		expect(runData.workflowData.settings?.errorWorkflow).toBe('error-wf-1');
+	});
+
 	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {
 		const original = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
@@ -3233,10 +4001,16 @@ function createAdapterWithGatewayMock(
 	overrides?: {
 		credentialsService?: unknown;
 		telemetry?: unknown;
-		licensed?: boolean;
+		enabled?: boolean;
+		settingsService?: unknown;
 	},
 ): InstanceAiAdapterService {
-	const aiGatewayService = { getGatewayConfig };
+	const aiGatewayService = {
+		getGatewayConfig,
+		assertEnabled: vi.fn().mockImplementation(() => {
+			if (overrides?.enabled === false) throw new Error('n8n Connect is disabled');
+		}),
+	};
 	const args = Array.from(
 		{ length: 35 },
 		() => ({}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[number],
@@ -3259,12 +4033,15 @@ function createAdapterWithGatewayMock(
 		typeof InstanceAiAdapterService
 	>[14];
 	args[21] = {
-		getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+		isReadOnly: vi.fn().mockReturnValue(false),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
+	if (overrides?.settingsService) {
+		args[22] = overrides.settingsService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[22];
+	}
 	args[25] = {
-		// Gateway exposure is gated on the AI Gateway license; default these
-		// gateway-focused fixtures to licensed so they exercise the enabled path.
-		isLicensed: vi.fn().mockReturnValue(overrides?.licensed ?? true),
+		isLicensed: vi.fn().mockReturnValue(true),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25];
 	args[29] = (overrides?.telemetry ?? {
 		track: vi.fn(),
@@ -3308,13 +4085,13 @@ describe('getGatewayConfigOrNull', () => {
 		await expect(callGet(adapter)).resolves.toBeNull();
 	});
 
-	it('returns null without calling the service when the AI Gateway license is absent', async () => {
+	it('returns null without calling the service when n8n Connect is disabled', async () => {
 		const getGatewayConfig = vi.fn().mockResolvedValue({
 			nodes: ['openAi'],
 			credentialTypes: ['openAiApi'],
 			providerConfig: {},
 		});
-		const adapter = createAdapterWithGatewayMock(getGatewayConfig, { licensed: false });
+		const adapter = createAdapterWithGatewayMock(getGatewayConfig, { enabled: false });
 
 		await expect(callGet(adapter)).resolves.toBeNull();
 		expect(getGatewayConfig).not.toHaveBeenCalled();
@@ -3545,5 +4322,421 @@ describe('isConfigEvalsEnabled', () => {
 		} as unknown as PostHogClient);
 
 		expect(await adapter.isConfigEvalsEnabled(user)).toBe(false);
+	});
+});
+
+describe('MCP registry discovery', () => {
+	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
+
+	interface McpStubs {
+		moduleActive?: boolean;
+		featureFlags?: Record<string, string>;
+		registrySearch?: Mock;
+		registryResolveBySlugs?: Mock;
+		listConnectionsForUser?: Mock;
+	}
+
+	/** Route `Container.get` by token — the adapter resolves PostHog and both MCP
+	 *  services lazily, so each needs its own stub. */
+	function stubContainer(stubs: McpStubs = {}) {
+		const getFeatureFlags = vi.fn().mockResolvedValue(stubs.featureFlags ?? {});
+		const search = stubs.registrySearch ?? vi.fn().mockResolvedValue([]);
+		const resolveBySlugs = stubs.registryResolveBySlugs ?? vi.fn().mockResolvedValue([]);
+		const listConnectionsForUser = stubs.listConnectionsForUser ?? vi.fn().mockResolvedValue([]);
+
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === PostHogClient) return { getFeatureFlags };
+			if (token === McpRegistryService) return { search, resolveBySlugs };
+			if (token === InstanceAiMcpRegistryService) return { listConnectionsForUser };
+			// Stands in for ModuleRegistry: `mcp-registry` active, `agents` not.
+			return {
+				isActive: (name: string) => (stubs.moduleActive ?? true) && name === 'mcp-registry',
+			};
+		});
+
+		return { getFeatureFlags, search, resolveBySlugs, listConnectionsForUser };
+	}
+
+	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
+		return createAdapterWithGatewayMock(vi.fn(), {
+			settingsService: { isMcpAccessEnabled: vi.fn().mockReturnValue(mcpAccessEnabled) },
+		});
+	}
+
+	const enabledFlags = {
+		[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+	};
+
+	describe('isMcpConnectionsEnabled', () => {
+		it('is on when the module is active, MCP access is enabled, and the user is on the enabled variant', async () => {
+			const { getFeatureFlags } = stubContainer({ featureFlags: enabledFlags });
+
+			expect(await createAdapter().isMcpConnectionsEnabled(user)).toBe(true);
+			expect(getFeatureFlags).toHaveBeenCalledWith(user);
+		});
+
+		it('is off when the mcp-registry module is disabled, without consulting the flag', async () => {
+			// With the module off the registry entity is never registered, so a
+			// search would throw rather than return nothing.
+			const { getFeatureFlags } = stubContainer({
+				moduleActive: false,
+				featureFlags: enabledFlags,
+			});
+
+			expect(await createAdapter().isMcpConnectionsEnabled(user)).toBe(false);
+			expect(getFeatureFlags).not.toHaveBeenCalled();
+		});
+
+		it('is off when the admin disabled MCP access, without consulting the flag', async () => {
+			const { getFeatureFlags } = stubContainer({ featureFlags: enabledFlags });
+
+			expect(await createAdapter(false).isMcpConnectionsEnabled(user)).toBe(false);
+			expect(getFeatureFlags).not.toHaveBeenCalled();
+		});
+
+		it('is off when the user is on the control variant', async () => {
+			stubContainer({ featureFlags: { [INSTANCE_AI_MCP_CONNECTIONS_FLAG]: 'control' } });
+
+			expect(await createAdapter().isMcpConnectionsEnabled(user)).toBe(false);
+		});
+
+		it('fails closed when no flags resolve (PostHog outage or diagnostics off)', async () => {
+			stubContainer({ featureFlags: {} });
+
+			expect(await createAdapter().isMcpConnectionsEnabled(user)).toBe(false);
+		});
+	});
+
+	describe('mcpService', () => {
+		const registryHit = {
+			slug: 'google-drive',
+			name: 'googleDrive',
+			title: 'Google Drive',
+			description: 'Work with Drive files',
+			url: 'https://example.com/mcp',
+			transport: 'streamableHttp',
+			authentication: 'googleDriveMcpOAuth2Api',
+			credentialType: 'googleDriveMcpOAuth2Api',
+			tools: [{ name: 'list_files', title: 'List files' }],
+			metadata: { nodeTypeName: '@n8n/mcp-registry.googleDrive' },
+		};
+
+		it('is absent from the context unless the gate passed', () => {
+			stubContainer();
+
+			expect(createAdapter().createContext(user).mcpService).toBeUndefined();
+		});
+
+		it('strips host-only fields from registry hits', async () => {
+			const { search } = stubContainer({
+				registrySearch: vi.fn().mockResolvedValue([registryHit]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			const results = await context.mcpService!.search(['drive']);
+
+			expect(search).toHaveBeenCalledWith(['drive']);
+			// url/transport/authentication/metadata never reach the agent.
+			expect(results).toEqual([
+				{
+					slug: 'google-drive',
+					title: 'Google Drive',
+					description: 'Work with Drive files',
+					credentialType: 'googleDriveMcpOAuth2Api',
+					tools: ['list_files'],
+				},
+			]);
+		});
+
+		it('drops a server the user already has a connection for', async () => {
+			stubContainer({
+				registrySearch: vi
+					.fn()
+					.mockResolvedValue([registryHit, { ...registryHit, slug: 'notion', title: 'Notion' }]),
+				listConnectionsForUser: vi.fn().mockResolvedValue([{ serverSlug: 'google-drive' }]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			const results = await context.mcpService!.search(['drive', 'notion']);
+
+			expect(results.map((result) => result.slug)).toEqual(['notion']);
+		});
+
+		it('resolves exact slugs through the same summary shape', async () => {
+			const { resolveBySlugs } = stubContainer({
+				registryResolveBySlugs: vi.fn().mockResolvedValue([registryHit]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			const results = await context.mcpService!.getServers(['google-drive', 'made-up']);
+
+			expect(resolveBySlugs).toHaveBeenCalledWith(['google-drive', 'made-up']);
+			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
+		});
+
+		it('lists slugs with a connection row, not just the loadable ones', async () => {
+			stubContainer({
+				listConnectionsForUser: vi
+					.fn()
+					.mockResolvedValue([{ serverSlug: 'google-drive' }, { serverSlug: 'retired' }]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			expect(await context.mcpService!.listConnections()).toEqual([
+				{ slug: 'google-drive' },
+				{ slug: 'retired' },
+			]);
+		});
+
+		it('reports a slug once even with several connection rows for it', async () => {
+			stubContainer({
+				listConnectionsForUser: vi
+					.fn()
+					.mockResolvedValue([{ serverSlug: 'google-drive' }, { serverSlug: 'google-drive' }]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			expect(await context.mcpService!.listConnections()).toEqual([{ slug: 'google-drive' }]);
+		});
+
+		it('surfaces a lookup failure rather than reporting no connections', async () => {
+			stubContainer({
+				listConnectionsForUser: vi.fn().mockRejectedValue(new Error('query failed')),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			await expect(context.mcpService!.listConnections()).rejects.toThrow('query failed');
+		});
+	});
+});
+
+describe('resolveMetricProviders', () => {
+	const registry = new LlmJudgeProviderRegistry();
+	const user = mock<User>();
+
+	const baseInput = (metricOverrides: Record<string, unknown> = {}) => ({
+		name: 'Eval',
+		startNodeName: 'Chat',
+		endNodeName: 'Agent',
+		dataTableId: 'dt1',
+		metrics: [
+			{
+				name: 'Helpfulness',
+				preset: 'helpfulness' as const,
+				credentialId: 'cred1',
+				model: 'gpt-4o',
+				outputType: 'numeric' as const,
+				actualAnswer: '={{ $json.output }}',
+				userQuery: '={{ $json.input }}',
+				...metricOverrides,
+			},
+		],
+	});
+
+	it('derives the provider node type from the credential type', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(
+			mock<CredentialsEntity>({ type: 'openAiApi' }),
+		);
+
+		const result = await resolveMetricProviders(baseInput(), {
+			user,
+			credentialsFinderService,
+			llmJudgeProviderRegistry: registry,
+		});
+
+		expect(result.metrics[0].provider).toBe('@n8n/n8n-nodes-langchain.lmChatOpenAi');
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred1', user, [
+			'credential:read',
+		]);
+	});
+
+	it('leaves an explicitly supplied provider untouched (no credential lookup)', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+
+		const result = await resolveMetricProviders(
+			baseInput({ provider: '@n8n/n8n-nodes-langchain.lmChatAnthropic' }),
+			{ user, credentialsFinderService, llmJudgeProviderRegistry: registry },
+		);
+
+		expect(result.metrics[0].provider).toBe('@n8n/n8n-nodes-langchain.lmChatAnthropic');
+		expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+	});
+
+	it('throws a UserError when the credential is not found or inaccessible', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+		await expect(
+			resolveMetricProviders(baseInput(), {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry: registry,
+			}),
+		).rejects.toThrow(UserError);
+	});
+
+	it('throws a UserError when the credential type is not a supported provider', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(
+			mock<CredentialsEntity>({ type: 'httpBasicAuth' }),
+		);
+
+		await expect(
+			resolveMetricProviders(baseInput(), {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry: registry,
+			}),
+		).rejects.toThrow(UserError);
+	});
+
+	it('throws an UnexpectedError when the provider registry is unavailable', async () => {
+		const credentialsFinderService = mock<CredentialsFinderService>();
+
+		await expect(
+			resolveMetricProviders(baseInput(), {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry: undefined,
+			}),
+		).rejects.toThrow(UnexpectedError);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — builder delegate wiring
+// ---------------------------------------------------------------------------
+
+describe('createContext — builder delegate wiring', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	afterEach(() => {
+		// Container.get is globally spied below (multiple tokens routed through
+		// one mockImplementation) — restore it so later tests keep the real,
+		// module-inactive-by-default ModuleRegistry.
+		vi.restoreAllMocks();
+	});
+
+	/** Route Container.get for the two tokens createContext resolves when wiring the builder delegate. */
+	function mockBuilderModuleActive(delegate: InstanceAiBuilderDelegate) {
+		const moduleRegistry = { isActive: vi.fn().mockReturnValue(true) };
+		const builderDelegateAdapter = { createDelegate: vi.fn().mockReturnValue(delegate) };
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return moduleRegistry;
+			if (token === InstanceAiBuilderDelegateAdapterService) return builderDelegateAdapter;
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+	}
+
+	it('exposes the delegate unwrapped, so creation telemetry stays in AgentsService', async () => {
+		const mockTelemetry = { track: vi.fn() };
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: mockTelemetry });
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		delegate.createAgent.mockResolvedValue({ agentId: 'agent-9', projectId: 'proj-1' });
+		mockBuilderModuleActive(delegate);
+
+		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+		const created = await context.builderDelegate?.createAgent('New agent', 'aBcDeFgHiJkLmNoP');
+
+		expect(created).toEqual({ agentId: 'agent-9', projectId: 'proj-1' });
+		// No wrapper means no re-declared signature that could drop an argument.
+		expect(delegate.createAgent).toHaveBeenCalledWith('New agent', 'aBcDeFgHiJkLmNoP');
+		expect(mockTelemetry.track).not.toHaveBeenCalled();
+	});
+
+	it('passes listAgents through to the underlying delegate unchanged', async () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		const agents = [
+			{ agentId: 'agent-1', name: 'Agent', published: true, updatedAt: '2026-07-14T00:00:00.000Z' },
+		];
+		delegate.listAgents.mockResolvedValue(agents);
+		mockBuilderModuleActive(delegate);
+
+		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+		const result = await context.builderDelegate?.listAgents();
+
+		expect(result).toEqual(agents);
+		expect(delegate.listAgents).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — run model wiring
+// ---------------------------------------------------------------------------
+
+describe('createContext — run model wiring', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	// Guards the one link of the INS-948 fix that instance-ai's own unit tests
+	// cannot see: the run's resolved (proxy-aware) model must land on the domain
+	// context, where simulation fixture/classifier LLM calls read it as their
+	// fallback on deployments without env model keys (cloud). Dropping this
+	// wiring regresses silently — every simulated node degrades back to a
+	// single empty pinned item.
+	it('copies the host-resolved modelId onto the context', () => {
+		const service = createAdapterWithGatewayMock(vi.fn());
+		const modelId = {
+			id: 'anthropic/claude-opus-4-8' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+
+		const context = service.createContext(mockUser, { modelId });
+
+		expect(context.modelId).toEqual(modelId);
+	});
+
+	it('leaves modelId undefined when the host does not resolve one', () => {
+		const service = createAdapterWithGatewayMock(vi.fn());
+
+		expect(service.createContext(mockUser).modelId).toBeUndefined();
+	});
+});
+
+describe('createCredentialAdapter', () => {
+	describe('isTestable', () => {
+		// A versioned node whose `testedBy` sits only on the versions named in `testedByOn`.
+		const loaderWithTestedByOn = (testedByOn: number[]) => {
+			const descriptionFor = (version: number) => ({
+				description: {
+					credentials: [
+						{
+							name: 'kafka',
+							...(testedByOn.includes(version) ? { testedBy: 'kafkaConnectionTest' } : {}),
+						},
+					],
+				},
+			});
+
+			return {
+				// No class-level `test`, so resolution falls through to the nodes.
+				getCredential: () => ({ type: { name: 'kafka' } }),
+				knownCredentials: { kafka: { supportedNodes: ['kafka'] } },
+				getNode: () => ({
+					type: { nodeVersions: { 1: descriptionFor(1), 2: descriptionFor(2) } },
+				}),
+			};
+		};
+
+		it('finds a test declared only on an older node version', async () => {
+			// Regression guard: reading a single version reported Kafka as untestable once v2
+			// registered without `testedBy`, which silently disabled its connection test.
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loaderWithTestedByOn([1]),
+			});
+
+			expect(credentialService.isTestable).toBeDefined();
+			await expect(credentialService.isTestable!('kafka')).resolves.toBe(true);
+		});
+
+		it('is false when no registered version declares a test', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loaderWithTestedByOn([]),
+			});
+
+			await expect(credentialService.isTestable!('kafka')).resolves.toBe(false);
+		});
 	});
 });

@@ -14,8 +14,7 @@ function assertNever(_value: never): _value is never {
 }
 
 export const globalIdentifier = b.identifier(
-	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-	// @ts-ignore
+	// @ts-expect-error window not in lib target
 	typeof window !== 'object' ? 'global' : 'window',
 );
 
@@ -81,6 +80,10 @@ const customPatches: Partial<Record<ParentKind['type'], CustomPatcher>> = {
 		}
 	},
 	Property(path, parent: namedTypes.Property, dataNode) {
+		if (parent.computed && parent.key === path.node) {
+			polyfillVar(path, dataNode);
+			return;
+		}
 		if (path.node !== parent.value) {
 			return;
 		}
@@ -109,6 +112,45 @@ const customPatches: Partial<Record<ParentKind['type'], CustomPatcher>> = {
 			polyfillVar(path, dataNode);
 		}
 	},
+	ArrowFunctionExpression(path, parent: namedTypes.ArrowFunctionExpression, dataNode) {
+		// A concise arrow body that is a bare identifier (`() => process`) must be
+		// routed through the data context like any other free read. Params are not
+		// the body, and body identifiers that reference a param are left alone by
+		// polyfillVar's in-scope check.
+		if (parent.body === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
+	SpreadElement(path, parent: namedTypes.SpreadElement, dataNode) {
+		if (parent.argument === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
+	SpreadProperty(path, parent: namedTypes.SpreadProperty, dataNode) {
+		if (parent.argument === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
+	MethodDefinition(path, parent: namedTypes.MethodDefinition, dataNode) {
+		if (parent.computed && parent.key === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
+	SwitchCase(path, parent: namedTypes.SwitchCase, dataNode) {
+		if (parent.test === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
+	ClassDeclaration(path, parent: namedTypes.ClassDeclaration, dataNode) {
+		if (parent.superClass === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
+	ClassExpression(path, parent: namedTypes.ClassExpression, dataNode) {
+		if (parent.superClass === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
 };
 
 export const jsVariablePolyfill = (
@@ -134,6 +176,13 @@ export const jsVariablePolyfill = (
 				case 'MemberExpression':
 				case 'OptionalMemberExpression':
 				case 'VariableDeclarator':
+				case 'ArrowFunctionExpression':
+				case 'SpreadElement':
+				case 'SpreadProperty':
+				case 'MethodDefinition':
+				case 'SwitchCase':
+				case 'ClassDeclaration':
+				case 'ClassExpression':
 					if (!customPatches[parent.type]) {
 						throw new Error(`Couldn't find custom patcher for parent type: ${parent.type}`);
 					}
@@ -174,7 +223,6 @@ export const jsVariablePolyfill = (
 				// Do nothing
 				case 'Super':
 				case 'Identifier':
-				case 'ArrowFunctionExpression':
 				case 'FunctionDeclaration':
 				case 'FunctionExpression':
 				case 'ThisExpression':
@@ -203,12 +251,9 @@ export const jsVariablePolyfill = (
 				case 'RestElement':
 				case 'ArrayPattern':
 				case 'ObjectPattern':
-				case 'ClassExpression':
 				case 'RecordExpression':
 				case 'V8IntrinsicIdentifier':
 				case 'TopicReference':
-				case 'MethodDefinition':
-				case 'ClassDeclaration':
 				case 'ClassProperty':
 				case 'StaticBlock':
 				case 'ClassBody':
@@ -306,6 +351,7 @@ export const jsVariablePolyfill = (
 					// This is a simple type guard that guarantees we haven't missed
 					// a case. It'll result in a type error at compile time.
 					assertNever(parent);
+					polyfillVar(path, dataNode);
 					break;
 			}
 		},

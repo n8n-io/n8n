@@ -1,10 +1,5 @@
-import {
-	sleep,
-	type IExecuteFunctions,
-	type INode,
-	type EngineRequest,
-	type EngineResponse,
-} from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import type { IExecuteFunctions, INode, EngineRequest, EngineResponse } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { RequestResponseMetadata } from '@utils/agent-execution';
@@ -35,6 +30,9 @@ vi.mock('@langchain/core/runnables', () => ({
 
 vi.mock('n8n-workflow', async () => ({
 	...(await vi.importActual('n8n-workflow')),
+}));
+
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn(),
 }));
 

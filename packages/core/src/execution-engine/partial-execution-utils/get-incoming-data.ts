@@ -7,7 +7,7 @@ export function getIncomingData(
 	connectionType: NodeConnectionType,
 	outputIndex: number,
 ): INodeExecutionData[] | null {
-	return runData[nodeName]?.at(runIndex)?.data?.[connectionType].at(outputIndex) ?? null;
+	return runData[nodeName]?.at(runIndex)?.data?.[connectionType]?.at(outputIndex) ?? null;
 }
 
 function getRunIndexLength(runData: IRunData, nodeName: string) {

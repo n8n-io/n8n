@@ -66,6 +66,19 @@ describe('Microsoft Excel (SharePoint) Converters', () => {
 
 			expect(unwrapGraphError(error)).toBe(error);
 		});
+
+		it('unwraps a nested error under context.data.error, the shape a NodeApiError-wrapped failure has', () => {
+			const error = {
+				statusCode: 404,
+				context: { data: { error: { code: 'ItemNotFound', message: "Doesn't exist" } } },
+			};
+
+			expect(unwrapGraphError(error)).toEqual({
+				code: 'ItemNotFound',
+				message: "Doesn't exist",
+				statusCode: 404,
+			});
+		});
 	});
 
 	describe('toPermissionKey', () => {

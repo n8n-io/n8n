@@ -8,7 +8,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
@@ -34,8 +34,12 @@ const mockFetchSettings = vi.fn();
 const mockUpdateSettings = vi.fn();
 const mockFetchPreferences = vi.fn();
 const mockUpdatePreferences = vi.fn();
-const mockFetchModelCredentials = vi.fn().mockResolvedValue([]);
 const mockFetchServiceCredentials = vi.fn().mockResolvedValue([]);
+const mockFetchInstanceModelCredentials = vi.fn().mockResolvedValue([]);
+const mockFetchModelCatalog = vi.fn();
+const mockVerifyModel = vi.fn();
+const mockVerifySandbox = vi.fn();
+const mockVerifySearch = vi.fn();
 const mockCreateGatewayLink = vi.fn();
 const mockDisconnectGatewaySession = vi.fn();
 
@@ -44,8 +48,12 @@ vi.mock('../instanceAi.settings.api', () => ({
 	updateSettings: (...args: unknown[]) => mockUpdateSettings(...args),
 	fetchPreferences: (...args: unknown[]) => mockFetchPreferences(...args),
 	updatePreferences: (...args: unknown[]) => mockUpdatePreferences(...args),
-	fetchModelCredentials: (...args: unknown[]) => mockFetchModelCredentials(...args),
 	fetchServiceCredentials: (...args: unknown[]) => mockFetchServiceCredentials(...args),
+	fetchInstanceModelCredentials: (...args: unknown[]) => mockFetchInstanceModelCredentials(...args),
+	fetchModelCatalog: (...args: unknown[]) => mockFetchModelCatalog(...args),
+	verifyModel: (...args: unknown[]) => mockVerifyModel(...args),
+	verifySandbox: (...args: unknown[]) => mockVerifySandbox(...args),
+	verifySearch: (...args: unknown[]) => mockVerifySearch(...args),
 }));
 
 const mockGetGatewayStatus = vi.fn();
@@ -56,7 +64,8 @@ vi.mock('../instanceAi.api', () => ({
 }));
 
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
 
@@ -97,9 +106,32 @@ describe('useInstanceAiSettingsStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
 		settingsStore = useSettingsStore();
+	});
+
+	describe('permissions', () => {
+		it('checks related admin scopes independently', () => {
+			vi.mocked(hasPermission)
+				.mockReturnValueOnce(true)
+				.mockReturnValueOnce(false)
+				.mockReturnValueOnce(false);
+
+			expect(store.canManage).toBe(true);
+			expect(store.canManageAiUsage).toBe(false);
+			expect(store.canManageInstanceCredentials).toBe(false);
+			expect(hasPermission).toHaveBeenNthCalledWith(1, ['rbac'], {
+				rbac: { scope: 'instanceAi:manage' },
+			});
+			expect(hasPermission).toHaveBeenNthCalledWith(2, ['rbac'], {
+				rbac: { scope: 'aiAssistant:manage' },
+			});
+			expect(hasPermission).toHaveBeenNthCalledWith(3, ['rbac'], {
+				rbac: { scope: 'credential:manageInstance' },
+			});
+		});
 	});
 
 	describe('isInstanceAiDisabled', () => {
@@ -256,10 +288,9 @@ describe('useInstanceAiSettingsStore', () => {
 
 			expect(store.isWorkflowBuilderAvailable).toBe(false);
 			expect(store.isSandboxEnabled).toBe(false);
-			expect(store.sandboxUnavailableReason).toBeNull();
 		});
 
-		it('exposes the sandbox unavailable reason from module settings', () => {
+		it('keeps the builder unavailable while the sandbox is enabled', () => {
 			setModuleSettings(settingsStore, {
 				sandboxEnabled: true,
 				workflowBuilderAvailable: false,
@@ -268,7 +299,51 @@ describe('useInstanceAiSettingsStore', () => {
 
 			expect(store.isWorkflowBuilderAvailable).toBe(false);
 			expect(store.isSandboxEnabled).toBe(true);
-			expect(store.sandboxUnavailableReason).toBe('N8N_SANDBOX_SERVICE_URL is required.');
+		});
+	});
+
+	describe('settings persistence', () => {
+		const response = {
+			enabled: true,
+			permissions: {},
+			mcpServers: '',
+			mcpAccessEnabled: true,
+			sandboxEnabled: false,
+			sandboxProvider: 'n8n-sandbox',
+			sandboxImage: '',
+			sandboxTimeout: 60,
+			daytonaCredentialId: null,
+			n8nSandboxCredentialId: null,
+			searchCredentialId: null,
+			modelCredentialId: null,
+			modelName: null,
+			modelEnvConfigured: false,
+			sandboxEnvConfigured: false,
+			searchEnvConfigured: false,
+			localGatewayDisabled: false,
+		};
+
+		beforeEach(() => {
+			setModuleSettings(settingsStore, { enabled: false });
+			mockUpdateSettings.mockResolvedValue(response);
+			settingsStore.getModuleSettings = vi.fn().mockRejectedValue(new Error('refresh failed'));
+		});
+
+		it('keeps a settings save successful when the module refresh fails', async () => {
+			store.setField('mcpAccessEnabled', true);
+
+			await expect(store.save()).resolves.toBe(true);
+
+			expect(store.settings).toEqual(response);
+			expect(store.draft).toEqual({});
+			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
+		});
+
+		it('keeps an enablement save successful when the module refresh fails', async () => {
+			await expect(store.persistEnabled(true)).resolves.toBe(true);
+
+			expect(store.settings).toEqual(response);
+			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
 		});
 	});
 
@@ -305,6 +380,107 @@ describe('useInstanceAiSettingsStore', () => {
 			await store.refreshModuleSettings();
 
 			expect(mockFetchPreferences).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('onboarding verification', () => {
+		it('delegates model, sandbox, and search checks to the settings API', async () => {
+			mockVerifyModel.mockResolvedValue({ ok: true, latencyMs: 10 });
+			mockVerifySandbox.mockResolvedValue({ ok: true, startupMs: 20 });
+			mockVerifySearch.mockResolvedValue({ ok: true, resultCount: 10 });
+			const modelPayload = { modelName: 'gpt-5.6-sol' };
+			const sandboxPayload = { provider: 'n8n-sandbox' as const };
+			const searchPayload = {
+				connection: { type: 'braveSearchApi', data: { apiKey: 'key' } },
+			};
+
+			await expect(store.verifyModel(modelPayload)).resolves.toEqual({ ok: true, latencyMs: 10 });
+			await expect(store.verifySandbox(sandboxPayload)).resolves.toEqual({
+				ok: true,
+				startupMs: 20,
+			});
+			await expect(store.verifySearch(searchPayload)).resolves.toEqual({
+				ok: true,
+				resultCount: 10,
+			});
+
+			expect(mockVerifyModel).toHaveBeenCalledWith(
+				{ baseUrl: 'http://localhost:5678/rest' },
+				modelPayload,
+			);
+			expect(mockVerifySandbox).toHaveBeenCalledWith(
+				{ baseUrl: 'http://localhost:5678/rest' },
+				sandboxPayload,
+			);
+			expect(mockVerifySearch).toHaveBeenCalledWith(
+				{ baseUrl: 'http://localhost:5678/rest' },
+				searchPayload,
+			);
+		});
+	});
+
+	describe('model catalog', () => {
+		const response = {
+			models: {
+				anthropic: [{ id: 'claude-opus-5', name: 'Claude Opus 5' }],
+				openai: [],
+				openrouter: [],
+			},
+		};
+
+		it('de-duplicates in-flight requests and keeps the successful catalog', async () => {
+			let resolveFetch: (value: typeof response) => void = () => {};
+			mockFetchModelCatalog.mockImplementation(
+				async () =>
+					await new Promise<typeof response>((resolve) => {
+						resolveFetch = resolve;
+					}),
+			);
+
+			const first = store.loadModelCatalog();
+			const second = store.loadModelCatalog();
+			expect(store.isModelCatalogLoading).toBe(true);
+			expect(mockFetchModelCatalog).toHaveBeenCalledOnce();
+
+			resolveFetch(response);
+			await Promise.all([first, second]);
+			expect(store.modelCatalog).toEqual(response.models);
+			expect(store.isModelCatalogLoading).toBe(false);
+
+			await store.loadModelCatalog();
+			expect(mockFetchModelCatalog).toHaveBeenCalledOnce();
+		});
+
+		it('allows a retry after a failed or empty response', async () => {
+			mockFetchModelCatalog
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValueOnce({ models: { anthropic: [], openai: [], openrouter: [] } })
+				.mockResolvedValueOnce(response);
+
+			await store.loadModelCatalog();
+			expect(store.modelCatalog).toBeNull();
+			await store.loadModelCatalog();
+			expect(store.modelCatalog).toBeNull();
+			await store.loadModelCatalog();
+
+			expect(store.modelCatalog).toEqual(response.models);
+			expect(mockFetchModelCatalog).toHaveBeenCalledTimes(3);
+		});
+	});
+
+	describe('provider credentials', () => {
+		it('refreshes n8n Sandbox credentials when the assistant proxy is enabled', async () => {
+			setModuleSettings(settingsStore, { proxyEnabled: true, cloudManaged: false });
+			mockFetchServiceCredentials.mockResolvedValue([
+				{ id: 'sandbox-cred', name: 'n8n Sandbox', type: 'httpHeaderAuth' },
+			]);
+
+			await store.refreshCredentials();
+
+			expect(mockFetchServiceCredentials).toHaveBeenCalledOnce();
+			expect(store.serviceCredentials).toEqual([
+				{ id: 'sandbox-cred', name: 'n8n Sandbox', type: 'httpHeaderAuth' },
+			]);
 		});
 	});
 
@@ -380,6 +556,23 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.connections[1]).toMatchObject({
 				type: 'browser-use',
 				status: 'disconnected',
+			});
+		});
+
+		it('shows Computer Use as connecting while daemon pairing is in progress', () => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				cloudManaged: false,
+			});
+			setUserPreference(store, { localGatewayDisabled: false });
+			store.isDaemonConnecting = true;
+
+			expect(store.connections[0]).toMatchObject({
+				type: 'computer-use',
+				status: 'connecting',
+				subtitle: 'instanceAi.connections.row.status.connecting',
 			});
 		});
 

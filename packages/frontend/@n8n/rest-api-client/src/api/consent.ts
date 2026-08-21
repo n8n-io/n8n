@@ -1,3 +1,5 @@
+import type { ConsentUiHints } from '@n8n/api-types';
+
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
@@ -13,6 +15,12 @@ export interface ConsentDetails {
 	scopes: string[];
 	/** Scopes this user granted to this client last time, used to preselect the picker. */
 	previousScopes?: string[];
+	/** Tool names each scope unlocks, shown per scope group in the picker. */
+	scopeTools?: Record<string, string[]>;
+	/** Presentation hints from the resource (icon, consent noun) for first-party clients. */
+	uiHints?: ConsentUiHints;
+	/** True only for first-party clients (e.g. form triggers) that skip the trust gate. */
+	isFirstParty?: boolean;
 }
 
 export interface ConsentApprovalResponse {

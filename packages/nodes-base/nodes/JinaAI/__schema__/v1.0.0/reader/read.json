@@ -91,6 +91,9 @@
                 "lang": {
                     "type": "string"
                 },
+                "og:image": {
+                    "type": "string"
+                },
                 "og:locale": {
                     "type": "string"
                 },
@@ -98,6 +101,9 @@
                     "type": "string"
                 },
                 "og:url": {
+                    "type": "string"
+                },
+                "robots": {
                     "type": "string"
                 }
             }
@@ -117,5 +123,5 @@
             }
         }
     },
-    "version": 5
+    "version": 6
 }

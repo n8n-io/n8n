@@ -36,7 +36,14 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		return await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
-		const responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, {});
-		return responseData.splice(0, limit);
+		return await microsoftApiRequestAllItems.call(
+			this,
+			'value',
+			'GET',
+			endpoint,
+			{},
+			{ $top: limit },
+			limit,
+		);
 	}
 }
