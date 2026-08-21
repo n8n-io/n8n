@@ -1,3 +1,4 @@
+import { isZodSchema, zodToJsonSchema } from '@n8n/agents';
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
@@ -61,6 +62,30 @@ function getDescription(tool: unknown): string {
 	return (tool as { description: string }).description;
 }
 
+type JsonSchema = NonNullable<ReturnType<typeof zodToJsonSchema>>;
+
+function inputJsonSchema(tool: unknown): JsonSchema {
+	const { inputSchema } = tool as { inputSchema: unknown };
+	if (!isZodSchema(inputSchema)) throw new Error('expected a Zod input schema');
+	const jsonSchema = zodToJsonSchema(inputSchema);
+	if (!jsonSchema) throw new Error('expected the input schema to convert');
+	return jsonSchema;
+}
+
+function property(schema: JsonSchema, name: string): JsonSchema {
+	const value = schema.properties?.[name];
+	if (typeof value !== 'object') throw new Error(`expected an object schema for "${name}"`);
+	return value;
+}
+
+function arrayItems(schema: JsonSchema): JsonSchema {
+	const value = schema.items;
+	if (typeof value !== 'object' || Array.isArray(value)) {
+		throw new Error('expected a single items schema');
+	}
+	return value;
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('credentials tool', () => {
@@ -83,6 +108,17 @@ describe('credentials tool', () => {
 				}).success,
 			).toBe(true);
 			expect(getDescription(tool)).toContain('set up new credentials');
+		});
+
+		it('should describe credentialType with existing "gmailOAuth2" credential type and not "gmailOAuth2Api"', () => {
+			const tool = createCredentialsTool(createMockContext());
+			const credentialType = property(
+				arrayItems(property(inputJsonSchema(tool), 'credentials')),
+				'credentialType',
+			);
+
+			expect(credentialType.description).toContain('gmailOAuth2"');
+			expect(credentialType.description).not.toContain('gmailOAuth2Api');
 		});
 
 		it('should require requireUserSelection to be a boolean when provided', () => {

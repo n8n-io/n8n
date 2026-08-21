@@ -2287,6 +2287,9 @@ describe('TelemetryEventRelay', () => {
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
 					missingNodeTypeMode: 'fail',
+					projectConflictPolicy: 'merge',
+					folderConflictPolicy: 'merge',
+					overwriteDeletionPolicy: 'archive',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
@@ -2308,6 +2311,11 @@ describe('TelemetryEventRelay', () => {
 						created: 2,
 						updated: 1,
 						skipped: 1,
+						archived: 3,
+						deleted: 2,
+					},
+					folders: {
+						removed: 1,
 					},
 					credentials: {
 						matched: 2,
@@ -2348,6 +2356,9 @@ describe('TelemetryEventRelay', () => {
 				credential_missing_mode: 'must-preexist',
 				workflow_publishing_policy: 'preserve-published-state',
 				missing_node_type_mode: 'fail',
+				project_conflict_policy: 'merge',
+				folder_conflict_policy: 'merge',
+				overwrite_deletion_policy: 'archive',
 				data_table_matching_mode: 'by-id',
 				data_table_missing_mode: 'create',
 				data_table_schema_conflict_policy: 'keep-existing',
@@ -2359,6 +2370,9 @@ describe('TelemetryEventRelay', () => {
 				workflows_created: 2,
 				workflows_updated: 1,
 				workflows_skipped: 1,
+				workflows_archived: 3,
+				workflows_deleted: 2,
+				folders_removed: 1,
 				credentials_matched: 2,
 				credentials_created: 1,
 				credentials_required: 3,
@@ -2393,6 +2407,7 @@ describe('TelemetryEventRelay', () => {
 					variables: 4,
 					tags: 2,
 				},
+				credentialExportPolicy: 'expression-values-only',
 			};
 
 			eventService.emit('n8n-package-exported', event);
@@ -2405,6 +2420,7 @@ describe('TelemetryEventRelay', () => {
 				data_table_count: 1,
 				variable_count: 4,
 				tag_count: 2,
+				credential_export_policy: 'expression-values-only',
 			});
 		});
 

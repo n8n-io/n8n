@@ -62,6 +62,24 @@ describe('WorkflowSerializer.deserialize', () => {
 		expect(result.settings).toBeUndefined();
 	});
 
+	it('restores node groups from the wire', () => {
+		const result = serializer.deserialize(
+			wire({
+				nodeGroups: [
+					{ id: 'group-1', name: 'Ingest', nodeIds: ['node-1'], description: 'Pulls data in' },
+				],
+			}),
+		);
+
+		expect(result.nodeGroups).toEqual([
+			{ id: 'group-1', name: 'Ingest', nodeIds: ['node-1'], description: 'Pulls data in' },
+		]);
+	});
+
+	it('defaults node groups to empty when the wire has none', () => {
+		expect(serializer.deserialize(wire()).nodeGroups).toEqual([]);
+	});
+
 	it('does not carry instance-owned fields from the wire', () => {
 		const partial = serializer.deserialize(wire());
 

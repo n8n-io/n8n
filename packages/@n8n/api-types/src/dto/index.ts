@@ -102,6 +102,8 @@ export {
 	CloneGitConnectionDto,
 	CreateGitConnectionDto,
 	GitConnectionListPublicDto,
+	GitConnectionProjectListPublicDto,
+	GitConnectionProjectPublicDto,
 	GitConnectionPublicDto,
 	ListGitConnectionsQueryDto,
 	UpdateGitConnectionDto,
@@ -152,11 +154,21 @@ export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
 	WorkflowPublicDto,
 	WorkflowListPublicDto,
+	WorkflowPublishPublicDto,
 	workflowPublicSchema,
+	workflowPublishPublicSchema,
 	workflowListItemPublicSchema,
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 } from './workflows/workflow-public.dto';
+export {
+	PublishWorkflowPublicDto,
+	publishWorkflowPublicSchema,
+} from './workflows/publish-workflow-public.dto';
+export {
+	WorkflowPublishBlockedErrorPublicDto,
+	workflowPublishBlockedErrorPublicSchema,
+} from './workflows/workflow-publish-blocked-error-public.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
@@ -347,11 +359,6 @@ export type { EncryptionKeyResponseDto } from './encryption/encryption-key-respo
 export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
 export { DecideWorkflowReviewRequestDto } from './workflow-reviews/decide-workflow-review-request.dto';
 export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
-export {
-	GetWorkflowReviewStatusesDto,
-	type WorkflowReviewStatus,
-	type WorkflowReviewStatusesResponse,
-} from './workflow-reviews/get-workflow-review-statuses.dto';
 export {
 	ListWorkflowReviewRequestsQueryDto,
 	type WorkflowReviewRequestForWorkflow,

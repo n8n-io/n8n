@@ -27,8 +27,11 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'getMany' }),
 		]);
 		expect(operationsFor('page')?.options).toEqual([
+			expect.objectContaining({ value: 'append' }),
 			expect.objectContaining({ value: 'create' }),
+			expect.objectContaining({ value: 'delete' }),
 			expect.objectContaining({ value: 'get' }),
+			expect.objectContaining({ value: 'update' }),
 		]);
 	});
 

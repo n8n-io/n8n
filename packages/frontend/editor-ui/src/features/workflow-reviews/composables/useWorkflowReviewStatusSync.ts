@@ -41,7 +41,9 @@ export function useWorkflowReviewStatusSync(workflowId: MaybeRefOrGetter<string 
 	// Re-sync when the user navigates to another workflow without a remount.
 	watch(
 		() => toValue(workflowId),
-		() => void refetch(),
+		() => {
+			void refetch();
+		},
 	);
 
 	// On reconnect, refetch to recover invalidations missed while offline.
@@ -52,8 +54,12 @@ export function useWorkflowReviewStatusSync(workflowId: MaybeRefOrGetter<string 
 		},
 	);
 
-	onMounted(() => void refetch());
-	onDocumentVisible(() => void refetch());
+	onMounted(() => {
+		void refetch();
+	});
+	onDocumentVisible(() => {
+		void refetch();
+	});
 	onBeforeUnmount(() => removePushListener());
 
 	return { refetch };

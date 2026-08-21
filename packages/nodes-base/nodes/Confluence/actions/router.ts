@@ -35,11 +35,20 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'attachment:getMany':
 					responseItems = await attachment.getMany.execute.call(this, i);
 					break;
+				case 'page:append':
+					responseData = await page.append.execute.call(this, i);
+					break;
 				case 'page:create':
 					responseData = await page.create.execute.call(this, i);
 					break;
+				case 'page:delete':
+					responseData = await page.delete.execute.call(this, i);
+					break;
 				case 'page:get':
 					responseData = await page.get.execute.call(this, i);
+					break;
+				case 'page:update':
+					responseData = await page.update.execute.call(this, i);
 					break;
 				default:
 					throw new NodeOperationError(

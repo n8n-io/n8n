@@ -28,6 +28,7 @@ import {
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
+import { useAiSimulatedDataGuard } from '@/app/composables/useAiSimulatedDataGuard';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { type PinDataSource, usePinnedData } from '@/app/composables/usePinnedData';
@@ -255,6 +256,7 @@ export function useCanvasOperations() {
 	const toast = useToast();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
+	const aiSimulatedDataGuard = useAiSimulatedDataGuard();
 	const {
 		requireNodeTypeDescription,
 		resolveNodeParameters,
@@ -923,15 +925,11 @@ export function useCanvasOperations() {
 		}
 	}
 
-	function toggleNodesPinned(
+	async function toggleNodesPinned(
 		ids: string[],
 		source: PinDataSource,
 		{ trackHistory = true, trackBulk = true } = {},
 	) {
-		if (trackHistory && trackBulk) {
-			historyStore.startRecordingUndo();
-		}
-
 		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
 
 		// Filter to only pinnable nodes
@@ -942,6 +940,27 @@ export function useCanvasOperations() {
 		const nextStatePinned = pinnableNodesWithPinnedData.some(
 			({ pinnedData }) => !pinnedData.hasData.value,
 		);
+
+		// Pinning copies the displayed output; when that output was simulated by
+		// the AI Assistant during verification it is fabricated sample data, so
+		// adopting it needs the same explicit opt-in as the NDV pin button.
+		if (nextStatePinned) {
+			const displayedExecutionId = useWorkflowExecutionStateStore(
+				workflowDocumentStore.value.documentId,
+			).activeExecution?.id;
+			const adoptsSimulatedData = pinnableNodesWithPinnedData.some(
+				({ node, pinnedData }) =>
+					!pinnedData.hasData.value &&
+					aiSimulatedDataGuard.isSimulatedNodeOutput(displayedExecutionId, node.name),
+			);
+			if (adoptsSimulatedData && !(await aiSimulatedDataGuard.confirmAdoption())) {
+				return;
+			}
+		}
+
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
 
 		for (const { node, pinnedData: pinnedDataForNode } of pinnableNodesWithPinnedData) {
 			if (nextStatePinned) {
