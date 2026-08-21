@@ -101,9 +101,9 @@ export type SelectItemSlots = {
 };
 
 export type SelectSlots<M extends boolean = false> = SelectItemSlots & {
-	default(props: { modelValue?: SelectModelValue<M>; open: boolean }): unknown;
-	item: (props: { item: SelectOptionBase }) => unknown;
-	label: (props: { item: SelectGroupItem }) => unknown;
+	default?: (props: { modelValue?: SelectModelValue<M>; open: boolean }) => unknown;
+	item?: (props: { item: SelectOptionBase }) => unknown;
+	label?: (props: { item: SelectGroupItem }) => unknown;
 	header?: () => unknown;
 	footer?: () => unknown;
 	empty?: () => unknown;

@@ -104,12 +104,12 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 
 **Slots**
 
-- `default`: `{ modelValue?: SelectModelValue; open: boolean }` — trigger display. Default is the selected label(s), comma-separated in multiple mode. Unmatched values render as the raw string/number. In `multiple` mode, per-value leading visuals belong here (not `#item-leading`).
-- `item`: `{ item: SelectOptionBase }` — replace the whole menu row (use `N8nSelect2Item` to keep selection behaviour; `v-bind` the item). `N8nSelect2Item` also accepts `class` and `strokeWidth` (passed through to `#item-leading` / `#item-trailing` `ui`) and the same `item-*` slots.
-- `label`: `{ item: SelectGroupItem }` — section heading for `type: 'group'` entries that have a `label`
-- `item-leading`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`). In single select, the same slot is reused on the trigger for the selected value, even when the item has no `icon`. Not used on the trigger in `multiple` mode.
-- `item-label`: `{ item: SelectOptionBase }` — replace the menu row label (does not change the trigger unless you also use `#default`)
-- `item-trailing`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom trailing content
+- `default?`: `{ modelValue?: SelectModelValue; open: boolean }` — trigger display. Default is the selected label(s), comma-separated in multiple mode. Unmatched values render as the raw string/number. In `multiple` mode, per-value leading visuals belong here (not `#item-leading`).
+- `item?`: `{ item: SelectOptionBase }` — replace the whole menu row (use `N8nSelect2Item` to keep selection behaviour; `v-bind` the item). `N8nSelect2Item` also accepts `class` and `strokeWidth` (passed through to `#item-leading` / `#item-trailing` `ui`) and the same `item-*` slots.
+- `label?`: `{ item: SelectGroupItem }` — section heading for `type: 'group'` entries that have a `label`
+- `item-leading?`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`). In single select, the same slot is reused on the trigger for the selected value, even when the item has no `icon`. Not used on the trigger in `multiple` mode.
+- `item-label?`: `{ item: SelectOptionBase }` — replace the menu row label (does not change the trigger unless you also use `#default`)
+- `item-trailing?`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom trailing content
 - `header?: ()` — rendered above the list
 - `footer?: ()`
 - `empty?: ()` — shown when there are no selectable items. Defaults to `t('nds.select.noResults')` (`No results found`)

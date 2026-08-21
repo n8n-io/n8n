@@ -11,7 +11,7 @@ import N8nInput from '@n8n/design-system/components/N8nInput';
 import N8nInputLabel from '@n8n/design-system/components/N8nInputLabel';
 import N8nText from '@n8n/design-system/components/N8nText';
 
-import type { SelectItem, SelectOptionBase } from './Select.types';
+import type { SelectItem, SelectOptionBase, SelectSizes } from './Select.types';
 import Select from './Select.vue';
 import N8nIcon from '../../../components/N8nIcon/Icon.vue';
 
@@ -102,7 +102,6 @@ const iconItems = [
 ] satisfies SelectItem[];
 
 export const Items = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select },
 		setup() {
@@ -122,7 +121,6 @@ export const Items = {
 } satisfies Story;
 
 export const ItemsObjectArray = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select },
 		setup() {
@@ -146,7 +144,6 @@ export const ItemsObjectArray = {
 } satisfies Story;
 
 export const ItemsTypes = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select },
 		setup() {
@@ -166,7 +163,6 @@ export const ItemsTypes = {
 } satisfies Story;
 
 export const WithIcons = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select },
 		setup() {
@@ -187,7 +183,6 @@ export const WithIcons = {
 } satisfies Story;
 
 export const WithSlots = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select, N8nIcon },
 		setup() {
@@ -265,14 +260,14 @@ export const ItemWithDescription = {
 			},
 		},
 	},
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select, N8nText },
 		setup() {
 			const value = ref(args.modelValue);
-			const items = args.items as DescribedOption[];
-			const current = computed(() => items.find((item) => item.value === value.value) ?? items[0]);
-			return { args, value, items, current };
+			const current = computed(
+				() => modeItems.find((item) => item.value === value.value) ?? modeItems[0],
+			);
+			return { args, value, items: modeItems, current };
 		},
 		template: `
 		<div style="padding: 80px 40px 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
@@ -305,7 +300,6 @@ export const ItemWithDescription = {
 } satisfies Story;
 
 export const Variants = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select, N8nInputLabel },
 		setup() {
@@ -335,7 +329,6 @@ export const Variants = {
 } satisfies Story;
 
 export const Positions = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select, N8nInputLabel },
 		setup() {
@@ -371,11 +364,10 @@ export const Positions = {
 } satisfies Story;
 
 export const Sizes = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select, N8nInputLabel },
 		setup() {
-			const sizes = ['mini', 'small', 'medium', 'large', 'xlarge'] as const;
+			const sizes: SelectSizes[] = ['mini', 'small', 'medium', 'large', 'xlarge'];
 			const values = Object.fromEntries(sizes.map((size) => [size, ref(args.modelValue)]));
 
 			return { args, sizes, values };
@@ -469,7 +461,6 @@ export const ControlledUncontrolled: Story = {
 };
 
 export const Disabled = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select, N8nInputLabel },
 		setup() {
@@ -501,7 +492,6 @@ export const Disabled = {
 } satisfies Story;
 
 export const Multiple = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select },
 		setup() {
@@ -603,7 +593,7 @@ export const AsyncItems = {
 	},
 } satisfies Story;
 
-type StatusOption = SelectItem & { color?: string };
+type StatusOption = SelectOptionBase & { color: string };
 
 const statusItemsWithSwatches: StatusOption[] = [
 	{ label: 'Backlog', value: 'backlog', color: 'var(--color--neutral-400)' },
@@ -614,19 +604,16 @@ const statusItemsWithSwatches: StatusOption[] = [
 ];
 
 export const MultipleWithSwatches = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select, N8nText },
 		setup() {
-			const value = ref(args.modelValue as string[]);
-			const items = args.items as StatusOption[];
+			const value = ref(Array.isArray(args.modelValue) ? args.modelValue : []);
 
 			const selectedItems = computed(() =>
-				value.value
-					.map((entry) => items.find((item) => 'value' in item && item.value === entry))
-					.filter((item): item is StatusOption & { value: string; label: string } =>
-						Boolean(item && 'value' in item),
-					),
+				value.value.flatMap((entry) => {
+					const item = statusItemsWithSwatches.find((option) => option.value === entry);
+					return item ? [item] : [];
+				}),
 			);
 
 			return { args, value, selectedItems, onUpdate: action('update:modelValue') };
@@ -693,7 +680,6 @@ export const MultipleWithSwatches = {
 } satisfies Story;
 
 export const Clearable = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select, N8nInputLabel, N8nText },
 		setup() {
@@ -728,7 +714,6 @@ export const Clearable = {
 } satisfies Story;
 
 export const LongScrollableList = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select, N8nText },
 		setup() {
@@ -759,7 +744,6 @@ export const LongScrollableList = {
 } satisfies Story;
 
 export const MixedItemLengths = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select, N8nInputLabel, N8nText },
 		setup() {
@@ -810,7 +794,6 @@ export const MixedItemLengths = {
 } satisfies Story;
 
 export const ShortItems = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { Select, N8nInputLabel, N8nText },
 		setup() {
