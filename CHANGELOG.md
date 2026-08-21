@@ -1,3 +1,13 @@
+## [2.36.4](https://github.com/n8n-io/n8n/compare/n8n@2.36.3...n8n@2.36.4) (2026-08-21)
+
+
+### Bug Fixes
+
+* **core:** Normalize env values before schema-based parsing ([#36731](https://github.com/n8n-io/n8n/issues/36731)) ([cac2d34](https://github.com/n8n-io/n8n/commit/cac2d348e767c1126853dbf70c458401cba98192))
+* **core:** Validate chat and MCP trigger auth modes for end-user credentials ([#36717](https://github.com/n8n-io/n8n/issues/36717)) ([9c1c59b](https://github.com/n8n-io/n8n/commit/9c1c59b041749896a9d93279915cca5a2a786e48))
+* **core:** Wrap a trigger's closeFunction in an expression isolate at creation time ([#36697](https://github.com/n8n-io/n8n/issues/36697)) ([c72f2c1](https://github.com/n8n-io/n8n/commit/c72f2c17c8590f002ad8a2f4e88bbb0d98c932cb))
+
+
 ## [2.36.3](https://github.com/n8n-io/n8n/compare/n8n@2.36.2...n8n@2.36.3) (2026-08-20)
 
 
