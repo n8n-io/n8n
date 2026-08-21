@@ -388,6 +388,25 @@ export abstract class AgentChatIntegration {
 	};
 
 	/**
+	 * Thread id anchored at a message, for platforms where a top-level message
+	 * starts its own thread (e.g. Slack). Outbound sends and inbound channel
+	 * posts travel through a channel-level pseudo-thread (empty thread_ts);
+	 * replies arrive in the thread anchored at the message's own id, so
+	 * subscription and session context must attach there.
+	 *
+	 * Inbound callers pass `{ inbound: true }` and the message `raw` payload.
+	 * Slack uses that to leave conversation-scoped DMs and group DMs
+	 * (`slack:D123:`, `slack:G…:` with `channel_type: mpim`) un-rewritten so
+	 * Agent-view chat stays one session. Private-channel inbound still
+	 * re-anchors. Return undefined when the message is already in an anchored
+	 * thread, or when inbound re-anchoring should not apply.
+	 */
+	messageThreadId?(
+		message: { id: string; threadId: string; raw?: unknown },
+		context?: { inbound?: boolean },
+	): string | undefined;
+
+	/**
 	 * Optional per-user authorisation check called on every inbound mention,
 	 * subscribed message, and action before the bridge subscribes / executes.
 	 * Default (no implementation): allow. Telegram uses this to enforce the
