@@ -6,7 +6,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 	USER_REQUESTED_WORKFLOW_REVIEW: {
 		name: 'User requested workflow review',
 		description:
-			'A workflow was submitted for review, opening a review request that gates publishing. Fires once per opened review, not on a later re-pin.',
+			'A workflow was submitted for review, opening a review request. Fires once per opened review, not on a later re-pin.',
 		properties: z.object({
 			user_id: z.string(),
 			workflow_review_request_id: z.string(),
@@ -21,7 +21,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 	USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW: {
 		name: 'User updated workflow version under review',
 		description:
-			'An open review was re-pinned to another version of the workflow it covers, which resets its decision to pending. Fires only on a real re-pin, not on a rename or a description edit.',
+			'An open review was re-pinned to another version of the workflow it covers. Fires only on a real re-pin, not on a rename or a description edit.',
 		properties: z.object({
 			user_id: z.string(),
 			workflow_review_request_id: z.string(),
@@ -32,7 +32,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 	USER_DECIDED_WORKFLOW_REVIEW: {
 		name: 'User decided workflow review',
 		description:
-			'A user approved a review or requested changes on it. A review can be decided several times: requesting changes keeps it open, and a re-pin resets it to pending.',
+			'A user approved a review or requested changes on it. Fires once per decision, so a review can appear several times.',
 		properties: z.object({
 			user_id: z.string(),
 			workflow_review_request_id: z.string(),
@@ -53,7 +53,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 	WORKFLOW_REVIEW_CLOSED: {
 		name: 'Workflow review closed',
 		description:
-			'An open review was closed without a decision because no reviewable workflow was left on it. No user performs it. An approval also closes the review, but reports "User decided workflow review" instead.',
+			'An open review was closed without a decision because no reviewable workflow was left on it. No user performs it.',
 		properties: z.object({
 			workflow_review_request_id: z.string(),
 			cause_trigger: z
