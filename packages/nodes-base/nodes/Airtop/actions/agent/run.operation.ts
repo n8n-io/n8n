@@ -107,7 +107,7 @@ export const description: INodeProperties[] = [
 		...profileNameField,
 		description:
 			"The Airtop browser profile ID the agent should use for this run. Leave empty to use the agent's default profile.",
-		hint: '<a href="https://portal.airtop.ai/browser-profiles" target="_blank">Manage profiles</a>',
+		hint: 'Copy the ID from your <a href="https://portal.airtop.ai/browser-profiles" target="_blank">Browser Profiles</a> page, not the profile\'s display name',
 		displayOptions,
 	},
 	{
