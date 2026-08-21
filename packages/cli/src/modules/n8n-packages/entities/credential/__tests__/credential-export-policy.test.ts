@@ -48,7 +48,7 @@ describe('selectCredentialDataForExport', () => {
 				'expression-values-only',
 				dataThunk({
 					nested: { deep: { token: '={{ $secrets.t }}', literal: 'x' } },
-					headers: [{ name: 'Authorization', value: '={{ $secrets.h }}' }, { name: 'X-Plain' }],
+					headers: [{ name: 'Authorization', value: '={{ $secrets.h }}' }],
 					allLiteral: { a: 'x', b: [1, 2] },
 				}),
 			);
@@ -57,6 +57,18 @@ describe('selectCredentialDataForExport', () => {
 				nested: { deep: { token: '={{ $secrets.t }}' } },
 				headers: [{ value: '={{ $secrets.h }}' }],
 			});
+		});
+
+		it('omits an array when any entry filters out, so surviving entries never shift position', async () => {
+			const result = await selectCredentialDataForExport(
+				'expression-values-only',
+				dataThunk({
+					keys: ['literal-key', '={{ $secrets.k }}'],
+					allExpressions: ['={{ $vars.a }}', '={{ $vars.b }}'],
+				}),
+			);
+
+			expect(result).toEqual({ allExpressions: ['={{ $vars.a }}', '={{ $vars.b }}'] });
 		});
 
 		it('drops oauthTokenData at any depth', async () => {
