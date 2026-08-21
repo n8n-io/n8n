@@ -23,6 +23,7 @@ import {
 	createTestNodeProperties,
 } from '@/__tests__/mocks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { OptionsRequestDto } from '@n8n/api-types';
 import { type INodeParameterResourceLocator, type INodePropertyOptions } from 'n8n-workflow';
 import type {
 	INodeUpdatePropertiesInformation,
@@ -1430,6 +1431,108 @@ describe('ParameterInput.vue', () => {
 			// Should NOT reset the value since this is first credential assignment, not a change
 			const updates = emitted('update') ?? [];
 			expect(updates).not.toContainEqual([expect.objectContaining({ name: 'model' })]);
+		});
+	});
+
+	describe('swapping the property definition behind a field', () => {
+		// A node can declare several properties under the same name and show one at a time via
+		// displayOptions (e.g. the AWS Bedrock Model picker, one per Model Source). The parameter
+		// list computes that swap asynchronously, so the field can be asked to reload while it is
+		// still holding the outgoing definition.
+		function modelPicker(loadOptionsMethod: string) {
+			return createTestNodeProperties({
+				displayName: 'Model',
+				name: 'model',
+				type: 'options',
+				default: '',
+				typeOptions: { loadOptionsMethod },
+			});
+		}
+
+		const onDemandPicker = modelPicker('getOnDemandModels');
+		const inferenceProfilePicker = modelPicker('getInferenceProfiles');
+
+		function renderModelPicker() {
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode: reactive({
+					id: faker.string.uuid(),
+					name: 'Test Node',
+					parameters: { modelSource: 'onDemand', model: '' },
+					position: [0, 0] as [number, number],
+					type: '@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
+					typeVersion: 1.1,
+					credentials: { aws: { id: '1', name: 'AWS Account' } },
+				}),
+			};
+
+			return renderComponent({
+				props: { path: 'model', parameter: onDemandPicker, modelValue: '' },
+			});
+		}
+
+		test('should reload the options from the incoming definition', async () => {
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(async (sendData: OptionsRequestDto) => [
+				{ name: `Option of ${sendData.methodName}`, value: sendData.methodName ?? '' },
+			]);
+
+			const { rerender, container, baseElement } = renderModelPicker();
+
+			await waitFor(() =>
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalledTimes(1),
+			);
+
+			await rerender({ parameter: inferenceProfilePicker });
+
+			await waitFor(() =>
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenLastCalledWith(
+					expect.objectContaining({ methodName: 'getInferenceProfiles' }),
+				),
+			);
+			await flushPromises();
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options).toHaveLength(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent(
+				'Option of getInferenceProfiles',
+			);
+		});
+
+		test('should reload the options when the definition swaps mid-load', async () => {
+			let resolveOnDemand!: (options: INodePropertyOptions[]) => void;
+			const pendingOnDemand = new Promise<INodePropertyOptions[]>((resolve) => {
+				resolveOnDemand = resolve;
+			});
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(async (sendData: OptionsRequestDto) =>
+				sendData.methodName === 'getOnDemandModels'
+					? await pendingOnDemand
+					: [{ name: 'Claude Sonnet (EU)', value: 'eu.anthropic.claude-sonnet' }],
+			);
+
+			const { rerender, container, baseElement } = renderModelPicker();
+
+			await waitFor(() =>
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalledTimes(1),
+			);
+
+			// The swap lands while the outgoing definition is still loading
+			await rerender({ parameter: inferenceProfilePicker });
+			resolveOnDemand([{ name: 'Claude Instant', value: 'anthropic.claude-instant' }]);
+
+			await waitFor(() =>
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenLastCalledWith(
+					expect.objectContaining({ methodName: 'getInferenceProfiles' }),
+				),
+			);
+			await flushPromises();
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options).toHaveLength(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent(
+				'Claude Sonnet (EU)',
+			);
 		});
 	});
 
