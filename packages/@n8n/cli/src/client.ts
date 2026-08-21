@@ -278,7 +278,6 @@ export class N8nClient {
 		return await this.put<Record<string, unknown>>('/instance-git-settings', body);
 	}
 
-
 	// ─── Workflows ─────────────────────────────────────────────────
 
 	async listWorkflows(query: Record<string, string> = {}, limit?: number) {

@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-import { gitConnectionTypeSchema, gitKeyGeneratorTypeSchema } from './git-connections.dto';
+import {
+	branchNameSchema,
+	gitConnectionTypeSchema,
+	gitKeyGeneratorTypeSchema,
+	repositoryUrlSchema,
+} from './git-connections.dto';
 import { Z } from '../../zod-class';
-
-const repositoryUrlSchema = z.string().trim().min(1);
-// branchName maps to a `varchar(255)` column in the equivalent entity — cap it so
-// over-long input is a 400 at validation time rather than a failure deeper down.
-const branchNameSchema = z.string().trim().min(1).max(255);
 
 /**
  * Partial patch for the singleton instance Git connection settings. Every field
