@@ -114,15 +114,7 @@ export const MINIMAX_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.minimax';
 // Chat and MCP triggers are deliberately not listed: they only establish an
 // identity in specific configurations (Chat Hub availability, n8n OAuth2), which
 // `classifyTriggerIdentity` checks parameter-by-parameter (IAM-1238).
-export const MANUAL_TRIGGER_NODE_TYPES: readonly string[] = [
-	MANUAL_TRIGGER_NODE_TYPE,
-<<<<<<< HEAD
-	CHAT_TRIGGER_NODE_TYPE,
-	MCP_TRIGGER_NODE_TYPE,
-=======
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
->>>>>>> b821298c73d123391c251a8fd6cfab8c13279f36
-];
+export const MANUAL_TRIGGER_NODE_TYPES: readonly string[] = [MANUAL_TRIGGER_NODE_TYPE];
 
 export const AI_VENDOR_NODE_TYPES = [
 	OPENAI_LANGCHAIN_NODE_TYPE,
