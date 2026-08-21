@@ -1,47 +1,63 @@
-import { AUTH_TIMEOUT, toImapOptions, type ImapConnectionOptions } from './connection-options';
+import { toImapFlowOptions, type ImapConnectionOptions } from './connection-options';
 
-const credentials: ImapConnectionOptions = {
-	host: 'imap.example.com',
+const CREDENTIALS: ImapConnectionOptions = {
+	host: 'imap.test.com',
 	port: 993,
 	secure: true,
-	user: 'someone',
-	password: 'secret',
+	user: 'user',
+	password: 'password',
 };
 
-describe('toImapOptions', () => {
-	it('maps the credential onto node-imap options', () => {
-		expect(toImapOptions(credentials)).toEqual({
-			host: 'imap.example.com',
+describe('toImapFlowOptions', () => {
+	it('carries the credentials over', () => {
+		expect(toImapFlowOptions(CREDENTIALS)).toMatchObject({
+			host: 'imap.test.com',
 			port: 993,
-			tls: true,
-			user: 'someone',
-			password: 'secret',
-			authTimeout: AUTH_TIMEOUT,
-			tlsOptions: { servername: 'imap.example.com' },
+			secure: true,
+			auth: { user: 'user', pass: 'password' },
 		});
 	});
 
-	it('trims the host, and names it as the TLS server', () => {
-		const options = toImapOptions({ ...credentials, host: '  imap.example.com  ' });
-
-		expect(options.host).toBe('imap.example.com');
-		expect(options.tlsOptions).toEqual({ servername: 'imap.example.com' });
+	it('trims a host a user pasted with whitespace', () => {
+		expect(toImapFlowOptions({ ...CREDENTIALS, host: '  imap.test.com \n' })).toMatchObject({
+			host: 'imap.test.com',
+			tls: { servername: 'imap.test.com' },
+		});
 	});
 
-	it('carries no TLS options over a plain connection', () => {
-		expect(toImapOptions({ ...credentials, secure: false })).not.toHaveProperty('tlsOptions');
+	// Without these a wedged connection is never detected, which is the whole point of the driver's
+	// socket timeout — so they are defaults here rather than something a caller has to remember.
+	it('watches for inactivity by default', () => {
+		const { maxIdleTime, socketTimeout } = toImapFlowOptions(CREDENTIALS);
+
+		expect(maxIdleTime).toBeGreaterThan(0);
+		expect(socketTimeout).toBeGreaterThan(0);
 	});
 
-	it('accepts an untrusted certificate only when asked to', () => {
-		const options = toImapOptions({ ...credentials, allowUnauthorizedCerts: true });
+	it('lets a caller tune the timeouts', () => {
+		expect(
+			toImapFlowOptions({ ...CREDENTIALS, maxIdleTime: 1_000, socketTimeout: 2_000 }),
+		).toMatchObject({ maxIdleTime: 1_000, socketTimeout: 2_000 });
+	});
 
-		expect(options.tlsOptions).toEqual({
+	it('never upgrades a plain connection in place', () => {
+		expect(toImapFlowOptions({ ...CREDENTIALS, secure: false })).toMatchObject({
+			secure: false,
+			doSTARTTLS: false,
+		});
+	});
+
+	it('names the server for TLS so the certificate can be checked against it', () => {
+		expect(toImapFlowOptions(CREDENTIALS).tls).toEqual({ servername: 'imap.test.com' });
+	});
+
+	it('leaves TLS options off a plain connection', () => {
+		expect(toImapFlowOptions({ ...CREDENTIALS, secure: false }).tls).toBeUndefined();
+	});
+
+	it('accepts an unauthorized certificate only when asked to', () => {
+		expect(toImapFlowOptions({ ...CREDENTIALS, allowUnauthorizedCerts: true }).tls).toMatchObject({
 			rejectUnauthorized: false,
-			servername: 'imap.example.com',
 		});
-	});
-
-	it('honours a caller-supplied auth timeout', () => {
-		expect(toImapOptions({ ...credentials, authTimeout: 5_000 }).authTimeout).toBe(5_000);
 	});
 });
