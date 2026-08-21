@@ -31,6 +31,25 @@ function endsTokenBefore(char: string): boolean {
 	return endsToken(char) || STOPS_BEFORE.test(char);
 }
 
+const STOP_RUN = new RegExp(`(?:${STOPS.source})+`);
+const EDGE_TRIM = new RegExp(`^(?:${EDGES.source})+|(?:${EDGES.source})+$`, 'g');
+// Zero-width, so padding stays on the token it belongs to: `=` ends a token only
+// when more token follows. This mirrors `endsTokenBefore`, which is the leftward
+// walk only — the rightward walk runs through `=` so base64 padding survives.
+const ASSIGNMENT = new RegExp(`(?<=${STOPS_BEFORE.source})(?!${STOPS_BEFORE.source})`);
+
+/**
+ * Split text into whole tokens on the same delimiters `expandToTokenSpan` snaps
+ * to, so a value lifted straight out of the DOM is bounded like a matched one.
+ */
+export function tokenize(text: string): string[] {
+	return text
+		.split(STOP_RUN)
+		.flatMap((token) => (token.includes('=') ? token.split(ASSIGNMENT) : token))
+		.map((token) => token.replace(EDGE_TRIM, ''))
+		.filter(Boolean);
+}
+
 /**
  * Snap a match out to the whole token around it, so an unanticipated prefix or
  * suffix is covered without enumerating character classes. Only trims outside
