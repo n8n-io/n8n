@@ -196,6 +196,34 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(() => getDecoratorGeneratedOperations()).toThrow(/ApiErrorResponse\(418\)/);
 	});
 
+	it('documents a 415 for a route that takes a request body', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			method(_req: unknown, _res: unknown, @Body _body: WidgetBodyDto) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[415]).toEqual({
+			$ref: '../../../../shared/spec/responses/unsupportedMediaType.yml',
+		});
+	});
+
+	it('documents no 415 for a route that takes no request body', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[415]).toBeUndefined();
+	});
+
 	it('refs the shared response file for an error status declared without a body DTO', () => {
 		class WidgetsPublicController {
 			@Get('/')

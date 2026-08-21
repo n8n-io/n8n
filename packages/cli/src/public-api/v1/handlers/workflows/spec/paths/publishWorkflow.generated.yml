@@ -578,3 +578,5 @@ responses:
               type: string
           required:
             - message
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

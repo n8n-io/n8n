@@ -36,6 +36,7 @@ export const ERROR_RESPONSE_REFS = {
 	403: { $ref: '../../../../shared/spec/responses/forbidden.yml' },
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
+	415: { $ref: '../../../../shared/spec/responses/unsupportedMediaType.yml' },
 } as const satisfies Record<number, { $ref: string }>;
 
 type DocumentedErrorStatus = keyof typeof ERROR_RESPONSE_REFS;
@@ -55,6 +56,7 @@ export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> 
 	403: 'Forbidden',
 	404: 'The specified resource was not found.',
 	409: 'Conflict',
+	415: 'Unsupported media type.',
 };
 
 /** A `ResponseDtoClass` narrowed to the two fields the generator actually reads off it. */
@@ -210,6 +212,9 @@ function buildResponses(
 	// If the route has an @ApiKeyScope decorator, we add an HTTP 403 as a possible response
 	if (route.requestBodyDto ?? route.requestQueryDto) {
 		responses[400] = ERROR_RESPONSE_REFS[400];
+	}
+	if (route.requestBodyDto) {
+		responses[415] = ERROR_RESPONSE_REFS[415];
 	}
 	responses[401] = ERROR_RESPONSE_REFS[401];
 	if (route.apiKeyScope) {
