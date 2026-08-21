@@ -7,6 +7,7 @@ export const testExpressionsWithEvaluator = (Evaluator: ExpressionEvaluatorClass
 	const tourn = new Tournament(() => {}, undefined, Evaluator);
 	const builtins = {
 		String,
+		Date,
 		parseFloat,
 		parseInt,
 	};
