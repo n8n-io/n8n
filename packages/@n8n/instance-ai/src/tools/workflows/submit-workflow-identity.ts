@@ -42,6 +42,7 @@ import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
 export type SubmitExecute = (input: SubmitWorkflowInput) => Promise<SubmitWorkflowOutput>;
 
 interface SubmitGuardOptions {
+	resolveWorkflowProjectId?: (workflowId: string) => Promise<string>;
 	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
 	getTerminalRemediation?: () => RemediationMetadata | undefined;
 	currentRunId?: string;
@@ -197,7 +198,9 @@ export function wrapSubmitExecuteWithIdentity(
 			// An explicit workflowId identifies an existing workflow. Resolving its
 			// project with workflow:create would reject valid update-only access.
 			projectId = input.workflowId
-				? (input.projectId ?? 'personal')
+				? (input.projectId ??
+						(await options.resolveWorkflowProjectId?.(input.workflowId)) ??
+						'personal')
 				: await resolveProjectId(input.projectId);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -331,6 +334,13 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 			budgetTracker,
 			currentRunId: args.currentRunId,
 			getWorkflowLoopState: args.getWorkflowLoopState,
+			resolveWorkflowProjectId: async (workflowId) => {
+				const projectId = await args.context.workflowService.resolveWorkflowProjectId?.(workflowId);
+				if (!projectId) {
+					throw new Error(`Workflow ${workflowId} has no owning project`);
+				}
+				return projectId;
+			},
 			onGuardFired: args.onGuardFired,
 		},
 	);

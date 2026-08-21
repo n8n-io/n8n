@@ -198,13 +198,36 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 		const resolveProjectId = jest.fn(async () => {
 			throw new Error('workflow:create is not allowed');
 		});
-		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, resolveProjectId);
+		const resolveWorkflowProjectId = jest.fn(async () => 'personal-project');
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, resolveProjectId, {
+			resolveWorkflowProjectId,
+		});
 
 		const result = await wrapped({ filePath: MAIN_PATH, workflowId: 'wf_existing' });
 
 		expect(result).toMatchObject({ success: true, workflowId: 'wf_existing' });
 		expect(resolveProjectId).not.toHaveBeenCalled();
+		expect(resolveWorkflowProjectId).toHaveBeenCalledWith('wf_existing');
 		expect(calls).toEqual([{ filePath: MAIN_PATH, workflowId: 'wf_existing' }]);
+	});
+
+	it('uses the owning project when an update omits projectId', async () => {
+		const { execute, calls } = makeUnderlying();
+		const resolveWorkflowProjectId = jest.fn(async () => 'personal-project');
+		const wrapped = wrapSubmitExecuteWithIdentity(
+			execute,
+			resolvePath,
+			(projectId) => projectId ?? 'personal-project',
+			{ resolveWorkflowProjectId },
+		);
+
+		const created = await wrapped({ filePath: MAIN_PATH });
+		const updated = await wrapped({ filePath: MAIN_PATH, workflowId: 'wf_existing' });
+
+		expect(created.workflowId).toBe('wf_1');
+		expect(updated.workflowId).toBe('wf_1');
+		expect(resolveWorkflowProjectId).toHaveBeenCalledWith('wf_existing');
+		expect(calls[1]).toMatchObject({ filePath: MAIN_PATH, workflowId: 'wf_1' });
 	});
 
 	it('resolves differently-spelled paths to the same identity', async () => {

@@ -174,6 +174,8 @@ export interface InstanceAiWorkflowService {
 	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
 	/** Resolve the project used for workflow creation, defaulting to the user's personal project. */
 	resolveCreateProjectId?(projectId?: string): Promise<string>;
+	/** Resolve the owning project for an existing workflow without requiring workflow:create. */
+	resolveWorkflowProjectId?(workflowId: string): Promise<string>;
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
