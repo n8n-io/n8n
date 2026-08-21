@@ -15,7 +15,7 @@ Reka typeahead matches the prefix of `textValue` (falling back to `label`) while
 
 **Item shape**
 
-Selectable items must be objects with required `value` and `label`. Empty string `value` or `label` is skipped (dev warning); `0` is a valid value. Use `type: 'group'` for sections. On groups, `label` is optional. Each group maps to its own Reka `SelectGroup`, so heading DOM `id`s stay unique and `aria-labelledby` points at the correct label. Top-level options (outside any group) are batched into an unlabeled group. Separators belong at the top level between groups.
+Selectable items must be objects with required `value` and `label`. Empty string `value` or `label` is skipped (dev warning); `0` is a valid value. Use `type: 'group'` for sections. On groups, `label` is optional. Each group maps to its own Reka `SelectGroup`, so heading DOM `id`s stay unique and `aria-labelledby` points at the correct label. Top-level options (outside any group) are batched into an unlabeled group. Separators are top-level only (not inside a group's `items`).
 
 ```typescript
 type SelectValue = string | number;
@@ -40,14 +40,24 @@ type SelectSeparatorItem = {
 	type: 'separator';
 };
 
-type SelectItem =
-	| SelectOptionBase
-	| SelectGroupItem
+type SelectStructuralItem<TValue extends SelectValue = SelectValue> =
+	| SelectGroupItem<TValue>
 	| SelectSeparatorItem;
+
+type SelectItem<TValue extends SelectValue = SelectValue> =
+	| SelectOptionBase<TValue>
+	| SelectStructuralItem<TValue>;
+
+type SelectModelValue<M extends boolean = false> = M extends true
+	? SelectValue[]
+	: SelectValue;
+
 type SelectItemUi = { class: string; strokeWidth?: number };
 ```
 
 Item `icon` is rendered in the menu automatically. In single select, the same leading content (`#item-leading` when provided, otherwise the item `icon`) is shown on the trigger for the selected value — including when `#item-leading` is used without `icon`.
+
+If `modelValue` does not match any item (for example options loaded asynchronously), the trigger falls back to the raw value until a matching `label` is available.
 
 Consumers that need extra fields should extend the base type and map source data themselves:
 
@@ -61,11 +71,11 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 
 **Props**
 
-- `id?: string`
+- `id?: string` Applied to the trigger. Non-prop attrs (`class`, `aria-*`, …) are also forwarded there (`inheritAttrs: false`).
 - `placeholder?: string` Visual empty-state text in the trigger. Defaults to `t('nds.select.placeholder')` (`Select an option`). Not used as the accessible name — pass `aria-label` / `aria-labelledby`, or associate a `<label>` via `id`.
 - `items?: SelectItem[]` Array of options / groups / separators to render
-- `defaultValue?: SelectValue | SelectValue[]` The value of the Select when initially rendered. Use when you do not need to control the state of the Select.
-- `modelValue?: SelectValue | SelectValue[]` The controlled value of the Select. Bind as `v-model`. Typed as `SelectValue[]` when `multiple` is `true`.
+- `defaultValue?: SelectModelValue` The value of the Select when initially rendered. Use when you do not need to control the state of the Select.
+- `modelValue?: SelectModelValue` The controlled value of the Select. Bind as `v-model`. Typed as `SelectValue[]` when `multiple` is `true`.
 - `multiple?: boolean` Whether multiple options can be selected or not.
 - `open?: boolean` The controlled open state of the Select. Bind as `v-model:open`.
 - `defaultOpen?: boolean` The open state of the select when it is initially rendered. Use when you do not need to control its open state.
@@ -76,7 +86,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `dir?: 'ltr' | 'rtl'` Reading direction. When omitted, inherits from `ConfigProvider` or defaults to LTR.
 - `icon?: IconName` Fallback leading icon on the trigger when nothing is selected, or the selected item has no leading visual. In single select, a selected item's `#item-leading` (or its `icon`) is shown on the trigger instead.
 - `clearable?: boolean` When `true`, shows a clear button when a value is selected. Hidden when `disabled` or the value is empty. Default: `false`. The button's accessible name is `t('nds.select.clear')` (`Clear selection`).
-- `position?: 'item-aligned' | 'popper'` Positioning mode for the dropdown. Default: `'item-aligned'`.
+- `position?: 'item-aligned' | 'popper'` Positioning mode for the dropdown. `item-aligned` aligns the selected item with the trigger (default). `popper` opens below the trigger (`side` is always `bottom`) at trigger width. `side` / `align` are not exposed.
 - `sideOffset?: number` Distance in pixels from the trigger when `position` is `'popper'`. Default: `4`.
 - `contentClass?: string` Additional CSS class(es) applied to the dropdown content container (portaled).
 
@@ -88,17 +98,17 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 
 **Events**
 
-- `update:modelValue(value: SelectValue | SelectValue[] | undefined)` — single clear emits `undefined`; multiple clear emits `[]`
+- `update:modelValue(value: SelectModelValue | undefined)` — single clear emits `undefined`; multiple clear emits `[]`
 - `update:open(value: boolean)`
 - `clear()`
 
 **Slots**
 
-- `default`: `{ modelValue?: SelectValue | SelectValue[]; open: boolean }` — trigger display. Default is the selected label(s), comma-separated in multiple mode.
-- `item`: `{ item: SelectOptionBase }` — replace the whole menu row (use `N8nSelect2Item` to keep selection behaviour; `v-bind` the item). `N8nSelect2Item` also accepts `class` and `strokeWidth` (passed through to `#item-leading` / `#item-trailing` `ui`).
+- `default`: `{ modelValue?: SelectModelValue; open: boolean }` — trigger display. Default is the selected label(s), comma-separated in multiple mode. Unmatched values render as the raw string/number. In `multiple` mode, per-value leading visuals belong here (not `#item-leading`).
+- `item`: `{ item: SelectOptionBase }` — replace the whole menu row (use `N8nSelect2Item` to keep selection behaviour; `v-bind` the item). `N8nSelect2Item` also accepts `class` and `strokeWidth` (passed through to `#item-leading` / `#item-trailing` `ui`) and the same `item-*` slots.
 - `label`: `{ item: SelectGroupItem }` — section heading for `type: 'group'` entries that have a `label`
 - `item-leading`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom leading content (`{ class, strokeWidth? }`). In single select, the same slot is reused on the trigger for the selected value, even when the item has no `icon`. Not used on the trigger in `multiple` mode.
-- `item-label`: `{ item: SelectOptionBase }`
+- `item-label`: `{ item: SelectOptionBase }` — replace the menu row label (does not change the trigger unless you also use `#default`)
 - `item-trailing`: `{ item: SelectOptionBase; ui: SelectItemUi }` — bind `ui` onto custom trailing content
 - `header?: ()` — rendered above the list
 - `footer?: ()`
