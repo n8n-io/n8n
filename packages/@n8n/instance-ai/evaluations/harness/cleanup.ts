@@ -176,10 +176,16 @@ export async function cleanupBuild(
 	}
 
 	// Clears backend thread state (run-state registries, memory) that otherwise
-	// grows one entry per build for the container's lifetime.
-	if (build.threadId) {
+	// grows one entry per build for the container's lifetime. A session-boundary case
+	// runs two threads — the live one and the prior session its history was seeded
+	// into — and both accumulate that state, so both are deleted. Deduped rather than
+	// trusting `seedThreadId` to differ: a double delete would 404 and report the whole
+	// cleanup unclean, and the invariant lives in a different file from this loop.
+	const threadIds = [...new Set([build.threadId, build.seedThreadId].filter(Boolean))];
+	for (const id of threadIds) {
+		if (!id) continue;
 		try {
-			await client.deleteThread(build.threadId);
+			await client.deleteThread(id);
 		} catch {
 			clean = false; // Best-effort cleanup
 		}

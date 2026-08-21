@@ -336,10 +336,13 @@ Verdicts are tagged `kind: "memory"` like the judged ones and name the tier the 
 was found in.
 
 Why prefer it: it cannot hallucinate, costs nothing, needs no rubric, and it searches
-the **untruncated** context — the judge's view is capped so the interesting part stays
-in its attention, but this check has no such limit. That keeps the judge off the
-load-bearing path for exactly the claims where a wrong verdict would be most
-misleading.
+the **untruncated** context at both levels the judge's view is capped — the per-tier
+window/prompt limits *and* the per-tool-payload limit. The judge is capped so the
+interesting part stays in its attention; this check has no attention budget, so a
+value sitting past either cap — including one deep inside a fetched workflow,
+execution or table schema — is still found rather than reported missing. That keeps
+the judge off the load-bearing path for exactly the claims where a wrong verdict
+would be most misleading.
 
 Three rules, all learned from a real run.
 
