@@ -41,6 +41,7 @@ SANDBOX_PROJECT_NAME="n8n-eval-sandbox-$$"
 SANDBOX_NETWORK_NAME="n8n-eval-sandbox-$$"
 SANDBOX_ENV_FILE=""
 SANDBOX_ENV_BACKUP=""
+SANDBOX_TEMP_DIR=""
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -220,6 +221,9 @@ cleanup_local_sandbox() {
 		log "removing local sandbox containers..."
 		# shellcheck disable=SC2086 # ids is a newline-separated list of container IDs
 		docker rm -f $ids >/dev/null 2>&1 || true
+	fi
+	if [[ -n "$SANDBOX_TEMP_DIR" ]]; then
+		rm -rf -- "$SANDBOX_TEMP_DIR"
 	fi
 	docker network rm "$SANDBOX_NETWORK_NAME" >/dev/null 2>&1 || true
 }
@@ -402,8 +406,9 @@ trap cleanup EXIT
 # ---------------------------------------------------------------------------
 if [[ "$INHERIT_ENV" == true ]]; then
 	prepare_sandbox_env_file
+	SANDBOX_TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/${SANDBOX_PROJECT_NAME}.XXXXXX")"
 	log "starting local Docker sandbox on network ${SANDBOX_NETWORK_NAME}"
-	pnpm --filter n8n-containers services \
+	TMPDIR="$SANDBOX_TEMP_DIR" pnpm --filter n8n-containers services \
 		--services sandbox \
 		--network "$SANDBOX_NETWORK_NAME" \
 		--name "$SANDBOX_PROJECT_NAME"
