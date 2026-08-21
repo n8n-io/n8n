@@ -429,6 +429,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 			<!-- Structured questions replace the chat input like other floating confirmations. -->
 			<InstanceAiQuestions
 				v-if="
+					chunk.type === 'floating' &&
 					chunk.item.toolCall.confirmation.inputType === 'questions' &&
 					chunk.item.toolCall.confirmation.questions
 				"
