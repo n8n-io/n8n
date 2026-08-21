@@ -5,6 +5,6 @@ export const SPLIT_IN_BATCHES_TYPE = 'n8n-nodes-base.splitInBatches';
 /** The version the shim rebuilds a batch node at, matching SplitInBatchesV3. */
 export const SPLIT_IN_BATCHES_TYPE_VERSION = 3;
 
-/** The v1 node's own default, for a workflow that never set the parameter. */
+/** SplitInBatchesV3's own default, for a workflow that never set the parameter. */
 export const DEFAULT_BATCH_SIZE = 1;
 export const MAIN_CONNECTION_TYPE = 'main';

@@ -121,14 +121,15 @@ function toV1RunData(
 		const source = sourcesByNodeId.get(completedNodeId) ?? [];
 
 		// A pass the node was skipped on gets an empty run rather than a gap. v1
-		// reads whatever entry it finds, and a gap would crash it.
+		// reads whatever entry it finds, and a gap would crash it. The empty run
+		// holds one empty slot, since zero slots reads to v1 as no data at all.
 		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, iteration) => ({
 			startTime: 0,
 			executionTime: 0,
 			executionIndex: iteration,
 			source,
 			data: {
-				[MAIN_CONNECTION_TYPE]: fromStepInputs(outputsByIteration[iteration] ?? []),
+				[MAIN_CONNECTION_TYPE]: fromStepInputs(outputsByIteration[iteration] ?? [[]]),
 			},
 		}));
 	}
