@@ -142,7 +142,7 @@ export class InstanceAiVerificationService {
 		} catch (error) {
 			const failure = classifyFailure(error);
 			this.logVerificationFailure('model', failure, error, provider);
-			return { ok: false, failure };
+			return { ok: false, failure, error: sanitizeVerificationError(error) };
 		}
 	}
 
@@ -190,6 +190,7 @@ export class InstanceAiVerificationService {
 			return {
 				ok: false,
 				failure,
+				error: sanitizeVerificationError(error),
 			};
 		} finally {
 			if (workspace) {
@@ -235,7 +236,7 @@ export class InstanceAiVerificationService {
 		} catch (error) {
 			const failure = classifyFailure(error);
 			this.logVerificationFailure('search', failure, error, provider);
-			return { ok: false, failure };
+			return { ok: false, failure, error: sanitizeVerificationError(error) };
 		}
 	}
 

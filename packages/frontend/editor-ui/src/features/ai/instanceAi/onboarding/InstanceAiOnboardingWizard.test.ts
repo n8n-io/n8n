@@ -196,18 +196,24 @@ describe('InstanceAiOnboardingWizard', () => {
 
 	it('keeps the model step open on verification failure and clears the error after editing', async () => {
 		const { pinia, store } = setupStore();
-		vi.mocked(store.verifyModel).mockResolvedValue({ ok: false, failure: 'unauthorized' });
+		vi.mocked(store.verifyModel).mockResolvedValue({
+			ok: false,
+			failure: 'unauthorized',
+			error: 'Incorrect API key provided',
+		});
 		const { emitted, findByTestId, getByTestId, queryByTestId } = renderWizard({ pinia });
 		const apiKey = inputFor(await findByTestId('assistant-model-api-key'));
 
 		await fireEvent.update(apiKey, 'wrong-key');
 		await fireEvent.click(getByTestId('wizard-primary'));
 		await waitFor(() => expect(getByTestId('assistant-verification-error')).toBeVisible());
+		expect(getByTestId('assistant-verification-error-details')).toBeVisible();
 		expect(store.save).not.toHaveBeenCalled();
 		expect(emitted().advance).toBeUndefined();
 
 		await fireEvent.update(apiKey, 'new-key');
 		await waitFor(() => expect(queryByTestId('assistant-verification-error')).toBeNull());
+		expect(queryByTestId('assistant-verification-error-details')).toBeNull();
 	});
 
 	it('verifies an environment-managed model without sending a connection', async () => {
@@ -618,6 +624,17 @@ describe('InstanceAiOnboardingWizard', () => {
 		await fireEvent.click(await findByTestId('wizard-back'));
 
 		expect(emitted().back).toEqual([[]]);
+	});
+
+	it('hides the step indicator when there is only one setup step', async () => {
+		const { pinia } = setupStore();
+		const { findByTestId, queryByTestId } = renderWizard({
+			pinia,
+			props: { sequence: ['model', 'done'] },
+		});
+
+		expect(await findByTestId('wizard-primary')).toBeVisible();
+		expect(queryByTestId('wizard-progress')).toBeNull();
 	});
 
 	it('uses cancel and save without progress controls in direct edit mode', async () => {
