@@ -92,10 +92,6 @@ describe('test GoogleDriveV2: file download', () => {
 		);
 	});
 
-	// Reproduces NODE-5539: downloading a Google Sheets file without an explicit
-	// conversion format falls back to the OpenOffice/ODF export MIME type, which
-	// Google no longer supports and now answers with HTTP 500. The fallback should
-	// match the UI dropdown default (text/csv), a format Google still exports.
 	it('should export Google Sheets with a supported format by default', async () => {
 		const nodeParameters = {
 			operation: 'download',
@@ -110,7 +106,9 @@ describe('test GoogleDriveV2: file download', () => {
 		(transport.googleApiRequest as Mock)
 			.mockResolvedValueOnce({ mimeType: 'application/vnd.google-apps.spreadsheet', name: 'test' })
 			.mockResolvedValueOnce({
-				headers: { 'content-type': 'text/csv' },
+				headers: {
+					'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				},
 				body: Buffer.from(''),
 			});
 
@@ -123,7 +121,10 @@ describe('test GoogleDriveV2: file download', () => {
 			'GET',
 			'/drive/v3/files/fileIDxxxxxx/export',
 			{},
-			{ mimeType: 'text/csv', supportsAllDrives: true },
+			{
+				mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				supportsAllDrives: true,
+			},
 			undefined,
 			{ encoding: 'arraybuffer', json: false, returnFullResponse: true, useStream: true },
 		);

@@ -229,7 +229,11 @@ export async function execute(
 				'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 			) as string;
 		} else if (type === 'spreadsheet') {
-			mime = this.getNodeParameter(`${parameterKey}.sheetsToFormat`, i, 'text/csv') as string;
+			mime = this.getNodeParameter(
+				`${parameterKey}.sheetsToFormat`,
+				i,
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			) as string;
 		} else {
 			mime = this.getNodeParameter(`${parameterKey}.drawingsToFormat`, i, 'image/jpeg') as string;
 		}
