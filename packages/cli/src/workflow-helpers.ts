@@ -3,9 +3,11 @@ import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
+	dropInvalidWorkflowGroups,
 	formatWorkflowStructureIssuePath,
 	GROUP_DESCRIPTION_MAX_LENGTH,
 	isSafeObjectProperty,
+	makeGetNodeTypeForGrouping,
 	normalizeGroupDescription,
 	resolveNodeWebhookId,
 	resolveVariables,
@@ -31,7 +33,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { OwnershipService } from './services/ownership.service';
 
-export { dropInvalidWorkflowGroups, makeGetNodeTypeForGrouping } from 'n8n-workflow';
+export { dropInvalidWorkflowGroups, makeGetNodeTypeForGrouping };
 
 /**
  * Validates that pinned data does not exceed size limits.
