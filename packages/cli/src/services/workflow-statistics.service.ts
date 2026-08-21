@@ -10,55 +10,18 @@ import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	isCompletedExecutionStatus,
-	type ExecutionStatus,
 	type INode,
 	type IRun,
 	type IWorkflowBase,
-	type WorkflowExecuteMode,
 	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
+import { isBillableExecution } from '@/utils/is-billable-execution';
 
 import { INSTANCE_ACTIVATED_SETTINGS_KEY } from './instance-activation.service';
 import { OwnershipService } from './ownership.service';
-
-const isStatusRootExecution = {
-	success: true,
-	crashed: true,
-	error: true,
-
-	canceled: false,
-	new: false,
-	running: false,
-	unknown: false,
-	waiting: false,
-} satisfies Record<ExecutionStatus, boolean>;
-
-const isModeRootExecution = {
-	cli: true,
-	retry: true,
-	trigger: true,
-	webhook: true,
-	evaluation: true,
-
-	// sub workflows
-	integrated: false,
-
-	// error workflows
-	error: false,
-
-	internal: false,
-
-	manual: false,
-
-	// n8n Chat hub messages
-	chat: false,
-
-	// Agent executions
-	agent: false,
-} satisfies Record<WorkflowExecuteMode, boolean>;
 
 function getStatisticsNameForCompletedRun(
 	runData: IRun,
@@ -82,10 +45,6 @@ function getStatisticsNameForCompletedRun(
 	return runData.status === 'success'
 		? StatisticsNames.productionSuccess
 		: StatisticsNames.productionError;
-}
-
-function isRootExecutionForRun(runData: IRun): boolean {
-	return isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
 }
 
 type WorkflowStatisticsEvents = {
@@ -130,8 +89,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 	): Promise<void> {
 		const statisticsName = getStatisticsNameForCompletedRun(runData, source);
 
-		// Instance AI runs mimic trigger modes but are not root production runs.
-		const isRoot = source !== 'instance_ai' && isRootExecutionForRun(runData);
+		const isRoot = isBillableExecution(runData, source);
 
 		if (!statisticsName) return;
 

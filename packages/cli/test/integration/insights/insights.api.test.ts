@@ -206,11 +206,50 @@ describe('GET /insights/summary', () => {
 			const response = await insightsViewer.get('/insights/summary').expect(200);
 
 			expect(response.body.data.total.value).toBe(accessibleWorkflowInsights.value);
+			expect(response.body.data.billable.value).toBe(0);
 		});
 
 		afterAll(async () => {
 			await truncateDatabase();
 		});
+	});
+
+	test('returns billable independently of total', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 10,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 1 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'failure',
+			value: 2,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 1 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'billable',
+			value: 9,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 1 }),
+		});
+
+		const response = await agents.owner
+			.get('/insights/summary')
+			.query({
+				startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+				endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+			})
+			.expect(200);
+
+		expect(response.body.data.total.value).toBe(12);
+		expect(response.body.data.billable.value).toBe(9);
+		expect(response.body.data.billable.unit).toBe('count');
+
+		await truncateDatabase();
 	});
 });
 

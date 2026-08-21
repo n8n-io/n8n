@@ -100,6 +100,11 @@ describe('InsightsService', () => {
 					unit: 'count',
 					deviation: 0,
 				},
+				billable: {
+					value: 0,
+					unit: 'count',
+					deviation: 0,
+				},
 			});
 		});
 
@@ -108,14 +113,16 @@ describe('InsightsService', () => {
 			currentSuccess?: number;
 			currentFailure?: number;
 			currentTimeSaved?: number;
+			currentBillable?: number;
 			previousRuntime?: number;
 			previousSuccess?: number;
 			previousFailure?: number;
 			previousTimeSaved?: number;
+			previousBillable?: number;
 		}) => {
 			const aggregates: Array<{
 				period: 'previous' | 'current';
-				type: 0 | 1 | 2 | 3;
+				type: (typeof TypeToNumber)[keyof typeof TypeToNumber];
 				total_value: string | number;
 			}> = [];
 
@@ -180,6 +187,22 @@ describe('InsightsService', () => {
 					period: 'current',
 					type: TypeToNumber.time_saved_min,
 					total_value: config.currentTimeSaved,
+				});
+			}
+
+			if (config.previousBillable !== undefined) {
+				aggregates.push({
+					period: 'previous',
+					type: TypeToNumber.billable,
+					total_value: config.previousBillable,
+				});
+			}
+
+			if (config.currentBillable !== undefined) {
+				aggregates.push({
+					period: 'current',
+					type: TypeToNumber.billable,
+					total_value: config.currentBillable,
 				});
 			}
 
@@ -840,6 +863,81 @@ describe('InsightsService', () => {
 			});
 		});
 
+		describe('billable', () => {
+			it('should return billable independently of total', async () => {
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+					createMockAggregates({
+						currentSuccess: 8,
+						currentFailure: 4,
+						currentBillable: 10,
+						previousSuccess: 6,
+						previousFailure: 2,
+						previousBillable: 7,
+					}),
+				);
+
+				const result = await insightsService.getInsightsSummary({
+					user,
+					startDate,
+					endDate,
+				});
+
+				expect(result.total).toEqual({
+					value: 12,
+					unit: 'count',
+					deviation: 4,
+				});
+				expect(result.billable).toEqual({
+					value: 10,
+					unit: 'count',
+					deviation: 3,
+				});
+			});
+
+			it('returns 0 when no billable data exists', async () => {
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+					createMockAggregates({
+						currentSuccess: 10,
+						currentFailure: 2,
+						previousSuccess: 8,
+						previousFailure: 1,
+					}),
+				);
+
+				const result = await insightsService.getInsightsSummary({
+					user,
+					startDate,
+					endDate,
+				});
+
+				expect(result.billable).toEqual({
+					value: 0,
+					unit: 'count',
+					deviation: 0,
+				});
+			});
+
+			it('returns null deviation when previous period has no executions', async () => {
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+					createMockAggregates({
+						currentSuccess: 10,
+						currentBillable: 8,
+						previousSuccess: 0,
+						previousFailure: 0,
+					}),
+				);
+
+				const result = await insightsService.getInsightsSummary({
+					user,
+					startDate,
+					endDate,
+				});
+
+				expect(result.billable.value).toBe(8);
+				expect(result.billable.deviation).toBeNull();
+			});
+		});
+
 		describe('project access', () => {
 			beforeEach(() => {
 				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
@@ -1083,6 +1181,20 @@ describe('InsightsService', () => {
 			mockInsightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
 		});
 
+		it('does not request billable in the default by-time insight types', async () => {
+			await insightsService.getInsightsByTime({
+				user,
+				startDate,
+				endDate,
+			});
+
+			expect(mockInsightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
+				expect.objectContaining({
+					insightTypes: ['time_saved_min', 'runtime_ms', 'success', 'failure'],
+				}),
+			);
+		});
+
 		describe('project access', () => {
 			it('should not check project access when no project is requested', async () => {
 				await insightsService.getInsightsByTime({ user, startDate, endDate });
@@ -1133,6 +1245,29 @@ describe('InsightsService', () => {
 					}),
 				);
 			});
+		});
+	});
+
+	describe('getTimeSavedInsightsByTime', () => {
+		const startDate = new Date('2024-01-01');
+		const endDate = new Date('2024-01-07');
+
+		beforeEach(() => {
+			mockInsightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+		});
+
+		it('requests only time saved', async () => {
+			await insightsService.getTimeSavedInsightsByTime({
+				user,
+				startDate,
+				endDate,
+			});
+
+			expect(mockInsightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
+				expect.objectContaining({
+					insightTypes: ['time_saved_min'],
+				}),
+			);
 		});
 	});
 });
