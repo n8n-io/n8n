@@ -149,10 +149,13 @@ export async function confluenceApiRequestBinary(
 		'confluence',
 	);
 
+	// Downloads 302 to the Atlassian media host, which authenticates the hop via its
+	// own signed token in the redirect URL; the OAuth header must not follow cross-origin.
 	const options: IHttpRequestOptions = {
 		method: 'GET',
 		url: `${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,
 		encoding: 'arraybuffer',
+		sendCredentialsOnCrossOriginRedirect: false,
 	};
 
 	let data: unknown;

@@ -264,6 +264,7 @@ describe('confluenceApiRequestBinary', () => {
 				method: 'GET',
 				url: 'https://api.atlassian.com/ex/confluence/cloud-1/wiki/download/attachments/9/a.txt',
 				encoding: 'arraybuffer',
+				sendCredentialsOnCrossOriginRedirect: false,
 			}),
 		);
 		expect(data).toBe(bytes);
