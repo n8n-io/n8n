@@ -21,6 +21,9 @@ paths:
   /git-connections/{id}/disconnect:
     post:
       $ref: ./handlers/git-connections/spec/paths/disconnectGitConnection.generated.yml
+  /git-connections/{id}/push:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/pushGitConnectionProjects.generated.yml
   /git-connections/{id}/projects:
     get:
       $ref: ./handlers/git-connections/spec/paths/getGitConnectionProjects.generated.yml
