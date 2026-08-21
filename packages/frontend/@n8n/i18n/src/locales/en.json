@@ -7733,6 +7733,7 @@
 	"agents.builder.subAgents.settings.description": "Configure delegation limits and inline sub-agent model choices.",
 	"agents.builder.subAgents.add": "Add sub-agent",
 	"agents.builder.subAgents.loadError": "Could not load project agents",
+	"agents.builder.subAgents.unavailable": "Sub-agent unavailable",
 	"agents.builder.subAgents.remove": "Remove {name}",
 	"agents.builder.subAgents.useWhen.label": "When should this agent be used?",
 	"agents.builder.subAgents.useWhen.hint": "Tell the parent agent when to delegate work to this agent.",
