@@ -41,6 +41,7 @@ const PATCHES_TO_KEEP = [
 	'bull',
 	'lodash',
 	'@confluentinc/kafka-javascript',
+	'imapflow',
 ];
 
 // #endregion ===== Configuration =====
