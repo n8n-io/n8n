@@ -13,11 +13,6 @@ import type { GenericValue, ITelemetryTrackProperties } from 'n8n-workflow';
  * deliberately stricter than the user-facing output policy: secrets plus every
  * PII category.
  *
- * Intentionally independent of `N8N_INSTANCE_AI_OUTPUT_REDACTION_*` and the
- * durable-log flag — those decide what the *user* sees on their own instance
- * (and today turn the stream-side redactor off entirely), which says nothing
- * about what may be shipped to a third party.
- *
  * `preserveUrlStructure` keeps traced URLs readable; their value-bearing parts
  * are still redacted and secrets are matched first.
  */
