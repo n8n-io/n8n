@@ -18,7 +18,6 @@ import type {
 	InteractivePayload,
 	ToolCall,
 } from '@/features/ai/shared/agentsChat/types';
-import { useChatMessageSpeech } from '@/features/ai/shared/composables/useChatMessageSpeech';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
@@ -287,12 +286,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			: openMemoryFooterGroupId.value;
 }
 
-const {
-	isSupported: isSpeechSynthesisAvailable,
-	isSpeaking: isSpeakingMessage,
-	toggle: toggleReadAloud,
-} = useChatMessageSpeech({ getText: getAssistantRunContent });
-
 // How close to the bottom the user has to be for incoming chunks to keep
 // following them. Small enough that a deliberate scroll-up breaks the lock,
 // large enough that sub-pixel DOM growth during markdown rendering doesn't
@@ -458,10 +451,7 @@ watch(
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
-							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
-							:is-speaking="isSpeakingMessage(group.id)"
 							:can-send-to-assistant="canSendToAssistant"
-							@read-aloud="toggleReadAloud(group.id)"
 							@send-to-assistant="emit('sendToAssistant')"
 						/>
 					</div>
@@ -565,10 +555,7 @@ watch(
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
-							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
-							:is-speaking="isSpeakingMessage(group.id)"
 							:can-send-to-assistant="canSendToAssistant"
-							@read-aloud="toggleReadAloud(group.id)"
 							@send-to-assistant="emit('sendToAssistant')"
 						/>
 						<AgentChatMemoryUsed

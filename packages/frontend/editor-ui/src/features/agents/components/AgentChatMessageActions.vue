@@ -1,39 +1,26 @@
 <script setup lang="ts">
 import { N8nChatActions, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useChatMessageCopy } from '@/features/ai/shared/composables/useChatMessageCopy';
 
 const props = defineProps<{
 	content: string;
-	isSpeechSynthesisAvailable: boolean;
-	isSpeaking: boolean;
 	canSendToAssistant?: boolean;
 }>();
 
 const emit = defineEmits<{
-	readAloud: [];
 	sendToAssistant: [];
 }>();
 
 const i18n = useI18n();
-const { copyMessage } = useChatMessageCopy(function getMessageContent() {
-	return props.content;
-});
 </script>
 
 <template>
 	<N8nChatActions
 		:class="$style.actions"
+		:content="props.content"
 		data-test-id="agent-chat-message-actions"
-		:copy-label="i18n.baseText('generic.copy')"
 		copy-test-id="agent-chat-message-copy"
-		:show-read-aloud="isSpeechSynthesisAvailable"
-		:read-aloud-label="i18n.baseText('chatHub.message.actions.readAloud')"
-		:stop-reading-label="i18n.baseText('chatHub.message.actions.stopReading')"
 		read-aloud-test-id="agent-chat-message-read-aloud"
-		:is-reading-aloud="isSpeaking"
-		@copy="copyMessage"
-		@read-aloud="emit('readAloud')"
 	>
 		<N8nTooltip
 			v-if="canSendToAssistant"

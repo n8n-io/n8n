@@ -16,8 +16,6 @@ import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useChatMessageCopy } from '@/features/ai/shared/composables/useChatMessageCopy';
-import { useChatMessageSpeech } from '@/features/ai/shared/composables/useChatMessageSpeech';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
@@ -130,24 +128,6 @@ const hasSettledText = computed(function hasSettledAssistantText() {
 	return !isUser.value && !isStreaming.value && props.message.content.trim().length > 0;
 });
 
-const { copyMessage } = useChatMessageCopy(function getMessageContent() {
-	return props.message.content;
-});
-const {
-	isSupported: isSpeechSynthesisAvailable,
-	isSpeaking: isSpeakingMessage,
-	toggle: toggleMessageSpeech,
-} = useChatMessageSpeech({
-	getText: function getMessageSpeechText(messageId) {
-		return messageId === props.message.id ? props.message.content : '';
-	},
-});
-const isSpeaking = computed(function isMessageSpeaking() {
-	return isSpeakingMessage(props.message.id);
-});
-const canReadAloud = computed(function canReadMessageAloud() {
-	return hasSettledText.value && isSpeechSynthesisAvailable.value;
-});
 const hasMessageActions = computed(function hasAvailableMessageActions() {
 	return hasSettledText.value || isRateable.value || (store.debugMode && !isUser.value);
 });
@@ -158,11 +138,6 @@ const debugActionLabel = computed(function getDebugActionLabel() {
 			: 'instanceAi.message.actions.showDebugInfo',
 	);
 });
-
-function toggleReadAloud() {
-	if (!canReadAloud.value) return;
-	toggleMessageSpeech(props.message.id);
-}
 
 function toggleDebugInfo() {
 	showDebugInfo.value = !showDebugInfo.value;
@@ -277,16 +252,11 @@ function formatJson(value: unknown): string {
 
 		<template v-if="hasMessageActions" #actions>
 			<N8nChatActions
+				:content="props.message.content"
 				:show-copy="hasSettledText"
-				:copy-label="i18n.baseText('generic.copy')"
 				copy-test-id="instance-ai-message-copy"
-				:show-read-aloud="canReadAloud"
-				:read-aloud-label="i18n.baseText('chatHub.message.actions.readAloud')"
-				:stop-reading-label="i18n.baseText('chatHub.message.actions.stopReading')"
+				:show-read-aloud="hasSettledText"
 				read-aloud-test-id="instance-ai-message-read-aloud"
-				:is-reading-aloud="isSpeaking"
-				@copy="copyMessage"
-				@read-aloud="toggleReadAloud"
 			>
 				<N8nMessageRating
 					v-if="isRateable"

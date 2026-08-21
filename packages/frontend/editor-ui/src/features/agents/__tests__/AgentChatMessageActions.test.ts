@@ -13,17 +13,17 @@ vi.mock('@n8n/composables/useClipboard', () => ({
 
 vi.mock('@n8n/design-system', () => ({
 	N8nChatActions: {
-		props: ['showReadAloud', 'readAloudLabel', 'stopReadingLabel', 'isReadingAloud', 'copyLabel'],
-		emits: ['copy', 'readAloud'],
+		name: 'N8nChatActions',
+		props: ['content'],
+		setup: function setup(props: { content: string }) {
+			function copyContent() {
+				return copySpy(props.content);
+			}
+			return { copyContent };
+		},
 		template: `<div v-bind="$attrs">
-			<button data-test-id="agent-chat-message-copy" @click="$emit('copy')">{{ copyLabel }}</button>
-			<button
-				v-if="showReadAloud"
-				data-test-id="agent-chat-message-read-aloud"
-				:aria-label="isReadingAloud ? stopReadingLabel : readAloudLabel"
-				:aria-pressed="isReadingAloud"
-				@click="$emit('readAloud')"
-			/>
+			<button data-test-id="agent-chat-message-copy" @click="copyContent" />
+			<button data-test-id="agent-chat-message-read-aloud" />
 			<slot />
 		</div>`,
 	},
@@ -54,8 +54,6 @@ describe('AgentChatMessageActions', () => {
 		const wrapper = mount(AgentChatMessageActions, {
 			props: {
 				content: 'First reply\n\nSecond reply',
-				isSpeechSynthesisAvailable: false,
-				isSpeaking: false,
 			},
 		});
 
@@ -64,29 +62,18 @@ describe('AgentChatMessageActions', () => {
 		expect(copySpy).toHaveBeenCalledWith('First reply\n\nSecond reply');
 	});
 
-	it('uses the stop-reading label and emits read-aloud while speaking', async () => {
+	it('passes the content to the chat actions', () => {
 		const wrapper = mount(AgentChatMessageActions, {
-			props: {
-				content: 'Agent reply',
-				isSpeechSynthesisAvailable: true,
-				isSpeaking: true,
-			},
+			props: { content: 'Agent reply' },
 		});
 
-		const button = wrapper.get('[data-test-id="agent-chat-message-read-aloud"]');
-		expect(button.attributes('aria-label')).toBe('chatHub.message.actions.stopReading');
-		expect(button.attributes('aria-pressed')).toBe('true');
-
-		await button.trigger('click');
-		expect(wrapper.emitted('readAloud')).toHaveLength(1);
+		expect(wrapper.getComponent({ name: 'N8nChatActions' }).props('content')).toBe('Agent reply');
 	});
 
 	it('renders send-to-assistant only when enabled and emits on click', async () => {
 		const wrapper = mount(AgentChatMessageActions, {
 			props: {
 				content: 'Agent reply',
-				isSpeechSynthesisAvailable: false,
-				isSpeaking: false,
 				canSendToAssistant: true,
 			},
 		});
@@ -98,17 +85,14 @@ describe('AgentChatMessageActions', () => {
 		expect(wrapper.emitted('sendToAssistant')).toHaveLength(1);
 	});
 
-	it('does not render optional actions when unavailable', () => {
+	it('does not render send-to-assistant when unavailable', () => {
 		const wrapper = mount(AgentChatMessageActions, {
 			props: {
 				content: 'Agent reply',
-				isSpeechSynthesisAvailable: false,
-				isSpeaking: false,
 				canSendToAssistant: false,
 			},
 		});
 
-		expect(wrapper.find('[data-test-id="agent-chat-message-read-aloud"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="agent-chat-message-send-to-assistant"]').exists()).toBe(
 			false,
 		);

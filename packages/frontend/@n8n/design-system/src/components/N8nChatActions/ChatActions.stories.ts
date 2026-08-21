@@ -9,6 +9,7 @@ const meta = {
 	title: 'Areas/Assistant/ChatActions',
 	component: N8nChatActions,
 	argTypes: {
+		content: { control: 'text' },
 		showCopy: { control: 'boolean' },
 		showReadAloud: { control: 'boolean' },
 		copyLabel: { control: 'text' },
@@ -35,10 +36,16 @@ export const Default: Story = {
 			setup: function setup() {
 				return { args };
 			},
-			template: '<N8nChatActions v-bind="args" />',
+			template: `
+				<div>
+					<p>{{ args.content }}</p>
+					<N8nChatActions v-bind="args" />
+				</div>
+			`,
 		};
 	},
 	args: {
+		content: 'The workflow is ready.',
 		showCopy: true,
 		copyLabel: 'Copy',
 		onCopy: action('copy'),
@@ -49,7 +56,22 @@ export const Default: Story = {
 };
 
 export const CopyOnly: Story = {
+	render: function render(args) {
+		return {
+			components: { N8nChatActions },
+			setup: function setup() {
+				return { args };
+			},
+			template: `
+				<div>
+					<p>{{ args.content }}</p>
+					<N8nChatActions v-bind="args" />
+				</div>
+			`,
+		};
+	},
 	args: {
+		content: 'Copy this message to the clipboard.',
 		showCopy: true,
 		copyLabel: 'Copy',
 		onCopy: action('copy'),
@@ -58,7 +80,22 @@ export const CopyOnly: Story = {
 };
 
 export const ReadAloudOnly: Story = {
+	render: function render(args) {
+		return {
+			components: { N8nChatActions },
+			setup: function setup() {
+				return { args };
+			},
+			template: `
+				<div>
+					<p>{{ args.content }}</p>
+					<N8nChatActions v-bind="args" />
+				</div>
+			`,
+		};
+	},
 	args: {
+		content: 'Read this message aloud.',
 		showCopy: false,
 		showReadAloud: true,
 		readAloudLabel: 'Read aloud',
@@ -82,6 +119,7 @@ export const WithCustomActions: Story = {
 				return { args, handleThumbsUp, handleThumbsDown };
 			},
 			template: `
+				<p>{{ args.content }}</p>
 				<N8nChatActions v-bind="args">
 					<N8nTooltip content="Helpful" placement="bottom">
 						<N8nIconButton
@@ -108,6 +146,7 @@ export const WithCustomActions: Story = {
 		};
 	},
 	args: {
+		content: 'The workflow is ready.',
 		showCopy: true,
 		copyLabel: 'Copy',
 		onCopy: action('copy'),

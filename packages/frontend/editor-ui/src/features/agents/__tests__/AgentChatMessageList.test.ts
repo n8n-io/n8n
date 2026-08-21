@@ -13,16 +13,16 @@ vi.mock('@n8n/composables/useClipboard', () => ({
 
 vi.mock('@n8n/design-system', () => ({
 	N8nChatActions: {
-		props: ['showReadAloud', 'isReadingAloud'],
-		emits: ['copy', 'readAloud'],
+		props: ['content'],
+		setup: function setup(props: { content: string }) {
+			function copyContent() {
+				return copySpy(props.content);
+			}
+			return { copyContent };
+		},
 		template: `<div v-bind="$attrs">
-			<button data-test-id="agent-chat-message-copy" @click="$emit('copy')" />
-			<button
-				v-if="showReadAloud"
-				data-test-id="agent-chat-message-read-aloud"
-				:aria-pressed="isReadingAloud"
-				@click="$emit('readAloud')"
-			/>
+			<button data-test-id="agent-chat-message-copy" @click="copyContent" />
+			<button data-test-id="agent-chat-message-read-aloud" />
 			<slot />
 		</div>`,
 	},
@@ -289,10 +289,6 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-test-id="agent-chat-message-actions"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="agent-chat-message-copy"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="agent-chat-message-read-aloud"]').exists()).toBe(true);
-
-		await wrapper.find('[data-test-id="agent-chat-message-read-aloud"]').trigger('click');
-		expect(cancelSpy).toHaveBeenCalled();
-		expect(speakSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it('shows send-to-assistant for preview assistant messages and re-emits clicks', async () => {
