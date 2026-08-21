@@ -178,7 +178,17 @@ export class RoleMappingRuleService {
 		throw new ConflictError('Could not create role mapping rule due to an order conflict');
 	}
 
-	async patch(id: string, dto: PatchRoleMappingRuleInput): Promise<RoleMappingRuleResponse> {
+	async patch({
+		id,
+		dto,
+		userId,
+		userEmail,
+	}: {
+		id: string;
+		dto: PatchRoleMappingRuleInput;
+		userId: string;
+		userEmail?: string;
+	}): Promise<RoleMappingRuleResponse> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
 		}
@@ -249,7 +259,16 @@ export class RoleMappingRuleService {
 			relations: ['projects', 'role'],
 		});
 
-		return this.toResponse(loaded);
+		const result = this.toResponse(loaded);
+
+		this.eventService.emit('role-mapping-rule-updated', {
+			user: { id: userId, email: userEmail },
+			ruleId: result.id,
+			ruleType: result.type,
+			patchedFields: Object.keys(dto),
+		});
+
+		return result;
 	}
 
 	async delete(id: string): Promise<{ ruleType: 'instance' | 'project' }> {

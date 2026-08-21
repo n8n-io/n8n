@@ -269,6 +269,21 @@ export class SchedulerConfig {
 	enabledForPollTriggers: boolean = false;
 
 	/**
+	 * Whether a poll trigger's cursor advance and the execution it produced are saved
+	 * together, atomically. When disabled, a crash between the two can leave a poll
+	 * pointing past items whose execution was never saved (or vice versa).
+	 *
+	 * Requires {@link enabled} and {@link enabledForPollTriggers} to also be on;
+	 * on its own it has no effect.
+	 *
+	 * The env var name keeps its historic `N8N_POLLER_` prefix from before this flag
+	 * moved into the scheduler config; it is referenced by the rollout plan, so do
+	 * not rename it mid-ramp.
+	 */
+	@Env('N8N_POLLER_DURABLE_CURSORS_ENABLED')
+	durableCursorsEnabled: boolean = false;
+
+	/**
 	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
 	 * Off by default; intended to be removed once the durable scheduler is GA.
 	 *

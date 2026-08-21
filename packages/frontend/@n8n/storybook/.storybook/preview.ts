@@ -52,6 +52,7 @@ export const parameters = {
 	},
 	options: {
 		storySort: {
+			method: 'alphabetical',
 			order: ['Style guide', 'Core', 'Areas', 'Experimental'],
 		},
 	},
