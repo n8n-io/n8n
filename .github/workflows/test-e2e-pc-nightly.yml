@@ -50,7 +50,9 @@ jobs:
   e2e-pc:
     name: E2E on -pc image (${{ matrix.shard }}/16)
     needs: generate-matrix
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    # 4 vCPU with one worker is the coverage nightly's proven envelope: a
+    # container-stack boot needs the full machine to fit the fixture's 60s budget.
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     # Container-mode e2e boots a stack per worker, so shards run far longer
     # than the source-mode PR shards. Same envelope as the coverage nightly.
     timeout-minutes: 55
@@ -87,7 +89,7 @@ jobs:
 
       - name: Run e2e against the image
         working-directory: packages/testing/playwright
-        run: pnpm test:container:sqlite:e2e -- ${{ matrix.specs }} --workers=2
+        run: pnpm test:container:sqlite:e2e -- ${{ matrix.specs }} --workers=1
 
   notify-on-failure:
     name: Notify Cats on -pc e2e failure
