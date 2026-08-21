@@ -376,10 +376,12 @@ describe('AgentChannelReconciler', () => {
 
 			await reconciler.reconcile('interval');
 
-			expect(chatIntegrationService.disconnect).toHaveBeenCalledWith('agent-1', {
+			// Locally, so the main that just took the channel over keeps running it.
+			expect(chatIntegrationService.releaseChannelLocally).toHaveBeenCalledWith('agent-1', {
 				type: 'telegram',
 				credentialId: 'cred-telegram',
 			});
+			expect(chatIntegrationService.disconnect).not.toHaveBeenCalled();
 		});
 
 		it('never touches another instance’s rows, only its own and expired ones', async () => {
@@ -421,7 +423,7 @@ describe('AgentChannelReconciler', () => {
 
 			await reconciler.reconcile('interval');
 
-			expect(chatIntegrationService.disconnect).toHaveBeenCalledWith('agent-1', {
+			expect(chatIntegrationService.releaseChannelLocally).toHaveBeenCalledWith('agent-1', {
 				type: 'slack',
 				credentialId: 'cred-slack',
 			});

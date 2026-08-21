@@ -709,13 +709,6 @@ describe('WorkflowValidationService', () => {
 
 		beforeEach(() => {
 			mockNodeTypes = mock<NodeTypes>();
-			// Pin the flag off so the expected copy never depends on the ambient env.
-			// Tests that need it on opt in with `withFormOAuth2(true)`.
-			vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', 'false');
-		});
-
-		afterEach(() => {
-			vi.unstubAllEnvs();
 		});
 
 		it('should return valid when no credentials are used', async () => {
@@ -888,7 +881,7 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('end-user credentials');
 			expect(result.error).toContain('"My OAuth2"');
 			expect(result.error).toContain(
-				'only supported with manual, chat, MCP, sub-workflow, and webhook triggers with n8n user authentication',
+				'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, or webhook triggers with n8n user authentication',
 			);
 		});
 
@@ -970,7 +963,7 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('end-user credentials');
 			expect(result.error).toContain('"My OAuth2"');
 			// The compatible manual trigger doesn't mask the incompatible schedule one.
-			expect(result.error).toContain('are only supported with manual, chat, MCP');
+			expect(result.error).toContain('are only supported with manual and sub-workflow triggers');
 		});
 
 		it('should return valid when a system-resolved credential is used under an Execute Workflow Trigger', async () => {
@@ -1068,8 +1061,105 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('identity extractor');
 		});
 
-		const withFormOAuth2 = (enabled: boolean) =>
-			vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', enabled ? 'true' : 'false');
+		it('should return invalid when the system resolver is used with a Chat Trigger not available in Chat Hub', async () => {
+			const nodes: INode[] = [
+				createNode('Chat Trigger', '@n8n/n8n-nodes-langchain.chatTrigger'),
+				createNode('Outlook', 'n8n-nodes-base.microsoftOutlook', {
+					credentials: { microsoftOutlookOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Outlook account' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('are only supported with manual and sub-workflow triggers');
+		});
+
+		it('should return valid when the system resolver is used with a Chat Trigger available in Chat Hub', async () => {
+			const nodes: INode[] = [
+				createNode('Chat Trigger', '@n8n/n8n-nodes-langchain.chatTrigger', {
+					parameters: { availableInChat: true },
+				}),
+				createNode('Outlook', 'n8n-nodes-base.microsoftOutlook', {
+					credentials: { microsoftOutlookOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Outlook account' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return invalid when the system resolver is used with an MCP trigger on bearer auth', async () => {
+			const nodes: INode[] = [
+				createNode('MCP Server Trigger', '@n8n/n8n-nodes-langchain.mcpTrigger', {
+					parameters: { authentication: 'bearerAuth' },
+				}),
+				createNode('Outlook', 'n8n-nodes-base.microsoftOutlook', {
+					credentials: { microsoftOutlookOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Outlook account' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.mcpTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('are only supported with manual and sub-workflow triggers');
+		});
+
+		it('should return valid when the system resolver is used with an MCP trigger on n8nOAuth2', async () => {
+			const nodes: INode[] = [
+				createNode('MCP Server Trigger', '@n8n/n8n-nodes-langchain.mcpTrigger', {
+					parameters: { authentication: 'n8nOAuth2' },
+				}),
+				createNode('Outlook', 'n8n-nodes-base.microsoftOutlook', {
+					credentials: { microsoftOutlookOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Outlook account' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.mcpTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
 
 		describe('webhook trigger', () => {
 			const validateWithOAuth2Webhook = async () => {
@@ -1128,42 +1218,22 @@ describe('WorkflowValidationService', () => {
 				return await service.validateDynamicCredentials(nodes, mockNodeTypes);
 			};
 
-			it('should return valid for n8nUserAuth when form OAuth2 is enabled', async () => {
-				withFormOAuth2(true);
-
+			it('should return valid for n8nUserAuth', async () => {
 				const result = await validateWithFormTrigger('n8nUserAuth');
 
 				expect(result.isValid).toBe(true);
 			});
 
 			it.each(['none', 'basicAuth'])('should reject authentication %s', async (authentication) => {
-				withFormOAuth2(true);
-
 				const result = await validateWithFormTrigger(authentication);
 
 				expect(result.isValid).toBe(false);
 				expect(result.error).toBe(
-					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual, chat, MCP, sub-workflow, and form or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
 				);
 			});
 
-			it('should reject n8nUserAuth when form OAuth2 is disabled', async () => {
-				// The form authenticates the submitter over cookie/HMAC but establishes no
-				// identity, so this must be caught at publish rather than mid-execution.
-				withFormOAuth2(false);
-
-				const result = await validateWithFormTrigger('n8nUserAuth');
-
-				expect(result.isValid).toBe(false);
-				// The form option is not advertised while the flag is off.
-				expect(result.error).toContain(
-					'only supported with manual, chat, MCP, sub-workflow, and webhook triggers with n8n user authentication',
-				);
-			});
-
-			it('should offer the form option in the generic message when form OAuth2 is enabled', async () => {
-				withFormOAuth2(true);
-
+			it('should offer the form option in the generic message', async () => {
 				const nodes: INode[] = [
 					createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
 					createNode('HTTP', 'n8n-nodes-base.httpRequest', {
@@ -1185,7 +1255,7 @@ describe('WorkflowValidationService', () => {
 
 				expect(result.isValid).toBe(false);
 				expect(result.error).toContain(
-					'only supported with manual, chat, MCP, sub-workflow, and form or webhook triggers with n8n user authentication',
+					'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, or webhook triggers with n8n user authentication',
 				);
 			});
 		});
@@ -1231,7 +1301,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.error).toBe(
-				'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual, chat, MCP, sub-workflow, and webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+				'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
 			);
 		});
 

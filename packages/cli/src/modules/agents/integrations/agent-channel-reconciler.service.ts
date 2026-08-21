@@ -343,6 +343,11 @@ export class AgentChannelReconciler {
 	 * the channel removed, or this main is a follower holding a leader-only
 	 * channel. Teardown withdraws this main's row on its own, because in every one
 	 * of those cases this main has stopped running the channel.
+	 *
+	 * Released locally, never through the cluster-wide path: a demoted main
+	 * releasing a polling channel would otherwise ask the main that just took it
+	 * over to stop running it, and run the platform-side teardown — deregistering
+	 * the webhook the new owner needs — on the way.
 	 */
 	private async releaseGhosts(wantedHere: WantedChannels): Promise<void> {
 		for (const ref of this.chatIntegrationService.listLiveChannels()) {
@@ -350,7 +355,7 @@ export class AgentChannelReconciler {
 			if (wantedHere.has(channelKey(ref))) continue;
 
 			try {
-				await this.chatIntegrationService.disconnect(ref.agentId, {
+				await this.chatIntegrationService.releaseChannelLocally(ref.agentId, {
 					type: ref.integrationType,
 					credentialId: ref.credentialId,
 				});

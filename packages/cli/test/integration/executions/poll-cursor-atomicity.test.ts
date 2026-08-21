@@ -1,5 +1,5 @@
-import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
-import { PollerConfig } from '@n8n/config';
+import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
 	PollLeaseFence,
@@ -20,14 +20,9 @@ import { createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { POLL_TRIGGER_TASK_TYPE } from '@/scheduling/poll-trigger-node/poll-trigger-task';
-import { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 
 import { createDueJobFactory, seedDueTask } from '../scheduling/shared/job-factory';
-
-// The duplicate-trigger-id gate is fail-closed until a boot scan runs; open it
-// so the config flag alone controls the paths under test.
-mockInstance(DurablePollerGateService, { allowed: true });
 
 describe('poll cursor atomicity', () => {
 	const nodeId = 'node-1';
@@ -39,7 +34,7 @@ describe('poll cursor atomicity', () => {
 	let scheduledJobRepository: ScheduledJobRepository;
 	let scheduledTaskRepository: ScheduledTaskRepository;
 	let transactionRunner: TransactionRunner;
-	let pollerConfig: PollerConfig;
+	let schedulerConfig: SchedulerConfig;
 	let workflow: WorkflowEntity;
 
 	beforeAll(async () => {
@@ -51,7 +46,11 @@ describe('poll cursor atomicity', () => {
 		scheduledJobRepository = Container.get(ScheduledJobRepository);
 		scheduledTaskRepository = Container.get(ScheduledTaskRepository);
 		transactionRunner = Container.get(TransactionRunner);
-		pollerConfig = Container.get(PollerConfig);
+		// Durable cursors require the durable scheduler chain; enable it for the suite.
+		schedulerConfig = Container.get(SchedulerConfig);
+		schedulerConfig.enabled = true;
+		schedulerConfig.enabledForPollTriggers = true;
+		Container.get(WorkflowsConfig).useWorkflowPublicationService = true;
 	});
 
 	beforeEach(async () => {
@@ -64,7 +63,7 @@ describe('poll cursor atomicity', () => {
 		]);
 		workflow = await createWorkflow();
 		// Atomicity is flag-gated; enable it for these tests.
-		pollerConfig.durableCursorsEnabled = true;
+		schedulerConfig.durableCursorsEnabled = true;
 	});
 
 	afterAll(async () => {
@@ -166,7 +165,7 @@ describe('poll cursor atomicity', () => {
 	});
 
 	it('does not create a row for a node that has never migrated when the flag is off', async () => {
-		pollerConfig.durableCursorsEnabled = false;
+		schedulerConfig.durableCursorsEnabled = false;
 
 		const resolved = await pollCursorService.resolveCursor(workflow.id, nodeId, {
 			lastItemId: 'from-static-data',
@@ -177,7 +176,7 @@ describe('poll cursor atomicity', () => {
 	});
 
 	it('seeds the row from the static-data cursor already accrued while the flag was off, rather than resetting it', async () => {
-		pollerConfig.durableCursorsEnabled = false;
+		schedulerConfig.durableCursorsEnabled = false;
 
 		// Simulate several polls accruing a cursor in the node's static data while
 		// durable cursors are off: resolveCursor reports `migrated: false` and never
@@ -192,7 +191,7 @@ describe('poll cursor atomicity', () => {
 
 		// Flip the flag on for this already-running workflow and poll again, passing
 		// through the cursor its static data accrued while the flag was off.
-		pollerConfig.durableCursorsEnabled = true;
+		schedulerConfig.durableCursorsEnabled = true;
 		const migrated = await pollCursorService.resolveCursor(workflow.id, nodeId, {
 			lastItemId: 'c',
 		});
@@ -215,7 +214,7 @@ describe('poll cursor atomicity', () => {
 		// Migrate the row while the flag is on, then flip it off: reads still prefer
 		// the row, and the flag only narrows to write atomicity from here on.
 		await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
-		pollerConfig.durableCursorsEnabled = false;
+		schedulerConfig.durableCursorsEnabled = false;
 
 		const key = 'wf:node-1:t1';
 		await executionPersistence.create({ ...buildPayload(key), status: 'running' });

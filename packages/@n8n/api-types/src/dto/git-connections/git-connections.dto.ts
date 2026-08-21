@@ -34,7 +34,7 @@ export class UpdateGitConnectionDto extends Z.class({
 	password: z.string().min(1).optional(),
 }) {}
 
-export class ConnectGitConnectionDto extends Z.class({
+export class CloneGitConnectionDto extends Z.class({
 	branchName: branchNameSchema.optional(),
 }) {}
 
@@ -63,4 +63,17 @@ export const gitConnectionSummarySchema = gitConnectionPublicSchema.omit({ publi
 export class GitConnectionListPublicDto extends Z.class({
 	data: z.array(gitConnectionSummarySchema),
 	nextCursor: z.string().nullable(),
+}) {}
+
+export const gitConnectionProjectPublicSchema = z.object({
+	projectId: z.string(),
+	gitConnectionId: z.string(),
+});
+
+export class GitConnectionProjectPublicDto extends Z.class(
+	gitConnectionProjectPublicSchema.shape,
+) {}
+
+export class GitConnectionProjectListPublicDto extends Z.class({
+	projectIds: z.array(z.string()),
 }) {}

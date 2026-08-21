@@ -5,6 +5,7 @@ import { AuthService } from '@/auth/auth.service';
 import { z } from 'zod';
 import { CredentialResolverError } from '@n8n/decorators';
 import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
+import { UserRepository } from '@n8n/db';
 
 /**
  * The `source` values this identifier accepts, declared once so the schemas below and
@@ -40,6 +41,14 @@ const N8nOAuthMetadataSchema = z.object({
 	resource: z.string(),
 	/** Absent for contexts sealed before grants existed, and for long-lived resources. */
 	grant: OAuthResourceGrantSchema.optional(),
+	/**
+	 * The resolved n8n user, sealed at establishment. When present, resolution trusts it
+	 * (bound to `executionPath`, principal re-checked) instead of re-verifying the token.
+	 * Absent on legacy / grant-only carriers, which fall back to token verification.
+	 */
+	subject: z.string().optional(),
+	establishedAt: z.number().optional(),
+	executionPath: z.array(z.string()).optional(),
 });
 
 /** Exported for the drift test that keeps {@link N8N_IDENTITY_SOURCES} in step with it. */
@@ -94,13 +103,18 @@ export class N8NIdentifier implements ITokenIdentifier {
 	constructor(
 		private readonly authService: AuthService,
 		private readonly oauthTokenVerifierProxy: OAuthTokenVerifierProxy,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	async validateOptions(_: Record<string, unknown>): Promise<void> {
 		return;
 	}
 
-	async resolve(context: ICredentialContext, _: Record<string, unknown>): Promise<string> {
+	async resolve(
+		context: ICredentialContext,
+		_: Record<string, unknown>,
+		executionId?: string,
+	): Promise<string> {
 		const metadataResult = N8NIdentifierMetadataSchema.safeParse(context.metadata);
 		if (!metadataResult.success) {
 			throw new CredentialResolverError(
@@ -115,8 +129,54 @@ export class N8NIdentifier implements ITokenIdentifier {
 		}
 
 		if (metadataResult.data.source === 'n8n-oauth') {
-			// Looked up afresh on every access, so by now the resource may be gone — the
-			// sealed grant carries what the gate needs in that case.
+			// Sealed identity: trust the resolved user, bound to its execution, without
+			// re-verifying the token (so it resolves past the token's TTL, e.g. after a Wait).
+			if (metadataResult.data.subject) {
+				const userId = metadataResult.data.subject;
+
+				const executionPath = metadataResult.data.executionPath ?? [];
+				if (executionId) {
+					// Resolving inside an execution: the seal must be bound to it (or a sub-workflow
+					// of it). An unbound seal (empty path) is not valid once an execution exists.
+					if (!executionPath.includes(executionId)) {
+						throw new CredentialResolverError('Sealed identity is not valid for this execution');
+					}
+				} else if (executionPath.length > 0) {
+					// Bound seal but no execution to check it against → fail closed.
+					throw new CredentialResolverError('Sealed identity is not valid for this execution');
+				}
+
+				const grant = metadataResult.data.grant;
+				if (grant) {
+					// Re-take the grant's live workflow:execute decision (token-independent) so a
+					// principal whose access was revoked after sealing stops resolving. This also
+					// covers existence/disabled — a denied user resolves to `false`.
+					const authorized = await this.oauthTokenVerifierProxy.authorizeSealedGrant(userId, grant);
+					if (!authorized) {
+						throw new CredentialResolverError(
+							`Invalid OAuth token for resource ${metadataResult.data.resource}`,
+						);
+					}
+					return userId;
+				}
+
+				// Grant-less sealed carrier (legacy): no execute gate to re-take, so confirm the
+				// principal still exists and is enabled. Keep "missing" and "disabled"
+				// indistinguishable to the caller (no account enumeration) and never surface the
+				// internal user id in the error.
+				const user = await this.userRepository.findOneBy({ id: userId });
+				if (!user || user.disabled) {
+					throw new CredentialResolverError(
+						`Invalid OAuth token for resource ${metadataResult.data.resource}`,
+					);
+				}
+
+				return user.id;
+			}
+
+			// No sealed subject: verify the token. The grant is looked up afresh on every
+			// access, so by now the resource may be gone — the sealed grant carries what the
+			// gate needs in that case.
 			const user = await this.oauthTokenVerifierProxy.verifyOAuthAccessToken(
 				context.identity,
 				metadataResult.data.resource,

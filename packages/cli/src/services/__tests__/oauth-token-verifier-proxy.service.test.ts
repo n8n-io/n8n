@@ -51,4 +51,24 @@ describe('OAuthTokenVerifierProxy', () => {
 			grant,
 		);
 	});
+
+	describe('authorizeSealedGrant', () => {
+		const grant = { audiences: ['https://n8n.example.com/x'], executeAccessWorkflowId: 'wf' };
+
+		it('should fail closed when no provider is registered', async () => {
+			const proxy = new OAuthTokenVerifierProxy();
+
+			expect(await proxy.authorizeSealedGrant('user-1', grant)).toBe(false);
+		});
+
+		it('should delegate to the registered provider', async () => {
+			const proxy = new OAuthTokenVerifierProxy();
+			const provider = mock<OAuthTokenVerifier>();
+			provider.authorizeSealedGrant.mockResolvedValue(true);
+			proxy.registerProvider(provider);
+
+			expect(await proxy.authorizeSealedGrant('user-1', grant)).toBe(true);
+			expect(provider.authorizeSealedGrant).toHaveBeenCalledWith('user-1', grant);
+		});
+	});
 });

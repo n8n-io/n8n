@@ -35,7 +35,9 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 	function armPoll() {
 		if (disposed) return;
 		clearTimeout(timer);
-		timer = setTimeout(() => void refetch(), PUBLICATION_STATUS_POLL_INTERVAL_MS);
+		timer = setTimeout(() => {
+			void refetch();
+		}, PUBLICATION_STATUS_POLL_INTERVAL_MS);
 	}
 
 	async function refetch() {
@@ -80,7 +82,9 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 	// Re-sync whenever the document switches (component is not keyed per workflow).
 	watch(
 		() => toValue(documentId),
-		() => void refetch(),
+		() => {
+			void refetch();
+		},
 	);
 
 	// Back every "publishing" state with an authoritative poll so a state clobbered
@@ -92,8 +96,12 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 		},
 	);
 
-	onMounted(() => void refetch());
-	onDocumentVisible(() => void refetch());
+	onMounted(() => {
+		void refetch();
+	});
+	onDocumentVisible(() => {
+		void refetch();
+	});
 	onBeforeUnmount(() => {
 		disposed = true;
 		clearTimeout(timer);
