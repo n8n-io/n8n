@@ -5,7 +5,7 @@ import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
 
@@ -267,15 +267,12 @@ export function shapeBody(page: IDataObject, bodyFormat: ConfluenceBodyFormat): 
 	const adf = (page.body as IDataObject | undefined)?.atlas_doc_format as IDataObject | undefined;
 	let value = '';
 	if (typeof adf?.value === 'string' && adf.value !== '') {
-		try {
-			const doc = JSON.parse(adf.value) as IDataObject;
-			value = adfToPlainText(doc)
-				.replace(/[ \t]+\n/g, '\n')
-				.replace(/\n{3,}/g, '\n\n')
-				.trim();
-		} catch {
-			value = '';
-		}
+		// The null fallback also absorbs the valid-JSON literal `null`, which adfToPlainText can't take
+		const doc = jsonParse<IDataObject | null>(adf.value, { fallbackValue: null }) ?? {};
+		value = adfToPlainText(doc)
+			.replace(/[ \t]+\n/g, '\n')
+			.replace(/\n{3,}/g, '\n\n')
+			.trim();
 	}
 	return { ...page, body: { plainText: { representation: 'plain_text', value } } };
 }
