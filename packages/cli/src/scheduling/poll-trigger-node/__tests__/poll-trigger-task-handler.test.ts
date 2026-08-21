@@ -455,6 +455,20 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
 		});
 
+		test('records no failure when the poll returned and a later step throws', async () => {
+			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
+			pollBackoffService.getFailureState.mockResolvedValue(state);
+			const error = new Error('database unavailable');
+			workflowRepository.isActive.mockRejectedValue(error);
+
+			const decision = await handler.execute(buildTask(), report);
+
+			expect(triggersAndPollers.runPollFunction).toHaveBeenCalled();
+			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
+			expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);
+			expect(decision).toBe(report.dispatched());
+		});
+
 		test('still clears the failure state when the poll succeeds but committing its cursor fails', async () => {
 			const state: PollerFailureState = { consecutiveErrors: 2, backoffUntil: null };
 			pollBackoffService.getFailureState.mockResolvedValue(state);

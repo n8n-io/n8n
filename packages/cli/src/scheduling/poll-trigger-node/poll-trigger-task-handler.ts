@@ -94,12 +94,16 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			// Scheduled polls run outside any activation isolate window, so acquire and
 			// release one per tick; the finally releases even when poll() throws.
 			await workflow.expression.acquireIsolate();
+			// Only a throw out of poll() is the polled source failing, so a later
+			// hand-off or database error must not back the node off.
+			let polled = false;
 			try {
 				const pollResponse = await this.triggersAndPollers.runPollFunction(
 					workflow,
 					node,
 					pollFunctions,
 				);
+				polled = true;
 
 				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
 
@@ -157,15 +161,17 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// Routed to the error workflow instead of rethrown, which would retry and
 				// dead-letter without ever running it. __emitError commits no cursor, so
 				// the cursor holds and the next tick retries the same window.
-				const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
-				if (isActive) {
-					await this.pollBackoffService.recordFailure({
-						workflowId,
-						nodeId,
-						error,
-						state,
-						now: new Date(), // Fresh clock, not the tick's
-					});
+				if (!polled) {
+					const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
+					if (isActive) {
+						await this.pollBackoffService.recordFailure({
+							workflowId,
+							nodeId,
+							error,
+							state,
+							now: new Date(), // Fresh clock, not the tick's
+						});
+					}
 				}
 				pollFunctions.__emitError(ensureError(error));
 				this.logger.debug('Poll failed at runtime; routed to the error workflow', {
