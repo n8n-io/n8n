@@ -76,6 +76,7 @@ const {
 const currentView = ref<ChannelView>(props.view);
 const viewSession = ref(0);
 const credentialIdAtEditOpen = ref('');
+const channelActionInFlight = ref(false);
 const pendingDisconnect = ref<{
 	channelType: string;
 	credentialId: string;
@@ -177,8 +178,19 @@ const currentPlatform = computed(() =>
 const currentRuntime = computed(() => runtimeFor(selectedChannelType.value ?? 'unknown'));
 const channelViewRef = ref<AgentChannelViewExpose>();
 const channelViewLoading = computed(() => channelViewRef.value?.loading === true);
-const listLoading = computed(() =>
-	Object.values(runtimes).some((runtime) => runtime.loading.value),
+/**
+ * Persisting the Agent and setting the channel up are one action from here: the
+ * modal opens before the Agent row exists, so guarding on the connect request
+ * alone leaves the whole `ensureAgentPersisted` await open to a second submit.
+ */
+const actionInFlight = computed(
+	() =>
+		channelActionInFlight.value ||
+		channelViewLoading.value ||
+		(selectedChannelType.value ? isLoading(selectedChannelType.value) : false),
+);
+const listLoading = computed(
+	() => actionInFlight.value || Object.values(runtimes).some((runtime) => runtime.loading.value),
 );
 const disconnectConfirmationComponent = computed(() => {
 	const pending = pendingDisconnect.value;
@@ -192,7 +204,7 @@ const disconnectConfirmationLoading = computed(() => {
 });
 
 const headerContentDisabled = computed(
-	() => currentRuntime.value.loading.value || channelViewLoading.value,
+	() => currentRuntime.value.loading.value || actionInFlight.value,
 );
 const headerContentComponent = computed(() => {
 	if (isSetupMode.value) {
@@ -203,11 +215,7 @@ const headerContentComponent = computed(() => {
 	}
 	return undefined;
 });
-const canClose = computed(
-	() =>
-		!channelViewLoading.value &&
-		!(selectedChannelType.value ? isLoading(selectedChannelType.value) : false),
-);
+const canClose = computed(() => !actionInFlight.value);
 function prepareChannelEdit(channelType: string | null) {
 	captureConnectedCredential(channelType);
 	if (!channelType) return;
@@ -295,12 +303,7 @@ function goToEdit(channelType: string) {
 }
 
 function goBackToList() {
-	if (
-		channelViewLoading.value ||
-		(selectedChannelType.value ? isLoading(selectedChannelType.value) : false)
-	) {
-		return;
-	}
+	if (actionInFlight.value) return;
 	captureConnectedCredential(null);
 	currentView.value = 'list';
 }
@@ -309,29 +312,57 @@ function handleListDisconnect(channelType: string) {
 	requestDisconnect(channelType, connectedCredentials.value[channelType] ?? '', false);
 }
 
-function closeModal() {
-	if (selectedChannelType.value ? isLoading(selectedChannelType.value) : false) return;
+/**
+ * Close once a flow has finished its own work. Separate from `closeModal`
+ * because a platform reports `connected` from inside its setup flow, while that
+ * flow still counts as in flight — the user-facing guard would refuse to close.
+ */
+function completeAndClose() {
 	emit('update:open', false);
 }
 
+function closeModal() {
+	if (actionInFlight.value) return;
+	completeAndClose();
+}
+
 function handleModalOpenUpdate(isOpen: boolean) {
-	if (
-		!isOpen &&
-		(channelViewLoading.value ||
-			(selectedChannelType.value ? isLoading(selectedChannelType.value) : false))
-	) {
-		return;
-	}
+	if (!isOpen && actionInFlight.value) return;
 	emit('update:open', isOpen);
 }
 
+async function persistAgent(): Promise<boolean> {
+	try {
+		await props.ensureAgentPersisted?.();
+		return true;
+	} catch (error) {
+		// Needs a toast — unlike `connect`, this step has no inline error surface.
+		toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
+		return false;
+	}
+}
+
+/**
+ * The platform's own pre-save step (Slack managed settings). Only some of its
+ * failures render inline in the view, so a rejection is reported here rather
+ * than closing the modal on settings that were never saved.
+ */
+async function runBeforeSave(): Promise<boolean> {
+	try {
+		await channelViewRef.value?.beforeSave?.();
+		return true;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
+		return false;
+	}
+}
+
 async function saveChannelConfig() {
+	if (actionInFlight.value) return;
 	const channelType = selectedChannelType.value;
 	const credentialId = currentChannelCredentialId.value;
 	if (!channelType || !credentialId) return;
 	if (channelViewRef.value?.validationError) return;
-	await props.ensureAgentPersisted?.();
-	await channelViewRef.value?.beforeSave?.();
 
 	// Swapping the credential of a configured channel is one request: the
 	// backend brings the new channel up, swaps both entries in a single write,
@@ -343,12 +374,24 @@ async function saveChannelConfig() {
 			? credentialIdAtEditOpen.value
 			: undefined;
 
-	await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
-		...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
-	});
+	channelActionInFlight.value = true;
+	try {
+		if (!(await persistAgent())) return;
+		if (!(await runBeforeSave())) return;
+		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
+			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
+		});
+	} catch {
+		// Only `connect` is left to throw here, and `useAgentIntegrationStatus`
+		// exposes that failure to the setup view.
+		return;
+	} finally {
+		channelActionInFlight.value = false;
+	}
+
 	emit('channel-connected', channelType);
 	emit('agent-changed');
-	closeModal();
+	completeAndClose();
 }
 
 function handlePlatformConnected() {
@@ -356,7 +399,7 @@ function handlePlatformConnected() {
 	if (!channelType) return;
 	emit('channel-connected', channelType);
 	emit('agent-changed');
-	closeModal();
+	completeAndClose();
 }
 
 async function handleDisconnected(
@@ -404,14 +447,16 @@ async function disconnectChannel(
 			}
 		}
 		pendingDisconnect.value = null;
-		if (closeAfter) closeModal();
+		if (closeAfter) completeAndClose();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.channels.modal.removeChannelError'));
 	}
 }
 
 function requestDisconnect(channelType: string, credentialId: string, closeAfter: boolean) {
-	if (isLoading(channelType)) return;
+	// The list view can target a channel other than the selected one, so its own
+	// loading state is checked on top of the modal-wide action.
+	if (actionInFlight.value || isLoading(channelType)) return;
 	const platform = getAgentChannelPlatform(channelType);
 	if (
 		platform.shouldConfirmDisconnect?.(runtimeFor(channelType), credentialId, {
@@ -503,10 +548,9 @@ watch(
 						size="small"
 						icon-size="medium"
 						icon="arrow-left"
-						:disabled="
-							channelViewLoading || (selectedChannelType ? isLoading(selectedChannelType) : false)
-						"
+						:disabled="actionInFlight"
 						:class="$style.backButton"
+						data-testid="agent-channel-back"
 						@click="goBackToList"
 					>
 						<template #icon>
@@ -609,7 +653,7 @@ watch(
 						variant="ghost"
 						size="medium"
 						:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
-						:disabled="selectedChannelType ? isLoading(selectedChannelType) : true"
+						:disabled="actionInFlight || !selectedChannelType"
 						data-testid="agent-channel-remove-channel"
 						@click="removeCurrentChannel"
 					>
@@ -619,9 +663,7 @@ watch(
 						<N8nButton
 							variant="outline"
 							size="medium"
-							:disabled="
-								channelViewLoading || (selectedChannelType ? isLoading(selectedChannelType) : false)
-							"
+							:disabled="actionInFlight"
 							@click="closeModal"
 						>
 							{{ i18n.baseText('generic.cancel') }}
@@ -629,14 +671,8 @@ watch(
 						<N8nButton
 							variant="solid"
 							size="medium"
-							:loading="
-								(selectedChannelType ? isLoading(selectedChannelType) : false) ||
-								Boolean(channelViewRef?.loading)
-							"
-							:disabled="
-								!canSaveChannelConfig ||
-								(selectedChannelType ? isLoading(selectedChannelType) : true)
-							"
+							:loading="actionInFlight"
+							:disabled="!canSaveChannelConfig || actionInFlight"
 							data-testid="agent-channel-save-channel-config"
 							@click="saveChannelConfig"
 						>

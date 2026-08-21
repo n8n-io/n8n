@@ -368,3 +368,17 @@ describe('external messages (direct connect flow)', () => {
 		expect(firstResult()).toEqual({ connected: false });
 	});
 });
+
+describe('buildRelayWsUrl', () => {
+	const RELAY_URL = 'wss://acme.app.n8n.cloud/browser-use/extension/abc?token=bu_x';
+
+	it('adds the extension version while preserving the existing query', async () => {
+		const { buildRelayWsUrl } = await import('./background');
+
+		const url = new URL(buildRelayWsUrl(RELAY_URL, '0.0.7'));
+
+		expect(url.searchParams.get('extensionVersion')).toBe('0.0.7');
+		expect(url.searchParams.get('token')).toBe('bu_x');
+		expect(url.pathname).toBe('/browser-use/extension/abc');
+	});
+});

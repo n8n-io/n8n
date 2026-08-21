@@ -77,7 +77,6 @@ export type InstanceAiLivenessBackgroundTasks = {
 };
 
 export type InstanceAiLivenessEventBus = {
-	getEventsForRun: (threadId: string, runId: string) => Array<Pick<InstanceAiEvent, 'responseId'>>;
 	publish: (threadId: string, event: InstanceAiEvent) => void;
 };
 
@@ -103,6 +102,18 @@ export class InstanceAiLivenessService<
 
 	private readonly timedOutActiveRunThreads = new Set<string>();
 
+	/**
+	 * Runs whose timeout notice has already been published, so a run cancelled
+	 * by the sweep and then finalised by its own abort handler only gets the
+	 * notice once. Capped FIFO (see {@link NOTICE_DEDUPE_CACHE_SIZE}): dedupe
+	 * only has to hold across a single run's cancellation window, and a run
+	 * lives on one main for one process lifetime.
+	 */
+	private readonly noticedRunIds = new Set<string>();
+
+	/** Max retained run ids in {@link noticedRunIds}; oldest evicted first. */
+	static readonly NOTICE_DEDUPE_CACHE_SIZE = 1000;
+
 	constructor(private readonly options: InstanceAiLivenessServiceOptions<TSuspendedRun>) {}
 
 	get backgroundTaskIdleTimeoutMs(): number {
@@ -124,6 +135,7 @@ export class InstanceAiLivenessService<
 		}
 		this.timedOutRunIds.clear();
 		this.timedOutActiveRunThreads.clear();
+		this.noticedRunIds.clear();
 	}
 
 	clearThreadState(threadId: string): void {
@@ -233,18 +245,33 @@ export class InstanceAiLivenessService<
 	}
 
 	publishRunTimeoutNotice(threadId: string, runId: string): void {
-		const responseId = `run-timeout:${runId}`;
-		const alreadyPublished = this.options.eventBus
-			.getEventsForRun(threadId, runId)
-			.some((event) => event.responseId === responseId);
-		if (alreadyPublished) return;
+		// Deduped locally rather than by scanning the run's events: the notice is
+		// a delta, and under the durable log deltas are ephemeral (never stored,
+		// persisted only once their segment coalesces), so a read-back cannot see
+		// a notice published moments earlier.
+		if (this.noticedRunIds.has(runId)) return;
 
+		// Recorded only after the publish lands: marking first would suppress the
+		// notice permanently if publish threw.
 		this.options.eventBus.publish(threadId, {
 			type: 'text-delta',
 			runId,
 			agentId: orchestratorAgentId(runId),
-			responseId,
+			responseId: `run-timeout:${runId}`,
 			payload: { text: RUN_TIMEOUT_MESSAGE },
 		});
+		this.rememberNoticedRunId(runId);
+	}
+
+	/**
+	 * Record a notified run id, evicting the oldest once the cap is reached. A
+	 * Set keeps insertion order, so the first value is the oldest entry.
+	 */
+	private rememberNoticedRunId(runId: string): void {
+		this.noticedRunIds.add(runId);
+		if (this.noticedRunIds.size > InstanceAiLivenessService.NOTICE_DEDUPE_CACHE_SIZE) {
+			const oldest = this.noticedRunIds.values().next().value;
+			if (oldest !== undefined) this.noticedRunIds.delete(oldest);
+		}
 	}
 }
