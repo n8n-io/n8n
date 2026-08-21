@@ -239,6 +239,10 @@ export interface BuildResult {
 	events?: CapturedEvent[];
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId?: string;
+	/** The SEPARATE thread the seeded history went into, when the case declares a
+	 *  session boundary. Present only when it differs from `threadId`, so cleanup can
+	 *  delete it without double-deleting the live thread on ordinary cases. */
+	seedThreadId?: string;
 	/** Counts of UserProxyLlm decisions by category (multi-turn builds only). */
 	proxyDecisionStats?: ProxyDecisionStats;
 	/** Chat-style transcript built from the SSE event stream + proxy responses. */
@@ -484,6 +488,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	// does not. Without a boundary this is the same thread, as before.
 	const sessionBoundary = config.seed?.mode === 'inline' && config.seed.sessionBoundary === true;
 	const seedThreadId = sessionBoundary ? crypto.randomUUID() : threadId;
+	// Only a boundary run has a second thread to clean up. Undefined otherwise, so
+	// cleanup does not try to delete the live thread twice.
+	const seedThreadIdForCleanup = sessionBoundary ? seedThreadId : undefined;
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
@@ -999,6 +1006,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					conversationMetrics,
 					events,
 					threadId,
+					seedThreadId: seedThreadIdForCleanup,
 					proxyDecisionStats,
 					transcript,
 					credentialViewPinned,
@@ -1018,6 +1026,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				conversationMetrics,
 				events,
 				threadId,
+				seedThreadId: seedThreadIdForCleanup,
 				proxyDecisionStats,
 				transcript,
 				credentialViewPinned,
@@ -1058,6 +1067,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			conversationMetrics,
 			events,
 			threadId,
+			seedThreadId: seedThreadIdForCleanup,
 			proxyDecisionStats,
 			transcript,
 			workflowChecks,
@@ -1078,6 +1088,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			conversationMetrics,
 			events,
 			threadId,
+			seedThreadId: seedThreadIdForCleanup,
 			credentialViewPinned,
 			seedingFailed,
 			laneBootFailed,

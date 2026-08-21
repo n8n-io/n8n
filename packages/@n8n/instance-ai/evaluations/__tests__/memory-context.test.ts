@@ -224,3 +224,93 @@ describe('buildMemoryContextBlock', () => {
 		expect(block.length).toBeLessThan(50_000);
 	});
 });
+
+describe('per-payload cap', () => {
+	/** A value parked past the 4,000-char per-payload cap, inside a tool result — the
+	 *  shape a fetched workflow, execution or table schema actually arrives in. */
+	const buriedNeedle = (needle: string) => [
+		{
+			role: 'assistant',
+			content: [
+				{
+					type: 'tool-result',
+					toolName: 'get_workflow_details',
+					output: { filler: 'x'.repeat(6_000), retryOnFail: needle },
+				},
+			],
+		},
+	];
+
+	it('caps payloads for the judge, whose attention is the scarce resource', () => {
+		const summary = summarizeMemoryContext([
+			run('r1', 1, [step('sys', 1, buriedNeedle('maxTries-7'))]),
+		]);
+		expect(summary?.finalMessageWindow).toContain('[payload truncated]');
+		expect(summary?.finalMessageWindow).not.toContain('maxTries-7');
+	});
+
+	it('leaves payloads whole when asked, so a deep value is still findable', () => {
+		// The deterministic-assertion path has no attention budget. Capping there
+		// reports a value the model demonstrably received as absent.
+		const summary = summarizeMemoryContext(
+			[run('r1', 1, [step('sys', 1, buriedNeedle('maxTries-7'))])],
+			{ capPayloads: false },
+		);
+		expect(summary?.finalMessageWindow).toContain('maxTries-7');
+		expect(summary?.finalMessageWindow).not.toContain('[payload truncated]');
+	});
+
+	it('caps by default, so the judge path needs no opt-in', () => {
+		const summary = summarizeMemoryContext([
+			run('r1', 1, [step('sys', 1, buriedNeedle('maxTries-7'))]),
+		]);
+		expect(summary?.finalMessageWindow).not.toContain('maxTries-7');
+	});
+});
+
+describe('at-probe snapshot selection', () => {
+	const win = (text: string) => [{ role: 'user', content: text }];
+
+	it('takes the first step of the LAST run, not of the whole thread', () => {
+		const summary = summarizeMemoryContext([
+			run('r1', 1, [step('sys', 1, win('turn one opening'))]),
+			run('r2', 2, [
+				step('sys', 1, win('state as the probe arrived')),
+				step('sys', 2, win('what the agent produced while answering')),
+			]),
+		]);
+		expect(summary?.atProbeMessageWindow).toContain('state as the probe arrived');
+		// The whole point: output from the graded turn must not be gradeable.
+		expect(summary?.atProbeMessageWindow).not.toContain('while answering');
+		expect(summary?.finalMessageWindow).toContain('while answering');
+		expect(summary?.atProbeCaptured).toBe(true);
+	});
+
+	it('orders by stepNumber, not by array position', () => {
+		const summary = summarizeMemoryContext([
+			run('r1', 1, [step('sys', 2, win('later step')), step('sys', 1, win('probe step'))]),
+		]);
+		expect(summary?.atProbeMessageWindow).toContain('probe step');
+	});
+
+	it('skips a trailing run that carried no steps', () => {
+		// A run aborted before its first step would otherwise blank the snapshot.
+		const summary = summarizeMemoryContext([
+			run('r1', 1, [step('sys', 1, win('the real probe state'))]),
+			run('r2', 2, []),
+		]);
+		expect(summary?.atProbeMessageWindow).toContain('the real probe state');
+		expect(summary?.atProbeCaptured).toBe(true);
+	});
+
+	it('falls back to the final state when the probe step parsed empty', () => {
+		// Reporting an empty window would read as "the model was given nothing" —
+		// a finding we would be inventing out of a parse failure.
+		const summary = summarizeMemoryContext([
+			run('r1', 1, [step('real prompt', 1, win('real content'))]),
+			run('r2', 2, [{ stepNumber: 1, input: {} }]),
+		]);
+		expect(summary?.atProbeMessageWindow).toContain('real content');
+		expect(summary?.atProbeSystemPrompt).toContain('real prompt');
+	});
+});

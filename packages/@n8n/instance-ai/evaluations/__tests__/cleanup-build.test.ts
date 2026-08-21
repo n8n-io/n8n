@@ -123,3 +123,56 @@ describe('cleanupBuild', () => {
 		expect(mocks.deleteAgent).toHaveBeenCalledExactlyOnceWith('project-1', 'seeded-agent-1');
 	});
 });
+
+describe('session-boundary threads', () => {
+	// A boundary case runs two threads — the live one and the prior session its
+	// history was seeded into — and BOTH accumulate the run-state/memory that this
+	// deletion exists to reclaim. Deleting only the live one leaks per iteration.
+	it('deletes the seeded prior-session thread as well as the live one', async () => {
+		const { client, mocks } = makeClient();
+
+		await expect(
+			cleanupBuild(client, { ...makeBuild(), seedThreadId: 'SEED1' }, silentLogger),
+		).resolves.toBe(true);
+
+		expect(mocks.deleteThread).toHaveBeenCalledWith('T1');
+		expect(mocks.deleteThread).toHaveBeenCalledWith('SEED1');
+		expect(mocks.deleteThread).toHaveBeenCalledTimes(2);
+	});
+
+	it('deletes only the live thread on an ordinary case', async () => {
+		const { client, mocks } = makeClient();
+
+		await expect(cleanupBuild(client, makeBuild(), silentLogger)).resolves.toBe(true);
+
+		expect(mocks.deleteThread).toHaveBeenCalledTimes(1);
+		expect(mocks.deleteThread).toHaveBeenCalledWith('T1');
+	});
+
+	it('does not delete the same thread twice when the ids coincide', async () => {
+		// buildWorkflow leaves seedThreadId undefined on non-boundary cases, so this
+		// should not arise — but a hand-built result that sets both would otherwise
+		// double-delete and report the cleanup unclean off a 404.
+		const { client, mocks } = makeClient();
+
+		await expect(
+			cleanupBuild(client, { ...makeBuild(), seedThreadId: 'T1' }, silentLogger),
+		).resolves.toBe(true);
+
+		expect(mocks.deleteThread).toHaveBeenCalledTimes(1);
+	});
+
+	it('still reports not clean when the seeded thread fails to delete', async () => {
+		const { client } = makeClient({
+			// Live thread first, seeded second — cleanup walks [threadId, seedThreadId].
+			deleteThread: vi
+				.fn()
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('HTTP 502')),
+		});
+
+		await expect(
+			cleanupBuild(client, { ...makeBuild(), seedThreadId: 'SEED1' }, silentLogger),
+		).resolves.toBe(false);
+	});
+});

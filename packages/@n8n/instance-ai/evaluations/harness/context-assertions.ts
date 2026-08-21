@@ -19,9 +19,12 @@ const NO_CONTEXT_REASON =
  * sibling was the right *kind* of workflow").
  *
  * Two deliberate choices:
- * - Searches the **untruncated** context. The judge's view is capped so the
- *   interesting part stays in its attention; this check has no such constraint, so a
- *   value living in an elided region is still found rather than reported missing.
+ * - Searches the **untruncated** context, at both levels the judge's view is capped:
+ *   the per-tier window/prompt limits and the per-tool-payload limit
+ *   (`capPayloads: false`). The judge is capped so the interesting part stays in its
+ *   attention; this check has no attention budget, so a value living in an elided
+ *   region — or deep inside a fetched workflow, execution or table schema — is still
+ *   found rather than reported missing.
  * - Matching is case-insensitive. Casing drifts freely as content is re-rendered
  *   through tool payloads, and a casing difference is never the finding.
  *
@@ -38,7 +41,9 @@ export function checkContextAssertions(
 	const describe = (a: ContextAssertion) =>
 		`context ${a.mustAppear === false ? 'excludes' : 'contains'} "${a.text}"${a.note ? ` (${a.note})` : ''}`;
 
-	const summary = summarizeMemoryContext(runDebug);
+	// capPayloads: false — a value inside a large tool result must not read as absent
+	// just because it sat past the judge's per-payload cap.
+	const summary = summarizeMemoryContext(runDebug, { capPayloads: false });
 	if (!summary) {
 		return assertions.map((a) => ({
 			expectation: describe(a),

@@ -209,3 +209,51 @@ describe('checkContextAssertions — retained vs re-derived', () => {
 		expect(v.reason).toContain('correctly absent');
 	});
 });
+
+describe('deep values inside large tool payloads', () => {
+	/** The regression this guards: assertions promise to search the untruncated
+	 *  context, but the extractor also caps each tool payload for the judge. Sharing
+	 *  that cap made a value the model demonstrably received report as absent — and
+	 *  fetched workflows, executions, docs and table schemas routinely exceed it, so
+	 *  it hit exactly the retrieved content this check exists to verify. */
+	const bigToolResult = (needle: string) => [
+		{
+			role: 'assistant',
+			content: [
+				{
+					type: 'tool-result',
+					toolName: 'get_workflow_details',
+					// Needle sits well past the judge's 4,000-char per-payload cap.
+					output: { padding: 'y'.repeat(9_000), alertChannel: needle },
+				},
+			],
+		},
+	];
+
+	it('finds a value parked past the judge’s per-payload cap', () => {
+		const [v] = checkContextAssertions(
+			[{ text: '#ops-escalations' }],
+			debug('sys', bigToolResult('#ops-escalations')),
+		);
+		expect(v.pass).toBe(true);
+		expect(v.reason).toContain('message window');
+	});
+
+	it('still reports a genuinely absent value as absent', () => {
+		// The cap fix must not turn the check into one that always passes.
+		const [v] = checkContextAssertions(
+			[{ text: '#does-not-exist' }],
+			debug('sys', bigToolResult('#ops-escalations')),
+		);
+		expect(v.pass).toBe(false);
+	});
+
+	it('honours a must-NOT-appear claim against a large payload', () => {
+		const [v] = checkContextAssertions(
+			[{ text: '#ops-escalations', mustAppear: false }],
+			debug('sys', bigToolResult('#ops-escalations')),
+		);
+		expect(v.pass).toBe(false);
+		expect(v.reason).toContain('still present');
+	});
+});

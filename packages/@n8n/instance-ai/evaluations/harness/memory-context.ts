@@ -52,15 +52,17 @@ export interface MemoryContextSummary {
 	observationStepCount: number;
 }
 
-/** Per-payload cap. Tool results carry whole workflows and search hits; without a
- *  per-segment bound one large result would consume the whole window budget and
- *  push every other retrieved fact out of view. */
+/** Per-payload cap for the JUDGE's view. Tool results carry whole workflows and
+ *  search hits; without a per-segment bound one large result would consume the whole
+ *  window budget and push every other retrieved fact out of view.
+ *
+ *  Deliberately NOT applied on the deterministic-assertion path — see `capPayloads`. */
 const MAX_SEGMENT_PAYLOAD_CHARS = 4_000;
 
-function renderPayload(payload: unknown): string {
+function renderPayload(payload: unknown, capPayloads: boolean): string {
 	if (payload === undefined || payload === null) return '';
 	const text = typeof payload === 'string' ? payload : safeJson(payload);
-	return text.length > MAX_SEGMENT_PAYLOAD_CHARS
+	return capPayloads && text.length > MAX_SEGMENT_PAYLOAD_CHARS
 		? `${text.slice(0, MAX_SEGMENT_PAYLOAD_CHARS)}…[payload truncated]`
 		: text;
 }
@@ -82,7 +84,7 @@ function safeJson(value: unknown): string {
  * tool result, so dropping payloads would make the judge report "not present" for
  * exactly the retrieved content a context system exists to deliver.
  */
-function segmentsToText(content: string, segments: unknown): string {
+function segmentsToText(content: string, segments: unknown, capPayloads: boolean): string {
 	if (!Array.isArray(segments) || segments.length === 0) return content;
 	const parts: string[] = [];
 	for (const segment of segments) {
@@ -104,7 +106,7 @@ function segmentsToText(content: string, segments: unknown): string {
 				: typeof seg.label === 'string'
 					? seg.label
 					: undefined;
-		const rendered = renderPayload(seg.payload);
+		const rendered = renderPayload(seg.payload, capPayloads);
 		const header = `[${String(seg.type)}${label ? `: ${label}` : ''}]`;
 		parts.push(rendered ? `${header} ${rendered}` : header);
 	}
@@ -114,9 +116,11 @@ function segmentsToText(content: string, segments: unknown): string {
 /**
  * Reduce a thread's captured run debug to the context state worth grading.
  *
- * Walks every step in start order so the *last* observation block wins — that is
- * the compressed state the agent was carrying at the end of the thread, which is
- * what a memory expectation asserts about. Steps without an observation block are
+ * Walks every step in start order so the *last* observation block wins — the
+ * compressed state the agent was carrying at the end of the thread. That end state is
+ * NOT what claims are graded against: grading uses the at-probe snapshot below, and
+ * the final tiers serve as its fallback and as the way to tell "never had it" apart
+ * from "re-derived it while answering". Steps without an observation block are
  * counted, not skipped: `observationStepCount === 0` is itself the finding that
  * compression never ran, and the judge is told so explicitly rather than being
  * handed an empty section it might read as a failed assertion.
@@ -134,24 +138,44 @@ interface StepTiers {
 }
 
 /** One step's three context tiers, as the model received them. */
-function tiersOf(step: { input?: Record<string, unknown> }): StepTiers {
+function tiersOf(step: { input?: Record<string, unknown> }, capPayloads: boolean): StepTiers {
 	const parsed = parseSystemPromptForDisplay(step.input?.system);
 	return {
 		observations: parsed.observations,
 		systemPrompt: parsed.systemBlocks
-			.map((block) => segmentsToText(block.content, block.segments))
+			.map((block) => segmentsToText(block.content, block.segments, capPayloads))
 			.filter((text) => text.trim().length > 0)
 			.join('\n\n'),
 		messageWindow: parseMessageBlocks(step.input?.messages)
-			.map((block) => `### ${block.role}\n${segmentsToText(block.content, block.segments)}`)
+			.map(
+				(block) =>
+					`### ${block.role}\n${segmentsToText(block.content, block.segments, capPayloads)}`,
+			)
 			.filter((text) => text.trim().length > 0)
 			.join('\n\n'),
 	};
 }
 
+export interface SummarizeOptions {
+	/**
+	 * Whether to bound each tool payload at `MAX_SEGMENT_PAYLOAD_CHARS`.
+	 *
+	 * True for the judge, whose attention is the scarce resource: one 200KB workflow
+	 * dump would push every other retrieved fact out of view.
+	 *
+	 * False for deterministic assertions, which have no attention budget and must not
+	 * report a value as absent merely because it sat past the cap inside a large tool
+	 * result. Fetched workflows, executions, docs and table schemas routinely exceed
+	 * it, and those are exactly the payloads a context assertion exists to check.
+	 */
+	capPayloads?: boolean;
+}
+
 export function summarizeMemoryContext(
 	runDebug: InstanceAiRunDebugResponse[] | undefined,
+	options: SummarizeOptions = {},
 ): MemoryContextSummary | undefined {
+	const capPayloads = options.capPayloads ?? true;
 	if (!runDebug || runDebug.length === 0) return undefined;
 
 	let observations: string | null = null;
@@ -164,7 +188,7 @@ export function summarizeMemoryContext(
 	for (const run of runs) {
 		for (const step of run.steps ?? []) {
 			stepCount++;
-			const tiers = tiersOf(step);
+			const tiers = tiersOf(step, capPayloads);
 			if (tiers.observations) {
 				observations = tiers.observations;
 				observationStepCount++;
@@ -186,7 +210,7 @@ export function summarizeMemoryContext(
 	const firstStep = lastRunWithSteps
 		? [...(lastRunWithSteps.steps ?? [])].sort((a, b) => a.stepNumber - b.stepNumber)[0]
 		: undefined;
-	const atProbe = firstStep ? tiersOf(firstStep) : undefined;
+	const atProbe = firstStep ? tiersOf(firstStep, capPayloads) : undefined;
 
 	return {
 		observations,
