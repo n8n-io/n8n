@@ -1,0 +1,58 @@
+{
+	"name": "APITemplate.io V2 PDF from HTML",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "pdfv2",
+				"operation": "createFromHtml",
+				"htmlBody": "<h1>Hello {{name}}</h1>",
+				"css": "<style>.bg{background: red};</style>",
+				"dataJson": "{\"name\": \"John\"}",
+				"pdfSettings": {
+					"paper_size": "A4",
+					"orientation": "1",
+					"margin_top": "40"
+				}
+			},
+			"id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+			"name": "APITemplate.io",
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "test-cred-id",
+					"name": "APITemplate.io API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"APITemplate.io": [
+			{
+				"json": {
+					"status": "success",
+					"download_url": "https://cdn.apitemplate.io/files/from-html.pdf",
+					"total_pages": 1
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [[{ "node": "APITemplate.io", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
