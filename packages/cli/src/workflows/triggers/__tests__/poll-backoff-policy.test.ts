@@ -107,6 +107,31 @@ describe('pollFailureFromError', () => {
 		});
 	});
 
+	// The header's presence is what separates a throttled credential from a dead one,
+	// so a value resolving to zero must still read as rate limiting.
+	test.each<[string, string]>([
+		['a zero delay', '0'],
+		['an elapsed HTTP-date', 'Wed, 05 Aug 2026 11:58:00 GMT'],
+	])('classifies a 403 carrying %s as rate-limited', (_name, value) => {
+		const error = { httpCode: 403, response: { headers: { 'retry-after': value } } };
+
+		expect(pollFailureFromError(error, now)).toEqual({
+			type: 'transient',
+			retryAfterMs: null,
+			cause: 'rate-limited',
+		});
+	});
+
+	test('classifies a 401 carrying a zero Retry-After as rate-limited, not as a dead credential', () => {
+		const error = { httpCode: 401, response: { headers: { 'retry-after': '0' } } };
+
+		expect(pollFailureFromError(error, now)).toEqual({
+			type: 'transient',
+			retryAfterMs: null,
+			cause: 'rate-limited',
+		});
+	});
+
 	test.each<[string, unknown]>([
 		['with no status', markNonRetryable(new Error('destination not allowed'))],
 		[

@@ -78,9 +78,13 @@ function pollFailureFromNetwork(error: unknown, now: Date): PollFailure {
 		return { type: 'permanent', retryAfterMs: null };
 	}
 
-	const waitMs = retryAfterMs !== undefined && retryAfterMs > 0 ? retryAfterMs : null;
+	// A parseable header is the throttling signal, whatever it says: `Retry-After: 0`
+	// and an already-elapsed HTTP-date both resolve to 0, and a dead credential never
+	// carries one. Its value only raises the floor, so the two are read separately.
+	const throttled = retryAfterMs !== undefined;
+	const waitMs = throttled && retryAfterMs > 0 ? retryAfterMs : null;
 
-	if (status === 429 || waitMs !== null) {
+	if (status === 429 || throttled) {
 		return { type: 'transient', retryAfterMs: waitMs, cause: 'rate-limited' };
 	}
 	if (status === 401) {
