@@ -256,6 +256,14 @@ export type CanvasNodeEventBusEvents = {
 	'update:node:class': { className: string; add?: boolean };
 };
 
+export type CanvasTidyUpEvent = {
+	source: CanvasLayoutSource;
+	nodeIdsFilter?: string[];
+	trackEvents?: boolean;
+	trackHistory?: boolean;
+	trackBulk?: boolean;
+};
+
 export type CanvasEventBusEvents = {
 	fitView: never;
 	/** Deferred fitView — waits for VueFlow's onNodesInitialized before fitting. */
@@ -271,13 +279,7 @@ export type CanvasEventBusEvents = {
 		action: keyof CanvasNodeEventBusEvents;
 		payload?: CanvasNodeEventBusEvents[keyof CanvasNodeEventBusEvents];
 	};
-	tidyUp: {
-		source: CanvasLayoutSource;
-		nodeIdsFilter?: string[];
-		trackEvents?: boolean;
-		trackHistory?: boolean;
-		trackBulk?: boolean;
-	};
+	tidyUp: CanvasTidyUpEvent;
 	'create:sticky': never;
 	'deprecated:tab-shortcut': never;
 };
