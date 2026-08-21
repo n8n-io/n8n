@@ -39,6 +39,9 @@ const fakeConnection = () => {
 	return { connection, handlers };
 };
 
+/** `emitError` is held back until the workflow is active, so it lands a microtask later. */
+const flush = async () => await new Promise((resolve) => setImmediate(resolve));
+
 describe('EmailReadImapV2', () => {
 	const baseDescription: INodeTypeBaseDescription = {
 		displayName: 'Email Trigger (IMAP)',
@@ -131,6 +134,7 @@ describe('EmailReadImapV2', () => {
 			const error = Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' });
 
 			fake.handlers.error?.(error);
+			await flush();
 
 			expect(triggerFunctions.emitError).toHaveBeenCalledWith(error);
 		});
@@ -154,15 +158,14 @@ describe('EmailReadImapV2', () => {
 			expect(triggerFunctions.emitError).not.toHaveBeenCalled();
 		});
 
-		it('reports a fetch failure once the workflow is active', async () => {
+		it('leaves a fetch failure to the connection to recover from', async () => {
 			vi.mocked(getNewEmails).mockRejectedValueOnce(new Error('fetch failed'));
 			await trigger();
 
-			await fake.handlers.arrival?.({ count: 1 });
+			await expect(fake.handlers.arrival?.({ count: 1 })).rejects.toThrow('fetch failed');
+			await flush();
 
-			expect(triggerFunctions.emitError).toHaveBeenCalledWith(
-				expect.objectContaining({ message: 'fetch failed' }),
-			);
+			expect(triggerFunctions.emitError).not.toHaveBeenCalled();
 		});
 
 		it('says nothing about a fetch the caller cut short', async () => {
@@ -171,6 +174,7 @@ describe('EmailReadImapV2', () => {
 			Object.assign(fake.connection, { endedByCaller: true });
 
 			await fake.handlers.arrival?.({ count: 1 });
+			await flush();
 
 			expect(triggerFunctions.emitError).not.toHaveBeenCalled();
 		});
