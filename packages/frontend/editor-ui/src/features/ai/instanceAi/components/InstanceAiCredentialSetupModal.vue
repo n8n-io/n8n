@@ -144,7 +144,7 @@ function handleContinue() {
 }
 
 .stepOrder {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	margin-right: var(--spacing--xs);
 }
 

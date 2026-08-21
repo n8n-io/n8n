@@ -60,7 +60,7 @@ function isSelected(tab: chrome.tabs.Tab): boolean {
 
 .tab-list-header {
 	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
@@ -81,7 +81,7 @@ function isSelected(tab: chrome.tabs.Tab): boolean {
 	gap: var(--spacing--2xs);
 	cursor: pointer;
 	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 }
 </style>

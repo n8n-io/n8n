@@ -335,7 +335,7 @@ onBeforeUnmount(() => {
 	border-bottom: var(--border);
 	background-color: var(--color--foreground--tint-2);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;

@@ -108,7 +108,7 @@ function handleClick() {
 }
 
 .credentialsHeader {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .credentialsDescription {

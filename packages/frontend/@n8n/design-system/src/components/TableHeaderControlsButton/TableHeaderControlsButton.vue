@@ -215,7 +215,7 @@ const handleDragEnd = () => {
 <style lang="scss" module>
 .header {
 	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	margin-bottom: var(--spacing--xs);
 }
 

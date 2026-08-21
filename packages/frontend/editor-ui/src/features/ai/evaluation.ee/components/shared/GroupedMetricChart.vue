@@ -229,7 +229,7 @@ const letterY = computed(() => geo.value.topPad + geo.value.barsHeight + geo.val
 .valueLabel {
 	font-size: var(--font-size--2xs);
 	font-family: var(--font-family);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .letterLabel {

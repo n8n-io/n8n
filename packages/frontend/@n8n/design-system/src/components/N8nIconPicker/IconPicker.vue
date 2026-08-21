@@ -579,7 +579,7 @@ function humanizeIconName(name: string): string {
 	.sectionHeader {
 		padding: var(--spacing--4xs) 0;
 		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text--tint-1);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;

@@ -103,7 +103,7 @@
 		completion-section {
 			color: var(--color--text--shade-1);
 			font-family: var(--font-family);
-			font-weight: var(--font-weight--bold);
+			font-weight: var(--font-weight--medium);
 			font-size: var(--font-size--3xs);
 			text-transform: uppercase;
 			padding: var(--spacing--5xs) var(--spacing--4xs);
@@ -293,7 +293,7 @@
 		text-transform: uppercase;
 		color: var(--color--text--shade-1);
 		font-size: var(--font-size--3xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 
 	// Syntax highlighting

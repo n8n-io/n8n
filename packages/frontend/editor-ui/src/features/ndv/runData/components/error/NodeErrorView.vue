@@ -855,7 +855,7 @@ async function onInstanceAiHandoffClick() {
 
 	&__info-title {
 		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text--shade-1);
 	}
 

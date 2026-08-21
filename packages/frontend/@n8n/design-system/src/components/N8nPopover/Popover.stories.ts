@@ -69,7 +69,7 @@ const Template: StoryFn = (args) => ({
 				</template>
 				<template #content="{ close }">
 					<div style="display: flex; flex-direction: column; gap: 12px; padding: var(--spacing--sm);">
-						<h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">User Information</h3>
+						<h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: var(--font-weight--medium);">User Information</h3>
 						<N8nInput
 							v-model="username"
 							placeholder="Enter username"
@@ -113,7 +113,7 @@ const ScrollableTemplate: StoryFn = (args) => ({
 				</template>
 				<template #content="{ close }">
 					<div style="display: flex; flex-direction: column; gap: 8px; padding: var(--spacing--sm);">
-						<h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600;">Menu Items</h3>
+						<h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: var(--font-weight--medium);">Menu Items</h3>
 						<div v-for="i in 20" :key="i" 
 							style="padding: 8px 12px; background: var(--color--background); border-radius: 4px; cursor: pointer; min-height: 40px; display: flex; align-items: center;"
 							@click="close"

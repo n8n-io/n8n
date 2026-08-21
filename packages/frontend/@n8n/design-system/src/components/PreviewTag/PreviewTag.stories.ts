@@ -10,12 +10,21 @@ export default {
 			control: 'select',
 			options: ['small', 'medium'],
 		},
+		text: {
+			control: 'text',
+		},
+	},
+	parameters: {
+		docs: {
+			description: {
+				component: 'A small pill used to mark preview or early-access surfaces.',
+			},
+		},
 	},
 };
 
-const Template: StoryFn = (args, { argTypes }) => ({
+const Template: StoryFn = (args) => ({
 	setup: () => ({ args }),
-	props: Object.keys(argTypes),
 	components: {
 		PreviewTag,
 	},
@@ -23,7 +32,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 });
 
 export const Small = Template.bind({});
-Small.args = { size: 'small' };
+Small.args = { size: 'small', text: 'Preview' };
 
 export const Medium = Template.bind({});
-Medium.args = { size: 'medium' };
+Medium.args = { size: 'medium', text: 'Preview' };

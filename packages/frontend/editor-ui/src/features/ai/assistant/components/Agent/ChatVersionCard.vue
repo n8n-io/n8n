@@ -229,7 +229,7 @@ function onRestoreConfirm() {
 
 .label {
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--shade-1);
 	white-space: nowrap;
 }

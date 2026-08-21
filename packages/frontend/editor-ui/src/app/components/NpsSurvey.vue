@@ -298,7 +298,7 @@ watch(
 			top: 12px;
 			right: 16px;
 			position: absolute;
-			font-weight: var(--font-weight--bold);
+			font-weight: var(--font-weight--medium);
 			color: var(--nps-survey--color--text);
 
 			@media (max-width: $breakpoint-xs) {

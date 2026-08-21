@@ -549,14 +549,14 @@ onBeforeUnmount(() => {
 
 .disableMfaButton {
 	> span {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 
 .button {
 	font-size: var(--spacing--xs);
 	> span {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 

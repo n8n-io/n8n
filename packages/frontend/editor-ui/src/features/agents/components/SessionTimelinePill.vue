@@ -66,7 +66,7 @@ const iconStyle = computed(() => pillColors(props.kind));
 
 .label {
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: 1;
 }
 </style>

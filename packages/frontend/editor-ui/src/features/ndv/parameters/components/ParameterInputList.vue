@@ -1144,7 +1144,7 @@ watch(
 		padding: 0.7em;
 
 		a {
-			font-weight: var(--font-weight--bold);
+			font-weight: var(--font-weight--medium);
 		}
 	}
 

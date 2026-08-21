@@ -571,7 +571,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	text-transform: uppercase;
 	color: var(--color--text--tint-1);
 	letter-spacing: 2px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--sm);
 }
 

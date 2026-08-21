@@ -1,7 +1,6 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, defineAsyncComponent } from 'vue';
 
-import N8nNodeIcon from '.';
 import N8nIcon from '../N8nIcon';
 import type { IconName, NodeIconName } from '../N8nIcon/icons';
 import { isSupportedIconName } from '../N8nIcon/icons';
@@ -19,6 +18,9 @@ interface IconContentProps {
 }
 
 const props = defineProps<IconContentProps>();
+
+// Lazy-load to avoid a circular import: NodeIcon → IconContent → NodeIcon
+const N8nNodeIcon = defineAsyncComponent(async () => await import('./NodeIcon.vue'));
 
 const badgeSize = computed((): number => {
 	switch (props.size) {

@@ -196,7 +196,7 @@ onBeforeUnmount(() => {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	background: var(--color--background--light-2);
 	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	border-radius: var(--radius);
 }
 </style>

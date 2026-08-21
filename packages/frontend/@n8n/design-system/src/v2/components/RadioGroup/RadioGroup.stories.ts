@@ -112,7 +112,7 @@ const RadioGroupControlledUncontrolledDemo = defineComponent({
 	template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
 			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Controlled</h3>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: var(--font-weight--medium);">Controlled</h3>
 				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
 					Parent-controlled selection via <code>v-model</code>. Use the buttons below to set the value externally.
 				</p>
@@ -146,7 +146,7 @@ const RadioGroupControlledUncontrolledDemo = defineComponent({
 				<p style="margin-top: 16px; font-size: 14px;">Selected: <strong>{{ value }}</strong></p>
 			</section>
 			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Uncontrolled</h3>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: var(--font-weight--medium);">Uncontrolled</h3>
 				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
 					Initial selection set with <code>defaultValue="readOnly"</code>. The parent does not track changes.
 				</p>
@@ -181,7 +181,7 @@ const RadioGroupOrientationDemo = defineComponent({
 	template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
 			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Vertical</h3>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: var(--font-weight--medium);">Vertical</h3>
 				<RadioGroup
 					key="vertical"
 					v-model="verticalValue"
@@ -201,7 +201,7 @@ const RadioGroupOrientationDemo = defineComponent({
 				<p style="margin-top: 16px; font-size: 14px;">Selected: {{ verticalValue }}</p>
 			</section>
 			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Horizontal</h3>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: var(--font-weight--medium);">Horizontal</h3>
 				<RadioGroup
 					key="horizontal"
 					v-model="horizontalValue"

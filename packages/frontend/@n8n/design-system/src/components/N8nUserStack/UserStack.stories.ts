@@ -19,7 +19,11 @@ const Template: StoryFn = (args) => ({
 	components: {
 		N8nUserStack,
 	},
-	template: '<UserStack v-bind="args" />',
+	template: `
+		<div style="padding: var(--spacing--xl);">
+			<N8nUserStack v-bind="args" />
+		</div>
+	`,
 });
 
 export const WithGroups = Template.bind({});

@@ -539,7 +539,7 @@ $--header-spacing: 20px;
 	font-size: 12px;
 	padding: 20px 0; // to be more clickable
 	color: $custom-font-very-light;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	white-space: nowrap;
 
 	&:hover {

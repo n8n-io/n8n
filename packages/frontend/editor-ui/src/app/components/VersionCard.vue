@@ -103,7 +103,7 @@ const nodeName = (node: VersionNode): string => {
 }
 
 .name {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: 16px;
 	line-height: 18px;
 	color: $version-card-name-text-color;

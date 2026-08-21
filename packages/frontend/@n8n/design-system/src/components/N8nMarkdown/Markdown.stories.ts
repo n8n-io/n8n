@@ -48,6 +48,20 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: '<n8n-markdown v-bind="args"></n8n-markdown>',
 });
 
+export const Headings = Template.bind({});
+Headings.args = {
+	content: `# Heading 1
+## Heading 2
+### Heading 3
+#### Heading 4
+##### Heading 5
+###### Heading 6
+
+Paragraph with **medium emphasis**, *italic*, and a [link](https://docs.n8n.io).
+`,
+	loading: false,
+};
+
 export const Markdown = Template.bind({});
 Markdown.args = {
 	content:
