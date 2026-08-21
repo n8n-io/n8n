@@ -157,6 +157,9 @@ export class McpController {
 					...baseTelemetryPayload,
 					mcp_connection_status: 'error',
 					error: MCP_ACCESS_DISABLED_ERROR_MESSAGE,
+					// Literal, not res.statusCode: the event is tracked before the
+					// response is written, so the status is still the default 200 here.
+					http_status: 403,
 				});
 			}
 			// Return 403 Forbidden
@@ -211,6 +214,9 @@ export class McpController {
 					...telemetryPayload,
 					mcp_connection_status: 'error',
 					error: error instanceof Error ? error.message : String(error),
+					// A throw this far out means the handler never answered, so the
+					// response below is the 500 unless something already replied.
+					http_status: res.headersSent ? res.statusCode : 500,
 				});
 			}
 			// Return JSON-RPC error response

@@ -162,6 +162,7 @@ describe('McpController', () => {
 			auth_type: 'oauth',
 			mcp_connection_status: 'error',
 			error: 'MCP access is disabled',
+			http_status: 403,
 		});
 		expect(mcpService.resolveFeatureFlags as Mock).not.toHaveBeenCalled();
 	});
@@ -350,7 +351,7 @@ describe('McpController', () => {
 	test('reports the handler error when building the MCP server fails', async () => {
 		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as Mock).mockRejectedValue(
-			new Error('AI gateway unavailable'),
+			new Error('tool schema conversion failed'),
 		);
 		const res = createRes();
 
@@ -370,7 +371,7 @@ describe('McpController', () => {
 			'User connected to MCP server',
 			expect.objectContaining({
 				mcp_connection_status: 'error',
-				error: 'AI gateway unavailable',
+				error: 'tool schema conversion failed',
 				http_status: 500,
 			}),
 		);
