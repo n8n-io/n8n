@@ -348,7 +348,7 @@ export class WorkflowValidationService {
 	 * - A custom resolver (OAuth, Slack, …) keys on an external identity extracted
 	 *   from trigger data, so it needs a trigger with a context establishment hook.
 	 * - The default/system resolver keys on the n8n user identity, so it needs a
-	 *   trigger that establishes it (manual, sub-workflow, Chat Hub chat, MCP or webhook with n8n user auth).
+	 *   trigger that establishes it (manual, sub-workflow, Chat Hub chat, MCP, form, or webhook with n8n user auth).
 	 */
 	async validateDynamicCredentials(
 		nodes: INode[],
