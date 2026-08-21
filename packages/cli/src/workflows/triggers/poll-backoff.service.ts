@@ -1,10 +1,11 @@
 import { Logger } from '@n8n/backend-common';
-import { PollerConfig } from '@n8n/config';
+import { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type { PollerFailureState } from '@n8n/db';
 import { PollerStateRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 
+import { isDurablePollerChainEnabled } from '@/scheduling/poll-trigger-node/durable-poller-chain';
 import {
 	computeBackoffUntil,
 	pollFailureFromError,
@@ -15,16 +16,24 @@ import {
 export class PollBackoffService {
 	constructor(
 		private readonly pollerStateRepository: PollerStateRepository,
-		private readonly pollerConfig: PollerConfig,
+		private readonly schedulerConfig: SchedulerConfig,
+		private readonly workflowsConfig: WorkflowsConfig,
 		private logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = this.logger.scoped('poll-trigger');
 	}
 
-	/** Turning this off freezes any stored state instead of clearing it. */
+	/**
+	 * Same gate as PollCursorService: backoff rides on durable cursors, which
+	 * ride on the durable poller chain. Turning this off freezes any stored
+	 * state instead of clearing it.
+	 */
 	get enabled(): boolean {
-		return this.pollerConfig.durableCursorsEnabled;
+		return (
+			this.schedulerConfig.durableCursorsEnabled &&
+			isDurablePollerChainEnabled(this.schedulerConfig, this.workflowsConfig)
+		);
 	}
 
 	/**
@@ -77,9 +86,9 @@ export class PollBackoffService {
 		const consecutiveErrors = (state?.consecutiveErrors ?? 0) + 1;
 
 		try {
-			const { failureClass, retryAfterMs } = pollFailureFromError(error, now);
+			const { type, retryAfterMs, cause } = pollFailureFromError(error, now);
 			const backoffUntil = computeBackoffUntil({
-				failureClass,
+				type,
 				consecutiveErrors,
 				retryAfterMs,
 				now,
@@ -100,7 +109,8 @@ export class PollBackoffService {
 				this.logger.warn('Poll failed; backing off', {
 					workflowId,
 					nodeId,
-					failureClass,
+					type,
+					cause,
 					consecutiveErrors,
 					backoffUntil,
 				});

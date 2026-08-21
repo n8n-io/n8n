@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { PollerConfig } from '@n8n/config';
+import type { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type { PollerFailureState, PollerStateRepository } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -18,10 +18,15 @@ describe('PollBackoffService', () => {
 	const scopedLogger = mock<Logger>();
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
-	const buildService = (durableCursorsEnabled = true) =>
+	const buildService = (durableCursorsEnabled = true, chainEnabled = true) =>
 		new PollBackoffService(
 			pollerStateRepository,
-			mock<PollerConfig>({ durableCursorsEnabled }),
+			mock<SchedulerConfig>({
+				enabled: chainEnabled,
+				enabledForPollTriggers: chainEnabled,
+				durableCursorsEnabled,
+			}),
+			mock<WorkflowsConfig>({ useWorkflowPublicationService: chainEnabled }),
 			rootLogger,
 			errorReporter,
 		);
@@ -45,6 +50,10 @@ describe('PollBackoffService', () => {
 		test('reports the configured flag', () => {
 			expect(buildService(true).enabled).toBe(true);
 			expect(buildService(false).enabled).toBe(false);
+		});
+
+		test('stays off while the durable poller chain is off, matching PollCursorService', () => {
+			expect(buildService(true, false).enabled).toBe(false);
 		});
 	});
 
@@ -161,7 +170,7 @@ describe('PollBackoffService', () => {
 			await recordFailure(service, { state });
 
 			const expectedBackoffUntil = computeBackoffUntil({
-				failureClass: 'transient',
+				type: 'transient',
 				consecutiveErrors: expectedCount,
 				retryAfterMs: null,
 				now,
@@ -216,9 +225,24 @@ describe('PollBackoffService', () => {
 					workflowId: 'wf-1',
 					nodeId: 'node-1',
 					consecutiveErrors: 2,
-					failureClass: 'transient',
+					type: 'transient',
 					backoffUntil: expect.any(Date),
 				}),
+			);
+		});
+
+		test('logs the declared cause at warn when the node declared one', async () => {
+			pollerStateRepository.recordFailure.mockResolvedValue(true);
+			const service = buildService();
+			const error = Object.assign(new Error('slow down'), {
+				failure: { cause: 'rate-limited' },
+			});
+
+			await recordFailure(service, { state: null, error });
+
+			expect(scopedLogger.warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ type: 'transient', cause: 'rate-limited' }),
 			);
 		});
 
@@ -236,7 +260,7 @@ describe('PollBackoffService', () => {
 			).resolves.toBeUndefined();
 
 			const expectedBackoffUntil = computeBackoffUntil({
-				failureClass: 'transient',
+				type: 'transient',
 				consecutiveErrors: 1,
 				retryAfterMs: null,
 				now,

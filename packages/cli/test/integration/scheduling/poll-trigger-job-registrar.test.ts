@@ -1,5 +1,5 @@
 import { createWorkflowWithHistory, setActiveVersion, testDb } from '@n8n/backend-test-utils';
-import { PollerConfig } from '@n8n/config';
+import { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import {
 	PollerStateRepository,
@@ -27,7 +27,8 @@ describe('PollTriggerJobRegistrar', () => {
 	let pollerStateRepository: PollerStateRepository;
 	let scheduledJobRepository: ScheduledJobRepository;
 	let workflowPublishedVersionRepository: WorkflowPublishedVersionRepository;
-	let pollerConfig: PollerConfig;
+	let schedulerConfig: SchedulerConfig;
+	let workflowsConfig: WorkflowsConfig;
 	let owner: Awaited<ReturnType<typeof createOwner>>;
 	let workflow: WorkflowEntity;
 
@@ -37,7 +38,8 @@ describe('PollTriggerJobRegistrar', () => {
 		pollerStateRepository = Container.get(PollerStateRepository);
 		scheduledJobRepository = Container.get(ScheduledJobRepository);
 		workflowPublishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
-		pollerConfig = Container.get(PollerConfig);
+		schedulerConfig = Container.get(SchedulerConfig);
+		workflowsConfig = Container.get(WorkflowsConfig);
 		owner = await createOwner();
 	});
 
@@ -60,9 +62,12 @@ describe('PollTriggerJobRegistrar', () => {
 		await setActiveVersion(workflow.id, workflow.versionId);
 		await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
 
-		// Backoff reset is flag-gated; enable it for these tests, matching how a real
-		// instance with durable cursors on would have it.
-		pollerConfig.durableCursorsEnabled = true;
+		// Backoff reset is gated on durable cursors and the durable poller chain;
+		// enable them for these tests, matching a real instance with cursors on.
+		schedulerConfig.durableCursorsEnabled = true;
+		schedulerConfig.enabled = true;
+		schedulerConfig.enabledForPollTriggers = true;
+		workflowsConfig.useWorkflowPublicationService = true;
 	});
 
 	afterAll(async () => {
@@ -101,7 +106,7 @@ describe('PollTriggerJobRegistrar', () => {
 	it('leaves a failing poller_state row untouched when durable cursors are disabled, even though a job is inserted', async () => {
 		// Mirrors an instance that never set N8N_POLLER_DURABLE_CURSORS_ENABLED: the
 		// flag PollBackoffService itself is gated on, not something register() controls.
-		pollerConfig.durableCursorsEnabled = false;
+		schedulerConfig.durableCursorsEnabled = false;
 
 		await pollerStateRepository.insert({ workflowId: workflow.id, nodeId: node.id, cursor: {} });
 		const futureBackoff = new Date(Date.now() + 60 * 60 * 1000);
