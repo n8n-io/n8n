@@ -100,6 +100,27 @@ export class ExecutionContextService {
 	}
 
 	/**
+	 * Builds and encrypts a credential context for a run the instance MCP server starts
+	 * on a user's behalf (`execute_workflow`).
+	 *
+	 * That caller is authenticated, but with an API key or an OAuth token scoped to the
+	 * MCP resource — neither is a credential the run can re-verify itself with — so the
+	 * caller mints a short-lived token naming the user instead of forwarding one it
+	 * received. The token is what keeps the claim tamper-evident; whether the user may
+	 * still be acted for is re-checked in the `mcp-execution` branch of `N8NIdentifier`.
+	 *
+	 * @param token - Short-lived signed token naming the user the run acts for.
+	 */
+	async buildMcpExecutionCredentials(token: string): Promise<string> {
+		const payload: ICredentialContext = {
+			version: 1,
+			identity: token,
+			metadata: { source: 'mcp-execution' },
+		};
+		return await this.cipher.encryptV2(payload);
+	}
+
+	/**
 	 * Seals the token a trigger authenticated its caller with, plus the grant it was
 	 * accepted under, so the run can re-verify itself for as long as it lasts. See
 	 * {@link OAuthResourceGrant}.

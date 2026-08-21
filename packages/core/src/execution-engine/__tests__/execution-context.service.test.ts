@@ -329,6 +329,21 @@ describe('ExecutionContextService', () => {
 		});
 	});
 
+	describe('buildMcpExecutionCredentials()', () => {
+		it('should encrypt the credential context with the minted runner token as identity', async () => {
+			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');
+
+			const result = await service.buildMcpExecutionCredentials('minted-runner-token');
+
+			expect(mockCipher.encryptV2).toHaveBeenCalledWith({
+				version: 1,
+				identity: 'minted-runner-token',
+				metadata: { source: 'mcp-execution' },
+			});
+			expect(result).toBe('encrypted-credential-blob');
+		});
+	});
+
 	describe('buildRequestBoundCredentials()', () => {
 		it('should encrypt the credential context with the request context in metadata', async () => {
 			mockCipher.encryptV2.mockResolvedValue('encrypted-credential-blob');

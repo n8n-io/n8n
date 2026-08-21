@@ -1,5 +1,5 @@
 import type { Mocked } from 'vitest';
-import type { User } from '@n8n/db';
+import type { User, UserRepository } from '@n8n/db';
 import { CredentialResolverError } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
@@ -7,6 +7,7 @@ import type { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import type { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 
+import type { McpExecutionIdentityService } from '../mcp-execution-identity';
 import {
 	carriesN8nIdentity,
 	N8N_IDENTITY_SOURCES,
@@ -18,14 +19,23 @@ describe('N8NIdentifier', () => {
 	let identifier: N8NIdentifier;
 	let mockAuthService: Mocked<AuthService>;
 	let mockOAuthVerifier: Mocked<OAuthTokenVerifierProxy>;
+	let mockMcpExecutionIdentityService: Mocked<McpExecutionIdentityService>;
+	let mockUserRepository: Mocked<UserRepository>;
 
 	const mockUser = mock<User>({ id: 'user-123' });
 
 	beforeEach(() => {
 		mockAuthService = mock<AuthService>();
 		mockOAuthVerifier = mock<OAuthTokenVerifierProxy>();
+		mockMcpExecutionIdentityService = mock<McpExecutionIdentityService>();
+		mockUserRepository = mock<UserRepository>();
 
-		identifier = new N8NIdentifier(mockAuthService, mockOAuthVerifier);
+		identifier = new N8NIdentifier(
+			mockAuthService,
+			mockOAuthVerifier,
+			mockMcpExecutionIdentityService,
+			mockUserRepository,
+		);
 	});
 
 	afterEach(() => {
@@ -325,6 +335,66 @@ describe('N8NIdentifier', () => {
 			});
 		});
 
+		describe('mcp-execution branch', () => {
+			const context = {
+				identity: 'minted-runner-token',
+				version: 1 as const,
+				metadata: { source: 'mcp-execution' as const },
+			};
+
+			it('should resolve the user the minted runner token names', async () => {
+				mockMcpExecutionIdentityService.verifyToken.mockReturnValue({
+					kind: 'mcp-execution',
+					userId: 'user-123',
+				});
+				mockUserRepository.findOneBy.mockResolvedValue(mock<User>({ disabled: false }));
+
+				const result = await identifier.resolve(context, {});
+
+				expect(result).toBe('user-123');
+				expect(mockMcpExecutionIdentityService.verifyToken).toHaveBeenCalledWith(
+					'minted-runner-token',
+				);
+				expect(mockUserRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-123' });
+				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
+			});
+
+			it('should reject a token this instance cannot verify', async () => {
+				mockMcpExecutionIdentityService.verifyToken.mockImplementation(() => {
+					throw new Error('jwt expired');
+				});
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(
+					'Invalid or expired runner token',
+				);
+				expect(mockUserRepository.findOneBy).not.toHaveBeenCalled();
+			});
+
+			it('should reject a token naming a user that no longer exists', async () => {
+				mockMcpExecutionIdentityService.verifyToken.mockReturnValue({
+					kind: 'mcp-execution',
+					userId: 'user-123',
+				});
+				mockUserRepository.findOneBy.mockResolvedValue(null);
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(
+					'Runner token names a user that can no longer run',
+				);
+			});
+
+			it('should reject a token naming a disabled user', async () => {
+				mockMcpExecutionIdentityService.verifyToken.mockReturnValue({
+					kind: 'mcp-execution',
+					userId: 'user-123',
+				});
+				mockUserRepository.findOneBy.mockResolvedValue(mock<User>({ disabled: true }));
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(
+					'Runner token names a user that can no longer run',
+				);
+			});
+		});
+
 		describe('n8n-oauth branch', () => {
 			it('should verify the token for the resource audience and resolve the user', async () => {
 				mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockUser });
@@ -442,6 +512,6 @@ describe('carriesN8nIdentity', () => {
 	it('covers every source the identifier accepts', () => {
 		// Guards against a source being added to the schema but not to the list, which
 		// would silently hand an n8n token to an external-subject resolver.
-		expect(N8NIdentifierMetadataSchema.options).toHaveLength(3);
+		expect(N8NIdentifierMetadataSchema.options).toHaveLength(4);
 	});
 });

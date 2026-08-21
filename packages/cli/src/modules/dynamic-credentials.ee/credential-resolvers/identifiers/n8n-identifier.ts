@@ -1,3 +1,4 @@
+import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ICredentialContext, OAuthResourceGrant } from 'n8n-workflow';
 import { ITokenIdentifier } from './identifier-interface';
@@ -5,6 +6,8 @@ import { AuthService } from '@/auth/auth.service';
 import { z } from 'zod';
 import { CredentialResolverError } from '@n8n/decorators';
 import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
+
+import { MCP_EXECUTION_SOURCE, McpExecutionIdentityService } from './mcp-execution-identity';
 
 /**
  * The `source` values this identifier accepts, declared once so the schemas below and
@@ -16,6 +19,10 @@ const N8N_OAUTH_SOURCE = 'n8n-oauth';
 
 const ManualExecutionMetadataSchema = z.object({
 	source: z.literal(MANUAL_EXECUTION_SOURCE),
+});
+
+const McpExecutionMetadataSchema = z.object({
+	source: z.literal(MCP_EXECUTION_SOURCE),
 });
 
 const RequestBoundMetadataSchema = z.object({
@@ -45,6 +52,7 @@ const N8nOAuthMetadataSchema = z.object({
 /** Exported for the drift test that keeps {@link N8N_IDENTITY_SOURCES} in step with it. */
 export const N8NIdentifierMetadataSchema = z.discriminatedUnion('source', [
 	ManualExecutionMetadataSchema,
+	McpExecutionMetadataSchema,
 	RequestBoundMetadataSchema,
 	N8nOAuthMetadataSchema,
 ]);
@@ -57,6 +65,7 @@ export const N8NIdentifierMetadataSchema = z.discriminatedUnion('source', [
  */
 export const N8N_IDENTITY_SOURCES: readonly string[] = [
 	MANUAL_EXECUTION_SOURCE,
+	MCP_EXECUTION_SOURCE,
 	...REQUEST_BOUND_SOURCES,
 	N8N_OAUTH_SOURCE,
 ];
@@ -81,9 +90,12 @@ export function carriesN8nIdentity(context: ICredentialContext): boolean {
  * Used by the N8N credential resolver to authenticate users via n8n's
  * built-in JWT authentication and store credentials per user.
  *
- * Supports two metadata shapes, discriminated by `source`:
+ * Supports these metadata shapes, discriminated by `source`:
  * - `manual-execution`: editor-triggered run; identity is the n8n auth cookie (JWT).
  *   Validated cryptographically without request-bound checks (browserId / endpoint).
+ * - `mcp-execution`: run started over the instance MCP server; identity is a token
+ *   this instance minted, because the MCP caller authenticated with something the run
+ *   cannot re-verify itself with (see {@link McpExecutionIdentityService}).
  * - `chat-hub-injected` / `cookie-source`: request-bound run (chat-hub or
  *   web/cookie-based dynamic-credential resolution); identity is the n8n auth
  *   cookie captured from the HTTP request, validated with full request context
@@ -94,6 +106,8 @@ export class N8NIdentifier implements ITokenIdentifier {
 	constructor(
 		private readonly authService: AuthService,
 		private readonly oauthTokenVerifierProxy: OAuthTokenVerifierProxy,
+		private readonly mcpExecutionIdentityService: McpExecutionIdentityService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	async validateOptions(_: Record<string, unknown>): Promise<void> {
@@ -112,6 +126,10 @@ export class N8NIdentifier implements ITokenIdentifier {
 			// No HTTP request context at credential-resolution time; skip browserId/endpoint checks.
 			const user = await this.authService.authenticateUserByCookie(context.identity);
 			return user.id;
+		}
+
+		if (metadataResult.data.source === MCP_EXECUTION_SOURCE) {
+			return await this.resolveMcpExecution(context.identity);
 		}
 
 		if (metadataResult.data.source === 'n8n-oauth') {
@@ -139,5 +157,29 @@ export class N8NIdentifier implements ITokenIdentifier {
 			metadataResult.data.browserId,
 		);
 		return user.id;
+	}
+
+	/**
+	 * A forwarded session proves the user is still allowed to act every time it is
+	 * validated; a minted token proves only who was named when it was issued. So the
+	 * two things the session would have re-checked are re-checked here: the token is
+	 * this instance's and unexpired, and the user it names can still run.
+	 */
+	private async resolveMcpExecution(token: string): Promise<string> {
+		let userId: string;
+		try {
+			({ userId } = this.mcpExecutionIdentityService.verifyToken(token));
+		} catch {
+			// The underlying reason (bad signature, expiry, wrong shape) stays out of the
+			// message: the caller cannot act on the difference.
+			throw new CredentialResolverError('Invalid or expired runner token');
+		}
+
+		const user = await this.userRepository.findOneBy({ id: userId });
+		if (!user || user.disabled) {
+			throw new CredentialResolverError('Runner token names a user that can no longer run');
+		}
+
+		return userId;
 	}
 }

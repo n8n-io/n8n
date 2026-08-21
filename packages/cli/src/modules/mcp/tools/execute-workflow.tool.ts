@@ -1,5 +1,6 @@
 import type { WorkflowsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -36,6 +37,7 @@ import {
 } from './workflow-inputs';
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
+import { McpExecutionIdentityService } from '@/modules/dynamic-credentials.ee/credential-resolvers/identifiers/mcp-execution-identity';
 import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
@@ -291,6 +293,14 @@ const buildRunData = async (
 		executionMode: isManualExecution ? 'manual' : getExecutionModeForTrigger(triggerNode),
 		workflowData: { ...workflow, nodes, connections },
 		userId,
+		// Every other user-initiated run (editor manual, identity webhook, chat hub)
+		// stamps who started it, which is what lets a private credential resolve to
+		// that user and what the redaction layer reads to grant them their own output
+		// back. Without it an MCP run resolves as nobody and is redacted from the very
+		// user who asked for it, whatever the workflow's redaction policy says.
+		encryptedRunnerIdentity: await Container.get(McpExecutionIdentityService).mintCredentialContext(
+			userId,
+		),
 		// MCP metadata for queue mode support
 		isMcpExecution: mcpService.isQueueMode,
 		mcpType: 'service',
