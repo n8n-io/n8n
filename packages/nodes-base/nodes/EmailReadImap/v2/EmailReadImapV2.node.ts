@@ -1,6 +1,3 @@
-import type { ICredentialsDataImap } from '@credentials/Imap.credentials';
-import { isCredentialsDataImap } from '@credentials/Imap.credentials';
-import type { SearchCriteria } from '@n8n/imap';
 import { imapErrorCode, ImapSimple } from '@n8n/imap';
 import { DateTime } from 'luxon';
 import type {
@@ -17,8 +14,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { isCredentialsDataImap } from '@credentials/Imap.credentials';
+
 import { closeHandler } from '../connection-events';
 import { toImapCredentials } from '../credentials';
+import { type SearchCriteria } from '../search-criteria';
 import { getNewEmails } from './utils';
 
 const versionDescription: INodeTypeDescription = {
@@ -166,7 +166,8 @@ const versionDescription: INodeTypeDescription = {
 					name: 'forceReconnect',
 					type: 'number',
 					default: 60,
-					description: 'Sets an interval (in minutes) to force a reconnection',
+					description:
+						'Not needed for reliability, as the connection is monitored and re-established automatically. Only useful for servers that enforce a maximum connection age.',
 				},
 				{
 					displayName: 'Fetch Only New Emails',
@@ -203,11 +204,11 @@ export class EmailReadImapV2 implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				if (isCredentialsDataImap(credential.data)) {
-					const credentials = credential.data as ICredentialsDataImap;
+					const credentials = credential.data;
 					let connection: ImapSimple | undefined;
 					try {
 						connection = await ImapSimple.connect(toImapCredentials(credentials));
-						await connection.getBoxes();
+						await connection.list();
 					} catch (error) {
 						return {
 							status: 'Error',
@@ -332,10 +333,14 @@ export class EmailReadImapV2 implements INodeType {
 					: (options.forceReconnect as number) * 1000 * 60,
 		});
 
-		connection.onArrival(async ({ count }) => await fetchNewEmails(connection, count));
+		connection.onArrival(
+			async ({ count, prevCount }) => await fetchNewEmails(connection, count - prevCount),
+		);
 
-		connection.onFlags(({ seqNo, info }) => {
-			this.logger.debug(`Email Read Imap:update ${seqNo}`, info as IDataObject);
+		if (staticData.lastMessageUid !== undefined) connection.catchUp();
+
+		connection.onFlags((info) => {
+			this.logger.debug(`Email Read Imap:update ${info.seq}`, { uid: info.uid });
 		});
 
 		connection.onReconnect(() => {
