@@ -112,6 +112,20 @@ describe('Instance Git settings in Public API', () => {
 		expect(response.status).toBe(400);
 	});
 
+	it('rejects a repository URL without a connection type', async () => {
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.put('/instance-git-settings')
+			.send({ repositoryUrl: 'https://example.com/org/repo.git' });
+
+		expect(response.status).toBe(400);
+
+		const stored = await Container.get(SettingsRepository).findByKey(
+			INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY,
+		);
+		expect(stored).toBeNull();
+	});
+
 	it('rejects an empty body', async () => {
 		const response = await testServer
 			.publicApiAgentFor(owner)

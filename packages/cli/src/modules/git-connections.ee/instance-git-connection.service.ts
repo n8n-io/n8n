@@ -7,12 +7,12 @@ import type {
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, OperationalError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY } from './constants';
-import { applyAuthenticationUpdate } from './git-connections-auth.utils';
+import { applyAuthenticationUpdate, gitAuthDeps } from './git-connections-auth.utils';
 import { GitConnectionsGitService } from './git-connections-git.service';
 
 /**
@@ -45,11 +45,7 @@ export class InstanceGitConnectionService {
 		private readonly cipher: Cipher,
 	) {}
 
-	private readonly authDeps = {
-		generateSshKeyPair: async (keyType: GitKeyGeneratorType) =>
-			await this.gitService.generateSshKeyPair(keyType),
-		encrypt: async (value: string) => await this.cipher.encryptV2(value),
-	};
+	private readonly authDeps = gitAuthDeps(this.gitService, this.cipher);
 
 	async getSettings(): Promise<InstanceGitSettingsPublicDto> {
 		return this.toPublic(await this.getPreferences());
@@ -66,6 +62,11 @@ export class InstanceGitConnectionService {
 		// fails fast instead of generating a throwaway SSH key pair first.
 		const targetType = input.connectionType ?? current.connectionType;
 		const targetUrl = input.repositoryUrl ?? current.repositoryUrl;
+		// A repository URL is only meaningful with a connection type to validate it
+		// against; reject rather than persist an unvalidated (and unusable) URL.
+		if (input.repositoryUrl !== undefined && !targetType) {
+			throw new BadRequestError('Connection type is required to set a repository URL');
+		}
 		if (targetUrl && targetType) this.gitService.validateRepositoryUrl(targetUrl, targetType);
 		if (input.branchName) await this.gitService.validateBranchName(input.branchName);
 
@@ -141,16 +142,16 @@ export class InstanceGitConnectionService {
 
 	private async save(prefs: InstanceGitConnectionPreferences) {
 		try {
-			await this.settingsRepository.save(
-				{
-					key: INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY,
-					value: JSON.stringify(prefs),
-					loadOnStartup: true,
-				},
-				{ transaction: false },
+			// Atomic upsert on the singleton row so concurrent writes can't collide on
+			// the primary key (a plain insert-or-update would race on first configure).
+			await this.settingsRepository.upsertByKey(
+				INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY,
+				JSON.stringify(prefs),
+				true,
+				{},
 			);
 		} catch (error) {
-			throw new UnexpectedError('Failed to save instance Git connection settings', {
+			throw new OperationalError('Failed to save instance Git connection settings', {
 				cause: error,
 			});
 		}

@@ -4,7 +4,6 @@ import {
 	GitConnectionProjectPublicDto,
 	type GitConnectionPublicDto,
 	type GitConnectionPushResultDto,
-	type GitKeyGeneratorType,
 	type UpdateGitConnectionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -30,7 +29,11 @@ import { GitConnectionProject } from './database/entities/git-connection-project
 import { GitConnection } from './database/entities/git-connection.entity';
 import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from './database/repositories/git-connection.repository';
-import { applyAuthenticationUpdate, emptyGitAuthMaterial } from './git-connections-auth.utils';
+import {
+	applyAuthenticationUpdate,
+	emptyGitAuthMaterial,
+	gitAuthDeps,
+} from './git-connections-auth.utils';
 import { GitConnectionsGitService } from './git-connections-git.service';
 
 /**
@@ -61,11 +64,7 @@ export class GitConnectionsService {
 		this.logger = this.logger.scoped('git-connections');
 	}
 
-	private readonly authDeps = {
-		generateSshKeyPair: async (keyType: GitKeyGeneratorType) =>
-			await this.gitService.generateSshKeyPair(keyType),
-		encrypt: async (value: string) => await this.cipher.encryptV2(value),
-	};
+	private readonly authDeps = gitAuthDeps(this.gitService, this.cipher);
 
 	async create(input: CreateGitConnectionDto) {
 		this.gitService.validateRepositoryUrl(input.repositoryUrl, input.connectionType);

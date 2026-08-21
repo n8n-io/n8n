@@ -1,6 +1,9 @@
 import type { GitConnectionType, GitKeyGeneratorType } from '@n8n/api-types';
+import type { Cipher } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
+import type { GitConnectionsGitService } from './git-connections-git.service';
 
 /**
  * Authentication material shared by the project `GitConnection` entity and the
@@ -29,6 +32,15 @@ type GitAuthDeps = {
 	) => Promise<{ publicKey: string; privateKey: string }>;
 	encrypt: (value: string) => Promise<string>;
 };
+
+/**
+ * Adapter from the module's injected services to the minimal {@link GitAuthDeps}
+ * the algorithm needs. Shared so each caller doesn't repeat the wiring.
+ */
+export const gitAuthDeps = (gitService: GitConnectionsGitService, cipher: Cipher): GitAuthDeps => ({
+	generateSshKeyPair: async (keyType) => await gitService.generateSshKeyPair(keyType),
+	encrypt: async (value) => await cipher.encryptV2(value),
+});
 
 /** Starting point for a connection that has never been configured. */
 export const emptyGitAuthMaterial = (): GitAuthMaterial => ({

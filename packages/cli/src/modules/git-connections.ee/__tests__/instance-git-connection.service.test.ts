@@ -21,8 +21,8 @@ describe('InstanceGitConnectionService', () => {
 
 	/** The `value` most recently persisted, parsed back to an object. */
 	const savedPreferences = () => {
-		const call = settingsRepository.save.mock.calls.at(-1);
-		return JSON.parse((call![0] as { value: string }).value) as Record<string, unknown>;
+		const call = settingsRepository.upsertByKey.mock.calls.at(-1);
+		return JSON.parse(call![1]) as Record<string, unknown>;
 	};
 
 	beforeEach(() => {
@@ -31,9 +31,8 @@ describe('InstanceGitConnectionService', () => {
 		settingsRepository.findByKey.mockImplementation(async () =>
 			stored ? ({ value: stored } as never) : null,
 		);
-		settingsRepository.save.mockImplementation(async (entity) => {
-			stored = (entity as { value: string }).value;
-			return entity as never;
+		settingsRepository.upsertByKey.mockImplementation(async (_key, value) => {
+			stored = value;
 		});
 		cipher.encryptV2.mockImplementation(async (v: string) => `enc:${v}`);
 		gitService.generateSshKeyPair.mockResolvedValue({ publicKey: 'PUB', privateKey: 'PRIV' });
@@ -64,7 +63,7 @@ describe('InstanceGitConnectionService', () => {
 				createdAt: null,
 				updatedAt: null,
 			});
-			expect(settingsRepository.save).not.toHaveBeenCalled();
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 		});
 
 		it('never returns secrets', async () => {
@@ -85,7 +84,14 @@ describe('InstanceGitConnectionService', () => {
 
 		it('rejects enabling without a configured connection', async () => {
 			await expect(service.updateSettings({ enabled: true })).rejects.toThrow(BadRequestError);
-			expect(settingsRepository.save).not.toHaveBeenCalled();
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+
+		it('rejects a repository URL without a connection type', async () => {
+			await expect(
+				service.updateSettings({ repositoryUrl: 'https://github.com/o/r.git' }),
+			).rejects.toThrow('Connection type is required to set a repository URL');
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 		});
 
 		it('rejects auth material when no connection type is set or provided', async () => {
@@ -230,12 +236,11 @@ describe('InstanceGitConnectionService', () => {
 	it('persists under the instance settings key with loadOnStartup', async () => {
 		await service.updateSettings({ connectionType: 'ssh' });
 
-		expect(settingsRepository.save).toHaveBeenCalledWith(
-			expect.objectContaining({
-				key: INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY,
-				loadOnStartup: true,
-			}),
-			{ transaction: false },
+		expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
+			INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY,
+			expect.any(String),
+			true,
+			{},
 		);
 	});
 });
