@@ -1,6 +1,6 @@
 {
   "name": "@n8n/engine",
-  "version": "0.15.3",
+  "version": "0.15.4",
   "description": "n8n workflow execution engine (v2)",
   "scripts": {
     "clean": "rimraf dist .turbo compiled",
