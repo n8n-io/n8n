@@ -5537,8 +5537,6 @@
 	"workflowReviews.decision.changes_requested": "Changes requested",
 	"workflowReviews.decision.approved": "Approved",
 	"workflowReviews.decision.noDecision": "No decision",
-	"workflowReviews.statusBadge.tooltip": "This workflow has an open review",
-	"workflowReviews.statusBadge.tooltipOpenable": "This workflow has an open review. Click to see its details.",
 	"workflowReviews.detail.tabs.activity": "Activity",
 	"workflowReviews.detail.tabs.changes": "Changes",
 	"workflowReviews.detail.closedCallout.title": "Submission closed",
