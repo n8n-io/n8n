@@ -105,8 +105,14 @@ describe('InstanceAiVerificationService', () => {
 			);
 			expect(createModelMock).toHaveBeenCalledWith(modelConfig, expect.any(Function));
 			expect(generateTextMock).toHaveBeenCalledWith(
-				expect.objectContaining({ prompt: 'Reply with OK.', maxOutputTokens: 8 }),
+				expect.objectContaining({ prompt: 'Reply with OK.' }),
 			);
+			// Regression test for n8n-io/n8n#36093: OpenAI's Responses API rejects
+			// `max_output_tokens` below 16, so the verification probe must stay at or
+			// above that floor. The previous hardcoded 8 made OpenAI verification fail.
+			const probe = generateTextMock.mock.calls[0][0] as { maxOutputTokens?: number };
+			expect(probe.maxOutputTokens).toBeDefined();
+			expect(probe.maxOutputTokens as number).toBeGreaterThanOrEqual(16);
 		});
 
 		it('uses the saved model configuration when no draft connection is provided', async () => {
