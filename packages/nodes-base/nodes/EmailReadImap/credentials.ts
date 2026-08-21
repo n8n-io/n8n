@@ -2,10 +2,10 @@ import type { ImapConnectionOptions } from '@n8n/imap';
 
 import type { ICredentialsDataImap } from '@credentials/Imap.credentials';
 
-/** v1 has no `allowUnauthorizedCerts` on the credential and takes it from a node option instead. */
+/** v1 governs certificate validation through its own node option, which overrides the credential. */
 export function toImapCredentials(
 	credentials: ICredentialsDataImap,
-	allowUnauthorizedCerts = false,
+	allowUnauthorizedCerts?: boolean,
 ): ImapConnectionOptions {
 	return {
 		host: credentials.host,
@@ -13,6 +13,6 @@ export function toImapCredentials(
 		secure: credentials.secure,
 		user: credentials.user,
 		password: credentials.password,
-		allowUnauthorizedCerts: credentials.allowUnauthorizedCerts || allowUnauthorizedCerts,
+		allowUnauthorizedCerts: allowUnauthorizedCerts ?? credentials.allowUnauthorizedCerts,
 	};
 }
