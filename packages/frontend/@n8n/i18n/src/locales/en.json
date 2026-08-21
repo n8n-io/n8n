@@ -8237,6 +8237,7 @@
 	"agents.channels.modal.configured": "Configured",
 	"agents.channels.modal.connected": "Connected",
 	"agents.channels.modal.removeChannel": "Remove channel",
+	"agents.channels.modal.saveChannelError": "Channel couldn't be saved. Try again.",
 	"agents.channels.modal.removeChannelError": "Channel couldn't be removed. Try again.",
 	"agents.channels.modal.slackAppNotDeleted.title": "Slack app wasn't removed",
 	"agents.channels.modal.slackAppNotDeleted.message": "The channel and credential were removed from n8n. Remove the app from Slack manually.",
