@@ -42,6 +42,7 @@ export class DataRequestResponseBuilder {
 			instanceBaseUrl: additionalData.instanceBaseUrl,
 			restApiUrl: additionalData.restApiUrl,
 			variables: additionalData.variables,
+			snippetSources: additionalData.snippetSources,
 			webhookBaseUrl: additionalData.webhookBaseUrl,
 			webhookTestBaseUrl: additionalData.webhookTestBaseUrl,
 			webhookWaitingBaseUrl: additionalData.webhookWaitingBaseUrl,

@@ -13,6 +13,8 @@ describe('permissions', () => {
 			banner: {},
 			community: {},
 			communityPackage: {},
+			snippet: {},
+			projectSnippet: {},
 			credential: {},
 			externalSecretsProvider: {},
 			externalSecret: {},
@@ -99,6 +101,8 @@ describe('permissions', () => {
 			banner: {},
 			community: {},
 			communityPackage: {},
+			snippet: {},
+			projectSnippet: {},
 			credential: {
 				create: true,
 				delete: true,

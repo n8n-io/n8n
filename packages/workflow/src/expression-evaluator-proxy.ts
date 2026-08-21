@@ -21,3 +21,8 @@ export const setErrorHandler = (handler: ErrorHandler) => {
 export const evaluateExpression: Evaluator = (expr, data) => {
 	return evaluator(expr, data);
 };
+
+/** Compiles a bare expression (no `{{ }}` markers) with the same sandbox AST hooks. */
+export const getStandaloneExpressionCode = (exprBody: string): string => {
+	return tournamentEvaluator.getStandaloneExpressionCode(exprBody);
+};

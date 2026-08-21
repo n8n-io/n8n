@@ -3152,6 +3152,28 @@ export type IWorkflowExecutionCustomData = {
 	getAll(): Record<string, string>;
 };
 
+/** Source code of reusable snippets, keyed by block name. */
+export interface SnippetSources {
+	global: Record<string, string>;
+	project: Record<string, string>;
+}
+
+/**
+ * A snippet unit test. `code` is evaluated and deep-compared against the
+ * evaluated `expected` expression; without `expected`, `code` must evaluate
+ * truthy.
+ */
+export interface SnippetTestCase {
+	code: string;
+	/** Expression the code's result is deep-compared against */
+	expected: string;
+}
+
+/** Contract the snippets backend module exposes to execution setup. */
+export interface SnippetsProvider {
+	getSourcesForExecution(workflowId?: string, projectId?: string): Promise<SnippetSources>;
+}
+
 export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$execution?: {
 		id: string;
@@ -3163,6 +3185,8 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$evaluation?: { runId: string };
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
+	/** Raw snippet sources; compiled into `$snippets`/`$project` at evaluation time */
+	$__snippets?: SnippetSources;
 	$pageCount?: number;
 	$tool?: { name: string; parameters: string };
 	/** @deprecated */
@@ -3751,6 +3775,8 @@ export interface IWorkflowExecuteAdditionalData {
 	workflowId?: string;
 	projectId?: string;
 	variables: IDataObject;
+	/** Reusable snippet sources, exposed to expressions as `$snippets`/`$project` */
+	snippetSources?: SnippetSources;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	logHitlResponse?: (payload: HitlResponseTelemetryPayload) => void;
 	parentCallbackManager?: CallbackManager;

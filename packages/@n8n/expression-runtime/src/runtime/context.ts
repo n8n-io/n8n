@@ -83,6 +83,55 @@ export interface BridgeCallbacks {
 	callHost: BridgeCallback;
 }
 
+/** Host-transformed snippet programs, keyed by block name. */
+export interface TransformedSnippets {
+	global: Record<string, string>;
+	project: Record<string, string>;
+}
+
+// Compiled snippet programs, cached per isolate. Programs hold no state —
+// they re-bind to the evaluation context via .call(target) on every build.
+const MAX_SNIPPET_CACHE_SIZE = 200;
+const snippetProgramCache = new Map<string, (this: unknown, e: () => void) => unknown>();
+const noopErrorHandler = () => {};
+
+function getSnippetProgram(code: string) {
+	let program = snippetProgramCache.get(code);
+	if (!program) {
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
+		program = new Function('E', code + ';') as (this: unknown, e: () => void) => unknown;
+		if (snippetProgramCache.size >= MAX_SNIPPET_CACHE_SIZE) {
+			const oldestKey = snippetProgramCache.keys().next().value;
+			if (oldestKey !== undefined) snippetProgramCache.delete(oldestKey);
+		}
+		snippetProgramCache.set(code, program);
+	}
+	return program;
+}
+
+function buildSnippetNamespace(
+	sources: Record<string, string>,
+	target: Record<string, unknown>,
+): Record<string, unknown> {
+	const namespace: Record<string, unknown> = {};
+	for (const [name, code] of Object.entries(sources)) {
+		try {
+			namespace[name] = getSnippetProgram(code).call(target, noopErrorHandler);
+		} catch (error) {
+			// A broken block must only fail where it's used, not every expression
+			Object.defineProperty(namespace, name, {
+				enumerable: true,
+				get() {
+					throw new ExpressionError(
+						`Snippet "${name}" failed to compile: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				},
+			});
+		}
+	}
+	return Object.freeze(namespace);
+}
+
 /**
  * Build a fresh, closure-scoped evaluation context.
  *
@@ -100,6 +149,7 @@ export interface BridgeCallbacks {
 export function buildContext(
 	callbacks: BridgeCallbacks,
 	timezone?: string,
+	snippets?: TransformedSnippets,
 ): Record<string, unknown> {
 	if (timezone && !IANAZone.isValidZone(timezone)) {
 		throw new Error(`Invalid timezone: "${timezone}"`);
@@ -392,7 +442,7 @@ export function buildContext(
 	// caches it on target. The get trap then finds it cached.
 	// -------------------------------------------------------------------------
 
-	return new Proxy(target, {
+	const proxied = new Proxy(target, {
 		has(_target, prop) {
 			if (typeof prop === 'symbol') return prop in target;
 			if (prop in target) return true;
@@ -406,6 +456,16 @@ export function buildContext(
 			return target[prop as string];
 		},
 	});
+
+	// Snippet namespaces, compiled in-isolate. Bound to the proxy (not the
+	// raw target) so block bodies lazily resolve $json/$vars/... exactly like
+	// inline expression code.
+	if (snippets) {
+		target.$snippets = buildSnippetNamespace(snippets.global ?? {}, proxied);
+		target.$project = buildSnippetNamespace(snippets.project ?? {}, proxied);
+	}
+
+	return proxied;
 }
 
 // Matches initializeGlobalContext() lines 262-318 in packages/workflow/src/expression.ts

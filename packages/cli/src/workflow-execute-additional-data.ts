@@ -891,5 +891,14 @@ export async function getBase({
 		additionalData[moduleName] = moduleContext;
 	}
 
+	// Snapshot snippet sources so one execution sees one consistent version
+	const snippetsContext = additionalData['snippets'];
+	if (snippetsContext) {
+		additionalData.snippetSources = await snippetsContext.snippetsProvider.getSourcesForExecution(
+			workflowId,
+			projectId,
+		);
+	}
+
 	return additionalData;
 }

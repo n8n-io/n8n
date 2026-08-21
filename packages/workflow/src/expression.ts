@@ -2,6 +2,12 @@ import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expressio
 import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
+import {
+	bindSnippets,
+	SNIPPETS_PROXY_KEY,
+	getTransformedSnippets,
+	hasSnippets,
+} from './common/snippets';
 import { UnexpectedError, UserError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
@@ -13,6 +19,7 @@ import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
 import type {
+	SnippetSources,
 	IDataObject,
 	INodeParameters,
 	IWorkflowDataProxyData,
@@ -604,6 +611,12 @@ export class Expression {
 
 		Object.assign(data, extendedFunctions);
 
+		// In VM mode the isolate compiles snippets itself from the raw sources
+		// on the data surface; host-compiled functions would be unreachable there.
+		if (!usingVm) {
+			bindSnippets(data);
+		}
+
 		const constructorValidation = new RegExp(/\.\s*constructor/gm);
 		if (parameterValue.match(constructorValidation)) {
 			throw new ExpressionError('Expression contains invalid constructor function call', {
@@ -642,8 +655,12 @@ export class Expression {
 			}
 
 			try {
+				const snippetSources = data[SNIPPETS_PROXY_KEY] as SnippetSources | undefined;
 				const result = Expression.vmEvaluator.evaluate(expression, data, this, {
 					timezone: this.timezone,
+					snippets: hasSnippets(snippetSources)
+						? getTransformedSnippets(snippetSources)
+						: undefined,
 				});
 				return result as string | null | (() => unknown);
 			} catch (error) {

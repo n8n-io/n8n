@@ -1,4 +1,5 @@
 import type {
+	SnippetSources,
 	EnvProviderState,
 	IDataObject,
 	IExecuteData,
@@ -99,6 +100,8 @@ export interface PartialAdditionalData {
 	executionTimeoutTimestamp?: number;
 	userId?: string;
 	variables: IDataObject;
+	/** Reusable snippet sources, exposed to Code nodes as `$snippets`/`$project` */
+	snippetSources?: SnippetSources;
 	/** Parent evaluation TestRun.id, exposed to Code nodes as `$evaluation.runId`. */
 	evaluationRunId?: string;
 }

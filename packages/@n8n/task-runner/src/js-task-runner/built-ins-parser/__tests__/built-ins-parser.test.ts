@@ -287,6 +287,7 @@ describe('BuiltInsParser', () => {
 				'$evaluation',
 				'$vars',
 				'$secrets',
+				'$__snippets',
 				'$executionId',
 				'$resumeWebhookUrl',
 				'$getPairedItem',

@@ -1,6 +1,6 @@
 import type { TournamentHooks } from './ast';
 import type { ExpressionEvaluator, ExpressionEvaluatorClass } from './Evaluator';
-import { getExpressionCode } from './ExpressionBuilder';
+import { getExpressionCode, getStandaloneExpressionCode } from './ExpressionBuilder';
 import type { ExpressionAnalysis } from './ExpressionBuilder';
 import { FunctionEvaluator } from './FunctionEvaluator';
 
@@ -28,6 +28,11 @@ export class Tournament {
 
 	getExpressionCode(expr: string): [string, ExpressionAnalysis] {
 		return getExpressionCode(expr, this._dataNodeName, this.astHooks);
+	}
+
+	/** Compiles a bare expression (no `{{ }}` markers), bypassing the template splitter. */
+	getStandaloneExpressionCode(exprBody: string): string {
+		return getStandaloneExpressionCode(exprBody, this._dataNodeName, this.astHooks);
 	}
 
 	execute(expr: string, data: unknown): ReturnValue {

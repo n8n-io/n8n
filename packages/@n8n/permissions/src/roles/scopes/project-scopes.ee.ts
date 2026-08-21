@@ -67,6 +67,11 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+	'projectSnippet:list',
+	'projectSnippet:read',
+	'projectSnippet:create',
+	'projectSnippet:update',
+	'projectSnippet:delete',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -169,6 +174,11 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+	'projectSnippet:list',
+	'projectSnippet:read',
+	'projectSnippet:create',
+	'projectSnippet:update',
+	'projectSnippet:delete',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -192,6 +202,8 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'dataTable:readColumn',
 	'projectVariable:list',
 	'projectVariable:read',
+	'projectSnippet:list',
+	'projectSnippet:read',
 ];
 
 export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];
