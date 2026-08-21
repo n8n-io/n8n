@@ -599,7 +599,7 @@ const { width } = useElementSize(defNameRef);
 
 .cardTitle {
 	font-size: 14px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .header {

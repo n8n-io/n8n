@@ -345,7 +345,7 @@ onBeforeUnmount(() => {
 	padding: var(--spacing--2xs);
 	background: transparent;
 	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	cursor: pointer;
 	opacity: 0.7;
 }

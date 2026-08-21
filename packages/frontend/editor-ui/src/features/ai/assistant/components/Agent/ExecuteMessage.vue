@@ -506,7 +506,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 
 .followUpsTitle {
 	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: 1.45;
 	color: var(--color--text);
 	margin-bottom: var(--spacing--2xs);

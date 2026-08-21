@@ -534,7 +534,7 @@ const BrandButton = defineComponent({
 			:href="href"
 			target="_blank"
 			rel="noopener noreferrer"
-			style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); width: fit-content; padding: var(--spacing--2xs) var(--spacing--sm); border-radius: var(--radius); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
+			style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); width: fit-content; padding: var(--spacing--2xs) var(--spacing--sm); border-radius: var(--radius); font-size: var(--font-size--sm); font-weight: var(--font-weight--medium); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
 		>
 			<span class="mcp-brand-button__leading">
 				<slot name="leading" />
@@ -1359,7 +1359,7 @@ const ClientDetailsDialog = defineComponent({
 				'.mcp-client-details__access { display: flex; flex-direction: column; gap: var(--spacing--xs); min-width: 0; }' +
 				'.mcp-client-details__group { display: flex; flex-direction: column; gap: var(--spacing--5xs); }' +
 				// Same uppercase mini-heading treatment as the Connect picker's category headers.
-				'.mcp-client-details__group-title { font-size: var(--font-size--3xs); font-weight: var(--font-weight--bold); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle); }';
+				'.mcp-client-details__group-title { font-size: var(--font-size--3xs); font-weight: var(--font-weight--medium); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle); }';
 			document.head.appendChild(style);
 		}
 
@@ -2052,7 +2052,7 @@ export const ModelContextProtocol: Story = {
 										<template #item-label="{ item }">
 											<span
 												v-if="item.data.kind === 'header'"
-												style="display: block; padding-block: var(--spacing--5xs); font-size: var(--font-size--3xs); font-weight: var(--font-weight--bold); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle);"
+												style="display: block; padding-block: var(--spacing--5xs); font-size: var(--font-size--3xs); font-weight: var(--font-weight--medium); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle);"
 											>{{ item.label }}</span>
 											<N8nText v-else size="medium" color="text-dark">{{ item.label }}</N8nText>
 										</template>

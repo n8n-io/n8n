@@ -188,7 +188,7 @@ function onDropdownVisibleChange(visible: boolean) {
 	}
 
 	.key {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 

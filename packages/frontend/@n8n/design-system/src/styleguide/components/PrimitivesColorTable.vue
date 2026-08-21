@@ -229,7 +229,7 @@ onUnmounted(() => {
 
 .copied {
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: 1;
 	padding: 2px 4px;
 	border-radius: var(--radius);

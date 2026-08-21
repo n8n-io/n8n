@@ -282,7 +282,7 @@ function handleThreadAction(action: string, threadId: string) {
 .groupLabel {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 }

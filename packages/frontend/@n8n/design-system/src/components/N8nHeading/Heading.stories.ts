@@ -24,6 +24,9 @@ export default {
 			},
 			options: ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'],
 		},
+		bold: {
+			control: 'boolean',
+		},
 	},
 
 	parameters: {
@@ -33,13 +36,22 @@ export default {
 	},
 };
 
-const Template: StoryFn = (args, { argTypes }) => ({
+const Template: StoryFn = (args) => ({
 	setup: () => ({ args }),
-	props: Object.keys(argTypes),
 	components: {
 		N8nHeading,
 	},
-	template: '<n8n-heading v-bind="args">hello world</n8n-heading>',
+	template: '<N8nHeading v-bind="args">The quick brown fox</N8nHeading>',
 });
 
-export const Heading = Template.bind({});
+export const Regular = Template.bind({});
+Regular.args = {
+	size: 'large',
+	bold: false,
+};
+
+export const Bold = Template.bind({});
+Bold.args = {
+	size: 'large',
+	bold: true,
+};

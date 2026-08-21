@@ -383,7 +383,7 @@ const handleJumperSubmit = () => {
 	&[data-selected] {
 		border-color: var(--color--primary);
 		color: var(--color--primary);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		cursor: default;
 	}
 

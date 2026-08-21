@@ -523,7 +523,7 @@ onBeforeUnmount(() => {
 .headerTitle {
 	margin: 0;
 	font-size: var(--font-size--xl);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	letter-spacing: var(--letter-spacing--tight);
 	color: var(--text-color);
 }
@@ -580,7 +580,7 @@ onBeforeUnmount(() => {
 	border: 1px solid var(--border-color--strong);
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: 1;
 	flex-shrink: 0;
 	transition:
@@ -598,7 +598,7 @@ onBeforeUnmount(() => {
 .sectionTitle {
 	margin: 0;
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	letter-spacing: var(--letter-spacing--tight);
 	color: var(--text-color);
 }

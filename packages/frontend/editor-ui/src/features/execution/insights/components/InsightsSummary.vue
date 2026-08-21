@@ -260,7 +260,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 					small {
 						padding: 0;
 						height: 21px;
-						font-weight: var(--font-weight--bold);
+						font-weight: var(--font-weight--medium);
 
 						.icon {
 							top: 5px;
@@ -278,7 +278,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				color: var(--color--text--shade-1);
 				font-size: 24px;
 				line-height: 100%;
-				font-weight: 600;
+				font-weight: var(--font-weight--medium);
 				font-style: normal;
 				gap: var(--spacing--5xs);
 
@@ -295,7 +295,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				padding: 0 0 0 14px;
 				margin: 0 0 0 var(--spacing--xs);
 				font-size: var(--font-size--2xs);
-				font-weight: var(--font-weight--bold);
+				font-weight: var(--font-weight--medium);
 				white-space: nowrap;
 			}
 		}

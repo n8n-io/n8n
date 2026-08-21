@@ -334,11 +334,11 @@ function optionSelected(action: string) {
 
 .add {
 	color: var(--color--primary);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .activeField {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--ndv--droppable-parameter--color);
 }
 

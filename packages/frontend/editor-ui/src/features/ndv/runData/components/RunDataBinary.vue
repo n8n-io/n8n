@@ -186,7 +186,7 @@ function openWorkflowSettings() {
 		border-radius: var(--radius);
 		text-align: center;
 		background-color: var(--color--foreground--shade-2);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text--tint-3);
 	}
 }
@@ -210,7 +210,7 @@ function openWorkflowSettings() {
 
 .binaryHeader {
 	color: $color-primary;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: 1.2em;
 	padding-bottom: var(--spacing--2xs);
 	margin-bottom: var(--spacing--2xs);

@@ -545,7 +545,7 @@ const table = useVueTable({
 	th {
 		position: relative;
 		color: var(--color--text);
-		font-weight: 600;
+		font-weight: var(--font-weight--medium);
 		font-size: 12px;
 		padding: 0 8px;
 		height: 36px;

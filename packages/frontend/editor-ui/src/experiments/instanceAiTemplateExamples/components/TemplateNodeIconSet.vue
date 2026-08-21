@@ -109,7 +109,7 @@ const hiddenTooltip = computed(() => hiddenNodes.value.map((node) => node.displa
 	padding: 0 var(--spacing--3xs);
 	border-radius: var(--radius--s);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 }
 </style>

@@ -7,7 +7,7 @@
 	white-space: nowrap;
 	padding: 2px 5px;
 	color: var.$pagination-font-color;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	@include utils.utils-clearfix;
 
 	span:not([class*='suffix']),
@@ -80,7 +80,7 @@
 			font-size: 12px;
 			width: 12px;
 			height: 12px;
-			font-weight: var(--font-weight--bold);
+			font-weight: var(--font-weight--medium);
 
 			svg {
 				width: 12px;

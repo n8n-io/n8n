@@ -2625,7 +2625,7 @@ defineExpose({ enterEditMode });
 	}
 
 	th {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 
@@ -2656,7 +2656,7 @@ defineExpose({ enterEditMode });
 .redactedSchemaKey {
 	font-size: var(--font-size--sm);
 	color: var(--color--text);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .redactedSchemaType {

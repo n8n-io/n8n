@@ -344,7 +344,7 @@ watch(
 	   mirroring the .idleFill treatment on the chart. */
 	background-color: var(--color--background);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 	text-transform: lowercase;
 	letter-spacing: 0.02em;

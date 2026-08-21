@@ -380,7 +380,7 @@ onMounted(() => {
 	}
 }
 .intro {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
 	padding: var(--spacing--2xs) var(--spacing--xs) 0;

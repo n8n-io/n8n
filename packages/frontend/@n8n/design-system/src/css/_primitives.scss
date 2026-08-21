@@ -232,9 +232,13 @@
 	--spacing--4xl: 8rem; /** 128px **/
 	--spacing--5xl: 16rem; /** 256px **/
 
-	--font-family: InterVariable, sans-serif;
+	// Rebrand: uses locally installed Baumer. Come back and add served @font-face
+	// files, then drop the system-font fallbacks.
+	--font-family:
+		'EK Baumer Uniwidth UNLICENSED', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+		sans-serif;
 	--font-family--monospace:
-		CommitMono, ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+		'EK Baumer Mono UNLICENSED', ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
 
 	--font-size--4xs: 0.5rem;
 	--font-size--3xs: 0.625rem;

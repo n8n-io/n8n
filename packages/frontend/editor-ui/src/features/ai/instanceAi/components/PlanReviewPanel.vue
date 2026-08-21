@@ -378,7 +378,7 @@ function handleDeny() {
 	background: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	color: var(--text-color);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	flex-shrink: 0;
 }
 

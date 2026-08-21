@@ -61,7 +61,7 @@ export const ControlledUncontrolled = {
 		template: `
 		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--xl);">
 			<section>
-				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--medium);">
 					Controlled
 				</h3>
 				<TagsInput
@@ -94,7 +94,7 @@ export const ControlledUncontrolled = {
 				</p>
 			</section>
 			<section>
-				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--medium);">
 					Uncontrolled
 				</h3>
 				<TagsInput

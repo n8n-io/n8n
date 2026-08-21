@@ -190,7 +190,7 @@ function onGetMoreCredits() {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--shade-1);
 }
 

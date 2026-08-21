@@ -51,7 +51,7 @@ import Modal from '@/app/components/Modal.vue';
 
 .title {
 	font-size: var(--font-size--lg);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--md);
 	margin: 0;
 }
