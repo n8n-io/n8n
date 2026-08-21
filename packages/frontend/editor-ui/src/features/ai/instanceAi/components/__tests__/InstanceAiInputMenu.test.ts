@@ -19,11 +19,15 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 		...actual,
 		N8nDropdownMenu: defineComponent({
 			props: { disabled: Boolean },
-			emits: ['select'],
+			emits: ['select', 'update:modelValue'],
 			setup(props, { emit, slots }) {
 				return () =>
 					h('div', [
-						slots.trigger?.(),
+						h(
+							'div',
+							{ onClick: () => !props.disabled && emit('update:modelValue', true) },
+							slots.trigger?.(),
+						),
 						h(
 							'button',
 							{
