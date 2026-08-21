@@ -1,4 +1,5 @@
 import { type ChildProcess, execSync, spawn } from 'node:child_process';
+import { watch } from 'node:fs';
 import fs from 'node:fs/promises';
 import picocolors from 'picocolors';
 
@@ -171,6 +172,10 @@ export function openUrl(url: string): void {
 	} catch {
 		// Ignore errors when opening URLs
 	}
+}
+
+function quoteIfNeeded(arg: string): string {
+	return /\s/.test(arg) ? `"${arg}"` : arg;
 }
 
 export interface CommandConfig {
@@ -520,7 +525,9 @@ export function runCommands(config: CommandsConfig): void {
 
 		commandOutputs.push(output);
 
-		const commandString = `${cmdConfig.cmd} ${cmdConfig.args.join(' ')}`;
+		// Spawned through a shell, so any arg with whitespace (e.g. a project path
+		// containing a space in a bind mount) has to be quoted.
+		const commandString = [cmdConfig.cmd, ...cmdConfig.args.map(quoteIfNeeded)].join(' ');
 
 		const child = spawn(commandString, {
 			shell: true,
@@ -570,13 +577,62 @@ export async function readPackageName(): Promise<string> {
 		.then((packageJson) => jsonParse<{ name: string }>(packageJson)?.name ?? 'unknown');
 }
 
-export function createOpenN8nHandler(): KeyHandler {
+export function createOpenN8nHandler(url: string): KeyHandler {
 	return {
 		key: 'o',
 		handler: () => {
-			openUrl('http://localhost:5678');
+			openUrl(url);
 		},
 	};
+}
+
+/** Resolves once n8n answers on /healthz, or after `timeoutMs`. */
+export async function waitForN8n(baseUrl: string, timeoutMs = 300_000): Promise<boolean> {
+	const deadline = Date.now() + timeoutMs;
+
+	while (Date.now() < deadline) {
+		try {
+			const response = await fetch(`${baseUrl}/healthz`);
+			if (response.ok) return true;
+		} catch {
+			// Not up yet
+		}
+		await sleep(1000);
+	}
+
+	return false;
+}
+
+/**
+ * Tell a running n8n to re-read the node from disk. Push rather than watch: the
+ * container cannot watch a bind mount, and "compile succeeded, now reload"
+ * cannot race a half-written `dist` the way a debounced watcher can.
+ */
+export async function triggerReload(baseUrl: string): Promise<boolean> {
+	try {
+		const response = await fetch(`${baseUrl}/rest/dev/reload`, { method: 'POST' });
+		return response.ok;
+	} catch {
+		return false;
+	}
+}
+
+const STATIC_ASSET_PATTERN = /\.(png|svg)$|__schema__[\\/].*\.json$/;
+
+/**
+ * Watch static assets on the host. `copyStaticFiles()` only runs at startup, so
+ * without this an icon or schema edit never reaches `dist`.
+ */
+export function watchStaticFiles(onChange: () => void): () => void {
+	const watcher = watch(process.cwd(), { recursive: true }, (_event, filename) => {
+		if (!filename) return;
+		if (filename.startsWith('dist') || filename.includes('node_modules')) return;
+		if (!STATIC_ASSET_PATTERN.test(filename)) return;
+		onChange();
+	});
+
+	watcher.unref();
+	return () => watcher.close();
 }
 
 export function buildHelpText(hasN8n: boolean, isN8nReady: boolean): string {
