@@ -31,6 +31,7 @@ import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
 import {
+	CredentialExportPolicy,
 	MissingWorkflowDependencyPolicy,
 	WorkflowVersionPolicy,
 	type ExportPackageEventCounts,
@@ -81,6 +82,8 @@ export class N8nPackagesService {
 		const projectIds = request.projectIds ?? [];
 		const includeTags = (request.includeTags ?? true) && !this.globalConfig.tags.disabled;
 		const workflowVersionPolicy = request.workflowVersionPolicy ?? WorkflowVersionPolicy.Latest;
+		const credentialExportPolicy =
+			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -213,6 +216,7 @@ export class N8nPackagesService {
 			user: request.user,
 			requirements: requirements.credentials,
 			writer,
+			credentialExportPolicy,
 			// Routes project-owned credentials into their project namespace; others stay top-level.
 			projectTargetsById,
 		});
@@ -295,6 +299,7 @@ export class N8nPackagesService {
 			...(allFolders.length ? { folderIds: allFolders.map(({ id }) => id) } : {}),
 			...(allProjects.length ? { projectIds: allProjects.map(({ id }) => id) } : {}),
 			counts,
+			credentialExportPolicy,
 		});
 
 		return { stream, counts };
