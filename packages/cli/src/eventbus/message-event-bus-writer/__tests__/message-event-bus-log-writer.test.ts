@@ -9,8 +9,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { EventMessageTypes } from '../../event-message-classes';
+import type { AbstractEventMessageOptions } from '../../event-message-classes/abstract-event-message-options';
 import { EventMessageAiNode } from '../../event-message-classes/event-message-ai-node';
 import { EventMessageAudit } from '../../event-message-classes/event-message-audit';
+import { EventMessageConfirm } from '../../event-message-classes/event-message-confirm';
 import { EventMessageExecution } from '../../event-message-classes/event-message-execution';
 import { EventMessageGeneric } from '../../event-message-classes/event-message-generic';
 import { EventMessageNode } from '../../event-message-classes/event-message-node';
@@ -392,11 +394,17 @@ describe('MessageEventBusLogWriter.getEventMessageObjectByType round-trip', () =
 	// One representative instance per persisted message class. These cover every
 	// member of `EventMessageTypeNames` (n8n-workflow) that `send()` can persist –
 	// i.e. every member except `confirm`. Each must survive the
-	// serialize -> persist -> deserialize round-trip without being dropped to null.
-	const sampleMessages: Array<{ label: string; message: () => EventMessageTypes }> = [
+	// serialize -> persist -> deserialize round-trip without being dropped to null,
+	// and must come back as the class `reconstructsAs` names.
+	const sampleMessages: Array<{
+		label: string;
+		message: () => EventMessageTypes;
+		reconstructsAs: abstract new (...args: never[]) => EventMessageTypes;
+	}> = [
 		{
 			label: EventMessageTypeNames.generic,
 			message: () => new EventMessageGeneric({ eventName: 'n8n.worker.started' }),
+			reconstructsAs: EventMessageGeneric,
 		},
 		{
 			label: EventMessageTypeNames.workflow,
@@ -405,10 +413,12 @@ describe('MessageEventBusLogWriter.getEventMessageObjectByType round-trip', () =
 					eventName: 'n8n.workflow.started',
 					payload: { executionId: 'e1' },
 				}),
+			reconstructsAs: EventMessageWorkflow,
 		},
 		{
 			label: EventMessageTypeNames.audit,
 			message: () => new EventMessageAudit({ eventName: 'n8n.audit.user.login.success' }),
+			reconstructsAs: EventMessageAudit,
 		},
 		{
 			label: EventMessageTypeNames.node,
@@ -417,6 +427,7 @@ describe('MessageEventBusLogWriter.getEventMessageObjectByType round-trip', () =
 					eventName: 'n8n.node.started',
 					payload: { executionId: 'e1', nodeName: 'Set', workflowName: 'wf' },
 				}),
+			reconstructsAs: EventMessageNode,
 		},
 		{
 			label: EventMessageTypeNames.execution,
@@ -425,6 +436,7 @@ describe('MessageEventBusLogWriter.getEventMessageObjectByType round-trip', () =
 					eventName: 'n8n.execution.throttled',
 					payload: { executionId: 'e1', type: 'production' },
 				}),
+			reconstructsAs: EventMessageExecution,
 		},
 		{
 			label: EventMessageTypeNames.aiNode,
@@ -433,28 +445,98 @@ describe('MessageEventBusLogWriter.getEventMessageObjectByType round-trip', () =
 					eventName: 'n8n.ai.tool.called',
 					payload: { executionId: 'e1', nodeName: 'Agent', workflowName: 'wf' },
 				}),
+			reconstructsAs: EventMessageAiNode,
 		},
 		{
 			label: EventMessageTypeNames.runner,
 			message: () => new EventMessageRunner({ eventName: 'n8n.runner.task.requested' }),
+			reconstructsAs: EventMessageRunner,
 		},
 		{
 			label: EventMessageTypeNames.queue,
 			message: () => new EventMessageQueue({ eventName: 'n8n.queue.job.enqueued' }),
+			// Documents current behaviour, not desired behaviour: `EventMessageQueue`
+			// declares `__type = EventMessageTypeNames.runner`, the same discriminator
+			// `EventMessageRunner` uses, so a queue message is persisted as a runner one
+			// and comes back as `EventMessageRunner`. The `case queue:` arm is therefore
+			// unreachable from a real log line. See the note on the queue-specific test
+			// below.
+			reconstructsAs: EventMessageRunner,
 		},
 	];
 
 	it.each(sampleMessages)(
 		'reconstructs a non-null instance for persisted message $label',
-		({ message }) => {
+		({ message, reconstructsAs }) => {
 			const original = message();
 
 			const reconstructed = writer.getEventMessageObjectByType(original.serialize());
 
 			expect(reconstructed).not.toBeNull();
 			expect(reconstructed?.eventName).toBe(original.eventName);
+			// The class matters, not just non-nullness: every class here shares the
+			// `eventName` field, so a case mapped to the wrong constructor would still
+			// round-trip the name while persisting the wrong `__type` on re-serialize.
+			expect(reconstructed).toBeInstanceOf(reconstructsAs);
+			expect(reconstructed?.__type).toBe(original.__type);
 		},
 	);
+
+	// `EventMessageQueue` and `EventMessageRunner` share the `runner` discriminator,
+	// so nothing ever writes `__type: 'queue'` to the log and the switch's `case queue:`
+	// arm cannot be reached from a persisted line. Pinned so that giving queue its own
+	// `__type` (which would make that arm live) shows up here as a deliberate change.
+	it('persists a queue message under the runner discriminator', () => {
+		const queueMessage = new EventMessageQueue({ eventName: 'n8n.queue.job.enqueued' });
+
+		expect(queueMessage.__type).toBe(EventMessageTypeNames.runner);
+		expect(queueMessage.__type).not.toBe(EventMessageTypeNames.queue);
+	});
+
+	it('returns null for a confirm line instead of reconstructing it as a message', () => {
+		const confirm = new EventMessageConfirm('id-1');
+
+		const reconstructed = writer.getEventMessageObjectByType(
+			confirm.serialize() as unknown as AbstractEventMessageOptions,
+		);
+
+		expect(reconstructed).toBeNull();
+	});
+
+	it('returns null for an unrecognised __type', () => {
+		const reconstructed = writer.getEventMessageObjectByType({
+			eventName: 'n8n.future.event',
+			__type: 'n8n.messages.from-a-newer-version',
+		} as unknown as AbstractEventMessageOptions);
+
+		// Strictly null, not undefined: `processLoggedLine` gates on `msg !== null`,
+		// so anything else here gets pushed into the parsed results.
+		expect(reconstructed).toBeNull();
+	});
+
+	it('skips a line with an unrecognised __type without dropping the valid lines around it', async () => {
+		const valid = new EventMessageExecution({
+			eventName: 'n8n.execution.throttled',
+			payload: { executionId: 'e1', type: 'production' },
+		});
+		writeFileSync(
+			writer.getLogFileName(),
+			[
+				JSON.stringify({
+					eventName: 'n8n.future.event',
+					__type: 'n8n.messages.from-a-newer-version',
+					id: 'unknown-1',
+					ts: '2026-04-16T12:00:00.000Z',
+				}),
+				JSON.stringify(valid.serialize()),
+			].join('\n') + '\n',
+		);
+
+		const unsent = await writer.getMessagesUnsent();
+
+		expect(unsent).toHaveLength(1);
+		expect(unsent[0]).toBeInstanceOf(EventMessageExecution);
+	});
 
 	it('returns a persisted execution message as unsent when no confirm line exists', async () => {
 		const message = new EventMessageExecution({
