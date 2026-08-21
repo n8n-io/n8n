@@ -1,0 +1,15 @@
+{
+	"credentialType": "openAiApi",
+	"hosts": ["platform.openai.com"],
+	"secretPrefix": "sk-proj-",
+	"routes": {
+		"/api-keys": "console.html",
+		"/home": "dashboard.html"
+	},
+	"defaultRoute": "/home",
+	"verify": {
+		"path": "/models",
+		"header": "Authorization",
+		"scheme": "Bearer"
+	}
+}

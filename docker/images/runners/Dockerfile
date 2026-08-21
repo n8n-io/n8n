@@ -1,4 +1,5 @@
-ARG NODE_VERSION=24.18.1
+ARG NODE_VERSION=26.5.1
+ARG PNPM_VERSION=10.32.1
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
@@ -10,16 +11,15 @@ COPY ./dist/task-runner-javascript /app/task-runner-javascript
 WORKDIR /app/task-runner-javascript
 
 # Pin pnpm to the repo's packageManager version. `pnpm deploy` drops the
-# packageManager field from the deployed package.json, so a bare
-# `corepack enable pnpm` resolves to corepack's bundled latest (pnpm 11.x).
-# pnpm 11 defaults minimumReleaseAge to 1440 (24h), so the `pnpm add` below
-# re-resolves the deployed graph and rejects any dependency published less
-# than a day ago — e.g. a first-party @n8n_io/ai-assistant-sdk bump landed
-# within hours of its npm publish. This container step only re-resolves an
-# already-vetted, already-pinned dependency set; the real supply-chain age
-# policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
-ARG PNPM_VERSION=10.32.1
-RUN corepack enable pnpm && corepack prepare "pnpm@${PNPM_VERSION}" --activate
+# packageManager field from the deployed package.json, so nothing else here pins it,
+# and pnpm 11.x defaults minimumReleaseAge to 1440 (24h), which would make the
+# `pnpm add` below reject any dependency published less than a day ago — e.g. a
+# first-party @n8n_io/ai-assistant-sdk bump landed within hours of its npm publish.
+# This container step only re-resolves an already-vetted, already-pinned dependency
+# set; the real supply-chain age policy is enforced by the host install
+# (pnpm-workspace.yaml + SafeChain).
+ARG PNPM_VERSION
+RUN npm i -g "pnpm@${PNPM_VERSION}"
 
 # Remove `catalog` and `workspace` references from package.json to allow `pnpm add` in extended images
 RUN node -e "const pkg = require('./package.json'); \
@@ -113,6 +113,8 @@ RUN set -e; \
 # STAGE 4: Node alpine base for JS task runner
 # ==============================================================================
 FROM node:${NODE_VERSION}-alpine3.24 AS node-alpine
+ARG PNPM_VERSION
+RUN npm i -g "pnpm@${PNPM_VERSION}"
 
 # ==============================================================================
 # STAGE 5: Runtime
@@ -138,10 +140,10 @@ RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
     pip install --no-cache-dir "pip>=26.0" && \
     apk del apk-tools
 
-# Bring corepack and pnpm over, to make the image easier to extend
-COPY --from=node-alpine /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/corepack
-RUN ln -s ../lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack && \
-		ln -s ../lib/node_modules/corepack/dist/pnpm.js /usr/local/bin/pnpm
+# Bring pnpm over, to make the image easier to extend. Node no longer bundles
+# corepack, and this runtime has no npm, so pnpm is copied in as a package.
+COPY --from=node-alpine /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
+RUN ln -s ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm
 
 RUN addgroup -g 1000 -S runner \
  && adduser  -u 1000 -S -G runner -h /home/runner -D runner

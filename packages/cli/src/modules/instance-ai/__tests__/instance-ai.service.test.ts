@@ -208,6 +208,7 @@ import {
 	createOrchestratorRunControl,
 	createSandbox,
 	createWorkspace,
+	createInstanceAiTraceContext,
 	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	setupSandboxWorkspace,
@@ -1941,6 +1942,7 @@ type SuspendedRunResumeServiceInternals = {
 	trackInFlightExecution: Mock;
 	rebuildAgentForResume: Mock;
 	threadPushRef: { get: Mock };
+	browserSessionService: { getExtensionTraceContext: Mock };
 };
 
 function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
@@ -1983,6 +1985,9 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 	service.processResumedStream = vi.fn();
 	service.rebuildAgentForResume = vi.fn();
 	service.threadPushRef = { get: vi.fn(() => undefined) };
+	service.browserSessionService = {
+		getExtensionTraceContext: vi.fn(() => ({ connectionState: 'disconnected' })),
+	};
 	return service;
 }
 
@@ -2460,6 +2465,23 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		expect(service.logger.warn).toHaveBeenCalledWith(
 			'Cancelling suspended run: user no longer authorized for AI Assistant',
 			expect.objectContaining({ userId: 'user-1', threadId: 'thread-a', requestId: 'req-1' }),
+		);
+	});
+
+	it('stamps the browser extension dimensions on the approval-resume trace', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue(fakeUser);
+		service.browserSessionService.getExtensionTraceContext.mockReturnValue({
+			connectionState: 'connected',
+			version: '0.0.7',
+		});
+
+		await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(service.tracing.createOrchestratorResumeTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({
+				browserExtension: { connectionState: 'connected', version: '0.0.7' },
+			}),
 		);
 	});
 
@@ -4517,6 +4539,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		instanceAiErrorReporter: { beginRun: Mock; endRun: Mock };
 		schedulePlannedTasks: Mock;
 		taskProjector: { syncFromWorkflowLoop: Mock };
+		browserSessionService: { getExtensionTraceContext: Mock };
 	};
 
 	function createCancelPersistenceService(): ExecuteRunInternals {
@@ -4533,6 +4556,9 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		service.instanceAiErrorReporter = {
 			beginRun: vi.fn(() => Symbol('error-reporter-execution')),
 			endRun: vi.fn(),
+		};
+		service.browserSessionService = {
+			getExtensionTraceContext: vi.fn(() => ({ connectionState: 'disconnected' })),
 		};
 		return service;
 	}
@@ -4555,6 +4581,51 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 					}),
 				],
 			}),
+		);
+	});
+
+	it('passes the connected extension version to the trace', async () => {
+		const service = createCancelPersistenceService();
+		service.browserSessionService.getExtensionTraceContext.mockReturnValue({
+			connectionState: 'connected',
+			version: '0.0.7',
+		});
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', abortController);
+
+		expect(createInstanceAiTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({
+				browserExtension: { connectionState: 'connected', version: '0.0.7' },
+			}),
+		);
+	});
+
+	it('separates a connected extension that reports no version from no extension at all', async () => {
+		const connected = createCancelPersistenceService();
+		connected.browserSessionService.getExtensionTraceContext.mockReturnValue({
+			connectionState: 'connected',
+		});
+		const firstAbort = new AbortController();
+		firstAbort.abort();
+
+		await connected.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', firstAbort);
+
+		expect(createInstanceAiTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({ browserExtension: { connectionState: 'connected' } }),
+		);
+	});
+
+	it('leaves the trace version undefined when no extension is connected', async () => {
+		const service = createCancelPersistenceService();
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', abortController);
+
+		expect(createInstanceAiTraceContext).toHaveBeenCalledWith(
+			expect.objectContaining({ browserExtension: { connectionState: 'disconnected' } }),
 		);
 	});
 
