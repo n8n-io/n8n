@@ -262,6 +262,21 @@ describe('silent connect to an approved host', () => {
 		expect(status).toMatchObject({ connected: true, relayUrl: newerRelay });
 	});
 
+	it('honours a disconnect issued while the handshake is still opening', async () => {
+		const socket = stubDeferredRelaySocket();
+
+		await sendFromExtensionView({ type: 'connect', relayUrl: RELAY_URL, selectedTabIds: [] });
+		await sendFromExtensionView({ type: 'disconnect' });
+
+		socket.openAll();
+		await flush();
+
+		// The user asked for no connection; a slow handshake must not deliver one anyway.
+		expect(await sendFromExtensionViewWithResponse({ type: 'getStatus' })).toMatchObject({
+			connected: false,
+		});
+	});
+
 	it('reports failure promptly instead of leaving the page waiting', async () => {
 		stubRelaySocket(false);
 

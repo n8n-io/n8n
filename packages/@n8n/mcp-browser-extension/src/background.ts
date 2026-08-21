@@ -452,10 +452,10 @@ async function connectToRelay(
 		return { success: false, error: 'Refusing to connect: not a recognized n8n instance.' };
 	}
 
-	const generation = ++connectGeneration;
-
-	// Clean up existing connection
+	// Clean up existing connection, then claim a generation — `disconnect` advances it, so
+	// taking ours first would make this attempt invalidate itself.
 	disconnect();
+	const generation = ++connectGeneration;
 
 	try {
 		const ws = new WebSocket(buildRelayWsUrl(relayUrl, chrome.runtime.getManifest().version));
@@ -529,6 +529,9 @@ async function connectToRelay(
 }
 
 function disconnect(): void {
+	// Outside the guard below: a handshake that has not committed yet leaves
+	// `activeConnection` null, and it must still be invalidated by a teardown.
+	connectGeneration++;
 	if (activeConnection) {
 		log.debug('disconnecting');
 		activeConnection.relay.close('extension_disconnected');
