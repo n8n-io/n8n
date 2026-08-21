@@ -393,35 +393,9 @@ This setup is meant to try n8n locally. For production (TLS, Postgres, queue
 mode) see ${DOCS_HOSTING_URL}
 
 get-n8n.sh v${SCRIPT_VERSION} — source: ${SOURCE_URL}
-EOF
-}
 
-# Offer to open n8n in the browser when run interactively. 'curl | sh' keeps
-# stdin on the pipe, so it never prompts — then only the suggestion prints.
-offer_open() {
-	url="http://localhost:${N8N_PORT}"
-	opener=""
-	case "$(uname -s)" in
-	Darwin) command -v open >/dev/null 2>&1 && opener="open" ;;
-	*)
-		if grep -qi microsoft /proc/version 2>/dev/null; then
-			command -v explorer.exe >/dev/null 2>&1 && opener="explorer.exe"
-		elif [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && command -v xdg-open >/dev/null 2>&1; then
-			opener="xdg-open"
-		fi
-		;;
-	esac
-	if [ -n "$opener" ] && [ -t 0 ]; then
-		printf 'Open n8n in your browser now? [Y/n] '
-		read -r answer || answer="n"
-		case "$answer" in
-		[Nn]*) ;;
-		# explorer.exe exits non-zero even on success, hence best-effort.
-		*) "$opener" "$url" >/dev/null 2>&1 || true ;;
-		esac
-	fi
-	say ""
-	say "Open ${url} in your browser to get started."
+Open http://localhost:${N8N_PORT} in your browser to get started.
+EOF
 }
 
 main() {
@@ -480,7 +454,6 @@ main() {
 	ok "Started n8n ${INSTALL_VERSION} and sandbox services"
 	wait_for_n8n || fail "n8n did not become ready — check 'docker compose -f ${N8N_DIR}/compose.yml logs n8n'."
 	print_summary
-	offer_open
 }
 
 # main is called on the last line so a truncated download executes nothing.
