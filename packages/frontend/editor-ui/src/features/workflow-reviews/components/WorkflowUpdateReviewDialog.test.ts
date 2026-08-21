@@ -50,7 +50,7 @@ const router = createRouter({
 	history: createMemoryHistory(),
 	routes: [
 		{
-			path: '/workflow-review-requests/:reviewRequestId?',
+			path: '/reviews/:reviewRequestId?',
 			name: WORKFLOW_REVIEW_REQUESTS_VIEW,
 			component: { template: '<div />' },
 		},
@@ -129,10 +129,7 @@ describe('WorkflowUpdateReviewDialog', () => {
 	it('links to the open review', async () => {
 		const { getByRole } = await renderDialog();
 
-		expect(getByRole('link', { name: 'open review' })).toHaveAttribute(
-			'href',
-			'/workflow-review-requests/review-1',
-		);
+		expect(getByRole('link', { name: 'open review' })).toHaveAttribute('href', '/reviews/review-1');
 	});
 
 	it('stays open without prefilling when no open review is known yet', async () => {
