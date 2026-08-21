@@ -21,9 +21,20 @@ import { getCustomCredentialHeader } from '@utils/helpers';
 
 import { searchModels } from './methods/searchModels';
 
+// The 1.3+ resource locator accepts any id the provider lists, so the newest
+// generation is the right answer on every one of those versions. Phrased as
+// choice guidance rather than a validity claim: older versions still default to
+// an older model, and that stored value is not wrong, just superseded.
 const ANTHROPIC_MODEL_BUILDER_HINT = {
 	propertyHint:
-		'Default to claude-sonnet-5 (latest Sonnet); use claude-opus-5 when the user needs the most capable model. Never pick an earlier generation — Claude Sonnet 4.6 and below, Claude 3.x, Claude 2, and LEGACY options are superseded and are not valid choices. Tell the user which model you picked, why, and that they can change it at any time. When extended thinking is needed, set Thinking Mode to Adaptive and choose an Effort level. The legacy Manual thinking mode is rejected by Opus 4.7.',
+		'Default to claude-sonnet-5 (latest Sonnet); use claude-opus-5 when the user needs the most capable model. Do not fall back to an older generation (Claude Sonnet 4.6 or earlier, Claude 3.x, Claude 2, LEGACY options) unless the user asks for a specific model. Tell the user which model you picked, why, and that they can change it at any time. When extended thinking is needed, set Thinking Mode to Adaptive and choose an Effort level. The legacy Manual thinking mode is rejected by Opus 4.7.',
+};
+
+// Versions 1 to 1.2 expose a fixed enum that predates the current generation,
+// so the recommendation above names nothing those versions can actually select.
+const ANTHROPIC_LEGACY_MODEL_BUILDER_HINT = {
+	propertyHint:
+		'This node version only offers superseded Claude models. Pick claude-3-5-sonnet-20241022 if the node has to stay on this version; otherwise rebuild it on the latest node version, where the current Claude generation is selectable.',
 };
 
 const modelField: INodeProperties = {
@@ -76,7 +87,7 @@ const modelField: INodeProperties = {
 	description:
 		'The model which will generate the completion. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
 	default: 'claude-2',
-	builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
+	builderHint: ANTHROPIC_LEGACY_MODEL_BUILDER_HINT,
 };
 
 const MIN_THINKING_BUDGET = 1024;
