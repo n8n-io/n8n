@@ -649,30 +649,59 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
-				const filter = {
+				// An explicit projectId targets one project; otherwise the thread's own
+				// project unless the caller widened to the whole instance. Either way it
+				// goes in as a *filter* on `getMany`, which resolves readability from the
+				// user's own project/workflow roles — so this can only narrow the set the
+				// caller could already read, never widen it. Writes keep using
+				// `resolveBoundProjectId` and stay locked to the bound project.
+				const targetProjectId =
+					options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
+				const scopeFilter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
+					...(targetProjectId ? { projectId: targetProjectId } : {}),
+				};
+				const filter = {
+					...scopeFilter,
 					...(options?.query ? { query: options.query } : {}),
-					...(options?.scope !== 'instance' && boundProjectId ? { projectId: boundProjectId } : {}),
 				};
 
-				const { workflows } = await workflowService.getMany(user, {
+				const { workflows, count } = await workflowService.getMany(user, {
 					take: options?.limit ?? 50,
 					filter,
 				});
 
-				return workflows
-					.filter((wf): wf is WorkflowEntity => 'versionId' in wf)
-					.map(
-						(wf): WorkflowSummary => ({
-							id: wf.id,
-							name: wf.name,
-							versionId: wf.versionId,
-							activeVersionId: wf.activeVersionId ?? null,
-							isArchived: wf.isArchived,
-							createdAt: wf.createdAt.toISOString(),
-							updatedAt: wf.updatedAt.toISOString(),
+				// Count the same scope without the name filter so callers can tell a
+				// filtered subset apart from the full inventory. Only worth a second
+				// query when a filter was actually applied, and `take` must stay >= 1:
+				// the repository skips pagination for a falsy take and would load every row.
+				const totalInScope = options?.query
+					? (await workflowService.getMany(user, { take: 1, filter: scopeFilter })).count
+					: count;
+
+				// Only when the listing can span projects — on a single-project listing it
+				// would repeat the same project on every row.
+				const attributeProjects = targetProjectId === undefined;
+
+				return {
+					workflows: workflows
+						.filter((wf): wf is WorkflowEntity => 'versionId' in wf)
+						.map((wf): WorkflowSummary => {
+							const project = attributeProjects ? readHomeProject(wf) : undefined;
+							return {
+								id: wf.id,
+								name: wf.name,
+								versionId: wf.versionId,
+								activeVersionId: wf.activeVersionId ?? null,
+								isArchived: wf.isArchived,
+								createdAt: wf.createdAt.toISOString(),
+								updatedAt: wf.updatedAt.toISOString(),
+								...(project ? { project } : {}),
+							};
 						}),
-					);
+					total: count,
+					totalInScope,
+				};
 			},
 
 			async get(workflowId: string) {
@@ -780,6 +809,17 @@ export class InstanceAiAdapterService {
 				if (!versionId) return toWorkflowJSON(wf, { redactParameters });
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 				return toWorkflowJSON(wf, { redactParameters, graph: version });
+			},
+
+			async getPinnedDataSummary(workflowId: string) {
+				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				if (!wf) throw new WorkflowNotFoundError(workflowId);
+				return Object.entries(wf.pinData ?? {}).map(([nodeName, items]) => ({
+					nodeName,
+					itemCount: Array.isArray(items) ? items.length : 0,
+				}));
 			},
 
 			async getWorkflowHead(workflowId: string) {
@@ -1028,6 +1068,9 @@ export class InstanceAiAdapterService {
 					});
 				}
 
+				// Tell open editors to reload so a clean canvas picks up state this
+				// save replaced (e.g. cleared pinned data). A dirty canvas keeps its
+				// local changes and resolves them via the conflict dialog (INS-1216).
 				await notifyWorkflowUpdated(workflowId);
 
 				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
@@ -1463,7 +1506,12 @@ export class InstanceAiAdapterService {
 					const result = await extractExecutionResult(executionId, allowSendingParameterValues);
 					await pruneVerificationPins(result.executedNodeNames);
 					trackBuilderExecutedWorkflow(result.status, result.error);
-					return result;
+					// Saved workflow pins fed this run (they ride every instance-ai run) —
+					// report them so callers don't mistake pin-fed nodes for live ones.
+					const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
+					return workflowPinnedNodeNames.length > 0
+						? { ...result, workflowPinnedNodeNames }
+						: result;
 				} catch (error) {
 					// A failure to launch (or any other unsettled error) is still an
 					// errored builder run — track it before rethrowing so it isn't
@@ -1807,6 +1855,18 @@ export class InstanceAiAdapterService {
 					return fields;
 				} catch {
 					return [];
+				}
+			},
+
+			async credentialTypeExists(credentialType: string): Promise<boolean> {
+				if (credentialType in loadNodesAndCredentials.knownCredentials) return true;
+				// Runtime-registered types (e.g. MCP registry loaders) may not appear
+				// in knownCredentials — fall back to resolving the credential class.
+				try {
+					loadNodesAndCredentials.getCredential(credentialType);
+					return true;
+				} catch {
+					return false;
 				}
 			},
 
@@ -3851,6 +3911,23 @@ function sdkNodeGroupsToRuntime(
 	return nodeGroups ?? [];
 }
 
+/**
+ * Read the owning project off a listed workflow. `getMany` populates
+ * `homeProject` via `addOwnedByAndSharedWith` when the default select is used, but
+ * it is absent from the `WorkflowEntity` type, so read it defensively — a row
+ * without it simply carries no attribution.
+ */
+function readHomeProject(workflow: object): { id: string; name: string } | undefined {
+	const home = Reflect.get(workflow, 'homeProject');
+	if (typeof home !== 'object' || home === null) return undefined;
+
+	const id = Reflect.get(home, 'id');
+	const name = Reflect.get(home, 'name');
+	if (typeof id !== 'string' || typeof name !== 'string') return undefined;
+
+	return { id, name };
+}
+
 function hasCredentialId(value: unknown): boolean {
 	if (typeof value !== 'object' || value === null) return false;
 	if (Reflect.get(value, 'id') === null && Reflect.get(value, '__aiGatewayManaged') === true) {
@@ -3905,7 +3982,7 @@ function toWorkflowJSON(
 			typeVersion: n.typeVersion,
 			position: n.position,
 			parameters: redact ? {} : n.parameters,
-			credentials: n.credentials as Record<string, { id?: string; name: string }> | undefined,
+			credentials: n.credentials,
 			webhookId: n.webhookId,
 			disabled: n.disabled,
 			notes: n.notes,

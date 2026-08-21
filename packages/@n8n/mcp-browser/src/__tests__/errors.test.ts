@@ -2,6 +2,7 @@ import {
 	AlreadyConnectedError,
 	BrowserNotAvailableError,
 	ConnectionLostError,
+	ElementNotActionableError,
 	ExtensionConflictError,
 	McpBrowserError,
 	NotConnectedError,
@@ -83,6 +84,24 @@ describe('StaleRefError', () => {
 
 	it('should hint about browser_snapshot', () => {
 		expect(error.hint).toContain('browser_snapshot');
+	});
+});
+
+describe('ElementNotActionableError', () => {
+	const disabled = new ElementNotActionableError("button:has-text('Add')", 'disabled');
+	const readonly = new ElementNotActionableError('#token', 'readonly');
+
+	it('should include the target in the message', () => {
+		expect(disabled.message).toContain("button:has-text('Add')");
+	});
+
+	it('should name the cause, which decides what the caller does next', () => {
+		expect(disabled.message).toContain('disabled');
+		expect(readonly.message).toContain('read-only');
+	});
+
+	it('should hint per cause rather than give one generic remedy', () => {
+		expect(disabled.hint).not.toEqual(readonly.hint);
 	});
 });
 

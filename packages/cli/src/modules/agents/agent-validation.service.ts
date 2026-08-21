@@ -6,12 +6,14 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
 	findVectorStoreToolNameCollisions,
+	getWorkflowToolIncompatibilityReason,
 	isDraftAgentConfig,
 	isDraftIntegration,
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
 	type AgentIntegrationConfig,
+	type AgentTaskConfig,
 	type AgentJsonConfig,
 	type AgentJsonNodeToolConfig,
 	type AgentJsonWorkflowToolConfig,
@@ -34,7 +36,6 @@ import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
-import { detectTriggerNode, validateCompatibility } from './tools/workflow-tool-factory';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
 
@@ -45,7 +46,7 @@ type FindCredential = (
 ) => Promise<Awaited<ReturnType<CredentialProvider['list']>>[number] | undefined>;
 
 type CustomToolEntries = Record<string, { code: string; descriptor: ToolDescriptor }>;
-type TaskBody = { name: string; objective: string; cronExpression: string };
+type TaskBody = AgentTaskConfig;
 
 interface ConfigurationValidationContext {
 	agentId: string;
@@ -62,8 +63,9 @@ function issue(
 	code: AgentConfigValidationIssueCode,
 	path: string,
 	capability: AgentConfigValidationIssue['capability'],
+	reason?: string,
 ): AgentConfigValidationIssue {
-	return { code, path, capability };
+	return reason === undefined ? { code, path, capability } : { code, path, capability, reason };
 }
 
 function agentIssue(
@@ -567,11 +569,9 @@ export class AgentValidationService {
 			return;
 		}
 
-		try {
-			validateCompatibility(workflow);
-			detectTriggerNode(workflow);
-		} catch {
-			issues.push(issue('incompatible_reference', path, capability));
+		const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
+		if (incompatibility) {
+			issues.push(issue('incompatible_reference', path, capability, incompatibility.reason));
 		}
 	}
 

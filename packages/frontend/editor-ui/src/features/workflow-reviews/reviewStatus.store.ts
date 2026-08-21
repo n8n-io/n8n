@@ -75,19 +75,24 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 	/**
 	 * Adopt a freshly opened review as the latest one, without waiting for a
 	 * refetch. Mutation responses carry the minimal summary: a brand-new review is
-	 * pending, so neither derived field applies yet.
+	 * pending, so neither derived field applies yet. The pinned version's name
+	 * comes from the caller for the same reason — the summary omits it, and
+	 * without it the banner would label the version the caller just named by id.
 	 */
 	const setOpenReview = (
 		workflowId: string,
 		review: WorkflowReviewRequestSummary,
 		description: string | null = null,
+		workflowVersionName: string | null = null,
 	): void => {
 		latestSequenceByWorkflowId[workflowId] = (latestSequenceByWorkflowId[workflowId] ?? 0) + 1;
 		latestReviewByWorkflowId.value[workflowId] = {
 			...review,
 			description,
+			workflowVersionName,
 			decisionBy: null,
-			approvedVersionPublicationState: null,
+			// The caller just opened this review, so they are its requester-author.
+			viewerCanOpen: true,
 		};
 	};
 

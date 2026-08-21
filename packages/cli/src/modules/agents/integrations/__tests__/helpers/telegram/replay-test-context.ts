@@ -132,12 +132,26 @@ function installTelegramApiStub(bot: TelegramUserFixture, failedMethods: string[
 			let result: unknown = true;
 			if (method === 'getMe') {
 				result = bot;
-			} else if (method === 'sendMessage') {
+			} else if (method === 'sendMessage' || method === 'sendRichMessage') {
+				const richMessage = body.rich_message;
+				const richMarkdown =
+					richMessage &&
+					typeof richMessage === 'object' &&
+					'markdown' in richMessage &&
+					typeof richMessage.markdown === 'string'
+						? richMessage.markdown
+						: '';
 				result = {
 					message_id: nextMessageId++,
 					chat: { id: Number(body.chat_id) },
 					date: 1719000000,
-					text: body.text ?? '',
+					...(method === 'sendRichMessage'
+						? {
+								rich_message: {
+									blocks: [{ type: 'paragraph', text: richMarkdown }],
+								},
+							}
+						: { text: body.text ?? '' }),
 				};
 			}
 			return { apiCall: { method, body }, responseBody: { ok: true, result } };
@@ -250,7 +264,10 @@ export async function createTelegramReplayContext(
 		latestContext: () => setup.messageContextStore.latest(),
 		latestThreadId: () => setup.messageContextStore.latestThreadId(),
 		lastApiCall: (method: string) => stub.apiCalls.filter((call) => call.method === method).at(-1),
-		lastPost: () => stub.apiCalls.filter((call) => call.method === 'sendMessage').at(-1),
+		lastPost: () =>
+			stub.apiCalls
+				.filter((call) => call.method === 'sendMessage' || call.method === 'sendRichMessage')
+				.at(-1),
 		shutdown: async () => {
 			try {
 				await setup.shutdown();

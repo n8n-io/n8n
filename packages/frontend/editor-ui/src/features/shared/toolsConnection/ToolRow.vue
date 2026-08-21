@@ -77,6 +77,8 @@ const installBlocked = computed(
 	() => Boolean(props.item.communityPreview) && Boolean(props.item.installDisabled),
 );
 
+const isDisabled = computed(() => Boolean(props.item.disabled));
+
 /**
  * For most rows the button only repeated what clicking the row already does.
  * What survives is the pair that goes somewhere the row body cannot: installing
@@ -88,6 +90,7 @@ const hasDirectAction = computed(
 );
 
 function handleRowClick() {
+	if (props.item.disabled) return;
 	if (props.item.status === 'connecting') return;
 	emit('open-detail', props.item);
 }
@@ -102,14 +105,14 @@ function handleConnect() {
 
 <template>
 	<div
-		:class="[$style.row, $style[`row--${item.kind}`]]"
+		:class="[$style.row, $style[`row--${item.kind}`], { [$style.rowDisabled]: isDisabled }]"
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
 	>
 		<button
 			type="button"
 			:class="$style.mainAction"
-			:disabled="item.status === 'connecting'"
+			:disabled="isDisabled || item.status === 'connecting'"
 			data-test-id="tools-connection-row-main"
 			@click="handleRowClick"
 		>
@@ -152,8 +155,24 @@ function handleConnect() {
 		</button>
 
 		<div :class="$style.action">
+			<N8nTooltip
+				v-if="isDisabled"
+				:content="item.disabledReason ?? ''"
+				:disabled="!item.disabledReason"
+				placement="top"
+			>
+				<span
+					:class="$style.disabledMarker"
+					role="img"
+					tabindex="0"
+					:aria-label="item.disabledReason"
+					data-test-id="tools-connection-row-disabled"
+				>
+					<N8nIcon icon="info" :size="14" color="text-light" />
+				</span>
+			</N8nTooltip>
 			<ToolCredentialPicker
-				v-if="shouldShowCredentialPicker"
+				v-else-if="shouldShowCredentialPicker"
 				:item="item"
 				:credentials="item.credentials ?? []"
 				connect-variant="outline"
@@ -170,7 +189,7 @@ function handleConnect() {
 				:class="$style.statusMarker"
 				data-test-id="tools-connection-row-connected"
 			>
-				<span :class="$style.statusDot" aria-hidden="true" />
+				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
 				{{ i18n.baseText('tools.connection.action.connected') }}
 			</span>
 			<span
@@ -207,9 +226,11 @@ function handleConnect() {
 					"
 					@click="handleConnect"
 				>
-					<span
+					<N8nIcon
 						v-if="!item.communityPreview && item.status === 'disconnected'"
-						:class="[$style.statusDot, $style.statusDotDisconnected]"
+						icon="circle-x"
+						:size="14"
+						:class="$style.statusIconDisconnected"
 						aria-hidden="true"
 					/>
 					{{ actionLabel }}
@@ -222,7 +243,12 @@ function handleConnect() {
 				data-test-id="tools-connection-row-disconnected"
 				@click="handleRowClick"
 			>
-				<span :class="[$style.statusDot, $style.statusDotDisconnected]" aria-hidden="true" />
+				<N8nIcon
+					icon="circle-x"
+					:size="14"
+					:class="$style.statusIconDisconnected"
+					aria-hidden="true"
+				/>
 				{{ i18n.baseText('tools.connection.action.reconnect') }}
 			</N8nButton>
 		</div>
@@ -245,6 +271,14 @@ function handleConnect() {
 	}
 }
 
+.rowDisabled {
+	opacity: 0.6;
+
+	&:hover {
+		background: transparent;
+	}
+}
+
 .mainAction {
 	display: flex;
 	align-items: center;
@@ -260,7 +294,7 @@ function handleConnect() {
 	cursor: pointer;
 
 	&:disabled {
-		cursor: default;
+		cursor: not-allowed;
 	}
 
 	&:focus-visible {
@@ -340,15 +374,23 @@ function handleConnect() {
 	white-space: nowrap;
 }
 
-.statusDot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background: var(--color--success);
+.statusIconConnected,
+.statusIconDisconnected {
 	flex-shrink: 0;
 }
 
-.statusDotDisconnected {
-	background: var(--color--danger);
+.disabledMarker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color--text--tint-2);
+}
+
+.statusIconConnected {
+	color: var(--color--success);
+}
+
+.statusIconDisconnected {
+	color: var(--color--danger);
 }
 </style>

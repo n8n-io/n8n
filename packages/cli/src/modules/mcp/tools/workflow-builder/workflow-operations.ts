@@ -104,7 +104,7 @@ export const workflowSettingsObjectSchema = z.object({
 	callerPolicy: z
 		.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
 		.describe(
-			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner".',
+			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner". Do not choose "any": it is deprecated and removed in version 3. Use "workflowsFromAList" with callerIds, or "workflowsFromSameOwner".',
 		)
 		.optional(),
 	callerIds: z
@@ -141,7 +141,7 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 			.string()
 			.min(2)
 			.describe(
-				'JSON Pointer (RFC 6901) path to the parameter to set, e.g. "/jsonSchema" or "/options/systemMessage". Must start with "/". Intermediate objects are created on demand. Array indices are NOT supported — to change a value inside an array, set the whole array. Use this instead of `updateNodeParameters` when you only need to set one nested key — the payload stays small regardless of the rest of the parameters object.',
+				'JSON Pointer (RFC 6901) path, e.g. "/options/systemMessage" or "/assignments/assignments/0/value". Numeric segments index into an existing array element only — to add or remove elements, set the whole array (or its parent) instead. Prefer over `updateNodeParameters` for a single nested key — the payload stays small regardless of the rest of the parameters object.',
 			),
 		value: z
 			.unknown()
@@ -462,53 +462,152 @@ const sanitizeUnsafeKeys = (value: unknown): unknown => {
 };
 
 /**
- * Decode a JSON Pointer path (RFC 6901) into safe property segments.
- * Returns null if the path is malformed, empty, contains an empty segment,
- * or contains an unsafe segment. The leading "/" is required.
- * Array indices are not supported: numeric segments are treated as object keys,
- * and descent into an array (or any non-object) fails at apply time.
+ * Decode a JSON Pointer path (RFC 6901) into safe segments, or null if malformed/unsafe.
+ * A numeric segment indexes an array (must reference an existing element) or keys an object — see `setAtPointer`.
  */
 const parseJsonPointer = (path: string): string[] | null => {
-	if (!path.startsWith('/')) return null;
+	if (!path.startsWith('/')) {
+		return null;
+	}
+
 	const tail = path.slice(1);
-	if (tail.length === 0) return null;
+	if (tail.length === 0) {
+		return null;
+	}
+
 	const rawSegments = tail.split('/');
 	const segments: string[] = [];
+
+	// RFC 6901: every '~' must be followed by '0' or '1'. Bare '~' or '~2' is malformed.
+	const invalidEscapeSequenceRegex = /~(?:[^01]|$)/;
+
 	for (const raw of rawSegments) {
-		// RFC 6901: every '~' must be followed by '0' or '1'. Bare '~' or '~2' is malformed.
-		if (/~(?:[^01]|$)/.test(raw)) return null;
+		if (invalidEscapeSequenceRegex.test(raw)) {
+			return null;
+		}
+
+		// Unescape RFC 6901 JSON Pointer tokens: '~1' -> '/' and '~0' -> '~'.
+		// reject empty segments or segments that are not considered safe object property names
 		const seg = raw.replace(/~1/g, '/').replace(/~0/g, '~');
-		if (seg.length === 0 || !isSafeObjectProperty(seg)) return null;
+		if (seg.length === 0 || !isSafeObjectProperty(seg)) {
+			return null;
+		}
+
 		segments.push(seg);
 	}
 	return segments;
 };
 
+const isArrayIndexSegment = (segment: string): boolean => /^(0|[1-9]\d*)$/.test(segment);
+
+/**
+ * Read/write a single segment on a cursor that may be a plain object or an array.
+ * Returns an error message for an out-of-bounds or non-numeric array segment,
+ * otherwise returns `{ value }` (the current value at that segment, possibly
+ * undefined) — writing is done separately by the caller via `writeSegment`.
+ */
+const readSegment = (
+	cursor: Record<string, unknown> | unknown[],
+	key: string,
+	failingPathForErrorMessage: string,
+): { value: unknown } | { error: string } => {
+	if (!Array.isArray(cursor)) {
+		return { value: cursor[key] };
+	}
+
+	if (!isArrayIndexSegment(key)) {
+		return { error: `cannot use '${key}' as an array index at '/${failingPathForErrorMessage}'` };
+	}
+
+	const index = Number(key);
+	if (index >= cursor.length) {
+		return {
+			error: `array index ${index} out of bounds (length ${cursor.length}) at '/${failingPathForErrorMessage}'`,
+		};
+	}
+
+	return { value: cursor[index] };
+};
+
+const writeSegment = (
+	cursor: Record<string, unknown> | unknown[],
+	key: string,
+	value: unknown,
+): void => {
+	if (Array.isArray(cursor)) {
+		cursor[Number(key)] = value;
+		return;
+	}
+	cursor[key] = value;
+};
+
 /**
  * Set `value` at `segments` inside `root`, creating intermediate objects on demand.
- * Returns an error message if an intermediate segment exists but is not a plain object,
- * otherwise mutates `root` in place and returns null.
+ * Numeric segments index into arrays (must reference an existing element, no auto-extension).
+ * Mutates `root` in place; returns an error message on failure, else null.
  */
+// PROVISIONAL — ejemplo:
+//   root     = { assignments: { assignments: [ { id: 'a', name: 'x', value: 1 } ] } }
+//   segments = ['assignments', 'assignments', '0', 'value']   // viene de parsear "/assignments/assignments/0/value"
+//   value    = 99
+// objetivo: dejar root.assignments.assignments[0].value = 99
 const setAtPointer = (
 	root: Record<string, unknown>,
 	segments: string[],
 	value: unknown,
 ): string | null => {
-	let cursor: Record<string, unknown> = root;
+	let cursor: Record<string, unknown> | unknown[] = root;
+
+	// Loop through all elements but the last one, since that is the one we want
+	// to write to, not read from. The previous segments are just for navigation
+	// to that point.
 	for (let i = 0; i < segments.length - 1; i++) {
-		const key = segments[i];
-		const next = cursor[key];
-		if (next === undefined) {
+		const key = segments[i]; // i=0 -> 'assignments'; i=1 -> 'assignments'; i=2 -> '0'
+
+		const failingPathSegmentReadingFailure = segments.slice(0, i).join('/');
+
+		const read = readSegment(cursor, key, failingPathSegmentReadingFailure);
+		if ('error' in read) {
+			return read.error;
+		}
+
+		if (read.value === undefined && !Array.isArray(cursor)) {
+			const nextKey = segments[i + 1];
+			if (isArrayIndexSegment(nextKey)) {
+				// Do not auto-create an array as in many if not all situations might result in a broken node and workflow
+				const containerPath = segments.slice(0, i + 1).join('/');
+				return `cannot create array at '/${containerPath}' for numeric segment '${nextKey}' — set the whole array via updateNodeParameters instead`;
+			}
+
 			const child: Record<string, unknown> = {};
-			cursor[key] = child;
+			writeSegment(cursor, key, child);
 			cursor = child;
-		} else if (isPlainObject(next)) {
-			cursor = next;
+		} else if (isPlainObject(read.value) || Array.isArray(read.value)) {
+			// The intermediate container already exists and is valid (object or array)
+			// it is our cursor now, next iteration will read from it.
+			cursor = read.value;
 		} else {
-			return `cannot descend into non-object at '/${segments.slice(0, i + 1).join('/')}'`;
+			const failingPath = segments.slice(0, i + 1).join('/');
+			return `cannot descend into non-object at '/${failingPath}'`;
 		}
 	}
-	cursor[segments[segments.length - 1]] = sanitizeUnsafeKeys(value);
+
+	// Here the cursor finally points to what we want to update
+	const lastKey = segments[segments.length - 1];
+	if (Array.isArray(cursor)) {
+		const failingPathWithoutIndex = segments.slice(0, -1).join('/');
+
+		if (!isArrayIndexSegment(lastKey)) {
+			return `cannot use '${lastKey}' as an array index at '/${failingPathWithoutIndex}'`;
+		}
+
+		const index = Number(lastKey);
+		if (index >= cursor.length) {
+			return `array index ${index} out of bounds (length ${cursor.length}) at '/${failingPathWithoutIndex}'`;
+		}
+	}
+
+	writeSegment(cursor, lastKey, sanitizeUnsafeKeys(value));
 	return null;
 };
 

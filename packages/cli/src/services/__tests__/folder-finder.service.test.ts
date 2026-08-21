@@ -192,4 +192,37 @@ describe('FolderFinderService', () => {
 			expect(result).toEqual(new Set(['fld-1']));
 		});
 	});
+
+	describe('findFolderFilterIdsWithoutAccessCheck', () => {
+		it('returns an empty list for a folder that does not exist', async () => {
+			const { finder, folderRepository } = makeFinder([]);
+
+			const result = await finder.findFolderFilterIdsWithoutAccessCheck('fld-missing', true);
+
+			expect(result).toEqual([]);
+			expect(folderRepository.getAllFolderIdsInSubtrees.mock.calls).toHaveLength(0);
+		});
+
+		it('returns only the folder itself when descendants are not requested', async () => {
+			const { finder, folderRepository } = makeFinder([makeFolder({ id: 'fld-1' })]);
+
+			const result = await finder.findFolderFilterIdsWithoutAccessCheck('fld-1', false);
+
+			expect(result).toEqual(['fld-1']);
+			expect(folderRepository.getAllFolderIdsInSubtrees.mock.calls).toHaveLength(0);
+		});
+
+		it('returns the folder with its descendants, without an access check', async () => {
+			const { finder, folderRepository, roleService } = makeFinder([makeFolder({ id: 'fld-1' })]);
+			folderRepository.getAllFolderIdsInSubtrees.mockResolvedValue(['fld-2', 'fld-3']);
+
+			const result = await finder.findFolderFilterIdsWithoutAccessCheck('fld-1', true);
+
+			expect(result).toEqual(['fld-1', 'fld-2', 'fld-3']);
+			expect(folderRepository.getAllFolderIdsInSubtrees.mock.calls[0]).toEqual([['fld-1']]);
+			// No project roles are resolved: these ids only narrow a query that
+			// enforces access on its own.
+			expect(roleService.rolesWithScope.mock.calls).toHaveLength(0);
+		});
+	});
 });

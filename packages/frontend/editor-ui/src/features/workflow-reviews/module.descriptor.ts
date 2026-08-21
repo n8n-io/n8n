@@ -15,13 +15,13 @@ export const WorkflowReviewsModule: FrontendModuleDescription = {
 	icon: 'message-square-text',
 	routes: [
 		{
-			path: '/workflow-review-requests/:reviewRequestId?',
+			path: '/reviews/:reviewRequestId?',
 			name: WORKFLOW_REVIEW_REQUESTS_VIEW,
 			component: WorkflowReviewRequestsView,
 			beforeEnter() {
 				return (
 					useWorkflowReviewsFeature().isWorkflowReviewsEnabled.value || {
-						name: VIEWS.NOT_FOUND,
+						name: VIEWS.HOMEPAGE,
 					}
 				);
 			},

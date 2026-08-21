@@ -19,6 +19,11 @@ export function pillColors(
 			return { backgroundColor: 'var(--color--orange-200)', color: 'var(--color--orange-950)' };
 		case 'node':
 			return { backgroundColor: 'var(--color--neutral-200)', color: 'var(--color--neutral-950)' };
+		case 'execution-error':
+			return {
+				backgroundColor: 'var(--color--red-150)',
+				color: 'var(--text-color--danger)',
+			};
 		case 'suspension':
 		case 'idle':
 			return { backgroundColor: 'var(--color--yellow-200)', color: 'var(--color--yellow-950)' };
