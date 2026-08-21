@@ -366,6 +366,39 @@ describe('Confluence listSearch.getLabels', () => {
 		expect(result.results.map(({ name, value }) => [name, value])).toEqual([['runbook', '1']]);
 	});
 
+	it('scans past a partial match while an exact match may lie ahead in the name sort', async () => {
+		apiRequest
+			.mockResolvedValueOnce({
+				results: [{ id: 1, name: 'aqua-qa', prefix: 'global' }],
+				_links: { next: '/wiki/api/v2/labels?cursor=c2' },
+			})
+			.mockResolvedValueOnce({
+				results: [{ id: 2, name: 'qa', prefix: 'global' }],
+				_links: { next: '/wiki/api/v2/labels?cursor=c3' },
+			});
+
+		const result = await getLabels.call(ctx, 'qa');
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(result.results.map(({ name, value }) => [name, value])).toEqual([
+			['aqua-qa', '1'],
+			['qa', '2'],
+		]);
+	});
+
+	it('stops scanning once the name sort has passed the typed text', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [{ id: 1, name: 'runbook', prefix: 'global' }],
+			_links: { next: '/wiki/api/v2/labels?cursor=c2' },
+		});
+
+		const result = await getLabels.call(ctx, 'run');
+
+		expect(apiRequest).toHaveBeenCalledTimes(1);
+		expect(result.results.map(({ name, value }) => [name, value])).toEqual([['runbook', '1']]);
+		expect(result.paginationToken).toBe('c2');
+	});
+
 	it('keeps fetching pages while a typed filter has no match yet', async () => {
 		apiRequest
 			.mockResolvedValueOnce({
