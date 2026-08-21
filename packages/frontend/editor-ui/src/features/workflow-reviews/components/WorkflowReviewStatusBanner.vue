@@ -79,8 +79,6 @@ const hasDivergentVersion = computed(() => {
 
 const status = computed<BannerStatus | null>(() => {
 	const review = props.review;
-	// A pruned pin leaves nothing to name or publish, so stay silent
-	// rather than render copy about a version that no longer exists.
 	if (!review?.workflowVersionId) return null;
 
 	const version = pinnedVersionLabel.value;

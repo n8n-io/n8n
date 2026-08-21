@@ -325,12 +325,17 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 
 		// Raw rows are 1:1 with entities — the (requestId, workflowId) pair is unique —
 		// but key by id instead of index to stay independent of entity deduplication.
-		const versionIdByRequestId = new Map(
-			raw.map((row) => [row.request_id, row.pinnedWorkflowVersionId ?? null]),
-		);
-		const versionNameByRequestId = new Map(
-			raw.map((row) => [row.request_id, row.pinnedWorkflowVersionName ?? null]),
-		);
+		const pinnedByRequestId = new Map<
+			string,
+			{ workflowVersionId: string | null; workflowVersionName: string | null }
+		>();
+		for (const row of raw) {
+			pinnedByRequestId.set(row.request_id, {
+				workflowVersionId: row.pinnedWorkflowVersionId ?? null,
+				workflowVersionName: row.pinnedWorkflowVersionName ?? null,
+			});
+		}
+
 		const requests = entities.map((entity) => ({
 			id: entity.id,
 			projectId: entity.projectId,
@@ -340,8 +345,7 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			updatedById: entity.updatedById,
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
-			workflowVersionId: versionIdByRequestId.get(entity.id) ?? null,
-			workflowVersionName: versionNameByRequestId.get(entity.id) ?? null,
+			...pinnedByRequestId.get(entity.id)!,
 		}));
 
 		return [requests, count];
