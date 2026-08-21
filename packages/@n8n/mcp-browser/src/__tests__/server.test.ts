@@ -24,21 +24,33 @@ async function boot(
 	baseUrl: string;
 	close: () => Promise<void>;
 }> {
-	const port = await freePort();
-	const started = await startHttpTransport({
-		config: {},
-		host: '127.0.0.1',
-		port,
-		authToken,
-		...sessionOpts,
-	});
-	return {
-		started,
-		baseUrl: `http://127.0.0.1:${port}`,
-		close: async () => {
-			await new Promise<void>((resolve) => started.httpServer.close(() => resolve()));
-		},
-	};
+	// There is an unavoidable gap between releasing the probed port and re-binding it, so another
+	// process can win the race. `startHttpTransport` now rejects on a failed bind rather than
+	// hanging, which makes that losable race simply retryable here.
+	let lastError: unknown;
+	for (let attempt = 0; attempt < 5; attempt++) {
+		const port = await freePort();
+		try {
+			const started = await startHttpTransport({
+				config: {},
+				host: '127.0.0.1',
+				port,
+				authToken,
+				...sessionOpts,
+			});
+			return {
+				started,
+				baseUrl: `http://127.0.0.1:${port}`,
+				close: async () => {
+					await new Promise<void>((resolve) => started.httpServer.close(() => resolve()));
+				},
+			};
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code !== 'EADDRINUSE') throw error;
+			lastError = error;
+		}
+	}
+	throw lastError;
 }
 
 describe('isAuthorized', () => {
@@ -211,6 +223,22 @@ describe('idle session eviction', () => {
 			expect(booted.started.activeConnections.size).toBe(1);
 		} finally {
 			await booted.close();
+		}
+	});
+});
+
+describe('startHttpTransport bind failures', () => {
+	it('rejects instead of hanging when the port is already taken', async () => {
+		const port = await freePort();
+		const squatter = createServer();
+		await new Promise<void>((resolve) => squatter.listen(port, '127.0.0.1', () => resolve()));
+
+		try {
+			await expect(
+				startHttpTransport({ config: {}, host: '127.0.0.1', port, authToken: 'token' }),
+			).rejects.toMatchObject({ code: 'EADDRINUSE' });
+		} finally {
+			await new Promise<void>((resolve) => squatter.close(() => resolve()));
 		}
 	});
 });

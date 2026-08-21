@@ -194,8 +194,17 @@ export async function startHttpTransport(opts: {
 	sweeper.unref();
 	httpServer.on('close', () => clearInterval(sweeper));
 
-	await new Promise<void>((resolve) => {
+	await new Promise<void>((resolve, reject) => {
+		// Without an `error` handler a failed bind (EADDRINUSE, EACCES on a privileged port…)
+		// never settles this promise, so the caller hangs forever instead of reporting why the
+		// server did not come up.
+		const onError = (error: Error) => {
+			clearInterval(sweeper);
+			reject(error);
+		};
+		httpServer.once('error', onError);
 		httpServer.listen(port, host, () => {
+			httpServer.removeListener('error', onError);
 			console.debug(`n8n-browser MCP server listening on http://${host}:${port}`);
 			resolve();
 		});
