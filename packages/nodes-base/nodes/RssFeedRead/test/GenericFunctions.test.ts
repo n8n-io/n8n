@@ -2,7 +2,7 @@ import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import Parser from 'rss-parser';
 
-import { parseFeedUrl } from '../GenericFunctions';
+import { feedFetchFailedTransiently, parseFeedUrl } from '../GenericFunctions';
 import type { Mock } from 'vitest';
 
 vi.mock('rss-parser');
@@ -115,5 +115,38 @@ describe('parseFeedUrl', () => {
 		(Parser.prototype.parseString as Mock).mockRejectedValue(parseError);
 
 		await expect(parseFeedUrl(helpers, feedUrl)).rejects.toBe(parseError);
+	});
+
+	describe('feedFetchFailedTransiently', () => {
+		it('treats a 429 rate-limit response as transient', () => {
+			expect(feedFetchFailedTransiently({ httpCode: '429' })).toBe(true);
+			expect(feedFetchFailedTransiently({ response: { status: 429 } })).toBe(true);
+			expect(feedFetchFailedTransiently({ statusCode: 429 })).toBe(true);
+		});
+
+		it('treats 5xx server errors as transient', () => {
+			for (const status of [500, 502, 503, 504]) {
+				expect(feedFetchFailedTransiently({ httpCode: String(status) })).toBe(true);
+				expect(feedFetchFailedTransiently({ response: { status } })).toBe(true);
+			}
+		});
+
+		it('does not treat permanent 4xx errors (other than 429) as transient', () => {
+			for (const status of [400, 401, 403, 404]) {
+				expect(feedFetchFailedTransiently({ httpCode: String(status) })).toBe(false);
+				expect(feedFetchFailedTransiently({ response: { status } })).toBe(false);
+			}
+		});
+
+		it('does not treat connection failures as transient', () => {
+			expect(
+				feedFetchFailedTransiently(Object.assign(new Error('refused'), { code: 'ECONNREFUSED' })),
+			).toBe(false);
+		});
+
+		it('returns false for non-objects and missing status', () => {
+			expect(feedFetchFailedTransiently(null)).toBe(false);
+			expect(feedFetchFailedTransiently(new Error('boom'))).toBe(false);
+		});
 	});
 });
