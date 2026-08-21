@@ -83,7 +83,7 @@ export type SelectProps<M extends boolean = false> = Omit<
 };
 
 export type SelectEmits<M extends boolean = false> = Omit<SelectRootEmits, 'update:modelValue'> & {
-	['update:modelValue']: [value: SelectModelValue<M> | undefined];
+	'update:modelValue': [value: SelectModelValue<M> | undefined];
 	clear: [];
 };
 
@@ -95,9 +95,9 @@ export type SelectItemSlotProps = (props: {
 }) => unknown;
 
 export type SelectItemSlots = {
-	['item-leading']?: SelectItemSlotProps;
-	['item-label']?: (props: { item: SelectOptionBase }) => unknown;
-	['item-trailing']?: SelectItemSlotProps;
+	'item-leading'?: SelectItemSlotProps;
+	'item-label'?: (props: { item: SelectOptionBase }) => unknown;
+	'item-trailing'?: SelectItemSlotProps;
 };
 
 export type SelectSlots<M extends boolean = false> = SelectItemSlots & {
