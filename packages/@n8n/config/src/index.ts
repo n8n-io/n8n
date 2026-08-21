@@ -23,6 +23,7 @@ import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
 import { ExpressionEngineConfig } from './configs/expression-engine.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
+import { FeatureFlagConfig } from './configs/feature-flags.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { HttpRequestConfig } from './configs/http-request.config';
@@ -36,7 +37,6 @@ import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
 import { PersonalizationConfig } from './configs/personalization.config';
-import { PollerConfig } from './configs/poller.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
 import { TaskRunnersConfig } from './configs/runners.config';
@@ -73,7 +73,6 @@ export { ExecutionsConfig } from './configs/executions.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
-export { PollerConfig } from './configs/poller.config';
 export * from './custom-types';
 export { DeploymentConfig } from './configs/deployment.config';
 export { McpClientConfig } from './configs/mcp-client.config';
@@ -181,9 +180,6 @@ export class GlobalConfig {
 
 	@Nested
 	scheduler: SchedulerConfig;
-
-	@Nested
-	poller: PollerConfig;
 
 	@Nested
 	generic: GenericConfig;
@@ -316,4 +312,7 @@ export class GlobalConfig {
 
 	@Nested
 	instanceSettingsLoader: InstanceSettingsLoaderConfig;
+
+	@Nested
+	featureFlags: FeatureFlagConfig;
 }

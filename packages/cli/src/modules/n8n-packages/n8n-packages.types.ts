@@ -62,6 +62,19 @@ export const FolderConflictPolicy = {
 	Merge: 'merge',
 	/** Fails the import if any package folder already exists in the target project. */
 	Fail: 'fail',
+	/**
+	 * Like `merge` for the folders themselves, but makes the package authoritative for the
+	 * project scopes it defines: a workflow at the project root or in a package folder that the
+	 * package does not contain is removed, per `overwriteDeletionPolicy`. Project packages only.
+	 */
+	Overwrite: 'overwrite',
+} as const;
+
+export const OverwriteDeletionPolicy = {
+	/** Archives the workflow, keeping it (and its executions) recoverable. */
+	Archive: 'archive',
+	/** Archives the workflow to unpublish it, then deletes it along with its execution history. */
+	HardDelete: 'hard-delete',
 } as const;
 
 export const MissingNodeTypeMode = {
@@ -89,6 +102,13 @@ export const WorkflowVersionPolicy = {
 	IgnoreUnpublished: 'ignore-unpublished',
 	/** Exports the latest version of every workflow, published or not. */
 	Latest: 'latest',
+} as const;
+
+export const CredentialExportPolicy = {
+	/** Bundles only expression-valued fields from credential data; literal values never travel. */
+	ExpressionValuesOnly: 'expression-values-only',
+	/** Keeps credential data out of the package; credential.json carries id, name and type only. */
+	NoValues: 'no-values',
 } as const;
 
 export const DataTableMatchingMode = {
@@ -164,6 +184,9 @@ export type ProjectConflictPolicy =
 
 export type FolderConflictPolicy = (typeof FolderConflictPolicy)[keyof typeof FolderConflictPolicy];
 
+export type OverwriteDeletionPolicy =
+	(typeof OverwriteDeletionPolicy)[keyof typeof OverwriteDeletionPolicy];
+
 export type MissingNodeTypeMode = (typeof MissingNodeTypeMode)[keyof typeof MissingNodeTypeMode];
 
 export type MissingWorkflowDependencyPolicy =
@@ -171,6 +194,9 @@ export type MissingWorkflowDependencyPolicy =
 
 export type WorkflowVersionPolicy =
 	(typeof WorkflowVersionPolicy)[keyof typeof WorkflowVersionPolicy];
+
+export type CredentialExportPolicy =
+	(typeof CredentialExportPolicy)[keyof typeof CredentialExportPolicy];
 
 export type DataTableMatchingMode =
 	(typeof DataTableMatchingMode)[keyof typeof DataTableMatchingMode];
@@ -201,6 +227,7 @@ export interface ExportPackageRequest {
 	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
 	workflowVersionPolicy?: WorkflowVersionPolicy;
+	credentialExportPolicy?: CredentialExportPolicy;
 }
 
 export type ImportPackageRequest = {
@@ -235,8 +262,24 @@ export type ImportProjectProperties = {
 	projectConflictPolicy: ProjectConflictPolicy;
 };
 
-export type ImportFolderProperties = {
+/** Folder options once the dispatcher has settled what the caller left to the project policy. */
+export type ResolvedImportFolderProperties = ImportFolderProperties & {
 	folderConflictPolicy: FolderConflictPolicy;
+};
+
+/** An import request every importer can read without re-deriving what the caller omitted. */
+export type ResolvedImportPackageRequest = ImportPackageRequest & ResolvedImportFolderProperties;
+
+export type ImportFolderProperties = {
+	/**
+	 * Omitted means "same as `projectConflictPolicy`" — the two express one intent at two levels, so
+	 * the caller states it once. The dispatcher settles it (`resolveFolderConflictPolicy`, in
+	 * `entities/folder/folder-conflict-policy.ts`) before any importer runs, which is why
+	 * everything downstream sees a concrete value.
+	 */
+	folderConflictPolicy?: FolderConflictPolicy;
+	/** How `folderConflictPolicy=overwrite` removes a workflow the package does not contain. */
+	overwriteDeletionPolicy: OverwriteDeletionPolicy;
 };
 
 export type ImportDataTableProperties = {
@@ -271,6 +314,8 @@ export interface ImportContext {
 
 export type ImportPackageEventOptions = ImportCredentialProperties &
 	ImportWorkflowProperties &
+	ImportProjectProperties &
+	ResolvedImportFolderProperties &
 	ImportDataTableProperties &
 	ImportVariableProperties &
 	ImportTagProperties;
@@ -291,6 +336,13 @@ export type ImportPackageEventCounts = {
 		created: number;
 		updated: number;
 		skipped: number;
+		/** Removed by reconciliation, split by what actually happened (see `RemovedWorkflowSummary`). */
+		archived: number;
+		deleted: number;
+	};
+	folders: {
+		/** Emptied by reconciliation and deleted. */
+		removed: number;
 	};
 	credentials: {
 		matched: number;
@@ -365,6 +417,30 @@ export interface ImportedFolderSummary {
 	status: 'created' | 'skipped';
 }
 
+/**
+ * A workflow the target had that the package does not, removed under
+ * `folderConflictPolicy=overwrite`. `deletion` reports what actually happened rather than what was
+ * asked for: a `hard-delete` whose row could not be dropped yet is left `archived`.
+ */
+export interface RemovedWorkflowSummary {
+	workflowId: string;
+	name: string;
+	projectId: string;
+	parentFolderId: string | null;
+	deletion: 'archived' | 'deleted';
+}
+
+/**
+ * A folder the target had that the package does not define, removed under
+ * `folderConflictPolicy=overwrite` once nothing was left inside it.
+ */
+export interface RemovedFolderSummary {
+	folderId: string;
+	name: string;
+	projectId: string;
+	parentFolderId: string | null;
+}
+
 export interface ImportedProjectSummary {
 	sourceProjectId: string;
 	localId: string;
@@ -395,6 +471,8 @@ export type BlockingIssue =
 	  }
 	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
+	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
+	| ({ type: 'folder-removal-forbidden' } & FolderRemovalFailure)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
 	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
 	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
@@ -407,6 +485,28 @@ export type BlockingIssue =
 			typeVersion: number;
 			usedByWorkflows: string[];
 	  };
+
+/**
+ * A workflow `folderConflictPolicy=overwrite` would archive that the caller may not archive.
+ * Blocking rather than skipped: a partial reconciliation leaves the target matching neither
+ * the package nor its previous state.
+ */
+export interface WorkflowRemovalFailure {
+	workflowId: string;
+	name: string;
+	projectId: string;
+}
+
+/**
+ * A folder `folderConflictPolicy=overwrite` would delete that the caller may not delete.
+ * Blocking for the same reason as workflow removal: a partial reconciliation leaves the
+ * target matching neither the package nor its previous state.
+ */
+export interface FolderRemovalFailure {
+	folderId: string;
+	name: string;
+	projectId: string;
+}
 
 export interface ProjectConflict {
 	kind: 'fail-policy';
@@ -494,6 +594,10 @@ export interface ImportTagSummary {
 export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
+	/** Workflows the package did not contain, removed under `folderConflictPolicy=overwrite`. */
+	removedWorkflows: RemovedWorkflowSummary[];
+	/** Folders the package did not define that were left empty by the removals above. */
+	removedFolders: RemovedFolderSummary[];
 	folders: ImportedFolderSummary[];
 	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;

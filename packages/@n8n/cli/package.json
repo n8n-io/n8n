@@ -66,6 +66,9 @@
       "source-control": {
         "description": "Pull changes from the configured source control provider"
       },
+      "git-connections": {
+        "description": "Create and manage Git repository connections"
+      },
       "package": {
         "description": "Export and import workflows as n8n packages (beta)"
       },

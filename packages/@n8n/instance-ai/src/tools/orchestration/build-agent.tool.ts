@@ -121,6 +121,8 @@ function buildOutboundMessage(message: string, workflowContext?: SessionWorkflow
 /** Builder sessions are keyed per assistant thread + target agent; the resume
  *  leg must reconstruct the same `threadId` byte-identically after a restart. */
 function builderSessionFor(context: OrchestrationContext, agentId: string) {
+	const mcpTools =
+		context.mcpTools instanceof Map && context.mcpTools.size > 0 ? context.mcpTools : undefined;
 	const telemetry = context.tracing?.getTelemetry?.({
 		agentRole: BUILDER_SUB_AGENT_ROLE,
 		functionId: 'instance-ai.subagent.agent-builder',
@@ -137,6 +139,7 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
 			: {}),
 		abortSignal: context.abortSignal,
+		...(mcpTools ? { mcpTools } : {}),
 	};
 }
 

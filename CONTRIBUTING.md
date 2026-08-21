@@ -5,47 +5,38 @@ Great that you are here and you want to contribute to n8n
 ## Contents
 
 - [Contributing to n8n](#contributing-to-n8n)
-  - [Contents](#contents)
-  - [Code of conduct](#code-of-conduct)
-  - [Directory structure](#directory-structure)
-  - [Development setup](#development-setup)
-    - [Dev Container](#dev-container)
-    - [Requirements](#requirements)
-      - [Node.js](#nodejs)
-      - [pnpm](#pnpm)
-        - [pnpm workspaces](#pnpm-workspaces)
-      - [corepack](#corepack)
-      - [Build tools](#build-tools)
-      - [actionlint (for GitHub Actions workflow development)](#actionlint-for-github-actions-workflow-development)
-      - [tbls (for database schema docs)](#tbls-for-database-schema-docs)
-    - [Actual n8n setup](#actual-n8n-setup)
-      - [For external contributors](#for-external-contributors)
-      - [For everyone](#for-everyone)
-    - [Start](#start)
-    - [Environment variables (optional)](#environment-variables-optional)
-  - [Development cycle](#development-cycle)
-    - [Basic Development Workflow Example (most used within n8n)](#basic-development-workflow-example-most-used-within-n8n)
-    - [Selective Package Development](#selective-package-development)
-      - [Available Filtered Commands](#available-filtered-commands)
-      - [Custom Selective Development](#custom-selective-development)
-      - [Running the BE server with a clean database](#running-the-be-server-with-a-clean-database)
-    - [Hot Reload for Nodes (N8N\_DEV\_RELOAD)](#hot-reload-for-nodes-n8n_dev_reload)
-    - [Run local instances in different configurations](#run-local-instances-in-different-configurations)
-    - [Work locally with syslog](#work-locally-with-syslog)
-    - [Performance Considerations](#performance-considerations)
-    - [Community PR Guidelines](#community-pr-guidelines)
-      - [**1. Change Request/Comment**](#1-change-requestcomment)
-      - [**2. General Requirements**](#2-general-requirements)
-      - [**3. PR Specific Requirements**](#3-pr-specific-requirements)
-      - [**4. Workflow Summary for Non-Compliant PRs**](#4-workflow-summary-for-non-compliant-prs)
-    - [Test suite](#test-suite)
-      - [Unit tests](#unit-tests)
-      - [Code Coverage](#code-coverage)
-      - [E2E tests](#e2e-tests)
-  - [Create custom nodes](#create-custom-nodes)
-  - [Extend documentation](#extend-documentation)
-  - [Contribute workflow templates](#contribute-workflow-templates)
-  - [Contributor License Agreement](#contributor-license-agreement)
+	- [Contents](#contents)
+	- [Code of conduct](#code-of-conduct)
+	- [Directory structure](#directory-structure)
+	- [Development setup](#development-setup)
+		- [Dev Container](#dev-container)
+		- [Requirements](#requirements)
+			- [Node.js](#nodejs)
+			- [pnpm](#pnpm)
+				- [pnpm workspaces](#pnpm-workspaces)
+			- [corepack](#corepack)
+			- [Build tools](#build-tools)
+		- [Actual n8n setup](#actual-n8n-setup)
+		- [Start](#start)
+	- [Development cycle](#development-cycle)
+		- [Stacked pull requests](#stacked-pull-requests)
+			- [Enabling `gh stack`](#enabling-gh-stack)
+			- [Splitting work into a stack yourself](#splitting-work-into-a-stack-yourself)
+			- [Asking an agent to do it](#asking-an-agent-to-do-it)
+		- [Community PR Guidelines](#community-pr-guidelines)
+			- [**1. Change Request/Comment**](#1-change-requestcomment)
+			- [**2. General Requirements**](#2-general-requirements)
+			- [**3. PR Specific Requirements**](#3-pr-specific-requirements)
+			- [**4. Workflow Summary for Non-Compliant PRs**](#4-workflow-summary-for-non-compliant-prs)
+		- [Test suite](#test-suite)
+			- [Unit tests](#unit-tests)
+			- [Code Coverage](#code-coverage)
+			- [E2E tests](#e2e-tests)
+	- [Releasing](#releasing)
+	- [Create custom nodes](#create-custom-nodes)
+	- [Extend documentation](#extend-documentation)
+	- [Contribute workflow templates](#contribute-workflow-templates)
+	- [Contributor License Agreement](#contributor-license-agreement)
 
 ## Code of conduct
 
@@ -451,6 +442,75 @@ processes in parallel:
 1. Use selective development commands based on your task
 2. Close unnecessary applications to free up resources
 3. Monitor system performance and adjust your development approach accordingly
+
+---
+
+### Stacked pull requests
+
+A large change is easier to review as a chain of small PRs, each building on the
+one below it — a *stack*. The bottom PR targets `master`, every PR above it
+targets the branch below, so each review shows only that layer's diff. GitHub
+links them together, and the stack merges bottom to top.
+
+Reach for a stack when the work has natural layers (schema → API → UI), or when
+a single PR would grow past the size guidance in
+[Community PR Guidelines](#community-pr-guidelines).
+
+#### Enabling `gh stack`
+
+Stacked PRs are enabled on `n8n-io/n8n`. On your machine you need the
+[GitHub CLI](https://cli.github.com/) v2+, authenticated (`gh auth login`), plus:
+
+```bash
+gh extension install github/gh-stack
+git config rerere.enabled true        # remember conflict resolutions across rebases
+git config remote.pushDefault origin  # only needed if you have several remotes
+```
+
+#### Splitting work into a stack yourself
+
+```bash
+gh stack init ligo-123-db     # first branch, off master
+git add -p && git commit      # commit only what belongs in this layer
+gh stack add ligo-123-api     # next branch, stacked on the previous one
+git add -p && git commit
+gh stack add ligo-123-ui
+git add -p && git commit
+gh stack submit --auto        # push every branch and open a draft PR per branch
+```
+
+From there:
+
+- `gh stack up` / `down` / `top` / `bottom` move between layers.
+- Need a change in a lower layer? Go there, commit it, then
+  `gh stack rebase --upstack` to replay the layers above.
+- `gh stack sync` after `master` moves or a lower PR merges (`--prune` also
+  deletes local branches whose PR is merged).
+- `gh stack merge --yes --squash` merges the stack — `gh pr merge` does not work
+  on stacked PRs.
+
+Without the extension you can do the same by hand: create the branches yourself
+and open each PR with `gh pr create --base <branch-below>`. You then own the
+rebasing every time a lower branch changes.
+
+Two things to watch for in this repo:
+
+- `--auto` builds PR titles from your commit subjects (or the branch name), which
+  usually will not pass our
+  [PR title conventions](.github/pull_request_title_conventions.md). Write
+  conventional commit subjects, or fix the titles with `gh pr edit` before asking
+  for review. Each PR still needs its own description and tests — it is reviewed
+  on its own.
+- Every PR in the stack runs its own CI, so make each layer worth a full run.
+
+#### Asking an agent to do it
+
+The repo ships a [`gh-stack` skill](.agents/skills/gh-stack/SKILL.md) that
+teaches agents the non-interactive command rules, so you can just ask:
+*"split this branch into a stack: db layer, API layer, UI layer"*, or
+*"add the frontend changes as a new layer on top and resubmit"*. The setup above
+is still on you — the extension and the git config are per-machine, and the
+agent cannot install them for you.
 
 ---
 

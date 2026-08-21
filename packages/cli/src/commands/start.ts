@@ -45,7 +45,6 @@ import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-hi
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
-import { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 
 import { BaseCommand } from './base-command';
 
@@ -218,8 +217,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(DeprecationService).warn();
 
-		// Must complete before PollJobProvider.init() reads the verdict below.
-		await Container.get(DurablePollerGateService).init();
 		// Resolved lazily at activation time, so this only needs to run before the
 		// first workflow activation.
 		Container.get(PollJobProvider).init();

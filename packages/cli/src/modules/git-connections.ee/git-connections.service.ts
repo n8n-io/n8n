@@ -1,23 +1,40 @@
-import type {
-	CreateGitConnectionDto,
-	GitConnectionPublicDto,
-	UpdateGitConnectionDto,
+import {
+	type CreateGitConnectionDto,
+	GitConnectionProjectListPublicDto,
+	GitConnectionProjectPublicDto,
+	type GitConnectionPublicDto,
+	type UpdateGitConnectionDto,
 } from '@n8n/api-types';
+import type { User } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import path from 'node:path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { GitConnectionProject } from './database/entities/git-connection-project.entity';
 import { GitConnection } from './database/entities/git-connection.entity';
+import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from './database/repositories/git-connection.repository';
 import { GitConnectionsGitService } from './git-connections-git.service';
+
+type ManageProjectLinkOptions = {
+	user: User;
+	connectionId: string;
+	projectId: string;
+};
 
 @Service()
 export class GitConnectionsService {
 	constructor(
 		private readonly repository: GitConnectionRepository,
+		private readonly gitConnectionProjectRepository: GitConnectionProjectRepository,
+		private readonly projectRepository: ProjectRepository,
 		private readonly gitService: GitConnectionsGitService,
 		private readonly cipher: Cipher,
 		private readonly instanceSettings: InstanceSettings,
@@ -84,10 +101,10 @@ export class GitConnectionsService {
 		return this.toPublic(saved);
 	}
 
-	async connect(id: string, branchName?: string) {
+	async clone(id: string, branchName?: string) {
 		const connection = await this.getEntity(id);
 		const effectiveBranch = branchName ?? connection.branchName;
-		if (!effectiveBranch) throw new BadRequestError('A branch name is required to connect');
+		if (!effectiveBranch) throw new BadRequestError('A branch name is required to clone');
 		const credentials = await this.decryptCredentials(connection);
 		await this.gitService.clone({
 			connection,
@@ -109,6 +126,78 @@ export class GitConnectionsService {
 		const connection = await this.getEntity(id);
 		await this.purge(id);
 		await this.repository.remove(connection);
+	}
+
+	async addProject({
+		user,
+		connectionId,
+		projectId,
+	}: ManageProjectLinkOptions): Promise<GitConnectionProjectPublicDto> {
+		// Validates the connection exists (throws NotFound otherwise) before any project link work.
+		await this.getEntity(connectionId);
+
+		await this.assertProjectAccess(user, projectId);
+		await this.assertProjectCanBeAdded(projectId);
+
+		const link = await this.gitConnectionProjectRepository.linkProject(projectId, connectionId);
+		if (link.gitConnectionId !== connectionId) {
+			throw new ConflictError('Project is already added to another Git connection');
+		}
+		return this.toLinkPublic(link);
+	}
+
+	async removeProject({ user, connectionId, projectId }: ManageProjectLinkOptions): Promise<void> {
+		// Validates the connection exists (throws NotFound otherwise) before any project link work.
+		await this.getEntity(connectionId);
+
+		await this.assertProjectAccess(user, projectId);
+		const existing = await this.gitConnectionProjectRepository.findByProjectId(projectId);
+		if (!existing) return;
+		if (existing.gitConnectionId !== connectionId) {
+			throw new ConflictError('Project is added to another Git connection');
+		}
+		const removed = await this.gitConnectionProjectRepository.unlinkProject(
+			projectId,
+			connectionId,
+		);
+		if (removed === 0) {
+			// The link changed between our read and the delete. Re-read: a different
+			// owner is a conflict; a missing link stays a no-op.
+			const current = await this.gitConnectionProjectRepository.findByProjectId(projectId);
+			if (current && current.gitConnectionId !== connectionId) {
+				throw new ConflictError('Project is added to another Git connection');
+			}
+		}
+	}
+
+	async listProjects(id: string): Promise<GitConnectionProjectListPublicDto> {
+		// Validates the connection exists (throws NotFound otherwise) before any project link work.
+		await this.getEntity(id);
+
+		const projectIds = await this.gitConnectionProjectRepository.findProjectIdsByConnection(id);
+		return GitConnectionProjectListPublicDto.parse({ projectIds });
+	}
+
+	// Only let the caller manage links for projects they can edit, on top of the
+	// route's global `gitConnection:manageProjects` scope.
+	private async assertProjectAccess(user: User, projectId: string) {
+		const allowed = await userHasScopes(user, ['project:update'], false, { projectId });
+		if (!allowed) throw new ForbiddenError('You do not have access to this project');
+	}
+
+	private async assertProjectCanBeAdded(projectId: string) {
+		const project = await this.projectRepository.findOneBy({ id: projectId });
+		if (!project) throw new NotFoundError('Project not found');
+		if (project.type !== 'team') {
+			throw new BadRequestError('Only team projects can be added to a Git connection');
+		}
+	}
+
+	private toLinkPublic(link: GitConnectionProject): GitConnectionProjectPublicDto {
+		return GitConnectionProjectPublicDto.parse({
+			projectId: link.projectId,
+			gitConnectionId: link.gitConnectionId,
+		});
 	}
 
 	private async applyNewAuthentication(

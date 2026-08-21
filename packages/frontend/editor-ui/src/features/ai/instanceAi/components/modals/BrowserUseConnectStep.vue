@@ -7,8 +7,8 @@ import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.tel
 import { useExtensionDirectConnect } from '../../composables/useExtensionDirectConnect';
 
 const CONNECT_URL_REFRESH_MARGIN_MS = 30_000;
-const CONNECT_POPUP_WIDTH = 620;
-const CONNECT_POPUP_HEIGHT = 640;
+const CONNECT_POPUP_WIDTH = 540;
+const CONNECT_POPUP_HEIGHT = 700;
 
 const props = withDefaults(defineProps<{ autoConnect?: boolean }>(), { autoConnect: false });
 
@@ -37,7 +37,9 @@ async function refreshConnectUrl(): Promise<void> {
 	const delay = Date.parse(expiresAt) - Date.now() - CONNECT_URL_REFRESH_MARGIN_MS;
 	if (!Number.isFinite(delay) || delay <= 0) return;
 
-	refreshTimer = setTimeout(() => void refreshConnectUrl(), delay);
+	refreshTimer = setTimeout(() => {
+		void refreshConnectUrl();
+	}, delay);
 }
 
 onMounted(async () => {

@@ -3,6 +3,8 @@ import {
 	workflowReviewDecisionActivityDataSchema,
 	workflowReviewOpenedActivityDataSchema,
 	workflowReviewVersionUpdatedActivityDataSchema,
+	workflowReviewWorkflowCauseActivityDataSchema,
+	workflowReviewWorkflowPublishedActivityDataSchema,
 	type WorkflowReviewActivityEntry,
 	type WorkflowReviewEligibleReviewer,
 	type WorkflowReviewRequestSummary,
@@ -130,8 +132,20 @@ export function toActivityEntry(
 				type: row.type,
 				data: parsePayload(workflowReviewClosedActivityDataSchema, row, logger),
 			};
+		case 'workflow.archived':
+		case 'workflow.deleted':
+		case 'workflow.moved':
+			return {
+				...base,
+				type: row.type,
+				data: parsePayload(workflowReviewWorkflowCauseActivityDataSchema, row, logger),
+			};
 		case 'workflow.published':
-			return { ...base, type: row.type, data: null };
+			return {
+				...base,
+				type: row.type,
+				data: parsePayload(workflowReviewWorkflowPublishedActivityDataSchema, row, logger),
+			};
 	}
 
 	// Unreachable per the union; a row whose type is outside it (e.g. after a version

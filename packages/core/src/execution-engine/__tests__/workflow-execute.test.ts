@@ -1562,8 +1562,9 @@ describe('WorkflowExecute', () => {
 	describe('runNode', () => {
 		const nodeTypes = mock<INodeTypes>();
 		const triggerNode = mock<INode>();
+		const closeFunctionSpy = vi.fn();
 		const triggerResponse = mock<ITriggerResponse>({
-			closeFunction: vi.fn(),
+			closeFunction: closeFunctionSpy,
 			// This node should never trigger, or return
 			manualTriggerFunction: async () => await new Promise(() => {}),
 		});
@@ -1618,10 +1619,11 @@ describe('WorkflowExecute', () => {
 			});
 			expect(isSettled).toBe(false);
 			expect(abortController.signal.aborted).toBe(false);
-			expect(triggerResponse.closeFunction).not.toHaveBeenCalled();
+			expect(closeFunctionSpy).not.toHaveBeenCalled();
 
 			abortController.abort();
-			expect(triggerResponse.closeFunction).toHaveBeenCalled();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(closeFunctionSpy).toHaveBeenCalled();
 		});
 	});
 

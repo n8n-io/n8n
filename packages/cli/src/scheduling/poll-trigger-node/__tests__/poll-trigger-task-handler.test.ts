@@ -10,7 +10,6 @@ import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
-import type { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import { isPollTriggerTaskPayload, POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
@@ -26,20 +25,12 @@ describe('PollTriggerTaskHandler', () => {
 	const scopedLogger = mock<Logger>();
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
-	let durablePollersAllowed = true;
-	const durablePollerGate = {
-		get allowed() {
-			return durablePollersAllowed;
-		},
-	} as DurablePollerGateService;
-
 	const handler = new PollTriggerTaskHandler(
 		rootLogger,
 		triggerExecutionContextFactory,
 		triggersAndPollers,
 		workflowRepository,
 		errorReporter,
-		durablePollerGate,
 	);
 
 	const onDispatch = vi.fn();
@@ -139,22 +130,34 @@ describe('PollTriggerTaskHandler', () => {
 			.mockResolvedValue(undefined);
 	});
 
-	describe('durable-poller gate', () => {
-		// A `scheduled_job` row persisted by an earlier boot keeps firing after a
-		// later boot closed the gate. Activation has fallen back to in-memory
-		// polling by then, so running the task would poll the same node twice per
-		// interval. It must be skipped, not thrown: a throw retries to the max
-		// attempt count and dead-letters every occurrence.
-		test('skips the occurrence without polling when the gate is closed', async () => {
-			durablePollersAllowed = false;
+	describe('unhealthy published version', () => {
+		// A due task persisted for a version with duplicate or missing node ids can
+		// fire before the healer's corrected version replaces the jobs; resolving a
+		// duplicated id would poll the wrong node and write shared cursor state.
+		test('skips the occurrence when the published version has duplicate node ids', async () => {
+			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({
+					nodes: [triggerNode, { ...triggerNode, name: 'Other Poll Trigger' }],
+				}),
+			);
 
 			await handler.execute(buildTask(), report);
 
-			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).not.toHaveBeenCalled();
 			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
 			expect(onDispatch).not.toHaveBeenCalled();
+		});
 
-			durablePollersAllowed = true;
+		test('skips the occurrence when the published version has a node without an id', async () => {
+			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({
+					nodes: [triggerNode, { ...triggerNode, id: '', name: 'Other Poll Trigger' }],
+				}),
+			);
+
+			await handler.execute(buildTask(), report);
+
+			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
 		});
 	});
 

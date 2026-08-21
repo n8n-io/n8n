@@ -430,7 +430,20 @@ export function analyzeVerificationResult(args: {
 	const reachedNames = new Set(
 		result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
 	);
-	const reachedSimulatedNodes = simulatedNodes.filter((n) => reachedNames.has(n.nodeName));
+	// Nodes fed by pinned data saved on the workflow did not really execute
+	// either — count them as simulated so a pin-fed run never passes as a live
+	// test (INS-1216: stale AI fixtures adopted as pins looked fully verified).
+	const plannedSimulatedNames = new Set(simulatedNodes.map((n) => n.nodeName));
+	const workflowPinnedNodes = (result.workflowPinnedNodeNames ?? [])
+		.filter((name) => reachedNames.has(name) && !plannedSimulatedNames.has(name))
+		.map((name) => ({
+			nodeName: name,
+			reason: 'Output came from pinned data saved on the workflow — unpin it for a live test',
+		}));
+	const reachedSimulatedNodes = [
+		...simulatedNodes.filter((n) => reachedNames.has(n.nodeName)),
+		...workflowPinnedNodes,
+	];
 	const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
 		.map((verdict) => verdict.nodeName)
 		.filter((name) => !reachedNames.has(name));

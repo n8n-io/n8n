@@ -3,6 +3,7 @@ import type {
 	SlackAgentAppManifest,
 	SlackApiErrorMeta,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -62,6 +63,7 @@ export class SlackMethodsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly cacheService: CacheService,
 		private readonly cipher: Cipher,
+		private readonly logger: Logger,
 	) {}
 
 	async callSlackApi<T extends { [key: string]: unknown }>(
@@ -215,13 +217,56 @@ export class SlackMethodsService {
 			credentialId: credential.id,
 			settings: { messagingExperience: 'agent' },
 		} satisfies AgentIntegrationConfig;
-		await this.integrationManagementService.connect({
-			agent,
-			user,
-			integration,
-		});
+		try {
+			await this.integrationManagementService.connect({
+				agent,
+				user,
+				integration,
+			});
+		} catch (error) {
+			await this.deleteUnreferencedCredential(agent.id, credential.id, user);
+			throw error;
+		}
 		await this.clearManagedAppSession(session);
 		return credential.id;
+	}
+
+	/**
+	 * Undo the credential this setup attempt created, so a failed connect doesn't
+	 * leave one behind in the project.
+	 *
+	 * Keyed on whether the agent durably references it rather than on how the
+	 * connect failed: the integration write lands before the steps that settle
+	 * publication and release a replaced channel, so a failure there still leaves
+	 * the entry persisted, and that entry is what the next publish or reconcile
+	 * acts on.
+	 *
+	 * Only ever called with a credential created moments earlier in the same call
+	 * and never handed out on this path, so the agent row is the only place that
+	 * can reference it — nothing the user picked or already owned is reachable
+	 * from here.
+	 */
+	private async deleteUnreferencedCredential(
+		agentId: string,
+		credentialId: string,
+		user: User,
+	): Promise<void> {
+		try {
+			const state = await this.agentRepository.findIntegrationState(agentId);
+			const referenced = (state?.integrations ?? []).some(
+				(entry) => entry.credentialId === credentialId,
+			);
+			if (referenced) return;
+
+			await this.credentialsService.delete(user, credentialId);
+		} catch (error) {
+			// Best-effort: the setup failure is what the caller reports.
+			this.logger.warn('[SlackMethodsService] Could not clean up the Slack credential', {
+				agentId,
+				credentialId,
+				error,
+			});
+		}
 	}
 
 	private async clearManagedAppSession(session: SlackAppSetupSession): Promise<void> {

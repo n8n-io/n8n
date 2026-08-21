@@ -6,25 +6,22 @@ import { isEligibleTab } from '../../relayConnection';
 import type {
 	ConnectionStatus,
 	ControlledTabId,
-	TabManagementSettings,
 	BackgroundPushMessage,
+	StatusResponse,
 } from '../../types';
-import { isConnectResponse, isStatusResponse, isTabManagementSettings } from '../../types';
+import { isConnectResponse, isStatusResponse } from '../../types';
 
 const log = createLogger('ui');
-
-const DEFAULT_SETTINGS: TabManagementSettings = {
-	allowTabCreation: true,
-	allowTabClosing: false,
-};
 
 export function useConnection() {
 	// ── Core connection state ─────────────────────────────────────────────────
 	const status = ref<ConnectionStatus>('disconnected');
 	const controlledTabIds = ref<ControlledTabId[]>([]);
 	const errorMessage = ref('');
-	const settings = ref<TabManagementSettings>({ ...DEFAULT_SETTINGS });
 	const relayUrl = ref<string | null>(null);
+	// Reported by the background, which owns the live session. Lets a view that never
+	// saw the connect request — the drawer — still name the instance it is bound to.
+	const connectedRelayUrl = ref<string | null>(null);
 
 	// Set when the page is opened with `?autoConnect=1` AND the relay URL
 	// points to localhost. Skips the manual click: every available tab is
@@ -58,18 +55,17 @@ export function useConnection() {
 
 	// ── Computeds ─────────────────────────────────────────────────────────────
 	const hasRelayUrl = computed(() => !!relayUrl.value);
-	const relayHost = computed(() => getRelayHost(relayUrl.value));
+	const relayHost = computed(() => getRelayHost(connectedRelayUrl.value ?? relayUrl.value));
 	const isRelayAllowed = computed(() => isAllowedRelayUrl(relayUrl.value));
 
-	const allSelected = computed(
-		() =>
-			availableTabs.value.length > 0 &&
-			availableTabs.value.every((t) => t.id !== undefined && selectedTabIds.has(t.id)),
-	);
-
-	const someSelected = computed(() => selectedTabIds.size > 0);
-
 	// ── Private helpers ───────────────────────────────────────────────────────
+
+	function applyStatus(update: StatusResponse): void {
+		const connected = update.connected === true;
+		status.value = connected ? 'connected' : 'disconnected';
+		controlledTabIds.value = connected ? (update.tabIds ?? []) : [];
+		connectedRelayUrl.value = connected ? (update.relayUrl ?? null) : null;
+	}
 
 	async function initTabRegistry(): Promise<void> {
 		const result: unknown = await chrome.runtime.sendMessage({ type: 'getTabs' });
@@ -110,16 +106,6 @@ export function useConnection() {
 		}
 	}
 
-	function toggleAll(): void {
-		if (allSelected.value) {
-			selectedTabIds.clear();
-		} else {
-			for (const t of availableTabs.value) {
-				if (t.id !== undefined) selectedTabIds.add(t.id);
-			}
-		}
-	}
-
 	async function connect(): Promise<void> {
 		if (!relayUrl.value) {
 			errorMessage.value = 'No active session. Ask n8n AI to connect to your browser.';
@@ -150,7 +136,7 @@ export function useConnection() {
 			// Fetch controlled IDs — controlledTabDetails computed auto-resolves from registry
 			const statusResponse: unknown = await chrome.runtime.sendMessage({ type: 'getStatus' });
 			if (isStatusResponse(statusResponse)) {
-				controlledTabIds.value = statusResponse.tabIds ?? [];
+				applyStatus(statusResponse);
 			}
 			const currentWindow = await chrome.windows.getCurrent();
 			if (currentWindow.type === 'popup') {
@@ -168,22 +154,34 @@ export function useConnection() {
 	async function disconnect(): Promise<void> {
 		log.debug('disconnect');
 		await chrome.runtime.sendMessage({ type: 'disconnect' });
-		status.value = 'disconnected';
-		controlledTabIds.value = []; // controlledTabDetails auto-computes to []
+		applyStatus({ connected: false });
 		relayUrl.value = null;
 	}
 
-	async function updateSettings(partial: Partial<TabManagementSettings>): Promise<void> {
-		settings.value = { ...settings.value, ...partial };
-		await chrome.runtime.sendMessage({
-			type: 'updateSettings',
-			settings: settings.value,
-		});
+	async function decline(): Promise<void> {
+		log.debug('decline');
+		await chrome.runtime.sendMessage({ type: 'clearRelayUrl' });
+		relayUrl.value = null;
+		// In the action popover the page is not a tab — getCurrent returns undefined
+		const currentTab = await chrome.tabs.getCurrent();
+		if (currentTab?.id !== undefined) {
+			await chrome.tabs.remove(currentTab.id);
+		} else {
+			window.close();
+		}
 	}
 
 	// ── Background push message listener ─────────────────────────────────────
 
-	async function onBackgroundMessage(message: BackgroundPushMessage): Promise<void> {
+	// Must be a sync listener: an async listener returns a Promise, which Chrome
+	// treats as "will respond" — with several extension views open (drawer +
+	// connect page) it then races the background's real sendMessage response
+	// with `undefined` and the caller sees a bogus error.
+	function onBackgroundMessage(message: BackgroundPushMessage): void {
+		void handleBackgroundMessage(message);
+	}
+
+	async function handleBackgroundMessage(message: BackgroundPushMessage): Promise<void> {
 		if (message.type === 'relayUrlReady' && message.relayUrl) {
 			log.debug('relayUrlReady received:', message.relayUrl);
 			relayUrl.value = message.relayUrl;
@@ -191,23 +189,18 @@ export function useConnection() {
 			// relayUrl + session storage, so a manual reload reads the fresh URL, not the old token.
 			window.history.replaceState(null, '', window.location.pathname);
 			if (status.value === 'connected') {
-				status.value = 'disconnected';
-				controlledTabIds.value = []; // controlledTabDetails auto-computes to []
+				applyStatus({ connected: false });
 				await initTabRegistry();
 			}
 		}
 
 		if (message.type === 'statusChanged') {
 			log.debug('statusChanged received: connected=', message.connected);
+			applyStatus(message);
 			if (message.connected) {
-				status.value = 'connected';
-				const incoming = message.tabIds ?? [];
-				const missing = incoming.filter((e) => !tabRegistry.has(e.chromeTabId));
+				const missing = (message.tabIds ?? []).filter((e) => !tabRegistry.has(e.chromeTabId));
 				if (missing.length > 0) await initTabRegistry();
-				controlledTabIds.value = incoming; // controlledTabDetails auto-computes
 			} else {
-				status.value = 'disconnected';
-				controlledTabIds.value = []; // controlledTabDetails auto-computes to []
 				relayUrl.value = null;
 			}
 		}
@@ -228,13 +221,6 @@ export function useConnection() {
 	// ── Initialization ────────────────────────────────────────────────────────
 
 	onMounted(async () => {
-		const savedSettings: unknown = await chrome.runtime.sendMessage({ type: 'getSettings' });
-		log.debug('saved settings:', savedSettings);
-		if (isTabManagementSettings(savedSettings)) {
-			const validated: TabManagementSettings = savedSettings;
-			settings.value = validated;
-		}
-
 		// Read relay URL directly from the page's own query string first.
 		// This is more reliable than session storage, which can race with the UI mount
 		// (the background script writes it asynchronously when the tab is created).
@@ -264,8 +250,7 @@ export function useConnection() {
 		const currentStatus: unknown = await chrome.runtime.sendMessage({ type: 'getStatus' });
 		log.debug('initial status:', currentStatus);
 		if (isStatusResponse(currentStatus) && currentStatus.connected) {
-			status.value = 'connected';
-			controlledTabIds.value = currentStatus.tabIds ?? [];
+			applyStatus(currentStatus);
 		}
 
 		await initTabRegistry();
@@ -295,19 +280,15 @@ export function useConnection() {
 		tabs: availableTabs,
 		selectedTabIds,
 		errorMessage,
-		settings,
 		relayUrl,
 		hasRelayUrl,
 		relayHost,
 		isRelayAllowed,
 		isAutoConnect,
 		controlledTabs: controlledTabDetails,
-		allSelected,
-		someSelected,
 		toggleTab,
-		toggleAll,
 		connect,
+		decline,
 		disconnect,
-		updateSettings,
 	};
 }
