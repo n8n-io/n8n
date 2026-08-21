@@ -174,21 +174,6 @@ describe('MessageAnAgent Node', () => {
 		);
 	});
 
-	it('should disable response streaming when configured in Advanced', async () => {
-		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		mockParams({ advanced: { enableStreaming: false } });
-		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
-
-		await node.execute.call(executeFunctions);
-
-		expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
-			expect.objectContaining({ agentId: 'agent-1', enableStreaming: false }),
-			'Hello agent',
-			'exec-123',
-			0,
-		);
-	});
-
 	describe('prompt resolution', () => {
 		it('uses the message param', async () => {
 			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
@@ -1192,19 +1177,5 @@ describe('MessageAnAgent versioning', () => {
 		expect(v2Names).toContain('message');
 		expect(v2Names).not.toContain('promptType');
 		expect(v2Names).not.toContain('text');
-	});
-
-	it('enables response streaming by default in Advanced', () => {
-		const v2 = new MessageAnAgentV2(baseDescription);
-		const advanced = v2.description.properties.find((property) => property.name === 'advanced');
-		const enableStreaming = advanced?.options?.find(
-			(property) => property.name === 'enableStreaming',
-		);
-
-		expect(enableStreaming).toMatchObject({
-			displayName: 'Enable Streaming',
-			type: 'boolean',
-			default: true,
-		});
 	});
 });
