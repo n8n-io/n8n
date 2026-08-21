@@ -17,7 +17,7 @@ import { useRoleEditorForm } from '../composables/useRoleEditorForm';
 import InstanceRoleAssignmentsTab from './InstanceRoleAssignmentsTab.vue';
 import DeleteInstanceRoleModal from './components/DeleteInstanceRoleModal.vue';
 import ScopeGroupSelector from './components/ScopeGroupSelector.vue';
-import { ALL_INSTANCE_SCOPES } from './instanceRoleScopes';
+import { ALL_INSTANCE_SCOPES, withMandatoryInstanceScopes } from './instanceRoleScopes';
 
 const rolesStore = useRolesStore();
 const router = useRouter();
@@ -49,7 +49,9 @@ const {
 	roleSlug: () => props.roleSlug,
 	viewRoute: VIEWS.INSTANCE_ROLE_VIEW,
 	filterScopes: (scopes) =>
-		scopes.filter((s) => (ALL_INSTANCE_SCOPES as readonly string[]).includes(s)),
+		withMandatoryInstanceScopes(
+			scopes.filter((s) => (ALL_INSTANCE_SCOPES as readonly string[]).includes(s)),
+		),
 	fetchError: i18n.baseText('roles.instance.action.fetch.error'),
 });
 

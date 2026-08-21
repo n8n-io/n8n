@@ -3019,6 +3019,7 @@
 	"instanceRoles.option.aiAssistantUse": "AI assistant use",
 	"instanceRoles.option.aiAssistantManage": "AI assistant manage",
 	"instanceRoles.option.includedIn": "Included in {option}",
+	"instanceRoles.option.mandatory": "Every role can look up other users",
 	"instanceRoles.description.settings.manage": "View and change instance-wide settings",
 	"instanceRoles.description.settings.mcpUse": "Connect MCP clients and agents to the instance",
 	"instanceRoles.description.settings.mcpManage": "Enable or disable instance-level MCP and manage which workflows and agents are exposed",

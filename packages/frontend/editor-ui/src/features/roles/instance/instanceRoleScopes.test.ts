@@ -7,8 +7,10 @@ import {
 	getOptionState,
 	getEscalationWarningKey,
 	isOptionImplied,
+	isOptionMandatory,
 	resolveOptionState,
 	toggleOptionInGroup,
+	withMandatoryInstanceScopes,
 } from './instanceRoleScopes';
 
 const ALL_SCOPES_SET = new Set<string>(ALL_SCOPES as string[]);
@@ -346,5 +348,38 @@ describe('toggleOptionInGroup', () => {
 				'checked',
 			);
 		});
+	});
+});
+
+describe('mandatory instance options', () => {
+	const userGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'user')!;
+	const userView = userGroup.options.find((o) => o.key === 'View')!;
+	const userManage = userGroup.options.find((o) => o.key === 'Manage')!;
+
+	it('flags "Users: View" as mandatory and every other option as not', () => {
+		expect(isOptionMandatory('user', userView)).toBe(true);
+		expect(isOptionMandatory('user', userManage)).toBe(false);
+
+		for (const group of INSTANCE_SCOPE_GROUP_LIST) {
+			for (const option of group.options) {
+				if (group.resource === 'user' && option.key === 'View') continue;
+				expect(isOptionMandatory(group.resource, option)).toBe(false);
+			}
+		}
+	});
+
+	it('withMandatoryInstanceScopes adds "Users: View" scopes to an empty list', () => {
+		expect(new Set(withMandatoryInstanceScopes([]))).toEqual(new Set(userView.scopes));
+	});
+
+	it('withMandatoryInstanceScopes does not duplicate scopes already present', () => {
+		const withDuplicate = withMandatoryInstanceScopes(['user:read', 'tag:read']);
+		expect(withDuplicate.filter((s) => s === 'user:read')).toHaveLength(1);
+		expect(withDuplicate).toEqual(expect.arrayContaining(['user:read', 'user:list', 'tag:read']));
+	});
+
+	it('withMandatoryInstanceScopes preserves unrelated scopes untouched', () => {
+		const result = withMandatoryInstanceScopes(['tag:read', 'tag:list']);
+		expect(result).toEqual(expect.arrayContaining(['tag:read', 'tag:list', ...userView.scopes]));
 	});
 });

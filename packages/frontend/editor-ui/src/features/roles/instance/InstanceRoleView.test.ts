@@ -95,7 +95,8 @@ describe('InstanceRoleView', () => {
 				expect(rolesStore.createRole).toHaveBeenCalledWith({
 					displayName: 'Support',
 					description: '',
-					scopes: [],
+					// "Users: View" is mandatory on every instance role — see instanceRoleScopes.ts.
+					scopes: ['user:read', 'user:list'],
 					roleType: 'global',
 				});
 			});
