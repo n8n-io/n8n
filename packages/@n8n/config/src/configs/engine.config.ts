@@ -33,4 +33,15 @@ export class EngineConfig {
 	 */
 	@Env('N8N_ENGINE_DATABASE_URL')
 	databaseUrl: string = '';
+
+	/**
+	 * Shared secret the control plane signs its identity token with and the engine
+	 * verifies against. Both planes must hold the same value.
+	 *
+	 * Deliberately not the user-session JWT secret: a leak here must not let anyone
+	 * forge session cookies. Integrated mode generates one at boot when unset;
+	 * standalone refuses to start without it.
+	 */
+	@Env('N8N_ENGINE_AUTH_SECRET')
+	authSecret: string = '';
 }

@@ -5,6 +5,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
+import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import {
 	createDataSource,
 	createStores,
@@ -25,6 +26,11 @@ const graph: WorkflowGraph = {
 		{ id: 'node-a', name: 'A', type: 'v1-node' },
 	],
 	edges: [{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 }],
+};
+
+const secret = 'a'.repeat(32);
+const authHeader = {
+	authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
 };
 
 describe('step execution (integration)', () => {
@@ -59,6 +65,7 @@ describe('step execution (integration)', () => {
 		const runtime = createEngineRuntime({
 			dataSource,
 			admittance: new AllowAllAdmittance(),
+			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
@@ -74,6 +81,7 @@ describe('step execution (integration)', () => {
 
 		const response = await request(runtime.app)
 			.post('/api/workflow-executions')
+			.set(authHeader)
 			.send({ workflowId, graph: workflowGraph, triggerOutputs })
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
