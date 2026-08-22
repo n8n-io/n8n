@@ -92,6 +92,20 @@ describe('Jira -> GenericFunctions', () => {
 			);
 		});
 
+		it('should remove trailing slashes from the domain before making the request', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('cloud');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				domain: 'https://example.atlassian.net///',
+			});
+
+			await jiraSoftwareCloudApiRequest.call(mockExecuteFunctions, '/api/2/myself', 'GET');
+
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'jiraSoftwareCloudApi',
+				expect.objectContaining({ uri: 'https://example.atlassian.net/rest/api/2/myself' }),
+			);
+		});
+
 		it('should use jiraSoftwareCloudOAuth2Api credential for jiraVersion "cloudOAuth2" and look up cloudId', async () => {
 			const cloudId = 'abc123-cloud-id';
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('cloudOAuth2');
