@@ -21,9 +21,7 @@ import {
 } from '../execution/step-store';
 
 /**
- * Per output slot: whether the step put data there. Computed in the query, so the
- * potentially large outputs payload is never transferred. A slot counts as filled
- * unless it holds JSON null.
+ * Reports which output slots a step filled, without fetching what it put in them.
  */
 const FILLED_OUTPUT_SLOTS = `COALESCE(
 	(SELECT array_agg(jsonb_typeof(slot.value) <> 'null' ORDER BY slot.ordinality)
@@ -31,7 +29,6 @@ const FILLED_OUTPUT_SLOTS = `COALESCE(
 	'{}'
 )`;
 
-/** What both summary queries select: every column but the outputs payload. */
 type StepSummaryRow = {
 	id: string;
 	nodeId: string;
@@ -268,6 +265,13 @@ export class TypeOrmStepStore implements StepStore {
 			.getRawMany();
 
 		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
+	}
+
+	async loadAllSteps(executionId: string): Promise<StepRecord[]> {
+		return await this.repo.find({
+			where: { executionId },
+			order: { nodeId: 'ASC', iteration: 'ASC' },
+		});
 	}
 
 	async countSettledSteps(executionId: string): Promise<number> {

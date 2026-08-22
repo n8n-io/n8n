@@ -5,12 +5,15 @@ export type { EngineErrorResponse } from './server';
 
 export type { JsonObject, JsonValue } from './common';
 
+export { deriveLoops, isBatchStepConfig } from './graph';
 export type {
+	BatchStepConfig,
 	GraphEdge,
 	GraphNode,
 	StepConfig,
 	StepType,
 	WorkflowGraph,
+	WorkflowLoop,
 } from './graph';
 
 export type {

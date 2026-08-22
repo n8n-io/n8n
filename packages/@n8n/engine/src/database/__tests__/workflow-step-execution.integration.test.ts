@@ -691,8 +691,6 @@ describe('workflow_step_execution table (integration)', () => {
 
 		const latest = await store.loadLatestStepSummaries(executionId, ['b', 'c', 'ghost']);
 
-		// one row per node asked about, the slim view: which slots were filled, not
-		// what they hold, and a node with no row is absent rather than null
 		expect(latest.b).toMatchObject({
 			nodeId: 'b',
 			iteration: 1,
