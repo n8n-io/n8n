@@ -191,7 +191,8 @@ watch(
 	() => workflowExecutionStateStore.value.activeExecution,
 	(executionData) => {
 		if (executionData?.finished || executionData?.stoppedAt !== undefined) {
-			void aiGateway.fetchWallet();
+			// Force past the wallet cache so the pill reflects credits the run just consumed.
+			void aiGateway.fetchWallet({ force: true });
 		}
 	},
 );
