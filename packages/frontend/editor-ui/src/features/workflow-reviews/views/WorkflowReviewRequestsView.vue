@@ -363,7 +363,9 @@ onUnmounted(() => {
 					</div>
 					<!-- Must precede the selectedItem branch: on a deep link the review is not
 						in the list yet, so selectedItem is null while the detail loads. -->
-					<N8nLoading v-else-if="selectedReviewId && detailLoading" :loading="true" :rows="3" />
+					<div v-else-if="selectedReviewId && detailLoading" :class="$style.detailSkeleton">
+						<N8nLoading :loading="true" :rows="3" />
+					</div>
 					<WorkflowReviewDetailTabs
 						v-else-if="selectedItem"
 						:review="selectedItem"
@@ -422,6 +424,7 @@ onUnmounted(() => {
 	--review-tab-bar--gap: calc(var(--spacing--sm) + var(--review-tab-bar--indicator-overhang));
 
 	--review-callout--max-width: 34rem;
+	--review-activity--max-width: 48rem;
 
 	display: flex;
 	width: 100%;
@@ -458,6 +461,12 @@ onUnmounted(() => {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
+}
+
+/* Stands in for the activity panel, so it takes the same width cap instead of
+	stretching across a pane the loaded content will not fill. */
+.detailSkeleton {
+	max-width: var(--review-activity--max-width);
 }
 
 /* Centred in the pane on both axes. No width cap needed: the empty state caps

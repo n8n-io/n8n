@@ -1,5 +1,4 @@
 import { render } from '@testing-library/vue';
-import { mount } from '@vue/test-utils';
 import { defineComponent, h, nextTick } from 'vue';
 
 import N8nEmptyState from './EmptyState.vue';
