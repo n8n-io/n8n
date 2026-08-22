@@ -160,14 +160,14 @@ export class ERPNext implements INodeType {
 					const endpoint = `/api/resource/${docType}`;
 
 					const { fields, filters } = this.getNodeParameter('options', i) as {
-						fields: string[];
-						filters: {
-							customProperty: Array<{ field: string; operator: string; value: string }>;
+						fields?: string[];
+						filters?: {
+							customProperty?: Array<{ field: string; operator: string; value: string }>;
 						};
 					};
 
 					// fields=["test", "example", "hi"]
-					if (fields) {
+					if (fields?.length) {
 						if (fields.includes('*')) {
 							qs.fields = JSON.stringify(['*']);
 						} else {
@@ -175,8 +175,7 @@ export class ERPNext implements INodeType {
 						}
 					}
 					// filters=[["Person","first_name","=","Jane"]]
-					// TODO: filters not working
-					if (filters) {
+					if (filters?.customProperty?.length) {
 						qs.filters = JSON.stringify(
 							filters.customProperty.map((filter) => {
 								return [docType, filter.field, toSQL(filter.operator), filter.value];
