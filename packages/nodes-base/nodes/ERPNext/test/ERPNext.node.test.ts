@@ -9,8 +9,8 @@ describe('ERPNext > document: getAll', () => {
 	let node: ERPNext;
 	let mockExecuteFunctions: ReturnType<typeof mockDeep<IExecuteFunctions>>;
 
-	const mockParameters = (options: IDataObject) => {
-		mockExecuteFunctions.getNodeParameter.mockImplementation((parameter) => {
+	const mockParameters = (options: IDataObject | ((itemIndex: number) => IDataObject)) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((parameter, itemIndex) => {
 			switch (parameter) {
 				case 'resource':
 					return 'document';
@@ -19,7 +19,7 @@ describe('ERPNext > document: getAll', () => {
 				case 'docType':
 					return 'Customer';
 				case 'options':
-					return options;
+					return typeof options === 'function' ? options(itemIndex) : options;
 				case 'returnAll':
 					return false;
 				case 'limit':
@@ -70,6 +70,47 @@ describe('ERPNext > document: getAll', () => {
 		await node.execute.call(mockExecuteFunctions);
 
 		expect(GenericFunctions.erpNextApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ limit_page_length: 10, limit_start: 0 },
+		);
+	});
+
+	it('should not carry query options over from a previous item', async () => {
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+		mockParameters((itemIndex) => (itemIndex === 0 ? { fields: ['name'] } : {}));
+
+		await node.execute.call(mockExecuteFunctions);
+
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ fields: JSON.stringify(['name']), limit_page_length: 10, limit_start: 0 },
+		);
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ limit_page_length: 10, limit_start: 0 },
+		);
+	});
+
+	it('should not carry filters over from a previous item', async () => {
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+		mockParameters((itemIndex) =>
+			itemIndex === 0
+				? { filters: { customProperty: [{ field: 'first_name', operator: 'is', value: 'Jane' }] } }
+				: {},
+		);
+
+		await node.execute.call(mockExecuteFunctions);
+
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenNthCalledWith(
+			2,
 			'GET',
 			'/api/resource/Customer',
 			{},
