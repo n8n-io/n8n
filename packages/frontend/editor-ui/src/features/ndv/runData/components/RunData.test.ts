@@ -1139,6 +1139,89 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('search across runs', () => {
+		const run = (executionIndex: number, branches: INodeExecutionData[][]): ITaskData => ({
+			startTime: Date.now(),
+			executionIndex,
+			executionTime: 1,
+			data: { main: branches },
+			source: [null],
+		});
+
+		const items = (label: string, count: number) =>
+			Array.from({ length: count }, (_, i) => ({ json: { label: `${label}-${i}` } }));
+
+		const searchFor = async (
+			findByTestId: ReturnType<typeof render>['findByTestId'],
+			term: string,
+		) => {
+			// The search box is loaded lazily, wait for it before typing.
+			const searchContainer = await findByTestId('ndv-search-container');
+			await userEvent.type(within(searchContainer).getByRole('textbox'), term);
+		};
+
+		it('should find items in runs other than the selected one', async () => {
+			// The matching item ("banana") only exists in run 1, while the selected
+			// run is run 0 (runIndex defaults to 0).
+			const runs = [
+				run(0, [[{ json: { label: 'apple' } }]]),
+				run(1, [[{ json: { label: 'banana' } }]]),
+			];
+
+			const { findByTestId, queryByText } = render({ displayMode: 'table', runs });
+
+			await searchFor(findByTestId, 'banana');
+
+			await waitFor(() => {
+				expect(queryByText('banana')).toBeInTheDocument();
+				expect(queryByText('apple')).not.toBeInTheDocument();
+			});
+		});
+
+		it('should paginate over the matches of every run, not just the selected one', async () => {
+			// 30 matches, all in run 1, while run 0 is selected. Page size is 25, so
+			// the last 5 are only reachable if pagination counts the cross-run matches.
+			const runs = [run(0, [items('alpha', 20)]), run(1, [items('beta', 30)])];
+
+			const { findByTestId, getByTestId, container } = render({ displayMode: 'table', runs });
+
+			await searchFor(findByTestId, 'beta');
+
+			// "30 of 50 items": 30 matches out of the 50 items searched across runs.
+			await waitFor(() => {
+				expect(getByTestId('run-data-item-count')).toHaveTextContent('30 of 50 items');
+			});
+
+			// Matches are highlighted, which splits a cell into several text nodes, so
+			// assert on the container text rather than looking up a single node.
+			expect(container).not.toHaveTextContent('beta-29');
+
+			await userEvent.click(within(getByTestId('ndv-data-pagination')).getByText('2'));
+
+			await waitFor(() => {
+				expect(container).toHaveTextContent('beta-29');
+			});
+		});
+
+		it('should find items in other runs on a node with multiple output branches', async () => {
+			// Branch tabs render their own empty state from a per-branch count, which
+			// must also span runs or the match stays hidden behind "No matching items".
+			const runs = [
+				run(0, [[{ json: { label: 'alpha-yes' } }], [{ json: { label: 'alpha-no' } }]]),
+				run(1, [[{ json: { label: 'beta-yes' } }], [{ json: { label: 'beta-no' } }]]),
+			];
+
+			const { findByTestId, queryByText } = render({ displayMode: 'table', runs });
+
+			await searchFor(findByTestId, 'beta-yes');
+
+			await waitFor(() => {
+				expect(queryByText('beta-yes')).toBeInTheDocument();
+				expect(queryByText('No matching items')).not.toBeInTheDocument();
+			});
+		});
+	});
+
 	describe('hasRunError behavior', () => {
 		it('should not show error view in input panel even when workflow run has error', async () => {
 			// This test verifies that hasRunError is false for input panels.
