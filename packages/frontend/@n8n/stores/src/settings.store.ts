@@ -126,6 +126,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isAskAiEnabled = computed(() => settings.value.askAi?.enabled);
 
+	/** Licensed and able to reach the AI proxy, so Ask AI requests can actually succeed. */
+	const isAskAiAvailable = computed(
+		() => settings.value.askAi?.enabled && settings.value.askAi?.setup,
+	);
+
 	const isAiBuilderEnabled = computed(
 		() => settings.value.aiBuilder?.enabled && settings.value.aiBuilder?.setup,
 	);
@@ -518,6 +523,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataProgressExecution,
 		isCommunityPlan,
 		isAskAiEnabled,
+		isAskAiAvailable,
 		isAiBuilderEnabled,
 		isAiAssistantOrBuilderEnabled,
 		isAiCreditsEnabled,
