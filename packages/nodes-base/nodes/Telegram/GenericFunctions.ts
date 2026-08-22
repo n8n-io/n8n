@@ -15,6 +15,25 @@ import { NodeApiError } from 'n8n-workflow';
 import { getSendAndWaitConfig } from '../../utils/sendAndWait/utils';
 import { createUtmCampaignLink } from '../../utils/utilities';
 
+/**
+ * Escape Telegram special characters for Markdown/MarkdownV2 to avoid
+ * entity parsing errors when messages contain underscores or similar
+ * characters. If `parseMode` is not a Markdown variant, the text is
+ * returned unchanged.
+ */
+function escapeTelegramSpecialChars(text: string, parseMode?: string): string {
+	if (!text) return text;
+	if (parseMode === 'MarkdownV2') {
+		// Escape all characters that MarkdownV2 treats as special.
+		return text.replace(/([_\*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+	}
+	if (parseMode === 'Markdown') {
+		// Legacy Markdown: escape common formatting markers to be safe.
+		return text.replace(/([_\*\[\]()])/g, '\\$1');
+	}
+	return text;
+}
+
 // Interface in n8n
 export interface IMarkupKeyboard {
 	rows?: IMarkupKeyboardRow[];
@@ -105,6 +124,19 @@ export function addAdditionalFields(
 				body.text = `${body.text}\n\n_${attributionText}_[n8n](${link})`;
 			} else if (additionalFields.parse_mode === 'HTML') {
 				body.text = `${body.text}\n\n<em>${attributionText}</em><a href="${link}" target="_blank">n8n</a>`;
+			}
+		}
+
+		// If attribution is explicitly disabled, escape Markdown special
+		// characters in the dynamic `text` and any `caption` so Telegram
+		// doesn't attempt to parse entities and fail on underscores etc.
+		if (additionalFields.appendAttribution === false) {
+			const parseMode = additionalFields.parse_mode as string | undefined;
+			if (body.text && typeof body.text === 'string') {
+				body.text = escapeTelegramSpecialChars(body.text, parseMode);
+			}
+			if (additionalFields.caption && typeof additionalFields.caption === 'string') {
+				additionalFields.caption = escapeTelegramSpecialChars(additionalFields.caption, parseMode);
 			}
 		}
 
@@ -279,6 +311,12 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApp
 		const attributionText = 'This message was sent automatically with ';
 		const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
 		text = `${text}\n\n_${attributionText}_[n8n](${link})`;
+	}
+
+	// If attribution explicitly disabled, escape special Markdown characters
+	// to avoid Telegram entity parsing errors for dynamic workflow values.
+	if (config.appendAttribution === false) {
+		text = escapeTelegramSpecialChars(text, 'Markdown');
 	}
 
 	const body = {
