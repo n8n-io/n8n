@@ -14,7 +14,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
-import type { Workflow } from 'n8n-workflow';
+import type { IWorkflowGroup, Workflow } from 'n8n-workflow';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
@@ -62,6 +62,9 @@ const mockDocumentStore = vi.hoisted(() => ({
 	}),
 	connectionsBySourceNode: {},
 	workflowTriggerNodes: [] as INodeUi[],
+	allGroups: [] as IWorkflowGroup[],
+	upsertGroups: vi.fn().mockReturnValue([]),
+	deleteGroup: vi.fn(),
 })) as unknown as ReturnType<typeof useWorkflowDocumentStore>;
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
@@ -111,6 +114,7 @@ describe('useWorkflowUpdate', () => {
 
 		// Setup default mocks
 		(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [];
+		(mockDocumentStore as { allGroups: IWorkflowGroup[] }).allGroups = [];
 		(mockDocumentStore as { name: string }).name = '';
 		vi.mocked(mockDocumentStore.setName).mockClear();
 		vi.mocked(mockDocumentStore.setNodes).mockClear();
@@ -796,6 +800,125 @@ describe('useWorkflowUpdate', () => {
 				);
 
 				expect(setNameSpy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('canvas groups', () => {
+			// The layout treats a collapsed group as one fixed-width chip, so groups
+			// that reach the canvas after the layout ran end up overlapping.
+			it('should apply incoming groups collapsed', async () => {
+				const node = createTestNode({ id: 'node-1', name: 'Node 1' }) as INodeUi;
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [node];
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [node],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Ingest', nodeIds: ['node-1'] }],
+				});
+
+				expect(mockDocumentStore.upsertGroups).toHaveBeenCalledWith(
+					[{ id: 'g1', name: 'Ingest', nodeIds: ['node-1'] }],
+					{ startCollapsed: true },
+				);
+			});
+
+			it('should apply groups before emitting tidyUp', async () => {
+				const node = createTestNode({ id: 'node-1', name: 'Node 1' }) as INodeUi;
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [node];
+
+				const calls: string[] = [];
+				vi.mocked(mockDocumentStore.upsertGroups).mockImplementation(() => {
+					calls.push('upsertGroups');
+					return [];
+				});
+
+				canvasEventBusEmitMock.mockImplementation((event: string) => {
+					if (event === 'tidyUp') calls.push('tidyUp');
+				});
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [node],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Ingest', nodeIds: ['node-1'] }],
+				});
+
+				expect(calls).toEqual(['upsertGroups', 'tidyUp']);
+			});
+
+			it('should skip a group whose member nodes are not all present yet', async () => {
+				const node = createTestNode({ id: 'node-1', name: 'Node 1' }) as INodeUi;
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [node];
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [node],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Ingest', nodeIds: ['node-1', 'not-yet-added'] }],
+				});
+
+				expect(mockDocumentStore.upsertGroups).toHaveBeenCalledWith([], { startCollapsed: true });
+			});
+
+			it('should remove groups the update no longer lists', async () => {
+				const node = createTestNode({ id: 'node-1', name: 'Node 1' }) as INodeUi;
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [node];
+				(mockDocumentStore as { allGroups: IWorkflowGroup[] }).allGroups = [
+					{ id: 'stale', name: 'Removed', nodeIds: ['node-1'] },
+				];
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({
+					nodes: [node],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Ingest', nodeIds: ['node-1'] }],
+				});
+
+				expect(mockDocumentStore.deleteGroup).toHaveBeenCalledWith('stale');
+			});
+
+			it('should map group members through regenerated node ids', async () => {
+				const existing = createTestNode({ id: 'store-1', name: 'Node 1' }) as INodeUi;
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existing];
+				(mockDocumentStore as { allGroups: IWorkflowGroup[] }).allGroups = [
+					{ id: 'g1', name: 'Ingest', nodeIds: ['store-1'] },
+				];
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				// The SDK regenerates node ids between streamed chunks; the store keeps
+				// the id it already had, so incoming group members must be translated.
+				await updateWorkflow({
+					nodes: [createTestNode({ id: 'regenerated-1', name: 'Node 1' })],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Ingest', nodeIds: ['regenerated-1'] }],
+				});
+
+				expect(mockDocumentStore.deleteGroup).not.toHaveBeenCalled();
+				expect(mockDocumentStore.upsertGroups).toHaveBeenCalledWith(
+					[{ id: 'g1', name: 'Ingest', nodeIds: ['store-1'] }],
+					{ startCollapsed: true },
+				);
+			});
+
+			it('should leave existing groups untouched when the update carries no group data', async () => {
+				const node = createTestNode({ id: 'node-1', name: 'Node 1' }) as INodeUi;
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [node];
+				(mockDocumentStore as { allGroups: IWorkflowGroup[] }).allGroups = [
+					{ id: 'existing', name: 'Ingest', nodeIds: ['node-1'] },
+				];
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				await updateWorkflow({ nodes: [node], connections: {} });
+
+				expect(mockDocumentStore.deleteGroup).not.toHaveBeenCalled();
+				expect(mockDocumentStore.upsertGroups).not.toHaveBeenCalled();
 			});
 		});
 
