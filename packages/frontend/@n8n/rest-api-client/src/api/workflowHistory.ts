@@ -1,4 +1,4 @@
-import type { PublishTimelineEvent } from '@n8n/api-types';
+import type { PublishTimelineEvent, WorkflowChangelog } from '@n8n/api-types';
 import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
@@ -87,7 +87,15 @@ export const getWorkflowVersionsByIds = async (
 	return data;
 };
 
-export type { PublishTimelineEvent } from '@n8n/api-types';
+export type { PublishTimelineEvent, WorkflowChangelog } from '@n8n/api-types';
+
+export const getWorkflowChangelog = async (
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<WorkflowChangelog> => {
+	const { data } = await get(context.baseUrl, `/workflow-history/workflow/${workflowId}/changelog`);
+	return data;
+};
 
 export const getPublishTimeline = async (
 	context: IRestApiContext,

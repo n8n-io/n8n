@@ -4,6 +4,8 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import WorkflowPublishModal from '@/features/workflows/components/WorkflowPublishModal.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
@@ -91,11 +93,24 @@ const WEBHOOK_NODE_TYPE_DESCRIPTION: INodeTypeDescription = {
 describe('WorkflowPublishModal', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
+	let workflowHistoryStore: MockedStore<typeof useWorkflowHistoryStore>;
+	let usersStore: MockedStore<typeof useUsersStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+
+	const setUserCount = (count: number) => {
+		usersStore.usersById = Object.fromEntries(
+			Array.from({ length: count }, (_, i) => [`user-${i}`, { id: `user-${i}` }]),
+		) as unknown as typeof usersStore.usersById;
+	};
 
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+		workflowHistoryStore.getWorkflowChangelog.mockResolvedValue(null);
+		usersStore = mockedStore(useUsersStore);
+		usersStore.fetchUsers.mockResolvedValue(undefined);
+		setUserCount(2);
 
 		// Register the webhook node type so workflowTriggerNodes computed recognises triggers
 		const nodeTypesStore = useNodeTypesStore();
@@ -221,6 +236,75 @@ describe('WorkflowPublishModal', () => {
 					workflow_id: 'workflow-1',
 				});
 			});
+		});
+	});
+
+	describe('changelog since last publish', () => {
+		const changelog = {
+			authors: ['Alice', 'Bob'],
+			from: '2024-03-01T09:00:00.000Z',
+			to: '2024-03-02T10:00:00.000Z',
+		};
+
+		it('summarizes date range and authors of versions since the last publish', async () => {
+			workflowHistoryStore.getWorkflowChangelog.mockResolvedValue(changelog);
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-publish-changelog')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('workflow-publish-changelog')).toHaveTextContent(
+				'Includes changes from 2024 Mar 1 to 2024 Mar 2 from Alice, Bob.',
+			);
+			expect(getByTestId('workflow-publish-changelog-history-link')).toHaveTextContent(
+				'Go to history',
+			);
+		});
+
+		it('omits the authors on a single-user instance', async () => {
+			setUserCount(1);
+			workflowHistoryStore.getWorkflowChangelog.mockResolvedValue(changelog);
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-publish-changelog')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('workflow-publish-changelog')).toHaveTextContent(
+				'Includes changes from 2024 Mar 1 to 2024 Mar 2.',
+			);
+			expect(getByTestId('workflow-publish-changelog')).not.toHaveTextContent('Alice');
+			expect(getByTestId('workflow-publish-changelog-history-link')).toBeInTheDocument();
+		});
+
+		it('keeps the authors when the user count lookup fails', async () => {
+			setUserCount(1);
+			usersStore.fetchUsers.mockRejectedValue(new Error('network error'));
+			workflowHistoryStore.getWorkflowChangelog.mockResolvedValue(changelog);
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-publish-changelog')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('workflow-publish-changelog')).toHaveTextContent(
+				'Includes changes from 2024 Mar 1 to 2024 Mar 2 from Alice, Bob.',
+			);
+		});
+
+		it('is hidden when there are no versions since the last publish', async () => {
+			workflowHistoryStore.getWorkflowChangelog.mockResolvedValue(null);
+
+			const { queryByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(workflowHistoryStore.getWorkflowChangelog).toHaveBeenCalled();
+			});
+			expect(queryByTestId('workflow-publish-changelog')).not.toBeInTheDocument();
 		});
 	});
 

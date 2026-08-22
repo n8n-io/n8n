@@ -4,7 +4,17 @@ import {
 	UpdateWorkflowHistoryVersionDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { RestController, Get, Post, Query, Body, Patch, Param, Licensed } from '@n8n/decorators';
+import {
+	RestController,
+	Get,
+	Post,
+	Query,
+	Body,
+	Patch,
+	Param,
+	Licensed,
+	ProjectScope,
+} from '@n8n/decorators';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
@@ -67,6 +77,19 @@ export class WorkflowHistoryController {
 				body.versionIds,
 			);
 			return { versions };
+		} catch (e) {
+			if (e instanceof SharedWorkflowNotFoundError) {
+				throw new NotFoundError('Could not find workflow');
+			}
+			throw e;
+		}
+	}
+
+	@Get('/workflow/:workflowId/changelog')
+	@ProjectScope('workflow:read')
+	async getChangelog(req: WorkflowHistoryRequest.GetList) {
+		try {
+			return await this.historyService.getChangelog(req.user, req.params.workflowId);
 		} catch (e) {
 			if (e instanceof SharedWorkflowNotFoundError) {
 				throw new NotFoundError('Could not find workflow');

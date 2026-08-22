@@ -10,6 +10,7 @@ import type {
 	WorkflowVersionId,
 	UpdateWorkflowHistoryVersion,
 	PublishTimelineEvent,
+	WorkflowChangelog,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import * as whApi from '@n8n/rest-api-client/api/workflowHistory';
 import { getFirstAdoptionDate } from '@n8n/rest-api-client/api/instance-version-history';
@@ -125,6 +126,9 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const getPublishTimeline = async (workflowId: string): Promise<PublishTimelineEvent[]> =>
 		await whApi.getPublishTimeline(rootStore.restApiContext, workflowId);
 
+	const getWorkflowChangelog = async (workflowId: string): Promise<WorkflowChangelog> =>
+		await whApi.getWorkflowChangelog(rootStore.restApiContext, workflowId);
+
 	const getVersionFirstAdoptionDate = async (version: {
 		major: number;
 		minor: number;
@@ -139,6 +143,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		restoreWorkflow,
 		updateWorkflowHistoryVersion,
 		getPublishTimeline,
+		getWorkflowChangelog,
 		getVersionFirstAdoptionDate,
 		evaluatedPruneTime,
 		shouldUpgrade,

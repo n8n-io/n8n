@@ -528,6 +528,68 @@ describe('WorkflowHistoryService', () => {
 		});
 	});
 
+	describe('getChangelog', () => {
+		const workflowId = '123';
+
+		it('should throw SharedWorkflowNotFoundError when workflow not found for user', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(null);
+
+			await expect(workflowHistoryService.getChangelog(testUser, workflowId)).rejects.toThrow(
+				SharedWorkflowNotFoundError,
+			);
+		});
+
+		it('should return null when the workflow has no published version', async () => {
+			const workflow = getWorkflow();
+			workflow.id = workflowId;
+			workflow.activeVersionId = null;
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
+
+			await expect(workflowHistoryService.getChangelog(testUser, workflowId)).resolves.toBeNull();
+		});
+
+		it('should return null when no versions were created since the published one', async () => {
+			const workflow = getWorkflow();
+			workflow.id = workflowId;
+			workflow.activeVersionId = 'published-version';
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
+			workflowHistoryRepository.findOne.mockResolvedValueOnce({
+				createdAt: new Date('2024-03-01T00:00:00.000Z'),
+			} as WorkflowHistory);
+			workflowHistoryRepository.findChangelogCreatedAfter.mockResolvedValueOnce(null);
+
+			await expect(workflowHistoryService.getChangelog(testUser, workflowId)).resolves.toBeNull();
+		});
+
+		it('should return deduplicated authors and the date range of versions since the publish', async () => {
+			const workflow = getWorkflow();
+			workflow.id = workflowId;
+			workflow.activeVersionId = 'published-version';
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
+			workflowHistoryRepository.findOne.mockResolvedValueOnce({
+				createdAt: new Date('2024-03-01T00:00:00.000Z'),
+			} as WorkflowHistory);
+			workflowHistoryRepository.findChangelogCreatedAfter.mockResolvedValueOnce({
+				authorLists: ['Alice, Bob', 'Bob', 'Carol'],
+				from: new Date('2024-03-02T08:00:00.000Z'),
+				to: new Date('2024-03-05T10:00:00.000Z'),
+			});
+
+			const result = await workflowHistoryService.getChangelog(testUser, workflowId);
+
+			expect(result).toEqual({
+				authors: ['Alice', 'Bob', 'Carol'],
+				from: '2024-03-02T08:00:00.000Z',
+				to: '2024-03-05T10:00:00.000Z',
+			});
+			expect(workflowHistoryRepository.findChangelogCreatedAfter).toHaveBeenCalledWith(
+				workflowId,
+				new Date('2024-03-01T00:00:00.000Z'),
+				expect.any(Number),
+			);
+		});
+	});
+
 	describe('updateVersion', () => {
 		it('should update version without permission checks', async () => {
 			// Arrange
