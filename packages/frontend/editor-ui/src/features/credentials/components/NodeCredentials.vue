@@ -4,6 +4,7 @@ import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type {
 	ICredentialType,
 	INodeCredentialDescription,
+	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeParameters,
 	NodeParameterValueType,
@@ -16,6 +17,7 @@ import {
 	hasProxyAuth,
 	getAppNameFromCredType,
 	getAuthTypeForNodeCredential,
+	getInactiveCredentials,
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
 } from '@/app/utils/nodeTypesUtils';
@@ -750,10 +752,21 @@ function onCredentialSelected(
 
 	const node = props.node;
 
-	const credentials = {
+	const credentials: INodeCredentials = {
 		...(node.credentials ?? {}),
 		[selectedCredentialsType]: newSelectedCredentials,
 	};
+
+	// Drop credential types the node no longer uses (e.g. after switching auth type),
+	// so stale entries don't accumulate in the saved workflow. The type the user just
+	// picked is always kept.
+	const inactiveCredentials = getInactiveCredentials(
+		{ ...node, credentials },
+		nodeType.value,
+	).filter((type) => type !== selectedCredentialsType);
+	for (const credentialType of inactiveCredentials) {
+		delete credentials[credentialType];
+	}
 
 	const updateInformation: INodeUpdatePropertiesInformation = {
 		name: props.node.name,

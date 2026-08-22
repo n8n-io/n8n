@@ -238,9 +238,21 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 			nodeType.credentials !== undefined
 		) {
 			const saveCredentials: INodeCredentials = {};
+			// Nodes that select their credential type through parameters (e.g. HTTP
+			// Request's nodeCredentialType / genericAuthType) don't declare those types
+			// in the node type description, so filter them against the actively used
+			// types instead. A null active set means the type can't be determined
+			// statically (e.g. an expression) — keep everything rather than drop one in use.
+			const usesParameterSelectedCredentials =
+				hasProxyAuth(node) || Object.keys(nodeParametersInput).includes('genericAuthType');
+			const activeCredentialTypes = usesParameterSelectedCredentials
+				? NodeHelpers.getActiveCredentialTypes(node, nodeType)
+				: null;
 			for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
-				if (hasProxyAuth(node) || Object.keys(nodeParametersInput).includes('genericAuthType')) {
-					saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+				if (usesParameterSelectedCredentials) {
+					if (activeCredentialTypes === null || activeCredentialTypes.has(nodeCredentialTypeName)) {
+						saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
+					}
 					continue;
 				}
 
