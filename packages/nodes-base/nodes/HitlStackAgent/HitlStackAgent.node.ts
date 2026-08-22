@@ -209,10 +209,18 @@ export class HitlStackAgent implements INodeType {
 			allowUnauthorizedCerts?: boolean;
 		};
 
+		const workflow = this.getWorkflow();
+		const node = this.getNode();
+
 		const body: IDataObject = {
 			executionId: this.getExecutionId(),
-			workflowId: this.getWorkflow().id ?? 'unknown',
-			nodeName: this.getNode().name,
+			workflowId: workflow.id ?? 'unknown',
+			// A reviewer managing several workflows needs a name, not just an id
+			workflowName: workflow.name ?? '',
+			nodeName: node.name,
+			// Distinguishes two HITL nodes in the same workflow
+			nodeId: node.id,
+			registeredAt: new Date().toISOString(),
 			resumeUrl: this.getSignedResumeUrl(),
 			data: items[0].json,
 		};

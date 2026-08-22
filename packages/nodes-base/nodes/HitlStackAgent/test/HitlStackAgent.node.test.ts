@@ -59,7 +59,10 @@ describe('HITLStackAgent Node — registration', () => {
 				body: {
 					executionId: '1042',
 					workflowId: 'wf-1',
+					workflowName: 'wf',
 					nodeName: 'HITLStackAgent',
+					nodeId: 'hitl-node',
+					registeredAt: expect.any(String),
 					resumeUrl: RESUME_URL,
 					data: { customer: 'acme' },
 				},
