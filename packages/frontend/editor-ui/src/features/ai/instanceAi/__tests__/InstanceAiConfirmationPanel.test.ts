@@ -92,7 +92,7 @@ vi.mock('../components/InstanceAiCredentialSetup.vue', () => ({
 }));
 vi.mock('../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
 	default: {
-		template: '<div />',
+		template: '<div data-test-id="mock-workflow-setup" />',
 		props: ['requestId', 'setupRequests', 'workflowId', 'message', 'projectId', 'credentialFlow'],
 	},
 }));
@@ -660,11 +660,46 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			],
 		};
 
+		it('renders questions only in the floating mount', () => {
+			injectPendingConfirmation(thread, questionsConfirmation);
+
+			const floating = renderComponent({ props: { kind: 'floating' } });
+			expect(floating.getByTestId('mock-questions')).toBeVisible();
+			floating.unmount();
+
+			const inline = renderComponent({ props: { kind: 'inline' } });
+			expect(inline.queryByTestId('mock-questions')).toBeNull();
+		});
+
+		it('keeps setup metadata on the inline setup renderer', () => {
+			injectPendingConfirmation(thread, {
+				...questionsConfirmation,
+				setupRequests: [
+					{
+						node: {
+							name: 'Slack',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 2,
+							parameters: {},
+							position: [0, 0],
+							id: 'node-1',
+						},
+						isTrigger: false,
+					},
+				],
+			});
+
+			const inline = renderComponent({ props: { kind: 'inline' } });
+
+			expect(inline.getByTestId('mock-workflow-setup')).toBeVisible();
+			expect(inline.queryByTestId('mock-questions')).toBeNull();
+		});
+
 		it('includes all available options and correct option_chosen for single-select', () => {
 			injectPendingConfirmation(thread, questionsConfirmation);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			renderComponent({ props: { kind: 'inline' } });
+			renderComponent({ props: { kind: 'floating' } });
 
 			const answers: QuestionAnswer[] = [
 				{
@@ -726,7 +761,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			injectPendingConfirmation(thread, questionsConfirmation);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			renderComponent({ props: { kind: 'inline' } });
+			renderComponent({ props: { kind: 'floating' } });
 
 			const answers: QuestionAnswer[] = [
 				{
@@ -769,7 +804,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			injectPendingConfirmation(thread, questionsConfirmation);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			renderComponent({ props: { kind: 'inline' } });
+			renderComponent({ props: { kind: 'floating' } });
 
 			const answers: QuestionAnswer[] = [
 				{
@@ -810,7 +845,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			injectPendingConfirmation(thread, questionsConfirmation);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
-			renderComponent({ props: { kind: 'inline' } });
+			renderComponent({ props: { kind: 'floating' } });
 
 			const answers: QuestionAnswer[] = [
 				{
