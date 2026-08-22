@@ -434,6 +434,7 @@
 	"banners.workflowAutoDeactivated.message": "This workflow was automatically deactivated due to multiple crashed executions. Please review and reactivate it when ready.",
 	"binaryDataDisplay.backToList": "Back to list",
 	"binaryDataDisplay.backToOverviewPage": "Back to overview page",
+	"binaryDataDisplay.filePreview": "File preview",
 	"binaryDataDisplay.noDataFoundToDisplay": "No data found to display",
 	"binaryDataDisplay.yourBrowserDoesNotSupport": "Your browser does not support the video element. Kindly update it to latest version.",
 	"chat.hide": "Hide chat",
