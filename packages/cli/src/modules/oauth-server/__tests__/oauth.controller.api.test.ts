@@ -49,6 +49,14 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 		});
 	});
 
+	test('should stay available when MCP access is disabled, for the other protected resources', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.get('/.well-known/oauth-authorization-server');
+
+		expect(response.statusCode).toBe(200);
+	});
+
 	test('should return metadata with correct base URL', async () => {
 		const response = await testServer.restlessAgent.get('/.well-known/oauth-authorization-server');
 
@@ -92,6 +100,25 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 });
 
 describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	test('should return 404 when MCP access is disabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.get(
+			'/.well-known/oauth-protected-resource/mcp-server/http',
+		);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Unknown protected resource' });
+	});
+
 	test('should return protected resource metadata', async () => {
 		const response = await testServer.restlessAgent.get(
 			'/.well-known/oauth-protected-resource/mcp-server/http',
@@ -149,6 +176,23 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 });
 
 describe('GET /.well-known/oauth-protected-resource (bare path)', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	test('should return 404 when the default resource is disabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.get('/.well-known/oauth-protected-resource');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Unknown protected resource' });
+	});
+
 	test('resolves to the default registered resource', async () => {
 		const response = await testServer.restlessAgent.get('/.well-known/oauth-protected-resource');
 
@@ -581,6 +625,14 @@ describe('POST /mcp-oauth/revoke', () => {
 });
 
 describe('OAuth Discovery - Cross-validation', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
 	test('should have consistent URLs between authorization server and protected resource metadata', async () => {
 		const authServerResponse = await testServer.restlessAgent.get(
 			'/.well-known/oauth-authorization-server',
@@ -792,24 +844,25 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 		await mcpSettingsService.setEnabled(false);
 	});
 
-	test('should serve discovery documents while MCP access is disabled', async () => {
-		const authServerResponse = await testServer.restlessAgent.get(
-			'/.well-known/oauth-authorization-server',
-		);
-		const protectedResourceResponse = await testServer.restlessAgent.get(
+	test('should serve the authorization server metadata while MCP access is disabled', async () => {
+		const response = await testServer.restlessAgent.get('/.well-known/oauth-authorization-server');
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('should stop advertising the instance MCP resource while MCP access is disabled', async () => {
+		const response = await testServer.restlessAgent.get(
 			'/.well-known/oauth-protected-resource/mcp-server/http',
 		);
 
-		expect(authServerResponse.statusCode).toBe(200);
-		expect(protectedResourceResponse.statusCode).toBe(200);
+		expect(response.statusCode).toBe(404);
 	});
 
-	test('should mint a token pair end-to-end while MCP access is disabled', async () => {
+	test('should keep the OAuth endpoints live but refuse a grant for the unavailable default resource', async () => {
 		const { createHash, randomBytes } = await import('node:crypto');
 		const codeVerifier = randomBytes(32).toString('base64url');
 		const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
 
-		// 1. Dynamic Client Registration
 		const registerResponse = await testServer.restlessAgent.post('/mcp-oauth/register').send({
 			client_name: 'Decoupled Flow Client',
 			redirect_uris: ['https://example.com/callback'],
@@ -817,11 +870,9 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 			token_endpoint_auth_method: 'none',
 		});
 		expect(registerResponse.statusCode).toBe(201);
-		const clientId = registerResponse.body.client_id;
 
-		// 2. Authorize — sets the OAuth session cookie and redirects to consent
 		const authorizeResponse = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
-			client_id: clientId,
+			client_id: registerResponse.body.client_id,
 			redirect_uri: 'https://example.com/callback',
 			response_type: 'code',
 			code_challenge: codeChallenge,
@@ -838,37 +889,15 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 			.find((cookie) => cookie.startsWith('n8n-oauth-session='));
 		expect(sessionCookie).toBeDefined();
 
-		// 3. Consent approval as an authenticated user
+		// A request without an RFC 8707 resource indicator targets the default
+		// resource — the instance MCP server, which is not being served here.
 		const authAgent = testServer.authAgentFor(owner);
 		authAgent.jar.setCookie(sessionCookie ?? '');
 		const consentResponse = await authAgent
 			.post('/consent/approve')
 			.send({ approved: true, scopes: supportedScopes });
-		expect(consentResponse.statusCode).toBe(200);
 
-		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
-		const code = redirectUrl.searchParams.get('code');
-		expect(code).toBeTruthy();
-
-		// 4. Token exchange — the token service functions with MCP access disabled
-		const tokenResponse = await testServer.restlessAgent
-			.post('/mcp-oauth/token')
-			.type('form')
-			.send({
-				grant_type: 'authorization_code',
-				code: code!,
-				client_id: clientId,
-				code_verifier: codeVerifier,
-				redirect_uri: 'https://example.com/callback',
-			});
-		expect(tokenResponse.statusCode).toBe(200);
-		expect(tokenResponse.body).toEqual({
-			access_token: expect.any(String),
-			token_type: 'Bearer',
-			expires_in: 3600,
-			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
-			scope: supportedScopes.join(' '),
-		});
+		expect(consentResponse.statusCode).toBe(403);
 	});
 });
 

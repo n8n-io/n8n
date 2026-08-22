@@ -127,10 +127,14 @@ export class McpProtectedResource implements ProtectedResource {
 		return await this.mcpSettingsService.getAllowedRedirectUris();
 	}
 
+	async isAvailable(): Promise<boolean> {
+		return await this.mcpSettingsService.getEnabled();
+	}
+
 	async authorize(_user: User): Promise<boolean> {
 		// The instance MCP server has no per-user authorization rule: any
 		// authenticated user may access it while the server is enabled, and all
 		// users are denied when it is disabled.
-		return await this.mcpSettingsService.getEnabled();
+		return await this.isAvailable();
 	}
 }
