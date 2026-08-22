@@ -68,17 +68,8 @@ export class DbStore {
 		return result;
 	}
 
-	/**
-	 * Read only the workflow-snapshot columns of a row, leaving the `data` column unread. Callers
-	 * that are about to overwrite the run data use this to avoid loading it, which matters inside a
-	 * transaction: on SQLite that transaction holds the process-wide write connection.
-	 */
-	async readWorkflowData(
-		{ executionId }: ExecutionRef,
-		tx?: EntityManager,
-	): Promise<BundleWorkflowSnapshot | null> {
-		const repo = tx ? tx.getRepository(ExecutionData) : this.repository;
-		const result = await repo.findOne({
+	async readWorkflowData({ executionId }: ExecutionRef): Promise<BundleWorkflowSnapshot | null> {
+		const result = await this.repository.findOne({
 			where: { executionId },
 			select: ['workflowData', 'workflowVersionId'],
 		});

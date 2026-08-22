@@ -877,12 +877,7 @@ export class InstanceAiService {
 		});
 		this.tracing = new InstanceAiTracingService({
 			logger: this.logger,
-			// `first_visible_state` has to see the run's streamed text, which under
-			// the durable log lives in the log (as coalesced blocks), never in the
-			// bus cache.
-			eventReader: {
-				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
-			},
+			eventBus: this.eventBus,
 			runState: this.runState,
 			dbSnapshotStorage: this.dbSnapshotStorage,
 			aiService: this.aiService,
@@ -898,13 +893,19 @@ export class InstanceAiService {
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
 			durableLog: globalConfig.instanceAi.durableLog,
-			// The terminal guard and outcome-replay dedup must see the run's events
-			// after a restart too, which only the durable log can provide (the bus
-			// cache is empty in a fresh process).
+			// Flag-resolved reads: the terminal guard and outcome-replay dedup must
+			// see the run's events after a restart too, which only the durable log
+			// can provide (the bus cache is empty in a fresh process).
 			eventBus: {
 				publish: (threadId, event) => this.eventBus.publish(threadId, event),
-				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
-				getEventsForRuns: async (threadId, runIds) => await this.readRunEvents(threadId, runIds),
+				getEventsForRun: async (threadId, runId) =>
+					this.instanceAiConfig.durableLog
+						? await this.readDurableEventsForRuns(threadId, [runId])
+						: this.eventBus.getEventsForRun(threadId, runId),
+				getEventsForRuns: async (threadId, runIds) =>
+					this.instanceAiConfig.durableLog
+						? await this.readDurableEventsForRuns(threadId, runIds)
+						: this.eventBus.getEventsForRuns(threadId, runIds),
 			},
 			dbSnapshotStorage: this.dbSnapshotStorage,
 			agentMemory: this.agentMemory,
@@ -4275,9 +4276,7 @@ export class InstanceAiService {
 				status: finalStatus,
 				outputText,
 				modelId,
-				metadata: await this.tracing.buildMessageTraceMetadata(threadId, runId, {
-					status: finalStatus,
-				}),
+				metadata: this.tracing.buildMessageTraceMetadata(threadId, runId, { status: finalStatus }),
 			};
 			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
 				threadId,
@@ -4355,7 +4354,7 @@ export class InstanceAiService {
 				messageTraceFinalization = {
 					status: 'cancelled',
 					reason: cancellationReason,
-					metadata: await this.tracing.buildMessageTraceMetadata(threadId, runId, {
+					metadata: this.tracing.buildMessageTraceMetadata(threadId, runId, {
 						status: 'cancelled',
 						cancellationReason,
 						runTimeout,
@@ -4431,9 +4430,7 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: 'error',
 				reason: errorMessage,
-				metadata: await this.tracing.buildMessageTraceMetadata(threadId, runId, {
-					status: 'error',
-				}),
+				metadata: this.tracing.buildMessageTraceMetadata(threadId, runId, { status: 'error' }),
 			};
 
 			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
@@ -5618,7 +5615,7 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: finalStatus,
 				outputText,
-				metadata: await this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+				metadata: this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 					status: finalStatus,
 				}),
 			};
@@ -5705,7 +5702,7 @@ export class InstanceAiService {
 				messageTraceFinalization = {
 					status: 'cancelled',
 					reason: cancellationReason,
-					metadata: await this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+					metadata: this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 						status: 'cancelled',
 						cancellationReason,
 						runTimeout,
@@ -5782,7 +5779,7 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: 'error',
 				reason: errorMessage,
-				metadata: await this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+				metadata: this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 					status: 'error',
 				}),
 			};
@@ -6457,7 +6454,7 @@ export class InstanceAiService {
 		await this.tracing.maybeFinalizeRunTraceRoot(suspended.runId, {
 			status: 'cancelled',
 			reason,
-			metadata: await this.tracing.buildMessageTraceMetadata(suspended.threadId, suspended.runId, {
+			metadata: this.tracing.buildMessageTraceMetadata(suspended.threadId, suspended.runId, {
 				status: 'cancelled',
 				cancellationReason: reason,
 				...(runTimeout ? { runTimeout } : {}),
@@ -6789,18 +6786,16 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * The one place the run-event source is chosen. With the durable log on it
-	 * is a read-own-writes barrier: settle the thread's drain (including open
-	 * coalesce buffers) so everything published before this call is visible,
-	 * then read the log. With it off the in-memory bus store is the only
-	 * source. Every caller is a run boundary — terminal-guard inputs, trace
-	 * metadata, snapshot builds — where closing the open segment early is
-	 * correct anyway.
+	 * Read-own-writes barrier for decision reads from the durable log: settle
+	 * the thread's drain (including open coalesce buffers) so everything
+	 * published before this call is visible to the read. Used at run
+	 * boundaries — terminal-guard inputs and snapshot builds — where closing
+	 * the open segment early is correct anyway.
 	 */
-	private async readRunEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
-		if (!this.instanceAiConfig.durableLog) {
-			return this.eventBus.getEventsForRuns(threadId, runIds);
-		}
+	private async readDurableEventsForRuns(
+		threadId: string,
+		runIds: string[],
+	): Promise<InstanceAiEvent[]> {
 		await this.eventLog.flush(threadId);
 		return await this.eventLog.getEventsForRuns(threadId, runIds);
 	}
@@ -6827,9 +6822,13 @@ export class InstanceAiService {
 					const snapshot = await snapshotStorage.getLatest(threadId, { messageGroupId, runId });
 					groupRunIds = snapshot?.runIds?.length ? snapshot.runIds : [runId];
 				}
-				events = await this.readRunEvents(threadId, groupRunIds);
+				events = this.instanceAiConfig.durableLog
+					? await this.readDurableEventsForRuns(threadId, groupRunIds)
+					: this.eventBus.getEventsForRuns(threadId, groupRunIds);
 			} else {
-				events = await this.readRunEvents(threadId, [runId]);
+				events = this.instanceAiConfig.durableLog
+					? await this.readDurableEventsForRuns(threadId, [runId])
+					: this.eventBus.getEventsForRun(threadId, runId);
 			}
 			// Durable-log flag on: the tree input comes from the DB, so long runs can
 			// no longer out-evict their own snapshot input (the empty-agentTree bug
