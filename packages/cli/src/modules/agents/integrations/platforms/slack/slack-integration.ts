@@ -69,10 +69,11 @@ export class SlackIntegration extends AgentChatIntegration {
 			'The agent should be chatted with from Slack, invoked with @mentions, or keep conversing in Slack threads.',
 			'The agent needs Slack message context, user/channel lookup, DMs, channel messages, emoji reactions, or rich UI in Slack.',
 			'The agent should communicate as the connected Slack bot rather than merely call Slack as a backend API.',
+			'A scheduled Agent task should proactively send a DM or channel message through the connected Slack bot.',
 		],
 		useNodeToolWhen: [
 			'Slack is only a backend API step in a broader task and the agent does not need Slack conversation context.',
-			'The user asks for a one-off Slack operation from another trigger and does not need the agent connected as a Slack chat surface.',
+			'The Slack operation is performed by a non-Agent workflow, or the exact operation is not listed in the Agent integration capabilities.',
 		],
 	};
 
