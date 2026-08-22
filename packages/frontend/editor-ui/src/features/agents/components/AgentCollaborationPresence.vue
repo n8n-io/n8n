@@ -16,14 +16,27 @@ const props = defineProps<Props>();
 const locale = useI18n();
 const usersStore = useUsersStore();
 
-// Get user names for active users
+// Filter out current user from active users
+const otherUsers = computed(() => {
+	return props.activeUsers.filter(userId => userId !== props.currentUserId);
+});
+
+// Get user names for other active users
 const userNames = computed(() => {
-	return props.activeUsers
-		.filter(userId => userId !== props.currentUserId)
-		.map(userId => {
-			const user = usersStore.getUserById(userId);
-			return user?.firstName || user?.email || 'Anonymous';
-		});
+	return otherUsers.value.map(userId => {
+		const user = usersStore.getUserById(userId);
+		return user?.firstName || user?.email || 'Anonymous';
+	});
+});
+
+// Users to display (max 3 avatars)
+const displayUsers = computed(() => {
+	return otherUsers.value.slice(0, 3);
+});
+
+// Count of additional users not shown
+const overflowCount = computed(() => {
+	return Math.max(0, otherUsers.value.length - 3);
 });
 
 // Generate avatar colors based on user ID
@@ -37,10 +50,10 @@ const getUserColor = (userId: string) => {
 const getUserInitials = (userId: string) => {
 	const user = usersStore.getUserById(userId);
 	if (!user) return '?';
-	
+
 	const firstName = user.firstName || '';
 	const lastName = user.lastName || '';
-	
+
 	if (firstName && lastName) {
 		return (firstName[0] + lastName[0]).toUpperCase();
 	} else if (firstName) {
@@ -48,7 +61,7 @@ const getUserInitials = (userId: string) => {
 	} else if (user.email) {
 		return user.email[0].toUpperCase();
 	}
-	
+
 	return '?';
 };
 
@@ -57,7 +70,7 @@ const userListText = computed(() => {
 	if (userNames.value.length === 0) {
 		return locale.baseText('agentCollaboration.noOtherUsers');
 	}
-	
+
 	return locale.baseText('agentCollaboration.activeUsers', {
 		interpolate: { users: userNames.value.join(', ') },
 	});
@@ -73,20 +86,19 @@ const showBadge = computed(() => props.userCount > 1);
 			<div class="presence-indicator">
 				<div class="user-avatars">
 					<div
-						v-for="userId in activeUsers.slice(0, 3)"
+						v-for="userId in displayUsers"
 						:key="userId"
-						v-show="userId !== currentUserId"
 						class="user-avatar"
 						:style="{ backgroundColor: getUserColor(userId) }"
 					>
 						{{ getUserInitials(userId) }}
 					</div>
-					<div v-if="userCount > 3" class="user-avatar more-users">
-						+{{ userCount - 3 }}
+					<div v-if="overflowCount > 0" class="user-avatar more-users">
+						+{{ overflowCount }}
 					</div>
 				</div>
 				<N8nBadge
-					:type="userCount > 1 ? 'success' : 'default'"
+					theme="success"
 					:size="small"
 				>
 					{{ userCount }}
@@ -155,7 +167,7 @@ const showBadge = computed(() => props.userCount > 1);
 }
 
 .more-users {
-	background-color: var(--color-foreground-alt);
+	background-color: var(--color-foreground-base);
 	font-size: 9px;
 }
 

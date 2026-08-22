@@ -4,13 +4,14 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { AgentCollaborationService } from '../agent-collaboration.service';
-import { Push } from '@/push';
+import { AgentCollaborationService, type CollaborationBroadcastCallback } from '../agent-collaboration.service';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 describe('AgentCollaborationService', () => {
 	let service: AgentCollaborationService;
-	let mockPush: Push;
 	let mockLogger: Logger;
+	let mockAgentRepository: AgentRepository;
+	let mockBroadcastCallback: CollaborationBroadcastCallback;
 
 	const mockUser: User = {
 		id: 'user-123',
@@ -19,12 +20,10 @@ describe('AgentCollaborationService', () => {
 		lastName: 'User',
 	} as User;
 
+	const mockProjectId = 'project-456';
+
 	beforeEach(() => {
 		// Mock dependencies
-		mockPush = {
-			sendToUsers: vi.fn(),
-		} as unknown as Push;
-
 		mockLogger = {
 			scoped: vi.fn(() => mockLogger),
 			info: vi.fn(),
@@ -33,10 +32,17 @@ describe('AgentCollaborationService', () => {
 			warn: vi.fn(),
 		} as unknown as Logger;
 
+		mockAgentRepository = {
+			findByIdAndProjectId: vi.fn().mockResolvedValue({ id: 'agent-456' }),
+		} as unknown as AgentRepository;
+
+		mockBroadcastCallback = vi.fn();
+
 		// Mock Container.get
 		vi.spyOn(Container, 'get').mockReturnValue(mockLogger);
 
-		service = new AgentCollaborationService(mockPush);
+		service = new AgentCollaborationService(mockAgentRepository);
+		service.setBroadcastCallback(mockBroadcastCallback);
 	});
 
 	describe('joinAgent', () => {
@@ -44,14 +50,14 @@ describe('AgentCollaborationService', () => {
 			const agentId = 'agent-456';
 			const userName = 'Test User';
 
-			await service.joinAgent(agentId, mockUser.id, userName);
+			await service.joinAgent(agentId, mockUser.id, userName, mockProjectId);
 
 			// Verify user is added
 			expect(service.isUserActive(agentId, mockUser.id)).toBe(true);
 			expect(service.getActiveUsers(agentId)).toContain(mockUser.id);
 
 			// Verify broadcast was called
-			expect(mockPush.sendToUsers).toHaveBeenCalledWith(
+			expect(mockBroadcastCallback).toHaveBeenCalledWith(
 				{
 					type: 'agent-presence',
 					data: {
@@ -73,8 +79,8 @@ describe('AgentCollaborationService', () => {
 			const agentId = 'agent-456';
 			const user2: User = { id: 'user-456', email: 'user2@example.com' } as User;
 
-			await service.joinAgent(agentId, mockUser.id, 'User 1');
-			await service.joinAgent(agentId, user2.id, 'User 2');
+			await service.joinAgent(agentId, mockUser.id, 'User 1', mockProjectId);
+			await service.joinAgent(agentId, user2.id, 'User 2', mockProjectId);
 
 			expect(service.getUserCount(agentId)).toBe(2);
 			expect(service.getActiveUsers(agentId)).toEqual([mockUser.id, user2.id]);
@@ -87,19 +93,19 @@ describe('AgentCollaborationService', () => {
 			const user2: User = { id: 'user-456', email: 'user2@example.com' } as User;
 
 			// Join two users
-			await service.joinAgent(agentId, mockUser.id, 'User 1');
-			await service.joinAgent(agentId, user2.id, 'User 2');
+			await service.joinAgent(agentId, mockUser.id, 'User 1', mockProjectId);
+			await service.joinAgent(agentId, user2.id, 'User 2', mockProjectId);
 			expect(service.getUserCount(agentId)).toBe(2);
 
 			// One user leaves
-			await service.leaveAgent(agentId, mockUser.id);
+			await service.leaveAgent(agentId, mockUser.id, mockProjectId);
 
 			// Verify user is removed
 			expect(service.isUserActive(agentId, mockUser.id)).toBe(false);
 			expect(service.getUserCount(agentId)).toBe(1);
 
 			// Verify broadcast was called for remaining user
-			expect(mockPush.sendToUsers).toHaveBeenCalledWith(
+			expect(mockBroadcastCallback).toHaveBeenCalledWith(
 				{
 					type: 'agent-presence',
 					data: {
@@ -112,16 +118,16 @@ describe('AgentCollaborationService', () => {
 						},
 					},
 				},
-				[mockUser.id, user2.id],
+				[user2.id],
 			);
 		});
 
 		it('should clean up when no users remain', async () => {
 			const agentId = 'agent-456';
 
-			await service.joinAgent(agentId, mockUser.id, 'Test User');
-			await service.updateCursor(agentId, mockUser.id, { x: 100, y: 200 });
-			await service.leaveAgent(agentId, mockUser.id);
+			await service.joinAgent(agentId, mockUser.id, 'Test User', mockProjectId);
+			await service.updateCursor(agentId, mockUser.id, { x: 100, y: 200 }, mockProjectId);
+			await service.leaveAgent(agentId, mockUser.id, mockProjectId);
 
 			// Verify cleanup
 			expect(service.isUserActive(agentId, mockUser.id)).toBe(false);
@@ -134,15 +140,15 @@ describe('AgentCollaborationService', () => {
 			const agentId = 'agent-456';
 			const position = { x: 150, y: 250 };
 
-			await service.joinAgent(agentId, mockUser.id, 'Test User');
-			await service.updateCursor(agentId, mockUser.id, position);
+			await service.joinAgent(agentId, mockUser.id, 'Test User', mockProjectId);
+			await service.updateCursor(agentId, mockUser.id, position, mockProjectId);
 
 			// Verify cursor is updated
 			const cursors = service.getCursorPositions(agentId);
 			expect(cursors.get(mockUser.id)).toEqual(position);
 
 			// Verify broadcast was called
-			expect(mockPush.sendToUsers).toHaveBeenCalledWith(
+			expect(mockBroadcastCallback).toHaveBeenCalledWith(
 				{
 					type: 'agent-presence',
 					data: {
@@ -166,8 +172,8 @@ describe('AgentCollaborationService', () => {
 			const agentId = 'agent-456';
 			const user2: User = { id: 'user-456', email: 'user2@example.com' } as User;
 
-			await service.joinAgent(agentId, mockUser.id, 'User 1');
-			await service.joinAgent(agentId, user2.id, 'User 2');
+			await service.joinAgent(agentId, mockUser.id, 'User 1', mockProjectId);
+			await service.joinAgent(agentId, user2.id, 'User 2', mockProjectId);
 
 			const change = {
 				type: 'config-update' as const,
@@ -178,7 +184,7 @@ describe('AgentCollaborationService', () => {
 			await service.broadcastAgentChange(agentId, change);
 
 			// Verify broadcast to both users
-			expect(mockPush.sendToUsers).toHaveBeenCalledWith(
+			expect(mockBroadcastCallback).toHaveBeenCalledWith(
 				{
 					type: 'agent-collaboration',
 					data: {
@@ -203,7 +209,7 @@ describe('AgentCollaborationService', () => {
 			await service.broadcastAgentChange(agentId, change);
 
 			// Should not call sendToUsers
-			expect(mockPush.sendToUsers).not.toHaveBeenCalled();
+			expect(mockBroadcastCallback).not.toHaveBeenCalled();
 		});
 	});
 
@@ -211,7 +217,7 @@ describe('AgentCollaborationService', () => {
 		it('should handle agent collaboration messages', async () => {
 			const agentId = 'agent-456';
 
-			await service.joinAgent(agentId, mockUser.id, 'Test User');
+			await service.joinAgent(agentId, mockUser.id, 'Test User', mockProjectId);
 
 			const message = {
 				type: 'agent-collaboration' as const,
@@ -226,7 +232,7 @@ describe('AgentCollaborationService', () => {
 			await service.handleClientMessage(message, mockUser.id);
 
 			// Verify rebroadcast
-			expect(mockPush.sendToUsers).toHaveBeenCalled();
+			expect(mockBroadcastCallback).toHaveBeenCalled();
 		});
 
 		it('should throw error for unauthorized user', async () => {
@@ -250,7 +256,7 @@ describe('AgentCollaborationService', () => {
 		it('should handle cursor update messages', async () => {
 			const agentId = 'agent-456';
 
-			await service.joinAgent(agentId, mockUser.id, 'Test User');
+			await service.joinAgent(agentId, mockUser.id, 'Test User', mockProjectId);
 
 			const message = {
 				type: 'agent-presence' as const,
@@ -277,7 +283,7 @@ describe('AgentCollaborationService', () => {
 
 			expect(service.getUserCount(agentId)).toBe(0);
 
-			await service.joinAgent(agentId, mockUser.id, 'Test User');
+			await service.joinAgent(agentId, mockUser.id, 'Test User', mockProjectId);
 			expect(service.getUserCount(agentId)).toBe(1);
 		});
 
@@ -285,8 +291,8 @@ describe('AgentCollaborationService', () => {
 			const agentId = 'agent-456';
 			const user2: User = { id: 'user-456', email: 'user2@example.com' } as User;
 
-			await service.joinAgent(agentId, mockUser.id, 'User 1');
-			await service.joinAgent(agentId, user2.id, 'User 2');
+			await service.joinAgent(agentId, mockUser.id, 'User 1', mockProjectId);
+			await service.joinAgent(agentId, user2.id, 'User 2', mockProjectId);
 
 			const activeUsers = service.getActiveUsers(agentId);
 			expect(activeUsers).toHaveLength(2);
@@ -297,12 +303,65 @@ describe('AgentCollaborationService', () => {
 		it('should return cursor positions', async () => {
 			const agentId = 'agent-456';
 
-			await service.joinAgent(agentId, mockUser.id, 'Test User');
-			await service.updateCursor(agentId, mockUser.id, { x: 100, y: 200 });
+			await service.joinAgent(agentId, mockUser.id, 'Test User', mockProjectId);
+			await service.updateCursor(agentId, mockUser.id, { x: 100, y: 200 }, mockProjectId);
 
 			const cursors = service.getCursorPositions(agentId);
 			expect(cursors.size).toBe(1);
 			expect(cursors.get(mockUser.id)).toEqual({ x: 100, y: 200 });
+		});
+	});
+
+	describe('cleanupInactiveUsers', () => {
+		it('should remove inactive users and broadcast user-left events', async () => {
+			const agentId = 'agent-456';
+			const user2: User = { id: 'user-456', email: 'user2@example.com' } as User;
+
+			// Join two users
+			await service.joinAgent(agentId, mockUser.id, 'User 1', mockProjectId);
+			await service.joinAgent(agentId, user2.id, 'User 2', mockProjectId);
+
+			// Manually set old activity timestamp for mockUser to make them inactive
+			const activityMap = (service as any).userActivity.get(agentId);
+			activityMap.set(mockUser.id, Date.now() - 10 * 60 * 1000); // 10 minutes ago
+
+			// Run cleanup
+			service.cleanupInactiveUsers();
+
+			// Verify inactive user is removed
+			expect(service.isUserActive(agentId, mockUser.id)).toBe(false);
+			expect(service.isUserActive(agentId, user2.id)).toBe(true);
+			expect(service.getUserCount(agentId)).toBe(1);
+
+			// Verify user-left broadcast for cleaned up user
+			expect(mockBroadcastCallback).toHaveBeenCalledWith(
+				{
+					type: 'agent-presence',
+					data: {
+						type: 'agent-presence',
+						agentId,
+						payload: {
+							type: 'user-left',
+							userId: mockUser.id,
+							timestamp: expect.any(Number),
+						},
+					},
+				},
+				[user2.id],
+			);
+		});
+
+		it('should not remove active users', async () => {
+			const agentId = 'agent-456';
+
+			await service.joinAgent(agentId, mockUser.id, 'Test User', mockProjectId);
+
+			// Run cleanup without modifying activity timestamp
+			service.cleanupInactiveUsers();
+
+			// Verify user is still active
+			expect(service.isUserActive(agentId, mockUser.id)).toBe(true);
+			expect(service.getUserCount(agentId)).toBe(1);
 		});
 	});
 });

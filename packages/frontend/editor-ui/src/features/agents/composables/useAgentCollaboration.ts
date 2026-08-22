@@ -2,24 +2,37 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useUsersStore } from '@/stores/users.store';
 import { useRestApi } from '@/composables/useRestApi';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import type { AgentCollaborationState, AgentPresence } from '../types';
+
+interface RouteParams {
+	projectId: string;
+	agentId: string;
+}
 
 /**
  * Composable for real-time agent collaboration.
- * 
+ *
  * Manages:
  * - Joining/leaving agent editing sessions
  * - Real-time presence tracking
  * - Cursor position updates
  * - Receiving collaboration events via WebSocket
  */
-export function useAgentCollaboration(agentId?: string) {
+export function useAgentCollaboration(agentId?: string, projectId?: string) {
 	const route = useRoute();
 	const usersStore = useUsersStore();
 	const restApi = useRestApi();
+	const pushStore = usePushConnectionStore();
 
 	// Use provided agentId or extract from route
 	const currentAgentId = ref(agentId || (route.params.agentId as string));
+	const currentProjectId = ref(projectId || (route.params.projectId as string) || '');
+
+	// Build API path with projectId
+	const apiPath = computed(() => {
+		return currentProjectId.value ? `/projects/${currentProjectId.value}/agent-collaboration` : '/agent-collaboration';
+	});
 
 	// Collaboration state
 	const isActive = ref(false);
@@ -52,7 +65,7 @@ export function useAgentCollaboration(agentId?: string) {
 			currentUserName.value = currentUser?.firstName || currentUser?.email || 'Anonymous';
 
 			const response = await restApi.post(
-				`/agent-collaboration/${currentAgentId.value}/join`,
+				`${apiPath.value}/${currentAgentId.value}/join`,
 				{ userName: currentUserName.value },
 			);
 
@@ -76,7 +89,7 @@ export function useAgentCollaboration(agentId?: string) {
 		if (!currentAgentId.value || !isActive.value) return;
 
 		try {
-			await restApi.delete(`/agent-collaboration/${currentAgentId.value}/leave`);
+			await restApi.delete(`${apiPath.value}/${currentAgentId.value}/leave`);
 			isActive.value = false;
 			activeUsers.value = [];
 			userCount.value = 0;
@@ -93,7 +106,7 @@ export function useAgentCollaboration(agentId?: string) {
 		if (!currentAgentId.value || !isActive.value) return;
 
 		try {
-			await restApi.post(`/agent-collaboration/${currentAgentId.value}/cursor`, { x, y });
+			await restApi.post(`${apiPath.value}/${currentAgentId.value}/cursor`, { x, y });
 			cursorPositions.value.set(usersStore.currentUserId, { x, y });
 		} catch (err) {
 			console.error('Failed to update cursor position:', err);
@@ -107,7 +120,7 @@ export function useAgentCollaboration(agentId?: string) {
 		if (!currentAgentId.value) return;
 
 		try {
-			const response = await restApi.get(`/agent-collaboration/${currentAgentId.value}/users`);
+			const response = await restApi.get(`${apiPath.value}/${currentAgentId.value}/users`);
 			activeUsers.value = response.activeUsers || [];
 			userCount.value = response.userCount || 0;
 		} catch (err) {
@@ -122,7 +135,7 @@ export function useAgentCollaboration(agentId?: string) {
 		if (!currentAgentId.value) return;
 
 		try {
-			const response = await restApi.get(`/agent-collaboration/${currentAgentId.value}/cursors`);
+			const response = await restApi.get(`${apiPath.value}/${currentAgentId.value}/cursors`);
 			const cursors = response.cursors || {};
 			cursorPositions.value = new Map(Object.entries(cursors));
 		} catch (err) {
@@ -180,8 +193,9 @@ export function useAgentCollaboration(agentId?: string) {
 			}
 		} else if (collabMessage.type === 'agent-collaboration' && collabMessage.payload) {
 			// Handle agent configuration changes
-			// Emit event for the agent builder to handle concurrent edits
+			// TODO: Dispatch to agent configuration update path for real-time sync
 			// This would typically dispatch to a store or emit a custom event
+			// For now, this logs the change for debugging purposes
 			console.log('Agent configuration changed:', collabMessage.payload);
 		}
 	}
@@ -191,31 +205,23 @@ export function useAgentCollaboration(agentId?: string) {
 		if (currentAgentId.value) {
 			joinSession();
 
-			// Set up WebSocket message listener
-			// TODO: Integrate with actual WebSocket push connection
-			// This would be: pushConnection.on('message', handleCollaborationMessage)
-			// For now, we'll poll for presence updates as fallback
-			const pollInterval = setInterval(() => {
-				if (isActive.value) {
-					fetchActiveUsers();
-					fetchCursorPositions();
-				}
-			}, 5000); // Poll every 5 seconds as fallback
-
-			// Store interval for cleanup
-			(window as unknown)._collaborationPollInterval = pollInterval;
+			// Register WebSocket message listener
+			removeListener = pushStore.addEventListener((message) => {
+				handleCollaborationMessage(message);
+			});
 		}
 	});
 
-	onUnmounted(() => {
-		leaveSession();
+	let removeListener: (() => void) | null = null;
 
-		// Clear polling interval
-		const pollInterval = (window as unknown)._collaborationPollInterval as number;
-		if (pollInterval) {
-			clearInterval(pollInterval);
-			delete (window as unknown)._collaborationPollInterval;
+	onUnmounted(() => {
+		// Remove message listener first to avoid race condition
+		if (removeListener) {
+			removeListener();
+			removeListener = null;
 		}
+
+		leaveSession();
 	});
 
 	return {

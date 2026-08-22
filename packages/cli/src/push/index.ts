@@ -17,13 +17,14 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { AgentCollaborationService } from '@/services/agent-collaboration.service';
+import { AgentCollaborationService, type CollaborationBroadcastCallback } from '@/services/agent-collaboration.service';
 
 import { validateSseOrigin, validateWebSocketOrigin } from './origin-validator';
 import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
 import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
 import {
+	type AgentCollaborationMessage,
 	type OnPushMessage,
 	type PushResponse,
 	type SSEPushRequest,
@@ -57,16 +58,21 @@ export class Push extends TypedEmitter<PushEvents> {
 		private readonly logger: Logger,
 		private readonly authService: AuthService,
 		private readonly publisher: Publisher,
-		private readonly agentCollaborationService: AgentCollaborationService,
+		agentCollaborationService: AgentCollaborationService,
 	) {
 		super();
 		this.logger = this.logger.scoped('push');
+
+		// Set up callback to avoid circular dependency
+		agentCollaborationService.setBroadcastCallback((message, userIds) => {
+			this.sendToUsers(message, userIds);
+		});
 
 		if (this.useWebSockets) {
 			this.backend.on('message', (msg) => {
 				// Handle agent collaboration messages
 				if (this.isAgentCollaborationMessage(msg.msg)) {
-					void this.agentCollaborationService
+					void agentCollaborationService
 						.handleClientMessage(msg.msg, msg.userId)
 						.catch((error) => {
 							this.logger.error('Error handling agent collaboration message', {
@@ -239,11 +245,7 @@ export class Push extends TypedEmitter<PushEvents> {
 	/**
 	 * Type guard to check if a message is an agent collaboration message
 	 */
-	private isAgentCollaborationMessage(msg: unknown): msg is {
-		type: 'agent-collaboration' | 'agent-presence';
-		agentId: string;
-		payload: unknown;
-	} {
+	private isAgentCollaborationMessage(msg: unknown): msg is AgentCollaborationMessage {
 		return (
 			typeof msg === 'object' &&
 			msg !== null &&

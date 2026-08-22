@@ -2,7 +2,7 @@
 
 ## Overview
 
-This feature enables real-time collaborative editing of AI agents in n8n, allowing multiple users to simultaneously work on the same agent configuration with live presence tracking and conflict resolution.
+This feature enables real-time collaborative editing of AI agents in n8n, allowing multiple users to simultaneously work on the same agent configuration with live presence tracking. Future enhancements will include conflict resolution mechanisms.
 
 ## Features
 
@@ -286,9 +286,9 @@ export class MyService {
 The implementation intentionally builds on n8n's existing infrastructure:
 
 - **WebSocket Push Service**: Reuses the established WebSocket communication layer
-- **CRDT Foundation**: Leverages the existing `@n8n/crdt` package for conflict resolution
 - **TypeScript Patterns**: Follows n8n's strict typing conventions
 - **Service Pattern**: Uses dependency injection and service architecture
+- **Future CRDT Integration**: Planned for integration with existing `@n8n/crdt` package
 
 ### Gradual Enhancement
 
@@ -337,7 +337,8 @@ Integration tests verify:
 - WebSocket message flow
 - API endpoint functionality
 - Multi-user scenarios
-- Conflict resolution
+- Presence tracking and cleanup
+- Future: Conflict resolution (planned)
 
 ## Future Enhancements
 
