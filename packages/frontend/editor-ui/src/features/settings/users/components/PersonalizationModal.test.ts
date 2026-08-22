@@ -1,8 +1,11 @@
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems } from '@/__tests__/utils';
 import PersonalizationModal from './PersonalizationModal.vue';
 import { createTestingPinia } from '@pinia/testing';
+import { VIEWS } from '@/app/constants';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import {
 	COMPANY_TYPE_KEY,
 	COMPANY_INDUSTRY_EXTENDED_KEY,
@@ -15,13 +18,16 @@ import {
 	DEVOPS_AUTOMATION_GOAL_KEY,
 } from '../users.constants';
 
+const flushPromises = async () => await new Promise(setImmediate);
+
+const mockRoute = vi.hoisted(() => ({ name: undefined as string | undefined }));
+const mockRouterReplace = vi.hoisted(() => vi.fn());
+
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
-		replace: vi.fn(),
+		replace: mockRouterReplace,
 	}),
-	useRoute: () => ({
-		location: {},
-	}),
+	useRoute: () => mockRoute,
 	RouterLink: vi.fn(),
 }));
 
@@ -43,6 +49,11 @@ const renderModal = createComponentRenderer(PersonalizationModal, {
 });
 
 describe('PersonalizationModal', () => {
+	beforeEach(() => {
+		mockRoute.name = undefined;
+		mockRouterReplace.mockClear();
+	});
+
 	it('mounts', () => {
 		const { getByTitle } = renderModal({ pinia: createTestingPinia() });
 		expect(getByTitle('Customize n8n to you')).toBeInTheDocument();
@@ -147,5 +158,26 @@ describe('PersonalizationModal', () => {
 
 		await userEvent.click(otherItem);
 		expect(getByTestId(OTHER_MARKETING_AUTOMATION_GOAL_KEY)).toBeInTheDocument();
+	});
+
+	describe('closing the survey', () => {
+		it('redirects to the homepage when closed outside an Instance AI route', async () => {
+			mockRoute.name = 'SomeOtherRoute';
+			const { getByRole } = renderModal({ pinia: createTestingPinia() });
+
+			await userEvent.click(getByRole('button', { name: 'Get started' }));
+
+			await waitFor(() => expect(mockRouterReplace).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE }));
+		});
+
+		it('does not redirect away when closed on an Instance AI chat route', async () => {
+			mockRoute.name = INSTANCE_AI_VIEW;
+			const { getByRole } = renderModal({ pinia: createTestingPinia() });
+
+			await userEvent.click(getByRole('button', { name: 'Get started' }));
+			await flushPromises();
+
+			expect(mockRouterReplace).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -6,6 +6,7 @@ import InstanceAiView from '../InstanceAiView.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { INSTANCE_AI_VIEW } from '../constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
@@ -105,6 +106,12 @@ describe('InstanceAiView', () => {
 		);
 
 		expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW, force: true });
+	});
+
+	it('triggers the personalization survey on mount, same as the homepage views', () => {
+		renderView({ pinia });
+
+		expect(useUsersStore().showPersonalizationSurvey).toHaveBeenCalled();
 	});
 
 	it('tracks "User viewed AI assistant" with the previous in-app route on mount', () => {
