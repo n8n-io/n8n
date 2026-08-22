@@ -1,87 +1,124 @@
-import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	INodeListSearchItems,
+	INodeListSearchResult,
+} from 'n8n-workflow';
 
-import { apiRequest } from '../transport';
+import { fetchModelCatalog, toModalitySet } from '../helpers/modelCatalog';
+
+const TEXT = 'text';
+const IMAGE = 'image';
+const VIDEO = 'video';
+
+/**
+ * A model is eligible for an action when its input/output modalities are
+ * compatible with what that action's operation actually sends and reads.
+ *
+ * `input` is derived from `request_modality`, `output` from `response_modality`.
+ */
+type ModalityPredicate = (input: Set<string>, output: Set<string>) => boolean;
+
+function isOnly(modalities: Set<string>, modality: string): boolean {
+	return modalities.size === 1 && modalities.has(modality);
+}
+
+/**
+ * Text chat: the operation sends text and reads text back.
+ */
+const isTextModel: ModalityPredicate = (input, output) => input.has(TEXT) && isOnly(output, TEXT);
+
+/**
+ * Image analysis (image → text): the operation sends an image and reads text,
+ * so the model must accept image input and produce text-only output.
+ */
+const isImageAnalysisModel: ModalityPredicate = (input, output) =>
+	input.has(IMAGE) && isOnly(output, TEXT);
+
+/**
+ * Image generation: the operation sends a text prompt and reads an image, so
+ * the model must accept text input and produce image output.
+ */
+const isImageGenerationModel: ModalityPredicate = (input, output) =>
+	input.has(TEXT) && output.has(IMAGE);
+
+/**
+ * Text-to-video: the operation sends only a text prompt, so the model must
+ * accept text input and produce video output, Extra optional inputs (e.g. audio) are fine.
+ */
+const isTextToVideoModel: ModalityPredicate = (input, output) =>
+	output.has(VIDEO) && input.has(TEXT) && !input.has(IMAGE) && !input.has(VIDEO);
+
+/**
+ * Image-to-video: the operation sends an image (and optional prompt). The model
+ * must accept image input and produce video output.
+ */
+const isImageToVideoModel: ModalityPredicate = (input, output) =>
+	input.has(IMAGE) && !input.has(VIDEO) && output.has(VIDEO);
 
 async function baseModelSearch(
 	this: ILoadOptionsFunctions,
-	modelFilter: (model: string) => boolean,
+	predicate: ModalityPredicate,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const response = await apiRequest.call(this, 'GET', '/api/v1/models', {
-		qs: { page_size: 200 },
-	});
+	const models = await fetchModelCatalog.call(this);
+	const lowerFilter = filter?.toLowerCase();
 
-	const output = response?.output ?? response;
-	const items = (output?.models ?? output?.data ?? []) as Array<{ model: string }>;
+	const results: INodeListSearchItems[] = models
+		.filter((model) => {
+			if (!model.model) return false;
+			const input = toModalitySet(model.inference_metadata?.request_modality);
+			const output = toModalitySet(model.inference_metadata?.response_modality);
+			if (!predicate(input, output)) return false;
+			if (lowerFilter) {
+				const name = model.name ?? model.model;
+				return (
+					model.model.toLowerCase().includes(lowerFilter) ||
+					name.toLowerCase().includes(lowerFilter)
+				);
+			}
+			return true;
+		})
+		.map((model) => ({
+			name: model.name ?? model.model,
+			value: model.model,
+		}));
 
-	let models = items
-		.filter((item) => item.model && modelFilter(item.model))
-		.map((item) => item.model);
+	results.sort((a, b) => a.name.localeCompare(b.name));
 
-	if (filter) {
-		models = models.filter((id) => id.toLowerCase().includes(filter.toLowerCase()));
-	}
-
-	return {
-		results: models.map((id) => ({ name: id, value: id })),
-	};
+	return { results };
 }
 
 export async function textModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await baseModelSearch.call(
-		this,
-		(model) =>
-			!model.includes('-vl-') &&
-			!model.startsWith('qvq') &&
-			!model.includes('-ocr') &&
-			!model.includes('-image') &&
-			!model.includes('-t2i') &&
-			!model.includes('-t2v') &&
-			!model.includes('-i2v') &&
-			!model.includes('-kf2v') &&
-			!model.includes('-r2v') &&
-			!model.includes('-s2v') &&
-			!model.includes('-videoedit') &&
-			!model.includes('-animate-'),
-		filter,
-	);
+	return await baseModelSearch.call(this, isTextModel, filter);
 }
 
 export async function visionModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await baseModelSearch.call(
-		this,
-		(model) => model.includes('-vl-') || model.startsWith('qvq') || model.includes('-ocr'),
-		filter,
-	);
+	return await baseModelSearch.call(this, isImageAnalysisModel, filter);
 }
 
 export async function imageGenerationModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await baseModelSearch.call(
-		this,
-		(model) => model.includes('-image') || model.includes('-t2i'),
-		filter,
-	);
+	return await baseModelSearch.call(this, isImageGenerationModel, filter);
 }
 
 export async function textToVideoModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await baseModelSearch.call(this, (model) => model.includes('-t2v'), filter);
+	return await baseModelSearch.call(this, isTextToVideoModel, filter);
 }
 
 export async function imageToVideoModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await baseModelSearch.call(this, (model) => model.includes('-i2v'), filter);
+	return await baseModelSearch.call(this, isImageToVideoModel, filter);
 }

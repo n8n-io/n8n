@@ -11,28 +11,6 @@ import { modelRLC } from '../descriptions';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Model',
-		name: 'modelId',
-		type: 'options',
-		options: [
-			{
-				name: 'Wan 2.6 Image-to-Video Flash',
-				value: 'wan2.6-i2v-flash',
-				description: 'Fast image-to-video generation model',
-			},
-			{
-				name: 'Wan 2.6 Image-to-Video',
-				value: 'wan2.6-i2v',
-				description: 'Standard image-to-video generation model',
-			},
-		],
-		default: 'wan2.6-i2v-flash',
-		description: 'The model to use for image-to-video generation',
-		displayOptions: {
-			show: { '@version': [1] },
-		},
-	},
-	{
 		...modelRLC('imageToVideoModelSearch'),
 		displayOptions: {
 			show: { '@version': [{ _cnd: { gte: 1.1 } }] },

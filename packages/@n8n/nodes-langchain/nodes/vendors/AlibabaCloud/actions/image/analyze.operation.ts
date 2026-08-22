@@ -6,28 +6,6 @@ import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Model',
-		name: 'modelId',
-		type: 'options',
-		options: [
-			{
-				name: 'Qwen-VL Flash',
-				value: 'qwen3-vl-flash',
-				description: 'Fast vision-language model',
-			},
-			{
-				name: 'Qwen-VL Plus',
-				value: 'qwen3-vl-plus',
-				description: 'Enhanced vision-language model',
-			},
-		],
-		default: 'qwen3-vl-flash',
-		description: 'The model to use for image analysis',
-		displayOptions: {
-			show: { '@version': [1] },
-		},
-	},
-	{
 		...modelRLC('visionModelSearch'),
 		displayOptions: {
 			show: { '@version': [{ _cnd: { gte: 1.1 } }] },
