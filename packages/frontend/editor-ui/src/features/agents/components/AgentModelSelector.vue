@@ -186,6 +186,19 @@ function getCredentialsForProvider(provider: AgentModelProvider) {
 	return [...credentialsById.values()].toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
+function isFreeOpenAiCreditsCredential(
+	provider: AgentModelProvider,
+	credentialId: string,
+): boolean {
+	const credential = credentialsStore.getCredentialById(credentialId);
+
+	return (
+		provider === FREE_OPENAI_CREDITS_PROVIDER &&
+		credential?.type === getProviderCredentialTypes(FREE_OPENAI_CREDITS_PROVIDER)[0] &&
+		credential.isManaged
+	);
+}
+
 const canUseFreeOpenAiCredits = computed(
 	() => credentials !== null && canCreateCredentials.value && userCanClaimOpenAiCredits.value,
 );
@@ -214,7 +227,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		id: buildMenuItemId(provider, 'select', credential.id),
 		label: credential.name,
 		disabled: false,
-		checked: selectedProviderCredentialId === credential.id,
+		checked: selectedModel?.provider === provider && selectedProviderCredentialId === credential.id,
 		keepOpen: true,
 		data: { provider },
 	}));
@@ -470,7 +483,21 @@ const filteredMenu = computed(() => {
 	});
 });
 
-function openNewCredential(credentialType: string) {
+function selectCredentialWithDefaultModel(
+	provider: AgentModelProvider,
+	credentialId: string,
+	defaultModel?: string,
+) {
+	emit('selectCredential', provider, credentialId);
+	const model =
+		defaultModel ??
+		(selectedModel?.provider !== provider
+			? modelsByProvider[provider]?.models[0]?.model
+			: undefined);
+	if (model) emit('change', { provider, model });
+}
+
+function openNewCredential(provider: AgentModelProvider, credentialType: string) {
 	if (!disabled && canCreateCredentials.value) {
 		uiStore.openNewCredential(
 			credentialType,
@@ -482,6 +509,9 @@ function openNewCredential(credentialType: string) {
 			undefined,
 			{
 				hideAskAssistant: true,
+				onCredentialCreated: function selectCreatedCredential(credential) {
+					emit('selectCredential', provider, credential.id);
+				},
 				...(credentialModalAppendToBody ? { appendToBody: true } : {}),
 			},
 		);
@@ -497,19 +527,23 @@ async function onSelect(id: string) {
 
 	if (action === 'configure') {
 		emit('configureCredential', providerId);
-		openNewCredential(value);
+		openNewCredential(providerId, value);
 		return;
 	}
 
 	if (action === 'select') {
-		emit('selectCredential', providerId, value);
+		selectCredentialWithDefaultModel(
+			providerId,
+			value,
+			isFreeOpenAiCreditsCredential(providerId, value) ? FREE_OPENAI_CREDITS_MODEL : undefined,
+		);
 		return;
 	}
 
 	if (action === 'n8nConnect') {
 		// Radio-style: selecting n8n credits always picks the managed tag. There's no
 		// toggle-off — you switch away by choosing another credential.
-		emit('selectCredential', providerId, AI_GATEWAY_MANAGED_TAG);
+		selectCredentialWithDefaultModel(providerId, AI_GATEWAY_MANAGED_TAG);
 		return;
 	}
 
@@ -523,8 +557,7 @@ async function onSelect(id: string) {
 
 		if (!credential) return;
 
-		emit('selectCredential', providerId, credential.id);
-		emit('change', { provider: providerId, model: value });
+		selectCredentialWithDefaultModel(providerId, credential.id, value);
 		return;
 	}
 
@@ -544,6 +577,7 @@ defineExpose({
 	<N8nAiModelSelectorDropdown
 		ref="dropdownRef"
 		:items="filteredMenu"
+		:is-loading="isLoading"
 		:selected-label="selectedLabel"
 		:selected-credential-name="selectedCredentialName"
 		:credentials-missing="isCredentialsMissing"
